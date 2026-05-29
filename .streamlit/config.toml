@@ -1,0 +1,24 @@
+[server]
+# Aumenta o limite de upload para espectros NIR grandes (DX, CSV)
+maxUploadSize = 200          # MB
+headless = true              # produção: sem abertura automática do browser
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false     # privacidade: não envia telemetria para a Streamlit
+
+[runner]
+# Evita re-run acidental em máquinas lentas (útil em hardware com <8 GB RAM)
+fastReruns = false
+
+[theme]
+base = "light"
+primaryColor       = "#0369A1"   # Accent azul — UI Pro Max B2B Professional
+backgroundColor    = "#F8FAFC"   # Light slate
+secondaryBackgroundColor = "#E2E8F0"
+textColor          = "#0F172A"   # Navy
+font               = "sans serif"
+
+[logger]
+level = "warning"            # suprime mensagens INFO do Streamlit no terminal

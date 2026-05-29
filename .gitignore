@@ -1,0 +1,45 @@
+# --- Personal / local config (keep the real paths out of the repo) ---
+config.yaml
+
+# --- Results (large PNGs / joblib models — keep out of repo) ---
+resultados_tcc/
+resultados*/
+*.joblib
+
+# --- Raw spectra kept IN repo for Streamlit Cloud deploy (~1 MB, 48 files) ---
+# dados/ and *.dx are intentionally NOT excluded so the app works on the Cloud.
+
+# --- Auxiliary / legacy data folders ---
+dados_oleos/
+
+# --- Local archive of old versions / scratch (kept out of the repo) ---
+_arquivo_antigo/
+_test*/
+"pineline_quimiometria_14 copy.py"
+*\ copy.py
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Streamlit ---
+.streamlit/secrets.toml
+
+# --- Claude Code project memory (local only) ---
+.claude/
+
+# --- Code review graph (local tool artifact) ---
+.code-review-graph

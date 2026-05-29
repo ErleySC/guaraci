@@ -1,0 +1,89 @@
+# ============================================================
+#  CONFIGURACAO DO PIPELINE QUIMIOMETRICO
+#  Edite os valores abaixo. Cada campo tem uma explicacao no
+#  comentario logo acima. Voce NAO precisa abrir o codigo.
+#  Para rodar:   python pineline_quimiometria_14.py --rodar
+#  Assistente:   python pineline_quimiometria_14.py
+# ============================================================
+
+# Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | sintetico (teste)
+#   opcoes: dx | csv | sintetico
+modo_entrada: dx
+
+# Pasta com os arquivos .dx (modo dx; uma subpasta por classe)
+pasta_dados: dados
+
+# Caminho do CSV (modo csv): colunas espectrais/variaveis + 1 coluna de classe
+arquivo_csv: seus_espectros.csv
+
+# Nome da coluna de classe/rotulo no CSV (modo csv)
+coluna_classe: classe
+
+# Nome da coluna de concentracao no CSV (vazio se nao houver; modo csv)
+coluna_concentracao: ''
+
+# Pasta onde os resultados serao gravados
+pasta_saida: resultados_tcc
+
+# Nivel: N1=especie | N2=puro/adulterado | N3=teor
+#   opcoes: N1 | N2 | N3
+nivel: N1
+
+# Pre-processamento espectral
+#   opcoes: MSC+SG+MC | SNV+SG+MC | Autoscaling | Mean-centering
+pre_processamento: MSC+SG+MC
+
+# Inicio da faixa espectral util (cm-1)
+faixa_min_cm: 4000.0
+
+# Fim da faixa espectral util (cm-1)
+faixa_max_cm: 10000.0
+
+# Especies a remover da analise (ex: [Copaiba])
+excluir_classes: []
+
+# Numero maximo de variaveis latentes (LVs) testadas
+max_lvs: 40
+
+# Fracao reservada para teste externo (0 a 0.5)
+holdout_fracao: 0.2
+
+# Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)
+validacao_group_aware: true
+
+# Iteracoes do teste de permutacao
+n_permutacoes: 200
+
+# Rodar teste de Wold (intercepts R2Y/Q2Y)
+teste_wold: true
+
+# Rodar CV-ANOVA (Eriksson)
+teste_cv_anova: true
+
+# Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)
+selecao_variaveis_etapa4: true
+
+# Rodar DD-SIMCA (classificacao one-class)
+ddsimca: true
+
+# Rodar OPLS-DA
+opls_da: true
+
+# Comparar varios pre-processamentos
+comparar_pre_processamentos: true
+
+# Usar formas diferentes por classe nos graficos de score
+figuras_mostrar_marcadores: false
+
+# Desenhar elipses de confianca por grupo
+figuras_mostrar_elipses: false
+
+# Formato das figuras
+#   opcoes: png | pdf | svg
+formato_figura: png
+
+# Resolucao das figuras (DPI)
+dpi: 600
+
+# Abrir cada figura na tela ao gerar (alem de salvar)
+abrir_figuras_na_tela: false

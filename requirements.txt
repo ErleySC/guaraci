@@ -1,0 +1,26 @@
+# Core scientific stack (pipeline engine)
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+scikit-learn>=1.3
+matplotlib>=3.7
+joblib>=1.3
+PyYAML>=6.0
+
+# Web interface (app_quimiometria.py). Optional if you only use the CLI/menu.
+streamlit>=1.30
+psutil>=5.9        # live RAM readout during runs (graceful fallback if absent)
+
+# Relatórios (Tab 7 — Relatórios)
+fpdf2>=2.7         # PDF com tabelas e figuras
+python-docx>=1.1   # Word .docx editável
+openpyxl>=3.1      # Excel multi-abas
+python-pptx>=1.1   # PowerPoint .pptx (slides científicos com design B2B)
+
+# Benchmark v27 / v28
+xgboost>=1.7       # XGBClassifier (fallback para GradientBoosting se ausente)
+shap>=0.42         # SHAP TreeExplainer para RF/XGBoost/GBM
+
+# Optional: nicer max-distinction color palettes (graceful fallback if absent)
+# glasbey
+# colorcet
