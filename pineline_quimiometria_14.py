@@ -1580,7 +1580,7 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
     r2_all   = np.append(r2s_arr, r2_obs)
     q2_all   = np.append(q2s_arr, q2_obs)
 
-    if len(sims_all) >= 2 and np.ptp(sims_all) > 0:
+    if len(sims_all) >= 2 and (sims_all.max() - sims_all.min()) > 0:  # np.ptp removido no NumPy 2.0
         slope_r2, int_r2 = np.polyfit(sims_all, r2_all, 1)
         slope_q2, int_q2 = np.polyfit(sims_all, q2_all, 1)
     else:
@@ -4031,9 +4031,12 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         return self._lb.inverse_transform(self._pls.predict(X))
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        Y = np.clip(np.asarray(self._pls.predict(X), float), 0.0, 1.0)
-        s = Y.sum(axis=1, keepdims=True); s[s < 1e-12] = 1.0
-        return Y / s
+        # Softmax numericamente estavel — garante distribuicao valida mesmo
+        # para valores negativos (frequentes em PLSRegression).
+        Y = np.asarray(self._pls.predict(X), float)
+        Y -= Y.max(axis=1, keepdims=True)   # shift para estabilidade
+        E  = np.exp(Y)
+        return E / E.sum(axis=1, keepdims=True)
 
 
 def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
@@ -4234,7 +4237,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     # ── SHAP values (opcional) ────────────────────────────────────────────
     if cfg.executar_shap:
         # Guarda: RF multiclass (14 classes x 500 amostras x n_feat) ~600 MB
-        if _verificar_ram(0.8, "SHAP TreeExplainer"):
+        if _verificar_ram(3.0, "SHAP TreeExplainer (RF multiclasse 14 classes)"):
             fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers)
 
     return df_bench
@@ -4603,15 +4606,23 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 explainer = shap.TreeExplainer(clf)
                 sv = explainer.shap_values(X_shap)
 
-                # sv e lista (multiclass RF) ou ndarray 2D/3D (XGBoost/GBM)
+                # sv: lista (RF antigo), ndarray 3D (XGBoost>=2 multiclass),
+                # ndarray 2D (GBM binario / single output).
+                # XGBoost>=2.0 e shap>=0.41 retornam ndarray diretamente.
                 if isinstance(sv, list):
+                    # RF classico (shap<0.41) — lista de arrays por classe
                     importance = np.mean([np.abs(s) for s in sv], axis=0).mean(axis=0)
                 else:
-                    sv_arr = np.array(sv)
-                    if sv_arr.ndim == 3:        # (n_classes, n_samples, n_features)
+                    sv_arr = np.asarray(sv)
+                    if sv_arr.ndim == 3:
+                        # (n_classes, n_samples, n_features) — XGBoost moderno
                         importance = np.abs(sv_arr).mean(axis=(0, 1))
-                    else:                       # (n_samples, n_features)
+                    elif sv_arr.ndim == 2:
+                        # (n_samples, n_features) — GBM / XGBoost binario
                         importance = np.abs(sv_arr).mean(axis=0)
+                    else:
+                        # Fallback: aplanar dimensoes extras
+                        importance = np.abs(sv_arr).reshape(sv_arr.shape[-2], sv_arr.shape[-1]).mean(axis=0)
 
                 top_n   = min(20, len(importance))
                 top_idx = np.argsort(importance)[-top_n:][::-1]

@@ -823,7 +823,7 @@ def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
 \\usepackage{{graphicx}}
 \\usepackage{{booktabs}}
 \\usepackage{{longtable}}
-\\usepackage{{hyperref}}[colorlinks=true,citecolor=blue,linkcolor=blue]
+\\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue]{{hyperref}}
 \\usepackage{{geometry}}
 \\usepackage{{caption}}
 \\usepackage{{float}}
@@ -1874,6 +1874,14 @@ with tab_pred:
                 pkg_pred = joblib.load(str(tmp_jbl))
             elif cam_jbl and os.path.exists(cam_jbl):
                 pkg_pred = joblib.load(cam_jbl)
+            # Validacao minima de estrutura para evitar RCE via pickle malicioso
+            if pkg_pred is not None:
+                _chaves_req = {"preprocessador", "pls_final", "label_binarizer", "wavenumbers"}
+                if not _chaves_req.issubset(pkg_pred.keys()):
+                    raise ValueError(
+                        f"Modelo invalido: chaves esperadas {_chaves_req}, "
+                        f"encontradas {set(pkg_pred.keys())}"
+                    )
             else:
                 erros_pred.append("Nenhum modelo valido fornecido (upload ou caminho).")
         except Exception as e_jbl:
@@ -2240,6 +2248,32 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
 
 
 # ==========================================================================
+#  Cache de relatórios — evita regenerar a cada rerun do Streamlit
+#  Os wrappers retornam bytes (imutáveis, cacheáveis); BytesIO é criado
+#  na hora do download_button para garantir cursor em posição 0.
+# ==========================================================================
+@st.cache_data(show_spinner=False)
+def _pdf_bytes(pasta: str, proj_items: tuple) -> bytes:
+    return _gerar_pdf_relatorio(pasta, dict(proj_items)).read()
+
+@st.cache_data(show_spinner=False)
+def _word_bytes(pasta: str, proj_items: tuple) -> bytes:
+    return _gerar_word_relatorio(pasta, dict(proj_items)).read()
+
+@st.cache_data(show_spinner=False)
+def _excel_bytes(pasta: str) -> bytes:
+    return _gerar_excel_relatorio(pasta).read()
+
+@st.cache_data(show_spinner=False)
+def _latex_bytes(pasta: str, proj_items: tuple) -> bytes:
+    return _gerar_latex_template(pasta, dict(proj_items))
+
+@st.cache_data(show_spinner=False)
+def _pptx_bytes(pasta: str, proj_items: tuple) -> bytes:
+    return _gerar_pptx_relatorio(pasta, dict(proj_items)).read()
+
+
+# ==========================================================================
 #  ABA 7 — RELATORIOS
 # ==========================================================================
 with tab_rel:
@@ -2262,6 +2296,8 @@ with tab_rel:
             "tipo":     st.session_state.get("proj_tipo", ""),
             "objetivo": st.session_state.get("proj_objetivo", ""),
         }
+        # Tupla ordenada usada como chave de cache (Dict nao e hashavel)
+        _proj_items = tuple(sorted(_projeto_info.items()))
 
         # Linha 1: ZIP + PDF
         col_a, col_b = st.columns(2)
@@ -2279,10 +2315,9 @@ with tab_rel:
 
         with col_b:
             try:
-                pdf_buf = _gerar_pdf_relatorio(pasta_r, _projeto_info)
                 st.download_button(
                     "📄 Relatorio PDF",
-                    data=pdf_buf,
+                    data=_pdf_bytes(pasta_r, _proj_items),
                     file_name=_nome_base + "_relatorio.pdf",
                     mime="application/pdf",
                     use_container_width=True,
@@ -2295,10 +2330,9 @@ with tab_rel:
         col_c, col_d = st.columns(2)
         with col_c:
             try:
-                word_buf = _gerar_word_relatorio(pasta_r, _projeto_info)
                 st.download_button(
                     "📝 Relatorio Word (.docx)",
-                    data=word_buf,
+                    data=_word_bytes(pasta_r, _proj_items),
                     file_name=_nome_base + "_relatorio.docx",
                     mime="application/vnd.openxmlformats-officedocument"
                          ".wordprocessingml.document",
@@ -2309,10 +2343,9 @@ with tab_rel:
 
         with col_d:
             try:
-                xlsx_buf = _gerar_excel_relatorio(pasta_r)
                 st.download_button(
                     "📊 Dados em Excel (.xlsx)",
-                    data=xlsx_buf,
+                    data=_excel_bytes(pasta_r),
                     file_name=_nome_base + "_dados.xlsx",
                     mime="application/vnd.openxmlformats-officedocument"
                          ".spreadsheetml.sheet",
@@ -2325,10 +2358,9 @@ with tab_rel:
         col_e, col_f = st.columns(2)
         with col_e:
             try:
-                latex_bytes = _gerar_latex_template(pasta_r, _projeto_info)
                 st.download_button(
                     "🔬 Template LaTeX (Talanta / Food Chemistry / J. Chemom.)",
-                    data=latex_bytes,
+                    data=_latex_bytes(pasta_r, _proj_items),
                     file_name=_nome_base + "_template.tex",
                     mime="text/plain",
                     use_container_width=True,
@@ -2339,10 +2371,9 @@ with tab_rel:
         with col_f:
             try:
                 from pptx import Presentation as _PPTXCheck  # noqa: F401
-                pptx_buf = _gerar_pptx_relatorio(pasta_r, _projeto_info)
                 st.download_button(
                     "🎯 Apresentacao PowerPoint (.pptx)",
-                    data=pptx_buf,
+                    data=_pptx_bytes(pasta_r, _proj_items),
                     file_name=_nome_base + "_apresentacao.pptx",
                     mime="application/vnd.openxmlformats-officedocument"
                          ".presentationml.presentation",
