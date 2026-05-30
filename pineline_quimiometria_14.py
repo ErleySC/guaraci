@@ -150,7 +150,8 @@ from scipy.stats import f as f_dist, chi2
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import pdist
 
-from sklearn.base import BaseEstimator, TransformerMixin
+import time
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, LabelBinarizer
 from sklearn.decomposition import PCA
@@ -3641,7 +3642,7 @@ def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
     ax.plot([0, 1], [0, 1], "k--", lw=0.8, label="Aleatório (AUC = 0.500)")
     ax.set_xlabel("Taxa de Falso Positivo  (1 – Especificidade)")
     ax.set_ylabel("Taxa de Verdadeiro Positivo  (Sensibilidade)")
-    ax.set_xlim([-0.01, 1.01]); ax.set_ylim([-0.01, 1.02])
+    ax.set_xlim((-0.01, 1.01)); ax.set_ylim((-0.01, 1.02))
 
     try:
         macro_auc = float(roc_auc_score(
@@ -4026,8 +4027,8 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
     def fit(self, X: np.ndarray, y: np.ndarray):
         from sklearn.preprocessing import LabelBinarizer as _LB
         self._lb = _LB()
-        Y_bin = self._lb.fit_transform(y)
-        # Binario: LabelBinarizer retorna (n,1) — expandir para (n,2)
+        Y_bin: np.ndarray = np.asarray(self._lb.fit_transform(y))  # ensure ndarray (not spmatrix)
+        # Binary: LabelBinarizer returns (n,1) — expand to (n,2)
         if Y_bin.ndim == 1 or Y_bin.shape[1] == 1:
             Y_bin = np.hstack([1 - Y_bin.reshape(-1, 1),
                                    Y_bin.reshape(-1, 1)])
@@ -4038,7 +4039,7 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return self._lb.inverse_transform(self._pls.predict(X))
+        return self._lb.inverse_transform(self._pls.predict(X))  # type: ignore[return-value]
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         # Softmax numericamente estavel — garante distribuicao valida mesmo
@@ -4179,10 +4180,10 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                     pipe_i.fit(X_raw[tr_idx], y_int[tr_idx])
                     y_pred = pipe_i.predict(X_raw[te_idx])
                     ba_folds.append(
-                        balanced_accuracy_score(y_int[te_idx], y_pred))
+                        float(balanced_accuracy_score(y_int[te_idx], y_pred)))
                     f1_folds.append(
-                        f1_score(y_int[te_idx], y_pred,
-                                 average="macro", zero_division=0))
+                        float(f1_score(y_int[te_idx], y_pred,
+                                       average="macro", zero_division=0)))
                     # Coleta OOF proba em um unico passe (sem cross_val_predict extra)
                     if hasattr(pipe_i[-1], "predict_proba"):
                         try:
@@ -4220,7 +4221,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                 if alt is not None and len(alt) == len(ref):
                     _, pval = wilcoxon(ref, alt, alternative="two-sided",
                                        zero_method="wilcox")
-                    r["p Wilcoxon (vs PLS-DA)"] = round(pval, 4)
+                    r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), 4)
                 else:
                     r["p Wilcoxon (vs PLS-DA)"] = "n/a"
             except Exception:
@@ -4268,7 +4269,7 @@ def fig_monte_carlo_distribuicao(scores_mc: Dict[str, List[float]],
                            constrained_layout=True)
     parts = ax.violinplot(dados, positions=range(1, len(nomes) + 1),
                           showmedians=True, showextrema=False)
-    for pc, c in zip(parts["bodies"], cores):
+    for pc, c in zip(parts["bodies"], cores):  # type: ignore[arg-type]
         pc.set_facecolor(c); pc.set_alpha(0.50)
     parts["cmedians"].set_color("black"); parts["cmedians"].set_linewidth(2.0)
 
@@ -4421,9 +4422,9 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
                     pipe_i = clone(pipe)
                     pipe_i.fit(X_tr, y_tr)
                     y_pred = pipe_i.predict(X_te)
-                    ba_list.append(balanced_accuracy_score(y_te, y_pred))
+                    ba_list.append(float(balanced_accuracy_score(y_te, y_pred)))
                     f1_list.append(
-                        f1_score(y_te, y_pred, average="macro", zero_division=0))
+                        float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
             except Exception:
                 pass
 
@@ -4489,7 +4490,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
     nomes = list(oof_probas.keys())
     cores = [cor(i) for i in range(len(nomes))]
 
-    y_bin = label_binarize(y_int, classes=range(n_classes))
+    y_bin: np.ndarray = np.asarray(label_binarize(y_int, classes=range(n_classes)))
     if n_classes == 2:
         y_bin = np.hstack([1 - y_bin, y_bin])
 
@@ -5307,6 +5308,7 @@ def executar(cfg: Config):
     ddsimca_res: Optional[Dict[str, Dict[str, Any]]] = None
     simca_pred: np.ndarray = np.array([], dtype=str)
     ddsimca_sens_esp: Dict[str, Tuple[float, float, int, int]] = {}
+    modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
     if cfg.executar_ddsimca:
         modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
         if conc is not None:
