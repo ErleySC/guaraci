@@ -30,14 +30,16 @@ def test_config_spec_keys():
     assert "pre_processamento" in keys
 
 def test_msc_no_leakage():
+    """MSC.ref_ must be computed from train only (anti-leakage)."""
     pq = _load_pipeline()
     rng = np.random.default_rng(42)
     X_train = rng.normal(size=(50, 100))
     X_test  = rng.normal(size=(10, 100))
-    msc = pq.MSCPreprocessor()
+    msc = pq.MSC()
     msc.fit(X_train)
-    # ref_spectrum set from train only
-    assert hasattr(msc, "ref_spectrum_")
+    # ref_ (mean training spectrum) set from train only
+    assert hasattr(msc, "ref_")
+    assert msc.ref_.shape == (100,)
     X_tr = msc.transform(X_train)
     X_te = msc.transform(X_test)
     assert X_tr.shape == X_train.shape
@@ -55,6 +57,22 @@ def test_plsda_classifier_binary():
     assert set(preds).issubset({"A", "B"})
     assert proba.shape == (60, 2)
     assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+
+def test_opls_orthogonality():
+    """t_orth must be strictly orthogonal to t_pred (Gram-Schmidt guarantee)."""
+    pq = _load_pipeline()
+    rng = np.random.default_rng(7)
+    n, p = 80, 50
+    X = rng.normal(size=(n, p))
+    # Binary response (2 classes)
+    Y = np.zeros((n, 2))
+    Y[:40, 0] = 1; Y[40:, 1] = 1
+    opls = pq.OPLSDAWrapper(n_ortho=1)
+    opls.fit(X, Y)
+    t_pred, t_orth = opls.transform(X)
+    # Inner product must be < 1e-9 (machine precision)
+    dot = abs(float(t_pred @ t_orth[:, 0]))
+    assert dot < 1e-6, f"t_orth not orthogonal to t_pred: inner product = {dot:.2e}"
 
 def test_config_spec_attrs_match_config():
     pq = _load_pipeline()

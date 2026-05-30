@@ -923,19 +923,28 @@ class DDSimca:
 class OPLSDAWrapper(BaseEstimator):
     """OPLS-DA: orthogonal deflation + 1 predictive component.
 
-    Extracts n_ortho components of X orthogonal to Y via NIPALS, then
-    fits 1 predictive LV on the deflated X. Outputs:
+    Implements Algorithm 1 of Trygg & Wold (2002) with explicit Gram-Schmidt
+    orthogonalization to guarantee t_orth ⊥ t_pred by construction.
+
+    Steps per orthogonal component:
+      1. NIPALS PLS1 on (X_r, y) → w (normalized), t = X_r @ w, p = X_r^T t / (t^T t)
+      2. w_orth = p − (p^T w) w   [part of p orthogonal to w, per Trygg 2002]
+      3. w_orth /= ||w_orth||
+      4. t_orth_raw = X_r @ w_orth
+      5. Gram-Schmidt: t_orth = t_orth_raw − (t_orth_raw^T t)/(t^T t) * t
+         [explicit enforcement of t_orth ⊥ t_pred; required for valid S-Plots]
+      6. p_orth = X_r^T t_orth / (t_orth^T t_orth)
+      7. Deflate: X_r = X_r − t_orth p_orth^T
+
+    Outputs:
         t_pred  — predictive score (separates classes)
-        t_orth  — orthogonal score(s) (structured variation in X
-                  uncorrelated with Y, e.g., baseline, scatter)
+        t_orth  — orthogonal score(s) (systematic X-variation uncorrelated with Y,
+                  e.g., baseline drift, multiplicative scatter in FT-NIR)
 
-    The tp x to1 plot decomposes: true separation (tp) vs systematic
-    instrumental variation (to). For FTIR of oils, to typically captures
-    variation in optical path length and multiplicative scatter.
-
-    Referencias:
+    References:
         Trygg J. & Wold S. (2002) J. Chemometrics 16:119-128.
         Bylesjo M. et al. (2006) J. Chemometrics 20:341-351.
+        Wiklund S. et al. (2008) Anal. Chem. 80:115-122.
     """
 
     def __init__(self, n_ortho: int = 1):
@@ -947,8 +956,13 @@ class OPLSDAWrapper(BaseEstimator):
     def _nipals_pls1(X: np.ndarray, y: np.ndarray,
                      max_iter: int = 500, tol: float = 1e-10
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """NIPALS for 1 PLS component with one-dimensional y.
-        Returns (w, t, p) normalized."""
+        """NIPALS PLS1 — extracts 1 component from (X, y).
+
+        Returns (w, t, p):
+            w  : X-weight (unit norm), shape (n_features,)
+            t  : X-score = X @ w,      shape (n_samples,)
+            p  : X-loading = X^T t / (t^T t), shape (n_features,)
+        """
         u = y.astype(float).copy()
         t_old = np.zeros(X.shape[0])
         w = np.zeros(X.shape[1])
@@ -976,7 +990,7 @@ class OPLSDAWrapper(BaseEstimator):
     def fit(self, X: np.ndarray, Y: np.ndarray) -> "OPLSDAWrapper":
         X = np.asarray(X, dtype=float)
         Y = np.asarray(Y, dtype=float)
-        # Use the first column of Y as binary response
+        # Use the first column of Y as the binary response (mean-centred)
         y = Y[:, 0] if Y.ndim == 2 else Y.copy()
         y = y - float(y.mean())
 
@@ -988,22 +1002,40 @@ class OPLSDAWrapper(BaseEstimator):
 
         for _ in range(self.n_ortho):
             w, t, p = self._nipals_pls1(Xr, y)
-            # Orthogonal component: direction of p orthogonalized against w
+
+            # Step 2 (Trygg & Wold 2002, Eq. 3):
+            # w_orth = part of p orthogonal to w (since ||w||=1, proj = p^T w)
             proj = float(p @ w)
             w_orth = p - proj * w
             no = float(np.linalg.norm(w_orth))
             if no < 1e-10:
                 break
             w_orth /= no
-            t_orth = Xr @ w_orth
+
+            # Step 4: raw orthogonal score
+            t_orth_raw = Xr @ w_orth
+
+            # Step 5 — Gram-Schmidt: remove predictive component from t_orth
+            # Guarantees t_orth ⊥ t_pred by construction (required for valid S-Plot).
+            # Without this, w_orth ⊥ w does NOT imply X@w_orth ⊥ X@w when X^T X ≠ I.
+            t_norm_sq = float(t @ t)
+            if t_norm_sq > 1e-12:
+                t_orth = t_orth_raw - (float(t_orth_raw @ t) / t_norm_sq) * t
+            else:
+                t_orth = t_orth_raw
+
             nto = float(t_orth @ t_orth)
             if nto < 1e-12:
                 break
+
+            # Step 6: orthogonal loading from Gram-Schmidt-corrected t_orth
             p_orth = Xr.T @ t_orth / nto
             self.W_orth_.append(w_orth.copy())
             self.P_orth_.append(p_orth.copy())
             T_orth_train.append(t_orth.copy())
-            Xr = Xr - np.outer(t_orth, p_orth)   # deflate
+
+            # Step 7: deflate X only (y is not deflated — single predictive LV)
+            Xr = Xr - np.outer(t_orth, p_orth)
 
         # 1 predictive component on deflated X
         self._pls_pred = PLSRegression(n_components=1, scale=False)
@@ -1019,19 +1051,37 @@ class OPLSDAWrapper(BaseEstimator):
         return self
 
     def transform(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Returns (t_pred ndarray, t_orth matrix (n, n_ortho))."""
+        """Returns (t_pred, t_orth) with t_orth ⊥ t_pred (Gram-Schmidt applied).
+
+        Deflation uses the raw w_orth/p_orth (consistent with fit), but the
+        returned t_orth vectors are Gram-Schmidt orthogonalized against t_pred
+        so that S-Plot covariance/correlation axes are rigorously orthogonal.
+        """
         X = np.asarray(X, dtype=float)
         Xr = X.copy()
-        T_orth: List[np.ndarray] = []
+        T_orth_raw: List[np.ndarray] = []
         for w_o, p_o in zip(self.W_orth_, self.P_orth_):
-            t_o = Xr @ w_o
-            T_orth.append(t_o)
-            Xr = Xr - np.outer(t_o, p_o)
+            t_o_raw = Xr @ w_o
+            T_orth_raw.append(t_o_raw)
+            Xr = Xr - np.outer(t_o_raw, p_o)   # deflation unchanged
+
         _t_new = self._pls_pred.transform(Xr)
         t_pred_arr = _t_new if isinstance(_t_new, np.ndarray) else _t_new[0]
+        t_pred = t_pred_arr[:, 0]
+
+        # Gram-Schmidt: remove predictive component from each raw t_orth
+        t_pred_norm_sq = float(t_pred @ t_pred)
+        T_orth: List[np.ndarray] = []
+        for t_o_raw in T_orth_raw:
+            if t_pred_norm_sq > 1e-12:
+                t_o = t_o_raw - (float(t_o_raw @ t_pred) / t_pred_norm_sq) * t_pred
+            else:
+                t_o = t_o_raw
+            T_orth.append(t_o)
+
         t_orth = (np.column_stack(T_orth)
                   if T_orth else np.zeros((len(X), 1)))
-        return t_pred_arr[:, 0], t_orth
+        return t_pred, t_orth
 
 
 def metricas_modelo_pls(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
@@ -1624,8 +1674,9 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
     impossible after shuffle) are recorded and excluded from the p-value.
 
     Returns dict with:
-        acc_observada      - accuracy with true Y
-        accs_permutadas    - array of H0 accuracies (valid iterations only)
+        acc_observada      - balanced_accuracy_score with true Y (consistent with
+                             the main metric; unbiased for class imbalance)
+        accs_permutadas    - array of H0 balanced accuracies (valid iterations only)
         p_value            - (sum(accs >= obs) + 1) / (n_validos + 1)
         n_validos          - iterations completed successfully
         n_falhos           - iterations aborted due to error
@@ -2765,7 +2816,7 @@ def fig4b_metricas_globais(metricas, perm_obs, perm_dist, perm_p, cfg, pasta):
     ax.set_axisbelow(True)
     ax.text(0.98, 0.05,
             f"Permutation test (Y-randomization)\n"
-            f"Acc obs. = {perm_obs:.3f}   p = {perm_p:.4f}   N = {len(perm_dist)}",
+            f"Bal.Acc obs. = {perm_obs:.3f}   p = {perm_p:.4f}   N = {len(perm_dist)}",
             transform=ax.transAxes, ha="right", va="bottom",
             fontsize=8.5, color="0.25",
             bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="0.82", lw=0.6))
@@ -5189,8 +5240,8 @@ def executar(cfg: Config):
     perm_dist: np.ndarray = cast(np.ndarray, perm_res["accs_permutadas"])
     perm_p   : float      = cast(float, perm_res["p_value"])
     media_h0 = float(perm_dist.mean()) if len(perm_dist) > 0 else float("nan")
-    print(f"  Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
-          f"|  acc media H0 = {media_h0:.4f}")
+    print(f"  Bal.Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
+          f"|  bal.acc media H0 = {media_h0:.4f}")
     print(f"  Iteracoes validas: {cast(int, perm_res['n_validos'])}/"
           f"{cfg.n_permutacoes}  "
           f"(failure_rate = {cast(float, perm_res['failure_rate']):.1%})")
