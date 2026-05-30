@@ -1,26 +1,24 @@
-# Core scientific stack (pipeline engine)
-numpy>=1.24
-pandas>=2.0
-scipy>=1.10
-scikit-learn>=1.3
-matplotlib>=3.7
-joblib>=1.3
-PyYAML>=6.0
+# ── Core scientific stack ────────────────────────────────────────────────────
+# Pinned ranges: wide enough for pip solver, tight enough to avoid breaking changes.
+numpy>=1.24,<3.0
+pandas>=2.0,<4.0
+scipy>=1.10,<2.0
+scikit-learn>=1.3,<2.0
+matplotlib>=3.7,<4.0
+joblib>=1.3,<2.0
+PyYAML>=6.0,<7.0
 
-# Web interface (app_quimiometria.py). Optional if you only use the CLI/menu.
-streamlit>=1.30
-psutil>=5.9        # live RAM readout during runs (graceful fallback if absent)
+# ── Web interface ────────────────────────────────────────────────────────────
+# Pinned to 1.x: st.status() requires >= 1.28; avoids Streamlit 2.x DOM changes.
+streamlit>=1.35,<2.0
+psutil>=5.9,<7.0   # live RAM readout; graceful fallback if absent
 
-# Relatórios (Tab 7 — Relatórios)
-fpdf2>=2.7         # PDF com tabelas e figuras
-python-docx>=1.1   # Word .docx editável
-openpyxl>=3.1      # Excel multi-abas
-python-pptx>=1.1   # PowerPoint .pptx (slides científicos com design B2B)
+# ── Reports (Tab 7) ──────────────────────────────────────────────────────────
+fpdf2>=2.7,<3.0       # PDF with tables and figures
+python-docx>=1.1,<2.0 # Word .docx
+openpyxl>=3.1,<4.0    # Excel multi-sheet
+python-pptx>=1.0,<2.0 # PowerPoint .pptx
 
-# Benchmark v27 / v28
-xgboost>=1.7       # XGBClassifier (fallback para GradientBoosting se ausente)
-shap>=0.42         # SHAP TreeExplainer para RF/XGBoost/GBM
-
-# Optional: nicer max-distinction color palettes (graceful fallback if absent)
-# glasbey
-# colorcet
+# ── Benchmark / Interpretability ─────────────────────────────────────────────
+xgboost>=1.7,<5.0  # XGBClassifier (falls back to GradientBoosting if absent)
+shap>=0.42,<1.0    # SHAP TreeExplainer for RF/XGBoost/GBM

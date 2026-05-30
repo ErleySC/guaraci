@@ -1662,44 +1662,54 @@ with tab_modelo:
         worker = threading.Thread(
             target=_rodar_worker, args=(cfg_run, logger, estado), daemon=True)
 
-        barra    = st.progress(0.0, text="Starting...")
-        ph_info  = st.empty()
-        ph_log   = st.empty()
-
         t0 = time.monotonic()
         eta_best: Optional[float] = None
+        # Max runtime guard: 2 hours (prevents infinite blocking on Cloud)
+        _MAX_RUNTIME = 7200
+
         worker.start()
 
-        while not estado["fim"]:
-            txt = logger.text()
-            frac, nome = _progresso_do_log(txt)
-            elapsed = time.monotonic() - t0
-            if frac >= 0.10:
-                eta = elapsed / frac - elapsed
-                eta_best = eta if eta_best is None else min(eta_best, eta)
-            ram = _ram_mb()
-            barra.progress(frac, text=f"[{int(frac * 100)}%] {nome}")
-            ph_info.markdown(
-                f"⏱️ **Elapsed:** {_fmt_tempo(elapsed)}  |  "
-                f"⏳ **Remaining:** "
-                f"{_fmt_tempo(eta_best) if eta_best is not None else 'calculating…'}  |  "
-                f"💾 **RAM:** {f'{ram:.0f} MB' if ram else 'n/a'}")
-            linhas = txt.strip().splitlines()
-            ph_log.code("\n".join(linhas[-12:]) if linhas else "...",
-                        language="text")
-            time.sleep(0.5)
+        # Use st.status() + single placeholder to avoid simultaneous DOM
+        # mutations that cause React's removeChild error on Streamlit Cloud.
+        with st.status("⚙️ Running pipeline...", expanded=True) as _run_status:
+            ph = st.empty()
+            while not estado["fim"]:
+                # Safety timeout
+                if time.monotonic() - t0 > _MAX_RUNTIME:
+                    estado["fim"] = True
+                    estado["erro"] = "Pipeline exceeded maximum runtime (2 h)."
+                    break
+                txt = logger.text()
+                frac, nome = _progresso_do_log(txt)
+                elapsed = time.monotonic() - t0
+                if frac >= 0.10:
+                    eta = elapsed / frac - elapsed
+                    eta_best = eta if eta_best is None else min(eta_best, eta)
+                ram = _ram_mb()
+                linhas = txt.strip().splitlines()
+                log_tail = "\n".join(linhas[-10:]) if linhas else "..."
+                # Single atomic DOM update per iteration
+                ph.markdown(
+                    f"**[{int(frac * 100)}%] {nome}**\n\n"
+                    f"⏱️ `{_fmt_tempo(elapsed)}` elapsed  |  "
+                    f"⏳ `{_fmt_tempo(eta_best) if eta_best else 'calculating…'}` remaining  |  "
+                    f"💾 `{f'{ram:.0f} MB' if ram else 'n/a'}`\n\n"
+                    f"```text\n{log_tail}\n```"
+                )
+                time.sleep(0.5)
 
-        txt     = logger.text()
-        elapsed = time.monotonic() - t0
-        ram     = _ram_mb()
-        barra.progress(1.0, text="Done")
-        ph_info.markdown(
-            f"⏱️ **Total time:** {_fmt_tempo(elapsed)}  |  "
-            f"⏳ **Remaining:** 0s  |  "
-            f"💾 **RAM:** {f'{ram:.0f} MB' if ram else 'n/a'}")
-        linhas = txt.strip().splitlines()
-        ph_log.code("\n".join(linhas[-12:]) if linhas else "...",
-                    language="text")
+            # Final state update
+            txt     = logger.text()
+            elapsed = time.monotonic() - t0
+            ph.empty()
+            if estado["erro"]:
+                _run_status.update(
+                    label=f"❌ Pipeline failed after {_fmt_tempo(elapsed)}.",
+                    state="error", expanded=True)
+            else:
+                _run_status.update(
+                    label=f"✅ Completed in {_fmt_tempo(elapsed)}!",
+                    state="complete", expanded=False)
 
         st.session_state.ultimo_log  = txt
         if estado["erro"]:
@@ -1709,8 +1719,7 @@ with tab_modelo:
         else:
             st.session_state.erro_run  = None
             st.session_state.ultima_pasta = estado["pasta"]
-            st.success(f"Completed in {_fmt_tempo(elapsed)}! "
-                       "View results in the Validation and Reports tabs.")
+            st.success("✅ Completed! View results in the Validation and Reports tabs.")
 
     if st.session_state.get("erro_run"):
         st.subheader("Error traceback")
