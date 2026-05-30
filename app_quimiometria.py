@@ -1757,9 +1757,13 @@ with tab_valid:
                         list(acc_map.items()), columns=["Class", "Accuracy (recall)"]
                     ).sort_values("Accuracy (recall)")
                     # Color: red < 0.7, yellow 0.7-0.9, green >= 0.9
-                    def _cor_acc(v: float) -> str:
-                        if v >= 0.90: return "background-color:#d4edda"
-                        if v >= 0.70: return "background-color:#fff3cd"
+                    def _cor_acc(v: object) -> str | None:  # Scalar compat
+                        try:
+                            fv = float(v)  # type: ignore[arg-type]
+                        except (TypeError, ValueError):
+                            return None
+                        if fv >= 0.90: return "background-color:#d4edda"
+                        if fv >= 0.70: return "background-color:#fff3cd"
                         return "background-color:#f8d7da"
                     st.dataframe(
                         _df_acc.style.map(
@@ -2028,8 +2032,9 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
     prs = Presentation()
     prs.slide_width  = Inches(13.33)
     prs.slide_height = Inches(7.5)
-    W = prs.slide_width
-    H = prs.slide_height
+    W = prs.slide_width   # Emu — assigned above, never None
+    H = prs.slide_height  # Emu — assigned above, never None
+    assert W is not None and H is not None  # satisfies Pylance Optional[Emu] stub
 
     def _rect(slide, l, t, w, h, fill_rgb: RGBColor):
         from pptx.util import Emu
