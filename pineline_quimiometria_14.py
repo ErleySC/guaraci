@@ -130,6 +130,8 @@ Best result: MSC -> SG -> MC, balanced accuracy = 0.923
 (GroupKFold, 1807 samples, 14 Amazonian oil species).
 """
 
+__version__ = "30.1.0"
+
 import os
 import re
 import glob
@@ -249,7 +251,7 @@ class Config:
     frac_cal: float = 0.70
 
     n_permutacoes: int = 200
-    n_permutacoes_wold: int = 50         # Wold is diagnostic — 50 is sufficient
+    n_permutacoes_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic
     n_bootstrap_vip: int = 30
     n_bootstrap_bca: int = 500
     comparar_pipelines: bool = True
@@ -990,8 +992,28 @@ class OPLSDAWrapper(BaseEstimator):
     def fit(self, X: np.ndarray, Y: np.ndarray) -> "OPLSDAWrapper":
         X = np.asarray(X, dtype=float)
         Y = np.asarray(Y, dtype=float)
-        # Use the first column of Y as the binary response (mean-centred)
-        y = Y[:, 0] if Y.ndim == 2 else Y.copy()
+        # Build a single continuous y that captures all-class discriminant structure.
+        # For binary Y (1 column): use that column directly.
+        # For multiclass Y (K columns, one-hot): use the first Linear Discriminant
+        # component (LDA), which maximally separates all K classes simultaneously.
+        # Using Y[:,0] (first class vs. rest) would silently bias the OPLS toward
+        # one class only — a methodological error for 14-class FT-NIR data.
+        if Y.ndim == 2 and Y.shape[1] > 1:
+            from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as _LDA
+            y_int_opls = np.argmax(Y, axis=1)
+            try:
+                _lda = _LDA(n_components=1)
+                y = _lda.fit_transform(X, y_int_opls)[:, 0].astype(float)
+            except Exception:
+                # Fallback: PLS2 first y-score (less optimal but correct for multiclass)
+                from sklearn.cross_decomposition import PLSRegression as _PLSr
+                _pls2 = _PLSr(n_components=1, scale=False)
+                _pls2.fit(X, Y)
+                _ys = _pls2.y_scores_
+                y = (np.asarray(_ys, dtype=float)[:, 0]
+                     if _ys is not None else Y @ np.ones(Y.shape[1]))
+        else:
+            y = (Y[:, 0] if Y.ndim == 2 else Y.copy()).astype(float)
         y = y - float(y.mean())
 
         n = X.shape[0]
