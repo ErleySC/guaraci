@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Amazonian Oils Chemometrics Platform"
+abstract: >
+  A Streamlit-based chemometric platform for FT-NIR spectroscopy of Amazonian
+  vegetable oils. Implements PLS-DA, OPLS-DA, DD-SIMCA, iPLS, VIP, SHAP, and
+  Monte Carlo CV with anti-leakage GroupKFold validation.
+authors:
+  - family-names: "Costa"
+    given-names: "Erley S."
+    affiliation: "GEAAp/UFPA"
+    email: "erleysdacosta@gmail.com"
+repository-code: "https://github.com/ErleySC/amazonian-oils-chemometrics"
+license: MIT
+version: "30.0.0"
+date-released: "2026-05-30"
+keywords:
+  - chemometrics
+  - FT-NIR
+  - PLS-DA
+  - vegetable oils
+  - Amazon
+  - machine learning
+  - Streamlit

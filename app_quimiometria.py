@@ -100,18 +100,59 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 _TR: Dict[str, Dict[str, str]] = {
-    "Project":          {"PT": "Projeto",         "EN": "Project"},
-    "Data":             {"PT": "Dados",            "EN": "Data"},
-    "Preprocessing":    {"PT": "Pré-proc.",        "EN": "Preprocessing"},
-    "Model":            {"PT": "Modelo",           "EN": "Model"},
-    "Validation":       {"PT": "Validação",        "EN": "Validation"},
-    "Prediction":       {"PT": "Predição",         "EN": "Prediction"},
-    "Reports":          {"PT": "Relatórios",       "EN": "Reports"},
-    "Upload spectra":   {"PT": "Upload espectros", "EN": "Upload spectra"},
-    "Data preview":     {"PT": "Prévia dos dados", "EN": "Data preview"},
-    "Run pipeline":     {"PT": "Executar pipeline","EN": "Run pipeline"},
-    "Dark mode":        {"PT": "Modo noturno",     "EN": "Dark mode"},
-    "Language":         {"PT": "Idioma",           "EN": "Language"},
+    # Tabs
+    "Project":              {"PT": "Projeto",              "EN": "Project"},
+    "Data":                 {"PT": "Dados",                "EN": "Data"},
+    "Preprocessing":        {"PT": "Pré-processamento",    "EN": "Preprocessing"},
+    "Model":                {"PT": "Modelo",               "EN": "Model"},
+    "Validation":           {"PT": "Validação",            "EN": "Validation"},
+    "Prediction":           {"PT": "Predição",             "EN": "Prediction"},
+    "Reports":              {"PT": "Relatórios",           "EN": "Reports"},
+    # Sidebar
+    "Language":             {"PT": "Idioma",               "EN": "Language"},
+    "Dark mode":            {"PT": "Modo noturno",         "EN": "Dark mode"},
+    # Data tab
+    "Upload spectra":       {"PT": "Upload espectros",     "EN": "Upload spectra"},
+    "Data preview":         {"PT": "Prévia dos dados",     "EN": "Data preview"},
+    "Load spectra preview": {"PT": "Carregar prévia",      "EN": "Load spectra preview"},
+    "Spectra folder":       {"PT": "Pasta de espectros",   "EN": "Spectra folder"},
+    "Upload CSV":           {"PT": "Upload CSV",           "EN": "Upload CSV"},
+    # Model tab
+    "Run pipeline":         {"PT": "Executar pipeline",    "EN": "Run pipeline"},
+    "Stop":                 {"PT": "Parar",                "EN": "Stop"},
+    "Analysis and partitioning": {"PT": "Análise e particionamento", "EN": "Analysis and partitioning"},
+    "Validation settings":  {"PT": "Configurações de validação", "EN": "Validation settings"},
+    "Advanced options":     {"PT": "Opções avançadas",     "EN": "Advanced options"},
+    "Figures":              {"PT": "Figuras",              "EN": "Figures"},
+    # Validation tab
+    "Model summary":        {"PT": "Resumo do modelo",     "EN": "Model summary"},
+    "Accuracy by class":    {"PT": "Acurácia por classe",  "EN": "Accuracy by class"},
+    "Benchmark results":    {"PT": "Resultados benchmark", "EN": "Benchmark results"},
+    "Figure gallery":       {"PT": "Galeria de figuras",   "EN": "Figure gallery"},
+    # Prediction tab
+    "Upload model":         {"PT": "Carregar modelo",      "EN": "Upload model"},
+    "Upload samples":       {"PT": "Upload amostras",      "EN": "Upload samples"},
+    "Predict":              {"PT": "Predizer",             "EN": "Predict"},
+    "Results":              {"PT": "Resultados",           "EN": "Results"},
+    # Reports tab
+    "Download ZIP":         {"PT": "Baixar ZIP",           "EN": "Download ZIP"},
+    "Generate PDF":         {"PT": "Gerar PDF",            "EN": "Generate PDF"},
+    "Generate Word":        {"PT": "Gerar Word",           "EN": "Generate Word"},
+    "Generate Excel":       {"PT": "Gerar Excel",          "EN": "Generate Excel"},
+    "Generate LaTeX":       {"PT": "Gerar LaTeX",          "EN": "Generate LaTeX"},
+    "Generate PowerPoint":  {"PT": "Gerar PowerPoint",     "EN": "Generate PowerPoint"},
+    "Clean old runs":       {"PT": "Limpar execuções antigas", "EN": "Clean old runs"},
+    # Messages
+    "No results yet":       {"PT": "Sem resultados ainda", "EN": "No results yet"},
+    "Pipeline running":     {"PT": "Pipeline em execução", "EN": "Pipeline running"},
+    "Pipeline complete":    {"PT": "Pipeline concluído",   "EN": "Pipeline complete"},
+    "Error":                {"PT": "Erro",                 "EN": "Error"},
+    "Warning":              {"PT": "Aviso",                "EN": "Warning"},
+    "Success":              {"PT": "Sucesso",              "EN": "Success"},
+    "Hardware status":      {"PT": "Status de hardware",   "EN": "Hardware status"},
+    "Total RAM":            {"PT": "RAM total",            "EN": "Total RAM"},
+    "Free RAM":             {"PT": "RAM livre",            "EN": "Free RAM"},
+    "CPU cores":            {"PT": "Núcleos CPU",          "EN": "CPU cores"},
 }
 
 def _T(key: str) -> str:
@@ -1357,13 +1398,33 @@ with st.sidebar:
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; color: #fafafa; }
-    .stSidebar { background-color: #161b22; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #161b22; }
-    .stTabs [data-baseweb="tab"] { color: #e6edf3; }
-    .stExpander { background-color: #21262d; border: 1px solid #30363d; }
-    div[data-testid="stMetricValue"] { color: #58a6ff; }
-    .stDataFrame { background-color: #161b22; }
+    .stApp { background-color: #0e1117 !important; color: #fafafa !important; }
+    .stApp > header { background-color: #161b22 !important; }
+    .stSidebar { background-color: #161b22 !important; }
+    .stSidebar .stMarkdown { color: #e6edf3 !important; }
+    .stTabs [data-baseweb="tab-list"] { background-color: #161b22 !important; }
+    .stTabs [data-baseweb="tab"] { color: #e6edf3 !important; }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #58a6ff !important; border-bottom-color: #58a6ff !important; }
+    .stExpander { background-color: #21262d !important; border: 1px solid #30363d !important; }
+    .stExpander summary { color: #e6edf3 !important; }
+    div[data-testid="stMetricValue"] { color: #58a6ff !important; }
+    div[data-testid="stMetricLabel"] { color: #8b949e !important; }
+    .stDataFrame { background-color: #161b22 !important; color: #e6edf3 !important; }
+    .stTextInput input { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
+    .stSelectbox div[data-baseweb="select"] { background-color: #21262d !important; color: #e6edf3 !important; }
+    .stNumberInput input { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
+    .stCheckbox label { color: #e6edf3 !important; }
+    .stRadio label { color: #e6edf3 !important; }
+    .stButton button { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
+    .stButton button:hover { background-color: #30363d !important; border-color: #58a6ff !important; }
+    .stDownloadButton button { background-color: #1f6feb !important; color: #ffffff !important; }
+    .stSuccess { background-color: #1a3d1a !important; color: #56d364 !important; border-color: #2ea043 !important; }
+    .stError { background-color: #3d1a1a !important; color: #ff7b72 !important; border-color: #da3633 !important; }
+    .stWarning { background-color: #3d2f1a !important; color: #d29922 !important; border-color: #9e6a03 !important; }
+    .stInfo { background-color: #1a2d3d !important; color: #58a6ff !important; border-color: #1f6feb !important; }
+    code { background-color: #161b22 !important; color: #e6edf3 !important; }
+    .stCode { background-color: #161b22 !important; }
+    .stTextArea textarea { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1662,6 +1723,16 @@ with tab_preproc:
 with tab_modelo:
     st.subheader("Model Parameters and Execution")
 
+    # ---- Quick-access Run button at the very top of the Model tab ----------
+    _cfg_top, _erros_top = _coletar_config(cfg_base, {})
+    _ok_top, _ = pq._validar_pasta_dados(_cfg_top)
+    _rodar_top = st.button(
+        "▶️ Run pipeline", type="primary",
+        disabled=not _ok_top,
+        use_container_width=True,
+        key="btn_run_top",
+    )
+
     _MODELO_KEYS_ANALISE  = ["nivel", "max_lvs", "holdout_fracao",
                               "validacao_group_aware"]
     _MODELO_KEYS_VALID    = ["n_permutacoes", "teste_wold", "teste_cv_anova"]
@@ -1767,7 +1838,7 @@ with tab_modelo:
     if not pode_rodar:
         st.info("Fix the data input (Data tab) to enable.")
 
-    if rodar:
+    if rodar or _rodar_top:
         try:
             pq.salvar_config(cfg_run, _CFG_PATH)
         except Exception:
