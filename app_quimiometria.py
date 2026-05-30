@@ -27,7 +27,6 @@ import tempfile
 import zipfile
 import threading
 import contextlib
-import importlib.util
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -1157,7 +1156,6 @@ def _preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
             # flat folder with .dx files
             subpastas = [Path(pasta)]
         wn_ref, specs, labs = None, [], []
-        from scipy.interpolate import interp1d
         for sp in subpastas:
             arqs = sorted(sp.glob("*.dx"))[:max_por_classe]
             for arq in arqs:
@@ -1168,9 +1166,8 @@ def _preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
                     if wn_ref is None:
                         wn_ref = wn_a
                     else:
-                        f = interp1d(wn_a, sp_a, kind="linear",
-                                     bounds_error=False, fill_value="extrapolate")  # type: ignore
-                        sp_a = f(wn_ref)
+                        # np.interp replaces deprecated scipy.interpolate.interp1d
+                        sp_a = np.interp(wn_ref, wn_a, sp_a)
                     specs.append(sp_a)
                     labs.append(sp.name)
                 except Exception:
@@ -1240,8 +1237,6 @@ def _predizer(pkg: Dict, X_new_raw: np.ndarray,
     computes predicted class (softmax-normalized), T2 and Q residuals.
     Returns a DataFrame with per-sample diagnostics.
     """
-    from scipy.interpolate import interp1d
-
     preproc = pkg["preprocessador"]
     pls     = pkg["pls_final"]
     lb      = pkg["label_binarizer"]
@@ -1257,10 +1252,10 @@ def _predizer(pkg: Dict, X_new_raw: np.ndarray,
 
     # Interpolate new spectra onto training axis
     X_interp = np.zeros((X_new_raw.shape[0], len(wn_ref)))
+    wn_new_f = wn_new.astype(float)
     for i in range(X_new_raw.shape[0]):
-        f = interp1d(wn_new.astype(float), X_new_raw[i].astype(float),
-                     kind="linear", bounds_error=False, fill_value="extrapolate")  # type: ignore
-        X_interp[i] = f(wn_ref)
+        # np.interp replaces deprecated scipy.interpolate.interp1d
+        X_interp[i] = np.interp(wn_ref, wn_new_f, X_new_raw[i].astype(float))
 
     # Apply training preprocessing
     X_proc = preproc.transform(X_interp)

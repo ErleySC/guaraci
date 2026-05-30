@@ -1635,7 +1635,7 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
 
     cv_indices = list(cv.split(X, y_int, groups=groups))
     y_hat = _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices)
-    acc_obs = accuracy_score(y_int, np.argmax(y_hat, axis=1))
+    acc_obs = balanced_accuracy_score(y_int, np.argmax(y_hat, axis=1))
 
     accs: List[float] = []
     n_falhos = 0
@@ -1650,8 +1650,8 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
         try:
             cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
             y_hat = _cv_predict_manual(pipeline_factory, X, Y_perm, cv_perm_idx)
-            accs.append(float(accuracy_score(y_perm_int,
-                                              np.argmax(y_hat, axis=1))))
+            accs.append(float(balanced_accuracy_score(y_perm_int,
+                                                      np.argmax(y_hat, axis=1))))
         except Exception as e:
             n_falhos += 1
             continue
@@ -4587,15 +4587,21 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
         X_shap = X_proc
         y_shap = y_int
 
+    n_classes_shap = len(np.unique(y_int))
     tree_clfs: List[Tuple[str, Any]] = [
         ("Random Forest",
          RandomForestClassifier(n_estimators=300, max_features="sqrt",
                                 class_weight="balanced_subsample",
                                 n_jobs=1, random_state=cfg.seed)),
-        ("Grad. Boost.",
-         GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
-                                    max_depth=3, random_state=cfg.seed)),
     ]
+    # GradientBoostingClassifier: SHAP TreeExplainer does NOT support multiclass
+    # (raises InvalidModelError when n_classes > 2). Skip for multiclass datasets.
+    if n_classes_shap == 2:
+        tree_clfs.append(
+            ("Grad. Boost.",
+             GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
+                                        max_depth=3, random_state=cfg.seed))
+        )
     try:
         from xgboost import XGBClassifier  # type: ignore
         tree_clfs.append(("XGBoost",
@@ -4626,8 +4632,9 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 else:
                     sv_arr = np.asarray(sv)
                     if sv_arr.ndim == 3:
-                        # (n_classes, n_samples, n_features) — XGBoost moderno
-                        importance = np.abs(sv_arr).mean(axis=(0, 1))
+                        # SHAP 0.4x+: shape (n_samples, n_features, n_classes)
+                        # mean over samples (axis=0) and classes (axis=2) → (n_features,)
+                        importance = np.abs(sv_arr).mean(axis=(0, 2))
                     elif sv_arr.ndim == 2:
                         # (n_samples, n_features) — GBM / XGBoost binario
                         importance = np.abs(sv_arr).mean(axis=0)

@@ -20,5 +20,5 @@ openpyxl>=3.1,<4.0    # Excel multi-sheet
 python-pptx>=1.0,<2.0 # PowerPoint .pptx
 
 # ── Benchmark / Interpretability ─────────────────────────────────────────────
-xgboost>=1.7,<5.0  # XGBClassifier (falls back to GradientBoosting if absent)
-shap>=0.42,<1.0    # SHAP TreeExplainer for RF/XGBoost/GBM
+xgboost>=1.7,<5.0   # XGBClassifier (falls back to GradientBoosting if absent)
+shap>=0.42,<0.53    # SHAP TreeExplainer — cap: 0.52 is last validated; GBM multiclass guarded
