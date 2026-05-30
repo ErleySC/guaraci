@@ -94,6 +94,31 @@ def _carregar_motor():
 
 pq = _carregar_motor()
 
+# ── Language / Dark-mode state ──────────────────────────────────────────────
+if "lang" not in st.session_state:
+    st.session_state.lang = "EN"
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+_TR: Dict[str, Dict[str, str]] = {
+    "Project":          {"PT": "Projeto",         "EN": "Project"},
+    "Data":             {"PT": "Dados",            "EN": "Data"},
+    "Preprocessing":    {"PT": "Pré-proc.",        "EN": "Preprocessing"},
+    "Model":            {"PT": "Modelo",           "EN": "Model"},
+    "Validation":       {"PT": "Validação",        "EN": "Validation"},
+    "Prediction":       {"PT": "Predição",         "EN": "Prediction"},
+    "Reports":          {"PT": "Relatórios",       "EN": "Reports"},
+    "Upload spectra":   {"PT": "Upload espectros", "EN": "Upload spectra"},
+    "Data preview":     {"PT": "Prévia dos dados", "EN": "Data preview"},
+    "Run pipeline":     {"PT": "Executar pipeline","EN": "Run pipeline"},
+    "Dark mode":        {"PT": "Modo noturno",     "EN": "Dark mode"},
+    "Language":         {"PT": "Idioma",           "EN": "Language"},
+}
+
+def _T(key: str) -> str:
+    lang = st.session_state.get("lang", "EN")
+    return _TR.get(key, {}).get(lang, key)
+
 # ──────────────────────────────────────────────────────────────────────────
 # Config helpers (_CONFIG_SPEC as single source of truth)
 # ──────────────────────────────────────────────────────────────────────────
@@ -1301,7 +1326,51 @@ if "cfg_base" not in st.session_state:
         st.session_state.cfg_base = pq.Config()
 
 cfg_base = st.session_state.cfg_base
+
+# Reset cfg_base if it's missing any field from the current Config
+_fresh_cfg = pq.Config()
+for _s in pq._CONFIG_SPEC:
+    if not hasattr(cfg_base, _s["attr"]):
+        cfg_base = pq.Config()
+        st.session_state.cfg_base = cfg_base
+        break
+del _fresh_cfg
+
 specs    = _spec_por_key()
+
+# ── Sidebar: Language + Dark mode ───────────────────────────────────────────
+with st.sidebar:
+    st.markdown("---")
+    _col_lang, _col_dm = st.columns(2)
+    with _col_lang:
+        _lang_choice = st.radio(
+            "🌐 Language", ["EN", "PT"],
+            index=0 if st.session_state.lang == "EN" else 1,
+            key="_sidebar_lang", horizontal=False
+        )
+        if _lang_choice != st.session_state.lang:
+            st.session_state.lang = _lang_choice
+            st.rerun()
+    with _col_dm:
+        _dm = st.toggle("🌙 Dark mode", value=st.session_state.dark_mode, key="_sidebar_dm")
+        if _dm != st.session_state.dark_mode:
+            st.session_state.dark_mode = _dm
+            st.rerun()
+    st.markdown("---")
+
+# Dark mode CSS injection
+if st.session_state.dark_mode:
+    st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; color: #fafafa; }
+    .stSidebar { background-color: #161b22; }
+    .stTabs [data-baseweb="tab-list"] { background-color: #161b22; }
+    .stTabs [data-baseweb="tab"] { color: #e6edf3; }
+    .stExpander { background-color: #21262d; border: 1px solid #30363d; }
+    div[data-testid="stMetricValue"] { color: #58a6ff; }
+    .stDataFrame { background-color: #161b22; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────
 # Header
@@ -1359,9 +1428,10 @@ def _hardware_status_widget():
             cor_ram = "🟢"
             dica = "Sufficient RAM for all operations."
 
+        _ram_note = " ⚠️ (Cloud container)" if ram_t > 64 else ""
         c_hw1, c_hw2, c_hw3 = st.columns(3)
         with c_hw1:
-            st.metric("Total RAM", f"{ram_t:.1f} GB",
+            st.metric("Total RAM", f"{ram_t:.1f} GB{_ram_note}",
                       delta=f"{cor_ram} {ram_l:.1f} GB free",
                       delta_color="off")
         with c_hw2:
@@ -1420,21 +1490,8 @@ with tab_proj:
 with tab_dados:
     st.subheader("Data Input")
 
-    _DADOS_KEYS = ["modo_entrada", "pasta_dados", "arquivo_csv",
-                   "coluna_classe", "coluna_concentracao",
-                   "pasta_saida", "excluir_classes"]
-
-    col_d1, col_d2 = st.columns(2)
-    for i, k in enumerate(_DADOS_KEYS):
-        s = specs.get(k)
-        if s is None:
-            continue
-        with (col_d1 if i % 2 == 0 else col_d2):
-            valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
-
-    # ---- CSV Upload (additional option to local path) -----------------
-    st.divider()
-    st.markdown("**Upload CSV** *(alternative to the local path above)*")
+    # ---- CSV Upload (at top for easy access) ---------------------------------
+    st.markdown("**Upload CSV** *(alternative to the local path below)*")
     upld = st.file_uploader(
         "Drag or select a CSV file",
         type=["csv", "txt"],
@@ -1454,6 +1511,20 @@ with tab_dados:
         st.success(f"File saved: `{tmp_path}`")
         st.info("Mode automatically set to 'csv'. "
                 "The path above will be overridden when running.")
+
+    # ---- Path / config fields -----------------------------------------------
+    st.divider()
+    _DADOS_KEYS = ["modo_entrada", "pasta_dados", "arquivo_csv",
+                   "coluna_classe", "coluna_concentracao",
+                   "pasta_saida", "excluir_classes"]
+
+    col_d1, col_d2 = st.columns(2)
+    for i, k in enumerate(_DADOS_KEYS):
+        s = specs.get(k)
+        if s is None:
+            continue
+        with (col_d1 if i % 2 == 0 else col_d2):
+            valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
     # ---- Data statistics preview -----------------------------------------
     st.divider()
@@ -1609,9 +1680,28 @@ with tab_modelo:
                               "formato_figura", "dpi",
                               "abrir_figuras_na_tela"]
 
+    # ---- Key options at top (preprocessing + n_lvs shown inline) ----------
+    _KEY_TOP = ["nivel", "max_lvs"]
+    _cols_top = st.columns(len(_KEY_TOP))
+    for _i, _k in enumerate(_KEY_TOP):
+        _s = specs.get(_k)
+        if _s is None:
+            continue
+        with _cols_top[_i]:
+            valores[_k] = _widget_para_campo(_s, pq._attr_para_yaml(_s, cfg_base))
+
+    # Preprocessing choice (from Preprocessing tab values or default)
+    _s_pre = specs.get("pre_processamento")
+    if _s_pre is not None:
+        valores["pre_processamento"] = _widget_para_campo(
+            _s_pre, pq._attr_para_yaml(_s_pre, cfg_base), prefixo="w_model_")
+
+    st.divider()
+
     with st.expander("Analysis and partitioning", expanded=True):
         cols_a = st.columns(2)
-        for i, k in enumerate(_MODELO_KEYS_ANALISE):
+        _MODELO_KEYS_ANALISE_EXP = [k for k in _MODELO_KEYS_ANALISE if k not in _KEY_TOP]
+        for i, k in enumerate(_MODELO_KEYS_ANALISE_EXP):
             s = specs.get(k)
             if s is None: continue
             with cols_a[i % 2]:

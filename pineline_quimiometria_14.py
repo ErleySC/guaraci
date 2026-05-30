@@ -5863,7 +5863,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
 
 def _attr_para_yaml(spec: Dict[str, Any], cfg: Config) -> Any:
     """Le o atributo da Config e converte para a forma amigavel do YAML."""
-    v = getattr(cfg, spec["attr"])
+    v = getattr(cfg, spec["attr"], getattr(Config(), spec["attr"], None))
     if spec["tipo"] == "preproc":
         return _PRE_PROC_INV.get(str(v).lower(), str(v))
     if spec["tipo"] == "list":
