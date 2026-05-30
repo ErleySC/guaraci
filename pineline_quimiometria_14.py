@@ -3778,7 +3778,7 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
 
 
 # =========================================================================
-#  ETAPA 4 — Selecao de variaveis (iPLS, VIP, SR, sPLS-DA)
+#  STAGE 4 — Variable Selection (iPLS, VIP, SR, sPLS-DA)
 # =========================================================================
 
 def _avaliar_subset_cv(X_sel: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
@@ -3936,7 +3936,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
     p = X_proc.shape[1]
     tabela = []
 
-    # 0) Baseline: todas as variaveis
+    # 0) Baseline: all variables (no selection)
     full = _avaliar_subset_cv(X_proc, Y_bin, y_int, cv_indices, n_lv)
     tabela.append({"metodo": "Full (todas)", **full})
     base_bal = full["balanced_accuracy"]
@@ -3955,7 +3955,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
     print(f"  iPLS: bal.acc={m_ipls['balanced_accuracy']:.3f} "
           f"({m_ipls['n_vars']} vars)")
 
-    # 2) Selecao por VIP >= limiar
+    # 2) Selection by VIP >= threshold
     mask_vip = np.asarray(vip) >= cfg.vip_threshold_sel
     if mask_vip.sum() >= 2:
         m_vip = _avaliar_subset_cv(X_proc[:, mask_vip], Y_bin, y_int,
@@ -3964,7 +3964,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
         print(f"  VIP: bal.acc={m_vip['balanced_accuracy']:.3f} "
               f"({m_vip['n_vars']} vars)")
 
-    # 3) Selecao por SR (top fracao)
+    # 3) Selection by SR (top fraction)
     n_top = max(2, int(round(cfg.sr_top_frac * p)))
     idx_sr = np.argsort(np.asarray(sr))[::-1][:n_top]
     mask_sr = np.zeros(p, dtype=bool); mask_sr[idx_sr] = True
@@ -4235,7 +4235,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
 
     # ── SHAP values (opcional) ────────────────────────────────────────────
     if cfg.executar_shap:
-        # Guarda: RF multiclass (14 classes x 500 amostras x n_feat) ~600 MB
+        # Guard: RF multiclass (14 classes × 500 samples × n_feat) ~600 MB
         if _verificar_ram(3.0, "SHAP TreeExplainer (RF multiclasse 14 classes)"):
             fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers)
 
@@ -4399,7 +4399,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
         for tr_idx, te_idx in splits:
             X_tr, X_te = X_raw[tr_idx], X_raw[te_idx]
             y_tr, y_te = y_int[tr_idx], y_int[te_idx]
-            # Garantir todas as classes no treino e pelo menos 1 no teste
+            # Ensure all classes are in training and at least 1 sample in test
             if len(np.unique(y_tr)) < len(lb.classes_):
                 continue
             if len(np.unique(y_te)) < 2:
@@ -4564,7 +4564,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                   if wavenumbers is not None
                   else [f"X{i}" for i in range(X_proc.shape[1])])
 
-    # Cap de memoria: subsample aleatorio de shap_max_amostras
+    # Memory cap: random subsample of shap_max_amostras samples for TreeExplainer
     n_max = cfg.shap_max_amostras
     if X_proc.shape[0] > n_max:
         rng_shap = np.random.default_rng(cfg.seed)
@@ -4950,19 +4950,19 @@ def executar(cfg: Config):
         metadados_df.to_csv(cam_meta, index=False, sep=";", decimal=",")
         print(f"[INFO] Metadados salvos: {cam_meta}")
 
-    # --- 1c. Validacao de integridade --------------------------------------
-    print("\n[0/7] Validacao de integridade da entrada...")
+    # --- 1c. Input integrity validation -----------------------------------
+    print("\n[0/7] Input integrity validation...")
     X_raw, wavenumbers, rotulos, conc, mae_id, relatorio_entrada = validar_entrada(
         X_raw, wavenumbers, rotulos, conc, mae_id)
     relatorio_balanco = verificar_balanceamento(rotulos)
 
-    # B1: mae_id agora e sincronizado DENTRO de validar_entrada (mesma mascara
-    # de remocao de NaN/Inf). A validacao group-aware sobrevive a remocoes —
-    # nao ha mais desligamento silencioso do GroupKFold por causa de 1 NaN.
+    # B1: mae_id is now synchronized INSIDE validar_entrada (same NaN/Inf
+    # removal mask). Group-aware validation survives removals —
+    # no more silent GroupKFold disabling due to a single NaN.
     if mae_id is not None:
         mae_id = np.asarray(mae_id, dtype=str)
 
-    # --- Estrategia de validacao: group-aware se mae_id disponivel ---------
+    # --- Validation strategy: group-aware if mae_id available -------------
     usar_grupos = (cfg.agrupar_por_mae_id and mae_id is not None
                    and len(np.unique(mae_id)) >= 3)
     if cfg.agrupar_por_mae_id and not usar_grupos:
@@ -4979,8 +4979,8 @@ def executar(cfg: Config):
     n_holdout = 0
     if cfg.frac_holdout > 0:
         try:
-            # v15: opcionalmente exclui puros do sorteio — eles sempre ficam
-            # no treino. O split roda so no subconjunto elegivel (adulterados).
+            # v15: optionally excludes pure samples from the draw — they always
+            # stay in training. Split runs only on the eligible subset (adulterated).
             n_all = len(rotulos)
             if (cfg.holdout_preserva_puros and conc is not None):
                 elegiveis = np.where(np.asarray(conc, dtype=float) > 0)[0]
@@ -5004,8 +5004,8 @@ def executar(cfg: Config):
                     random_state=cfg.seed_holdout)
                 tr_e, ho_e = next(sss.split(Xe, rote))
                 tipo_ho = "StratifiedShuffleSplit"
-            # Remapeia indices do subconjunto elegivel para indices globais;
-            # puros (nao-elegiveis) entram inteiros no treino.
+            # Remap indices from eligible subset back to global indices;
+            # pure (non-eligible) samples are added entirely to training.
             nao_elegiveis = np.setdiff1d(np.arange(n_all), elegiveis)
             tr_idx = np.concatenate([elegiveis[tr_e], nao_elegiveis])
             ho_idx = elegiveis[ho_e]
@@ -5092,8 +5092,8 @@ def executar(cfg: Config):
     preproc_full = construir_preprocessador(cfg).fit(X_raw)
     X_processed  = np.asarray(preproc_full.transform(X_raw), dtype=float)
 
-    # --- 3. Selecao de LVs por CV (sem leakage, group-aware se possivel) ---
-    print(f"\n[2/7] Selecao de LVs ({cv_label})")
+    # --- 3. LV selection by CV (no leakage, group-aware if possible) -------
+    print(f"\n[2/7] LV selection by CV ({cv_label})")
 
     def fabrica_pipeline(n_lv: int):
         return Pipeline([
@@ -5152,7 +5152,7 @@ def executar(cfg: Config):
     print(f"  PC1: {var_pca[0]:.2f}%  PC2: {var_pca[1]:.2f}%  "
           f"acumulado(2): {sum(var_pca[:2]):.2f}%")
 
-    # --- 6. Teste de permutacao --------------------------------------------
+    # --- 6. Permutation test (Y-randomization) ----------------------------
     print(f"\n[4/7] Teste de permutacao (Y-randomization, "
           f"n={cfg.n_permutacoes})")
     if usar_grupos:
@@ -5286,13 +5286,13 @@ def executar(cfg: Config):
                                     wavenumbers, mapa_cores, top_n=20,
                                     cfg=cfg, pasta=pasta)
 
-    # DD-SIMCA — modo de treino configuravel (v14).
-    #   'todos' (default): treina cada modelo com todas as amostras da
-    #     classe (exploratorio; robusto com poucos puros). sens = fracao
-    #     da propria classe aceita.
-    #   'puros': one-class N2 verdadeiro (treina so em puros) — requer
-    #     >=15 puros/classe. Com 3/classe gera regiao minuscula e ~todos
-    #     viram 'Desconhecido'. sens = puros aceitos; esp = adult rejeitados.
+    # DD-SIMCA — configurable training mode (v14).
+    #   'todos' (default): trains each model on all class samples
+    #     (exploratory; robust with few pure samples). sens = fraction of
+    #     own class accepted.
+    #   'puros': true one-class N2 (trains only on pure samples) — requires
+    #     >=15 pure samples/class. With 3/class it generates a tiny region
+    #     and ~all samples become 'Unknown'. sens = pure accepted; esp = adult rejected.
     ddsimca_res: Optional[Dict[str, Dict[str, Any]]] = None
     simca_pred: np.ndarray = np.array([], dtype=str)
     ddsimca_sens_esp: Dict[str, Tuple[float, float, int, int]] = {}
@@ -5338,14 +5338,14 @@ def executar(cfg: Config):
             idx_cls     = (rotulos == cls)
             n_puro_c    = int(idx_puro_c.sum())
             n_adult_c   = int(idx_adult_c.sum())
-            # sensibilidade: em 'puros' usa puros; em 'todos' usa a classe toda
+            # sensitivity: 'puros' mode uses pure samples; 'todos' uses the whole class
             if modo_dd == "puros" and n_puro_c > 0:
                 sens = float(np.mean(aceito[idx_puro_c]))
             else:
                 sens = float(np.mean(aceito[idx_cls]))
-            # B4: no modo 'todos' as adulteradas estao NO TREINO, logo a
-            # "esp" seria in-sample (nao-autenticacao) e enganosa. So a
-            # reportamos no modo 'puros' (one-class verdadeiro).
+            # B4: in 'todos' mode adulterated samples are IN TRAINING, so
+            # "specificity" would be in-sample (not authentication) and misleading.
+            # Only reported in 'puros' mode (true one-class).
             if modo_dd == "puros":
                 esp = (float(np.mean(~aceito[idx_adult_c]))
                        if n_adult_c > 0 else float("nan"))
@@ -5393,7 +5393,7 @@ def executar(cfg: Config):
             except Exception as _e_opls:
                 print(f"  [ERRO] OPLS-DA: {_e_opls}")
 
-    # --- ETAPA 4: Selecao de variaveis ------------------------------------
+    # --- STAGE 4: Variable Selection ------------------------------------
     etapa4_res: Optional[Dict[str, Any]] = None
     if cfg.executar_etapa4:
         try:
@@ -5545,13 +5545,13 @@ def executar(cfg: Config):
         if bca_holdout is not None:
             resumo["BCa Holdout Accuracy"] = _ci_str(bca_holdout.get("accuracy"))
             resumo["BCa Holdout Bal.acc"]  = _ci_str(bca_holdout.get("balanced_accuracy"))
-    # Sprint 3 — adicionar ao resumo depois que o dict ja existe
+    # Sprint 3 — append to summary after dict already exists
     if cfg.executar_ddsimca and ddsimca_res is not None:
         resumo["DD-SIMCA n_components"]    = int(cfg.ddsimca_n_components)
         resumo["DD-SIMCA n_desconhecidos"] = int(np.sum(simca_pred == "Desconhecido"))
         resumo["DD-SIMCA n_ambiguos"]      = int(np.sum(simca_pred == "Ambiguo"))
-        # B4 — rotulo honesto do modo de treino. No modo 'todos' sens/esp
-        # sao aceitacao IN-SAMPLE, NAO metricas de autenticacao one-class.
+        # B4 — honest training mode label. In 'todos' mode, sens/spec
+        # are IN-SAMPLE acceptance, NOT one-class authentication metrics.
         resumo["DD-SIMCA modo treino"] = (
             modo_dd + (" (one-class)" if modo_dd == "puros"
                        else " (in-sample; sens/esp NAO sao autenticacao)"))
@@ -5566,7 +5566,7 @@ def executar(cfg: Config):
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
 
-    # Etapa 4 — selecao de variaveis
+    # Stage 4 — variable selection
     if etapa4_res is not None:
         resumo["--- Etapa 4: selecao de variaveis ---"] = ""
         for t in etapa4_res["tabela"]:
@@ -5655,10 +5655,10 @@ def executar(cfg: Config):
         print(f"\n[INFO] Outliers (T2 > lim): {out_t2.tolist()}")
         print(f"[INFO] Outliers (Q  > lim): {out_q.tolist()}")
 
-    # --- 9. PLS regressao (opcional) ---------------------------------------
-    # Guarda: so executa se (1) ha teores, (2) sem NaN, (3) variancia > 0,
-    # (4) pelo menos 10 amostras com teor > 0 (caso contrario regressao em
-    # quase-puros nao tem sinal).
+    # --- 9. PLS regression (optional) -------------------------------------
+    # Guard: only runs if (1) concentration data present, (2) no NaN,
+    # (3) variance > 0, (4) at least 10 samples with concentration > 0
+    # (otherwise regression on near-pure samples has no signal).
     _pls_reg_ok = False
     if conc is not None:
         conc_arr = np.asarray(conc, dtype=float)
@@ -5681,8 +5681,8 @@ def executar(cfg: Config):
               f"{int(np.sum(conc == 0))} puros)")
         Y_reg = np.asarray(conc, dtype=float).reshape(-1, 1)
 
-        # Split calibracao/validacao — group-aware se mae_id disponivel
-        # (replicas T1/T2/T3 do mesmo ponto nunca separadas entre cal/val).
+        # Calibration/validation split — group-aware if mae_id available
+        # (T1/T2/T3 replicates of the same sample point never split between cal/val).
         if mae_id is not None:
             gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                          random_state=cfg.seed)
