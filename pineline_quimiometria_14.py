@@ -5867,7 +5867,7 @@ def _attr_para_yaml(spec: Dict[str, Any], cfg: Config) -> Any:
     if spec["tipo"] == "preproc":
         return _PRE_PROC_INV.get(str(v).lower(), str(v))
     if spec["tipo"] == "list":
-        return list(v)
+        return list(v) if v is not None else []
     if spec["tipo"] == "str_opcional":
         return "" if v is None else str(v)
     return v
