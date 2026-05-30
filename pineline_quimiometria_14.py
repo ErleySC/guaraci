@@ -4221,7 +4221,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                 if alt is not None and len(alt) == len(ref):
                     _, pval = wilcoxon(ref, alt, alternative="two-sided",
                                        zero_method="wilcox")
-                    r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), 4)
+                    r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), int(4))
                 else:
                     r["p Wilcoxon (vs PLS-DA)"] = "n/a"
             except Exception:
