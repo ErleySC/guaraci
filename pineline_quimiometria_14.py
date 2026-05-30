@@ -1,122 +1,122 @@
-"""Pipeline quimiometrico publication-quality: PCA, HCA, PLS-DA, DD-SIMCA, PLS reg.
+"""Chemometric pipeline (publication-quality): PCA, HCA, PLS-DA, DD-SIMCA, PLS regression.
 
 # ========================= CHANGELOG =========================
-# v08 — base: Sprints 1-3, parse_title, GroupKFold mae_id, truncamento espectral
-# v09 — autoscaling default, ddsimca_n_components=5, PALETA 14 cores
+# v08 — base: Sprints 1-3, parse_title, GroupKFold mae_id, spectral truncation
+# v09 — autoscaling default, ddsimca_n_components=5, 14-color PALETTE
 # v10 — 2026-05-28 — max_lvs=30; ddsimca_n_components=7;
-#                    C2: comparar_pipelines usa max_lv=cfg.max_lvs (era min(8,..))
-# v11 — 2026-05-28 — C3: HCA dendrograma (Ward); C4: DD-SIMCA one-class
-#                    (treina so em puros, sens/esp); C5: N3 PLS reg GroupKFold
-#                    por mae_id; C6: outliers T2 por classe no resumo
-# v12 — 2026-05-28 — M1: marcadores puros(*)/adulterados(o) nos score plots;
-#                    M2: sens/esp no titulo dos acceptance plots DD-SIMCA
-# v13 — 2026-05-28 — M3: anotacao quimica de bandas VIP; M4: accuracy por
-#                    classe no resumo_modelo.txt
-# v14 — 2026-05-28 — DESCOBERTA: MSC->SG+MC = 0.923 bal.acc na base completa
-#                    (1807) vs autoscaling 0.472 (vantagem do AUTO era
-#                    artefato do subset 80%). Mudancas:
-#                    (1) preset "msc_sg_mc" em construir_preprocessador;
+#                    C2: comparar_pipelines uses max_lv=cfg.max_lvs (was min(8,..))
+# v11 — 2026-05-28 — C3: HCA dendrogram (Ward); C4: DD-SIMCA one-class
+#                    (trains only on pure samples, sens/spec); C5: N3 PLS reg GroupKFold
+#                    by mae_id; C6: T2 outliers per class in model summary
+# v12 — 2026-05-28 — M1: pure(*)/adulterated(o) markers in score plots;
+#                    M2: sens/spec in DD-SIMCA acceptance plot titles
+# v13 — 2026-05-28 — M3: chemical annotation of VIP bands; M4: accuracy per
+#                    class in resumo_modelo.txt
+# v14 — 2026-05-28 — FINDING: MSC->SG+MC = 0.923 bal.acc on full dataset
+#                    (1807) vs autoscaling 0.472 (AUTO advantage was
+#                    artifact of 80% subset). Changes:
+#                    (1) preset "msc_sg_mc" in construir_preprocessador;
 #                    (2) preprocessamento_padrao default = "msc_sg_mc";
 #                    (3) frac_holdout default = 0.20;
 #                    (4) gerar_nome_saida case "msc_sg_mc" -> "MSC-SGd-MC";
-#                    (5) M1: estrelas -> circulo borda preta (sem poluir 1807pts);
-#                    (6) DD-SIMCA volta a treinar em TODOS (3 puros/classe
-#                        inviabiliza one-class; requer >=15 puros/classe)
-# v15 — 2026-05-28 — (1) holdout_preserva_puros=True: puros sempre no treino
-#                        (resolve "puros=0" em 4 classes apos holdout);
-#                    (2) aviso automatico "LVs no teto" (console + resumo);
-#                    (3) DD-SIMCA acceptance plot em escala LOG-LOG
-#                        (resolve dados esmagados no canto; padrao Pomerantsev)
-# v16 — 2026-05-28 — Organizacao/visualizacao:
-#                    (1) salvar() aceita subpasta; (2) fig3 Hotelling T2 em
-#                    escala log (Y) e T2vsQ em log-log (centraliza nuvem);
-#                    (3) score_contribution dividido em 2 figs (espectro +
-#                    top-discriminante alta/legivel c/ legenda lateral);
-#                    (4) DD-SIMCA: 14 plots individuais em subpasta ddsimca/
-# v17 — 2026-05-28 — Sistema de cores de MAXIMA DISTINCAO:
-#                    (1) PALETA Trubetskoy/Glasbey 20 cores (deltaE_min 27.4
-#                        vs ~15 antes; elimina 3 azuis/2 verdes parecidos);
-#                    (2) deteccao opcional de libs glasbey/colorcet;
-#                    (3) atribuicao SEQUENCIAL deterministica (contraste
-#                        adjacente) substitui hash; (4) canal secundario de
-#                        FORMA (mapear_marcadores_classes, 14 shapes) p/
-#                        daltonismo/P&B; (5) edge_para_cor por luminancia
-# v18 — 2026-05-28 — Legibilidade de eixos: _ticks_x_inteiros() aplica
-#                    MaxNLocator(integer, nbins=10) quando ha >15 ticks
-#                    (selecao de LVs e PLS reg com 30-50 LVs nao sobrepoem
-#                    mais os numeros); <=15 mostra todos os valores.
+#                    (5) M1: stars -> circle with black edge (avoids cluttering 1807pts);
+#                    (6) DD-SIMCA reverts to training on ALL samples (3 pure/class
+#                        makes one-class infeasible; requires >=15 pure/class)
+# v15 — 2026-05-28 — (1) holdout_preserva_puros=True: pure samples always in training
+#                        (fixes "pure=0" in 4 classes after holdout);
+#                    (2) automatic warning "LVs at ceiling" (console + summary);
+#                    (3) DD-SIMCA acceptance plot in LOG-LOG scale
+#                        (fixes data squeezed in corner; Pomerantsev standard)
+# v16 — 2026-05-28 — Organization/visualization:
+#                    (1) salvar() accepts subfolder; (2) fig3 Hotelling T2 in
+#                    log scale (Y) and T2vsQ in log-log (centers the cloud);
+#                    (3) score_contribution split into 2 figs (spectrum +
+#                    top-discriminant tall/readable with side legend);
+#                    (4) DD-SIMCA: 14 individual plots in ddsimca/ subfolder
+# v17 — 2026-05-28 — MAXIMUM PERCEPTUAL DISTINCTIVENESS color system:
+#                    (1) PALETTE Trubetskoy/Glasbey 20 colors (deltaE_min 27.4
+#                        vs ~15 before; eliminates 3 near-identical blues/2 greens);
+#                    (2) optional detection of glasbey/colorcet libs;
+#                    (3) SEQUENTIAL deterministic assignment (adjacent contrast)
+#                        replaces hash; (4) secondary SHAPE channel
+#                        (mapear_marcadores_classes, 14 shapes) for
+#                        colorblindness/B&W; (5) edge_para_cor by luminance
+# v18 — 2026-05-28 — Axis readability: _ticks_x_inteiros() applies
+#                    MaxNLocator(integer, nbins=10) when >15 ticks
+#                    (LV selection and PLS regression with 30-50 LVs no longer
+#                    overlap numbers); <=15 shows all values.
 # v19 — 2026-05-28 — V3 HCA/VIP:
-#                    (1) HCA sobre centroides em PCA(hca_n_pcs=65) — reduz
-#                        ruido; (2) dendrograma eixos invertidos
-#                        (orientation=top: especies no X inferior coloridas
-#                        e rotacionadas, distancia no Y esquerdo);
-#                    (3) fig_hca_comparacao_pipelines: painel de dendrogramas
-#                        (bruto/SNV/MSC/SG1/SG2/SNV+SG1/MSC+SG1/norm);
-#                    (4) interpretacao automatica de clusters (k=2);
-#                    (5) VIP: y-lim no range real + caixa de estatisticas
-#                        (min/max/media/dp/n>=1) — verifica dispersao real
-#                    + flags Config: mostrar_marcadores_classe/elipses_grupo
-# v20 — 2026-05-28 — Organizacao Q1: pasta PLSDA_OE_{nivel}_{preproc}_
-#                    {YYYYMMDD_HHMMSS} com subpastas dados/ figuras/
-#                    modelos/ logs/. Figuras->figuras/; metadados,
-#                    identificadores, comparacao->dados/; resumo->logs/;
-#                    modelo final (joblib: preproc+PLS+LB+wavenumbers)
-#                    ->modelos/. Auditoria Sprint1 (A1,A2,A3,A5,A6,A11):
-#                    confirmado JA implementado nas versoes anteriores.
-# v22 — 2026-05-29 — Fase 0 (correcoes de rigor):
-#                    B1: validar_entrada sincroniza mae_id na MESMA mascara
-#                        de remocao de NaN/Inf (antes, 1 NaN desligava
-#                        silenciosamente o GroupKFold = vazamento de replicas);
-#                    B4: DD-SIMCA modo 'todos' nao reporta mais "esp"
-#                        in-sample enganosa (esp=n/a; rotulo de modo no
-#                        resumo deixa claro que sens/esp != autenticacao);
-#                    B7: Q-residual no resumo com notacao adaptativa (:.4g
-#                        quando <1e-3) em vez de exibir 0.0000.
-# v21 — 2026-05-28 — ETAPA 4 (selecao de variaveis) + exclusao de classes:
-#                    (1) Config.excluir_classes (ex: Copaiba lote anomalo);
-#                    (2) iPLS (intervalos), selecao por VIP>=limiar, por SR
-#                        (top fracao), sPLS-DA (NIPALS soft-selection);
-#                    (3) avaliador unico _avaliar_subset_cv (CV group-aware,
-#                        MC re-ajustado por fold = sem leakage);
-#                    (4) figuras fig_etapa4_ipls_intervalos +
-#                        fig_etapa4_comparacao_metodos; CSVs em dados/;
-#                    (5) escolha do metodo mais PARCIMONIOSO (bal.acc dentro
-#                        de 1% do max, menos variaveis) no resumo.
-# v24 — 2026-05-29 — Sprint v24: Figuras de Publicacao:
-#                    (1) fig_loadings_pca: Loading Plot PC1/PC2 (barras
-#                        coloridas por sinal, eixo X invertido NIR);
-#                    (2) fig_roc_auc: Curvas ROC multiclasse OvR (scores
-#                        CV group-aware; AUC macro no titulo e resumo);
-#                    (3) fig_splot_opls: S-Plot OPLS-DA (covariancia x
-#                        correlacao com t_pred; top-N anotados; colormap
+#                    (1) HCA on centroids in PCA(hca_n_pcs=65) — reduces
+#                        noise; (2) dendrogram axes inverted
+#                        (orientation=top: species on lower X axis colored
+#                        and rotated, distance on left Y axis);
+#                    (3) fig_hca_comparacao_pipelines: dendrogram panel
+#                        (raw/SNV/MSC/SG1/SG2/SNV+SG1/MSC+SG1/norm);
+#                    (4) automatic cluster interpretation (k=2);
+#                    (5) VIP: y-lim on real range + statistics box
+#                        (min/max/mean/std/n>=1) — checks real dispersion
+#                    + Config flags: mostrar_marcadores_classe/elipses_grupo
+# v20 — 2026-05-28 — Organization Q1: folder PLSDA_OE_{level}_{preproc}_
+#                    {YYYYMMDD_HHMMSS} with subfolders dados/ figuras/
+#                    modelos/ logs/. Figures->figuras/; metadata,
+#                    identifiers, comparison->dados/; summary->logs/;
+#                    final model (joblib: preproc+PLS+LB+wavenumbers)
+#                    ->modelos/. Sprint1 audit (A1,A2,A3,A5,A6,A11):
+#                    confirmed ALREADY implemented in previous versions.
+# v22 — 2026-05-29 — Phase 0 (rigor fixes):
+#                    B1: validar_entrada synchronizes mae_id with the SAME mask
+#                        for NaN/Inf removal (before, 1 NaN silently disabled
+#                        GroupKFold = replica leakage);
+#                    B4: DD-SIMCA 'todos' mode no longer reports misleading
+#                        in-sample "spec" (spec=n/a; mode label in
+#                        summary makes clear that sens/spec != authentication);
+#                    B7: Q-residual in summary with adaptive notation (:.4g
+#                        when <1e-3) instead of displaying 0.0000.
+# v21 — 2026-05-28 — STAGE 4 (variable selection) + class exclusion:
+#                    (1) Config.excluir_classes (e.g. Copaiba anomalous batch);
+#                    (2) iPLS (intervals), selection by VIP>=threshold, by SR
+#                        (top fraction), sPLS-DA (NIPALS soft-selection);
+#                    (3) single evaluator _avaliar_subset_cv (group-aware CV,
+#                        MC re-fitted per fold = no leakage);
+#                    (4) figures fig_etapa4_ipls_intervalos +
+#                        fig_etapa4_comparacao_metodos; CSVs in dados/;
+#                    (5) most PARSIMONIOUS method selected (bal.acc within
+#                        1% of max, fewer variables) in summary.
+# v24 — 2026-05-29 — Sprint v24: Publication Figures:
+#                    (1) fig_loadings_pca: PCA Loading Plot PC1/PC2 (bars
+#                        colored by sign, NIR inverted X axis);
+#                    (2) fig_roc_auc: Multiclass ROC curves OvR (scores
+#                        group-aware CV; macro AUC in title and summary);
+#                    (3) fig_splot_opls: OPLS-DA S-Plot (covariance x
+#                        correlation with t_pred; top-N annotated; colormap
 #                        RdBu_r; ref. Bylesjo 2006);
-#                    (4) fig_cooman_ddsimca: Cooman's Plot DD-SIMCA (pares
-#                        A x B; escala sqrt(dQ); grade de subplots;
+#                    (4) fig_cooman_ddsimca: DD-SIMCA Cooman's Plot (pairs
+#                        A x B; sqrt(dQ) scale; subplot grid;
 #                        ref. Pomerantsev 2020).
-#                    Integracao: aucs_roc adicionado ao resumo_modelo.txt.
-# v23 — 2026-05-29 — CAMADA ACESSIVEL (sem editar codigo):
-#                    (1) _CONFIG_SPEC: fonte unica que mapeia nomes amigaveis
-#                        (em portugues) <-> atributos do Config, com tipo,
-#                        descricao e opcoes para validacao;
-#                    (2) salvar_config/carregar_config: YAML comentado em
-#                        linguagem simples; defaults preservados p/ chaves
-#                        ausentes; chaves desconhecidas ignoradas;
-#                    (3) menu_interativo: assistente de terminal (estilo CMD)
-#                        p/ editar campos, salvar/carregar e rodar sem abrir
-#                        o codigo no editor;
-#                    (4) __main__ novo: --rodar (usa config.yaml), --codigo
-#                        (CFG legado), ou menu interativo quando em terminal;
-#                    (5) config.yaml template gerado (exclui Copaiba lote
-#                        anomalo, max_lvs=40). Logica do pipeline INTACTA.
+#                    Integration: aucs_roc added to resumo_modelo.txt.
+# v23 — 2026-05-29 — ACCESSIBLE LAYER (no code editing):
+#                    (1) _CONFIG_SPEC: single source mapping friendly names
+#                        <-> Config attributes, with type,
+#                        description and options for validation;
+#                    (2) salvar_config/carregar_config: commented YAML in
+#                        plain language; defaults preserved for missing keys;
+#                        unknown keys ignored;
+#                    (3) menu_interativo: terminal assistant (CMD-style)
+#                        to edit fields, save/load and run without opening
+#                        the code editor;
+#                    (4) new __main__: --rodar (uses config.yaml), --codigo
+#                        (legacy CFG), or interactive menu when in terminal;
+#                    (5) config.yaml template generated (excludes Copaiba
+#                        anomalous batch, max_lvs=40). Pipeline logic INTACT.
 # =============================================================
 
-Inclui:
-  - Pre-processamento (SNV -> SG -> MC), ordem segundo Rinnan et al. (2009)
-  - Validacao cruzada estratificada repetida (sem vazamento de dados)
-  - Teste de permutacao (Y-randomization)
-  - Deteccao de outliers via Hotelling T2 e Q-residuals
-  - VIP scores, metricas por classe, ROC multiclasse
-  - Figuras separadas em padrao publication-quality
+Includes:
+  - Preprocessing (SNV -> SG -> MC), order following Rinnan et al. (2009)
+  - Repeated stratified cross-validation (no data leakage)
+  - Permutation test (Y-randomization)
+  - Outlier detection via Hotelling T2 and Q-residuals
+  - VIP scores, per-class metrics, multiclass ROC
+  - Separate figures in publication-quality format
 """
 
 import os
@@ -162,60 +162,60 @@ warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                CONFIGURACOES — edite APENAS aqui                         ║
+# ║                SETTINGS — edit ONLY here                                 ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 @dataclass
 class Config:
     modo: str = "dx"                          # "dx" | "csv" | "sintetico"
 
-    # ---- ENTRADA ----
-    # Pasta-raiz com subpastas por especie (cada subpasta = 1 classe) OU
-    # pasta unica com arquivos .dx (modo legado). Auto-detectado.
-    # NAO versione caminhos pessoais: o caminho real vai no config.yaml
-    # (gitignored). Este default e so um exemplo portavel.
+    # ---- INPUT ----
+    # Root folder with subfolders per species (each subfolder = 1 class) OR
+    # single folder with .dx files (legacy mode). Auto-detected.
+    # DO NOT version personal paths: the real path goes in config.yaml
+    # (gitignored). This default is just a portable example.
     pasta_entrada: str = r"dados"
-    parte_classe: int = 0                     # fallback se sem subpastas
-    extrair_conc_filename: bool = True        # so usado no fallback antigo
+    parte_classe: int = 0                     # fallback if no subfolders
+    extrair_conc_filename: bool = True        # only used in old fallback
     arquivo_csv: str = "seus_espectros.csv"
     coluna_classe: str = "classe"
     coluna_conc: Optional[str] = None
-    usar_parse_title: bool = True             # usa ##TITLE= do JCAMP-DX
+    usar_parse_title: bool = True             # uses ##TITLE= from JCAMP-DX
 
-    # ---- SAIDA (auto-gerada pelo gerar_nome_saida) ----
+    # ---- OUTPUT (auto-generated by gerar_nome_saida) ----
     pasta_saida_raiz: str = "resultados_tcc"
     nivel: str = "N1"                         # "N1" | "N2" | "N3"
-    tag:   str = ""                            # rotulo livre ex: "puros", "soja"
-    pasta_saida: str = ""                     # NAO editar manualmente
+    tag:   str = ""                            # free label e.g. "pure", "soybean"
+    pasta_saida: str = ""                     # DO NOT edit manually
     formato_saida: str = "png"                # png | pdf | svg
     dpi_salvar: int = 600
     mostrar_graficos: bool = False
 
-    # ---- Estilo dos score plots (PCA / PLS-DA / OPLS) ----
-    # Desligue para scatter "limpo" (so cor por classe, sem formas/contornos).
-    mostrar_marcadores_classe: bool = False   # False -> todos circulo 'o'
-    mostrar_elipses_grupo:     bool = False   # False -> sem elipse T2/convex hull
+    # ---- Score plot style (PCA / PLS-DA / OPLS) ----
+    # Disable for "clean" scatter (color by class only, no shapes/contours).
+    mostrar_marcadores_classe: bool = False   # False -> all circles 'o'
+    mostrar_elipses_grupo:     bool = False   # False -> no T2/convex hull ellipse
 
-    # ---- Validacao group-aware (diferencial Q1 do TCC) ----
-    # Quando True e mae_id estiver disponivel, usa GroupKFold/GroupShuffleSplit
-    # para que T1/T2/T3 do mesmo ponto fiquem no mesmo fold/holdout.
+    # ---- Group-aware validation (Q1 differentiator) ----
+    # When True and mae_id is available, uses GroupKFold/GroupShuffleSplit
+    # so that T1/T2/T3 of the same physical point stay in the same fold/holdout.
     agrupar_por_mae_id: bool = True
 
-    # ---- Truncamento espectral (FT-NIR util: 4000-10000 cm-1) -------------
-    # Remove ruido de borda da FFT (0/8/16/24 cm-1 aparecem como falsos top
-    # VIP quando SG derivativo amplifica essa regiao). Aplicado ANTES de
-    # qualquer pre-processamento.
+    # ---- Spectral truncation (useful FT-NIR range: 4000-10000 cm-1) -------
+    # Removes FFT edge noise (0/8/16/24 cm-1 appear as false top
+    # VIP when the SG derivative amplifies that region). Applied BEFORE
+    # any preprocessing.
     wn_min: float = 4000.0
     wn_max: float = 10000.0
 
-    # ---- Pre-processamento -----------------------------------------------
-    # Preset rapido. Quando != 'custom', sobrescreve as flags individuais.
-    #   'msc_sg_mc'   : MSC -> SG -> mean-centering (MELHOR: 0.923 bal.acc full)
+    # ---- Preprocessing ---------------------------------------------------
+    # Quick preset. When != 'custom', overrides individual flags.
+    #   'msc_sg_mc'   : MSC -> SG -> mean-centering (BEST: 0.923 bal.acc full)
     #   'snv_sg_mc'   : SNV -> SG -> mean-centering (Rinnan et al.)
-    #   'autoscaling' : apenas StandardScaler (bom em subset, ruim no full: 0.472)
-    #   'mc'          : apenas mean-centering
-    #   'custom'      : honra aplicar_snv / aplicar_sg / aplicar_mc abaixo
-    preprocessamento_padrao: str = "msc_sg_mc"   # v14: melhor na base completa (1807)
+    #   'autoscaling' : StandardScaler only (good on subset, poor on full: 0.472)
+    #   'mc'          : mean-centering only
+    #   'custom'      : honors aplicar_snv / aplicar_sg / aplicar_mc below
+    preprocessamento_padrao: str = "msc_sg_mc"   # v14: best on full dataset (1807)
 
     aplicar_snv: bool = True
     aplicar_sg: bool = True
@@ -226,9 +226,9 @@ class Config:
 
     max_lvs: int = 40
     n_pcs_pca: int = 10
-    # HCA: dendrograma usa scores de PCA com hca_n_pcs componentes
-    # (reduz ruido espectral antes do clustering). comparar_hca_pipelines
-    # gera um painel de dendrogramas por pre-processamento.
+    # HCA: dendrogram uses PCA scores with hca_n_pcs components
+    # (reduces spectral noise before clustering). comparar_hca_pipelines
+    # generates a dendrogram panel per preprocessing method.
     hca_n_pcs: int = 65
     comparar_hca_pipelines: bool = True
     n_splits_cv: int = 5
@@ -237,16 +237,16 @@ class Config:
     frac_cal: float = 0.70
 
     n_permutacoes: int = 200
-    n_permutacoes_wold: int = 50         # Wold e diagnostico — 50 ja basta
+    n_permutacoes_wold: int = 50         # Wold is diagnostic — 50 is sufficient
     n_bootstrap_vip: int = 30
     n_bootstrap_bca: int = 500
     comparar_pipelines: bool = True
     executar_wold: bool = True
     executar_cv_anova: bool = True
 
-    frac_holdout: float = 0.20         # v14: holdout externo por padrao
-    # v15: puros (conc==0) ficam SEMPRE no treino — sao escassos (3/classe)
-    # e preciosos para DD-SIMCA/interpretacao. So adulterados vao ao holdout.
+    frac_holdout: float = 0.20         # v14: external holdout by default
+    # v15: pure samples (conc==0) ALWAYS stay in training — they are scarce (3/class)
+    # and precious for DD-SIMCA/interpretation. Only adulterated go to holdout.
     holdout_preserva_puros: bool = True
     seed_holdout: int = 42
 
@@ -257,45 +257,45 @@ class Config:
 
     # Sprint 3
     executar_ddsimca: bool = True
-    ddsimca_n_components: int = 7       # LVs PCA por modelo DD-SIMCA (3 era insuficiente — UCL mal calibrado)
+    ddsimca_n_components: int = 7       # PCA LVs per DD-SIMCA model (3 was insufficient — UCL poorly calibrated)
     ddsimca_ucl_method: str = "empirical"  # 'empirical' | 'theoretical' | 'chi2'
-    # v14: 'todos' treina cada modelo com TODAS as amostras da classe
-    # (exploratorio; funciona com poucos puros). 'puros' = one-class N2
-    # verdadeiro, mas requer >=15 puros/classe (dados atuais: 3/classe).
+    # v14: 'todos' trains each model with ALL samples of the class
+    # (exploratory; works with few pure samples). 'puros' = true one-class N2
+    # but requires >=15 pure/class (current data: 3/class).
     ddsimca_treinar_em: str = "todos"   # 'todos' | 'puros'
     executar_opls: bool = True
-    n_ortho_opls: int = 1               # componentes ortogonais OPLS-DA
-    executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (mesma CV)
-    executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) para IC95%
-    n_monte_carlo: int = 100               # numero de repeticoes MC
-    monte_carlo_test_size: float = 0.25    # fracao de teste por repeticao MC
-    monte_carlo_incluir_todos: bool = False # v28: rodar todos os modelos do benchmark no MC CV
-    executar_shap: bool = False            # v28: SHAP values (TreeExplainer) para ensemble
-    shap_max_amostras: int = 500        # limite de amostras para SHAP (memoria)
+    n_ortho_opls: int = 1               # OPLS-DA orthogonal components
+    executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
+    executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
+    n_monte_carlo: int = 100               # number of MC repetitions
+    monte_carlo_test_size: float = 0.25    # test fraction per MC repetition
+    monte_carlo_incluir_todos: bool = False # v28: run all benchmark models in MC CV
+    executar_shap: bool = False            # v28: SHAP values (TreeExplainer) for ensemble
+    shap_max_amostras: int = 500        # sample limit for SHAP (memory control)
 
-    # ---- Exclusao de classes (ex: Copaiba com lote anomalo) ----
+    # ---- Class exclusion (e.g. Copaiba with anomalous batch) ----
     excluir_classes: Tuple[str, ...] = ()
 
-    # ---- ETAPA 4: Selecao de variaveis ----
+    # ---- STAGE 4: Variable selection ----
     executar_etapa4: bool = True
-    ipls_n_intervalos: int = 20         # iPLS: numero de intervalos
-    vip_threshold_sel: float = 1.0      # selecao por VIP >= limiar
-    sr_top_frac: float = 0.20           # selecao por SR: top fracao
-    splsda_keep_por_comp: int = 50      # sPLS-DA: variaveis nao-nulas/componente
+    ipls_n_intervalos: int = 20         # iPLS: number of intervals
+    vip_threshold_sel: float = 1.0      # selection by VIP >= threshold
+    sr_top_frac: float = 0.20           # selection by SR: top fraction
+    splsda_keep_por_comp: int = 50      # sPLS-DA: non-zero variables/component
 
 
 CFG = Config()
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                FIM DAS CONFIGURACOES                                     ║
+# ║                END OF SETTINGS                                           ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 
 # =========================================================================
-#  parse_title v3 — extracao de metadados a partir do ##TITLE= JCAMP-DX
-#  Formato esperado (oleos amazonicos, ABB MB3600 — GEAAp/UFPA):
-#      PURO:       {COD}-{DD-MM-YYYY}_T{N}
-#      ADULTERADO: {COD}-{DD-MM-YYYY}-AD-{A|M|S}-{N,NN}%_T{N}
+#  parse_title v3 — metadata extraction from ##TITLE= JCAMP-DX
+#  Expected format (Amazonian oils, ABB MB3600 — GEAAp/UFPA):
+#      PURE:        {COD}-{DD-MM-YYYY}_T{N}
+#      ADULTERATED: {COD}-{DD-MM-YYYY}-AD-{A|M|S}-{N,NN}%_T{N}
 # =========================================================================
 
 CODIGO_ESPECIE: Dict[str, str] = {
@@ -308,13 +308,13 @@ CODIGO_ESPECIE: Dict[str, str] = {
 }
 ADULTERANTE_NOME: Dict[str, str] = {"A": "algodão", "M": "milho", "S": "soja"}
 
-# Regex robusto a desvios encontrados no dataset real GEAAp/UFPA:
-#   - espaco circundante                       "## TITLE= GOI-..."
-#   - separador apos COD/DATE: "-" ou "_"      "AND_10-06-2020_AD-S-..."
-#   - separador antes de T opcional             "...%T_3"  (sem '-' nem '_')
-#   - Triplicata: "T1" ou "T_1"
-#   - Teor decimal opcional                     "11%"  /  "1,1%"  /  "10,52%"
-#   - Sinal "%%" (typo)                         "...4,13%%_T1"
+# Regex robust to deviations found in the real GEAAp/UFPA dataset:
+#   - surrounding whitespace                   "## TITLE= GOI-..."
+#   - separator after COD/DATE: "-" or "_"     "AND_10-06-2020_AD-S-..."
+#   - optional separator before T              "...%T_3"  (no '-' or '_')
+#   - Triplicate: "T1" or "T_1"
+#   - optional decimal content                 "11%"  /  "1,1%"  /  "10,52%"
+#   - "%%" sign (typo)                         "...4,13%%_T1"
 _RE_TITLE = re.compile(
     r"^\s*"
     r"(?P<cod>[A-Z]{2,4})"
@@ -323,20 +323,20 @@ _RE_TITLE = re.compile(
     r"[-_]?T_?(?P<trip>[123])"
     r"\s*$"
 )
-# Aceita decimal com virgula OU ponto (11,11% e 11.11% coexistem no dataset)
+# Accepts decimal with comma OR period (11,11% and 11.11% coexist in the dataset)
 _RE_ADULT = re.compile(r"[-_]AD-([AMS])-(\d+(?:[.,]\d+)?)%%?")
 
 
 def parse_title(title: str) -> Optional[Dict[str, Any]]:
-    """Parser do TITLE JCAMP-DX. Retorna dict completo ou None se invalido.
+    """JCAMP-DX TITLE parser. Returns complete dict or None if invalid.
 
-    Campo mae_id: identifica univocamente o ponto fisico amostrado.
-    Triplicatas T1/T2/T3 do mesmo ponto compartilham mae_id, permitindo
-    GroupKFold/GroupShuffleSplit para evitar vazamento de replicas.
+    mae_id field: uniquely identifies the physical sampling point.
+    Triplicates T1/T2/T3 of the same point share mae_id, enabling
+    GroupKFold/GroupShuffleSplit to prevent replica leakage.
 
-    Formato de mae_id:
-        Puro:        'CAP-04-11-2020'
-        Adulterado:  'CAP-04-11-2020-A1.03'  (teor sempre 2 casas decimais)
+    mae_id format:
+        Pure:        'CAP-04-11-2020'
+        Adulterated: 'CAP-04-11-2020-A1.03'  (content always 2 decimal places)
     """
     m = _RE_TITLE.match(title.strip())
     if not m:
@@ -373,7 +373,7 @@ def parse_title(title: str) -> Optional[Dict[str, Any]]:
 
 
 def extrair_title_do_dx(caminho: str) -> Optional[str]:
-    """Extrai linha ##TITLE= sem carregar os 8192 pontos do espectro."""
+    """Extracts the ##TITLE= line without loading all 8192 spectral points."""
     try:
         with open(caminho, "r", encoding="latin-1", errors="replace") as f:
             for linha in f:
@@ -388,11 +388,11 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
 
 
 def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
-    """Caminho de saida padrao (v20): prefixo do projeto + tipo de analise
-    (nivel + pre-processamento) + data/hora compacta.
-        {raiz}/PLSDA_OE_{nivel}_{preproc}_{YYYYMMDD_HHMMSS}
-    Exemplo: resultados_tcc/PLSDA_OE_N1_MSC-SG1-MC_20260528_191500
-    Subpastas (criadas em executar): dados/ figuras/ modelos/ logs/
+    """Default output path (v20): project prefix + analysis type
+    (level + preprocessing) + compact date/time.
+        {root}/PLSDA_OE_{level}_{preproc}_{YYYYMMDD_HHMMSS}
+    Example: resultados_tcc/PLSDA_OE_N1_MSC-SG1-MC_20260528_191500
+    Subfolders (created in executar): dados/ figuras/ modelos/ logs/
     """
     preset = (cfg.preprocessamento_padrao or "custom").lower()
     if preset == "autoscaling":
@@ -408,7 +408,7 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
         if cfg.aplicar_snv: preproc.append("SNV")
         if cfg.aplicar_sg:  preproc.append(f"SG{cfg.sg_deriv}")
         if cfg.aplicar_mc:  preproc.append("MC")
-        if not preproc:     preproc.append("bruto")
+        if not preproc:     preproc.append("raw")
     partes = ["PLSDA_OE", cfg.nivel]
     if cfg.tag.strip():
         partes.append(cfg.tag.strip().replace(" ", "_"))
@@ -417,42 +417,42 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
     return os.path.join(cfg.pasta_saida_raiz, "_".join(partes))
 
 
-# Paleta de MAXIMA DISTINCAO perceptual (base: Trubetskoy "20 distinct
-# colors" + Glasbey). Ordenada por contraste em fundo branco: cores fortes/
-# saturadas primeiro, claras por ultimo. SEM azuis/verdes quase-iguais.
-# Para impressao/daltonismo o canal de FORMA (MARCADORES) complementa a cor.
+# MAXIMUM PERCEPTUAL DISTINCTIVENESS palette (base: Trubetskoy "20 distinct
+# colors" + Glasbey). Ordered by contrast on white background: strong/
+# saturated colors first, light colors last. NO near-identical blues/greens.
+# For printing/colorblindness the SHAPE channel (MARCADORES) complements color.
 PALETA = [
-    "#E6194B",  # vermelho
-    "#4363D8",  # azul
-    "#3CB44B",  # verde
-    "#F58231",  # laranja
-    "#911EB4",  # roxo
-    "#42D4F4",  # ciano
+    "#E6194B",  # red
+    "#4363D8",  # blue
+    "#3CB44B",  # green
+    "#F58231",  # orange
+    "#911EB4",  # purple
+    "#42D4F4",  # cyan
     "#F032E6",  # magenta
-    "#9A6324",  # marrom
+    "#9A6324",  # brown
     "#469990",  # teal
-    "#800000",  # bordo
-    "#808000",  # oliva
-    "#000075",  # marinho
-    "#E6A000",  # ambar/ouro
-    "#BFEF45",  # lima
-    "#FABED4",  # rosa-claro
-    "#DCBEFF",  # lavanda
-    "#AAFFC3",  # menta
-    "#FFD8B1",  # pessego
-    "#A9A9A9",  # cinza
-    "#FFE119",  # amarelo
+    "#800000",  # maroon
+    "#808000",  # olive
+    "#000075",  # navy
+    "#E6A000",  # amber/gold
+    "#BFEF45",  # lime
+    "#FABED4",  # light pink
+    "#DCBEFF",  # lavender
+    "#AAFFC3",  # mint
+    "#FFD8B1",  # peach
+    "#A9A9A9",  # gray
+    "#FFE119",  # yellow
 ]
 
-# Canal secundario: formas de marcador (identidade por SHAPE, robusto a
-# daltonismo/impressao P&B). 14 formas distintas antes de repetir.
+# Secondary channel: marker shapes (identity by SHAPE, robust to
+# colorblindness/B&W printing). 14 distinct shapes before repeating.
 MARCADORES = ["o", "s", "^", "D", "v", "P", "X", "*",
               "<", ">", "h", "p", "8", "d"]
 
 
 def _paleta_externa(n: int) -> Optional[List[str]]:
-    """Tenta gerar paleta de max-distincao via libs opcionais (glasbey,
-    colorcet). Retorna lista de hex ou None se nenhuma disponivel."""
+    """Tries to generate a max-distinctiveness palette via optional libs (glasbey,
+    colorcet). Returns a list of hex colors or None if none available."""
     try:
         import glasbey as _gb  # type: ignore
         return list(_gb.create_palette(palette_size=n))
@@ -468,35 +468,35 @@ def _paleta_externa(n: int) -> Optional[List[str]]:
 
 
 def _luminancia(hex_cor: str) -> float:
-    """Luminancia relativa (0=escuro, 1=claro) p/ decidir cor da borda."""
+    """Relative luminance (0=dark, 1=light) to decide edge color."""
     r, g, b = mcolors.to_rgb(hex_cor)
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
 def edge_para_cor(hex_cor: str) -> str:
-    """Borda inteligente: cinza-escuro para preenchimentos claros (visiveis
-    em fundo branco), branco para preenchimentos escuros."""
+    """Smart edge color: dark gray for light fills (visible on white
+    background), white for dark fills."""
     return "0.25" if _luminancia(hex_cor) > 0.65 else "white"
 
 
 def cor(i: int) -> str:
-    """Cor i da paleta de maxima distincao. Acima do tamanho, usa lib externa
-    (se houver) ou cicla com leve variacao de luminancia via HSV."""
+    """Color i from the maximum-distinctiveness palette. Beyond palette size,
+    uses external lib (if available) or cycles with slight luminance variation via HSV."""
     if i < len(PALETA):
         return PALETA[i]
     ext = _paleta_externa(i + 1)
     if ext is not None and i < len(ext):
         return mcolors.to_hex(ext[i])
-    # fallback: tab20 deslocado
+    # fallback: shifted tab20
     cmap = plt.get_cmap("tab20")
     return mcolors.to_hex(cmap(((i - len(PALETA)) % 20) / 20))
 
 
 def mapear_cores_classes(classes) -> Dict[str, str]:
-    """Atribui cor por ordem alfabetica a partir da paleta de maxima
-    distincao. Atribuicao SEQUENCIAL (nao-hash) garante que classes
-    adjacentes recebam cores bem separadas — a paleta ja e ordenada para
-    maximizar contraste entre indices vizinhos. Deterministico."""
+    """Assigns color in alphabetical order from the maximum-distinctiveness
+    palette. SEQUENTIAL (non-hash) assignment ensures adjacent classes
+    receive well-separated colors — the palette is already ordered to
+    maximize contrast between neighboring indices. Deterministic."""
     classes_sorted = sorted({str(c) for c in classes})
     n = len(classes_sorted)
     externa = _paleta_externa(n) if n > len(PALETA) else None
@@ -510,8 +510,8 @@ def mapear_cores_classes(classes) -> Dict[str, str]:
 
 
 def mapear_marcadores_classes(classes) -> Dict[str, str]:
-    """Atribui forma de marcador por classe (canal secundario). Combinado
-    com a cor, garante distincao mesmo em P&B/daltonismo e alta densidade."""
+    """Assigns marker shape per class (secondary channel). Combined
+    with color, ensures distinctiveness even in B&W/colorblindness and high density."""
     classes_sorted = sorted({str(c) for c in classes})
     return {cls: MARCADORES[i % len(MARCADORES)]
             for i, cls in enumerate(classes_sorted)}
@@ -554,8 +554,8 @@ def setup_matplotlib(cfg: Config) -> None:
 
 def salvar(fig, nome: str, pasta: str, cfg: Config,
            subpasta: str = "") -> None:
-    """Salva figura sempre sob pasta/figuras/[subpasta]/ (estrutura v20).
-    subpasta agrupa figuras detalhadas (ex: 'ddsimca')."""
+    """Always saves figure under pasta/figuras/[subpasta]/ (v20 structure).
+    subpasta groups detailed figures (e.g. 'ddsimca')."""
     base = os.path.join(pasta, "figuras")
     destino = os.path.join(base, subpasta) if subpasta else base
     os.makedirs(destino, exist_ok=True)
@@ -564,7 +564,7 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
         fig.savefig(caminho)
         print(f"  -> {caminho}")
     except Exception as e:
-        print(f"  [ERRO] {caminho}: {e}")
+        print(f"  [ERROR] {caminho}: {e}")
     if cfg.mostrar_graficos:
         plt.show()
     else:
@@ -572,11 +572,11 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
 
 
 # =========================================================================
-#  Transformadores compatíveis com sklearn (necessários para CV sem leakage)
+#  sklearn-compatible transformers (required for leakage-free CV)
 # =========================================================================
 
 class SNV(BaseEstimator, TransformerMixin):
-    """Standard Normal Variate: z-score por amostra (correcao de scatter)."""
+    """Standard Normal Variate: per-sample z-score (scatter correction)."""
 
     def fit(self, X, y=None):
         return self
@@ -590,7 +590,7 @@ class SNV(BaseEstimator, TransformerMixin):
 
 
 class SavGol(BaseEstimator, TransformerMixin):
-    """Filtro Savitzky-Golay (suavizacao ou derivada)."""
+    """Savitzky-Golay filter (smoothing or derivative)."""
 
     def __init__(self, window_length: int = 25, polyorder: int = 2, deriv: int = 1):
         self.window_length = window_length
@@ -608,9 +608,9 @@ class SavGol(BaseEstimator, TransformerMixin):
 
 
 class MSC(BaseEstimator, TransformerMixin):
-    """Multiplicative Scatter Correction. Usa espectro medio do treino como
-    referencia; para cada amostra estima (a, b) tal que X_i ~ a + b * ref e
-    retorna (X_i - a) / b. Stateful: precisa ficar dentro do Pipeline+CV."""
+    """Multiplicative Scatter Correction. Uses mean training spectrum as
+    reference; for each sample estimates (a, b) such that X_i ~ a + b * ref and
+    returns (X_i - a) / b. Stateful: must remain inside Pipeline+CV."""
 
     def fit(self, X, y=None):
         self.ref_ = np.asarray(X, dtype=float).mean(axis=0)
@@ -628,19 +628,19 @@ class MSC(BaseEstimator, TransformerMixin):
 
 
 def construir_preprocessador(cfg: Config) -> Pipeline:
-    """Constroi pre-processador segundo cfg.preprocessamento_padrao.
+    """Builds preprocessor according to cfg.preprocessamento_padrao.
 
     Presets:
         'snv_sg_mc'   : SNV -> SG -> mean-centering (Rinnan et al. 2009,
-                        recomendado para FTIR/NIR com scatter)
+                        recommended for FTIR/NIR with scatter)
         'autoscaling' : StandardScaler (mean + unit variance)
-                        — recomendado quando SG derivativo destroi sinal
-                        ou para NIR sem scatter pronunciado
-        'mc'          : apenas mean-centering
-        'custom'      : honra aplicar_snv / aplicar_sg / aplicar_mc
+                        — recommended when SG derivative destroys signal
+                        or for NIR without pronounced scatter
+        'mc'          : mean-centering only
+        'custom'      : honors aplicar_snv / aplicar_sg / aplicar_mc
 
-    Mean-centering / autoscaling ficam DENTRO do Pipeline para que
-    cross_val_predict nao vaze estatisticas entre folds.
+    Mean-centering / autoscaling are kept INSIDE the Pipeline so that
+    cross_val_predict does not leak statistics between folds.
     """
     preset = (cfg.preprocessamento_padrao or "custom").lower()
 
@@ -655,15 +655,15 @@ def construir_preprocessador(cfg: Config) -> Pipeline:
             ("mc",  StandardScaler(with_std=False)),
         ])
     if preset == "msc_sg_mc":
-        # MSC->SG+MC: melhor pipeline na base completa (0.923 bal.acc).
-        # MSC e stateful (referencia = media do treino) -> dentro do
-        # Pipeline para nao vazar entre folds da CV.
+        # MSC->SG+MC: best pipeline on the full dataset (0.923 bal.acc).
+        # MSC is stateful (reference = training mean) -> kept inside
+        # Pipeline to avoid leakage between CV folds.
         return Pipeline([
             ("msc", MSC()),
             ("sg",  SavGol(cfg.sg_window, cfg.sg_polyorder, cfg.sg_deriv)),
             ("mc",  StandardScaler(with_std=False)),
         ])
-    # custom — usa flags individuais
+    # custom — uses individual flags
     etapas: List[Tuple[str, BaseEstimator]] = []
     if cfg.aplicar_snv:
         etapas.append(("snv", SNV()))
@@ -677,7 +677,7 @@ def construir_preprocessador(cfg: Config) -> Pipeline:
 
 
 # =========================================================================
-#  Diagnósticos quimiométricos
+#  Chemometric diagnostics
 # =========================================================================
 
 def vip_scores(modelo: PLSRegression) -> np.ndarray:
@@ -737,22 +737,22 @@ def hotelling_t2(T: np.ndarray) -> np.ndarray:
 
 
 def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
-    """Limite superior de Hotelling T2 (Tracy-Young-Mason 1992).
+    """Hotelling T2 upper control limit (Tracy-Young-Mason 1992).
 
-    Formula correta para small-sample, valida tanto para observacao
-    dentro do conjunto de calibracao quanto para nova observacao:
+    Correct small-sample formula, valid for both observations
+    within the calibration set and new observations:
 
         T2_UCL = k * (n - 1) * (n + 1) / (n * (n - k)) * F_(alpha, k, n - k)
 
-    Substitui a aproximacao (k(n-1)/(n-k))*F que subestimava o limite
-    em ~5-10% para n<30 (causa falsos outliers em datasets pequenos).
+    Replaces the approximation (k(n-1)/(n-k))*F that underestimated the limit
+    by ~5-10% for n<30 (causing false outliers in small datasets).
     """
     if n - k <= 0:
-        print(f"[AVISO] Hotelling T2: n={n} muito pequeno para k={k} LVs.")
+        print(f"[WARNING] Hotelling T2: n={n} too small for k={k} LVs.")
         return float("inf")
     if n < 3 * k:
-        print(f"[AVISO] Hotelling T2: n={n} < 3k={3*k}. Limite pode ser "
-              f"impreciso (intervalo de confianca largo).")
+        print(f"[WARNING] Hotelling T2: n={n} < 3k={3*k}. Limit may be "
+              f"imprecise (wide confidence interval).")
     return float(((k * (n - 1) * (n + 1)) / (n * (n - k)))
                   * f_dist.ppf(1 - alpha, k, n - k))
 
@@ -770,7 +770,7 @@ def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
 
 
 def variancia_explicada(X: np.ndarray, T: np.ndarray) -> np.ndarray:
-    """Variancia explicada (%) de X por cada coluna de T."""
+    """Explained variance (%) of X by each column of T."""
     var_X_total = float(np.var(X, axis=0).sum())
     if var_X_total <= 0:
         return np.zeros(T.shape[1])
@@ -778,24 +778,24 @@ def variancia_explicada(X: np.ndarray, T: np.ndarray) -> np.ndarray:
 
 
 # =========================================================================
-#  Sprint 3 — Classificadores avancados
+#  Sprint 3 — Advanced classifiers
 # =========================================================================
 
 class DDSimca:
-    """Data-Driven SIMCA: classificador one-class por classe via PCA.
+    """Data-Driven SIMCA: per-class one-class classifier via PCA.
 
-    Para cada classe treina um modelo PCA independente e define
-    limites de aceitacao (UCL) para T2 e Q-residuos:
-        T2_UCL  — calculado por ucl_method:
-                    'empirical'  : percentil (1-alpha) do T2 de treino
+    For each class, trains an independent PCA model and defines
+    acceptance limits (UCL) for T2 and Q-residuals:
+        T2_UCL  — computed by ucl_method:
+                    'empirical'  : (1-alpha) percentile of training T2
                     'theoretical': Tracy-Young-Mason (F-distribution)
                     'chi2'       : chi2(1-alpha, n_components)
-                  'empirical' e o unico que VARIA POR CLASSE de fato
-                  (theoretical e chi2 dependem so de n,k); recomendado.
-        Q_UCL   — aproximacao chi2 (Jackson & Mudholkar) via mean/var de
-                  Q-residuos de treino — naturalmente data-driven.
+                  'empirical' is the only one that VARIES PER CLASS
+                  (theoretical and chi2 depend only on n,k); recommended.
+        Q_UCL   — chi2 approximation (Jackson & Mudholkar) via mean/var of
+                  training Q-residuals — naturally data-driven.
 
-    Uma nova amostra e 'aceita' pela classe se T2 <= UCL **e** Q <= UCL.
+    A new sample is 'accepted' by the class if T2 <= UCL **and** Q <= UCL.
 
     Referencias:
         Rodionova O.Y. & Pomerantsev A.L. (2020). Chemom. Intell. Lab.
@@ -833,8 +833,8 @@ class DDSimca:
             nc = len(Xc)
             n_comp = min(self.n_components, nc - 1, Xc.shape[1])
             if n_comp < 1:
-                print(f"[DDSimca] Classe '{cls}': amostras insuficientes "
-                      f"(n={nc}) — modelo omitido.")
+                print(f"[DDSimca] Class '{cls}': insufficient samples "
+                      f"(n={nc}) — model skipped.")
                 continue
             pca = PCA(n_components=n_comp)
             T = pca.fit_transform(Xc)
@@ -867,7 +867,7 @@ class DDSimca:
         return T2, Q
 
     def score_matrix(self, X: np.ndarray) -> Dict[str, Dict[str, Any]]:
-        """T2, Q e versoes normalizadas (T2/UCL, Q/UCL) por classe."""
+        """T2, Q and normalized versions (T2/UCL, Q/UCL) per class."""
         X = np.asarray(X, dtype=float)
         res: Dict[str, Dict[str, Any]] = {}
         for cls in self._classes:
@@ -889,7 +889,7 @@ class DDSimca:
         return res
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Retorna: nome da classe | 'Ambiguo' | 'Desconhecido'."""
+        """Returns: class name | 'Ambiguo' | 'Desconhecido'."""
         X = np.asarray(X, dtype=float)
         preds = []
         for i in range(len(X)):
@@ -909,17 +909,17 @@ class DDSimca:
 
 
 class OPLSDAWrapper(BaseEstimator):
-    """OPLS-DA: deflacao ortogonal + 1 componente preditivo.
+    """OPLS-DA: orthogonal deflation + 1 predictive component.
 
-    Extrai n_ortho componentes de X ortogonais a Y via NIPALS, depois
-    ajusta 1 LV preditivo no X deflacionado. Saidas:
-        t_pred  — score preditivo (separa classes)
-        t_orth  — score(s) ortogonal(is) (variacao estruturada de X
-                  nao correlacionada com Y, e.g., baseline, scatter)
+    Extracts n_ortho components of X orthogonal to Y via NIPALS, then
+    fits 1 predictive LV on the deflated X. Outputs:
+        t_pred  — predictive score (separates classes)
+        t_orth  — orthogonal score(s) (structured variation in X
+                  uncorrelated with Y, e.g., baseline, scatter)
 
-    O plot tp x to1 decompoe: separacao real (tp) vs variacao instrumental
-    sistematica (to). Para FTIR de oleos, to captura tipicamente variacao
-    de espessura de caminho optico e scatter multiplicativo.
+    The tp x to1 plot decomposes: true separation (tp) vs systematic
+    instrumental variation (to). For FTIR of oils, to typically captures
+    variation in optical path length and multiplicative scatter.
 
     Referencias:
         Trygg J. & Wold S. (2002) J. Chemometrics 16:119-128.
@@ -935,8 +935,8 @@ class OPLSDAWrapper(BaseEstimator):
     def _nipals_pls1(X: np.ndarray, y: np.ndarray,
                      max_iter: int = 500, tol: float = 1e-10
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """NIPALS para 1 componente PLS com y unidimensional.
-        Retorna (w, t, p) normalizados."""
+        """NIPALS for 1 PLS component with one-dimensional y.
+        Returns (w, t, p) normalized."""
         u = y.astype(float).copy()
         t_old = np.zeros(X.shape[0])
         w = np.zeros(X.shape[1])
@@ -964,7 +964,7 @@ class OPLSDAWrapper(BaseEstimator):
     def fit(self, X: np.ndarray, Y: np.ndarray) -> "OPLSDAWrapper":
         X = np.asarray(X, dtype=float)
         Y = np.asarray(Y, dtype=float)
-        # Usa primeira coluna de Y como resposta binaria
+        # Use the first column of Y as binary response
         y = Y[:, 0] if Y.ndim == 2 else Y.copy()
         y = y - float(y.mean())
 
@@ -976,7 +976,7 @@ class OPLSDAWrapper(BaseEstimator):
 
         for _ in range(self.n_ortho):
             w, t, p = self._nipals_pls1(Xr, y)
-            # Componente ortogonal: direcao de p ortogonalizada contra w
+            # Orthogonal component: direction of p orthogonalized against w
             proj = float(p @ w)
             w_orth = p - proj * w
             no = float(np.linalg.norm(w_orth))
@@ -993,11 +993,11 @@ class OPLSDAWrapper(BaseEstimator):
             T_orth_train.append(t_orth.copy())
             Xr = Xr - np.outer(t_orth, p_orth)   # deflate
 
-        # 1 componente preditivo no X deflacionado
+        # 1 predictive component on deflated X
         self._pls_pred = PLSRegression(n_components=1, scale=False)
         self._pls_pred.fit(Xr, Y)
 
-        # Scores de treino (sklearn >= 1.x retorna ndarray diretamente)
+        # Training scores (sklearn >= 1.x returns ndarray directly)
         _t_arr = self._pls_pred.transform(Xr)
         t_pred_tr = _t_arr if isinstance(_t_arr, np.ndarray) else _t_arr[0]
         self.t_pred_train_ = t_pred_tr[:, 0]
@@ -1007,7 +1007,7 @@ class OPLSDAWrapper(BaseEstimator):
         return self
 
     def transform(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Retorna (t_pred ndarray, t_orth matrix (n, n_ortho))."""
+        """Returns (t_pred ndarray, t_orth matrix (n, n_ortho))."""
         X = np.asarray(X, dtype=float)
         Xr = X.copy()
         T_orth: List[np.ndarray] = []
@@ -1024,8 +1024,8 @@ class OPLSDAWrapper(BaseEstimator):
 
 def metricas_modelo_pls(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
                          Y_cv: np.ndarray) -> Tuple[float, float, float]:
-    """R2X via 1 - SS(X - T @ P^T) / SS(X_centrado); R2Y via 1 - SS(res)/SS(Y);
-    Q2 idem usando predicoes CV. Formula rigorosa de reconstrucao."""
+    """R2X via 1 - SS(X - T @ P^T) / SS(X_centered); R2Y via 1 - SS(res)/SS(Y);
+    Q2 likewise using CV predictions. Rigorous reconstruction formula."""
     X = np.asarray(X, dtype=float)
     T = np.asarray(modelo.x_scores_,   dtype=float)
     P = np.asarray(modelo.x_loadings_, dtype=float)
@@ -1050,7 +1050,7 @@ def salvar_identificadores(rotulos: np.ndarray, pred_lab: np.ndarray,
                             scores_pls: np.ndarray, T2: np.ndarray,
                             Q: np.ndarray, t2_lim: float, q_lim: float,
                             pasta: str) -> None:
-    """Tabela com IDs, classes reais/preditas e diagnosticos por amostra."""
+    """Table with IDs, true/predicted classes and per-sample diagnostics."""
     n = len(rotulos)
     n_lvs_save = min(3, scores_pls.shape[1])
     dados = {
@@ -1075,7 +1075,7 @@ def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     with open(caminho, "w", encoding="utf-8") as f:
         f.write("=" * 60 + "\n")
-        f.write("  Resumo do Modelo PLS-DA\n")
+        f.write("  PLS-DA Model Summary\n")
         f.write("=" * 60 + "\n\n")
         largura = max(len(k) for k in info.keys()) + 2
         for k, v in info.items():
@@ -1094,14 +1094,14 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                                   Optional[np.ndarray], Optional[np.ndarray],
                                   Dict[str, object]]:
-    """Validacao robusta. Remove NaN/Inf, variaveis constantes, e detecta
-    duplicatas exatas/aproximadas. Retorna dados limpos + relatorio.
+    """Robust validation. Removes NaN/Inf, constant variables, and detects
+    exact/approximate duplicates. Returns cleaned data + report.
 
-    mae_id (B1): sincronizado com a MESMA mascara de remocao de NaN/Inf, para
-    que a validacao group-aware sobreviva a remocao de amostras (antes, uma
-    unica amostra com NaN desligava silenciosamente o mae_id e o GroupKFold).
+    mae_id (B1): synchronized with the SAME NaN/Inf removal mask, so that
+    group-aware validation survives sample removal (previously, a single
+    NaN sample would silently disable mae_id and GroupKFold).
 
-    Retorna (X, wavenumbers, rotulos, conc, mae_id, relatorio).
+    Returns (X, wavenumbers, rotulos, conc, mae_id, relatorio).
     """
     X = np.asarray(X, dtype=float)
     rotulos = np.asarray(rotulos, dtype=str)
@@ -1123,7 +1123,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
         "n_duplicatas_aproximadas": 0,
     }
 
-    # --- NaN / Inf por amostra (linha inteira eliminada) -----------------
+    # --- NaN / Inf per sample (entire row eliminated) --------------------
     nan_mask = np.any(np.isnan(X), axis=1)
     inf_mask = np.any(np.isinf(X), axis=1)
     bad_mask = nan_mask | inf_mask
@@ -1135,39 +1135,39 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
         n_rem = int(bad_mask.sum())
         relatorio["n_amostras_removidas"] = n_rem
         warnings_list.append(
-            f"{n_rem} amostras removidas por NaN ({n_nan}) ou Inf ({n_inf})")
-        print(f"[AVISO] Removidas {n_rem} amostras com NaN/Inf.")
+            f"{n_rem} samples removed due to NaN ({n_nan}) or Inf ({n_inf})")
+        print(f"[WARNING] Removed {n_rem} samples with NaN/Inf.")
         keep = ~bad_mask
         X = X[keep]; rotulos = rotulos[keep]
         if conc is not None:
             conc = conc[keep]
         if mae_id is not None:
-            mae_id = mae_id[keep]   # B1: mantem group-aware sincronizado
+            mae_id = mae_id[keep]   # B1: keep group-aware in sync
 
-    # --- Colunas constantes ---------------------------------------------
+    # --- Constant columns -----------------------------------------------
     var_cols = np.var(X, axis=0)
     mask_var = var_cols > tol_const
     n_const = int((~mask_var).sum())
     relatorio["n_constantes_removidas"] = n_const
     if n_const > 0:
         warnings_list.append(
-            f"{n_const} variaveis com variancia ~= 0 removidas")
-        print(f"[AVISO] Removidas {n_const} variaveis constantes.")
+            f"{n_const} variables with variance ~= 0 removed")
+        print(f"[WARNING] Removed {n_const} constant variables.")
         X = X[:, mask_var]
         wavenumbers = wavenumbers[mask_var]
 
-    # --- Duplicatas exatas ----------------------------------------------
+    # --- Exact duplicates -----------------------------------------------
     _, idx_unique = np.unique(X, axis=0, return_index=True)
     n_dup_exatas = int(len(X) - len(idx_unique))
     relatorio["n_duplicatas_exatas"] = n_dup_exatas
     if n_dup_exatas > 0:
-        msg = (f"ATENCAO: {n_dup_exatas} amostras duplicadas EXATAS "
-                f"detectadas. Possivel vazamento treino/validacao se "
-                f"copias caem em folds diferentes.")
+        msg = (f"CAUTION: {n_dup_exatas} EXACT duplicate samples "
+                f"detected. Possible train/validation leakage if "
+                f"copies fall in different folds.")
         warnings_list.append(msg)
-        print(f"[ATENCAO] {msg}")
+        print(f"[CAUTION] {msg}")
 
-    # --- Duplicatas aproximadas (correlacao alta) -----------------------
+    # --- Approximate duplicates (high correlation) ----------------------
     if len(X) <= max_n_para_corr and len(X) >= 2:
         Xc = X - X.mean(axis=1, keepdims=True)
         norms = np.linalg.norm(Xc, axis=1)
@@ -1182,10 +1182,10 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
             relatorio["n_duplicatas_aproximadas"] = n_aprox
             if n_aprox > n_dup_exatas:
                 warnings_list.append(
-                    f"ATENCAO: {n_aprox} amostras com correlacao > "
-                    f"{limiar_correlacao} (possiveis replicas tecnicas). "
-                    f"Considere GroupKFold para evitar vazamento.")
-                print(f"[ATENCAO] {n_aprox} amostras com corr > "
+                    f"CAUTION: {n_aprox} samples with correlation > "
+                    f"{limiar_correlacao} (possible technical replicates). "
+                    f"Consider GroupKFold to avoid leakage.")
+                print(f"[CAUTION] {n_aprox} samples with corr > "
                       f"{limiar_correlacao:.5f}.")
 
     relatorio["n_final"] = int(len(X))
@@ -1196,7 +1196,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
 
 def verificar_balanceamento(rotulos: np.ndarray, ratio_alvo: float = 5.0
                               ) -> Dict[str, object]:
-    """Detecta desbalanceamento severo entre classes."""
+    """Detects severe class imbalance."""
     cls_unicas, counts = np.unique(rotulos, return_counts=True)
     n_max = int(counts.max())
     n_min = int(counts.min())
@@ -1209,10 +1209,10 @@ def verificar_balanceamento(rotulos: np.ndarray, ratio_alvo: float = 5.0
         "desbalanceado":   ratio > ratio_alvo,
     }
     if ratio > ratio_alvo:
-        print(f"[AVISO] Desbalanceamento severo: razao max/min = "
+        print(f"[WARNING] Severe class imbalance: max/min ratio = "
               f"{ratio:.2f} (max={n_max}, min={n_min}).")
-        print(f"        Sugestoes: priorizar balanced_accuracy/F1-macro "
-              f"sobre accuracy; considerar class_weight ou subamostragem.")
+        print(f"          Suggestions: prioritize balanced_accuracy/F1-macro "
+              f"over accuracy; consider class_weight or subsampling.")
     return rel
 
 
@@ -1242,7 +1242,7 @@ def metricas_classificacao(y_true, y_pred, classes) -> Dict[str, float]:
 
 
 def _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices):
-    """cross_val_predict manual, compativel com Y multilabel + cv estratificada."""
+    """Manual cross_val_predict, compatible with multilabel Y + stratified CV."""
     y_hat = np.zeros_like(Y_bin, dtype=float)
     contador = np.zeros(len(Y_bin), dtype=int)
     for tr, va in cv_indices:
@@ -1257,9 +1257,9 @@ def _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices):
 def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
                         y_int: np.ndarray, cv_indices: list,
                         max_lv: int = 8) -> Dict[str, Dict[str, float]]:
-    """Avalia varios pipelines de pre-processamento via CV. Para cada
-    pipeline encontra o melhor n_lv por RMSECV e reporta accuracy,
-    balanced accuracy e Q2."""
+    """Evaluates several preprocessing pipelines via CV. For each
+    pipeline finds the best n_lv by RMSECV and reports accuracy,
+    balanced accuracy and Q2."""
 
     def _etapas_sg():
         return ("sg", SavGol(cfg.sg_window, cfg.sg_polyorder, cfg.sg_deriv))
@@ -1311,14 +1311,14 @@ def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
                                   y_int: np.ndarray, n_opt: int, n_boot: int,
                                   seed: int, vip_threshold: float = 1.0
                                   ) -> Dict[str, object]:
-    """Bootstrap ESTRATIFICADO do VIP. Reamostra com reposicao DENTRO de
-    cada classe, garantindo presenca de todas as classes em toda iteracao.
+    """STRATIFIED VIP bootstrap. Resamples with replacement WITHIN each
+    class, guaranteeing the presence of all classes in every iteration.
 
-    Retorna dict com:
-        mean, std, ci95_low, ci95_high  - estatisticas pontuais por variavel
-        selection_frequency             - fracao de bootstraps em que
+    Returns dict with:
+        mean, std, ci95_low, ci95_high  - point statistics per variable
+        selection_frequency             - fraction of bootstraps in which
                                           VIP >= vip_threshold
-        n_validos, n_falhos             - contagem de iteracoes
+        n_validos, n_falhos             - iteration counts
     """
     rng = np.random.default_rng(seed)
     n_var = X_processed.shape[1]
@@ -1369,9 +1369,9 @@ def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
 
 
 def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
-    """DEPRECATED: usar bootstrap_vip_estratificado. Mantido para
-    compatibilidade. NAO usa estratificacao por classe."""
-    print("[AVISO] bootstrap_vip nao-estratificado e DEPRECATED. "
+    """DEPRECATED: use bootstrap_vip_estratificado. Kept for
+    backward compatibility. Does NOT use per-class stratification."""
+    print("[WARNING] Non-stratified bootstrap_vip is DEPRECATED. "
           "Use bootstrap_vip_estratificado.")
     rng = np.random.default_rng(seed)
     n = len(X_processed)
@@ -1395,10 +1395,10 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
                       metric_fn: Callable, n_boot: int = 500,
                       alpha: float = 0.05, seed: int = 42
                       ) -> Tuple[float, float, float]:
-    """Intervalo de confianca BCa (bias-corrected & accelerated, Efron 1987)
-    para uma metrica de classificacao via bootstrap estratificado.
+    """BCa confidence interval (bias-corrected & accelerated, Efron 1987)
+    for a classification metric via stratified bootstrap.
 
-    Retorna (low, high, valor_observado).
+    Returns (low, high, observed_value).
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
@@ -1426,7 +1426,7 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
     if len(boot_stats) < 20:
         return float("nan"), float("nan"), observed
 
-    # Bias correction z0
+    # Bias-correction z0
     prop_less = float(np.mean(boot_stats < observed))
     if prop_less <= 0 or prop_less >= 1:
         return (float(np.percentile(boot_stats, 100 * alpha / 2)),
@@ -1434,7 +1434,7 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
                 observed)
     z0 = _norm_dist.ppf(prop_less)
 
-    # Aceleracao via jackknife
+    # Acceleration via jackknife
     jack = np.empty(n)
     for i in range(n):
         mask = np.ones(n, dtype=bool); mask[i] = False
@@ -1466,10 +1466,10 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
 
 def cv_anova_eriksson(Y: np.ndarray, Y_cv: np.ndarray, n_components: int
                        ) -> Dict[str, float]:
-    """CV-ANOVA de Eriksson, Trygg & Wold (J. Chemometrics 22:594-600, 2008).
+    """CV-ANOVA of Eriksson, Trygg & Wold (J. Chemometrics 22:594-600, 2008).
 
-    Testa se PRESS (residuo CV) e significativamente menor que SS_total
-    (variancia em torno da media de Y). H0: modelo nao melhora previsao.
+    Tests whether PRESS (CV residual) is significantly smaller than SS_total
+    (variance around the mean of Y). H0: model does not improve prediction.
 
     F = ((SS_total - PRESS) / df_model) / (PRESS / df_residual)
     """
@@ -1511,18 +1511,18 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
                 X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                 cv, n_perm: int, seed: int,
                 groups: Optional[np.ndarray] = None) -> Dict[str, object]:
-    """Permutation test estilo Wold/Westerhuis (J. Chemometrics 22:578-585):
-    rastreia R2Y e Q2Y para cada permutacao em funcao da similaridade
-    do Y permutado com o original. Ajusta reta e reporta interceptos.
+    """Permutation test in the style of Wold/Westerhuis (J. Chemometrics 22:578-585):
+    tracks R2Y and Q2Y for each permutation as a function of the similarity
+    of the permuted Y with the original. Fits a line and reports intercepts.
 
-    Criterio classico para validade do modelo (one-hot Y):
-        intercepto R2Y < 0.4
-        intercepto Q2Y < 0.05
+    Classic model validity criteria (one-hot Y):
+        R2Y intercept < 0.4
+        Q2Y intercept < 0.05
     """
     rng = np.random.default_rng(seed)
     cv_indices = list(cv.split(X, y_int, groups=groups))
 
-    # --- Observado --------------------------------------------------------
+    # --- Observed ---------------------------------------------------------
     pipe = pipeline_factory(); pipe.fit(X, Y_bin)
     Y_train_obs = pipe.predict(X)
     Y_cv_obs    = _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices)
@@ -1563,24 +1563,24 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
         except Exception:
             n_falhos += 1
 
-        # Progresso com ETA
+        # Progress with ETA
         if (i + 1) % progress_every == 0 or (i + 1) == n_perm:
             elapsed = _time.time() - t0
             taxa    = (i + 1) / max(elapsed, 1e-6)
             eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
             pct = (i + 1) / n_perm * 100
             print(f"    Wold {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                  f"valid={n_validos} falhos={n_falhos}  "
+                  f"valid={n_validos} failed={n_falhos}  "
                   f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
                   flush=True)
 
     sims_arr = np.asarray(sims); r2s_arr = np.asarray(r2s); q2s_arr = np.asarray(q2s)
-    # Adiciona ponto observado (sim=1)
+    # Add observed point (sim=1)
     sims_all = np.append(sims_arr, 1.0)
     r2_all   = np.append(r2s_arr, r2_obs)
     q2_all   = np.append(q2s_arr, q2_obs)
 
-    if len(sims_all) >= 2 and (sims_all.max() - sims_all.min()) > 0:  # np.ptp removido no NumPy 2.0
+    if len(sims_all) >= 2 and (sims_all.max() - sims_all.min()) > 0:  # np.ptp removed in NumPy 2.0
         slope_r2, int_r2 = np.polyfit(sims_all, r2_all, 1)
         slope_q2, int_q2 = np.polyfit(sims_all, q2_all, 1)
     else:
@@ -1608,15 +1608,15 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
                       cv, n_perm: int, seed: int,
                       groups: Optional[np.ndarray] = None
                       ) -> Dict[str, object]:
-    """Y-randomization robusta. Iteracoes que falham (e.g. estratificacao
-    impossivel apos shuffle) sao registradas e ignoradas no p-value.
+    """Robust Y-randomization. Iterations that fail (e.g., stratification
+    impossible after shuffle) are recorded and excluded from the p-value.
 
-    Retorna dict com:
-        acc_observada      - acuracia com Y verdadeiro
-        accs_permutadas    - array de acuracias H0 (apenas iteracoes validas)
+    Returns dict with:
+        acc_observada      - accuracy with true Y
+        accs_permutadas    - array of H0 accuracies (valid iterations only)
         p_value            - (sum(accs >= obs) + 1) / (n_validos + 1)
-        n_validos          - iteracoes que completaram com sucesso
-        n_falhos           - iteracoes abortadas por erro
+        n_validos          - iterations completed successfully
+        n_falhos           - iterations aborted due to error
         failure_rate       - n_falhos / n_perm
     """
     rng = np.random.default_rng(seed)
@@ -1644,14 +1644,14 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
             n_falhos += 1
             continue
 
-        # Progresso com ETA
+        # Progress with ETA
         if (i + 1) % progress_every == 0 or (i + 1) == n_perm:
             elapsed = _time.time() - t0
             taxa    = (i + 1) / max(elapsed, 1e-6)
             eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
             pct = (i + 1) / n_perm * 100
             print(f"    Perm {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                  f"valid={len(accs)} falhos={n_falhos}  "
+                  f"valid={len(accs)} failed={n_falhos}  "
                   f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
                   flush=True)
 
@@ -1660,14 +1660,14 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
     accs_arr = np.asarray(accs, dtype=float)
 
     if failure_rate > 0.30:
-        print(f"[AVISO] Permutation test: taxa de falha = "
+        print(f"[WARNING] Permutation test: failure rate = "
               f"{failure_rate:.1%} ({n_falhos}/{n_perm}). "
-              f"Resultado pode ser nao-confiavel (classes muito "
-              f"desbalanceadas para CV estratificada apos shuffle).")
+              f"Result may be unreliable (classes too "
+              f"imbalanced for stratified CV after shuffle).")
 
     if n_validos == 0:
-        print("[ERRO] Permutation test: 0 iteracoes validas. "
-              "p_value retornado como 1.0 (nao informativo).")
+        print("[ERROR] Permutation test: 0 valid iterations. "
+              "p_value returned as 1.0 (non-informative).")
         p_val = 1.0
     else:
         p_val = float((np.sum(accs_arr >= acc_obs) + 1) / (n_validos + 1))
@@ -1683,11 +1683,11 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
 
 
 # =========================================================================
-#  Carregamento de dados
+#  Data loading
 # =========================================================================
 
 def gerar_dados_sinteticos(cfg: Config):
-    print("[INFO] MODO sintetico — gerando espectros de teste.")
+    print("[INFO] Synthetic MODE — generating test spectra.")
     rng = np.random.default_rng(cfg.seed)
     wavenumbers = np.linspace(4000, 400, cfg.n_pontos_sint)
     conc_base = np.linspace(0, 40, cfg.n_por_classe)
@@ -1713,7 +1713,7 @@ def gerar_dados_sinteticos(cfg: Config):
 
 
 def carregar_csv(caminho, col_classe, col_conc):
-    print(f"[INFO] Carregando CSV: {caminho}")
+    print(f"[INFO] Loading CSV: {caminho}")
     df          = pd.read_csv(caminho)
     rotulos     = np.asarray(df[col_classe].values, dtype=str)
     conc        = np.asarray(df[col_conc].values, dtype=float) if col_conc else None
@@ -1736,10 +1736,10 @@ def _flush_asdf(y_raw, sign, digits, is_dif):
 
 def _decodificar_linha_asdf(s: str, SQZ: dict, DIF: dict, DUP: dict
                              ) -> Tuple[Optional[float], List[float]]:
-    """Decodifica uma linha ASDF '(X++(Y..Y))': retorna (x_check, [y_raw]).
+    """Decodes an ASDF line '(X++(Y..Y))': returns (x_check, [y_raw]).
 
-    x_check e o valor de abscissa (ainda SEM xfactor) que prefixa a linha;
-    serve para ancorar a posicao do bloco na grade global."""
+    x_check is the abscissa value (WITHOUT xfactor yet) that prefixes the line;
+    used to anchor the block position on the global grid."""
     i, n = 0, len(s)
     x_str = ""
     while i < n and (s[i].isdigit() or s[i] in "+-"):
@@ -1771,19 +1771,19 @@ def _decodificar_linha_asdf(s: str, SQZ: dict, DIF: dict, DUP: dict
 
 
 def parse_dx(filepath):
-    """Parser JCAMP-DX para formato comprimido '(X++(Y..Y))' (ASDF).
+    """JCAMP-DX parser for compressed '(X++(Y..Y))' format (ASDF).
 
-    Estrategia robusta de reconstrucao do eixo:
-      - O eixo X e reconstruido como np.linspace(FIRSTX, LASTX, NPOINTS)
-        usando o cabecalho (autoritativo), NUNCA os X encodados.
-      - Cada linha de dados e ANCORADA pela sua abscissa de checagem
-        (x_check) no indice correto da grade. Isso e auto-corretivo:
-        linhas que sobre/sub-decodificam sao re-ancoradas pela linha
-        seguinte (resolve o bug de concatenacao cega que perdia pontos).
-      - Lacunas residuais (NaN) sao interpoladas linearmente.
+    Robust axis reconstruction strategy:
+      - The X axis is reconstructed as np.linspace(FIRSTX, LASTX, NPOINTS)
+        using the header (authoritative), NEVER the encoded X values.
+      - Each data line is ANCHORED by its check abscissa (x_check) to the
+        correct index on the global grid. This is self-correcting: lines
+        that over/under-decode are re-anchored by the next line (fixes the
+        blind concatenation bug that used to lose points).
+      - Residual gaps (NaN) are linearly interpolated.
 
-    Fallback: se faltar FIRSTX/LASTX/NPOINTS, usa concatenacao simples
-    com o X encodado (modo legado, menos confiavel)."""
+    Fallback: if FIRSTX/LASTX/NPOINTS are missing, uses simple concatenation
+    with encoded X (legacy mode, less reliable)."""
     SQZ, DIF, DUP = {"@": 0}, {"%": 0}, {}
     for i, c in enumerate("ABCDEFGHI", 1): SQZ[c] =  i
     for i, c in enumerate("abcdefghi", 1): SQZ[c] = -i
@@ -1815,7 +1815,7 @@ def parse_dx(filepath):
         elif lendo_dados and s:
             linhas_dados.append(s)
 
-    # --- Reconstrucao robusta ancorada por X-check ----------------------
+    # --- Robust reconstruction anchored by X-check ----------------------
     if (firstx is not None and lastx is not None and npoints
             and npoints > 1 and lastx != firstx):
         dx = (lastx - firstx) / (npoints - 1)
@@ -1837,7 +1837,7 @@ def parse_dx(filepath):
             Y[nan_mask] = np.interp(X[nan_mask], X[~nan_mask], Y[~nan_mask])
         return X, Y
 
-    # --- Fallback legado (concatenacao com X encodado) ------------------
+    # --- Legacy fallback (concatenation with encoded X) -----------------
     x_all: List[float] = []
     y_all: List[float] = []
     for s in linhas_dados:
@@ -1859,43 +1859,43 @@ _REGEX_CONC  = re.compile(r"(\d+[.,]?\d*)\s*%")
 
 
 def parse_spectrum(filepath):
-    """Parser ASCII generico para arquivos .spectrum/.txt/.csv com x,y por
-    linha. Tolera cabecalho, separadores variaveis (espaco/tab/virgula/;)
-    e decimal-virgula. Retorna (x, y) como ndarrays.
+    """Generic ASCII parser for .spectrum/.txt/.csv files with x,y per line.
+    Tolerates headers, variable separators (space/tab/comma/;) and
+    decimal comma. Returns (x, y) as ndarrays.
 
-    Detecta arquivos binarios conhecidos (Bomem MB, PerkinElmer, Bruker OPUS)
-    e emite mensagem com instrucao de re-exportar como JCAMP-DX."""
+    Detects known binary formats (Bomem MB, PerkinElmer, Bruker OPUS)
+    and emits a message with instructions to re-export as JCAMP-DX."""
     with open(filepath, "rb") as f:
         head = f.read(256)
 
-    # Detecta formato Bomem (ABB Horizon MB) - UTF-16-LE "Bomem File"
+    # Detect Bomem format (ABB Horizon MB) - UTF-16-LE "Bomem File"
     try:
         head_text = head.decode("utf-16-le", errors="ignore")
         if "Bomem" in head_text or "Horizon" in head_text:
             raise ValueError(
-                f"Formato detectado: ABB Bomem Horizon MB (.spectrum binario).\n"
-                f"  Arquivo: {os.path.basename(filepath)}\n"
-                f"  ESTE PARSER NAO LE BINARIOS PROPRIETARIOS por seguranca\n"
-                f"  cientifica. Para usar com este pipeline:\n"
-                f"    1. Abra os espectros no Bomem Horizon software\n"
-                f"    2. File -> Export -> JCAMP-DX (.dx) ou ASCII (.txt)\n"
-                f"    3. Aponte cfg.pasta_entrada para a nova pasta exportada\n"
-                f"  O parser ja suporta .dx e .txt automaticamente.")
+                f"Detected format: ABB Bomem Horizon MB (.spectrum binary).\n"
+                f"  File: {os.path.basename(filepath)}\n"
+                f"  THIS PARSER DOES NOT READ PROPRIETARY BINARIES for\n"
+                f"  scientific integrity. To use with this pipeline:\n"
+                f"    1. Open the spectra in Bomem Horizon software\n"
+                f"    2. File -> Export -> JCAMP-DX (.dx) or ASCII (.txt)\n"
+                f"    3. Point cfg.pasta_entrada to the newly exported folder\n"
+                f"  The parser already supports .dx and .txt automatically.")
     except UnicodeDecodeError:
         pass
 
-    # Detecta PerkinElmer .sp / Bruker OPUS
+    # Detect PerkinElmer .sp / Bruker OPUS
     if head[:4] == b"PEPE" or head[:4] == b"\x00\x00\x00\x00" and b"OPUS" in head:
         raise ValueError(
-            f"Formato binario proprietario detectado: {os.path.basename(filepath)}.\n"
-            f"  -> exporte como JCAMP-DX (.dx) ou ASCII (.txt) pelo software original.")
+            f"Proprietary binary format detected: {os.path.basename(filepath)}.\n"
+            f"  -> export as JCAMP-DX (.dx) or ASCII (.txt) from the original software.")
 
     n_bad = sum(1 for b in head[:64] if b < 9 or (13 < b < 32) or b > 126)
     if n_bad > 64 * 0.2:
         raise ValueError(
-            f"Arquivo binario nao reconhecido: {os.path.basename(filepath)}\n"
-            f"  -> exporte como JCAMP-DX (.dx) ou ASCII (.txt) pelo software\n"
-            f"     do instrumento (Bomem/PerkinElmer/Bruker/etc).")
+            f"Unrecognized binary file: {os.path.basename(filepath)}\n"
+            f"  -> export as JCAMP-DX (.dx) or ASCII (.txt) from the\n"
+            f"     instrument software (Bomem/PerkinElmer/Bruker/etc).")
 
     x_list: List[float] = []
     y_list: List[float] = []
@@ -1914,7 +1914,7 @@ def parse_spectrum(filepath):
 
 
 def _extrair_conc_filename(nome: str) -> Optional[float]:
-    """Extrai a primeira ocorrencia de N,NN% no nome do arquivo."""
+    """Extracts the first occurrence of N,NN% from the filename."""
     m = _REGEX_CONC.search(nome)
     if not m:
         return None
@@ -1926,7 +1926,7 @@ def _extrair_conc_filename(nome: str) -> Optional[float]:
 
 def _listar_arquivos_espectro(pasta: str
                                 ) -> Tuple[List[str], Optional[str]]:
-    """Procura arquivos espectrais por extensao na pasta. Retorna (lista, ext)."""
+    """Searches for spectral files by extension in the folder. Returns (list, ext)."""
     extensoes = [".dx", ".spectrum", ".txt", ".csv"]
     for ext in extensoes:
         candidatos = sorted(glob.glob(os.path.join(pasta, f"*{ext}")))
@@ -1936,7 +1936,7 @@ def _listar_arquivos_espectro(pasta: str
 
 
 def _detectar_subpastas_classe(raiz: str) -> List[str]:
-    """Retorna subpastas que contem >=1 arquivo .dx/.spectrum/.txt/.csv."""
+    """Returns subfolders that contain >=1 .dx/.spectrum/.txt/.csv file."""
     if not os.path.isdir(raiz):
         return []
     out: List[str] = []
@@ -1955,25 +1955,25 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                               Optional[np.ndarray], Optional[np.ndarray],
                               Optional[pd.DataFrame]]:
-    """Carrega espectros, com auto-deteccao de estrutura:
+    """Loads spectra with auto-detection of folder structure:
 
-        (A) pasta-raiz com subpastas (cada subpasta = 1 especie/classe)
-            -> recursivo via _detectar_subpastas_classe
-        (B) pasta unica com arquivos .dx/.spectrum/.txt/.csv
-            -> modo legado (parte_classe)
+        (A) root folder with subfolders (each subfolder = 1 species/class)
+            -> recursive via _detectar_subpastas_classe
+        (B) single folder with .dx/.spectrum/.txt/.csv files
+            -> legacy mode (parte_classe)
 
-    Quando usar_parse_title=True e o arquivo for .dx, extrai ##TITLE= e
-    usa parse_title() para metadados ricos (especie, adulterante, teor,
-    triplicata, mae_id). Caso contrario, usa o nome do arquivo (fallback).
+    When usar_parse_title=True and the file is .dx, extracts ##TITLE= and
+    uses parse_title() for rich metadata (species, adulterant, content,
+    replicate, mae_id). Otherwise, uses the filename (fallback).
 
-    Retorna: (wavenumbers, X, rotulos, conc, mae_id, metadados_df).
-        - mae_id   : ndarray de strings ou None se nao disponivel
-        - metadados_df: pd.DataFrame com todos os campos parseados
+    Returns: (wavenumbers, X, rotulos, conc, mae_id, metadados_df).
+        - mae_id      : ndarray of strings or None if not available
+        - metadados_df: pd.DataFrame with all parsed fields
     """
     subpastas = _detectar_subpastas_classe(pasta)
     if subpastas:
-        print(f"[INFO] Estrutura multi-pasta detectada: {len(subpastas)} "
-              f"subpastas em {pasta}")
+        print(f"[INFO] Multi-folder structure detected: {len(subpastas)} "
+              f"subfolders in {pasta}")
         arquivos: List[Tuple[str, str]] = []   # (caminho, nome_subpasta)
         for sp in subpastas:
             arqs, _ = _listar_arquivos_espectro(sp)
@@ -1982,18 +1982,18 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
     else:
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
-                f"Caminho NAO existe: {pasta}\n"
-                f"  -> verifique cfg.pasta_entrada ou use cfg.modo='sintetico'.")
+                f"Path does NOT exist: {pasta}\n"
+                f"  -> check cfg.pasta_entrada or use cfg.modo='sintetico'.")
         arqs, ext_usada = _listar_arquivos_espectro(pasta)
         if not arqs:
             raise FileNotFoundError(
-                f"Pasta existe mas nao contem espectros conhecidos.\n"
-                f"  Pasta: {pasta}\n"
-                f"  Conteudo (ate 10 itens): {os.listdir(pasta)[:10]}")
+                f"Folder exists but contains no known spectral files.\n"
+                f"  Folder: {pasta}\n"
+                f"  Contents (up to 10 items): {os.listdir(pasta)[:10]}")
         arquivos = [(a, "") for a in arqs]
 
     parser = parse_dx if ext_usada == ".dx" else parse_spectrum
-    print(f"[INFO] {len(arquivos)} arquivos {ext_usada} encontrados "
+    print(f"[INFO] {len(arquivos)} {ext_usada} files found "
           f"(parser={parser.__name__})")
 
     pode_parse_title = usar_parse_title and ext_usada == ".dx"
@@ -2012,10 +2012,10 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
             x, y = parser(arq)
         except Exception as e:
             n_falhos += 1
-            print(f"  [ERRO] {os.path.basename(arq)}: {e}")
+            print(f"  [ERROR] {os.path.basename(arq)}: {e}")
             continue
         if len(x) == 0:
-            print(f"  [AVISO] {os.path.basename(arq)} sem dados — ignorado")
+            print(f"  [WARNING] {os.path.basename(arq)} has no data — skipped")
             continue
 
         nome_arq = os.path.splitext(os.path.basename(arq))[0]
@@ -2037,9 +2037,9 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
             meta["arquivo"]   = os.path.basename(arq)
             meta["subpasta"]  = subpasta_nome
         else:
-            # Fallback: tenta extrair COD do prefixo do filename e mapear
-            # para o nome canonico (evita classe duplicada por acento:
-            # subpasta 'Copaiba' vs CODIGO_ESPECIE['COP']='Copaíba').
+            # Fallback: try to extract COD from filename prefix and map
+            # to canonical name (avoids duplicate class due to accent:
+            # subfolder 'Copaiba' vs CODIGO_ESPECIE['COP']='Copaíba').
             m_cod = re.match(r"^([A-Z]{2,4})[-_]", nome_arq)
             cod_fb = m_cod.group(1).upper() if m_cod else None
             if cod_fb and cod_fb in CODIGO_ESPECIE:
@@ -2071,22 +2071,22 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
 
     if not espectros:
         raise ValueError(
-            f"Nenhum espectro valido carregado. ({n_falhos} arquivos com erro)")
+            f"No valid spectra loaded. ({n_falhos} files with errors)")
     if n_falhos > 0:
-        print(f"[AVISO] {n_falhos} arquivos com erro de parsing — ignorados.")
+        print(f"[WARNING] {n_falhos} files with parsing errors — skipped.")
     if pode_parse_title:
         if n_title_falhos > 0:
-            print(f"[AVISO] {n_title_falhos} arquivos com ##TITLE= "
-                  f"nao-conforme — usando fallback (nome/subpasta).")
+            print(f"[WARNING] {n_title_falhos} files with non-conforming ##TITLE= "
+                  f"— using fallback (name/subfolder).")
         if cods_desconhecidos:
-            print(f"[ATENCAO] CODs nao mapeados em CODIGO_ESPECIE: "
+            print(f"[CAUTION] CODs not mapped in CODIGO_ESPECIE: "
                   f"{sorted(cods_desconhecidos)}")
 
-    # --- Deteccao de faixa de aquisicao dominante -----------------------
-    # Datasets reais podem misturar faixas espectrais (e.g. NIR completo
-    # [0,15797] 8192pts vs faixa estreita [300,4000]). Misturar e
-    # cientificamente invalido. Detecta a faixa dominante (moda do xmax
-    # arredondado a 100 cm-1) e DESCARTA os incompativeis com relatorio.
+    # --- Detection of dominant acquisition range ------------------------
+    # Real datasets may mix spectral ranges (e.g. full NIR
+    # [0,15797] 8192pts vs narrow range [300,4000]). Mixing is
+    # scientifically invalid. Detects the dominant range (mode of xmax
+    # rounded to 100 cm-1) and DISCARDS incompatible files with a report.
     maxes = np.array([float(e[0].max()) for e in espectros])
     chave_faixa = np.round(maxes / 100.0) * 100.0
     valores, contagens = np.unique(chave_faixa, return_counts=True)
@@ -2095,12 +2095,12 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
     n_drop = int((~compat).sum())
 
     if n_drop > 0:
-        print(f"[ATENCAO] Faixas espectrais heterogeneas detectadas. "
-              f"Faixa dominante: xmax~{faixa_dominante:.0f} cm-1 "
-              f"({int(compat.sum())} arquivos).")
-        print(f"          DESCARTANDO {n_drop} arquivos de faixa "
-              f"incompativel (nao comparaveis na mesma janela espectral):")
-        # Relatorio por especie dos descartados
+        print(f"[CAUTION] Heterogeneous spectral ranges detected. "
+              f"Dominant range: xmax~{faixa_dominante:.0f} cm-1 "
+              f"({int(compat.sum())} files).")
+        print(f"          DISCARDING {n_drop} files with "
+              f"incompatible range (not comparable in the same spectral window):")
+        # Report by species for discarded files
         from collections import Counter
         drop_especies = Counter(
             meta_rows[i].get("especie", "?")
@@ -2111,20 +2111,20 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
                          if not compat[i]
                          and meta_rows[i].get("especie") == esp][:1]
             print(f"            {esp}: {n} arquivos (ex: {exemplos[0] if exemplos else '?'})")
-        # Filtra todas as listas paralelas
+        # Filter all parallel lists
         keep = [i for i in range(len(espectros)) if compat[i]]
         espectros = [espectros[i] for i in keep]
         rotulos   = [rotulos[i]   for i in keep]
         concs     = [concs[i]     for i in keep]
         mae_ids   = [mae_ids[i]   for i in keep]
         meta_rows = [meta_rows[i] for i in keep]
-        print(f"          Restam {len(espectros)} arquivos na faixa "
-              f"dominante.")
+        print(f"          {len(espectros)} files remain in the "
+              f"dominant range.")
 
     if not espectros:
-        raise ValueError("Nenhum espectro restante apos filtro de faixa.")
+        raise ValueError("No spectra remaining after range filter.")
 
-    # Grade comum por interpolacao (agora dentro da faixa dominante)
+    # Common grid by interpolation (now within the dominant range)
     xmin  = max(e[0].min() for e in espectros)
     xmax  = min(e[0].max() for e in espectros)
     n_pts = min(2000, min(len(e[0]) for e in espectros))
@@ -2134,19 +2134,19 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
         idx = np.argsort(x)
         X_raw.append(np.interp(grade, x[idx], y[idx]))
 
-    # Concentracoes (puros = 0% por convencao)
+    # Concentrations (pure samples = 0% by convention)
     if any(c is not None for c in concs):
         conc_arr: Optional[np.ndarray] = np.array(
             [c if c is not None else 0.0 for c in concs], dtype=float)
         n_com_conc = sum(1 for c in concs if c is not None)
-        print(f"[INFO] Teores extraidos: {n_com_conc}/{len(concs)} "
-              f"(puros tratados como 0%).")
+        print(f"[INFO] Concentrations extracted: {n_com_conc}/{len(concs)} "
+              f"(pure samples treated as 0%).")
     else:
         conc_arr = None
 
-    # mae_id array. Para arquivos sem parse valido, atribui ID unico
-    # (filename) — vira "grupo de 1", isolando-os sem desativar todo o
-    # GroupKFold do dataset.
+    # mae_id array. For files without valid parse, assigns unique ID
+    # (filename) — becomes a "group of 1", isolating them without
+    # disabling the entire dataset's GroupKFold.
     n_com_mae = sum(1 for m in mae_ids if m is not None)
     if n_com_mae == 0:
         mae_arr: Optional[np.ndarray] = None
@@ -2161,9 +2161,9 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
                 n_orfaos += 1
         mae_arr = np.array(mae_final, dtype=str)
         n_grupos = int(len(np.unique(mae_arr)))
-        msg_orfaos = f", {n_orfaos} orfaos isolados" if n_orfaos > 0 else ""
-        print(f"[INFO] mae_id: {n_com_mae}/{len(mae_ids)} amostras parseadas, "
-              f"{n_grupos} grupos unicos{msg_orfaos}.")
+        msg_orfaos = f", {n_orfaos} isolated orphans" if n_orfaos > 0 else ""
+        print(f"[INFO] mae_id: {n_com_mae}/{len(mae_ids)} samples parsed, "
+              f"{n_grupos} unique groups{msg_orfaos}.")
 
     metadados_df = pd.DataFrame(meta_rows)
 
@@ -2177,9 +2177,9 @@ def carregar_dados(cfg: Config
                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                                 Optional[np.ndarray], Optional[np.ndarray],
                                 Optional[pd.DataFrame]]:
-    """Loader unificado. Retorna 6-tupla:
+    """Unified data loader. Returns 6-tuple:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
-    mae_id e metadados_df podem ser None em modo 'sintetico'/'csv'."""
+    mae_id and metadados_df may be None in 'sintetico'/'csv' mode."""
     if cfg.modo == "sintetico":
         wn, X, rot, conc = gerar_dados_sinteticos(cfg)
         return wn, X, rot, conc, None, None
@@ -2191,7 +2191,7 @@ def carregar_dados(cfg: Config
         return carregar_dx(cfg.pasta_entrada, cfg.parte_classe,
                             cfg.extrair_conc_filename,
                             cfg.usar_parse_title)
-    raise ValueError(f"MODO desconhecido: '{cfg.modo}'.")
+    raise ValueError(f"Unknown MODE: '{cfg.modo}'.")
 
 
 # =========================================================================
@@ -2201,9 +2201,9 @@ def carregar_dados(cfg: Config
 def elipse_t2(ax, x, y, color, lw=1.4, alpha=0.85,
               max_excentricidade: float = 50.0,
               limite_dispersao: Optional[Tuple[float, float]] = None):
-    """Hotelling T2 95% (chi2_{2,0.95}). Sem preenchimento. Retorna False
-    em caso degenerado: <4 pontos, autovalor minimo nulo, excentricidade
-    excessiva ou elipse maior que o proprio range dos dados."""
+    """Hotelling T2 95% ellipse (chi2_{2,0.95}). No fill. Returns False
+    in degenerate cases: <4 points, zero minimum eigenvalue, excessive
+    eccentricity, or ellipse larger than the data range itself."""
     if len(x) < 4:
         return False
     cov = np.cov(x, y)
@@ -2228,7 +2228,7 @@ def elipse_t2(ax, x, y, color, lw=1.4, alpha=0.85,
 
 
 def convex_hull_contorno(ax, x, y, color, lw=1.4, alpha=0.85):
-    """Convex hull (fallback quando n_per_class < 4 para elipse)."""
+    """Convex hull (fallback when n_per_class < 4 for ellipse)."""
     pts = np.column_stack([x, y])
     if len(pts) < 3:
         return False
@@ -2246,7 +2246,7 @@ def convex_hull_contorno(ax, x, y, color, lw=1.4, alpha=0.85):
 
 def parametros_scatter_adaptativos(n_total: int, n_classes: int
                                     ) -> Tuple[float, float, float]:
-    """Tamanho do marker, alpha e largura da borda em funcao da densidade."""
+    """Marker size, alpha and edge width as a function of point density."""
     n_pc = n_total / max(n_classes, 1)
     if n_pc < 12:
         return 60.0, 0.92, 0.6
@@ -2260,9 +2260,9 @@ def parametros_scatter_adaptativos(n_total: int, n_classes: int
 
 
 def _ticks_x_inteiros(ax, valores, limiar: int = 15, nbins: int = 10):
-    """Evita ticks sobrepostos no eixo X. Se ha mais de `limiar` valores,
-    usa MaxNLocator (passos inteiros, ~nbins divisoes). Caso contrario
-    mostra todos os valores. Usado em graficos de selecao de LVs."""
+    """Avoids overlapping ticks on the X axis. If there are more than
+    `limiar` values, uses MaxNLocator (integer steps, ~nbins divisions).
+    Otherwise shows all values. Used in LV selection plots."""
     from matplotlib.ticker import MaxNLocator
     valores = np.asarray(valores)
     if len(valores) > limiar:
@@ -2274,12 +2274,12 @@ def _ticks_x_inteiros(ax, valores, limiar: int = 15, nbins: int = 10):
 def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
                       titulo, xlabel, ylabel, puros_mask=None,
                       mapa_marcadores=None, desenhar_elipses=True):
-    """Plot scores SEM legenda interna. A legenda deve ser desenhada
-    externamente via _legenda_lateral usando os handles do scatter.
+    """Score plot WITHOUT internal legend. The legend must be drawn
+    externally via _legenda_lateral using the scatter handles.
 
-    Canais de distincao: COR (classe) + FORMA (mapa_marcadores, opcional)
-    + borda inteligente (clara/escura por luminancia). Se puros_mask for
-    dado, puros recebem borda preta (destaque) mantendo a forma da classe."""
+    Distinction channels: COLOR (class) + SHAPE (mapa_marcadores, optional)
+    + smart edge (light/dark by luminance). If puros_mask is given, pure
+    samples get a black edge (highlight) keeping the class shape."""
     rotulos = np.asarray(rotulos, dtype=str)
     scores  = np.asarray(scores,  dtype=float)
 
@@ -2308,7 +2308,7 @@ def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
                            color=c, s=s, marker=mk, edgecolors=edge,
                            linewidths=lw_e, zorder=3, alpha=alpha,
                            label=f"{cls} (n={n_cls})")
-            # Puros: mesma forma/cor, borda preta espessa = destaque
+            # Pure samples: same shape/color, thick black edge = highlight
             if idx_puro.any():
                 ax.scatter(scores[idx_puro, 0], scores[idx_puro, 1],
                            color=c, s=s * 1.15, marker=mk,
@@ -2343,9 +2343,9 @@ def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
     ax.set_axisbelow(True)
 
 
-def _legenda_lateral(ax_leg, ax_dados, titulo: str = "Classe",
+def _legenda_lateral(ax_leg, ax_dados, titulo: str = "Class",
                       max_col_alta: int = 18):
-    """Desenha legenda externa num axes dedicado, sem ocupar area de dados."""
+    """Draws external legend in a dedicated axes, without occupying the data area."""
     ax_leg.axis("off")
     handles, labels = ax_dados.get_legend_handles_labels()
     ncol = 1 if len(labels) <= max_col_alta else 2
@@ -2360,7 +2360,7 @@ def _legenda_lateral(ax_leg, ax_dados, titulo: str = "Classe",
 # =========================================================================
 
 def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
-    """Selecao de LVs + metricas de CV por LV."""
+    """LV selection + CV metrics per LV."""
     n_max = len(erros_rmsecv)
     lvs = np.arange(1, n_max + 1)
 
@@ -2370,10 +2370,10 @@ def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
     ax = axes[0]
     ax.plot(lvs, erros_rmsecv, "o-", color=cor(0), ms=5.5, lw=1.6)
     ax.axvline(n_opt, color=cor(3), ls="--", lw=1.3,
-               label=f"Otimo: {n_opt} LVs")
-    ax.set_xlabel("Numero de variaveis latentes")
+               label=f"Optimal: {n_opt} LVs")
+    ax.set_xlabel("Number of latent variables")
     ax.set_ylabel("RMSECV")
-    ax.set_title("(a) Selecao de LVs", loc="left")
+    ax.set_title("(a) LV selection", loc="left")
     _ticks_x_inteiros(ax, lvs)
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(frameon=False)
@@ -2388,11 +2388,11 @@ def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
     ax.plot(lvs, [m["cohen_kappa"]       for m in metricas_por_lv],
             "d-", color=cor(3), ms=4.5, lw=1.3, label="Cohen's $\\kappa$")
     ax.axvline(n_opt, color="0.55", ls=":", lw=1)
-    ax.set_xlabel("Numero de variaveis latentes")
-    ax.set_ylabel("Metrica (CV)")
+    ax.set_xlabel("Number of latent variables")
+    ax.set_ylabel("Metric (CV)")
     ax.set_ylim(-0.05, 1.05)
     _ticks_x_inteiros(ax, lvs)
-    ax.set_title("(b) Metricas de validacao cruzada", loc="left")
+    ax.set_title("(b) Cross-validation metrics", loc="left")
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", ncol=2, frameon=False)
 
@@ -2400,8 +2400,8 @@ def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
 
 
 def _centroides_pca(X, rotulos, n_pcs):
-    """Centroide por classe no espaco de PCA(n_pcs). Reduz ruido espectral
-    antes do clustering. Retorna (M_centroides, classes)."""
+    """Per-class centroid in the PCA(n_pcs) space. Reduces spectral noise
+    before clustering. Returns (M_centroides, classes)."""
     rotulos = np.asarray(rotulos, dtype=str)
     classes = np.unique(rotulos)
     n_comp = int(min(n_pcs, X.shape[1], X.shape[0]))
@@ -2412,19 +2412,19 @@ def _centroides_pca(X, rotulos, n_pcs):
 
 def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
                          metodo="ward"):
-    """HCA dendrograma (Ward, euclidiana) sobre CENTROIDES por especie no
-    espaco de PCA(hca_n_pcs componentes) — N1 obrigatorio.
+    """HCA dendrogram (Ward, Euclidean) on CENTROIDS per species in
+    the PCA(hca_n_pcs components) space — N1 required.
 
-    Eixos (V3): orientacao TOP — especies no eixo X (inferior, rotulos
-    rotacionados e coloridos por especie); distancia no eixo Y (esquerda).
+    Axes (V3): TOP orientation — species on the X axis (bottom, rotated
+    and colored labels per species); distance on the Y axis (left).
 
-    HCA complementa PCA: revela a hierarquia de similaridade espectral
-    entre especies (potenciais confusoes no PLS-DA).
+    HCA complements PCA: reveals the hierarchy of spectral similarity
+    among species (potential confusions in PLS-DA).
     """
     rotulos = np.asarray(rotulos, dtype=str)
     M, classes = _centroides_pca(X_processed, rotulos, cfg.hca_n_pcs)
     if len(M) < 2:
-        print("[AVISO] HCA: <2 grupos, dendrograma pulado.")
+        print("[WARNING] HCA: <2 groups, dendrogram skipped.")
         return
 
     Z = linkage(pdist(M, metric="euclidean"), method=metodo)
@@ -2436,22 +2436,22 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
         color_threshold=0, above_threshold_color="0.55",
         leaf_font_size=10,
     )
-    # Rotulos das especies no eixo X (inferior), coloridos e rotacionados
+    # Species labels on the X axis (bottom), colored and rotated
     mapa_lbl_cor = {str(c): mapa_cores.get(c, "0.4") for c in classes}
     for lbl in ax.get_xmajorticklabels():
         lbl.set_color(mapa_lbl_cor.get(lbl.get_text(), "0.2"))
         lbl.set_fontweight("bold")
         lbl.set_rotation(40)
         lbl.set_horizontalalignment("right")
-    ax.set_ylabel(f"Distancia ({metodo}, euclidiana)")
-    ax.set_xlabel("Especie", labelpad=6)
-    ax.set_title(f"HCA — dendrograma (centroides, PCA {M.shape[1]} comp.)",
+    ax.set_ylabel(f"Distance ({metodo}, Euclidean)")
+    ax.set_xlabel("Species", labelpad=6)
+    ax.set_title(f"HCA — dendrogram (centroids, PCA {M.shape[1]} comp.)",
                   loc="left")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     salvar(fig, "fig_hca_dendrograma", pasta, cfg)
 
-    # Interpretacao automatica dos agrupamentos (2 clusters principais)
+    # Automatic interpretation of main clusters (k=2)
     try:
         from scipy.cluster.hierarchy import fcluster
         grupos = fcluster(Z, t=2, criterion="maxclust")
@@ -2459,7 +2459,7 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
         for g in np.unique(grupos):
             comp[int(g)] = [str(classes[i]) for i in range(len(classes))
                             if grupos[i] == g]
-        print("  [HCA] Agrupamentos principais (k=2):")
+        print("  [HCA] Main clusters (k=2):")
         for g, membros in comp.items():
             print(f"    Cluster {g}: {', '.join(membros)}")
     except Exception:
@@ -2468,9 +2468,9 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
 
 def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
                                   metodo="ward"):
-    """Compara o HCA (centroides em PCA hca_n_pcs) sob varios pre-
-    processamentos espectrais, num painel de dendrogramas. Avalia
-    estabilidade dos agrupamentos e impacto do pre-processamento."""
+    """Compares HCA (centroids in PCA hca_n_pcs) under several spectral
+    preprocessing methods in a dendrogram panel. Evaluates cluster
+    stability and the impact of preprocessing."""
     rotulos = np.asarray(rotulos, dtype=str)
 
     def _snv(X):
@@ -2490,14 +2490,14 @@ def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
         return savgol_filter(X, cfg.sg_window, cfg.sg_polyorder, deriv=d, axis=1)
 
     presets = {
-        "Bruto":         lambda X: X,
+        "Raw":           lambda X: X,
         "SNV":           lambda X: _snv(X),
         "MSC":           lambda X: _msc(X),
-        "SG 1a deriv":   lambda X: _sg(X, 1),
-        "SG 2a deriv":   lambda X: _sg(X, 2),
+        "SG 1st deriv":  lambda X: _sg(X, 1),
+        "SG 2nd deriv":  lambda X: _sg(X, 2),
         "SNV+SG1":       lambda X: _sg(_snv(X), 1),
         "MSC+SG1":       lambda X: _sg(_msc(X), 1),
-        "Normalizacao":  lambda X: X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12),
+        "Normalization": lambda X: X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12),
     }
 
     n = len(presets); ncols = 4; nrows = int(np.ceil(n / ncols))
@@ -2524,26 +2524,26 @@ def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
             for sp in ("top", "right"):
                 ax.spines[sp].set_visible(False)
         except Exception as e:
-            ax.text(0.5, 0.5, f"falhou\n{e}", ha="center", va="center",
+            ax.text(0.5, 0.5, f"failed\n{e}", ha="center", va="center",
                     fontsize=7, transform=ax.transAxes); ax.axis("off")
     for j in range(n, len(axes)):
         axes[j].axis("off")
-    fig.suptitle("HCA por pre-processamento — estabilidade dos agrupamentos",
+    fig.suptitle("HCA by preprocessing — cluster stability",
                   fontsize=11, fontweight="bold", x=0.01, ha="left")
     salvar(fig, "fig_hca_comparacao_pipelines", pasta, cfg)
 
 
 def fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                      puros_mask=None, mapa_marcadores=None):
-    """Figura 1: scores de PCA. Legenda externa (fora da area dos dados).
-    Cor + forma por classe; puros com borda preta (se puros_mask)."""
+    """Figure 1: PCA scores. External legend (outside the data area).
+    Color + shape per class; pure samples with black edge (if puros_mask)."""
     fig = plt.figure(figsize=(8.5, 5.8), constrained_layout=True)
     gs = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.1])
     ax = fig.add_subplot(gs[0])
     ax_leg = fig.add_subplot(gs[1])
     plot_scores_panel(ax, scores_pca[:, :2], rotulos, mapa_cores,
                        var_pca[:2],
-                       titulo="PCA — exploratorio (nao supervisionado)",
+                       titulo="PCA — exploratory (unsupervised)",
                        xlabel="PC1", ylabel="PC2", puros_mask=puros_mask,
                        mapa_marcadores=mapa_marcadores,
                        desenhar_elipses=cfg.mostrar_elipses_grupo)
@@ -2553,11 +2553,11 @@ def fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
 
 def fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
                        puros_mask=None, mapa_marcadores=None):
-    """Figura 2: PLS-DA. Mostra LV1xLV2 e LV2xLV3 (se >=3 LVs).
-    Cor + forma por classe; puros com borda preta (se puros_mask)."""
+    """Figure 2: PLS-DA scores. Shows LV1xLV2 and LV2xLV3 (if >=3 LVs).
+    Color + shape per class; pure samples with black edge (if puros_mask)."""
     n_lv_avail = T_pls.shape[1]
     if n_lv_avail < 2:
-        print("[AVISO] PLS-DA com <2 LVs: scores plot pulado.")
+        print("[WARNING] PLS-DA with <2 LVs: scores plot skipped.")
         return
 
     if n_lv_avail >= 3:
@@ -2613,8 +2613,8 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
     ax2 = fig.add_subplot(gs[1])
     ax_leg = fig.add_subplot(gs[2])
 
-    # Escala log em Y: poucas amostras com T2 ~1000 esmagam o resto na
-    # base. Log distribui e mantem o limite 95% visivel.
+    # Log scale on Y: a few samples with T2 ~1000 compress the rest to
+    # the bottom. Log distributes values and keeps the 95% limit visible.
     for cls in classes_unicas:
         idx = rotulos == cls
         ax1.scatter(np.where(idx)[0], np.clip(T2[idx], 1e-2, None),
@@ -2622,15 +2622,15 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
                     s=s_pt, edgecolors="white", linewidths=lw_pt,
                     label=str(cls), zorder=3, alpha=alpha_pt)
     ax1.axhline(t2_lim, color="0.30", ls="--", lw=1.0,
-                label=f"limite 95% ({t2_lim:.1f})")
+                label=f"95% limit ({t2_lim:.1f})")
     ax1.set_yscale("log")
-    ax1.set_xlabel("Indice da amostra")
+    ax1.set_xlabel("Sample index")
     ax1.set_ylabel("Hotelling T$^2$ (log)")
-    ax1.set_title(f"(a) Hotelling T$^2$ ({n_lv} LVs) — limite 95%",
+    ax1.set_title(f"(a) Hotelling T$^2$ ({n_lv} LVs) — 95% limit",
                    loc="left")
     ax1.grid(axis="y", color="0.94", lw=0.5); ax1.set_axisbelow(True)
 
-    # Painel (b): log-log centraliza a nuvem (estava no canto inferior-esq).
+    # Panel (b): log-log centers the cloud (it was in the lower-left corner).
     for cls in classes_unicas:
         idx = rotulos == cls
         ax2.scatter(np.clip(T2[idx], 1e-2, None), np.clip(Q[idx], 1e-12, None),
@@ -2642,7 +2642,7 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
     ax2.set_xscale("log"); ax2.set_yscale("log")
     ax2.set_xlabel("Hotelling T$^2$ (log)")
     ax2.set_ylabel("Q-residuals / SPE (log)")
-    ax2.set_title("(b) T$^2$ vs Q — deteccao de outliers", loc="left")
+    ax2.set_title("(b) T$^2$ vs Q — outlier detection", loc="left")
     ax2.grid(color="0.94", lw=0.5); ax2.set_axisbelow(True)
 
     _legenda_lateral(ax_leg, ax1)
@@ -2655,15 +2655,15 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
 
 
 def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
-    """Matriz de confusao + metricas por classe (precision, sensitivity,
-    specificity, F1). Tamanho escala com numero de classes."""
+    """Confusion matrix + per-class metrics (precision, sensitivity,
+    specificity, F1). Size scales with number of classes."""
     n_cls = len(classes)
     largura = max(10.5, 5.5 + 0.55 * n_cls)
     altura  = max(4.8, 4.2 + 0.10 * n_cls)
     fig = plt.figure(figsize=(largura, altura), constrained_layout=True)
     gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15])
 
-    # ---- (a) Matriz -----------------------------------------------------
+    # ---- (a) Confusion matrix -------------------------------------------
     ax = fig.add_subplot(gs[0, 0])
     cm_norm = cm_mat.astype(float) / np.maximum(
         cm_mat.sum(axis=1, keepdims=True), 1)
@@ -2683,9 +2683,9 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
     fs_tick = 9 if n_cls <= 8 else 8
     ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=fs_tick)
     ax.set_yticklabels(classes, fontsize=fs_tick)
-    ax.set_xlabel("Predito", labelpad=8)
-    ax.set_ylabel("Real",    labelpad=8)
-    ax.set_title("(a) Matriz de confusao (CV)", loc="left")
+    ax.set_xlabel("Predicted", labelpad=8)
+    ax.set_ylabel("True",      labelpad=8)
+    ax.set_title("(a) Confusion matrix (CV)", loc="left")
 
     ax.set_xticks(np.arange(-0.5, n_cls, 1), minor=True)
     ax.set_yticks(np.arange(-0.5, n_cls, 1), minor=True)
@@ -2694,10 +2694,10 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
     ax.tick_params(which="major", length=0)
 
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("Proporcao por classe real", fontsize=8.5)
+    cbar.set_label("Proportion per true class", fontsize=8.5)
     cbar.ax.tick_params(labelsize=7.5)
 
-    # ---- (b) Metricas por classe ---------------------------------------
+    # ---- (b) Per-class metrics -----------------------------------------
     ax = fig.add_subplot(gs[0, 1])
     prec = precision_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
     rec  = recall_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
@@ -2716,9 +2716,9 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
 
     ax.set_xticks(x)
     ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=fs_tick)
-    ax.set_ylabel("Valor")
+    ax.set_ylabel("Value")
     ax.set_ylim(0, 1.10)
-    ax.set_title("(b) Metricas por classe (one-vs-rest)", loc="left")
+    ax.set_title("(b) Per-class metrics (one-vs-rest)", loc="left")
     ax.grid(axis="y", color="0.92", lw=0.5, zorder=0)
     ax.set_axisbelow(True)
     ax.legend(loc="lower right", ncol=2, fontsize=8, frameon=False)
@@ -2727,7 +2727,7 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
 
 
 def fig4b_metricas_globais(metricas, perm_obs, perm_dist, perm_p, cfg, pasta):
-    """Metricas globais consolidadas + resultado do teste de permutacao."""
+    """Consolidated global metrics + permutation test result."""
     fig, ax = plt.subplots(figsize=(7.5, 3.8), constrained_layout=True)
 
     nomes  = ["Accuracy", "Balanced accuracy", "F1 (macro)",
@@ -2746,8 +2746,8 @@ def fig4b_metricas_globais(metricas, perm_obs, perm_dist, perm_p, cfg, pasta):
 
     ax.set_yticks(pos); ax.set_yticklabels(nomes, fontsize=9.5)
     ax.set_xlim(0, 1.12)
-    ax.set_xlabel("Valor")
-    ax.set_title("Metricas globais — validacao cruzada", loc="left")
+    ax.set_xlabel("Value")
+    ax.set_title("Global metrics — cross-validation", loc="left")
     ax.invert_yaxis()
     ax.grid(axis="x", color="0.92", lw=0.5)
     ax.set_axisbelow(True)
@@ -2761,8 +2761,8 @@ def fig4b_metricas_globais(metricas, perm_obs, perm_dist, perm_p, cfg, pasta):
     salvar(fig, "fig4b_metricas_globais", pasta, cfg)
 
 
-# Atribuicao quimica de bandas FT-NIR para oleos vegetais (M3).
-# Referencias: Workman & Weyer (2012) Practical Guide to Interpretive
+# Chemical band assignments for FT-NIR of vegetable oils (M3).
+# References: Workman & Weyer (2012) Practical Guide to Interpretive
 # Near-IR Spectroscopy; Cen & He (2007) Trends Food Sci Technol 18:72.
 BANDAS_NIR: List[Tuple[float, str]] = [
     (4255, "C-H comb.\n(ac. graxos)"),
@@ -2778,11 +2778,11 @@ BANDAS_NIR: List[Tuple[float, str]] = [
 
 def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0,
                         janela=120.0):
-    """M3: anota bandas quimicas conhecidas nos picos de VIP > limiar.
+    """M3: annotates known chemical bands at VIP peaks > threshold.
 
-    Para cada banda de referencia, se existe um ponto com VIP > limiar
-    dentro de +-janela cm-1, desenha uma anotacao apontando para o pico
-    local. Evita poluir: so anota bandas efetivamente relevantes no modelo.
+    For each reference band, if a point with VIP > threshold exists within
+    +-window cm-1, draws an annotation pointing to the local peak.
+    Avoids clutter: only annotates bands actually relevant to the model.
     """
     wavenumbers = np.asarray(wavenumbers, dtype=float)
     vip = np.asarray(vip, dtype=float)
@@ -2819,17 +2819,17 @@ def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
                color=cor(1), s=12, zorder=3, label="VIP $\\geq$ 1")
     ax.axhline(1.0, color=cor(3), ls="--", lw=1.1, label="VIP = 1")
     _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0)
-    ax.set_xlabel("Numero de onda (cm$^{-1}$)")
+    ax.set_xlabel("Wavenumber (cm$^{-1}$)")
     ax.set_ylabel("VIP score")
-    ax.set_title("(a) VIP scores ao longo do espectro", loc="left")
+    ax.set_title("(a) VIP scores across the spectrum", loc="left")
     ax.invert_xaxis()
-    # V3: y-lim no range REAL (sem comprimir a variacao perto de 1.0) +
-    # caixa de estatisticas para verificar dispersao verdadeira dos VIPs.
+    # V3: y-lim at the REAL range (without compressing variation near 1.0) +
+    # statistics box to check the true dispersion of VIPs.
     vmin, vmax = float(np.min(vip)), float(np.max(vip))
     ax.set_ylim(max(0.0, vmin - 0.05 * (vmax - vmin)), vmax * 1.08)
     ax.text(0.02, 0.97,
             f"min={vmin:.2f}  max={vmax:.2f}\n"
-            f"media={float(np.mean(vip)):.2f}  dp={float(np.std(vip)):.2f}\n"
+            f"mean={float(np.mean(vip)):.2f}  sd={float(np.std(vip)):.2f}\n"
             f"n(VIP$\\geq$1)={int(mask_hi.sum())}/{len(vip)}",
             transform=ax.transAxes, ha="left", va="top", fontsize=7.8,
             color="0.25", bbox=dict(boxstyle="round,pad=0.35", fc="white",
@@ -2849,8 +2849,8 @@ def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
     ax.set_yticks(pos)
     ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
     ax.set_xlabel("VIP score")
-    ax.set_ylabel("Numero de onda (cm$^{-1}$)")
-    ax.set_title(f"(b) Top {top_n} variaveis", loc="left")
+    ax.set_ylabel("Wavenumber (cm$^{-1}$)")
+    ax.set_title(f"(b) Top {top_n} variables", loc="left")
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
 
     salvar(fig, "fig5_vip", pasta, cfg)
@@ -2879,8 +2879,8 @@ def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
         ax_b.fill_between(wavenumbers, m_pp - s_pp, m_pp + s_pp,
                            color=c, alpha=0.15, lw=0)
 
-    ax_a.set_ylabel("Absorbancia")
-    ax_a.set_title("(a) Espectros brutos (media $\\pm$ DP por classe)",
+    ax_a.set_ylabel("Absorbance")
+    ax_a.set_title("(a) Raw spectra (mean $\\pm$ SD per class)",
                     loc="left")
     ax_a.grid(axis="y", color="0.94", lw=0.5); ax_a.set_axisbelow(True)
 
@@ -2889,9 +2889,9 @@ def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
     if cfg.aplicar_sg:
         descricao.append(f"SG(w={cfg.sg_window},p={cfg.sg_polyorder},d={cfg.sg_deriv})")
     if cfg.aplicar_mc:  descricao.append("mean-centering")
-    ax_b.set_ylabel("Sinal pre-processado")
-    ax_b.set_xlabel("Numero de onda (cm$^{-1}$)")
-    ax_b.set_title(f"(b) Apos {' → '.join(descricao)}", loc="left")
+    ax_b.set_ylabel("Preprocessed signal")
+    ax_b.set_xlabel("Wavenumber (cm$^{-1}$)")
+    ax_b.set_title(f"(b) After {' → '.join(descricao)}", loc="left")
     ax_b.invert_xaxis()
     ax_b.axhline(0, color="0.75", lw=0.5, ls=":")
     ax_b.grid(axis="y", color="0.94", lw=0.5); ax_b.set_axisbelow(True)
@@ -2902,7 +2902,7 @@ def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
 
 
 def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
-    """Wold-style permutation plot: R2Y e Q2Y vs similaridade do Y permutado."""
+    """Wold-style permutation plot: R2Y and Q2Y vs similarity of permuted Y."""
     sims = np.asarray(cast(Any, wold["sims"]))
     r2s  = np.asarray(cast(Any, wold["r2s"]))
     q2s  = np.asarray(cast(Any, wold["q2s"]))
@@ -2920,51 +2920,51 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
 
     ax = axes[0]
     ax.scatter(sims, r2s, color=cor(0), s=28, alpha=0.55,
-                edgecolors="white", linewidths=0.4, label="Permutacoes")
+                edgecolors="white", linewidths=0.4, label="Permutations")
     ax.scatter([1.0], [r2_obs], color=cor(3), s=90, marker="D",
                 edgecolors="black", linewidths=0.8, zorder=5,
-                label="Observado")
+                label="Observed")
     if np.isfinite(slope_r2):
         ax.plot(x_line, slope_r2 * x_line + int_r2, color="0.35", lw=1.2,
-                 ls="--", label=f"Reta (intercepto = {int_r2:.3f})")
+                 ls="--", label=f"Line (intercept = {int_r2:.3f})")
     ax.axhline(0.40, color=cor(1), lw=0.9, ls=":",
-                label="Limiar R2Y = 0.40")
+                label="Threshold R2Y = 0.40")
     cor_status = cor(2) if int_r2 < 0.40 else cor(3)
-    status = "VALIDO" if int_r2 < 0.40 else "FALHA"
+    status = "VALID" if int_r2 < 0.40 else "FAILED"
     ax.text(0.02, 0.97, f"R2Y intercept: {status}",
              transform=ax.transAxes, ha="left", va="top",
              fontsize=9, fontweight="bold", color=cor_status,
              bbox=dict(boxstyle="round,pad=0.35", fc="white",
                         ec=cor_status, lw=0.8))
-    ax.set_xlabel("Similaridade (Y permutado, Y original)")
-    ax.set_ylabel("R$^2$Y (ajuste training)")
+    ax.set_xlabel("Similarity (permuted Y, original Y)")
+    ax.set_ylabel("R$^2$Y (training fit)")
     ax.set_xlim(-0.05, 1.08); ax.set_ylim(-0.5, 1.08)
-    ax.set_title("(a) Wold — R$^2$Y vs permutacao", loc="left")
+    ax.set_title("(a) Wold — R$^2$Y vs permutation", loc="left")
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
 
     ax = axes[1]
     ax.scatter(sims, q2s, color=cor(2), s=28, alpha=0.55,
-                edgecolors="white", linewidths=0.4, label="Permutacoes")
+                edgecolors="white", linewidths=0.4, label="Permutations")
     ax.scatter([1.0], [q2_obs], color=cor(3), s=90, marker="D",
                 edgecolors="black", linewidths=0.8, zorder=5,
-                label="Observado")
+                label="Observed")
     if np.isfinite(slope_q2):
         ax.plot(x_line, slope_q2 * x_line + int_q2, color="0.35", lw=1.2,
-                 ls="--", label=f"Reta (intercepto = {int_q2:.3f})")
+                 ls="--", label=f"Line (intercept = {int_q2:.3f})")
     ax.axhline(0.05, color=cor(1), lw=0.9, ls=":",
-                label="Limiar Q2Y = 0.05")
+                label="Threshold Q2Y = 0.05")
     cor_status = cor(2) if int_q2 < 0.05 else cor(3)
-    status = "VALIDO" if int_q2 < 0.05 else "FALHA"
+    status = "VALID" if int_q2 < 0.05 else "FAILED"
     ax.text(0.02, 0.97, f"Q2Y intercept: {status}",
              transform=ax.transAxes, ha="left", va="top",
              fontsize=9, fontweight="bold", color=cor_status,
              bbox=dict(boxstyle="round,pad=0.35", fc="white",
                         ec=cor_status, lw=0.8))
-    ax.set_xlabel("Similaridade (Y permutado, Y original)")
+    ax.set_xlabel("Similarity (permuted Y, original Y)")
     ax.set_ylabel("Q$^2$Y (CV)")
     ax.set_xlim(-0.05, 1.08); ax.set_ylim(-0.6, 1.08)
-    ax.set_title("(b) Wold — Q$^2$Y vs permutacao", loc="left")
+    ax.set_title("(b) Wold — Q$^2$Y vs permutation", loc="left")
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
 
@@ -2975,12 +2975,12 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
                        metricas_holdout: Dict[str, float],
                        cm_holdout: np.ndarray, classes: np.ndarray,
                        n_holdout: int, cfg, pasta):
-    """Confusao no holdout + comparacao CV vs holdout (deteccao de overfit)."""
+    """Holdout confusion matrix + CV vs holdout comparison (overfitting check)."""
     n_cls = len(classes)
     fig = plt.figure(figsize=(13.0, 4.8), constrained_layout=True)
     gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.1])
 
-    # (a) Matriz de confusao no holdout
+    # (a) Holdout confusion matrix
     ax = fig.add_subplot(gs[0])
     cm_norm = cm_holdout.astype(float) / np.maximum(
         cm_holdout.sum(axis=1, keepdims=True), 1)
@@ -2995,8 +2995,8 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
     ax.set_xticks(range(n_cls)); ax.set_yticks(range(n_cls))
     ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=9)
     ax.set_yticklabels(classes, fontsize=9)
-    ax.set_xlabel("Predito", labelpad=8); ax.set_ylabel("Real", labelpad=8)
-    ax.set_title(f"(a) Matriz de confusao — holdout ({n_holdout} amostras)",
+    ax.set_xlabel("Predicted", labelpad=8); ax.set_ylabel("True", labelpad=8)
+    ax.set_title(f"(a) Confusion matrix — holdout ({n_holdout} samples)",
                   loc="left")
     ax.set_xticks(np.arange(-0.5, n_cls, 1), minor=True)
     ax.set_yticks(np.arange(-0.5, n_cls, 1), minor=True)
@@ -3004,10 +3004,10 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
     ax.tick_params(which="minor", length=0)
     ax.tick_params(which="major", length=0)
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("Proporcao por classe real", fontsize=8.5)
+    cbar.set_label("Proportion per true class", fontsize=8.5)
     cbar.ax.tick_params(labelsize=7.5)
 
-    # (b) CV vs Holdout
+    # (b) CV vs Holdout comparison
     ax = fig.add_subplot(gs[1])
     nomes  = ["Accuracy", "Balanced acc.", "F1 (macro)", "Cohen's $\\kappa$"]
     chaves = ["accuracy", "balanced_accuracy", "f1_macro", "cohen_kappa"]
@@ -3025,8 +3025,8 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
                 va="bottom", fontsize=8)
     ax.set_xticks(x); ax.set_xticklabels(nomes, fontsize=9)
     ax.set_ylim(0, 1.15)
-    ax.set_ylabel("Valor")
-    ax.set_title("(b) Validacao cruzada vs holdout (overfitting check)",
+    ax.set_ylabel("Value")
+    ax.set_title("(b) Cross-validation vs holdout (overfitting check)",
                   loc="left")
     ax.legend(loc="lower right", fontsize=9, frameon=False)
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
@@ -3035,7 +3035,7 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
 
 
 def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
-    """Comparacao entre pipelines de pre-processamento (Q2, Acc, BalAcc)."""
+    """Comparison of preprocessing pipelines (Q2, Acc, BalAcc)."""
     nomes = list(resultados.keys())
     accs = [resultados[n]["accuracy"]     for n in nomes]
     bals = [resultados[n]["balanced_acc"] for n in nomes]
@@ -3061,8 +3061,8 @@ def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
     ax.set_yticks(pos)
     ax.set_yticklabels(nomes, fontsize=9.5)
     ax.set_xlim(-0.05, 1.12)
-    ax.set_xlabel("Valor (validacao cruzada)")
-    ax.set_title("Comparacao de pipelines de pre-processamento",
+    ax.set_xlabel("Value (cross-validation)")
+    ax.set_title("Comparison of preprocessing pipelines",
                   loc="left")
     ax.axvline(0, color="0.7", lw=0.5)
     ax.invert_yaxis()
@@ -3074,7 +3074,7 @@ def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
 
 def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
                             top_n, cfg, pasta):
-    """Bootstrap estratificado do VIP: media, CI95 e frequencia de selecao."""
+    """Stratified VIP bootstrap: mean, CI95 and selection frequency."""
     vip_mean = np.asarray(cast(Any, boot["mean"]))
     ci_lo    = np.asarray(cast(Any, boot["ci95_low"]))
     ci_hi    = np.asarray(cast(Any, boot["ci95_high"]))
@@ -3087,13 +3087,13 @@ def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
     ax = axes[0]
     ax.fill_between(wavenumbers, ci_lo, ci_hi,
                      color=cor(0), alpha=0.22, lw=0, zorder=2,
-                     label="IC 95% (bootstrap)")
+                     label="95% CI (bootstrap)")
     ax.plot(wavenumbers, vip_mean, color="0.25", lw=1.0, alpha=0.95, zorder=3)
     ax.axhline(1.0, color=cor(3), ls="--", lw=1.0, label="VIP = 1")
     _anotar_bandas_vip(ax, wavenumbers, vip_mean, limiar=2.0)
-    ax.set_xlabel("Numero de onda (cm$^{-1}$)")
-    ax.set_ylabel("VIP (media bootstrap estratificado)")
-    ax.set_title("(a) VIP medio com IC 95%", loc="left")
+    ax.set_xlabel("Wavenumber (cm$^{-1}$)")
+    ax.set_ylabel("VIP (stratified bootstrap mean)")
+    ax.set_title("(a) Mean VIP with 95% CI", loc="left")
     ax.invert_xaxis()
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="upper right", fontsize=8.5, frameon=False)
@@ -3114,9 +3114,9 @@ def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
     ax.axvline(1.0, color=cor(3), ls="--", lw=1.0)
     ax.set_yticks(pos)
     ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
-    ax.set_xlabel("VIP score (com IC 95%)")
-    ax.set_ylabel("Numero de onda (cm$^{-1}$)")
-    ax.set_title(f"(b) Top {top_n} variaveis", loc="left")
+    ax.set_xlabel("VIP score (with 95% CI)")
+    ax.set_ylabel("Wavenumber (cm$^{-1}$)")
+    ax.set_title(f"(b) Top {top_n} variables", loc="left")
     ax.grid(axis="x", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
     ax = axes[2]
@@ -3126,9 +3126,9 @@ def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
     ax.axvline(0.5, color="0.55", ls=":", lw=0.9)
     ax.set_yticks(pos)
     ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
-    ax.set_xlabel("Frequencia de selecao (VIP $\\geq$ 1)")
+    ax.set_xlabel("Selection frequency (VIP $\\geq$ 1)")
     ax.set_xlim(0, 1.05)
-    ax.set_title("(c) Estabilidade da selecao", loc="left")
+    ax.set_title("(c) Selection stability", loc="left")
     ax.grid(axis="x", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
     salvar(fig, "fig5b_vip_bootstrap", pasta, cfg)
@@ -3144,11 +3144,11 @@ def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     ax = axes[0]
     ax.plot(lvs, erros_reg, "o-", color=cor(0), ms=5, lw=1.4)
     ax.axvline(n_opt_reg, color=cor(1), ls="--", lw=1.2,
-               label=f"Otimo: {n_opt_reg} LVs")
-    ax.set_xlabel("Numero de variaveis latentes")
+               label=f"Optimal: {n_opt_reg} LVs")
+    ax.set_xlabel("Number of latent variables")
     ax.set_ylabel("RMSECV")
     _ticks_x_inteiros(ax, lvs)
-    ax.set_title("(a) Selecao de LVs", loc="left")
+    ax.set_title("(a) LV selection", loc="left")
     ax.legend()
 
     Yc_f = np.asarray(Yc).flatten(); Yc_h = np.asarray(Yc_hat).flatten()
@@ -3158,16 +3158,16 @@ def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
 
     ax = axes[1]
     ax.scatter(Yc_f, Yc_h, color=cor(0), s=36, edgecolors="white",
-               linewidths=0.5, label="Calibracao", zorder=3, alpha=0.9)
+               linewidths=0.5, label="Calibration", zorder=3, alpha=0.9)
     ax.scatter(Yv_f, Yv_h, color=cor(1), s=44, marker="^",
                edgecolors="white", linewidths=0.5,
-               label="Validacao", zorder=3, alpha=0.9)
+               label="Validation", zorder=3, alpha=0.9)
     ax.plot(lim, lim, "k--", lw=0.8, label="y = x")
-    ax.set_xlabel("Valor de referencia")
-    ax.set_ylabel("Valor predito")
+    ax.set_xlabel("Reference value")
+    ax.set_ylabel("Predicted value")
     ax.set_xlim(lim); ax.set_ylim(lim)
     ax.set_title(
-        f"(b) Predito vs Real\n"
+        f"(b) Predicted vs Reference\n"
         f"$R^2_{{cal}}$={r2c:.3f}  $R^2_{{val}}$={r2v:.3f}",
         loc="left")
     ax.legend(loc="best")
@@ -3180,34 +3180,33 @@ def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     ax.axhline( rmsep, color=cor(3), lw=0.8, ls=":",
                 label=f"$\\pm$RMSEP ({rmsep:.2f})")
     ax.axhline(-rmsep, color=cor(3), lw=0.8, ls=":")
-    ax.set_xlabel("Valor predito")
-    ax.set_ylabel("Residuo")
-    ax.set_title(f"(c) Residuos — Validacao\nBias = {bias_v:.3f}", loc="left")
+    ax.set_xlabel("Predicted value")
+    ax.set_ylabel("Residual")
+    ax.set_title(f"(c) Residuals — Validation\nBias = {bias_v:.3f}", loc="left")
     ax.legend(loc="best")
 
     salvar(fig, "figS2_pls_regressao", pasta, cfg)
 
 
 # =========================================================================
-#  Figuras Sprint 3
+#  Sprint 3 Figures
 # =========================================================================
 
 def fig_sprint3_sr_vip(vip: np.ndarray, sr: np.ndarray,
                         wavenumbers: np.ndarray, top_n: int,
                         cfg: Config, pasta: str) -> None:
-    """VIP (todos LVs) x SR (1o componente) lado a lado.
+    """VIP (all LVs) vs SR (1st component) side by side.
 
-    Concordancia entre VIP >= 1 e SR alto reforca que a variavel e
-    relevante tanto global (VIP) quanto no componente discriminante
-    principal (SR). Discordancias revelam variaveis importantes apenas
-    em LVs secundarios.
+    Agreement between VIP >= 1 and high SR reinforces that the variable is
+    relevant both globally (VIP) and in the main discriminant component (SR).
+    Disagreements reveal variables important only in secondary LVs.
 
-    Referencia: Rajalahti et al. (2009), Chemom. Intell. Lab. Syst.
+    Reference: Rajalahti et al. (2009), Chemom. Intell. Lab. Syst.
     """
     fig, axes = plt.subplots(1, 2, figsize=(13.0, 4.4),
                               constrained_layout=True)
 
-    # (a) Espectro: VIP + SR em eixos duplos
+    # (a) Spectrum: VIP + SR on dual axes
     ax = axes[0]
     ax2 = ax.twinx()
     c_vip, c_sr = cor(0), cor(1)
@@ -3221,22 +3220,22 @@ def fig_sprint3_sr_vip(vip: np.ndarray, sr: np.ndarray,
 
     l2, = ax2.plot(wavenumbers, sr, color=c_sr, lw=1.1,
                     alpha=0.8, label="SR")
-    sr_thr = float(np.percentile(sr, 75))   # quartil 75 como referencia
+    sr_thr = float(np.percentile(sr, 75))   # 75th percentile as reference
     ax2.axhline(sr_thr, color=c_sr, ls="--", lw=0.8, alpha=0.5,
                 label=f"SR Q75 = {sr_thr:.2f}")
 
-    ax.set_xlabel("Numero de onda (cm$^{-1}$)")
+    ax.set_xlabel("Wavenumber (cm$^{-1}$)")
     ax.set_ylabel("VIP score", color=c_vip)
     ax2.set_ylabel("Selectivity Ratio", color=c_sr)
     ax.tick_params(axis="y", labelcolor=c_vip)
     ax2.tick_params(axis="y", labelcolor=c_sr)
     ax.invert_xaxis()
-    ax.set_title("(a) VIP e SR ao longo do espectro", loc="left")
+    ax.set_title("(a) VIP and SR across the spectrum", loc="left")
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(handles=[l1, l2], loc="upper left", frameon=False,
                fontsize=8.5)
 
-    # (b) Top N por SR (barras duplas VIP + SR normalizados)
+    # (b) Top N by SR (dual bars: normalized VIP + SR)
     ax = axes[1]
     top_n = min(top_n, len(wavenumbers))
     idx_sr = np.argsort(sr)[::-1][:top_n][::-1]
@@ -3254,9 +3253,9 @@ def fig_sprint3_sr_vip(vip: np.ndarray, sr: np.ndarray,
     ax.set_yticks(pos)
     ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_sr],
                         fontsize=8)
-    ax.set_xlabel("Valor normalizado (max global = 1)")
-    ax.set_ylabel("Numero de onda (cm$^{-1}$)")
-    ax.set_title(f"(b) Top {top_n} por SR vs VIP", loc="left")
+    ax.set_xlabel("Normalized value (global max = 1)")
+    ax.set_ylabel("Wavenumber (cm$^{-1}$)")
+    ax.set_title(f"(b) Top {top_n} by SR vs VIP", loc="left")
     ax.legend(loc="lower right", fontsize=8.5, frameon=False)
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
 
@@ -3270,18 +3269,18 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
                                     mapa_cores: Dict[str, str],
                                     top_n: int,
                                     cfg: Config, pasta: str) -> None:
-    """Contribuicao por variavel ao score LV1 por classe (B8).
+    """Per-variable contribution to LV1 score per class (B8).
 
-    Contribuicao da variavel j para o score da amostra i no LV1:
-        c_ij = x_ij * w*_j   (peso PLS normalizado)
+    Contribution of variable j to the score of sample i on LV1:
+        c_ij = x_ij * w*_j   (normalized PLS weight)
 
-    Media por classe revela quais regioes espectrais 'empurram' cada
-    classe para seu lado no espaco de scores — informacao complementar
-    ao VIP (que e global) e ao SR (que e escalar).
+    Class mean reveals which spectral regions 'push' each class toward
+    its side in score space — complementary information to VIP (global)
+    and SR (scalar).
 
-    Paineis:
-        (a) Espectro de contribuicao medio ± SE por classe
-        (b) Top N variaveis com maior poder discriminante entre classes
+    Panels:
+        (a) Mean contribution spectrum ± SE per class
+        (b) Top N variables with highest discriminant power between classes
     """
     rotulos = np.asarray(rotulos, dtype=str)
     classes = np.unique(rotulos)
@@ -3302,7 +3301,7 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
 
     n_cls = len(classes)
 
-    # ===== FIGURA 1: espectro de contribuicao media (legenda lateral) =====
+    # ===== FIGURE 1: mean contribution spectrum (lateral legend) ==========
     fig = plt.figure(figsize=(10.5, 4.6), constrained_layout=True)
     gs = fig.add_gridspec(1, 2, width_ratios=[6.0, 1.1])
     ax = fig.add_subplot(gs[0]); ax_leg = fig.add_subplot(gs[1])
@@ -3313,21 +3312,21 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
         ax.fill_between(wavenumbers, m - s, m + s, color=c, alpha=0.18, lw=0)
     ax.axhline(0, color="0.70", lw=0.7, ls=":")
     ax.invert_xaxis()
-    ax.set_xlabel("Numero de onda (cm$^{-1}$)")
+    ax.set_xlabel("Wavenumber (cm$^{-1}$)")
     ax.set_ylabel("$c_j = x_j \\cdot w^*_j$  (LV1)")
-    ax.set_title("Contribuicao espectral media por classe — LV1", loc="left")
+    ax.set_title("Mean spectral contribution per class — LV1", loc="left")
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
     _legenda_lateral(ax_leg, ax)
     salvar(fig, "fig_score_contribution_espectro", pasta, cfg)
 
-    # ===== FIGURA 2: Top N poder discriminante (separada, alta, legivel) ===
+    # ===== FIGURE 2: Top N discriminant power (separate, tall, readable) ===
     mean_stack = np.vstack([means[c] for c in classes])   # (n_cls, p)
     disc_power = mean_stack.var(axis=0)                    # (p,)
     top_idx = np.argsort(disc_power)[::-1][:top_n][::-1]
     pos = np.arange(top_n)
     w_bar = 0.84 / max(n_cls, 1)
 
-    altura = max(6.0, 0.42 * top_n + 1.6)   # escala com top_n -> legivel
+    altura = max(6.0, 0.42 * top_n + 1.6)   # scales with top_n -> readable
     fig2 = plt.figure(figsize=(11.0, altura), constrained_layout=True)
     gs2 = fig2.add_gridspec(1, 2, width_ratios=[6.0, 1.2])
     ax = fig2.add_subplot(gs2[0]); ax_leg2 = fig2.add_subplot(gs2[1])
@@ -3342,9 +3341,9 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
     ax.set_yticks(pos)
     ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in top_idx], fontsize=8.5)
     ax.set_ylim(-0.5, top_n - 0.5)
-    ax.set_xlabel("Contribuicao media $\\pm$ SE por classe")
-    ax.set_ylabel("Numero de onda (cm$^{-1}$)")
-    ax.set_title(f"Top {top_n} variaveis — poder discriminante entre classes",
+    ax.set_xlabel("Mean contribution $\\pm$ SE per class")
+    ax.set_ylabel("Wavenumber (cm$^{-1}$)")
+    ax.set_title(f"Top {top_n} variables — discriminant power between classes",
                   loc="left")
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
     _legenda_lateral(ax_leg2, ax)
@@ -3357,14 +3356,14 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                                     cfg: Config, pasta: str,
                                     sens_esp: Optional[Dict[str, Any]] = None
                                     ) -> None:
-    """DD-SIMCA acceptance plot: T2/UCL vs Q/UCL por modelo de classe.
+    """DD-SIMCA acceptance plot: T2/UCL vs Q/UCL per class model.
 
-    Cada painel = 1 modelo one-class. Quadrado unitario = regiao de
-    aceitacao. Pontos coloridos pela classe real.
+    Each panel = 1 one-class model. Unit square = acceptance region.
+    Points colored by true class.
 
-    Se sens_esp fornecido {classe: (sens, esp, n_puro, n_adult)}, o titulo
-    mostra 'sens.=XX% | esp.=YY%' (M2): sens = puros aceitos,
-    esp = adulterados rejeitados.
+    If sens_esp is provided {class: (sens, spec, n_pure, n_adult)}, the title
+    shows 'sens.=XX% | spec.=YY%' (M2): sens = accepted pure samples,
+    spec = rejected adulterated samples.
     """
     classes = [c for c in scores.keys()]
     n_cls = len(classes)
@@ -3395,8 +3394,8 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         t2n = np.asarray(m["T2_norm"])
         qn  = np.asarray(m["Q_norm"])
 
-        # Escala log-log (Pomerantsev): clamp em piso pequeno para evitar
-        # log(0) e tornar visivel a regiao de aceitacao (canto inferior-esq).
+        # Log-log scale (Pomerantsev): clamp at small floor to avoid
+        # log(0) and make acceptance region visible (lower-left corner).
         piso = 1e-2
         t2p = np.clip(t2n, piso, None)
         qp  = np.clip(qn,  piso, None)
@@ -3409,24 +3408,24 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                        label=str(true_cls), zorder=3)
         ax.set_xscale("log"); ax.set_yscale("log")
 
-        # Fronteira de aceitacao em (1,1): quadrante inferior-esquerdo aceito
+        # Acceptance boundary at (1,1): lower-left quadrant accepted
         ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
         ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
         ax.axvspan(piso, 1.0, ymin=0, ymax=1, color=mapa_cores.get(cls, cor(0)),
-                   alpha=0.0)  # placeholder p/ manter cor no titulo
+                   alpha=0.0)  # placeholder to keep color in title
 
-        # Titulo: usa sens/esp do one-class se disponivel (M2); senao
-        # fallback para fracao da propria classe aceita.
+        # Title: uses sens/spec from one-class model if available (M2);
+        # otherwise falls back to fraction of own class accepted.
         if sens_esp is not None and cls in sens_esp:
             sens_c, esp_c = sens_esp[cls][0], sens_esp[cls][1]
             s_txt = f"{sens_c*100:.0f}%" if sens_c == sens_c else "n/a"
             e_txt = f"{esp_c*100:.0f}%"  if esp_c == esp_c else "n/a"
-            titulo_painel = f"Modelo: {cls}  sens.={s_txt} | esp.={e_txt}"
+            titulo_painel = f"Model: {cls}  sens.={s_txt} | spec.={e_txt}"
         else:
             idx_cls   = rotulos == cls
             n_cls_tot = int(idx_cls.sum())
             n_aceitos = int(np.sum((t2n[idx_cls] <= 1.0) & (qn[idx_cls] <= 1.0)))
-            titulo_painel = f"Modelo: {cls}  sens.={n_aceitos/max(n_cls_tot,1):.0%}"
+            titulo_painel = f"Model: {cls}  sens.={n_aceitos/max(n_cls_tot,1):.0%}"
 
         lim_hi = max(float(np.percentile(np.concatenate([t2p, qp]), 99)) * 1.5,
                      3.0)
@@ -3460,9 +3459,9 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
                              cfg: Config, pasta: str,
                              sens_esp: Optional[Dict[str, Any]] = None
                              ) -> None:
-    """Um acceptance plot DD-SIMCA por classe, salvo em pasta/ddsimca/.
-    Escala log-log, legenda lateral, anotacao UCL — versao individual
-    legivel (o grid 5x3 fica pequeno para inspecao detalhada)."""
+    """One DD-SIMCA acceptance plot per class, saved in pasta/ddsimca/.
+    Log-log scale, lateral legend, UCL annotation — individual readable
+    version (the 5x3 grid is too small for detailed inspection)."""
     rotulos = np.asarray(rotulos, dtype=str)
     all_classes = np.unique(rotulos)
     s_pt, alpha_pt, lw_pt = parametros_scatter_adaptativos(
@@ -3490,7 +3489,7 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
             sc, ec = sens_esp[cls][0], sens_esp[cls][1]
             st = f"{sc*100:.0f}%" if sc == sc else "n/a"
             et = f"{ec*100:.0f}%" if ec == ec else "n/a"
-            tt = f"DD-SIMCA: {cls}  sens.={st} | esp.={et}"
+            tt = f"DD-SIMCA: {cls}  sens.={st} | spec.={et}"
         else:
             tt = f"DD-SIMCA: {cls}"
         ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)")
@@ -3512,16 +3511,16 @@ def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
                              mapa_cores: Dict[str, str],
                              n_ortho: int,
                              cfg: Config, pasta: str) -> None:
-    """OPLS-DA scores: tp (preditivo) vs to1 (1o ortogonal).
+    """OPLS-DA scores: tp (predictive) vs to1 (1st orthogonal).
 
-    Eixo tp: separacao real entre classes.
-    Eixo to: variacao sistematica de X nao correlacionada com Y
-    (baseline, scatter multiplicativo, espessura de caminho optico).
+    tp axis: true separation between classes.
+    to axis: systematic variation in X uncorrelated with Y
+    (baseline, multiplicative scatter, optical path length).
 
-    O plot decompoe a variacao espectral total em 'util para discriminacao'
-    (tp) vs 'interferencia estruturada' (to), auxiliando na interpretacao
-    de quao pura e a separacao e quanta variacao pode ser atribuida a
-    artefatos instrumentais.
+    The plot decomposes total spectral variation into 'useful for
+    discrimination' (tp) vs 'structured interference' (to), helping to
+    interpret how pure the separation is and how much variation can be
+    attributed to instrumental artefacts.
     """
     rotulos = np.asarray(rotulos, dtype=str)
     t_orth1 = t_orth[:, 0] if t_orth.ndim == 2 and t_orth.shape[1] > 0 \
@@ -3542,9 +3541,9 @@ def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
     plot_scores_panel(
         ax, scores2d, rotulos, mapa_cores,
         var_exp=[pct_p, pct_o],
-        titulo=f"OPLS-DA — preditivo × ortogonal ({n_ortho} comp. orth.)",
-        xlabel="$t_p$ (preditivo)",
-        ylabel="$t_o$ (ortogonal 1)",
+        titulo=f"OPLS-DA — predictive × orthogonal ({n_ortho} orth. comp.)",
+        xlabel="$t_p$ (predictive)",
+        ylabel="$t_o$ (orthogonal 1)",
         desenhar_elipses=cfg.mostrar_elipses_grupo,
     )
     _legenda_lateral(ax_leg, ax)
@@ -3552,16 +3551,16 @@ def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
 
 
 # =========================================================================
-#  Sprint v24 — Figuras de Publicacao
-#  (Loading Plot PCA, ROC/AUC, S-Plot OPLS-DA, Cooman's Plot DD-SIMCA)
+#  Sprint v24 — Publication Figures
+#  (PCA Loading Plot, ROC/AUC, OPLS-DA S-Plot, DD-SIMCA Cooman's Plot)
 # =========================================================================
 
 def fig_loadings_pca(pca, wavenumbers: np.ndarray, cfg: "Config",
                       pasta: str, n_pcs: int = 2) -> None:
-    """Loading Plot PCA: contribuicao espectral de cada variavel por componente.
+    """PCA Loading Plot: spectral contribution of each variable per component.
 
-    Barras em vermelho (positivo) e azul (negativo). Eixo X invertido por
-    convencao NIR/FTIR (numero de onda decrescente da esq. para dir.).
+    Bars in red (positive) and blue (negative). X axis inverted per
+    NIR/FTIR convention (wavenumber decreasing from left to right).
 
     Ref: Bro & Smilde (2014) Anal. Methods 6:2812-2831.
     """

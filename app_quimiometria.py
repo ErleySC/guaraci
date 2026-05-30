@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 ============================================================================
- Plataforma Quimiometrica — Interface Streamlit v25 · 7 abas
+ Chemometrics Platform — Streamlit Interface v25 · 7 tabs
 ============================================================================
-Organizacao:
-   1. Projeto    — identificacao e objetivo do estudo
-   2. Dados      — entrada (FT-NIR .dx, CSV local, CSV upload)
-   3. Pre-proc   — preset espectral + visualizacao antes/depois
-   4. Modelo     — parametros avancados + execucao com progresso ao vivo
-   5. Validacao  — figuras e metricas do ultimo processamento
-   6. Predicao   — aplicar modelo salvo em amostras desconhecidas
-   7. Relatorios — download ZIP, resumo, galeria de figuras, log
+Organization:
+   1. Project      — study identification and objective
+   2. Data         — input (FT-NIR .dx, local CSV, CSV upload)
+   3. Preprocessing — spectral preset + before/after visualization
+   4. Model        — advanced parameters + execution with live progress
+   5. Validation   — figures and metrics from the last run
+   6. Prediction   — apply saved model to unknown samples
+   7. Reports      — download ZIP, summary, figure gallery, log
 
-Motor: pineline_quimiometria_14.py (importado dinamicamente).
-Nao e preciso editar codigo para usar: configure, rode, baixe.
+Engine: pineline_quimiometria_14.py (dynamically imported).
+No code editing required: configure, run, download.
 ============================================================================
 """
 from __future__ import annotations
@@ -39,29 +39,29 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 # ──────────────────────────────────────────────────────────────────────────
-# Pagina (deve ser o primeiro comando Streamlit)
+# Page config (must be the first Streamlit command)
 # ──────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Plataforma Quimiometrica",
+    page_title="Chemometrics Platform",
     page_icon="🧪",
     layout="wide",
 )
 
 # ──────────────────────────────────────────────────────────────────────────
-# Motor do pipeline
+# Pipeline engine
 # ──────────────────────────────────────────────────────────────────────────
 _AQUI = os.path.dirname(os.path.abspath(__file__))
 _PIPELINE_PATH = os.path.join(_AQUI, "pineline_quimiometria_14.py")
 _CFG_PATH = os.path.join(_AQUI, "config.yaml")
 
 
-@st.cache_resource(show_spinner="Carregando motor do pipeline...")
+@st.cache_resource(show_spinner="Loading pipeline engine...")
 def _carregar_motor():
     if _AQUI not in sys.path:
         sys.path.insert(0, _AQUI)
     spec = importlib.util.spec_from_file_location("pq_engine", _PIPELINE_PATH)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Motor nao encontrado em {_PIPELINE_PATH}")
+        raise ImportError(f"Engine not found at {_PIPELINE_PATH}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -70,7 +70,7 @@ def _carregar_motor():
 pq = _carregar_motor()
 
 # ──────────────────────────────────────────────────────────────────────────
-# Helpers de config (_CONFIG_SPEC como fonte unica de verdade)
+# Config helpers (_CONFIG_SPEC as single source of truth)
 # ──────────────────────────────────────────────────────────────────────────
 
 def _spec_por_key() -> Dict:
@@ -78,7 +78,7 @@ def _spec_por_key() -> Dict:
 
 
 def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
-    """Renderiza UM widget conforme tipo do campo e retorna valor atual."""
+    """Renders ONE widget according to field type and returns current value."""
     chave = prefixo + s["key"]
     rotulo = s["key"].replace("_", " ").capitalize()
     ajuda = s.get("desc", "")
@@ -97,13 +97,13 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
                                help=ajuda, key=chave, format="%.4f")
     if t == "list":
         txt = ", ".join(str(x) for x in (valor_atual or ()))
-        return st.text_input(rotulo + " (separe por virgula)", value=txt,
+        return st.text_input(rotulo + " (comma-separated)", value=txt,
                              help=ajuda, key=chave)
     return st.text_input(rotulo, value=str(valor_atual), help=ajuda, key=chave)
 
 
 def _coletar_config(cfg_base, valores: Dict):
-    """Aplica valores dos widgets numa copia da Config."""
+    """Applies widget values to a deep copy of Config."""
     import copy
     cfg = copy.deepcopy(cfg_base)
     erros: List[str] = []
@@ -118,7 +118,7 @@ def _coletar_config(cfg_base, valores: Dict):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Helpers de arquivo
+# File helpers
 # ──────────────────────────────────────────────────────────────────────────
 
 def _zip_da_pasta(pasta: str) -> io.BytesIO:
@@ -155,19 +155,19 @@ def _ler_resumo(pasta: str) -> Optional[str]:
 def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
                           max_figuras: int = 14) -> io.BytesIO:
     """
-    Gera relatorio PDF completo com fpdf2.
-    Estrutura: Capa | Metricas | Figuras (2/pag) | Referencias.
-    Retorna BytesIO pronto para st.download_button.
+    Generates a complete PDF report with fpdf2.
+    Structure: Cover | Metrics | Figures (2/page) | References.
+    Returns BytesIO ready for st.download_button.
     """
     import re as _re
     import unicodedata
     from fpdf import FPDF
 
     def _a(txt: str) -> str:
-        """Remove acentos para fontes Latin-1 do fpdf2."""
+        """Removes accents for fpdf2 Latin-1 fonts."""
         return unicodedata.normalize("NFKD", str(txt)).encode("ascii", "ignore").decode("ascii")
 
-    # ── Parse do resumo_modelo.txt ───────────────────────────────────────
+    # ── Parse resumo_modelo.txt ───────────────────────────────────────
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "-") -> str:
@@ -180,18 +180,18 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
         "R2Y":                      _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "Q2Y":                      _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
         "R2X":                      _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "LVs otimos":               _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
-        "p-valor permutacao":       _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
-        "Pre-processamento":        _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
+        "Optimal LVs":              _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
+        "p-value (permutation)":    _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
+        "Preprocessing":            _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "Hotelling T2 UCL (95%)":   _ex(r"[Hh]otelling.*?[:=]\s*([\d.]+)"),
         "Q-residual UCL (95%)":     _ex(r"Q.residual.*?[:=]\s*([\d.E+-]+)"),
-        "n amostras (treino)":      _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
+        "n samples (training)":     _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "n classes":                _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
     }
 
     imgs = _listar_figuras(pasta)[:max_figuras]
 
-    # ── Classe PDF ──────────────────────────────────────────────────────
+    # ── PDF class ──────────────────────────────────────────────────────
     class RelatorioPDF(FPDF):
         def header(self):
             if self.page_no() == 1:
@@ -200,7 +200,7 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
             self.set_text_color(100, 100, 100)
             proj_nome = _a(projeto.get("nome", "Plataforma Quimiometrica"))
             self.cell(130, 6, proj_nome[:60], border=0, align="L")
-            self.cell(0, 6, f"Gerado: {time.strftime('%d/%m/%Y')}",
+            self.cell(0, 6, f"Generated: {time.strftime('%Y-%m-%d')}",
                       border=0, align="R", new_x="LMARGIN", new_y="NEXT")
             self.set_draw_color(200, 200, 200)
             self.line(15, self.get_y(), 195, self.get_y())
@@ -213,22 +213,22 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
             self.set_y(-12)
             self.set_font("Helvetica", "I", 8)
             self.set_text_color(140, 140, 140)
-            self.cell(0, 6, f"Pagina {self.page_no()} / {{nb}}", align="C")
+            self.cell(0, 6, f"Page {self.page_no()} / {{nb}}", align="C")
 
     pdf = RelatorioPDF(orientation="P", unit="mm", format="A4")
     pdf.alias_nb_pages()
     pdf.set_margins(15, 20, 15)
     pdf.set_auto_page_break(auto=True, margin=20)
 
-    # ── CAPA ────────────────────────────────────────────────────────────
+    # ── COVER ────────────────────────────────────────────────────────────
     pdf.add_page()
-    # Faixa azul superior
+    # Blue top band
     pdf.set_fill_color(30, 80, 140)
     pdf.rect(0, 0, 210, 55, style="F")
     pdf.set_font("Helvetica", "B", 24)
     pdf.set_text_color(255, 255, 255)
     pdf.set_xy(15, 12)
-    pdf.cell(0, 12, "Plataforma Quimiometrica", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 12, "Chemometrics Platform", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 13)
     pdf.set_xy(15, 30)
     pdf.cell(0, 8, "PLS-DA  |  PCA  |  OPLS-DA  |  DD-SIMCA", align="C")
@@ -237,18 +237,18 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
     pdf.set_xy(15, 65)
     pdf.set_font("Helvetica", "B", 17)
     pdf.multi_cell(180, 9,
-                   _a(projeto.get("nome", "Relatorio de Analise Quimiometrica")),
+                   _a(projeto.get("nome", "Chemometric Analysis Report")),
                    align="C")
 
     pdf.ln(8)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_fill_color(240, 244, 250)
     campos_capa = [
-        ("Autor(es)",      projeto.get("autor", "-")),
-        ("Instituicao",    projeto.get("inst", "-")),
-        ("Tipo de estudo", projeto.get("tipo", "-")),
-        ("Data",           time.strftime("%d/%m/%Y")),
-        ("Pasta",          os.path.basename(pasta)),
+        ("Author(s)",      projeto.get("autor", "-")),
+        ("Institution",    projeto.get("inst", "-")),
+        ("Study type",     projeto.get("tipo", "-")),
+        ("Date",           time.strftime("%Y-%m-%d")),
+        ("Folder",         os.path.basename(pasta)),
     ]
     for label, valor in campos_capa:
         pdf.set_font("Helvetica", "B", 11)
@@ -261,11 +261,11 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
     if obj:
         pdf.ln(6)
         pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 7, "Objetivo:", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 7, "Objective:", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 10)
         pdf.multi_cell(180, 5, _a(obj))
 
-    # Rodape da capa
+    # Cover footer
     pdf.set_y(-30)
     pdf.set_fill_color(30, 80, 140)
     pdf.set_text_color(255, 255, 255)
@@ -273,27 +273,27 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
     pdf.rect(0, pdf.get_y(), 210, 30, style="F")
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.cell(0, 5,
-             "Gerado por: Plataforma Quimiometrica v26  |  GEAAp / UFPA  |  Projeto PIBIC",
+             "Generated by: Chemometrics Platform v26  |  GEAAp / UFPA  |  PIBIC Project",
              align="C")
 
-    # ── SECAO 1: METRICAS ───────────────────────────────────────────────
+    # ── SECTION 1: METRICS ───────────────────────────────────────────────
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 14)
     pdf.set_text_color(30, 80, 140)
-    pdf.cell(0, 9, "1. Sumario Executivo", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 9, "1. Executive Summary", new_x="LMARGIN", new_y="NEXT")
     pdf.set_draw_color(30, 80, 140)
     pdf.set_line_width(0.5)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.set_line_width(0.2)
     pdf.ln(4)
 
-    # Tabela de metricas
+    # Metrics table
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Helvetica", "B", 9)
     pdf.set_fill_color(30, 80, 140)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(100, 7, "Metrica", border=1, fill=True)
-    pdf.cell(75, 7, "Valor (validacao CV interna)", border=1, fill=True,
+    pdf.cell(100, 7, "Metric", border=1, fill=True)
+    pdf.cell(75, 7, "Value (internal CV validation)", border=1, fill=True,
              new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(0, 0, 0)
     for i, (k, v) in enumerate(metricas.items()):
@@ -306,46 +306,46 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
         pdf.cell(75, 6, _a(str(v)), border=1, fill=True,
                  new_x="LMARGIN", new_y="NEXT")
 
-    # Criterios de qualidade
+    # Quality criteria
     pdf.ln(6)
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_text_color(30, 80, 140)
-    pdf.cell(0, 8, "Criterios de qualidade (PLS-DA — literatura):",
+    pdf.cell(0, 8, "Quality criteria (PLS-DA — literature):",
              new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(0, 0, 0)
     criterios = [
-        "R2Y > 0.60  e  Q2Y > 0.50 → modelo preditivo robusto [Eriksson 2008]",
-        "Q2Y / R2Y > 0.70 → baixo risco de overfitting",
-        "p-valor permutacao < 0.05 → resultado nao-aleatorio (Y-randomization)",
-        "Intercept R2Y < 0.40 e intercept Q2Y < 0.05 → validacao geometrica [Wold 1984]",
-        "BCa IC 95% de Bal.Acc nao inclui 1/n_classes → discriminacao significativa [Efron 1993]",
+        "R2Y > 0.60 and Q2Y > 0.50 → robust predictive model [Eriksson 2008]",
+        "Q2Y / R2Y > 0.70 → low overfitting risk",
+        "permutation p-value < 0.05 → non-random result (Y-randomization)",
+        "Intercept R2Y < 0.40 and intercept Q2Y < 0.05 → geometric validation [Wold 1984]",
+        "BCa 95% CI of Bal.Acc does not include 1/n_classes → significant discrimination [Efron 1993]",
     ]
     for c in criterios:
         pdf.set_x(18)
         pdf.cell(4, 5, "-")
         pdf.multi_cell(173, 5, _a(c))
 
-    # ── SECAO 2: FIGURAS ────────────────────────────────────────────────
+    # ── SECTION 2: FIGURES ────────────────────────────────────────────────
     if imgs:
-        # 2 figuras por pagina, empilhadas verticalmente
+        # 2 figures per page, stacked vertically
         fig_w = 175
-        fig_h = 100   # altura maxima de cada figura
-        cap_h = 6     # altura da legenda
+        fig_h = 100   # max height per figure
+        cap_h = 6     # caption height
 
         for par in range(0, len(imgs), 2):
             pdf.add_page()
             if par == 0:
                 pdf.set_font("Helvetica", "B", 14)
                 pdf.set_text_color(30, 80, 140)
-                pdf.cell(0, 9, "2. Figuras", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(0, 9, "2. Figures", new_x="LMARGIN", new_y="NEXT")
                 pdf.set_draw_color(30, 80, 140)
                 pdf.set_line_width(0.5)
                 pdf.line(15, pdf.get_y(), 195, pdf.get_y())
                 pdf.set_line_width(0.2)
                 pdf.ln(3)
 
-            # Figura superior
+            # Top figure
             y_top = pdf.get_y()
             nome1 = os.path.splitext(os.path.basename(imgs[par]))[0]
             try:
@@ -359,7 +359,7 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
                      f"Fig. {par + 1}: {_a(nome1[:70])}",
                      align="C", new_x="LMARGIN", new_y="NEXT")
 
-            # Figura inferior (se existir)
+            # Bottom figure (if it exists)
             if par + 1 < len(imgs):
                 pdf.ln(3)
                 y_bot = pdf.get_y()
@@ -376,11 +376,11 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
 
             pdf.set_text_color(0, 0, 0)
 
-    # ── SECAO 3: REFERENCIAS ────────────────────────────────────────────
+    # ── SECTION 3: REFERENCES ────────────────────────────────────────────
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 14)
     pdf.set_text_color(30, 80, 140)
-    pdf.cell(0, 9, "3. Referencias", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 9, "3. References", new_x="LMARGIN", new_y="NEXT")
     pdf.set_draw_color(30, 80, 140)
     pdf.set_line_width(0.5)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
@@ -408,9 +408,9 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(120, 120, 120)
     pdf.multi_cell(0, 5,
-                   "Relatorio gerado automaticamente pela Plataforma Quimiometrica v26. "
-                   "Motor: pineline_quimiometria_14.py | Interface: app_quimiometria.py. "
-                   "GEAAp/UFPA — Projeto PIBIC.")
+                   "Report automatically generated by the Chemometrics Platform v26. "
+                   "Engine: pineline_quimiometria_14.py | Interface: app_quimiometria.py. "
+                   "GEAAp/UFPA — PIBIC Project.")
 
     buf = io.BytesIO()
     buf.write(pdf.output())
@@ -421,8 +421,8 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
 def _gerar_word_relatorio(pasta: str, projeto: Dict,
                            max_figuras: int = 14) -> io.BytesIO:
     """
-    Gera relatorio Word editavel (.docx) com python-docx.
-    Mesma estrutura do PDF: capa, metricas, figuras, referencias.
+    Generates an editable Word report (.docx) with python-docx.
+    Same structure as the PDF: cover, metrics, figures, references.
     """
     import re as _re
     from docx import Document
@@ -441,37 +441,37 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
         "R2Y":                     _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "Q2Y":                     _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
         "R2X":                     _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "LVs otimos":              _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
-        "p-valor permutacao":      _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
-        "Pre-processamento":       _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
+        "Optimal LVs":             _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
+        "p-value (permutation)":   _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
+        "Preprocessing":           _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "Hotelling T2 UCL (95%)":  _ex(r"[Hh]otelling.*?[:=]\s*([\d.]+)"),
         "Q-residual UCL (95%)":    _ex(r"Q.residual.*?[:=]\s*([\d.E+-]+)"),
-        "n amostras (treino)":     _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
+        "n samples (training)":    _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "n classes":               _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
     }
     imgs = _listar_figuras(pasta)[:max_figuras]
 
     doc = Document()
 
-    # ── Estilos de cabecalho ──
+    # ── Heading styles ──
     for i, (level, size) in enumerate([(0, 20), (1, 16), (2, 13)]):
         style = doc.styles[f"Heading {i + 1}"]
         style.font.size = Pt(size)           # type: ignore[union-attr]
         style.font.color.rgb = RGBColor(30, 80, 140)  # type: ignore[union-attr]
         style.font.bold = True               # type: ignore[union-attr]
 
-    # ── CAPA ──────────────────────────────────────────────────────────────
-    doc.add_heading("Plataforma Quimiometrica", 0)
-    doc.add_heading(projeto.get("nome", "Relatorio de Analise Quimiometrica"), 1)
+    # ── COVER ──────────────────────────────────────────────────────────────
+    doc.add_heading("Chemometrics Platform", 0)
+    doc.add_heading(projeto.get("nome", "Chemometric Analysis Report"), 1)
 
     t_capa = doc.add_table(rows=5, cols=2)
     t_capa.style = "Table Grid"
     campos_capa = [
-        ("Autor(es)",      projeto.get("autor", "-")),
-        ("Instituicao",    projeto.get("inst", "GEAAp / UFPA")),
-        ("Tipo de estudo", projeto.get("tipo", "-")),
-        ("Data",           time.strftime("%d/%m/%Y %H:%M")),
-        ("Pasta",          os.path.basename(pasta)),
+        ("Author(s)",      projeto.get("autor", "-")),
+        ("Institution",    projeto.get("inst", "GEAAp / UFPA")),
+        ("Study type",     projeto.get("tipo", "-")),
+        ("Date",           time.strftime("%Y-%m-%d %H:%M")),
+        ("Folder",         os.path.basename(pasta)),
     ]
     for i, (label, valor) in enumerate(campos_capa):
         c0 = t_capa.cell(i, 0)
@@ -482,19 +482,19 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
 
     obj = projeto.get("objetivo", "")
     if obj:
-        doc.add_heading("Objetivo", 2)
+        doc.add_heading("Objective", 2)
         doc.add_paragraph(obj)
 
     doc.add_page_break()
 
-    # ── SECAO 1: METRICAS ─────────────────────────────────────────────────
-    doc.add_heading("1. Sumario Executivo — Metricas do Modelo", 1)
+    # ── SECTION 1: METRICS ─────────────────────────────────────────────────
+    doc.add_heading("1. Executive Summary — Model Metrics", 1)
 
     t_met = doc.add_table(rows=1 + len(metricas), cols=2)
     t_met.style = "Table Grid"
     hdr = t_met.rows[0].cells
-    hdr[0].text = "Metrica"
-    hdr[1].text = "Valor (validacao CV interna)"
+    hdr[0].text = "Metric"
+    hdr[1].text = "Value (internal CV validation)"
     for cell in hdr:
         run = cell.paragraphs[0].runs
         if run:
@@ -505,21 +505,21 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
         t_met.cell(i, 0).text = k
         t_met.cell(i, 1).text = str(v)
 
-    doc.add_heading("Criterios de qualidade", 2)
+    doc.add_heading("Quality criteria", 2)
     criterios = [
-        "R2Y > 0.60 e Q2Y > 0.50: modelo preditivo robusto [Eriksson 2008]",
-        "Q2Y / R2Y > 0.70: baixo risco de overfitting",
-        "p-valor permutacao < 0.05: resultado nao-aleatorio (Y-randomization)",
-        "Intercept R2Y < 0.40 e intercept Q2Y < 0.05 [Wold 1984]",
-        "BCa IC 95% de Bal.Acc nao inclui 1/n_classes [Efron 1993]",
+        "R2Y > 0.60 and Q2Y > 0.50: robust predictive model [Eriksson 2008]",
+        "Q2Y / R2Y > 0.70: low overfitting risk",
+        "permutation p-value < 0.05: non-random result (Y-randomization)",
+        "Intercept R2Y < 0.40 and intercept Q2Y < 0.05 [Wold 1984]",
+        "BCa 95% CI of Bal.Acc does not include 1/n_classes [Efron 1993]",
     ]
     for c in criterios:
         doc.add_paragraph(c, style="List Bullet")
 
-    # ── SECAO 2: FIGURAS ──────────────────────────────────────────────────
+    # ── SECTION 2: FIGURES ──────────────────────────────────────────────────
     if imgs:
         doc.add_page_break()
-        doc.add_heading("2. Figuras", 1)
+        doc.add_heading("2. Figures", 1)
         for i, img in enumerate(imgs, 1):
             nome_fig = os.path.splitext(os.path.basename(img))[0]
             try:
@@ -532,13 +532,13 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
                     leg.runs[0].italic = True
                     leg.runs[0].font.size = Pt(9)
             except Exception:
-                doc.add_paragraph(f"[Fig. {i}: {nome_fig} — imagem nao disponivel]")
+                doc.add_paragraph(f"[Fig. {i}: {nome_fig} — image not available]")
             if i % 2 == 0 and i < len(imgs):
                 doc.add_page_break()
 
-    # ── SECAO 3: REFERENCIAS ─────────────────────────────────────────────
+    # ── SECTION 3: REFERENCES ─────────────────────────────────────────────
     doc.add_page_break()
-    doc.add_heading("3. Referencias", 1)
+    doc.add_heading("3. References", 1)
     refs = [
         "Bylesjo, M. et al. (2006) OPLS discriminant analysis. J. Chemom. 20:341-351.",
         "Chong, I.G. & Jun, C.H. (2005) VIP scores. Chemom. Intell. Lab. Syst. 78:103-112.",
@@ -556,8 +556,8 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
 
     doc.add_paragraph()
     nota = doc.add_paragraph(
-        "Relatorio gerado pela Plataforma Quimiometrica v26. "
-        "Motor: pineline_quimiometria_14.py | GEAAp/UFPA — Projeto PIBIC."
+        "Report generated by the Chemometrics Platform v26. "
+        "Engine: pineline_quimiometria_14.py | GEAAp/UFPA — PIBIC Project."
     )
     if nota.runs:
         nota.runs[0].italic = True
@@ -571,11 +571,11 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
 
 def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
     """
-    Gera relatorio Excel com 4 abas via openpyxl:
-      - Metricas: metricas extraidas do resumo
-      - Identificadores: amostras com T2, Q, classe (CSV do pipeline)
-      - VIP_Selecao: escores VIP/SR (CSV do pipeline, se existir)
-      - Resumo_Bruto: texto completo do resumo_modelo.txt
+    Generates an Excel report with 4 sheets via openpyxl:
+      - Metrics: metrics extracted from the summary
+      - Identifiers: samples with T2, Q, class (pipeline CSV)
+      - VIP_Selection: VIP/SR scores (pipeline CSV, if present)
+      - Raw_Summary: full text of resumo_modelo.txt
     """
     import re as _re
     import openpyxl
@@ -593,12 +593,12 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
         "R2Y":                     _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "Q2Y":                     _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
         "R2X":                     _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "LVs otimos":              _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
-        "p-valor permutacao":      _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
-        "Pre-processamento":       _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
+        "Optimal LVs":             _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
+        "p-value (permutation)":   _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
+        "Preprocessing":           _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "Hotelling T2 UCL (95%)":  _ex(r"[Hh]otelling.*?[:=]\s*([\d.]+)"),
         "Q-residual UCL (95%)":    _ex(r"Q.residual.*?[:=]\s*([\d.E+-]+)"),
-        "n amostras (treino)":     _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
+        "n samples (training)":    _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "n classes":               _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
     }
 
@@ -629,7 +629,7 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
                 c.border = _BORDER
 
     def _preencher_df_ws(ws, df: pd.DataFrame, row_start: int = 1):
-        """Variante de _preencher_df com row_start configuravel."""
+        """Variant of _preencher_df with configurable row_start."""
         cols = list(df.columns)
         for j, col in enumerate(cols, 1):
             cell = ws.cell(row_start, j, col)
@@ -648,11 +648,11 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
 
     wb = openpyxl.Workbook()
 
-    # ── ABA 1: Metricas ───────────────────────────────────────────────────
+    # ── SHEET 1: Metrics ───────────────────────────────────────────────────
     ws1 = wb.active
     assert ws1 is not None
-    ws1.title = "Metricas"
-    _cabecalho(ws1, ["Metrica", "Valor (CV interno)"])
+    ws1.title = "Metrics"
+    _cabecalho(ws1, ["Metric", "Value (internal CV)"])
     for i, (k, v) in enumerate(metricas_dict.items(), 2):
         fill = _AZUL_CLAR if i % 2 == 0 else _BRANCO
         for j, val in enumerate([k, v], 1):
@@ -662,8 +662,8 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
             c.border = _BORDER
     _auto_width(ws1)
 
-    # ── ABA 2: Identificadores ────────────────────────────────────────────
-    ws2 = wb.create_sheet("Identificadores")
+    # ── SHEET 2: Identifiers ────────────────────────────────────────────────
+    ws2 = wb.create_sheet("Identifiers")
     id_csv = os.path.join(pasta, "dados", "amostras_identificadores.csv")
     if os.path.exists(id_csv):
         try:
@@ -671,12 +671,12 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
             _preencher_df(ws2, df_id)
             _auto_width(ws2)
         except Exception:
-            ws2.cell(1, 1, "Erro ao ler amostras_identificadores.csv")
+            ws2.cell(1, 1, "Error reading amostras_identificadores.csv")
     else:
-        ws2.cell(1, 1, "Arquivo nao encontrado (execute a Etapa 5 do pipeline).")
+        ws2.cell(1, 1, "File not found (run pipeline Step 5 first).")
 
-    # ── ABA 3: VIP_Selecao ────────────────────────────────────────────────
-    ws3 = wb.create_sheet("VIP_Selecao")
+    # ── SHEET 3: VIP_Selection ────────────────────────────────────────────────
+    ws3 = wb.create_sheet("VIP_Selection")
     vip_csv = os.path.join(pasta, "dados", "etapa4_selecao_variaveis.csv")
     if os.path.exists(vip_csv):
         try:
@@ -684,18 +684,18 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
             _preencher_df(ws3, df_vip)
             _auto_width(ws3)
         except Exception:
-            ws3.cell(1, 1, "Erro ao ler etapa4_selecao_variaveis.csv")
+            ws3.cell(1, 1, "Error reading etapa4_selecao_variaveis.csv")
     else:
-        ws3.cell(1, 1, "Etapa 4 (selecao de variaveis) nao foi executada.")
+        ws3.cell(1, 1, "Step 4 (variable selection) was not executed.")
 
-    # ── ABA 4: Resumo_Bruto ───────────────────────────────────────────────
-    ws4 = wb.create_sheet("Resumo_Bruto")
-    ws4.cell(1, 1, "resumo_modelo.txt — conteudo completo").font = Font(bold=True)
+    # ── SHEET 4: Raw_Summary ───────────────────────────────────────────────
+    ws4 = wb.create_sheet("Raw_Summary")
+    ws4.cell(1, 1, "resumo_modelo.txt — full content").font = Font(bold=True)
     for i, linha in enumerate(resumo_raw.splitlines(), 2):
         ws4.cell(i, 1, linha).font = Font(name="Courier New", size=9)
     ws4.column_dimensions["A"].width = 80
 
-    # ── ABA 5: Benchmark (se existir) ─────────────────────────────────────
+    # ── SHEET 5: Benchmark (if it exists) ─────────────────────────────────
     bench_csv = os.path.join(pasta, "dados", "benchmark_classificadores.csv")
     mc_csv    = os.path.join(pasta, "dados", "monte_carlo_cv.csv")
     if os.path.exists(bench_csv) or os.path.exists(mc_csv):
@@ -705,24 +705,24 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
             try:
                 df_bench = pd.read_csv(bench_csv, sep=";", decimal=",")
                 ws5.cell(row_cursor, 1,
-                         "Auto-Benchmark — Bal.Acc por classificador (GroupKFold)").font = Font(bold=True)
+                         "Auto-Benchmark — Bal.Acc by classifier (GroupKFold)").font = Font(bold=True)
                 row_cursor += 1
                 _preencher_df_ws(ws5, df_bench, row_start=row_cursor)
                 row_cursor += len(df_bench) + 3
                 _auto_width(ws5)
             except Exception:
-                ws5.cell(row_cursor, 1, "Erro ao ler benchmark_classificadores.csv")
+                ws5.cell(row_cursor, 1, "Error reading benchmark_classificadores.csv")
                 row_cursor += 2
         if os.path.exists(mc_csv):
             try:
                 df_mc = pd.read_csv(mc_csv, sep=";", decimal=",")
                 ws5.cell(row_cursor, 1,
-                         "Monte Carlo CV — IC95% por percentil").font = Font(bold=True)
+                         "Monte Carlo CV — 95% CI by percentile").font = Font(bold=True)
                 row_cursor += 1
                 _preencher_df_ws(ws5, df_mc, row_start=row_cursor)
                 _auto_width(ws5)
             except Exception:
-                ws5.cell(row_cursor, 1, "Erro ao ler monte_carlo_cv.csv")
+                ws5.cell(row_cursor, 1, "Error reading monte_carlo_cv.csv")
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -732,10 +732,10 @@ def _gerar_excel_relatorio(pasta: str) -> io.BytesIO:
 
 def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
     """
-    Gera template LaTeX pronto para periódicos (Talanta, Food Chemistry,
-    Journal of Chemometrics). Inclui metricas auto-preenchidas, blocos
-    \\includegraphics das figuras e bibliografia completa.
-    Retorna bytes UTF-8 (arquivo .tex).
+    Generates a LaTeX template ready for journals (Talanta, Food Chemistry,
+    Journal of Chemometrics). Includes auto-filled metrics, \\includegraphics
+    blocks for figures, and complete bibliography.
+    Returns UTF-8 bytes (.tex file).
     """
     import re as _re
 
@@ -746,7 +746,7 @@ def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
         return m.group(1).strip() if m else default
 
     def _esc(txt: str) -> str:
-        """Escapa caracteres especiais do LaTeX."""
+        """Escapes LaTeX special characters."""
         for old, new in [
             ("\\", r"\textbackslash{}"), ("&", r"\&"), ("%", r"\%"),
             ("$", r"\$"), ("#", r"\#"), ("_", r"\_"),
@@ -770,55 +770,55 @@ def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
     }
 
     imgs = _listar_figuras(pasta)[:8]
-    nome_proj = _esc(projeto.get("nome", "Analise Quimiometrica por FT-NIR"))
-    autor     = _esc(projeto.get("autor", "Sobrenome, N."))
-    inst      = _esc(projeto.get("inst", "GEAAp, Universidade Federal do Para"))
+    nome_proj = _esc(projeto.get("nome", "Chemometric Analysis by FT-NIR"))
+    autor     = _esc(projeto.get("autor", "Surname, N."))
+    inst      = _esc(projeto.get("inst", "GEAAp, Federal University of Para"))
 
-    # Tabela de metricas
+    # Metrics table
     linhas_met = [
-        r"        \textbf{Metrica} & \textbf{Valor (CV interno)} \\",
+        r"        \textbf{Metric} & \textbf{Value (internal CV)} \\",
         r"        \midrule",
         f"        Balanced Accuracy & {met['bal_acc']} \\\\",
         f"        AUC macro (OvR)   & {met['auc']} \\\\",
         f"        $R^2Y$            & {met['r2y']} \\\\",
         f"        $Q^2Y$            & {met['q2y']} \\\\",
         f"        $R^2X$            & {met['r2x']} \\\\",
-        f"        LVs otimos        & {met['lvs']} \\\\",
-        f"        $p$ (permutacao)  & {met['perm_p']} \\\\",
-        f"        Pre-processamento & {_esc(met['preproc'])} \\\\",
-        f"        $n$ treino        & {met['n_train']} \\\\",
+        f"        Optimal LVs       & {met['lvs']} \\\\",
+        f"        $p$ (permutation) & {met['perm_p']} \\\\",
+        f"        Preprocessing     & {_esc(met['preproc'])} \\\\",
+        f"        $n$ training      & {met['n_train']} \\\\",
         f"        $n$ classes       & {met['n_classes']} \\\\",
     ]
     tabela = "\n".join(linhas_met)
 
-    # Blocos de figuras
+    # Figure blocks
     blocos_fig = []
     for i, img in enumerate(imgs, 1):
         nome_f = os.path.splitext(os.path.basename(img))[0]
         label  = nome_f.replace(" ", "_").replace("-", "_")
-        # LaTeX prefere barras normais
+        # LaTeX prefers forward slashes
         img_tex = img.replace("\\", "/")
         blocos_fig.append(f"""
 \\begin{{figure}}[htbp]
     \\centering
     \\includegraphics[width=0.85\\linewidth]{{{img_tex}}}
-    \\caption{{{_esc(nome_f)}. % TODO: adicione interpretacao quimica.}}
+    \\caption{{{_esc(nome_f)}. % TODO: add chemical interpretation.}}
     \\label{{fig:{label}}}
 \\end{{figure}}""")
     figs_block = "\n".join(blocos_fig)
 
     tex = f"""% ================================================================
-% Template LaTeX — Plataforma Quimiometrica v26
-% Compativel com: Talanta, Food Chemistry, J. Chemometrics (Elsevier)
-% Gerado em: {time.strftime('%d/%m/%Y %H:%M')}
+% LaTeX Template — Chemometrics Platform v26
+% Compatible with: Talanta, Food Chemistry, J. Chemometrics (Elsevier)
+% Generated: {time.strftime('%Y-%m-%d %H:%M')}
 % ================================================================
 
 \\documentclass[12pt,a4paper]{{article}}
 
-%% Pacotes
+%% Packages
 \\usepackage[utf8]{{inputenc}}
 \\usepackage[T1]{{fontenc}}
-\\usepackage[english,brazil]{{babel}}
+\\usepackage[english]{{babel}}
 \\usepackage{{amsmath, amssymb}}
 \\usepackage{{graphicx}}
 \\usepackage{{booktabs}}
@@ -834,7 +834,7 @@ def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
 \\captionsetup{{font=small, labelfont=bf}}
 \\setlength{{\\parindent}}{{0.5cm}}
 
-%% Metadados
+%% Metadata
 \\title{{{nome_proj}}}
 \\author{{{autor} \\\\
          \\small {inst}}}
@@ -843,63 +843,62 @@ def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
 \\begin{{document}}
 \\maketitle
 
-%% ── Resumo ─────────────────────────────────────────────────────────────
+%% ── Abstract ─────────────────────────────────────────────────────────────
 \\begin{{abstract}}
-A autenticidade de oleos vegetais amazonicos foi investigada por espectroscopia
-FT-NIR combinada a metodos quimiometricos (PLS-DA, PCA, OPLS-DA e DD-SIMCA).
-O modelo PLS-DA com {_esc(met['lvs'])} variaveis latentes e pre-processamento
-{_esc(met['preproc'])} apresentou acuracia balanceada de {met['bal_acc']}
+The authenticity of Amazonian vegetable oils was investigated by FT-NIR
+spectroscopy combined with chemometric methods (PLS-DA, PCA, OPLS-DA and DD-SIMCA).
+The PLS-DA model with {_esc(met['lvs'])} latent variables and {_esc(met['preproc'])}
+preprocessing achieved a balanced accuracy of {met['bal_acc']}
 ($R^2Y = {met['r2y']}$; $Q^2Y = {met['q2y']}$; $p = {met['perm_p']}$,
-Y-randomization), evidenciando capacidade discriminatoria significativa.
-% TODO: limite a 250 palavras para Talanta / 200 para Food Chemistry.
+Y-randomization), evidencing significant discriminatory power.
+% TODO: limit to 250 words for Talanta / 200 for Food Chemistry.
 \\end{{abstract}}
 
-\\textbf{{Keywords:}} FT-NIR; PLS-DA; quimiometria; autenticacao; oleos vegetais.
+\\textbf{{Keywords:}} FT-NIR; PLS-DA; chemometrics; authentication; vegetable oils.
 
-%% ── Introducao ──────────────────────────────────────────────────────────
-\\section{{Introducao}}
-% TODO: contextualize, justifique o metodo e enuncie o objetivo em ~3 paragrafos.
-A adulteracao de oleos vegetais e um problema de seguranca alimentar de escala
-global \\citep{{rinnan2009}}.
-A espectroscopia FT-NIR aliada a quimiometria tem demonstrado potencial como
-tecnica rapida, nao-destrutiva e de baixo custo para autenticacao de oleos
+%% ── Introduction ──────────────────────────────────────────────────────────
+\\section{{Introduction}}
+% TODO: contextualize, justify the method and state the objective in ~3 paragraphs.
+Adulteration of vegetable oils is a global food safety problem \\citep{{rinnan2009}}.
+FT-NIR spectroscopy combined with chemometrics has shown potential as a rapid,
+non-destructive, low-cost technique for oil authentication
 \\citep{{bylesjo2006, eriksson2008}}.
 
-%% ── Material e Metodos ──────────────────────────────────────────────────
-\\section{{Material e Metodos}}
+%% ── Material and Methods ──────────────────────────────────────────────────
+\\section{{Material and Methods}}
 
-\\subsection{{Amostras e aquisicao espectral}}
-% TODO: descreva numero de amostras, equipamento (ABB MB3600 ou similar),
-% faixa espectral, resolucao, numero de varreduras, temperatura.
-Os espectros FT-NIR foram adquiridos na faixa de \\SIrange{{4000}}{{10000}}{{\\per\\centi\\meter}}.
+\\subsection{{Samples and spectral acquisition}}
+% TODO: describe number of samples, instrument (ABB MB3600 or similar),
+% spectral range, resolution, number of scans, temperature.
+FT-NIR spectra were acquired in the range \\SIrange{{4000}}{{10000}}{{\\per\\centi\\meter}}.
 
-\\subsection{{Pre-processamento espectral}}
-O pre-processamento {_esc(met['preproc'])} foi selecionado com base na comparacao
-de pipelines (balanced accuracy na validacao CV) conforme \\citet{{rinnan2009}}.
+\\subsection{{Spectral preprocessing}}
+The {_esc(met['preproc'])} preprocessing was selected based on pipeline comparison
+(balanced accuracy in CV validation) according to \\citet{{rinnan2009}}.
 
-\\subsection{{Modelagem PLS-DA}}
-O modelo PLS-DA foi calibrado com {met['lvs']} variaveis latentes, selecionados
-por validacao cruzada grupal (GroupKFold, agrupando triplicatas tecnicas para
-prevenir vazamento de dados) \\citep{{chong2005}}.
+\\subsection{{PLS-DA modelling}}
+The PLS-DA model was calibrated with {met['lvs']} latent variables, selected
+by group-aware cross-validation (GroupKFold, grouping technical replicates to
+prevent data leakage) \\citep{{chong2005}}.
 
-\\subsection{{Validacao estatistica}}
-A robustez foi avaliada por:
+\\subsection{{Statistical validation}}
+Robustness was assessed by:
 \\begin{{itemize}}
-    \\item \\textbf{{Y-randomization}} (200 permutacoes) \\citep{{eriksson2008}};
-    \\item \\textbf{{Teste de Wold}} (interceptos $R^2Y < 0.40$ e $Q^2Y < 0.05$);
-    \\item \\textbf{{CV-ANOVA}} de Eriksson \\citep{{eriksson2008}};
-    \\item \\textbf{{Bootstrap BCa}} 95\\% para a acuracia balanceada \\citep{{efron1993}}.
+    \\item \\textbf{{Y-randomization}} (200 permutations) \\citep{{eriksson2008}};
+    \\item \\textbf{{Wold's test}} (intercepts $R^2Y < 0.40$ and $Q^2Y < 0.05$);
+    \\item \\textbf{{CV-ANOVA}} by Eriksson \\citep{{eriksson2008}};
+    \\item \\textbf{{BCa Bootstrap}} 95\\% for balanced accuracy \\citep{{efron1993}}.
 \\end{{itemize}}
 
-%% ── Resultados e Discussao ──────────────────────────────────────────────
-\\section{{Resultados e Discussao}}
+%% ── Results and Discussion ──────────────────────────────────────────────
+\\section{{Results and Discussion}}
 
-\\subsection{{Desempenho do modelo}}
-As metricas de desempenho sao apresentadas na Tabela~\\ref{{tab:metricas}}.
+\\subsection{{Model performance}}
+Performance metrics are presented in Table~\\ref{{tab:metricas}}.
 
 \\begin{{table}}[htbp]
     \\centering
-    \\caption{{Metricas de desempenho do modelo PLS-DA.}}
+    \\caption{{PLS-DA model performance metrics.}}
     \\label{{tab:metricas}}
     \\begin{{tabular}}{{ll}}
         \\toprule
@@ -908,23 +907,22 @@ As metricas de desempenho sao apresentadas na Tabela~\\ref{{tab:metricas}}.
     \\end{{tabular}}
 \\end{{table}}
 
-\\subsection{{Figuras}}
-% Figuras geradas pelo pipeline. Insira interpretacao quimica em cada legenda.
+\\subsection{{Figures}}
+% Figures generated by the pipeline. Insert chemical interpretation in each caption.
 
 {figs_block}
 
-%% ── Conclusao ───────────────────────────────────────────────────────────
-\\section{{Conclusao}}
-% TODO: sintetize resultados e implicacoes em 1-2 paragrafos.
-O modelo PLS-DA com pre-processamento {_esc(met['preproc'])} apresentou
-desempenho satisfatorio ($Q^2Y = {met['q2y']}$; $p = {met['perm_p']}$),
-demonstrando viabilidade da espectroscopia FT-NIR para autenticacao rapida
-de oleos vegetais amazonicos.
+%% ── Conclusion ───────────────────────────────────────────────────────────
+\\section{{Conclusion}}
+% TODO: summarise results and implications in 1-2 paragraphs.
+The PLS-DA model with {_esc(met['preproc'])} preprocessing achieved satisfactory
+performance ($Q^2Y = {met['q2y']}$; $p = {met['perm_p']}$), demonstrating the
+viability of FT-NIR spectroscopy for rapid authentication of Amazonian vegetable oils.
 
-%% ── Agradecimentos ──────────────────────────────────────────────────────
-\\section*{{Agradecimentos}}
-% TODO: CNPq, CAPES, PIBIC/UFPA, laboratorio.
-Ao GEAAp/UFPA e ao CNPq pelo suporte financeiro (Projeto PIBIC).
+%% ── Acknowledgements ──────────────────────────────────────────────────────
+\\section*{{Acknowledgements}}
+% TODO: CNPq, CAPES, PIBIC/UFPA, laboratory.
+To GEAAp/UFPA and CNPq for financial support (PIBIC Project).
 
 %% ── Referencias ─────────────────────────────────────────────────────────
 \\bibliographystyle{{elsarticle-num}}  %% Elsevier (Talanta, Food Chemistry)
@@ -984,11 +982,11 @@ Cross-validatory estimation of the number of components.
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Execucao com feedback ao vivo (thread de fundo + barra de progresso)
+# Execution with live feedback (background thread + progress bar)
 # ──────────────────────────────────────────────────────────────────────────
 
 class _LogThreadSafe:
-    """Captura stdout/stderr do pipeline numa lista protegida por lock."""
+    """Captures pipeline stdout/stderr into a lock-protected list."""
     def __init__(self, tee=None):
         self._buf: List[str] = []
         self._lock = threading.Lock()
@@ -1014,29 +1012,29 @@ class _LogThreadSafe:
 
 _RE_ETAPA = re.compile(r"\[(\d+)[a-z]?/7\]")
 _ETAPA_NOMES = {
-    0: "Validando a entrada",
-    1: "Pre-processamento espectral",
-    2: "Selecao de variaveis latentes (LVs)",
-    3: "PCA exploratoria",
-    4: "Testes de validacao (permutacao / Wold / CV-ANOVA)",
-    5: "Metricas finais + IC bootstrap",
-    6: "Figuras, DD-SIMCA, OPLS-DA, holdout",
-    7: "Regressao / finalizacao e modelo salvo",
+    0: "Validating input",
+    1: "Spectral preprocessing",
+    2: "Latent variable (LV) selection",
+    3: "Exploratory PCA",
+    4: "Validation tests (permutation / Wold / CV-ANOVA)",
+    5: "Final metrics + bootstrap CI",
+    6: "Figures, DD-SIMCA, OPLS-DA, holdout",
+    7: "Regression / finalization and model saved",
 }
-# Sub-etapas apos o passo 7 (benchmark / MC CV)
+# Sub-steps after step 7 (benchmark / MC CV)
 _ETAPA_SUBSTEP = {
     "[7b/7]": "Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...",
-    "[7c/7]": "Monte Carlo CV (IC95% por percentil)...",
+    "[7c/7]": "Monte Carlo CV (95% CI by percentile)...",
 }
 
 
 def _progresso_do_log(txt: str):
     achados = _RE_ETAPA.findall(txt)
     if not achados:
-        return 0.0, "Iniciando..."
+        return 0.0, "Starting..."
     n = max(int(a) for a in achados)
-    nome = _ETAPA_NOMES.get(n, f"Etapa {n}/7")
-    # Sub-etapas pesadas: exibe nome especifico para benchmark e MC CV
+    nome = _ETAPA_NOMES.get(n, f"Step {n}/7")
+    # Heavy sub-steps: show specific name for benchmark and MC CV
     if n >= 7:
         for tag, descricao in _ETAPA_SUBSTEP.items():
             if tag in txt:
@@ -1087,20 +1085,20 @@ def _rodar_worker(cfg, logger: _LogThreadSafe, estado: Dict):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Preview de espectros (cache por caminho)
+# Spectra preview (cached by path)
 # ──────────────────────────────────────────────────────────────────────────
 
 @st.cache_data(show_spinner=False, ttl=120)
 def _preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
                            max_por_classe: int = 5):
-    """Carrega ate max_por_classe amostras por subpasta para visualizacao."""
+    """Loads up to max_por_classe samples per subfolder for visualization."""
     try:
         subpastas = sorted(
             p for p in Path(pasta).iterdir()
             if p.is_dir() and list(p.glob("*.dx"))
         )
         if not subpastas:
-            # pasta plana com .dx
+            # flat folder with .dx files
             subpastas = [Path(pasta)]
         wn_ref, specs, labs = None, [], []
         from scipy.interpolate import interp1d
@@ -1132,7 +1130,7 @@ def _preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
 def _preview_espectros_csv(caminho: str, col_cls: str,
                             wn_min: float, wn_max: float,
                             max_n: int = 50):
-    """Carrega ate max_n linhas de CSV para visualizacao."""
+    """Loads up to max_n CSV rows for visualization."""
     try:
         df = pd.read_csv(caminho, sep=None, engine="python", nrows=max_n)
         meta = {col_cls}
@@ -1152,7 +1150,7 @@ def _preview_espectros_csv(caminho: str, col_cls: str,
 
 def _plot_espectros_media(wn: np.ndarray, X: np.ndarray,
                            rotulos: np.ndarray, titulo: str = ""):  # -> matplotlib.figure.Figure
-    """Plota media ± std por classe."""
+    """Plots mean ± std per class."""
     classes = np.unique(np.asarray(rotulos))
     cmap = plt.get_cmap("tab10")
     fig, ax = plt.subplots(figsize=(8, 3.5), constrained_layout=True)
@@ -1165,8 +1163,8 @@ def _plot_espectros_media(wn: np.ndarray, X: np.ndarray,
         ax.fill_between(wn, med - std, med + std, color=cor, alpha=0.15)
     if len(wn) > 1 and wn[0] > wn[-1]:
         ax.invert_xaxis()
-    ax.set_xlabel("Numero de onda (cm$^{-1}$)")
-    ax.set_ylabel("Absorbancia")
+    ax.set_xlabel("Wavenumber (cm$^{-1}$)")
+    ax.set_ylabel("Absorbance")
     if titulo:
         ax.set_title(titulo, fontsize=9)
     ax.legend(fontsize=7, ncol=2, loc="best")
@@ -1175,16 +1173,16 @@ def _plot_espectros_media(wn: np.ndarray, X: np.ndarray,
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Predicao de amostras desconhecidas
+# Prediction on unknown samples
 # ──────────────────────────────────────────────────────────────────────────
 
 def _predizer(pkg: Dict, X_new_raw: np.ndarray,
               wn_new: Optional[np.ndarray]) -> pd.DataFrame:
     """
-    Aplica o pacote de modelo salvo em novos espectros.
-    Interpola para o eixo de referencia do treino, aplica pre-processador,
-    calcula classe predita (softmax-normalizado), T2 e Q residuais.
-    Retorna DataFrame com diagnosticos por amostra.
+    Applies the saved model package to new spectra.
+    Interpolates to the training reference axis, applies preprocessor,
+    computes predicted class (softmax-normalized), T2 and Q residuals.
+    Returns a DataFrame with per-sample diagnostics.
     """
     from scipy.interpolate import interp1d
 
@@ -1193,46 +1191,46 @@ def _predizer(pkg: Dict, X_new_raw: np.ndarray,
     lb      = pkg["label_binarizer"]
     wn_train = np.asarray(pkg["wavenumbers"], dtype=float)
     if wn_new is None:
-        raise ValueError("wn_new nao pode ser None")
+        raise ValueError("wn_new cannot be None")
     wn_min   = float(pkg.get("wn_min", wn_train.min()))
     wn_max   = float(pkg.get("wn_max", wn_train.max()))
 
-    # Eixo de referencia do treino (faixa usada no treino)
+    # Training reference axis (range used during training)
     mask_ref = (wn_train >= wn_min) & (wn_train <= wn_max)
     wn_ref   = wn_train[mask_ref]
 
-    # Interpola novos espectros para eixo do treino
+    # Interpolate new spectra onto training axis
     X_interp = np.zeros((X_new_raw.shape[0], len(wn_ref)))
     for i in range(X_new_raw.shape[0]):
         f = interp1d(wn_new.astype(float), X_new_raw[i].astype(float),
                      kind="linear", bounds_error=False, fill_value="extrapolate")  # type: ignore
         X_interp[i] = f(wn_ref)
 
-    # Pre-processamento do treino
+    # Apply training preprocessing
     X_proc = preproc.transform(X_interp)
 
-    # Scores PLS (aplica centering interno do modelo)
+    # PLS scores (applies internal centering of the model)
     T_new  = np.asarray(pls.transform(X_proc), dtype=float)
     P      = np.asarray(pls.x_loadings_, dtype=float)   # (p, k)
     P_T    = P.T                                          # (k, p)
 
-    # T2 de Hotelling — mesma formula do pipeline (escala por variancia treino)
+    # Hotelling T2 — same formula as pipeline (scaled by training variance)
     T_train = np.asarray(pls.x_scores_, dtype=float)
     var_t   = T_train.var(axis=0, ddof=1)
     var_t[var_t == 0] = 1.0
     T2_new  = np.sum((T_new ** 2) / var_t, axis=1)
 
-    # Q residuais — mesma convencao do pipeline: X_proc nao subtraido
+    # Q residuals — same convention as pipeline: X_proc not subtracted
     X_rec  = T_new @ P_T                                  # (n_new, p)
     Q_new  = np.sum((X_proc - X_rec) ** 2, axis=1)
 
-    # UCL do pacote (gerados pelo pipeline v25+) ou fallback conservador
+    # UCL from package (generated by pipeline v25+) or conservative fallback
     t2_ucl = float(pkg.get("t2_ucl", np.percentile(
         np.sum((T_train ** 2) / var_t, axis=1), 95)))
     q_ucl  = float(pkg.get("q_ucl", np.percentile(Q_new, 99) * 1.5
                             if len(Q_new) > 0 else 1e6))
 
-    # Predicao de classe via softmax-normalizado dos scores PLS
+    # Class prediction via softmax-normalized PLS scores
     Y_soft  = np.asarray(pls.predict(X_proc), dtype=float)
     Y_clip  = np.clip(Y_soft, 0.0, 1.0)
     totais  = Y_clip.sum(axis=1, keepdims=True)
@@ -1260,7 +1258,7 @@ def _predizer(pkg: Dict, X_new_raw: np.ndarray,
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Estado inicial
+# Initial state
 # ──────────────────────────────────────────────────────────────────────────
 
 if "cfg_base" not in st.session_state:
@@ -1275,38 +1273,38 @@ cfg_base = st.session_state.cfg_base
 specs    = _spec_por_key()
 
 # ──────────────────────────────────────────────────────────────────────────
-# Cabecalho
+# Header
 # ──────────────────────────────────────────────────────────────────────────
 
-st.title("🧪 Plataforma Quimiometrica")
+st.title("🧪 Chemometrics Platform")
 st.caption(
-    "PLS-DA · PCA · OPLS-DA · DD-SIMCA · selecao de variaveis · "
-    "validacao group-aware (anti-vazamento de replicas). "
-    "FT-NIR (.dx) ou tabela CSV (Raman, UV-Vis, FTIR, cromatografia…)."
+    "PLS-DA · PCA · OPLS-DA · DD-SIMCA · variable selection · "
+    "group-aware validation (anti-leakage of replicates). "
+    "FT-NIR (.dx) or CSV table (Raman, UV-Vis, FTIR, chromatography…)."
 )
 
 # ──────────────────────────────────────────────────────────────────────────
-# 7 Abas
+# 7 Tabs
 # ──────────────────────────────────────────────────────────────────────────
 
 (tab_proj, tab_dados, tab_preproc, tab_modelo,
  tab_valid, tab_pred, tab_rel) = st.tabs([
-    "📋 Projeto",
-    "📂 Dados",
-    "⚗️ Pré-proc",
-    "🧮 Modelo",
-    "📊 Validação",
-    "🔮 Predição",
-    "📄 Relatórios",
+    "📋 Project",
+    "📂 Data",
+    "⚗️ Preprocessing",
+    "🧮 Model",
+    "📊 Validation",
+    "🔮 Prediction",
+    "📄 Reports",
 ])
 
-valores: Dict = {}  # acumulado pelos widgets de cada aba
+valores: Dict = {}  # accumulated by widgets from each tab
 
 # ==========================================================================
-#  ABA 1 — PROJETO
+#  TAB 1 — PROJECT
 # ==========================================================================
 def _hardware_status_widget():
-    """Exibe painel de hardware com alertas de compatibilidade."""
+    """Displays hardware panel with compatibility alerts."""
     try:
         hw = pq.hardware_probe()
         ram_t = hw["ram_total_gb"]
@@ -1316,80 +1314,80 @@ def _hardware_status_widget():
         disco = hw["disco_livre_gb"]
         psutil_ok = hw["psutil_ok"]
 
-        # Cor do semaforo de RAM livre
+        # RAM traffic-light color
         if ram_l < 2.0:
             cor_ram = "🔴"
-            dica = "RAM critica. Desabilite Benchmark, SHAP e MC CV."
+            dica = "Critical RAM. Disable Benchmark, SHAP and MC CV."
         elif ram_l < 4.0:
             cor_ram = "🟠"
-            dica = "RAM baixa. Benchmark e SHAP serao desabilitados automaticamente."
+            dica = "Low RAM. Benchmark and SHAP will be disabled automatically."
         elif ram_l < 8.0:
             cor_ram = "🟡"
-            dica = "RAM moderada. Limites serao ajustados automaticamente."
+            dica = "Moderate RAM. Limits will be adjusted automatically."
         else:
             cor_ram = "🟢"
-            dica = "RAM suficiente para todas as operacoes."
+            dica = "Sufficient RAM for all operations."
 
         c_hw1, c_hw2, c_hw3 = st.columns(3)
         with c_hw1:
-            st.metric("RAM total", f"{ram_t:.1f} GB",
-                      delta=f"{cor_ram} {ram_l:.1f} GB livre",
+            st.metric("Total RAM", f"{ram_t:.1f} GB",
+                      delta=f"{cor_ram} {ram_l:.1f} GB free",
                       delta_color="off")
         with c_hw2:
-            st.metric("CPU", f"{cpu_f} nucleos",
-                      delta=f"{cpu_l} threads logicos",
+            st.metric("CPU", f"{cpu_f} cores",
+                      delta=f"{cpu_l} logical threads",
                       delta_color="off")
         with c_hw3:
-            st.metric("Disco livre", f"{disco:.0f} GB",
-                      delta="pasta de trabalho",
+            st.metric("Free disk", f"{disco:.0f} GB",
+                      delta="working folder",
                       delta_color="off")
 
         if ram_l < 8.0:
-            st.warning(f"**Hardware limitado detectado.** {dica}")
+            st.warning(f"**Limited hardware detected.** {dica}")
         if not psutil_ok:
-            st.caption("⚠️ psutil nao disponivel — leituras aproximadas. "
-                       "Instale com `pip install psutil`.")
+            st.caption("⚠️ psutil not available — approximate readings. "
+                       "Install with `pip install psutil`.")
     except Exception:
-        st.caption("Hardware: nao foi possivel detectar especificacoes.")
+        st.caption("Hardware: could not detect hardware specifications.")
 
 
 with tab_proj:
-    st.subheader("Identificacao do Projeto")
-    with st.expander("💻 Status do Hardware", expanded=False):
+    st.subheader("Project Identification")
+    with st.expander("💻 Hardware Status", expanded=False):
         _hardware_status_widget()
     st.divider()
     c1, c2 = st.columns(2)
     with c1:
-        st.text_input("Nome do projeto", key="proj_nome",
-                      placeholder="ex: Autenticacao de Oleos Amazonicos FT-NIR")
-        st.text_input("Autor(es)", key="proj_autor",
-                      placeholder="ex: Silva, J.A.; Costa, M.B.")
-        st.text_input("Instituicao / Laboratorio", key="proj_inst",
-                      placeholder="ex: GEAAp / UFPA")
+        st.text_input("Project name", key="proj_nome",
+                      placeholder="e.g.: Authentication of Amazonian Oils FT-NIR")
+        st.text_input("Author(s)", key="proj_autor",
+                      placeholder="e.g.: Silva, J.A.; Costa, M.B.")
+        st.text_input("Institution / Laboratory", key="proj_inst",
+                      placeholder="e.g.: GEAAp / UFPA")
     with c2:
-        st.selectbox("Tipo de estudo",
-                     ["Classificacao de especies",
-                      "Autenticacao (puro vs adulterado)",
-                      "Quantificacao (regressao)",
-                      "Outro"],
+        st.selectbox("Study type",
+                     ["Species classification",
+                      "Authentication (pure vs. adulterated)",
+                      "Quantification (regression)",
+                      "Other"],
                      key="proj_tipo")
-        st.text_area("Objetivo", key="proj_objetivo", height=120,
-                     placeholder="Descreva o objetivo da analise quimiometrica...")
+        st.text_area("Objective", key="proj_objetivo", height=120,
+                     placeholder="Describe the objective of the chemometric analysis...")
 
     st.divider()
-    st.markdown("**Salvar / Exportar identificacao**")
-    if st.button("💾 Salvar identificacao na sessao"):
-        st.success("Identificacao registrada. Sera incluida nos relatorios desta sessao.")
+    st.markdown("**Save / Export identification**")
+    if st.button("💾 Save identification to session"):
+        st.success("Identification saved. It will be included in the reports for this session.")
 
     run_proj = st.session_state.get("proj_nome", "")
     if run_proj:
-        st.info(f"Projeto ativo: **{run_proj}** — {st.session_state.get('proj_tipo', '')}")
+        st.info(f"Active project: **{run_proj}** — {st.session_state.get('proj_tipo', '')}")
 
 # ==========================================================================
-#  ABA 2 — DADOS
+#  TAB 2 — DATA
 # ==========================================================================
 with tab_dados:
-    st.subheader("Entrada de Dados")
+    st.subheader("Data Input")
 
     _DADOS_KEYS = ["modo_entrada", "pasta_dados", "arquivo_csv",
                    "coluna_classe", "coluna_concentracao",
@@ -1403,14 +1401,14 @@ with tab_dados:
         with (col_d1 if i % 2 == 0 else col_d2):
             valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    # ---- Upload de CSV (opcao adicional ao caminho local) -----------------
+    # ---- CSV Upload (additional option to local path) -----------------
     st.divider()
-    st.markdown("**Upload de CSV** *(alternativa ao caminho local acima)*")
+    st.markdown("**Upload CSV** *(alternative to the local path above)*")
     upld = st.file_uploader(
-        "Arraste ou selecione um arquivo CSV",
+        "Drag or select a CSV file",
         type=["csv", "txt"],
         key="csv_upload_widget",
-        help="O arquivo sera salvo em pasta temporaria e o caminho ajustado automaticamente.",
+        help="The file will be saved to a temporary folder and the path adjusted automatically.",
     )
     if upld is not None:
         tmp_dir = Path(tempfile.gettempdir()) / "pq_uploads"
@@ -1422,22 +1420,22 @@ with tab_dados:
                 f.write(upld.getvalue())
             st.session_state["_csv_upload_name"] = upld.name
             st.session_state["_csv_upload_path"] = tmp_path
-        st.success(f"Arquivo salvo: `{tmp_path}`")
-        st.info("Modo automaticamente ajustado para 'csv'. "
-                "Caminho acima sera sobreposto ao rodar.")
+        st.success(f"File saved: `{tmp_path}`")
+        st.info("Mode automatically set to 'csv'. "
+                "The path above will be overridden when running.")
 
-    # ---- Preview de estatisticas -----------------------------------------
+    # ---- Data statistics preview -----------------------------------------
     st.divider()
-    st.markdown("**Preview dos dados**")
+    st.markdown("**Data preview**")
     cfg_prev, _ = _coletar_config(cfg_base, valores)
     ok_dados, msg_dados = pq._validar_pasta_dados(cfg_prev)
     (st.success if ok_dados else st.warning)(f"Status: {msg_dados}")
 
-    if ok_dados and st.button("🔍 Carregar preview de espectros", key="btn_prev_dados"):
+    if ok_dados and st.button("🔍 Load spectra preview", key="btn_prev_dados"):
         modo = cfg_prev.modo
         wn_mn = float(cfg_prev.wn_min)
         wn_mx = float(cfg_prev.wn_max)
-        with st.spinner("Carregando amostra de espectros..."):
+        with st.spinner("Loading spectra sample..."):
             if modo == "dx":
                 wn_p, X_p, labs_p = _preview_espectros_dx(
                     cfg_prev.pasta_entrada, wn_mn, wn_mx)
@@ -1451,47 +1449,47 @@ with tab_dados:
 
         if wn_p is not None and X_p is not None:
             cls_u = np.unique(np.asarray(labs_p))
-            st.markdown(f"**{len(X_p)} espectros** · {len(cls_u)} classes: "
+            st.markdown(f"**{len(X_p)} spectra** · {len(cls_u)} classes: "
                         f"`{'`, `'.join(cls_u[:8])}`"
                         + (" ..." if len(cls_u) > 8 else ""))
-            fig_p = _plot_espectros_media(wn_p, X_p, np.asarray(labs_p), titulo="Espectros brutos (amostra)")
+            fig_p = _plot_espectros_media(wn_p, X_p, np.asarray(labs_p), titulo="Raw spectra (sample)")
             st.pyplot(fig_p, use_container_width=True)
             plt.close(fig_p)
         else:
-            st.warning("Nao foi possivel carregar espectros para preview. "
-                       "Verifique o caminho/modo.")
+            st.warning("Could not load spectra for preview. "
+                       "Check the path/mode.")
 
-    # ---- Salvar / Recarregar config.yaml ---------------------------------
+    # ---- Save / Reload config.yaml ---------------------------------
     st.divider()
     cfg_dados, erros_dados = _coletar_config(cfg_base, valores)
     if erros_dados:
-        st.warning("Campos com erro:\n- " + "\n- ".join(erros_dados))
+        st.warning("Fields with errors:\n- " + "\n- ".join(erros_dados))
     c_s1, c_s2 = st.columns(2)
     with c_s1:
-        if st.button("💾 Salvar config.yaml", key="btn_salvar_cfg_dados",
+        if st.button("💾 Save config.yaml", key="btn_salvar_cfg_dados",
                      use_container_width=True):
             if erros_dados:
-                st.error("Corrija os campos antes de salvar.")
+                st.error("Fix the fields before saving.")
             else:
                 pq.salvar_config(cfg_dados, _CFG_PATH)
                 st.session_state.cfg_base = cfg_dados
-                st.success(f"Salvo em {_CFG_PATH}")
+                st.success(f"Saved to {_CFG_PATH}")
     with c_s2:
-        if st.button("↺ Recarregar config.yaml", key="btn_reload_cfg_dados",
+        if st.button("↺ Reload config.yaml", key="btn_reload_cfg_dados",
                      use_container_width=True):
             try:
                 st.session_state.cfg_base = pq.carregar_config(_CFG_PATH)
                 cfg_base = st.session_state.cfg_base
-                st.success("Config recarregada.")
+                st.success("Config reloaded.")
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro: {e}")
+                st.error(f"Error: {e}")
 
 # ==========================================================================
-#  ABA 3 — PRE-PROCESSAMENTO
+#  TAB 3 — PREPROCESSING
 # ==========================================================================
 with tab_preproc:
-    st.subheader("Pre-processamento Espectral")
+    st.subheader("Spectral Preprocessing")
 
     _PREPROC_KEYS = ["pre_processamento", "faixa_min_cm", "faixa_max_cm"]
 
@@ -1503,27 +1501,27 @@ with tab_preproc:
         with (col_p1 if i % 2 == 0 else col_p2):
             valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    # Informativo sobre cada preset
+    # Information about each preset
     preset_selecionado = valores.get("pre_processamento", "")
     _PRESET_INFO = {
-        "MSC+SG+MC":      "MSC (correcao de scatter) → 1a derivada SG (Savitzky-Golay) → Mean-Centering. **Melhor para FT-NIR com scatter pronunciado.** Acc=0.923 na base de 1807 amostras de oleos amazonicos.",
-        "SNV+SG+MC":      "SNV (normalizacao por variancia) → SG → Mean-Centering. Alternativa robusta ao MSC quando a referencia global nao e estavel.",
-        "Autoscaling":    "Mean-Centering + divisao pelo desvio padrao. **Cuidado**: colapsa ruido espectral quando SG nao e aplicado antes.",
-        "Mean-centering": "Apenas centragem pela media. Recomendado como baseline comparativo.",
+        "MSC+SG+MC":      "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Acc=0.923 on 1807 Amazonian oil samples.",
+        "SNV+SG+MC":      "SNV (variance normalization) → SG → Mean-Centering. Robust alternative to MSC when global reference is not stable.",
+        "Autoscaling":    "Mean-Centering + division by standard deviation. **Caution**: collapses spectral noise when SG is not applied first.",
+        "Mean-centering": "Mean centering only. Recommended as a comparative baseline.",
     }
     if preset_selecionado in _PRESET_INFO:
         st.info(_PRESET_INFO[preset_selecionado])
 
-    # ---- Preview antes/depois -------------------------------------------
+    # ---- Before/after preview -------------------------------------------
     st.divider()
-    st.markdown("**Visualizacao antes / depois do pre-processamento**")
+    st.markdown("**Before / after preprocessing visualization**")
     cfg_pp, _ = _coletar_config(cfg_base, valores)
     ok_pp, _ = pq._validar_pasta_dados(cfg_pp)
 
     if not ok_pp:
-        st.info("Configure e valide a entrada de dados (Aba 'Dados') para habilitar o preview.")
-    elif st.button("⚗️ Gerar preview antes/depois", key="btn_prev_preproc"):
-        with st.spinner("Carregando e processando espectros..."):
+        st.info("Configure and validate data input (Data tab) to enable the preview.")
+    elif st.button("⚗️ Generate before/after preview", key="btn_prev_preproc"):
+        with st.spinner("Loading and processing spectra..."):
             modo_pp = cfg_pp.modo
             wn_mn_pp = float(cfg_pp.wn_min)
             wn_mx_pp = float(cfg_pp.wn_max)
@@ -1545,10 +1543,10 @@ with tab_preproc:
                 X_proc_pp = preproc_pp.transform(X_raw)
                 labs_raw_arr = np.asarray(labs_raw)
                 fig_antes = _plot_espectros_media(
-                    wn_raw, X_raw, labs_raw_arr, "Antes do pre-processamento")
+                    wn_raw, X_raw, labs_raw_arr, "Before preprocessing")
                 fig_depois = _plot_espectros_media(
                     wn_raw, X_proc_pp, labs_raw_arr,
-                    f"Apos: {preset_selecionado}")
+                    f"After: {preset_selecionado}")
                 col_ant, col_dep = st.columns(2)
                 with col_ant:
                     st.pyplot(fig_antes, use_container_width=True)
@@ -1557,15 +1555,15 @@ with tab_preproc:
                     st.pyplot(fig_depois, use_container_width=True)
                     plt.close(fig_depois)
             except Exception as e_pp:
-                st.error(f"Erro ao aplicar pre-processamento: {e_pp}")
+                st.error(f"Error applying preprocessing: {e_pp}")
         else:
-            st.warning("Nao foi possivel carregar espectros. Verifique a Aba Dados.")
+            st.warning("Could not load spectra. Check the Data tab.")
 
 # ==========================================================================
-#  ABA 4 — MODELO (parametros avancados + execucao)
+#  TAB 4 — MODEL (advanced parameters + execution)
 # ==========================================================================
 with tab_modelo:
-    st.subheader("Parametros do Modelo e Execucao")
+    st.subheader("Model Parameters and Execution")
 
     _MODELO_KEYS_ANALISE  = ["nivel", "max_lvs", "holdout_fracao",
                               "validacao_group_aware"]
@@ -1580,7 +1578,7 @@ with tab_modelo:
                               "formato_figura", "dpi",
                               "abrir_figuras_na_tela"]
 
-    with st.expander("Analise e particionamento", expanded=True):
+    with st.expander("Analysis and partitioning", expanded=True):
         cols_a = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_ANALISE):
             s = specs.get(k)
@@ -1588,7 +1586,7 @@ with tab_modelo:
             with cols_a[i % 2]:
                 valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    with st.expander("Validacao estatistica", expanded=False):
+    with st.expander("Statistical validation", expanded=False):
         cols_v = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_VALID):
             s = specs.get(k)
@@ -1596,21 +1594,21 @@ with tab_modelo:
             with cols_v[i % 2]:
                 valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    with st.expander("Modulos extras", expanded=False):
-        # Aviso de hardware para operacoes pesadas
+    with st.expander("Extra modules", expanded=False):
+        # Hardware warning for heavy operations
         try:
             _hw_mod = pq.hardware_probe()
             _ram_l  = _hw_mod.get("ram_livre_gb", 16.0)
             if _ram_l < 4.0:
                 st.error(
-                    f"⚠️ RAM livre: **{_ram_l:.1f} GB** — "
-                    "Benchmark e SHAP serao **desabilitados automaticamente** "
-                    "pelo pipeline para evitar travamento.")
+                    f"⚠️ Free RAM: **{_ram_l:.1f} GB** — "
+                    "Benchmark and SHAP will be **automatically disabled** "
+                    "by the pipeline to prevent freezing.")
             elif _ram_l < 8.0:
                 st.warning(
-                    f"⚠️ RAM livre: **{_ram_l:.1f} GB** — "
-                    "Limites de SHAP e Monte Carlo CV serao ajustados "
-                    "automaticamente. Recomenda-se fechar outros programas.")
+                    f"⚠️ Free RAM: **{_ram_l:.1f} GB** — "
+                    "SHAP and Monte Carlo CV limits will be adjusted "
+                    "automatically. Closing other programs is recommended.")
         except Exception:
             pass
 
@@ -1621,7 +1619,7 @@ with tab_modelo:
             with cols_e[i % 2]:
                 valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    with st.expander("Figuras", expanded=False):
+    with st.expander("Figures", expanded=False):
         cols_f = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_FIGURAS):
             s = specs.get(k)
@@ -1631,10 +1629,10 @@ with tab_modelo:
 
     st.divider()
 
-    # ---- Montagem final da Config e execucao ----------------------------
+    # ---- Final Config assembly and execution ----------------------------
     cfg_run, erros_run = _coletar_config(cfg_base, valores)
 
-    # Se usuario fez upload de CSV, sobrepoe o caminho
+    # If user uploaded a CSV, override the path
     if st.session_state.get("_csv_upload_path"):
         csv_upld_path = st.session_state["_csv_upload_path"]
         if os.path.exists(csv_upld_path):
@@ -1642,16 +1640,16 @@ with tab_modelo:
             cfg_run.arquivo_csv = csv_upld_path
 
     ok_run, msg_run = pq._validar_pasta_dados(cfg_run)
-    st.write("**Entrada:**", msg_run)
+    st.write("**Input:**", msg_run)
     if erros_run:
-        st.error("Campos invalidos na configuracao:\n- " + "\n- ".join(erros_run))
+        st.error("Invalid fields in configuration:\n- " + "\n- ".join(erros_run))
 
     pode_rodar = ok_run and not erros_run
-    rodar = st.button("▶️ Rodar pipeline", type="primary",
+    rodar = st.button("▶️ Run pipeline", type="primary",
                       disabled=not pode_rodar, use_container_width=True,
                       key="btn_rodar")
     if not pode_rodar:
-        st.info("Corrija a entrada de dados (Aba 'Dados') para habilitar.")
+        st.info("Fix the data input (Data tab) to enable.")
 
     if rodar:
         try:
@@ -1664,7 +1662,7 @@ with tab_modelo:
         worker = threading.Thread(
             target=_rodar_worker, args=(cfg_run, logger, estado), daemon=True)
 
-        barra    = st.progress(0.0, text="Iniciando...")
+        barra    = st.progress(0.0, text="Starting...")
         ph_info  = st.empty()
         ph_log   = st.empty()
 
@@ -1682,10 +1680,10 @@ with tab_modelo:
             ram = _ram_mb()
             barra.progress(frac, text=f"[{int(frac * 100)}%] {nome}")
             ph_info.markdown(
-                f"⏱️ **Decorrido:** {_fmt_tempo(elapsed)}  |  "
-                f"⏳ **Falta:** "
-                f"{_fmt_tempo(eta_best) if eta_best is not None else 'calculando…'}  |  "
-                f"💾 **RAM:** {f'{ram:.0f} MB' if ram else 'n/d'}")
+                f"⏱️ **Elapsed:** {_fmt_tempo(elapsed)}  |  "
+                f"⏳ **Remaining:** "
+                f"{_fmt_tempo(eta_best) if eta_best is not None else 'calculating…'}  |  "
+                f"💾 **RAM:** {f'{ram:.0f} MB' if ram else 'n/a'}")
             linhas = txt.strip().splitlines()
             ph_log.code("\n".join(linhas[-12:]) if linhas else "...",
                         language="text")
@@ -1694,11 +1692,11 @@ with tab_modelo:
         txt     = logger.text()
         elapsed = time.monotonic() - t0
         ram     = _ram_mb()
-        barra.progress(1.0, text="Concluido")
+        barra.progress(1.0, text="Done")
         ph_info.markdown(
-            f"⏱️ **Tempo total:** {_fmt_tempo(elapsed)}  |  "
-            f"⏳ **Falta:** 0s  |  "
-            f"💾 **RAM:** {f'{ram:.0f} MB' if ram else 'n/d'}")
+            f"⏱️ **Total time:** {_fmt_tempo(elapsed)}  |  "
+            f"⏳ **Remaining:** 0s  |  "
+            f"💾 **RAM:** {f'{ram:.0f} MB' if ram else 'n/a'}")
         linhas = txt.strip().splitlines()
         ph_log.code("\n".join(linhas[-12:]) if linhas else "...",
                     language="text")
@@ -1707,36 +1705,36 @@ with tab_modelo:
         if estado["erro"]:
             st.session_state.erro_run  = estado["erro"]
             st.session_state.ultima_pasta = None
-            st.error(f"Pipeline falhou apos {_fmt_tempo(elapsed)}.")
+            st.error(f"Pipeline failed after {_fmt_tempo(elapsed)}.")
         else:
             st.session_state.erro_run  = None
             st.session_state.ultima_pasta = estado["pasta"]
-            st.success(f"Concluido em {_fmt_tempo(elapsed)}! "
-                       "Veja os resultados nas abas Validacao e Relatorios.")
+            st.success(f"Completed in {_fmt_tempo(elapsed)}! "
+                       "View results in the Validation and Reports tabs.")
 
     if st.session_state.get("erro_run"):
-        st.subheader("Traceback do erro")
+        st.subheader("Error traceback")
         st.code(st.session_state.erro_run, language="text")
 
 # ==========================================================================
-#  ABA 5 — VALIDACAO
+#  TAB 5 — VALIDATION
 # ==========================================================================
 with tab_valid:
-    st.subheader("Resultados de Validacao")
+    st.subheader("Validation Results")
     pasta_v = st.session_state.get("ultima_pasta")
 
     if not pasta_v or not os.path.isdir(pasta_v):
-        st.info("Execute o pipeline (Aba 'Modelo') para visualizar os resultados aqui.")
+        st.info("Run the pipeline (Model tab) to view results here.")
     else:
-        st.caption(f"Pasta: `{os.path.abspath(pasta_v)}`")
+        st.caption(f"Folder: `{os.path.abspath(pasta_v)}`")
 
-        # Resumo numerico
+        # Numeric summary
         resumo_txt = _ler_resumo(pasta_v)
         if resumo_txt:
-            with st.expander("📋 Resumo do modelo (resumo_modelo.txt)", expanded=True):
+            with st.expander("📋 Model summary (resumo_modelo.txt)", expanded=True):
                 st.code(resumo_txt, language="text")
 
-        # ── Tabela Accuracy por Classe (extraida do resumo) ───────────────
+        # ── Per-Class Accuracy table (extracted from summary) ───────────────
         if resumo_txt:
             import re as _re_acc
             acc_map: Dict[str, float] = {}
@@ -1745,11 +1743,11 @@ with tab_valid:
                 if _m:
                     acc_map[_m.group(1).strip()] = float(_m.group(2))
             if acc_map:
-                with st.expander("📊 Accuracy por Classe", expanded=True):
+                with st.expander("📊 Accuracy by Class", expanded=True):
                     _df_acc = pd.DataFrame(
-                        list(acc_map.items()), columns=["Classe", "Accuracy (recall)"]
+                        list(acc_map.items()), columns=["Class", "Accuracy (recall)"]
                     ).sort_values("Accuracy (recall)")
-                    # Colorir: vermelho < 0.7, amarelo 0.7-0.9, verde >= 0.9
+                    # Color: red < 0.7, yellow 0.7-0.9, green >= 0.9
                     def _cor_acc(v: float) -> str:
                         if v >= 0.90: return "background-color:#d4edda"
                         if v >= 0.70: return "background-color:#fff3cd"
@@ -1759,37 +1757,37 @@ with tab_valid:
                             _cor_acc, subset=["Accuracy (recall)"]),
                         use_container_width=True, height=min(400, 35 * len(_df_acc) + 38))
 
-        # ── Tabelas de Benchmark e MC CV (se existirem) ───────────────────
+        # ── Benchmark and MC CV tables (if they exist) ───────────────────
         _bench_csv_v = os.path.join(pasta_v, "dados",
                                     "benchmark_classificadores.csv")
         _mc_csv_v    = os.path.join(pasta_v, "dados", "monte_carlo_cv.csv")
         if os.path.exists(_bench_csv_v) or os.path.exists(_mc_csv_v):
-            with st.expander("🏅 Benchmark de Classificadores", expanded=False):
+            with st.expander("🏅 Classifier Benchmark", expanded=False):
                 if os.path.exists(_bench_csv_v):
                     try:
                         _df_b = pd.read_csv(_bench_csv_v, sep=";", decimal=",")
-                        st.markdown("**Auto-Benchmark — Balanced Accuracy por modelo (GroupKFold)**")
+                        st.markdown("**Auto-Benchmark — Balanced Accuracy by model (GroupKFold)**")
                         st.dataframe(_df_b, use_container_width=True)
                     except Exception as _e_b:
-                        st.warning(f"Erro ao ler benchmark CSV: {_e_b}")
+                        st.warning(f"Error reading benchmark CSV: {_e_b}")
                 if os.path.exists(_mc_csv_v):
                     try:
                         _df_mc = pd.read_csv(_mc_csv_v, sep=";", decimal=",")
-                        st.markdown("**Monte Carlo CV — IC95% por percentil**")
+                        st.markdown("**Monte Carlo CV — 95% CI by percentile**")
                         st.dataframe(_df_mc, use_container_width=True)
                     except Exception as _e_mc:
-                        st.warning(f"Erro ao ler MC CV CSV: {_e_mc}")
+                        st.warning(f"Error reading MC CV CSV: {_e_mc}")
 
-        # Galeria filtrada por categoria de figura
+        # Gallery filtered by figure category
         imgs_v = _listar_figuras(pasta_v)
         if imgs_v:
-            st.markdown(f"**{len(imgs_v)} figuras geradas**")
+            st.markdown(f"**{len(imgs_v)} figures generated**")
             _CATS = {
-                "Todas":            "",
+                "All":              "",
                 "PCA":              "pca",
                 "PLS-DA scores":    "plsda",
                 "Outliers (T²/Q)":  "outlier",
-                "Confusao":         "confus",
+                "Confusion":        "confus",
                 "ROC / AUC":        "roc",
                 "VIP / SR":         "vip",
                 "Loading":          "loading",
@@ -1798,14 +1796,14 @@ with tab_valid:
                 "DD-SIMCA":         "ddsimca",
                 "Cooman's Plot":    "cooman",
                 "S-Plot":           "splot",
-                "Permutacao":       "permut",
+                "Permutation":      "permut",
                 "Wold":             "wold",
                 "Benchmark":        "benchmark",
                 "Monte Carlo CV":   "monte_carlo",
                 "DET curves":       "fig_det",
                 "SHAP":             "fig_shap",
             }
-            filtro_v = st.selectbox("Filtrar por categoria",
+            filtro_v = st.selectbox("Filter by category",
                                     list(_CATS.keys()), key="filtro_valid")
             token_v  = _CATS[filtro_v].lower()
             imgs_filt = [im for im in imgs_v
@@ -1819,52 +1817,52 @@ with tab_valid:
                         st.image(img, caption=os.path.basename(img),
                                  use_container_width=True)
             else:
-                st.info(f"Nenhuma figura encontrada para '{filtro_v}'.")
+                st.info(f"No figures found for '{filtro_v}'.")
         else:
-            st.info("Figuras salvas em formato nao visualizavel (PDF/SVG). "
-                    "Use o download na aba Relatorios.")
+            st.info("Figures saved in non-displayable format (PDF/SVG). "
+                    "Use the download button in the Reports tab.")
 
 # ==========================================================================
-#  ABA 6 — PREDICAO
+#  TAB 6 — PREDICTION
 # ==========================================================================
 with tab_pred:
-    st.subheader("Predicao de Amostras Desconhecidas")
+    st.subheader("Prediction on Unknown Samples")
     st.markdown(
-        "Carregue um modelo `.joblib` gerado pelo pipeline e um CSV "
-        "com novos espectros (colunas = numeros de onda, sem coluna de classe)."
+        "Upload a `.joblib` model generated by the pipeline and a CSV "
+        "with new spectra (columns = wavenumbers, no class column)."
     )
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        st.markdown("**1. Modelo treinado (.joblib)**")
-        upld_jbl = st.file_uploader("Upload do modelo .joblib",
+        st.markdown("**1. Trained model (.joblib)**")
+        upld_jbl = st.file_uploader("Upload the .joblib model",
                                     type=["joblib", "pkl"],
                                     key="pred_model_upload")
-        cam_jbl  = st.text_input("Ou caminho local do modelo",
+        cam_jbl  = st.text_input("Or local path to model",
                                   key="pred_model_path",
-                                  placeholder="C:/resultados/modelo_pls.joblib")
+                                  placeholder="C:/results/model_pls.joblib")
 
     with col_m2:
-        st.markdown("**2. Espectros novos (CSV)**")
-        upld_csv_pred = st.file_uploader("Upload do CSV com novos espectros",
+        st.markdown("**2. New spectra (CSV)**")
+        upld_csv_pred = st.file_uploader("Upload CSV with new spectra",
                                           type=["csv", "txt"],
                                           key="pred_csv_upload")
-        cam_csv_pred  = st.text_input("Ou caminho local do CSV",
+        cam_csv_pred  = st.text_input("Or local path to CSV",
                                        key="pred_csv_path",
-                                       placeholder="C:/dados/novos_espectros.csv")
+                                       placeholder="C:/data/new_spectra.csv")
         col_wn_pred   = st.text_input(
-            "Primeira coluna a usar como numero de onda (deixe vazio = auto)",
+            "First column to use as wavenumber (leave empty = auto)",
             key="pred_col_wn",
-            placeholder="ex: 4000.0  (nome ou indice da primeira coluna espectral)")
+            placeholder="e.g.: 4000.0  (name or index of first spectral column)")
 
-    # ---- Botao Predizer -------------------------------------------------
+    # ---- Predict button -------------------------------------------------
     st.divider()
-    if st.button("🔮 Predizer", type="primary", key="btn_predizer",
+    if st.button("🔮 Predict", type="primary", key="btn_predizer",
                  use_container_width=True):
         erros_pred: List[str] = []
         pkg_pred = None
 
-        # Carrega modelo
+        # Load model
         try:
             import joblib
             if upld_jbl is not None:
@@ -1874,20 +1872,20 @@ with tab_pred:
                 pkg_pred = joblib.load(str(tmp_jbl))
             elif cam_jbl and os.path.exists(cam_jbl):
                 pkg_pred = joblib.load(cam_jbl)
-            # Validacao minima de estrutura para evitar RCE via pickle malicioso
+            # Minimal structure validation to avoid RCE via malicious pickle
             if pkg_pred is not None:
                 _chaves_req = {"preprocessador", "pls_final", "label_binarizer", "wavenumbers"}
                 if not _chaves_req.issubset(pkg_pred.keys()):
                     raise ValueError(
-                        f"Modelo invalido: chaves esperadas {_chaves_req}, "
-                        f"encontradas {set(pkg_pred.keys())}"
+                        f"Invalid model: expected keys {_chaves_req}, "
+                        f"found {set(pkg_pred.keys())}"
                     )
             else:
-                erros_pred.append("Nenhum modelo valido fornecido (upload ou caminho).")
+                erros_pred.append("No valid model provided (upload or path).")
         except Exception as e_jbl:
-            erros_pred.append(f"Erro ao carregar modelo: {e_jbl}")
+            erros_pred.append(f"Error loading model: {e_jbl}")
 
-        # Carrega CSV de predicao
+        # Load prediction CSV
         X_pred_raw = None
         wn_pred    = None
         try:
@@ -1896,11 +1894,11 @@ with tab_pred:
             elif cam_csv_pred and os.path.exists(cam_csv_pred):
                 df_pred = pd.read_csv(cam_csv_pred, sep=None, engine="python")
             else:
-                erros_pred.append("Nenhum CSV de espectros fornecido.")
+                erros_pred.append("No spectra CSV provided.")
                 df_pred = None
 
             if df_pred is not None:
-                # Detecta colunas numericas (wavenumbers)
+                # Detect numeric columns (wavenumbers)
                 num_cols_pred = []
                 for c in df_pred.columns:
                     try:
@@ -1914,36 +1912,36 @@ with tab_pred:
                         columns=num_cols_pred, errors="ignore")
                 else:
                     erros_pred.append(
-                        "Nao foram encontradas colunas com nomes numericos (wavenumbers). "
-                        "Certifique-se de que os cabecalhos das colunas espectrais "
-                        "sao os numeros de onda (ex: 4000.5, 4001.0...).")
+                        "No columns with numeric names (wavenumbers) were found. "
+                        "Ensure that the spectral column headers are wavenumbers "
+                        "(e.g.: 4000.5, 4001.0...).")
         except Exception as e_csv:
-            erros_pred.append(f"Erro ao ler CSV: {e_csv}")
+            erros_pred.append(f"Error reading CSV: {e_csv}")
 
         if erros_pred:
             for e in erros_pred:
                 st.error(e)
         elif pkg_pred is not None and X_pred_raw is not None:
             try:
-                with st.spinner("Aplicando modelo..."):
+                with st.spinner("Applying model..."):
                     df_res = _predizer(pkg_pred, X_pred_raw, wn_pred)
-                    # Recoloca metadados (nomes de amostras) se disponiveis
+                    # Re-attach metadata (sample names) if available
                     meta_df = st.session_state.get("pred_amostras")
                     if meta_df is not None and len(meta_df) == len(df_res):
                         df_res = pd.concat(
                             [meta_df.reset_index(drop=True), df_res], axis=1)
                 st.session_state["pred_resultados"] = df_res
-                st.success(f"Predicao concluida: {len(df_res)} amostras.")
+                st.success(f"Prediction complete: {len(df_res)} samples.")
             except Exception as e_pred:
-                st.error(f"Erro na predicao: {e_pred}")
+                st.error(f"Prediction error: {e_pred}")
 
-    # ---- Exibicao dos resultados ----------------------------------------
+    # ---- Results display ----------------------------------------
     df_show = st.session_state.get("pred_resultados")
     if df_show is not None:
         st.divider()
-        st.markdown("**Resultados da predicao**")
+        st.markdown("**Prediction results**")
 
-        # Colorir aceito/rejeitado
+        # Color accepted/rejected
         def _colorir_aceito(val):
             if val is True:
                 return "background-color:#d4edda; color:#155724"
@@ -1963,27 +1961,27 @@ with tab_pred:
         # Download CSV
         csv_bytes = df_show.to_csv(index=False, sep=";", decimal=",").encode("utf-8")
         st.download_button(
-            "⬇️ Baixar resultados (.csv)",
+            "⬇️ Download results (.csv)",
             data=csv_bytes,
             file_name="predicao_resultados.csv",
             mime="text/csv",
             use_container_width=True,
         )
 
-        # Resumo rapido
+        # Quick summary
         if "aceito" in df_show.columns:
             n_ac = int(df_show["aceito"].sum())
             n_tot = len(df_show)
-            st.metric("Amostras aceitas (T² ≤ UCL e Q ≤ UCL)",
+            st.metric("Accepted samples (T² ≤ UCL and Q ≤ UCL)",
                       f"{n_ac} / {n_tot}",
                       delta=f"{n_ac/n_tot*100:.1f}%")
 
 def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
                            max_figuras: int = 12) -> io.BytesIO:
     """
-    Gera apresentacao PowerPoint com design científico profissional.
-    Paleta: Navy #0F172A + Accent #0369A1 (UI Pro Max — B2B Professional).
-    Estrutura: Capa | Metodologia | Metricas | Figuras | Benchmark | Conclusoes
+    Generates a PowerPoint presentation with professional scientific design.
+    Palette: Navy #0F172A + Accent #0369A1 (UI Pro Max — B2B Professional).
+    Structure: Cover | Methodology | Metrics | Figures | Benchmark | Conclusions
     """
     from pptx import Presentation
     from pptx.util import Inches, Pt, Emu
@@ -1991,7 +1989,7 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
     from pptx.enum.text import PP_ALIGN
     import re as _re
 
-    # ── Paleta UI Pro Max — B2B Professional ──────────────────────────────
+    # ── UI Pro Max — B2B Professional palette ──────────────────────────────
     _NAVY   = RGBColor(0x0F, 0x17, 0x2A)
     _SLATE  = RGBColor(0x33, 0x41, 0x55)
     _ACCENT = RGBColor(0x03, 0x69, 0xA1)
@@ -2010,14 +2008,14 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
         "AUC macro OvR":          _ex(r"ROC AUC macro.*?[:=]\s*([\d.]+)"),
         "R2Y":                    _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "Q2Y":                    _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
-        "LVs otimos":             _ex(r"LVs?\s+otim.*?[:=]\s*(\d+)"),
-        "Pre-processamento":      _ex(r"[Pp]re.?[Pp]rocess.*?[:=]\s*([A-Za-z0-9_+]+)"),
-        "N amostras":             _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
+        "Optimal LVs":            _ex(r"LVs?\s+otim.*?[:=]\s*(\d+)"),
+        "Preprocessing":          _ex(r"[Pp]re.?[Pp]rocess.*?[:=]\s*([A-Za-z0-9_+]+)"),
+        "N samples":              _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "N classes":              _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
-        "p permutacao":           _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
+        "p permutation":          _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
     }
 
-    # ── Helpers de layout ─────────────────────────────────────────────────
+    # ── Layout helpers ─────────────────────────────────────────────────────
     prs = Presentation()
     prs.slide_width  = Inches(13.33)
     prs.slide_height = Inches(7.5)
@@ -2060,53 +2058,53 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
 
     def _rodape(slide):
         _rect(slide, 0, int(H - Inches(0.4)), int(W), int(Inches(0.4)), _SLATE)
-        data_str = time.strftime("%d/%m/%Y")
+        data_str = time.strftime("%Y-%m-%d")
         inst = projeto.get("inst", "GEAAp / UFPA")
         _txt(slide,
-             f"{inst}  •  Plataforma Quimiometrica  •  {data_str}",
+             f"{inst}  •  Chemometrics Platform  •  {data_str}",
              int(Inches(0.3)), int(H - Inches(0.35)),
              int(W - Inches(0.6)), int(Inches(0.35)),
              size=9, color=_LIGHT, align=PP_ALIGN.CENTER)
 
-    # ── SLIDE 1: Capa ─────────────────────────────────────────────────────
+    # ── SLIDE 1: Cover ─────────────────────────────────────────────────────
     slide1 = _slide_novo()
     _fundo(slide1, _NAVY)
-    # Faixa accent horizontal
+    # Horizontal accent band
     _rect(slide1, 0, int(Inches(3.5)), int(W), int(Inches(0.12)), _ACCENT)
-    # Titulo principal
-    _txt(slide1, projeto.get("nome", "Plataforma Quimiometrica"),
+    # Main title
+    _txt(slide1, projeto.get("nome", "Chemometrics Platform"),
          int(Inches(1.0)), int(Inches(1.2)),
          int(W - Inches(2.0)), int(Inches(1.5)),
          bold=True, size=36, color=_WHITE)
-    # Subtitulo
-    _txt(slide1, projeto.get("tipo", "Analise Quimiometrica FT-NIR"),
+    # Subtitle
+    _txt(slide1, projeto.get("tipo", "Chemometric Analysis FT-NIR"),
          int(Inches(1.0)), int(Inches(2.8)),
          int(W - Inches(2.0)), int(Inches(0.8)),
          size=20, color=RGBColor(0xCB, 0xD5, 0xE1))
-    # Metadados
+    # Metadata
     autor  = projeto.get("autor", "")
     inst   = projeto.get("inst", "GEAAp / UFPA")
-    data_s = time.strftime("%d/%m/%Y")
+    data_s = time.strftime("%Y-%m-%d")
     _txt(slide1, f"{autor}\n{inst}\n{data_s}",
          int(Inches(1.0)), int(Inches(4.0)),
          int(Inches(6.0)), int(Inches(2.0)),
          size=14, color=RGBColor(0x94, 0xA3, 0xB8))
 
-    # ── SLIDE 2: Metodologia ──────────────────────────────────────────────
+    # ── SLIDE 2: Methodology ──────────────────────────────────────────────
     slide2 = _slide_novo()
     _fundo(slide2)
-    _barra_topo(slide2, "Metodologia")
+    _barra_topo(slide2, "Methodology")
     _rodape(slide2)
 
     metod_items = [
-        f"Pre-processamento: {metricas['Pre-processamento']}",
-        f"Classificador principal: PLS-DA ({metricas['LVs otimos']} LVs otimos)",
-        f"Validacao cruzada: GroupKFold anti-leakage de replicas (mae_id)",
-        f"Testes estatisticos: Y-permutacao, Wold (R2Y/Q2Y), CV-ANOVA",
-        f"Selecao de variaveis: iPLS, VIP >= 1, SR top-20%, sPLS-DA",
-        f"Validacao externa: holdout estratificado (puros sempre no treino)",
+        f"Preprocessing: {metricas['Preprocessing']}",
+        f"Main classifier: PLS-DA ({metricas['Optimal LVs']} optimal LVs)",
+        f"Cross-validation: GroupKFold anti-leakage of replicates (mae_id)",
+        f"Statistical tests: Y-permutation, Wold (R2Y/Q2Y), CV-ANOVA",
+        f"Variable selection: iPLS, VIP >= 1, SR top-20%, sPLS-DA",
+        f"External validation: stratified holdout (pure samples always in training)",
         f"Benchmark: PLS-DA vs SVM RBF vs RF vs GBM vs XGBoost",
-        f"Dados: {metricas['N amostras']} amostras  |  {metricas['N classes']} classes",
+        f"Data: {metricas['N samples']} samples  |  {metricas['N classes']} classes",
     ]
     for i, item in enumerate(metod_items):
         _txt(slide2, f"• {item}",
@@ -2114,10 +2112,10 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
              int(W - Inches(1.4)), int(Inches(0.6)),
              size=13, color=_SLATE)
 
-    # ── SLIDE 3: Metricas de Desempenho ───────────────────────────────────
+    # ── SLIDE 3: Performance Metrics ───────────────────────────────────────
     slide3 = _slide_novo()
     _fundo(slide3)
-    _barra_topo(slide3, "Resultados — Metricas de Desempenho")
+    _barra_topo(slide3, "Results — Performance Metrics")
     _rodape(slide3)
 
     met_exibir = [
@@ -2125,8 +2123,8 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
         ("AUC macro OvR",          metricas["AUC macro OvR"],          _NAVY),
         ("R2Y",                    metricas["R2Y"],                    _SLATE),
         ("Q2Y",                    metricas["Q2Y"],                    _SLATE),
-        ("LVs otimos",             metricas["LVs otimos"],             _MUTED),
-        ("p permutacao",           metricas["p permutacao"],           _MUTED),
+        ("Optimal LVs",            metricas["Optimal LVs"],            _MUTED),
+        ("p permutation",          metricas["p permutation"],          _MUTED),
     ]
     cols = 3; w_box = int((W - Inches(1.0)) / cols)
     h_box = int(Inches(1.6))
@@ -2142,9 +2140,9 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
              w_box - int(Inches(0.2)), int(Inches(0.55)),
              size=11, color=_LIGHT, align=PP_ALIGN.CENTER)
 
-    # ── SLIDES 4+: Figuras ────────────────────────────────────────────────
+    # ── SLIDES 4+: Figures ────────────────────────────────────────────────
     imgs = _listar_figuras(pasta)
-    # Priorizar figuras relevantes
+    # Prioritize relevant figures
     prioridade = ["scores","confus","vip","pca","outlier","splot","cooman",
                   "roc","hca","opls","ddsimca","benchmark","shap","monte_carlo"]
     def _prio(p: str) -> int:
@@ -2157,7 +2155,7 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
     for i in range(0, len(imgs_sorted), 2):
         slide_f = _slide_novo()
         _fundo(slide_f)
-        _barra_topo(slide_f, "Resultados — Figuras")
+        _barra_topo(slide_f, "Results — Figures")
         _rodape(slide_f)
         for j, img_path in enumerate(imgs_sorted[i:i+2]):
             x = int(Inches(0.3) + j * Inches(6.4))
@@ -2175,21 +2173,21 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
                  int(Inches(6.0)), int(Inches(0.45)),
                  size=9, color=_MUTED, align=PP_ALIGN.CENTER)
 
-    # ── SLIDE Benchmark (se CSV existir) ──────────────────────────────────
+    # ── SLIDE Benchmark (if CSV exists) ──────────────────────────────────
     bench_csv = os.path.join(pasta, "dados", "benchmark_classificadores.csv")
     if os.path.exists(bench_csv):
         try:
             df_b = pd.read_csv(bench_csv, sep=";", decimal=",")
             slide_b = _slide_novo()
             _fundo(slide_b)
-            _barra_topo(slide_b, "Benchmark de Classificadores")
+            _barra_topo(slide_b, "Classifier Benchmark")
             _rodape(slide_b)
-            # Tabela
+            # Table
             cols_b = list(df_b.columns)
             n_rows = min(len(df_b) + 1, 8)
             col_w  = int((W - Inches(1.0)) / len(cols_b))
             row_h  = int(Inches(0.52))
-            # Cabecalho
+            # Header
             for ci, col_n in enumerate(cols_b):
                 _rect(slide_b, int(Inches(0.5) + ci * col_w),
                       int(Inches(1.3)), col_w - 2, row_h, _NAVY)
@@ -2197,7 +2195,7 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
                      int(Inches(0.5) + ci * col_w + Inches(0.05)),
                      int(Inches(1.35)), col_w - int(Inches(0.1)),
                      int(Inches(0.45)), bold=True, size=10, color=_WHITE)
-            # Linhas de dados
+            # Data rows
             fill_alts = [_LIGHT, RGBColor(0xE8, 0xEC, 0xF1)]
             for ri, row_data in enumerate(df_b.itertuples(index=False)):
                 if ri >= 7: break
@@ -2213,11 +2211,11 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
         except Exception:
             pass
 
-    # ── SLIDE Final: Conclusoes ───────────────────────────────────────────
+    # ── Final SLIDE: Conclusions ───────────────────────────────────────────
     slide_c = _slide_novo()
     _fundo(slide_c, _NAVY)
     _rect(slide_c, 0, int(Inches(3.2)), int(W), int(Inches(0.1)), _ACCENT)
-    _txt(slide_c, "Conclusoes",
+    _txt(slide_c, "Conclusions",
          int(Inches(1.0)), int(Inches(1.0)),
          int(W - Inches(2.0)), int(Inches(0.9)),
          bold=True, size=30, color=_WHITE)
@@ -2225,13 +2223,13 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
     auc  = metricas.get("AUC macro OvR", "—")
     r2y  = metricas.get("R2Y", "—"); q2y = metricas.get("Q2Y", "—")
     conc = [
-        f"• Pipeline MSC-SG-MC atingiu Balanced Accuracy = {ba} (GroupKFold anti-leakage)",
+        f"• MSC-SG-MC pipeline achieved Balanced Accuracy = {ba} (GroupKFold anti-leakage)",
         f"• AUC macro OvR = {auc}  |  R2Y = {r2y}  |  Q2Y = {q2y}",
-        f"• {metricas['N amostras']} amostras, {metricas['N classes']} classes "
-          f"de oleos vegetais amazonicos — espectroscopia FT-NIR",
-        f"• Validacao: Y-permutacao (p = {metricas['p permutacao']}), "
-          f"Wold, CV-ANOVA e holdout externo",
-        "• Plataforma exporta modelos .joblib para predicao de novas amostras",
+        f"• {metricas['N samples']} samples, {metricas['N classes']} classes "
+          f"of Amazonian vegetable oils — FT-NIR spectroscopy",
+        f"• Validation: Y-permutation (p = {metricas['p permutation']}), "
+          f"Wold, CV-ANOVA and external holdout",
+        "• Platform exports .joblib models for prediction of new samples",
     ]
     for i, c in enumerate(conc):
         _txt(slide_c, c,
@@ -2248,9 +2246,9 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
 
 
 # ==========================================================================
-#  Cache de relatórios — evita regenerar a cada rerun do Streamlit
-#  Os wrappers retornam bytes (imutáveis, cacheáveis); BytesIO é criado
-#  na hora do download_button para garantir cursor em posição 0.
+#  Report cache — avoids regenerating on every Streamlit rerun.
+#  Wrappers return bytes (immutable, cacheable); BytesIO is created
+#  at download_button time to guarantee cursor at position 0.
 # ==========================================================================
 @st.cache_data(show_spinner=False)
 def _pdf_bytes(pasta: str, proj_items: tuple) -> bytes:
@@ -2274,16 +2272,16 @@ def _pptx_bytes(pasta: str, proj_items: tuple) -> bytes:
 
 
 # ==========================================================================
-#  ABA 7 — RELATORIOS
+#  TAB 7 — REPORTS
 # ==========================================================================
 with tab_rel:
-    st.subheader("Relatorios e Downloads")
+    st.subheader("Reports and Downloads")
     pasta_r = st.session_state.get("ultima_pasta")
 
     if not pasta_r or not os.path.isdir(pasta_r):
-        st.info("Execute o pipeline (Aba 'Modelo') para gerar relatorios.")
+        st.info("Run the pipeline (Model tab) to generate reports.")
     else:
-        st.caption(f"Pasta de resultados: `{os.path.abspath(pasta_r)}`")
+        st.caption(f"Results folder: `{os.path.abspath(pasta_r)}`")
 
         # ── Downloads ─────────────────────────────────────────────────────
         st.markdown("### ⬇️ Downloads")
@@ -2296,15 +2294,15 @@ with tab_rel:
             "tipo":     st.session_state.get("proj_tipo", ""),
             "objetivo": st.session_state.get("proj_objetivo", ""),
         }
-        # Tupla ordenada usada como chave de cache (Dict nao e hashavel)
+        # Sorted tuple used as cache key (Dict is not hashable)
         _proj_items = tuple(sorted(_projeto_info.items()))
 
-        # Linha 1: ZIP + PDF
+        # Row 1: ZIP + PDF
         col_a, col_b = st.columns(2)
         with col_a:
             try:
                 st.download_button(
-                    "📦 Resultados completos (.zip)",
+                    "📦 Full results (.zip)",
                     data=_zip_da_pasta(pasta_r),
                     file_name=_nome_base + ".zip",
                     mime="application/zip",
@@ -2316,9 +2314,9 @@ with tab_rel:
         with col_b:
             try:
                 st.download_button(
-                    "📄 Relatorio PDF",
+                    "📄 PDF Report",
                     data=_pdf_bytes(pasta_r, _proj_items),
-                    file_name=_nome_base + "_relatorio.pdf",
+                    file_name=_nome_base + "_report.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                     type="primary",
@@ -2326,14 +2324,14 @@ with tab_rel:
             except Exception as e_pdf:
                 st.error(f"PDF: {e_pdf}")
 
-        # Linha 2: Word + Excel
+        # Row 2: Word + Excel
         col_c, col_d = st.columns(2)
         with col_c:
             try:
                 st.download_button(
-                    "📝 Relatorio Word (.docx)",
+                    "📝 Word Report (.docx)",
                     data=_word_bytes(pasta_r, _proj_items),
-                    file_name=_nome_base + "_relatorio.docx",
+                    file_name=_nome_base + "_report.docx",
                     mime="application/vnd.openxmlformats-officedocument"
                          ".wordprocessingml.document",
                     use_container_width=True,
@@ -2344,9 +2342,9 @@ with tab_rel:
         with col_d:
             try:
                 st.download_button(
-                    "📊 Dados em Excel (.xlsx)",
+                    "📊 Data in Excel (.xlsx)",
                     data=_excel_bytes(pasta_r),
-                    file_name=_nome_base + "_dados.xlsx",
+                    file_name=_nome_base + "_data.xlsx",
                     mime="application/vnd.openxmlformats-officedocument"
                          ".spreadsheetml.sheet",
                     use_container_width=True,
@@ -2354,12 +2352,12 @@ with tab_rel:
             except Exception as e_xlsx:
                 st.error(f"Excel: {e_xlsx}")
 
-        # Linha 3: LaTeX + PowerPoint
+        # Row 3: LaTeX + PowerPoint
         col_e, col_f = st.columns(2)
         with col_e:
             try:
                 st.download_button(
-                    "🔬 Template LaTeX (Talanta / Food Chemistry / J. Chemom.)",
+                    "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)",
                     data=_latex_bytes(pasta_r, _proj_items),
                     file_name=_nome_base + "_template.tex",
                     mime="text/plain",
@@ -2372,17 +2370,17 @@ with tab_rel:
             try:
                 from pptx import Presentation as _PPTXCheck  # noqa: F401
                 st.download_button(
-                    "🎯 Apresentacao PowerPoint (.pptx)",
+                    "🎯 PowerPoint Presentation (.pptx)",
                     data=_pptx_bytes(pasta_r, _proj_items),
-                    file_name=_nome_base + "_apresentacao.pptx",
+                    file_name=_nome_base + "_presentation.pptx",
                     mime="application/vnd.openxmlformats-officedocument"
                          ".presentationml.presentation",
                     use_container_width=True,
                 )
             except ImportError:
                 st.warning(
-                    "python-pptx nao instalado. "
-                    "Execute: `pip install python-pptx>=1.1`",
+                    "python-pptx not installed. "
+                    "Run: `pip install python-pptx>=1.1`",
                     icon="⚠️",
                 )
             except Exception as e_pptx:
@@ -2390,15 +2388,15 @@ with tab_rel:
 
         st.divider()
 
-        # ── Limpeza de resultados antigos ─────────────────────────────────
-        with st.expander("🗑️ Liberar espaco — Limpar resultados antigos",
+        # ── Clean up old results ─────────────────────────────────────────
+        with st.expander("🗑️ Free space — Clean up old results",
                          expanded=False):
             _pasta_base_lim = os.path.dirname(pasta_r)
             _pastas_exist = sorted(
                 [p for p in os.scandir(_pasta_base_lim) if p.is_dir()],
                 key=lambda p: p.stat().st_mtime, reverse=True)
             n_pastas = len(_pastas_exist)
-            # Calcular tamanho total
+            # Calculate total size
             def _tamanho_pasta_mb(pasta_p: str) -> float:
                 tot = 0
                 for raiz, _, arqs in os.walk(pasta_p):
@@ -2407,11 +2405,11 @@ with tab_rel:
                         except Exception: pass
                 return round(tot / (1024 * 1024), 1)
 
-            st.caption(f"Pasta de resultados: `{_pasta_base_lim}`  "
-                       f"({n_pastas} execucoes armazenadas)")
+            st.caption(f"Results folder: `{_pasta_base_lim}`  "
+                       f"({n_pastas} runs stored)")
             if n_pastas > 1:
                 _manter = st.slider(
-                    "Manter N execucoes mais recentes",
+                    "Keep N most recent runs",
                     min_value=1, max_value=max(1, n_pastas - 1),
                     value=min(3, n_pastas - 1), key="lim_manter")
                 _n_remover = n_pastas - _manter
@@ -2419,47 +2417,47 @@ with tab_rel:
                     _tamanho_pasta_mb(p.path)
                     for p in _pastas_exist[_manter:])
                 st.info(
-                    f"Serao removidas **{_n_remover}** execucoes antigas "
-                    f"(~{_tam_est:.0f} MB liberados). "
-                    f"A execucao atual **nao sera afetada**.")
-                if st.button("🗑️ Confirmar limpeza",
+                    f"**{_n_remover}** old run(s) will be removed "
+                    f"(~{_tam_est:.0f} MB freed). "
+                    f"The current run **will not be affected**.")
+                if st.button("🗑️ Confirm cleanup",
                              key="btn_limpar_resultados",
                              type="secondary"):
                     _res = pq.limpar_resultados_antigos(
                         _pasta_base_lim, _manter)
                     if _res["removidas"]:
                         st.success(
-                            f"Removidas {len(_res['removidas'])} pastas, "
-                            f"liberado {_res['liberado_mb']:.0f} MB.")
+                            f"Removed {len(_res['removidas'])} folder(s), "
+                            f"freed {_res['liberado_mb']:.0f} MB.")
                     else:
-                        st.info("Nenhuma pasta removida.")
+                        st.info("No folders removed.")
                     if _res["erro"]:
-                        st.warning(f"Erros: {_res['erro']}")
+                        st.warning(f"Errors: {_res['erro']}")
             else:
-                st.info("Apenas uma execucao armazenada. Nada a limpar.")
+                st.info("Only one run stored. Nothing to clean.")
 
         st.divider()
 
-        # Resumo do modelo
-        st.markdown("### 📋 Resumo do modelo")
+        # Model summary
+        st.markdown("### 📋 Model summary")
         resumo_r = _ler_resumo(pasta_r)
         if resumo_r:
             st.text_area("resumo_modelo.txt", resumo_r, height=400)
         else:
-            st.info("Arquivo resumo_modelo.txt nao encontrado.")
+            st.info("File resumo_modelo.txt not found.")
 
         st.divider()
 
-        # Galeria completa com filtro
-        st.markdown("### 🖼️ Galeria de figuras")
+        # Full gallery with filter
+        st.markdown("### 🖼️ Figure gallery")
         imgs_r = _listar_figuras(pasta_r)
         if imgs_r:
             _CATS_R = {
-                "Todas":            "",
+                "All":              "",
                 "PCA":              "pca",
                 "PLS-DA":           "plsda",
                 "Outliers":         "outlier",
-                "Confusao":         "confus",
+                "Confusion":        "confus",
                 "ROC / AUC":        "roc",
                 "VIP / SR":         "vip",
                 "Loading":          "loading",
@@ -2468,33 +2466,33 @@ with tab_rel:
                 "DD-SIMCA":         "ddsimca",
                 "Cooman's Plot":    "cooman",
                 "S-Plot":           "splot",
-                "Permutacao":       "permut",
+                "Permutation":      "permut",
                 "Wold/ANOVA":       "wold",
-                "Regressao":        "regressao",
+                "Regression":       "regressao",
                 "Benchmark":        "benchmark",
                 "Monte Carlo CV":   "monte_carlo",
                 "DET curves":       "fig_det",
                 "SHAP":             "fig_shap",
             }
-            filtro_r = st.selectbox("Filtrar figuras",
+            filtro_r = st.selectbox("Filter figures",
                                     list(_CATS_R.keys()), key="filtro_rel")
             token_r  = _CATS_R[filtro_r].lower()
             imgs_filt_r = [im for im in imgs_r
                            if token_r in os.path.basename(im).lower()] \
                           if token_r else imgs_r
-            st.caption(f"{len(imgs_filt_r)} figura(s) exibidas.")
-            n_cols_r = st.slider("Colunas", 1, 3, 2, key="slider_cols_rel")
+            st.caption(f"{len(imgs_filt_r)} figure(s) displayed.")
+            n_cols_r = st.slider("Columns", 1, 3, 2, key="slider_cols_rel")
             cols_r   = st.columns(n_cols_r)
             for j, img in enumerate(imgs_filt_r):
                 with cols_r[j % n_cols_r]:
                     st.image(img, caption=os.path.basename(img),
                              use_container_width=True)
         else:
-            st.info("Nenhuma imagem PNG/JPG encontrada na pasta de resultados.")
+            st.info("No PNG/JPG images found in the results folder.")
 
         st.divider()
 
-        # Log de execucao
+        # Execution log
         if st.session_state.get("ultimo_log"):
-            with st.expander("📜 Log de execucao (saida do terminal)"):
+            with st.expander("📜 Execution log (terminal output)"):
                 st.code(st.session_state.ultimo_log, language="text")
