@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 ============================================================================
- Chemometrics Platform — Streamlit Interface v25 · 7 tabs
+ Chemometrics Platform — Streamlit Interface v30.1 · 7 tabs
 ============================================================================
 Organization:
    1. Project      — study identification and objective
@@ -153,6 +153,18 @@ _TR: Dict[str, Dict[str, str]] = {
     "Total RAM":            {"PT": "RAM total",            "EN": "Total RAM"},
     "Free RAM":             {"PT": "RAM livre",            "EN": "Free RAM"},
     "CPU cores":            {"PT": "Núcleos CPU",          "EN": "CPU cores"},
+    # Onboarding / section headers
+    "Project Identification": {"PT": "Identificação do Projeto", "EN": "Project Identification"},
+    "Data Input":             {"PT": "Entrada de Dados",         "EN": "Data Input"},
+    "Model Parameters and Execution": {"PT": "Parâmetros e Execução do Modelo", "EN": "Model Parameters and Execution"},
+    "Validation Results":     {"PT": "Resultados de Validação",  "EN": "Validation Results"},
+    "Run":                    {"PT": "Executar",                 "EN": "Run"},
+    "Save to session":        {"PT": "Salvar na sessão",         "EN": "Save to session"},
+    "No results yet. Run the pipeline in the Model tab.": {"PT": "Sem resultados ainda. Execute o pipeline na aba Modelo.", "EN": "No results yet. Run the pipeline in the Model tab."},
+    "Fix the data input (Data tab) to enable.": {"PT": "Corrija os dados de entrada (aba Dados) para habilitar.", "EN": "Fix the data input (Data tab) to enable."},
+    "Step 1: Fill project info": {"PT": "Passo 1: Preencha as informações do projeto", "EN": "Step 1: Fill project info"},
+    "Step 2: Upload or select spectra folder": {"PT": "Passo 2: Faça upload ou selecione a pasta de espectros", "EN": "Step 2: Upload or select spectra folder"},
+    "Step 3: Configure parameters and run": {"PT": "Passo 3: Configure os parâmetros e execute", "EN": "Step 3: Configure parameters and run"},
 }
 
 def _T(key: str) -> str:
@@ -176,7 +188,11 @@ def _spec_por_key() -> Dict:
 def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     """Renders ONE widget according to field type and returns current value."""
     chave = prefixo + s["key"]
-    rotulo = s["key"].replace("_", " ").capitalize()
+    # Use a short label from desc if available, otherwise humanize the key
+    _desc = s.get("desc", "") or ""
+    # Take first sentence of desc (up to 50 chars) as label hint
+    _short = _desc.split(".")[0][:50].strip() if _desc else ""
+    rotulo = _short if len(_short) > 4 else s["key"].replace("_", " ").capitalize()
     ajuda = s.get("desc", "")
     t = s["tipo"]
     if t == "bool":
@@ -217,6 +233,7 @@ def _coletar_config(cfg_base, valores: Dict):
 # File helpers
 # ──────────────────────────────────────────────────────────────────────────
 
+@st.cache_data(ttl=300)
 def _zip_da_pasta(pasta: str) -> io.BytesIO:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -1425,6 +1442,13 @@ if st.session_state.dark_mode:
     code { background-color: #161b22 !important; color: #e6edf3 !important; }
     .stCode { background-color: #161b22 !important; }
     .stTextArea textarea { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
+    .stSlider > div { background-color: transparent !important; }
+    .stSlider label { color: #e6edf3 !important; }
+    div[data-testid="stFileUploader"] { background-color: #21262d !important; border-color: #30363d !important; }
+    div[data-testid="stFileUploader"] label { color: #e6edf3 !important; }
+    div[data-testid="stForm"] { background-color: #161b22 !important; border-color: #30363d !important; }
+    .stMultiSelect div[data-baseweb="select"] { background-color: #21262d !important; }
+    div[data-testid="stMetricDelta"] svg { fill: #8b949e !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1445,13 +1469,13 @@ st.caption(
 
 (tab_proj, tab_dados, tab_preproc, tab_modelo,
  tab_valid, tab_pred, tab_rel) = st.tabs([
-    "📋 Project",
-    "📂 Data",
-    "⚗️ Preprocessing",
-    "🧮 Model",
-    "📊 Validation",
-    "🔮 Prediction",
-    "📄 Reports",
+    "📋 " + _T("Project"),
+    "📂 " + _T("Data"),
+    "⚗️ " + _T("Preprocessing"),
+    "🧮 " + _T("Model"),
+    "📊 " + _T("Validation"),
+    "🔮 " + _T("Prediction"),
+    "📄 " + _T("Reports"),
 ])
 
 valores: Dict = {}  # accumulated by widgets from each tab
@@ -1509,7 +1533,8 @@ def _hardware_status_widget():
 
 
 with tab_proj:
-    st.subheader("Project Identification")
+    st.info("👋 " + _T("Step 1: Fill project info") + " → go to **Data** tab to load spectra.")
+    st.subheader(_T("Project Identification"))
     with st.expander("💻 Hardware Status", expanded=False):
         _hardware_status_widget()
     st.divider()
@@ -1544,7 +1569,8 @@ with tab_proj:
 #  TAB 2 — DATA
 # ==========================================================================
 with tab_dados:
-    st.subheader("Data Input")
+    st.info("📂 " + _T("Step 2: Upload or select spectra folder") + " → then go to **Model** tab.")
+    st.subheader(_T("Data Input"))
 
     # ---- CSV Upload (at top for easy access) ---------------------------------
     st.markdown("**Upload CSV** *(alternative to the local path below)*")
@@ -1721,17 +1747,24 @@ with tab_preproc:
 #  TAB 4 — MODEL (advanced parameters + execution)
 # ==========================================================================
 with tab_modelo:
-    st.subheader("Model Parameters and Execution")
+    st.subheader(_T("Model Parameters and Execution"))
 
     # ---- Quick-access Run button at the very top of the Model tab ----------
-    _cfg_top, _erros_top = _coletar_config(cfg_base, {})
-    _ok_top, _ = pq._validar_pasta_dados(_cfg_top)
+    # Rebuild enabled state from session_state widget keys (populated on reruns)
+    _valores_top = {
+        k: st.session_state[f"w_{k}"]
+        for k in specs
+        if f"w_{k}" in st.session_state
+    }
+    _cfg_top, _erros_top = _coletar_config(cfg_base, _valores_top)
+    _ok_top = (not _erros_top) and pq._validar_pasta_dados(_cfg_top)[0]
     _rodar_top = st.button(
-        "▶️ Run pipeline", type="primary",
+        "▶️ " + _T("Run pipeline"), type="primary",
         disabled=not _ok_top,
         use_container_width=True,
         key="btn_run_top",
     )
+    st.caption("ℹ️ Configure the options below, then click **▶️ Run pipeline**.")
 
     _MODELO_KEYS_ANALISE  = ["nivel", "max_lvs", "holdout_fracao",
                               "validacao_group_aware"]
@@ -1832,11 +1865,11 @@ with tab_modelo:
         st.error("Invalid fields in configuration:\n- " + "\n- ".join(erros_run))
 
     pode_rodar = ok_run and not erros_run
-    rodar = st.button("▶️ Run pipeline", type="primary",
+    rodar = st.button("▶️ " + _T("Run pipeline"), type="primary",
                       disabled=not pode_rodar, use_container_width=True,
                       key="btn_rodar")
     if not pode_rodar:
-        st.info("Fix the data input (Data tab) to enable.")
+        st.info(_T("Fix the data input (Data tab) to enable."))
 
     if rodar or _rodar_top:
         try:
@@ -1916,11 +1949,11 @@ with tab_modelo:
 #  TAB 5 — VALIDATION
 # ==========================================================================
 with tab_valid:
-    st.subheader("Validation Results")
+    st.subheader(_T("Validation Results"))
     pasta_v = st.session_state.get("ultima_pasta")
 
     if not pasta_v or not os.path.isdir(pasta_v):
-        st.info("Run the pipeline (Model tab) to view results here.")
+        st.info(_T("No results yet. Run the pipeline in the Model tab."))
     else:
         st.caption(f"Folder: `{os.path.abspath(pasta_v)}`")
 
@@ -1928,7 +1961,17 @@ with tab_valid:
         resumo_txt = _ler_resumo(pasta_v)
         if resumo_txt:
             with st.expander("📋 Model summary (resumo_modelo.txt)", expanded=True):
-                st.code(resumo_txt, language="text")
+                # Split into main section and notes section for cleaner display
+                if "Methodological Notes" in resumo_txt:
+                    parts = resumo_txt.split("---")
+                    main_part = parts[0].strip() if parts else resumo_txt
+                    notes_part = resumo_txt[resumo_txt.find("Methodological Notes"):].strip() if "Methodological Notes" in resumo_txt else ""
+                    st.code(main_part, language="text")
+                    if notes_part:
+                        with st.expander("📋 Methodological Notes (for peer review)", expanded=False):
+                            st.code(notes_part, language="text")
+                else:
+                    st.code(resumo_txt, language="text")
 
         # ── Per-Class Accuracy table (extracted from summary) ───────────────
         if resumo_txt:
