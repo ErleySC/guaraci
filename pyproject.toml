@@ -1,0 +1,22 @@
+[project]
+name = "amazonian-oils-chemometrics"
+version = "30.1.0"
+description = "Chemometric platform for FT-NIR classification of Amazonian vegetable oils"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Erley S. Costa", email = "erleysdacosta@gmail.com" }]
+requires-python = ">=3.10"
+
+[project.urls]
+Repository = "https://github.com/ErleySC/amazonian-oils-chemometrics"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"
+markers   = [
+    "slow: marks tests as slow — run with pytest -m slow",
+]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning:sklearn",
+]

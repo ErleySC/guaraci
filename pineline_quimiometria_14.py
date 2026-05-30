@@ -1168,6 +1168,48 @@ def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
             else:
                 f.write(f"  {k:<{largura}s}: {v}\n")
 
+        # Methodological transparency notes (for article Methods section)
+        f.write("\n" + "-" * 60 + "\n")
+        f.write("  Methodological Notes (for article peer review)\n")
+        f.write("-" * 60 + "\n")
+        notes = [
+            ("LV selection", "Wold parsimony criterion (2% RMSECV tolerance above "
+             "minimum). Prevents overfitting on broad RMSECV plateaus with "
+             "high max_lvs. Reference: Wold (1978) Technometrics 20:397-405."),
+            ("CV-ANOVA F-test", "Eriksson et al. (2008) formula applied to one-hot "
+             "Y_bin matrix. With K>2 classes, columns of Y_bin are not independent "
+             "(row-sums constrained to 1), so the F-statistic degrees of freedom "
+             "are approximate. Report as global omnibus test only; do not "
+             "interpret individual class F-values."),
+            ("SHAP values", "Computed on the full training set (in-sample) using "
+             "TreeExplainer. Represent feature importance for the fitted model, "
+             "not out-of-sample generalization. For publication, state: "
+             "'SHAP analysis was performed on training data (n=X); "
+             "importance rankings may be optimistic.'"),
+            ("Benchmark hyperparameters", "SVM (C=10, gamma=scale), RF (300 trees), "
+             "GBM (200 trees, lr=0.05), XGBoost (300 trees, lr=0.05) use "
+             "literature-based heuristics, not cross-validated tuning. "
+             "Comparisons are indicative of order-of-magnitude differences; "
+             "nested-CV would be required for rigorous pairwise claims."),
+            ("VIP bootstrap", "Group-aware (mae_id): resamples physical measurement "
+             "points (T1/T2/T3 kept together), preventing inflated stability "
+             "from correlated replicates. Standard stratified bootstrap "
+             "(per-sample) would overestimate VIP confidence intervals."),
+        ]
+        for title, note in notes:
+            f.write(f"\n  [{title}]\n")
+            # Word-wrap at 70 chars
+            words = note.split()
+            line = "    "
+            for w in words:
+                if len(line) + len(w) + 1 > 70:
+                    f.write(line + "\n")
+                    line = "    " + w + " "
+                else:
+                    line += w + " "
+            if line.strip():
+                f.write(line + "\n")
+
 
 def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
@@ -1393,15 +1435,21 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
 
 def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
                                   y_int: np.ndarray, n_opt: int, n_boot: int,
-                                  seed: int, vip_threshold: float = 1.0
+                                  seed: int, vip_threshold: float = 1.0,
+                                  mae_id: Optional[np.ndarray] = None,
                                   ) -> Dict[str, object]:
-    """STRATIFIED VIP bootstrap. Resamples with replacement WITHIN each
-    class, guaranteeing the presence of all classes in every iteration.
+    """GROUP-AWARE stratified VIP bootstrap (anti-leakage).
+
+    When mae_id is provided (recommended), resamples mae_id GROUPS with
+    replacement within each class — all samples from a physical measurement
+    point (T1/T2/T3 replicates) are kept together. This prevents inflated
+    VIP stability caused by partial inclusion of correlated replicates.
+
+    Without mae_id (fallback), resamples individual samples per class.
 
     Returns dict with:
         mean, std, ci95_low, ci95_high  - point statistics per variable
-        selection_frequency             - fraction of bootstraps in which
-                                          VIP >= vip_threshold
+        selection_frequency             - fraction of bootstraps with VIP >= threshold
         n_validos, n_falhos             - iteration counts
     """
     rng = np.random.default_rng(seed)
@@ -1409,15 +1457,33 @@ def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
     classes = np.unique(y_int)
     indices_por_classe = {int(c): np.where(y_int == c)[0] for c in classes}
 
+    # Pre-compute per-class groups when mae_id is available
+    grupos_por_classe: Optional[Dict[int, np.ndarray]] = None
+    if mae_id is not None:
+        mae_id = np.asarray(mae_id)
+        grupos_por_classe = {
+            int(c): np.unique(mae_id[indices_por_classe[int(c)]])
+            for c in classes
+        }
+
     vips_arr: List[np.ndarray] = []
     n_validos = 0
     n_falhos = 0
 
     for _ in range(n_boot):
         partes = []
-        for c in classes:
-            idx_c = indices_por_classe[int(c)]
-            partes.append(rng.choice(idx_c, size=len(idx_c), replace=True))
+        if grupos_por_classe is not None:
+            # Group-aware bootstrap: resample groups, include all their samples
+            for c in classes:
+                grps = grupos_por_classe[int(c)]
+                grps_boot = rng.choice(grps, size=len(grps), replace=True)
+                for g in grps_boot:
+                    mask = (y_int == c) & (mae_id == g)
+                    partes.append(np.where(mask)[0])
+        else:
+            for c in classes:
+                idx_c = indices_por_classe[int(c)]
+                partes.append(rng.choice(idx_c, size=len(idx_c), replace=True))
         idx = np.concatenate(partes)
         try:
             pls = PLSRegression(n_components=n_opt, scale=False)
@@ -5217,10 +5283,25 @@ def executar(cfg: Config):
         metricas_por_lv.append(m)
         preds_por_lv[n] = y_hat
 
-    n_opt = int(np.argmin(erros_rmsecv)) + 1
+    rmsecv_arr = np.array(erros_rmsecv)
+    rmsecv_min = float(rmsecv_arr.min())
+    n_opt_minrmsecv = int(np.argmin(rmsecv_arr)) + 1
+
+    # Wold parsimony criterion (Wold 1978): select the SMALLEST number of LVs
+    # whose RMSECV is within 2% of the minimum. Avoids overfitting when
+    # RMSECV plateau is broad (common with max_lvs=40 and noisy FT-NIR data).
+    tol_wold = rmsecv_min * 1.02
+    candidatos_wold = np.where(rmsecv_arr <= tol_wold)[0]
+    n_opt = int(candidatos_wold[0]) + 1   # smallest LV satisfying criterion
+
+    if n_opt < n_opt_minrmsecv:
+        print(f"  LVs otimas (Wold parcimonia): {n_opt} "
+              f"(min-RMSECV em {n_opt_minrmsecv} LVs, delta <2%)")
+    else:
+        print(f"  LVs otimas: {n_opt}")
+
     Y_cv  = preds_por_lv[n_opt]
     pred_lab = lb.classes_[np.argmax(Y_cv, axis=1)]
-    print(f"  LVs otimas: {n_opt}")
     lvs_no_teto = (n_opt >= cfg.max_lvs)
     if lvs_no_teto:
         print(f"  [ATENCAO] LVs otimas ({n_opt}) == max_lvs ({cfg.max_lvs}): "
@@ -5356,7 +5437,8 @@ def executar(cfg: Config):
         print(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
         boot = bootstrap_vip_estratificado(
             X_processed, Y_bin, y_int, n_opt,
-            cfg.n_bootstrap_vip, cfg.seed)
+            cfg.n_bootstrap_vip, cfg.seed,
+            mae_id=grupos_cv)   # group-aware: respects mae_id replicates
         boot_validos = cast(int, boot["n_validos"])
         print(f"  Iteracoes validas: {boot_validos}/"
               f"{cfg.n_bootstrap_vip}  (falhos: {cast(int, boot['n_falhos'])})")
