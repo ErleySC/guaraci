@@ -57,14 +57,39 @@ _CFG_PATH = os.path.join(_AQUI, "config.yaml")
 
 @st.cache_resource(show_spinner="Loading pipeline engine...")
 def _carregar_motor():
+    """Load the chemometrics pipeline module.
+
+    Uses a direct sys.path import (more robust than importlib.exec_module
+    on Streamlit Cloud / Python 3.11 where exec_module can produce partial
+    module objects when any top-level import fails).
+    """
     if _AQUI not in sys.path:
         sys.path.insert(0, _AQUI)
-    spec = importlib.util.spec_from_file_location("pq_engine", _PIPELINE_PATH)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Engine not found at {_PIPELINE_PATH}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+
+    # Remove any stale cached version so reimport is always fresh
+    _mod_name = "pineline_quimiometria_14"
+    if _mod_name in sys.modules:
+        del sys.modules[_mod_name]
+
+    try:
+        import pineline_quimiometria_14 as _pq  # type: ignore[import]
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to import pipeline engine:\n"
+            f"  {type(exc).__name__}: {exc}\n\n"
+            f"Check that all dependencies in requirements.txt are installed "
+            f"and compatible with Python {sys.version.split()[0]}."
+        ) from exc
+
+    # Sentinel: ensure the module executed completely
+    if not hasattr(_pq, "_CONFIG_SPEC"):
+        attrs = sorted(a for a in dir(_pq) if not a.startswith("__"))
+        raise RuntimeError(
+            f"Pipeline module loaded but _CONFIG_SPEC is missing.\n"
+            f"This means exec_module stopped before line ~5795.\n"
+            f"Attributes present ({len(attrs)}): {attrs[:30]}"
+        )
+    return _pq
 
 
 pq = _carregar_motor()
@@ -74,7 +99,13 @@ pq = _carregar_motor()
 # ──────────────────────────────────────────────────────────────────────────
 
 def _spec_por_key() -> Dict:
-    return {s["key"]: s for s in pq._CONFIG_SPEC}
+    cfg_spec = getattr(pq, "_CONFIG_SPEC", None)
+    if cfg_spec is None:
+        raise RuntimeError(
+            "pq._CONFIG_SPEC not found — pipeline module did not load fully. "
+            "Restart the app or check the Streamlit Cloud logs."
+        )
+    return {s["key"]: s for s in cfg_spec}
 
 
 def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
