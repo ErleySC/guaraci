@@ -43,6 +43,7 @@ _BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 _CFG_PATH = _BASE_DIR / "config.yaml"
 _PERFIS_DIR = _BASE_DIR / "perfis"
 _WIZARD_FLAG = _BASE_DIR / ".cli_wizard_done"
+_CODIGOS_PATH = _BASE_DIR / "codigos_usuario.json"
 
 # ---------------------------------------------------------------------------
 # Estado global mutavel — idioma persiste em tempo real
@@ -86,6 +87,12 @@ I18N: Dict[str, Dict[str, str]] = {
         "menu_avancado": "Metodos Avancados",
         "menu_viz": "Visualizacao",
         "menu_ajuda": "Ajuda",
+        "menu_tecnica": "Tecnica Analitica",
+        "grp_analise": "Configuracao da Analise",
+        "grp_sistema": "Sistema e Visualizacao",
+        "grp_perfis": "Perfis e Idioma",
+        "ajuda_curta": "Ajuda",
+        "rodar_pipeline": "Rodar Pipeline",
         "salvar": "Salvar Perfil",
         "carregar": "Carregar Perfil",
         "rodar": "Rodar Pipeline",
@@ -128,6 +135,12 @@ I18N: Dict[str, Dict[str, str]] = {
         "menu_avancado": "Advanced Methods",
         "menu_viz": "Visualization",
         "menu_ajuda": "Help",
+        "menu_tecnica": "Analytical Technique",
+        "grp_analise": "Analysis Configuration",
+        "grp_sistema": "System and Visualization",
+        "grp_perfis": "Profiles and Language",
+        "ajuda_curta": "Help",
+        "rodar_pipeline": "Run Pipeline",
         "salvar": "Save Profile",
         "carregar": "Load Profile",
         "rodar": "Run Pipeline",
@@ -551,12 +564,12 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "pasta_dados": {
         "PT": {
-            "desc": "Pasta com os arquivos .dx de espectros FT-NIR (uma subpasta por classe/especie).",
+            "desc": "Pasta com arquivos .dx (JCAMP-DX). Suporta FT-NIR, NIR, MIR, Raman.",
             "impacto": "ANALITICO — define os dados de entrada do pipeline.",
             "exemplos": {"dados": "Pasta padrao do projeto", r"C:\meus_dados\oleos": "Caminho absoluto personalizado"},
         },
         "EN": {
-            "desc": "Folder with .dx FT-NIR spectral files (one subfolder per class/species).",
+            "desc": "Folder with .dx (JCAMP-DX) files. Supports FT-NIR, NIR, MIR, Raman.",
             "impacto": "ANALYTICAL — defines the pipeline input data.",
             "exemplos": {"dados": "Default project folder", r"C:\meus_dados\oleos": "Custom absolute path"},
         },
@@ -579,12 +592,12 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         "PT": {
             "desc": "Origem dos dados de entrada: dx (espectros JCAMP-DX) | csv | sintetico (testes).",
             "impacto": "ANALITICO — define o formato de leitura e parsing dos dados.",
-            "exemplos": {"dx": "Espectros FT-NIR (padrao GEAAp)", "csv": "Tabela generica com colunas espectrais", "sintetico": "Dados simulados para teste do pipeline"},
+            "exemplos": {"dx": "Espectros JCAMP-DX (FT-NIR, Raman, MIR)", "csv": "Tabela generica com colunas espectrais", "sintetico": "Dados simulados para teste do pipeline"},
         },
         "EN": {
             "desc": "Input data source: dx (JCAMP-DX spectra) | csv | synthetic (for testing).",
             "impacto": "ANALYTICAL — defines the data reading and parsing format.",
-            "exemplos": {"dx": "FT-NIR spectra (GEAAp standard)", "csv": "Generic table with spectral columns", "sintetico": "Simulated data for pipeline testing"},
+            "exemplos": {"dx": "JCAMP-DX spectra (FT-NIR, Raman, MIR)", "csv": "Generic table with spectral columns", "sintetico": "Simulated data for pipeline testing"},
         },
         "default": "dx", "range": "dx | csv | sintetico",
     },
@@ -1032,30 +1045,42 @@ def print_header(cfg: Config) -> None:
 # ===========================================================================
 
 def print_main_menu() -> None:
-    """Imprime o menu principal hierarquico com borda ASCII."""
+    """Imprime o menu principal hierarquico com subgrupos visuais e numeracao 1-9."""
     lang = _lang()
     t = I18N[lang]
-    w = 60
+    w = 61
     print("╔" + "═" * (w - 2) + "╗")
-    print("║" + "  MENU PRINCIPAL".ljust(w - 2) + "║")
+    print("║" + "  AmaNIR — MENU PRINCIPAL".ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    linha1 = f"  [1] {t['menu_projeto']:<18s}  [5] {t['menu_valid']}"
-    linha2 = f"  [2] {t['menu_dados']:<18s}  [6] {t['menu_avancado']}"
-    linha3 = f"  [3] {t['menu_preproc']:<18s}  [7] {t['menu_viz']}"
-    linha4 = f"  [4] {t['menu_modelo']:<18s}  [8] {t['menu_ajuda']}"
-    linha5 = f"  [9] {t['menu_codificacao']}"
-    for l in [linha1, linha2, linha3, linha4, linha5]:
+    # --- Subgrupo: Configuracao da Analise ---
+    grp1 = f"  ── {t['grp_analise']} "
+    grp1_linha = grp1 + "─" * max(0, w - 2 - len(grp1))
+    print("║" + grp1_linha.ljust(w - 2) + "║")
+    linha1 = f"  [1] {t['menu_projeto']:<20s}  [2] {t['menu_dados']}"
+    linha2 = f"  [3] {t['menu_preproc']:<20s}  [4] {t['menu_modelo']}"
+    linha3 = f"  [5] {t['menu_valid']:<20s}  [6] {t['menu_avancado']}"
+    for l in [linha1, linha2, linha3]:
         print("║" + l.ljust(w - 2) + "║")
-    print("╠" + "═" * (w - 2) + "╣")
-    linha_p = f"  [P] {t['perfis']}"
-    linha_h = f"  [H] {t['hardware']}"
-    linha_i = f"  [I] {t['idioma']}"
-    for l in [linha_p, linha_h, linha_i]:
+    # --- Subgrupo: Sistema e Visualizacao ---
+    grp2 = f"  ── {t['grp_sistema']} "
+    grp2_linha = grp2 + "─" * max(0, w - 2 - len(grp2))
+    print("║" + grp2_linha.ljust(w - 2) + "║")
+    linha4 = f"  [7] {t['menu_viz']:<20s}  [8] {t['menu_tecnica']}"
+    linha5 = f"  [9] {t['menu_codificacao']:<20s}  [H] {t['hardware']}"
+    for l in [linha4, linha5]:
         print("║" + l.ljust(w - 2) + "║")
+    # --- Subgrupo: Perfis e Idioma ---
+    grp3 = f"  ── {t['grp_perfis']} "
+    grp3_linha = grp3 + "─" * max(0, w - 2 - len(grp3))
+    print("║" + grp3_linha.ljust(w - 2) + "║")
+    linha6 = f"  [P] {t['perfis']:<20s}  [I] {t['idioma']}"
+    print("║" + linha6.ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    barra = (f"  [S] {t['salvar']}   [L] {t['carregar']}   "
-             f"[R] {t['rodar']}   [Q] {t['sair']}")
+    barra = (f"  [R] ► {t['rodar_pipeline']}   [S] {t['salvar']}   "
+             f"[L] {t['carregar']}")
     print("║" + barra.ljust(w - 2) + "║")
+    barra2 = f"  [?] {t['ajuda_curta']:<22s}  [Q] {t['sair']}"
+    print("║" + barra2.ljust(w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
 
 
@@ -1337,7 +1362,7 @@ def menu_preproc(cfg: Config) -> None:
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
-            escolha = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
+            escolha = input(f"  {I18N[_lang()]['opcao']}: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if escolha == "0" or escolha.lower() == "q":
@@ -1568,8 +1593,267 @@ def menu_hardware() -> None:
 
 
 # ===========================================================================
+# Tecnicas analiticas — dict de defaults por tecnica
+# ===========================================================================
+
+TECNICAS: Dict[str, Dict[str, Any]] = {
+    "ft-nir": {
+        "PT": {
+            "nome": "FT-NIR (Infravermelho Proximo por Transformada de Fourier)",
+            "desc": "Espectroscopia NIR de alta resolucao. Ideal para oleos, alimentos, farmacos.",
+            "preproc_rec": "MSC+SG+MC",
+            "faixa": "4000-10000 cm-1 (tipico) ou 4000-12000 cm-1",
+        },
+        "EN": {
+            "nome": "FT-NIR (Fourier Transform Near Infrared Spectroscopy)",
+            "desc": "High-resolution NIR spectroscopy. Ideal for oils, food, pharmaceuticals.",
+            "preproc_rec": "MSC+SG+MC",
+            "faixa": "4000-10000 cm-1 (typical) or 4000-12000 cm-1",
+        },
+        "faixa_min": 4000.0, "faixa_max": 10000.0,
+        "preproc": "msc_sg_mc", "modo": "dx",
+    },
+    "nir": {
+        "PT": {
+            "nome": "NIR Dispersivo (Infravermelho Proximo)",
+            "desc": "NIR convencional com detector dispersivo. Faixa tipica 700-2500 nm.",
+            "preproc_rec": "SNV+SG+MC ou MSC+SG+MC",
+            "faixa": "4000-14000 cm-1 (700-2500 nm)",
+        },
+        "EN": {
+            "nome": "Dispersive NIR (Near Infrared Spectroscopy)",
+            "desc": "Conventional NIR with dispersive detector. Typical range 700-2500 nm.",
+            "preproc_rec": "SNV+SG+MC or MSC+SG+MC",
+            "faixa": "4000-14000 cm-1 (700-2500 nm)",
+        },
+        "faixa_min": 4000.0, "faixa_max": 14000.0,
+        "preproc": "snv_sg_mc", "modo": "dx",
+    },
+    "mir": {
+        "PT": {
+            "nome": "MIR/FTIR (Infravermelho Medio)",
+            "desc": "Infravermelho medio (4000-400 cm-1). Bandas fundamentais de absorcao molecular.",
+            "preproc_rec": "SNV+MC ou SG+MC (MSC menos comum em MIR)",
+            "faixa": "400-4000 cm-1",
+        },
+        "EN": {
+            "nome": "MIR/FTIR (Mid-Infrared Spectroscopy)",
+            "desc": "Mid-infrared (4000-400 cm-1). Fundamental molecular absorption bands.",
+            "preproc_rec": "SNV+MC or SG+MC (MSC less common in MIR)",
+            "faixa": "400-4000 cm-1",
+        },
+        "faixa_min": 400.0, "faixa_max": 4000.0,
+        "preproc": "snv_sg_mc", "modo": "dx",
+    },
+    "raman": {
+        "PT": {
+            "nome": "Raman (Espectroscopia Raman)",
+            "desc": "Espectroscopia vibracional por espalhamento Raman. Complementar ao IR.",
+            "preproc_rec": "SG+MC (sem MSC — baseline Raman diferente do NIR)",
+            "faixa": "50-4000 cm-1 (Raman shift)",
+        },
+        "EN": {
+            "nome": "Raman Spectroscopy",
+            "desc": "Vibrational spectroscopy by Raman scattering. Complementary to IR.",
+            "preproc_rec": "SG+MC (no MSC — Raman baseline differs from NIR)",
+            "faixa": "50-4000 cm-1 (Raman shift)",
+        },
+        "faixa_min": 50.0, "faixa_max": 4000.0,
+        "preproc": "sg_mc", "modo": "dx",
+    },
+    "uv-vis": {
+        "PT": {
+            "nome": "UV-Vis (Ultravioleta-Visivel)",
+            "desc": "Espectroscopia de absorbancia UV-Vis. Use modo CSV com colunas de comprimento de onda.",
+            "preproc_rec": "SNV+MC ou Mean-centering (dados UV geralmente ja normalizados)",
+            "faixa": "190-900 nm (use CSV — wavelength em nm como colunas)",
+        },
+        "EN": {
+            "nome": "UV-Vis (Ultraviolet-Visible Spectroscopy)",
+            "desc": "UV-Vis absorbance spectroscopy. Use CSV mode with wavelength columns.",
+            "preproc_rec": "SNV+MC or Mean-centering (UV data is often already normalized)",
+            "faixa": "190-900 nm (use CSV — wavelength in nm as columns)",
+        },
+        "faixa_min": 190.0, "faixa_max": 900.0,
+        "preproc": "snv_mc", "modo": "csv",
+    },
+    "fluorescencia": {
+        "PT": {
+            "nome": "Fluorescencia Molecular",
+            "desc": "Espectrofluorimetria. Dados tipicamente em formato CSV (comprimento de onda em nm).",
+            "preproc_rec": "SNV+MC ou apenas MC (fluorescencia varia muito entre instrumentos)",
+            "faixa": "200-800 nm (use CSV)",
+        },
+        "EN": {
+            "nome": "Molecular Fluorescence",
+            "desc": "Spectrofluorimetry. Data typically in CSV format (wavelength in nm).",
+            "preproc_rec": "SNV+MC or MC only (fluorescence varies widely between instruments)",
+            "faixa": "200-800 nm (use CSV)",
+        },
+        "faixa_min": 200.0, "faixa_max": 800.0,
+        "preproc": "snv_mc", "modo": "csv",
+    },
+    "hplc": {
+        "PT": {
+            "nome": "HPLC (Cromatografia Liquida de Alta Performance)",
+            "desc": "Dados cromatograficos em formato CSV. Colunas = tempo de retencao ou compostos.",
+            "preproc_rec": "MC ou autoscaling (dados HPLC sao areas/alturas de pico)",
+            "faixa": "Nao aplicavel — use CSV com colunas de compostos",
+        },
+        "EN": {
+            "nome": "HPLC (High Performance Liquid Chromatography)",
+            "desc": "Chromatographic data in CSV format. Columns = retention times or compounds.",
+            "preproc_rec": "MC or autoscaling (HPLC data are peak areas/heights)",
+            "faixa": "Not applicable — use CSV with compound columns",
+        },
+        "faixa_min": 0.0, "faixa_max": 60.0,
+        "preproc": "autoscaling", "modo": "csv",
+    },
+    "generico": {
+        "PT": {
+            "nome": "Generico / Personalizado",
+            "desc": "Qualquer tipo de dado multivariado. Configure faixa e pre-processamento manualmente.",
+            "preproc_rec": "Depende dos dados — configure manualmente no menu Pre-processamento",
+            "faixa": "Configurar manualmente no menu Dados",
+        },
+        "EN": {
+            "nome": "Generic / Custom",
+            "desc": "Any type of multivariate data. Configure range and preprocessing manually.",
+            "preproc_rec": "Depends on data — configure manually in Preprocessing menu",
+            "faixa": "Configure manually in Data menu",
+        },
+        "faixa_min": 0.0, "faixa_max": 999999.0,
+        "preproc": "msc_sg_mc", "modo": "dx",
+    },
+}
+
+
+def menu_tecnica(cfg: Config) -> None:
+    """Menu 8 — Selecao de tecnica analitica com defaults automaticos."""
+    nomes = list(TECNICAS.keys())
+    while True:
+        lang = _lang()
+        cls()
+        w = 74
+        titulo = I18N[lang].get("menu_tecnica", "Tecnica Analitica")
+        print("╔" + "═" * (w - 2) + "╗")
+        print("║" + f"  {titulo}".ljust(w - 2) + "║")
+        if lang == "PT":
+            instr = "  Selecione a tecnica. Ajusta faixa espectral e pre-processamento sugeridos:"
+        else:
+            instr = "  Select the technique. Adjusts spectral range and suggested preprocessing:"
+        print("║" + _ansi_ljust(instr, w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        for i, key in enumerate(nomes, 1):
+            tec = TECNICAS[key]
+            tec_lang = tec.get(lang, tec.get("PT", {}))
+            nome_tec = tec_lang.get("nome", key)
+            desc_tec = tec_lang.get("desc", "")
+            rec = tec_lang.get("preproc_rec", "")
+            faixa = tec_lang.get("faixa", "")
+            print("║" + f"  [{i}] {nome_tec}".ljust(w - 2) + "║")
+            for dl in _wrap_box(desc_tec, w - 2, "      "):
+                print("║" + _ansi_ljust(_c("DIM", dl), w - 2) + "║")
+            if lang == "PT":
+                linha_rec = f"      Pre-proc. rec.: {rec}"
+            else:
+                linha_rec = f"      Rec. preproc.: {rec}"
+            print("║" + _ansi_ljust(_c("DIM", linha_rec), w - 2) + "║")
+            if lang == "PT":
+                linha_fx = f"      Faixa: {faixa}"
+            else:
+                linha_fx = f"      Range: {faixa}"
+            print("║" + _ansi_ljust(_c("DIM", linha_fx), w - 2) + "║")
+            print("║" + "".ljust(w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        if lang == "PT":
+            aviso = "  ANALITICO: aplicar uma tecnica ajusta faixa e pre-processamento automaticamente."
+        else:
+            aviso = "  ANALYTICAL: applying a technique auto-adjusts range and preprocessing."
+        print("║" + _ansi_ljust(_c("ANALITICO", aviso), w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        rodape = f"  [I] {I18N[lang]['idioma']}   [0] {I18N[lang]['voltar']}"
+        print("║" + rodape.ljust(w - 2) + "║")
+        print("╚" + "═" * (w - 2) + "╝")
+        print()
+        try:
+            escolha = input(f"  {I18N[lang].get('opcao', 'Option')}: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if escolha == "0" or escolha.lower() == "q":
+            break
+        if escolha.upper() == "I":
+            _toggle_idioma()
+            continue
+        if escolha.isdigit() and 1 <= int(escolha) <= len(nomes):
+            key = nomes[int(escolha) - 1]
+            tec = TECNICAS[key]
+            aviso_conf = I18N[lang]["aviso_analitico"]
+            try:
+                conf = input(f"  {aviso_conf}").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                continue
+            if conf != I18N[lang]["confirmar_sn"]:
+                continue
+            # Aplicar defaults de faixa espectral
+            spec_min = _SPEC_BY_KEY.get("faixa_min_cm")
+            if spec_min:
+                try:
+                    setattr(cfg, spec_min["attr"], _coagir_valor(spec_min, tec["faixa_min"]))
+                except Exception:
+                    pass
+            spec_max = _SPEC_BY_KEY.get("faixa_max_cm")
+            if spec_max:
+                try:
+                    setattr(cfg, spec_max["attr"], _coagir_valor(spec_max, tec["faixa_max"]))
+                except Exception:
+                    pass
+            # Aplicar pre-processamento recomendado
+            spec_pp = _SPEC_BY_KEY.get("pre_processamento")
+            if spec_pp:
+                try:
+                    setattr(cfg, spec_pp["attr"], _coagir_valor(spec_pp, tec["preproc"]))
+                except Exception:
+                    pass
+            # Aplicar modo de entrada
+            spec_modo = _SPEC_BY_KEY.get("modo_entrada")
+            if spec_modo:
+                try:
+                    setattr(cfg, spec_modo["attr"], _coagir_valor(spec_modo, tec["modo"]))
+                except Exception:
+                    pass
+            tec_lang = tec.get(lang, tec.get("PT", {}))
+            if lang == "PT":
+                ok = f"  Tecnica '{tec_lang.get('nome', key)}' aplicada."
+            else:
+                ok = f"  Technique '{tec_lang.get('nome', key)}' applied."
+            print(ok)
+            input(f"  [{I18N[lang]['continuar']}]")
+        else:
+            print(f"  {I18N[lang]['invalido']}")
+            input(f"  [{I18N[lang]['continuar']}]")
+
+
+# ===========================================================================
 # Menu de Codificacao de Arquivos
 # ===========================================================================
+
+def _carregar_codigos_usuario() -> Dict[str, str]:
+    """Carrega codigos de especie personalizados de codigos_usuario.json."""
+    if not _CODIGOS_PATH.exists():
+        return {}
+    try:
+        with open(_CODIGOS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _salvar_codigos_usuario(codigos: Dict[str, str]) -> None:
+    """Salva codigos de especie personalizados em codigos_usuario.json."""
+    with open(_CODIGOS_PATH, "w", encoding="utf-8") as f:
+        json.dump(codigos, f, ensure_ascii=False, indent=2)
+
 
 def menu_codificacao() -> None:
     """Menu 9 — Explicacao do formato de nomenclatura dos arquivos DX."""
@@ -1606,8 +1890,8 @@ def menu_codificacao() -> None:
              ["Opcao 1: Renomeie os arquivos para o formato acima.",
               "Opcao 2: Use modo CSV (menu Dados > Modo de entrada = csv)",
               "         com coluna 'classe' para rotular cada amostra.",
-              "Opcao 3: Edite CODIGO_ESPECIE em pineline_quimiometria_14.py",
-              "         para adicionar seus proprios codigos."]),
+              "Opcao 3: Use [C] abaixo para cadastrar novos codigos de especie.",
+              "         Os codigos sao salvos em codigos_usuario.json."]),
         ]
     else:
         secoes = [
@@ -1633,8 +1917,8 @@ def menu_codificacao() -> None:
              ["Option 1: Rename files to the format above.",
               "Option 2: Use CSV mode (Data menu > Input mode = csv)",
               "          with a 'classe' column to label each sample.",
-              "Option 3: Edit CODIGO_ESPECIE in pineline_quimiometria_14.py",
-              "          to add your own species codes."]),
+              "Option 3: Use [C] below to register new species codes.",
+              "          Codes are saved in codigos_usuario.json."]),
         ]
 
     for titulo_sec, linhas in secoes:
@@ -1667,16 +1951,76 @@ def menu_codificacao() -> None:
         print("║" + _ansi_ljust(status_arq, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
 
+    if lang == "PT":
+        rodape_c = "  [C] Cadastrar novo codigo     [D] Ver todos os codigos"
+    else:
+        rodape_c = "  [C] Register new code         [D] View all codes"
+    print("║" + rodape_c.ljust(w - 2) + "║")
     rodape_i = f"  [I] {I18N[lang]['idioma']}   [0] {I18N[lang]['voltar']}"
     print("║" + rodape_i.ljust(w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
         resp = input(f"  {I18N[lang].get('opcao', 'Option')}: ").strip()
-        if resp.upper() == "I":
-            _toggle_idioma()
     except (EOFError, KeyboardInterrupt):
-        pass
+        resp = "0"
+
+    if resp.upper() == "I":
+        _toggle_idioma()
+    elif resp.upper() == "C":
+        # Cadastrar novo codigo de especie
+        codigos_u = _carregar_codigos_usuario()
+        print()
+        try:
+            if lang == "PT":
+                cod_raw = input("  Codigo (2-4 letras, ex: MAN): ").strip().upper()
+                nome_raw = input("  Nome da especie (ex: Manga):  ").strip()
+            else:
+                cod_raw = input("  Code (2-4 letters, e.g. MAN): ").strip().upper()
+                nome_raw = input("  Species name (e.g. Mango):    ").strip()
+        except (EOFError, KeyboardInterrupt):
+            cod_raw, nome_raw = "", ""
+        if cod_raw and nome_raw:
+            codigos_u[cod_raw] = nome_raw
+            _salvar_codigos_usuario(codigos_u)
+            if lang == "PT":
+                print(f"  Codigo '{cod_raw}' -> '{nome_raw}' cadastrado e salvo em codigos_usuario.json")
+            else:
+                print(f"  Code '{cod_raw}' -> '{nome_raw}' registered and saved to codigos_usuario.json")
+        else:
+            print(f"  {I18N[lang]['cancelado']}")
+        input(f"  [{I18N[lang]['continuar']}]")
+    elif resp.upper() == "D":
+        # Exibir todos os codigos
+        codigos_u = _carregar_codigos_usuario()
+        cls()
+        print()
+        if lang == "PT":
+            print("  === Codigos de especies cadastrados ===\n")
+            print("  --- Pre-cadastrados (pipeline) ---")
+        else:
+            print("  === Registered species codes ===\n")
+            print("  --- Pre-registered (pipeline) ---")
+        try:
+            for cod, nome in sorted(pq.CODIGO_ESPECIE.items()):
+                print(f"    {cod:<6s} = {nome}")
+        except Exception:
+            pass
+        if codigos_u:
+            print()
+            if lang == "PT":
+                print("  --- Cadastrados pelo usuario (codigos_usuario.json) ---")
+            else:
+                print("  --- User-registered (codigos_usuario.json) ---")
+            for cod, nome in sorted(codigos_u.items()):
+                print(f"    {cod:<6s} = {nome}")
+        else:
+            if lang == "PT":
+                print("\n  (Nenhum codigo cadastrado pelo usuario ainda.)")
+            else:
+                print("\n  (No user-registered codes yet.)")
+        print()
+        input(f"  [{I18N[lang]['continuar']}]")
 
 
 # ===========================================================================
@@ -1895,7 +2239,7 @@ def wizard_inicial() -> None:
     print("║" + "  [1] Portugues (PT)   [2] English (EN)".ljust(w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     try:
-        resp = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
+        resp = input(f"  {I18N[_lang()]['opcao']}: ").strip()
     except (EOFError, KeyboardInterrupt):
         resp = "1"
 
@@ -1930,7 +2274,7 @@ def wizard_inicial() -> None:
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
-        resp = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
+        resp = input(f"  {I18N[_lang()]['opcao']}: ").strip()
     except (EOFError, KeyboardInterrupt):
         resp = "1"
 
@@ -1939,6 +2283,107 @@ def wizard_inicial() -> None:
         _WIZARD_FLAG.write_text(lang, encoding="utf-8")
     except OSError:
         pass
+
+
+# ===========================================================================
+# Preview de configuracao antes de rodar
+# ===========================================================================
+
+def _mostrar_resumo_e_confirmar(cfg: Config) -> bool:
+    """
+    Exibe um resumo visual da configuracao atual e pede confirmacao.
+    Retorna True se o usuario confirmar, False caso contrario.
+    """
+    lang = _lang()
+    t = I18N[lang]
+    w = 50
+
+    # Coletar valores relevantes
+    pasta = str(getattr(cfg, "pasta_entrada", getattr(cfg, "pasta_dados", "?")))
+    # Contagem de arquivos na pasta
+    try:
+        if os.path.isdir(pasta):
+            n_arq = sum(1 for _ in Path(pasta).rglob("*") if Path(_).is_file())
+            pasta_str = f"{pasta} ({n_arq} arquivos)"
+        else:
+            pasta_str = pasta
+    except Exception:
+        pasta_str = pasta
+
+    # Tecnica — detectar pelo preproc/faixa atual
+    pp_val = str(_fmt_yaml(_get_val(cfg, "pre_processamento")))
+    fmin_val = _get_val(cfg, "faixa_min_cm")
+    fmax_val = _get_val(cfg, "faixa_max_cm")
+    # Inferir tecnica pela faixa
+    tecnica_str = "?"
+    for tec_key, tec in TECNICAS.items():
+        if abs(float(tec["faixa_min"]) - float(fmin_val)) < 1 and abs(float(tec["faixa_max"]) - float(fmax_val)) < 1:
+            tec_lang = tec.get(lang, tec.get("PT", {}))
+            tecnica_str = tec_lang.get("nome", tec_key).split("(")[0].strip()
+            break
+
+    nivel_val = str(_fmt_yaml(_get_val(cfg, "nivel")))
+    max_lvs_val = str(_fmt_yaml(_get_val(cfg, "max_lvs")))
+    ddsimca_val = _fmt_yaml(_get_val(cfg, "ddsimca"))
+    modo_dds = _fmt_yaml(_get_val(cfg, "modo_ddsimca"))
+    opls_val = _fmt_yaml(_get_val(cfg, "opls_da"))
+    bench_val = _fmt_yaml(_get_val(cfg, "benchmark"))
+    dpi_val = str(_fmt_yaml(_get_val(cfg, "dpi")))
+
+    def _on_off(v: Any) -> str:
+        sv = str(v).lower()
+        if sv in ("true", "sim", "yes", "on"):
+            return "ON"
+        return "OFF"
+
+    ddsimca_str = f"{_on_off(ddsimca_val)} ({modo_dds})" if _on_off(ddsimca_val) == "ON" else "OFF"
+
+    cls()
+    print()
+    print("╔" + "═" * (w - 2) + "╗")
+    if lang == "PT":
+        print("║" + "  ► Resumo da Configuracao".ljust(w - 2) + "║")
+    else:
+        print("║" + "  ► Configuration Summary".ljust(w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+
+    def _row(label: str, val: str) -> None:
+        linha = f"  {label:<12s}: {val}"
+        if len(linha) > w - 2:
+            linha = linha[:w - 5] + "..."
+        print("║" + linha.ljust(w - 2) + "║")
+
+    if lang == "PT":
+        _row("Dados", pasta_str)
+        _row("Tecnica", tecnica_str)
+        _row("Pre-proc.", pp_val)
+        _row("Nivel", f"{nivel_val}  |  Max LVs: {max_lvs_val}")
+        _row("DD-SIMCA", ddsimca_str)
+        _row("OPLS-DA", _on_off(opls_val))
+        _row("Benchmark", _on_off(bench_val))
+        _row("DPI", dpi_val)
+    else:
+        _row("Data", pasta_str)
+        _row("Technique", tecnica_str)
+        _row("Preproc.", pp_val)
+        _row("Level", f"{nivel_val}  |  Max LVs: {max_lvs_val}")
+        _row("DD-SIMCA", ddsimca_str)
+        _row("OPLS-DA", _on_off(opls_val))
+        _row("Benchmark", _on_off(bench_val))
+        _row("DPI", dpi_val)
+
+    print("╠" + "═" * (w - 2) + "╣")
+    if lang == "PT":
+        print("║" + "  Confirmar e rodar? (s/n):".ljust(w - 2) + "║")
+    else:
+        print("║" + "  Confirm and run? (y/n):".ljust(w - 2) + "║")
+    print("╚" + "═" * (w - 2) + "╝")
+    print()
+    try:
+        resp = input(f"  {t['opcao']}: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    return resp == t["confirmar_sn"]
 
 
 # ===========================================================================
@@ -1960,6 +2405,20 @@ def _rodar_pipeline(cfg: Config) -> None:
             print("  Fix pasta_dados before running.")
         input(f"  [{t['continuar']}]")
         return
+
+    # Mostrar resumo e pedir confirmacao
+    if not _mostrar_resumo_e_confirmar(cfg):
+        print(f"  {t['cancelado']}")
+        input(f"  [{t['continuar']}]")
+        return
+
+    # Mesclar codigos do usuario com o pipeline
+    codigos_u = _carregar_codigos_usuario()
+    if codigos_u:
+        try:
+            pq.CODIGO_ESPECIE.update(codigos_u)
+        except Exception:
+            pass
 
     if lang == "PT":
         print(f"\n  Salvando configuracao em {_CFG_PATH}...")
@@ -2018,7 +2477,8 @@ def main() -> None:
         print_main_menu()
         print()
         try:
-            escolha = input(f"  {I18N[_lang()]["opcao"]}: ").strip().upper()
+            _raw = input(f"  {I18N[_lang()]['opcao']}: ").strip()
+            escolha = "?" if _raw == "?" else _raw.upper()
         except (EOFError, KeyboardInterrupt):
             print(f"\n  {t['sair']}.")
             break
@@ -2038,9 +2498,11 @@ def main() -> None:
         elif escolha == "7":
             menu_visualizacao(cfg)
         elif escolha == "8":
-            menu_ajuda()
+            menu_tecnica(cfg)
         elif escolha == "9":
             menu_codificacao()
+        elif escolha == "?":
+            menu_ajuda()
         elif escolha == "P":
             menu_perfis(cfg)
         elif escolha == "H":
