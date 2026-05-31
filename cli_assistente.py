@@ -400,6 +400,22 @@ PALETAS_COR: Dict[str, Dict[str, Any]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Presets de tamanho de fonte para matplotlib (A1)
+# ---------------------------------------------------------------------------
+FONT_PRESETS: Dict[str, Dict[str, Any]] = {
+    "xs": {"font.size": 8,  "axes.titlesize": 9,  "axes.labelsize": 8,
+           "xtick.labelsize": 7, "ytick.labelsize": 7, "legend.fontsize": 7},
+    "s":  {"font.size": 9,  "axes.titlesize": 10, "axes.labelsize": 9,
+           "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8},
+    "m":  {"font.size": 10, "axes.titlesize": 11, "axes.labelsize": 10,
+           "xtick.labelsize": 9, "ytick.labelsize": 9, "legend.fontsize": 9},
+    "l":  {"font.size": 11, "axes.titlesize": 13, "axes.labelsize": 12,
+           "xtick.labelsize": 10, "ytick.labelsize": 10, "legend.fontsize": 10},
+    "xl": {"font.size": 13, "axes.titlesize": 15, "axes.labelsize": 14,
+           "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 11},
+}
+
 _VISUAL_CFG_PATH = _BASE_DIR / "visual_config.json"
 
 
@@ -944,6 +960,32 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             },
         },
         "default": "COD-DD-MM-AAAA_Tn.dx", "range": "Ver menu Codificacao",
+    },
+    "tamanho_fonte": {
+        "PT": {
+            "desc": "Tamanho das fontes nas figuras geradas (titulo, eixos, legenda).",
+            "impacto": "VISUAL — nao afeta calculos. Essencial para posters e apresentacoes.",
+            "exemplos": {"xs": "Muito pequeno", "m": "Medio (padrao)", "xl": "Muito grande"},
+        },
+        "EN": {
+            "desc": "Font size in generated figures (title, axes, legend).",
+            "impacto": "VISUAL — no effect on calculations. Essential for posters and presentations.",
+            "exemplos": {"xs": "Very small", "m": "Medium (default)", "xl": "Very large"},
+        },
+        "default": "m", "range": "xs | s | m | l | xl",
+    },
+    "grid_major": {
+        "PT": {
+            "desc": "Ativa grid principal nas figuras. Melhora leitura de valores.",
+            "impacto": "VISUAL — padrao cientifico para publicacoes.",
+            "exemplos": {"true": "Grid principal ativado (recomendado)", "false": "Sem grid"},
+        },
+        "EN": {
+            "desc": "Enable major grid in figures. Improves value reading.",
+            "impacto": "VISUAL — scientific standard for publications.",
+            "exemplos": {"true": "Major grid enabled (recommended)", "false": "No grid"},
+        },
+        "default": "true", "range": "true | false",
     },
 }
 
@@ -1619,8 +1661,233 @@ def menu_paletas() -> None:
             input(f"  [{t['continuar']}]")
 
 
+def _gerar_heatmap_espectros(cfg: Config) -> None:
+    """Gera heatmap de espectros colorido por classe — pre-visualizacao dos dados."""
+    lang = _lang()
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from pathlib import Path as _Path
+    except ImportError:
+        print("  [ERRO] matplotlib ou numpy nao instalado." if lang == "PT" else "  [ERROR] matplotlib or numpy not installed.")
+        return
+
+    pasta = getattr(cfg, "pasta_entrada", None) or getattr(cfg, "pasta_dados", "dados")
+    dx_files = sorted(_Path(pasta).rglob("*.dx"))
+    if not dx_files:
+        msg = f"  Nenhum arquivo .dx em: {pasta}" if lang == "PT" else f"  No .dx files in: {pasta}"
+        print(msg)
+        return
+
+    msg_lendo = f"  Lendo {len(dx_files)} arquivos DX..." if lang == "PT" else f"  Reading {len(dx_files)} DX files..."
+    print(msg_lendo)
+
+    spectra = []
+    labels = []
+    for f in dx_files[:200]:  # limite de 200 para nao explodir memoria
+        try:
+            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+            xy = []
+            in_data = False
+            for line in lines:
+                if "##XYDATA" in line or "##DATA TABLE" in line:
+                    in_data = True
+                    continue
+                if in_data and line.startswith("##"):
+                    in_data = False
+                if in_data:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        try:
+                            xy.append(float(parts[1]))
+                        except ValueError:
+                            pass
+            if xy:
+                spectra.append(xy)
+                stem = f.stem
+                import re as _re_hm
+                cod = _re_hm.match(r'^([A-Za-z]+)', stem)
+                labels.append(cod.group(1).upper() if cod else stem[:4])
+        except Exception:
+            continue
+
+    if not spectra:
+        print("  Nao foi possivel ler espectros." if lang == "PT" else "  Could not read spectra.")
+        return
+
+    # Truncar ao mesmo comprimento
+    min_len = min(len(s) for s in spectra)
+    arr = np.array([s[:min_len] for s in spectra], dtype=float)
+
+    # Normalizar por linha (SNV simplificado)
+    arr_norm = (arr - arr.mean(axis=1, keepdims=True)) / (arr.std(axis=1, keepdims=True) + 1e-8)
+
+    # Ordenar por classe
+    order = np.argsort(labels)
+    arr_sorted = arr_norm[order]
+    labels_sorted = [labels[i] for i in order]
+
+    # Colormap por classe
+    classes_unicas = sorted(set(labels_sorted))
+    classe_pos: Dict[str, list] = {c: [] for c in classes_unicas}
+    for i, lb in enumerate(labels_sorted):
+        classe_pos[lb].append(i)
+
+    # Aplicar visual_config
+    vcfg = _carregar_visual_cfg()
+    fonte_key = vcfg.get("tamanho_fonte", "m")
+    fonte_preset = FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"])
+    for k, v in fonte_preset.items():
+        plt.rcParams[k] = v
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, max(4, len(spectra) * 0.12 + 2)),
+                              gridspec_kw={"width_ratios": [20, 1]},
+                              constrained_layout=True)
+    ax, ax_cbar = axes
+
+    im = ax.imshow(arr_sorted, aspect="auto", cmap="RdYlGn",
+                   interpolation="nearest", vmin=-2, vmax=2)
+    ax.set_xlabel("Variavel espectral (index)" if lang == "PT" else "Spectral variable (index)")
+    ax.set_ylabel("Amostra" if lang == "PT" else "Sample")
+    titulo_hm = "Heatmap de Espectros (SNV normalizado)" if lang == "PT" else "Spectral Heatmap (SNV normalized)"
+    ax.set_title(titulo_hm)
+
+    # Linhas divisorias entre classes
+    tick_pos, tick_labels = [], []
+    pos = 0
+    for c in classes_unicas:
+        n = len(classe_pos[c])
+        ax.axhline(pos - 0.5, color="white", linewidth=1.5)
+        tick_pos.append(pos + n // 2)
+        tick_labels.append(c)
+        pos += n
+
+    ax.set_yticks(tick_pos)
+    ax.set_yticklabels(tick_labels, fontsize=8)
+
+    fig.colorbar(im, cax=ax_cbar, label="Intensidade norm." if lang == "PT" else "Norm. intensity")
+
+    pasta_saida = getattr(cfg, "pasta_saida", "resultados")
+    saida_path = _Path(pasta_saida)
+    saida_path.mkdir(parents=True, exist_ok=True)
+    fname = saida_path / "heatmap_espectros.png"
+    dpi = int(getattr(cfg, "dpi_figuras", vcfg.get("dpi", 150)))
+    fig.savefig(fname, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+    ok = f"  Heatmap salvo em: {fname}" if lang == "PT" else f"  Heatmap saved to: {fname}"
+    print(ok)
+
+
+def _gerar_confusion_matrix(pasta_saida: str) -> None:
+    """Gera confusion matrix a partir dos resultados CSV do pipeline."""
+    lang = _lang()
+    from pathlib import Path as _Path
+
+    pasta = _Path(pasta_saida)
+    # Procura subpastas mais recentes
+    subdirs = sorted(pasta.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True) if pasta.exists() else []
+    csv_found = None
+    for sd in subdirs[:5]:
+        if sd.is_dir():
+            csvs = list(sd.glob("*predicoes*")) + list(sd.glob("*cv_oof*")) + list(sd.glob("*scores*"))
+            if csvs:
+                csv_found = csvs[0]
+                break
+        elif sd.suffix == ".csv" and ("predicoes" in sd.name or "scores" in sd.name):
+            csv_found = sd
+            break
+
+    if csv_found is None:
+        msg = ("  Nenhum CSV de predicoes encontrado. Execute o pipeline primeiro."
+               if lang == "PT" else
+               "  No predictions CSV found. Run the pipeline first.")
+        print(msg)
+        return
+
+    try:
+        import pandas as pd
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        df = pd.read_csv(csv_found)
+
+        # Detectar colunas y_true e y_pred
+        col_true = next((c for c in df.columns if "true" in c.lower() or "real" in c.lower() or "classe" in c.lower()), None)
+        col_pred = next((c for c in df.columns if "pred" in c.lower()), None)
+
+        if col_true is None or col_pred is None:
+            print(f"  CSV: {csv_found.name}")
+            print(f"  Colunas: {list(df.columns)}")
+            msg = ("  Colunas 'true'/'pred' nao encontradas no CSV."
+                   if lang == "PT" else
+                   "  Could not find 'true'/'pred' columns in CSV.")
+            print(msg)
+            return
+
+        y_true = df[col_true].values
+        y_pred = df[col_pred].values
+        classes = sorted(set(y_true) | set(y_pred))
+
+        # Matriz
+        n = len(classes)
+        cm = np.zeros((n, n), dtype=int)
+        class_idx = {c: i for i, c in enumerate(classes)}
+        for yt, yp in zip(y_true, y_pred):
+            if yt in class_idx and yp in class_idx:
+                cm[class_idx[yt]][class_idx[yp]] += 1
+
+        # Normalizar por linha (recall)
+        row_sums = cm.sum(axis=1, keepdims=True)
+        cm_norm = np.where(row_sums > 0, cm / row_sums, 0)
+
+        vcfg = _carregar_visual_cfg()
+        fonte_key = vcfg.get("tamanho_fonte", "m")
+        for k, v in FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"]).items():
+            plt.rcParams[k] = v
+
+        fig_size = max(6, n * 0.8 + 2)
+        fig, axes = plt.subplots(1, 2, figsize=(fig_size * 2.2, fig_size), constrained_layout=True)
+
+        for ax, mat, titulo in zip(axes,
+                                    [cm, cm_norm],
+                                    ["Confusion Matrix (N amostras)" if lang == "PT" else "Confusion Matrix (N samples)",
+                                     "Confusion Matrix (Recall %" + (" por classe)" if lang == "PT" else " per class)")]):
+            im = ax.imshow(mat, cmap="Blues", vmin=0, vmax=mat.max())
+            ax.set_xticks(range(n))
+            ax.set_yticks(range(n))
+            ax.set_xticklabels(classes, rotation=45, ha="right", fontsize=max(6, 9 - n // 4))
+            ax.set_yticklabels(classes, fontsize=max(6, 9 - n // 4))
+            ax.set_xlabel("Predito" if lang == "PT" else "Predicted")
+            ax.set_ylabel("Real" if lang == "PT" else "Actual")
+            ax.set_title(titulo)
+            is_norm = (mat is cm_norm)
+            fmt_val = lambda v, _is_norm=is_norm: f"{v:.0%}" if _is_norm else f"{int(v)}"
+            for i in range(n):
+                for j in range(n):
+                    val = mat[i, j]
+                    txt = fmt_val(val)
+                    color = "white" if val > mat.max() * 0.6 else "black"
+                    ax.text(j, i, txt, ha="center", va="center", color=color,
+                            fontsize=max(5, 8 - n // 4))
+            fig.colorbar(im, ax=ax, shrink=0.8)
+
+        saida = _Path(csv_found).parent / "confusion_matrix.png"
+        dpi = int(vcfg.get("dpi", 150))
+        fig.savefig(saida, dpi=dpi, bbox_inches="tight")
+        plt.close(fig)
+        ok = f"  Confusion Matrix salva em: {saida}" if lang == "PT" else f"  Confusion Matrix saved to: {saida}"
+        print(ok)
+
+    except Exception as e:
+        print(f"  [ERRO] {e}" if lang == "PT" else f"  [ERROR] {e}")
+
+
 def menu_visualizacao(cfg: Config) -> None:
-    """Menu 7 — Visualizacao (campos VISUAL + paletas de cor)."""
+    """Menu 7 — Visualizacao (campos VISUAL + paletas + fonte + grid + heatmap + CM)."""
     while True:
         lang = _lang()
         t = I18N[lang]
@@ -1652,12 +1919,32 @@ def menu_visualizacao(cfg: Config) -> None:
         pal_data = PALETAS_COR.get(paleta_ativa, PALETAS_COR["qualitativo"])
         pal_nome = pal_data.get(lang, pal_data.get("PT", {})).get("nome", paleta_ativa)
         paleta_label = "Paleta de Cores" if lang == "PT" else "Color Palette"
-        lbl_p = f"{RISK_COLOR['VISUAL']}●{RISK_COLOR['RESET']}"
-        linha_p = f"  [ P] {lbl_p} {paleta_label:<28s}: {pal_nome}"
+        lbl_v = f"{RISK_COLOR['VISUAL']}●{RISK_COLOR['RESET']}"
+        linha_p = f"  [ P] {lbl_v} {paleta_label:<28s}: {pal_nome}"
         print("║" + _ansi_ljust(linha_p, w - 2) + "║")
+        # Exibir configuracoes de fonte e grid salvas
+        fonte_key = vcfg.get("tamanho_fonte", "m")
+        grid_major = vcfg.get("grid_major", True)
+        grid_style = vcfg.get("grid_style", "dotted")
+        fonte_label = "Tamanho de Fonte" if lang == "PT" else "Font Size"
+        grid_label = "Grid" if lang == "PT" else "Grid"
+        grid_status = ("ON" if grid_major else "OFF") + f" ({grid_style})"
+        linha_f = f"  [ F] {lbl_v} {fonte_label:<28s}: {fonte_key.upper()}"
+        linha_g = f"  [ G] {lbl_v} {grid_label:<28s}: {grid_status}"
+        print("║" + _ansi_ljust(linha_f, w - 2) + "║")
+        print("║" + _ansi_ljust(linha_g, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
-        rodape = f"  [?] {t['ajuda_campo']}   [P] Paletas   [I] {t['idioma']}   [0] {t['voltar']}"
-        print("║" + _ansi_ljust(rodape, w - 2) + "║")
+        # Rodape com 2 colunas
+        if lang == "PT":
+            rodape1 = "  [F] Tamanho Fonte    [G] Grid"
+            rodape2 = "  [P] Paletas          [H] Heatmap Espectros"
+            rodape3 = "  [M] Confusion Matrix [?] Ajuda  [I] Idioma  [0] Voltar"
+        else:
+            rodape1 = "  [F] Font Size        [G] Grid"
+            rodape2 = "  [P] Palettes         [H] Spectral Heatmap"
+            rodape3 = "  [M] Confusion Matrix [?] Help   [I] Language [0] Back"
+        for rline in [rodape1, rodape2, rodape3]:
+            print("║" + _ansi_ljust(rline, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -1672,6 +1959,120 @@ def menu_visualizacao(cfg: Config) -> None:
         if escolha.upper() == "P":
             menu_paletas()
             continue
+
+        # Handler [F] — Tamanho de Fonte
+        if escolha.upper() == "F":
+            cls()
+            w2 = 68
+            opcoes_fonte = [
+                ("XS", "xs", "Muito pequeno — max. DPI, figuras compactas" if lang == "PT" else "Very small — max DPI, compact figures"),
+                ("S",  "s",  "Pequeno — relatorios condensados" if lang == "PT" else "Small — condensed reports"),
+                ("M",  "m",  "Medio (padrao) — equilibrado" if lang == "PT" else "Medium (default) — balanced"),
+                ("L",  "l",  "Grande — apresentacoes, posters" if lang == "PT" else "Large — presentations, posters"),
+                ("XL", "xl", "Muito grande — conferencia, sala" if lang == "PT" else "Very large — conference, room"),
+            ]
+            vcfg2 = _carregar_visual_cfg()
+            atual_fonte = vcfg2.get("tamanho_fonte", "m")
+            titulo_f = "Tamanho de Fonte das Figuras" if lang == "PT" else "Figure Font Size"
+            print("╔" + "═" * (w2 - 2) + "╗")
+            print("║" + _ansi_ljust(f"  {titulo_f}", w2 - 2) + "║")
+            print("╠" + "═" * (w2 - 2) + "╣")
+            for idx_f, (label, key_f, desc_f) in enumerate(opcoes_fonte, 1):
+                marcador = "►" if key_f == atual_fonte else " "
+                linha_ff = f"  [{idx_f}] {marcador} {label:<4} — {desc_f}"
+                print("║" + _ansi_ljust(linha_ff, w2 - 2) + "║")
+            print("╠" + "═" * (w2 - 2) + "╣")
+            print("║" + _ansi_ljust(f"  [0] {t['voltar']}", w2 - 2) + "║")
+            print("╚" + "═" * (w2 - 2) + "╝")
+            try:
+                ef = input(f"\n  {t.get('opcao','Option')}: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                ef = ""
+            if ef.isdigit() and 1 <= int(ef) <= len(opcoes_fonte):
+                nova_fonte = opcoes_fonte[int(ef) - 1][1]
+                vcfg2["tamanho_fonte"] = nova_fonte
+                _salvar_visual_cfg(vcfg2)
+                ok_f = (f"  Fonte '{opcoes_fonte[int(ef)-1][0]}' salva."
+                        if lang == "PT" else
+                        f"  Font '{opcoes_fonte[int(ef)-1][0]}' saved.")
+                print(ok_f)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
+        # Handler [G] — Grid
+        if escolha.upper() == "G":
+            vcfg3 = _carregar_visual_cfg()
+            cls()
+            w3 = 68
+            titulo_g = "Configuracao de Grid" if lang == "PT" else "Grid Configuration"
+            estilos = ["solid", "dotted", "dashed"]
+            est_atual = vcfg3.get("grid_style", "dotted")
+            print("╔" + "═" * (w3 - 2) + "╗")
+            print("║" + _ansi_ljust(f"  {titulo_g}", w3 - 2) + "║")
+            print("╠" + "═" * (w3 - 2) + "╣")
+            opcoes_grid = [
+                ("1", "grid_major", "Grid principal (major)", "Major grid"),
+                ("2", "grid_minor", "Grid secundario (minor)", "Minor grid"),
+            ]
+            for cod_g, key_vc, lp, le in opcoes_grid:
+                val_g = vcfg3.get(key_vc, True)
+                status_g = "ON ✓" if val_g else "OFF"
+                label_g = lp if lang == "PT" else le
+                print("║" + _ansi_ljust(f"  [{cod_g}] {label_g}: {status_g}", w3 - 2) + "║")
+            print("║" + _ansi_ljust(f"  [3] {'Estilo' if lang=='PT' else 'Style'}: {est_atual}  (solid/dotted/dashed)", w3 - 2) + "║")
+            alpha_atual = vcfg3.get("grid_alpha", 0.4)
+            print("║" + _ansi_ljust(f"  [4] {'Transparencia grid' if lang=='PT' else 'Grid alpha'}: {alpha_atual:.1f}  (0.1 - 0.9)", w3 - 2) + "║")
+            print("╠" + "═" * (w3 - 2) + "╣")
+            print("║" + _ansi_ljust(f"  [0] {t['voltar']}", w3 - 2) + "║")
+            print("╚" + "═" * (w3 - 2) + "╝")
+            try:
+                eg = input(f"\n  {t.get('opcao','Option')}: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                eg = ""
+            if eg == "1":
+                vcfg3["grid_major"] = not vcfg3.get("grid_major", True)
+            elif eg == "2":
+                vcfg3["grid_minor"] = not vcfg3.get("grid_minor", False)
+            elif eg == "3":
+                idx_e = (estilos.index(est_atual) + 1) % len(estilos)
+                vcfg3["grid_style"] = estilos[idx_e]
+            elif eg == "4":
+                try:
+                    novo_a = float(input("  " + ("Novo valor (0.1-0.9): " if lang == "PT" else "New value (0.1-0.9): ")))
+                    vcfg3["grid_alpha"] = max(0.1, min(0.9, novo_a))
+                except (ValueError, EOFError):
+                    pass
+            _salvar_visual_cfg(vcfg3)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
+        # Handler [H] — Heatmap de Espectros
+        if escolha.upper() == "H":
+            print()
+            _gerar_heatmap_espectros(cfg)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
+        # Handler [M] — Confusion Matrix
+        if escolha.upper() == "M":
+            print()
+            pasta_s = getattr(cfg, "pasta_saida", "resultados")
+            _gerar_confusion_matrix(pasta_s)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
         if escolha.lower().startswith("?") or escolha.lower().startswith("help"):
             partes = escolha.split(maxsplit=1)
             campo_help = partes[1] if len(partes) > 1 else ""
@@ -2740,6 +3141,19 @@ def _rodar_pipeline(cfg: Config) -> None:
         cmap = paleta.get("cmap")
         if cmap:
             plt.rcParams["image.cmap"] = cmap
+        # A1 — Tamanho de Fonte
+        fonte_key = vcfg_pal.get("tamanho_fonte", "m")
+        fonte_preset = FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"])
+        for k, v in fonte_preset.items():
+            plt.rcParams[k] = v
+        # A2 — Grid
+        if vcfg_pal.get("grid_major", True):
+            plt.rcParams["axes.grid"] = True
+            plt.rcParams["grid.linestyle"] = vcfg_pal.get("grid_style", "dotted")
+            plt.rcParams["grid.alpha"] = float(vcfg_pal.get("grid_alpha", 0.4))
+            plt.rcParams["axes.grid.which"] = "both" if vcfg_pal.get("grid_minor", False) else "major"
+        else:
+            plt.rcParams["axes.grid"] = False
     except Exception:
         pass
 
