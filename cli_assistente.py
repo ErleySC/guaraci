@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re as _re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -112,6 +113,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "exemplos": "Exemplos",
         "descricao": "Descricao",
         "listar_todos": "Listar todos",
+        "hardware": "Verificar Hardware",
     },
     "EN": {
         "titulo": "AmaNIR — FT-NIR Chemometrics Platform",
@@ -152,6 +154,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "exemplos": "Examples",
         "descricao": "Description",
         "listar_todos": "List all",
+        "hardware": "Check Hardware",
     },
 }
 
@@ -191,6 +194,18 @@ RISK_COLOR: Dict[str, str] = {
     "DIM": "\033[2m",
     "CYAN": "\033[96m",
 }
+
+# ---------------------------------------------------------------------------
+# Utilitario ANSI: ljust que ignora caracteres invisiveis no calculo da largura
+# ---------------------------------------------------------------------------
+_ANSI_RE = _re.compile(r'\033\[[0-9;]*m')
+
+
+def _ansi_ljust(s: str, width: int) -> str:
+    """ljust que ignora caracteres ANSI invisiveis no calculo da largura."""
+    visible_len = len(_ANSI_RE.sub('', s))
+    return s + ' ' * max(0, width - visible_len)
+
 
 # ---------------------------------------------------------------------------
 # Nomes traduzidos dos campos (chave tecnica → nome legível por idioma)
@@ -729,21 +744,21 @@ PROFILES: Dict[str, Dict[str, Any]] = {
         "shap_benchmark": False, "selecao_variaveis_etapa4": False,
         "comparar_pre_processamentos": False, "dpi": 150,
     },
-    "TCC": {
+    "Pesquisa Academica": {
         "max_lvs": 40, "n_permutacoes": 200, "ddsimca": True,
         "modo_ddsimca": "puros", "opls_da": True, "benchmark": False,
         "monte_carlo": False, "shap_benchmark": False,
         "selecao_variaveis_etapa4": True, "dpi": 300,
         "figuras_mostrar_elipses": True,
     },
-    "Artigo Cientifico": {
+    "Publicacao Cientifica": {
         "max_lvs": 40, "n_permutacoes": 200, "ddsimca": True,
         "modo_ddsimca": "puros", "opls_da": True, "benchmark": True,
         "monte_carlo": False, "shap_benchmark": True,
         "selecao_variaveis_etapa4": True, "dpi": 600,
         "figuras_mostrar_elipses": True,
     },
-    "Dissertacao / Tese": {
+    "Alta Rigorosidade": {
         "max_lvs": 40, "n_permutacoes": 500, "ddsimca": True,
         "modo_ddsimca": "puros", "opls_da": True, "benchmark": True,
         "monte_carlo": True, "n_monte_carlo": 200,
@@ -766,34 +781,34 @@ PROFILE_DESC: Dict[str, Dict[str, str]] = {
                "    Ideal for: first contact with data, pipeline testing.\n"
                "    Estimated time: ~2-5 min."),
     },
-    "TCC": {
-        "PT": ("Configuracao balanceada para Trabalho de Conclusao de Curso.\n"
+    "Pesquisa Academica": {
+        "PT": ("Configuracao balanceada para pesquisa academica (TCC, IC, extensao).\n"
                "    PLS-DA + OPLS-DA + DD-SIMCA (autenticacao) + selecao de variaveis.\n"
                "    DPI 300. Sem benchmark (economiza tempo).\n"
                "    Tempo estimado: ~15-30 min."),
-        "EN": ("Balanced config for undergraduate thesis (TCC).\n"
+        "EN": ("Balanced config for academic research (undergraduate/graduate).\n"
                "    PLS-DA + OPLS-DA + DD-SIMCA (authentication) + variable selection.\n"
                "    DPI 300. No benchmark (saves time).\n"
                "    Estimated time: ~15-30 min."),
     },
-    "Artigo Cientifico": {
-        "PT": ("Configuracao completa para publicacao em revista cientifica.\n"
-               "    Benchmark (SVM/RF/XGBoost) + SHAP para interpretabilidade espectral.\n"
-               "    200 permutacoes, DPI 600, elipses ativadas.\n"
+    "Publicacao Cientifica": {
+        "PT": ("Configuracao para publicacao em revista cientifica indexada.\n"
+               "    Benchmark (SVM/RF/XGBoost) + SHAP + 200 permutacoes + DPI 600.\n"
+               "    Elipses ativadas. Recomendado: Talanta, Food Chemistry, J. Chemom.\n"
                "    Tempo estimado: ~60-120 min."),
-        "EN": ("Full config for scientific journal publication.\n"
-               "    Benchmark (SVM/RF/XGBoost) + SHAP for spectral interpretability.\n"
-               "    200 permutations, DPI 600, ellipses enabled.\n"
+        "EN": ("Config for indexed scientific journal publication.\n"
+               "    Benchmark (SVM/RF/XGBoost) + SHAP + 200 permutations + DPI 600.\n"
+               "    Ellipses enabled. Recommended: Talanta, Food Chemistry, J. Chemom.\n"
                "    Estimated time: ~60-120 min."),
     },
-    "Dissertacao / Tese": {
-        "PT": ("Configuracao premium para dissertacao ou tese.\n"
+    "Alta Rigorosidade": {
+        "PT": ("Maxima rigorosidade estatistica para dissertacao, tese ou revisao externa.\n"
                "    Monte Carlo CV (200 rep.) + benchmark + SHAP + 500 permutacoes.\n"
-               "    Figuras em PDF (vetorial). Alta rigorosidade estatistica.\n"
+               "    Figuras PDF (vetorial). Validacao multipla em todos os modulos.\n"
                "    Tempo estimado: ~3-6 horas."),
-        "EN": ("Premium config for MSc dissertation or PhD thesis.\n"
+        "EN": ("Maximum statistical rigor for dissertation, thesis or external review.\n"
                "    Monte Carlo CV (200 rep.) + benchmark + SHAP + 500 permutations.\n"
-               "    PDF figures (vector). High statistical rigor.\n"
+               "    PDF figures (vector). Full validation across all modules.\n"
                "    Estimated time: ~3-6 hours."),
     },
 }
@@ -803,15 +818,15 @@ PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
         "PT": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
         "EN": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
     },
-    "TCC": {
+    "Pesquisa Academica": {
         "PT": "LVs=40 | perm=200 | DD-SIMCA=autenticacao | OPLS=ON | DPI=300",
         "EN": "LVs=40 | perm=200 | DD-SIMCA=authentication | OPLS=ON | DPI=300",
     },
-    "Artigo Cientifico": {
+    "Publicacao Cientifica": {
         "PT": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600",
         "EN": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600",
     },
-    "Dissertacao / Tese": {
+    "Alta Rigorosidade": {
         "PT": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF",
         "EN": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF",
     },
@@ -963,8 +978,9 @@ def print_main_menu() -> None:
         print("║" + l.ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     linha_p = f"  [P] {t['perfis']}"
+    linha_h = f"  [H] {t['hardware']}"
     linha_i = f"  [I] {t['idioma']}"
-    for l in [linha_p, linha_i]:
+    for l in [linha_p, linha_h, linha_i]:
         print("║" + l.ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     barra = (f"  [S] {t['salvar']}   [L] {t['carregar']}   "
@@ -1126,13 +1142,15 @@ def _editar_campo_cli(cfg: Config, key: str) -> bool:
         return False
 
 
-def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "") -> None:
+def _submenu_campos(cfg: Config, titulo_key: str, campos: list, secao_key: str = "") -> None:
     """Loop generico para exibir e editar um grupo de campos.
+    titulo_key e uma chave de I18N — re-avaliada a cada iteracao para suporte a troca de idioma.
     Inclui [I] Idioma na barra de rodape de cada submenu.
     """
     while True:
         lang = _lang()
         t = I18N[lang]
+        titulo = I18N[lang].get(titulo_key, titulo_key)  # re-avalia cada iteracao
         cls()
         print_header(cfg)
         w = 60
@@ -1144,7 +1162,7 @@ def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "")
             if desc_sec:
                 # Quebrar descricao em linhas se necessario
                 for dline in _wrap_line(desc_sec, w - 6, indent=2):
-                    print("║" + _c("DIM", dline).ljust(w + 7) + "║")
+                    print("║" + _ansi_ljust(_c("DIM", dline), w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         for i, key in enumerate(campos, 1):
             val_raw = _fmt_yaml(_get_val(cfg, key))
@@ -1156,7 +1174,7 @@ def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "")
             rst = RISK_COLOR["RESET"]
             lbl = f"{cor}●{rst}"
             linha = f"  [{i:2d}] {lbl} {nome:<28s}: {val_str}"
-            print("║" + linha.ljust(w + 10) + "║")  # +10 para escapes ANSI
+            print("║" + _ansi_ljust(linha, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [?] {t['ajuda_campo']}   [I] {t['idioma']}   [0] {t['voltar']}"
         print("║" + rodape.ljust(w - 2) + "║")
@@ -1203,14 +1221,12 @@ def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "")
 
 def menu_projeto(cfg: Config) -> None:
     """Menu 1 — Projeto: pasta_dados e pasta_saida."""
-    lang = _lang()
-    _submenu_campos(cfg, I18N[lang]["menu_projeto"], MENU_FIELDS["projeto"], "projeto")
+    _submenu_campos(cfg, "menu_projeto", MENU_FIELDS["projeto"], "projeto")
 
 
 def menu_dados(cfg: Config) -> None:
     """Menu 2 — Dados: modo, CSV, colunas, faixa espectral, exclusoes."""
-    lang = _lang()
-    _submenu_campos(cfg, I18N[lang]["menu_dados"], MENU_FIELDS["dados"], "dados")
+    _submenu_campos(cfg, "menu_dados", MENU_FIELDS["dados"], "dados")
 
 
 def menu_preproc(cfg: Config) -> None:
@@ -1229,12 +1245,12 @@ def menu_preproc(cfg: Config) -> None:
         desc_sec = SECTION_DESC["preproc"].get(lang, "")
         if desc_sec:
             for dline in _wrap_line(desc_sec, w - 6, indent=2):
-                print("║" + _c("DIM", dline).ljust(w + 7) + "║")
+                print("║" + _ansi_ljust(_c("DIM", dline), w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         # Mostrar preview do pipeline atual
         pp_atual = _fmt_yaml(_get_val(cfg, "pre_processamento"))
         preview = f"  Pipeline atual: {_c('ANALITICO', pp_atual)}"
-        print("║" + preview.ljust(w + 10) + "║")
+        print("║" + _ansi_ljust(preview, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         for i, key in enumerate(campos, 1):
             val_str = _fmt_yaml(_get_val(cfg, key))
@@ -1245,7 +1261,7 @@ def menu_preproc(cfg: Config) -> None:
             nome_tr = _nome_campo(key)
             val_trunc = (val_str[:20] + "…") if len(str(val_str)) > 22 else val_str
             linha = f"  [{i:2d}] {lbl} {nome_tr:<28s}: {val_trunc}"
-            print("║" + linha.ljust(w + 10) + "║")
+            print("║" + _ansi_ljust(linha, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
         print("║" + rodape.ljust(w - 2) + "║")
@@ -1271,26 +1287,22 @@ def menu_preproc(cfg: Config) -> None:
 
 def menu_modelagem(cfg: Config) -> None:
     """Menu 4 — Modelagem."""
-    lang = _lang()
-    _submenu_campos(cfg, I18N[lang]["menu_modelo"], MENU_FIELDS["modelo"], "modelo")
+    _submenu_campos(cfg, "menu_modelo", MENU_FIELDS["modelo"], "modelo")
 
 
 def menu_validacao(cfg: Config) -> None:
     """Menu 5 — Validacao."""
-    lang = _lang()
-    _submenu_campos(cfg, I18N[lang]["menu_valid"], MENU_FIELDS["validacao"], "validacao")
+    _submenu_campos(cfg, "menu_valid", MENU_FIELDS["validacao"], "validacao")
 
 
 def menu_avancado(cfg: Config) -> None:
     """Menu 6 — Metodos Avancados (benchmark, MC, SHAP)."""
-    lang = _lang()
-    _submenu_campos(cfg, I18N[lang]["menu_avancado"], MENU_FIELDS["avancado"], "avancado")
+    _submenu_campos(cfg, "menu_avancado", MENU_FIELDS["avancado"], "avancado")
 
 
 def menu_visualizacao(cfg: Config) -> None:
     """Menu 7 — Visualizacao (apenas campos VISUAL)."""
-    lang = _lang()
-    _submenu_campos(cfg, I18N[lang]["menu_viz"], MENU_FIELDS["visualizacao"], "visualizacao")
+    _submenu_campos(cfg, "menu_viz", MENU_FIELDS["visualizacao"], "visualizacao")
 
 
 # ===========================================================================
@@ -1372,6 +1384,109 @@ def menu_ajuda() -> None:
 
 
 # ===========================================================================
+# Menu de Hardware
+# ===========================================================================
+
+def menu_hardware() -> None:
+    """Menu H — Verificacao de hardware e recomendacoes de perfil."""
+    lang = _lang()
+    cls()
+    w = 70
+    titulo_hw = "Verificacao de Hardware" if lang == "PT" else "Hardware Check"
+
+    # Chamar hardware_probe() do pipeline
+    try:
+        hw = pq.hardware_probe()
+        ram_gb = hw.get("ram_gb", 0)
+        cpu_cores = hw.get("cpu_cores", 1)
+        ram_disp = hw.get("ram_disponivel_gb", ram_gb)
+    except Exception:
+        hw = {}
+        ram_gb = 0
+        cpu_cores = 1
+        ram_disp = 0
+
+    print("╔" + "═" * (w - 2) + "╗")
+    print("║" + f"  {titulo_hw}".ljust(w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+
+    # Mostrar specs
+    ram_line = f"  RAM total   : {ram_gb:.1f} GB"
+    disp_line = f"  RAM disp.   : {ram_disp:.1f} GB"
+    cpu_line  = f"  CPU cores   : {cpu_cores}"
+    for ln in [ram_line, disp_line, cpu_line]:
+        print("║" + ln.ljust(w - 2) + "║")
+
+    print("╠" + "═" * (w - 2) + "╣")
+
+    # Tier e recomendacao baseados na RAM
+    if ram_gb >= 16:
+        tier = "ALTO" if lang == "PT" else "HIGH"
+        rec_perfil = "Alta Rigorosidade" if lang == "PT" else "Alta Rigorosidade (High Rigor)"
+        cor_tier = RISK_COLOR["VISUAL"]  # verde
+        limitacoes = (["Sem limitacoes significativas.", "Todos os perfis sao compativeis."]
+                      if lang == "PT" else
+                      ["No significant limitations.", "All profiles are compatible."])
+    elif ram_gb >= 8:
+        tier = "MEDIO" if lang == "PT" else "MEDIUM"
+        rec_perfil = "Publicacao Cientifica"
+        cor_tier = RISK_COLOR["ANALITICO"]  # amarelo
+        limitacoes = (["SHAP com datasets grandes pode ser lento (>500 amostras).",
+                       "Monte Carlo CV com N>100 pode demorar >2h.",
+                       "Recomendado: shap_max_amostras <= 300."]
+                      if lang == "PT" else
+                      ["SHAP with large datasets may be slow (>500 samples).",
+                       "Monte Carlo CV with N>100 may take >2h.",
+                       "Recommended: shap_max_amostras <= 300."])
+    elif ram_gb >= 4:
+        tier = "BASICO" if lang == "PT" else "BASIC"
+        rec_perfil = "Pesquisa Academica"
+        cor_tier = RISK_COLOR["AVANCADO"]  # vermelho
+        limitacoes = (["Benchmark pode causar lentidao (SVM em datasets grandes).",
+                       "SHAP DESATIVADO recomendado.",
+                       "Monte Carlo CV DESATIVADO recomendado.",
+                       "Recomendado: shap_max_amostras <= 200, max_lvs <= 30."]
+                      if lang == "PT" else
+                      ["Benchmark may be slow (SVM on large datasets).",
+                       "SHAP DISABLED recommended.",
+                       "Monte Carlo CV DISABLED recommended.",
+                       "Recommended: shap_max_amostras <= 200, max_lvs <= 30."])
+    else:
+        tier = "LIMITADO" if lang == "PT" else "LIMITED"
+        rec_perfil = "Exploracao Rapida"
+        cor_tier = RISK_COLOR["AVANCADO"]
+        limitacoes = (["RAM insuficiente para analises completas.",
+                       "Use apenas: Exploracao Rapida.",
+                       "Desative: Benchmark, SHAP, Monte Carlo, OPLS-DA.",
+                       "Reduza max_lvs para 20 e shap_max_amostras para 100."]
+                      if lang == "PT" else
+                      ["Insufficient RAM for full analyses.",
+                       "Use only: Exploracao Rapida.",
+                       "Disable: Benchmark, SHAP, Monte Carlo, OPLS-DA.",
+                       "Reduce max_lvs to 20 and shap_max_amostras to 100."])
+
+    tier_label = f"  Capacidade: {cor_tier}{tier}{RISK_COLOR['RESET']}"
+    rec_label  = (f"  Perfil recomendado: {rec_perfil}" if lang == "PT"
+                  else f"  Recommended profile: {rec_perfil}")
+    print("║" + _ansi_ljust(tier_label, w - 2) + "║")
+    print("║" + rec_label.ljust(w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+    lim_titulo = "  Limitacoes e Recomendacoes:" if lang == "PT" else "  Limitations and Recommendations:"
+    print("║" + lim_titulo.ljust(w - 2) + "║")
+    for lim in limitacoes:
+        print("║" + f"    • {lim}".ljust(w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+    voltar_txt = "  [0] Voltar" if lang == "PT" else "  [0] Back"
+    print("║" + voltar_txt.ljust(w - 2) + "║")
+    print("╚" + "═" * (w - 2) + "╝")
+    print()
+    try:
+        input(f"  {I18N[lang].get('opcao', 'Option')}: ")
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+# ===========================================================================
 # Menu de Perfis
 # ===========================================================================
 
@@ -1395,10 +1510,10 @@ def menu_perfis(cfg: Config) -> None:
             print("\u2551" + f"  [{i}] {nome}".ljust(w - 2) + "\u2551")
             summary = PROFILE_KEY_SUMMARY.get(nome, {}).get(lang, "")
             if summary:
-                print("\u2551" + f"      {_c('DIM', summary)}".ljust(w + 7) + "\u2551")
+                print("\u2551" + _ansi_ljust(f"      {_c('DIM', summary)}", w - 2) + "\u2551")
             desc_lines = PROFILE_DESC.get(nome, {}).get(lang, "").split("\n")
             for dl in desc_lines:
-                print("\u2551" + f"      {_c('DIM', dl.strip())}".ljust(w + 7) + "\u2551")
+                print("\u2551" + _ansi_ljust(f"      {_c('DIM', dl.strip())}", w - 2) + "\u2551")
             print("\u2551" + "".ljust(w - 2) + "\u2551")
         perfis_usuario = _listar_perfis_salvos()
         if perfis_usuario:
@@ -1414,7 +1529,7 @@ def menu_perfis(cfg: Config) -> None:
                 if lang == "PT" else
                 "  How to: configure menus 1-7, then press [S] in main menu.")
         print("\u2551" + f"  {novo_label}".ljust(w - 2) + "\u2551")
-        print("\u2551" + f"  {_c('DIM', como.strip())}".ljust(w + 7) + "\u2551")
+        print("\u2551" + _ansi_ljust(f"  {_c('DIM', como.strip())}", w - 2) + "\u2551")
         print("\u2560" + "\u2550" * (w - 2) + "\u2563")
         rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
         print("\u2551" + rodape.ljust(w - 2) + "\u2551")
@@ -1733,6 +1848,8 @@ def main() -> None:
             menu_ajuda()
         elif escolha == "P":
             menu_perfis(cfg)
+        elif escolha == "H":
+            menu_hardware()
         elif escolha == "I":
             _toggle_idioma()
         elif escolha == "S":
