@@ -1220,7 +1220,7 @@ def _status_dados(cfg: Config) -> str:
     """Retorna string de status da pasta de dados."""
     lang = _lang()
     t = I18N[lang]
-    pasta = getattr(cfg, "pasta_entrada", "dados")
+    pasta = getattr(cfg, "pasta_dados", "dados")
     if pasta and os.path.isdir(str(pasta)):
         return _c("VISUAL", t["status_ok"]) + f" ({pasta})"
     return _c("AVANCADO", t["status_erro"]) + f" ({pasta})"
@@ -1260,6 +1260,48 @@ def _wrap_box(text: str, width: int, indent: str = "  ") -> list:
     return [indent + line for line in wrapped.split("\n")]
 
 
+def _ler_dx_pasta(pasta: str, max_files: int = 300, ler_x: bool = False):
+    """Le arquivos .dx de uma pasta e retorna (spectra, labels, wavenumbers).
+
+    Returns:
+        spectra: list of list[float] — valores Y de cada espectro
+        labels: list[str] — codigo de especie (ex: 'AND', 'BCB')
+        wavenumbers: list[float] — eixo X do primeiro arquivo (se ler_x=True)
+    """
+    import re as _re_dx
+    from pathlib import Path as _Path_dx
+    dx_files = sorted(_Path_dx(pasta).rglob("*.dx"))[:max_files]
+    spectra, labels, wavenumbers = [], [], []
+    for f in dx_files:
+        try:
+            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+            xvals, yvals = [], []
+            in_data = False
+            for line in lines:
+                if "##XYDATA" in line or "##DATA TABLE" in line:
+                    in_data = True; continue
+                if in_data and line.startswith("##"):
+                    in_data = False
+                if in_data:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        try:
+                            if ler_x:
+                                xvals.append(float(parts[0]))
+                            yvals.append(float(parts[1]))
+                        except ValueError:
+                            pass
+            if len(yvals) > 10:
+                spectra.append(yvals)
+                cod = _re_dx.match(r'^([A-Za-z]+)', f.stem)
+                labels.append(cod.group(1).upper() if cod else f.stem[:4])
+                if ler_x and not wavenumbers and xvals:
+                    wavenumbers = xvals
+        except Exception:
+            continue
+    return spectra, labels, wavenumbers
+
+
 # ===========================================================================
 # Cabecalho
 # ===========================================================================
@@ -1277,11 +1319,12 @@ def print_header(cfg: Config) -> None:
         linha3 = "Oleos Vegetais Amazonicos"
     idioma_str = f"[{lang}]"
     # Status: truncar caminho a 40 chars
-    pasta = getattr(cfg, "pasta_entrada", "dados")
+    pasta = getattr(cfg, "pasta_dados", "dados")
     pasta_str = str(pasta)
     if len(pasta_str) > 40:
         pasta_str = "..." + pasta_str[-37:]
-    if pasta_str and os.path.isdir(pasta_str) or os.path.isdir(str(pasta)):
+    dados_ok = os.path.isdir(str(pasta))
+    if dados_ok:
         status_icon = _c("VISUAL", "✓ " + I18N[lang]["status_ok"])
     else:
         status_icon = _c("AVANCADO", "✗ " + I18N[lang]["status_erro"])
@@ -1384,34 +1427,34 @@ def _mostrar_painel_ajuda(key: str) -> None:
 
     # Descricao
     desc_label = f"  {t['descricao']}:"
-    print("  │" + desc_label.ljust(w - 4) + "│")
+    print("  │" + _ansi_ljust(desc_label, w - 4) + "│")
     for dline in _wrap_line(desc, w - 6, indent=4):
-        print("  │" + dline.ljust(w - 4) + "│")
+        print("  │" + _ansi_ljust(dline, w - 4) + "│")
 
     print("  │" + " " * (w - 4) + "│")
 
     # Padrao e faixa
     pad_fai = f"    {t['padrao']}: {default_val}   |   {t['faixa']}: {range_val}"
-    print("  │" + pad_fai.ljust(w - 4) + "│")
+    print("  │" + _ansi_ljust(pad_fai, w - 4) + "│")
 
     print("  │" + " " * (w - 4) + "│")
 
     # Impacto
     imp_label = f"  {t['impacto']}:"
-    print("  │" + imp_label.ljust(w - 4) + "│")
+    print("  │" + _ansi_ljust(imp_label, w - 4) + "│")
     for iline in _wrap_line(impacto, w - 6, indent=4):
-        print("  │" + iline.ljust(w - 4) + "│")
+        print("  │" + _ansi_ljust(iline, w - 4) + "│")
 
     if exemplos:
         print("  │" + " " * (w - 4) + "│")
         ex_label = f"  {t['exemplos']}:"
-        print("  │" + ex_label.ljust(w - 4) + "│")
+        print("  │" + _ansi_ljust(ex_label, w - 4) + "│")
         for val_ex, desc_ex in exemplos.items():
             ex_linha = f"    {val_ex:>12}  ->  {desc_ex}"
             # Truncar se necessario
-            if len(ex_linha) > w - 4:
+            if _ansi_len(ex_linha) > w - 4:
                 ex_linha = ex_linha[: w - 7] + "..."
-            print("  │" + ex_linha.ljust(w - 4) + "│")
+            print("  │" + _ansi_ljust(ex_linha, w - 4) + "│")
 
     print("  " + "└" + "─" * (w - 4) + "┘")
 
@@ -1727,45 +1770,11 @@ def _gerar_heatmap_espectros(cfg: Config) -> None:
         print("  [ERRO] matplotlib ou numpy nao instalado." if lang == "PT" else "  [ERROR] matplotlib or numpy not installed.")
         return
 
-    pasta = getattr(cfg, "pasta_entrada", None) or getattr(cfg, "pasta_dados", "dados")
-    dx_files = sorted(_Path(pasta).rglob("*.dx"))
-    if not dx_files:
-        msg = f"  Nenhum arquivo .dx em: {pasta}" if lang == "PT" else f"  No .dx files in: {pasta}"
-        print(msg)
-        return
-
-    msg_lendo = f"  Lendo {len(dx_files)} arquivos DX..." if lang == "PT" else f"  Reading {len(dx_files)} DX files..."
+    pasta = getattr(cfg, "pasta_dados", "dados")
+    msg_lendo = f"  Lendo arquivos DX..." if lang == "PT" else f"  Reading DX files..."
     print(msg_lendo)
 
-    spectra = []
-    labels = []
-    for f in dx_files[:200]:  # limite de 200 para nao explodir memoria
-        try:
-            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
-            xy = []
-            in_data = False
-            for line in lines:
-                if "##XYDATA" in line or "##DATA TABLE" in line:
-                    in_data = True
-                    continue
-                if in_data and line.startswith("##"):
-                    in_data = False
-                if in_data:
-                    parts = line.strip().split()
-                    if len(parts) >= 2:
-                        try:
-                            xy.append(float(parts[1]))
-                        except ValueError:
-                            pass
-            if xy:
-                spectra.append(xy)
-                stem = f.stem
-                import re as _re_hm
-                cod = _re_hm.match(r'^([A-Za-z]+)', stem)
-                labels.append(cod.group(1).upper() if cod else stem[:4])
-        except Exception:
-            continue
-
+    spectra, labels, _ = _ler_dx_pasta(pasta, max_files=200, ler_x=False)
     if not spectra:
         print("  Nao foi possivel ler espectros." if lang == "PT" else "  Could not read spectra.")
         return
@@ -1792,43 +1801,48 @@ def _gerar_heatmap_espectros(cfg: Config) -> None:
     vcfg = _carregar_visual_cfg()
     fonte_key = vcfg.get("tamanho_fonte", "m")
     fonte_preset = FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"])
-    for k, v in fonte_preset.items():
-        plt.rcParams[k] = v
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, max(4, len(spectra) * 0.12 + 2)),
-                              gridspec_kw={"width_ratios": [20, 1]},
-                              constrained_layout=True)
-    ax, ax_cbar = axes
-
-    im = ax.imshow(arr_sorted, aspect="auto", cmap="RdYlGn",
-                   interpolation="nearest", vmin=-2, vmax=2)
-    ax.set_xlabel("Variavel espectral (index)" if lang == "PT" else "Spectral variable (index)")
-    ax.set_ylabel("Amostra" if lang == "PT" else "Sample")
-    titulo_hm = "Heatmap de Espectros (SNV normalizado)" if lang == "PT" else "Spectral Heatmap (SNV normalized)"
-    ax.set_title(titulo_hm)
-
-    # Linhas divisorias entre classes
-    tick_pos, tick_labels = [], []
-    pos = 0
-    for c in classes_unicas:
-        n = len(classe_pos[c])
-        ax.axhline(pos - 0.5, color="white", linewidth=1.5)
-        tick_pos.append(pos + n // 2)
-        tick_labels.append(c)
-        pos += n
-
-    ax.set_yticks(tick_pos)
-    ax.set_yticklabels(tick_labels, fontsize=8)
-
-    fig.colorbar(im, cax=ax_cbar, label="Intensidade norm." if lang == "PT" else "Norm. intensity")
+    _rc_extras = {**fonte_preset}
+    if vcfg.get("grid_major", True):
+        _rc_extras["axes.grid"] = True
+        _rc_extras["grid.linestyle"] = vcfg.get("grid_style", "dotted")
+        _rc_extras["grid.alpha"] = float(vcfg.get("grid_alpha", 0.4))
 
     pasta_saida = getattr(cfg, "pasta_saida", "resultados")
     saida_path = _Path(pasta_saida)
     saida_path.mkdir(parents=True, exist_ok=True)
     fname = saida_path / "heatmap_espectros.png"
     dpi = int(getattr(cfg, "dpi_figuras", vcfg.get("dpi", 150)))
-    fig.savefig(fname, dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
+
+    with plt.rc_context(_rc_extras):
+        fig, axes = plt.subplots(1, 2, figsize=(14, max(4, len(spectra) * 0.12 + 2)),
+                                  gridspec_kw={"width_ratios": [20, 1]},
+                                  constrained_layout=True)
+        ax, ax_cbar = axes
+
+        im = ax.imshow(arr_sorted, aspect="auto", cmap="RdYlGn",
+                       interpolation="nearest", vmin=-2, vmax=2)
+        ax.set_xlabel("Variavel espectral (index)" if lang == "PT" else "Spectral variable (index)")
+        ax.set_ylabel("Amostra" if lang == "PT" else "Sample")
+        titulo_hm = "Heatmap de Espectros (SNV normalizado)" if lang == "PT" else "Spectral Heatmap (SNV normalized)"
+        ax.set_title(titulo_hm)
+
+        # Linhas divisorias entre classes
+        tick_pos, tick_labels = [], []
+        pos = 0
+        for c in classes_unicas:
+            n = len(classe_pos[c])
+            ax.axhline(pos - 0.5, color="white", linewidth=1.5)
+            tick_pos.append(pos + n // 2)
+            tick_labels.append(c)
+            pos += n
+
+        ax.set_yticks(tick_pos)
+        ax.set_yticklabels(tick_labels, fontsize=8)
+
+        fig.colorbar(im, cax=ax_cbar, label="Intensidade norm." if lang == "PT" else "Norm. intensity")
+
+        fig.savefig(fname, dpi=dpi, bbox_inches="tight")
+        plt.close(fig)
     ok = f"  Heatmap salvo em: {fname}" if lang == "PT" else f"  Heatmap saved to: {fname}"
     print(ok)
 
@@ -1899,39 +1913,44 @@ def _gerar_confusion_matrix(pasta_saida: str) -> None:
 
         vcfg = _carregar_visual_cfg()
         fonte_key = vcfg.get("tamanho_fonte", "m")
-        for k, v in FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"]).items():
-            plt.rcParams[k] = v
-
-        fig_size = max(6, n * 0.8 + 2)
-        fig, axes = plt.subplots(1, 2, figsize=(fig_size * 2.2, fig_size), constrained_layout=True)
-
-        for ax, mat, titulo in zip(axes,
-                                    [cm, cm_norm],
-                                    ["Confusion Matrix (N amostras)" if lang == "PT" else "Confusion Matrix (N samples)",
-                                     "Confusion Matrix (Recall %" + (" por classe)" if lang == "PT" else " per class)")]):
-            im = ax.imshow(mat, cmap="Blues", vmin=0, vmax=mat.max())
-            ax.set_xticks(range(n))
-            ax.set_yticks(range(n))
-            ax.set_xticklabels(classes, rotation=45, ha="right", fontsize=max(6, 9 - n // 4))
-            ax.set_yticklabels(classes, fontsize=max(6, 9 - n // 4))
-            ax.set_xlabel("Predito" if lang == "PT" else "Predicted")
-            ax.set_ylabel("Real" if lang == "PT" else "Actual")
-            ax.set_title(titulo)
-            is_norm = (mat is cm_norm)
-            fmt_val = lambda v, _is_norm=is_norm: f"{v:.0%}" if _is_norm else f"{int(v)}"
-            for i in range(n):
-                for j in range(n):
-                    val = mat[i, j]
-                    txt = fmt_val(val)
-                    color = "white" if val > mat.max() * 0.6 else "black"
-                    ax.text(j, i, txt, ha="center", va="center", color=color,
-                            fontsize=max(5, 8 - n // 4))
-            fig.colorbar(im, ax=ax, shrink=0.8)
+        _rc_extras_cm = {**FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"])}
+        if vcfg.get("grid_major", True):
+            _rc_extras_cm["axes.grid"] = True
+            _rc_extras_cm["grid.linestyle"] = vcfg.get("grid_style", "dotted")
+            _rc_extras_cm["grid.alpha"] = float(vcfg.get("grid_alpha", 0.4))
 
         saida = _Path(csv_found).parent / "confusion_matrix.png"
         dpi = int(vcfg.get("dpi", 150))
-        fig.savefig(saida, dpi=dpi, bbox_inches="tight")
-        plt.close(fig)
+
+        with plt.rc_context(_rc_extras_cm):
+            fig_size = max(6, n * 0.8 + 2)
+            fig, axes = plt.subplots(1, 2, figsize=(fig_size * 2.2, fig_size), constrained_layout=True)
+
+            for ax, mat, titulo in zip(axes,
+                                        [cm, cm_norm],
+                                        ["Confusion Matrix (N amostras)" if lang == "PT" else "Confusion Matrix (N samples)",
+                                         "Confusion Matrix (Recall %" + (" por classe)" if lang == "PT" else " per class)")]):
+                im = ax.imshow(mat, cmap="Blues", vmin=0, vmax=mat.max())
+                ax.set_xticks(range(n))
+                ax.set_yticks(range(n))
+                ax.set_xticklabels(classes, rotation=45, ha="right", fontsize=max(6, 9 - n // 4))
+                ax.set_yticklabels(classes, fontsize=max(6, 9 - n // 4))
+                ax.set_xlabel("Predito" if lang == "PT" else "Predicted")
+                ax.set_ylabel("Real" if lang == "PT" else "Actual")
+                ax.set_title(titulo)
+                is_norm = (mat is cm_norm)
+                fmt_val = lambda v, _is_norm=is_norm: f"{v:.0%}" if _is_norm else f"{int(v)}"
+                for i in range(n):
+                    for j in range(n):
+                        val = mat[i, j]
+                        txt = fmt_val(val)
+                        color = "white" if val > mat.max() * 0.6 else "black"
+                        ax.text(j, i, txt, ha="center", va="center", color=color,
+                                fontsize=max(5, 8 - n // 4))
+                fig.colorbar(im, ax=ax, shrink=0.8)
+
+            fig.savefig(saida, dpi=dpi, bbox_inches="tight")
+            plt.close(fig)
         ok = f"  Confusion Matrix salva em: {saida}" if lang == "PT" else f"  Confusion Matrix saved to: {saida}"
         print(ok)
 
@@ -1950,45 +1969,17 @@ def _gerar_pca_biplot(cfg: Config) -> None:
         import numpy as np
         from pathlib import Path as _Path
         from sklearn.decomposition import PCA
-        import re as _re_bp
     except ImportError as e:
         print(f"  [ERRO] Dependencia ausente: {e}")
         return
 
-    pasta = getattr(cfg, "pasta_entrada", None) or getattr(cfg, "pasta_dados", "dados")
-    dx_files = sorted(_Path(pasta).rglob("*.dx"))
-    if not dx_files:
-        print(f"  Nenhum arquivo .dx em: {pasta}")
-        return
-
-    msg = (f"  Lendo {len(dx_files)} arquivos para PCA Biplot..."
+    pasta = getattr(cfg, "pasta_dados", "dados")
+    msg = ("  Lendo arquivos para PCA Biplot..."
            if lang == "PT" else
-           f"  Reading {len(dx_files)} files for PCA Biplot...")
+           "  Reading files for PCA Biplot...")
     print(msg)
 
-    spectra, labels = [], []
-    for f in dx_files[:300]:
-        try:
-            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
-            xy = []
-            in_data = False
-            for line in lines:
-                if "##XYDATA" in line or "##DATA TABLE" in line:
-                    in_data = True; continue
-                if in_data and line.startswith("##"):
-                    in_data = False
-                if in_data:
-                    parts = line.strip().split()
-                    if len(parts) >= 2:
-                        try: xy.append(float(parts[1]))
-                        except ValueError: pass
-            if len(xy) > 10:
-                spectra.append(xy)
-                cod = _re_bp.match(r'^([A-Za-z]+)', f.stem)
-                labels.append(cod.group(1).upper() if cod else f.stem[:4])
-        except Exception:
-            continue
-
+    spectra, labels, _ = _ler_dx_pasta(pasta, max_files=300, ler_x=False)
     if len(spectra) < 3:
         print("  Espectros insuficientes para PCA." if lang == "PT" else "  Insufficient spectra for PCA.")
         return
@@ -2010,8 +2001,11 @@ def _gerar_pca_biplot(cfg: Config) -> None:
     paleta = PALETAS_COR.get(paleta_key, PALETAS_COR["qualitativo"])
     cores_p = paleta.get("cores")
     fonte_key = vcfg.get("tamanho_fonte", "m")
-    for k, v in FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"]).items():
-        plt.rcParams[k] = v
+    _rc_extras_bp = {**FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"])}
+    if vcfg.get("grid_major", True):
+        _rc_extras_bp["axes.grid"] = True
+        _rc_extras_bp["grid.linestyle"] = vcfg.get("grid_style", "dotted")
+        _rc_extras_bp["grid.alpha"] = float(vcfg.get("grid_alpha", 0.4))
     alpha_map_b = {"baixo": 0.9, "medio": 0.65, "alto": 0.35}
     alpha_v = alpha_map_b.get(vcfg.get("alpha_pontos", "medio"), 0.65)
 
@@ -2023,80 +2017,82 @@ def _gerar_pca_biplot(cfg: Config) -> None:
         cmap_list = [cmap_tab(i / max(1, len(classes_u) - 1)) for i in range(len(classes_u))]
     cor_por_classe = dict(zip(classes_u, cmap_list))
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7), constrained_layout=True)
-
-    for ax_idx, (pc_x, pc_y) in enumerate([(0, 1), (0, 2)]):
-        if pc_y >= n_pcs:
-            axes[ax_idx].set_visible(False)
-            continue
-        ax = axes[ax_idx]
-
-        # Elipses de confianca 95% por classe (Hotelling T2)
-        for classe in classes_u:
-            idx_c = [i for i, lb in enumerate(labels) if lb == classe]
-            if len(idx_c) < 3:
-                continue
-            Tc = T[idx_c][:, [pc_x, pc_y]]
-            mean_c = Tc.mean(axis=0)
-            cov_c = np.cov(Tc.T)
-            try:
-                vals, vecs = np.linalg.eigh(cov_c)
-                vals = np.maximum(vals, 0)
-                chi2_95 = 5.991  # chi2 95%, 2 graus de liberdade
-                w_e, h_e = 2 * np.sqrt(vals * chi2_95)
-                angle = np.degrees(np.arctan2(vecs[1, -1], vecs[0, -1]))
-                from matplotlib.patches import Ellipse
-                ell = Ellipse(xy=mean_c, width=w_e, height=h_e, angle=angle,
-                              facecolor=cor_por_classe[classe], alpha=0.12,
-                              edgecolor=cor_por_classe[classe], linewidth=1.5,
-                              linestyle="--")
-                ax.add_patch(ell)
-            except Exception:
-                pass
-
-            # Scatter
-            ax.scatter(Tc[:, 0], Tc[:, 1],
-                       c=[cor_por_classe[classe]] * len(Tc),
-                       alpha=alpha_v, s=35, label=classe, edgecolors="none")
-            ax.scatter(*mean_c, c=[cor_por_classe[classe]], s=120,
-                       marker="*", edgecolors="black", linewidths=0.5, zorder=5)
-
-        # Loadings (setas) — top 8 variaveis mais importantes
-        P = pca.components_[[pc_x, pc_y]].T  # (n_vars, 2)
-        loading_mag = np.sqrt(P[:, 0]**2 + P[:, 1]**2)
-        top_idx = np.argsort(loading_mag)[-8:]
-        scale = (np.abs(T[:, [pc_x, pc_y]]).max() * 0.8) / (loading_mag[top_idx].max() + 1e-8)
-        for vi in top_idx:
-            ax.annotate("", xy=(P[vi, 0] * scale, P[vi, 1] * scale),
-                        xytext=(0, 0),
-                        arrowprops=dict(arrowstyle="->", color="gray", lw=1.2, alpha=0.5))
-            ax.text(P[vi, 0] * scale * 1.08, P[vi, 1] * scale * 1.08,
-                    f"v{vi}", fontsize=6, color="gray", alpha=0.7)
-
-        xlabel = f"PC{pc_x+1} ({var[pc_x]:.1f}%)"
-        ylabel = f"PC{pc_y+1} ({var[pc_y]:.1f}%)"
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.axhline(0, color="gray", lw=0.5, alpha=0.4)
-        ax.axvline(0, color="gray", lw=0.5, alpha=0.4)
-        titulo_ax = (f"PCA Biplot — PC{pc_x+1} vs PC{pc_y+1} (Elipse 95% Hotelling T2)"
-                     if lang == "PT" else
-                     f"PCA Biplot — PC{pc_x+1} vs PC{pc_y+1} (95% Hotelling T2 Ellipse)")
-        ax.set_title(titulo_ax)
-        if ax_idx == 0:
-            handles = [mpatches.Patch(color=cor_por_classe[c], label=c) for c in classes_u]
-            ax.legend(handles=handles, fontsize=7, ncol=max(1, len(classes_u)//8 + 1),
-                      loc="best", framealpha=0.7)
-        if vcfg.get("grid_major", True):
-            ax.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
-                    alpha=float(vcfg.get("grid_alpha", 0.4)))
-
     pasta_saida = getattr(cfg, "pasta_saida", "resultados")
     saida = _Path(pasta_saida) / "pca_biplot_elipse.png"
     _Path(pasta_saida).mkdir(parents=True, exist_ok=True)
     dpi = int(getattr(cfg, "dpi_figuras", 150))
-    fig.savefig(saida, dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
+
+    with plt.rc_context(_rc_extras_bp):
+        fig, axes = plt.subplots(1, 2, figsize=(16, 7), constrained_layout=True)
+
+        for ax_idx, (pc_x, pc_y) in enumerate([(0, 1), (0, 2)]):
+            if pc_y >= n_pcs:
+                axes[ax_idx].set_visible(False)
+                continue
+            ax = axes[ax_idx]
+
+            # Elipses de confianca 95% por classe (Hotelling T2)
+            for classe in classes_u:
+                idx_c = [i for i, lb in enumerate(labels) if lb == classe]
+                if len(idx_c) < 3:
+                    continue
+                Tc = T[idx_c][:, [pc_x, pc_y]]
+                mean_c = Tc.mean(axis=0)
+                cov_c = np.cov(Tc.T)
+                try:
+                    vals, vecs = np.linalg.eigh(cov_c)
+                    vals = np.maximum(vals, 0)
+                    chi2_95 = 5.991  # chi2 95%, 2 graus de liberdade
+                    w_e, h_e = 2 * np.sqrt(vals * chi2_95)
+                    angle = np.degrees(np.arctan2(vecs[1, -1], vecs[0, -1]))
+                    from matplotlib.patches import Ellipse
+                    ell = Ellipse(xy=mean_c, width=w_e, height=h_e, angle=angle,
+                                  facecolor=cor_por_classe[classe], alpha=0.12,
+                                  edgecolor=cor_por_classe[classe], linewidth=1.5,
+                                  linestyle="--")
+                    ax.add_patch(ell)
+                except Exception:
+                    pass
+
+                # Scatter
+                ax.scatter(Tc[:, 0], Tc[:, 1],
+                           c=[cor_por_classe[classe]] * len(Tc),
+                           alpha=alpha_v, s=35, label=classe, edgecolors="none")
+                ax.scatter(*mean_c, c=[cor_por_classe[classe]], s=120,
+                           marker="*", edgecolors="black", linewidths=0.5, zorder=5)
+
+            # Loadings (setas) — top 8 variaveis mais importantes
+            P = pca.components_[[pc_x, pc_y]].T  # (n_vars, 2)
+            loading_mag = np.sqrt(P[:, 0]**2 + P[:, 1]**2)
+            top_idx = np.argsort(loading_mag)[-8:]
+            scale = (np.abs(T[:, [pc_x, pc_y]]).max() * 0.8) / (loading_mag[top_idx].max() + 1e-8)
+            for vi in top_idx:
+                ax.annotate("", xy=(P[vi, 0] * scale, P[vi, 1] * scale),
+                            xytext=(0, 0),
+                            arrowprops=dict(arrowstyle="->", color="gray", lw=1.2, alpha=0.5))
+                ax.text(P[vi, 0] * scale * 1.08, P[vi, 1] * scale * 1.08,
+                        f"v{vi}", fontsize=6, color="gray", alpha=0.7)
+
+            xlabel = f"PC{pc_x+1} ({var[pc_x]:.1f}%)"
+            ylabel = f"PC{pc_y+1} ({var[pc_y]:.1f}%)"
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.axhline(0, color="gray", lw=0.5, alpha=0.4)
+            ax.axvline(0, color="gray", lw=0.5, alpha=0.4)
+            titulo_ax = (f"PCA Biplot — PC{pc_x+1} vs PC{pc_y+1} (Elipse 95% Hotelling T2)"
+                         if lang == "PT" else
+                         f"PCA Biplot — PC{pc_x+1} vs PC{pc_y+1} (95% Hotelling T2 Ellipse)")
+            ax.set_title(titulo_ax)
+            if ax_idx == 0:
+                handles = [mpatches.Patch(color=cor_por_classe[c], label=c) for c in classes_u]
+                ax.legend(handles=handles, fontsize=7, ncol=max(1, len(classes_u)//8 + 1),
+                          loc="best", framealpha=0.7)
+            if vcfg.get("grid_major", True):
+                ax.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
+                        alpha=float(vcfg.get("grid_alpha", 0.4)))
+
+        fig.savefig(saida, dpi=dpi, bbox_inches="tight")
+        plt.close(fig)
     ok = (f"  PCA Biplot salvo em: {saida}"
           if lang == "PT" else f"  PCA Biplot saved to: {saida}")
     print(ok)
@@ -2112,48 +2108,17 @@ def _gerar_variancia_wavelength(cfg: Config) -> None:
         import numpy as np
         from pathlib import Path as _Path
         from sklearn.decomposition import PCA
-        import re as _re_vw
     except ImportError as e:
         print(f"  [ERRO] {e}")
         return
 
-    pasta = getattr(cfg, "pasta_entrada", None) or getattr(cfg, "pasta_dados", "dados")
-    dx_files = sorted(_Path(pasta).rglob("*.dx"))
-    if not dx_files:
-        print(f"  Nenhum .dx em: {pasta}")
-        return
-
-    msg = (f"  Calculando variancia acumulada + importancia espectral ({len(dx_files)} arquivos)..."
+    pasta = getattr(cfg, "pasta_dados", "dados")
+    msg = ("  Calculando variancia acumulada + importancia espectral..."
            if lang == "PT" else
-           f"  Computing cumulative variance + spectral importance ({len(dx_files)} files)...")
+           "  Computing cumulative variance + spectral importance...")
     print(msg)
 
-    spectra, wavenumbers = [], []
-    for f in dx_files[:300]:
-        try:
-            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
-            xvals, yvals = [], []
-            in_data = False
-            for line in lines:
-                if "##XYDATA" in line or "##DATA TABLE" in line:
-                    in_data = True; continue
-                if in_data and line.startswith("##"):
-                    in_data = False
-                if in_data:
-                    parts = line.strip().split()
-                    if len(parts) >= 2:
-                        try:
-                            xvals.append(float(parts[0]))
-                            yvals.append(float(parts[1]))
-                        except ValueError:
-                            pass
-            if len(yvals) > 10:
-                spectra.append(yvals)
-                if not wavenumbers and xvals:
-                    wavenumbers = xvals
-        except Exception:
-            continue
-
+    spectra, labels_vw, wavenumbers = _ler_dx_pasta(pasta, max_files=300, ler_x=True)
     if len(spectra) < 3:
         print("  Espectros insuficientes." if lang == "PT" else "  Insufficient spectra.")
         return
@@ -2183,62 +2148,67 @@ def _gerar_variancia_wavelength(cfg: Config) -> None:
     cor_wl = cores_p[2] if (cores_p and len(cores_p) > 2) else "#2ca02c"
 
     fonte_key = vcfg.get("tamanho_fonte", "m")
-    for k, v in FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"]).items():
-        plt.rcParams[k] = v
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
-
-    # Esquerdo: variancia por componente + acumulada
-    pcs = np.arange(1, n_pcs + 1)
-    ax1.bar(pcs, var_ratio, color=cor_bar, alpha=0.75,
-            label="Variancia por PC" if lang == "PT" else "Variance per PC")
-    ax1_r = ax1.twinx()
-    ax1_r.plot(pcs, var_cum, color=cor_line, marker="o", ms=5, lw=2,
-               label="Acumulada" if lang == "PT" else "Cumulative")
-    ax1_r.axhline(95, color="red", lw=1.2, linestyle="--", alpha=0.6)
-    ax1_r.text(n_pcs * 0.98, 95.5, "95%", color="red", fontsize=8, ha="right")
-    pc_95 = int(np.searchsorted(var_cum, 95)) + 1
-    if pc_95 <= n_pcs:
-        ax1.axvline(pc_95, color="red", lw=1.2, linestyle=":", alpha=0.6)
-        ax1.text(pc_95 + 0.1, var_ratio.max() * 0.9,
-                 f"PC{pc_95}", color="red", fontsize=8)
-
-    ax1.set_xlabel("Componente Principal" if lang == "PT" else "Principal Component")
-    ax1.set_ylabel("Variancia Explicada (%)" if lang == "PT" else "Explained Variance (%)")
-    ax1_r.set_ylabel("Variancia Acumulada (%)" if lang == "PT" else "Cumulative Variance (%)")
-    ax1_r.set_ylim(0, 105)
-    ax1.set_title("Variancia Acumulada — PCA" if lang == "PT" else "Cumulative Variance — PCA")
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax1_r.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="center right")
+    _rc_extras_vw = {**FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"])}
     if vcfg.get("grid_major", True):
-        ax1.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
-                 alpha=float(vcfg.get("grid_alpha", 0.4)))
-
-    # Direito: Wavelength Importance
-    ax2.fill_between(wn, importance, alpha=0.35, color=cor_wl)
-    ax2.plot(wn, importance, color=cor_wl, lw=1.2)
-
-    top10_idx = np.argsort(importance)[-10:]
-    ax2.scatter(wn[top10_idx], importance[top10_idx],
-                color="red", s=30, zorder=5, alpha=0.8,
-                label="Top 10" if lang == "PT" else "Top 10")
-
-    ax2.set_xlabel("Numero de Onda (cm-1)" if lang == "PT" else "Wavenumber (cm-1)")
-    ax2.set_ylabel("Importancia Relativa" if lang == "PT" else "Relative Importance")
-    ax2.set_title("Importancia Espectral (Loadings PCA ponderados)"
-                  if lang == "PT" else "Spectral Importance (Weighted PCA Loadings)")
-    ax2.legend(fontsize=8)
-    if vcfg.get("grid_major", True):
-        ax2.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
-                 alpha=float(vcfg.get("grid_alpha", 0.4)))
+        _rc_extras_vw["axes.grid"] = True
+        _rc_extras_vw["grid.linestyle"] = vcfg.get("grid_style", "dotted")
+        _rc_extras_vw["grid.alpha"] = float(vcfg.get("grid_alpha", 0.4))
 
     pasta_saida = getattr(cfg, "pasta_saida", "resultados")
     _Path(pasta_saida).mkdir(parents=True, exist_ok=True)
     saida = _Path(pasta_saida) / "variancia_wavelength_importance.png"
     dpi = int(getattr(cfg, "dpi_figuras", 150))
-    fig.savefig(saida, dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
+
+    with plt.rc_context(_rc_extras_vw):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
+
+        # Esquerdo: variancia por componente + acumulada
+        pcs = np.arange(1, n_pcs + 1)
+        ax1.bar(pcs, var_ratio, color=cor_bar, alpha=0.75,
+                label="Variancia por PC" if lang == "PT" else "Variance per PC")
+        ax1_r = ax1.twinx()
+        ax1_r.plot(pcs, var_cum, color=cor_line, marker="o", ms=5, lw=2,
+                   label="Acumulada" if lang == "PT" else "Cumulative")
+        ax1_r.axhline(95, color="red", lw=1.2, linestyle="--", alpha=0.6)
+        ax1_r.text(n_pcs * 0.98, 95.5, "95%", color="red", fontsize=8, ha="right")
+        pc_95 = int(np.searchsorted(var_cum, 95)) + 1
+        if pc_95 <= n_pcs:
+            ax1.axvline(pc_95, color="red", lw=1.2, linestyle=":", alpha=0.6)
+            ax1.text(pc_95 + 0.1, var_ratio.max() * 0.9,
+                     f"PC{pc_95}", color="red", fontsize=8)
+
+        ax1.set_xlabel("Componente Principal" if lang == "PT" else "Principal Component")
+        ax1.set_ylabel("Variancia Explicada (%)" if lang == "PT" else "Explained Variance (%)")
+        ax1_r.set_ylabel("Variancia Acumulada (%)" if lang == "PT" else "Cumulative Variance (%)")
+        ax1_r.set_ylim(0, 105)
+        ax1.set_title("Variancia Acumulada — PCA" if lang == "PT" else "Cumulative Variance — PCA")
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax1_r.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="center right")
+        if vcfg.get("grid_major", True):
+            ax1.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
+                     alpha=float(vcfg.get("grid_alpha", 0.4)))
+
+        # Direito: Wavelength Importance
+        ax2.fill_between(wn, importance, alpha=0.35, color=cor_wl)
+        ax2.plot(wn, importance, color=cor_wl, lw=1.2)
+
+        top10_idx = np.argsort(importance)[-10:]
+        ax2.scatter(wn[top10_idx], importance[top10_idx],
+                    color="red", s=30, zorder=5, alpha=0.8,
+                    label="Top 10" if lang == "PT" else "Top 10")
+
+        ax2.set_xlabel("Numero de Onda (cm-1)" if lang == "PT" else "Wavenumber (cm-1)")
+        ax2.set_ylabel("Importancia Relativa" if lang == "PT" else "Relative Importance")
+        ax2.set_title("Importancia Espectral (Loadings PCA ponderados)"
+                      if lang == "PT" else "Spectral Importance (Weighted PCA Loadings)")
+        ax2.legend(fontsize=8)
+        if vcfg.get("grid_major", True):
+            ax2.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
+                     alpha=float(vcfg.get("grid_alpha", 0.4)))
+
+        fig.savefig(saida, dpi=dpi, bbox_inches="tight")
+        plt.close(fig)
     ok = (f"  Grafico salvo em: {saida}"
           if lang == "PT" else f"  Figure saved to: {saida}")
     print(ok)
@@ -2633,9 +2603,10 @@ def menu_hardware() -> None:
     print("╠" + "═" * (w - 2) + "╣")
 
     # Mostrar specs
-    psutil_str = ("Instalado" if psutil_ok else "Nao instalado (estimativa conservadora)"
-                  if lang == "PT" else
-                  "Installed" if psutil_ok else "Not installed (conservative estimate)")
+    if lang == "PT":
+        psutil_str = "Instalado" if psutil_ok else "Nao instalado (estimativa conservadora)"
+    else:
+        psutil_str = "Installed" if psutil_ok else "Not installed (conservative estimate)"
     ram_line   = f"  RAM total    : {ram_gb:.1f} GB"
     disp_line  = f"  RAM livre    : {ram_disp:.1f} GB"
     cpu_fis_ln = f"  CPU fisicos  : {cpu_fis}"
@@ -2977,7 +2948,7 @@ def _salvar_codigos_usuario(codigos: Dict[str, str]) -> None:
         json.dump(codigos, f, ensure_ascii=False, indent=2)
 
 
-def menu_codificacao() -> None:
+def menu_codificacao(cfg: Config) -> None:
     """Menu 9 — Explicacao do formato de nomenclatura dos arquivos DX."""
     lang = _lang()
     cls()
@@ -3057,7 +3028,7 @@ def menu_codificacao() -> None:
 
     # Verificar se pasta de dados existe e contar arquivos
     try:
-        pasta = getattr(pq.Config(), "pasta_entrada", "dados")
+        pasta = getattr(cfg, "pasta_dados", "dados")
         if pasta and os.path.isdir(str(pasta)):
             n_dx = sum(1 for _ in Path(pasta).rglob("*.dx"))
             status_arq = (f"  {n_dx} arquivos .dx encontrados em: {pasta}"
@@ -3421,7 +3392,7 @@ def _mostrar_resumo_e_confirmar(cfg: Config) -> bool:
     w = 50
 
     # Coletar valores relevantes
-    pasta = str(getattr(cfg, "pasta_entrada", getattr(cfg, "pasta_dados", "?")))
+    pasta = str(getattr(cfg, "pasta_dados", "?"))
     # Contagem de arquivos na pasta
     try:
         if os.path.isdir(pasta):
@@ -3517,8 +3488,8 @@ def _rodar_pipeline(cfg: Config) -> None:
     lang = _lang()
     t = I18N[lang]
     # Verificar pasta de dados
-    pasta = getattr(cfg, "pasta_entrada", "")
-    modo = getattr(cfg, "modo", "dx")
+    pasta = getattr(cfg, "pasta_dados", "")
+    modo = getattr(cfg, "modo_entrada", "dx")
     if modo != "sintetico" and (not pasta or not os.path.isdir(str(pasta))):
         print(f"\n  {t['status_erro']}")
         if lang == "PT":
@@ -3664,7 +3635,7 @@ def main() -> None:
         elif escolha == "8":
             menu_tecnica(cfg)
         elif escolha == "9":
-            menu_codificacao()
+            menu_codificacao(cfg)
         elif escolha == "?":
             menu_ajuda()
         elif escolha == "P":
