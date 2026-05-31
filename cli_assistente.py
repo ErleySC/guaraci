@@ -123,6 +123,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "listar_todos": "Listar todos",
         "hardware": "Verificar Hardware",
         "menu_codificacao": "Codificacao de Arquivos",
+        "nome_saida": "Nome saida",
     },
     "EN": {
         "titulo": "AmaNIR — FT-NIR Chemometrics Platform",
@@ -171,6 +172,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "listar_todos": "List all",
         "hardware": "Check Hardware",
         "menu_codificacao": "File Encoding",
+        "nome_saida": "Output name",
     },
 }
 
@@ -417,23 +419,36 @@ FONT_PRESETS: Dict[str, Dict[str, Any]] = {
 }
 
 _VISUAL_CFG_PATH = _BASE_DIR / "visual_config.json"
+_VISUAL_CFG_CACHE: Dict[str, Any] = {}
 
 
 def _carregar_visual_cfg() -> Dict[str, Any]:
-    """Carrega visual_config.json ou retorna defaults."""
+    """Carrega visual_config.json com cache em memoria."""
+    global _VISUAL_CFG_CACHE
+    if _VISUAL_CFG_CACHE:
+        return _VISUAL_CFG_CACHE
     if not _VISUAL_CFG_PATH.exists():
-        return {"paleta": "qualitativo", "estilo_matplotlib": "default"}
+        _VISUAL_CFG_CACHE = {"paleta": "qualitativo", "estilo_matplotlib": "default",
+                              "tamanho_fonte": "m", "grid_major": True, "grid_minor": False,
+                              "grid_style": "dotted", "grid_alpha": 0.4, "alpha_pontos": "medio"}
+        return _VISUAL_CFG_CACHE
     try:
         with open(_VISUAL_CFG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"paleta": "qualitativo", "estilo_matplotlib": "default"}
+            _VISUAL_CFG_CACHE = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        _VISUAL_CFG_CACHE = {"paleta": "qualitativo", "tamanho_fonte": "m"}
+    return _VISUAL_CFG_CACHE
 
 
 def _salvar_visual_cfg(cfg_v: Dict[str, Any]) -> None:
-    """Salva visual_config.json."""
-    with open(_VISUAL_CFG_PATH, "w", encoding="utf-8") as f:
-        json.dump(cfg_v, f, ensure_ascii=False, indent=2)
+    """Salva visual_config.json e invalida o cache."""
+    global _VISUAL_CFG_CACHE
+    _VISUAL_CFG_CACHE = cfg_v.copy()  # atualiza cache ao mesmo tempo
+    try:
+        with open(_VISUAL_CFG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg_v, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel salvar visual_config.json: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -1260,6 +1275,17 @@ def _wrap_box(text: str, width: int, indent: str = "  ") -> list:
     return [indent + line for line in wrapped.split("\n")]
 
 
+def _prompt(msg: str, default: str = "") -> str:
+    """Le input do usuario com tratamento seguro de EOF e Ctrl+C.
+
+    Retorna `default` se o usuario pressionar Ctrl+C ou fechar o stdin.
+    """
+    try:
+        return input(msg).strip()
+    except (EOFError, KeyboardInterrupt):
+        return default
+
+
 def _ler_dx_pasta(pasta: str, max_files: int = 300, ler_x: bool = False):
     """Le arquivos .dx de uma pasta e retorna (spectra, labels, wavenumbers).
 
@@ -1377,8 +1403,8 @@ def print_main_menu() -> None:
     linha6 = f"  [P] {t['perfis']:<20s}  [I] {t['idioma']}"
     print("║" + _ansi_ljust(linha6, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    barra = (f"  [R] ► {t['rodar_pipeline']}   [S] {t['salvar']}   "
-             f"[L] {t['carregar']}")
+    barra = (f"  [R] ► {t['rodar_pipeline']}   [N] {t['nome_saida']}   "
+             f"[S] {t['salvar']}   [L] {t['carregar']}")
     print("║" + _ansi_ljust(barra, w - 2) + "║")
     barra2 = f"  [?] {t['ajuda_curta']:<22s}  [Q] {t['sair']}"
     print("║" + _ansi_ljust(barra2, w - 2) + "║")
@@ -1499,11 +1525,7 @@ def _editar_campo_cli(cfg: Config, key: str) -> bool:
 
     print(f"  {t['atual']}: {_fmt_yaml(atual)}")
 
-    try:
-        novo_raw = input(f"  {t['novo_valor']}").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return False
+    novo_raw = _prompt(f"  {t['novo_valor']}")
 
     if novo_raw == "":
         print(f"  {t['mantido']}")
@@ -1518,11 +1540,7 @@ def _editar_campo_cli(cfg: Config, key: str) -> bool:
     if risk == "AVANCADO":
         print(_c("AVANCADO", f"\n  {t['aviso_avancado']}"))
     if risk in ("ANALITICO", "AVANCADO"):
-        try:
-            conf = input(f"  {t['aviso_analitico']}").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return False
+        conf = _prompt(f"  {t['aviso_analitico']}").lower()
         if conf != t["confirmar_sn"]:
             print(f"  {t['cancelado']}")
             return False
@@ -1575,10 +1593,10 @@ def _submenu_campos(cfg: Config, titulo_key: str, campos: list, secao_key: str =
         print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
-        try:
-            escolha = input(f"  {t['opcao']}: ").strip()
-        except (EOFError, KeyboardInterrupt):
+        escolha_raw = _prompt(f"  {t['opcao']}: ")
+        if not escolha_raw:
             break
+        escolha = escolha_raw
 
         if escolha == "0" or escolha.lower() == "q":
             break
@@ -1598,16 +1616,16 @@ def _submenu_campos(cfg: Config, titulo_key: str, campos: list, secao_key: str =
                 # Listar campos disponiveis
                 print(f"\n  Campos neste menu: {', '.join(campos)}")
                 print("  Ex: ? dpi")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         if escolha.isdigit() and 1 <= int(escolha) <= len(campos):
             key = campos[int(escolha) - 1]
             _editar_campo_cli(cfg, key)
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
         else:
             print(f"  {t['invalido']}")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
 
 
 # ===========================================================================
@@ -1662,11 +1680,8 @@ def menu_preproc(cfg: Config) -> None:
         print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
-        try:
-            escolha = input(f"  {I18N[_lang()]['opcao']}: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if escolha == "0" or escolha.lower() == "q":
+        escolha = _prompt(f"  {I18N[_lang()]['opcao']}: ")
+        if not escolha or escolha == "0" or escolha.lower() == "q":
             break
         if escolha.upper() == "I":
             _toggle_idioma()
@@ -1674,10 +1689,10 @@ def menu_preproc(cfg: Config) -> None:
         if escolha.isdigit() and 1 <= int(escolha) <= len(campos):
             key = campos[int(escolha) - 1]
             _editar_campo_cli(cfg, key)
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
         else:
             print(f"  {t['invalido']}")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
 
 
 def menu_modelagem(cfg: Config) -> None:
@@ -1732,11 +1747,8 @@ def menu_paletas() -> None:
         print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
-        try:
-            escolha = input(f"  {t['opcao']}: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if escolha == "0" or escolha.lower() == "q":
+        escolha = _prompt(f"  {t['opcao']}: ")
+        if not escolha or escolha == "0" or escolha.lower() == "q":
             break
         if escolha.upper() == "I":
             _toggle_idioma()
@@ -1751,10 +1763,10 @@ def menu_paletas() -> None:
                 print(f"  Paleta '{nome_sel}' selecionada e salva em visual_config.json.")
             else:
                 print(f"  Palette '{nome_sel}' selected and saved to visual_config.json.")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
         else:
             print(f"  {t['invalido']}")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
 
 
 def _gerar_heatmap_espectros(cfg: Config) -> None:
@@ -2283,11 +2295,8 @@ def menu_visualizacao(cfg: Config) -> None:
             print("║" + _ansi_ljust(rline, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
-        try:
-            escolha = input(f"  {t['opcao']}: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if escolha == "0" or escolha.lower() == "q":
+        escolha = _prompt(f"  {t['opcao']}: ")
+        if not escolha or escolha == "0" or escolha.lower() == "q":
             break
         if escolha.upper() == "I":
             _toggle_idioma()
@@ -2320,10 +2329,7 @@ def menu_visualizacao(cfg: Config) -> None:
             print("╠" + "═" * (w2 - 2) + "╣")
             print("║" + _ansi_ljust(f"  [0] {t['voltar']}", w2 - 2) + "║")
             print("╚" + "═" * (w2 - 2) + "╝")
-            try:
-                ef = input(f"\n  {t.get('opcao','Option')}: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                ef = ""
+            ef = _prompt(f"\n  {t.get('opcao','Option')}: ")
             if ef.isdigit() and 1 <= int(ef) <= len(opcoes_fonte):
                 nova_fonte = opcoes_fonte[int(ef) - 1][1]
                 vcfg2["tamanho_fonte"] = nova_fonte
@@ -2332,10 +2338,7 @@ def menu_visualizacao(cfg: Config) -> None:
                         if lang == "PT" else
                         f"  Font '{opcoes_fonte[int(ef)-1][0]}' saved.")
                 print(ok_f)
-            try:
-                input(f"  [{t['continuar']}]")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         # Handler [G] — Grid
@@ -2364,10 +2367,7 @@ def menu_visualizacao(cfg: Config) -> None:
             print("╠" + "═" * (w3 - 2) + "╣")
             print("║" + _ansi_ljust(f"  [0] {t['voltar']}", w3 - 2) + "║")
             print("╚" + "═" * (w3 - 2) + "╝")
-            try:
-                eg = input(f"\n  {t.get('opcao','Option')}: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                eg = ""
+            eg = _prompt(f"\n  {t.get('opcao','Option')}: ")
             if eg == "1":
                 vcfg3["grid_major"] = not vcfg3.get("grid_major", True)
             elif eg == "2":
@@ -2382,20 +2382,14 @@ def menu_visualizacao(cfg: Config) -> None:
                 except (ValueError, EOFError):
                     pass
             _salvar_visual_cfg(vcfg3)
-            try:
-                input(f"  [{t['continuar']}]")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         # Handler [H] — Heatmap de Espectros
         if escolha.upper() == "H":
             print()
             _gerar_heatmap_espectros(cfg)
-            try:
-                input(f"  [{t['continuar']}]")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         # Handler [M] — Confusion Matrix
@@ -2435,10 +2429,7 @@ def menu_visualizacao(cfg: Config) -> None:
             print("╠" + "═" * (w_a - 2) + "╣")
             print("║" + _ansi_ljust(f"  [0] {t['voltar']}", w_a - 2) + "║")
             print("╚" + "═" * (w_a - 2) + "╝")
-            try:
-                ea = input(f"\n  {t.get('opcao', 'Option')}: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                ea = ""
+            ea = _prompt(f"\n  {t.get('opcao', 'Option')}: ")
             if ea in ("1", "2", "3"):
                 nova_a = opcoes_alpha[int(ea) - 1][1]
                 vcfg_a["alpha_pontos"] = nova_a
@@ -2446,30 +2437,21 @@ def menu_visualizacao(cfg: Config) -> None:
                 ok_a = (f"  Transparencia '{nova_a}' salva."
                         if lang == "PT" else f"  Transparency '{nova_a}' saved.")
                 print(ok_a)
-            try:
-                input(f"  [{t['continuar']}]")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         # Handler [B] — PCA Biplot com elipse de confianca 95%
         if escolha.upper() == "B":
             print()
             _gerar_pca_biplot(cfg)
-            try:
-                input(f"  [{t['continuar']}]")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         # Handler [V] — Variancia acumulada + Wavelength Importance
         if escolha.upper() == "V":
             print()
             _gerar_variancia_wavelength(cfg)
-            try:
-                input(f"  [{t['continuar']}]")
-            except (EOFError, KeyboardInterrupt):
-                pass
+            _prompt(f"  [{t['continuar']}]")
             continue
 
         if escolha.lower().startswith("?") or escolha.lower().startswith("help"):
@@ -2543,19 +2525,16 @@ def menu_ajuda() -> None:
                    if lang == "PT" else
                    "\n  Type number or parameter name (Enter = back):")
             print(tip)
-            try:
-                escolha_l = input(f"  {t['opcao']}: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                escolha_l = ""
+            escolha_l = _prompt(f"  {t['opcao']}: ")
             if escolha_l:
                 if escolha_l.isdigit() and 1 <= int(escolha_l) <= len(keys_sorted):
                     _mostrar_help_campo(keys_sorted[int(escolha_l) - 1])
-                    input(f"  [{t['continuar']}]")
+                    _prompt(f"  [{t['continuar']}]")
                 else:
                     topico_l = escolha_l.replace("help", "").replace("?", "").strip()
                     if topico_l:
                         _mostrar_help_campo(topico_l)
-                        input(f"  [{t['continuar']}]")
+                        _prompt(f"  [{t['continuar']}]")
             continue
         # Permite "help benchmark" ou apenas "benchmark"
         topico = entrada.lower().replace("help", "").replace("?", "").strip()
@@ -2679,10 +2658,7 @@ def menu_hardware() -> None:
     print("║" + _ansi_ljust(voltar_txt, w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
-    try:
-        input(f"  {I18N[lang].get('opcao', 'Option')}: ")
-    except (EOFError, KeyboardInterrupt):
-        pass
+    _prompt(f"  {I18N[lang].get('opcao', 'Option')}: ")
 
 
 # ===========================================================================
@@ -2882,10 +2858,7 @@ def menu_tecnica(cfg: Config) -> None:
             key = nomes[int(escolha) - 1]
             tec = TECNICAS[key]
             aviso_conf = I18N[lang]["aviso_analitico"]
-            try:
-                conf = input(f"  {aviso_conf}").strip().lower()
-            except (EOFError, KeyboardInterrupt):
-                continue
+            conf = _prompt(f"  {aviso_conf}").lower()
             if conf != I18N[lang]["confirmar_sn"]:
                 continue
             # Aplicar defaults de faixa espectral
@@ -2921,10 +2894,10 @@ def menu_tecnica(cfg: Config) -> None:
             else:
                 ok = f"  Technique '{tec_lang.get('nome', key)}' applied."
             print(ok)
-            input(f"  [{I18N[lang]['continuar']}]")
+            _prompt(f"  [{I18N[lang]['continuar']}]")
         else:
             print(f"  {I18N[lang]['invalido']}")
-            input(f"  [{I18N[lang]['continuar']}]")
+            _prompt(f"  [{I18N[lang]['continuar']}]")
 
 
 # ===========================================================================
@@ -3082,7 +3055,7 @@ def menu_codificacao(cfg: Config) -> None:
                 print(f"  Code '{cod_raw}' -> '{nome_raw}' registered and saved to codigos_usuario.json")
         else:
             print(f"  {I18N[lang]['cancelado']}")
-        input(f"  [{I18N[lang]['continuar']}]")
+        _prompt(f"  [{I18N[lang]['continuar']}]")
     elif resp.upper() == "D":
         # Exibir todos os codigos
         codigos_u = _carregar_codigos_usuario()
@@ -3113,7 +3086,7 @@ def menu_codificacao(cfg: Config) -> None:
             else:
                 print("\n  (No user-registered codes yet.)")
         print()
-        input(f"  [{I18N[lang]['continuar']}]")
+        _prompt(f"  [{I18N[lang]['continuar']}]")
 
 
 # ===========================================================================
@@ -3165,11 +3138,8 @@ def menu_perfis(cfg: Config) -> None:
         print("\u2551" + _ansi_ljust(rodape, w - 2) + "\u2551")
         print("\u255a" + "\u2550" * (w - 2) + "\u255d")
         print()
-        try:
-            escolha = input(f"  {t['opcao']}: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if escolha == "0" or escolha.lower() == "q":
+        escolha = _prompt(f"  {t['opcao']}: ")
+        if not escolha or escolha == "0" or escolha.lower() == "q":
             break
         if escolha.upper() == "I":
             _toggle_idioma()
@@ -3179,7 +3149,7 @@ def menu_perfis(cfg: Config) -> None:
                    if lang == "PT" else
                    "  Configure parameters in menus 1-7 and press [S] in main menu to save.")
             print(f"\n{msg}")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
             break
         if escolha.isdigit():
             n = int(escolha)
@@ -3193,17 +3163,17 @@ def menu_perfis(cfg: Config) -> None:
                 _aplicar_perfil(cfg, PROFILES[nome_perfil])
                 ok = "\n  Perfil aplicado! Os parametros foram atualizados." if lang == "PT" else "\n  Profile applied! Parameters updated."
                 print(ok)
-                input(f"  [{t['continuar']}]")
+                _prompt(f"  [{t['continuar']}]")
             elif perfis_usuario and len(nomes) < n <= len(nomes) + len(perfis_usuario):
                 nome_u = perfis_usuario[n - len(nomes) - 1]
                 carregar_perfil(nome_u, cfg)
-                input(f"  [{t['continuar']}]")
+                _prompt(f"  [{t['continuar']}]")
             else:
                 print(f"  {t['invalido']}")
-                input(f"  [{t['continuar']}]")
+                _prompt(f"  [{t['continuar']}]")
         else:
             print(f"  {t['invalido']}")
-            input(f"  [{t['continuar']}]")
+            _prompt(f"  [{t['continuar']}]")
 
 def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any]) -> None:
     """Aplica os valores de um perfil na Config."""
@@ -3238,9 +3208,8 @@ def salvar_perfil(cfg: Config) -> None:
     _PERFIS_DIR.mkdir(parents=True, exist_ok=True)
     print()
     prompt = "  Nome do perfil (sem espacos): " if lang == "PT" else "  Profile name (no spaces): "
-    try:
-        nome = input(prompt).strip()
-    except (EOFError, KeyboardInterrupt):
+    nome = _prompt(prompt)
+    if nome == "":
         print()
         return
     if not nome:
@@ -3287,7 +3256,7 @@ def _salvar_yaml(cfg: Config) -> None:
     msg = f"  Configuracao salva em: {_CFG_PATH}" if lang == "PT" else f"  Configuration saved to: {_CFG_PATH}"
     print(msg)
     t = I18N[lang]
-    input(f"  [{t['continuar']}]")
+    _prompt(f"  [{t['continuar']}]")
 
 
 def _carregar_yaml(cfg: Config) -> None:
@@ -3299,7 +3268,7 @@ def _carregar_yaml(cfg: Config) -> None:
             print(f"  Arquivo {_CFG_PATH} nao encontrado. Salve primeiro.")
         else:
             print(f"  File {_CFG_PATH} not found. Save first.")
-        input(f"  [{t['continuar']}]")
+        _prompt(f"  [{t['continuar']}]")
         return
     cfg_novo = carregar_config(str(_CFG_PATH))
     # Copiar atributos do Config carregado para o atual (em-place)
@@ -3310,7 +3279,7 @@ def _carregar_yaml(cfg: Config) -> None:
             pass
     msg = f"  Configuracao carregada de: {_CFG_PATH}" if lang == "PT" else f"  Configuration loaded from: {_CFG_PATH}"
     print(msg)
-    input(f"  [{t['continuar']}]")
+    _prompt(f"  [{t['continuar']}]")
 
 
 # ===========================================================================
@@ -3465,6 +3434,34 @@ def _mostrar_resumo_e_confirmar(cfg: Config) -> bool:
         _row("Benchmark", _on_off(bench_val))
         _row("DPI", dpi_val)
 
+    # Opcao "Salvar como" — nome personalizado da pasta de saida
+    tag_atual = getattr(cfg, "tag", "") or ""
+    auto_label = "(automatico)" if lang == "PT" else "(automatic)"
+    nome_label = "Nome da pasta de saida" if lang == "PT" else "Output folder name"
+    atual_label = f"  {nome_label}: {tag_atual if tag_atual else auto_label}"
+    print("╠" + "═" * (w - 2) + "╣")
+    print("║" + _ansi_ljust(atual_label, w - 2) + "║")
+    instr_salvar = (f"  Novo nome (Enter = manter {auto_label if not tag_atual else repr(tag_atual)}, ? = limpar):"
+                    if lang == "PT" else
+                    f"  New name (Enter = keep {auto_label if not tag_atual else repr(tag_atual)}, ? = clear):")
+    print("║" + _ansi_ljust(instr_salvar, w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+    novo_nome = _prompt(f"  {t.get('opcao', 'Option')}: ")
+    if novo_nome == "?":
+        cfg.tag = ""
+        limpo = "  Nome limpo — pasta automatica." if lang == "PT" else "  Name cleared — automatic folder."
+        print(limpo)
+    elif novo_nome:
+        import re as _re_tag
+        novo_nome_san = _re_tag.sub(r'[^\w\-_]', '_', novo_nome)
+        cfg.tag = novo_nome_san
+        if novo_nome_san != novo_nome:
+            aviso = f"  Nome ajustado para: {novo_nome_san}" if lang == "PT" else f"  Name adjusted to: {novo_nome_san}"
+            print(aviso)
+        else:
+            ok_nome = f"  Pasta: ..._{novo_nome_san}/" if lang == "PT" else f"  Folder: ..._{novo_nome_san}/"
+            print(ok_nome)
+    # else: mantém o tag atual
     print("╠" + "═" * (w - 2) + "╣")
     if lang == "PT":
         print("║" + _ansi_ljust("  Confirmar e rodar? (s/n):", w - 2) + "║")
@@ -3472,10 +3469,7 @@ def _mostrar_resumo_e_confirmar(cfg: Config) -> bool:
         print("║" + _ansi_ljust("  Confirm and run? (y/n):", w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
-    try:
-        resp = input(f"  {t['opcao']}: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        return False
+    resp = _prompt(f"  {t['opcao']}: ").lower()
     return resp == t["confirmar_sn"]
 
 
@@ -3496,13 +3490,13 @@ def _rodar_pipeline(cfg: Config) -> None:
             print("  Corrija a pasta_dados antes de rodar.")
         else:
             print("  Fix pasta_dados before running.")
-        input(f"  [{t['continuar']}]")
+        _prompt(f"  [{t['continuar']}]")
         return
 
     # Mostrar resumo e pedir confirmacao
     if not _mostrar_resumo_e_confirmar(cfg):
         print(f"  {t['cancelado']}")
-        input(f"  [{t['continuar']}]")
+        _prompt(f"  [{t['continuar']}]")
         return
 
     # Mesclar codigos do usuario com o pipeline
@@ -3571,7 +3565,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     except Exception as e:  # noqa: BLE001
         msg = f"\n  Erro no pipeline: {e}" if lang == "PT" else f"\n  Pipeline error: {e}"
         print(msg)
-    input(f"\n  [{t['continuar']}]")
+    _prompt(f"\n  [{t['continuar']}]")
 
 
 # ===========================================================================
@@ -3650,6 +3644,23 @@ def main() -> None:
             _carregar_yaml(cfg)
         elif escolha == "R":
             _rodar_pipeline(cfg)
+        elif escolha == "N":
+            lang = _lang()
+            tag_atual = getattr(cfg, "tag", "") or ""
+            auto_l = "(automatico)" if lang == "PT" else "(automatic)"
+            print(f"\n  Nome atual: {tag_atual if tag_atual else auto_l}")
+            instr = ("  Novo nome da pasta de saida (Enter = manter, ? = limpar): "
+                     if lang == "PT" else
+                     "  New output folder name (Enter = keep, ? = clear): ")
+            novo = _prompt(instr)
+            import re as _re_n
+            if novo == "?":
+                cfg.tag = ""
+                print("  Nome limpo." if lang == "PT" else "  Name cleared.")
+            elif novo:
+                cfg.tag = _re_n.sub(r'[^\w\-_]', '_', novo)
+                print(f"  Definido: {cfg.tag}" if lang == "PT" else f"  Set to: {cfg.tag}")
+            _prompt(f"  [{I18N[lang]['continuar']}]")
         elif escolha == "Q":
             print(f"\n  {t['sair']}.")
             break
