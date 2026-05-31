@@ -276,7 +276,7 @@ class Config:
     # v14: 'todos' trains each model with ALL samples of the class
     # (exploratory; works with few pure samples). 'puros' = true one-class N2
     # but requires >=15 pure/class (current data: 3/class).
-    ddsimca_treinar_em: str = "todos"   # 'todos' | 'puros'
+    ddsimca_treinar_em: str = "puros"   # 'todos' | 'puros'
     executar_opls: bool = True
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components
     executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
@@ -1641,8 +1641,14 @@ def cv_anova_eriksson(Y: np.ndarray, Y_cv: np.ndarray, n_components: int
                 "Q2": 1.0 - press / ss_total,
                 "df_model": n_components * m, "df_resid": max(n * m - n_components * m, 1)}
 
-    df_model = n_components * m
-    df_resid = n * m - df_model
+    # Eriksson et al. (2008) derivation assumes scalar Y (m=1).
+    # With one-hot Y_bin (m=K classes), columns are NOT independent (row-sums = 1),
+    # so treating m as effective observations inflates df by K-fold and produces
+    # an artificially small p-value. Correction: use m_eff=1 for df calculation,
+    # equivalent to reporting the test on the pooled univariate residual.
+    m_eff    = 1
+    df_model = n_components * m_eff
+    df_resid = n * m_eff - df_model
     if df_resid <= 0:
         return {"F": float("nan"), "p_value": 1.0,
                 "Q2": 1.0 - press / ss_total,
@@ -4178,7 +4184,11 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return self._lb.inverse_transform(self._pls.predict(X))  # type: ignore[return-value]
+        # Use argmax on raw PLS scores instead of LabelBinarizer.inverse_transform,
+        # which expects binary {0,1} input. PLS output is continuous and can be
+        # negative or >1, making LB.inverse_transform undefined for 13+ classes.
+        return self._lb.classes_[np.argmax(  # type: ignore[return-value]
+            np.asarray(self._pls.predict(X), float), axis=1)]
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         # Softmax numericamente estavel — garante distribuicao valida mesmo
