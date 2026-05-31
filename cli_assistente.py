@@ -753,6 +753,70 @@ PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Descricoes dos perfis prontos (bilíngue)
+# ---------------------------------------------------------------------------
+PROFILE_DESC: Dict[str, Dict[str, str]] = {
+    "Exploracao Rapida": {
+        "PT": ("Analise exploratoria rapida. Modulos pesados desativados.\n"
+               "    Ideal para: primeiro contato com os dados, teste do pipeline.\n"
+               "    Tempo estimado: ~2-5 min."),
+        "EN": ("Quick exploratory analysis. Heavy modules disabled.\n"
+               "    Ideal for: first contact with data, pipeline testing.\n"
+               "    Estimated time: ~2-5 min."),
+    },
+    "TCC": {
+        "PT": ("Configuracao balanceada para Trabalho de Conclusao de Curso.\n"
+               "    PLS-DA + OPLS-DA + DD-SIMCA (autenticacao) + selecao de variaveis.\n"
+               "    DPI 300. Sem benchmark (economiza tempo).\n"
+               "    Tempo estimado: ~15-30 min."),
+        "EN": ("Balanced config for undergraduate thesis (TCC).\n"
+               "    PLS-DA + OPLS-DA + DD-SIMCA (authentication) + variable selection.\n"
+               "    DPI 300. No benchmark (saves time).\n"
+               "    Estimated time: ~15-30 min."),
+    },
+    "Artigo Cientifico": {
+        "PT": ("Configuracao completa para publicacao em revista cientifica.\n"
+               "    Benchmark (SVM/RF/XGBoost) + SHAP para interpretabilidade espectral.\n"
+               "    200 permutacoes, DPI 600, elipses ativadas.\n"
+               "    Tempo estimado: ~60-120 min."),
+        "EN": ("Full config for scientific journal publication.\n"
+               "    Benchmark (SVM/RF/XGBoost) + SHAP for spectral interpretability.\n"
+               "    200 permutations, DPI 600, ellipses enabled.\n"
+               "    Estimated time: ~60-120 min."),
+    },
+    "Dissertacao / Tese": {
+        "PT": ("Configuracao premium para dissertacao ou tese.\n"
+               "    Monte Carlo CV (200 rep.) + benchmark + SHAP + 500 permutacoes.\n"
+               "    Figuras em PDF (vetorial). Alta rigorosidade estatistica.\n"
+               "    Tempo estimado: ~3-6 horas."),
+        "EN": ("Premium config for MSc dissertation or PhD thesis.\n"
+               "    Monte Carlo CV (200 rep.) + benchmark + SHAP + 500 permutations.\n"
+               "    PDF figures (vector). High statistical rigor.\n"
+               "    Estimated time: ~3-6 hours."),
+    },
+}
+
+PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
+    "Exploracao Rapida": {
+        "PT": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
+        "EN": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
+    },
+    "TCC": {
+        "PT": "LVs=40 | perm=200 | DD-SIMCA=autenticacao | OPLS=ON | DPI=300",
+        "EN": "LVs=40 | perm=200 | DD-SIMCA=authentication | OPLS=ON | DPI=300",
+    },
+    "Artigo Cientifico": {
+        "PT": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600",
+        "EN": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600",
+    },
+    "Dissertacao / Tese": {
+        "PT": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF",
+        "EN": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF",
+    },
+}
+
 # Mapeamento de menus -> campos (chaves do _CONFIG_SPEC)
 # ---------------------------------------------------------------------------
 MENU_FIELDS: Dict[str, list] = {
@@ -1264,16 +1328,36 @@ def menu_ajuda() -> None:
             continue
         if entrada.lower() == "l":
             cls()
-            print(f"\n  Parametros com ajuda disponivel ({len(HELP_DB)} total):\n")
-            for k in sorted(HELP_DB.keys()):
+            keys_sorted = sorted(HELP_DB.keys())
+            hdr = (f"  Parametros disponíveis ({len(keys_sorted)}) — digite o número ou nome:"
+                   if lang == "PT" else
+                   f"  Available parameters ({len(keys_sorted)}) — type number or name:")
+            print(f"\n{hdr}\n")
+            for idx_k, k in enumerate(keys_sorted, 1):
                 risk = RISK_CLASS.get(k, "ANALITICO")
                 cor = RISK_COLOR.get(risk, "")
                 rst = RISK_COLOR["RESET"]
                 h_lang = HELP_DB[k].get(lang, HELP_DB[k].get("PT", {}))
-                desc_short = h_lang.get("desc", "")[:40] if isinstance(h_lang, dict) else ""
-                print(f"    {cor}{k:<36s}{rst}  {desc_short}")
-            print()
-            input(f"  [{t['continuar']}]")
+                desc_short = h_lang.get("desc", "")[:36] if isinstance(h_lang, dict) else ""
+                nome_tr = FIELD_NAMES.get(k, {}).get(lang, k)
+                print(f"  {idx_k:>2}. {cor}{nome_tr:<26s}{rst}  {desc_short}")
+            tip = ("\n  Digite numero ou nome do parametro (Enter = voltar):"
+                   if lang == "PT" else
+                   "\n  Type number or parameter name (Enter = back):")
+            print(tip)
+            try:
+                escolha_l = input(f"  {t['opcao']}: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                escolha_l = ""
+            if escolha_l:
+                if escolha_l.isdigit() and 1 <= int(escolha_l) <= len(keys_sorted):
+                    _mostrar_help_campo(keys_sorted[int(escolha_l) - 1])
+                    input(f"  [{t['continuar']}]")
+                else:
+                    topico_l = escolha_l.replace("help", "").replace("?", "").strip()
+                    if topico_l:
+                        _mostrar_help_campo(topico_l)
+                        input(f"  [{t['continuar']}]")
             continue
         # Permite "help benchmark" ou apenas "benchmark"
         topico = entrada.lower().replace("help", "").replace("?", "").strip()
@@ -1292,34 +1376,52 @@ def menu_ajuda() -> None:
 # ===========================================================================
 
 def menu_perfis(cfg: Config) -> None:
-    """Lista PROFILES e permite carregar um deles na Config."""
+    """Lista PROFILES com descricoes e permite carregar ou criar novo perfil."""
     nomes = list(PROFILES.keys())
     while True:
         lang = _lang()
         t = I18N[lang]
         cls()
-        w = 60
-        print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {t['perfis']}".ljust(w - 2) + "║")
-        print("╠" + "═" * (w - 2) + "╣")
+        w = 72
+        titulo_perfil = "Perfis Prontos" if lang == "PT" else "Preset Profiles"
+        instrucao = ("  Selecione um numero para aplicar o perfil e ver detalhes:"
+                     if lang == "PT" else
+                     "  Select a number to apply the profile and see details:")
+        print("\u2554" + "\u2550" * (w - 2) + "\u2557")
+        print("\u2551" + f"  {titulo_perfil}".ljust(w - 2) + "\u2551")
+        print("\u2551" + instrucao.ljust(w - 2) + "\u2551")
+        print("\u2560" + "\u2550" * (w - 2) + "\u2563")
         for i, nome in enumerate(nomes, 1):
-            print("║" + f"  [{i}] {nome}".ljust(w - 2) + "║")
-        # Perfis salvos pelo usuario
+            print("\u2551" + f"  [{i}] {nome}".ljust(w - 2) + "\u2551")
+            summary = PROFILE_KEY_SUMMARY.get(nome, {}).get(lang, "")
+            if summary:
+                print("\u2551" + f"      {_c('DIM', summary)}".ljust(w + 7) + "\u2551")
+            desc_lines = PROFILE_DESC.get(nome, {}).get(lang, "").split("\n")
+            for dl in desc_lines:
+                print("\u2551" + f"      {_c('DIM', dl.strip())}".ljust(w + 7) + "\u2551")
+            print("\u2551" + "".ljust(w - 2) + "\u2551")
         perfis_usuario = _listar_perfis_salvos()
         if perfis_usuario:
-            print("╠" + "═" * (w - 2) + "╣")
+            print("\u2560" + "\u2550" * (w - 2) + "\u2563")
             label_salvos = "  Perfis salvos pelo usuario:" if lang == "PT" else "  User saved profiles:"
-            print("║" + label_salvos.ljust(w - 2) + "║")
+            print("\u2551" + label_salvos.ljust(w - 2) + "\u2551")
             base = len(nomes)
             for j, nome_u in enumerate(perfis_usuario, base + 1):
-                print("║" + f"  [{j}] {nome_u} (usuario)".ljust(w - 2) + "║")
-        print("╠" + "═" * (w - 2) + "╣")
+                print("\u2551" + f"  [{j}] {nome_u}".ljust(w - 2) + "\u2551")
+        print("\u2560" + "\u2550" * (w - 2) + "\u2563")
+        novo_label = "[N] Criar novo perfil" if lang == "PT" else "[N] Create new profile"
+        como = ("  Como criar: configure os menus 1-7 e pressione [S] no menu principal."
+                if lang == "PT" else
+                "  How to: configure menus 1-7, then press [S] in main menu.")
+        print("\u2551" + f"  {novo_label}".ljust(w - 2) + "\u2551")
+        print("\u2551" + f"  {_c('DIM', como.strip())}".ljust(w + 7) + "\u2551")
+        print("\u2560" + "\u2550" * (w - 2) + "\u2563")
         rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
-        print("║" + rodape.ljust(w - 2) + "║")
-        print("╚" + "═" * (w - 2) + "╝")
+        print("\u2551" + rodape.ljust(w - 2) + "\u2551")
+        print("\u255a" + "\u2550" * (w - 2) + "\u255d")
         print()
         try:
-            escolha = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
+            escolha = input(f"  {t['opcao']}: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if escolha == "0" or escolha.lower() == "q":
@@ -1327,11 +1429,25 @@ def menu_perfis(cfg: Config) -> None:
         if escolha.upper() == "I":
             _toggle_idioma()
             continue
+        if escolha.upper() == "N":
+            msg = ("  Configure os parametros nos menus 1-7 e pressione [S] no menu principal para salvar."
+                   if lang == "PT" else
+                   "  Configure parameters in menus 1-7 and press [S] in main menu to save.")
+            print(f"\n{msg}")
+            input(f"  [{t['continuar']}]")
+            break
         if escolha.isdigit():
             n = int(escolha)
             if 1 <= n <= len(nomes):
                 nome_perfil = nomes[n - 1]
+                cls()
+                print(f"\n  Aplicando perfil: {nome_perfil}" if lang == "PT" else f"\n  Applying profile: {nome_perfil}")
+                desc = PROFILE_DESC.get(nome_perfil, {}).get(lang, "")
+                for dl in desc.split("\n"):
+                    print(f"  {dl.strip()}")
                 _aplicar_perfil(cfg, PROFILES[nome_perfil])
+                ok = "\n  Perfil aplicado! Os parametros foram atualizados." if lang == "PT" else "\n  Profile applied! Parameters updated."
+                print(ok)
                 input(f"  [{t['continuar']}]")
             elif perfis_usuario and len(nomes) < n <= len(nomes) + len(perfis_usuario):
                 nome_u = perfis_usuario[n - len(nomes) - 1]
@@ -1343,7 +1459,6 @@ def menu_perfis(cfg: Config) -> None:
         else:
             print(f"  {t['invalido']}")
             input(f"  [{t['continuar']}]")
-
 
 def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any]) -> None:
     """Aplica os valores de um perfil na Config."""
