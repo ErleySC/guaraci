@@ -181,7 +181,7 @@ RISK_CLASS: Dict[str, str] = {
     # VISUAL
     "dpi": "VISUAL", "formato_figura": "VISUAL",
     "figuras_mostrar_marcadores": "VISUAL", "figuras_mostrar_elipses": "VISUAL",
-    "abrir_figuras_na_tela": "VISUAL", "tag": "VISUAL",
+    "abrir_figuras_na_tela": "VISUAL", "tag": "VISUAL", "nome_execucao": "VISUAL",
     # ANALITICO
     "pre_processamento": "ANALITICO", "max_lvs": "ANALITICO",
     "n_permutacoes": "ANALITICO", "holdout_fracao": "ANALITICO",
@@ -214,13 +214,18 @@ RISK_COLOR: Dict[str, str] = {
 # ---------------------------------------------------------------------------
 # Utilitario ANSI: ljust que ignora caracteres invisiveis no calculo da largura
 # ---------------------------------------------------------------------------
-_ANSI_RE = _re.compile(r'\033\[[0-9;]*m')
+_ANSI_RE = _re.compile(r'\x1b\[[0-9;]*[mGKHF]')
 
 
-def _ansi_ljust(s: str, width: int) -> str:
-    """ljust que ignora caracteres ANSI invisiveis no calculo da largura."""
-    visible_len = len(_ANSI_RE.sub('', s))
-    return s + ' ' * max(0, width - visible_len)
+def _ansi_len(s: str) -> int:
+    """Comprimento visivel da string (ignora codigos ANSI)."""
+    return len(_ANSI_RE.sub('', s))
+
+
+def _ansi_ljust(s: str, width: int, fillchar: str = ' ') -> str:
+    """ljust que calcula o padding pelo comprimento VISIVEL."""
+    pad = max(0, width - _ansi_len(s))
+    return s + fillchar * pad
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +266,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "formato_figura":               {"PT": "Formato das figuras",     "EN": "Figure format"},
     "dpi":                          {"PT": "Resolucao (DPI)",         "EN": "Resolution (DPI)"},
     "abrir_figuras_na_tela":        {"PT": "Abrir figuras na tela",   "EN": "Open figures on screen"},
+    "nome_execucao":                {"PT": "Nome da execucao",         "EN": "Run name"},
 }
 
 
@@ -315,6 +321,104 @@ SECTION_DESC: Dict[str, Dict[str, str]] = {
         "EN": "Figure visual settings. Do not affect analytical results.",
     },
 }
+
+# ---------------------------------------------------------------------------
+# Paletas de cores para figuras
+# ---------------------------------------------------------------------------
+PALETAS_COR: Dict[str, Dict[str, Any]] = {
+    "qualitativo": {
+        "PT": {
+            "nome": "Qualitativo (padrao matplotlib)",
+            "desc": "Paleta padrao do matplotlib. Boa para apresentacoes gerais.",
+        },
+        "EN": {
+            "nome": "Qualitative (matplotlib default)",
+            "desc": "Default matplotlib palette. Good for general presentations.",
+        },
+        "cores": None,
+    },
+    "daltonismo_safe": {
+        "PT": {
+            "nome": "Seguro para Daltonismo (Wong 2011)",
+            "desc": "8 cores distinguiveis por pessoas com deuteranopia, protanopia e tritanopia.",
+        },
+        "EN": {
+            "nome": "Colorblind Safe (Wong 2011)",
+            "desc": "8 colors distinguishable for people with deuteranopia, protanopia and tritanopia.",
+        },
+        "cores": ["#000000", "#E69F00", "#56B4E9", "#009E73",
+                  "#F0E442", "#0072B2", "#D55E00", "#CC79A7"],
+    },
+    "cinza": {
+        "PT": {
+            "nome": "Escala de Cinza",
+            "desc": "Para publicacoes em preto e branco. Distingue por intensidade.",
+        },
+        "EN": {
+            "nome": "Grayscale",
+            "desc": "For black and white publications. Distinguishes by intensity.",
+        },
+        "cores": ["#000000", "#333333", "#555555", "#777777",
+                  "#999999", "#bbbbbb", "#dddddd", "#eeeeee"],
+    },
+    "viridis": {
+        "PT": {
+            "nome": "Viridis (perceptualmente uniforme)",
+            "desc": "Paleta sequencial perceptualmente uniforme. Robusta para daltonismo.",
+        },
+        "EN": {
+            "nome": "Viridis (perceptually uniform)",
+            "desc": "Perceptually uniform sequential palette. Robust for colorblindness.",
+        },
+        "cores": None,
+        "cmap": "viridis",
+    },
+    "publicacao": {
+        "PT": {
+            "nome": "Publicacao Cientifica (Nature/Elsevier)",
+            "desc": "Cores usadas em revistas como Nature, Food Chemistry e Talanta.",
+        },
+        "EN": {
+            "nome": "Scientific Publication (Nature/Elsevier)",
+            "desc": "Colors used in journals like Nature, Food Chemistry and Talanta.",
+        },
+        "cores": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
+                  "#9467bd", "#8c564b", "#e377c2", "#7f7f7f"],
+    },
+    "escuro": {
+        "PT": {
+            "nome": "Tema Escuro (fundo preto)",
+            "desc": "Otimizado para fundos escuros. Ideal para apresentacoes em tela.",
+        },
+        "EN": {
+            "nome": "Dark Theme (black background)",
+            "desc": "Optimized for dark backgrounds. Ideal for screen presentations.",
+        },
+        "cores": ["#00bfff", "#ff6347", "#7fff00", "#ffd700",
+                  "#da70d6", "#ff8c00", "#40e0d0", "#ff69b4"],
+        "style": "dark_background",
+    },
+}
+
+_VISUAL_CFG_PATH = _BASE_DIR / "visual_config.json"
+
+
+def _carregar_visual_cfg() -> Dict[str, Any]:
+    """Carrega visual_config.json ou retorna defaults."""
+    if not _VISUAL_CFG_PATH.exists():
+        return {"paleta": "qualitativo", "estilo_matplotlib": "default"}
+    try:
+        with open(_VISUAL_CFG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"paleta": "qualitativo", "estilo_matplotlib": "default"}
+
+
+def _salvar_visual_cfg(cfg_v: Dict[str, Any]) -> None:
+    """Salva visual_config.json."""
+    with open(_VISUAL_CFG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg_v, f, ensure_ascii=False, indent=2)
+
 
 # ---------------------------------------------------------------------------
 # Base de ajuda bilinguie (HELP_DB)
@@ -778,6 +882,50 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": "", "range": "Texto livre (sem espacos recomendado)",
     },
+    "nome_execucao": {
+        "PT": {
+            "desc": "Nome personalizado para a execucao atual. Aparece no nome da pasta de resultados.",
+            "impacto": "VISUAL — nao afeta calculos. Organiza diferentes rodadas.",
+            "exemplos": {
+                "": "Nome automatico: PLSDA_N2_MSC-SG1-MC_YYYYMMDD_HHMMSS",
+                "artigo_2026": "Pasta: ...artigo_2026",
+                "dataset_completo": "Pasta: ...dataset_completo",
+            },
+        },
+        "EN": {
+            "desc": "Custom name for the current run. Appears in the results folder name.",
+            "impacto": "VISUAL — does not affect calculations. Organizes different runs.",
+            "exemplos": {
+                "": "Auto name: PLSDA_N2_MSC-SG1-MC_YYYYMMDD_HHMMSS",
+                "paper_2026": "Folder: ...paper_2026",
+                "full_dataset": "Folder: ...full_dataset",
+            },
+        },
+        "default": "", "range": "Texto livre (sem espacos)",
+    },
+    "paleta_cores": {
+        "PT": {
+            "desc": "Paleta de cores para as figuras geradas pelo pipeline.",
+            "impacto": "VISUAL — nao afeta calculos. Aplica antes de rodar.",
+            "exemplos": {
+                "qualitativo": "Cores matplotlib padrao (multiuso)",
+                "daltonismo_safe": "Seguro para daltonismo (Wong 2011)",
+                "publicacao": "Cores de revistas cientificas",
+                "escuro": "Tema escuro para apresentacoes",
+            },
+        },
+        "EN": {
+            "desc": "Color palette for pipeline-generated figures.",
+            "impacto": "VISUAL — does not affect calculations. Applied before running.",
+            "exemplos": {
+                "qualitativo": "Default matplotlib colors (multipurpose)",
+                "daltonismo_safe": "Colorblind safe (Wong 2011)",
+                "publicacao": "Scientific journal colors",
+                "escuro": "Dark theme for presentations",
+            },
+        },
+        "default": "qualitativo", "range": "qualitativo | daltonismo_safe | cinza | viridis | publicacao | escuro",
+    },
     "codificacao_arquivos": {
         "PT": {
             "desc": "Formato de nomenclatura dos arquivos DX para leitura pelo pipeline.",
@@ -900,7 +1048,7 @@ PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
 # Mapeamento de menus -> campos (chaves do _CONFIG_SPEC)
 # ---------------------------------------------------------------------------
 MENU_FIELDS: Dict[str, list] = {
-    "projeto": ["pasta_dados", "pasta_saida", "tag"],
+    "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
     "dados": ["modo_entrada", "arquivo_csv", "coluna_classe", "coluna_concentracao",
               "faixa_min_cm", "faixa_max_cm", "excluir_classes"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
@@ -920,6 +1068,8 @@ _SPEC_BY_KEY: Dict[str, Dict[str, Any]] = {s["key"]: s for s in _CONFIG_SPEC}
 # Campos extras presentes em Config mas ausentes do _CONFIG_SPEC (nao editaveis pelo pipeline CLI)
 _SPEC_EXTRAS: Dict[str, Dict[str, Any]] = {
     "tag": {"key": "tag", "attr": "tag", "tipo": "str", "desc": "Sufixo da pasta de saida", "opcoes": None},
+    "nome_execucao": {"key": "nome_execucao", "attr": "tag", "tipo": "str",
+                      "desc": "Nome da execucao atual (alias de tag)", "opcoes": None},
 }
 _SPEC_BY_KEY.update(_SPEC_EXTRAS)
 
@@ -1022,21 +1172,34 @@ def _wrap_box(text: str, width: int, indent: str = "  ") -> list:
 def print_header(cfg: Config) -> None:
     """Imprime o cabecalho AmaNIR com titulo, idioma atual e status dos dados."""
     lang = _lang()
-    w = 60
-    linha1 = "AmaNIR — Plataforma Quimiometrica FT-NIR"
-    linha2 = "GEAAp / UFPA  |  Oleos Vegetais Amazonicos"
+    w = 68
+    titulo_cor = _c("CYAN", "●●●  AmaNIR  ●●●")
     if lang == "EN":
-        linha1 = "AmaNIR — FT-NIR Chemometrics Platform"
-        linha2 = "GEAAp / UFPA  |  Amazonian Vegetable Oils"
-    status = _status_dados(cfg)
+        linha2 = "FT-NIR Chemometrics Platform  |  GEAAp / UFPA"
+        linha3 = "Amazonian Vegetable Oils"
+    else:
+        linha2 = "Plataforma Quimiometrica FT-NIR  |  GEAAp / UFPA"
+        linha3 = "Oleos Vegetais Amazonicos"
     idioma_str = f"[{lang}]"
+    # Status: truncar caminho a 40 chars
+    pasta = getattr(cfg, "pasta_entrada", "dados")
+    pasta_str = str(pasta)
+    if len(pasta_str) > 40:
+        pasta_str = "..." + pasta_str[-37:]
+    if pasta_str and os.path.isdir(pasta_str) or os.path.isdir(str(pasta)):
+        status_icon = _c("VISUAL", "✓ " + I18N[lang]["status_ok"])
+    else:
+        status_icon = _c("AVANCADO", "✗ " + I18N[lang]["status_erro"])
+    status_content = f"  {status_icon}  —  {pasta_str}"
+    # Linha de status com idioma no canto direito
+    # O idioma_str ocupa 4 chars + 1 espaco = 5
+    status_padded = _ansi_ljust(status_content, w - 2 - len(idioma_str) - 1)
     print("\n" + "╔" + "═" * (w - 2) + "╗")
-    print("║" + linha1.center(w - 2) + "║")
-    print("║" + linha2.center(w - 2) + "║")
+    print("║" + _ansi_ljust("  " + titulo_cor, w - 2) + "║")
+    print("║" + _ansi_ljust("  " + linha2, w - 2) + "║")
+    print("║" + _ansi_ljust("  " + linha3, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    status_raw = f"  {status}"
-    # Linha com status e idioma, considerando escapes ANSI
-    print("║" + status_raw.ljust(w - 3 + 14) + idioma_str + " ║")
+    print("║" + status_padded + idioma_str + " ║")
     print("╚" + "═" * (w - 2) + "╝")
 
 
@@ -1048,39 +1211,39 @@ def print_main_menu() -> None:
     """Imprime o menu principal hierarquico com subgrupos visuais e numeracao 1-9."""
     lang = _lang()
     t = I18N[lang]
-    w = 61
+    w = 68
     print("╔" + "═" * (w - 2) + "╗")
-    print("║" + "  AmaNIR — MENU PRINCIPAL".ljust(w - 2) + "║")
+    print("║" + _ansi_ljust("  AmaNIR — MENU PRINCIPAL", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     # --- Subgrupo: Configuracao da Analise ---
     grp1 = f"  ── {t['grp_analise']} "
     grp1_linha = grp1 + "─" * max(0, w - 2 - len(grp1))
-    print("║" + grp1_linha.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(grp1_linha, w - 2) + "║")
     linha1 = f"  [1] {t['menu_projeto']:<20s}  [2] {t['menu_dados']}"
     linha2 = f"  [3] {t['menu_preproc']:<20s}  [4] {t['menu_modelo']}"
     linha3 = f"  [5] {t['menu_valid']:<20s}  [6] {t['menu_avancado']}"
     for l in [linha1, linha2, linha3]:
-        print("║" + l.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(l, w - 2) + "║")
     # --- Subgrupo: Sistema e Visualizacao ---
     grp2 = f"  ── {t['grp_sistema']} "
     grp2_linha = grp2 + "─" * max(0, w - 2 - len(grp2))
-    print("║" + grp2_linha.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(grp2_linha, w - 2) + "║")
     linha4 = f"  [7] {t['menu_viz']:<20s}  [8] {t['menu_tecnica']}"
     linha5 = f"  [9] {t['menu_codificacao']:<20s}  [H] {t['hardware']}"
     for l in [linha4, linha5]:
-        print("║" + l.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(l, w - 2) + "║")
     # --- Subgrupo: Perfis e Idioma ---
     grp3 = f"  ── {t['grp_perfis']} "
     grp3_linha = grp3 + "─" * max(0, w - 2 - len(grp3))
-    print("║" + grp3_linha.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(grp3_linha, w - 2) + "║")
     linha6 = f"  [P] {t['perfis']:<20s}  [I] {t['idioma']}"
-    print("║" + linha6.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(linha6, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     barra = (f"  [R] ► {t['rodar_pipeline']}   [S] {t['salvar']}   "
              f"[L] {t['carregar']}")
-    print("║" + barra.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(barra, w - 2) + "║")
     barra2 = f"  [?] {t['ajuda_curta']:<22s}  [Q] {t['sair']}"
-    print("║" + barra2.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(barra2, w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
 
 
@@ -1248,9 +1411,9 @@ def _submenu_campos(cfg: Config, titulo_key: str, campos: list, secao_key: str =
         titulo = I18N[lang].get(titulo_key, titulo_key)  # re-avalia cada iteracao
         cls()
         print_header(cfg)
-        w = 60
+        w = 68
         print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {titulo}".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(f"  {titulo}", w - 2) + "║")
         # Exibir descricao da secao, se disponivel
         if secao_key and secao_key in SECTION_DESC:
             desc_sec = SECTION_DESC[secao_key].get(lang, "")
@@ -1271,7 +1434,7 @@ def _submenu_campos(cfg: Config, titulo_key: str, campos: list, secao_key: str =
             print("║" + _ansi_ljust(linha, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [?] {t['ajuda_campo']}   [I] {t['idioma']}   [0] {t['voltar']}"
-        print("║" + rodape.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -1330,11 +1493,11 @@ def menu_preproc(cfg: Config) -> None:
         t = I18N[lang]
         cls()
         print_header(cfg)
-        w = 60
+        w = 68
         titulo = t["menu_preproc"]
         campos = MENU_FIELDS["preproc"]
         print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {titulo}".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(f"  {titulo}", w - 2) + "║")
         # Descricao da secao
         desc_sec = SECTION_DESC["preproc"].get(lang, "")
         if desc_sec:
@@ -1358,7 +1521,7 @@ def menu_preproc(cfg: Config) -> None:
             print("║" + _ansi_ljust(linha, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
-        print("║" + rodape.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -1394,9 +1557,138 @@ def menu_avancado(cfg: Config) -> None:
     _submenu_campos(cfg, "menu_avancado", MENU_FIELDS["avancado"], "avancado")
 
 
+def menu_paletas() -> None:
+    """Submenu de selecao de paleta de cores para as figuras."""
+    while True:
+        lang = _lang()
+        t = I18N[lang]
+        cls()
+        w = 68
+        vcfg = _carregar_visual_cfg()
+        paleta_atual = vcfg.get("paleta", "qualitativo")
+        titulo = "Paletas de Cor" if lang == "PT" else "Color Palettes"
+        print("╔" + "═" * (w - 2) + "╗")
+        print("║" + _ansi_ljust(f"  {titulo}", w - 2) + "║")
+        atual_label = f"  Paleta atual: {paleta_atual}" if lang == "PT" else f"  Current palette: {paleta_atual}"
+        print("║" + _ansi_ljust(atual_label, w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        nomes_paleta = list(PALETAS_COR.keys())
+        for i, key in enumerate(nomes_paleta, 1):
+            pal = PALETAS_COR[key]
+            pal_lang = pal.get(lang, pal.get("PT", {}))
+            nome_p = pal_lang.get("nome", key)
+            desc_p = pal_lang.get("desc", "")
+            ativo = " ◄" if key == paleta_atual else ""
+            print("║" + _ansi_ljust(f"  [{i}] {nome_p}{ativo}", w - 2) + "║")
+            print("║" + _ansi_ljust(_c("DIM", f"      {desc_p}"), w - 2) + "║")
+            cores = pal.get("cores")
+            if cores:
+                amostra = "      " + " ".join(f"[{c}]" for c in cores[:6])
+            else:
+                cmap_name = pal.get("cmap", "")
+                amostra = f"      (paleta matplotlib: {cmap_name or 'default'})"
+            print("║" + _ansi_ljust(amostra, w - 2) + "║")
+            print("║" + _ansi_ljust("", w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
+        print("║" + _ansi_ljust(rodape, w - 2) + "║")
+        print("╚" + "═" * (w - 2) + "╝")
+        print()
+        try:
+            escolha = input(f"  {t['opcao']}: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if escolha == "0" or escolha.lower() == "q":
+            break
+        if escolha.upper() == "I":
+            _toggle_idioma()
+            continue
+        if escolha.isdigit() and 1 <= int(escolha) <= len(nomes_paleta):
+            key_sel = nomes_paleta[int(escolha) - 1]
+            vcfg["paleta"] = key_sel
+            _salvar_visual_cfg(vcfg)
+            pal_lang = PALETAS_COR[key_sel].get(lang, PALETAS_COR[key_sel].get("PT", {}))
+            nome_sel = pal_lang.get("nome", key_sel)
+            if lang == "PT":
+                print(f"  Paleta '{nome_sel}' selecionada e salva em visual_config.json.")
+            else:
+                print(f"  Palette '{nome_sel}' selected and saved to visual_config.json.")
+            input(f"  [{t['continuar']}]")
+        else:
+            print(f"  {t['invalido']}")
+            input(f"  [{t['continuar']}]")
+
+
 def menu_visualizacao(cfg: Config) -> None:
-    """Menu 7 — Visualizacao (apenas campos VISUAL)."""
-    _submenu_campos(cfg, "menu_viz", MENU_FIELDS["visualizacao"], "visualizacao")
+    """Menu 7 — Visualizacao (campos VISUAL + paletas de cor)."""
+    while True:
+        lang = _lang()
+        t = I18N[lang]
+        cls()
+        print_header(cfg)
+        w = 68
+        campos = MENU_FIELDS["visualizacao"]
+        titulo = t["menu_viz"]
+        print("╔" + "═" * (w - 2) + "╗")
+        print("║" + _ansi_ljust(f"  {titulo}", w - 2) + "║")
+        desc_sec = SECTION_DESC.get("visualizacao", {}).get(lang, "")
+        if desc_sec:
+            for dline in _wrap_box(desc_sec, w - 4, "  "):
+                print("║" + _ansi_ljust(_c("DIM", dline), w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        for i, key in enumerate(campos, 1):
+            val_raw = _fmt_yaml(_get_val(cfg, key))
+            val_str = (val_raw[:20] + "…") if len(str(val_raw)) > 22 else val_raw
+            nome = _nome_campo(key)
+            risk = RISK_CLASS.get(key, "VISUAL")
+            cor = RISK_COLOR.get(risk, "")
+            rst = RISK_COLOR["RESET"]
+            lbl = f"{cor}●{rst}"
+            linha = f"  [{i:2d}] {lbl} {nome:<28s}: {val_str}"
+            print("║" + _ansi_ljust(linha, w - 2) + "║")
+        # Item extra: Paletas de Cor
+        vcfg = _carregar_visual_cfg()
+        paleta_ativa = vcfg.get("paleta", "qualitativo")
+        pal_data = PALETAS_COR.get(paleta_ativa, PALETAS_COR["qualitativo"])
+        pal_nome = pal_data.get(lang, pal_data.get("PT", {})).get("nome", paleta_ativa)
+        paleta_label = "Paleta de Cores" if lang == "PT" else "Color Palette"
+        lbl_p = f"{RISK_COLOR['VISUAL']}●{RISK_COLOR['RESET']}"
+        linha_p = f"  [ P] {lbl_p} {paleta_label:<28s}: {pal_nome}"
+        print("║" + _ansi_ljust(linha_p, w - 2) + "║")
+        print("╠" + "═" * (w - 2) + "╣")
+        rodape = f"  [?] {t['ajuda_campo']}   [P] Paletas   [I] {t['idioma']}   [0] {t['voltar']}"
+        print("║" + _ansi_ljust(rodape, w - 2) + "║")
+        print("╚" + "═" * (w - 2) + "╝")
+        print()
+        try:
+            escolha = input(f"  {t['opcao']}: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if escolha == "0" or escolha.lower() == "q":
+            break
+        if escolha.upper() == "I":
+            _toggle_idioma()
+            continue
+        if escolha.upper() == "P":
+            menu_paletas()
+            continue
+        if escolha.lower().startswith("?") or escolha.lower().startswith("help"):
+            partes = escolha.split(maxsplit=1)
+            campo_help = partes[1] if len(partes) > 1 else ""
+            if campo_help:
+                _mostrar_help_campo(campo_help.strip())
+            else:
+                print(f"\n  Campos neste menu: {', '.join(campos)}")
+                print("  Ex: ? dpi")
+            input(f"  [{t['continuar']}]")
+            continue
+        if escolha.isdigit() and 1 <= int(escolha) <= len(campos):
+            key = campos[int(escolha) - 1]
+            _editar_campo_cli(cfg, key)
+            input(f"  [{t['continuar']}]")
+        else:
+            print(f"  {t['invalido']}")
+            input(f"  [{t['continuar']}]")
 
 
 # ===========================================================================
@@ -1409,18 +1701,18 @@ def menu_ajuda() -> None:
         lang = _lang()
         t = I18N[lang]
         cls()
-        w = 60
+        w = 68
         print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {t['menu_ajuda']}".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(f"  {t['menu_ajuda']}", w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         if lang == "PT":
-            print("║" + "  Digite o nome do parametro para ver detalhes.".ljust(w - 2) + "║")
-            print("║" + "  Exemplos: dpi  |  benchmark  |  pre_processamento".ljust(w - 2) + "║")
+            print("║" + _ansi_ljust("  Digite o nome do parametro para ver detalhes.", w - 2) + "║")
+            print("║" + _ansi_ljust("  Exemplos: dpi  |  benchmark  |  pre_processamento", w - 2) + "║")
         else:
-            print("║" + "  Type the parameter name to see details.".ljust(w - 2) + "║")
-            print("║" + "  Examples: dpi  |  benchmark  |  pre_processamento".ljust(w - 2) + "║")
+            print("║" + _ansi_ljust("  Type the parameter name to see details.", w - 2) + "║")
+            print("║" + _ansi_ljust("  Examples: dpi  |  benchmark  |  pre_processamento", w - 2) + "║")
         rodape = f"  [L] {t['listar_todos']}   [I] {t['idioma']}   [0] {t['voltar']}"
-        print("║" + rodape.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -1485,7 +1777,7 @@ def menu_hardware() -> None:
     """Menu H — Verificacao de hardware e recomendacoes de perfil."""
     lang = _lang()
     cls()
-    w = 70
+    w = 68
     titulo_hw = "Verificacao de Hardware" if lang == "PT" else "Hardware Check"
 
     # Chamar hardware_probe() do pipeline
@@ -1507,7 +1799,7 @@ def menu_hardware() -> None:
         psutil_ok = False
 
     print("╔" + "═" * (w - 2) + "╗")
-    print("║" + f"  {titulo_hw}".ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(f"  {titulo_hw}", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
 
     # Mostrar specs
@@ -1521,7 +1813,7 @@ def menu_hardware() -> None:
     disco_line = f"  Disco livre  : {disco_gb:.1f} GB"
     psutil_ln  = f"  psutil       : {psutil_str}"
     for ln in [ram_line, disp_line, cpu_fis_ln, cpu_log_ln, disco_line, psutil_ln]:
-        print("║" + ln.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(ln, w - 2) + "║")
 
     print("╠" + "═" * (w - 2) + "╣")
 
@@ -1575,15 +1867,15 @@ def menu_hardware() -> None:
     rec_label  = (f"  Perfil recomendado: {rec_perfil}" if lang == "PT"
                   else f"  Recommended profile: {rec_perfil}")
     print("║" + _ansi_ljust(tier_label, w - 2) + "║")
-    print("║" + rec_label.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(rec_label, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     lim_titulo = "  Limitacoes e Recomendacoes:" if lang == "PT" else "  Limitations and Recommendations:"
-    print("║" + lim_titulo.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(lim_titulo, w - 2) + "║")
     for lim in limitacoes:
-        print("║" + f"    • {lim}".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(f"    • {lim}", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     voltar_txt = "  [0] Voltar" if lang == "PT" else "  [0] Back"
-    print("║" + voltar_txt.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(voltar_txt, w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
@@ -1734,10 +2026,10 @@ def menu_tecnica(cfg: Config) -> None:
     while True:
         lang = _lang()
         cls()
-        w = 74
+        w = 68
         titulo = I18N[lang].get("menu_tecnica", "Tecnica Analitica")
         print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {titulo}".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(f"  {titulo}", w - 2) + "║")
         if lang == "PT":
             instr = "  Selecione a tecnica. Ajusta faixa espectral e pre-processamento sugeridos:"
         else:
@@ -1751,7 +2043,7 @@ def menu_tecnica(cfg: Config) -> None:
             desc_tec = tec_lang.get("desc", "")
             rec = tec_lang.get("preproc_rec", "")
             faixa = tec_lang.get("faixa", "")
-            print("║" + f"  [{i}] {nome_tec}".ljust(w - 2) + "║")
+            print("║" + _ansi_ljust(f"  [{i}] {nome_tec}", w - 2) + "║")
             for dl in _wrap_box(desc_tec, w - 2, "      "):
                 print("║" + _ansi_ljust(_c("DIM", dl), w - 2) + "║")
             if lang == "PT":
@@ -1764,7 +2056,7 @@ def menu_tecnica(cfg: Config) -> None:
             else:
                 linha_fx = f"      Range: {faixa}"
             print("║" + _ansi_ljust(_c("DIM", linha_fx), w - 2) + "║")
-            print("║" + "".ljust(w - 2) + "║")
+            print("║" + _ansi_ljust("", w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         if lang == "PT":
             aviso = "  ANALITICO: aplicar uma tecnica ajusta faixa e pre-processamento automaticamente."
@@ -1773,7 +2065,7 @@ def menu_tecnica(cfg: Config) -> None:
         print("║" + _ansi_ljust(_c("ANALITICO", aviso), w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [I] {I18N[lang]['idioma']}   [0] {I18N[lang]['voltar']}"
-        print("║" + rodape.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(rodape, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -1859,11 +2151,11 @@ def menu_codificacao() -> None:
     """Menu 9 — Explicacao do formato de nomenclatura dos arquivos DX."""
     lang = _lang()
     cls()
-    w = 72
+    w = 68
 
     titulo = "Codificacao de Arquivos DX" if lang == "PT" else "DX File Encoding"
     print("╔" + "═" * (w - 2) + "╗")
-    print("║" + f"  {titulo}".ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(f"  {titulo}", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
 
     if lang == "PT":
@@ -1925,11 +2217,11 @@ def menu_codificacao() -> None:
         print("║" + _ansi_ljust(f"  {_c('BOLD', titulo_sec)}", w - 2) + "║")
         for linha in linhas:
             if linha == "":
-                print("║" + "".ljust(w - 2) + "║")
+                print("║" + _ansi_ljust("", w - 2) + "║")
             else:
                 for wl in _wrap_box(linha, w - 4, "    "):
                     print("║" + _ansi_ljust(wl, w - 2) + "║")
-        print("║" + "".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust("", w - 2) + "║")
 
     print("╠" + "═" * (w - 2) + "╣")
 
@@ -1955,9 +2247,9 @@ def menu_codificacao() -> None:
         rodape_c = "  [C] Cadastrar novo codigo     [D] Ver todos os codigos"
     else:
         rodape_c = "  [C] Register new code         [D] View all codes"
-    print("║" + rodape_c.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(rodape_c, w - 2) + "║")
     rodape_i = f"  [I] {I18N[lang]['idioma']}   [0] {I18N[lang]['voltar']}"
-    print("║" + rodape_i.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(rodape_i, w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
@@ -2034,42 +2326,42 @@ def menu_perfis(cfg: Config) -> None:
         lang = _lang()
         t = I18N[lang]
         cls()
-        w = 72
+        w = 68
         titulo_perfil = "Perfis Prontos" if lang == "PT" else "Preset Profiles"
         instrucao = ("  Selecione um numero para aplicar o perfil e ver detalhes:"
                      if lang == "PT" else
                      "  Select a number to apply the profile and see details:")
         print("\u2554" + "\u2550" * (w - 2) + "\u2557")
-        print("\u2551" + f"  {titulo_perfil}".ljust(w - 2) + "\u2551")
-        print("\u2551" + instrucao.ljust(w - 2) + "\u2551")
+        print("\u2551" + _ansi_ljust(f"  {titulo_perfil}", w - 2) + "\u2551")
+        print("\u2551" + _ansi_ljust(instrucao, w - 2) + "\u2551")
         print("\u2560" + "\u2550" * (w - 2) + "\u2563")
         for i, nome in enumerate(nomes, 1):
-            print("\u2551" + f"  [{i}] {nome}".ljust(w - 2) + "\u2551")
+            print("\u2551" + _ansi_ljust(f"  [{i}] {nome}", w - 2) + "\u2551")
             summary = PROFILE_KEY_SUMMARY.get(nome, {}).get(lang, "")
             if summary:
                 print("\u2551" + _ansi_ljust(f"      {_c('DIM', summary)}", w - 2) + "\u2551")
             desc_lines = PROFILE_DESC.get(nome, {}).get(lang, "").split("\n")
             for dl in desc_lines:
                 print("\u2551" + _ansi_ljust(f"      {_c('DIM', dl.strip())}", w - 2) + "\u2551")
-            print("\u2551" + "".ljust(w - 2) + "\u2551")
+            print("\u2551" + _ansi_ljust("", w - 2) + "\u2551")
         perfis_usuario = _listar_perfis_salvos()
         if perfis_usuario:
             print("\u2560" + "\u2550" * (w - 2) + "\u2563")
             label_salvos = "  Perfis salvos pelo usuario:" if lang == "PT" else "  User saved profiles:"
-            print("\u2551" + label_salvos.ljust(w - 2) + "\u2551")
+            print("\u2551" + _ansi_ljust(label_salvos, w - 2) + "\u2551")
             base = len(nomes)
             for j, nome_u in enumerate(perfis_usuario, base + 1):
-                print("\u2551" + f"  [{j}] {nome_u}".ljust(w - 2) + "\u2551")
+                print("\u2551" + _ansi_ljust(f"  [{j}] {nome_u}", w - 2) + "\u2551")
         print("\u2560" + "\u2550" * (w - 2) + "\u2563")
         novo_label = "[N] Criar novo perfil" if lang == "PT" else "[N] Create new profile"
         como = ("  Como criar: configure os menus 1-7 e pressione [S] no menu principal."
                 if lang == "PT" else
                 "  How to: configure menus 1-7, then press [S] in main menu.")
-        print("\u2551" + f"  {novo_label}".ljust(w - 2) + "\u2551")
+        print("\u2551" + _ansi_ljust(f"  {novo_label}", w - 2) + "\u2551")
         print("\u2551" + _ansi_ljust(f"  {_c('DIM', como.strip())}", w - 2) + "\u2551")
         print("\u2560" + "\u2550" * (w - 2) + "\u2563")
         rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
-        print("\u2551" + rodape.ljust(w - 2) + "\u2551")
+        print("\u2551" + _ansi_ljust(rodape, w - 2) + "\u2551")
         print("\u255a" + "\u2550" * (w - 2) + "\u255d")
         print()
         try:
@@ -2230,13 +2522,13 @@ def wizard_inicial() -> None:
     Define o idioma escolhido pelo usuario no estado global.
     """
     cls()
-    w = 60
+    w = 68
     print("\n" + "╔" + "═" * (w - 2) + "╗")
-    print("║" + "  AmaNIR — Plataforma Quimiometrica FT-NIR".ljust(w - 2) + "║")
-    print("║" + "  GEAAp / UFPA  |  Oleos Vegetais Amazonicos".ljust(w - 2) + "║")
+    print("║" + _ansi_ljust("  AmaNIR — Plataforma Quimiometrica FT-NIR", w - 2) + "║")
+    print("║" + _ansi_ljust("  GEAAp / UFPA  |  Oleos Vegetais Amazonicos", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    print("║" + "  Qual e o seu idioma? / What is your language?".ljust(w - 2) + "║")
-    print("║" + "  [1] Portugues (PT)   [2] English (EN)".ljust(w - 2) + "║")
+    print("║" + _ansi_ljust("  Qual e o seu idioma? / What is your language?", w - 2) + "║")
+    print("║" + _ansi_ljust("  [1] Portugues (PT)   [2] English (EN)", w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     try:
         resp = input(f"  {I18N[_lang()]['opcao']}: ").strip()
@@ -2252,10 +2544,10 @@ def wizard_inicial() -> None:
     cls()
     print("\n" + "╔" + "═" * (w - 2) + "╗")
     titulo_wiz = "  Bem-vindo!" if lang == "PT" else "  Welcome!"
-    print("║" + titulo_wiz.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(titulo_wiz, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     q_perfil = "  Qual e o seu perfil?" if lang == "PT" else "  What is your profile?"
-    print("║" + q_perfil.ljust(w - 2) + "║")
+    print("║" + _ansi_ljust(q_perfil, w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     if lang == "PT":
         linhas_wiz = [
@@ -2270,7 +2562,7 @@ def wizard_inicial() -> None:
             "  [3] Expert      — access to all parameters",
         ]
     for l in linhas_wiz:
-        print("║" + l.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(l, w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
@@ -2342,16 +2634,16 @@ def _mostrar_resumo_e_confirmar(cfg: Config) -> bool:
     print()
     print("╔" + "═" * (w - 2) + "╗")
     if lang == "PT":
-        print("║" + "  ► Resumo da Configuracao".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust("  ► Resumo da Configuracao", w - 2) + "║")
     else:
-        print("║" + "  ► Configuration Summary".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust("  ► Configuration Summary", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
 
     def _row(label: str, val: str) -> None:
         linha = f"  {label:<12s}: {val}"
         if len(linha) > w - 2:
             linha = linha[:w - 5] + "..."
-        print("║" + linha.ljust(w - 2) + "║")
+        print("║" + _ansi_ljust(linha, w - 2) + "║")
 
     if lang == "PT":
         _row("Dados", pasta_str)
@@ -2374,9 +2666,9 @@ def _mostrar_resumo_e_confirmar(cfg: Config) -> bool:
 
     print("╠" + "═" * (w - 2) + "╣")
     if lang == "PT":
-        print("║" + "  Confirmar e rodar? (s/n):".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust("  Confirmar e rodar? (s/n):", w - 2) + "║")
     else:
-        print("║" + "  Confirm and run? (y/n):".ljust(w - 2) + "║")
+        print("║" + _ansi_ljust("  Confirm and run? (y/n):", w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
@@ -2428,6 +2720,29 @@ def _rodar_pipeline(cfg: Config) -> None:
         print("  Starting pipeline...\n")
 
     salvar_config(cfg, str(_CFG_PATH))
+
+    # Aplicar paleta de cores antes de rodar
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        vcfg_pal = _carregar_visual_cfg()
+        paleta_key = vcfg_pal.get("paleta", "qualitativo")
+        paleta = PALETAS_COR.get(paleta_key, PALETAS_COR["qualitativo"])
+        estilo = paleta.get("style", "default")
+        try:
+            plt.style.use(estilo)
+        except Exception:
+            pass
+        cores = paleta.get("cores")
+        if cores:
+            plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
+        cmap = paleta.get("cmap")
+        if cmap:
+            plt.rcParams["image.cmap"] = cmap
+    except Exception:
+        pass
+
     try:
         executar(cfg)
     except KeyboardInterrupt:
