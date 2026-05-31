@@ -987,6 +987,59 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": "true", "range": "true | false",
     },
+    "alpha_pontos": {
+        "PT": {
+            "desc": "Transparencia dos pontos nos graficos de dispersao (scatter).",
+            "impacto": "VISUAL — alfa alto revela densidade de pontos sobrepostos.",
+            "exemplos": {"baixo": "0.9 — pontos opacos", "medio": "0.65 — equilibrado", "alto": "0.35 — translucido"},
+        },
+        "EN": {
+            "desc": "Transparency of points in scatter plots.",
+            "impacto": "VISUAL — high alpha reveals density of overlapping points.",
+            "exemplos": {"baixo": "0.9 — opaque points", "medio": "0.65 — balanced", "alto": "0.35 — translucent"},
+        },
+        "default": "medio", "range": "baixo | medio | alto",
+    },
+    "pca_biplot": {
+        "PT": {
+            "desc": "Gera PCA Biplot 2D com elipse de confianca 95% (Hotelling T2) por classe.",
+            "impacto": "ANALITICO — mostra separacao espectral e regioes de sobreposicao entre classes.",
+            "exemplos": {
+                "PC1 vs PC2": "Componentes com maior variancia explicada",
+                "Elipse 95%": "Regiao de confianca por Hotelling T2 (chi2 2 graus)",
+                "Setas loadings": "Top-8 variaveis com maior contribuicao nos PCs",
+            },
+        },
+        "EN": {
+            "desc": "Generates 2D PCA Biplot with 95% confidence ellipse (Hotelling T2) per class.",
+            "impacto": "ANALYTICAL — shows spectral separation and overlap regions between classes.",
+            "exemplos": {
+                "PC1 vs PC2": "Components with highest explained variance",
+                "95% ellipse": "Confidence region by Hotelling T2 (chi2 2 degrees)",
+                "Loading arrows": "Top-8 variables with highest PC contribution",
+            },
+        },
+        "default": "N/A", "range": "menu [7] > [B]",
+    },
+    "wavelength_importance": {
+        "PT": {
+            "desc": "Importancia espectral por loadings PCA ponderados pela variancia explicada.",
+            "impacto": "ANALITICO — identifica regioes espectrais informativas antes da modelagem.",
+            "exemplos": {
+                "Pico em 5200 cm-1": "Alta importancia = regiao discriminante para as classes",
+                "Top-10 regioes": "Marcados em vermelho no grafico",
+            },
+        },
+        "EN": {
+            "desc": "Spectral importance via PCA loadings weighted by explained variance.",
+            "impacto": "ANALYTICAL — identifies informative spectral regions before modelling.",
+            "exemplos": {
+                "Peak at 5200 cm-1": "High importance = discriminating region for classes",
+                "Top-10 regions": "Marked in red on the figure",
+            },
+        },
+        "default": "N/A", "range": "menu [7] > [V]",
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -1886,6 +1939,311 @@ def _gerar_confusion_matrix(pasta_saida: str) -> None:
         print(f"  [ERRO] {e}" if lang == "PT" else f"  [ERROR] {e}")
 
 
+def _gerar_pca_biplot(cfg: Config) -> None:
+    """Gera PCA Biplot 2D com elipse de confianca 95% (Hotelling T2) por classe."""
+    lang = _lang()
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        import numpy as np
+        from pathlib import Path as _Path
+        from sklearn.decomposition import PCA
+        import re as _re_bp
+    except ImportError as e:
+        print(f"  [ERRO] Dependencia ausente: {e}")
+        return
+
+    pasta = getattr(cfg, "pasta_entrada", None) or getattr(cfg, "pasta_dados", "dados")
+    dx_files = sorted(_Path(pasta).rglob("*.dx"))
+    if not dx_files:
+        print(f"  Nenhum arquivo .dx em: {pasta}")
+        return
+
+    msg = (f"  Lendo {len(dx_files)} arquivos para PCA Biplot..."
+           if lang == "PT" else
+           f"  Reading {len(dx_files)} files for PCA Biplot...")
+    print(msg)
+
+    spectra, labels = [], []
+    for f in dx_files[:300]:
+        try:
+            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+            xy = []
+            in_data = False
+            for line in lines:
+                if "##XYDATA" in line or "##DATA TABLE" in line:
+                    in_data = True; continue
+                if in_data and line.startswith("##"):
+                    in_data = False
+                if in_data:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        try: xy.append(float(parts[1]))
+                        except ValueError: pass
+            if len(xy) > 10:
+                spectra.append(xy)
+                cod = _re_bp.match(r'^([A-Za-z]+)', f.stem)
+                labels.append(cod.group(1).upper() if cod else f.stem[:4])
+        except Exception:
+            continue
+
+    if len(spectra) < 3:
+        print("  Espectros insuficientes para PCA." if lang == "PT" else "  Insufficient spectra for PCA.")
+        return
+
+    min_len = min(len(s) for s in spectra)
+    X = np.array([s[:min_len] for s in spectra], dtype=float)
+
+    # SNV preprocessing
+    X = (X - X.mean(axis=1, keepdims=True)) / (X.std(axis=1, keepdims=True) + 1e-8)
+
+    # PCA
+    n_pcs = min(10, X.shape[0] - 1, X.shape[1])
+    pca = PCA(n_components=n_pcs)
+    T = pca.fit_transform(X)
+    var = pca.explained_variance_ratio_ * 100
+
+    vcfg = _carregar_visual_cfg()
+    paleta_key = vcfg.get("paleta", "qualitativo")
+    paleta = PALETAS_COR.get(paleta_key, PALETAS_COR["qualitativo"])
+    cores_p = paleta.get("cores")
+    fonte_key = vcfg.get("tamanho_fonte", "m")
+    for k, v in FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"]).items():
+        plt.rcParams[k] = v
+    alpha_map_b = {"baixo": 0.9, "medio": 0.65, "alto": 0.35}
+    alpha_v = alpha_map_b.get(vcfg.get("alpha_pontos", "medio"), 0.65)
+
+    classes_u = sorted(set(labels))
+    if cores_p:
+        cmap_list = [cores_p[i % len(cores_p)] for i in range(len(classes_u))]
+    else:
+        cmap_tab = plt.get_cmap("tab20")
+        cmap_list = [cmap_tab(i / max(1, len(classes_u) - 1)) for i in range(len(classes_u))]
+    cor_por_classe = dict(zip(classes_u, cmap_list))
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7), constrained_layout=True)
+
+    for ax_idx, (pc_x, pc_y) in enumerate([(0, 1), (0, 2)]):
+        if pc_y >= n_pcs:
+            axes[ax_idx].set_visible(False)
+            continue
+        ax = axes[ax_idx]
+
+        # Elipses de confianca 95% por classe (Hotelling T2)
+        for classe in classes_u:
+            idx_c = [i for i, lb in enumerate(labels) if lb == classe]
+            if len(idx_c) < 3:
+                continue
+            Tc = T[idx_c][:, [pc_x, pc_y]]
+            mean_c = Tc.mean(axis=0)
+            cov_c = np.cov(Tc.T)
+            try:
+                vals, vecs = np.linalg.eigh(cov_c)
+                vals = np.maximum(vals, 0)
+                chi2_95 = 5.991  # chi2 95%, 2 graus de liberdade
+                w_e, h_e = 2 * np.sqrt(vals * chi2_95)
+                angle = np.degrees(np.arctan2(vecs[1, -1], vecs[0, -1]))
+                from matplotlib.patches import Ellipse
+                ell = Ellipse(xy=mean_c, width=w_e, height=h_e, angle=angle,
+                              facecolor=cor_por_classe[classe], alpha=0.12,
+                              edgecolor=cor_por_classe[classe], linewidth=1.5,
+                              linestyle="--")
+                ax.add_patch(ell)
+            except Exception:
+                pass
+
+            # Scatter
+            ax.scatter(Tc[:, 0], Tc[:, 1],
+                       c=[cor_por_classe[classe]] * len(Tc),
+                       alpha=alpha_v, s=35, label=classe, edgecolors="none")
+            ax.scatter(*mean_c, c=[cor_por_classe[classe]], s=120,
+                       marker="*", edgecolors="black", linewidths=0.5, zorder=5)
+
+        # Loadings (setas) — top 8 variaveis mais importantes
+        P = pca.components_[[pc_x, pc_y]].T  # (n_vars, 2)
+        loading_mag = np.sqrt(P[:, 0]**2 + P[:, 1]**2)
+        top_idx = np.argsort(loading_mag)[-8:]
+        scale = (np.abs(T[:, [pc_x, pc_y]]).max() * 0.8) / (loading_mag[top_idx].max() + 1e-8)
+        for vi in top_idx:
+            ax.annotate("", xy=(P[vi, 0] * scale, P[vi, 1] * scale),
+                        xytext=(0, 0),
+                        arrowprops=dict(arrowstyle="->", color="gray", lw=1.2, alpha=0.5))
+            ax.text(P[vi, 0] * scale * 1.08, P[vi, 1] * scale * 1.08,
+                    f"v{vi}", fontsize=6, color="gray", alpha=0.7)
+
+        xlabel = f"PC{pc_x+1} ({var[pc_x]:.1f}%)"
+        ylabel = f"PC{pc_y+1} ({var[pc_y]:.1f}%)"
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.axhline(0, color="gray", lw=0.5, alpha=0.4)
+        ax.axvline(0, color="gray", lw=0.5, alpha=0.4)
+        titulo_ax = (f"PCA Biplot — PC{pc_x+1} vs PC{pc_y+1} (Elipse 95% Hotelling T2)"
+                     if lang == "PT" else
+                     f"PCA Biplot — PC{pc_x+1} vs PC{pc_y+1} (95% Hotelling T2 Ellipse)")
+        ax.set_title(titulo_ax)
+        if ax_idx == 0:
+            handles = [mpatches.Patch(color=cor_por_classe[c], label=c) for c in classes_u]
+            ax.legend(handles=handles, fontsize=7, ncol=max(1, len(classes_u)//8 + 1),
+                      loc="best", framealpha=0.7)
+        if vcfg.get("grid_major", True):
+            ax.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
+                    alpha=float(vcfg.get("grid_alpha", 0.4)))
+
+    pasta_saida = getattr(cfg, "pasta_saida", "resultados")
+    saida = _Path(pasta_saida) / "pca_biplot_elipse.png"
+    _Path(pasta_saida).mkdir(parents=True, exist_ok=True)
+    dpi = int(getattr(cfg, "dpi_figuras", 150))
+    fig.savefig(saida, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+    ok = (f"  PCA Biplot salvo em: {saida}"
+          if lang == "PT" else f"  PCA Biplot saved to: {saida}")
+    print(ok)
+
+
+def _gerar_variancia_wavelength(cfg: Config) -> None:
+    """Gera painel: variancia acumulada PCA (esq) + Wavelength Importance (dir)."""
+    lang = _lang()
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from pathlib import Path as _Path
+        from sklearn.decomposition import PCA
+        import re as _re_vw
+    except ImportError as e:
+        print(f"  [ERRO] {e}")
+        return
+
+    pasta = getattr(cfg, "pasta_entrada", None) or getattr(cfg, "pasta_dados", "dados")
+    dx_files = sorted(_Path(pasta).rglob("*.dx"))
+    if not dx_files:
+        print(f"  Nenhum .dx em: {pasta}")
+        return
+
+    msg = (f"  Calculando variancia acumulada + importancia espectral ({len(dx_files)} arquivos)..."
+           if lang == "PT" else
+           f"  Computing cumulative variance + spectral importance ({len(dx_files)} files)...")
+    print(msg)
+
+    spectra, wavenumbers = [], []
+    for f in dx_files[:300]:
+        try:
+            lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+            xvals, yvals = [], []
+            in_data = False
+            for line in lines:
+                if "##XYDATA" in line or "##DATA TABLE" in line:
+                    in_data = True; continue
+                if in_data and line.startswith("##"):
+                    in_data = False
+                if in_data:
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        try:
+                            xvals.append(float(parts[0]))
+                            yvals.append(float(parts[1]))
+                        except ValueError:
+                            pass
+            if len(yvals) > 10:
+                spectra.append(yvals)
+                if not wavenumbers and xvals:
+                    wavenumbers = xvals
+        except Exception:
+            continue
+
+    if len(spectra) < 3:
+        print("  Espectros insuficientes." if lang == "PT" else "  Insufficient spectra.")
+        return
+
+    min_len = min(len(s) for s in spectra)
+    X = np.array([s[:min_len] for s in spectra], dtype=float)
+    X = (X - X.mean(axis=1, keepdims=True)) / (X.std(axis=1, keepdims=True) + 1e-8)
+
+    n_pcs = min(20, X.shape[0] - 1, X.shape[1])
+    pca = PCA(n_components=n_pcs)
+    pca.fit(X)
+    var_ratio = pca.explained_variance_ratio_ * 100
+    var_cum = np.cumsum(var_ratio)
+
+    # Wavelength Importance = soma ponderada dos loadings absolutos pelos autovalores
+    importance = np.sum(np.abs(pca.components_) * var_ratio[:, None], axis=0)
+    importance = importance / importance.max()
+
+    wn = np.array(wavenumbers[:min_len]) if wavenumbers else np.arange(min_len)
+
+    vcfg = _carregar_visual_cfg()
+    paleta_key = vcfg.get("paleta", "qualitativo")
+    paleta = PALETAS_COR.get(paleta_key, PALETAS_COR["qualitativo"])
+    cores_p = paleta.get("cores", None)
+    cor_bar = cores_p[0] if cores_p else "#1f77b4"
+    cor_line = cores_p[1] if (cores_p and len(cores_p) > 1) else "#ff7f0e"
+    cor_wl = cores_p[2] if (cores_p and len(cores_p) > 2) else "#2ca02c"
+
+    fonte_key = vcfg.get("tamanho_fonte", "m")
+    for k, v in FONT_PRESETS.get(fonte_key, FONT_PRESETS["m"]).items():
+        plt.rcParams[k] = v
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6), constrained_layout=True)
+
+    # Esquerdo: variancia por componente + acumulada
+    pcs = np.arange(1, n_pcs + 1)
+    ax1.bar(pcs, var_ratio, color=cor_bar, alpha=0.75,
+            label="Variancia por PC" if lang == "PT" else "Variance per PC")
+    ax1_r = ax1.twinx()
+    ax1_r.plot(pcs, var_cum, color=cor_line, marker="o", ms=5, lw=2,
+               label="Acumulada" if lang == "PT" else "Cumulative")
+    ax1_r.axhline(95, color="red", lw=1.2, linestyle="--", alpha=0.6)
+    ax1_r.text(n_pcs * 0.98, 95.5, "95%", color="red", fontsize=8, ha="right")
+    pc_95 = int(np.searchsorted(var_cum, 95)) + 1
+    if pc_95 <= n_pcs:
+        ax1.axvline(pc_95, color="red", lw=1.2, linestyle=":", alpha=0.6)
+        ax1.text(pc_95 + 0.1, var_ratio.max() * 0.9,
+                 f"PC{pc_95}", color="red", fontsize=8)
+
+    ax1.set_xlabel("Componente Principal" if lang == "PT" else "Principal Component")
+    ax1.set_ylabel("Variancia Explicada (%)" if lang == "PT" else "Explained Variance (%)")
+    ax1_r.set_ylabel("Variancia Acumulada (%)" if lang == "PT" else "Cumulative Variance (%)")
+    ax1_r.set_ylim(0, 105)
+    ax1.set_title("Variancia Acumulada — PCA" if lang == "PT" else "Cumulative Variance — PCA")
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax1_r.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="center right")
+    if vcfg.get("grid_major", True):
+        ax1.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
+                 alpha=float(vcfg.get("grid_alpha", 0.4)))
+
+    # Direito: Wavelength Importance
+    ax2.fill_between(wn, importance, alpha=0.35, color=cor_wl)
+    ax2.plot(wn, importance, color=cor_wl, lw=1.2)
+
+    top10_idx = np.argsort(importance)[-10:]
+    ax2.scatter(wn[top10_idx], importance[top10_idx],
+                color="red", s=30, zorder=5, alpha=0.8,
+                label="Top 10" if lang == "PT" else "Top 10")
+
+    ax2.set_xlabel("Numero de Onda (cm-1)" if lang == "PT" else "Wavenumber (cm-1)")
+    ax2.set_ylabel("Importancia Relativa" if lang == "PT" else "Relative Importance")
+    ax2.set_title("Importancia Espectral (Loadings PCA ponderados)"
+                  if lang == "PT" else "Spectral Importance (Weighted PCA Loadings)")
+    ax2.legend(fontsize=8)
+    if vcfg.get("grid_major", True):
+        ax2.grid(True, linestyle=vcfg.get("grid_style", "dotted"),
+                 alpha=float(vcfg.get("grid_alpha", 0.4)))
+
+    pasta_saida = getattr(cfg, "pasta_saida", "resultados")
+    _Path(pasta_saida).mkdir(parents=True, exist_ok=True)
+    saida = _Path(pasta_saida) / "variancia_wavelength_importance.png"
+    dpi = int(getattr(cfg, "dpi_figuras", 150))
+    fig.savefig(saida, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+    ok = (f"  Grafico salvo em: {saida}"
+          if lang == "PT" else f"  Figure saved to: {saida}")
+    print(ok)
+
+
 def menu_visualizacao(cfg: Config) -> None:
     """Menu 7 — Visualizacao (campos VISUAL + paletas + fonte + grid + heatmap + CM)."""
     while True:
@@ -1922,28 +2280,36 @@ def menu_visualizacao(cfg: Config) -> None:
         lbl_v = f"{RISK_COLOR['VISUAL']}●{RISK_COLOR['RESET']}"
         linha_p = f"  [ P] {lbl_v} {paleta_label:<28s}: {pal_nome}"
         print("║" + _ansi_ljust(linha_p, w - 2) + "║")
-        # Exibir configuracoes de fonte e grid salvas
+        # Exibir configuracoes de fonte, grid e alpha salvas
         fonte_key = vcfg.get("tamanho_fonte", "m")
         grid_major = vcfg.get("grid_major", True)
         grid_style = vcfg.get("grid_style", "dotted")
+        alpha_key_disp = vcfg.get("alpha_pontos", "medio")
         fonte_label = "Tamanho de Fonte" if lang == "PT" else "Font Size"
         grid_label = "Grid" if lang == "PT" else "Grid"
+        alpha_label = "Transparencia Pontos" if lang == "PT" else "Point Transparency"
         grid_status = ("ON" if grid_major else "OFF") + f" ({grid_style})"
         linha_f = f"  [ F] {lbl_v} {fonte_label:<28s}: {fonte_key.upper()}"
         linha_g = f"  [ G] {lbl_v} {grid_label:<28s}: {grid_status}"
+        linha_a = f"  [ A] {lbl_v} {alpha_label:<28s}: {alpha_key_disp}"
         print("║" + _ansi_ljust(linha_f, w - 2) + "║")
         print("║" + _ansi_ljust(linha_g, w - 2) + "║")
+        print("║" + _ansi_ljust(linha_a, w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         # Rodape com 2 colunas
         if lang == "PT":
             rodape1 = "  [F] Tamanho Fonte    [G] Grid"
-            rodape2 = "  [P] Paletas          [H] Heatmap Espectros"
-            rodape3 = "  [M] Confusion Matrix [?] Ajuda  [I] Idioma  [0] Voltar"
+            rodape2 = "  [A] Transparencia    [P] Paletas"
+            rodape3 = "  [H] Heatmap          [M] Confusion Matrix"
+            rodape4 = "  [B] PCA Biplot        [V] Variancia + Wavelength"
+            rodape5 = "  [I] Idioma            [0] Voltar"
         else:
             rodape1 = "  [F] Font Size        [G] Grid"
-            rodape2 = "  [P] Palettes         [H] Spectral Heatmap"
-            rodape3 = "  [M] Confusion Matrix [?] Help   [I] Language [0] Back"
-        for rline in [rodape1, rodape2, rodape3]:
+            rodape2 = "  [A] Transparency     [P] Palettes"
+            rodape3 = "  [H] Heatmap          [M] Confusion Matrix"
+            rodape4 = "  [B] PCA Biplot        [V] Variance + Wavelength"
+            rodape5 = "  [I] Language          [0] Back"
+        for rline in [rodape1, rodape2, rodape3, rodape4, rodape5]:
             print("║" + _ansi_ljust(rline, w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
@@ -2067,6 +2433,69 @@ def menu_visualizacao(cfg: Config) -> None:
             print()
             pasta_s = getattr(cfg, "pasta_saida", "resultados")
             _gerar_confusion_matrix(pasta_s)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
+        # Handler [A] — Transparencia dos pontos
+        if escolha.upper() == "A":
+            vcfg_a = _carregar_visual_cfg()
+            cls()
+            w_a = 68
+            titulo_a = "Transparencia dos Pontos" if lang == "PT" else "Point Transparency"
+            print("╔" + "═" * (w_a - 2) + "╗")
+            print("║" + _ansi_ljust(f"  {titulo_a}", w_a - 2) + "║")
+            print("╠" + "═" * (w_a - 2) + "╣")
+            opcoes_alpha = [
+                ("1", "baixo",  "0.9 — Pontos opacos (poucos dados, sem sobreposicao)",
+                                 "0.9 — Opaque points (few data, no overlap)"),
+                ("2", "medio",  "0.65 — Equilibrado (padrao recomendado)",
+                                 "0.65 — Balanced (recommended default)"),
+                ("3", "alto",   "0.35 — Translucido (muitos dados, sobrepostos)",
+                                 "0.35 — Translucent (many overlapping data points)"),
+            ]
+            atual_a = vcfg_a.get("alpha_pontos", "medio")
+            for cod, key_a, desc_pt, desc_en in opcoes_alpha:
+                marcador = "►" if key_a == atual_a else " "
+                desc = desc_pt if lang == "PT" else desc_en
+                linha = f"  [{cod}] {marcador} {desc}"
+                print("║" + _ansi_ljust(linha, w_a - 2) + "║")
+            print("╠" + "═" * (w_a - 2) + "╣")
+            print("║" + _ansi_ljust(f"  [0] {t['voltar']}", w_a - 2) + "║")
+            print("╚" + "═" * (w_a - 2) + "╝")
+            try:
+                ea = input(f"\n  {t.get('opcao', 'Option')}: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                ea = ""
+            if ea in ("1", "2", "3"):
+                nova_a = opcoes_alpha[int(ea) - 1][1]
+                vcfg_a["alpha_pontos"] = nova_a
+                _salvar_visual_cfg(vcfg_a)
+                ok_a = (f"  Transparencia '{nova_a}' salva."
+                        if lang == "PT" else f"  Transparency '{nova_a}' saved.")
+                print(ok_a)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
+        # Handler [B] — PCA Biplot com elipse de confianca 95%
+        if escolha.upper() == "B":
+            print()
+            _gerar_pca_biplot(cfg)
+            try:
+                input(f"  [{t['continuar']}]")
+            except (EOFError, KeyboardInterrupt):
+                pass
+            continue
+
+        # Handler [V] — Variancia acumulada + Wavelength Importance
+        if escolha.upper() == "V":
+            print()
+            _gerar_variancia_wavelength(cfg)
             try:
                 input(f"  [{t['continuar']}]")
             except (EOFError, KeyboardInterrupt):
@@ -3154,6 +3583,12 @@ def _rodar_pipeline(cfg: Config) -> None:
             plt.rcParams["axes.grid.which"] = "both" if vcfg_pal.get("grid_minor", False) else "major"
         else:
             plt.rcParams["axes.grid"] = False
+        # A3 — Transparencia (alpha) dos elementos graficos
+        alpha_key = vcfg_pal.get("alpha_pontos", "medio")
+        alpha_map = {"baixo": 0.9, "medio": 0.65, "alto": 0.35}
+        alpha_val = alpha_map.get(alpha_key, 0.65)
+        plt.rcParams["scatter.marker"] = "o"
+        plt.rcParams["lines.alpha"] = alpha_val  # hint global
     except Exception:
         pass
 
