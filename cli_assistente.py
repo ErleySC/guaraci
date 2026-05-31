@@ -1,12 +1,13 @@
 """
-cli_assistente.py — Assistente CLI hierárquico para o Pipeline Quimiométrico FT-NIR
-GEAAp / UFPA — Plataforma de autenticação de óleos vegetais amazônicos.
+cli_assistente.py — Assistente CLI hierarquico para o Pipeline Quimiometrico FT-NIR
+AmaNIR — Plataforma Quimiometrica FT-NIR
+GEAAp / UFPA — Plataforma de autenticacao de oleos vegetais amazonicos.
 
 Uso:
     python cli_assistente.py
-    python pineline_quimiometria_14.py   (chama este módulo automaticamente)
+    python pineline_quimiometria_14.py   (chama este modulo automaticamente)
 
-Requer: pineline_quimiometria_14.py no mesmo diretório.
+Requer: pineline_quimiometria_14.py no mesmo diretorio.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 # ---------------------------------------------------------------------------
-# Integração com o pipeline (sem modificar nenhuma função analítica)
+# Integracao com o pipeline (sem modificar nenhuma funcao analitica)
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pineline_quimiometria_14 as pq
@@ -42,12 +43,39 @@ _PERFIS_DIR = _BASE_DIR / "perfis"
 _WIZARD_FLAG = _BASE_DIR / ".cli_wizard_done"
 
 # ---------------------------------------------------------------------------
-# Internacionalização
+# Estado global mutavel — idioma persiste em tempo real
+# ---------------------------------------------------------------------------
+_STATE: Dict[str, Any] = {"lang": "PT"}
+
+
+def _lang() -> str:
+    """Retorna o idioma atual do estado global."""
+    return _STATE["lang"]
+
+
+def _set_lang(l: str) -> None:
+    """Define o idioma no estado global e persiste no arquivo de flag."""
+    _STATE["lang"] = l
+    try:
+        _WIZARD_FLAG.write_text(l, encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _toggle_idioma() -> str:
+    """Alterna entre PT e EN e retorna o novo idioma."""
+    novo = "EN" if _lang() == "PT" else "PT"
+    _set_lang(novo)
+    return novo
+
+
+# ---------------------------------------------------------------------------
+# Internacionalizacao
 # ---------------------------------------------------------------------------
 I18N: Dict[str, Dict[str, str]] = {
     "PT": {
-        "titulo": "PIPELINE QUIMIOMETRICO FT-NIR",
-        "subtitulo": "GEAAp / UFPA",
+        "titulo": "AmaNIR — Plataforma Quimiometrica FT-NIR",
+        "subtitulo": "GEAAp / UFPA  |  Oleos Vegetais Amazonicos",
         "menu_projeto": "Projeto",
         "menu_dados": "Dados",
         "menu_preproc": "Pre-processamento",
@@ -61,20 +89,32 @@ I18N: Dict[str, Dict[str, str]] = {
         "rodar": "Rodar Pipeline",
         "sair": "Sair",
         "perfis": "Perfis Prontos",
-        "aviso_analitico": "⚠  Alteracao ANALITICA — pode modificar resultados. Confirma? (s/n): ",
-        "aviso_avancado": "⚠  Parametro AVANCADO — aumenta tempo de processamento.",
-        "status_ok": "✅ Dados OK",
-        "status_erro": "❌ Pasta nao encontrada",
-        "idioma": "Idioma",
-        "campo_atualizado": "✅ [{campo}] atualizado: {valor}",
+        "aviso_analitico": "Alteracao ANALITICA — pode modificar resultados. Confirma? (s/n): ",
+        "aviso_avancado": "Parametro AVANCADO — aumenta tempo de processamento.",
+        "status_ok": "Dados OK",
+        "status_erro": "Pasta nao encontrada",
+        "idioma": "Idioma/Language",
+        "campo_atualizado": "[{campo}] atualizado: {valor}",
         "cancelado": "Operacao cancelada.",
         "invalido": "Opcao invalida.",
         "confirmar_sn": "s",
         "nao": "n",
+        "voltar": "Voltar",
+        "continuar": "Enter para continuar",
+        "ajuda_campo": "Ajuda sobre campo",
+        "novo_valor": "Novo valor (Enter = manter, ? = ajuda completa): ",
+        "mantido": "Mantido.",
+        "atual": "Atual",
+        "padrao": "Padrao",
+        "faixa": "Faixa",
+        "impacto": "Impacto",
+        "exemplos": "Exemplos",
+        "descricao": "Descricao",
+        "listar_todos": "Listar todos",
     },
     "EN": {
-        "titulo": "FT-NIR CHEMOMETRICS PIPELINE",
-        "subtitulo": "GEAAp / UFPA",
+        "titulo": "AmaNIR — FT-NIR Chemometrics Platform",
+        "subtitulo": "GEAAp / UFPA  |  Amazonian Vegetable Oils",
         "menu_projeto": "Project",
         "menu_dados": "Data",
         "menu_preproc": "Preprocessing",
@@ -88,28 +128,40 @@ I18N: Dict[str, Dict[str, str]] = {
         "rodar": "Run Pipeline",
         "sair": "Exit",
         "perfis": "Preset Profiles",
-        "aviso_analitico": "⚠  ANALYTICAL change — may affect results. Confirm? (y/n): ",
-        "aviso_avancado": "⚠  ADVANCED parameter — increases processing time.",
-        "status_ok": "✅ Data OK",
-        "status_erro": "❌ Folder not found",
-        "idioma": "Language",
-        "campo_atualizado": "✅ [{campo}] updated: {valor}",
+        "aviso_analitico": "ANALYTICAL change — may affect results. Confirm? (y/n): ",
+        "aviso_avancado": "ADVANCED parameter — increases processing time.",
+        "status_ok": "Data OK",
+        "status_erro": "Folder not found",
+        "idioma": "Idioma/Language",
+        "campo_atualizado": "[{campo}] updated: {valor}",
         "cancelado": "Operation cancelled.",
         "invalido": "Invalid option.",
         "confirmar_sn": "y",
         "nao": "n",
+        "voltar": "Back",
+        "continuar": "Enter to continue",
+        "ajuda_campo": "Help on field",
+        "novo_valor": "New value (Enter = keep, ? = full help): ",
+        "mantido": "Kept.",
+        "atual": "Current",
+        "padrao": "Default",
+        "faixa": "Range",
+        "impacto": "Impact",
+        "exemplos": "Examples",
+        "descricao": "Description",
+        "listar_todos": "List all",
     },
 }
 
 # ---------------------------------------------------------------------------
-# Classificação de risco
+# Classificacao de risco
 # ---------------------------------------------------------------------------
 RISK_CLASS: Dict[str, str] = {
     # VISUAL
     "dpi": "VISUAL", "formato_figura": "VISUAL",
     "figuras_mostrar_marcadores": "VISUAL", "figuras_mostrar_elipses": "VISUAL",
     "abrir_figuras_na_tela": "VISUAL",
-    # ANALÍTICO
+    # ANALITICO
     "pre_processamento": "ANALITICO", "max_lvs": "ANALITICO",
     "n_permutacoes": "ANALITICO", "holdout_fracao": "ANALITICO",
     "nivel": "ANALITICO", "excluir_classes": "ANALITICO",
@@ -122,253 +174,501 @@ RISK_CLASS: Dict[str, str] = {
     "pasta_saida": "ANALITICO", "modo_entrada": "ANALITICO",
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
     "coluna_concentracao": "ANALITICO",
-    # AVANÇADO
+    # AVANCADO
     "benchmark": "AVANCADO", "monte_carlo": "AVANCADO",
     "shap_benchmark": "AVANCADO", "n_monte_carlo": "AVANCADO",
     "shap_max_amostras": "AVANCADO", "monte_carlo_incluir_todos": "AVANCADO",
 }
 
 RISK_COLOR: Dict[str, str] = {
-    "VISUAL": "\033[92m",    # verde
-    "ANALITICO": "\033[93m", # amarelo
-    "AVANCADO": "\033[91m",  # vermelho
+    "VISUAL": "\033[92m",     # verde
+    "ANALITICO": "\033[93m",  # amarelo
+    "AVANCADO": "\033[91m",   # vermelho
     "RESET": "\033[0m",
+    "BOLD": "\033[1m",
+    "DIM": "\033[2m",
+    "CYAN": "\033[96m",
 }
 
 # ---------------------------------------------------------------------------
-# Base de ajuda (HELP_DB)
+# Aliases de exibicao para modo_ddsimca
+# ---------------------------------------------------------------------------
+_DDSIMCA_DISPLAY: Dict[str, Dict[str, str]] = {
+    "PT": {"puros": "autenticacao", "todos": "exploratorio"},
+    "EN": {"puros": "authentication", "todos": "exploratory"},
+}
+
+_DDSIMCA_INPUT: Dict[str, str] = {
+    "autenticacao": "puros", "authentication": "puros", "puros": "puros",
+    "exploratorio": "todos", "exploratory": "todos", "todos": "todos",
+}
+
+# ---------------------------------------------------------------------------
+# Descricoes de secao (bilinguais)
+# ---------------------------------------------------------------------------
+SECTION_DESC: Dict[str, Dict[str, str]] = {
+    "projeto": {
+        "PT": "Pastas de entrada e saida dos dados e resultados.",
+        "EN": "Input and output folders for data and results.",
+    },
+    "dados": {
+        "PT": "Configuracao dos dados espectrais: formato, faixa, classes excluidas.",
+        "EN": "Spectral data configuration: format, range, excluded classes.",
+    },
+    "preproc": {
+        "PT": "Pre-processamento espectral: MSC corrige espalhamento; SG suaviza e deriva; MC centraliza.",
+        "EN": "Spectral preprocessing: MSC corrects scattering; SG smooths and derives; MC mean-centers.",
+    },
+    "modelo": {
+        "PT": "Configuracao dos modelos PLS-DA, OPLS-DA e DD-SIMCA.",
+        "EN": "PLS-DA, OPLS-DA and DD-SIMCA model configuration.",
+    },
+    "validacao": {
+        "PT": "Estrategia de validacao cruzada e testes estatisticos do modelo.",
+        "EN": "Cross-validation strategy and statistical model tests.",
+    },
+    "avancado": {
+        "PT": "Modulos computacionalmente intensivos: benchmark, Monte Carlo, SHAP.",
+        "EN": "Computationally intensive modules: benchmark, Monte Carlo, SHAP.",
+    },
+    "visualizacao": {
+        "PT": "Configuracoes visuais das figuras. Nao afetam resultados analiticos.",
+        "EN": "Figure visual settings. Do not affect analytical results.",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Base de ajuda bilinguie (HELP_DB)
 # ---------------------------------------------------------------------------
 HELP_DB: Dict[str, Dict[str, Any]] = {
     "dpi": {
-        "desc": "Resolucao das figuras em pontos por polegada.",
-        "default": 600,
-        "range": "150-1200",
-        "impacto": "VISUAL — nao altera resultados analiticos.",
-        "exemplos": {"300": "Apresentacoes/slides", "600": "Artigos cientificos", "1200": "Impressao profissional"},
+        "PT": {
+            "desc": "Resolucao das figuras em pontos por polegada.",
+            "impacto": "VISUAL — nao altera resultados analiticos.",
+            "exemplos": {"300": "Apresentacoes/slides", "600": "Artigos cientificos", "1200": "Impressao profissional"},
+        },
+        "EN": {
+            "desc": "Figure resolution in dots per inch.",
+            "impacto": "VISUAL — does not affect analytical results.",
+            "exemplos": {"300": "Presentations/slides", "600": "Scientific articles", "1200": "Professional printing"},
+        },
+        "default": 600, "range": "150-1200",
     },
     "max_lvs": {
-        "desc": "Numero maximo de Variaveis Latentes testadas na selecao automatica.",
-        "default": 40,
-        "range": "5-80",
-        "impacto": "ANALITICO — afeta diretamente o modelo PLS-DA.",
-        "exemplos": {"10": "Datasets pequenos", "40": "Recomendado", "80": "Datasets grandes"},
+        "PT": {
+            "desc": "Numero maximo de Variaveis Latentes testadas na selecao automatica.",
+            "impacto": "ANALITICO — afeta diretamente o modelo PLS-DA.",
+            "exemplos": {"10": "Datasets pequenos", "40": "Recomendado", "80": "Datasets grandes"},
+        },
+        "EN": {
+            "desc": "Maximum number of Latent Variables tested in automatic selection.",
+            "impacto": "ANALYTICAL — directly affects the PLS-DA model.",
+            "exemplos": {"10": "Small datasets", "40": "Recommended", "80": "Large datasets"},
+        },
+        "default": 40, "range": "5-80",
     },
     "n_permutacoes": {
-        "desc": "Numero de permutacoes para o teste Y-randomization.",
-        "default": 200,
-        "range": "50-1000",
-        "impacto": "ANALITICO — afeta o p-value do teste de permutacao.",
-        "exemplos": {"50": "Diagnostico rapido", "200": "Publicacao", "1000": "Alta precisao"},
+        "PT": {
+            "desc": "Numero de permutacoes para o teste Y-randomization.",
+            "impacto": "ANALITICO — afeta o p-value do teste de permutacao.",
+            "exemplos": {"50": "Diagnostico rapido", "200": "Publicacao", "1000": "Alta precisao"},
+        },
+        "EN": {
+            "desc": "Number of permutations for the Y-randomization test.",
+            "impacto": "ANALYTICAL — affects the permutation test p-value.",
+            "exemplos": {"50": "Quick diagnosis", "200": "Publication", "1000": "High precision"},
+        },
+        "default": 200, "range": "50-1000",
     },
     "pre_processamento": {
-        "desc": "Pipeline de pre-processamento espectral aplicado antes do PLS-DA.",
-        "default": "MSC+SG+MC",
-        "range": "Escolha na lista",
-        "impacto": "ANALITICO — MSC+SG+MC deu Bal.Acc=0.923 no dataset atual.",
-        "exemplos": {"msc_sg_mc": "Melhor resultado (recomendado)", "snv_sg_mc": "Alternativa robusta", "autoscaling": "Baseline simples"},
+        "PT": {
+            "desc": "Pipeline de pre-processamento espectral aplicado antes do PLS-DA.",
+            "impacto": "ANALITICO — MSC+SG+MC obteve Bal.Acc=0.923 no dataset atual.",
+            "exemplos": {"msc_sg_mc": "Melhor resultado (recomendado)", "snv_sg_mc": "Alternativa robusta", "autoscaling": "Baseline simples"},
+        },
+        "EN": {
+            "desc": "Spectral preprocessing pipeline applied before PLS-DA.",
+            "impacto": "ANALYTICAL — MSC+SG+MC achieved Bal.Acc=0.923 on current dataset.",
+            "exemplos": {"msc_sg_mc": "Best result (recommended)", "snv_sg_mc": "Robust alternative", "autoscaling": "Simple baseline"},
+        },
+        "default": "MSC+SG+MC", "range": "Escolha na lista / Choose from list",
     },
     "modo_ddsimca": {
-        "desc": "Modo de treino do DD-SIMCA.",
-        "default": "puros",
-        "range": "puros | todos",
-        "impacto": "ANALITICO — 'puros' valida autenticacao; 'todos' e exploratorio.",
-        "exemplos": {"puros": "Autenticacao (recomendado para publicacao)", "todos": "Analise exploratoria"},
+        "PT": {
+            "desc": "Modo de treino do DD-SIMCA para autenticacao de amostras.",
+            "impacto": "ANALITICO — 'autenticacao' usa so amostras de referencia pura; 'exploratorio' usa todas.",
+            "exemplos": {"autenticacao": "Validacao de autenticidade (recomendado para publicacao)", "exploratorio": "Analise exploratoria inicial"},
+        },
+        "EN": {
+            "desc": "DD-SIMCA training mode for sample authentication.",
+            "impacto": "ANALYTICAL — 'authentication' uses only pure reference samples; 'exploratory' uses all.",
+            "exemplos": {"authentication": "Authenticity validation (recommended for publication)", "exploratory": "Initial exploratory analysis"},
+        },
+        "default": "autenticacao", "range": "autenticacao | exploratorio  (EN: authentication | exploratory)",
     },
     "nivel": {
-        "desc": "Nivel de analise: N1 (basico), N2 (PLS-DA + DD-SIMCA), N3 (regressao).",
-        "default": "N2",
-        "range": "N1 | N2 | N3",
-        "impacto": "ANALITICO — define quais modulos sao executados.",
-        "exemplos": {"N1": "So PCA/HCA", "N2": "Classificacao completa", "N3": "Quantificacao"},
+        "PT": {
+            "desc": "Nivel de analise: N1 (exploratorio), N2 (classificacao completa), N3 (regressao).",
+            "impacto": "ANALITICO — define quais modulos sao executados.",
+            "exemplos": {"N1": "So PCA/HCA", "N2": "Classificacao completa (PLS-DA + DD-SIMCA)", "N3": "Quantificacao (PLS-R)"},
+        },
+        "EN": {
+            "desc": "Analysis level: N1 (exploratory), N2 (full classification), N3 (regression).",
+            "impacto": "ANALYTICAL — defines which modules are executed.",
+            "exemplos": {"N1": "PCA/HCA only", "N2": "Full classification (PLS-DA + DD-SIMCA)", "N3": "Quantification (PLS-R)"},
+        },
+        "default": "N2", "range": "N1 | N2 | N3",
     },
     "holdout_fracao": {
-        "desc": "Fracao do dataset reservada para validacao externa (holdout).",
-        "default": 0.2,
-        "range": "0.1-0.3",
-        "impacto": "ANALITICO — afeta a estimativa de generalizacao do modelo.",
-        "exemplos": {"0.1": "Poucos dados", "0.2": "Recomendado", "0.3": "Dataset grande"},
+        "PT": {
+            "desc": "Fracao do dataset reservada para validacao externa independente (holdout).",
+            "impacto": "ANALITICO — afeta a estimativa de generalizacao do modelo.",
+            "exemplos": {"0.1": "Poucos dados disponiveis", "0.2": "Recomendado (padrao)", "0.3": "Dataset grande"},
+        },
+        "EN": {
+            "desc": "Fraction of the dataset held out for independent external validation.",
+            "impacto": "ANALYTICAL — affects the model generalization estimate.",
+            "exemplos": {"0.1": "Limited data available", "0.2": "Recommended (default)", "0.3": "Large dataset"},
+        },
+        "default": 0.2, "range": "0.1-0.3",
     },
     "ddsimca": {
-        "desc": "Ativa o DD-SIMCA para autenticacao de amostras por classe.",
-        "default": True,
-        "range": "true | false",
-        "impacto": "ANALITICO — adiciona figuras e metricas de autenticacao.",
-        "exemplos": {"true": "Recomendado para publicacao", "false": "Economiza tempo em exploracao"},
+        "PT": {
+            "desc": "Ativa o DD-SIMCA para autenticacao e deteccao de amostras desconhecidas por classe.",
+            "impacto": "ANALITICO — adiciona figuras de Cooman's Plot e metricas de autenticacao.",
+            "exemplos": {"true": "Recomendado para publicacao", "false": "Economiza tempo em exploracao"},
+        },
+        "EN": {
+            "desc": "Enables DD-SIMCA for per-class sample authentication and unknown detection.",
+            "impacto": "ANALYTICAL — adds Cooman's Plot figures and authentication metrics.",
+            "exemplos": {"true": "Recommended for publication", "false": "Saves time in exploration"},
+        },
+        "default": True, "range": "true | false",
     },
     "benchmark": {
-        "desc": "Compara PLS-DA contra SVM, RF, XGBoost com mesma CV group-aware.",
-        "default": False,
-        "range": "true | false",
-        "impacto": "ANALITICO — adiciona ~30-60 min de processamento.",
-        "exemplos": {"false": "Producao/TCC", "true": "Artigo com comparacao de modelos"},
+        "PT": {
+            "desc": "Compara PLS-DA contra SVM RBF, Random Forest e XGBoost com mesma CV group-aware.",
+            "impacto": "AVANCADO — adiciona ~30-60 minutos de processamento.",
+            "exemplos": {"false": "TCC/producao (recomendado)", "true": "Artigo com comparacao de classificadores"},
+        },
+        "EN": {
+            "desc": "Compares PLS-DA against SVM RBF, Random Forest and XGBoost with same group-aware CV.",
+            "impacto": "ADVANCED — adds ~30-60 minutes of processing time.",
+            "exemplos": {"false": "TCC/production (recommended)", "true": "Article with classifier comparison"},
+        },
+        "default": False, "range": "true | false",
     },
     "formato_figura": {
-        "desc": "Formato de saida das figuras geradas.",
-        "default": "png",
-        "range": "png | pdf | svg",
-        "impacto": "VISUAL — nao altera analise.",
-        "exemplos": {"png": "Apresentacoes/TCC", "pdf": "Artigos (vetorial)", "svg": "Edicao pos-processamento"},
+        "PT": {
+            "desc": "Formato de saida das figuras geradas pelo pipeline.",
+            "impacto": "VISUAL — nao altera analise ou resultados.",
+            "exemplos": {"png": "Apresentacoes/TCC (menor tamanho)", "pdf": "Artigos (vetorial, editavel)", "svg": "Edicao pos-processamento"},
+        },
+        "EN": {
+            "desc": "Output format for pipeline-generated figures.",
+            "impacto": "VISUAL — does not affect analysis or results.",
+            "exemplos": {"png": "Presentations/TCC (smaller size)", "pdf": "Articles (vector, editable)", "svg": "Post-processing editing"},
+        },
+        "default": "png", "range": "png | pdf | svg",
     },
     "monte_carlo": {
-        "desc": "Ativa Monte Carlo CV com IC95% por percentil.",
-        "default": False,
-        "range": "true | false",
-        "impacto": "AVANCADO — aumenta significativamente o tempo de processamento.",
-        "exemplos": {"false": "Producao rapida", "true": "Dissertacao/Tese"},
+        "PT": {
+            "desc": "Ativa Monte Carlo CV: calcula IC95% das metricas por reamostragem estratificada por grupo.",
+            "impacto": "AVANCADO — aumenta significativamente o tempo de processamento.",
+            "exemplos": {"false": "Producao/TCC (recomendado)", "true": "Dissertacao/Tese"},
+        },
+        "EN": {
+            "desc": "Enables Monte Carlo CV: computes 95% CI for metrics via stratified group resampling.",
+            "impacto": "ADVANCED — significantly increases processing time.",
+            "exemplos": {"false": "Production/TCC (recommended)", "true": "Dissertation/Thesis"},
+        },
+        "default": False, "range": "true | false",
     },
     "n_monte_carlo": {
-        "desc": "Numero de repeticoes do Monte Carlo CV.",
-        "default": 100,
-        "range": "50-500",
-        "impacto": "AVANCADO — mais repeticoes = IC mais estreito, mais tempo.",
-        "exemplos": {"50": "Teste rapido", "100": "TCC", "200": "Dissertacao"},
+        "PT": {
+            "desc": "Numero de repeticoes do Monte Carlo CV.",
+            "impacto": "AVANCADO — mais repeticoes = IC mais estreito, mas mais tempo.",
+            "exemplos": {"50": "Teste rapido", "100": "TCC", "200": "Dissertacao/Tese"},
+        },
+        "EN": {
+            "desc": "Number of Monte Carlo CV repetitions.",
+            "impacto": "ADVANCED — more repetitions = narrower CI, but more time.",
+            "exemplos": {"50": "Quick test", "100": "TCC", "200": "Dissertation/Thesis"},
+        },
+        "default": 100, "range": "50-500",
     },
     "shap_benchmark": {
-        "desc": "Calcula SHAP values (TreeExplainer) para RF/XGBoost/GBM.",
-        "default": False,
-        "range": "true | false",
-        "impacto": "AVANCADO — requer benchmark=true; +10-20 min.",
-        "exemplos": {"false": "Producao", "true": "Artigo com interpretabilidade espectral"},
+        "PT": {
+            "desc": "Calcula SHAP values (TreeExplainer) para RF/XGBoost — interpretabilidade espectral.",
+            "impacto": "AVANCADO — requer benchmark=true; adiciona ~10-20 minutos.",
+            "exemplos": {"false": "Sem SHAP (producao)", "true": "Artigo com interpretabilidade espectral"},
+        },
+        "EN": {
+            "desc": "Computes SHAP values (TreeExplainer) for RF/XGBoost — spectral interpretability.",
+            "impacto": "ADVANCED — requires benchmark=true; adds ~10-20 minutes.",
+            "exemplos": {"false": "No SHAP (production)", "true": "Article with spectral interpretability"},
+        },
+        "default": False, "range": "true | false",
     },
     "shap_max_amostras": {
-        "desc": "Limite de amostras para calculo de SHAP (controle de memoria).",
-        "default": 500,
-        "range": "100-1000",
-        "impacto": "AVANCADO — valores maiores aumentam tempo e uso de RAM.",
-        "exemplos": {"200": "RAM limitada", "500": "Recomendado"},
+        "PT": {
+            "desc": "Limite de amostras para calculo de SHAP (controla uso de memoria RAM).",
+            "impacto": "AVANCADO — valores maiores aumentam tempo e uso de RAM.",
+            "exemplos": {"200": "RAM limitada (<8 GB)", "500": "Recomendado (padrao)", "1000": "RAM abundante (>32 GB)"},
+        },
+        "EN": {
+            "desc": "Sample limit for SHAP computation (controls RAM usage).",
+            "impacto": "ADVANCED — larger values increase time and RAM usage.",
+            "exemplos": {"200": "Limited RAM (<8 GB)", "500": "Recommended (default)", "1000": "Abundant RAM (>32 GB)"},
+        },
+        "default": 500, "range": "100-1000",
     },
     "validacao_group_aware": {
-        "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento de dados).",
-        "default": True,
-        "range": "true | false",
-        "impacto": "ANALITICO — false pode inflar artificialmente as metricas.",
-        "exemplos": {"true": "Correto para dados com replicas", "false": "Apenas para datasets independentes"},
+        "PT": {
+            "desc": "Manter replicas (T1/T2/T3) sempre juntas nos folds de validacao cruzada.",
+            "impacto": "ANALITICO — false pode inflar artificialmente as metricas (data leakage).",
+            "exemplos": {"true": "Obrigatorio para dados com replicas fisicas", "false": "Apenas para amostras 100% independentes"},
+        },
+        "EN": {
+            "desc": "Keep replicates (T1/T2/T3) together in all cross-validation folds.",
+            "impacto": "ANALYTICAL — false may artificially inflate metrics (data leakage).",
+            "exemplos": {"true": "Mandatory for data with physical replicates", "false": "Only for fully independent samples"},
+        },
+        "default": True, "range": "true | false",
     },
     "opls_da": {
-        "desc": "Executa OPLS-DA (Orthogonal PLS Discriminant Analysis).",
-        "default": True,
-        "range": "true | false",
-        "impacto": "ANALITICO — gera S-Plot e separa variacao ortogonal.",
-        "exemplos": {"true": "Recomendado para publicacao", "false": "Analise exploratoria rapida"},
+        "PT": {
+            "desc": "Executa OPLS-DA (Analise Discriminante por Minimos Quadrados Parciais Ortogonais).",
+            "impacto": "ANALITICO — gera S-Plot e separa variacao ortogonal da preditiva.",
+            "exemplos": {"true": "Recomendado para publicacao", "false": "Analise exploratoria rapida"},
+        },
+        "EN": {
+            "desc": "Runs OPLS-DA (Orthogonal Partial Least Squares Discriminant Analysis).",
+            "impacto": "ANALYTICAL — generates S-Plot and separates orthogonal from predictive variation.",
+            "exemplos": {"true": "Recommended for publication", "false": "Quick exploratory analysis"},
+        },
+        "default": True, "range": "true | false",
     },
     "selecao_variaveis_etapa4": {
-        "desc": "Executa iPLS/VIP/SR/sPLS-DA para selecao de variaveis.",
-        "default": True,
-        "range": "true | false",
-        "impacto": "ANALITICO — identifica regioes espectrais mais relevantes.",
-        "exemplos": {"true": "Publicacao", "false": "Exploracao rapida"},
+        "PT": {
+            "desc": "Executa selecao de variaveis: iPLS, VIP>=1, SR top 20% e sPLS-DA.",
+            "impacto": "ANALITICO — identifica regioes espectrais mais relevantes para o modelo.",
+            "exemplos": {"true": "Publicacao (recomendado)", "false": "Exploracao rapida"},
+        },
+        "EN": {
+            "desc": "Runs variable selection: iPLS, VIP>=1, SR top 20% and sPLS-DA.",
+            "impacto": "ANALYTICAL — identifies the most relevant spectral regions for the model.",
+            "exemplos": {"true": "Publication (recommended)", "false": "Quick exploration"},
+        },
+        "default": True, "range": "true | false",
     },
     "comparar_pre_processamentos": {
-        "desc": "Compara varios pipelines de pre-processamento automaticamente.",
-        "default": False,
-        "range": "true | false",
-        "impacto": "ANALITICO — aumenta o tempo; util para selecionar o melhor pipeline.",
-        "exemplos": {"false": "Usar pre-processamento padrao", "true": "Otimizacao do pipeline"},
+        "PT": {
+            "desc": "Compara automaticamente varios pipelines de pre-processamento e reporta o melhor.",
+            "impacto": "ANALITICO — aumenta o tempo de execucao; util para otimizar o pipeline.",
+            "exemplos": {"false": "Usar pre-processamento padrao", "true": "Otimizacao do pipeline espectral"},
+        },
+        "EN": {
+            "desc": "Automatically compares several preprocessing pipelines and reports the best.",
+            "impacto": "ANALYTICAL — increases execution time; useful to optimize the pipeline.",
+            "exemplos": {"false": "Use default preprocessing", "true": "Spectral pipeline optimization"},
+        },
+        "default": False, "range": "true | false",
     },
     "pasta_dados": {
-        "desc": "Pasta com os arquivos .dx (modo dx; uma subpasta por classe).",
-        "default": "dados",
-        "range": "Caminho valido no sistema",
-        "impacto": "ANALITICO — define os dados de entrada.",
-        "exemplos": {"dados": "Pasta padrao do projeto", "C:/meus_dados": "Pasta personalizada"},
+        "PT": {
+            "desc": "Pasta com os arquivos .dx de espectros FT-NIR (uma subpasta por classe/especie).",
+            "impacto": "ANALITICO — define os dados de entrada do pipeline.",
+            "exemplos": {"dados": "Pasta padrao do projeto", r"C:\meus_dados\oleos": "Caminho absoluto personalizado"},
+        },
+        "EN": {
+            "desc": "Folder with .dx FT-NIR spectral files (one subfolder per class/species).",
+            "impacto": "ANALYTICAL — defines the pipeline input data.",
+            "exemplos": {"dados": "Default project folder", r"C:\meus_dados\oleos": "Custom absolute path"},
+        },
+        "default": "dados", "range": "Valid system path",
     },
     "pasta_saida": {
-        "desc": "Pasta onde os resultados serao gravados.",
-        "default": "resultados",
-        "range": "Caminho valido no sistema",
-        "impacto": "ANALITICO — define onde as figuras e metricas sao salvas.",
-        "exemplos": {"resultados": "Pasta padrao", "C:/experimento_01": "Pasta de experimento especifico"},
+        "PT": {
+            "desc": "Pasta onde os resultados (figuras, metricas, relatorios) serao gravados.",
+            "impacto": "ANALITICO — define onde as saidas do pipeline sao salvas.",
+            "exemplos": {"resultados": "Pasta padrao", r"C:\experimento_01": "Experimento com nome especifico"},
+        },
+        "EN": {
+            "desc": "Folder where results (figures, metrics, reports) will be saved.",
+            "impacto": "ANALYTICAL — defines where pipeline outputs are saved.",
+            "exemplos": {"resultados": "Default folder", r"C:\experimento_01": "Specifically named experiment"},
+        },
+        "default": "resultados", "range": "Valid system path",
     },
     "modo_entrada": {
-        "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv | sintetico (teste).",
-        "default": "dx",
-        "range": "dx | csv | sintetico",
-        "impacto": "ANALITICO — define o formato de leitura dos dados.",
-        "exemplos": {"dx": "Espectros FT-NIR", "csv": "Tabela generica", "sintetico": "Dados de teste"},
+        "PT": {
+            "desc": "Origem dos dados de entrada: dx (espectros JCAMP-DX) | csv | sintetico (testes).",
+            "impacto": "ANALITICO — define o formato de leitura e parsing dos dados.",
+            "exemplos": {"dx": "Espectros FT-NIR (padrao GEAAp)", "csv": "Tabela generica com colunas espectrais", "sintetico": "Dados simulados para teste do pipeline"},
+        },
+        "EN": {
+            "desc": "Input data source: dx (JCAMP-DX spectra) | csv | synthetic (for testing).",
+            "impacto": "ANALYTICAL — defines the data reading and parsing format.",
+            "exemplos": {"dx": "FT-NIR spectra (GEAAp standard)", "csv": "Generic table with spectral columns", "sintetico": "Simulated data for pipeline testing"},
+        },
+        "default": "dx", "range": "dx | csv | sintetico",
     },
     "faixa_min_cm": {
-        "desc": "Inicio da faixa espectral util (cm-1).",
-        "default": 4000.0,
-        "range": "400-12000",
-        "impacto": "ANALITICO — restringe a regiao espectral analisada.",
-        "exemplos": {"4000": "Padrao NIR", "5500": "Regiao de combinacoes"},
+        "PT": {
+            "desc": "Limite inferior da faixa espectral analisada (numero de onda minimo, cm-1).",
+            "impacto": "ANALITICO — regioes abaixo deste valor sao descartadas.",
+            "exemplos": {"4000": "Padrao NIR (recomendado)", "5500": "Regiao de combinacoes apenas", "6000": "Sobretons superiores"},
+        },
+        "EN": {
+            "desc": "Lower bound of the analyzed spectral range (minimum wavenumber, cm-1).",
+            "impacto": "ANALYTICAL — regions below this value are discarded.",
+            "exemplos": {"4000": "Standard NIR (recommended)", "5500": "Combination region only", "6000": "Upper overtones"},
+        },
+        "default": 4000.0, "range": "400-12000",
     },
     "faixa_max_cm": {
-        "desc": "Fim da faixa espectral util (cm-1).",
-        "default": 10000.0,
-        "range": "400-12000",
-        "impacto": "ANALITICO — restringe a regiao espectral analisada.",
-        "exemplos": {"10000": "Padrao NIR", "7500": "NIR curto"},
+        "PT": {
+            "desc": "Limite superior da faixa espectral analisada (numero de onda maximo, cm-1).",
+            "impacto": "ANALITICO — regioes acima deste valor sao descartadas.",
+            "exemplos": {"10000": "Padrao NIR (recomendado)", "7500": "NIR curto", "12000": "NIR completo"},
+        },
+        "EN": {
+            "desc": "Upper bound of the analyzed spectral range (maximum wavenumber, cm-1).",
+            "impacto": "ANALYTICAL — regions above this value are discarded.",
+            "exemplos": {"10000": "Standard NIR (recommended)", "7500": "Short NIR", "12000": "Full NIR"},
+        },
+        "default": 10000.0, "range": "400-12000",
     },
     "excluir_classes": {
-        "desc": "Especies a remover da analise.",
-        "default": [],
-        "range": "Lista de nomes de classes",
-        "impacto": "ANALITICO — altera o conjunto de treinamento.",
-        "exemplos": {"[]": "Usar todas as classes", "[Copaiba]": "Remover Copaiba"},
+        "PT": {
+            "desc": "Lista de especies/classes a remover da analise (por nome exato).",
+            "impacto": "ANALITICO — altera o conjunto de treinamento e o numero de classes.",
+            "exemplos": {"[]": "Usar todas as classes disponiveis", "[Copaiba]": "Remover Copaiba (outlier composicional)", "[Copaiba, Palmiste]": "Remover multiplas classes"},
+        },
+        "EN": {
+            "desc": "List of species/classes to remove from analysis (by exact name).",
+            "impacto": "ANALYTICAL — changes the training set and number of classes.",
+            "exemplos": {"[]": "Use all available classes", "[Copaiba]": "Remove Copaiba (compositional outlier)", "[Copaiba, Palmiste]": "Remove multiple classes"},
+        },
+        "default": [], "range": "List of class names",
     },
     "teste_wold": {
-        "desc": "Rodar teste de Wold (intercepts R2Y/Q2Y para parsimonia).",
-        "default": True,
-        "range": "true | false",
-        "impacto": "ANALITICO — define o numero otimo de LVs (criterio Wold).",
-        "exemplos": {"true": "Recomendado", "false": "Economiza tempo"},
+        "PT": {
+            "desc": "Executa o criterio de parcimonia de Wold para selecao automatica do numero otimo de LVs.",
+            "impacto": "ANALITICO — define o numero de LVs usando tolerancia de 2% no RMSECV.",
+            "exemplos": {"true": "Recomendado (evita overfitting)", "false": "Usar max_lvs diretamente"},
+        },
+        "EN": {
+            "desc": "Runs Wold's parsimony criterion for automatic optimal number of LVs selection.",
+            "impacto": "ANALYTICAL — defines LV count using 2% RMSECV tolerance.",
+            "exemplos": {"true": "Recommended (prevents overfitting)", "false": "Use max_lvs directly"},
+        },
+        "default": True, "range": "true | false",
     },
     "teste_cv_anova": {
-        "desc": "Rodar CV-ANOVA (Eriksson) para significancia estatistica.",
-        "default": True,
-        "range": "true | false",
-        "impacto": "ANALITICO — testa significancia do modelo por ANOVA.",
-        "exemplos": {"true": "Publicacao", "false": "Exploracao"},
+        "PT": {
+            "desc": "Executa CV-ANOVA (Eriksson et al. 2008) para testar a significancia estatistica do modelo.",
+            "impacto": "ANALITICO — gera F-statistic e p-value de significancia.",
+            "exemplos": {"true": "Publicacao (obrigatorio)", "false": "Exploracao rapida"},
+        },
+        "EN": {
+            "desc": "Runs CV-ANOVA (Eriksson et al. 2008) to test statistical significance of the model.",
+            "impacto": "ANALYTICAL — generates F-statistic and significance p-value.",
+            "exemplos": {"true": "Publication (mandatory)", "false": "Quick exploration"},
+        },
+        "default": True, "range": "true | false",
     },
     "figuras_mostrar_marcadores": {
-        "desc": "Usar formas diferentes por classe nos graficos de score.",
-        "default": True,
-        "range": "true | false",
-        "impacto": "VISUAL — nao altera resultados analiticos.",
-        "exemplos": {"true": "Graficos mais informativos", "false": "Graficos mais limpos"},
+        "PT": {
+            "desc": "Usar formas diferentes (circulo, triangulo, quadrado) por classe nos graficos de score.",
+            "impacto": "VISUAL — nao altera resultados analiticos.",
+            "exemplos": {"true": "Graficos mais informativos e acessiveis", "false": "Graficos mais limpos e simples"},
+        },
+        "EN": {
+            "desc": "Use different shapes (circle, triangle, square) per class in score plots.",
+            "impacto": "VISUAL — does not affect analytical results.",
+            "exemplos": {"true": "More informative and accessible plots", "false": "Cleaner, simpler plots"},
+        },
+        "default": True, "range": "true | false",
     },
     "figuras_mostrar_elipses": {
-        "desc": "Desenhar elipses de confianca por grupo.",
-        "default": True,
-        "range": "true | false",
-        "impacto": "VISUAL — nao altera resultados analiticos.",
-        "exemplos": {"true": "Padrao para publicacao", "false": "Graficos mais simples"},
+        "PT": {
+            "desc": "Desenhar elipses de confianca de Hotelling T2 por grupo nos graficos de score.",
+            "impacto": "VISUAL — nao altera resultados analiticos.",
+            "exemplos": {"true": "Padrao para publicacao cientifica", "false": "Graficos mais simples"},
+        },
+        "EN": {
+            "desc": "Draw Hotelling T2 confidence ellipses per group in score plots.",
+            "impacto": "VISUAL — does not affect analytical results.",
+            "exemplos": {"true": "Standard for scientific publication", "false": "Simpler plots"},
+        },
+        "default": True, "range": "true | false",
     },
     "abrir_figuras_na_tela": {
-        "desc": "Abrir cada figura na tela ao gerar (alem de salvar em arquivo).",
-        "default": False,
-        "range": "true | false",
-        "impacto": "VISUAL — nao altera analise.",
-        "exemplos": {"false": "Execucao automatizada", "true": "Revisao interativa"},
+        "PT": {
+            "desc": "Abrir cada figura na tela ao gerar (alem de salvar automaticamente em arquivo).",
+            "impacto": "VISUAL — nao altera analise.",
+            "exemplos": {"false": "Execucao automatizada sem interrupcoes", "true": "Revisao interativa das figuras"},
+        },
+        "EN": {
+            "desc": "Open each figure on screen when generated (in addition to saving to file).",
+            "impacto": "VISUAL — does not affect analysis.",
+            "exemplos": {"false": "Automated execution without interruptions", "true": "Interactive figure review"},
+        },
+        "default": False, "range": "true | false",
     },
     "arquivo_csv": {
-        "desc": "Caminho do CSV (modo csv): colunas espectrais + 1 coluna de classe.",
-        "default": "",
-        "range": "Caminho valido (.csv)",
-        "impacto": "ANALITICO — define os dados de entrada no modo CSV.",
-        "exemplos": {"dados.csv": "Arquivo na pasta atual", "C:/dados/amostras.csv": "Caminho completo"},
+        "PT": {
+            "desc": "Caminho do arquivo CSV (no modo csv): deve conter colunas espectrais + 1 coluna de classe.",
+            "impacto": "ANALITICO — define os dados de entrada no modo CSV.",
+            "exemplos": {"dados.csv": "Arquivo na pasta atual", r"C:\dados\amostras.csv": "Caminho absoluto"},
+        },
+        "EN": {
+            "desc": "CSV file path (csv mode): must contain spectral columns + 1 class column.",
+            "impacto": "ANALYTICAL — defines input data in CSV mode.",
+            "exemplos": {"dados.csv": "File in current folder", r"C:\dados\amostras.csv": "Absolute path"},
+        },
+        "default": "", "range": "Valid .csv path",
     },
     "coluna_classe": {
-        "desc": "Nome da coluna de classe/rotulo no CSV.",
-        "default": "classe",
-        "range": "Nome de coluna existente no CSV",
-        "impacto": "ANALITICO — define o alvo de classificacao.",
-        "exemplos": {"classe": "Nome padrao", "especie": "Nome alternativo"},
+        "PT": {
+            "desc": "Nome exato da coluna de classe/rotulo no arquivo CSV.",
+            "impacto": "ANALITICO — define o alvo de classificacao.",
+            "exemplos": {"classe": "Nome padrao", "especie": "Nome alternativo", "label": "Nome em ingles"},
+        },
+        "EN": {
+            "desc": "Exact name of the class/label column in the CSV file.",
+            "impacto": "ANALYTICAL — defines the classification target.",
+            "exemplos": {"classe": "Default name (Portuguese)", "especie": "Alternative name", "label": "English name"},
+        },
+        "default": "classe", "range": "Existing column name in CSV",
     },
     "coluna_concentracao": {
-        "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver).",
-        "default": "",
-        "range": "Nome de coluna ou vazio",
-        "impacto": "ANALITICO — usado no nivel N3 (regressao).",
-        "exemplos": {"": "Sem concentracao (N1/N2)", "conc": "Com concentracao (N3)"},
+        "PT": {
+            "desc": "Nome da coluna de concentracao no CSV (deixe vazio se nao houver).",
+            "impacto": "ANALITICO — usado no nivel N3 (regressao de adulterantes).",
+            "exemplos": {"": "Sem concentracao — use para N1/N2", "conc": "Com concentracao — use para N3"},
+        },
+        "EN": {
+            "desc": "Name of the concentration column in CSV (leave empty if not present).",
+            "impacto": "ANALYTICAL — used at level N3 (adulterant regression).",
+            "exemplos": {"": "No concentration — use for N1/N2", "conc": "With concentration — use for N3"},
+        },
+        "default": "", "range": "Column name or empty",
     },
     "monte_carlo_incluir_todos": {
-        "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento).",
-        "default": False,
-        "range": "true | false",
-        "impacto": "AVANCADO — aumenta muito o tempo de MC CV.",
-        "exemplos": {"false": "Apenas PLS-DA", "true": "Comparacao completa"},
+        "PT": {
+            "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (muito mais lento).",
+            "impacto": "AVANCADO — aumenta consideravelmente o tempo do Monte Carlo CV.",
+            "exemplos": {"false": "Apenas PLS-DA (recomendado)", "true": "Comparacao completa de classificadores"},
+        },
+        "EN": {
+            "desc": "MC CV: include SVM RBF / RF / XGBoost in addition to PLS-DA (much slower).",
+            "impacto": "ADVANCED — considerably increases Monte Carlo CV time.",
+            "exemplos": {"false": "PLS-DA only (recommended)", "true": "Full classifier comparison"},
+        },
+        "default": False, "range": "true | false",
     },
 }
 
@@ -406,7 +706,7 @@ PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Mapeamento de menus → campos (chaves do _CONFIG_SPEC)
+# Mapeamento de menus -> campos (chaves do _CONFIG_SPEC)
 # ---------------------------------------------------------------------------
 MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida"],
@@ -423,12 +723,12 @@ MENU_FIELDS: Dict[str, list] = {
                      "formato_figura", "dpi", "abrir_figuras_na_tela"],
 }
 
-# Índice inverso: chave -> especificação do _CONFIG_SPEC
+# Indice inverso: chave -> especificacao do _CONFIG_SPEC
 _SPEC_BY_KEY: Dict[str, Dict[str, Any]] = {s["key"]: s for s in _CONFIG_SPEC}
 
 
 # ===========================================================================
-# Utilitários de terminal
+# Utilitarios de terminal
 # ===========================================================================
 
 def cls() -> None:
@@ -437,7 +737,7 @@ def cls() -> None:
 
 
 def _c(color_key: str, text: str) -> str:
-    """Envolve texto com código ANSI de cor."""
+    """Envolve texto com codigo ANSI de cor."""
     return f"{RISK_COLOR.get(color_key, '')}{text}{RISK_COLOR['RESET']}"
 
 
@@ -448,51 +748,87 @@ def _risk_label(key: str) -> str:
 
 
 def _get_val(cfg: Config, key: str) -> Any:
-    """Lê o valor atual do campo na Config."""
+    """Le o valor atual do campo na Config, com alias de exibicao para modo_ddsimca."""
     spec = _SPEC_BY_KEY.get(key)
     if spec is None:
         return "?"
-    return _attr_para_yaml(spec, cfg)
+    raw = _attr_para_yaml(spec, cfg)
+    if key == "modo_ddsimca":
+        lang = _lang()
+        return _DDSIMCA_DISPLAY.get(lang, {}).get(str(raw), raw)
+    return raw
 
 
 def _set_val(cfg: Config, key: str, raw: str) -> None:
-    """Converte raw string e seta no atributo da Config."""
+    """Converte raw string e seta no atributo da Config, com alias de entrada para modo_ddsimca."""
     spec = _SPEC_BY_KEY[key]
+    if key == "modo_ddsimca":
+        interno = _DDSIMCA_INPUT.get(raw.lower().strip())
+        if interno is None:
+            raise ValueError(
+                f"Valor invalido para modo_ddsimca: '{raw}'. "
+                "Use: autenticacao | exploratorio (ou authentication | exploratory)"
+            )
+        raw = interno
     valor = _coagir_valor(spec, raw)
     setattr(cfg, spec["attr"], valor)
 
 
-def _status_dados(cfg: Config, lang: str) -> str:
+def _status_dados(cfg: Config) -> str:
     """Retorna string de status da pasta de dados."""
+    lang = _lang()
+    t = I18N[lang]
     pasta = getattr(cfg, "pasta_entrada", "dados")
     if pasta and os.path.isdir(str(pasta)):
-        return I18N[lang]["status_ok"] + f" ({pasta})"
-    return I18N[lang]["status_erro"] + f" ({pasta})"
+        return _c("VISUAL", t["status_ok"]) + f" ({pasta})"
+    return _c("AVANCADO", t["status_erro"]) + f" ({pasta})"
 
 
 def _largura() -> int:
     try:
-        return min(os.get_terminal_size().columns, 60)
+        return min(os.get_terminal_size().columns, 62)
     except OSError:
-        return 60
+        return 62
+
+
+def _wrap_line(text: str, width: int, indent: int = 4) -> list:
+    """Quebra texto em linhas de no maximo `width` caracteres com indentacao."""
+    words = text.split()
+    lines = []
+    current = " " * indent
+    for word in words:
+        if len(current) + len(word) + 1 <= width:
+            current += ("" if current.strip() == "" else " ") + word
+        else:
+            lines.append(current)
+            current = " " * indent + word
+    if current.strip():
+        lines.append(current)
+    return lines or [" " * indent]
 
 
 # ===========================================================================
-# Cabeçalho
+# Cabecalho
 # ===========================================================================
 
-def print_header(cfg: Config, lang: str) -> None:
-    """Imprime o cabeçalho com título, idioma atual e status dos dados."""
+def print_header(cfg: Config) -> None:
+    """Imprime o cabecalho AmaNIR com titulo, idioma atual e status dos dados."""
+    lang = _lang()
     w = 60
-    titulo = I18N[lang]["titulo"]
-    subtitulo = I18N[lang]["subtitulo"]
-    status = _status_dados(cfg, lang)
+    linha1 = "AmaNIR — Plataforma Quimiometrica FT-NIR"
+    linha2 = "GEAAp / UFPA  |  Oleos Vegetais Amazonicos"
+    if lang == "EN":
+        linha1 = "AmaNIR — FT-NIR Chemometrics Platform"
+        linha2 = "GEAAp / UFPA  |  Amazonian Vegetable Oils"
+    status = _status_dados(cfg)
     idioma_str = f"[{lang}]"
     print("\n" + "╔" + "═" * (w - 2) + "╗")
-    print("║" + titulo.center(w - 2) + "║")
-    print("║" + subtitulo.center(w - 2) + "║")
+    print("║" + linha1.center(w - 2) + "║")
+    print("║" + linha2.center(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    print("║" + f"  {status}".ljust(w - 5) + idioma_str + "  ║")
+    status_raw = f"  {status}"
+    # Linha com status e idioma, considerando escapes ANSI
+    print("║" + status_raw.ljust(w - 3 + 14) + idioma_str + " ║")
     print("╚" + "═" * (w - 2) + "╝")
 
 
@@ -500,8 +836,9 @@ def print_header(cfg: Config, lang: str) -> None:
 # Menu principal
 # ===========================================================================
 
-def print_main_menu(lang: str) -> None:
-    """Imprime o menu principal hierárquico com borda ASCII."""
+def print_main_menu() -> None:
+    """Imprime o menu principal hierarquico com borda ASCII."""
+    lang = _lang()
     t = I18N[lang]
     w = 60
     print("╔" + "═" * (w - 2) + "╗")
@@ -526,14 +863,96 @@ def print_main_menu(lang: str) -> None:
 
 
 # ===========================================================================
-# Edição genérica de campo (com confirmação de risco)
+# Painel de ajuda expandido
 # ===========================================================================
 
-def _editar_campo_cli(cfg: Config, key: str, lang: str) -> bool:
+def _mostrar_painel_ajuda(key: str) -> None:
+    """Exibe painel de ajuda completo com borda ASCII usando toda a largura do terminal."""
+    lang = _lang()
+    t = I18N[lang]
+    h = HELP_DB.get(key)
+    if h is None:
+        print(f"  Sem ajuda disponivel para '{key}'.")
+        return
+
+    h_lang = h.get(lang, h.get("PT", {}))
+    desc = h_lang.get("desc", "—")
+    impacto = h_lang.get("impacto", "—")
+    exemplos = h_lang.get("exemplos", {})
+    default_val = h.get("default", "—")
+    range_val = h.get("range", "—")
+    risk = RISK_CLASS.get(key, "ANALITICO")
+
+    w = _largura()
+    inner = w - 4  # espaco interior da caixa (sem bordas e espacos)
+
+    risk_lbl = f"[{risk}]"
+    risk_cor = RISK_COLOR.get(risk, "")
+    rst = RISK_COLOR["RESET"]
+
+    titulo_linha = f"  {key}"
+    risco_alinhado = f"{risk_cor}{risk_lbl}{rst}"
+    # Linha titulo
+    print("  " + "┌" + "─" * (w - 4) + "┐")
+    # Titulo com label de risco a direita
+    espaco = w - 4 - len(key) - 2 - len(risk_lbl) - 2
+    if espaco < 1:
+        espaco = 1
+    linha_titulo = f"  {key}" + " " * espaco + risk_cor + risk_lbl + rst + "  "
+    print("  │" + linha_titulo + "│")
+    print("  ├" + "─" * (w - 4) + "┤")
+
+    # Descricao
+    desc_label = f"  {t['descricao']}:"
+    print("  │" + desc_label.ljust(w - 4) + "│")
+    for dline in _wrap_line(desc, w - 6, indent=4):
+        print("  │" + dline.ljust(w - 4) + "│")
+
+    print("  │" + " " * (w - 4) + "│")
+
+    # Padrao e faixa
+    pad_fai = f"    {t['padrao']}: {default_val}   |   {t['faixa']}: {range_val}"
+    print("  │" + pad_fai.ljust(w - 4) + "│")
+
+    print("  │" + " " * (w - 4) + "│")
+
+    # Impacto
+    imp_label = f"  {t['impacto']}:"
+    print("  │" + imp_label.ljust(w - 4) + "│")
+    for iline in _wrap_line(impacto, w - 6, indent=4):
+        print("  │" + iline.ljust(w - 4) + "│")
+
+    if exemplos:
+        print("  │" + " " * (w - 4) + "│")
+        ex_label = f"  {t['exemplos']}:"
+        print("  │" + ex_label.ljust(w - 4) + "│")
+        for val_ex, desc_ex in exemplos.items():
+            ex_linha = f"    {val_ex:>12}  ->  {desc_ex}"
+            # Truncar se necessario
+            if len(ex_linha) > w - 4:
+                ex_linha = ex_linha[: w - 7] + "..."
+            print("  │" + ex_linha.ljust(w - 4) + "│")
+
+    print("  " + "└" + "─" * (w - 4) + "┘")
+
+
+def _mostrar_help_campo(key: str) -> None:
+    """Exibe o HELP_DB completo para um campo (interface legada compativel)."""
+    _mostrar_painel_ajuda(key)
+    print()
+
+
+# ===========================================================================
+# Edicao generica de campo (com confirmacao de risco)
+# ===========================================================================
+
+def _editar_campo_cli(cfg: Config, key: str) -> bool:
     """
-    Mostra valor atual, pede novo valor, aplica confirmação de risco.
+    Mostra painel de ajuda + valor atual, pede novo valor, aplica confirmacao de risco.
     Retorna True se o campo foi atualizado, False se cancelado.
     """
+    lang = _lang()
+    t = I18N[lang]
     spec = _SPEC_BY_KEY.get(key)
     if spec is None:
         print(f"  Campo '{key}' nao encontrado.")
@@ -541,82 +960,80 @@ def _editar_campo_cli(cfg: Config, key: str, lang: str) -> bool:
 
     atual = _get_val(cfg, key)
     risk = RISK_CLASS.get(key, "ANALITICO")
-    risk_lbl = _risk_label(key)
 
-    print(f"\n  {risk_lbl} {key}")
-    if key in HELP_DB:
-        print(f"  Desc: {HELP_DB[key]['desc']}")
-        if HELP_DB[key].get("range"):
-            print(f"  Faixa: {HELP_DB[key]['range']}")
+    # Mostrar painel de ajuda expandido antes do prompt
+    print()
+    _mostrar_painel_ajuda(key)
+
     if spec.get("opcoes"):
-        print(f"  Opcoes: {' | '.join(str(o) for o in spec['opcoes'])}")
-    print(f"  Atual: {_fmt_yaml(atual)}")
+        # Para modo_ddsimca, mostrar aliases amigaveis
+        if key == "modo_ddsimca":
+            disp = _DDSIMCA_DISPLAY.get(lang, {})
+            opcoes_str = " | ".join(disp.get(o, o) for o in spec["opcoes"])
+        else:
+            opcoes_str = " | ".join(str(o) for o in spec["opcoes"])
+        print(f"  Opcoes: {opcoes_str}")
+
+    print(f"  {t['atual']}: {_fmt_yaml(atual)}")
 
     try:
-        novo_raw = input("  Novo valor (Enter = manter): ").strip()
+        novo_raw = input(f"  {t['novo_valor']}").strip()
     except (EOFError, KeyboardInterrupt):
         print()
         return False
 
     if novo_raw == "":
-        print("  Mantido.")
+        print(f"  {t['mantido']}")
         return False
 
     # Ajuda inline
     if novo_raw.lower() in ("?", "help"):
-        _mostrar_help_campo(key, lang)
+        _mostrar_painel_ajuda(key)
         return False
 
-    # Confirmação para ANALITICO / AVANCADO
+    # Confirmacao para ANALITICO / AVANCADO
     if risk == "AVANCADO":
-        print(_c("AVANCADO", f"\n  {I18N[lang]['aviso_avancado']}"))
+        print(_c("AVANCADO", f"\n  {t['aviso_avancado']}"))
     if risk in ("ANALITICO", "AVANCADO"):
         try:
-            conf = input(f"  {I18N[lang]['aviso_analitico']}").strip().lower()
+            conf = input(f"  {t['aviso_analitico']}").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print()
             return False
-        if conf != I18N[lang]["confirmar_sn"]:
-            print(f"  {I18N[lang]['cancelado']}")
+        if conf != t["confirmar_sn"]:
+            print(f"  {t['cancelado']}")
             return False
 
     try:
         _set_val(cfg, key, novo_raw)
         novo_val = _get_val(cfg, key)
-        msg = I18N[lang]["campo_atualizado"].format(campo=key, valor=_fmt_yaml(novo_val))
-        print(f"  {msg}")
+        msg = t["campo_atualizado"].format(campo=key, valor=_fmt_yaml(novo_val))
+        print(f"  {_c('VISUAL', msg)}")
         return True
     except (ValueError, TypeError) as e:
         print(f"  Erro: {e}")
         return False
 
 
-def _mostrar_help_campo(key: str, lang: str) -> None:  # noqa: ARG001
-    """Exibe o HELP_DB completo para um campo."""
-    h = HELP_DB.get(key)
-    if h is None:
-        print(f"  Sem ajuda disponivel para '{key}'.")
-        return
-    print(f"\n  === Ajuda: {key} ===")
-    print(f"  Descricao : {h['desc']}")
-    print(f"  Padrao    : {h['default']}")
-    print(f"  Faixa     : {h.get('range', 'N/A')}")
-    print(f"  Impacto   : {h['impacto']}")
-    if h.get("exemplos"):
-        print("  Exemplos  :")
-        for val, desc in h["exemplos"].items():
-            print(f"    {val:>8} → {desc}")
-    print()
-
-
-def _submenu_campos(cfg: Config, lang: str, titulo: str, campos: list) -> None:
-    """Loop genérico para exibir e editar um grupo de campos."""
+def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "") -> None:
+    """Loop generico para exibir e editar um grupo de campos.
+    Inclui [I] Idioma na barra de rodape de cada submenu.
+    """
     while True:
+        lang = _lang()
+        t = I18N[lang]
         cls()
-        print_header(cfg, lang)
+        print_header(cfg)
         w = 60
         print("╔" + "═" * (w - 2) + "╗")
         print("║" + f"  {titulo}".ljust(w - 2) + "║")
+        # Exibir descricao da secao, se disponivel
+        if secao_key and secao_key in SECTION_DESC:
+            desc_sec = SECTION_DESC[secao_key].get(lang, "")
+            if desc_sec:
+                # Quebrar descricao em linhas se necessario
+                for dline in _wrap_line(desc_sec, w - 6, indent=2):
+                    print("║" + _c("DIM", dline).ljust(w + 7) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         for i, key in enumerate(campos, 1):
             val_str = _fmt_yaml(_get_val(cfg, key))
@@ -627,60 +1044,78 @@ def _submenu_campos(cfg: Config, lang: str, titulo: str, campos: list) -> None:
             linha = f"  [{i:2d}] {lbl} {key:<32s}: {val_str}"
             print("║" + linha.ljust(w + 10) + "║")  # +10 para escapes ANSI
         print("╠" + "═" * (w - 2) + "╣")
-        print("║" + "  [?] Ajuda sobre campo   [0] Voltar".ljust(w - 2) + "║")
+        rodape = f"  [?] {t['ajuda_campo']}   [I] {t['idioma']}   [0] {t['voltar']}"
+        print("║" + rodape.ljust(w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
             escolha = input("  Opcao: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
+
         if escolha == "0" or escolha.lower() == "q":
             break
+
+        # Troca de idioma dentro do submenu
+        if escolha.upper() == "I":
+            _toggle_idioma()
+            continue  # redesenha com novo idioma
+
         # Ajuda por nome de campo
         if escolha.lower().startswith("?") or escolha.lower().startswith("help"):
             partes = escolha.split(maxsplit=1)
             campo_help = partes[1] if len(partes) > 1 else ""
             if campo_help:
-                _mostrar_help_campo(campo_help.strip(), lang)
+                _mostrar_help_campo(campo_help.strip())
             else:
-                _mostrar_help_campo("", lang)
-            input("  [Enter para continuar]")
+                # Listar campos disponiveis
+                print(f"\n  Campos neste menu: {', '.join(campos)}")
+                print("  Ex: ? dpi")
+            input(f"  [{t['continuar']}]")
             continue
+
         if escolha.isdigit() and 1 <= int(escolha) <= len(campos):
             key = campos[int(escolha) - 1]
-            _editar_campo_cli(cfg, key, lang)
-            input("  [Enter para continuar]")
+            _editar_campo_cli(cfg, key)
+            input(f"  [{t['continuar']}]")
         else:
-            print(f"  {I18N[lang]['invalido']}")
-            input("  [Enter para continuar]")
+            print(f"  {t['invalido']}")
+            input(f"  [{t['continuar']}]")
 
 
 # ===========================================================================
-# Submenus temáticos
+# Submenus tematicos
 # ===========================================================================
 
-def menu_projeto(cfg: Config, lang: str) -> None:
+def menu_projeto(cfg: Config) -> None:
     """Menu 1 — Projeto: pasta_dados e pasta_saida."""
-    _submenu_campos(cfg, lang, I18N[lang]["menu_projeto"],
-                    MENU_FIELDS["projeto"])
+    lang = _lang()
+    _submenu_campos(cfg, I18N[lang]["menu_projeto"], MENU_FIELDS["projeto"], "projeto")
 
 
-def menu_dados(cfg: Config, lang: str) -> None:
-    """Menu 2 — Dados: modo, CSV, colunas, faixa espectral, exclusões."""
-    _submenu_campos(cfg, lang, I18N[lang]["menu_dados"],
-                    MENU_FIELDS["dados"])
+def menu_dados(cfg: Config) -> None:
+    """Menu 2 — Dados: modo, CSV, colunas, faixa espectral, exclusoes."""
+    lang = _lang()
+    _submenu_campos(cfg, I18N[lang]["menu_dados"], MENU_FIELDS["dados"], "dados")
 
 
-def menu_preproc(cfg: Config, lang: str) -> None:
-    """Menu 3 — Pré-processamento: pipeline + comparação."""
+def menu_preproc(cfg: Config) -> None:
+    """Menu 3 — Pre-processamento: pipeline + comparacao."""
     while True:
+        lang = _lang()
+        t = I18N[lang]
         cls()
-        print_header(cfg, lang)
+        print_header(cfg)
         w = 60
-        titulo = I18N[lang]["menu_preproc"]
+        titulo = t["menu_preproc"]
         campos = MENU_FIELDS["preproc"]
         print("╔" + "═" * (w - 2) + "╗")
         print("║" + f"  {titulo}".ljust(w - 2) + "║")
+        # Descricao da secao
+        desc_sec = SECTION_DESC["preproc"].get(lang, "")
+        if desc_sec:
+            for dline in _wrap_line(desc_sec, w - 6, indent=2):
+                print("║" + _c("DIM", dline).ljust(w + 7) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         # Mostrar preview do pipeline atual
         pp_atual = _fmt_yaml(_get_val(cfg, "pre_processamento"))
@@ -696,7 +1131,8 @@ def menu_preproc(cfg: Config, lang: str) -> None:
             linha = f"  [{i:2d}] {lbl} {key:<32s}: {val_str}"
             print("║" + linha.ljust(w + 10) + "║")
         print("╠" + "═" * (w - 2) + "╣")
-        print("║" + "  [0] Voltar".ljust(w - 2) + "║")
+        rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
+        print("║" + rodape.ljust(w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -705,54 +1141,64 @@ def menu_preproc(cfg: Config, lang: str) -> None:
             break
         if escolha == "0" or escolha.lower() == "q":
             break
+        if escolha.upper() == "I":
+            _toggle_idioma()
+            continue
         if escolha.isdigit() and 1 <= int(escolha) <= len(campos):
             key = campos[int(escolha) - 1]
-            _editar_campo_cli(cfg, key, lang)
-            input("  [Enter para continuar]")
+            _editar_campo_cli(cfg, key)
+            input(f"  [{t['continuar']}]")
         else:
-            print(f"  {I18N[lang]['invalido']}")
-            input("  [Enter para continuar]")
+            print(f"  {t['invalido']}")
+            input(f"  [{t['continuar']}]")
 
 
-def menu_modelagem(cfg: Config, lang: str) -> None:
+def menu_modelagem(cfg: Config) -> None:
     """Menu 4 — Modelagem."""
-    _submenu_campos(cfg, lang, I18N[lang]["menu_modelo"],
-                    MENU_FIELDS["modelo"])
+    lang = _lang()
+    _submenu_campos(cfg, I18N[lang]["menu_modelo"], MENU_FIELDS["modelo"], "modelo")
 
 
-def menu_validacao(cfg: Config, lang: str) -> None:
-    """Menu 5 — Validação."""
-    _submenu_campos(cfg, lang, I18N[lang]["menu_valid"],
-                    MENU_FIELDS["validacao"])
+def menu_validacao(cfg: Config) -> None:
+    """Menu 5 — Validacao."""
+    lang = _lang()
+    _submenu_campos(cfg, I18N[lang]["menu_valid"], MENU_FIELDS["validacao"], "validacao")
 
 
-def menu_avancado(cfg: Config, lang: str) -> None:
-    """Menu 6 — Métodos Avançados (benchmark, MC, SHAP)."""
-    _submenu_campos(cfg, lang, I18N[lang]["menu_avancado"],
-                    MENU_FIELDS["avancado"])
+def menu_avancado(cfg: Config) -> None:
+    """Menu 6 — Metodos Avancados (benchmark, MC, SHAP)."""
+    lang = _lang()
+    _submenu_campos(cfg, I18N[lang]["menu_avancado"], MENU_FIELDS["avancado"], "avancado")
 
 
-def menu_visualizacao(cfg: Config, lang: str) -> None:
-    """Menu 7 — Visualização (apenas campos VISUAL)."""
-    _submenu_campos(cfg, lang, I18N[lang]["menu_viz"],
-                    MENU_FIELDS["visualizacao"])
+def menu_visualizacao(cfg: Config) -> None:
+    """Menu 7 — Visualizacao (apenas campos VISUAL)."""
+    lang = _lang()
+    _submenu_campos(cfg, I18N[lang]["menu_viz"], MENU_FIELDS["visualizacao"], "visualizacao")
 
 
 # ===========================================================================
 # Menu de Ajuda
 # ===========================================================================
 
-def menu_ajuda(lang: str) -> None:
+def menu_ajuda() -> None:
     """Menu 8 — Sistema de ajuda. Suporta 'help <topico>' ou '?' para listar."""
     while True:
+        lang = _lang()
+        t = I18N[lang]
         cls()
         w = 60
         print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {I18N[lang]['menu_ajuda']}".ljust(w - 2) + "║")
+        print("║" + f"  {t['menu_ajuda']}".ljust(w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
-        print("║" + "  Digite o nome do parametro para ver detalhes.".ljust(w - 2) + "║")
-        print("║" + "  Exemplos: dpi  |  benchmark  |  pre_processamento".ljust(w - 2) + "║")
-        print("║" + "  [L] Listar todos   [0] Voltar".ljust(w - 2) + "║")
+        if lang == "PT":
+            print("║" + "  Digite o nome do parametro para ver detalhes.".ljust(w - 2) + "║")
+            print("║" + "  Exemplos: dpi  |  benchmark  |  pre_processamento".ljust(w - 2) + "║")
+        else:
+            print("║" + "  Type the parameter name to see details.".ljust(w - 2) + "║")
+            print("║" + "  Examples: dpi  |  benchmark  |  pre_processamento".ljust(w - 2) + "║")
+        rodape = f"  [L] {t['listar_todos']}   [I] {t['idioma']}   [0] {t['voltar']}"
+        print("║" + rodape.ljust(w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -761,6 +1207,9 @@ def menu_ajuda(lang: str) -> None:
             break
         if entrada == "0" or entrada.lower() == "q":
             break
+        if entrada.upper() == "I":
+            _toggle_idioma()
+            continue
         if entrada.lower() == "l":
             cls()
             print(f"\n  Parametros com ajuda disponivel ({len(HELP_DB)} total):\n")
@@ -768,44 +1217,53 @@ def menu_ajuda(lang: str) -> None:
                 risk = RISK_CLASS.get(k, "ANALITICO")
                 cor = RISK_COLOR.get(risk, "")
                 rst = RISK_COLOR["RESET"]
-                print(f"    {cor}{k:<36s}{rst}  {HELP_DB[k]['desc'][:40]}")
+                h_lang = HELP_DB[k].get(lang, HELP_DB[k].get("PT", {}))
+                desc_short = h_lang.get("desc", "")[:40] if isinstance(h_lang, dict) else ""
+                print(f"    {cor}{k:<36s}{rst}  {desc_short}")
             print()
-            input("  [Enter para continuar]")
+            input(f"  [{t['continuar']}]")
             continue
         # Permite "help benchmark" ou apenas "benchmark"
         topico = entrada.lower().replace("help", "").replace("?", "").strip()
         if topico:
-            _mostrar_help_campo(topico, lang)
+            _mostrar_help_campo(topico)
         else:
-            print("  Digite um nome de parametro. Ex: dpi")
-        input("  [Enter para continuar]")
+            if lang == "PT":
+                print("  Digite um nome de parametro. Ex: dpi")
+            else:
+                print("  Type a parameter name. Ex: dpi")
+        input(f"  [{t['continuar']}]")
 
 
 # ===========================================================================
 # Menu de Perfis
 # ===========================================================================
 
-def menu_perfis(cfg: Config, lang: str) -> None:
+def menu_perfis(cfg: Config) -> None:
     """Lista PROFILES e permite carregar um deles na Config."""
     nomes = list(PROFILES.keys())
     while True:
+        lang = _lang()
+        t = I18N[lang]
         cls()
         w = 60
         print("╔" + "═" * (w - 2) + "╗")
-        print("║" + f"  {I18N[lang]['perfis']}".ljust(w - 2) + "║")
+        print("║" + f"  {t['perfis']}".ljust(w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         for i, nome in enumerate(nomes, 1):
             print("║" + f"  [{i}] {nome}".ljust(w - 2) + "║")
-        # Perfis salvos pelo usuário
+        # Perfis salvos pelo usuario
         perfis_usuario = _listar_perfis_salvos()
         if perfis_usuario:
             print("╠" + "═" * (w - 2) + "╣")
-            print("║" + "  Perfis salvos pelo usuario:".ljust(w - 2) + "║")
+            label_salvos = "  Perfis salvos pelo usuario:" if lang == "PT" else "  User saved profiles:"
+            print("║" + label_salvos.ljust(w - 2) + "║")
             base = len(nomes)
             for j, nome_u in enumerate(perfis_usuario, base + 1):
                 print("║" + f"  [{j}] {nome_u} (usuario)".ljust(w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
-        print("║" + "  [0] Voltar".ljust(w - 2) + "║")
+        rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
+        print("║" + rodape.ljust(w - 2) + "║")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
@@ -814,25 +1272,28 @@ def menu_perfis(cfg: Config, lang: str) -> None:
             break
         if escolha == "0" or escolha.lower() == "q":
             break
+        if escolha.upper() == "I":
+            _toggle_idioma()
+            continue
         if escolha.isdigit():
             n = int(escolha)
             if 1 <= n <= len(nomes):
                 nome_perfil = nomes[n - 1]
-                _aplicar_perfil(cfg, PROFILES[nome_perfil], lang)
-                input("  [Enter para continuar]")
+                _aplicar_perfil(cfg, PROFILES[nome_perfil])
+                input(f"  [{t['continuar']}]")
             elif perfis_usuario and len(nomes) < n <= len(nomes) + len(perfis_usuario):
                 nome_u = perfis_usuario[n - len(nomes) - 1]
-                carregar_perfil(nome_u, cfg, lang)
-                input("  [Enter para continuar]")
+                carregar_perfil(nome_u, cfg)
+                input(f"  [{t['continuar']}]")
             else:
-                print(f"  {I18N[lang]['invalido']}")
-                input("  [Enter para continuar]")
+                print(f"  {t['invalido']}")
+                input(f"  [{t['continuar']}]")
         else:
-            print(f"  {I18N[lang]['invalido']}")
-            input("  [Enter para continuar]")
+            print(f"  {t['invalido']}")
+            input(f"  [{t['continuar']}]")
 
 
-def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any], lang: str) -> None:
+def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any]) -> None:
     """Aplica os valores de um perfil na Config."""
     for key, val in perfil.items():
         spec = _SPEC_BY_KEY.get(key)
@@ -843,7 +1304,9 @@ def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any], lang: str) -> None:
             setattr(cfg, spec["attr"], valor)
         except (ValueError, TypeError):
             pass
-    print("  Perfil aplicado com sucesso.")
+    lang = _lang()
+    msg = "  Perfil aplicado com sucesso." if lang == "PT" else "  Profile applied successfully."
+    print(msg)
 
 
 def _listar_perfis_salvos() -> list:
@@ -854,20 +1317,23 @@ def _listar_perfis_salvos() -> list:
 
 
 # ===========================================================================
-# Salvar / Carregar perfil do usuário
+# Salvar / Carregar perfil do usuario
 # ===========================================================================
 
-def salvar_perfil(cfg: Config, lang: str) -> None:
+def salvar_perfil(cfg: Config) -> None:
     """Salva a Config atual como JSON em perfis/<nome>.json."""
+    lang = _lang()
     _PERFIS_DIR.mkdir(parents=True, exist_ok=True)
     print()
+    prompt = "  Nome do perfil (sem espacos): " if lang == "PT" else "  Profile name (no spaces): "
     try:
-        nome = input("  Nome do perfil (sem espacos): ").strip()
+        nome = input(prompt).strip()
     except (EOFError, KeyboardInterrupt):
         print()
         return
     if not nome:
-        print("  Nome vazio. Operacao cancelada.")
+        msg = "  Nome vazio. Operacao cancelada." if lang == "PT" else "  Empty name. Operation cancelled."
+        print(msg)
         return
     # Sanitizar nome
     nome_arquivo = "".join(c if c.isalnum() or c in "-_" else "_" for c in nome)
@@ -877,37 +1343,51 @@ def salvar_perfil(cfg: Config, lang: str) -> None:
     caminho = _PERFIS_DIR / f"{nome_arquivo}.json"
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
-    print(f"  Perfil salvo em: {caminho}")
+    msg = f"  Perfil salvo em: {caminho}" if lang == "PT" else f"  Profile saved to: {caminho}"
+    print(msg)
 
 
-def carregar_perfil(nome: str, cfg: Config, lang: str) -> None:
+def carregar_perfil(nome: str, cfg: Config) -> None:
     """Carrega um perfil JSON de perfis/<nome>.json para a Config."""
+    lang = _lang()
     caminho = _PERFIS_DIR / f"{nome}.json"
     if not caminho.exists():
-        print(f"  Perfil '{nome}' nao encontrado em {_PERFIS_DIR}.")
+        if lang == "PT":
+            print(f"  Perfil '{nome}' nao encontrado em {_PERFIS_DIR}.")
+        else:
+            print(f"  Profile '{nome}' not found in {_PERFIS_DIR}.")
         return
     with open(caminho, "r", encoding="utf-8") as f:
         dados = json.load(f)
-    _aplicar_perfil(cfg, dados, lang)
-    print(f"  Perfil '{nome}' carregado.")
+    _aplicar_perfil(cfg, dados)
+    msg = f"  Perfil '{nome}' carregado." if lang == "PT" else f"  Profile '{nome}' loaded."
+    print(msg)
 
 
 # ===========================================================================
 # Salvar / Carregar config YAML (integrado ao pipeline)
 # ===========================================================================
 
-def _salvar_yaml(cfg: Config, lang: str) -> None:
+def _salvar_yaml(cfg: Config) -> None:
     """Salva config.yaml via salvar_config do pipeline."""
+    lang = _lang()
     salvar_config(cfg, str(_CFG_PATH))
-    print(f"  Configuracao salva em: {_CFG_PATH}")
-    input("  [Enter para continuar]")
+    msg = f"  Configuracao salva em: {_CFG_PATH}" if lang == "PT" else f"  Configuration saved to: {_CFG_PATH}"
+    print(msg)
+    t = I18N[lang]
+    input(f"  [{t['continuar']}]")
 
 
-def _carregar_yaml(cfg: Config, lang: str) -> None:
+def _carregar_yaml(cfg: Config) -> None:
     """Carrega config.yaml via carregar_config do pipeline e atualiza cfg."""
+    lang = _lang()
+    t = I18N[lang]
     if not _CFG_PATH.exists():
-        print(f"  Arquivo {_CFG_PATH} nao encontrado. Salve primeiro.")
-        input("  [Enter para continuar]")
+        if lang == "PT":
+            print(f"  Arquivo {_CFG_PATH} nao encontrado. Salve primeiro.")
+        else:
+            print(f"  File {_CFG_PATH} not found. Save first.")
+        input(f"  [{t['continuar']}]")
         return
     cfg_novo = carregar_config(str(_CFG_PATH))
     # Copiar atributos do Config carregado para o atual (em-place)
@@ -916,33 +1396,25 @@ def _carregar_yaml(cfg: Config, lang: str) -> None:
             setattr(cfg, s["attr"], getattr(cfg_novo, s["attr"]))
         except AttributeError:
             pass
-    print(f"  Configuracao carregada de: {_CFG_PATH}")
-    input("  [Enter para continuar]")
-
-
-# ===========================================================================
-# Trocar idioma
-# ===========================================================================
-
-def _toggle_idioma(lang: str) -> str:
-    """Alterna entre PT e EN."""
-    return "EN" if lang == "PT" else "PT"
+    msg = f"  Configuracao carregada de: {_CFG_PATH}" if lang == "PT" else f"  Configuration loaded from: {_CFG_PATH}"
+    print(msg)
+    input(f"  [{t['continuar']}]")
 
 
 # ===========================================================================
 # Wizard inicial
 # ===========================================================================
 
-def wizard_inicial(lang: str) -> str:
+def wizard_inicial() -> None:
     """
-    Wizard de boas-vindas para primeira execução (quando config.yaml não existe).
-    Retorna o idioma escolhido pelo usuário.
+    Wizard de boas-vindas para primeira execucao (quando config.yaml nao existe).
+    Define o idioma escolhido pelo usuario no estado global.
     """
     cls()
     w = 60
     print("\n" + "╔" + "═" * (w - 2) + "╗")
-    print("║" + "  Bem-vindo ao Pipeline Quimiometrico FT-NIR".ljust(w - 2) + "║")
-    print("║" + "  GEAAp / UFPA".ljust(w - 2) + "║")
+    print("║" + "  AmaNIR — Plataforma Quimiometrica FT-NIR".ljust(w - 2) + "║")
+    print("║" + "  GEAAp / UFPA  |  Oleos Vegetais Amazonicos".ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     print("║" + "  Qual e o seu idioma? / What is your language?".ljust(w - 2) + "║")
     print("║" + "  [1] Portugues (PT)   [2] English (EN)".ljust(w - 2) + "║")
@@ -951,11 +1423,14 @@ def wizard_inicial(lang: str) -> str:
         resp = input("  Opcao: ").strip()
     except (EOFError, KeyboardInterrupt):
         resp = "1"
-    if resp == "2":
-        lang = "EN"
 
+    if resp == "2":
+        _set_lang("EN")
+    else:
+        _set_lang("PT")
+
+    lang = _lang()
     cls()
-    t = I18N[lang]
     print("\n" + "╔" + "═" * (w - 2) + "╗")
     titulo_wiz = "  Bem-vindo!" if lang == "PT" else "  Welcome!"
     print("║" + titulo_wiz.ljust(w - 2) + "║")
@@ -963,15 +1438,18 @@ def wizard_inicial(lang: str) -> str:
     q_perfil = "  Qual e o seu perfil?" if lang == "PT" else "  What is your profile?"
     print("║" + q_perfil.ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
-    linhas_wiz = [
-        "  [1] Iniciante    — configuracoes essenciais, pre-proc padrao",
-        "  [2] Pesquisador  — opcoes intermediarias, validacao completa",
-        "  [3] Especialista — acesso a todos os parametros",
-    ] if lang == "PT" else [
-        "  [1] Beginner    — essential settings, default preprocessing",
-        "  [2] Researcher  — intermediate options, full validation",
-        "  [3] Expert      — access to all parameters",
-    ]
+    if lang == "PT":
+        linhas_wiz = [
+            "  [1] Iniciante    — configuracoes essenciais, pre-proc padrao",
+            "  [2] Pesquisador  — opcoes intermediarias, validacao completa",
+            "  [3] Especialista — acesso a todos os parametros",
+        ]
+    else:
+        linhas_wiz = [
+            "  [1] Beginner    — essential settings, default preprocessing",
+            "  [2] Researcher  — intermediate options, full validation",
+            "  [3] Expert      — access to all parameters",
+        ]
     for l in linhas_wiz:
         print("║" + l.ljust(w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
@@ -981,39 +1459,50 @@ def wizard_inicial(lang: str) -> str:
     except (EOFError, KeyboardInterrupt):
         resp = "1"
 
-    # Marcar wizard como concluído
+    # Marcar wizard como concluido (salva apenas o idioma)
     try:
-        _WIZARD_FLAG.write_text(resp, encoding="utf-8")
+        _WIZARD_FLAG.write_text(lang, encoding="utf-8")
     except OSError:
         pass
-    return lang
 
 
 # ===========================================================================
 # Rodar pipeline
 # ===========================================================================
 
-def _rodar_pipeline(cfg: Config, lang: str) -> None:
+def _rodar_pipeline(cfg: Config) -> None:
     """Salva config.yaml e dispara executar(cfg)."""
+    lang = _lang()
+    t = I18N[lang]
     # Verificar pasta de dados
     pasta = getattr(cfg, "pasta_entrada", "")
     modo = getattr(cfg, "modo", "dx")
     if modo != "sintetico" and (not pasta or not os.path.isdir(str(pasta))):
-        print(f"\n  {I18N[lang]['status_erro']}")
-        print("  Corrija a pasta_dados antes de rodar.")
-        input("  [Enter para continuar]")
+        print(f"\n  {t['status_erro']}")
+        if lang == "PT":
+            print("  Corrija a pasta_dados antes de rodar.")
+        else:
+            print("  Fix pasta_dados before running.")
+        input(f"  [{t['continuar']}]")
         return
 
-    print(f"\n  Salvando configuracao em {_CFG_PATH}...")
+    if lang == "PT":
+        print(f"\n  Salvando configuracao em {_CFG_PATH}...")
+        print("  Iniciando pipeline...\n")
+    else:
+        print(f"\n  Saving configuration to {_CFG_PATH}...")
+        print("  Starting pipeline...\n")
+
     salvar_config(cfg, str(_CFG_PATH))
-    print("  Iniciando pipeline...\n")
     try:
         executar(cfg)
     except KeyboardInterrupt:
-        print("\n  Pipeline interrompido pelo usuario.")
+        msg = "\n  Pipeline interrompido pelo usuario." if lang == "PT" else "\n  Pipeline interrupted by user."
+        print(msg)
     except Exception as e:  # noqa: BLE001
-        print(f"\n  Erro no pipeline: {e}")
-    input("\n  [Enter para voltar ao menu]")
+        msg = f"\n  Erro no pipeline: {e}" if lang == "PT" else f"\n  Pipeline error: {e}"
+        print(msg)
+    input(f"\n  [{t['continuar']}]")
 
 
 # ===========================================================================
@@ -1021,8 +1510,8 @@ def _rodar_pipeline(cfg: Config, lang: str) -> None:
 # ===========================================================================
 
 def main() -> None:
-    """Ponto de entrada do assistente CLI hierárquico."""
-    # Carrega config existente ou cria padrão
+    """Ponto de entrada do assistente CLI hierarquico."""
+    # Carrega config existente ou cria padrao
     if _CFG_PATH.exists():
         try:
             cfg = carregar_config(str(_CFG_PATH))
@@ -1031,67 +1520,65 @@ def main() -> None:
     else:
         cfg = Config()
 
+    # Tentar recuperar idioma salvo antes do wizard
+    try:
+        idioma_salvo = _WIZARD_FLAG.read_text(encoding="utf-8").strip()
+        if idioma_salvo in ("EN", "2"):
+            _set_lang("EN")
+        elif idioma_salvo == "PT":
+            _set_lang("PT")
+    except OSError:
+        pass
+
     # Wizard na primeira vez
-    lang = "PT"
     if not _WIZARD_FLAG.exists() and not _CFG_PATH.exists():
-        lang = wizard_inicial(lang)
-    else:
-        # Tentar recuperar idioma salvo
-        try:
-            idioma_salvo = _WIZARD_FLAG.read_text(encoding="utf-8").strip()
-            if idioma_salvo in ("EN", "2"):
-                lang = "EN"
-        except OSError:
-            pass
+        wizard_inicial()
 
     # Loop principal
     while True:
+        lang = _lang()
+        t = I18N[lang]
         cls()
-        print_header(cfg, lang)
-        print_main_menu(lang)
+        print_header(cfg)
+        print_main_menu()
         print()
         try:
             escolha = input("  Opcao: ").strip().upper()
         except (EOFError, KeyboardInterrupt):
-            print(f"\n  {I18N[lang]['sair']}.")
+            print(f"\n  {t['sair']}.")
             break
 
         if escolha == "1":
-            menu_projeto(cfg, lang)
+            menu_projeto(cfg)
         elif escolha == "2":
-            menu_dados(cfg, lang)
+            menu_dados(cfg)
         elif escolha == "3":
-            menu_preproc(cfg, lang)
+            menu_preproc(cfg)
         elif escolha == "4":
-            menu_modelagem(cfg, lang)
+            menu_modelagem(cfg)
         elif escolha == "5":
-            menu_validacao(cfg, lang)
+            menu_validacao(cfg)
         elif escolha == "6":
-            menu_avancado(cfg, lang)
+            menu_avancado(cfg)
         elif escolha == "7":
-            menu_visualizacao(cfg, lang)
+            menu_visualizacao(cfg)
         elif escolha == "8":
-            menu_ajuda(lang)
+            menu_ajuda()
         elif escolha == "P":
-            menu_perfis(cfg, lang)
+            menu_perfis(cfg)
         elif escolha == "I":
-            lang = _toggle_idioma(lang)
-            # Atualizar flag de idioma
-            try:
-                _WIZARD_FLAG.write_text(lang, encoding="utf-8")
-            except OSError:
-                pass
+            _toggle_idioma()
         elif escolha == "S":
-            _salvar_yaml(cfg, lang)
+            _salvar_yaml(cfg)
         elif escolha == "L":
-            _carregar_yaml(cfg, lang)
+            _carregar_yaml(cfg)
         elif escolha == "R":
-            _rodar_pipeline(cfg, lang)
+            _rodar_pipeline(cfg)
         elif escolha == "Q":
-            print(f"\n  {I18N[lang]['sair']}.")
+            print(f"\n  {t['sair']}.")
             break
         else:
-            print(f"  {I18N[lang]['invalido']}")
+            print(f"  {t['invalido']}")
             import time
             time.sleep(0.8)
 
