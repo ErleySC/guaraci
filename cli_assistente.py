@@ -93,7 +93,8 @@ I18N: Dict[str, Dict[str, str]] = {
         "aviso_avancado": "Parametro AVANCADO — aumenta tempo de processamento.",
         "status_ok": "Dados OK",
         "status_erro": "Pasta nao encontrada",
-        "idioma": "Idioma/Language",
+        "idioma": "Idioma",
+        "opcao": "Opcao",
         "campo_atualizado": "[{campo}] atualizado: {valor}",
         "cancelado": "Operacao cancelada.",
         "invalido": "Opcao invalida.",
@@ -132,7 +133,8 @@ I18N: Dict[str, Dict[str, str]] = {
         "aviso_avancado": "ADVANCED parameter — increases processing time.",
         "status_ok": "Data OK",
         "status_erro": "Folder not found",
-        "idioma": "Idioma/Language",
+        "idioma": "Language",
+        "opcao": "Option",
         "campo_atualizado": "[{campo}] updated: {valor}",
         "cancelado": "Operation cancelled.",
         "invalido": "Invalid option.",
@@ -189,6 +191,51 @@ RISK_COLOR: Dict[str, str] = {
     "DIM": "\033[2m",
     "CYAN": "\033[96m",
 }
+
+# ---------------------------------------------------------------------------
+# Nomes traduzidos dos campos (chave tecnica → nome legível por idioma)
+# ---------------------------------------------------------------------------
+FIELD_NAMES: Dict[str, Dict[str, str]] = {
+    "pasta_dados":                  {"PT": "Pasta de entrada",        "EN": "Input folder"},
+    "pasta_saida":                  {"PT": "Pasta de saida",          "EN": "Output folder"},
+    "modo_entrada":                 {"PT": "Modo de entrada",         "EN": "Input mode"},
+    "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
+    "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
+    "coluna_concentracao":          {"PT": "Coluna concentracao",     "EN": "Concentration column"},
+    "faixa_min_cm":                 {"PT": "Faixa minima (cm-1)",     "EN": "Min range (cm-1)"},
+    "faixa_max_cm":                 {"PT": "Faixa maxima (cm-1)",     "EN": "Max range (cm-1)"},
+    "excluir_classes":              {"PT": "Excluir classes",         "EN": "Exclude classes"},
+    "pre_processamento":            {"PT": "Pre-processamento",       "EN": "Preprocessing"},
+    "comparar_pre_processamentos":  {"PT": "Comparar pre-proc.",      "EN": "Compare preproc."},
+    "nivel":                        {"PT": "Nivel de analise",        "EN": "Analysis level"},
+    "max_lvs":                      {"PT": "Maximo de LVs",           "EN": "Max LVs"},
+    "opls_da":                      {"PT": "OPLS-DA",                 "EN": "OPLS-DA"},
+    "ddsimca":                      {"PT": "DD-SIMCA",                "EN": "DD-SIMCA"},
+    "modo_ddsimca":                 {"PT": "Modo DD-SIMCA",           "EN": "DD-SIMCA mode"},
+    "selecao_variaveis_etapa4":     {"PT": "Selecao de variaveis",    "EN": "Variable selection"},
+    "holdout_fracao":               {"PT": "Fracao holdout",          "EN": "Holdout fraction"},
+    "validacao_group_aware":        {"PT": "Validacao group-aware",   "EN": "Group-aware CV"},
+    "n_permutacoes":                {"PT": "N. permutacoes",          "EN": "N permutations"},
+    "teste_wold":                   {"PT": "Teste de Wold",           "EN": "Wold test"},
+    "teste_cv_anova":               {"PT": "CV-ANOVA",                "EN": "CV-ANOVA"},
+    "benchmark":                    {"PT": "Benchmark",               "EN": "Benchmark"},
+    "monte_carlo":                  {"PT": "Monte Carlo CV",          "EN": "Monte Carlo CV"},
+    "n_monte_carlo":                {"PT": "N. repeticoes MC",        "EN": "N MC repetitions"},
+    "monte_carlo_incluir_todos":    {"PT": "MC incluir todos",        "EN": "MC include all"},
+    "shap_benchmark":               {"PT": "SHAP values",             "EN": "SHAP values"},
+    "shap_max_amostras":            {"PT": "SHAP max. amostras",      "EN": "SHAP max samples"},
+    "figuras_mostrar_marcadores":   {"PT": "Marcadores por classe",   "EN": "Class markers"},
+    "figuras_mostrar_elipses":      {"PT": "Elipses de confianca",    "EN": "Confidence ellipses"},
+    "formato_figura":               {"PT": "Formato das figuras",     "EN": "Figure format"},
+    "dpi":                          {"PT": "Resolucao (DPI)",         "EN": "Resolution (DPI)"},
+    "abrir_figuras_na_tela":        {"PT": "Abrir figuras na tela",   "EN": "Open figures on screen"},
+}
+
+
+def _nome_campo(key: str) -> str:
+    """Retorna o nome traduzido do campo para o idioma atual. Fallback: key."""
+    return FIELD_NAMES.get(key, {}).get(_lang(), key)
+
 
 # ---------------------------------------------------------------------------
 # Aliases de exibicao para modo_ddsimca
@@ -1036,12 +1083,15 @@ def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "")
                     print("║" + _c("DIM", dline).ljust(w + 7) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         for i, key in enumerate(campos, 1):
-            val_str = _fmt_yaml(_get_val(cfg, key))
+            val_raw = _fmt_yaml(_get_val(cfg, key))
+            # Truncar valor longo para caber na caixa (max 22 chars)
+            val_str = (val_raw[:20] + "…") if len(str(val_raw)) > 22 else val_raw
+            nome = _nome_campo(key)
             risk = RISK_CLASS.get(key, "ANALITICO")
             cor = RISK_COLOR.get(risk, "")
             rst = RISK_COLOR["RESET"]
             lbl = f"{cor}●{rst}"
-            linha = f"  [{i:2d}] {lbl} {key:<32s}: {val_str}"
+            linha = f"  [{i:2d}] {lbl} {nome:<28s}: {val_str}"
             print("║" + linha.ljust(w + 10) + "║")  # +10 para escapes ANSI
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [?] {t['ajuda_campo']}   [I] {t['idioma']}   [0] {t['voltar']}"
@@ -1049,7 +1099,7 @@ def _submenu_campos(cfg: Config, titulo: str, campos: list, secao_key: str = "")
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
-            escolha = input("  Opcao: ").strip()
+            escolha = input(f"  {t['opcao']}: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
 
@@ -1128,7 +1178,9 @@ def menu_preproc(cfg: Config) -> None:
             cor = RISK_COLOR.get(risk, "")
             rst = RISK_COLOR["RESET"]
             lbl = f"{cor}●{rst}"
-            linha = f"  [{i:2d}] {lbl} {key:<32s}: {val_str}"
+            nome_tr = _nome_campo(key)
+            val_trunc = (val_str[:20] + "…") if len(str(val_str)) > 22 else val_str
+            linha = f"  [{i:2d}] {lbl} {nome_tr:<28s}: {val_trunc}"
             print("║" + linha.ljust(w + 10) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         rodape = f"  [I] {t['idioma']}   [0] {t['voltar']}"
@@ -1136,7 +1188,7 @@ def menu_preproc(cfg: Config) -> None:
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
-            escolha = input("  Opcao: ").strip()
+            escolha = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if escolha == "0" or escolha.lower() == "q":
@@ -1267,7 +1319,7 @@ def menu_perfis(cfg: Config) -> None:
         print("╚" + "═" * (w - 2) + "╝")
         print()
         try:
-            escolha = input("  Opcao: ").strip()
+            escolha = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if escolha == "0" or escolha.lower() == "q":
@@ -1420,7 +1472,7 @@ def wizard_inicial() -> None:
     print("║" + "  [1] Portugues (PT)   [2] English (EN)".ljust(w - 2) + "║")
     print("╚" + "═" * (w - 2) + "╝")
     try:
-        resp = input("  Opcao: ").strip()
+        resp = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
     except (EOFError, KeyboardInterrupt):
         resp = "1"
 
@@ -1455,7 +1507,7 @@ def wizard_inicial() -> None:
     print("╚" + "═" * (w - 2) + "╝")
     print()
     try:
-        resp = input("  Opcao: ").strip()
+        resp = input(f"  {I18N[_lang()]["opcao"]}: ").strip()
     except (EOFError, KeyboardInterrupt):
         resp = "1"
 
@@ -1543,7 +1595,7 @@ def main() -> None:
         print_main_menu()
         print()
         try:
-            escolha = input("  Opcao: ").strip().upper()
+            escolha = input(f"  {I18N[_lang()]["opcao"]}: ").strip().upper()
         except (EOFError, KeyboardInterrupt):
             print(f"\n  {t['sair']}.")
             break
