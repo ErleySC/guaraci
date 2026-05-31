@@ -6274,7 +6274,11 @@ if __name__ == "__main__":
     elif "--codigo" in sys.argv:
         executar(CFG)                       # modo legado (Config embutida)
     elif sys.stdin is not None and sys.stdin.isatty():
-        menu_interativo(CFG, _CFG_PATH)     # assistente (default interativo)
+        try:
+            from cli_assistente import main as _cli_main
+            _cli_main()
+        except ImportError:
+            menu_interativo(CFG, _CFG_PATH)  # fallback para o menu antigo
     else:
         _cfg = carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
         executar(_cfg)
