@@ -16,6 +16,7 @@ import json
 import os
 import re as _re
 import sys
+import textwrap as _textwrap
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -114,6 +115,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "descricao": "Descricao",
         "listar_todos": "Listar todos",
         "hardware": "Verificar Hardware",
+        "menu_codificacao": "Codificacao de Arquivos",
     },
     "EN": {
         "titulo": "AmaNIR — FT-NIR Chemometrics Platform",
@@ -155,6 +157,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "descricao": "Description",
         "listar_todos": "List all",
         "hardware": "Check Hardware",
+        "menu_codificacao": "File Encoding",
     },
 }
 
@@ -165,7 +168,7 @@ RISK_CLASS: Dict[str, str] = {
     # VISUAL
     "dpi": "VISUAL", "formato_figura": "VISUAL",
     "figuras_mostrar_marcadores": "VISUAL", "figuras_mostrar_elipses": "VISUAL",
-    "abrir_figuras_na_tela": "VISUAL",
+    "abrir_figuras_na_tela": "VISUAL", "tag": "VISUAL",
     # ANALITICO
     "pre_processamento": "ANALITICO", "max_lvs": "ANALITICO",
     "n_permutacoes": "ANALITICO", "holdout_fracao": "ANALITICO",
@@ -213,6 +216,7 @@ def _ansi_ljust(s: str, width: int) -> str:
 FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "pasta_dados":                  {"PT": "Pasta de entrada",        "EN": "Input folder"},
     "pasta_saida":                  {"PT": "Pasta de saida",          "EN": "Output folder"},
+    "tag":                          {"PT": "Sufixo da pasta saida",   "EN": "Output folder tag"},
     "modo_entrada":                 {"PT": "Modo de entrada",         "EN": "Input mode"},
     "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
     "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
@@ -344,14 +348,22 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "pre_processamento": {
         "PT": {
-            "desc": "Pipeline de pre-processamento espectral aplicado antes do PLS-DA.",
-            "impacto": "ANALITICO — MSC+SG+MC obteve Bal.Acc=0.923 no dataset atual.",
-            "exemplos": {"msc_sg_mc": "Melhor resultado (recomendado)", "snv_sg_mc": "Alternativa robusta", "autoscaling": "Baseline simples"},
+            "desc": "Pipeline de pre-processamento espectral aplicado antes da modelagem quimiometrica.",
+            "impacto": "ANALITICO — o pre-processamento correto e essencial para resultados validos em FT-NIR.",
+            "exemplos": {
+                "msc_sg_mc": "MSC + Savitzky-Golay + Mean-Centering (recomendado para oleos vegetais)",
+                "snv_sg_mc": "SNV + Savitzky-Golay + Mean-Centering (alternativa robusta)",
+                "autoscaling": "Autoscaling — linha de base simples, nao recomendado para FT-NIR",
+            },
         },
         "EN": {
-            "desc": "Spectral preprocessing pipeline applied before PLS-DA.",
-            "impacto": "ANALYTICAL — MSC+SG+MC achieved Bal.Acc=0.923 on current dataset.",
-            "exemplos": {"msc_sg_mc": "Best result (recommended)", "snv_sg_mc": "Robust alternative", "autoscaling": "Simple baseline"},
+            "desc": "Spectral preprocessing pipeline applied before chemometric modelling.",
+            "impacto": "ANALYTICAL — correct preprocessing is essential for valid FT-NIR results.",
+            "exemplos": {
+                "msc_sg_mc": "MSC + Savitzky-Golay + Mean-Centering (recommended for vegetable oils)",
+                "snv_sg_mc": "SNV + Savitzky-Golay + Mean-Centering (robust alternative)",
+                "autoscaling": "Autoscaling — simple baseline, not recommended for FT-NIR",
+            },
         },
         "default": "MSC+SG+MC", "range": "Escolha na lista / Choose from list",
     },
@@ -732,6 +744,46 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": False, "range": "true | false",
     },
+    "tag": {
+        "PT": {
+            "desc": "Sufixo personalizado para o nome da pasta de resultados.",
+            "impacto": "VISUAL — nao altera analise, apenas organiza as saidas.",
+            "exemplos": {
+                "": "Pasta automatica: PLSDA_N2_MSC-SG1-MC_YYYYMMDD_HHMMSS",
+                "experimento01": "Pasta: PLSDA_N2_..._experimento01",
+                "artigo_final": "Pasta: PLSDA_N2_..._artigo_final",
+            },
+        },
+        "EN": {
+            "desc": "Custom suffix for the results folder name.",
+            "impacto": "VISUAL — does not affect analysis, only organizes outputs.",
+            "exemplos": {
+                "": "Auto folder: PLSDA_N2_MSC-SG1-MC_YYYYMMDD_HHMMSS",
+                "experiment01": "Folder: PLSDA_N2_..._experiment01",
+                "final_paper": "Folder: PLSDA_N2_..._final_paper",
+            },
+        },
+        "default": "", "range": "Texto livre (sem espacos recomendado)",
+    },
+    "codificacao_arquivos": {
+        "PT": {
+            "desc": "Formato de nomenclatura dos arquivos DX para leitura pelo pipeline.",
+            "impacto": "ANALITICO — arquivos com nomenclatura incorreta serao ignorados.",
+            "exemplos": {
+                "AND-10-06-2020_T1.dx": "Andiroba pura, triplicata 1",
+                "BCB-03-03-2020_AD-S-20_T1.dx": "Bacaba adulterada com 20% de soja",
+            },
+        },
+        "EN": {
+            "desc": "DX file naming format for pipeline reading.",
+            "impacto": "ANALYTICAL — files with incorrect naming will be ignored.",
+            "exemplos": {
+                "AND-10-06-2020_T1.dx": "Pure Andiroba, replicate 1",
+                "BCB-03-03-2020_AD-S-20_T1.dx": "Bacaba adulterated with 20% soy",
+            },
+        },
+        "default": "COD-DD-MM-AAAA_Tn.dx", "range": "Ver menu Codificacao",
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -835,7 +887,7 @@ PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
 # Mapeamento de menus -> campos (chaves do _CONFIG_SPEC)
 # ---------------------------------------------------------------------------
 MENU_FIELDS: Dict[str, list] = {
-    "projeto": ["pasta_dados", "pasta_saida"],
+    "projeto": ["pasta_dados", "pasta_saida", "tag"],
     "dados": ["modo_entrada", "arquivo_csv", "coluna_classe", "coluna_concentracao",
               "faixa_min_cm", "faixa_max_cm", "excluir_classes"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
@@ -851,6 +903,12 @@ MENU_FIELDS: Dict[str, list] = {
 
 # Indice inverso: chave -> especificacao do _CONFIG_SPEC
 _SPEC_BY_KEY: Dict[str, Dict[str, Any]] = {s["key"]: s for s in _CONFIG_SPEC}
+
+# Campos extras presentes em Config mas ausentes do _CONFIG_SPEC (nao editaveis pelo pipeline CLI)
+_SPEC_EXTRAS: Dict[str, Dict[str, Any]] = {
+    "tag": {"key": "tag", "attr": "tag", "tipo": "str", "desc": "Sufixo da pasta de saida", "opcoes": None},
+}
+_SPEC_BY_KEY.update(_SPEC_EXTRAS)
 
 
 # ===========================================================================
@@ -933,6 +991,17 @@ def _wrap_line(text: str, width: int, indent: int = 4) -> list:
     return lines or [" " * indent]
 
 
+def _wrap_box(text: str, width: int, indent: str = "  ") -> list:
+    """Quebra texto em linhas que cabem dentro da caixa, sem cortar palavras."""
+    wrapped = _textwrap.fill(
+        text,
+        width=width - len(indent),
+        break_long_words=True,
+        break_on_hyphens=True,
+    )
+    return [indent + line for line in wrapped.split("\n")]
+
+
 # ===========================================================================
 # Cabecalho
 # ===========================================================================
@@ -974,7 +1043,8 @@ def print_main_menu() -> None:
     linha2 = f"  [2] {t['menu_dados']:<18s}  [6] {t['menu_avancado']}"
     linha3 = f"  [3] {t['menu_preproc']:<18s}  [7] {t['menu_viz']}"
     linha4 = f"  [4] {t['menu_modelo']:<18s}  [8] {t['menu_ajuda']}"
-    for l in [linha1, linha2, linha3, linha4]:
+    linha5 = f"  [9] {t['menu_codificacao']}"
+    for l in [linha1, linha2, linha3, linha4, linha5]:
         print("║" + l.ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     linha_p = f"  [P] {t['perfis']}"
@@ -1160,8 +1230,7 @@ def _submenu_campos(cfg: Config, titulo_key: str, campos: list, secao_key: str =
         if secao_key and secao_key in SECTION_DESC:
             desc_sec = SECTION_DESC[secao_key].get(lang, "")
             if desc_sec:
-                # Quebrar descricao em linhas se necessario
-                for dline in _wrap_line(desc_sec, w - 6, indent=2):
+                for dline in _wrap_box(desc_sec, w - 4, "  "):
                     print("║" + _ansi_ljust(_c("DIM", dline), w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         for i, key in enumerate(campos, 1):
@@ -1244,7 +1313,7 @@ def menu_preproc(cfg: Config) -> None:
         # Descricao da secao
         desc_sec = SECTION_DESC["preproc"].get(lang, "")
         if desc_sec:
-            for dline in _wrap_line(desc_sec, w - 6, indent=2):
+            for dline in _wrap_box(desc_sec, w - 4, "  "):
                 print("║" + _ansi_ljust(_c("DIM", dline), w - 2) + "║")
         print("╠" + "═" * (w - 2) + "╣")
         # Mostrar preview do pipeline atual
@@ -1397,24 +1466,36 @@ def menu_hardware() -> None:
     # Chamar hardware_probe() do pipeline
     try:
         hw = pq.hardware_probe()
-        ram_gb = hw.get("ram_gb", 0)
-        cpu_cores = hw.get("cpu_cores", 1)
-        ram_disp = hw.get("ram_disponivel_gb", ram_gb)
+        ram_gb    = hw.get("ram_total_gb", 0)
+        ram_disp  = hw.get("ram_livre_gb", 0)
+        cpu_log   = hw.get("cpu_logicos", 1)
+        cpu_fis   = hw.get("cpu_fisicos", 1)
+        disco_gb  = hw.get("disco_livre_gb", 0)
+        psutil_ok = hw.get("psutil_ok", False)
     except Exception:
         hw = {}
-        ram_gb = 0
-        cpu_cores = 1
-        ram_disp = 0
+        ram_gb    = 0
+        ram_disp  = 0
+        cpu_log   = 1
+        cpu_fis   = 1
+        disco_gb  = 0
+        psutil_ok = False
 
     print("╔" + "═" * (w - 2) + "╗")
     print("║" + f"  {titulo_hw}".ljust(w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
 
     # Mostrar specs
-    ram_line = f"  RAM total   : {ram_gb:.1f} GB"
-    disp_line = f"  RAM disp.   : {ram_disp:.1f} GB"
-    cpu_line  = f"  CPU cores   : {cpu_cores}"
-    for ln in [ram_line, disp_line, cpu_line]:
+    psutil_str = ("Instalado" if psutil_ok else "Nao instalado (estimativa conservadora)"
+                  if lang == "PT" else
+                  "Installed" if psutil_ok else "Not installed (conservative estimate)")
+    ram_line   = f"  RAM total    : {ram_gb:.1f} GB"
+    disp_line  = f"  RAM livre    : {ram_disp:.1f} GB"
+    cpu_fis_ln = f"  CPU fisicos  : {cpu_fis}"
+    cpu_log_ln = f"  CPU logicos  : {cpu_log}"
+    disco_line = f"  Disco livre  : {disco_gb:.1f} GB"
+    psutil_ln  = f"  psutil       : {psutil_str}"
+    for ln in [ram_line, disp_line, cpu_fis_ln, cpu_log_ln, disco_line, psutil_ln]:
         print("║" + ln.ljust(w - 2) + "║")
 
     print("╠" + "═" * (w - 2) + "╣")
@@ -1482,6 +1563,118 @@ def menu_hardware() -> None:
     print()
     try:
         input(f"  {I18N[lang].get('opcao', 'Option')}: ")
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+# ===========================================================================
+# Menu de Codificacao de Arquivos
+# ===========================================================================
+
+def menu_codificacao() -> None:
+    """Menu 9 — Explicacao do formato de nomenclatura dos arquivos DX."""
+    lang = _lang()
+    cls()
+    w = 72
+
+    titulo = "Codificacao de Arquivos DX" if lang == "PT" else "DX File Encoding"
+    print("╔" + "═" * (w - 2) + "╗")
+    print("║" + f"  {titulo}".ljust(w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+
+    if lang == "PT":
+        secoes = [
+            ("Formato de nomenclatura esperado:",
+             ["COD-DD-MM-AAAA_Tn.dx",
+              "COD-DD-MM-AAAA_AD-X-PP_Tn.dx  (adulterado)",
+              "",
+              "Onde:",
+              "  COD    = Codigo da especie (2-4 letras maiusculas, ex: AND, BCB)",
+              "  DD-MM-AAAA = Data de coleta",
+              "  Tn     = Triplicata (T1, T2 ou T3)",
+              "  AD-X-PP = Adulterante: X=tipo (S=soja,M=milho,A=algodao), PP=porcentagem"]),
+            ("Exemplos validos:",
+             ["AND-10-06-2020_T1.dx       (Andiroba pura, triplicata 1)",
+              "BCB-03-03-2020_T2.dx       (Bacaba pura, triplicata 2)",
+              "AND-10-06-2020_AD-S-20_T1.dx  (Andiroba + 20% soja)"]),
+            ("Codigos de especies pre-cadastrados:",
+             ["AND=Andiroba  ACE=Acai  BCB=Bacaba  BRT=Buriti",
+              "BAB=Babacu    CAP=Castanha  COC=Coco   GOI=Goiaba",
+              "GRV=Graviola  MAR=Maracuja  PAL=Palmiste",
+              "PAT=Pataua    PRA=Pracaxi"]),
+            ("Como usar arquivos com nomenclatura diferente:",
+             ["Opcao 1: Renomeie os arquivos para o formato acima.",
+              "Opcao 2: Use modo CSV (menu Dados > Modo de entrada = csv)",
+              "         com coluna 'classe' para rotular cada amostra.",
+              "Opcao 3: Edite CODIGO_ESPECIE em pineline_quimiometria_14.py",
+              "         para adicionar seus proprios codigos."]),
+        ]
+    else:
+        secoes = [
+            ("Expected naming format:",
+             ["COD-DD-MM-YYYY_Tn.dx",
+              "COD-DD-MM-YYYY_AD-X-PP_Tn.dx  (adulterated)",
+              "",
+              "Where:",
+              "  COD    = Species code (2-4 uppercase letters, e.g. AND, BCB)",
+              "  DD-MM-YYYY = Collection date",
+              "  Tn     = Replicate (T1, T2 or T3)",
+              "  AD-X-PP = Adulterant: X=type (S=soy,M=corn,A=cotton), PP=percentage"]),
+            ("Valid examples:",
+             ["AND-10-06-2020_T1.dx       (Pure Andiroba, replicate 1)",
+              "BCB-03-03-2020_T2.dx       (Pure Bacaba, replicate 2)",
+              "AND-10-06-2020_AD-S-20_T1.dx  (Andiroba + 20% soy)"]),
+            ("Pre-registered species codes:",
+             ["AND=Andiroba  ACE=Acai  BCB=Bacaba  BRT=Buriti",
+              "BAB=Babacu    CAP=Brazil nut  COC=Coconut  GOI=Guava",
+              "GRV=Soursop   MAR=Passion fruit  PAL=Palm kernel",
+              "PAT=Pataua    PRA=Pracaxi"]),
+            ("Using files with different naming:",
+             ["Option 1: Rename files to the format above.",
+              "Option 2: Use CSV mode (Data menu > Input mode = csv)",
+              "          with a 'classe' column to label each sample.",
+              "Option 3: Edit CODIGO_ESPECIE in pineline_quimiometria_14.py",
+              "          to add your own species codes."]),
+        ]
+
+    for titulo_sec, linhas in secoes:
+        print("║" + _ansi_ljust(f"  {_c('BOLD', titulo_sec)}", w - 2) + "║")
+        for linha in linhas:
+            if linha == "":
+                print("║" + "".ljust(w - 2) + "║")
+            else:
+                for wl in _wrap_box(linha, w - 4, "    "):
+                    print("║" + _ansi_ljust(wl, w - 2) + "║")
+        print("║" + "".ljust(w - 2) + "║")
+
+    print("╠" + "═" * (w - 2) + "╣")
+
+    # Verificar se pasta de dados existe e contar arquivos
+    try:
+        pasta = getattr(pq.Config(), "pasta_entrada", "dados")
+        if pasta and os.path.isdir(str(pasta)):
+            n_dx = sum(1 for _ in Path(pasta).rglob("*.dx"))
+            status_arq = (f"  {n_dx} arquivos .dx encontrados em: {pasta}"
+                          if lang == "PT" else
+                          f"  {n_dx} .dx files found in: {pasta}")
+        else:
+            status_arq = ("  Pasta de dados nao configurada."
+                          if lang == "PT" else
+                          "  Data folder not configured.")
+    except Exception:
+        status_arq = ""
+    if status_arq:
+        print("║" + _ansi_ljust(status_arq, w - 2) + "║")
+    print("╠" + "═" * (w - 2) + "╣")
+
+    rodape_i = f"  [I] {I18N[lang]['idioma']}   [0] {I18N[lang]['voltar']}"
+    print("║" + rodape_i.ljust(w - 2) + "║")
+    print("╚" + "═" * (w - 2) + "╝")
+    print()
+    try:
+        resp = input(f"  {I18N[lang].get('opcao', 'Option')}: ").strip()
+        if resp.upper() == "I":
+            _toggle_idioma()
     except (EOFError, KeyboardInterrupt):
         pass
 
@@ -1846,6 +2039,8 @@ def main() -> None:
             menu_visualizacao(cfg)
         elif escolha == "8":
             menu_ajuda()
+        elif escolha == "9":
+            menu_codificacao()
         elif escolha == "P":
             menu_perfis(cfg)
         elif escolha == "H":
