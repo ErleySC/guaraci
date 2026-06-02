@@ -5121,56 +5121,85 @@ def executar(cfg: Config):
                   "adulterante). Rotulos de especie mantidos — verifique os "
                   "arquivos .dx.")
 
-    # --- 1a0b. N2: undersampling por mae_id para corrigir desequilíbrio ----
-    # Root cause of N2 collapse: 1306 adulterado vs 40 puro (ratio 32:1).
-    # PLSRegression has no class_weight; it minimises RMSECV on the majority
-    # class → collapses to predicting "adulterado" for everything (bal.acc=0.5).
-    # Fix: undersample the majority class at the mae_id GROUP level so that
-    # all replicates (T1/T2/T3) of each measurement point stay together
-    # (anti-leakage preserved). holdout_preserva_puros is also disabled for N2
-    # because keeping ALL puras in train makes the holdout have 0 puro samples
-    # → misleading 100% bal.acc on holdout.
+    # --- 1a0b. N2: undersampling ESTRATIFICADO por espécie ----------------
+    # Previous collapse cause (even after balancing):
+    #   Random selection from 553 adult mae_ids ignored species.
+    #   Result: fold could have "AND pure" in test but only "COC adult" in
+    #   training → LV1 captures inter-species variation, not puro/adulterado.
+    #
+    # Fix: for EACH pure mae_id, pick 1 adult mae_id from the SAME species
+    # (species = prefix before first '-' in mae_id: "AND-10-06-2020" → "AND").
+    # This creates a PAIRED design: pure and adulterated samples from the same
+    # species appear together in every CV fold → PLS-DA learns the within-
+    # species spectral change from adulteration, not between-species variation.
+    # Orphan mae_ids (no matching adult species) are removed.
+    #
+    # anti-leakage: all replicates (T1/T2/T3) of each mae_id stay together.
+    # holdout_preserva_puros: disabled for N2 (with balanced data, pure samples
+    # can go to holdout; disabling avoids holdout with 0 pure samples).
     if (cfg.nivel == "N2"
             and cfg.balancear_classes_n2
-            and conc is not None):
+            and conc is not None
+            and mae_id is not None):
         classes_u, contagem_u = np.unique(rotulos, return_counts=True)
         if len(classes_u) == 2:
             ratio_ib = float(contagem_u.max()) / float(contagem_u.min())
             if ratio_ib > cfg.n2_balance_threshold:
-                classe_min = classes_u[np.argmin(contagem_u)]
-                classe_max = classes_u[np.argmax(contagem_u)]
-                if mae_id is not None:
-                    # Group-level undersampling (anti-leakage safe)
-                    ids_min = np.unique(mae_id[rotulos == classe_min])
-                    ids_max = np.unique(mae_id[rotulos == classe_max])
-                    rng_bal = np.random.default_rng(cfg.seed_holdout)
+                classe_min = classes_u[np.argmin(contagem_u)]   # "puro"
+                classe_max = classes_u[np.argmax(contagem_u)]   # "adulterado"
+
+                ids_min = np.unique(mae_id[rotulos == classe_min])
+                ids_max = np.unique(mae_id[rotulos == classe_max])
+                rng_bal = np.random.default_rng(cfg.seed_holdout)
+
+                def _esp_de_maeid(mid: str) -> str:
+                    """Species code = prefix before first '-': 'AND-10-06-2020' → 'AND'."""
+                    s = str(mid).split('-')[0]
+                    # Guard: ignore generic orphan tokens (length > 5 suggests
+                    # the mae_id was not parsed from a proper COD-DATE string)
+                    return s if len(s) <= 5 else "__orphan__"
+
+                # STRATIFIED SELECTION: for each pure mae_id, pick 1 adult
+                # mae_id from the same species.  Orphans (no adult counterpart)
+                # are silently dropped from the pure set as well.
+                ids_min_sel: List[str] = []
+                ids_max_sel: List[str] = []
+                for id_p in ids_min:
+                    esp_p = _esp_de_maeid(str(id_p))
+                    if esp_p == "__orphan__":
+                        continue  # skip unparseable pure mae_ids
+                    candidatos = [str(m) for m in ids_max
+                                  if _esp_de_maeid(str(m)) == esp_p]
+                    if not candidatos:
+                        continue  # no adult from this species → skip pair
+                    ids_min_sel.append(str(id_p))
+                    escolhido = str(rng_bal.choice(candidatos, size=1)[0])
+                    ids_max_sel.append(escolhido)
+
+                if len(ids_min_sel) == 0:
+                    # Fallback: random (species prefix doesn't match mae_id format)
+                    print("[AVISO] N2 balanceamento: prefixo de especie nao "
+                          "reconhecido em mae_ids. Usando undersampling aleatorio.")
                     n_sel = len(ids_min)
-                    ids_max_sel = rng_bal.choice(
-                        ids_max, size=n_sel, replace=False)
-                    mask_bal = np.isin(mae_id, np.concatenate([ids_min, ids_max_sel]))
-                else:
-                    # Fallback: sample-level undersampling
-                    idx_min = np.where(rotulos == classe_min)[0]
-                    idx_max = np.where(rotulos == classe_max)[0]
-                    rng_bal = np.random.default_rng(cfg.seed_holdout)
-                    idx_max_sel = rng_bal.choice(
-                        idx_max, size=len(idx_min), replace=False)
-                    mask_bal = np.zeros(len(rotulos), dtype=bool)
-                    mask_bal[idx_min] = True
-                    mask_bal[idx_max_sel] = True
+                    ids_max_sel = list(rng_bal.choice(ids_max, size=n_sel, replace=False))
+                    ids_min_sel = list(ids_min)
+
+                mask_bal = np.isin(mae_id,
+                                   np.array(ids_min_sel + ids_max_sel, dtype=str))
                 X_raw   = X_raw[mask_bal]
                 rotulos = rotulos[mask_bal]
-                if conc is not None:
-                    conc = conc[mask_bal]
-                if mae_id is not None:
-                    mae_id = mae_id[mask_bal]
+                conc    = conc[mask_bal]
+                mae_id  = mae_id[mask_bal]
+
                 n_p2 = int(np.sum(rotulos == classe_min))
                 n_a2 = int(np.sum(rotulos == classe_max))
-                print(f"[INFO] N2 balanceado (ratio foi {ratio_ib:.1f}:1): "
+                n_esp = len(ids_min_sel)
+                print(f"[INFO] N2 balanceado estratificado por especie "
+                      f"(ratio original {ratio_ib:.1f}:1 → {n_a2/max(n_p2,1):.1f}:1): "
                       f"{classe_min}={n_p2} | {classe_max}={n_a2} "
-                      f"(undersampling por mae_id)")
-                # Allow holdout to include pure samples now that we have
-                # enough of them (balanced dataset, not 40 out of 1346)
+                      f"({n_esp} especies pareadas)")
+                # Disable pure preservation: balanced data has enough pure
+                # samples for holdout — disabling avoids 0-pure holdout splits
                 cfg.holdout_preserva_puros = False
 
     # --- 1a. Truncamento espectral: remove ruido de borda da FFT ----------
