@@ -125,7 +125,8 @@ erleysdacosta@gmail.com
 ## License & citation
 
 Licensed under [MIT](LICENSE) — © 2026 Erley S. da Costa. Machine-readable
-metadata in [`CITATION.cff`](CITATION.cff).
+metadata in [`CITATION.cff`](CITATION.cff). A permanent Zenodo DOI is being
+generated for the v30.2.0 release — update `CITATION.cff` when it is ready.
 
 **APA**
 

@@ -31,3 +31,20 @@ keywords:
   - group-aware validation
   - Amazon
   - machine learning
+  - open-science
+  - FT-NIR
+  - food authentication
+preferred-citation:
+  type: software
+  title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
+  authors:
+    - family-names: "Costa"
+      given-names: "Erley S. da"
+      affiliation: "GEAAp/UFPA"
+      website: "http://lattes.cnpq.br/5755582193284309"
+  version: "30.2.0"
+  year: 2026
+  institution:
+    name: "GEAAp/UFPA"
+  url: "https://github.com/ErleySC/amazonian-oils-chemometrics"
+  # doi: "10.5281/zenodo.XXXXXXX"  <- inserir apos o Zenodo gerar o DOI
