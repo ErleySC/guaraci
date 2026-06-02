@@ -271,13 +271,6 @@ class Config:
     holdout_preserva_puros: bool = True
     seed_holdout: int = 42
 
-    # N2 class-balancing: when nivel="N2" and imbalance ratio > n2_balance_threshold,
-    # randomly undersample the majority class at mae_id-group level (preserves
-    # anti-leakage) so PLS-DA does not collapse to predicting only "adulterado".
-    # Set to False to keep raw imbalanced data (documents the collapse in the TCC).
-    balancear_classes_n2: bool = True
-    n2_balance_threshold: float = 5.0   # trigger if max/min ratio > this
-
     n_por_classe: int = 20
     n_pontos_sint: int = 1000
 
@@ -5079,6 +5072,150 @@ def rmse_flat(a, b):
                                   - np.asarray(b).flatten()) ** 2)))
 
 
+def pls_regressao_por_especie(
+        X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
+        mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
+        cfg: "Config", pasta: str, n_splits: int,
+        min_amostras_adult: int = 6) -> Optional[Dict[str, Any]]:
+    """Regressão PLS do teor de adulteração, calibrada SEPARADAMENTE por espécie.
+
+    Motivo: um único modelo multi-espécie é confundido — a variação inter-
+    espécies (~90% da variância espectral) domina o sinal de adulteração,
+    produzindo R²≈0 e um gráfico em banda vertical ("prevê a média").
+    Calibrando DENTRO de cada espécie, o espectro varia apenas com o teor,
+    e a regressão recupera a diagonal correta.
+
+    Para cada espécie com >= `min_amostras_adult` amostras adulteradas e
+    variância de teor > 0: faz split cal/val group-aware (mae_id), seleciona
+    LVs por CV, ajusta, prediz. As predições são agrupadas (pooled) entre
+    espécies e plotadas num único gráfico measured-vs-predicted (diagonal).
+
+    Retorna dict com métricas pooled + tabela por espécie, ou None se nenhuma
+    espécie tiver dados suficientes.
+    """
+    conc = np.asarray(conc, dtype=float)
+    Yc_all, Ych_all, Yv_all, Yvh_all = [], [], [], []
+    tabela_esp: List[Dict[str, Any]] = []
+    erros_reg_repr: List[float] = []   # RMSECV curve from the largest species
+    n_opt_repr = 1
+    n_max_amostras = -1
+
+    for cls in classes_unicas:
+        idx = np.where(rotulos == cls)[0]
+        if idx.size == 0:
+            continue
+        conc_c = conc[idx]
+        # need variation in concentration (pure + adulterated of THIS species)
+        n_adult_c = int(np.sum(conc_c > 0))
+        if n_adult_c < min_amostras_adult or float(np.nanstd(conc_c)) < 1e-8:
+            continue
+        if np.isnan(conc_c).any():
+            continue
+
+        X_c = X_raw[idx]
+        mae_c = mae_id[idx] if mae_id is not None else None
+        Y_c = conc_c.reshape(-1, 1)
+
+        # group-aware cal/val split (replicates never split)
+        try:
+            if mae_c is not None and len(np.unique(mae_c)) >= 4:
+                gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
+                                        random_state=cfg.seed)
+                ic, iv = next(gss.split(X_c, Y_c, groups=mae_c))
+            else:
+                rng = np.random.default_rng(cfg.seed)
+                perm = rng.permutation(len(conc_c))
+                ncal = max(2, int(cfg.frac_cal * len(conc_c)))
+                ic, iv = perm[:ncal], perm[ncal:]
+        except Exception:
+            continue
+        if len(ic) < 4 or len(iv) < 2:
+            continue
+
+        Xc, Yc = X_c[ic], Y_c[ic]
+        Xv, Yv = X_c[iv], Y_c[iv]
+        lv_max = min(cfg.max_lvs, max(2, Xc.shape[0] // 5))
+
+        # internal CV for LV selection (group-aware)
+        if mae_c is not None:
+            grupos_cal = mae_c[ic]
+            n_g = int(len(np.unique(grupos_cal)))
+            n_sp = max(2, min(n_splits, n_g))
+            cv_reg = GroupKFold(n_splits=n_sp)
+            grp = grupos_cal
+        else:
+            n_sp = max(2, min(n_splits, Xc.shape[0] // 2))
+            cv_reg = KFold(n_splits=n_sp, shuffle=True, random_state=cfg.seed)
+            grp = None
+
+        erros_reg: List[float] = []
+        try:
+            for n in range(1, lv_max + 1):
+                pipe = Pipeline([
+                    ("preproc", construir_preprocessador(cfg)),
+                    ("pls", PLSRegression(n_components=n, scale=False)),
+                ])
+                Y_hat = cross_val_predict(pipe, Xc, Yc, cv=cv_reg, groups=grp)
+                erros_reg.append(rmse_flat(Yc, Y_hat))
+        except Exception:
+            continue
+        if not erros_reg:
+            continue
+
+        n_opt_reg = int(np.argmin(erros_reg)) + 1
+        pipe_final = Pipeline([
+            ("preproc", construir_preprocessador(cfg)),
+            ("pls", PLSRegression(n_components=n_opt_reg, scale=False)),
+        ]).fit(Xc, Yc)
+        Yc_hat = np.asarray(pipe_final.predict(Xc)).flatten()
+        Yv_hat = np.asarray(pipe_final.predict(Xv)).flatten()
+
+        rmsep_c = rmse_flat(Yv, Yv_hat)
+        r2v_c = float(r2_score(Yv, Yv_hat)) if len(np.unique(Yv)) > 1 else float("nan")
+
+        Yc_all.append(np.asarray(Yc).flatten())
+        Ych_all.append(Yc_hat)
+        Yv_all.append(np.asarray(Yv).flatten())
+        Yvh_all.append(Yv_hat)
+        tabela_esp.append({
+            "especie": str(cls), "n_lv": n_opt_reg,
+            "n_cal": int(len(ic)), "n_val": int(len(iv)),
+            "rmsep": rmsep_c, "r2val": r2v_c,
+        })
+
+        # keep the RMSECV curve of the species with most samples (for panel a)
+        if Xc.shape[0] > n_max_amostras:
+            n_max_amostras = Xc.shape[0]
+            erros_reg_repr = erros_reg
+            n_opt_repr = n_opt_reg
+
+    if not Yc_all:
+        return None
+
+    Yc_p = np.concatenate(Yc_all)
+    Ych_p = np.concatenate(Ych_all)
+    Yv_p = np.concatenate(Yv_all)
+    Yvh_p = np.concatenate(Yvh_all)
+
+    r2c = float(r2_score(Yc_p, Ych_p)) if len(np.unique(Yc_p)) > 1 else float("nan")
+    r2v = float(r2_score(Yv_p, Yvh_p)) if len(np.unique(Yv_p)) > 1 else float("nan")
+    rmsec = rmse_flat(Yc_p, Ych_p)
+    rmsep = rmse_flat(Yv_p, Yvh_p)
+    rmsecv = float(np.min(erros_reg_repr)) if erros_reg_repr else rmsec
+    bias_v = float(np.mean(Yvh_p - Yv_p))
+
+    # pooled diagonal figure (proper diagonal: within-species calibration)
+    fig7_pls_regressao(Yc_p, Ych_p, Yv_p, Yvh_p, erros_reg_repr or [rmsec],
+                       n_opt_repr, r2c, r2v, rmsec, rmsecv, rmsep, bias_v,
+                       cfg, pasta)
+
+    return {
+        "tabela_especie": tabela_esp,
+        "r2c": r2c, "r2v": r2v, "rmsec": rmsec, "rmsecv": rmsecv,
+        "rmsep": rmsep, "bias": bias_v, "n_especies": len(tabela_esp),
+    }
+
+
 def executar(cfg: Config):
     setup_matplotlib(cfg)
 
@@ -5100,107 +5237,36 @@ def executar(cfg: Config):
     if mae_id is not None:
         mae_id = np.asarray(mae_id, dtype=str)
 
-    # --- 1a0. nivel N2: remap species labels → puro / adulterado -----------
-    # Root-cause fix: carregar_dx() always assigns rotulos = especie.
-    # Without this block, N2 runs 13-class species discrimination — identical
-    # to N1. The remapping must happen BEFORE holdout so stratification is
-    # also correct for the binary task.
-    #   puro      : conc is NaN (None → nan after asarray) or conc == 0
-    #   adulterado: conc > 0
+    # --- 1a0. nivel N2: autenticação por espécie (DD-SIMCA one-class) ------
+    # DESIGN (escolha do usuário — opção A):
+    #   N1 = identificar a espécie (PLS-DA 13 classes, bal.acc≈0.906).
+    #   N2 = autenticar pureza POR ESPÉCIE via DD-SIMCA one-class. Treina um
+    #        modelo do "puro" para cada espécie e testa se cada amostra é
+    #        pura (aceita) ou adulterada (rejeitada). É o método-padrão de
+    #        autenticação e funciona (sens≈90%, esp=100%).
+    #
+    # CRÍTICO: NÃO remapeamos rotulos para puro/adulterado. Os rótulos de
+    # ESPÉCIE são preservados — o DD-SIMCA precisa deles para construir um
+    # modelo por espécie. (O remap binário anterior fazia o DD-SIMCA treinar
+    # um único modelo "puro" genérico, perdendo a autenticação por espécie.)
+    # A distinção puro/adulterado vem de `conc` (0 = puro), usada dentro do
+    # bloco DD-SIMCA. Não há undersampling: o DD-SIMCA precisa das amostras
+    # adulteradas para medir a especificidade.
     if cfg.nivel == "N2":
         if conc is not None:
-            rotulos_n2 = np.where(
-                np.isnan(conc) | (conc == 0.0), "puro", "adulterado")
-            n_p = int(np.sum(rotulos_n2 == "puro"))
-            n_a = int(np.sum(rotulos_n2 == "adulterado"))
-            print(f"[INFO] N2: rotulos remapeados de especie para "
-                  f"puro/adulterado (puro={n_p} | adulterado={n_a})")
-            rotulos = rotulos_n2
+            n_puro = int(np.sum(np.isnan(conc) | (conc == 0.0)))
+            n_adul = int(np.sum(~(np.isnan(conc) | (conc == 0.0))))
+            print(f"[INFO] N2 (autenticação por espécie): rótulos de espécie "
+                  f"preservados para DD-SIMCA one-class "
+                  f"(puros={n_puro} | adulterados={n_adul}). "
+                  f"DD-SIMCA forçado para modo 'puros'.")
+            # Force per-species one-class authentication for N2
+            cfg.ddsimca_treinar_em = "puros"
+            cfg.executar_ddsimca = True
         else:
-            print("[AVISO] nivel=N2 sem dados de concentracao (##TITLE= sem "
-                  "adulterante). Rotulos de especie mantidos — verifique os "
-                  "arquivos .dx.")
-
-    # --- 1a0b. N2: undersampling ESTRATIFICADO por espécie ----------------
-    # Previous collapse cause (even after balancing):
-    #   Random selection from 553 adult mae_ids ignored species.
-    #   Result: fold could have "AND pure" in test but only "COC adult" in
-    #   training → LV1 captures inter-species variation, not puro/adulterado.
-    #
-    # Fix: for EACH pure mae_id, pick 1 adult mae_id from the SAME species
-    # (species = prefix before first '-' in mae_id: "AND-10-06-2020" → "AND").
-    # This creates a PAIRED design: pure and adulterated samples from the same
-    # species appear together in every CV fold → PLS-DA learns the within-
-    # species spectral change from adulteration, not between-species variation.
-    # Orphan mae_ids (no matching adult species) are removed.
-    #
-    # anti-leakage: all replicates (T1/T2/T3) of each mae_id stay together.
-    # holdout_preserva_puros: disabled for N2 (with balanced data, pure samples
-    # can go to holdout; disabling avoids holdout with 0 pure samples).
-    if (cfg.nivel == "N2"
-            and cfg.balancear_classes_n2
-            and conc is not None
-            and mae_id is not None):
-        classes_u, contagem_u = np.unique(rotulos, return_counts=True)
-        if len(classes_u) == 2:
-            ratio_ib = float(contagem_u.max()) / float(contagem_u.min())
-            if ratio_ib > cfg.n2_balance_threshold:
-                classe_min = classes_u[np.argmin(contagem_u)]   # "puro"
-                classe_max = classes_u[np.argmax(contagem_u)]   # "adulterado"
-
-                ids_min = np.unique(mae_id[rotulos == classe_min])
-                ids_max = np.unique(mae_id[rotulos == classe_max])
-                rng_bal = np.random.default_rng(cfg.seed_holdout)
-
-                def _esp_de_maeid(mid: str) -> str:
-                    """Species code = prefix before first '-': 'AND-10-06-2020' → 'AND'."""
-                    s = str(mid).split('-')[0]
-                    # Guard: ignore generic orphan tokens (length > 5 suggests
-                    # the mae_id was not parsed from a proper COD-DATE string)
-                    return s if len(s) <= 5 else "__orphan__"
-
-                # STRATIFIED SELECTION: for each pure mae_id, pick 1 adult
-                # mae_id from the same species.  Orphans (no adult counterpart)
-                # are silently dropped from the pure set as well.
-                ids_min_sel: List[str] = []
-                ids_max_sel: List[str] = []
-                for id_p in ids_min:
-                    esp_p = _esp_de_maeid(str(id_p))
-                    if esp_p == "__orphan__":
-                        continue  # skip unparseable pure mae_ids
-                    candidatos = [str(m) for m in ids_max
-                                  if _esp_de_maeid(str(m)) == esp_p]
-                    if not candidatos:
-                        continue  # no adult from this species → skip pair
-                    ids_min_sel.append(str(id_p))
-                    escolhido = str(rng_bal.choice(candidatos, size=1)[0])
-                    ids_max_sel.append(escolhido)
-
-                if len(ids_min_sel) == 0:
-                    # Fallback: random (species prefix doesn't match mae_id format)
-                    print("[AVISO] N2 balanceamento: prefixo de especie nao "
-                          "reconhecido em mae_ids. Usando undersampling aleatorio.")
-                    n_sel = len(ids_min)
-                    ids_max_sel = list(rng_bal.choice(ids_max, size=n_sel, replace=False))
-                    ids_min_sel = list(ids_min)
-
-                mask_bal = np.isin(mae_id,
-                                   np.array(ids_min_sel + ids_max_sel, dtype=str))
-                X_raw   = X_raw[mask_bal]
-                rotulos = rotulos[mask_bal]
-                conc    = conc[mask_bal]
-                mae_id  = mae_id[mask_bal]
-
-                n_p2 = int(np.sum(rotulos == classe_min))
-                n_a2 = int(np.sum(rotulos == classe_max))
-                n_esp = len(ids_min_sel)
-                print(f"[INFO] N2 balanceado estratificado por especie "
-                      f"(ratio original {ratio_ib:.1f}:1 → {n_a2/max(n_p2,1):.1f}:1): "
-                      f"{classe_min}={n_p2} | {classe_max}={n_a2} "
-                      f"({n_esp} especies pareadas)")
-                # Disable pure preservation: balanced data has enough pure
-                # samples for holdout — disabling avoids 0-pure holdout splits
-                cfg.holdout_preserva_puros = False
+            print("[AVISO] nivel=N2 sem dados de concentração (##TITLE= sem "
+                  "adulterante). Não é possível separar puro/adulterado — "
+                  "verifique os arquivos .dx.")
 
     # --- 1a. Truncamento espectral: remove ruido de borda da FFT ----------
     # SG derivativo amplifica os ultimos pontos da FFT (proximos a 0 cm-1
@@ -6011,17 +6077,41 @@ def executar(cfg: Config):
         else:
             # Guard (6): check number of unique species via mae_id prefix
             # (first 3 uppercase chars = species code: AND, ACA, BCB …)
+            n_especies = 1
             if mae_id is not None:
                 prefixos = {str(m)[:3].upper() for m in mae_id}
                 n_especies = len(prefixos)
-                if n_especies > 1:
-                    print(f"\n[7/7] PLS regressao — PULADA: {n_especies} "
-                          f"especies detectadas ({', '.join(sorted(prefixos))}). "
-                          f"Regressao de concentracao e confundida pela "
-                          f"variacao inter-especies. Use dados de UMA especie "
-                          f"ou nivel=N3 com dados por especie.")
-                else:
-                    _pls_reg_ok = True
+            elif rotulos is not None:
+                n_especies = len(np.unique(rotulos))
+
+            if n_especies > 1:
+                # Multi-species: a SINGLE pooled model is confounded by inter-
+                # species variation. Instead, calibrate PER SPECIES and pool
+                # the predictions — recovers the proper diagonal.
+                print(f"\n[7/7] PLS regressao POR ESPECIE "
+                      f"({n_especies} especies — calibracao separada para "
+                      f"evitar confusao inter-especies)")
+                try:
+                    reg_esp = pls_regressao_por_especie(
+                        X_raw, conc_arr, rotulos, mae_id, classes_unicas,
+                        cfg, pasta, n_splits)
+                    if reg_esp is not None:
+                        print(f"  Especies modeladas: {reg_esp['n_especies']}")
+                        print(f"  R2cal (pooled): {reg_esp['r2c']:.4f}  |  "
+                              f"R2val (pooled): {reg_esp['r2v']:.4f}")
+                        print(f"  RMSEP (pooled): {reg_esp['rmsep']:.3f}")
+                        for t in reg_esp["tabela_especie"]:
+                            print(f"    {t['especie']:18s} "
+                                  f"LV={t['n_lv']:2d}  RMSEP={t['rmsep']:.2f}  "
+                                  f"R2val={t['r2val']:.3f}  "
+                                  f"(cal={t['n_cal']}, val={t['n_val']})")
+                    else:
+                        print("  [AVISO] Nenhuma especie com amostras "
+                              "suficientes para regressao (>= 6 adulteradas "
+                              "e variancia de teor > 0).")
+                except Exception as _e_reg_esp:
+                    print(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+                _pls_reg_ok = False   # per-species path handled the figure
             else:
                 _pls_reg_ok = True
 
@@ -6157,9 +6247,6 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None},
     {"key": "holdout_fracao", "attr": "frac_holdout", "tipo": "float",
      "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None},
-    {"key": "balancear_classes_n2", "attr": "balancear_classes_n2", "tipo": "bool",
-     "desc": "N2: undersampling por mae_id para corrigir desequilibrio puro/adulterado",
-     "opcoes": None},
     {"key": "validacao_group_aware", "attr": "agrupar_por_mae_id", "tipo": "bool",
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
     {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
