@@ -658,9 +658,22 @@ def _cfgv(cfg: Config, key: str, default: Any = None) -> Any:
 
 
 def _contar_dx(pasta: str) -> int:
+    """Count .dx files in pasta — checks root AND immediate subfolders
+    (supports both flat layout and one-subfolder-per-class layout)."""
     try:
         p = Path(pasta)
-        return sum(1 for f in p.iterdir() if f.suffix.lower() == ".dx") if p.is_dir() else 0
+        if not p.is_dir():
+            return 0
+        # root-level .dx files
+        n = sum(1 for f in p.iterdir() if f.is_file() and f.suffix.lower() == ".dx")
+        if n > 0:
+            return n
+        # one level down (one subfolder per species/class)
+        for sub in p.iterdir():
+            if sub.is_dir():
+                n += sum(1 for f in sub.iterdir()
+                         if f.is_file() and f.suffix.lower() == ".dx")
+        return n
     except Exception:
         return 0
 
