@@ -829,9 +829,11 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     for av_msg in avisos_faixa:
         linhas.append(f"  [{PR}]✖ {av_msg}[/{PR}]")
 
+    _titulo_rev = ("Revisao da Configuracao" if _lang() == "PT"
+                   else "Configuration Review")
     console.print(Panel(
         "\n".join(linhas),
-        title=f"[{PA}]☀ Revisao da Configuracao[/{PA}]",
+        title=f"[{PA}]☀ {_titulo_rev}[/{PA}]",
         border_style=PA, box=rbox.ROUNDED, padding=(1, 2), width=_W()
     ))
     _pause()
@@ -1174,7 +1176,9 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     lang = _lang()
     spec = _SPEC_BY_KEY.get(key)
     if spec is None:
-        console.print(f"  [err]Campo '{key}' nao encontrado.[/err]")
+        _msg = (f"Campo '{key}' nao encontrado." if lang == "PT"
+                else f"Field '{key}' not found.")
+        console.print(f"  [err]{_msg}[/err]")
         return False
 
     nome     = _nome_campo(key)
@@ -1468,7 +1472,8 @@ def menu_visualizacao(cfg: Config) -> None:
             if 0 <= idx < len(PALETAS_COR):
                 vcfg["paleta"] = list(PALETAS_COR.keys())[idx]
                 _salvar_visual_cfg(vcfg)
-                console.print(f"  [g]✓ Paleta: {vcfg['paleta']}[/g]")
+                _lbl = "Paleta" if _lang() == "PT" else "Palette"
+                console.print(f"  [g]✓ {_lbl}: {vcfg['paleta']}[/g]")
 
     def _fonte():
         vcfg = _carregar_visual_cfg()
@@ -1492,7 +1497,8 @@ def menu_visualizacao(cfg: Config) -> None:
         if r.isdigit() and 1 <= int(r) <= 5:
             vcfg["tamanho_fonte"] = presets[int(r)-1][0]
             _salvar_visual_cfg(vcfg)
-            console.print(f"  [g]✓ Fonte: {vcfg['tamanho_fonte']}[/g]")
+            _lbl = "Fonte" if _lang() == "PT" else "Font"
+            console.print(f"  [g]✓ {_lbl}: {vcfg['tamanho_fonte']}[/g]")
 
     def _grid():
         vcfg = _carregar_visual_cfg()
@@ -2800,7 +2806,8 @@ def _salvar_yaml(cfg: Config) -> None:
     path = _PERFIS_DIR / f"{san}.yaml"
     try:
         salvar_config(cfg, str(path))
-        console.print(f"  [g]✓ Salvo: {escape(str(path))}[/g]")
+        _lbl = "Salvo" if _lang() == "PT" else "Saved"
+        console.print(f"  [g]✓ {_lbl}: {escape(str(path))}[/g]")
     except Exception as e:
         console.print(f"  [err]{escape(str(e))}[/err]")
     _pause()
@@ -2829,7 +2836,8 @@ def _carregar_yaml(cfg: Config) -> None:
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
                 except: pass
-            console.print(f"  [g]✓ Carregado: {escape(path.stem)}[/g]")
+            _lbl = "Carregado" if _lang() == "PT" else "Loaded"
+            console.print(f"  [g]✓ {_lbl}: {escape(path.stem)}[/g]")
         except Exception as e:
             console.print(f"  [err]{escape(str(e))}[/err]")
     else:
