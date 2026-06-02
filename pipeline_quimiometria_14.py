@@ -868,22 +868,30 @@ class DDSimca:
             t2_ucl = self._compute_t2_ucl(T2_train, nc, n_comp)
             q_ucl  = q_residuos_limite(Q_train, self.alpha)
 
-            # Small-n guard: with nc < 20 the empirical percentile < max(training),
-            # which mathematically GUARANTEES some training samples are rejected
-            # (T2_norm > 1 or Q_norm > 1 for the highest-value sample).
-            # With 3 pure samples (typical for N2 per-species authentication),
-            # np.percentile([a,b,c], 95) ≈ 0.9*c < c  →  the max-T2 sample gets
-            # T2_norm = c/(0.9c) = 1.11 > 1 → rejected by its OWN model.
-            # Fix: clamp UCL to at least max(training statistic) so all training
-            # samples are accepted — the only scientifically correct behavior when
-            # the training set IS the reference population.
-            # This also handles the Q≈0 collapse (PCA with n_comp=n-1 fits all
-            # training samples perfectly: Q_train≈0 → q_ucl≈0 → Q_norm→∞).
+            # Small-n guard: with nc < 20 two numerical bugs cause training samples
+            # to be rejected by their OWN model.
+            #
+            # BUG A (T2): np.percentile([a,b,c], 95) < max → the max-T2 sample
+            #   always gets T2_norm = max/(0.9·max) ≈ 1.11 > 1 → rejected.
+            #
+            # BUG B (Q): PCA with n_comp = n-1 fits training perfectly → Q≈0
+            #   → q_ucl ≈ 0 → Q_norm = Q/1e-12 → ∞ for all samples.
+            #
+            # Fix: clamp UCLs to at least max(training statistic), then add a
+            # tiny RELATIVE tolerance (1 ppm = 1e-6) to absorb floating-point
+            # discrepancies between pca.fit_transform() (used during fit) and
+            # pca.transform() (used during score_matrix evaluation). Without
+            # the tolerance, the exact-max sample gets T2_norm ≈ 1.0000004 > 1
+            # and is silently rejected. 1 ppm is imperceptible for real samples
+            # (adulterated oils have T2_norm >> 1) but fixes precision artefacts.
+            _EPS_UCL = 1e-6   # 1 ppm relative tolerance
             if nc < 20:
                 if T2_train.size > 0:
-                    t2_ucl = max(t2_ucl, float(T2_train.max()), 1e-12)
+                    t2_ucl = max(t2_ucl,
+                                 float(T2_train.max()) * (1.0 + _EPS_UCL) + 1e-12)
                 if Q_train.size > 0:
-                    q_ucl  = max(q_ucl,  float(Q_train.max()),  1e-12)
+                    q_ucl  = max(q_ucl,
+                                 float(Q_train.max())  * (1.0 + _EPS_UCL) + 1e-12)
 
             self._modelos[cls] = {
                 "pca":      pca,
@@ -5125,12 +5133,13 @@ def pls_regressao_por_especie(
         idx = np.where(rotulos == cls)[0]
         if idx.size == 0:
             continue
-        conc_c = conc[idx]
+        conc_c = conc[idx].copy()
+        # Pure samples are stored as NaN (loaded from None); treat as 0% adulteration.
+        # Do NOT skip species with NaN — that would exclude all pure reference points.
+        conc_c = np.where(np.isnan(conc_c), 0.0, conc_c)
         # need variation in concentration (pure + adulterated of THIS species)
         n_adult_c = int(np.sum(conc_c > 0))
-        if n_adult_c < min_amostras_adult or float(np.nanstd(conc_c)) < 1e-8:
-            continue
-        if np.isnan(conc_c).any():
+        if n_adult_c < min_amostras_adult or float(conc_c.std()) < 1e-8:
             continue
 
         X_c = X_raw[idx]
@@ -5644,9 +5653,11 @@ def executar(cfg: Config):
     # --- 8. Figuras --------------------------------------------------------
     print("\n[6/7] Gerando figuras...")
     aucs_roc: Dict[str, float] = {}
-    # M1: mascara de puros (conc==0) para marcadores diferenciados
-    puros_mask_fig = ((np.asarray(conc, dtype=float) == 0.0)
-                       if conc is not None else None)
+    # M1: mascara de puros para marcadores diferenciados
+    # Pure samples: conc loaded as None -> NaN after asarray(float), OR stored as 0.0
+    # Must handle BOTH cases to avoid false-negative mask for pure samples.
+    _conc_f = np.asarray(conc, dtype=float) if conc is not None else None
+    puros_mask_fig = (np.isnan(_conc_f) | (_conc_f == 0.0)) if _conc_f is not None else None
     # Flag de simbolos por classe (None -> todos circulo 'o')
     marcadores_fig = (mapa_marcadores if cfg.mostrar_marcadores_classe
                       else None)
@@ -5710,7 +5721,11 @@ def executar(cfg: Config):
     if cfg.executar_ddsimca:
         modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
         if conc is not None:
-            mask_puros = (np.asarray(conc, dtype=float) == 0.0)
+            # Pure samples: conc loaded as None -> NaN after asarray(float), OR 0.0.
+            # Use both conditions — NaN == 0.0 is False, causing pure samples to be
+            # silently excluded from DD-SIMCA training (sens=0% for all classes).
+            _conc_dd = np.asarray(conc, dtype=float)
+            mask_puros = np.isnan(_conc_dd) | (_conc_dd == 0.0)
         else:
             mask_puros = np.ones(len(rotulos), dtype=bool)
 
