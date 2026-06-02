@@ -5873,14 +5873,25 @@ def executar(cfg: Config):
 
     # --- 9. PLS regression (optional) -------------------------------------
     # Guard: only runs if (1) concentration data present, (2) no NaN,
-    # (3) variance > 0, (4) at least 10 samples with concentration > 0
-    # (otherwise regression on near-pure samples has no signal).
+    # (3) variance > 0, (4) at least 10 samples with concentration > 0,
+    # (5) nivel is N2 or N3 — in N1 the inter-species spectral variation
+    #     (~90 % of variance) completely overwhelms the adulteration signal,
+    #     producing R²≈0 and a "predict-the-mean" model.
+    # (6) Single-species data (mae_id prefix check) — multi-species N2 is
+    #     also confounded; the model sees species identity as a stronger
+    #     signal than adulteration level.
     _pls_reg_ok = False
     if conc is not None:
         conc_arr = np.asarray(conc, dtype=float)
-        n_nan = int(np.isnan(conc_arr).sum())
+        n_nan    = int(np.isnan(conc_arr).sum())
         n_nonzero = int(np.sum(conc_arr > 0))
-        if n_nan > 0:
+
+        if cfg.nivel == "N1":
+            print(f"\n[7/7] PLS regressao — PULADA: nivel=N1. "
+                  f"Regressao de concentracao requer nivel=N2 ou N3 "
+                  f"(N1 mistura {len(classes_unicas)} especies cujos "
+                  f"espectros dominam o sinal de adulteracao).")
+        elif n_nan > 0:
             print(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
                   f"conc=NaN.")
         elif float(conc_arr.std()) < 1e-8:
@@ -5889,7 +5900,21 @@ def executar(cfg: Config):
             print(f"\n[7/7] PLS regressao — PULADA: apenas {n_nonzero} "
                   f"amostras com teor > 0 (precisa >= 10).")
         else:
-            _pls_reg_ok = True
+            # Guard (6): check number of unique species via mae_id prefix
+            # (first 3 uppercase chars = species code: AND, ACA, BCB …)
+            if mae_id is not None:
+                prefixos = {str(m)[:3].upper() for m in mae_id}
+                n_especies = len(prefixos)
+                if n_especies > 1:
+                    print(f"\n[7/7] PLS regressao — PULADA: {n_especies} "
+                          f"especies detectadas ({', '.join(sorted(prefixos))}). "
+                          f"Regressao de concentracao e confundida pela "
+                          f"variacao inter-especies. Use dados de UMA especie "
+                          f"ou nivel=N3 com dados por especie.")
+                else:
+                    _pls_reg_ok = True
+            else:
+                _pls_reg_ok = True
 
     if _pls_reg_ok and conc is not None:
         print(f"\n[7/7] PLS regressao "
