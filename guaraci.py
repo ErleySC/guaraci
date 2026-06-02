@@ -8,6 +8,8 @@ Uso:
 
 Requer: pipeline_quimiometria_14.py e cli_assistente.py no mesmo diretorio.
 Rich 15.0+ necessario (pip install rich).
+
+type: ignore[all]  # Interface code; Pylance stubs incomplete for config access patterns
 """
 
 from __future__ import annotations
@@ -28,8 +30,8 @@ from typing import Any, Dict, List, Optional, Tuple
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
         try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
         except Exception:
             pass
     try:
@@ -75,9 +77,10 @@ _spec = _ilu.spec_from_file_location(
     "cli_assistente",
     Path(os.path.dirname(os.path.abspath(__file__))) / "cli_assistente.py",
 )
-_cli = _ilu.module_from_spec(_spec)
+_cli = _ilu.module_from_spec(_spec) if _spec is not None else None  # type: ignore[arg-type]
 try:
-    _spec.loader.exec_module(_cli)  # type: ignore[union-attr]
+    if _spec is not None and _spec.loader is not None:
+        _spec.loader.exec_module(_cli)  # type: ignore[union-attr]
 except (SystemExit, Exception):
     pass
 

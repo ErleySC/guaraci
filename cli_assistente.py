@@ -3727,7 +3727,7 @@ def _rodar_pipeline(cfg: Config) -> None:
             pass
         cores = paleta.get("cores")
         if cores:
-            plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
+            plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)  # type: ignore[attr-defined]
         cmap = paleta.get("cmap")
         if cmap:
             plt.rcParams["image.cmap"] = cmap
