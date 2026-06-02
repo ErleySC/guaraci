@@ -2924,10 +2924,14 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
     ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=fs_tick)
     ax.set_ylabel("Value")
     ax.set_ylim(0, 1.10)
-    ax.set_title("(b) Per-class metrics (one-vs-rest)", loc="left")
+    ax.set_title("(b) Per-class metrics (one-vs-rest)", loc="left", pad=22)
     ax.grid(axis="y", color="0.92", lw=0.5, zorder=0)
     ax.set_axisbelow(True)
-    ax.legend(loc="lower right", ncol=2, fontsize=8, frameon=False)
+    # Legend ABOVE the plot (horizontal, 4 cols) so it never overlaps the bars
+    # (which reach ~1.0 for well-classified species like Pracaxi/Andiroba).
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=4,
+              fontsize=7.5, frameon=False, columnspacing=1.0,
+              handletextpad=0.4)
 
     salvar(fig, "fig4_confusao_e_metricas_por_classe", pasta, cfg)
 
@@ -2982,6 +2986,40 @@ BANDAS_NIR: List[Tuple[float, str]] = [
 ]
 
 
+def _anotar_sem_sobreposicao(ax, xs, ys, labels, ref_x=None, ref_y=None,
+                              fontsize=6.5, color="0.2", min_dist_frac=0.05,
+                              max_labels=None, offset=(3, 3)):
+    """Annotate points but SKIP labels that would overlap already-placed ones.
+
+    Greedy spatial thinning: processes points in the given order (assumed
+    sorted by importance) and places a label only if the point is at least
+    `min_dist_frac` of the data range away — in BOTH x and y — from every
+    label already placed. Prevents the cluttered stacks of wavenumber labels
+    that appear when many top features cluster in the same plot region.
+
+    ref_x/ref_y: full data arrays used to compute the spatial scale (so the
+    threshold reflects the whole plot, not just the labeled subset).
+    """
+    xs = np.asarray(xs, dtype=float)
+    ys = np.asarray(ys, dtype=float)
+    rx = np.asarray(ref_x if ref_x is not None else xs, dtype=float)
+    ry = np.asarray(ref_y if ref_y is not None else ys, dtype=float)
+    dx = float(np.ptp(rx)) or 1.0
+    dy = float(np.ptp(ry)) or 1.0
+    placed: List[Tuple[float, float]] = []
+    for k in range(len(xs)):
+        xk, yk = float(xs[k]), float(ys[k])
+        if any(abs(xk - px) / dx < min_dist_frac and
+               abs(yk - py) / dy < min_dist_frac for px, py in placed):
+            continue
+        ax.annotate(str(labels[k]), xy=(xk, yk), xytext=offset,
+                    textcoords="offset points", fontsize=fontsize, color=color)
+        placed.append((xk, yk))
+        if max_labels is not None and len(placed) >= max_labels:
+            break
+    return len(placed)
+
+
 def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0,
                         janela=120.0):
     """M3: annotates known chemical bands at VIP peaks > threshold.
@@ -2993,6 +3031,10 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0,
     wavenumbers = np.asarray(wavenumbers, dtype=float)
     vip = np.asarray(vip, dtype=float)
     ymax = float(np.nanmax(vip)) if vip.size else 1.0
+    span = float(np.ptp(wavenumbers)) or 1.0
+    # Collect annotatable bands first, then stagger heights so labels of
+    # nearby bands (e.g. 5800 & 5900 cm-1, 100 apart) do not overlap.
+    candidatos = []
     for centro, rotulo in BANDAS_NIR:
         viz = np.abs(wavenumbers - centro) <= janela
         if not viz.any():
@@ -3001,16 +3043,31 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0,
         i_pico = idx_viz[int(np.argmax(vip[idx_viz]))]
         if vip[i_pico] < limiar:
             continue
+        candidatos.append((float(wavenumbers[i_pico]), float(vip[i_pico]), rotulo))
+    candidatos.sort(key=lambda c: c[0])
+    # Rotate labels 90° (vertical text): bands only 100 cm-1 apart (e.g. C=O
+    # at 5800 and C-H at 5900) have wide horizontal labels that overlap when
+    # written horizontally. Vertical text occupies minimal horizontal space,
+    # so adjacent bands no longer collide. A small alternating vertical level
+    # adds extra separation for very close pairs.
+    nivel = 0
+    x_ant = None
+    for wn_pico, vip_pico, rotulo in candidatos:
+        if x_ant is not None and abs(wn_pico - x_ant) / span < 0.06:
+            nivel = (nivel + 1) % 2
+        else:
+            nivel = 0
+        y_base = vip_pico + (0.04 + 0.06 * nivel) * ymax
         ax.annotate(
             rotulo,
-            xy=(wavenumbers[i_pico], vip[i_pico]),
-            xytext=(wavenumbers[i_pico], min(vip[i_pico] + 0.18 * ymax,
-                                              ymax * 1.12)),
-            ha="center", va="bottom", fontsize=6.8, color="0.20",
-            fontweight="bold",
-            arrowprops=dict(arrowstyle="->", color="0.45", lw=0.7),
+            xy=(wn_pico, vip_pico),
+            xytext=(wn_pico, y_base),
+            ha="center", va="bottom", rotation=90, rotation_mode="anchor",
+            fontsize=6.5, color="0.20", fontweight="bold",
+            arrowprops=dict(arrowstyle="->", color="0.45", lw=0.6),
             zorder=6,
         )
+        x_ant = wn_pico
 
 
 def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
@@ -3032,16 +3089,18 @@ def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
     # V3: y-lim at the REAL range (without compressing variation near 1.0) +
     # statistics box to check the true dispersion of VIPs.
     vmin, vmax = float(np.min(vip)), float(np.max(vip))
-    ax.set_ylim(max(0.0, vmin - 0.05 * (vmax - vmin)), vmax * 1.08)
-    ax.text(0.02, 0.97,
+    # Extra headroom (1.25) for staggered band annotations at the top.
+    ax.set_ylim(max(0.0, vmin - 0.05 * (vmax - vmin)), vmax * 1.25)
+    # Stats box in lower-left corner (top is reserved for band labels).
+    ax.text(0.02, 0.03,
             f"min={vmin:.2f}  max={vmax:.2f}\n"
             f"mean={float(np.mean(vip)):.2f}  sd={float(np.std(vip)):.2f}\n"
             f"n(VIP$\\geq$1)={int(mask_hi.sum())}/{len(vip)}",
-            transform=ax.transAxes, ha="left", va="top", fontsize=7.8,
+            transform=ax.transAxes, ha="left", va="bottom", fontsize=7.8,
             color="0.25", bbox=dict(boxstyle="round,pad=0.35", fc="white",
                                      ec="0.82", lw=0.6))
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
-    ax.legend(loc="upper right", frameon=False)
+    ax.legend(loc="lower right", frameon=False, fontsize=8)
 
     ax = axes[1]
     ord_vip = np.argsort(vip)[::-1]
@@ -3890,13 +3949,15 @@ def fig_splot_opls(X_proc: np.ndarray, t_pred: np.ndarray,
     ax.axhline(0, color="0.55", lw=0.8, ls="--")
     ax.axvline(0, color="0.55", lw=0.8, ls="--")
 
-    # Anota top_n wavenumbers por |correlacao|
-    idx_top = np.argsort(np.abs(corr_xj))[::-1][:top_n]
-    for j in idx_top:
-        ax.annotate(f"{wavenumbers[j]:.0f}",
-                    xy=(cov_xj[j], corr_xj[j]),
-                    xytext=(3, 3), textcoords="offset points",
-                    fontsize=6.5, color="0.2")
+    # Anota top wavenumbers por |correlacao|, com anti-sobreposicao
+    # (evita o empilhamento de rotulos quando varias variaveis-top se
+    # agrupam na mesma regiao do grafico).
+    idx_top = np.argsort(np.abs(corr_xj))[::-1][:max(top_n * 3, 30)]
+    _anotar_sem_sobreposicao(
+        ax, cov_xj[idx_top], corr_xj[idx_top],
+        [f"{wavenumbers[j]:.0f}" for j in idx_top],
+        ref_x=cov_xj, ref_y=corr_xj,
+        fontsize=6.5, color="0.2", min_dist_frac=0.055, max_labels=top_n)
 
     ax.set_xlabel("Covariância($X_j$, $t_p$)")
     ax.set_ylabel("Correlação($X_j$, $t_p$)")
