@@ -271,6 +271,13 @@ class Config:
     holdout_preserva_puros: bool = True
     seed_holdout: int = 42
 
+    # N2 class-balancing: when nivel="N2" and imbalance ratio > n2_balance_threshold,
+    # randomly undersample the majority class at mae_id-group level (preserves
+    # anti-leakage) so PLS-DA does not collapse to predicting only "adulterado".
+    # Set to False to keep raw imbalanced data (documents the collapse in the TCC).
+    balancear_classes_n2: bool = True
+    n2_balance_threshold: float = 5.0   # trigger if max/min ratio > this
+
     n_por_classe: int = 20
     n_pontos_sint: int = 1000
 
@@ -5114,6 +5121,58 @@ def executar(cfg: Config):
                   "adulterante). Rotulos de especie mantidos — verifique os "
                   "arquivos .dx.")
 
+    # --- 1a0b. N2: undersampling por mae_id para corrigir desequilíbrio ----
+    # Root cause of N2 collapse: 1306 adulterado vs 40 puro (ratio 32:1).
+    # PLSRegression has no class_weight; it minimises RMSECV on the majority
+    # class → collapses to predicting "adulterado" for everything (bal.acc=0.5).
+    # Fix: undersample the majority class at the mae_id GROUP level so that
+    # all replicates (T1/T2/T3) of each measurement point stay together
+    # (anti-leakage preserved). holdout_preserva_puros is also disabled for N2
+    # because keeping ALL puras in train makes the holdout have 0 puro samples
+    # → misleading 100% bal.acc on holdout.
+    if (cfg.nivel == "N2"
+            and cfg.balancear_classes_n2
+            and conc is not None):
+        classes_u, contagem_u = np.unique(rotulos, return_counts=True)
+        if len(classes_u) == 2:
+            ratio_ib = float(contagem_u.max()) / float(contagem_u.min())
+            if ratio_ib > cfg.n2_balance_threshold:
+                classe_min = classes_u[np.argmin(contagem_u)]
+                classe_max = classes_u[np.argmax(contagem_u)]
+                if mae_id is not None:
+                    # Group-level undersampling (anti-leakage safe)
+                    ids_min = np.unique(mae_id[rotulos == classe_min])
+                    ids_max = np.unique(mae_id[rotulos == classe_max])
+                    rng_bal = np.random.default_rng(cfg.seed_holdout)
+                    n_sel = len(ids_min)
+                    ids_max_sel = rng_bal.choice(
+                        ids_max, size=n_sel, replace=False)
+                    mask_bal = np.isin(mae_id, np.concatenate([ids_min, ids_max_sel]))
+                else:
+                    # Fallback: sample-level undersampling
+                    idx_min = np.where(rotulos == classe_min)[0]
+                    idx_max = np.where(rotulos == classe_max)[0]
+                    rng_bal = np.random.default_rng(cfg.seed_holdout)
+                    idx_max_sel = rng_bal.choice(
+                        idx_max, size=len(idx_min), replace=False)
+                    mask_bal = np.zeros(len(rotulos), dtype=bool)
+                    mask_bal[idx_min] = True
+                    mask_bal[idx_max_sel] = True
+                X_raw   = X_raw[mask_bal]
+                rotulos = rotulos[mask_bal]
+                if conc is not None:
+                    conc = conc[mask_bal]
+                if mae_id is not None:
+                    mae_id = mae_id[mask_bal]
+                n_p2 = int(np.sum(rotulos == classe_min))
+                n_a2 = int(np.sum(rotulos == classe_max))
+                print(f"[INFO] N2 balanceado (ratio foi {ratio_ib:.1f}:1): "
+                      f"{classe_min}={n_p2} | {classe_max}={n_a2} "
+                      f"(undersampling por mae_id)")
+                # Allow holdout to include pure samples now that we have
+                # enough of them (balanced dataset, not 40 out of 1346)
+                cfg.holdout_preserva_puros = False
+
     # --- 1a. Truncamento espectral: remove ruido de borda da FFT ----------
     # SG derivativo amplifica os ultimos pontos da FFT (proximos a 0 cm-1
     # e ao final do interferograma). Sem truncar, esses pontos viram falsos
@@ -6069,6 +6128,9 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None},
     {"key": "holdout_fracao", "attr": "frac_holdout", "tipo": "float",
      "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None},
+    {"key": "balancear_classes_n2", "attr": "balancear_classes_n2", "tipo": "bool",
+     "desc": "N2: undersampling por mae_id para corrigir desequilibrio puro/adulterado",
+     "opcoes": None},
     {"key": "validacao_group_aware", "attr": "agrupar_por_mae_id", "tipo": "bool",
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
     {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
