@@ -1,25 +1,33 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "Amazonian Oils Chemometrics Platform"
+title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
 abstract: >
-  A Streamlit-based chemometric platform for FT-NIR spectroscopy of Amazonian
-  vegetable oils. Implements PLS-DA, OPLS-DA, DD-SIMCA, iPLS, VIP, SHAP, and
-  Monte Carlo CV with anti-leakage GroupKFold validation.
+  GUARACI is an open, reproducible multi-technique chemometrics platform for
+  classification, authentication and exploration of complex matrices. It supports
+  vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
+  (HPLC, GC-MS) and resonance (NMR, IMS) data. It implements PLS-DA, OPLS-DA,
+  DD-SIMCA, VIP, SHAP and Monte Carlo CV with anti-leakage group-aware
+  validation, and offers a Rich-based bilingual terminal interface (GUARACI)
+  plus a Streamlit web app. Originally developed at GEAAp/UFPA for FT-NIR
+  authentication of Amazonian vegetable oils.
 authors:
   - family-names: "Costa"
-    given-names: "Erley S."
-    affiliation: "GEAAp/UFPA"
+    given-names: "Erley S. da"
+    affiliation: "GEAAp/UFPA — Grupo de Estudos em Analises Ambientais e Aplicadas"
     email: "erleysdacosta@gmail.com"
+    website: "http://lattes.cnpq.br/5755582193284309"
 repository-code: "https://github.com/ErleySC/amazonian-oils-chemometrics"
+url: "https://github.com/ErleySC/amazonian-oils-chemometrics"
 license: MIT
-version: "30.0.0"
-date-released: "2026-05-30"
+version: "30.2.0"
+date-released: "2026-06-01"
 keywords:
   - chemometrics
-  - FT-NIR
+  - spectroscopy
   - PLS-DA
-  - vegetable oils
+  - OPLS-DA
+  - DD-SIMCA
+  - group-aware validation
   - Amazon
   - machine learning
-  - Streamlit

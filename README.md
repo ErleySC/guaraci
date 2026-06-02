@@ -1,14 +1,33 @@
-# FT-NIR Chemometrics Pipeline — Authentication of Amazonian Vegetable Oils
+# GUARACI — Chemometric Intelligence for Amazonian Matrices
+
+<p>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-3D8B57">
+  <img alt="Version" src="https://img.shields.io/badge/version-30.2.0-B8963E">
+  <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
+  <img alt="Languages" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
+  <img alt="Status" src="https://img.shields.io/badge/status-active-55B06A">
+</p>
 
 > 🇬🇧 English (lean). • 🇧🇷 [Versão completa em português](README.pt-br.md)
 
-A free, reproducible **chemometrics pipeline** for **classification and
-authentication** of vegetable oils by **FT-NIR spectroscopy**, with
+A **free and open** alternative to paid chemometrics suites (MATLAB/PLS_Toolbox,
+The Unscrambler, SIMCA): a reproducible **multi-technique chemometrics platform**
+for **classification, authentication and exploration** of complex matrices, with
 **replicate-leakage-safe (group-aware) validation** — the project's
 methodological differentiator.
 
-Built for an undergraduate thesis (Chemistry, UFPA) on Amazonian oils measured
-on an **ABB MB3600** (JCAMP-DX `.dx` files).
+**Mission:** democratize high-end chemometrics — give researchers the rigor of
+commercial software, at zero license cost and with no closed-format lock-in.
+
+It supports vibrational (**FT-NIR, NIR, MIR, Raman, UV-Vis**), luminescence
+(**fluorescence**), chromatographic (**HPLC, GC-MS**) and resonance (**NMR,
+IMS**) data, through a guided bilingual terminal interface (**GUARACI**) and a
+Streamlit web app — no coding required.
+
+Originally built for an undergraduate thesis (Chemistry, UFPA) on Amazonian
+vegetable oils measured by FT-NIR on an **ABB MB3600** (JCAMP-DX `.dx` files),
+now generalized to other analytical techniques and matrices.
 
 ---
 
@@ -65,10 +84,16 @@ cp config.example.yaml config.yaml   # then set `pasta_dados` to your .dx folder
 ```
 
 ```bash
-python pineline_quimiometria_14.py            # 1. terminal wizard (CMD-style)
-python pineline_quimiometria_14.py --rodar    # 2. run straight from config.yaml
+python guaraci.py                             # 1. GUARACI terminal interface (recommended)
+python pipeline_quimiometria_14.py --rodar    # 2. run straight from config.yaml
 streamlit run app_quimiometria.py             # 3. web app (browser)
 ```
+
+**GUARACI** is the bilingual (PT/EN) Rich terminal interface: configure every
+parameter through guided menus, pick analytical techniques (FT-NIR, NIR, MIR,
+Raman, UV-Vis, fluorescence, HPLC, GC-MS, NMR, IMS), apply ready-made profiles,
+and launch the pipeline — all without editing code. Press **G** in any menu to
+open the built-in scientific assistant.
 
 ## Input
 
@@ -90,9 +115,40 @@ Each run writes a versioned folder
   has ~3, so the default `todos` mode is exploratory.
 - Small *n* → all metrics ship with **confidence intervals** (BCa).
 
+## Author
+
+**Erley S. da Costa** — Researcher / Developer · GEAAp/UFPA
+[GitHub](https://github.com/ErleySC) ·
+[Lattes](http://lattes.cnpq.br/5755582193284309) ·
+erleysdacosta@gmail.com
+
 ## License & citation
 
-[MIT](LICENSE) — © 2026 Erley S. da Costa.
+Licensed under [MIT](LICENSE) — © 2026 Erley S. da Costa. Machine-readable
+metadata in [`CITATION.cff`](CITATION.cff).
 
-> da Costa, E. S. *FT-NIR chemometrics pipeline for authentication of Amazonian
-> vegetable oils with group-aware validation.* B.Sc. thesis, Chemistry, UFPA, 2026.
+**APA**
+
+> Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
+> Matrices* (v30.2.0) [Software]. GEAAp/UFPA.
+> https://github.com/ErleySC/amazonian-oils-chemometrics
+
+**ABNT (NBR 6023:2018)**
+
+> COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
+> Amazônicas**. Versão 30.2.0. GEAAp/UFPA, 2026. Disponível em:
+> <https://github.com/ErleySC/amazonian-oils-chemometrics>.
+
+**BibTeX**
+
+```bibtex
+@software{guaraci_2026,
+  author      = {Costa, Erley S. da},
+  title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
+  version     = {30.2.0},
+  year        = {2026},
+  institution = {GEAAp/UFPA},
+  url         = {https://github.com/ErleySC/amazonian-oils-chemometrics},
+  license     = {MIT}
+}
+```

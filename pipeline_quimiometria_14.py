@@ -6112,8 +6112,8 @@ def salvar_config(cfg: Config, caminho: str) -> None:
         "#  CONFIGURACAO DO PIPELINE QUIMIOMETRICO",
         "#  Edite os valores abaixo. Cada campo tem uma explicacao no",
         "#  comentario logo acima. Voce NAO precisa abrir o codigo.",
-        "#  Para rodar:   python pineline_quimiometria_14.py --rodar",
-        "#  Assistente:   python pineline_quimiometria_14.py",
+        "#  Para rodar:   python pipeline_quimiometria_14.py --rodar",
+        "#  Assistente:   python guaraci.py",
         "# " + "=" * 60,
         "",
     ]

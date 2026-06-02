@@ -1,5 +1,11 @@
-# --- Personal / local config (keep the real paths out of the repo) ---
+# --- Personal / local config & runtime state (kept out of the repo) ---
 config.yaml
+visual_config.json
+codigos_usuario.json
+codigos_exportados.csv
+tecnica_usuario.json
+.cli_wizard_done
+perfis/
 
 # --- Results (large PNGs / joblib models — keep out of repo) ---
 resultados_tcc/

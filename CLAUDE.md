@@ -9,7 +9,7 @@ amazônicos (PIBIC / GEAAp / UFPA). Leia antes de editar qualquer arquivo.
 
 | Arquivo | Papel | Linhas aprox. |
 |---|---|---|
-| `pineline_quimiometria_14.py` | Motor do pipeline (classe Config + funções de análise + `executar()`) | ~5 800 |
+| `pipeline_quimiometria_14.py` | Motor do pipeline (classe Config + funções de análise + `executar()`) | ~5 800 |
 | `app_quimiometria.py` | Interface Streamlit (7 abas) | ~2 450 |
 | `requirements.txt` | Dependências pip | 26 |
 | `.streamlit/config.toml` | Configuração do servidor Streamlit | 24 |
@@ -26,7 +26,7 @@ Abre em http://localhost:8501
 
 ### CLI / menu interativo
 ```bash
-python pineline_quimiometria_14.py
+python pipeline_quimiometria_14.py
 ```
 
 ### Instalar dependências
@@ -68,7 +68,7 @@ dados/
 
 ---
 
-## Estrutura do pipeline (`pineline_quimiometria_14.py`)
+## Estrutura do pipeline (`pipeline_quimiometria_14.py`)
 
 ### Dataclass de configuração
 ```python

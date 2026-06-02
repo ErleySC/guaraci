@@ -5,9 +5,9 @@ GEAAp / UFPA — Plataforma de autenticacao de oleos vegetais amazonicos.
 
 Uso:
     python cli_assistente.py
-    python pineline_quimiometria_14.py   (chama este modulo automaticamente)
+    python pipeline_quimiometria_14.py   (chama este modulo automaticamente)
 
-Requer: pineline_quimiometria_14.py no mesmo diretorio.
+Requer: pipeline_quimiometria_14.py no mesmo diretorio.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 # Integracao com o pipeline (sem modificar nenhuma funcao analitica)
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pineline_quimiometria_14 as pq
+import pipeline_quimiometria_14 as pq
 
 # Atalhos
 Config = pq.Config
@@ -77,8 +77,8 @@ def _toggle_idioma() -> str:
 # ---------------------------------------------------------------------------
 I18N: Dict[str, Dict[str, str]] = {
     "PT": {
-        "titulo": "AmaNIR — Plataforma Quimiometrica FT-NIR",
-        "subtitulo": "GEAAp / UFPA  |  Oleos Vegetais Amazonicos",
+        "titulo": "GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas",
+        "subtitulo": "GEAAp / UFPA  |  Quimiometria multitecnica",
         "menu_projeto": "Projeto",
         "menu_dados": "Dados",
         "menu_preproc": "Pre-processamento",
@@ -126,8 +126,8 @@ I18N: Dict[str, Dict[str, str]] = {
         "nome_saida": "Nome saida",
     },
     "EN": {
-        "titulo": "AmaNIR — FT-NIR Chemometrics Platform",
-        "subtitulo": "GEAAp / UFPA  |  Amazonian Vegetable Oils",
+        "titulo": "GUARACI — Chemometric Intelligence for Amazonian Matrices",
+        "subtitulo": "GEAAp / UFPA  |  Multi-technique chemometrics",
         "menu_projeto": "Project",
         "menu_dados": "Data",
         "menu_preproc": "Preprocessing",
@@ -1061,78 +1061,142 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
 # Perfis prontos
 # ---------------------------------------------------------------------------
 PROFILES: Dict[str, Dict[str, Any]] = {
+    # 1 — primeiro contato com os dados, sem esperar
     "Exploracao Rapida": {
-        "max_lvs": 20, "n_permutacoes": 50, "ddsimca": False,
-        "opls_da": False, "benchmark": False, "monte_carlo": False,
-        "shap_benchmark": False, "selecao_variaveis_etapa4": False,
-        "comparar_pre_processamentos": False, "dpi": 150,
+        "max_lvs": 20, "n_permutacoes": 50,
+        "ddsimca": False, "opls_da": False,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": False, "comparar_pre_processamentos": False,
+        "dpi": 150,
     },
+    # 2 — análise completa balanceada, neutro, para uso geral
+    "Analise Padrao": {
+        "max_lvs": 30, "n_permutacoes": 100,
+        "ddsimca": True, "modo_ddsimca": "puros", "opls_da": True,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": True, "comparar_pre_processamentos": False,
+        "dpi": 300, "figuras_mostrar_elipses": True,
+        "_paleta": "publicacao",
+    },
+    # 3 — validação estatística mais rigorosa para trabalho científico
     "Pesquisa Academica": {
-        "max_lvs": 40, "n_permutacoes": 200, "ddsimca": True,
-        "modo_ddsimca": "puros", "opls_da": True, "benchmark": False,
-        "monte_carlo": False, "shap_benchmark": False,
-        "selecao_variaveis_etapa4": True, "dpi": 300,
-        "figuras_mostrar_elipses": True,
+        "max_lvs": 40, "n_permutacoes": 200,
+        "ddsimca": True, "modo_ddsimca": "puros", "opls_da": True,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": True, "comparar_pre_processamentos": False,
+        "dpi": 300, "figuras_mostrar_elipses": True,
+        "_paleta": "publicacao",
     },
+    # 4 — pronto para submissão em periódico indexado
     "Publicacao Cientifica": {
-        "max_lvs": 40, "n_permutacoes": 200, "ddsimca": True,
-        "modo_ddsimca": "puros", "opls_da": True, "benchmark": True,
-        "monte_carlo": False, "shap_benchmark": True,
-        "selecao_variaveis_etapa4": True, "dpi": 600,
-        "figuras_mostrar_elipses": True,
+        "max_lvs": 40, "n_permutacoes": 200,
+        "ddsimca": True, "modo_ddsimca": "puros", "opls_da": True,
+        "benchmark": True, "monte_carlo": False, "shap_benchmark": True,
+        "selecao_variaveis_etapa4": True, "comparar_pre_processamentos": False,
+        "dpi": 600, "figuras_mostrar_elipses": True,
+        "_paleta": "publicacao",
     },
+    # 5 — máxima rigorosidade estatística (dissertação / tese)
     "Alta Rigorosidade": {
-        "max_lvs": 40, "n_permutacoes": 500, "ddsimca": True,
-        "modo_ddsimca": "puros", "opls_da": True, "benchmark": True,
-        "monte_carlo": True, "n_monte_carlo": 200,
+        "max_lvs": 40, "n_permutacoes": 500,
+        "ddsimca": True, "modo_ddsimca": "puros", "opls_da": True,
+        "benchmark": True, "monte_carlo": True, "n_monte_carlo": 200,
         "shap_benchmark": True, "selecao_variaveis_etapa4": True,
+        "comparar_pre_processamentos": False,
         "dpi": 600, "formato_figura": "pdf",
+        "_paleta": "publicacao",
+    },
+    # 6 — foco exclusivo em comparar pipelines de pré-processamento
+    "Benchmark Preprocessamento": {
+        "max_lvs": 30, "n_permutacoes": 100,
+        "ddsimca": False, "opls_da": False,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": False, "comparar_pre_processamentos": True,
+        "dpi": 300,
+    },
+    # 7 — acessibilidade para daltonismo (único com daltonismo_safe)
+    "Acessibilidade": {
+        "max_lvs": 30, "n_permutacoes": 100,
+        "ddsimca": True, "modo_ddsimca": "puros", "opls_da": True,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": True, "comparar_pre_processamentos": False,
+        "dpi": 300, "figuras_mostrar_elipses": True,
+        "figuras_mostrar_marcadores": True,
+        "_paleta": "daltonismo_safe",
     },
 }
-
-# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Descricoes dos perfis prontos (bilíngue)
 # ---------------------------------------------------------------------------
 PROFILE_DESC: Dict[str, Dict[str, str]] = {
     "Exploracao Rapida": {
-        "PT": ("Analise exploratoria rapida. Modulos pesados desativados.\n"
-               "    Ideal para: primeiro contato com os dados, teste do pipeline.\n"
-               "    Tempo estimado: ~2-5 min."),
-        "EN": ("Quick exploratory analysis. Heavy modules disabled.\n"
-               "    Ideal for: first contact with data, pipeline testing.\n"
-               "    Estimated time: ~2-5 min."),
+        "PT": ("Primeiro contato com os dados. Somente PLS-DA basico, sem modulos pesados.\n"
+               "    Ideal para: verificar se os dados carregam, testar o pipeline.\n"
+               "    Tempo estimado: ~5 min."),
+        "EN": ("First contact with data. Basic PLS-DA only, no heavy modules.\n"
+               "    Ideal for: verifying data loads, testing the pipeline.\n"
+               "    Estimated time: ~5 min."),
     },
-    "Pesquisa Academica": {
-        "PT": ("Configuracao balanceada para pesquisa academica (TCC, IC, extensao).\n"
-               "    PLS-DA + OPLS-DA + DD-SIMCA (autenticacao) + selecao de variaveis.\n"
-               "    DPI 300. Sem benchmark (economiza tempo).\n"
+    "Analise Padrao": {
+        "PT": ("Analise completa equilibrada. Uso geral, neutro, sem exageros.\n"
+               "    PLS-DA + OPLS-DA + DD-SIMCA + selecao de variaveis. DPI 300.\n"
+               "    Paleta Nature/Elsevier. Sem benchmark nem Monte Carlo.\n"
                "    Tempo estimado: ~15-30 min."),
-        "EN": ("Balanced config for academic research (undergraduate/graduate).\n"
-               "    PLS-DA + OPLS-DA + DD-SIMCA (authentication) + variable selection.\n"
-               "    DPI 300. No benchmark (saves time).\n"
+        "EN": ("Balanced complete analysis. General use, neutral, no excess.\n"
+               "    PLS-DA + OPLS-DA + DD-SIMCA + variable selection. DPI 300.\n"
+               "    Nature/Elsevier palette. No benchmark or Monte Carlo.\n"
                "    Estimated time: ~15-30 min."),
     },
+    "Pesquisa Academica": {
+        "PT": ("Validacao estatistica mais rigorosa para trabalho cientifico.\n"
+               "    Analise completa com 200 permutacoes. Sem benchmark (economiza tempo).\n"
+               "    Recomendado para relatorios de pesquisa e comunicacoes em eventos.\n"
+               "    Tempo estimado: ~30-45 min."),
+        "EN": ("Stricter statistical validation for scientific work.\n"
+               "    Full analysis with 200 permutations. No benchmark (saves time).\n"
+               "    Recommended for research reports and conference communications.\n"
+               "    Estimated time: ~30-45 min."),
+    },
     "Publicacao Cientifica": {
-        "PT": ("Configuracao para publicacao em revista cientifica indexada.\n"
-               "    Benchmark (SVM/RF/XGBoost) + SHAP + 200 permutacoes + DPI 600.\n"
-               "    Elipses ativadas. Recomendado: Talanta, Food Chemistry, J. Chemom.\n"
+        "PT": ("Pronto para submissao em revista indexada. Foco: comparacao de modelos.\n"
+               "    Benchmark SVM/RF/XGBoost vs PLS-DA + SHAP + 200 perm + DPI 600.\n"
+               "    Recomendado: Talanta, Food Chemistry, J. Chemometrics.\n"
                "    Tempo estimado: ~60-120 min."),
-        "EN": ("Config for indexed scientific journal publication.\n"
-               "    Benchmark (SVM/RF/XGBoost) + SHAP + 200 permutations + DPI 600.\n"
-               "    Ellipses enabled. Recommended: Talanta, Food Chemistry, J. Chemom.\n"
+        "EN": ("Ready for indexed journal submission. Focus: model comparison.\n"
+               "    Benchmark SVM/RF/XGBoost vs PLS-DA + SHAP + 200 perm + DPI 600.\n"
+               "    Recommended: Talanta, Food Chemistry, J. Chemometrics.\n"
                "    Estimated time: ~60-120 min."),
     },
     "Alta Rigorosidade": {
-        "PT": ("Maxima rigorosidade estatistica para dissertacao, tese ou revisao externa.\n"
-               "    Monte Carlo CV (200 rep.) + benchmark + SHAP + 500 permutacoes.\n"
-               "    Figuras PDF (vetorial). Validacao multipla em todos os modulos.\n"
+        "PT": ("Maxima rigorosidade estatistica. Foco: incerteza e validacao multipla.\n"
+               "    Monte Carlo CV IC95% (200 rep.) + benchmark + SHAP + 500 perm.\n"
+               "    Figuras PDF vetorial. Para dissertacao, tese ou revisao externa.\n"
                "    Tempo estimado: ~3-6 horas."),
-        "EN": ("Maximum statistical rigor for dissertation, thesis or external review.\n"
-               "    Monte Carlo CV (200 rep.) + benchmark + SHAP + 500 permutations.\n"
-               "    PDF figures (vector). Full validation across all modules.\n"
+        "EN": ("Maximum statistical rigor. Focus: uncertainty and multiple validation.\n"
+               "    Monte Carlo CV CI95% (200 rep.) + benchmark + SHAP + 500 perm.\n"
+               "    Vector PDF figures. For dissertation, thesis or external review.\n"
                "    Estimated time: ~3-6 hours."),
+    },
+    "Benchmark Preprocessamento": {
+        "PT": ("Foco exclusivo: qual pipeline de pre-processamento e o melhor?\n"
+               "    Compara raw, MSC, SNV, SG1, SG2, MSC+SG, SNV+SG com metricas.\n"
+               "    Sem analise completa — apenas comparacao de pipelines espectrais.\n"
+               "    Tempo estimado: ~20-40 min."),
+        "EN": ("Exclusive focus: which pre-processing pipeline is best?\n"
+               "    Compares raw, MSC, SNV, SG1, SG2, MSC+SG, SNV+SG with metrics.\n"
+               "    No full analysis — only spectral pipeline comparison.\n"
+               "    Estimated time: ~20-40 min."),
+    },
+    "Acessibilidade": {
+        "PT": ("Foco: figuras acessiveis para daltonismo. Analise padrao.\n"
+               "    Paleta Wong 2011 (daltonismo_safe): 8 cores para deuteranopia/protanopia.\n"
+               "    Marcadores de forma por classe alem da cor. DPI 300.\n"
+               "    Tempo estimado: ~15-30 min."),
+        "EN": ("Focus: accessible figures for color blindness. Standard analysis.\n"
+               "    Wong 2011 palette (colorblind_safe): 8 colors for deuteranopia/protanopia.\n"
+               "    Shape markers per class in addition to color. DPI 300.\n"
+               "    Estimated time: ~15-30 min."),
     },
 }
 
@@ -1141,17 +1205,93 @@ PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
         "PT": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
         "EN": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
     },
+    "Analise Padrao": {
+        "PT": "LVs=30 | perm=100 | OPLS=ON | DD-SIMCA=ON | DPI=300 | paleta=publicacao",
+        "EN": "LVs=30 | perm=100 | OPLS=ON | DD-SIMCA=ON | DPI=300 | palette=publication",
+    },
     "Pesquisa Academica": {
-        "PT": "LVs=40 | perm=200 | DD-SIMCA=autenticacao | OPLS=ON | DPI=300",
-        "EN": "LVs=40 | perm=200 | DD-SIMCA=authentication | OPLS=ON | DPI=300",
+        "PT": "LVs=40 | perm=200 | OPLS=ON | DD-SIMCA=ON | DPI=300 | paleta=publicacao",
+        "EN": "LVs=40 | perm=200 | OPLS=ON | DD-SIMCA=ON | DPI=300 | palette=publication",
     },
     "Publicacao Cientifica": {
-        "PT": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600",
-        "EN": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600",
+        "PT": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600 | paleta=publicacao",
+        "EN": "LVs=40 | perm=200 | Benchmark=ON | SHAP=ON | DPI=600 | palette=publication",
     },
     "Alta Rigorosidade": {
-        "PT": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF",
-        "EN": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF",
+        "PT": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF | paleta=publicacao",
+        "EN": "perm=500 | MonteCarlo=200rep | Benchmark=ON | SHAP=ON | PDF | palette=publication",
+    },
+    "Benchmark Preprocessamento": {
+        "PT": "comparar_pipelines=ON | LVs=30 | perm=100 | OPLS=OFF | DD-SIMCA=OFF",
+        "EN": "compare_pipelines=ON | LVs=30 | perm=100 | OPLS=OFF | DD-SIMCA=OFF",
+    },
+    "Acessibilidade": {
+        "PT": "LVs=30 | perm=100 | OPLS=ON | DD-SIMCA=ON | marcadores=ON | paleta=daltonismo_safe",
+        "EN": "LVs=30 | perm=100 | OPLS=ON | DD-SIMCA=ON | markers=ON | palette=colorblind_safe",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Referencias bibliograficas verificadas (usadas no help [?] e no Assistente)
+# ---------------------------------------------------------------------------
+REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
+    "pls_da_brereton": {
+        "cit": ("Brereton, R. G.; Lloyd, G. R. (2014). Partial least squares discriminant "
+                "analysis: taking the magic away. Journal of Chemometrics, 28(4), 213-225. "
+                "doi:10.1002/cem.2609"),
+        "contexto": "PLS-DA — fundamentos e armadilhas comuns",
+    },
+    "pls_geladi_1986": {
+        "cit": ("Geladi, P.; Kowalski, B. R. (1986). Partial least-squares regression: "
+                "a tutorial. Analytica Chimica Acta, 185, 1-17. "
+                "doi:10.1016/0003-2670(85)85121-2"),
+        "contexto": "PLS — referencia fundamental",
+    },
+    "opls_da_trygg_2002": {
+        "cit": ("Trygg, J.; Wold, S. (2002). Orthogonal projections to latent structures (O-PLS). "
+                "Journal of Chemometrics, 16(3), 119-128. doi:10.1002/cem.695"),
+        "contexto": "OPLS-DA — metodo base",
+    },
+    "dd_simca_pomerantsev": {
+        "cit": ("Pomerantsev, A. L.; Rodionova, O. Y. (2014). Concept and role of extreme objects "
+                "in PCA/SIMCA. Journal of Chemometrics, 28(5), 429-438. doi:10.1002/cem.2506"),
+        "contexto": "DD-SIMCA — fundamentos",
+    },
+    "msc_geladi_1985": {
+        "cit": ("Geladi, P. et al. (1985). Linearization and scatter-correction for "
+                "near-infrared reflectance spectra of meat. Applied Spectroscopy, 39(3), 491-500. "
+                "doi:10.1366/0003702854248684"),
+        "contexto": "MSC — artigo original",
+    },
+    "snv_barnes_1989": {
+        "cit": ("Barnes, R. J. et al. (1989). Standard Normal Variate Transformation and "
+                "De-trending of Near-Infrared Diffuse Reflectance Spectra. "
+                "Applied Spectroscopy, 43(5), 772-777. doi:10.1366/0003702894202201"),
+        "contexto": "SNV — artigo original",
+    },
+    "savitzky_golay_1964": {
+        "cit": ("Savitzky, A.; Golay, M. J. E. (1964). Smoothing and Differentiation of Data "
+                "by Simplified Least Squares Procedures. Analytical Chemistry, 36(8), 1627-1639. "
+                "doi:10.1021/ac60214a047"),
+        "contexto": "Savitzky-Golay — artigo original",
+    },
+    "oleos_vegetais_nir_review": {
+        "cit": ("Sherazi, S. T. H. et al. (2023). Application of near-infrared spectroscopy "
+                "for authentication of edible oils: A review. Food Chemistry, 408, 135181. "
+                "doi:10.1016/j.foodchem.2022.135181"),
+        "contexto": "Revisao NIR para oleos vegetais — atual",
+    },
+    "shap_lundberg_2017": {
+        "cit": ("Lundberg, S. M.; Lee, S.-I. (2017). A Unified Approach to Interpreting "
+                "Model Predictions. Advances in Neural Information Processing Systems (NeurIPS), "
+                "30. arXiv:1705.07874"),
+        "contexto": "SHAP values — metodo base",
+    },
+    "monte_carlo_cv_xu": {
+        "cit": ("Xu, Q.-S.; Liang, Y.-Z. (2001). Monte Carlo cross validation. "
+                "Chemometrics and Intelligent Laboratory Systems, 56(1), 1-11. "
+                "doi:10.1016/S0169-7439(00)00122-2"),
+        "contexto": "Monte Carlo CV — metodo",
     },
 }
 
@@ -1336,13 +1476,13 @@ def print_header(cfg: Config) -> None:
     """Imprime o cabecalho AmaNIR com titulo, idioma atual e status dos dados."""
     lang = _lang()
     w = 68
-    titulo_cor = _c("CYAN", "●●●  AmaNIR  ●●●")
+    titulo_cor = _c("CYAN", "●●●  GUARACI  ●●●")
     if lang == "EN":
-        linha2 = "FT-NIR Chemometrics Platform  |  GEAAp / UFPA"
-        linha3 = "Amazonian Vegetable Oils"
+        linha2 = "Chemometric Intelligence  |  GEAAp / UFPA"
+        linha3 = "Amazonian Matrices"
     else:
-        linha2 = "Plataforma Quimiometrica FT-NIR  |  GEAAp / UFPA"
-        linha3 = "Oleos Vegetais Amazonicos"
+        linha2 = "Inteligencia Quimiometrica  |  GEAAp / UFPA"
+        linha3 = "Matrizes Amazonicas"
     idioma_str = f"[{lang}]"
     # Status: truncar caminho a 40 chars
     pasta = getattr(cfg, "pasta_dados", "dados")
@@ -2634,12 +2774,12 @@ def menu_hardware() -> None:
         rec_perfil = "Exploracao Rapida"
         cor_tier = RISK_COLOR["AVANCADO"]
         limitacoes = (["RAM insuficiente para analises completas.",
-                       "Use apenas: Exploracao Rapida.",
+                       "Use apenas: Exploracao Rapida ou Analise Padrao sem benchmark/SHAP.",
                        "Desative: Benchmark, SHAP, Monte Carlo, OPLS-DA.",
                        "Reduza max_lvs para 20 e shap_max_amostras para 100."]
                       if lang == "PT" else
                       ["Insufficient RAM for full analyses.",
-                       "Use only: Exploracao Rapida.",
+                       "Use only: Exploracao Rapida or Analise Padrao without benchmark/SHAP.",
                        "Disable: Benchmark, SHAP, Monte Carlo, OPLS-DA.",
                        "Reduce max_lvs to 20 and shap_max_amostras to 100."])
 
@@ -2777,6 +2917,54 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
         },
         "faixa_min": 0.0, "faixa_max": 60.0,
         "preproc": "autoscaling", "modo": "csv",
+    },
+    "gc-ms": {
+        "PT": {
+            "nome": "GC-MS (Cromatografia Gasosa / Massas)",
+            "desc": "Compostos volateis. Dados em CSV: TIC ou tabela de fragmentos m/z.",
+            "preproc_rec": "MC ou autoscaling (apos alinhamento de picos)",
+            "faixa": "Nao aplicavel — use CSV (m/z ou tempo de retencao)",
+        },
+        "EN": {
+            "nome": "GC-MS (Gas Chromatography / Mass Spectrometry)",
+            "desc": "Volatile compounds. CSV data: TIC or m/z fragment table.",
+            "preproc_rec": "MC or autoscaling (after peak alignment)",
+            "faixa": "Not applicable — use CSV (m/z or retention time)",
+        },
+        "faixa_min": 0.0, "faixa_max": 90.0,
+        "preproc": "autoscaling", "modo": "csv",
+    },
+    "nmr": {
+        "PT": {
+            "nome": "RMN / NMR (Ressonancia Magnetica Nuclear)",
+            "desc": "Fingerprint molecular. Bucketing por janelas de ppm antes de PCA/PLS.",
+            "preproc_rec": "SNV ou PQN + MC (apos binning)",
+            "faixa": "0-12 ppm (deslocamento quimico)",
+        },
+        "EN": {
+            "nome": "NMR (Nuclear Magnetic Resonance)",
+            "desc": "Molecular fingerprint. Bucketing by ppm windows before PCA/PLS.",
+            "preproc_rec": "SNV or PQN + MC (after binning)",
+            "faixa": "0-12 ppm (chemical shift)",
+        },
+        "faixa_min": 0.0, "faixa_max": 12.0,
+        "preproc": "snv_mc", "modo": "csv",
+    },
+    "ims": {
+        "PT": {
+            "nome": "IMS (Espectrometria de Mobilidade Ionica)",
+            "desc": "Separacao de ions por mobilidade. Normalizar pelo pico do solvente (RIP).",
+            "preproc_rec": "SNV+SG+MC (apos alinhamento por tempo de deriva)",
+            "faixa": "5-50 ms (tempo de deriva)",
+        },
+        "EN": {
+            "nome": "IMS (Ion Mobility Spectrometry)",
+            "desc": "Ion separation by mobility. Normalize by solvent peak (RIP).",
+            "preproc_rec": "SNV+SG+MC (after drift-time alignment)",
+            "faixa": "5-50 ms (drift time)",
+        },
+        "faixa_min": 5.0, "faixa_max": 50.0,
+        "preproc": "snv_sg_mc", "modo": "csv",
     },
     "generico": {
         "PT": {
@@ -3176,8 +3364,10 @@ def menu_perfis(cfg: Config) -> None:
             _prompt(f"  [{t['continuar']}]")
 
 def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any]) -> None:
-    """Aplica os valores de um perfil na Config."""
+    """Aplica os valores de um perfil na Config e, se presente, atualiza a paleta visual."""
     for key, val in perfil.items():
+        if key.startswith("_"):
+            continue
         spec = _SPEC_BY_KEY.get(key)
         if spec is None:
             continue
@@ -3186,6 +3376,12 @@ def _aplicar_perfil(cfg: Config, perfil: Dict[str, Any]) -> None:
             setattr(cfg, spec["attr"], valor)
         except (ValueError, TypeError):
             pass
+    # Aplicar configurações visuais do perfil (não fazem parte da Config analítica)
+    paleta = perfil.get("_paleta")
+    if paleta and paleta in PALETAS_COR:
+        vcfg = _carregar_visual_cfg()
+        vcfg["paleta"] = paleta
+        _salvar_visual_cfg(vcfg)
     lang = _lang()
     msg = "  Perfil aplicado com sucesso." if lang == "PT" else "  Profile applied successfully."
     print(msg)
