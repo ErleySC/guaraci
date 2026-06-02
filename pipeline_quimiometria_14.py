@@ -110,6 +110,13 @@
 # v28  Monte Carlo CV (IC95%); SHAP TreeExplainer; DET curves (linear+log)
 # v29  hardware_probe; auto RAM tiers (4 levels); RAM guards; cleanup util
 # v30  PowerPoint export; .streamlit/config.toml; CLAUDE.md; English i18n
+# v31  Bugfix: (1) iPLS/comparar_pipelines Q2 overflow guard (ss_res non-finite
+#              → q2=nan; eliminates -3.9e31 artifact in narrow intervals);
+#           (2) Wold permutation loop: filter non-finite r2/q2 before polyfit
+#              (fixes NaN intercept when degenerate model produces blow-up);
+#           (3) Wold fig: correct N/A status when intercept is NaN;
+#           (4) resumo_modelo.txt: Q2 NaN shown as "n/a" instead of crash;
+#           (5) config.yaml: N1 14-class, pasta dados/, ddsimca todos
 # =============================================================================
 
 """Chemometric pipeline for FT-NIR spectroscopy of Amazonian vegetable oils.
@@ -130,7 +137,7 @@ Best result: MSC -> SG -> MC, balanced accuracy = 0.923
 (GroupKFold, 1807 samples, 14 Amazonian oil species).
 """
 
-__version__ = "30.1.0"
+__version__ = "31.0.0"
 
 import os
 import re
@@ -1417,7 +1424,10 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
             except Exception:
                 continue
             ss_res = float(np.sum((Y_bin - y_cv) ** 2))
-            q2 = 1.0 - ss_res / ss_total if ss_total > 0 else 0.0
+            if ss_total < 1e-12 or not np.isfinite(ss_res):
+                q2 = float("nan")
+            else:
+                q2 = max(-1.0, 1.0 - ss_res / ss_total)
             y_int_hat = np.argmax(y_cv, axis=1)
             acc = float(accuracy_score(y_int, y_int_hat))
             bal = float(balanced_accuracy_score(y_int, y_int_hat))
@@ -1425,10 +1435,11 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
                 melhor = {"q2": q2, "accuracy": acc,
                           "balanced_acc": bal, "n_lv": n_lv}
         resultados[nome] = melhor
+        _q2_disp = f"{melhor['q2']:.3f}" if np.isfinite(melhor['q2']) else "n/a"
         print(f"  {nome:<26s} -> LVs={melhor['n_lv']:2d}  "
               f"Acc={melhor['accuracy']:.3f}  "
               f"BalAcc={melhor['balanced_acc']:.3f}  "
-              f"Q2={melhor['q2']:.3f}")
+              f"Q2={_q2_disp}")
 
     return resultados
 
@@ -1710,10 +1721,15 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
             Y_cv_p = _cv_predict_manual(pipeline_factory, X, Y_perm,
                                          cv_perm_idx)
             ss_tot_p = float(np.sum((Y_perm - Y_perm.mean(axis=0)) ** 2))
-            if ss_tot_p <= 0:
+            if ss_tot_p < 1e-12:
                 continue
-            r2 = 1.0 - float(np.sum((Y_perm - Y_tr_p) ** 2)) / ss_tot_p
-            q2 = 1.0 - float(np.sum((Y_perm - Y_cv_p) ** 2)) / ss_tot_p
+            ss_res_r2 = float(np.sum((Y_perm - Y_tr_p) ** 2))
+            ss_res_q2 = float(np.sum((Y_perm - Y_cv_p) ** 2))
+            if not (np.isfinite(ss_res_r2) and np.isfinite(ss_res_q2)):
+                n_falhos += 1
+                continue
+            r2 = max(-1.0, 1.0 - ss_res_r2 / ss_tot_p)
+            q2 = max(-1.0, 1.0 - ss_res_q2 / ss_tot_p)
             sims.append(sim); r2s.append(r2); q2s.append(q2)
             n_validos += 1
         except Exception:
@@ -1736,9 +1752,13 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
     r2_all   = np.append(r2s_arr, r2_obs)
     q2_all   = np.append(q2s_arr, q2_obs)
 
-    if len(sims_all) >= 2 and (sims_all.max() - sims_all.min()) > 0:  # np.ptp removed in NumPy 2.0
-        slope_r2, int_r2 = np.polyfit(sims_all, r2_all, 1)
-        slope_q2, int_q2 = np.polyfit(sims_all, q2_all, 1)
+    # Filter non-finite values (numerical blow-up in degenerate permutations)
+    fin_mask = np.isfinite(sims_all) & np.isfinite(r2_all) & np.isfinite(q2_all)
+    sims_f = sims_all[fin_mask]; r2_f = r2_all[fin_mask]; q2_f = q2_all[fin_mask]
+
+    if len(sims_f) >= 2 and (sims_f.max() - sims_f.min()) > 1e-8:
+        slope_r2, int_r2 = np.polyfit(sims_f, r2_f, 1)
+        slope_q2, int_q2 = np.polyfit(sims_f, q2_f, 1)
     else:
         slope_r2 = int_r2 = slope_q2 = int_q2 = float("nan")
 
@@ -3086,8 +3106,8 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
                  ls="--", label=f"Line (intercept = {int_r2:.3f})")
     ax.axhline(0.40, color=cor(1), lw=0.9, ls=":",
                 label="Threshold R2Y = 0.40")
-    cor_status = cor(2) if int_r2 < 0.40 else cor(3)
-    status = "VALID" if int_r2 < 0.40 else "FAILED"
+    cor_status = cor(2) if (np.isfinite(int_r2) and int_r2 < 0.40) else cor(3)
+    status = "VALID" if (np.isfinite(int_r2) and int_r2 < 0.40) else ("N/A" if not np.isfinite(int_r2) else "FAILED")
     ax.text(0.02, 0.97, f"R2Y intercept: {status}",
              transform=ax.transAxes, ha="left", va="top",
              fontsize=9, fontweight="bold", color=cor_status,
@@ -3111,8 +3131,8 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
                  ls="--", label=f"Line (intercept = {int_q2:.3f})")
     ax.axhline(0.05, color=cor(1), lw=0.9, ls=":",
                 label="Threshold Q2Y = 0.05")
-    cor_status = cor(2) if int_q2 < 0.05 else cor(3)
-    status = "VALID" if int_q2 < 0.05 else "FAILED"
+    cor_status = cor(2) if (np.isfinite(int_q2) and int_q2 < 0.05) else cor(3)
+    status = "VALID" if (np.isfinite(int_q2) and int_q2 < 0.05) else ("N/A" if not np.isfinite(int_q2) else "FAILED")
     ax.text(0.02, 0.97, f"Q2Y intercept: {status}",
              transform=ax.transAxes, ha="left", va="top",
              fontsize=9, fontweight="bold", color=cor_status,
@@ -3952,8 +3972,14 @@ def _avaliar_subset_cv(X_sel: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
         ])
 
     y_cv = _cv_predict_manual(_fac, X_sel, Y_bin, cv_indices)
-    ss = float(np.sum((Y_bin - Y_bin.mean(axis=0)) ** 2))
-    q2 = 1.0 - float(np.sum((Y_bin - y_cv) ** 2)) / ss if ss > 0 else 0.0
+    ss_tot = float(np.sum((Y_bin - Y_bin.mean(axis=0)) ** 2))
+    ss_res = float(np.sum((Y_bin - y_cv) ** 2))
+    # Guard: non-finite ss_res = numerical blow-up in ill-conditioned PLS fold
+    # (common in narrow iPLS intervals with near-collinear variables).
+    if ss_tot < 1e-12 or not np.isfinite(ss_res):
+        q2 = float("nan")
+    else:
+        q2 = max(-1.0, 1.0 - ss_res / ss_tot)
     yhat = np.argmax(y_cv, axis=1)
     return {
         "accuracy":          float(accuracy_score(y_int, yhat)),
@@ -5368,11 +5394,15 @@ def executar(cfg: Config):
             lambda: fabrica_pipeline(n_opt),
             X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes_wold, cfg.seed,
             groups=grupos_cv)
+        _wr2 = cast(float, wold_res['intercept_r2'])
+        _wq2 = cast(float, wold_res['intercept_q2'])
+        _wr2_s = f"{_wr2:.4f}" if np.isfinite(_wr2) else "n/a (permutacoes insuficientes)"
+        _wq2_s = f"{_wq2:.4f}" if np.isfinite(_wq2) else "n/a (permutacoes insuficientes)"
         print(f"  R2Y obs = {cast(float, wold_res['r2_obs']):.4f}  |  "
-              f"intercepto = {cast(float, wold_res['intercept_r2']):.4f}  "
+              f"intercepto = {_wr2_s}  "
               f"{'VALIDO' if wold_res['valid_r2'] else 'FALHA'} (limiar < 0.40)")
         print(f"  Q2Y obs = {cast(float, wold_res['q2_obs']):.4f}  |  "
-              f"intercepto = {cast(float, wold_res['intercept_q2']):.4f}  "
+              f"intercepto = {_wq2_s}  "
               f"{'VALIDO' if wold_res['valid_q2'] else 'FALHA'} (limiar < 0.05)")
 
     # --- 6c. CV-ANOVA Eriksson --------------------------------------------
@@ -5755,9 +5785,10 @@ def executar(cfg: Config):
     if etapa4_res is not None:
         resumo["--- Etapa 4: selecao de variaveis ---"] = ""
         for t in etapa4_res["tabela"]:
+            _q2_str = f"{t['q2']:.3f}" if np.isfinite(t['q2']) else "n/a"
             resumo[f"  {t['metodo']}"] = (
                 f"bal.acc={t['balanced_accuracy']:.3f} | "
-                f"Q2={t['q2']:.3f} | {t['n_vars']} vars | {t['n_lv']} LVs")
+                f"Q2={_q2_str} | {t['n_vars']} vars | {t['n_lv']} LVs")
         mlhr = etapa4_res["melhor"]
         resumo["  >> Mais parcimonioso"] = (
             f"{mlhr['metodo']} ({mlhr['n_vars']} vars, "

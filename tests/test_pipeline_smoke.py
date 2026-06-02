@@ -4,6 +4,9 @@ Uses session-scoped `pq` fixture from conftest.py (module loaded once).
 """
 import numpy as np
 import pytest
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.cross_decomposition import PLSRegression
 
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
@@ -112,6 +115,60 @@ def test_config_spec_attrs_match_config(pq):
         assert hasattr(cfg, s["attr"]), f"Config missing attr: {s['attr']}"
 
 
+def test_avaliar_subset_cv_q2_no_overflow(pq):
+    """_avaliar_subset_cv: Q2 must be finite or nan — never blow up to ±1e10+.
+
+    Regression test for iPLS bug: narrow ill-conditioned intervals caused
+    y_cv predictions to diverge numerically, producing Q2 ≈ -3.9e31.
+    Fixed by checking np.isfinite(ss_res) before computing Q2.
+    """
+    rng = np.random.default_rng(42)
+    n, p = 40, 5
+    # Two binary classes
+    X = rng.normal(size=(n, p))
+    Y_bin = np.zeros((n, 2)); Y_bin[:20, 0] = 1; Y_bin[20:, 1] = 1
+    y_int = np.array([0] * 20 + [1] * 20)
+
+    from sklearn.model_selection import StratifiedKFold
+    cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=0)
+    cv_indices = list(cv.split(X, y_int))
+
+    res = pq._avaliar_subset_cv(X, Y_bin, y_int, cv_indices, n_lv=2)
+    q2 = res["q2"]
+    assert np.isnan(q2) or (np.isfinite(q2) and q2 >= -1.0), (
+        f"Q2 = {q2} is an invalid overflow value — fix in _avaliar_subset_cv failed"
+    )
+
+
+def test_wold_no_nan_intercept(pq):
+    """teste_wold: intercepts must be finite or nan — never blow up to ±inf.
+
+    Regression test: degenerate models caused polyfit to receive non-finite
+    r2/q2 values, returning NaN intercepts silently.
+    """
+    rng = np.random.default_rng(7)
+    n, p = 30, 10
+    X = rng.normal(size=(n, p))
+    Y_bin = np.zeros((n, 2)); Y_bin[:15, 0] = 1; Y_bin[15:, 1] = 1
+    y_int = np.array([0] * 15 + [1] * 15)
+
+    from sklearn.model_selection import StratifiedKFold
+
+    def fac():
+        return Pipeline([
+            ("mc",  StandardScaler(with_std=False)),
+            ("pls", PLSRegression(n_components=2, scale=False)),
+        ])
+
+    cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=1)
+    res = pq.teste_wold(fac, X, Y_bin, y_int, cv, n_perm=10, seed=0)
+
+    for key in ("intercept_r2", "intercept_q2", "slope_r2", "slope_q2"):
+        v = res[key]
+        assert v is not None, f"{key} should not be None"
+        assert not np.isinf(float(v)), f"{key} = {v} is ±inf — numerical overflow"
+
+
 # ── Integration test ──────────────────────────────────────────────────────────
 
 @pytest.mark.slow
@@ -119,11 +176,15 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
     """End-to-end: executar() with synthetic data must produce resumo_modelo.txt."""
     import os
     cfg = pq.Config(
-        pasta_dados=str(tmp_path / "dados"),    # synthetic mode ignores this
-        pasta_saida=str(tmp_path / "saida"),
+        pasta_entrada=str(tmp_path / "dados"),  # synthetic mode ignores this
+        pasta_saida_raiz=str(tmp_path / "saida"),
         modo="sintetico",
         n_por_classe=8,
         n_pontos_sint=50,
+        # Synthetic data uses linspace(4000, 400) — match the range so
+        # spectral truncation keeps all 50 points (sg_window=25 requires n>25)
+        wn_min=400.0,
+        wn_max=4001.0,
         n_splits_cv=2,
         n_repeats_cv=1,
         n_permutacoes=5,
@@ -140,7 +201,6 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
         executar_etapa4=False,
         comparar_pipelines=False,
         comparar_hca_pipelines=False,
-        gerar_pptx=False,
         max_lvs=5,
     )
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)
