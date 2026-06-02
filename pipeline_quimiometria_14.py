@@ -5093,6 +5093,27 @@ def executar(cfg: Config):
     if mae_id is not None:
         mae_id = np.asarray(mae_id, dtype=str)
 
+    # --- 1a0. nivel N2: remap species labels → puro / adulterado -----------
+    # Root-cause fix: carregar_dx() always assigns rotulos = especie.
+    # Without this block, N2 runs 13-class species discrimination — identical
+    # to N1. The remapping must happen BEFORE holdout so stratification is
+    # also correct for the binary task.
+    #   puro      : conc is NaN (None → nan after asarray) or conc == 0
+    #   adulterado: conc > 0
+    if cfg.nivel == "N2":
+        if conc is not None:
+            rotulos_n2 = np.where(
+                np.isnan(conc) | (conc == 0.0), "puro", "adulterado")
+            n_p = int(np.sum(rotulos_n2 == "puro"))
+            n_a = int(np.sum(rotulos_n2 == "adulterado"))
+            print(f"[INFO] N2: rotulos remapeados de especie para "
+                  f"puro/adulterado (puro={n_p} | adulterado={n_a})")
+            rotulos = rotulos_n2
+        else:
+            print("[AVISO] nivel=N2 sem dados de concentracao (##TITLE= sem "
+                  "adulterante). Rotulos de especie mantidos — verifique os "
+                  "arquivos .dx.")
+
     # --- 1a. Truncamento espectral: remove ruido de borda da FFT ----------
     # SG derivativo amplifica os ultimos pontos da FFT (proximos a 0 cm-1
     # e ao final do interferograma). Sem truncar, esses pontos viram falsos
