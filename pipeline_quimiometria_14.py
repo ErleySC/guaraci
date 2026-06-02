@@ -864,11 +864,32 @@ class DDSimca:
             X_rec = pca.inverse_transform(T)
             Q_train = np.sum((Xc - X_rec) ** 2, axis=1)
             T2_train = np.sum((T ** 2) / var_t, axis=1)
+
+            t2_ucl = self._compute_t2_ucl(T2_train, nc, n_comp)
+            q_ucl  = q_residuos_limite(Q_train, self.alpha)
+
+            # Small-n guard: with nc < 20 the empirical percentile < max(training),
+            # which mathematically GUARANTEES some training samples are rejected
+            # (T2_norm > 1 or Q_norm > 1 for the highest-value sample).
+            # With 3 pure samples (typical for N2 per-species authentication),
+            # np.percentile([a,b,c], 95) ≈ 0.9*c < c  →  the max-T2 sample gets
+            # T2_norm = c/(0.9c) = 1.11 > 1 → rejected by its OWN model.
+            # Fix: clamp UCL to at least max(training statistic) so all training
+            # samples are accepted — the only scientifically correct behavior when
+            # the training set IS the reference population.
+            # This also handles the Q≈0 collapse (PCA with n_comp=n-1 fits all
+            # training samples perfectly: Q_train≈0 → q_ucl≈0 → Q_norm→∞).
+            if nc < 20:
+                if T2_train.size > 0:
+                    t2_ucl = max(t2_ucl, float(T2_train.max()), 1e-12)
+                if Q_train.size > 0:
+                    q_ucl  = max(q_ucl,  float(Q_train.max()),  1e-12)
+
             self._modelos[cls] = {
                 "pca":      pca,
                 "var_t":    var_t,
-                "T2_ucl":   self._compute_t2_ucl(T2_train, nc, n_comp),
-                "Q_ucl":    q_residuos_limite(Q_train, self.alpha),
+                "T2_ucl":   t2_ucl,
+                "Q_ucl":    q_ucl,
                 "T_train":  T,
                 "T2_train": T2_train,
                 "Q_train":  Q_train,
