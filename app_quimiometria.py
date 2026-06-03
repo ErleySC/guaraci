@@ -33,6 +33,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 import matplotlib
+from PIL import Image
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -40,9 +41,12 @@ import streamlit as st
 # ──────────────────────────────────────────────────────────────────────────
 # Page config (must be the first Streamlit command)
 # ──────────────────────────────────────────────────────────────────────────
+_icon_path = Path(__file__).parent / "guaraci_icon.png"
+_page_icon = Image.open(_icon_path) if _icon_path.exists() else "🧪"
+
 st.set_page_config(
     page_title="Chemometrics Platform",
-    page_icon="🧪",
+    page_icon=_page_icon,
     layout="wide",
 )
 
