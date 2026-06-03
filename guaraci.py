@@ -1043,18 +1043,91 @@ def _print_main_menu() -> None:
     sobre_lbl = "Sobre" if lang == "PT" else "About"
     t.add_row(*row("A", sobre_lbl,       "Q", _t("sair"),     style1=S, style2=M))
 
-    t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_execucao"), cor=PF)), Text.from_markup(""))
-    t.add_row(*row("R", f"[bold {PF}]{_t('rodar')}[/bold {PF}]",
-                   "N", _t("nome_saida"), style1=PF, style2=PF))
-    t.add_row(*row("S", _t("salvar"), "L", _t("carregar"), style1=PF, style2=PF))
-
     tit_menu = "GUARACI — MENU PRINCIPAL" if lang == "PT" else "GUARACI — MAIN MENU"
     console.print(Panel(
         t,
         title=f"[bold {PA}]  {tit_menu}  [/bold {PA}]",
         border_style=PA,
         box=rbox.DOUBLE,
+        padding=(0, 1),
+    ))
+
+
+# ---------------------------------------------------------------------------
+# CAIXA DE EXECUCAO — call-to-action destacado para iniciar a analise (R)
+# ---------------------------------------------------------------------------
+def _print_run_box(cfg: Config) -> None:
+    """Caixa de destaque para iniciar a analise.
+
+    Muda de cor conforme a prontidao (verde = pronto, cinza = falta config)
+    e exibe info complementar ao Status do Projeto: RAM livre (indicador de
+    3 niveis) e os modulos pesados ativos (Benchmark / Monte Carlo / SHAP).
+    """
+    lang = _lang()
+    is_pt = lang == "PT"
+
+    pasta = _cfgv(cfg, "pasta_dados", "dados")
+    pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
+    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    pronto = pasta_ok and n_dx > 0
+
+    # RAM livre — indicador visual de 3 niveis
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        ram_livre = vm.available / (1024 ** 3)
+        ram_total = vm.total / (1024 ** 3)
+        if ram_livre >= 8:
+            ram_cor, ram_ico = PG, "●●●"
+        elif ram_livre >= 4:
+            ram_cor, ram_ico = PA, "●●○"
+        else:
+            ram_cor, ram_ico = PR, "●○○"
+        ram_txt = f"[{ram_cor}]{ram_ico}  RAM {ram_livre:.1f}/{ram_total:.0f} GB[/{ram_cor}]"
+    except Exception:
+        ram_txt = f"[{PM}]RAM N/A[/{PM}]"
+
+    # Prontidao + cor da chamada
+    if pronto:
+        cta_cor = PG
+        check = (f"[{PG}]✔ Pronto para executar[/{PG}]" if is_pt
+                 else f"[{PG}]✔ Ready to run[/{PG}]")
+    else:
+        cta_cor = PM
+        check = (f"[{PR}]✖ {_t('status_erro')}[/{PR}]")
+
+    # Modulos pesados ativos — definem o tempo de execucao e NAO aparecem
+    # no Status do Projeto (info complementar, nao redundante).
+    extras = []
+    if _cfgv(cfg, "benchmark", False):      extras.append("Benchmark")
+    if _cfgv(cfg, "monte_carlo", False):    extras.append("Monte Carlo")
+    if _cfgv(cfg, "shap_benchmark", False): extras.append("SHAP")
+    if extras:
+        extras_txt = f"[{PA}]" + " · ".join(extras) + f"[/{PA}]"
+    else:
+        extras_txt = f"[{PM}]" + ("nenhum" if is_pt else "none") + f"[/{PM}]"
+    ext_lbl = "Extras" if is_pt else "Extras"
+
+    big = "RODAR PIPELINE" if is_pt else "RUN PIPELINE"
+    sub = ("Pressione  [R]  e Enter para comecar a analise"
+           if is_pt else "Press  [R]  then Enter to start the analysis")
+
+    inner = Table(box=None, show_header=False, padding=(0, 1), expand=True)
+    inner.add_column("c", justify="center")
+    inner.add_row(Text.from_markup(
+        f"[bold {cta_cor}]▶   [{cta_cor}]\\[R][/{cta_cor}]   {big}   ◀[/bold {cta_cor}]"))
+    inner.add_row(Text.from_markup(f"[{PM}]{sub}[/{PM}]"))
+    inner.add_row(Text.from_markup(""))
+    inner.add_row(Text.from_markup(
+        f"{check}     {ram_txt}     "
+        f"[{PM}]{ext_lbl}:[/{PM}] {extras_txt}"))
+
+    tit = "  ☀  EXECUCAO  ☀  " if is_pt else "  ☀  EXECUTION  ☀  "
+    console.print(Panel(
+        Align.center(inner),
+        title=f"[bold {cta_cor}]{tit}[/bold {cta_cor}]",
+        border_style=cta_cor,
+        box=rbox.HEAVY,
         padding=(0, 1),
     ))
 
@@ -2875,6 +2948,8 @@ def main() -> None:
         _print_status(cfg)
         console.print()
         _print_main_menu()
+        console.print()
+        _print_run_box(cfg)
         console.print()
 
         try:
