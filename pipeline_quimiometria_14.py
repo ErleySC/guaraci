@@ -3379,6 +3379,10 @@ def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
     ax.set_ylabel("VIP (stratified bootstrap mean)")
     ax.set_title("(a) Mean VIP with 95% CI", loc="left")
     ax.invert_xaxis()
+    # Match the same generous headroom used in fig5_vip so vertical band
+    # labels do not clip at the top of the subplot.
+    _vm = float(np.nanmax(vip_mean)) if vip_mean.size else 1.0
+    ax.set_ylim(bottom=0.0, top=_vm * 1.45)
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="upper right", fontsize=8.5, frameon=False)
 
