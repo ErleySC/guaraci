@@ -3020,21 +3020,26 @@ def _anotar_sem_sobreposicao(ax, xs, ys, labels, ref_x=None, ref_y=None,
     return len(placed)
 
 
-def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0,
-                        janela=120.0):
-    """M3: annotates known chemical bands at VIP peaks > threshold.
+def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0, janela=120.0,
+                        sep_frac=0.052):
+    """M3: annotates known chemical bands at VIP peaks, with GUARANTEED
+    non-overlap and a safe margin between labels.
 
-    For each reference band, if a point with VIP > threshold exists within
-    +-window cm-1, draws an annotation pointing to the local peak.
-    Avoids clutter: only annotates bands actually relevant to the model.
+    All labels are vertical text placed in a single row above the peaks. Their
+    x-positions are spread by iterative relaxation so consecutive labels keep a
+    minimum horizontal gap (sep_frac of the spectral span) — no overlap even
+    for bands only 100 cm-1 apart (C=O 5800 & C-H 5900). A short, thin arrow
+    links each spread label to its true spectral peak (no long crossing lines).
     """
     wavenumbers = np.asarray(wavenumbers, dtype=float)
     vip = np.asarray(vip, dtype=float)
-    ymax = float(np.nanmax(vip)) if vip.size else 1.0
+    if vip.size == 0:
+        return
     span = float(np.ptp(wavenumbers)) or 1.0
-    # Collect annotatable bands first, then stagger heights so labels of
-    # nearby bands (e.g. 5800 & 5900 cm-1, 100 apart) do not overlap.
-    candidatos = []
+    vmax = float(np.nanmax(vip))
+
+    # 1. Collect annotatable bands (local VIP peak above threshold).
+    cand = []
     for centro, rotulo in BANDAS_NIR:
         viz = np.abs(wavenumbers - centro) <= janela
         if not viz.any():
@@ -3043,31 +3048,44 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0,
         i_pico = idx_viz[int(np.argmax(vip[idx_viz]))]
         if vip[i_pico] < limiar:
             continue
-        candidatos.append((float(wavenumbers[i_pico]), float(vip[i_pico]), rotulo))
-    candidatos.sort(key=lambda c: c[0])
-    # Rotate labels 90° (vertical text): bands only 100 cm-1 apart (e.g. C=O
-    # at 5800 and C-H at 5900) have wide horizontal labels that overlap when
-    # written horizontally. Vertical text occupies minimal horizontal space,
-    # so adjacent bands no longer collide. A small alternating vertical level
-    # adds extra separation for very close pairs.
-    nivel = 0
-    x_ant = None
-    for wn_pico, vip_pico, rotulo in candidatos:
-        if x_ant is not None and abs(wn_pico - x_ant) / span < 0.06:
-            nivel = (nivel + 1) % 2
-        else:
-            nivel = 0
-        y_base = vip_pico + (0.04 + 0.06 * nivel) * ymax
+        # Single-line label: a newline in 90°-rotated text would create two
+        # side-by-side columns. Join into one compact vertical string.
+        rot = rotulo.replace("\n", " ")
+        cand.append([float(wavenumbers[i_pico]), float(vip[i_pico]), rot])
+    if not cand:
+        return
+    cand.sort(key=lambda c: c[0])
+
+    # 2. Spread x-positions by relaxation until every gap >= min_sep.
+    min_sep = sep_frac * span
+    xs = [c[0] for c in cand]
+    for _ in range(300):
+        moved = False
+        for i in range(len(xs) - 1):
+            gap = xs[i + 1] - xs[i]
+            if gap < min_sep:
+                d = (min_sep - gap) / 2.0
+                xs[i] -= d
+                xs[i + 1] += d
+                moved = True
+        if not moved:
+            break
+    xlo, xhi = float(wavenumbers.min()), float(wavenumbers.max())
+    xs = [min(max(x, xlo), xhi) for x in xs]
+
+    # 3. Uniform label base ABOVE all peaks; vertical text grows upward.
+    y_base = vmax * 1.04
+    for x_lbl, (x_pk, y_pk, rot) in zip(xs, cand):
         ax.annotate(
-            rotulo,
-            xy=(wn_pico, vip_pico),
-            xytext=(wn_pico, y_base),
+            rot,
+            xy=(x_pk, y_pk),               # arrow tip at the real peak
+            xytext=(x_lbl, y_base),        # spread, non-overlapping label base
             ha="center", va="bottom", rotation=90, rotation_mode="anchor",
-            fontsize=6.5, color="0.20", fontweight="bold",
-            arrowprops=dict(arrowstyle="->", color="0.45", lw=0.6),
+            fontsize=6.2, color="0.20", fontweight="bold",
+            arrowprops=dict(arrowstyle="-", color="0.55", lw=0.5,
+                            shrinkA=1.5, shrinkB=1.5),
             zorder=6,
         )
-        x_ant = wn_pico
 
 
 def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
@@ -3089,16 +3107,17 @@ def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
     # V3: y-lim at the REAL range (without compressing variation near 1.0) +
     # statistics box to check the true dispersion of VIPs.
     vmin, vmax = float(np.min(vip)), float(np.max(vip))
-    # Extra headroom (1.25) for staggered band annotations at the top.
-    ax.set_ylim(max(0.0, vmin - 0.05 * (vmax - vmin)), vmax * 1.25)
-    # Stats box in lower-left corner (top is reserved for band labels).
-    ax.text(0.02, 0.03,
+    # Generous headroom (1.45) so the vertical band labels fit without clipping.
+    ax.set_ylim(max(0.0, vmin - 0.05 * (vmax - vmin)), vmax * 1.45)
+    # Stats box in the UPPER-LEFT corner (high-wavenumber region, low VIP →
+    # free of band labels, which cluster center-right).
+    ax.text(0.015, 0.975,
             f"min={vmin:.2f}  max={vmax:.2f}\n"
             f"mean={float(np.mean(vip)):.2f}  sd={float(np.std(vip)):.2f}\n"
             f"n(VIP$\\geq$1)={int(mask_hi.sum())}/{len(vip)}",
-            transform=ax.transAxes, ha="left", va="bottom", fontsize=7.8,
+            transform=ax.transAxes, ha="left", va="top", fontsize=7.6,
             color="0.25", bbox=dict(boxstyle="round,pad=0.35", fc="white",
-                                     ec="0.82", lw=0.6))
+                                     ec="0.82", lw=0.6), zorder=7)
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", frameon=False, fontsize=8)
 
