@@ -2,7 +2,8 @@
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
-  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-3D8B57">
+  <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-3D8B57">
+  <img alt="Commercial license available" src="https://img.shields.io/badge/commercial-license%20available-B8963E">
   <img alt="Version" src="https://img.shields.io/badge/version-30.2.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Languages" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
@@ -124,9 +125,17 @@ erleysdacosta@gmail.com
 
 ## License & citation
 
-Licensed under [MIT](LICENSE) — © 2026 Erley S. da Costa. Machine-readable
-metadata in [`CITATION.cff`](CITATION.cff). A permanent Zenodo DOI is being
-generated for the v30.2.0 release — update `CITATION.cff` when it is ready.
+Licensed under the **GNU General Public License v3.0** ([GPLv3](LICENSE)) —
+© 2026 Erley S. da Costa & GEAAp/UFPA. Free for research, teaching and academic
+use, provided authorship is credited and derivatives stay open-source.
+
+**Commercial use:** embedding Guaraci in proprietary/closed-source or commercial
+products requires a separate **commercial license** — see
+[`COMMERCIAL.md`](COMMERCIAL.md) (contact: erleysdacosta@gmail.com). The author
+retains full copyright (dual licensing).
+
+Machine-readable metadata in [`CITATION.cff`](CITATION.cff). A permanent Zenodo
+DOI is being generated for this release — update `CITATION.cff` when it is ready.
 
 **APA**
 
@@ -150,6 +159,6 @@ generated for the v30.2.0 release — update `CITATION.cff` when it is ready.
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/amazonian-oils-chemometrics},
-  license     = {MIT}
+  license     = {GPL-3.0-or-later}
 }
 ```

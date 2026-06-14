@@ -2,7 +2,8 @@
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
-  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-3D8B57">
+  <img alt="Licença: GPLv3" src="https://img.shields.io/badge/Licen%C3%A7a-GPLv3-3D8B57">
+  <img alt="Licença comercial disponível" src="https://img.shields.io/badge/comercial-licen%C3%A7a%20dispon%C3%ADvel-B8963E">
   <img alt="Version" src="https://img.shields.io/badge/version-30.2.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Idiomas" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
@@ -190,8 +191,16 @@ erleysdacosta@gmail.com
 
 ## Licença
 
-Licenciado sob [MIT](LICENSE) — © 2026 Erley S. da Costa. Uso livre com
-atribuição. Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
+Licenciado sob a **Licença Pública Geral GNU v3.0** ([GPLv3](LICENSE)) —
+© 2026 Erley S. da Costa & GEAAp/UFPA. Livre para pesquisa, ensino e uso
+acadêmico, desde que a autoria seja creditada e os derivados permaneçam abertos.
+
+**Uso comercial:** embutir a Guaraci em produtos proprietários/fechados ou
+comerciais exige uma **licença comercial** separada — veja
+[`COMMERCIAL.md`](COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
+retém integralmente o copyright (licenciamento duplo).
+
+Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
 
 ## Como citar
 
@@ -217,6 +226,6 @@ atribuição. Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff)
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/amazonian-oils-chemometrics},
-  license     = {MIT}
+  license     = {GPL-3.0-or-later}
 }
 ```

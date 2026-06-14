@@ -14,12 +14,12 @@ abstract: >
 authors:
   - family-names: "Costa"
     given-names: "Erley S. da"
-    affiliation: "GEAAp/UFPA — Grupo de Estudos em Analises Ambientais e Aplicadas"
+    affiliation: "GEAAp/UFPA — Grupo de Espectroscopia Analítica Aplicada"
     email: "erleysdacosta@gmail.com"
     website: "http://lattes.cnpq.br/5755582193284309"
 repository-code: "https://github.com/ErleySC/amazonian-oils-chemometrics"
 url: "https://github.com/ErleySC/amazonian-oils-chemometrics"
-license: MIT
+license: GPL-3.0-or-later
 version: "30.2.0"
 date-released: "2026-06-01"
 keywords:
