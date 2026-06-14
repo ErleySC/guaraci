@@ -20,8 +20,8 @@ authors:
 repository-code: "https://github.com/ErleySC/amazonian-oils-chemometrics"
 url: "https://github.com/ErleySC/amazonian-oils-chemometrics"
 license: GPL-3.0-or-later
-version: "30.2.0"
-date-released: "2026-06-01"
+version: "30.3.0"
+date-released: "2026-06-14"
 keywords:
   - chemometrics
   - spectroscopy
@@ -42,7 +42,7 @@ preferred-citation:
       given-names: "Erley S. da"
       affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
-  version: "30.2.0"
+  version: "30.3.0"
   year: 2026
   institution:
     name: "GEAAp/UFPA"

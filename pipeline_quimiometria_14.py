@@ -4964,7 +4964,9 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                     else:
                         sv_arr2 = np.array(sv)
                         if sv_arr2.ndim == 3:
-                            shap_feat = sv_arr2.mean(axis=0)[:, feat_i]
+                            # (n_samples, n_features, n_classes): media sobre classes
+                            # (axis=2) -> (n_samples, n_features); depois seleciona a feature
+                            shap_feat = sv_arr2.mean(axis=2)[:, feat_i]
                         else:
                             shap_feat = sv_arr2[:, feat_i]
 
