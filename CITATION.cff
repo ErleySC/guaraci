@@ -17,23 +17,55 @@ authors:
     affiliation: "GEAAp/UFPA — Grupo de Espectroscopia Analítica Aplicada"
     email: "erleysdacosta@gmail.com"
     website: "http://lattes.cnpq.br/5755582193284309"
-repository-code: "https://github.com/ErleySC/amazonian-oils-chemometrics"
-url: "https://github.com/ErleySC/amazonian-oils-chemometrics"
+repository-code: "https://github.com/ErleySC/guaraci"
+url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
 version: "30.3.0"
 date-released: "2026-06-14"
 keywords:
   - chemometrics
   - spectroscopy
+  - vibrational spectroscopy
+  - FT-NIR
+  - NIR
+  - MIR
+  - FTIR
+  - Raman
+  - UV-Vis
+  - multivariate analysis
   - PLS-DA
   - OPLS-DA
+  - PLS regression
   - DD-SIMCA
+  - SIMCA
+  - PCA
+  - HCA
+  - VIP
+  - SHAP
+  - variable selection
+  - Monte Carlo cross-validation
+  - bootstrap
   - group-aware validation
-  - Amazon
+  - anti-leakage validation
   - machine learning
-  - open-science
-  - FT-NIR
+  - artificial intelligence
+  - classification
+  - regression
   - food authentication
+  - food fraud detection
+  - adulteration detection
+  - quality control
+  - vegetable oils
+  - essential oils
+  - Amazonian oils
+  - Amazon biodiversity
+  - analytical chemistry
+  - open-science
+  - FAIR
+  - reproducible research
+  - Python
+  - scikit-learn
+  - Streamlit
 preferred-citation:
   type: software
   title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
@@ -46,5 +78,5 @@ preferred-citation:
   year: 2026
   institution:
     name: "GEAAp/UFPA"
-  url: "https://github.com/ErleySC/amazonian-oils-chemometrics"
+  url: "https://github.com/ErleySC/guaraci"
   # doi: "10.5281/zenodo.XXXXXXX"  <- inserir apos o Zenodo gerar o DOI

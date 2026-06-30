@@ -141,13 +141,13 @@ DOI is being generated for this release — update `CITATION.cff` when it is rea
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
 > Matrices* (v30.3.0) [Software]. GEAAp/UFPA.
-> https://github.com/ErleySC/amazonian-oils-chemometrics
+> https://github.com/ErleySC/guaraci
 
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
 > Amazônicas**. Versão 30.3.0. GEAAp/UFPA, 2026. Disponível em:
-> <https://github.com/ErleySC/amazonian-oils-chemometrics>.
+> <https://github.com/ErleySC/guaraci>.
 
 **BibTeX**
 
@@ -158,7 +158,7 @@ DOI is being generated for this release — update `CITATION.cff` when it is rea
   version     = {30.3.0},
   year        = {2026},
   institution = {GEAAp/UFPA},
-  url         = {https://github.com/ErleySC/amazonian-oils-chemometrics},
+  url         = {https://github.com/ErleySC/guaraci},
   license     = {GPL-3.0-or-later}
 }
 ```
