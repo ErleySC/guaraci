@@ -206,11 +206,17 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
         idx = ops.index(valor_atual) if valor_atual in ops else 0
         return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave)
     if t == "int":
-        return st.number_input(rotulo, value=int(valor_atual), step=1,
-                               help=ajuda, key=chave)
+        _lo = s.get("min"); _hi = s.get("max")
+        return st.number_input(
+            rotulo, value=int(valor_atual), step=1, help=ajuda, key=chave,
+            min_value=int(_lo) if _lo is not None else None,
+            max_value=int(_hi) if _hi is not None else None)
     if t == "float":
-        return st.number_input(rotulo, value=float(valor_atual),
-                               help=ajuda, key=chave, format="%.4f")
+        _lo = s.get("min"); _hi = s.get("max")
+        return st.number_input(
+            rotulo, value=float(valor_atual), help=ajuda, key=chave, format="%.4f",
+            min_value=float(_lo) if _lo is not None else None,
+            max_value=float(_hi) if _hi is not None else None)
     if t == "list":
         txt = ", ".join(str(x) for x in (valor_atual or ()))
         return st.text_input(rotulo + " (comma-separated)", value=txt,
@@ -1796,11 +1802,18 @@ with tab_modelo:
         with _cols_top[_i]:
             valores[_k] = _widget_para_campo(_s, pq._attr_para_yaml(_s, cfg_base))
 
-    # Preprocessing choice (from Preprocessing tab values or default)
+    # Preprocessing is chosen in the Preprocessing tab (single source of truth).
+    # Mirror that choice here read-only. Previously a second editable widget with
+    # a separate key rendered here and, running later, silently overrode the
+    # user's Preprocessing-tab choice with its own default.
     _s_pre = specs.get("pre_processamento")
     if _s_pre is not None:
-        valores["pre_processamento"] = _widget_para_campo(
-            _s_pre, pq._attr_para_yaml(_s_pre, cfg_base), prefixo="w_model_")
+        _pre_escolhido = st.session_state.get(
+            "w_pre_processamento", pq._attr_para_yaml(_s_pre, cfg_base))
+        valores["pre_processamento"] = _pre_escolhido
+        st.caption(
+            f"⚗️ Pré-processamento: **{_pre_escolhido}** "
+            "— definido no separador *Pré-processamento*.")
 
     st.divider()
 
@@ -1879,15 +1892,33 @@ with tab_modelo:
         st.info(_T("Fix the data input (Data tab) to enable."))
 
     if rodar or _rodar_top:
+        # Trava anti-concorrência: se um worker anterior ainda estiver vivo
+        # (ex.: análise que estourou o timeout de 2 h mas segue rodando em
+        # segundo plano), não inicia outro. Antes, dois pq.executar() podiam
+        # rodar em paralelo disputando config.yaml/pastas e dobrando a RAM.
+        _prev_worker = st.session_state.get("_worker_ativo")
+        if _prev_worker is not None and _prev_worker.is_alive():
+            st.warning(
+                "Uma análise anterior ainda está em execução em segundo plano. "
+                "Aguarde ela terminar (ou recarregue a página) antes de rodar "
+                "novamente.")
+            st.stop()
         try:
             pq.salvar_config(cfg_run, _CFG_PATH)
-        except Exception:
-            pass
+        except Exception as _e_cfg:
+            # Não impede a execução (a config vai em memória para o worker),
+            # mas avisa: sem isso, um filesystem só-leitura (comum no Cloud)
+            # falhava em silêncio e "Reload config.yaml" restaurava config antiga.
+            st.warning(
+                "Não foi possível gravar config.yaml — a análise continua com "
+                f"os valores atuais, mas 'Reload config.yaml' pode restaurar uma "
+                f"versão antiga. Detalhe: {_e_cfg}")
 
         logger = _LogThreadSafe(tee=sys.__stdout__)
         estado: Dict = {"fim": False, "erro": None, "pasta": None}
         worker = threading.Thread(
             target=_rodar_worker, args=(cfg_run, logger, estado), daemon=True)
+        st.session_state["_worker_ativo"] = worker
 
         t0 = time.monotonic()
         eta_best: Optional[float] = None
@@ -1937,6 +1968,11 @@ with tab_modelo:
                 _run_status.update(
                     label=f"✅ Completed in {_fmt_tempo(elapsed)}!",
                     state="complete", expanded=False)
+
+        # Libera a trava só se o worker de fato terminou; se ficou órfão por
+        # timeout (ainda vivo), mantém a referência para bloquear novo run.
+        if not worker.is_alive():
+            st.session_state["_worker_ativo"] = None
 
         st.session_state.ultimo_log  = txt
         if estado["erro"]:

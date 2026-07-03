@@ -588,8 +588,10 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
         print(f"  [ERROR] {caminho}: {e}")
     if cfg.mostrar_graficos:
         plt.show()
-    else:
-        plt.close(fig)
+    # Always release the figure, even after show(): in a headless/Agg backend
+    # (e.g. Streamlit Cloud) show() is a no-op and skipping close() leaks the
+    # figure in the long-lived server process, growing RAM across runs.
+    plt.close(fig)
 
 
 # =========================================================================
@@ -1444,6 +1446,7 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
 
     for nome, build_etapas in presets.items():
         melhor = {"q2": -np.inf, "accuracy": 0.0, "balanced_acc": 0.0, "n_lv": 1}
+        n_lv_ok = 0
         for n_lv in range(1, max_lv + 1):
             def factory(_etapas=build_etapas, _n=n_lv):
                 return Pipeline(_etapas() + [
@@ -1452,6 +1455,7 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
                 y_cv = _cv_predict_manual(factory, X_raw, Y_bin, cv_indices)
             except Exception:
                 continue
+            n_lv_ok += 1
             ss_res = float(np.sum((Y_bin - y_cv) ** 2))
             if ss_total < 1e-12 or not np.isfinite(ss_res):
                 q2 = float("nan")
@@ -1464,6 +1468,13 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
                 melhor = {"q2": q2, "accuracy": acc,
                           "balanced_acc": bal, "n_lv": n_lv}
         resultados[nome] = melhor
+        if n_lv_ok == 0:
+            # Nenhum numero de LVs convergiu: o preset falhou por completo.
+            # Sem este aviso, Acc=0.000 seria exibido como se fosse um
+            # resultado ruim de verdade, mascarando a falha numerica.
+            print(f"  {nome:<26s} -> [AVISO] nenhum modelo convergiu "
+                  f"({max_lv} LVs testados) — preset ignorado")
+            continue
         _q2_disp = f"{melhor['q2']:.3f}" if np.isfinite(melhor['q2']) else "n/a"
         print(f"  {nome:<26s} -> LVs={melhor['n_lv']:2d}  "
               f"Acc={melhor['accuracy']:.3f}  "
@@ -3584,8 +3595,15 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
     for cls in classes:
         idx = rotulos == cls
         c = contrib[idx]
+        n_cls_amostras = int(idx.sum())
         means[cls] = c.mean(axis=0)
-        sems[cls]  = c.std(axis=0, ddof=1) / max(float(np.sqrt(idx.sum())), 1.0)
+        # ddof=1 divide por (n-1); com 1 amostra isso vira 0/0 = NaN e a banda
+        # de erro some silenciosamente. Classe singleton -> SEM = 0 (sem
+        # dispersao estimavel), evitando NaN no grafico.
+        if n_cls_amostras > 1:
+            sems[cls] = c.std(axis=0, ddof=1) / float(np.sqrt(n_cls_amostras))
+        else:
+            sems[cls] = np.zeros(c.shape[1])
 
     n_cls = len(classes)
 
@@ -6360,19 +6378,21 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "pre_processamento", "attr": "preprocessamento_padrao", "tipo": "preproc",
      "desc": "Pre-processamento espectral", "opcoes": list(_PRE_PROC_FRIENDLY)},
     {"key": "faixa_min_cm", "attr": "wn_min", "tipo": "float",
-     "desc": "Inicio da faixa espectral util (cm-1)", "opcoes": None},
+     "desc": "Inicio da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
     {"key": "faixa_max_cm", "attr": "wn_max", "tipo": "float",
-     "desc": "Fim da faixa espectral util (cm-1)", "opcoes": None},
+     "desc": "Fim da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
     {"key": "excluir_classes", "attr": "excluir_classes", "tipo": "list",
      "desc": "Especies a remover da analise (ex: [Copaiba])", "opcoes": None},
     {"key": "max_lvs", "attr": "max_lvs", "tipo": "int",
-     "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None},
+     "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None,
+     "min": 1, "max": 200},
     {"key": "holdout_fracao", "attr": "frac_holdout", "tipo": "float",
-     "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None},
+     "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None,
+     "min": 0.0, "max": 0.5},
     {"key": "validacao_group_aware", "attr": "agrupar_por_mae_id", "tipo": "bool",
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
     {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
-     "desc": "Iteracoes do teste de permutacao", "opcoes": None},
+     "desc": "Iteracoes do teste de permutacao", "opcoes": None, "min": 1, "max": 100000},
     {"key": "teste_wold", "attr": "executar_wold", "tipo": "bool",
      "desc": "Rodar teste de Wold (intercepts R2Y/Q2Y)", "opcoes": None},
     {"key": "teste_cv_anova", "attr": "executar_cv_anova", "tipo": "bool",
@@ -6393,13 +6413,14 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "monte_carlo", "attr": "executar_monte_carlo", "tipo": "bool",
      "desc": "Monte Carlo CV: IC95% por percentil (N repeticoes estratificadas por grupo)", "opcoes": None},
     {"key": "n_monte_carlo", "attr": "n_monte_carlo", "tipo": "int",
-     "desc": "Numero de repeticoes do Monte Carlo CV", "opcoes": None},
+     "desc": "Numero de repeticoes do Monte Carlo CV", "opcoes": None, "min": 1, "max": 100000},
     {"key": "monte_carlo_incluir_todos", "attr": "monte_carlo_incluir_todos", "tipo": "bool",
      "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento)", "opcoes": None},
     {"key": "shap_benchmark", "attr": "executar_shap", "tipo": "bool",
      "desc": "SHAP values (TreeExplainer) para RF/XGBoost/GBM — interpretabilidade espectral", "opcoes": None},
     {"key": "shap_max_amostras", "attr": "shap_max_amostras", "tipo": "int",
-     "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None},
+     "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None,
+     "min": 1, "max": 1000000},
     {"key": "figuras_mostrar_marcadores", "attr": "mostrar_marcadores_classe", "tipo": "bool",
      "desc": "Usar formas diferentes por classe nos graficos de score", "opcoes": None},
     {"key": "figuras_mostrar_elipses", "attr": "mostrar_elipses_grupo", "tipo": "bool",
@@ -6407,7 +6428,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "formato_figura", "attr": "formato_saida", "tipo": "choice",
      "desc": "Formato das figuras", "opcoes": ["png", "pdf", "svg"]},
     {"key": "dpi", "attr": "dpi_salvar", "tipo": "int",
-     "desc": "Resolucao das figuras (DPI)", "opcoes": None},
+     "desc": "Resolucao das figuras (DPI)", "opcoes": None, "min": 50, "max": 1200},
     {"key": "abrir_figuras_na_tela", "attr": "mostrar_graficos", "tipo": "bool",
      "desc": "Abrir cada figura na tela ao gerar (alem de salvar)", "opcoes": None},
 ]
@@ -6425,6 +6446,21 @@ def _attr_para_yaml(spec: Dict[str, Any], cfg: Config) -> Any:
     return v
 
 
+def _checar_faixa(spec: Dict[str, Any], v: float) -> float:
+    """Valida um numero contra 'min'/'max' opcionais do spec, com mensagem
+    amigavel. Impede que valores impossiveis (fracao negativa, contagem zero)
+    passem silenciosamente e so quebrem — ou pior, distorcam o resultado —
+    no meio da execucao."""
+    lo, hi = spec.get("min"), spec.get("max")
+    if lo is not None and v < lo:
+        raise ValueError(
+            f"{spec['key']}={v}: valor minimo permitido e {lo}")
+    if hi is not None and v > hi:
+        raise ValueError(
+            f"{spec['key']}={v}: valor maximo permitido e {hi}")
+    return v
+
+
 def _coagir_valor(spec: Dict[str, Any], val: Any) -> Any:
     """Converte um valor do YAML/menu para o tipo correto do atributo Config,
     validando opcoes. Lanca ValueError com mensagem amigavel se invalido."""
@@ -6437,9 +6473,9 @@ def _coagir_valor(spec: Dict[str, Any], val: Any) -> Any:
             return val
         return str(val).strip().lower() in ("true", "sim", "1", "yes", "s", "v")
     if t == "int":
-        return int(val)
+        return int(_checar_faixa(spec, int(val)))
     if t == "float":
-        return float(val)
+        return _checar_faixa(spec, float(val))
     if t == "list":
         if val is None:
             return ()

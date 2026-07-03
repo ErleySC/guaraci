@@ -1807,11 +1807,15 @@ def menu_codificacao(cfg: Config) -> None:
         except Exception:
             return {}
 
-    def _salvar_cod(d: dict) -> None:
+    def _salvar_cod(d: dict) -> bool:
         try:
             _CODIGOS_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            pass
+            return True
+        except Exception as e:
+            # Antes engolia o erro: o usuario "salvava" um codigo, nao via aviso,
+            # e ele sumia no proximo inicio se a gravacao tivesse falhado.
+            console.print(f"[err]✗ Falha ao salvar codigos: {e}[/err]")
+            return False
 
     def _listar() -> None:
         cod_usr = _cod_usr()

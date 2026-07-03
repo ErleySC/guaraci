@@ -169,6 +169,38 @@ def test_wold_no_nan_intercept(pq):
         assert not np.isinf(float(v)), f"{key} = {v} is ±inf — numerical overflow"
 
 
+def _spec(pq, key):
+    return next(s for s in pq._CONFIG_SPEC if s["key"] == key)
+
+
+def test_coagir_valor_rejeita_holdout_negativo(pq):
+    """holdout_fracao negativa deve ser rejeitada (antes: pulava holdout em silêncio)."""
+    s = _spec(pq, "holdout_fracao")
+    with pytest.raises(ValueError):
+        pq._coagir_valor(s, -0.2)
+    with pytest.raises(ValueError):
+        pq._coagir_valor(s, 0.8)          # acima do máximo (0.5)
+    assert pq._coagir_valor(s, 0.2) == 0.2  # valor válido passa
+
+
+def test_coagir_valor_rejeita_contagem_zero(pq):
+    """Contagens (LVs, permutações, MC) devem exigir >= 1, não valores degenerados."""
+    for key in ("max_lvs", "n_permutacoes", "n_monte_carlo"):
+        s = _spec(pq, key)
+        with pytest.raises(ValueError):
+            pq._coagir_valor(s, 0)
+        assert pq._coagir_valor(s, 5) == 5
+
+
+def test_coagir_valor_faixa_ausente_nao_valida(pq):
+    """Campos numéricos sem min/max declarado continuam aceitando qualquer valor."""
+    # dpi tem min/max; um campo sem limites (se existir) não deve levantar.
+    s = _spec(pq, "dpi")
+    with pytest.raises(ValueError):
+        pq._coagir_valor(s, 10)          # abaixo do mínimo (50)
+    assert pq._coagir_valor(s, 600) == 600
+
+
 # ── Integration test ──────────────────────────────────────────────────────────
 
 @pytest.mark.slow

@@ -1438,6 +1438,7 @@ def _ler_dx_pasta(pasta: str, max_files: int = 300, ler_x: bool = False):
     from pathlib import Path as _Path_dx
     dx_files = sorted(_Path_dx(pasta).rglob("*.dx"))[:max_files]
     spectra, labels, wavenumbers = [], [], []
+    n_falhos = 0
     for f in dx_files:
         try:
             lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -1463,8 +1464,16 @@ def _ler_dx_pasta(pasta: str, max_files: int = 300, ler_x: bool = False):
                 labels.append(cod.group(1).upper() if cod else f.stem[:4])
                 if ler_x and not wavenumbers and xvals:
                     wavenumbers = xvals
+            else:
+                n_falhos += 1   # arquivo sem dados espectrais utilizaveis
         except Exception:
+            n_falhos += 1
             continue
+    if n_falhos:
+        # Sem este aviso, arquivos ilegiveis eram descartados em silencio e a
+        # previa/estatistica era calculada so nos que sobraram, sem o usuario saber.
+        print(f"  [AVISO] {n_falhos} de {len(dx_files)} arquivo(s) .dx nao "
+              f"puderam ser lidos e foram ignorados.")
     return spectra, labels, wavenumbers
 
 
