@@ -107,7 +107,7 @@ assistente científico em qualquer menu.
 
 ### 2. Direto pelo `config.yaml`
 ```bash
-python pipeline_quimiometria_14.py --rodar
+python pipeline.py --rodar
 ```
 
 ### 3. Interface web (navegador)
@@ -117,7 +117,7 @@ streamlit run app_quimiometria.py
 Campos clicáveis, validação imediata da pasta, execução com log ao vivo, exibição
 do resumo + figuras e download `.zip` de todos os resultados.
 
-> Modo legado: `python pipeline_quimiometria_14.py --codigo` usa a `Config`
+> Modo legado: `python pipeline.py --codigo` usa a `Config`
 > embutida no código (para quem prefere editar o `.py`).
 
 ---

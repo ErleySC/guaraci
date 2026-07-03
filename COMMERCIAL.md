@@ -1,6 +1,6 @@
 # Commercial Licensing / Licenciamento Comercial
 
-**Guaraci** (`pipeline_quimiometria_14`) — © 2026 Erley S. da Costa & GEAAp/UFPA.
+**Guaraci** (`pipeline.py`) — © 2026 Erley S. da Costa & GEAAp/UFPA.
 All rights reserved / Todos os direitos reservados.
 
 ---

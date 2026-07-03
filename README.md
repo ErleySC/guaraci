@@ -86,7 +86,7 @@ cp config.example.yaml config.yaml   # then set `pasta_dados` to your .dx folder
 
 ```bash
 python guaraci.py                             # 1. GUARACI terminal interface (recommended)
-python pipeline_quimiometria_14.py --rodar    # 2. run straight from config.yaml
+python pipeline.py --rodar                    # 2. run straight from config.yaml
 streamlit run app_quimiometria.py             # 3. web app (browser)
 ```
 

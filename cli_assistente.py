@@ -5,9 +5,9 @@ GEAAp / UFPA — Plataforma de autenticacao de oleos vegetais amazonicos.
 
 Uso:
     python cli_assistente.py
-    python pipeline_quimiometria_14.py   (chama este modulo automaticamente)
+    python pipeline.py   (chama este modulo automaticamente)
 
-Requer: pipeline_quimiometria_14.py no mesmo diretorio.
+Requer: pipeline.py no mesmo diretorio.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 # Integracao com o pipeline (sem modificar nenhuma funcao analitica)
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pipeline_quimiometria_14 as pq
+import pipeline as pq
 
 # Atalhos
 Config = pq.Config

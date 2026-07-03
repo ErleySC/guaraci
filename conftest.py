@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 @pytest.fixture(scope="session")
 def pq():
     """Session-scoped pipeline module — loaded once, reused across all tests."""
-    _name = "pipeline_quimiometria_14"
+    _name = "pipeline"
     spec = importlib.util.spec_from_file_location(
         _name, os.path.join(os.path.dirname(__file__), f"{_name}.py")
     )

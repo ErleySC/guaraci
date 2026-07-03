@@ -6,7 +6,7 @@ GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecni
 Uso:
     python guaraci.py
 
-Requer: pipeline_quimiometria_14.py e cli_assistente.py no mesmo diretorio.
+Requer: pipeline.py e cli_assistente.py no mesmo diretorio.
 Rich 15.0+ necessario (pip install rich).
 
 type: ignore[all]  # Interface code; Pylance stubs incomplete for config access patterns
@@ -64,7 +64,7 @@ from rich import box as rbox
 # Pipeline — ZERO modificacoes analiticas
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pipeline_quimiometria_14 as pq
+import pipeline as pq
 
 Config        = pq.Config
 executar      = pq.executar
