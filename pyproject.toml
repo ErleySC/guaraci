@@ -40,7 +40,10 @@ guaraci = "guaraci:main"
 Repository = "https://github.com/ErleySC/guaraci"
 
 [tool.setuptools]
-py-modules = ["pipeline", "guaraci", "cli_assistente", "app_quimiometria"]
+py-modules = [
+    "pipeline", "guaraci", "cli_assistente", "app_quimiometria",
+    "guaraci_theme", "design_tokens", "chemometric_stats",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
