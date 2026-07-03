@@ -6479,7 +6479,9 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "pasta_saida", "attr": "pasta_saida_raiz", "tipo": "str",
      "desc": "Pasta onde os resultados serao gravados", "opcoes": None},
     {"key": "nivel", "attr": "nivel", "tipo": "choice",
-     "desc": "Nivel: N1=especie | N2=puro/adulterado | N3=teor", "opcoes": ["N1", "N2", "N3"]},
+     "desc": "Modo de analise: Classificacao (especie) | Discriminacao "
+             "(puro vs. adulterado) | Quantificacao (teor de adulterante)",
+     "opcoes": ["N1", "N2", "N3"]},
     {"key": "pre_processamento", "attr": "preprocessamento_padrao", "tipo": "preproc",
      "desc": "Pre-processamento espectral", "opcoes": list(_PRE_PROC_FRIENDLY)},
     {"key": "faixa_min_cm", "attr": "wn_min", "tipo": "float",

@@ -544,14 +544,24 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "nivel": {
         "PT": {
-            "desc": "Nivel de analise: N1 (exploratorio), N2 (classificacao completa), N3 (regressao).",
+            "desc": "Modo de analise: N1=Classificacao (identifica a especie), "
+                    "N2=Discriminacao (puro vs. adulterado, com DD-SIMCA), "
+                    "N3=Quantificacao (estima o teor de adulterante, PLS-R).",
             "impacto": "ANALITICO — define quais modulos sao executados.",
-            "exemplos": {"N1": "So PCA/HCA", "N2": "Classificacao completa (PLS-DA + DD-SIMCA)", "N3": "Quantificacao (PLS-R)"},
+            "exemplos": {
+                "N1": "Classificacao por especie (PLS-DA/OPLS-DA)",
+                "N2": "Puro vs. adulterado (PLS-DA + DD-SIMCA one-class)",
+                "N3": "Quantificacao do teor de adulterante (PLS-R)"},
         },
         "EN": {
-            "desc": "Analysis level: N1 (exploratory), N2 (full classification), N3 (regression).",
+            "desc": "Analysis mode: N1=Classification (identify species), "
+                    "N2=Discrimination (pure vs. adulterated, with DD-SIMCA), "
+                    "N3=Quantification (estimate adulterant content, PLS-R).",
             "impacto": "ANALYTICAL — defines which modules are executed.",
-            "exemplos": {"N1": "PCA/HCA only", "N2": "Full classification (PLS-DA + DD-SIMCA)", "N3": "Quantification (PLS-R)"},
+            "exemplos": {
+                "N1": "Species classification (PLS-DA/OPLS-DA)",
+                "N2": "Pure vs. adulterated (PLS-DA + DD-SIMCA one-class)",
+                "N3": "Adulterant content quantification (PLS-R)"},
         },
         "default": "N2", "range": "N1 | N2 | N3",
     },

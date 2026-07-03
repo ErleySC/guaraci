@@ -588,6 +588,15 @@ def _pause(msg: str = "") -> None:
 def _nome_campo(key: str) -> str:
     return FIELD_NAMES.get(key, {}).get(_lang(), key)
 
+def _rotulo_opcao(key: str, op: Any) -> str:
+    """Nome amigavel de um valor de opcao (so exibicao; o valor gravado no
+    config continua o codigo interno, ex.: N1/N2/N3)."""
+    if key == "nivel":
+        nome = pq._NIVEL_NOME.get(str(op), "")
+        return f"{op} — {nome}" if nome else str(op)
+    return str(op)
+
+
 def _get_val(cfg: Config, key: str) -> Any:
     spec = _SPEC_BY_KEY.get(key)
     if spec is None:
@@ -595,6 +604,8 @@ def _get_val(cfg: Config, key: str) -> Any:
     raw = _attr_para_yaml(spec, cfg)
     if key == "modo_ddsimca":
         return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(raw), raw)
+    if key == "nivel":
+        return _rotulo_opcao(key, raw)
     return raw
 
 def _set_val(cfg: Config, key: str, raw: str) -> None:
@@ -1217,6 +1228,9 @@ def _editar_campo(cfg: Config, key: str) -> bool:
 
     nome     = _nome_campo(key)
     val_atual = _get_val(cfg, key)
+    # Valor interno cru (ex.: "N1") para comparar com as opcoes — val_atual
+    # pode ser um rotulo amigavel de exibicao ("N1 — Classificacao...").
+    val_cru   = _attr_para_yaml(spec, cfg)
     tipo      = spec.get("tipo", "str")
     opcoes    = spec.get("opcoes")
     risk      = RISK_CLASS.get(key, "ANALITICO")
@@ -1230,7 +1244,8 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     info.add_row("Atual:", Text(str(val_atual), style=PS))
     info.add_row("Tipo:", Text(tipo, style=PM))
     if opcoes:
-        info.add_row("Opcoes:", Text(" | ".join(str(o) for o in opcoes), style=PM))
+        info.add_row("Opcoes:", Text(
+            " | ".join(_rotulo_opcao(key, o) for o in opcoes), style=PM))
 
     console.print(Panel(
         info,
@@ -1241,8 +1256,9 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     if opcoes:
         console.print()
         for j, op in enumerate(opcoes, 1):
-            mk = f"[{PA}]►[/{PA}]" if str(op) == str(val_atual) else " "
-            console.print(f"  {mk} [{PA}][{j}][/{PA}] {escape(str(op))}")
+            mk = f"[{PA}]►[/{PA}]" if str(op) == str(val_cru) else " "
+            console.print(f"  {mk} [{PA}][{j}][/{PA}] "
+                          f"{escape(_rotulo_opcao(key, op))}")
         console.print()
         raw = _input(f"  [{1}-{len(opcoes)}] ou Enter=manter: ")
         if not raw:
