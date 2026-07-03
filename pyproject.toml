@@ -43,7 +43,7 @@ Repository = "https://github.com/ErleySC/guaraci"
 py-modules = [
     "pipeline", "guaraci", "cli_assistente", "app_quimiometria",
     "guaraci_theme", "design_tokens", "chemometric_stats",
-    "paleta_cores", "dados_io", "preprocessamento",
+    "paleta_cores", "dados_io", "preprocessamento", "classificadores",
 ]
 
 [tool.pytest.ini_options]
