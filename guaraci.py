@@ -919,7 +919,11 @@ def _print_status(cfg: Config) -> None:
         dados_str = f"[err]{_t('dados_err')}[/err]"
 
     preproc  = escape(str(_cfgv(cfg, "pre_processamento", "msc_sg_mc")))
-    nivel    = escape(str(_cfgv(cfg, "nivel", "N1")))
+    # Barra de status compacta: usa so a palavra-chave do modo (Classificacao/
+    # Discriminacao/Quantificacao) — o rotulo completo estouraria as colunas.
+    _niv_raw  = str(_cfgv(cfg, "nivel", "N1"))
+    _niv_nome = pq._NIVEL_NOME.get(_niv_raw, "")
+    nivel    = escape(_niv_nome.split()[0] if _niv_nome else _niv_raw)
     tag      = escape(str(getattr(cfg, "tag", "") or ""))
     pasta_s  = escape(str(pasta))
 
@@ -2688,7 +2692,7 @@ def _print_resumo(cfg: Config) -> None:
     row(_t("res_shap"),     _cfgv(cfg, "shap_benchmark", False))
     row(_t("res_dpi"),      _cfgv(cfg, "dpi", 300))
     row(_t("res_fmt"),      _cfgv(cfg, "formato_figura", "png"))
-    row(_t("res_nivel"),    _cfgv(cfg, "nivel", "N1"))
+    row(_t("res_nivel"),    _rotulo_opcao("nivel", _cfgv(cfg, "nivel", "N1")))
     tag = getattr(cfg, "tag", "") or ""
     if tag: row(_t("res_tag"), tag)
 
