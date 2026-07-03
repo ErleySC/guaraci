@@ -151,6 +151,16 @@ from typing import Optional, Tuple, Dict, List, Callable, cast, Any
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
+# Backend headless (Agg) forcado sempre: sem isso o matplotlib usa TkAgg (se
+# disponivel), que NAO e thread-safe. Combinado com a execucao paralela dos
+# testes de permutacao/Wold (Fase E, n_jobs_permutacao>1) ou com processos de
+# longa duracao rodando varias analises (Streamlit), objetos Tk pendentes de
+# coleta de lixo podem ser finalizados fora da thread principal e derrubar o
+# processo ("main thread is not in main loop"). Agg tambem e o backend correto
+# para servidor/Cloud (sem display). Efeito colateral: a opcao
+# 'abrir_figuras_na_tela'/mostrar_graficos nao abre mais janela — as figuras
+# continuam sendo sempre salvas em disco normalmente.
+mpl.use("Agg")
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Rectangle
@@ -280,6 +290,16 @@ class Config:
     comparar_pipelines: bool = True
     executar_wold: bool = True
     executar_cv_anova: bool = True
+    # Paralelismo (processos, via joblib/loky) para os testes de permutacao/
+    # Wold — cada iteracao e independente (mesma X, so o rotulo e
+    # reembaralhado), entao rodar em paralelo NAO altera nenhum resultado
+    # numerico, so o tempo de execucao (verificado por teste de regressao).
+    # Padrao 1 (sequencial) preserva o comportamento atual sem mudanca.
+    # Medido: n_jobs=4 ~2x mais rapido no pipeline completo (threading NAO
+    # ajuda aqui — overhead do sklearn e Python/GIL-bound; processos sim).
+    # Em ambientes com pouca RAM/CPU (ex.: Streamlit Cloud gratuito), deixe em 1
+    # (processos extras multiplicam o uso de memoria).
+    n_jobs_permutacao: int = 1
 
     frac_holdout: float = 0.20         # v14: external holdout by default
     # v15: pure samples (conc==0) ALWAYS stay in training — they are scarce (3/class)
@@ -589,6 +609,9 @@ def setup_matplotlib(cfg: Config) -> None:
     })
 
 
+_AVISO_MOSTRAR_GRAFICOS_EMITIDO = False
+
+
 def salvar(fig, nome: str, pasta: str, cfg: Config,
            subpasta: str = "") -> None:
     """Always saves figure under pasta/figuras/[subpasta]/ (v20 structure).
@@ -603,10 +626,15 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
     except Exception as e:
         print(f"  [ERROR] {caminho}: {e}")
     if cfg.mostrar_graficos:
-        plt.show()
-    # Always release the figure, even after show(): in a headless/Agg backend
-    # (e.g. Streamlit Cloud) show() is a no-op and skipping close() leaks the
-    # figure in the long-lived server process, growing RAM across runs.
+        global _AVISO_MOSTRAR_GRAFICOS_EMITIDO
+        if not _AVISO_MOSTRAR_GRAFICOS_EMITIDO:
+            print("  [AVISO] 'abrir_figuras_na_tela' esta ligado, mas o backend "
+                  "grafico e sempre headless (Agg) — as figuras nao abrem em "
+                  "janela, apenas sao salvas em disco normalmente.")
+            _AVISO_MOSTRAR_GRAFICOS_EMITIDO = True
+    # Always release the figure: in a headless/Agg backend show() is a no-op,
+    # and skipping close() leaks the figure in a long-lived server process
+    # (e.g. Streamlit Cloud), growing RAM across runs.
     plt.close(fig)
 
 
@@ -1730,10 +1758,39 @@ def cv_anova_eriksson(Y: np.ndarray, Y_cv: np.ndarray, n_components: int
              "df_resid": int(df_resid)}
 
 
+def _iter_wold(pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups):
+    """Uma iteracao (pura, sem estado global) do teste de Wold. Usada tanto
+    sequencialmente quanto via joblib.Parallel — o resultado depende so dos
+    argumentos, entao rodar em paralelo nao muda o valor calculado, so a
+    ordem de execucao (a ordem dos resultados e sempre preservada pelo
+    chamador). Replica exatamente a logica de teste_wold pre-paralelizacao.
+    Retorna ("ok", sim, r2, q2) | ("skip", ...) | ("fail", ...).
+    """
+    try:
+        sim = float(np.mean(y_perm_int == y_int))
+        cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
+        pipe = pipeline_factory(); pipe.fit(X, Y_perm)
+        Y_tr_p = pipe.predict(X)
+        Y_cv_p = _cv_predict_manual(pipeline_factory, X, Y_perm, cv_perm_idx)
+        ss_tot_p = float(np.sum((Y_perm - Y_perm.mean(axis=0)) ** 2))
+        if ss_tot_p < 1e-12:
+            return ("skip", None, None, None)
+        ss_res_r2 = float(np.sum((Y_perm - Y_tr_p) ** 2))
+        ss_res_q2 = float(np.sum((Y_perm - Y_cv_p) ** 2))
+        if not (np.isfinite(ss_res_r2) and np.isfinite(ss_res_q2)):
+            return ("fail", None, None, None)
+        r2 = max(-1.0, 1.0 - ss_res_r2 / ss_tot_p)
+        q2 = max(-1.0, 1.0 - ss_res_q2 / ss_tot_p)
+        return ("ok", sim, r2, q2)
+    except Exception:
+        return ("fail", None, None, None)
+
+
 def teste_wold(pipeline_factory: Callable[[], Pipeline],
                 X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                 cv, n_perm: int, seed: int,
-                groups: Optional[np.ndarray] = None) -> Dict[str, object]:
+                groups: Optional[np.ndarray] = None,
+                n_jobs: int = 1) -> Dict[str, object]:
     """Permutation test in the style of Wold/Westerhuis (J. Chemometrics 22:578-585):
     tracks R2Y and Q2Y for each permutation as a function of the similarity
     of the permuted Y with the original. Fits a line and reports intercepts.
@@ -1765,42 +1822,60 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
     t0 = _time.time()
     progress_every = max(1, n_perm // 20)   # ~20 updates
 
-    for i in range(n_perm):
-        idx = rng.permutation(len(Y_bin))
-        Y_perm = Y_bin[idx]
-        y_perm_int = np.argmax(Y_perm, axis=1)
-        sim = float(np.mean(y_perm_int == y_int))
-        try:
-            cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
-            pipe = pipeline_factory(); pipe.fit(X, Y_perm)
-            Y_tr_p = pipe.predict(X)
-            Y_cv_p = _cv_predict_manual(pipeline_factory, X, Y_perm,
-                                         cv_perm_idx)
-            ss_tot_p = float(np.sum((Y_perm - Y_perm.mean(axis=0)) ** 2))
-            if ss_tot_p < 1e-12:
-                continue
-            ss_res_r2 = float(np.sum((Y_perm - Y_tr_p) ** 2))
-            ss_res_q2 = float(np.sum((Y_perm - Y_cv_p) ** 2))
-            if not (np.isfinite(ss_res_r2) and np.isfinite(ss_res_q2)):
-                n_falhos += 1
-                continue
-            r2 = max(-1.0, 1.0 - ss_res_r2 / ss_tot_p)
-            q2 = max(-1.0, 1.0 - ss_res_q2 / ss_tot_p)
-            sims.append(sim); r2s.append(r2); q2s.append(q2)
-            n_validos += 1
-        except Exception:
-            n_falhos += 1
+    # Permutacoes geradas SEMPRE na mesma ordem/sequencia do rng, independente
+    # de n_jobs — garante que o resultado (para um dado seed) e identico seja
+    # a execucao sequencial ou paralela; so o tempo de parede muda.
+    permutacoes = [rng.permutation(len(Y_bin)) for _ in range(n_perm)]
 
-        # Progress with ETA
-        if (i + 1) % progress_every == 0 or (i + 1) == n_perm:
-            elapsed = _time.time() - t0
-            taxa    = (i + 1) / max(elapsed, 1e-6)
-            eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
-            pct = (i + 1) / n_perm * 100
-            print(f"    Wold {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                  f"valid={n_validos} failed={n_falhos}  "
-                  f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
-                  flush=True)
+    if n_jobs <= 1:
+        for i, idx in enumerate(permutacoes):
+            Y_perm = Y_bin[idx]
+            y_perm_int = np.argmax(Y_perm, axis=1)
+            status, sim, r2, q2 = _iter_wold(
+                pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups)
+            if status == "ok":
+                sims.append(sim); r2s.append(r2); q2s.append(q2)
+                n_validos += 1
+            elif status == "fail":
+                n_falhos += 1
+            # "skip": ss_tot_p degenerada — ignorado silenciosamente (igual antes)
+
+            if (i + 1) % progress_every == 0 or (i + 1) == n_perm:
+                elapsed = _time.time() - t0
+                taxa    = (i + 1) / max(elapsed, 1e-6)
+                eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
+                pct = (i + 1) / n_perm * 100
+                print(f"    Wold {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
+                      f"valid={n_validos} failed={n_falhos}  "
+                      f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
+                      flush=True)
+    else:
+        from joblib import Parallel, delayed
+        import threadpoolctl
+        print(f"    Wold: {n_perm} permutacoes em paralelo (n_jobs={n_jobs})...",
+              flush=True)
+        # backend="loky" (processos, nao threads): medido que threading NAO
+        # acelera aqui — grande parte do tempo e overhead Python do sklearn
+        # (validacao/roteamento de metadados), que segura o GIL e nao roda em
+        # paralelo entre threads. Processos separados (loky) contornam o GIL.
+        # threadpool_limits(1) evita que o BLAS interno (ex.: OpenBLAS com 16
+        # threads nesta maquina) sobrecarregue os nucleos por cima do
+        # paralelismo externo (oversubscription), o que também prejudicava o
+        # ganho medido.
+        with threadpoolctl.threadpool_limits(1):
+            resultados = Parallel(n_jobs=n_jobs, backend="loky")(
+                delayed(_iter_wold)(
+                    pipeline_factory, X, Y_bin[idx], np.argmax(Y_bin[idx], axis=1),
+                    y_int, cv, groups)
+                for idx in permutacoes)
+        for status, sim, r2, q2 in resultados:
+            if status == "ok":
+                sims.append(sim); r2s.append(r2); q2s.append(q2)
+                n_validos += 1
+            elif status == "fail":
+                n_falhos += 1
+        print(f"    Wold: concluido em {_time.time() - t0:.1f}s  "
+              f"(valid={n_validos} failed={n_falhos})", flush=True)
 
     sims_arr = np.asarray(sims); r2s_arr = np.asarray(r2s); q2s_arr = np.asarray(q2s)
     # Add observed point (sim=1)
@@ -1835,10 +1910,24 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
     }
 
 
+def _iter_permutacao(pipeline_factory, X, Y_perm, y_perm_int, cv, groups):
+    """Uma iteracao (pura, sem estado global) do teste de permutacao. Mesma
+    logica de teste_permutacao pre-paralelizacao — usada sequencialmente ou
+    via joblib.Parallel. Retorna ("ok", acc) | ("fail", None)."""
+    try:
+        cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
+        y_hat = _cv_predict_manual(pipeline_factory, X, Y_perm, cv_perm_idx)
+        acc = float(balanced_accuracy_score(y_perm_int, np.argmax(y_hat, axis=1)))
+        return ("ok", acc)
+    except Exception:
+        return ("fail", None)
+
+
 def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
                       X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                       cv, n_perm: int, seed: int,
-                      groups: Optional[np.ndarray] = None
+                      groups: Optional[np.ndarray] = None,
+                      n_jobs: int = 1
                       ) -> Dict[str, object]:
     """Robust Y-randomization. Iterations that fail (e.g., stratification
     impossible after shuffle) are recorded and excluded from the p-value.
@@ -1864,29 +1953,52 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
     t0 = _time.time()
     progress_every = max(1, n_perm // 20)
 
-    for i in range(n_perm):
-        idx = rng.permutation(len(Y_bin))
-        Y_perm = Y_bin[idx]
-        y_perm_int = np.argmax(Y_perm, axis=1)
-        try:
-            cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
-            y_hat = _cv_predict_manual(pipeline_factory, X, Y_perm, cv_perm_idx)
-            accs.append(float(balanced_accuracy_score(y_perm_int,
-                                                      np.argmax(y_hat, axis=1))))
-        except Exception as e:
-            n_falhos += 1
-            continue
+    # Mesma sequencia de permutacoes independente de n_jobs (reprodutibilidade
+    # do seed identica, sequencial ou paralelo — so o tempo de parede muda).
+    permutacoes = [rng.permutation(len(Y_bin)) for _ in range(n_perm)]
 
-        # Progress with ETA
-        if (i + 1) % progress_every == 0 or (i + 1) == n_perm:
-            elapsed = _time.time() - t0
-            taxa    = (i + 1) / max(elapsed, 1e-6)
-            eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
-            pct = (i + 1) / n_perm * 100
-            print(f"    Perm {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                  f"valid={len(accs)} failed={n_falhos}  "
-                  f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
-                  flush=True)
+    if n_jobs <= 1:
+        for i, idx in enumerate(permutacoes):
+            Y_perm = Y_bin[idx]
+            y_perm_int = np.argmax(Y_perm, axis=1)
+            status, acc = _iter_permutacao(pipeline_factory, X, Y_perm,
+                                            y_perm_int, cv, groups)
+            if status == "ok":
+                accs.append(acc)
+            else:
+                n_falhos += 1
+
+            # Progress with ETA
+            if (i + 1) % progress_every == 0 or (i + 1) == n_perm:
+                elapsed = _time.time() - t0
+                taxa    = (i + 1) / max(elapsed, 1e-6)
+                eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
+                pct = (i + 1) / n_perm * 100
+                print(f"    Perm {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
+                      f"valid={len(accs)} failed={n_falhos}  "
+                      f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
+                      flush=True)
+    else:
+        from joblib import Parallel, delayed
+        import threadpoolctl
+        print(f"    Perm: {n_perm} permutacoes em paralelo (n_jobs={n_jobs})...",
+              flush=True)
+        # Ver comentario equivalente em teste_wold: threading nao acelera
+        # (overhead Python do sklearn segura o GIL) — loky (processos) sim;
+        # threadpool_limits(1) evita oversubscription do BLAS interno.
+        with threadpoolctl.threadpool_limits(1):
+            resultados = Parallel(n_jobs=n_jobs, backend="loky")(
+                delayed(_iter_permutacao)(
+                    pipeline_factory, X, Y_bin[idx], np.argmax(Y_bin[idx], axis=1),
+                    cv, groups)
+                for idx in permutacoes)
+        for status, acc in resultados:
+            if status == "ok":
+                accs.append(acc)
+            else:
+                n_falhos += 1
+        print(f"    Perm: concluido em {_time.time() - t0:.1f}s  "
+              f"(valid={len(accs)} failed={n_falhos})", flush=True)
 
     n_validos = len(accs)
     failure_rate = n_falhos / n_perm if n_perm > 0 else 0.0
@@ -5669,7 +5781,7 @@ def executar(cfg: Config):
     perm_res = teste_permutacao(
         lambda: fabrica_pipeline(n_opt),
         X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes, cfg.seed,
-        groups=grupos_cv)
+        groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
     perm_obs : float      = cast(float, perm_res["acc_observada"])
     perm_dist: np.ndarray = cast(np.ndarray, perm_res["accs_permutadas"])
     perm_p   : float      = cast(float, perm_res["p_value"])
@@ -5688,7 +5800,7 @@ def executar(cfg: Config):
         wold_res = teste_wold(
             lambda: fabrica_pipeline(n_opt),
             X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes_wold, cfg.seed,
-            groups=grupos_cv)
+            groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
         _wr2 = cast(float, wold_res['intercept_r2'])
         _wq2 = cast(float, wold_res['intercept_q2'])
         _wr2_s = f"{_wr2:.4f}" if np.isfinite(_wr2) else "n/a (permutacoes insuficientes)"
@@ -6388,6 +6500,13 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Iteracoes do teste de permutacao", "opcoes": None, "min": 1, "max": 100000},
     {"key": "teste_wold", "attr": "executar_wold", "tipo": "bool",
      "desc": "Rodar teste de Wold (intercepts R2Y/Q2Y)", "opcoes": None},
+    {"key": "n_jobs_permutacao", "attr": "n_jobs_permutacao", "tipo": "int",
+     "desc": "Processos paralelos para os testes de permutacao/Wold "
+             "(1 = sequencial, resultado identico; so muda o tempo). "
+             "Medido: 4 processos = ~2x mais rapido no pipeline completo; "
+             "acima disso o ganho cai (overhead de criar processos). "
+             "Use 1 em ambientes com pouca RAM/CPU (ex.: Streamlit Cloud gratuito)",
+     "opcoes": None, "min": 1, "max": 64},
     {"key": "teste_cv_anova", "attr": "executar_cv_anova", "tipo": "bool",
      "desc": "Rodar CV-ANOVA (Eriksson)", "opcoes": None},
     {"key": "selecao_variaveis_etapa4", "attr": "executar_etapa4", "tipo": "bool",
@@ -6428,7 +6547,10 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "dpi", "attr": "dpi_salvar", "tipo": "int",
      "desc": "Resolucao das figuras (DPI)", "opcoes": None, "min": 50, "max": 1200},
     {"key": "abrir_figuras_na_tela", "attr": "mostrar_graficos", "tipo": "bool",
-     "desc": "Abrir cada figura na tela ao gerar (alem de salvar)", "opcoes": None},
+     "desc": "[Nao disponivel: o backend grafico e sempre headless/Agg, por "
+             "estabilidade em execucao paralela e no servidor web] Figuras "
+             "continuam sendo sempre salvas em disco normalmente",
+     "opcoes": None},
 ]
 
 

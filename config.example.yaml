@@ -56,6 +56,13 @@ validacao_group_aware: true
 # Iteracoes do teste de permutacao
 n_permutacoes: 200
 
+# Processos paralelos para os testes de permutacao/Wold.
+#   1 (padrao) = sequencial, resultado identico. Medido: 4 processos = ~2x
+#   mais rapido no pipeline completo; acima disso o ganho cai (overhead de
+#   criar processos). Deixe em 1 em ambientes com pouca RAM/CPU (ex.:
+#   Streamlit Cloud gratuito).
+n_jobs_permutacao: 1
+
 # Rodar teste de Wold (intercepts R2Y/Q2Y)
 teste_wold: true
 

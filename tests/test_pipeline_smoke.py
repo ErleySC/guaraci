@@ -173,6 +173,71 @@ def _spec(pq, key):
     return next(s for s in pq._CONFIG_SPEC if s["key"] == key)
 
 
+def test_teste_permutacao_paralelo_identico_ao_sequencial(pq):
+    """n_jobs>1 deve produzir exatamente os mesmos resultados que n_jobs=1
+    (mesma sequência de permutações, mesmo cálculo por iteração — só muda o
+    tempo de parede). Regressão de segurança da paralelização da Fase E."""
+    rng = np.random.default_rng(3)
+    n, p = 60, 12
+    X = rng.normal(size=(n, p))
+    Y_bin = np.zeros((n, 3))
+    y_int = np.array([0] * 20 + [1] * 20 + [2] * 20)
+    for i, c in enumerate(y_int):
+        Y_bin[i, c] = 1
+
+    from sklearn.model_selection import StratifiedKFold
+
+    def fac():
+        return Pipeline([
+            ("mc",  StandardScaler(with_std=False)),
+            ("pls", PLSRegression(n_components=3, scale=False)),
+        ])
+
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=2)
+
+    res_seq = pq.teste_permutacao(fac, X, Y_bin, y_int, cv, n_perm=12,
+                                   seed=42, n_jobs=1)
+    res_par = pq.teste_permutacao(fac, X, Y_bin, y_int, cv, n_perm=12,
+                                   seed=42, n_jobs=4)
+
+    assert res_seq["n_validos"] == res_par["n_validos"]
+    assert res_seq["n_falhos"] == res_par["n_falhos"]
+    assert res_seq["acc_observada"] == pytest.approx(res_par["acc_observada"])
+    np.testing.assert_array_almost_equal(
+        res_seq["accs_permutadas"], res_par["accs_permutadas"], decimal=12)
+    assert res_seq["p_value"] == pytest.approx(res_par["p_value"])
+
+
+def test_teste_wold_paralelo_identico_ao_sequencial(pq):
+    """n_jobs>1 deve produzir exatamente os mesmos resultados que n_jobs=1
+    para teste_wold — mesma verificação de segurança que teste_permutacao."""
+    rng = np.random.default_rng(5)
+    n, p = 50, 10
+    X = rng.normal(size=(n, p))
+    Y_bin = np.zeros((n, 2)); Y_bin[:25, 0] = 1; Y_bin[25:, 1] = 1
+    y_int = np.array([0] * 25 + [1] * 25)
+
+    from sklearn.model_selection import StratifiedKFold
+
+    def fac():
+        return Pipeline([
+            ("mc",  StandardScaler(with_std=False)),
+            ("pls", PLSRegression(n_components=2, scale=False)),
+        ])
+
+    cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=1)
+
+    res_seq = pq.teste_wold(fac, X, Y_bin, y_int, cv, n_perm=10, seed=7, n_jobs=1)
+    res_par = pq.teste_wold(fac, X, Y_bin, y_int, cv, n_perm=10, seed=7, n_jobs=4)
+
+    for key in ("intercept_r2", "intercept_q2", "slope_r2", "slope_q2",
+                "r2_obs", "q2_obs"):
+        assert res_seq[key] == pytest.approx(res_par[key], nan_ok=True)
+    np.testing.assert_array_almost_equal(res_seq["sims"], res_par["sims"], decimal=12)
+    np.testing.assert_array_almost_equal(res_seq["r2s"], res_par["r2s"], decimal=12)
+    np.testing.assert_array_almost_equal(res_seq["q2s"], res_par["q2s"], decimal=12)
+
+
 def test_coagir_valor_rejeita_holdout_negativo(pq):
     """holdout_fracao negativa deve ser rejeitada (antes: pulava holdout em silêncio)."""
     s = _spec(pq, "holdout_fracao")
