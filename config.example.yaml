@@ -8,9 +8,11 @@
 
 # Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | sintetico (teste)
 #   opcoes: dx | csv | sintetico
-modo_entrada: dx
+#   Use "sintetico" para testar sem dados reais (dados gerados em memoria)
+modo_entrada: sintetico
 
 # Pasta com os arquivos .dx (modo dx; uma subpasta por classe)
+#   Necessario apenas quando modo_entrada: dx
 pasta_dados: dados
 
 # Caminho do CSV (modo csv): colunas espectrais/variaveis + 1 coluna de classe

@@ -17,10 +17,9 @@ run_benchmark_tcc.py
 benchmark_run.log
 *.log
 
-# --- Raw spectra kept IN repo for Streamlit Cloud deploy (~1 MB, 48 files) ---
-# dados/ and *.dx are intentionally NOT excluded so the app works on the Cloud.
-
-# --- Auxiliary / legacy data folders ---
+# --- Research data (kept local; use modo=sintetico to test without real data) ---
+dados/
+*.dx
 dados_oleos/
 
 # --- Local archive of old versions / scratch (kept out of the repo) ---
