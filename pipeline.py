@@ -217,6 +217,14 @@ class Config:
     mostrar_marcadores_classe: bool = False   # False -> all circles 'o'
     mostrar_elipses_grupo:     bool = False   # False -> no T2/convex hull ellipse
 
+    # ---- Figure detail level ----
+    # False (default): gera apenas o conjunto ESSENCIAL de figuras (scores PCA/
+    #   PLS-DA, confusao, ROC/AUC, selecao de LVs, SR+VIP, outliers T2/Q, e a
+    #   aceitacao DD-SIMCA quando aplicavel). Mais rapido e menos arquivos.
+    # True: gera tambem as figuras EXPLORATORIAS/detalhadas (HCA, loadings PCA,
+    #   pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman).
+    figuras_detalhadas: bool = False
+
     # ---- Group-aware validation (Q1 differentiator) ----
     # When True and mae_id is available, uses GroupKFold/GroupShuffleSplit
     # so that T1/T2/T3 of the same physical point stay in the same fold/holdout.
@@ -2947,39 +2955,9 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
     salvar(fig, "fig4_confusao_e_metricas_por_classe", pasta, cfg)
 
 
-def fig4b_metricas_globais(metricas, perm_obs, perm_dist, perm_p, cfg, pasta):
-    """Consolidated global metrics + permutation test result."""
-    fig, ax = plt.subplots(figsize=(7.5, 3.8), constrained_layout=True)
-
-    nomes  = ["Accuracy", "Balanced accuracy", "F1 (macro)",
-              "Precision (macro)", "Recall (macro)", "Cohen's $\\kappa$"]
-    chaves = ["accuracy", "balanced_accuracy", "f1_macro",
-              "precision_macro", "recall_macro", "cohen_kappa"]
-    valores = [metricas[k] for k in chaves]
-    cores_b = [cor(0), cor(2), cor(1), cor(4), cor(5), cor(3)]
-    pos = np.arange(len(nomes))
-
-    bars = ax.barh(pos, valores, color=cores_b, edgecolor="white",
-                    lw=0.6, height=0.72)
-    for b, v in zip(bars, valores):
-        ax.text(min(v + 0.015, 1.0), b.get_y() + b.get_height() / 2,
-                f"{v:.3f}", va="center", ha="left", fontsize=9)
-
-    ax.set_yticks(pos); ax.set_yticklabels(nomes, fontsize=9.5)
-    ax.set_xlim(0, 1.12)
-    ax.set_xlabel("Value")
-    ax.set_title("Global metrics — cross-validation", loc="left")
-    ax.invert_yaxis()
-    ax.grid(axis="x", color="0.92", lw=0.5)
-    ax.set_axisbelow(True)
-    ax.text(0.98, 0.05,
-            f"Permutation test (Y-randomization)\n"
-            f"Bal.Acc obs. = {perm_obs:.3f}   p = {perm_p:.4f}   N = {len(perm_dist)}",
-            transform=ax.transAxes, ha="right", va="bottom",
-            fontsize=8.5, color="0.25",
-            bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="0.82", lw=0.6))
-
-    salvar(fig, "fig4b_metricas_globais", pasta, cfg)
+# fig4b_metricas_globais: REMOVIDA — as metricas globais (accuracy, balanced,
+# F1, kappa) e o resultado do teste de permutacao ja constam em
+# logs/resumo_modelo.txt; a figura era redundante e nao era mais chamada.
 
 
 # Chemical band assignments for FT-NIR of vegetable oils (M3).
@@ -5765,10 +5743,13 @@ def executar(cfg: Config):
     # Flag de simbolos por classe (None -> todos circulo 'o')
     marcadores_fig = (mapa_marcadores if cfg.mostrar_marcadores_classe
                       else None)
+    # ---- ESSENCIAIS (sempre) ----
     fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                      puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
-    fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta)
-    fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
+    # ---- EXPLORATORIAS (so com figuras_detalhadas) ----
+    if cfg.figuras_detalhadas:
+        fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta)
+        fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
     if cfg.comparar_hca_pipelines:
         fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta)
     fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
@@ -5780,9 +5761,9 @@ def executar(cfg: Config):
         aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
     except Exception as _e_roc:
         print(f"  [AVISO] ROC/AUC: {_e_roc}")
-    # fig4b_metricas_globais — REMOVIDA do output principal (redundante
-    # com resumo_modelo.txt). Funcao preservada para uso opcional.
-    fig5_vip(vip, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
+    # fig4b_metricas_globais e fig5_vip removidas: a primeira e redundante com
+    # resumo_modelo.txt; a segunda (VIP puro) esta contida em fig_sprint3_sr_vip,
+    # que mostra VIP + Selectivity Ratio lado a lado (ver abaixo).
 
     if cfg.n_bootstrap_vip > 0:
         print(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
@@ -5799,17 +5780,19 @@ def executar(cfg: Config):
         else:
             print("  [AVISO] Bootstrap VIP: 0 iteracoes validas — fig5b pulada.")
 
-    fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
-                           mapa_cores, cfg, pasta)
+    if cfg.figuras_detalhadas:
+        fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
+                               mapa_cores, cfg, pasta)
     fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta)
 
-    # ---- Sprint 3 — SR, Score Contribution, DD-SIMCA, OPLS-DA -----------
+    # ---- Sprint 3 — SR (essencial) + Score Contribution (detalhada) -----
     print("\n[Sprint3] Selectivity Ratio + Score Contribution...")
     sr = calcular_selectivity_ratio(pls_final, X_processed)
     fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
-    fig_sprint3_score_contribution(pls_final, X_processed, rotulos,
-                                    wavenumbers, mapa_cores, top_n=20,
-                                    cfg=cfg, pasta=pasta)
+    if cfg.figuras_detalhadas:
+        fig_sprint3_score_contribution(pls_final, X_processed, rotulos,
+                                        wavenumbers, mapa_cores, top_n=20,
+                                        cfg=cfg, pasta=pasta)
 
     # DD-SIMCA — configurable training mode (v14).
     #   'todos' (default): trains each model on all class samples
@@ -5887,19 +5870,21 @@ def executar(cfg: Config):
                   f"   (puros={n_puro_c}, adult={n_adult_c})")
         print(f"  Desconhecidos: {n_unknown}  |  Ambiguos: {n_ambig}")
         if ddsimca_res:
+            # Essencial: painel de aceitacao consolidado (todas as classes).
             fig_sprint3_ddsimca_acceptance(
                 ddsimca_res, rotulos, mapa_cores, cfg, pasta,
                 sens_esp=ddsimca_sens_esp)
-            # Plots individuais por classe em subpasta ddsimca/
-            fig_ddsimca_individuais(
-                ddsimca_res, rotulos, mapa_cores, cfg, pasta,
-                sens_esp=ddsimca_sens_esp)
-            if len(ddsimca_res) >= 2:
-                try:
-                    fig_cooman_ddsimca(ddsimca_res, rotulos, mapa_cores,
-                                       cfg, pasta)
-                except Exception as _e_coom:
-                    print(f"  [AVISO] Cooman's Plot: {_e_coom}")
+            if cfg.figuras_detalhadas:
+                # Detalhadas: um plot por classe (subpasta ddsimca/) + Cooman.
+                fig_ddsimca_individuais(
+                    ddsimca_res, rotulos, mapa_cores, cfg, pasta,
+                    sens_esp=ddsimca_sens_esp)
+                if len(ddsimca_res) >= 2:
+                    try:
+                        fig_cooman_ddsimca(ddsimca_res, rotulos, mapa_cores,
+                                           cfg, pasta)
+                    except Exception as _e_coom:
+                        print(f"  [AVISO] Cooman's Plot: {_e_coom}")
 
     # OPLS-DA
     _opls_n_ortho: Optional[int] = None
@@ -6421,6 +6406,11 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "shap_max_amostras", "attr": "shap_max_amostras", "tipo": "int",
      "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None,
      "min": 1, "max": 1000000},
+    {"key": "figuras_detalhadas", "attr": "figuras_detalhadas", "tipo": "bool",
+     "desc": "Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA, "
+             "pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman). "
+             "Desligado = so o conjunto essencial (mais rapido, menos arquivos)",
+     "opcoes": None},
     {"key": "figuras_mostrar_marcadores", "attr": "mostrar_marcadores_classe", "tipo": "bool",
      "desc": "Usar formas diferentes por classe nos graficos de score", "opcoes": None},
     {"key": "figuras_mostrar_elipses", "attr": "mostrar_elipses_grupo", "tipo": "bool",

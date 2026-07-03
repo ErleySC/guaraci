@@ -74,6 +74,11 @@ opls_da: true
 # Comparar varios pre-processamentos
 comparar_pre_processamentos: true
 
+# Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA,
+# pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman).
+#   false (padrao) = so o conjunto essencial (mais rapido, menos arquivos)
+figuras_detalhadas: false
+
 # Usar formas diferentes por classe nos graficos de score
 figuras_mostrar_marcadores: false
 

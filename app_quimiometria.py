@@ -1787,7 +1787,8 @@ with tab_modelo:
                               "monte_carlo", "n_monte_carlo",
                               "monte_carlo_incluir_todos",
                               "shap_benchmark", "shap_max_amostras"]
-    _MODELO_KEYS_FIGURAS  = ["figuras_mostrar_marcadores",
+    _MODELO_KEYS_FIGURAS  = ["figuras_detalhadas",
+                              "figuras_mostrar_marcadores",
                               "figuras_mostrar_elipses",
                               "formato_figura", "dpi",
                               "abrir_figuras_na_tela"]
