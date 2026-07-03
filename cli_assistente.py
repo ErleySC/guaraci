@@ -36,6 +36,17 @@ _attr_para_yaml = pq._attr_para_yaml
 _fmt_yaml = pq._fmt_yaml
 _coagir_valor = pq._coagir_valor
 
+# Tema visual compartilhado com guaraci.py (mesma paleta e Console Rich).
+from guaraci_theme import (
+    console as _console, ansi as _ansi_tom, _W as _theme_W,
+    ANSI_RESET as _RESET, ANSI_BOLD as _BOLD, ANSI_DIM as _DIM,
+    ok as _ok, warn as _warn, err as _err, info as _info,
+)
+from rich.panel import Panel
+from rich.text import Text
+from rich.console import Group
+from rich import box as _rbox
+
 # ---------------------------------------------------------------------------
 # Caminhos
 # ---------------------------------------------------------------------------
@@ -203,14 +214,17 @@ RISK_CLASS: Dict[str, str] = {
     "shap_max_amostras": "AVANCADO", "monte_carlo_incluir_todos": "AVANCADO",
 }
 
+# Cores agora derivadas da paleta compartilhada (guaraci_theme): mesmos tons
+# discretos do guaraci.py, no lugar dos ANSI berrantes (92/93/91/96) que
+# destoavam. Um unico ponto recolore todas as ~40 chamadas de _c/RISK_COLOR.
 RISK_COLOR: Dict[str, str] = {
-    "VISUAL": "\033[92m",     # verde
-    "ANALITICO": "\033[93m",  # amarelo
-    "AVANCADO": "\033[91m",   # vermelho
-    "RESET": "\033[0m",
-    "BOLD": "\033[1m",
-    "DIM": "\033[2m",
-    "CYAN": "\033[96m",
+    "VISUAL": _ansi_tom("PG"),      # verde discreto (sucesso/leve)
+    "ANALITICO": _ansi_tom("PA"),   # ambar (atencao moderada)
+    "AVANCADO": _ansi_tom("PR"),    # rust (custo/avancado)
+    "RESET": _RESET,
+    "BOLD": _BOLD,
+    "DIM": _DIM,
+    "CYAN": _ansi_tom("PS"),        # sage — substitui o ciano berrante
 }
 
 # ---------------------------------------------------------------------------
@@ -1353,6 +1367,11 @@ def _get_val(cfg: Config, key: str) -> Any:
     if key == "modo_ddsimca":
         lang = _lang()
         return _DDSIMCA_DISPLAY.get(lang, {}).get(str(raw), raw)
+    if key == "nivel":
+        # Mostra o codigo + nome amigavel (Classificacao/Discriminacao/
+        # Quantificacao); o valor gravado continua N1/N2/N3.
+        nome = pq._NIVEL_NOME.get(str(raw), "")
+        return f"{raw} — {nome}" if nome else raw
     return raw
 
 
@@ -1482,82 +1501,93 @@ def _ler_dx_pasta(pasta: str, max_files: int = 300, ler_x: bool = False):
 # ===========================================================================
 
 def print_header(cfg: Config) -> None:
-    """Imprime o cabecalho AmaNIR com titulo, idioma atual e status dos dados."""
+    """Cabecalho GUARACI (Rich Panel): titulo, subtitulo, idioma e status dados."""
     lang = _lang()
-    w = 68
-    titulo_cor = _c("CYAN", "●●●  GUARACI  ●●●")
     if lang == "EN":
-        linha2 = "Chemometric Intelligence  |  GEAAp / UFPA"
+        linha2 = "Chemometric Intelligence  ·  GEAAp / UFPA"
         linha3 = "Amazonian Matrices"
     else:
-        linha2 = "Inteligencia Quimiometrica  |  GEAAp / UFPA"
+        linha2 = "Inteligencia Quimiometrica  ·  GEAAp / UFPA"
         linha3 = "Matrizes Amazonicas"
-    idioma_str = f"[{lang}]"
-    # Status: truncar caminho a 40 chars
+    # Status dos dados: caminho truncado + icone semantico
     pasta = getattr(cfg, "pasta_dados", "dados")
     pasta_str = str(pasta)
-    if len(pasta_str) > 40:
-        pasta_str = "..." + pasta_str[-37:]
+    if len(pasta_str) > 44:
+        pasta_str = "..." + pasta_str[-41:]
     dados_ok = os.path.isdir(str(pasta))
+
+    titulo = Text("●●●  GUARACI  ●●●", style="hdr", justify="center")
+    sub = Text(f"{linha2}\n{linha3}", style="m", justify="center")
     if dados_ok:
-        status_icon = _c("VISUAL", "✓ " + I18N[lang]["status_ok"])
+        status = Text.assemble(("✓ ", "ok"), (I18N[lang]["status_ok"], "g"),
+                               ("  —  ", "d"), (pasta_str, "w"))
     else:
-        status_icon = _c("AVANCADO", "✗ " + I18N[lang]["status_erro"])
-    status_content = f"  {status_icon}  —  {pasta_str}"
-    # Linha de status com idioma no canto direito
-    # O idioma_str ocupa 4 chars + 1 espaco = 5
-    status_padded = _ansi_ljust(status_content, w - 2 - len(idioma_str) - 1)
-    print("\n" + "╔" + "═" * (w - 2) + "╗")
-    print("║" + _ansi_ljust("  " + titulo_cor, w - 2) + "║")
-    print("║" + _ansi_ljust("  " + linha2, w - 2) + "║")
-    print("║" + _ansi_ljust("  " + linha3, w - 2) + "║")
-    print("╠" + "═" * (w - 2) + "╣")
-    print("║" + status_padded + idioma_str + " ║")
-    print("╚" + "═" * (w - 2) + "╝")
+        status = Text.assemble(("✗ ", "err"), (I18N[lang]["status_erro"], "r"),
+                               ("  —  ", "d"), (pasta_str, "m"))
+
+    corpo = Group(titulo, sub, Text(""), status)
+    _console.print()
+    _console.print(Panel(corpo, box=_rbox.ROUNDED, border_style="f",
+                         width=_theme_W(), padding=(0, 2),
+                         subtitle=f"[m]\\[{lang}][/m]", subtitle_align="right"))
 
 
 # ===========================================================================
 # Menu principal
 # ===========================================================================
 
+def _opt(key: str, label: str) -> str:
+    """Celula de opcao de menu: tecla em ambar + rotulo em branco."""
+    return f"[a]\\[{key}][/a] [w]{label}[/w]"
+
+
+def _secao_menu(titulo: str) -> Text:
+    """Divisor de subgrupo em verde-floresta."""
+    return Text(f"── {titulo} ", style="f")
+
+
 def print_main_menu() -> None:
-    """Imprime o menu principal hierarquico com subgrupos visuais e numeracao 1-9."""
+    """Menu principal (Rich Panel): subgrupos, teclas destacadas, barra de acoes."""
+    from rich.table import Table as _Tbl
     lang = _lang()
     t = I18N[lang]
-    w = 68
-    print("╔" + "═" * (w - 2) + "╗")
-    print("║" + _ansi_ljust("  AmaNIR — MENU PRINCIPAL", w - 2) + "║")
-    print("╠" + "═" * (w - 2) + "╣")
-    # --- Subgrupo: Configuracao da Analise ---
-    grp1 = f"  ── {t['grp_analise']} "
-    grp1_linha = grp1 + "─" * max(0, w - 2 - len(grp1))
-    print("║" + _ansi_ljust(grp1_linha, w - 2) + "║")
-    linha1 = f"  [1] {t['menu_projeto']:<20s}  [2] {t['menu_dados']}"
-    linha2 = f"  [3] {t['menu_preproc']:<20s}  [4] {t['menu_modelo']}"
-    linha3 = f"  [5] {t['menu_valid']:<20s}  [6] {t['menu_avancado']}"
-    for l in [linha1, linha2, linha3]:
-        print("║" + _ansi_ljust(l, w - 2) + "║")
-    # --- Subgrupo: Sistema e Visualizacao ---
-    grp2 = f"  ── {t['grp_sistema']} "
-    grp2_linha = grp2 + "─" * max(0, w - 2 - len(grp2))
-    print("║" + _ansi_ljust(grp2_linha, w - 2) + "║")
-    linha4 = f"  [7] {t['menu_viz']:<20s}  [8] {t['menu_tecnica']}"
-    linha5 = f"  [9] {t['menu_codificacao']:<20s}  [H] {t['hardware']}"
-    for l in [linha4, linha5]:
-        print("║" + _ansi_ljust(l, w - 2) + "║")
-    # --- Subgrupo: Perfis e Idioma ---
-    grp3 = f"  ── {t['grp_perfis']} "
-    grp3_linha = grp3 + "─" * max(0, w - 2 - len(grp3))
-    print("║" + _ansi_ljust(grp3_linha, w - 2) + "║")
-    linha6 = f"  [P] {t['perfis']:<20s}  [I] {t['idioma']}"
-    print("║" + _ansi_ljust(linha6, w - 2) + "║")
-    print("╠" + "═" * (w - 2) + "╣")
-    barra = (f"  [R] ► {t['rodar_pipeline']}   [N] {t['nome_saida']}   "
-             f"[S] {t['salvar']}   [L] {t['carregar']}")
-    print("║" + _ansi_ljust(barra, w - 2) + "║")
-    barra2 = f"  [?] {t['ajuda_curta']:<22s}  [Q] {t['sair']}"
-    print("║" + _ansi_ljust(barra2, w - 2) + "║")
-    print("╚" + "═" * (w - 2) + "╝")
+
+    def _grade(pares):
+        tbl = _Tbl.grid(padding=(0, 3))
+        tbl.add_column(); tbl.add_column()
+        for esq, dir_ in pares:
+            tbl.add_row(esq, dir_ or "")
+        return tbl
+
+    corpo = Group(
+        _secao_menu(t["grp_analise"]),
+        _grade([
+            (_opt("1", t["menu_projeto"]), _opt("2", t["menu_dados"])),
+            (_opt("3", t["menu_preproc"]), _opt("4", t["menu_modelo"])),
+            (_opt("5", t["menu_valid"]),   _opt("6", t["menu_avancado"])),
+        ]),
+        Text(""),
+        _secao_menu(t["grp_sistema"]),
+        _grade([
+            (_opt("7", t["menu_viz"]),          _opt("8", t["menu_tecnica"])),
+            (_opt("9", t["menu_codificacao"]),  _opt("H", t["hardware"])),
+        ]),
+        Text(""),
+        _secao_menu(t["grp_perfis"]),
+        _grade([(_opt("P", t["perfis"]), _opt("I", t["idioma"]))]),
+    )
+    _console.print(Panel(corpo, box=_rbox.ROUNDED, border_style="d",
+                         width=_theme_W(), padding=(0, 2),
+                         title="[hdr]MENU PRINCIPAL[/hdr]", title_align="left"))
+    # Barra de acoes (destaque para Rodar Pipeline em verde de sucesso).
+    acoes = Text.assemble(
+        ("  [R] ", "ok"), ("► " + t["rodar_pipeline"], "g"), ("    ", ""),
+        (f"[N] {t['nome_saida']}   ", "w"),
+        (f"[S] {t['salvar']}   ", "w"),
+        (f"[L] {t['carregar']}   ", "w"),
+        (f"[?] {t['ajuda_curta']}   ", "m"),
+        (f"[Q] {t['sair']}", "m"))
+    _console.print(acoes)
 
 
 # ===========================================================================
@@ -3870,7 +3900,7 @@ def main() -> None:
             print(f"\n  {t['sair']}.")
             break
         else:
-            print(f"  {t['invalido']}")
+            _err(t['invalido'])
             import time
             time.sleep(0.8)
 

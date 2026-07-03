@@ -156,54 +156,15 @@ def _toggle_idioma() -> str:
     return novo
 
 # ---------------------------------------------------------------------------
-# PALETA PROFISSIONAL — tons discretos, aspecto cientifico
+# PALETA + tema + console: fonte unica em guaraci_theme (compartilhada com o
+# cli_assistente para visual identico). Nomes reexportados sem alteracao.
 # ---------------------------------------------------------------------------
-PA = "#B8963E"   # Amber (ouro discreto — destaques)
-PF = "#3D8B57"   # Forest (verde escuro — bordas, secoes)
-PS = "#4A9E5C"   # Sage  (verde medio — substitui ciano)
-PR = "#B85030"   # Rust  (laranja-vermelho — alertas)
-PW = "#C8C8C8"   # Light (texto principal)
-PM = "#686868"   # Muted (texto secundario)
-PD = "#3A3A3A"   # Dim   (linhas de separacao)
-PG = "#55B06A"   # Green (ok / sucesso)
+from guaraci_theme import (  # noqa: E402
+    PA, PF, PS, PR, PW, PM, PD, PG, THEME, console, _W,
+)
 
 # Estado global da tecnica selecionada (persiste entre menus)
 _TECNICA_SELECIONADA: Dict[str, str] = {"key": "ft-nir", "nome": "FT-NIR"}
-
-THEME = Theme({
-    "a":     PA,           # amber / titulo
-    "f":     PF,           # forest / ok
-    "s":     PS,           # spectral / info
-    "r":     PR,           # risk / alert
-    "w":     PW,           # white text
-    "m":     PM,           # muted
-    "d":     PD,           # dim
-    "g":     PG,           # green / success
-    "ok":    f"bold {PG}",
-    "warn":  f"bold {PA}",
-    "err":   f"bold {PR}",
-    "info":  PS,
-    "hdr":   f"bold {PA}",
-    "dim":   PM,
-})
-
-console = Console(
-    theme=THEME,
-    highlight=False,
-    legacy_windows=False,
-    force_terminal=True,
-)
-
-# ---------------------------------------------------------------------------
-# Largura responsiva
-# ---------------------------------------------------------------------------
-def _W() -> int:
-    """Largura util do console (minimo 60, maximo 100)."""
-    try:
-        w = shutil.get_terminal_size((80, 24)).columns
-    except Exception:
-        w = 80
-    return max(60, min(w, 100))
 
 # ---------------------------------------------------------------------------
 # Internacionalizacao — sem repeticao entre idiomas
