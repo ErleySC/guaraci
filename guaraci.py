@@ -2265,13 +2265,13 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     _AUTOR_GITHUB  = "https://github.com/ErleySC"
     _AUTOR_EMAIL   = "erleysdacosta@gmail.com"
     _REPO          = "https://github.com/ErleySC/guaraci"
-    _VERSAO        = "30.2.0"
+    _VERSAO        = "31.0.0"
     _ANO           = "2026"
     _TITULO_CURTO  = "GUARACI"
     _TITULO_LONGO  = ("Inteligencia Quimiometrica para Matrizes Amazonicas"
                       if True else "")  # resolvido abaixo por lang
     _INST          = "GEAAp/UFPA"
-    _LIC           = "MIT"
+    _LIC           = "GPL-3.0-or-later"
 
     def _titulo(lang: str) -> str:
         return ("Inteligencia Quimiometrica para Matrizes Amazonicas"
