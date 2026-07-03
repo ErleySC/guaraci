@@ -3,13 +3,11 @@
 ##DATATYPE=INFRARED SPECTRUM
 ##$Spectrometer model=MB3600
 ##$Accessory model=
-##$Detector model=114690-655370
+##$Detector model=FT-NIR
 ##$Detector Gain=1
 ##$Resolution=4
 ##$Scans=16
 ##AUDIT TRAIL= $$ (NUMBER, WHEN, WHO, WHERE, WHAT)
-( 1, <2020/08/13 04:52:08 -03>,  <geaap>,  <geaap>,  <Measured with Instrument ID: '1389360-1' and Detector ID: '1389360-1'>)
-( 2, <2020/08/13 04:52:08 -03>,  <geaap>,  <geaap>,  <Instrument Parameter: Resolution='4', Detector Gain='1', Second Level Gain='1', Scan Arm Speed='Default', Source Power='On'>)
 ##XUNITS=1/CM
 ##YUNITS=ABS
 ##MAXX=15797.7715209723
