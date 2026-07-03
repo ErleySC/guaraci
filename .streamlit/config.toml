@@ -2,8 +2,7 @@
 # Aumenta o limite de upload para espectros NIR grandes (DX, CSV)
 maxUploadSize = 200          # MB
 headless = true              # produção: sem abertura automática do browser
-enableCORS = false
-enableXsrfProtection = true
+enableXsrfProtection = true  # CORS fica implicitamente true (exigido pelo XSRF)
 
 [browser]
 gatherUsageStats = false     # privacidade: não envia telemetria para a Streamlit

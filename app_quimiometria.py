@@ -1378,9 +1378,12 @@ if "cfg_base" not in st.session_state:
     try:
         st.session_state.cfg_base = (
             pq.carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH)
-            else pq.Config())
+            # No local config.yaml (e.g. public demo deploy): default to
+            # synthetic data so first-time visitors get a working demo
+            # instead of an empty "dados/" folder error.
+            else pq.Config(modo="sintetico"))
     except Exception:
-        st.session_state.cfg_base = pq.Config()
+        st.session_state.cfg_base = pq.Config(modo="sintetico")
 
 cfg_base = st.session_state.cfg_base
 
