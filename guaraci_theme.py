@@ -35,6 +35,13 @@ _RGB: Dict[str, tuple] = {
     "PD": (58, 58, 58),   "PG": (85, 176, 106),
 }
 
+# ---------------------------------------------------------------------------
+# DESIGN TOKENS — reexportados do modulo puro `design_tokens` (sem dependencias).
+# Fonte unica de cor para web (Streamlit), figuras e CLI. Mantidos em modulo
+# separado para que o app Streamlit possa importar tokens sem arrastar `rich`.
+# ---------------------------------------------------------------------------
+from design_tokens import TOKENS, tokens  # noqa: E402,F401  (re-export)
+
 
 def ansi(tom: str) -> str:
     """Escape ANSI truecolor (\\033[38;2;R;G;Bm) para um tom da paleta.

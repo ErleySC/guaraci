@@ -38,6 +38,29 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import streamlit as st
 
+from design_tokens import tokens as _theme_tokens
+
+
+def _active_theme() -> str:
+    """Tema ativo do Streamlit ('light' ou 'dark'), lido da API nativa.
+
+    Usa `st.context.theme` (Streamlit >= 1.44) — fonte de verdade oficial, em
+    vez de um estado paralelo. Faz fallback seguro para 'light' em versoes
+    antigas ou quando o tema ainda nao esta disponivel no primeiro render.
+    """
+    try:
+        t = getattr(st.context, "theme", None)
+        if t is not None and getattr(t, "type", None) in ("light", "dark"):
+            return t.type
+    except Exception:
+        pass
+    return "light"
+
+
+def _tok() -> Dict[str, str]:
+    """Tokens de cor do tema atualmente ativo (dict semantico)."""
+    return _theme_tokens(_active_theme())
+
 # ──────────────────────────────────────────────────────────────────────────
 # Page config (must be the first Streamlit command)
 # ──────────────────────────────────────────────────────────────────────────
@@ -97,11 +120,12 @@ def _carregar_motor():
 
 pq = _carregar_motor()
 
-# ── Language / Dark-mode state ──────────────────────────────────────────────
+# ── Language state ──────────────────────────────────────────────────────────
+# Light/dark é gerido pelo TEMA NATIVO do Streamlit (menu ⋮ → Settings → Theme),
+# lido via _active_theme(). Não há mais estado paralelo `dark_mode` nem CSS
+# `!important` pintando widgets à mão (origem do bug de cor ao trocar tema).
 if "lang" not in st.session_state:
     st.session_state.lang = "EN"
-if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False
 
 _TR: Dict[str, Dict[str, str]] = {
     # Tabs
@@ -222,14 +246,22 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
         return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave)
     if t == "int":
         _lo = s.get("min"); _hi = s.get("max")
+        # Clampa o valor inicial p/ dentro de [min,max]: um config.yaml antigo
+        # com valor fora da faixa faria o st.number_input LANÇAR exceção.
+        _v = int(valor_atual)
+        if _lo is not None: _v = max(_v, int(_lo))
+        if _hi is not None: _v = min(_v, int(_hi))
         return st.number_input(
-            rotulo, value=int(valor_atual), step=1, help=ajuda, key=chave,
+            rotulo, value=_v, step=1, help=ajuda, key=chave,
             min_value=int(_lo) if _lo is not None else None,
             max_value=int(_hi) if _hi is not None else None)
     if t == "float":
         _lo = s.get("min"); _hi = s.get("max")
+        _v = float(valor_atual)
+        if _lo is not None: _v = max(_v, float(_lo))
+        if _hi is not None: _v = min(_v, float(_hi))
         return st.number_input(
-            rotulo, value=float(valor_atual), help=ajuda, key=chave, format="%.4f",
+            rotulo, value=_v, help=ajuda, key=chave, format="%.4f",
             min_value=float(_lo) if _lo is not None else None,
             max_value=float(_hi) if _hi is not None else None)
     if t == "list":
@@ -1419,76 +1451,77 @@ del _fresh_cfg
 
 specs    = _spec_por_key()
 
-# ── Sidebar: Language + Dark mode ───────────────────────────────────────────
+# ── Sidebar: Language ───────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("---")
-    _col_lang, _col_dm = st.columns(2)
-    with _col_lang:
-        _lang_choice = st.radio(
-            "🌐 Language", ["EN", "PT"],
-            index=0 if st.session_state.lang == "EN" else 1,
-            key="_sidebar_lang", horizontal=False
-        )
-        if _lang_choice != st.session_state.lang:
-            st.session_state.lang = _lang_choice
-            st.rerun()
-    with _col_dm:
-        _dm = st.toggle("🌙 Dark mode", value=st.session_state.dark_mode, key="_sidebar_dm")
-        if _dm != st.session_state.dark_mode:
-            st.session_state.dark_mode = _dm
-            st.rerun()
+    _lang_choice = st.radio(
+        "🌐 Language", ["EN", "PT"],
+        index=0 if st.session_state.lang == "EN" else 1,
+        key="_sidebar_lang", horizontal=True
+    )
+    if _lang_choice != st.session_state.lang:
+        st.session_state.lang = _lang_choice
+        st.rerun()
+    st.caption(
+        "🌗 " + ("Tema claro/escuro: menu ⋮ → Settings → Theme"
+                 if st.session_state.lang == "PT"
+                 else "Light/dark theme: ⋮ menu → Settings → Theme")
+    )
     st.markdown("---")
 
-# Dark mode CSS injection
-if st.session_state.dark_mode:
-    st.markdown("""
-    <style>
-    .stApp { background-color: #0e1117 !important; color: #fafafa !important; }
-    .stApp > header { background-color: #161b22 !important; }
-    .stSidebar { background-color: #161b22 !important; }
-    .stSidebar .stMarkdown { color: #e6edf3 !important; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #161b22 !important; }
-    .stTabs [data-baseweb="tab"] { color: #e6edf3 !important; }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #58a6ff !important; border-bottom-color: #58a6ff !important; }
-    .stExpander { background-color: #21262d !important; border: 1px solid #30363d !important; }
-    .stExpander summary { color: #e6edf3 !important; }
-    div[data-testid="stMetricValue"] { color: #58a6ff !important; }
-    div[data-testid="stMetricLabel"] { color: #8b949e !important; }
-    .stDataFrame { background-color: #161b22 !important; color: #e6edf3 !important; }
-    .stTextInput input { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
-    .stSelectbox div[data-baseweb="select"] { background-color: #21262d !important; color: #e6edf3 !important; }
-    .stNumberInput input { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
-    .stCheckbox label { color: #e6edf3 !important; }
-    .stRadio label { color: #e6edf3 !important; }
-    .stButton button { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
-    .stButton button:hover { background-color: #30363d !important; border-color: #58a6ff !important; }
-    .stDownloadButton button { background-color: #1f6feb !important; color: #ffffff !important; }
-    .stSuccess { background-color: #1a3d1a !important; color: #56d364 !important; border-color: #2ea043 !important; }
-    .stError { background-color: #3d1a1a !important; color: #ff7b72 !important; border-color: #da3633 !important; }
-    .stWarning { background-color: #3d2f1a !important; color: #d29922 !important; border-color: #9e6a03 !important; }
-    .stInfo { background-color: #1a2d3d !important; color: #58a6ff !important; border-color: #1f6feb !important; }
-    code { background-color: #161b22 !important; color: #e6edf3 !important; }
-    .stCode { background-color: #161b22 !important; }
-    .stTextArea textarea { background-color: #21262d !important; color: #e6edf3 !important; border-color: #30363d !important; }
-    .stSlider > div { background-color: transparent !important; }
-    .stSlider label { color: #e6edf3 !important; }
-    div[data-testid="stFileUploader"] { background-color: #21262d !important; border-color: #30363d !important; }
-    div[data-testid="stFileUploader"] label { color: #e6edf3 !important; }
-    div[data-testid="stForm"] { background-color: #161b22 !important; border-color: #30363d !important; }
-    .stMultiSelect div[data-baseweb="select"] { background-color: #21262d !important; }
-    div[data-testid="stMetricDelta"] svg { fill: #8b949e !important; }
-    </style>
-    """, unsafe_allow_html=True)
+# ── Polimento visual (design tokens, à prova de tema) ────────────────────────
+# NÃO pinta widgets internos do Streamlit (isso é papel do tema nativo, que
+# garante consistência ao trocar claro/escuro). Só adiciona "chrome" de cartão
+# neutro (cinza translúcido, válido nos dois temas) e realce de marca no header.
+_tk = _tok()
+st.markdown(f"""
+<style>
+:root {{ --gua-primary: {_tk['primary']}; --gua-accent: {_tk['accent']}; }}
+.block-container {{ padding-top: 2.2rem; max-width: 1400px; }}
+/* KPIs / métricas como cartões */
+[data-testid="stMetric"] {{
+    border: 1px solid rgba(128,128,128,.22);
+    border-radius: 12px; padding: 14px 18px;
+    background: rgba(128,128,128,.045);
+}}
+/* Figuras científicas = "papel" branco emoldurado (intencional em qualquer tema) */
+[data-testid="stImage"] img {{
+    background: #ffffff; padding: 10px; border-radius: 10px;
+    border: 1px solid rgba(128,128,128,.22);
+}}
+/* Header / hero */
+.gua-hero {{ display:flex; align-items:center; gap:14px; margin-bottom:.15rem; }}
+.gua-hero .gua-logo {{ font-size: 2.4rem; line-height:1; }}
+.gua-hero .gua-title {{
+    font-size: 1.95rem; font-weight: 800; letter-spacing:-.02em; line-height:1.1;
+    background: linear-gradient(90deg, var(--gua-primary), var(--gua-accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}}
+.gua-sub {{ color: rgba(128,128,128,1); font-size:.95rem; margin:.15rem 0 0; }}
+.stTabs [data-baseweb="tab"] {{ font-weight: 600; }}
+</style>
+""", unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────
 # Header
 # ──────────────────────────────────────────────────────────────────────────
 
-st.title("🧪 Chemometrics Platform")
-st.caption(
-    "PLS-DA · PCA · OPLS-DA · DD-SIMCA · variable selection · "
-    "group-aware validation (anti-leakage of replicates). "
-    "FT-NIR (.dx) or CSV table (Raman, UV-Vis, FTIR, chromatography…)."
+st.markdown(
+    """
+    <div class="gua-hero">
+      <span class="gua-logo">🧪</span>
+      <div>
+        <div class="gua-title">GUARACI · Chemometrics Platform</div>
+      </div>
+    </div>
+    <p class="gua-sub">
+      PLS-DA · PCA · OPLS-DA · DD-SIMCA · variable selection ·
+      group-aware validation (anti-leakage of replicates).
+      FT-NIR (.dx) or CSV table (Raman, UV-Vis, FTIR, chromatography…).
+    </p>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -1561,10 +1594,15 @@ def _hardware_status_widget():
 
 
 with tab_proj:
-    st.info("👋 " + _T("Step 1: Fill project info") + " → go to **Data** tab to load spectra.")
     st.subheader(_T("Project Identification"))
-    with st.expander("💻 Hardware Status", expanded=False):
-        _hardware_status_widget()
+    st.caption(
+        "Descriptive only — used in the report cover and saved automatically in "
+        "this session. What the pipeline actually runs is set by the "
+        "**Analysis mode** (Model tab)."
+        if st.session_state.get("lang") != "PT" else
+        "Apenas descritivo — vai na capa dos relatórios e é salvo automaticamente "
+        "nesta sessão. O que o pipeline executa é definido pelo **Modo de "
+        "análise** (aba Modelo).")
     st.divider()
     c1, c2 = st.columns(2)
     with c1:
@@ -1575,32 +1613,22 @@ with tab_proj:
         st.text_input("Institution / Laboratory", key="proj_inst",
                       placeholder="e.g.: GEAAp / UFPA")
     with c2:
-        st.selectbox("Study type",
-                     ["Species classification",
-                      "Authentication (pure vs. adulterated)",
-                      "Quantification (regression)",
-                      "Other"],
-                     key="proj_tipo")
-        st.caption("ℹ️ Apenas descritivo (vai nos relatórios). O modo que o "
-                   "pipeline realmente executa é o **Modo de análise** na aba "
-                   "Modelo.")
-        st.text_area("Objective", key="proj_objetivo", height=120,
+        st.text_area("Objective", key="proj_objetivo", height=182,
                      placeholder="Describe the objective of the chemometric analysis...")
 
-    st.divider()
-    st.caption("Os campos acima são salvos automaticamente nesta sessão e "
-               "entram nos relatórios — não é preciso clicar em nada.")
+    with st.expander("💻 Hardware Status", expanded=False):
+        _hardware_status_widget()
 
     run_proj = st.session_state.get("proj_nome", "")
     if run_proj:
-        st.info(f"Active project: **{run_proj}** — {st.session_state.get('proj_tipo', '')}")
+        st.caption(f"✅ Active project: **{run_proj}**")
 
 # ==========================================================================
 #  TAB 2 — DATA
 # ==========================================================================
 with tab_dados:
-    st.info("📂 " + _T("Step 2: Upload or select spectra folder") + " → then go to **Model** tab.")
     st.subheader(_T("Data Input"))
+    st.caption("📂 " + _T("Step 2: Upload or select spectra folder") + " → then go to **Model** tab.")
 
     # ---- CSV Upload (at top for easy access) ---------------------------------
     st.markdown("**Upload CSV** *(alternative to the local path below)*")
@@ -1787,6 +1815,7 @@ with tab_modelo:
         if f"w_{k}" in st.session_state
     }
     _cfg_top, _erros_top = _coletar_config(cfg_base, _valores_top)
+    _erros_top = _erros_top + pq._validar_semantico(_cfg_top)
     _ok_top = (not _erros_top) and pq._validar_pasta_dados(_cfg_top)[0]
     _rodar_top = st.button(
         "▶️ " + _T("Run pipeline"), type="primary",
@@ -1847,7 +1876,7 @@ with tab_modelo:
 
     st.divider()
 
-    with st.expander("Analysis and partitioning", expanded=True):
+    with st.expander("🧮 Analysis & partitioning", expanded=True):
         cols_a = st.columns(2)
         _MODELO_KEYS_ANALISE_EXP = [k for k in _MODELO_KEYS_ANALISE if k not in _KEY_TOP]
         for i, k in enumerate(_MODELO_KEYS_ANALISE_EXP):
@@ -1856,7 +1885,7 @@ with tab_modelo:
             with cols_a[i % 2]:
                 valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    with st.expander("Statistical validation", expanded=False):
+    with st.expander("📊 Statistical validation", expanded=False):
         cols_v = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_VALID):
             s = specs.get(k)
@@ -1864,7 +1893,7 @@ with tab_modelo:
             with cols_v[i % 2]:
                 valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    with st.expander("Extra modules", expanded=False):
+    with st.expander("🧩 Extra modules", expanded=False):
         # Hardware warning for heavy operations
         try:
             _hw_mod = pq.hardware_probe()
@@ -1889,7 +1918,7 @@ with tab_modelo:
             with cols_e[i % 2]:
                 valores[k] = _widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
 
-    with st.expander("Figures", expanded=False):
+    with st.expander("🖼️ Figures", expanded=False):
         cols_f = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_FIGURAS):
             s = specs.get(k)
@@ -1910,6 +1939,7 @@ with tab_modelo:
             cfg_run.arquivo_csv = csv_upld_path
 
     ok_run, msg_run = pq._validar_pasta_dados(cfg_run)
+    erros_run = erros_run + pq._validar_semantico(cfg_run)
     st.write("**Input:**", msg_run)
     if erros_run:
         st.error("Invalid fields in configuration:\n- " + "\n- ".join(erros_run))
@@ -2060,14 +2090,22 @@ with tab_valid:
                         list(acc_map.items()), columns=["Class", "Accuracy (recall)"]
                     ).sort_values("Accuracy (recall)")
                     # Color: red < 0.7, yellow 0.7-0.9, green >= 0.9
+                    # Cores vindas dos design tokens do tema ativo → contraste
+                    # correto em claro E escuro (não mais hex claros fixos).
+                    _tkc = _tok()
                     def _cor_acc(v: object) -> str | None:  # Scalar compat
                         try:
                             fv = float(v)  # type: ignore[arg-type]
                         except (TypeError, ValueError):
                             return None
-                        if fv >= 0.90: return "background-color:#d4edda"
-                        if fv >= 0.70: return "background-color:#fff3cd"
-                        return "background-color:#f8d7da"
+                        if fv >= 0.90:
+                            return (f"background-color:{_tkc['success_bg']};"
+                                    f"color:{_tkc['success']}")
+                        if fv >= 0.70:
+                            return (f"background-color:{_tkc['warn_bg']};"
+                                    f"color:{_tkc['warn']}")
+                        return (f"background-color:{_tkc['error_bg']};"
+                                f"color:{_tkc['error']}")
                     st.dataframe(
                         _df_acc.style.map(
                             _cor_acc, subset=["Accuracy (recall)"]),
@@ -2257,12 +2295,16 @@ with tab_pred:
         st.divider()
         st.markdown("**Prediction results**")
 
-        # Color accepted/rejected
+        # Color accepted/rejected — via design tokens (contraste correto em
+        # tema claro e escuro).
+        _tkp = _tok()
         def _colorir_aceito(val):
             if val is True:
-                return "background-color:#d4edda; color:#155724"
+                return (f"background-color:{_tkp['success_bg']};"
+                        f" color:{_tkp['success']}")
             if val is False:
-                return "background-color:#f8d7da; color:#721c24"
+                return (f"background-color:{_tkp['error_bg']};"
+                        f" color:{_tkp['error']}")
             return ""
 
         aceito_col = "aceito" if "aceito" in df_show.columns else None
@@ -2604,11 +2646,15 @@ with tab_rel:
         st.markdown("### ⬇️ Downloads")
 
         _nome_base = os.path.basename(pasta_r)
+        # "Study type" na capa do relatório é DERIVADO do Modo de análise
+        # escolhido (N1/N2/N3) — sem campo duplicado na aba Project.
+        _tipo_estudo = _MODO_ANALISE_ROTULO.get(
+            st.session_state.get("w_nivel", ""), "")
         _projeto_info = {
             "nome":     st.session_state.get("proj_nome", ""),
             "autor":    st.session_state.get("proj_autor", ""),
             "inst":     st.session_state.get("proj_inst", "GEAAp / UFPA"),
-            "tipo":     st.session_state.get("proj_tipo", ""),
+            "tipo":     _tipo_estudo,
             "objetivo": st.session_state.get("proj_objetivo", ""),
         }
         # Sorted tuple used as cache key (Dict is not hashable)

@@ -12,12 +12,23 @@ gatherUsageStats = false     # privacidade: não envia telemetria para a Streaml
 fastReruns = false
 
 [theme]
+# Tema CLARO (padrão) — espelha os design tokens "light" de design_tokens.py.
 base = "light"
-primaryColor       = "#0369A1"   # Accent azul — UI Pro Max B2B Professional
-backgroundColor    = "#F8FAFC"   # Light slate
-secondaryBackgroundColor = "#E2E8F0"
-textColor          = "#0F172A"   # Navy
+primaryColor       = "#3D8B57"   # Forest — cor de marca GUARACI
+backgroundColor    = "#F7F9FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor          = "#1A2B22"
 font               = "sans serif"
+baseRadius         = "0.6rem"    # Cantos arredondados (aspecto moderno)
+
+[theme.dark]
+# Tema ESCURO — espelha os design tokens "dark". O Streamlit troca entre este e
+# o claro pelo menu Settings/sistema; st.context.theme.type informa ao Python
+# qual está ativo (para figuras e tabelas coloridas).
+primaryColor       = "#55B06A"
+backgroundColor    = "#0F1613"
+secondaryBackgroundColor = "#18211C"
+textColor          = "#E6EDE8"
 
 [logger]
 level = "warning"            # suprime mensagens INFO do Streamlit no terminal

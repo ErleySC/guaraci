@@ -6620,6 +6620,41 @@ def _coagir_valor(spec: Dict[str, Any], val: Any) -> Any:
     return str(val)
 
 
+def _validar_semantico(cfg: "Config") -> List[str]:
+    """Validacoes CRUZADAS entre campos, que 'min'/'max' isolados nao pegam.
+
+    Retorna lista de mensagens amigaveis (vazia = tudo certo). Deve ser chamada
+    ANTES de rodar (app e CLI) para falhar cedo, com mensagem clara, em vez de
+    quebrar so no meio da execucao (depois de minutos carregando/processando).
+    """
+    erros: List[str] = []
+
+    # Faixa espectral: o inicio precisa ser menor que o fim. Se invertido, o
+    # filtro [wn_min, wn_max] remove TODAS as variaveis e o pipeline so
+    # quebraria depois de carregar os dados (crash tardio, confuso).
+    try:
+        if float(cfg.wn_min) >= float(cfg.wn_max):
+            erros.append(
+                f"Faixa espectral invalida: o inicio ({cfg.wn_min:.0f}) deve "
+                f"ser MENOR que o fim ({cfg.wn_max:.0f}) cm-1.")
+    except (TypeError, ValueError):
+        pass
+
+    # Holdout: precisa sobrar treino suficiente. 'max'=0.5 ja barra pelo widget,
+    # mas um config.yaml editado a mao pode trazer valor fora da faixa — aqui e
+    # o backstop para esse caminho (Config cru, sem passar por _coagir_valor).
+    try:
+        fh = float(cfg.frac_holdout)
+        if fh < 0.0 or fh > 0.5:
+            erros.append(
+                f"Fracao de holdout invalida ({fh}): use um valor entre 0 e 0.5 "
+                "(0 = sem teste externo).")
+    except (TypeError, ValueError):
+        pass
+
+    return erros
+
+
 def _fmt_yaml(v: Any) -> str:
     """Formata um valor Python como YAML simples (para o arquivo comentado).
     Usa ASPAS SIMPLES quando precisa citar: em YAML, dentro de aspas simples a
@@ -6789,6 +6824,11 @@ def menu_interativo(cfg: Optional[Config] = None,
             ok, msg = _validar_pasta_dados(cfg)
             if not ok:
                 print(f"  [!] {msg}. Corrija antes de rodar."); continue
+            _erros_sem = _validar_semantico(cfg)
+            if _erros_sem:
+                for _e in _erros_sem:
+                    print(f"  [!] {_e}")
+                print("  Corrija antes de rodar."); continue
             salvar_config(cfg, caminho_cfg)
             print("  iniciando pipeline...\n")
             executar(cfg); return
