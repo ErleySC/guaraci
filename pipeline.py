@@ -186,6 +186,14 @@ warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 # ║                SETTINGS — edit ONLY here                                 ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
+# Nome amigavel de cada nivel de analise (valor interno N1/N2/N3 inalterado).
+_NIVEL_NOME = {
+    "N1": "Classificacao por especie",
+    "N2": "Discriminacao puro/adulterado",
+    "N3": "Quantificacao de teor",
+}
+
+
 @dataclass
 class Config:
     modo: str = "dx"                          # "dx" | "csv" | "sintetico"
@@ -6003,7 +6011,7 @@ def executar(cfg: Config):
         "Group-aware (mae_id)":   "sim" if usar_grupos else "nao",
         "N grupos mae_id":        (int(len(np.unique(mae_id)))
                                     if mae_id is not None else 0),
-        "Nivel":                  cfg.nivel,
+        "Nivel":                  f"{cfg.nivel} ({_NIVEL_NOME.get(cfg.nivel, cfg.nivel)})",
         "Tag":                    cfg.tag if cfg.tag else "-",
         "Accuracy (CV)":          float(metricas_finais["accuracy"]),
         "Balanced accuracy":      float(metricas_finais["balanced_accuracy"]),

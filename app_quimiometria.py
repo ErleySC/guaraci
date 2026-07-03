@@ -175,6 +175,21 @@ def _T(key: str) -> str:
     lang = st.session_state.get("lang", "EN")
     return _TR.get(key, {}).get(lang, key)
 
+
+# Rótulos amigáveis para o "nivel" de análise (N1/N2/N3). O valor interno
+# gravado continua sendo N1/N2/N3 — isto só troca o que o usuário vê/escolhe.
+_MODO_ANALISE_ROTULO = {
+    "N1": "Classificação (por espécie)",
+    "N2": "Discriminação (puro vs. adulterado)",
+    "N3": "Quantificação (% de adulterante)",
+}
+_MODO_ANALISE_AJUDA = {
+    "N1": "Identifica a qual espécie/classe cada amostra pertence "
+          "(ex.: 14 óleos amazônicos).",
+    "N2": "Separa amostras puras de adulteradas (autenticação).",
+    "N3": "Estima o teor de adulterante (% ) por regressão.",
+}
+
 # ──────────────────────────────────────────────────────────────────────────
 # Config helpers (_CONFIG_SPEC as single source of truth)
 # ──────────────────────────────────────────────────────────────────────────
@@ -1566,13 +1581,15 @@ with tab_proj:
                       "Quantification (regression)",
                       "Other"],
                      key="proj_tipo")
+        st.caption("ℹ️ Apenas descritivo (vai nos relatórios). O modo que o "
+                   "pipeline realmente executa é o **Modo de análise** na aba "
+                   "Modelo.")
         st.text_area("Objective", key="proj_objetivo", height=120,
                      placeholder="Describe the objective of the chemometric analysis...")
 
     st.divider()
-    st.markdown("**Save / Export identification**")
-    if st.button("💾 Save identification to session"):
-        st.success("Identification saved. It will be included in the reports for this session.")
+    st.caption("Os campos acima são salvos automaticamente nesta sessão e "
+               "entram nos relatórios — não é preciso clicar em nada.")
 
     run_proj = st.session_state.get("proj_nome", "")
     if run_proj:
@@ -1793,15 +1810,26 @@ with tab_modelo:
                               "formato_figura", "dpi",
                               "abrir_figuras_na_tela"]
 
-    # ---- Key options at top (preprocessing + n_lvs shown inline) ----------
+    # ---- Key options at top (analysis mode + n_lvs shown inline) ----------
     _KEY_TOP = ["nivel", "max_lvs"]
     _cols_top = st.columns(len(_KEY_TOP))
-    for _i, _k in enumerate(_KEY_TOP):
-        _s = specs.get(_k)
-        if _s is None:
-            continue
-        with _cols_top[_i]:
-            valores[_k] = _widget_para_campo(_s, pq._attr_para_yaml(_s, cfg_base))
+    with _cols_top[0]:
+        # "nivel" é mostrado com rótulos amigáveis; o valor gravado continua
+        # sendo N1/N2/N3 (não quebra config.yaml nem o pipeline).
+        _s_niv = specs.get("nivel")
+        if _s_niv is not None:
+            _niv_atual = pq._attr_para_yaml(_s_niv, cfg_base)
+            _ops_niv = list(_s_niv.get("opcoes") or ["N1", "N2", "N3"])
+            _idx_niv = _ops_niv.index(_niv_atual) if _niv_atual in _ops_niv else 0
+            valores["nivel"] = st.selectbox(
+                "Modo de análise", _ops_niv, index=_idx_niv, key="w_nivel",
+                format_func=lambda v: _MODO_ANALISE_ROTULO.get(v, v))
+            st.caption(_MODO_ANALISE_AJUDA.get(valores["nivel"], ""))
+    with _cols_top[1]:
+        _s_lvs = specs.get("max_lvs")
+        if _s_lvs is not None:
+            valores["max_lvs"] = _widget_para_campo(
+                _s_lvs, pq._attr_para_yaml(_s_lvs, cfg_base))
 
     # Preprocessing is chosen in the Preprocessing tab (single source of truth).
     # Mirror that choice here read-only. Previously a second editable widget with
