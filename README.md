@@ -12,6 +12,10 @@
 
 > 🇬🇧 English (lean). • 🇧🇷 [Versão completa em português](README.pt-br.md)
 
+### 🚀 [Try the live demo — no install required](https://guaraci.streamlit.app/)
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://guaraci.streamlit.app/)
+
 A **free and open** alternative to paid chemometrics suites (MATLAB/PLS_Toolbox,
 The Unscrambler, SIMCA): a reproducible **multi-technique chemometrics platform**
 for **classification, authentication and exploration** of complex matrices, with

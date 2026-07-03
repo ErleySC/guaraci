@@ -12,6 +12,10 @@
 
 > 🇧🇷 Versão em português (de trabalho). • 🇬🇧 [English version](README.md)
 
+### 🚀 [Teste a demo ao vivo — sem instalar nada](https://guaraci.streamlit.app/)
+
+[![Abrir no Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://guaraci.streamlit.app/)
+
 Uma alternativa **livre e aberta** aos softwares pagos de quimiometria
 (MATLAB/PLS_Toolbox, The Unscrambler, SIMCA): plataforma reprodutível de
 **quimiometria multitécnica** para **classificação, autenticação e exploração**
