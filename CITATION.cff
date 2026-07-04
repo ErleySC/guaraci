@@ -21,7 +21,7 @@ repository-code: "https://github.com/ErleySC/guaraci"
 url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
 version: "31.0.0"
-date-released: "2026-07-02"
+date-released: "2026-07-04"
 keywords:
   - chemometrics
   - spectroscopy
