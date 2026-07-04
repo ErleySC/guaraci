@@ -143,6 +143,31 @@ def test_resumo_persiste_figuras_de_merito(figuras_geradas):
 
 
 @pytest.mark.slow
+def test_model_card_gerado_com_addendum_de_regressao(figuras_geradas):
+    """model_card.md (Mitchell et al. 2019) e' gerado junto com o resumo, e
+    ganha o addendum de regressao (secao 9) quando ha quantificacao N3 --
+    fecha o item do roadmap 'Model Card automatico'."""
+    figbase, _pngs = figuras_geradas
+    run_dir = os.path.dirname(figbase)
+    card = os.path.join(run_dir, "logs", "model_card.md")
+    assert os.path.isfile(card), "model_card.md nao foi gerado"
+    with open(card, encoding="utf-8") as f:
+        txt = f.read()
+    for secao in ("# Model Card", "## 1. Detalhes do Modelo",
+                  "## 2. Uso Pretendido", "## 3. Fatores Relevantes",
+                  "## 4. Metricas de Desempenho",
+                  "## 5. Dados de Avaliacao/Treino",
+                  "## 6. Analises Quantitativas",
+                  "## 7. Consideracoes Eticas",
+                  "## 8. Ressalvas e Recomendacoes"):
+        assert secao in txt, f"secao ausente no model card: {secao}"
+    assert "## 9. Addendum -- Quantificacao" in txt, (
+        "addendum de regressao ausente (fixture usa nivel=N3)")
+    assert "Wold parsimony criterion" in txt, (
+        "notas metodologicas ausentes (deveriam vir de _NOTAS_METODOLOGICAS)")
+
+
+@pytest.mark.slow
 def test_dimensoes_sanas(figuras_geradas):
     """Largura/altura de cada figura ficam numa faixa plausível (não 1x1 nem gigante)."""
     _figbase, pngs = figuras_geradas

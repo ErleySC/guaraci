@@ -748,3 +748,68 @@ def test_ddsimca_permitido_em_n2_com_toggle_ligado(pq):
     # entao em N2 ela nunca dispara, independente do toggle.
     bloqueado = cfg.executar_ddsimca and cfg.nivel == "N1"
     assert not bloqueado
+
+
+# ── Model Card (Mitchell et al. 2019) -- teste unitario, sem rodar executar() ─
+
+def _resumo_minimo() -> dict:
+    """Dict `resumo` minimo, so' com as chaves que gerar_model_card le --
+    testa a MONTAGEM do card isoladamente, sem depender de um pipeline
+    completo (esse caminho ja e' coberto por
+    test_figuras_regressao.test_model_card_gerado_com_addendum_de_regressao)."""
+    return {
+        "Total de amostras": 100, "Total de variaveis": 50,
+        "Total de classes": 2, "Pre-processamento": "MSC -> SG -> MC",
+        "Faixa espectral (cm-1)": "[4000, 10000]", "Tag": "-",
+        "Group-aware (mae_id)": "sim", "N grupos mae_id": 30,
+        "Imbalance ratio": 1.0,
+        "Accuracy (CV)": 0.95, "Balanced accuracy": 0.94,
+        "F1 (macro)": 0.93, "Cohen's kappa": 0.90,
+        "R2X": 0.98, "R2Y": 0.97, "Q2": 0.95,
+        "Permutation p-value": 0.02, "Hotelling T2 (95%)": 12.0,
+        "Q-residual (95%)": 0.001,
+        "Integridade NaN": 0, "Integridade Inf": 0,
+        "Variaveis constantes": 0, "Duplicatas exatas": 0,
+        "  Acc Esp_A": 0.96, "  Acc Esp_B": 0.94,
+    }
+
+
+def test_gerar_model_card_cria_arquivo_com_secoes_esperadas(pq, tmp_path):
+    cfg = pq.Config(nivel="N1")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    classes = ["Esp_A", "Esp_B"]
+
+    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, classes)
+
+    card = tmp_path / "model_card.md"
+    assert card.is_file()
+    txt = card.read_text(encoding="utf-8")
+    assert "# Model Card -- GUARACI v" in txt
+    assert "Esp_A, Esp_B" in txt
+    assert "0.9500" in txt  # Accuracy (CV) formatado com 4 casas
+    assert "Wold parsimony criterion" in txt
+    assert "## 9. Addendum" not in txt  # sem regressao ainda
+
+
+def test_anexar_regressao_model_card_adiciona_secao_9(pq, tmp_path):
+    cfg = pq.Config(nivel="N3")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+
+    pq.anexar_regressao_model_card(
+        str(tmp_path),
+        pooled={"rmsep": 3.21, "r2v": 0.88},
+        tabela_especie=[{"especie": "Esp_A", "rmsep": 3.21,
+                         "lod": 1.5, "loq": 4.5}])
+
+    txt = (tmp_path / "model_card.md").read_text(encoding="utf-8")
+    assert "## 9. Addendum -- Quantificacao (N2/N3, PLS-R)" in txt
+    assert "3.210" in txt
+    assert "LOD=1.50%" in txt
+
+
+def test_anexar_regressao_model_card_sem_arquivo_previo_nao_quebra(pq, tmp_path):
+    """Se model_card.md nao existe (ex.: gerar_model_card falhou antes),
+    anexar_regressao_model_card nao deve lancar excecao -- so' nao faz nada."""
+    pq.anexar_regressao_model_card(str(tmp_path), pooled={"rmsep": 1.0})
+    assert not (tmp_path / "model_card.md").exists()

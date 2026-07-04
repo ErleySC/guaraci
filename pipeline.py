@@ -564,6 +564,35 @@ def salvar_identificadores(rotulos: np.ndarray, pred_lab: np.ndarray,
         index=False, sep=";", decimal=",")
 
 
+#: Notas metodologicas de transparencia (Methods section de artigo) --
+#: compartilhadas por salvar_resumo_modelo (.txt) e gerar_model_card (.md),
+#: fonte unica para nao divergirem com o tempo.
+_NOTAS_METODOLOGICAS: List[Tuple[str, str]] = [
+    ("LV selection", "Wold parsimony criterion (2% RMSECV tolerance above "
+     "minimum). Prevents overfitting on broad RMSECV plateaus with "
+     "high max_lvs. Reference: Wold (1978) Technometrics 20:397-405."),
+    ("CV-ANOVA F-test", "Eriksson et al. (2008) formula applied to one-hot "
+     "Y_bin matrix. With K>2 classes, columns of Y_bin are not independent "
+     "(row-sums constrained to 1), so the F-statistic degrees of freedom "
+     "are approximate. Report as global omnibus test only; do not "
+     "interpret individual class F-values."),
+    ("SHAP values", "Computed on the full training set (in-sample) using "
+     "TreeExplainer. Represent feature importance for the fitted model, "
+     "not out-of-sample generalization. For publication, state: "
+     "'SHAP analysis was performed on training data (n=X); "
+     "importance rankings may be optimistic.'"),
+    ("Benchmark hyperparameters", "SVM (C=10, gamma=scale), RF (300 trees), "
+     "GBM (200 trees, lr=0.05), XGBoost (300 trees, lr=0.05) use "
+     "literature-based heuristics, not cross-validated tuning. "
+     "Comparisons are indicative of order-of-magnitude differences; "
+     "nested-CV would be required for rigorous pairwise claims."),
+    ("VIP bootstrap", "Group-aware (mae_id): resamples physical measurement "
+     "points (T1/T2/T3 kept together), preventing inflated stability "
+     "from correlated replicates. Standard stratified bootstrap "
+     "(per-sample) would overestimate VIP confidence intervals."),
+]
+
+
 def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     with open(caminho, "w", encoding="utf-8") as f:
@@ -581,31 +610,7 @@ def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
         f.write("\n" + "-" * 60 + "\n")
         f.write("  Methodological Notes (for article peer review)\n")
         f.write("-" * 60 + "\n")
-        notes = [
-            ("LV selection", "Wold parsimony criterion (2% RMSECV tolerance above "
-             "minimum). Prevents overfitting on broad RMSECV plateaus with "
-             "high max_lvs. Reference: Wold (1978) Technometrics 20:397-405."),
-            ("CV-ANOVA F-test", "Eriksson et al. (2008) formula applied to one-hot "
-             "Y_bin matrix. With K>2 classes, columns of Y_bin are not independent "
-             "(row-sums constrained to 1), so the F-statistic degrees of freedom "
-             "are approximate. Report as global omnibus test only; do not "
-             "interpret individual class F-values."),
-            ("SHAP values", "Computed on the full training set (in-sample) using "
-             "TreeExplainer. Represent feature importance for the fitted model, "
-             "not out-of-sample generalization. For publication, state: "
-             "'SHAP analysis was performed on training data (n=X); "
-             "importance rankings may be optimistic.'"),
-            ("Benchmark hyperparameters", "SVM (C=10, gamma=scale), RF (300 trees), "
-             "GBM (200 trees, lr=0.05), XGBoost (300 trees, lr=0.05) use "
-             "literature-based heuristics, not cross-validated tuning. "
-             "Comparisons are indicative of order-of-magnitude differences; "
-             "nested-CV would be required for rigorous pairwise claims."),
-            ("VIP bootstrap", "Group-aware (mae_id): resamples physical measurement "
-             "points (T1/T2/T3 kept together), preventing inflated stability "
-             "from correlated replicates. Standard stratified bootstrap "
-             "(per-sample) would overestimate VIP confidence intervals."),
-        ]
-        for title, note in notes:
+        for title, note in _NOTAS_METODOLOGICAS:
             f.write(f"\n  [{title}]\n")
             # Word-wrap at 70 chars
             words = note.split()
@@ -691,6 +696,220 @@ def anexar_regressao_resumo(
             f.write("\n".join(linhas) + "\n")
     except Exception as e:
         print(f"  [AVISO] Nao foi possivel anexar regressao ao resumo: {e}")
+
+
+# =========================================================================
+#  Model Card (Mitchell et al. 2019, "Model Cards for Model Reporting",
+#  FAT* '19) -- resumo de 1 documento por execucao para uso pretendido,
+#  dados, metricas e limitacoes. Montagem a partir de dados JA CALCULADOS
+#  (resumo/hardware/config) -- nao introduz ciencia nova, so' organiza o
+#  que ja existe no padrao esperado por quem avalia "ferramenta profissional"
+#  (ML-ops/auditoria), analogo ao model card do Hugging Face Hub.
+# =========================================================================
+
+def _md_tabela(linhas: List[Tuple[str, str]]) -> str:
+    """Monta uma tabela Markdown de 2 colunas (Campo | Valor)."""
+    out = ["| Campo | Valor |", "|---|---|"]
+    for k, v in linhas:
+        out.append(f"| {k} | {v} |")
+    return "\n".join(out)
+
+
+def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
+                      hw: Dict[str, Any], classes_unicas: np.ndarray) -> None:
+    """Gera `model_card.md` (secoes de Mitchell et al. 2019, adaptado a um
+    pipeline quimiometrico de autenticacao/quantificacao). Escrito no MESMO
+    ponto de `salvar_resumo_modelo` -- reaproveita o dict `resumo` inteiro,
+    ja com todas as metricas/diagnosticos/integridade de dados calculados,
+    em vez de recalcular ou receber duzias de parametros separados.
+
+    Regressao (N2/N3) e' um addendum ANEXADO depois (mesmo padrao de
+    `anexar_regressao_resumo`), pois so' fica disponivel mais tarde em
+    executar() -- ver `anexar_regressao_model_card`.
+    """
+    nivel = cfg.nivel
+    nivel_nome = _NIVEL_NOME.get(nivel, nivel)
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    uso_pretendido = {
+        "N1": ("Identificacao de especie de oleo vegetal amazonico a partir "
+               "de espectro FT-NIR (classificacao multiclasse via PLS-DA)."),
+        "N2": ("Autenticacao de pureza POR ESPECIE (puro vs. adulterado) via "
+               "DD-SIMCA one-class, a partir de espectro FT-NIR."),
+        "N3": ("Quantificacao do teor (%) de adulterante em oleo vegetal "
+               "amazonico, calibrada separadamente por especie (PLS-R)."),
+    }.get(nivel, "Analise quimiometrica de espectros FT-NIR.")
+
+    linhas: List[str] = [
+        f"# Model Card -- GUARACI v{__version__}",
+        "",
+        f"*Gerado automaticamente em {agora}. Este documento descreve os "
+        "artefatos de UMA execucao do pipeline; regenere a cada novo "
+        "conjunto de dados ou configuracao.*",
+        "",
+        "## 1. Detalhes do Modelo",
+        "",
+        _md_tabela([
+            ("Plataforma", "GUARACI -- Chemometrics Platform"),
+            ("Versao", __version__),
+            ("Tipo de analise", f"{nivel} ({nivel_nome})"),
+            ("Algoritmo principal", "PLS-DA (Partial Least Squares "
+             "Discriminant Analysis)" if nivel != "N3" else
+             "PLS-DA + PLS-R por especie"),
+            ("Pre-processamento", str(resumo.get("Pre-processamento", "-"))),
+            ("Faixa espectral", str(resumo.get("Faixa espectral (cm-1)", "-"))),
+            ("Tag de execucao", str(resumo.get("Tag", "-"))),
+            ("Licenca", "GPL-3.0-or-later (dual-licensed -- ver COMMERCIAL.md)"),
+            ("Instituicao", "GEAAp / UFPA"),
+            ("Repositorio", "github.com/ErleySC/guaraci"),
+        ]),
+        "",
+        "## 2. Uso Pretendido",
+        "",
+        f"**Uso primario:** {uso_pretendido}",
+        "",
+        "**Usuarios primarios:** pesquisadores em quimiometria, laboratorios "
+        "de controle de qualidade de oleos vegetais, projetos academicos "
+        "(TCC/PIBIC/pos-graduacao).",
+        "",
+        "**Fora do escopo:** nao substitui metodos analiticos de referencia "
+        "regulamentados (ex.: cromatografia certificada) sem validacao "
+        "cruzada formal; nao validado para matrizes/instrumentos fora do "
+        "dataset de calibracao; nao e' um dispositivo medico/forense.",
+        "",
+        "## 3. Fatores Relevantes",
+        "",
+        _md_tabela([
+            ("Classes/especies", ", ".join(str(c) for c in classes_unicas)),
+            ("Validacao group-aware (mae_id)",
+             str(resumo.get("Group-aware (mae_id)", "-"))),
+            ("N grupos (mae_id)", str(resumo.get("N grupos mae_id", "-"))),
+            ("Razao de desbalanceamento",
+             f"{resumo.get('Imbalance ratio', 'n/a')}"),
+        ]),
+        "",
+        "## 4. Metricas de Desempenho (validacao cruzada)",
+        "",
+        _md_tabela([
+            (k, f"{v:.4f}" if isinstance(v, float) else str(v))
+            for k, v in resumo.items()
+            if k in ("Accuracy (CV)", "Balanced accuracy", "F1 (macro)",
+                     "Cohen's kappa", "R2X", "R2Y", "Q2",
+                     "Permutation p-value", "Hotelling T2 (95%)",
+                     "Q-residual (95%)", "ROC AUC macro (OvR)",
+                     "BCa Accuracy", "BCa Balanced acc.", "BCa F1 (macro)",
+                     "BCa Cohen's kappa")
+        ]),
+        "",
+        "## 5. Dados de Avaliacao/Treino",
+        "",
+        _md_tabela([
+            ("Total de amostras", str(resumo.get("Total de amostras", "-"))),
+            ("Total de variaveis", str(resumo.get("Total de variaveis", "-"))),
+            ("Total de classes", str(resumo.get("Total de classes", "-"))),
+            ("Amostras com NaN removidas",
+             str(resumo.get("Integridade NaN", "-"))),
+            ("Amostras com Inf removidas",
+             str(resumo.get("Integridade Inf", "-"))),
+            ("Variaveis constantes removidas",
+             str(resumo.get("Variaveis constantes", "-"))),
+            ("Duplicatas exatas", str(resumo.get("Duplicatas exatas", "-"))),
+        ]),
+        "",
+        "## 6. Analises Quantitativas (por classe)",
+        "",
+        _md_tabela([
+            (k.replace("  Acc ", ""), f"{v:.4f}" if isinstance(v, float) else str(v))
+            for k, v in resumo.items() if k.startswith("  Acc ")
+        ]),
+    ]
+
+    # DD-SIMCA por classe (N2), se disponivel
+    ddsimca_linhas = [(k.replace("DD-SIMCA ", "").replace(" sens/esp", ""), str(v))
+                      for k, v in resumo.items()
+                      if k.startswith("DD-SIMCA ") and k.endswith("sens/esp")]
+    if ddsimca_linhas:
+        linhas += ["", "**DD-SIMCA -- sensibilidade/especificidade por classe:**", "",
+                   _md_tabela(ddsimca_linhas)]
+
+    linhas += [
+        "",
+        "## 7. Consideracoes Eticas",
+        "",
+        "Amostras provenientes de uma unica regiao/instrumento; tamanhos "
+        "de referencia por classe podem ser pequenos (ver secao 5). "
+        "Resultados nao devem ser generalizados para lotes, safras ou "
+        "instrumentos fora do conjunto de calibracao sem revalidacao.",
+        "",
+        "## 8. Ressalvas e Recomendacoes",
+        "",
+    ]
+    for titulo, nota in _NOTAS_METODOLOGICAS:
+        linhas.append(f"- **{titulo}:** {nota}")
+    linhas += [
+        "",
+        f"*Hardware da execucao: RAM total {hw.get('ram_total_gb', '?')} GB, "
+        f"CPU {hw.get('cpu_fisicos', '?')} fisicos/{hw.get('cpu_logicos', '?')} "
+        f"logicos (nao afeta os resultados, so' o tempo de execucao).*",
+    ]
+
+    caminho = os.path.join(pasta, "model_card.md")
+    try:
+        with open(caminho, "w", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except Exception as e:
+        print(f"  [AVISO] Nao foi possivel gerar model_card.md: {e}")
+
+
+def anexar_regressao_model_card(
+        pasta: str,
+        pooled: Optional[Dict[str, object]] = None,
+        tabela_especie: Optional[List[Dict[str, object]]] = None,
+        fom_pooled: Optional[Dict[str, float]] = None) -> None:
+    """Anexa o addendum de regressao (N2/N3) ao model_card.md -- mesmos
+    parametros de `anexar_regressao_resumo` (chamar as duas juntas nos
+    mesmos pontos de executar()), append-only pelo mesmo motivo: a
+    regressao roda DEPOIS de `gerar_model_card` no fluxo de executar().
+    """
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return   # model_card.md nao foi gerado (ex.: gerar_model_card falhou)
+
+    def _fmt(v: object, nd: int = 3) -> str:
+        try:
+            fv = float(v)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return "n/a"
+        return f"{fv:.{nd}f}" if np.isfinite(fv) else "n/a"
+
+    linhas: List[str] = ["", "## 9. Addendum -- Quantificacao (N2/N3, PLS-R)", ""]
+    if pooled is not None:
+        linhas.append(_md_tabela([
+            ("RMSEP (pooled)", _fmt(pooled.get("rmsep"), 3)),
+            ("R2val (pooled)", _fmt(pooled.get("r2v"), 4)),
+        ]))
+    if tabela_especie:
+        linhas += ["", "**Figuras de merito por especie "
+                   "(Valderrama, Braga & Poppi, 2009):**", "",
+                   _md_tabela([
+                       (str(t.get("especie", "")),
+                        f"RMSEP={_fmt(t.get('rmsep'), 2)} | "
+                        f"LOD={_fmt(t.get('lod'), 2)}% | "
+                        f"LOQ={_fmt(t.get('loq'), 2)}%")
+                       for t in tabela_especie
+                   ])]
+    if fom_pooled is not None:
+        linhas.append(_md_tabela([
+            ("LOD", f"{_fmt(fom_pooled.get('lod'), 2)}%"),
+            ("LOQ", f"{_fmt(fom_pooled.get('loq'), 2)}%"),
+            ("Sensibilidade (SEN)", _fmt(fom_pooled.get("sensibilidade"), 3)),
+        ]))
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except Exception as e:
+        print(f"  [AVISO] Nao foi possivel anexar regressao ao model card: {e}")
 
 
 def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
@@ -2147,6 +2366,10 @@ def executar(cfg: Config):
     salvar_resumo_modelo(pasta_logs, resumo)
     print(f"  -> {os.path.join(pasta_logs, 'resumo_modelo.txt')}")
 
+    # Model Card (Mitchell et al. 2019) -- mesmo ponto/dados do resumo acima.
+    gerar_model_card(pasta_logs, cfg, resumo, _hw, classes_unicas)
+    print(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
+
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
     if cfg.executar_benchmark:
         print("\n[7b/7] Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...")
@@ -2287,6 +2510,12 @@ def executar(cfg: Config):
                                     ("r2c", "r2v", "rmsec", "rmsecv",
                                      "rmsep", "bias")},
                             tabela_especie=reg_esp["tabela_especie"])
+                        anexar_regressao_model_card(
+                            pasta_logs,
+                            pooled={k: reg_esp.get(k) for k in
+                                    ("r2c", "r2v", "rmsec", "rmsecv",
+                                     "rmsep", "bias")},
+                            tabela_especie=reg_esp["tabela_especie"])
 
                         # --- Auto-Benchmark de regressao (opcional) ------
                         if cfg.executar_benchmark_regressao:
@@ -2418,6 +2647,11 @@ def executar(cfg: Config):
             print("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
                   "estimar ruido instrumental)")
         anexar_regressao_resumo(
+            pasta_logs,
+            pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
+                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v},
+            fom_pooled=_fom_reg)
+        anexar_regressao_model_card(
             pasta_logs,
             pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
                     "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v},

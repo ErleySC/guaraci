@@ -211,6 +211,20 @@ PNG/PDF/SVG, DPI configurável.
 capa de projeto (nome, autor, instituição, objetivo — o "tipo de estudo" é
 derivado automaticamente do modo de análise escolhido).
 
+**Model Card (`model_card.md`):** documento de 1 página gerado
+automaticamente ao final de toda execução, no padrão *Model Cards for Model
+Reporting* (Mitchell et al., 2019, FAT\*'19) — o mesmo formato usado por
+plataformas de ML-ops (ex.: Hugging Face Hub) para trilha de auditoria e
+transparência. Seções: detalhes do modelo (versão, algoritmo,
+pré-processamento), uso pretendido (e fora-de-escopo, específico para
+N1/N2/N3), fatores relevantes (classes, group-aware CV), métricas de
+desempenho, dados de avaliação/treino (integridade, tamanho), análises
+quantitativas por classe, considerações éticas e ressalvas metodológicas
+(as mesmas do `resumo_modelo.txt`, fonte única). Em N2/N3, ganha um
+addendum com as figuras de mérito de regressão. Aparece na aba
+**Relatórios** do app (preview + download `.md` próprio) e no `logs/` de
+toda execução (CLI e app).
+
 ---
 
 ## 5. Fluxo típico na interface web

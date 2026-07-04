@@ -322,6 +322,17 @@ def _ler_resumo(pasta: str) -> Optional[str]:
     return None
 
 
+def _ler_model_card(pasta: str) -> Optional[str]:
+    for candidato in [
+        os.path.join(pasta, "logs", "model_card.md"),
+        os.path.join(pasta, "model_card.md"),
+    ]:
+        if os.path.exists(candidato):
+            with open(candidato, encoding="utf-8", errors="replace") as f:
+                return f.read()
+    return None
+
+
 def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
                           max_figuras: int = 14) -> io.BytesIO:
     """
@@ -2719,6 +2730,26 @@ with tab_rel:
                         st.warning(f"Errors: {_res['erro']}")
             else:
                 st.info("Only one run stored. Nothing to clean.")
+
+        st.divider()
+
+        # Model Card (Mitchell et al. 2019) — intended use, data, metrics,
+        # caveats in one shareable document. Rendered as Markdown (tables
+        # display nicely), with its own download button.
+        st.markdown("### 🪪 Model Card")
+        model_card_r = _ler_model_card(pasta_r)
+        if model_card_r:
+            with st.expander("View Model Card", expanded=False):
+                st.markdown(model_card_r)
+            st.download_button(
+                "⬇️ Model Card (.md)",
+                data=model_card_r.encode("utf-8"),
+                file_name=_nome_base + "_model_card.md",
+                mime="text/markdown",
+                use_container_width=True,
+            )
+        else:
+            st.info("File model_card.md not found.")
 
         st.divider()
 
