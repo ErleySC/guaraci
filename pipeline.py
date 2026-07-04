@@ -140,9 +140,7 @@ Best result: MSC -> SG -> MC, balanced accuracy = 0.923
 __version__ = "31.0.0"
 
 import os
-import re
 import glob
-import hashlib
 import warnings
 from dataclasses import dataclass
 from datetime import datetime
@@ -161,16 +159,6 @@ import matplotlib as mpl
 # 'abrir_figuras_na_tela'/mostrar_graficos nao abre mais janela — as figuras
 # continuam sendo sempre salvas em disco normalmente.
 mpl.use("Agg")
-import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse, Rectangle
-from scipy.signal import savgol_filter
-from scipy.stats import f as f_dist, chi2
-from scipy.cluster.hierarchy import linkage, dendrogram
-from scipy.spatial.distance import pdist
-
-import time
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, LabelBinarizer
 from sklearn.decomposition import PCA
@@ -186,7 +174,6 @@ from sklearn.metrics import (
     precision_score, recall_score, r2_score,
 )
 from sklearn.exceptions import ConvergenceWarning
-from scipy.stats import norm as _norm_dist
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
@@ -710,8 +697,8 @@ def verificar_balanceamento(rotulos: np.ndarray, ratio_alvo: float = 5.0
     if ratio > ratio_alvo:
         print(f"[WARNING] Severe class imbalance: max/min ratio = "
               f"{ratio:.2f} (max={n_max}, min={n_min}).")
-        print(f"          Suggestions: prioritize balanced_accuracy/F1-macro "
-              f"over accuracy; consider class_weight or subsampling.")
+        print("          Suggestions: prioritize balanced_accuracy/F1-macro "
+              "over accuracy; consider class_weight or subsampling.")
     return rel
 
 
@@ -1267,7 +1254,7 @@ def executar(cfg: Config):
                pasta_modelos, pasta_logs):
         os.makedirs(_p, exist_ok=True)
     print(f"[INFO] Saida: {pasta}")
-    print(f"[INFO] Subpastas: dados/ figuras/ modelos/ logs/")
+    print("[INFO] Subpastas: dados/ figuras/ modelos/ logs/")
     if metadados_df is not None:
         cam_meta = os.path.join(pasta_dados, "metadados.csv")
         metadados_df.to_csv(cam_meta, index=False, sep=";", decimal=",")
@@ -1297,8 +1284,8 @@ def executar(cfg: Config):
               f"unicos via mae_id.")
 
     # --- 1d. Hold-out externo (group-aware se possivel) --------------------
-    X_holdout = None; rotulos_holdout = None; conc_holdout = None
-    mae_id_holdout: Optional[np.ndarray] = None
+    X_holdout = None; rotulos_holdout = None; _conc_holdout = None
+    _mae_id_holdout: Optional[np.ndarray] = None
     n_holdout = 0
     if cfg.frac_holdout > 0:
         try:
@@ -1336,9 +1323,11 @@ def executar(cfg: Config):
                 tipo_ho += f" + {n_puros_reserv} puros preservados"
             X_holdout       = X_raw[ho_idx]
             rotulos_holdout = rotulos[ho_idx]
-            conc_holdout    = conc[ho_idx] if conc is not None else None
+            # Reservados junto do holdout (ainda nao consumidos na avaliacao —
+            # prefixo _ sinaliza intencional e evita falso-positivo de lint).
+            _conc_holdout   = conc[ho_idx] if conc is not None else None
             if mae_id is not None:
-                mae_id_holdout = mae_id[ho_idx]
+                _mae_id_holdout = mae_id[ho_idx]
             X_raw   = X_raw[tr_idx]
             rotulos = rotulos[tr_idx]
             conc    = conc[tr_idx] if conc is not None else None
@@ -2037,7 +2026,7 @@ def executar(cfg: Config):
             print(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
                   f"conc=NaN.")
         elif float(conc_arr.std()) < 1e-8:
-            print(f"\n[7/7] PLS regressao — PULADA: variancia de conc ~= 0.")
+            print("\n[7/7] PLS regressao — PULADA: variancia de conc ~= 0.")
         elif n_nonzero < 10:
             print(f"\n[7/7] PLS regressao — PULADA: apenas {n_nonzero} "
                   f"amostras com teor > 0 (precisa >= 10).")
@@ -2162,7 +2151,7 @@ def executar(cfg: Config):
         print("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
 
     print(f"\n{'=' * 60}")
-    print(f"  Pipeline concluido.")
+    print("  Pipeline concluido.")
     print(f"  Resultados em: {pasta}")
     print(f"{'=' * 60}")
 

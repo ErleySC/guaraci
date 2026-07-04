@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -21,11 +21,10 @@ import matplotlib.pyplot as plt
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import LabelBinarizer
-from sklearn.model_selection import GroupKFold
 from sklearn.metrics import balanced_accuracy_score
 
 from preprocessamento import construir_preprocessador
-from figuras import salvar, cor, edge_para_cor
+from figuras import salvar, cor
 from hardware import _verificar_ram
 
 if TYPE_CHECKING:
@@ -138,12 +137,11 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
 
     Ref: Westerhuis et al. (2008) Chemom. Intell. Lab. Syst. 92:58-64.
     """
-    import warnings
     from sklearn.svm import SVC
     from sklearn.ensemble import (RandomForestClassifier,
                                   GradientBoostingClassifier)
     from sklearn.model_selection import StratifiedGroupKFold
-    from sklearn.metrics import balanced_accuracy_score, f1_score
+    from sklearn.metrics import f1_score
     from sklearn.base import clone
     from sklearn.pipeline import Pipeline as _SKPipeline
     from scipy.stats import wilcoxon
@@ -372,9 +370,8 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 
     Ref: Filzmoser et al. (2009) Anal. Chim. Acta 652:133-142.
     """
-    import warnings
     from sklearn.base import clone
-    from sklearn.metrics import balanced_accuracy_score, f1_score
+    from sklearn.metrics import f1_score
     from sklearn.pipeline import Pipeline as _SKPipeline
     from sklearn.svm import SVC
     from sklearn.ensemble import (RandomForestClassifier,
@@ -592,7 +589,6 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
         print("  [AVISO] shap nao instalado — pip install shap. SHAP pulado.")
         return
 
-    import warnings
     from sklearn.base import clone
     from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 

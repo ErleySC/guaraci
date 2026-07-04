@@ -35,6 +35,12 @@ __pycache__/
 *.egg-info/
 .ipynb_checkpoints/
 
+# --- Test / coverage artifacts ---
+.coverage
+coverage.xml
+htmlcov/
+.ruff_cache/
+
 # --- Virtual environments ---
 .venv/
 venv/

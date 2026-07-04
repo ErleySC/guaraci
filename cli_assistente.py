@@ -18,7 +18,7 @@ import re as _re
 import sys
 import textwrap as _textwrap
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # ---------------------------------------------------------------------------
 # Integracao com o pipeline (sem modificar nenhuma funcao analitica)
@@ -40,7 +40,7 @@ _coagir_valor = pq._coagir_valor
 from guaraci_theme import (
     console as _console, ansi as _ansi_tom, _W as _theme_W,
     ANSI_RESET as _RESET, ANSI_BOLD as _BOLD, ANSI_DIM as _DIM,
-    ok as _ok, warn as _warn, err as _err, info as _info,
+    err as _err,
 )
 from rich.panel import Panel
 from rich.text import Text
@@ -1972,7 +1972,7 @@ def _gerar_heatmap_espectros(cfg: Config) -> None:
         return
 
     pasta = getattr(cfg, "pasta_dados", "dados")
-    msg_lendo = f"  Lendo arquivos DX..." if lang == "PT" else f"  Reading DX files..."
+    msg_lendo = "  Lendo arquivos DX..." if lang == "PT" else "  Reading DX files..."
     print(msg_lendo)
 
     spectra, labels, _ = _ler_dx_pasta(pasta, max_files=200, ler_x=False)
@@ -2140,7 +2140,7 @@ def _gerar_confusion_matrix(pasta_saida: str) -> None:
                 ax.set_ylabel("Real" if lang == "PT" else "Actual")
                 ax.set_title(titulo)
                 is_norm = (mat is cm_norm)
-                fmt_val = lambda v, _is_norm=is_norm: f"{v:.0%}" if _is_norm else f"{int(v)}"
+                def fmt_val(v, _is_norm=is_norm): return f"{v:.0%}" if _is_norm else f"{int(v)}"
                 for i in range(n):
                     for j in range(n):
                         val = mat[i, j]

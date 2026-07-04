@@ -2458,11 +2458,11 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
     metod_items = [
         f"Preprocessing: {metricas['Preprocessing']}",
         f"Main classifier: PLS-DA ({metricas['Optimal LVs']} optimal LVs)",
-        f"Cross-validation: GroupKFold anti-leakage of replicates (mae_id)",
-        f"Statistical tests: Y-permutation, Wold (R2Y/Q2Y), CV-ANOVA",
-        f"Variable selection: iPLS, VIP >= 1, SR top-20%, sPLS-DA",
-        f"External validation: stratified holdout (pure samples always in training)",
-        f"Benchmark: PLS-DA vs SVM RBF vs RF vs GBM vs XGBoost",
+        "Cross-validation: GroupKFold anti-leakage of replicates (mae_id)",
+        "Statistical tests: Y-permutation, Wold (R2Y/Q2Y), CV-ANOVA",
+        "Variable selection: iPLS, VIP >= 1, SR top-20%, sPLS-DA",
+        "External validation: stratified holdout (pure samples always in training)",
+        "Benchmark: PLS-DA vs SVM RBF vs RF vs GBM vs XGBoost",
         f"Data: {metricas['N samples']} samples  |  {metricas['N classes']} classes",
     ]
     for i, item in enumerate(metod_items):

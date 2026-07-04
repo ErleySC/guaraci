@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import re as _re
-import shutil
 import sys
 import threading
 import time
@@ -44,10 +43,9 @@ if sys.platform == "win32":
 # ---------------------------------------------------------------------------
 # Rich
 # ---------------------------------------------------------------------------
-from rich.console import Console, Group
+from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
-from rich.columns import Columns
 from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
@@ -55,8 +53,6 @@ from rich.progress import (
     Progress, SpinnerColumn, BarColumn, TextColumn,
     TimeElapsedColumn, TaskProgressColumn,
 )
-from rich.live import Live
-from rich.theme import Theme
 from rich.markup import escape
 from rich import box as rbox
 
@@ -160,7 +156,7 @@ def _toggle_idioma() -> str:
 # cli_assistente para visual identico). Nomes reexportados sem alteracao.
 # ---------------------------------------------------------------------------
 from guaraci_theme import (  # noqa: E402
-    PA, PF, PS, PR, PW, PM, PD, PG, THEME, console, _W,
+    PA, PF, PS, PR, PW, PM, PD, PG, console, _W,
 )
 
 # Estado global da tecnica selecionada (persiste entre menus)
@@ -706,7 +702,8 @@ _PAUSAS_CAFE = {
 
 def _exibir_boas_vindas() -> None:
     """Exibe mensagem aleatoria de boas-vindas (apenas na inicializacao)."""
-    import random, time as _time
+    import random
+    import time as _time
     msg = random.choice(_BOAS_VINDAS[_lang()])
     console.print()
     console.print(Panel(
@@ -717,7 +714,8 @@ def _exibir_boas_vindas() -> None:
 
 def _exibir_despedida() -> None:
     """Exibe mensagem de despedida ao sair do programa."""
-    import random, time as _time
+    import random
+    import time as _time
     msg = random.choice(_DESPEDIDAS[_lang()])
     console.print()
     console.print(Panel(
@@ -937,7 +935,7 @@ def _print_status(cfg: Config) -> None:
             f"[err]{_t('hw_limitado')}[/err]"
         )
     except ImportError:
-        hw_str = f"[m]N/A[/m]"
+        hw_str = "[m]N/A[/m]"
 
     status_str = (
         f"[g]{_t('status_ok')} ({_t('dados_ok', n=n_dx)})[/g]" if pasta_ok and n_dx > 0
@@ -1452,8 +1450,8 @@ def menu_validacao(cfg: Config) -> None:
         ga = _cfgv(cfg, "validacao_group_aware", True)
         if not ga:
             console.print(Panel(
-                f"[err]  GroupKFold DESATIVADO — risco de data leakage![/err]\n"
-                f"[err]  Ative o campo [2] imediatamente.[/err]",
+                "[err]  GroupKFold DESATIVADO — risco de data leakage![/err]\n"
+                "[err]  Ative o campo [2] imediatamente.[/err]",
                 border_style=PR, box=rbox.HEAVY, padding=(0, 1)
             ))
         _print_submenu_compact(_t("t_validacao"), _t("d_validacao"), fields, cfg)
@@ -1578,7 +1576,7 @@ def menu_visualizacao(cfg: Config) -> None:
             vcfg["grid_style"] = ests[(ests.index(gs)+1)%3] if gs in ests else "dotted"
         elif r == "4":
             try: vcfg["grid_alpha"] = float(_input("  Valor [0.1-0.9]: "))
-            except: pass
+            except Exception: pass
         _salvar_visual_cfg(vcfg)
 
     def _alpha():
@@ -2347,7 +2345,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     def _painel_citar(lang: str) -> None:
         """Formatos de citacao: APA, ABNT, BibTeX."""
         tit_full = f"{_TITULO_CURTO}: {_titulo(lang)}"
-        autor_abnt = f"COSTA, E. S. da"
+        autor_abnt = "COSTA, E. S. da"
 
         # APA
         apa = (f"Costa, E. S. da. ({_ANO}). {tit_full} (v{_VERSAO})"
@@ -2747,7 +2745,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         vcfg = _carregar_visual_cfg()
         paleta = PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
         try: plt.style.use(paleta.get("style", "default"))
-        except: pass
+        except Exception: pass
         cores = paleta.get("cores")
         if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
         cmap = paleta.get("cmap")
@@ -2893,7 +2891,7 @@ def _carregar_yaml(cfg: Config) -> None:
             cfg2 = carregar_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
-                except: pass
+                except Exception: pass
             _lbl = "Carregado" if _lang() == "PT" else "Loaded"
             console.print(f"  [g]✓ {_lbl}: {escape(path.stem)}[/g]")
         except Exception as e:

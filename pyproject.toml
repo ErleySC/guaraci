@@ -58,3 +58,36 @@ filterwarnings = [
     "ignore::UserWarning",
     "ignore::DeprecationWarning:sklearn",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# Nao lintar codigo arquivado, dados de resultados nem scripts pessoais (gitignored).
+extend-exclude = [
+    "_arquivo_antigo", "perfis", "resultados_tcc", "__pycache__",
+    "gerar_relatorio_abnt.py", "run_benchmark_tcc.py",
+]
+
+[tool.ruff.lint]
+# Pragmatico p/ codigo cientifico: pega bugs reais (pyflakes = F) + erros/avisos
+# de pycodestyle, ignorando estilo DELIBERADO (multiplos statements por linha,
+# nomes de 1 letra comuns em algebra/matematica, linhas longas com formulas).
+select = ["E", "F", "W"]
+ignore = [
+    "E501",                    # line too long (formulas cientificas)
+    "E701", "E702", "E703",    # multiple statements on one line (estilo do projeto)
+    "E741",                    # ambiguous variable name (l, I, O em algebra)
+    "E402",                    # import not at top (reexports pos-modularizacao)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# pipeline.py e uma FACHADA (Fase H): reexporta simbolos dos 10 modulos
+# extraidos, entao muitos imports sao "nao usados" de proposito — e o contrato
+# publico que guaraci/cli/app consomem via `pq.X`. Ver test_fachada_reexport.py.
+"pipeline.py" = ["F401"]
+# Camada de UI (CLI/desktop/web): variaveis locais de rotulo/idioma calculadas
+# para clareza mas nem sempre usadas em todo ramo — tolera F841 aqui; o rigor
+# de "variavel nao usada" fica no nucleo cientifico (pipeline + modulos).
+"guaraci.py" = ["F841"]
+"cli_assistente.py" = ["F841"]
+"app_quimiometria.py" = ["F841"]

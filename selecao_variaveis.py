@@ -10,7 +10,7 @@ etapa4_selecao_variaveis).
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -20,13 +20,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
-from chemometric_stats import vip_scores, calcular_selectivity_ratio
-from preprocessamento import construir_preprocessador
 from validacao_estatistica import _cv_predict_manual
 from figuras import salvar, cor, _ticks_x_inteiros
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    pass
 
 
 def _avaliar_subset_cv(X_sel: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
@@ -131,7 +129,6 @@ def fig_etapa4_ipls(resultados, wavenumbers, baseline_bal, cfg, pasta):
     """Barras de balanced_acc por intervalo iPLS, com linha do modelo global."""
     intervalos = [r["intervalo"] for r in resultados]
     bals       = [r["balanced_accuracy"] for r in resultados]
-    centros    = [(r["wn_ini"] + r["wn_fim"]) / 2 for r in resultados]
     melhor_i   = int(np.argmax(bals))
 
     fig, ax = plt.subplots(figsize=(11.0, 4.2), constrained_layout=True)

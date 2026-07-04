@@ -13,31 +13,28 @@ tests/test_figuras_regressao.py.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 from scipy.signal import savgol_filter
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.patches import Ellipse, Rectangle
+from matplotlib.patches import Ellipse
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import chi2
-from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import pdist
 from sklearn.decomposition import PCA
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import (
-    auc, f1_score, precision_score, recall_score, roc_auc_score, roc_curve,
+    f1_score, precision_score, recall_score, roc_auc_score, roc_curve,
 )
 
 from paleta_cores import (
-    cor, edge_para_cor, mapear_cores_classes, mapear_marcadores_classes,
-    PALETA, MARCADORES,
+    cor, edge_para_cor,
 )
 from chemometric_stats import (
     hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
-    variancia_explicada,
 )
 
 if TYPE_CHECKING:
@@ -191,7 +188,6 @@ def _ticks_x_inteiros(ax, valores, limiar: int = 15, nbins: int = 10):
     """Avoids overlapping ticks on the X axis. If there are more than
     `limiar` values, uses MaxNLocator (integer steps, ~nbins divisions).
     Otherwise shows all values. Used in LV selection plots."""
-    from matplotlib.ticker import MaxNLocator
     valores = np.asarray(valores)
     if len(valores) > limiar:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=nbins))
@@ -1594,7 +1590,7 @@ def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
     Ref: Fawcett (2006) Pattern Recognit. Lett. 27:861-874.
          Hand & Till (2001) Machine Learning 45:171-186.
     """
-    from sklearn.metrics import roc_curve, auc as sk_auc, roc_auc_score
+    from sklearn.metrics import auc as sk_auc
 
     n_cls = Y_bin.shape[1]
     if n_cls < 2:

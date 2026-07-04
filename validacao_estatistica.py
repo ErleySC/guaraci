@@ -11,11 +11,9 @@ Coberto por tests/test_pipeline_smoke.py e tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-from joblib import Parallel, delayed
-from threadpoolctl import threadpool_limits
 from scipy.stats import f as f_dist, norm as _norm_dist
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.pipeline import Pipeline

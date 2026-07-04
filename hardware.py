@@ -115,7 +115,7 @@ def auto_ajustar_config_hardware(cfg: "Config",
         # RAM 4-6 GB: SHAP com amostragem reduzida, benchmark sem XGBoost via flag
         if cfg.executar_shap and cfg.shap_max_amostras > 150:
             cfg.shap_max_amostras = 150
-            avisos.append(f"SHAP max_amostras reduzido para 150 (RAM livre < 6 GB)")
+            avisos.append("SHAP max_amostras reduzido para 150 (RAM livre < 6 GB)")
         if cfg.n_monte_carlo > 60:
             cfg.n_monte_carlo = 60
             avisos.append("Monte Carlo CV limitado a 60 iteracoes (RAM livre < 6 GB)")
@@ -127,7 +127,7 @@ def auto_ajustar_config_hardware(cfg: "Config",
         # RAM 6-8 GB: reducoes moderadas
         if cfg.executar_shap and cfg.shap_max_amostras > 300:
             cfg.shap_max_amostras = 300
-            avisos.append(f"SHAP max_amostras reduzido para 300 (RAM livre < 8 GB)")
+            avisos.append("SHAP max_amostras reduzido para 300 (RAM livre < 8 GB)")
         if cfg.n_monte_carlo > 80:
             cfg.n_monte_carlo = 80
             avisos.append("Monte Carlo CV limitado a 80 iteracoes (RAM livre < 8 GB)")
