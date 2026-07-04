@@ -13,10 +13,11 @@ e anti-vazamento de réplicas em cada etapa.
 **Sumário**
 1. [As três formas de usar](#1-as-três-formas-de-usar)
 2. [Modos de análise (N1 / N2 / N3)](#2-modos-de-análise-n1--n2--n3)
-3. [Funcionalidades científicas](#3-funcionalidades-científicas)
-4. [Fluxo típico na interface web](#4-fluxo-típico-na-interface-web)
-5. [Mapa dos módulos (para desenvolvedores)](#5-mapa-dos-módulos-para-desenvolvedores)
-6. [Desenvolvimento](#6-desenvolvimento)
+3. [Fontes de dados de entrada](#3-fontes-de-dados-de-entrada)
+4. [Funcionalidades científicas](#4-funcionalidades-científicas)
+5. [Fluxo típico na interface web](#5-fluxo-típico-na-interface-web)
+6. [Mapa dos módulos (para desenvolvedores)](#6-mapa-dos-módulos-para-desenvolvedores)
+7. [Desenvolvimento](#7-desenvolvimento)
 
 ---
 
@@ -59,7 +60,42 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 ---
 
-## 3. Funcionalidades científicas
+## 3. Fontes de dados de entrada
+
+Configuráveis via `modo_entrada` (app, CLI ou `config.yaml`):
+
+| Modo | Origem | Observação |
+|---|---|---|
+| `dx` | Espectros JCAMP-DX (FT-NIR/Raman/MIR) | Padrão; 1 subpasta por classe |
+| `csv` | Tabela genérica (colunas espectrais + 1 coluna de classe) | Qualquer dado tabular |
+| `imagem` | **Colorimetria digital (protótipo)** | Ver abaixo |
+| `sintetico` | Dados simulados | Para testes/demonstração |
+
+**Modo `imagem` (colorimetria digital, protótipo):** extrai estatísticas de
+cor (média/desvio-padrão por canal em RGB, HSV e Lab — 18 variáveis) de cada
+foto, e opcionalmente textura (GLCM, requer `pip install scikit-image`).
+Mesma convenção de pastas do modo `dx` (1 subpasta por classe). A partir da
+extração, toda a maquinaria quimiométrica (PCA, PLS-DA, DD-SIMCA, seleção de
+variáveis, figuras de mérito) funciona sem alteração — cada estatística de
+cor vira uma "variável", exatamente como um comprimento de onda.
+
+⚠️ **Duas configurações obrigatórias ao usar `modo="imagem"`:**
+1. `pre_processamento` deve ser `autoscaling` ou `mc` — **nunca** um preset
+   com Savitzky-Golay (`msc_sg_mc`/`snv_sg_mc`), que pressupõe um sinal
+   espectral contínuo, sem sentido para um vetor curto de estatísticas de
+   cor discretas.
+2. `faixa_min_cm`/`faixa_max_cm` devem cobrir o intervalo `0`–`n_features-1`
+   (ex.: `-1` a `100`) — o eixo de variáveis aqui é um índice simbólico, não
+   um número de onda real, e os padrões de fábrica (4000–10000) descartariam
+   todas as variáveis.
+
+Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
+usuário definir a região de interesse via `imagem_recorte` (recorte
+retangular relativo, `config.yaml`) antes da extração.
+
+---
+
+## 4. Funcionalidades científicas
 
 **Pré-processamento espectral** (dentro do `Pipeline` do scikit-learn, sem
 vazamento entre folds de validação cruzada): SNV, MSC, Savitzky-Golay
@@ -104,7 +140,7 @@ derivado automaticamente do modo de análise escolhido).
 
 ---
 
-## 4. Fluxo típico na interface web
+## 5. Fluxo típico na interface web
 
 1. **Projeto** — preencha nome, autor, instituição e objetivo (campos
    descritivos, entram na capa dos relatórios).
@@ -123,7 +159,7 @@ sistema operacional por padrão).
 
 ---
 
-## 5. Mapa dos módulos (para desenvolvedores)
+## 6. Mapa dos módulos (para desenvolvedores)
 
 Desde a Fase H, o motor do pipeline está modularizado por responsabilidade.
 `pipeline.py` funciona como **fachada**: reexporta todos os símbolos
@@ -137,6 +173,7 @@ implementado de fato.
 | `chemometric_stats.py` | VIP, Selectivity Ratio, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL) |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
 | `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE` |
+| `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de features RGB/HSV/Lab + textura opcional |
 | `preprocessamento.py` | Transformers SNV/SavGol/MSC + `construir_preprocessador` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
 | `figuras.py` | Camada de plotagem (todas as figuras do pipeline) |
@@ -151,7 +188,7 @@ compartilhado entre elas: `guaraci_theme.py`, `design_tokens.py`.
 
 ---
 
-## 6. Desenvolvimento
+## 7. Desenvolvimento
 
 ```bash
 pytest tests/                 # suíte completa (inclui o teste end-to-end 'slow')
@@ -168,5 +205,6 @@ ruff check .                  # lint estático
 
 ---
 
-*Última revisão do manual: seleção de variáveis SPA/APS e AG (Algoritmo
-Genético), figuras de mérito analíticas (N3).*
+*Última revisão do manual: modo de entrada `imagem` (colorimetria digital,
+protótipo), seleção de variáveis SPA/APS e AG (Algoritmo Genético), figuras
+de mérito analíticas (N3).*

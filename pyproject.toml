@@ -20,6 +20,7 @@ dependencies = [
     "threadpoolctl>=3.1,<4.0",
     "PyYAML>=6.0,<7.0",
     "rich>=13.0",
+    "Pillow>=9.0",
 ]
 
 [project.optional-dependencies]
@@ -31,7 +32,8 @@ reports = [
     "python-pptx>=1.0,<2.0",
 ]
 benchmark = ["xgboost>=1.7,<5.0", "shap>=0.42,<0.53"]
-all = ["guaraci-chemometrics[web,reports,benchmark]"]
+imagem = ["scikit-image>=0.19,<1.0"]  # features de textura (GLCM) no modo_entrada="imagem"
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem]"]
 
 [project.scripts]
 guaraci = "guaraci:main"

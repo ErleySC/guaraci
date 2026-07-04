@@ -633,7 +633,7 @@ def carregar_dados(cfg: "Config"
     """Unified data loader. Returns 6-tuple:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     metadados_df is always None in 'sintetico'/'csv' mode; mae_id is None
-    only in 'csv' mode (sem replicas fisicas conhecidas)."""
+    only in 'csv'/'imagem' mode (sem replicas fisicas conhecidas)."""
     if cfg.modo == "sintetico":
         wn, X, rot, conc, mae = gerar_dados_sinteticos(cfg)
         return wn, X, rot, conc, mae, None
@@ -645,4 +645,8 @@ def carregar_dados(cfg: "Config"
         return carregar_dx(cfg.pasta_entrada, cfg.parte_classe,
                             cfg.extrair_conc_filename,
                             cfg.usar_parse_title)
+    if cfg.modo == "imagem":
+        from dados_imagem import carregar_imagens
+        return carregar_imagens(cfg.pasta_entrada, cfg.imagem_recorte,
+                                 cfg.imagem_incluir_textura)
     raise ValueError(f"Unknown MODE: '{cfg.modo}'.")

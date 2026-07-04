@@ -35,6 +35,10 @@ CONTRATO = {
         "carregar_csv", "gerar_dados_sinteticos", "parse_dx", "parse_spectrum",
         "CODIGO_ESPECIE", "ADULTERANTE_NOME",
     ],
+    "dados_imagem": [
+        "carregar_imagens", "carregar_imagem_arquivo", "recortar_relativo",
+        "extrair_features_cor", "extrair_features_textura",
+    ],
     "preprocessamento": [
         "SNV", "SavGol", "MSC", "construir_preprocessador",
     ],

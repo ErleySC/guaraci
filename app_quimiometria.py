@@ -1656,7 +1656,7 @@ with tab_dados:
     st.divider()
     _DADOS_KEYS = ["modo_entrada", "pasta_dados", "arquivo_csv",
                    "coluna_classe", "coluna_concentracao",
-                   "pasta_saida", "excluir_classes"]
+                   "pasta_saida", "excluir_classes", "imagem_incluir_textura"]
 
     col_d1, col_d2 = st.columns(2)
     for i, k in enumerate(_DADOS_KEYS):

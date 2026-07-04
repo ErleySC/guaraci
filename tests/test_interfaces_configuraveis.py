@@ -13,22 +13,16 @@ duas interfaces.
 
 Não importa app_quimiometria.py (script Streamlit — top-level `st.*` exige
 um ScriptRunContext ativo, não é seguro importar fora de `streamlit run`);
-em vez disso faz parsing de texto das listas `_MODELO_KEYS_*` do código-fonte.
-cli_assistente.py é seguro de importar (sem I/O bloqueante em nível de
-módulo) e expõe `MENU_FIELDS` diretamente.
+em vez disso faz parsing de texto de QUALQUER lista `_..._KEYS...` do
+código-fonte (`_DADOS_KEYS`, `_PREPROC_KEYS`, `_MODELO_KEYS_*`, e futuras —
+regex genérico, não uma lista hardcoded de nomes conhecidos, para não ficar
+defasado quando uma aba nova for adicionada). cli_assistente.py é seguro de
+importar (sem I/O bloqueante em nível de módulo) e expõe `MENU_FIELDS`
+diretamente.
 """
 import importlib.util
 import os
 import re
-
-# Campos renderizados por widgets DEDICADOS fora do loop genérico da aba
-# Model (abas Project/Data/Preprocessing) — não entram em _MODELO_KEYS_*,
-# mas são visíveis/editáveis no app por outro caminho.
-_CAMPOS_APP_FORA_DO_LOOP_GENERICO = {
-    "modo_entrada", "pasta_dados", "arquivo_csv", "coluna_classe",
-    "coluna_concentracao", "pasta_saida", "pre_processamento",
-    "faixa_min_cm", "faixa_max_cm", "excluir_classes",
-}
 
 
 def _chaves_no_app() -> set:
@@ -36,9 +30,8 @@ def _chaves_no_app() -> set:
     with open(caminho, encoding="utf-8") as f:
         src = f.read()
     chaves = set()
-    for m in re.finditer(r"_MODELO_KEYS_\w+\s*=\s*\[(.*?)\]", src, re.S):
+    for m in re.finditer(r"_\w*KEYS\w*\s*=\s*\[(.*?)\]", src, re.S):
         chaves.update(re.findall(r'"(\w+)"', m.group(1)))
-    chaves |= {k for k in _CAMPOS_APP_FORA_DO_LOOP_GENERICO if k in src}
     return chaves
 
 

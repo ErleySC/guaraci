@@ -209,7 +209,7 @@ RISK_CLASS: Dict[str, str] = {
     "teste_cv_anova": "ANALITICO", "pasta_dados": "ANALITICO",
     "pasta_saida": "ANALITICO", "modo_entrada": "ANALITICO",
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
-    "coluna_concentracao": "ANALITICO",
+    "coluna_concentracao": "ANALITICO", "imagem_incluir_textura": "ANALITICO",
     # AVANCADO
     "benchmark": "AVANCADO", "monte_carlo": "AVANCADO",
     "shap_benchmark": "AVANCADO", "n_monte_carlo": "AVANCADO",
@@ -257,6 +257,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
     "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
     "coluna_concentracao":          {"PT": "Coluna concentracao",     "EN": "Concentration column"},
+    "imagem_incluir_textura":       {"PT": "Textura (imagem)",        "EN": "Texture (image)"},
     "faixa_min_cm":                 {"PT": "Faixa minima (cm-1)",     "EN": "Min range (cm-1)"},
     "faixa_max_cm":                 {"PT": "Faixa maxima (cm-1)",     "EN": "Max range (cm-1)"},
     "excluir_classes":              {"PT": "Excluir classes",         "EN": "Exclude classes"},
@@ -796,16 +797,39 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "modo_entrada": {
         "PT": {
-            "desc": "Origem dos dados de entrada: dx (espectros JCAMP-DX) | csv | sintetico (testes).",
+            "desc": "Origem dos dados de entrada: dx (espectros JCAMP-DX) | csv | "
+                    "imagem (colorimetria digital, prototipo) | sintetico (testes).",
             "impacto": "ANALITICO — define o formato de leitura e parsing dos dados.",
-            "exemplos": {"dx": "Espectros JCAMP-DX (FT-NIR, Raman, MIR)", "csv": "Tabela generica com colunas espectrais", "sintetico": "Dados simulados para teste do pipeline"},
+            "exemplos": {"dx": "Espectros JCAMP-DX (FT-NIR, Raman, MIR)", "csv": "Tabela generica com colunas espectrais",
+                         "imagem": "Fotos (1 subpasta por classe) -> features de cor RGB/HSV/Lab",
+                         "sintetico": "Dados simulados para teste do pipeline"},
         },
         "EN": {
-            "desc": "Input data source: dx (JCAMP-DX spectra) | csv | synthetic (for testing).",
+            "desc": "Input data source: dx (JCAMP-DX spectra) | csv | "
+                    "imagem (digital colorimetry, prototype) | synthetic (for testing).",
             "impacto": "ANALYTICAL — defines the data reading and parsing format.",
-            "exemplos": {"dx": "JCAMP-DX spectra (FT-NIR, Raman, MIR)", "csv": "Generic table with spectral columns", "sintetico": "Simulated data for pipeline testing"},
+            "exemplos": {"dx": "JCAMP-DX spectra (FT-NIR, Raman, MIR)", "csv": "Generic table with spectral columns",
+                         "imagem": "Photos (1 subfolder per class) -> RGB/HSV/Lab color features",
+                         "sintetico": "Simulated data for pipeline testing"},
         },
-        "default": "dx", "range": "dx | csv | sintetico",
+        "default": "dx", "range": "dx | csv | imagem | sintetico",
+    },
+    "imagem_incluir_textura": {
+        "PT": {
+            "desc": "Modo imagem: alem das features de cor (media/desvio RGB+HSV+Lab), "
+                    "inclui features de textura via GLCM (contraste, homogeneidade, "
+                    "energia, correlacao). Requer 'pip install scikit-image'.",
+            "impacto": "ANALITICO — mais variaveis, so tem efeito no modo_entrada='imagem'.",
+            "exemplos": {"false": "So cor (recomendado, sem dependencia extra)", "true": "Cor + textura"},
+        },
+        "EN": {
+            "desc": "Image mode: besides color features (RGB+HSV+Lab mean/std), "
+                    "also includes GLCM texture features (contrast, homogeneity, "
+                    "energy, correlation). Requires 'pip install scikit-image'.",
+            "impacto": "ANALYTICAL — more variables, only affects modo_entrada='imagem'.",
+            "exemplos": {"false": "Color only (recommended, no extra dependency)", "true": "Color + texture"},
+        },
+        "default": False, "range": "true | false",
     },
     "faixa_min_cm": {
         "PT": {
@@ -1386,7 +1410,8 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
 MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
     "dados": ["modo_entrada", "arquivo_csv", "coluna_classe", "coluna_concentracao",
-              "faixa_min_cm", "faixa_max_cm", "excluir_classes"],
+              "faixa_min_cm", "faixa_max_cm", "excluir_classes",
+              "imagem_incluir_textura"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],

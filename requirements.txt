@@ -8,6 +8,7 @@ matplotlib>=3.7,<4.0
 joblib>=1.3,<2.0
 threadpoolctl>=3.1,<4.0  # limits BLAS threads/worker in parallel permutation tests (avoids oversubscription)
 PyYAML>=6.0,<7.0
+Pillow>=9.0   # leitura de imagens no modo_entrada="imagem" (colorimetria digital, prototipo)
 
 # ── CLI interface ────────────────────────────────────────────────────────────
 rich>=13.0   # tema visual do assistente de terminal (guaraci.py/cli_assistente.py)
