@@ -1,0 +1,82 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
+abstract: >
+  GUARACI is an open, reproducible multi-technique chemometrics platform for
+  classification, authentication and exploration of complex matrices. It supports
+  vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
+  (HPLC, GC-MS) and resonance (NMR, IMS) data. It implements PLS-DA, OPLS-DA,
+  DD-SIMCA, VIP, SHAP and Monte Carlo CV with anti-leakage group-aware
+  validation, and offers a Rich-based bilingual terminal interface (GUARACI)
+  plus a Streamlit web app. Originally developed at GEAAp/UFPA for FT-NIR
+  authentication of Amazonian vegetable oils.
+authors:
+  - family-names: "Costa"
+    given-names: "Erley S. da"
+    affiliation: "GEAAp/UFPA — Grupo de Espectroscopia Analítica Aplicada"
+    email: "erleysdacosta@gmail.com"
+    website: "http://lattes.cnpq.br/5755582193284309"
+repository-code: "https://github.com/ErleySC/guaraci"
+url: "https://github.com/ErleySC/guaraci"
+license: GPL-3.0-or-later
+version: "31.0.0"
+date-released: "2026-07-04"
+keywords:
+  - chemometrics
+  - spectroscopy
+  - vibrational spectroscopy
+  - FT-NIR
+  - NIR
+  - MIR
+  - FTIR
+  - Raman
+  - UV-Vis
+  - multivariate analysis
+  - PLS-DA
+  - OPLS-DA
+  - PLS regression
+  - DD-SIMCA
+  - SIMCA
+  - PCA
+  - HCA
+  - VIP
+  - SHAP
+  - variable selection
+  - Monte Carlo cross-validation
+  - bootstrap
+  - group-aware validation
+  - anti-leakage validation
+  - machine learning
+  - artificial intelligence
+  - classification
+  - regression
+  - food authentication
+  - food fraud detection
+  - adulteration detection
+  - quality control
+  - vegetable oils
+  - essential oils
+  - Amazonian oils
+  - Amazon biodiversity
+  - analytical chemistry
+  - open-science
+  - FAIR
+  - reproducible research
+  - Python
+  - scikit-learn
+  - Streamlit
+preferred-citation:
+  type: software
+  title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
+  authors:
+    - family-names: "Costa"
+      given-names: "Erley S. da"
+      affiliation: "GEAAp/UFPA"
+      website: "http://lattes.cnpq.br/5755582193284309"
+  version: "31.0.0"
+  year: 2026
+  institution:
+    name: "GEAAp/UFPA"
+  url: "https://github.com/ErleySC/guaraci"
+  # doi: "10.5281/zenodo.XXXXXXX"  <- inserir apos o Zenodo gerar o DOI

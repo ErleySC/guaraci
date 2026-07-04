@@ -1,0 +1,62 @@
+# --- Personal / local config & runtime state (kept out of the repo) ---
+config.yaml
+visual_config.json
+codigos_usuario.json
+codigos_exportados.csv
+tecnica_usuario.json
+.cli_wizard_done
+perfis/
+
+# --- Results (large PNGs / joblib models — keep out of repo) ---
+resultados_tcc/
+resultados*/
+*.joblib
+
+# --- Local run drivers / logs (scratch, personal paths — keep out of repo) ---
+run_benchmark_tcc.py
+gerar_relatorio_abnt.py
+benchmark_run.log
+*.log
+
+# --- Research data (kept local; use modo=sintetico to test without real data) ---
+dados/
+*.dx
+dados_oleos/
+
+# --- Local archive of old versions / scratch (kept out of the repo) ---
+_arquivo_antigo/
+_test*/
+"pineline_quimiometria_14 copy.py"
+*\ copy.py
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Test / coverage artifacts ---
+.coverage
+coverage.xml
+htmlcov/
+.ruff_cache/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Streamlit ---
+.streamlit/secrets.toml
+
+# --- Claude Code project memory (local only) ---
+.claude/
+
+# --- Code review graph (local tool artifact) ---
+.code-review-graph

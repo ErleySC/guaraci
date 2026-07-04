@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "guaraci-chemometrics"
+version = "31.0.0"
+description = "GUARACI — multi-technique chemometrics platform for Amazonian matrices (group-aware validation)"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Erley S. Costa", email = "erleysdacosta@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24,<3.0",
+    "pandas>=2.0,<4.0",
+    "scipy>=1.10,<2.0",
+    "scikit-learn>=1.3,<2.0",
+    "matplotlib>=3.7,<4.0",
+    "joblib>=1.3,<2.0",
+    "threadpoolctl>=3.1,<4.0",
+    "PyYAML>=6.0,<7.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+web = ["streamlit>=1.35,<2.0", "psutil>=5.9,<7.0"]
+reports = [
+    "fpdf2>=2.7,<3.0",
+    "python-docx>=1.1,<2.0",
+    "openpyxl>=3.1,<4.0",
+    "python-pptx>=1.0,<2.0",
+]
+benchmark = ["xgboost>=1.7,<5.0", "shap>=0.42,<0.53"]
+all = ["guaraci-chemometrics[web,reports,benchmark]"]
+
+[project.scripts]
+guaraci = "guaraci:main"
+
+[project.urls]
+Repository = "https://github.com/ErleySC/guaraci"
+
+[tool.setuptools]
+py-modules = [
+    "pipeline", "guaraci", "cli_assistente", "app_quimiometria",
+    "guaraci_theme", "design_tokens", "chemometric_stats",
+    "paleta_cores", "dados_io", "preprocessamento", "classificadores",
+    "figuras", "validacao_estatistica", "hardware", "selecao_variaveis",
+    "avaliacao_modelos",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"
+markers   = [
+    "slow: marks tests as slow — run with pytest -m slow",
+]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning:sklearn",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# Nao lintar codigo arquivado, dados de resultados nem scripts pessoais (gitignored).
+extend-exclude = [
+    "_arquivo_antigo", "perfis", "resultados_tcc", "__pycache__",
+    "gerar_relatorio_abnt.py", "run_benchmark_tcc.py",
+]
+
+[tool.ruff.lint]
+# Pragmatico p/ codigo cientifico: pega bugs reais (pyflakes = F) + erros/avisos
+# de pycodestyle, ignorando estilo DELIBERADO (multiplos statements por linha,
+# nomes de 1 letra comuns em algebra/matematica, linhas longas com formulas).
+select = ["E", "F", "W"]
+ignore = [
+    "E501",                    # line too long (formulas cientificas)
+    "E701", "E702", "E703",    # multiple statements on one line (estilo do projeto)
+    "E741",                    # ambiguous variable name (l, I, O em algebra)
+    "E402",                    # import not at top (reexports pos-modularizacao)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# pipeline.py e uma FACHADA (Fase H): reexporta simbolos dos 10 modulos
+# extraidos, entao muitos imports sao "nao usados" de proposito — e o contrato
+# publico que guaraci/cli/app consomem via `pq.X`. Ver test_fachada_reexport.py.
+"pipeline.py" = ["F401"]
+# Camada de UI (CLI/desktop/web): variaveis locais de rotulo/idioma calculadas
+# para clareza mas nem sempre usadas em todo ramo — tolera F841 aqui; o rigor
+# de "variavel nao usada" fica no nucleo cientifico (pipeline + modulos).
+"guaraci.py" = ["F841"]
+"cli_assistente.py" = ["F841"]
+"app_quimiometria.py" = ["F841"]
