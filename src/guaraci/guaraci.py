@@ -149,6 +149,14 @@ def _toggle_idioma() -> str:
 from guaraci.guaraci_theme import (  # noqa: E402
     PA, PF, PS, PR, PW, PM, PD, PG, console, _W,
 )
+# Lógica pura extraída da CLI (item 19): testável sem Rich/console. Ver cli_logic.py.
+from guaraci.cli_logic import (  # noqa: E402
+    trunc as _trunc,
+    truncar_desc_por_frase as _truncar_desc_por_frase,
+    fmt_bool as _fmt_bool_puro,
+    validar_faixas as _validar_faixas_puro,
+    contar_dx as _contar_dx,
+)
 
 # Estado global da tecnica selecionada (persiste entre menus)
 _TECNICA_SELECIONADA: Dict[str, str] = {"key": "ft-nir", "nome": "FT-NIR"}
@@ -620,31 +628,14 @@ def _cfgv(cfg: Config, key: str, default: Any = None) -> Any:
     return getattr(cfg, attr, default)
 
 
-def _contar_dx(pasta: str) -> int:
-    """Count .dx files in pasta — checks root AND immediate subfolders
-    (supports both flat layout and one-subfolder-per-class layout)."""
-    try:
-        p = Path(pasta)
-        if not p.is_dir():
-            return 0
-        # root-level .dx files
-        n = sum(1 for f in p.iterdir() if f.is_file() and f.suffix.lower() == ".dx")
-        if n > 0:
-            return n
-        # one level down (one subfolder per species/class)
-        for sub in p.iterdir():
-            if sub.is_dir():
-                n += sum(1 for f in sub.iterdir()
-                         if f.is_file() and f.suffix.lower() == ".dx")
-        return n
-    except Exception:
-        return 0
+# _contar_dx importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
 
 def _fmt_bool(v: Any, lang: str = "") -> str:
+    """Wrapper fino: resolve o idioma ativo (ou usa o passado) e delega o
+    formato Sim/Não a `guaraci.cli_logic.fmt_bool` (função pura, testada)."""
     l = lang or _lang()
     if isinstance(v, bool):
-        return ("[g]Sim[/g]" if l == "PT" else "[g]Yes[/g]") if v \
-               else ("[m]Nao[/m]" if l == "PT" else "[m]No[/m]")
+        return _fmt_bool_puro(v, l)
     return escape(str(v))
 
 # ---------------------------------------------------------------------------
@@ -729,13 +720,11 @@ def _sugerir_cafe() -> None:
 # VALIDACAO DE INTEGRIDADE — faixas e paleta antes de rodar
 # ---------------------------------------------------------------------------
 def _validar_faixas(cfg: Config) -> list:
-    """Retorna lista de avisos se faixa_min/max estiver fora do esperado."""
-    avisos = []
+    """Wrapper fino: le faixa_min/max do Config e delega a validacao pura
+    a `guaraci.cli_logic.validar_faixas` (testada)."""
     f_min = _cfgv(cfg, "faixa_min_cm", 400)
     f_max = _cfgv(cfg, "faixa_max_cm", 4000)
-    if f_min >= f_max:
-        avisos.append(f"ERRO: faixa_min ({f_min}) >= faixa_max ({f_max}) — intervalo invalido.")
-    return avisos
+    return _validar_faixas_puro(f_min, f_max)
 
 def _sincronizar_dpi(cfg: Config) -> None:
     """Garante que cfg.dpi reflita o visual_config.json antes de rodar."""
@@ -1104,41 +1093,22 @@ def _print_run_box(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # SUBMENU COMPACTO — campos com valor na mesma linha
 # ---------------------------------------------------------------------------
-def _trunc(s: str, n: int) -> str:
-    """Trunca uma string em n chars sem partir palavra (reticencias se cortar)."""
-    s = str(s)
-    if len(s) <= n:
-        return s
-    corte = s[:n - 1]
-    if " " in corte:
-        corte = corte[:corte.rfind(" ")]
-    return corte.rstrip() + "…"
+# _trunc importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
 
 
 def _desc_curta(key: str, max_c: int = 42) -> str:
     """Retorna descricao resumida do campo (max_c chars) para exibicao inline.
 
-    Corta no limite de palavra (nunca no meio) e usa o _CONFIG_SPEC como
-    fallback quando o HELP_DB nao cobre o campo.
+    Resolve idioma/HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
+    truncamento a `guaraci.cli_logic.truncar_desc_por_frase` (funcao pura,
+    testada).
     """
     lang = _lang()
     h = HELP_DB.get(key, {})
     desc = h.get(lang, h.get("PT", {})).get("desc", "")
     if not desc:
         desc = _SPEC_BY_KEY.get(key, {}).get("desc", "")
-    desc = desc.strip()
-    if not desc:
-        return ""
-    # Trunca na primeira frase, se couber
-    if "." in desc[:max_c]:
-        return desc[:desc.index(".") + 1]
-    if len(desc) <= max_c:
-        return desc
-    # Corta no ultimo espaco antes do limite (sem partir palavra)
-    corte = desc[:max_c - 1]
-    if " " in corte:
-        corte = corte[:corte.rfind(" ")]
-    return corte.rstrip() + "…"
+    return _truncar_desc_por_frase(desc, max_c)
 
 
 def _print_submenu_compact(
