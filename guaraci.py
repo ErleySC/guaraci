@@ -1,5 +1,5 @@
 """
-guaraci.py v2.1 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v31.0.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
 GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
 
@@ -2905,7 +2905,7 @@ def _carregar_yaml(cfg: Config) -> None:
 # MAIN LOOP
 # ===========================================================================
 def main() -> None:
-    """Ponto de entrada GUARACI v2.1."""
+    """Ponto de entrada GUARACI (versao unica em _VERSAO)."""
     # Carregar config
     cfg = Config()
     if _CFG_PATH.exists():
