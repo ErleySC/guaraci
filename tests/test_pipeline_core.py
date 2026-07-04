@@ -397,3 +397,80 @@ def test_etapa4_integra_spa_e_ag_quando_ligados(pq):
     metodos = {t["metodo"] for t in resumo["tabela"]}
     assert "SPA (APS)" in metodos
     assert "AG (Genetico)" in metodos
+
+
+# ── Hardware (probe + auto-ajuste) ────────────────────────────────────────────
+
+def test_hardware_probe_retorna_campos_esperados(pq):
+    """hardware_probe(): dict com as chaves esperadas, RAM/CPU positivos —
+    roda de verdade (psutil real, sem mock), nunca lança exceção."""
+    hw = pq.hardware_probe()
+    for chave in ("ram_total_gb", "ram_livre_gb", "cpu_logicos", "cpu_fisicos",
+                  "disco_livre_gb", "psutil_ok"):
+        assert chave in hw
+    assert hw["ram_total_gb"] > 0
+    assert hw["cpu_logicos"] >= 1
+    assert isinstance(hw["psutil_ok"], bool)
+
+
+def test_auto_ajustar_config_hardware_ram_critica_desliga_tudo(pq):
+    """RAM < 2 GB: desliga SHAP/benchmark/monte_carlo e reduz CV — o cenário
+    mais crítico de proteção contra travamento."""
+    cfg = pq.Config(executar_shap=True, executar_benchmark=True,
+                     executar_monte_carlo=True, n_splits_cv=10)
+    avisos = pq.auto_ajustar_config_hardware(cfg, {"ram_livre_gb": 1.5})
+    assert cfg.executar_shap is False
+    assert cfg.executar_benchmark is False
+    assert cfg.executar_monte_carlo is False
+    assert cfg.n_splits_cv == 3
+    assert len(avisos) == 4
+
+
+def test_auto_ajustar_config_hardware_ram_farta_nao_mexe(pq):
+    """RAM >= 8 GB: nenhum ajuste, nenhum aviso — não deve mexer em nada
+    desnecessariamente quando há recurso de sobra."""
+    cfg = pq.Config(executar_shap=True, shap_max_amostras=500,
+                     executar_benchmark=True, n_monte_carlo=200)
+    avisos = pq.auto_ajustar_config_hardware(cfg, {"ram_livre_gb": 16.0})
+    assert avisos == []
+    assert cfg.executar_shap is True
+    assert cfg.shap_max_amostras == 500
+
+
+def test_verificar_ram_limite_impossivel_retorna_false(pq):
+    """_verificar_ram: pedir uma quantidade astronomicamente alta de RAM
+    livre deve sempre falhar (determinístico, não depende da máquina real)."""
+    assert pq._verificar_ram(10_000_000.0, "operacao_teste") is False
+
+
+def test_verificar_ram_limite_trivial_retorna_true(pq):
+    """_verificar_ram: pedir uma quantidade trivial de RAM (bem abaixo de
+    qualquer máquina real) deve sempre passar."""
+    assert pq._verificar_ram(0.001, "operacao_teste") is True
+
+
+# ── Paleta de cores: fallback além da paleta base (>20 classes) ───────────────
+
+def test_cor_alem_da_paleta_base_usa_fallback_sem_crash(pq):
+    """cor(i) para i >= 20 (tamanho da paleta base): sem glasbey/colorcet
+    instalados, cai no fallback tab20 — nunca lança exceção, sempre um hex
+    válido."""
+    c = pq.cor(25)
+    assert isinstance(c, str) and c.startswith("#")
+
+
+def test_mapear_cores_classes_mais_de_20_classes(pq):
+    """mapear_cores_classes com > 20 classes exercita o mesmo fallback e
+    ainda assim devolve uma cor distinta por classe."""
+    classes = [f"Classe_{i:02d}" for i in range(25)]
+    mapa = pq.mapear_cores_classes(classes)
+    assert len(mapa) == 25
+    assert all(v.startswith("#") for v in mapa.values())
+
+
+def test_paleta_externa_sem_libs_opcionais_retorna_none(pq):
+    """_paleta_externa: sem glasbey/colorcet instalados (ambiente padrão do
+    projeto), retorna None de forma graciosa — não é um erro, é o caminho
+    normal quando as libs opcionais de paleta não estão presentes."""
+    resultado = pq._paleta_externa(30)
+    assert resultado is None or isinstance(resultado, list)

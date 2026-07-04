@@ -122,10 +122,20 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
 # =========================================================================
 
 def gerar_dados_sinteticos(cfg: "Config"):
+    """Gera espectros sinteticos de teste, incluindo REPLICAS FISICAS
+    (n_replicas_sint por ponto amostral, como T1/T2/T3 do mesmo ponto real) e
+    mae_id — sem isso, DD-SIMCA (N2) e as figuras de merito de regressao (N3)
+    nunca tinham dados suficientes para treinar/estimar ruido em modo
+    sintetico (so 1 amostra "pura" por especie, sem nocao de replica).
+
+    mae_id usa um codigo de 3 letras POR ESPECIE (ESA/ESB/ESC) como prefixo —
+    o mesmo formato de 3 letras maiusculas do dataset real (AND/ACA/CAP/...),
+    do qual `executar()` deriva o numero de especies via prefixo."""
     print("[INFO] Synthetic MODE — generating test spectra.")
     rng = np.random.default_rng(cfg.seed)
     wavenumbers = np.linspace(4000, 400, cfg.n_pontos_sint)
     conc_base = np.linspace(0, 40, cfg.n_por_classe)
+    n_replicas = max(1, int(cfg.n_replicas_sint))
 
     def esp(c, p1, p2, ruido=0.015):
         frac = c / 100
@@ -136,15 +146,23 @@ def gerar_dados_sinteticos(cfg: "Config"):
 
     params  = [(2900, 1740), (2850, 1650), (2960, 1710)]
     classes = ["Esp_A", "Esp_B", "Esp_C"]
-    X_list, rot_list, conc_list = [], [], []
+    codigos = {"Esp_A": "ESA", "Esp_B": "ESB", "Esp_C": "ESC"}
+    X_list, rot_list, conc_list, mae_list = [], [], [], []
     for (p1, p2), cls in zip(params, classes):
-        for c in conc_base:
-            X_list.append(esp(c, p1, p2)); rot_list.append(cls); conc_list.append(c)
+        cod = codigos[cls]
+        for i, c in enumerate(conc_base):
+            mae_ponto = f"{cod}-{i:02d}"
+            for _ in range(n_replicas):
+                X_list.append(esp(c, p1, p2))
+                rot_list.append(cls)
+                conc_list.append(c)
+                mae_list.append(mae_ponto)
 
     return (wavenumbers,
             np.array(X_list, dtype=float),
             np.array(rot_list, dtype=str),
-            np.array(conc_list, dtype=float))
+            np.array(conc_list, dtype=float),
+            np.array(mae_list, dtype=str))
 
 
 def carregar_csv(caminho, col_classe, col_conc):
@@ -614,10 +632,11 @@ def carregar_dados(cfg: "Config"
                                 Optional[pd.DataFrame]]:
     """Unified data loader. Returns 6-tuple:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
-    mae_id and metadados_df may be None in 'sintetico'/'csv' mode."""
+    metadados_df is always None in 'sintetico'/'csv' mode; mae_id is None
+    only in 'csv' mode (sem replicas fisicas conhecidas)."""
     if cfg.modo == "sintetico":
-        wn, X, rot, conc = gerar_dados_sinteticos(cfg)
-        return wn, X, rot, conc, None, None
+        wn, X, rot, conc, mae = gerar_dados_sinteticos(cfg)
+        return wn, X, rot, conc, mae, None
     if cfg.modo == "csv":
         wn, X, rot, conc = carregar_csv(
             cfg.arquivo_csv, cfg.coluna_classe, cfg.coluna_conc)

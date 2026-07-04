@@ -776,58 +776,6 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0, janela=120.0,
         )
 
 
-def fig5_vip(vip, wavenumbers, top_n, cfg, pasta):
-    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.3),
-                              constrained_layout=True,
-                              gridspec_kw={"width_ratios": [1.65, 1]})
-
-    ax = axes[0]
-    mask_hi = vip >= 1.0
-    ax.plot(wavenumbers, vip, color="0.45", lw=1.0, alpha=0.85, zorder=2)
-    ax.scatter(wavenumbers[mask_hi], vip[mask_hi],
-               color=cor(1), s=12, zorder=3, label="VIP $\\geq$ 1")
-    ax.axhline(1.0, color=cor(3), ls="--", lw=1.1, label="VIP = 1")
-    _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0)
-    ax.set_xlabel("Wavenumber (cm$^{-1}$)")
-    ax.set_ylabel("VIP score")
-    ax.set_title("(a) VIP scores across the spectrum", loc="left")
-    ax.invert_xaxis()
-    # V3: y-lim at the REAL range (without compressing variation near 1.0) +
-    # statistics box to check the true dispersion of VIPs.
-    vmin, vmax = float(np.min(vip)), float(np.max(vip))
-    # Generous headroom (1.45) so the vertical band labels fit without clipping.
-    ax.set_ylim(max(0.0, vmin - 0.05 * (vmax - vmin)), vmax * 1.45)
-    # Stats box in the UPPER-LEFT corner (high-wavenumber region, low VIP →
-    # free of band labels, which cluster center-right).
-    ax.text(0.015, 0.975,
-            f"min={vmin:.2f}  max={vmax:.2f}\n"
-            f"mean={float(np.mean(vip)):.2f}  sd={float(np.std(vip)):.2f}\n"
-            f"n(VIP$\\geq$1)={int(mask_hi.sum())}/{len(vip)}",
-            transform=ax.transAxes, ha="left", va="top", fontsize=7.6,
-            color="0.25", bbox=dict(boxstyle="round,pad=0.35", fc="white",
-                                     ec="0.82", lw=0.6), zorder=7)
-    ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
-    ax.legend(loc="lower right", frameon=False, fontsize=8)
-
-    ax = axes[1]
-    ord_vip = np.argsort(vip)[::-1]
-    top_n = min(top_n, len(wavenumbers))
-    idx_top = ord_vip[:top_n][::-1]
-    valores = vip[idx_top]
-    cores_b = [cor(1) if v >= 1.0 else "0.7" for v in valores]
-    pos = np.arange(top_n)
-    ax.barh(pos, valores, color=cores_b, edgecolor="white", lw=0.5, height=0.78)
-    ax.axvline(1.0, color=cor(3), ls="--", lw=1.0)
-    ax.set_yticks(pos)
-    ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
-    ax.set_xlabel("VIP score")
-    ax.set_ylabel("Wavenumber (cm$^{-1}$)")
-    ax.set_title(f"(b) Top {top_n} variables", loc="left")
-    ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
-
-    salvar(fig, "fig5_vip", pasta, cfg)
-
-
 def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
                            mapa_cores, cfg, pasta):
     rotulos = np.asarray(rotulos, dtype=str)
@@ -1067,8 +1015,8 @@ def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
     ax.set_ylabel("VIP (stratified bootstrap mean)")
     ax.set_title("(a) Mean VIP with 95% CI", loc="left")
     ax.invert_xaxis()
-    # Match the same generous headroom used in fig5_vip so vertical band
-    # labels do not clip at the top of the subplot.
+    # Generous headroom so vertical band labels do not clip at the top of
+    # the subplot.
     _vm = float(np.nanmax(vip_mean)) if vip_mean.size else 1.0
     ax.set_ylim(bottom=0.0, top=_vm * 1.45)
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)

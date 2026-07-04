@@ -296,6 +296,7 @@ class Config:
 
     n_por_classe: int = 20
     n_pontos_sint: int = 1000
+    n_replicas_sint: int = 3   # replicas fisicas/ponto (estilo T1/T2/T3) no modo sintetico
 
     seed: int = 42
 
@@ -423,7 +424,6 @@ from figuras import (   # noqa: E402
     fig2_plsda_scores,
     fig3_outliers,
     fig4_confusao,
-    fig5_vip,
     fig6_preprocessamento,
     fig_extra_wold,
     fig_extra_holdout,

@@ -28,11 +28,13 @@ FIGURAS_ESSENCIAIS = {
     "fig_hca_dendrograma",
     "fig_loadings_pca",
     "fig_roc_auc_multiclasse",
+    "fig_sprint3_ddsimca_acceptance",   # exige replicas fisicas -> nivel=N3 + n_replicas_sint
+    "figS2_pls_regressao",              # nome de arquivo de fig7_pls_regressao; exige nivel=N3
 }
 
-# Piso de contagem: o run abaixo gera ~21 figuras; abaixo de 15 algo quebrou
-# em massa (ex.: uma etapa inteira deixou de produzir figuras).
-MIN_FIGURAS = 15
+# Piso de contagem: com nivel=N3 + replicas fisicas o run gera ~27 figuras;
+# abaixo de 20 algo quebrou em massa (ex.: uma etapa inteira parou de gerar).
+MIN_FIGURAS = 20
 
 
 def _png_dims(caminho):
@@ -52,7 +54,9 @@ def figuras_geradas(pq, tmp_path_factory):
         pasta_entrada=str(base / "dados"),
         pasta_saida_raiz=str(base / "saida"),
         modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        n_replicas_sint=3,   # replicas fisicas -> DD-SIMCA/figuras de merito treinam de verdade
         wn_min=400.0, wn_max=4001.0,
+        nivel="N3",          # ativa a figura de regressao (fig7_pls_regressao), pulada em N1
         n_splits_cv=2, n_repeats_cv=1,
         n_permutacoes=5, n_permutacoes_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
