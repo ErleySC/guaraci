@@ -173,6 +173,17 @@ discrimina pelo menos uma). Gera `dados/teste_martens.csv`
 (comprimento de onda, t, p, significativo) e um resumo (nº de variáveis
 significativas) no `resumo_modelo.txt`/`model_card.md`.
 
+**DModX / DModY** (nomenclatura padrão SIMCA-P/Unscrambler, Eriksson et al.
+2006) — sempre calculados, sem toggle: são o **mesmo** T²/Q-resíduo e
+resíduo de predição já usados nas figuras (`fig3_outliers`/`fig7_pls_regressao`),
+apenas **normalizados e nomeados** na escala/convenção que usuários vindos
+dessas ferramentas comerciais já reconhecem (DModX ≈ 1 = resíduo típico;
+acima do limite crítico = fora do modelo). Não geram figura nova (seria
+redundante com as já existentes) — aparecem como resumo (limite crítico +
+número de amostras fora) no console, `resumo_modelo.txt` e `model_card.md`.
+DModX é sempre reportado (classificação); DModY aparece quando há
+regressão (N2/N3).
+
 **Comparação de modelos (Auto-Benchmark):** PLS-DA vs. SVM RBF vs. Random
 Forest vs. Gradient Boosting vs. XGBoost, sob a mesma CV group-aware. Curvas
 DET e interpretabilidade via **SHAP** (TreeExplainer).

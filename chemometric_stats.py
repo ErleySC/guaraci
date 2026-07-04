@@ -199,6 +199,76 @@ def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
     return float(g * chi2.ppf(1 - alpha, h))
 
 
+def dmodx(Q: np.ndarray, n_variaveis: int, n_componentes: int,
+          n_amostras: int, alpha: float = 0.05) -> Dict[str, object]:
+    """DModX (Distance to Model X) -- nomenclatura e normalizacao padrao do
+    SIMCA-P/Unscrambler (Eriksson et al. 2006, "Multi- and Megavariate Data
+    Analysis", cap. 9) para o MESMO Q-residuo ja calculado por
+    `q_residuos()`. NAO e' um diagnostico novo -- e' a mesma distancia
+    residual X, normalizada pela variancia residual media do modelo (assim
+    DModX ~= 1 significa "residuo tipico"; DModX >> DModX_crit sinaliza
+    amostra fora do modelo), na escala que usuarios vindos do SIMCA-P/
+    Unscrambler ja reconhecem de outras ferramentas comerciais.
+
+        DModX_i           = sqrt(Q_i / (K - A))
+        s0 (residuo medio) = sqrt(sum(Q) / ((N - A - 1)(K - A)))
+        DModX_normalizado_i = DModX_i / s0
+        DModX_critico       = sqrt(F_crit(alpha; K-A, (N-A-1)(K-A)))
+
+    K = n_variaveis, A = n_componentes, N = n_amostras.
+    """
+    Q = np.asarray(Q, dtype=float)
+    K, A, N = int(n_variaveis), int(n_componentes), int(n_amostras)
+    df_num = max(K - A, 1)
+    df_den = max((N - A - 1) * df_num, 1)
+
+    dmodx_bruto = np.sqrt(Q / df_num)
+    s0 = np.sqrt(float(np.sum(Q)) / df_den) if df_den > 0 else 1.0
+    s0 = s0 if s0 > 1e-12 else 1.0
+    dmodx_norm = dmodx_bruto / s0
+
+    dmodx_crit = float(np.sqrt(f_dist.ppf(1 - alpha, df_num, df_den)))
+
+    return {
+        "dmodx": dmodx_norm,
+        "dmodx_crit": dmodx_crit,
+        "fora_do_modelo": dmodx_norm > dmodx_crit,
+        "n_fora_do_modelo": int(np.sum(dmodx_norm > dmodx_crit)),
+    }
+
+
+def dmody(residuo_y: np.ndarray, n_componentes: int, n_amostras: int,
+          alpha: float = 0.05) -> Dict[str, object]:
+    """DModY (Distance to Model Y) -- mesma logica/normalizacao do DModX,
+    aplicada ao residuo de PREDICAO (y - y_hat) de um modelo de regressao
+    PLS (N2/N3). Tambem nomenclatura padrao SIMCA-P/Unscrambler, mesma
+    reapresentacao (nao e' um diagnostico novo): o residuo de validacao
+    ja calculado (usado no RMSEP), normalizado para a escala DModY.
+
+        DModY_i              = |y_i - yhat_i|
+        s0 (residuo medio)    = sqrt(sum(residuo_y^2) / (N - A - 1))
+        DModY_normalizado_i   = DModY_i / s0
+        DModY_critico         = sqrt(F_crit(alpha; 1, N-A-1))
+    """
+    residuo_y = np.asarray(residuo_y, dtype=float).flatten()
+    A, N = int(n_componentes), int(n_amostras)
+    df_den = max(N - A - 1, 1)
+
+    dmody_bruto = np.abs(residuo_y)
+    s0 = np.sqrt(float(np.sum(residuo_y ** 2)) / df_den) if df_den > 0 else 1.0
+    s0 = s0 if s0 > 1e-12 else 1.0
+    dmody_norm = dmody_bruto / s0
+
+    dmody_crit = float(np.sqrt(f_dist.ppf(1 - alpha, 1, df_den)))
+
+    return {
+        "dmody": dmody_norm,
+        "dmody_crit": dmody_crit,
+        "fora_do_modelo": dmody_norm > dmody_crit,
+        "n_fora_do_modelo": int(np.sum(dmody_norm > dmody_crit)),
+    }
+
+
 def variancia_explicada(X: np.ndarray, T: np.ndarray) -> np.ndarray:
     """Explained variance (%) of X by each column of T."""
     var_X_total = float(np.var(X, axis=0).sum())

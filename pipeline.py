@@ -502,6 +502,8 @@ from chemometric_stats import (   # noqa: E402
     hotelling_t2_limite,
     q_residuos,
     q_residuos_limite,
+    dmodx,
+    dmody,
     variancia_explicada,
     figuras_merito_regressao,
     dominio_aplicabilidade,
@@ -668,6 +670,11 @@ def anexar_regressao_resumo(
         linhas.append(f"    RMSEP .....: {_fmt(pooled.get('rmsep'))}")
         if pooled.get('bias') is not None:
             linhas.append(f"    Bias ......: {_fmt(pooled.get('bias'), 4)}")
+        if pooled.get('dmody_crit') is not None:
+            linhas.append(f"    DModY critico (SIMCA): "
+                          f"{_fmt(pooled.get('dmody_crit'), 3)}")
+            linhas.append(f"    Amostras fora do DModY: "
+                          f"{pooled.get('n_fora_do_dmody', 'n/a')}")
     if tabela_especie:
         linhas.append("")
         linhas.append("  Per-species figures of merit:")
@@ -804,7 +811,8 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                      "Q-residual (95%)", "ROC AUC macro (OvR)",
                      "BCa Accuracy", "BCa Balanced acc.", "BCa F1 (macro)",
                      "BCa Cohen's kappa", "Martens n_significativas",
-                     "Martens n_folds_validos")
+                     "Martens n_folds_validos", "DModX critico (SIMCA)",
+                     "N amostras fora do DModX")
         ]),
         "",
         "## 5. Dados de Avaliacao/Treino",
@@ -890,10 +898,16 @@ def anexar_regressao_model_card(
 
     linhas: List[str] = ["", "## 9. Addendum -- Quantificacao (N2/N3, PLS-R)", ""]
     if pooled is not None:
-        linhas.append(_md_tabela([
+        _linhas_pooled = [
             ("RMSEP (pooled)", _fmt(pooled.get("rmsep"), 3)),
             ("R2val (pooled)", _fmt(pooled.get("r2v"), 4)),
-        ]))
+        ]
+        if pooled.get("dmody_crit") is not None:
+            _linhas_pooled.append(
+                ("DModY critico (SIMCA)", _fmt(pooled.get("dmody_crit"), 3)))
+            _linhas_pooled.append(
+                ("Amostras fora do DModY", str(pooled.get("n_fora_do_dmody", "n/a"))))
+        linhas.append(_md_tabela(_linhas_pooled))
     if tabela_especie:
         linhas += ["", "**Figuras de merito por especie "
                    "(Valderrama, Braga & Poppi, 2009):**", "",
@@ -1547,10 +1561,19 @@ def pls_regressao_por_especie(
                        n_opt_repr, r2c, r2v, rmsec, rmsecv, rmsep, bias_v,
                        cfg, pasta)
 
+    # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
+    # validacao ja usado no RMSEP/bias acima, na nomenclatura SIMCA-P/
+    # Unscrambler. n_opt_repr (LVs da especie com mais amostras) usado como
+    # A representativo do pool multi-especie.
+    _dmody_res = dmody(Yvh_p - Yv_p, n_componentes=n_opt_repr,
+                       n_amostras=len(Yv_p))
+
     return {
         "tabela_especie": tabela_esp,
         "r2c": r2c, "r2v": r2v, "rmsec": rmsec, "rmsecv": rmsecv,
         "rmsep": rmsep, "bias": bias_v, "n_especies": len(tabela_esp),
+        "dmody_crit": _dmody_res["dmody_crit"],
+        "n_fora_do_dmody": _dmody_res["n_fora_do_modelo"],
     }
 
 
@@ -1997,6 +2020,12 @@ def executar(cfg: Config):
                        puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
     T2, Q, t2_lim, q_lim, out_t2, out_q = fig3_outliers(
         T_pls, P_pls, X_processed, rotulos, mapa_cores, n_opt, cfg, pasta)
+    # DModX (Eriksson et al. 2006) -- mesma reapresentacao do Q-residuo
+    # acima, na nomenclatura/escala que usuarios de SIMCA-P/Unscrambler
+    # esperam. Nao gera figura nova (seria redundante com o painel T2/Q
+    # acima); reportado no resumo/console/model card.
+    _dmodx_res = dmodx(Q, n_variaveis=X_processed.shape[1],
+                        n_componentes=n_opt, n_amostras=X_processed.shape[0])
     fig4_confusao(cm_mat, lb.classes_, rotulos, pred_lab, cfg, pasta)
     try:
         aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
@@ -2303,6 +2332,8 @@ def executar(cfg: Config):
                                     else f"{q_lim:.4f}"),
         "N outliers T2":          int(out_t2.size),
         "N outliers Q":           int(out_q.size),
+        "DModX critico (SIMCA)":  round(float(_dmodx_res["dmodx_crit"]), 4),
+        "N amostras fora do DModX": int(_dmodx_res["n_fora_do_modelo"]),
         "Imbalance ratio":        cast(float, relatorio_balanco["imbalance_ratio"]),
         "Classe maior":           cast(int, relatorio_balanco["n_max"]),
         "Classe menor":           cast(int, relatorio_balanco["n_min"]),
@@ -2526,6 +2557,9 @@ def executar(cfg: Config):
                         print(f"  R2cal (pooled): {reg_esp['r2c']:.4f}  |  "
                               f"R2val (pooled): {reg_esp['r2v']:.4f}")
                         print(f"  RMSEP (pooled): {reg_esp['rmsep']:.3f}")
+                        print(f"  DModY critico (SIMCA): "
+                              f"{reg_esp['dmody_crit']:.3f}  |  "
+                              f"amostras fora: {reg_esp['n_fora_do_dmody']}")
                         for t in reg_esp["tabela_especie"]:
                             print(f"    {t['especie']:18s} "
                                   f"LV={t['n_lv']:2d}  RMSEP={t['rmsep']:.2f}  "
@@ -2544,13 +2578,15 @@ def executar(cfg: Config):
                             pasta_logs,
                             pooled={k: reg_esp.get(k) for k in
                                     ("r2c", "r2v", "rmsec", "rmsecv",
-                                     "rmsep", "bias")},
+                                     "rmsep", "bias", "dmody_crit",
+                                     "n_fora_do_dmody")},
                             tabela_especie=reg_esp["tabela_especie"])
                         anexar_regressao_model_card(
                             pasta_logs,
                             pooled={k: reg_esp.get(k) for k in
                                     ("r2c", "r2v", "rmsec", "rmsecv",
-                                     "rmsep", "bias")},
+                                     "rmsep", "bias", "dmody_crit",
+                                     "n_fora_do_dmody")},
                             tabela_especie=reg_esp["tabela_especie"])
 
                         # --- Auto-Benchmark de regressao (opcional) ------
@@ -2657,6 +2693,12 @@ def executar(cfg: Config):
         fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
                             r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta)
 
+        # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
+        # validacao ja usado no RMSEP/bias acima.
+        _dmody_res_pooled = dmody(
+            np.asarray(Yv_hat).flatten() - np.asarray(Yv).flatten(),
+            n_componentes=n_opt_reg, n_amostras=len(Yv))
+
         print(f"  LVs    : {n_opt_reg}")
         print(f"  RMSEC  : {rmsec:.3f}  |  RMSECV: {rmsecv:.3f}  "
               f"|  RMSEP: {rmsep:.3f}")
@@ -2682,15 +2724,21 @@ def executar(cfg: Config):
         else:
             print("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
                   "estimar ruido instrumental)")
+        print(f"  DModY critico (SIMCA): {_dmody_res_pooled['dmody_crit']:.3f}"
+              f"  |  amostras fora: {_dmody_res_pooled['n_fora_do_modelo']}")
         anexar_regressao_resumo(
             pasta_logs,
             pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
-                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v},
+                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
+                    "dmody_crit": _dmody_res_pooled["dmody_crit"],
+                    "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
             fom_pooled=_fom_reg)
         anexar_regressao_model_card(
             pasta_logs,
             pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
-                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v},
+                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
+                    "dmody_crit": _dmody_res_pooled["dmody_crit"],
+                    "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
             fom_pooled=_fom_reg)
     elif conc is None:
         print("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")

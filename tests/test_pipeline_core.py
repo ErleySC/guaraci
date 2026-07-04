@@ -167,6 +167,51 @@ def test_hotelling_limite_positivo_e_monotonico(pq):
     assert pq.hotelling_t2_limite(3, 3, 0.05) == float("inf")
 
 
+# ── DModX / DModY (nomenclatura SIMCA-P/Unscrambler, mesmo Q-resíduo) ────────
+
+def test_dmodx_amostra_tipica_fica_proxima_de_1(pq):
+    """Residuos Q homogeneos (nenhum outlier real) -> DModX normalizado
+    fica perto de 1 para a maioria das amostras (por definicao: e' o
+    residuo relativo a MEDIA do proprio conjunto)."""
+    rng = np.random.default_rng(0)
+    Q = rng.chisquare(df=5, size=200) * 0.01   # residuos "tipicos", sem outlier
+    res = pq.dmodx(Q, n_variaveis=50, n_componentes=3, n_amostras=200)
+    assert 0.5 <= float(np.median(res["dmodx"])) <= 1.5
+    assert res["dmodx_crit"] > 0
+
+
+def test_dmodx_outlier_fica_acima_do_critico(pq):
+    """Uma amostra com Q MUITO maior que as demais (outlier real) deve
+    ficar acima do DModX critico -- sinalizada como fora do modelo."""
+    rng = np.random.default_rng(1)
+    Q = rng.chisquare(df=5, size=100) * 0.01
+    Q[0] = Q.max() * 50   # outlier flagrante
+    res = pq.dmodx(Q, n_variaveis=50, n_componentes=3, n_amostras=100)
+    assert res["dmodx"][0] > res["dmodx_crit"]
+    assert bool(res["fora_do_modelo"][0])
+    assert res["n_fora_do_modelo"] >= 1
+
+
+def test_dmody_residuo_pequeno_fica_dentro_do_critico(pq):
+    """Residuos de predicao pequenos e homogeneos (modelo bem ajustado)
+    ficam dentro do limite critico -- nenhum falso alarme."""
+    rng = np.random.default_rng(2)
+    residuo = rng.normal(scale=0.1, size=60)
+    res = pq.dmody(residuo, n_componentes=2, n_amostras=60)
+    assert res["n_fora_do_modelo"] <= 3   # poucos falsos positivos (alpha=0.05)
+
+
+def test_dmody_outlier_de_predicao_e_sinalizado(pq):
+    """Uma amostra cuja predicao erra MUITO mais que as demais deve ficar
+    acima do DModY critico."""
+    rng = np.random.default_rng(3)
+    residuo = rng.normal(scale=0.1, size=60)
+    residuo[0] = 10.0   # erro de predicao flagrante
+    res = pq.dmody(residuo, n_componentes=2, n_amostras=60)
+    assert res["dmody"][0] > res["dmody_crit"]
+    assert bool(res["fora_do_modelo"][0])
+
+
 def test_q_residuos_zero_quando_reconstrucao_exata(pq):
     """Q-resíduos: se X = T@P exatamente, o resíduo é ~0."""
     rng = np.random.default_rng(2)
@@ -814,6 +859,38 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
 
     card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
     assert "Martens n_significativas" in card_txt
+
+
+@pytest.mark.slow
+def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
+    """DModX (classificacao) aparece SEMPRE no resumo/model card, em
+    qualquer nivel -- e' calculado junto com o T2/Q ja existentes. DModY
+    (regressao) so' aparece quando ha regressao (N3)."""
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "dados"),
+        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", nivel="N3",
+        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = list((tmp_path / "saida").iterdir())
+    assert runs, "executar() nao criou pasta de saida"
+    run_dir = runs[0]
+
+    resumo_txt = (run_dir / "logs" / "resumo_modelo.txt").read_text(encoding="utf-8")
+    assert "DModX critico (SIMCA)" in resumo_txt
+    assert "N amostras fora do DModX" in resumo_txt
+
+    card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
+    assert "DModX critico (SIMCA)" in card_txt
+    assert "DModY critico (SIMCA)" in card_txt   # addendum de regressao, N3
 
 
 # ── DD-SIMCA bloqueado em N1 (nao agrega a identificacao de especie) ────────

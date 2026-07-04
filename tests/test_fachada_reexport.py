@@ -23,7 +23,7 @@ import pytest
 CONTRATO = {
     "chemometric_stats": [
         "vip_scores", "calcular_selectivity_ratio", "teste_incerteza_martens",
-        "hotelling_t2",
+        "dmodx", "dmody", "hotelling_t2",
         "hotelling_t2_limite", "q_residuos", "q_residuos_limite",
         "variancia_explicada", "figuras_merito_regressao",
         "dominio_aplicabilidade", "dominio_aplicabilidade_treino",
