@@ -2790,7 +2790,10 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "ddsimca", "attr": "executar_ddsimca", "tipo": "bool",
      "desc": "Rodar DD-SIMCA (classificacao one-class)", "opcoes": None},
     {"key": "modo_ddsimca", "attr": "ddsimca_treinar_em", "tipo": "choice",
-     "desc": "DD-SIMCA: 'puros' treina so em amostras puras (autenticacao); 'todos' usa todas",
+     "desc": "Modo de treino do DD-SIMCA: 'puros' treina SO com amostras puras "
+             "(o resto conta como contaminante/adulterado -- autenticacao de "
+             "verdade); 'todos' treina com toda a classe (exploratorio, mais "
+             "robusto com poucas amostras puras, porem menos rigoroso)",
      "opcoes": ["puros", "todos"]},
     {"key": "opls_da", "attr": "executar_opls", "tipo": "bool",
      "desc": "Rodar OPLS-DA", "opcoes": None},

@@ -269,7 +269,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "max_lvs":                      {"PT": "Maximo de LVs",           "EN": "Max LVs"},
     "opls_da":                      {"PT": "OPLS-DA",                 "EN": "OPLS-DA"},
     "ddsimca":                      {"PT": "DD-SIMCA",                "EN": "DD-SIMCA"},
-    "modo_ddsimca":                 {"PT": "Modo DD-SIMCA",           "EN": "DD-SIMCA mode"},
+    "modo_ddsimca":                 {"PT": "Modo de treino (DD-SIMCA)", "EN": "Training mode (DD-SIMCA)"},
     "selecao_variaveis_etapa4":     {"PT": "Selecao de variaveis",    "EN": "Variable selection"},
     "selecao_spa":                  {"PT": "SPA (APS)",               "EN": "SPA (successive proj.)"},
     "selecao_ag":                   {"PT": "AG (Genetico)",           "EN": "GA (genetic algorithm)"},
@@ -306,12 +306,18 @@ def _nome_campo(key: str) -> str:
 # Aliases de exibicao para modo_ddsimca
 # ---------------------------------------------------------------------------
 _DDSIMCA_DISPLAY: Dict[str, Dict[str, str]] = {
-    "PT": {"puros": "autenticacao", "todos": "exploratorio"},
-    "EN": {"puros": "authentication", "todos": "exploratory"},
+    "PT": {"puros": "somente puras (autenticacao)",
+           "todos": "todas as amostras (exploratorio)"},
+    "EN": {"puros": "only pure (authentication)",
+           "todos": "all samples (exploratory)"},
 }
 
+# Aceita a forma nova (autoexplicativa), a antiga (compatibilidade) e o
+# valor interno cru -- qualquer uma delas digitada no menu funciona.
 _DDSIMCA_INPUT: Dict[str, str] = {
+    "somente puras (autenticacao)": "puros", "only pure (authentication)": "puros",
     "autenticacao": "puros", "authentication": "puros", "puros": "puros",
+    "todas as amostras (exploratorio)": "todos", "all samples (exploratory)": "todos",
     "exploratorio": "todos", "exploratory": "todos", "todos": "todos",
 }
 
@@ -542,16 +548,25 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "modo_ddsimca": {
         "PT": {
-            "desc": "Modo de treino do DD-SIMCA para autenticacao de amostras.",
-            "impacto": "ANALITICO — 'autenticacao' usa so amostras de referencia pura; 'exploratorio' usa todas.",
-            "exemplos": {"autenticacao": "Validacao de autenticidade (recomendado para publicacao)", "exploratorio": "Analise exploratoria inicial"},
+            "desc": "Define COMO o DD-SIMCA treina: 'somente puras' usa so amostras de referencia "
+                    "pura (o resto da classe conta como contaminante/adulterado -- autenticacao de "
+                    "verdade); 'todas as amostras' treina com a classe inteira (exploratorio, mais "
+                    "robusto quando ha poucas puras, porem menos rigoroso).",
+            "impacto": "ANALITICO — muda o que o modelo aprende como 'normal' para cada classe.",
+            "exemplos": {"somente puras (autenticacao)": "Validacao de autenticidade (recomendado para publicacao)",
+                        "todas as amostras (exploratorio)": "Analise exploratoria inicial, poucas amostras puras"},
         },
         "EN": {
-            "desc": "DD-SIMCA training mode for sample authentication.",
-            "impacto": "ANALYTICAL — 'authentication' uses only pure reference samples; 'exploratory' uses all.",
-            "exemplos": {"authentication": "Authenticity validation (recommended for publication)", "exploratory": "Initial exploratory analysis"},
+            "desc": "Defines HOW DD-SIMCA trains: 'only pure' uses only pure reference samples "
+                    "(the rest of the class counts as contaminant/adulterated -- true authentication); "
+                    "'all samples' trains on the whole class (exploratory, more robust with few pure "
+                    "samples, but less rigorous).",
+            "impacto": "ANALYTICAL — changes what the model learns as 'normal' for each class.",
+            "exemplos": {"only pure (authentication)": "Authenticity validation (recommended for publication)",
+                        "all samples (exploratory)": "Initial exploratory analysis, few pure samples"},
         },
-        "default": "autenticacao", "range": "autenticacao | exploratorio  (EN: authentication | exploratory)",
+        "default": "somente puras (autenticacao)",
+        "range": "somente puras | todas as amostras  (EN: only pure | all samples)",
     },
     "nivel": {
         "PT": {

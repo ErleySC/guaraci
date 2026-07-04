@@ -228,6 +228,17 @@ def _spec_por_key() -> Dict:
     return {s["key"]: s for s in cfg_spec}
 
 
+# Rótulos amigáveis para campos "choice" onde o valor interno gravado no
+# config (ex.: "puros"/"todos") não é autoexplicativo por si só — só troca
+# o que aparece no selectbox, o valor salvo continua o código interno.
+_ROTULOS_OPCAO: Dict[str, Dict[str, str]] = {
+    "modo_ddsimca": {
+        "puros": "Somente puras (autenticação — resto = contaminante)",
+        "todos": "Todas as amostras (exploratório)",
+    },
+}
+
+
 def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     """Renders ONE widget according to field type and returns current value."""
     chave = prefixo + s["key"]
@@ -243,6 +254,10 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     if t in ("choice", "preproc"):
         ops = list(s.get("opcoes") or [])
         idx = ops.index(valor_atual) if valor_atual in ops else 0
+        _rot = _ROTULOS_OPCAO.get(s["key"])
+        if _rot:
+            return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave,
+                                format_func=lambda v: _rot.get(v, v))
         return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave)
     if t == "int":
         _lo = s.get("min"); _hi = s.get("max")

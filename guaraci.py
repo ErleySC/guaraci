@@ -588,10 +588,12 @@ def _nome_campo(key: str) -> str:
 
 def _rotulo_opcao(key: str, op: Any) -> str:
     """Nome amigavel de um valor de opcao (so exibicao; o valor gravado no
-    config continua o codigo interno, ex.: N1/N2/N3)."""
+    config continua o codigo interno, ex.: N1/N2/N3, puros/todos)."""
     if key == "nivel":
         nome = pq._NIVEL_NOME.get(str(op), "")
         return f"{op} — {nome}" if nome else str(op)
+    if key == "modo_ddsimca":
+        return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(op), str(op))
     return str(op)
 
 
