@@ -9,6 +9,9 @@ joblib>=1.3,<2.0
 threadpoolctl>=3.1,<4.0  # limits BLAS threads/worker in parallel permutation tests (avoids oversubscription)
 PyYAML>=6.0,<7.0
 
+# ── CLI interface ────────────────────────────────────────────────────────────
+rich>=13.0   # tema visual do assistente de terminal (guaraci.py/cli_assistente.py)
+
 # ── Web interface ────────────────────────────────────────────────────────────
 # Pinned to 1.x: st.status() requires >= 1.28; avoids Streamlit 2.x DOM changes.
 streamlit>=1.35,<2.0
