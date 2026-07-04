@@ -47,7 +47,7 @@ py-modules = [
     "guaraci_theme", "design_tokens", "chemometric_stats",
     "paleta_cores", "dados_io", "preprocessamento", "classificadores",
     "figuras", "validacao_estatistica", "hardware", "selecao_variaveis",
-    "avaliacao_modelos",
+    "avaliacao_modelos", "dados_imagem", "predicao",
 ]
 
 [tool.pytest.ini_options]

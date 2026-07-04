@@ -179,6 +179,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "t_codigos":    "Codificacao DX",
         "t_hardware":   "Hardware",
         "t_perfis":     "Perfis Prontos",
+        "t_predicao":   "Predicao em Lote",
         "t_idioma":     "Idioma",
         "t_ajuda":      "Ajuda",
         # Descricoes de secao (curtas)
@@ -318,6 +319,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "t_codigos":    "DX Encoding",
         "t_hardware":   "Hardware",
         "t_perfis":     "Ready Profiles",
+        "t_predicao":   "Batch Prediction",
         "t_idioma":     "Language",
         "t_ajuda":      "Help",
         "d_projeto":    "Input and output folders.",
@@ -1009,6 +1011,7 @@ def _print_main_menu() -> None:
     t.add_row(Text.from_markup(_grp(_t("grp_analise"))), Text.from_markup(""))
     t.add_row(*row("7", _t("t_viz"),        "8", _t("t_tecnica")))
     t.add_row(*row("9", _t("t_codigos"),    "H", _t("t_hardware"), style2=S))
+    t.add_row(*row("B", _t("t_predicao"), style1=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
@@ -2098,6 +2101,109 @@ def menu_hardware(cfg: Optional[Config] = None) -> None:
 
 
 # ---------------------------------------------------------------------------
+# PREDICAO EM LOTE — aplica modelo salvo (.joblib) a espectros novos (CSV)
+# ---------------------------------------------------------------------------
+def menu_predicao(cfg: Optional[Config] = None) -> None:
+    """Predicao em lote via terminal: aplica um modelo .joblib salvo a um
+    CSV de espectros novos (colunas=numero de onda, sem coluna de classe).
+
+    Mesma logica cientifica do app web (aba Prediction) via predicao.py --
+    zero duplicacao entre as duas interfaces (mesmo padrao da Fase H).
+    Abre porta pra integracao com scripts/LIMS sem precisar de navegador.
+    """
+    lang = _lang()
+    is_pt = lang == "PT"
+    cls(); _print_header()
+
+    intro = (
+        "Aplica um modelo treinado (.joblib) a espectros novos e reporta "
+        "classe predita + diagnostico T2/Q (dominio de aplicabilidade)."
+        if is_pt else
+        "Applies a trained model (.joblib) to new spectra and reports "
+        "predicted class + T2/Q diagnostics (applicability domain)."
+    )
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print()
+
+    lbl_modelo = "Caminho do modelo (.joblib)" if is_pt else "Model path (.joblib)"
+    lbl_csv    = "Caminho do CSV de espectros novos" if is_pt else "New spectra CSV path"
+    lbl_saida  = "Caminho de saida do CSV de resultados" if is_pt else "Output results CSV path"
+    nao_encontrado = "Arquivo nao encontrado" if is_pt else "File not found"
+
+    cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
+    if not cam_modelo:
+        return
+    if not os.path.isfile(cam_modelo):
+        console.print(f"  [{PR}]{nao_encontrado}: {escape(cam_modelo)}[/{PR}]")
+        _pause(); return
+
+    cam_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
+    if not cam_csv:
+        return
+    if not os.path.isfile(cam_csv):
+        console.print(f"  [{PR}]{nao_encontrado}: {escape(cam_csv)}[/{PR}]")
+        _pause(); return
+
+    padrao_saida = str(Path(cam_csv).with_name(Path(cam_csv).stem + "_predicao.csv"))
+    cam_saida = _ask(
+        f"  [{PA}]{lbl_saida}[/{PA}] [{PM}](Enter = {escape(padrao_saida)})[/{PM}]: "
+    ).strip().strip('"')
+    if not cam_saida:
+        cam_saida = padrao_saida
+
+    try:
+        import joblib
+        import pandas as pd
+        import predicao as _pred
+        status_msg = ("Carregando modelo e aplicando..." if is_pt
+                       else "Loading model and applying...")
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            pkg = joblib.load(cam_modelo)
+            _pred.validar_pacote_modelo(pkg)
+            X_new, wn_new, meta_df = _pred.carregar_csv_predicao(cam_csv)
+            df_res = _pred.predizer_amostras(pkg, X_new, wn_new)
+            if len(meta_df.columns) > 0 and len(meta_df) == len(df_res):
+                df_res = pd.concat([meta_df.reset_index(drop=True), df_res], axis=1)
+            df_res.to_csv(cam_saida, index=False, sep=";", decimal=",")
+    except Exception as e:
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    # Resumo
+    n_tot = len(df_res)
+    n_ac  = int(df_res["aceito"].sum()) if "aceito" in df_res.columns else n_tot
+    t_res = Table(show_header=True, header_style=PM, box=rbox.SIMPLE, padding=(0, 1))
+    t_res.add_column("Classe" if is_pt else "Class", style=PW)
+    t_res.add_column("N")
+    if "classe_pred" in df_res.columns:
+        for cls_pred, n in df_res["classe_pred"].value_counts().items():
+            t_res.add_row(escape(str(cls_pred)), str(n))
+
+    resumo_txt = (
+        f"  [{PG}]✔ {n_tot} amostras processadas[/{PG}]  |  "
+        f"[{PG}]{n_ac}[/{PG}] aceitas (T2/Q) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] fora do dominio de aplicabilidade"
+        if is_pt else
+        f"  [{PG}]✔ {n_tot} samples processed[/{PG}]  |  "
+        f"[{PG}]{n_ac}[/{PG}] accepted (T2/Q) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] out of applicability domain"
+    )
+    console.print()
+    console.print(Panel(
+        Group(Text.from_markup(resumo_txt), Text(""), t_res),
+        title=f"[bold {PG}]{'Resultado' if is_pt else 'Result'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
+                  f"{escape(cam_saida)}")
+    _pause()
+
+
+# ---------------------------------------------------------------------------
 # PERFIS — cartoes compactos (2 por linha)
 # ---------------------------------------------------------------------------
 def menu_perfis(cfg: Config) -> None:
@@ -2953,6 +3059,8 @@ def main() -> None:
         elif escolha == "9": menu_codificacao(cfg)
         elif escolha == "H":
             cls(); _print_header(); menu_hardware(cfg)
+        elif escolha == "B":
+            menu_predicao(cfg)
         elif escolha == "P":
             menu_perfis(cfg)
         elif escolha == "G":

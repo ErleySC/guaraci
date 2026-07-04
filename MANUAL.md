@@ -157,6 +157,20 @@ holdout externo group-aware, Monte Carlo CV (IC95%).
 Forest vs. Gradient Boosting vs. XGBoost, sob a mesma CV group-aware. Curvas
 DET e interpretabilidade via **SHAP** (TreeExplainer).
 
+**Predição em amostras novas (app e CLI):** aplica um modelo já treinado
+(`modelo_plsda.joblib`, salvo automaticamente ao final de cada execução) a
+espectros novos, sem rodar o pipeline inteiro de novo. Entrada: CSV com
+colunas = número de onda (sem coluna de classe). Saída: classe predita,
+confiança (%) e diagnóstico de domínio de aplicabilidade (T²/Q de Hotelling
+frente aos limites do treino — amostra "aceita" só se estiver dentro de
+ambos). Disponível em dois lugares, com a **mesma lógica científica**
+(`predicao.py`, compartilhado, zero duplicação):
+- **App web** — aba 🔮 *Prediction*.
+- **CLI** — menu principal, tecla `[B]` *Predição em Lote*: pede o caminho
+  do modelo, do CSV de espectros novos e do CSV de saída (Enter = mesmo
+  nome do CSV de entrada + `_predicao.csv`), e imprime um resumo por classe.
+  Útil para automação/scripts e integração com LIMS sem precisar do navegador.
+
 **Figuras:** conjunto essencial por padrão (~8 figuras) com opção de
 figuras detalhadas adicionais (`figuras_detalhadas=True`). Formatos
 PNG/PDF/SVG, DPI configurável.
@@ -208,6 +222,7 @@ implementado de fato.
 | `hardware.py` | Detecção de RAM/CPU/disco, auto-ajuste de `Config`, guarda de RAM |
 | `selecao_variaveis.py` | Etapa 4 completa: iPLS, sPLS-DA, SPA/APS, AG + figuras da etapa |
 | `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, curvas DET, SHAP |
+| `predicao.py` | Predição em amostras novas a partir de um `.joblib` salvo — compartilhado entre app (aba Prediction) e CLI (menu `[B]`) |
 
 Interfaces de usuário: `app_quimiometria.py` (web), `guaraci.py` (assistente
 de terminal), `cli_assistente.py` (menu detalhado). Tema visual
