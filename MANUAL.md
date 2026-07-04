@@ -60,6 +60,31 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   gravadas no `resumo_modelo.txt`** (bloco "Analytical Figures of Merit"),
   que a aba **Relatórios** do app captura — antes só saíam no console.
 
+**Curadoria de figuras por tipo de análise:** o pipeline só gera gráficos
+relevantes para o modo de análise escolhido, mesmo que um módulo tenha sido
+ligado manualmente por engano:
+- **DD-SIMCA** (autenticação de pureza) é um conceito de **N2**. Em **N1**
+  (classificação por espécie), o toggle `ddsimca`/`executar_ddsimca` é
+  **ignorado com aviso** — não agrega a um estudo de identificação de
+  espécie. Em N2 ele é sempre ligado automaticamente (não precisa configurar).
+- **Regressão PLS + figuras de mérito** (LOD/LOQ/SEN/SEL) só rodam em
+  **N2/N3**; em N1 são puladas (a variação entre espécies domina o sinal de
+  adulteração, tornando a regressão sem sentido).
+- **OPLS-DA** não é específico de nenhum nível — no Guaraci ele discrimina
+  **espécie** (mesmo alvo do PLS-DA, via LDA quando há >2 classes), então
+  continua disponível como extra em qualquer nível.
+
+**Conjunto padrão de fábrica (~7–9 figuras "core"), qualquer nível:**
+PCA (scores), PLS-DA (scores), outliers T²/Q, matriz de confusão, ROC/AUC,
+curva de seleção de LVs, VIP+Selectivity Ratio — mais bootstrap VIP e
+avaliação em holdout quando os respectivos parâmetros estão ativos (padrão).
+N2 soma a figura de aceitação DD-SIMCA; N3 soma a figura de regressão PLS.
+Tudo o mais — OPLS-DA, Etapa 4 (seleção de variáveis), comparação de
+pipelines de pré-processamento, HCA comparativo, teste de Wold, CV-ANOVA,
+Auto-Benchmark, Monte Carlo CV, SHAP, figuras detalhadas (`figuras_detalhadas`)
+— é **opt-in**: o usuário liga explicitamente quando quiser ir além do
+conjunto padrão.
+
 ---
 
 ## 3. Fontes de dados de entrada

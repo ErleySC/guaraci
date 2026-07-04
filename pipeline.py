@@ -273,7 +273,8 @@ class Config:
     # (reduces spectral noise before clustering). comparar_hca_pipelines
     # generates a dendrogram panel per preprocessing method.
     hca_n_pcs: int = 65
-    comparar_hca_pipelines: bool = True
+    # Extra opt-in (fora do conjunto padrao de ~7 figuras "core"; ligar na mao).
+    comparar_hca_pipelines: bool = False
     n_splits_cv: int = 5
     n_repeats_cv: int = 3
 
@@ -283,9 +284,12 @@ class Config:
     n_permutacoes_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic
     n_bootstrap_vip: int = 30
     n_bootstrap_bca: int = 500
-    comparar_pipelines: bool = True
-    executar_wold: bool = True
-    executar_cv_anova: bool = True
+    # Os 3 abaixo sao "extra" opt-in (fora do conjunto padrao de ~7 figuras
+    # "core"): validacoes/comparacoes adicionais, uteis mas nao essenciais
+    # para o resultado principal. Ligar na mao quando quiser mais rigor.
+    comparar_pipelines: bool = False
+    executar_wold: bool = False
+    executar_cv_anova: bool = False
     # Paralelismo (processos, via joblib/loky) para os testes de permutacao/
     # Wold — cada iteracao e independente (mesma X, so o rotulo e
     # reembaralhado), entao rodar em paralelo NAO altera nenhum resultado
@@ -310,14 +314,18 @@ class Config:
     seed: int = 42
 
     # Sprint 3
-    executar_ddsimca: bool = True
+    # DD-SIMCA e' o "core" automatico de N2 (executar() forca True quando
+    # nivel=="N2", e ignora o toggle quando nivel=="N1" -- ver executar()).
+    # Default False aqui so' afeta N3, onde vira extra opt-in de verdade.
+    executar_ddsimca: bool = False
     ddsimca_n_components: int = 7       # PCA LVs per DD-SIMCA model (3 was insufficient — UCL poorly calibrated)
     ddsimca_ucl_method: str = "empirical"  # 'empirical' | 'theoretical' | 'chi2'
     # v14: 'todos' trains each model with ALL samples of the class
     # (exploratory; works with few pure samples). 'puros' = true one-class N2
     # but requires >=15 pure/class (current data: 3/class).
     ddsimca_treinar_em: str = "puros"   # 'todos' | 'puros'
-    executar_opls: bool = True
+    # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
+    executar_opls: bool = False
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components
     executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
     executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
@@ -331,7 +339,8 @@ class Config:
     excluir_classes: Tuple[str, ...] = ()
 
     # ---- STAGE 4: Variable selection ----
-    executar_etapa4: bool = True
+    # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
+    executar_etapa4: bool = False
     ipls_n_intervalos: int = 20         # iPLS: number of intervals
     vip_threshold_sel: float = 1.0      # selection by VIP >= threshold
     sr_top_frac: float = 0.20           # selection by SR: top fraction
@@ -1792,7 +1801,19 @@ def executar(cfg: Config):
     simca_pred: np.ndarray = np.array([], dtype=str)
     ddsimca_sens_esp: Dict[str, Tuple[float, float, int, int]] = {}
     modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
-    if cfg.executar_ddsimca:
+    # DD-SIMCA e' um diagnostico de AUTENTICACAO DE PUREZA (N2): pergunta se
+    # a amostra pertence a regiao de aceitacao da sua propria especie/classe.
+    # Em N1 (identificacao de especie), essa pergunta nao agrega -- o pipeline
+    # ja classifica a especie via PLS-DA, e um grafico de "aceito/rejeitado"
+    # sem eixo de pureza confunde mais do que esclarece num estudo de N1. Por
+    # isso o toggle e' ignorado (nao bloqueado no Config, so' na execucao) com
+    # aviso explicito, mesmo que o usuario tenha ligado manualmente.
+    if cfg.executar_ddsimca and cfg.nivel == "N1":
+        print("\n[Sprint3] DD-SIMCA — IGNORADO: nivel=N1 (identificacao de "
+              "especie). DD-SIMCA e um diagnostico de autenticacao de pureza "
+              "(conceito de N2); nao agrega a este tipo de analise. Troque "
+              "para nivel=N2 se quiser autenticar pureza por especie.")
+    elif cfg.executar_ddsimca:
         modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
         if conc is not None:
             # Pure samples: conc loaded as None -> NaN after asarray(float), OR 0.0.

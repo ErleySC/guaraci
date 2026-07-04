@@ -63,23 +63,29 @@ n_permutacoes: 200
 #   Streamlit Cloud gratuito).
 n_jobs_permutacao: 1
 
+# Modulos "extra" (fora do conjunto padrao de ~7-9 figuras "core") -- ligue
+# na mao so o que quiser ver a mais. DD-SIMCA e' o unico que o proprio
+# pipeline liga sozinho quando nivel=N2 (autenticacao de pureza); em nivel=N1
+# ele e' ignorado com aviso mesmo que voce ponha true aqui (nao agrega a um
+# estudo de identificacao de especie).
+
 # Rodar teste de Wold (intercepts R2Y/Q2Y)
-teste_wold: true
+teste_wold: false
 
 # Rodar CV-ANOVA (Eriksson)
-teste_cv_anova: true
+teste_cv_anova: false
 
 # Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)
-selecao_variaveis_etapa4: true
+selecao_variaveis_etapa4: false
 
-# Rodar DD-SIMCA (classificacao one-class)
-ddsimca: true
+# Rodar DD-SIMCA (classificacao one-class) -- automatico em nivel=N2
+ddsimca: false
 
 # Rodar OPLS-DA
-opls_da: true
+opls_da: false
 
 # Comparar varios pre-processamentos
-comparar_pre_processamentos: true
+comparar_pre_processamentos: false
 
 # Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA,
 # pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman).

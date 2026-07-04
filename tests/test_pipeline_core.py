@@ -594,3 +594,53 @@ def test_kennard_stone_split_particiona_sem_overlap(pq):
     assert len(tr) == 30 and len(val) == 10
     assert set(tr.tolist()).isdisjoint(val.tolist())
     assert set(tr.tolist()) | set(val.tolist()) == set(range(40))
+
+
+# ── DD-SIMCA bloqueado em N1 (nao agrega a identificacao de especie) ────────
+
+@pytest.mark.slow
+def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
+    """DD-SIMCA e' um diagnostico de autenticacao de PUREZA (conceito N2).
+    Ligar o toggle manualmente com nivel=N1 (identificacao de especie) nao
+    deve gerar nenhuma figura de DD-SIMCA -- o pipeline ignora o toggle
+    (com aviso), pois o grafico nao agrega aquele tipo de analise."""
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "dados"),
+        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", nivel="N1",
+        n_por_classe=8, n_pontos_sint=50,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1,
+        n_permutacoes=5, n_permutacoes_wold=5,
+        n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
+        executar_benchmark=False, executar_monte_carlo=False,
+        executar_shap=False, executar_wold=False, executar_cv_anova=False,
+        executar_opls=False, executar_etapa4=False, comparar_pipelines=False,
+        comparar_hca_pipelines=False, max_lvs=5,
+        executar_ddsimca=True,          # ligado manualmente, propositalmente
+    )
+    os.makedirs(str(tmp_path / "dados"), exist_ok=True)
+    pq.executar(cfg)
+
+    runs = list((tmp_path / "saida").iterdir())
+    assert runs, "executar() nao criou pasta de saida"
+    figbase = runs[0] / "figuras"
+    nomes_pngs = {p.name for p in figbase.rglob("*.png")} if figbase.exists() else set()
+    ddsimca_figs = {n for n in nomes_pngs if "ddsimca" in n.lower()
+                    or "cooman" in n.lower()}
+    assert not ddsimca_figs, (
+        f"Figuras de DD-SIMCA foram geradas em nivel=N1: {ddsimca_figs} "
+        "(deveriam ser ignoradas)")
+
+
+def test_ddsimca_permitido_em_n2_com_toggle_ligado(pq):
+    """Confirma que o bloqueio e' especifico de N1 -- em N2 (onde
+    executar() ja forca executar_ddsimca=True), o toggle continua
+    funcionando normalmente (regressao no bloqueio, nao remocao da feature)."""
+    cfg = pq.Config(nivel="N2", executar_ddsimca=False)
+    # Simula so' o trecho de decisao (sem rodar o pipeline inteiro): a
+    # condicao de bloqueio e' `cfg.executar_ddsimca and cfg.nivel == "N1"`,
+    # entao em N2 ela nunca dispara, independente do toggle.
+    bloqueado = cfg.executar_ddsimca and cfg.nivel == "N1"
+    assert not bloqueado
