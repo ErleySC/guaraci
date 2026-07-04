@@ -214,6 +214,7 @@ RISK_CLASS: Dict[str, str] = {
     "benchmark": "AVANCADO", "monte_carlo": "AVANCADO",
     "shap_benchmark": "AVANCADO", "n_monte_carlo": "AVANCADO",
     "shap_max_amostras": "AVANCADO", "monte_carlo_incluir_todos": "AVANCADO",
+    "benchmark_regressao": "AVANCADO",
 }
 
 # Cores agora derivadas da paleta compartilhada (guaraci_theme): mesmos tons
@@ -278,6 +279,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "teste_wold":                   {"PT": "Teste de Wold",           "EN": "Wold test"},
     "teste_cv_anova":               {"PT": "CV-ANOVA",                "EN": "CV-ANOVA"},
     "benchmark":                    {"PT": "Benchmark",               "EN": "Benchmark"},
+    "benchmark_regressao":          {"PT": "Benchmark de regressao",  "EN": "Regression benchmark"},
     "monte_carlo":                  {"PT": "Monte Carlo CV",          "EN": "Monte Carlo CV"},
     "n_monte_carlo":                {"PT": "N. repeticoes MC",        "EN": "N MC repetitions"},
     "monte_carlo_incluir_todos":    {"PT": "MC incluir todos",        "EN": "MC include all"},
@@ -608,6 +610,21 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "desc": "Compares PLS-DA against SVM RBF, Random Forest and XGBoost with same group-aware CV.",
             "impacto": "ADVANCED — adds ~30-60 minutes of processing time.",
             "exemplos": {"false": "TCC/production (recommended)", "true": "Article with classifier comparison"},
+        },
+        "default": False, "range": "true | false",
+    },
+    "benchmark_regressao": {
+        "PT": {
+            "desc": "Compara PLS-R (ja calibrado por especie) contra Ridge, Lasso, Elastic Net, "
+                    "SVR e Random Forest -- mesmo split cal/val e pre-processamento, por especie.",
+            "impacto": "AVANCADO — so' roda em N2/N3 com regressao multi-especie ja calculada.",
+            "exemplos": {"false": "TCC/producao (recomendado)", "true": "Artigo com comparacao de regressores"},
+        },
+        "EN": {
+            "desc": "Compares PLS-R (already calibrated per species) against Ridge, Lasso, Elastic Net, "
+                    "SVR and Random Forest -- same cal/val split and preprocessing, per species.",
+            "impacto": "ADVANCED — only runs on N2/N3 with multi-species regression already computed.",
+            "exemplos": {"false": "TCC/production (recommended)", "true": "Article with regressor comparison"},
         },
         "default": False, "range": "true | false",
     },
@@ -1417,7 +1434,7 @@ MENU_FIELDS: Dict[str, list] = {
                "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
                   "teste_wold", "teste_cv_anova", "n_jobs_permutacao"],
-    "avancado": ["benchmark", "monte_carlo", "n_monte_carlo",
+    "avancado": ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
                  "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"],
     "visualizacao": ["figuras_detalhadas", "figuras_mostrar_marcadores",
                      "figuras_mostrar_elipses",

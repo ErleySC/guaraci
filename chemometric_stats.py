@@ -115,6 +115,15 @@ def variancia_explicada(X: np.ndarray, T: np.ndarray) -> np.ndarray:
     return np.var(T, axis=0) / var_X_total * 100
 
 
+def rmse_flat(a, b) -> float:
+    """RMSE entre dois arrays quaisquer (achatados antes de comparar) --
+    usada em toda regressao PLS do pipeline (RMSEC/RMSECV/RMSEP) e no
+    Auto-Benchmark de regressao (avaliacao_modelos.py), mesma metrica p/
+    comparacao apples-to-apples entre PLS-R e os modelos alternativos."""
+    return float(np.sqrt(np.mean((np.asarray(a).flatten()
+                                  - np.asarray(b).flatten()) ** 2)))
+
+
 # =========================================================================
 #  Figuras de merito analiticas (calibracao multivariada, UM analito)
 # =========================================================================

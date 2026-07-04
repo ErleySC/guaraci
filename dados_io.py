@@ -185,6 +185,38 @@ def kennard_stone_split(X: np.ndarray, frac_treino: float = 0.7
     return idx_treino, idx_val
 
 
+def kennard_stone_split_group_aware(
+        X: np.ndarray, mae_subset: Optional[np.ndarray], frac_cal: float
+        ) -> Tuple[np.ndarray, np.ndarray]:
+    """Split calibracao/validacao por Kennard-Stone (1969), group-aware.
+
+    Kennard-Stone escolhe as amostras que cobrem o espaco espectral de
+    forma maximamente representativa (bordas + cobertura uniforme), em vez
+    de aleatoria -- o padrao classico p/ dividir cal/val em calibracao
+    multivariada. Com mae_id disponivel (>=4 grupos), colapsa cada grupo de
+    replicas fisicas (T1/T2/T3) num espectro MEDIO antes de rodar KS (no
+    nivel de GRUPO, nao de amostra individual) e depois expande de volta
+    para os indices de amostra -- preserva o invariante do projeto de nunca
+    separar replicas fisicas entre calibracao e validacao. Sem mae_id
+    suficiente, roda KS diretamente por amostra.
+
+    Usada por `pipeline.pls_regressao_por_especie`/bloco de regressao
+    pooled E por `avaliacao_modelos.benchmark_regressao_por_especie` (mesmo
+    split reproduzido deterministicamente nos dois lugares -- comparacao
+    apples-to-apples entre PLS-R e os modelos de benchmark).
+    """
+    if mae_subset is not None and len(np.unique(mae_subset)) >= 4:
+        grupos_unicos = np.unique(mae_subset)
+        X_grupo = np.array([X[mae_subset == g].mean(axis=0)
+                             for g in grupos_unicos])
+        idx_treino_g, _idx_val_g = kennard_stone_split(
+            X_grupo, frac_treino=frac_cal)
+        grupos_treino = set(grupos_unicos[idx_treino_g].tolist())
+        mask_treino = np.isin(mae_subset, list(grupos_treino))
+        return np.where(mask_treino)[0], np.where(~mask_treino)[0]
+    return kennard_stone_split(X, frac_treino=frac_cal)
+
+
 def gerar_dados_sinteticos(cfg: "Config"):
     """Gera espectros sinteticos de teste, incluindo REPLICAS FISICAS
     (n_replicas_sint por ponto amostral, como T1/T2/T3 do mesmo ponto real) e

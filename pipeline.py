@@ -337,6 +337,11 @@ class Config:
     executar_opls: bool = False
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components
     executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
+    # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/SVR/RF vs
+    # PLS-R, por especie, mesmo split cal/val e pre-processamento (ver
+    # avaliacao_modelos.benchmark_regressao_por_especie). So' roda quando
+    # ha regressao multi-especie (mesma condicao de pls_regressao_por_especie).
+    executar_benchmark_regressao: bool = False
     executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
     n_monte_carlo: int = 100               # number of MC repetitions
     monte_carlo_test_size: float = 0.25    # test fraction per MC repetition
@@ -497,6 +502,7 @@ from chemometric_stats import (   # noqa: E402
     dominio_aplicabilidade,
     dominio_aplicabilidade_treino,
     dominio_aplicabilidade_amostras_novas,
+    rmse_flat,
 )
 
 
@@ -1026,6 +1032,7 @@ from dados_io import (   # noqa: E402
     gerar_dados_sinteticos,
     kennard_stone,
     kennard_stone_split,
+    kennard_stone_split_group_aware,
     carregar_csv,
     _flush_asdf,
     _decodificar_linha_asdf,
@@ -1083,6 +1090,8 @@ from avaliacao_modelos import (   # noqa: E402
     monte_carlo_cv,
     fig_det_curvas,
     fig_shap_benchmark,
+    benchmark_regressao_por_especie,
+    fig_benchmark_regressores,
 )
 
 
@@ -1139,36 +1148,6 @@ def limpar_resultados_antigos(pasta_base: str,
     return resultado
 
 
-def rmse_flat(a, b):
-    return float(np.sqrt(np.mean((np.asarray(a).flatten()
-                                  - np.asarray(b).flatten()) ** 2)))
-
-
-def _kennard_stone_split_group_aware(
-        X: np.ndarray, mae_subset: Optional[np.ndarray], frac_cal: float
-        ) -> Tuple[np.ndarray, np.ndarray]:
-    """Split calibracao/validacao por Kennard-Stone (1969), group-aware.
-
-    Kennard-Stone escolhe as amostras que cobrem o espaco espectral de
-    forma maximamente representativa (bordas + cobertura uniforme), em vez
-    de aleatoria -- o padrao classico p/ dividir cal/val em calibracao
-    multivariada. Com mae_id disponivel (>=4 grupos), colapsa cada grupo de
-    replicas fisicas (T1/T2/T3) num espectro MEDIO antes de rodar KS (no
-    nivel de GRUPO, nao de amostra individual) e depois expande de volta
-    para os indices de amostra -- preserva o invariante do projeto de nunca
-    separar replicas fisicas entre calibracao e validacao. Sem mae_id
-    suficiente, roda KS diretamente por amostra.
-    """
-    if mae_subset is not None and len(np.unique(mae_subset)) >= 4:
-        grupos_unicos = np.unique(mae_subset)
-        X_grupo = np.array([X[mae_subset == g].mean(axis=0)
-                             for g in grupos_unicos])
-        idx_treino_g, _idx_val_g = kennard_stone_split(
-            X_grupo, frac_treino=frac_cal)
-        grupos_treino = set(grupos_unicos[idx_treino_g].tolist())
-        mask_treino = np.isin(mae_subset, list(grupos_treino))
-        return np.where(mask_treino)[0], np.where(~mask_treino)[0]
-    return kennard_stone_split(X, frac_treino=frac_cal)
 
 
 def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
@@ -1236,7 +1215,7 @@ def pls_regressao_por_especie(
         # group-aware cal/val split (replicates never split)
         try:
             if cfg.divisao_cal_val == "kennard_stone":
-                ic, iv = _kennard_stone_split_group_aware(
+                ic, iv = kennard_stone_split_group_aware(
                     X_c, mae_c, cfg.frac_cal)
             elif mae_c is not None and len(np.unique(mae_c)) >= 4:
                 gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
@@ -2308,6 +2287,25 @@ def executar(cfg: Config):
                                     ("r2c", "r2v", "rmsec", "rmsecv",
                                      "rmsep", "bias")},
                             tabela_especie=reg_esp["tabela_especie"])
+
+                        # --- Auto-Benchmark de regressao (opcional) ------
+                        if cfg.executar_benchmark_regressao:
+                            print("\n[7b/7] Auto-Benchmark de regressao "
+                                  "(Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R)...")
+                            if _verificar_ram(0.6, "Auto-Benchmark de regressao"):
+                                try:
+                                    bench_reg_df = benchmark_regressao_por_especie(
+                                        X_raw, conc_arr, rotulos, mae_id,
+                                        classes_unicas, cfg, pasta, reg_esp)
+                                    if bench_reg_df is not None:
+                                        print(bench_reg_df.to_string(index=False))
+                                    else:
+                                        print("  [AVISO] Nenhuma especie com "
+                                              "amostras suficientes para o "
+                                              "benchmark de regressao.")
+                                except Exception as _e_bench_reg:
+                                    print(f"  [AVISO] Benchmark de regressao "
+                                          f"falhou: {_e_bench_reg}")
                     else:
                         print("  [AVISO] Nenhuma especie com amostras "
                               "suficientes para regressao (>= 6 adulteradas "
@@ -2327,7 +2325,7 @@ def executar(cfg: Config):
         # Calibration/validation split — group-aware if mae_id available
         # (T1/T2/T3 replicates of the same sample point never split between cal/val).
         if cfg.divisao_cal_val == "kennard_stone":
-            ic, iv = _kennard_stone_split_group_aware(
+            ic, iv = kennard_stone_split_group_aware(
                 X_raw, mae_id, cfg.frac_cal)
             print(f"  Split cal/val: Kennard-Stone "
                   f"({len(ic)} cal / {len(iv)} val)")
@@ -2527,6 +2525,9 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Comparar varios pre-processamentos", "opcoes": None},
     {"key": "benchmark", "attr": "executar_benchmark", "tipo": "bool",
      "desc": "Auto-Benchmark: SVM RBF / RF / XGBoost vs PLS-DA (mesma CV group-aware)", "opcoes": None},
+    {"key": "benchmark_regressao", "attr": "executar_benchmark_regressao", "tipo": "bool",
+     "desc": "Auto-Benchmark de regressao: Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R "
+             "(N2/N3, por especie, mesmo split cal/val)", "opcoes": None},
     {"key": "monte_carlo", "attr": "executar_monte_carlo", "tipo": "bool",
      "desc": "Monte Carlo CV: IC95% por percentil (N repeticoes estratificadas por grupo)", "opcoes": None},
     {"key": "n_monte_carlo", "attr": "n_monte_carlo", "tipo": "int",

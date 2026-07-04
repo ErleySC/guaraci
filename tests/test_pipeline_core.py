@@ -637,14 +637,14 @@ def test_kennard_stone_split_particiona_sem_overlap(pq):
 # ── Kennard-Stone group-aware (usado no split cal/val da regressao) ─────────
 
 def test_ks_group_aware_nunca_separa_replicas(pq):
-    """Com mae_id (>=4 grupos), _kennard_stone_split_group_aware nunca deixa
+    """Com mae_id (>=4 grupos), kennard_stone_split_group_aware nunca deixa
     replicas do MESMO grupo em lados diferentes (o invariante central do
     projeto: T1/T2/T3 sempre juntas entre cal/val)."""
     import numpy as np
     rng = np.random.default_rng(5)
     grupos = np.repeat([f"G{i:02d}" for i in range(10)], 3)   # 10 grupos x 3 replicas
     X = rng.normal(size=(30, 5))
-    ic, iv = pq._kennard_stone_split_group_aware(X, grupos, frac_cal=0.7)
+    ic, iv = pq.kennard_stone_split_group_aware(X, grupos, frac_cal=0.7)
     grupos_ic = set(grupos[ic].tolist())
     grupos_iv = set(grupos[iv].tolist())
     assert grupos_ic.isdisjoint(grupos_iv), (
@@ -656,7 +656,7 @@ def test_ks_group_aware_sem_mae_id_roda_por_amostra(pq):
     """Sem mae_id, cai no KS direto por amostra (kennard_stone_split)."""
     import numpy as np
     X = np.random.default_rng(6).normal(size=(20, 4))
-    ic, iv = pq._kennard_stone_split_group_aware(X, None, frac_cal=0.7)
+    ic, iv = pq.kennard_stone_split_group_aware(X, None, frac_cal=0.7)
     assert len(ic) == 14 and len(iv) == 6
     assert set(ic.tolist()).isdisjoint(iv.tolist())
 
@@ -667,7 +667,7 @@ def test_ks_group_aware_poucos_grupos_cai_no_split_por_amostra(pq):
     import numpy as np
     grupos = np.array(["G1", "G1", "G2", "G2", "G3"])
     X = np.random.default_rng(7).normal(size=(5, 3))
-    ic, iv = pq._kennard_stone_split_group_aware(X, grupos, frac_cal=0.6)
+    ic, iv = pq.kennard_stone_split_group_aware(X, grupos, frac_cal=0.6)
     assert set(ic.tolist()) | set(iv.tolist()) == set(range(5))
 
 

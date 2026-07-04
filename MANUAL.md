@@ -166,6 +166,19 @@ holdout externo group-aware, Monte Carlo CV (IC95%).
 Forest vs. Gradient Boosting vs. XGBoost, sob a mesma CV group-aware. Curvas
 DET e interpretabilidade via **SHAP** (TreeExplainer).
 
+**Auto-Benchmark de regressão (N2/N3):** PLS-R (o modelo já calibrado por
+`pls_regressao_por_espécie`, reaproveitado sem refit) vs. Ridge, Lasso,
+Elastic Net, SVR (RBF) e Random Forest Regressor — um modelo **por espécie**
+(mesma arquitetura da quantificação, calibração separada evita que a
+variação inter-espécies confunda o sinal de adulteração), com o **mesmo
+split calibração/validação** (determinístico, mesmo `seed`/`divisao_cal_val`
+do PLS-R) e o mesmo pré-processamento, para uma comparação honesta
+apples-to-apples. Opt-in via `benchmark_regressao` (app e CLI, categoria
+Avançado — mesmo padrão do Auto-Benchmark de classificação): gera
+`benchmark_regressao.csv` (RMSEP/R² pooled + por espécie) e
+`fig_benchmark_regressores.png` (boxplot de RMSEP por espécie, menor =
+melhor).
+
 **Predição em amostras novas (app e CLI):** aplica um modelo já treinado
 (`modelo_plsda.joblib`, salvo automaticamente ao final de cada execução) a
 espectros novos, sem rodar o pipeline inteiro de novo. Entrada: CSV com

@@ -1761,6 +1761,7 @@ with tab_modelo:
     _MODELO_KEYS_EXTRAS   = ["selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
                               "ddsimca", "modo_ddsimca", "opls_da",
                               "comparar_pre_processamentos", "benchmark",
+                              "benchmark_regressao",
                               "monte_carlo", "n_monte_carlo",
                               "monte_carlo_incluir_todos",
                               "shap_benchmark", "shap_max_amostras"]

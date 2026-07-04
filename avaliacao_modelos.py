@@ -26,6 +26,8 @@ from sklearn.metrics import balanced_accuracy_score
 from preprocessamento import construir_preprocessador
 from figuras import salvar, cor
 from hardware import _verificar_ram
+from dados_io import kennard_stone_split_group_aware
+from chemometric_stats import rmse_flat
 
 if TYPE_CHECKING:
     from pipeline import Config
@@ -727,3 +729,215 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 print("salvo.")
         except Exception as _e:
             print(f"FALHA ({_e})")
+
+
+# =========================================================================
+#  Auto-Benchmark de REGRESSAO (N2/N3) -- PLS-R vs Ridge/Lasso/EN/SVR/RF
+# =========================================================================
+
+def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
+                               n_especies: int,
+                               cfg: "Config", pasta: str) -> None:
+    """Boxplot de RMSEP por especie para cada modelo de regressao -- ao
+    contrario do benchmark de classificacao (bal.acc, maior=melhor), aqui
+    MENOR e melhor."""
+    nomes = list(rmsep_por_modelo.keys())
+    dados = [rmsep_por_modelo[n] for n in nomes]
+    cores = [cor(i) for i in range(len(nomes))]
+
+    fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
+                           constrained_layout=True)
+
+    bp = ax.boxplot(dados, patch_artist=True, notch=False, widths=0.45,
+                    medianprops=dict(color="black", lw=2.0),
+                    whiskerprops=dict(lw=1.2, color="0.3"),
+                    capprops=dict(lw=1.2, color="0.3"),
+                    flierprops=dict(marker="x", ms=5, color="0.5", lw=0.8))
+    for patch, c in zip(bp["boxes"], cores):
+        patch.set_facecolor(c); patch.set_alpha(0.70)
+
+    rng = np.random.default_rng(42)
+    for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
+        if len(dado) == 0:
+            continue
+        jitter = rng.uniform(-0.14, 0.14, len(dado))
+        ax.scatter(np.full(len(dado), i) + jitter, dado,
+                   color=cores[i - 1], s=38, alpha=0.85, zorder=5,
+                   edgecolors="white", linewidths=0.5)
+
+    ax.set_xticks(range(1, len(nomes) + 1))
+    ax.set_xticklabels(nomes, fontsize=9)
+    ax.set_ylabel("RMSEP por especie (menor = melhor)")
+    ax.set_title(
+        f"Auto-Benchmark de regressao -- {n_especies} especies\n"
+        f"Pre-processamento: {cfg.preprocessamento_padrao}",
+        fontsize=8.5, loc="left")
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+
+    salvar(fig, "fig_benchmark_regressores", pasta, cfg)
+    plt.close(fig)
+
+
+def benchmark_regressao_por_especie(
+        X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
+        mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
+        cfg: "Config", pasta: str,
+        reg_esp_pls: Dict[str, Any],
+        min_amostras_adult: int = 6) -> Optional[pd.DataFrame]:
+    """
+    Compara PLS-R (baseline, ja calibrado por `pls_regressao_por_especie` --
+    reaproveitado SEM refit) vs Ridge / Lasso / Elastic Net / SVR (RBF) /
+    Random Forest Regressor, calibrando UM MODELO POR ESPECIE (mesma
+    arquitetura da quantificacao do pipeline: calibracao separada evita que
+    a variacao inter-especies confunda o sinal de adulteracao).
+
+    Cada modelo usa O MESMO split cal/val por especie (reproduzido
+    deterministicamente com o mesmo cfg.seed/cfg.divisao_cal_val do PLS-R
+    ja calculado) e o mesmo pre-processamento dentro de um sklearn Pipeline
+    (sem vazamento entre cal/val) -- comparacao honesta apples-to-apples.
+
+    Hiperparametros por heuristica de literatura (sem tuning por CV interna,
+    mesmo padrao de benchmark_classificadores/PLS-DA -- ver nota
+    metodologica em pipeline.salvar_resumo_modelo). Ref: Hastie, Tibshirani
+    & Friedman (2009), The Elements of Statistical Learning, 2nd ed.
+
+    Retorna None se nenhuma especie tiver dados suficientes (mesmo criterio
+    de `pls_regressao_por_especie`: min_amostras_adult adulteradas e
+    variancia de teor > 0).
+    """
+    from sklearn.linear_model import Ridge, Lasso, ElasticNet
+    from sklearn.svm import SVR
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.model_selection import GroupShuffleSplit
+    from sklearn.base import clone
+    from sklearn.pipeline import Pipeline as _SKPipeline
+    from sklearn.metrics import r2_score
+
+    modelos: List[Tuple[str, Any]] = [
+        ("Ridge",
+         Ridge(alpha=1.0, random_state=cfg.seed)),
+        ("Lasso",
+         Lasso(alpha=0.1, random_state=cfg.seed, max_iter=5000)),
+        ("Elastic Net",
+         ElasticNet(alpha=0.1, l1_ratio=0.5, random_state=cfg.seed,
+                    max_iter=5000)),
+        ("SVR (RBF)",
+         SVR(kernel="rbf", C=10.0, epsilon=0.1, gamma="scale")),
+        ("Random Forest",
+         RandomForestRegressor(n_estimators=300, max_features="sqrt",
+                               n_jobs=1, random_state=cfg.seed)),
+    ]
+
+    conc = np.asarray(conc, dtype=float)
+    yv_pool: Dict[str, List[np.ndarray]] = {nome: [] for nome, _ in modelos}
+    yvh_pool: Dict[str, List[np.ndarray]] = {nome: [] for nome, _ in modelos}
+    rmsep_por_especie: Dict[str, List[float]] = {nome: [] for nome, _ in modelos}
+    n_especies_ok = 0
+
+    for cls in classes_unicas:
+        idx = np.where(rotulos == cls)[0]
+        if idx.size == 0:
+            continue
+        conc_c = conc[idx].copy()
+        conc_c = np.where(np.isnan(conc_c), 0.0, conc_c)
+        n_adult_c = int(np.sum(conc_c > 0))
+        if n_adult_c < min_amostras_adult or float(conc_c.std()) < 1e-8:
+            continue
+
+        X_c = X_raw[idx]
+        mae_c = mae_id[idx] if mae_id is not None else None
+        Y_c = conc_c.reshape(-1, 1)
+
+        # MESMO split (deterministico) usado em pls_regressao_por_especie --
+        # mesma logica de decisao, reproduzida aqui p/ evitar acoplamento
+        # circular com pipeline.py (que importaria de volta este modulo).
+        try:
+            if cfg.divisao_cal_val == "kennard_stone":
+                ic, iv = kennard_stone_split_group_aware(
+                    X_c, mae_c, cfg.frac_cal)
+            elif mae_c is not None and len(np.unique(mae_c)) >= 4:
+                gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
+                                        random_state=cfg.seed)
+                ic, iv = next(gss.split(X_c, Y_c, groups=mae_c))
+            else:
+                rng = np.random.default_rng(cfg.seed)
+                perm = rng.permutation(len(conc_c))
+                ncal = max(2, int(cfg.frac_cal * len(conc_c)))
+                ic, iv = perm[:ncal], perm[ncal:]
+        except Exception:
+            continue
+        if len(ic) < 4 or len(iv) < 2:
+            continue
+
+        Xc, Yc = X_c[ic], Y_c[ic].ravel()
+        Xv, Yv = X_c[iv], Y_c[iv].ravel()
+        n_especies_ok += 1
+
+        for nome, modelo in modelos:
+            try:
+                pipe = _SKPipeline([
+                    ("preproc", clone(construir_preprocessador(cfg))),
+                    ("reg", clone(modelo)),
+                ])
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    pipe.fit(Xc, Yc)
+                    Yv_hat = np.asarray(pipe.predict(Xv),
+                                        dtype=float).flatten()
+                rmsep_por_especie[nome].append(rmse_flat(Yv, Yv_hat))
+                yv_pool[nome].append(Yv)
+                yvh_pool[nome].append(Yv_hat)
+            except Exception as _e:
+                print(f"  [AVISO] {nome} falhou em especie '{cls}': {_e}")
+
+    if n_especies_ok == 0:
+        return None
+
+    linhas: List[Dict[str, Any]] = []
+
+    # PLS-R baseline: reaproveita reg_esp_pls (ja calculado, SEM refit)
+    rmsep_pls_por_especie = [
+        t["rmsep"] for t in reg_esp_pls.get("tabela_especie", [])
+        if np.isfinite(t.get("rmsep", np.nan))
+    ]
+    linhas.append({
+        "Modelo":         "PLS-R",
+        "RMSEP (pooled)": round(float(reg_esp_pls["rmsep"]), 3),
+        "R2val (pooled)": round(float(reg_esp_pls["r2v"]), 4),
+        "N especies":     int(reg_esp_pls["n_especies"]),
+        "RMSEP std (entre especies)": (
+            round(float(np.std(rmsep_pls_por_especie)), 3)
+            if rmsep_pls_por_especie else float("nan")),
+    })
+    rmsep_boxplot: Dict[str, np.ndarray] = {}
+    if rmsep_pls_por_especie:
+        rmsep_boxplot["PLS-R"] = np.array(rmsep_pls_por_especie)
+
+    for nome, _ in modelos:
+        if not yv_pool[nome]:
+            continue
+        Yv_p  = np.concatenate(yv_pool[nome])
+        Yvh_p = np.concatenate(yvh_pool[nome])
+        rmsep_pooled = rmse_flat(Yv_p, Yvh_p)
+        r2_pooled = (float(r2_score(Yv_p, Yvh_p))
+                    if len(np.unique(Yv_p)) > 1 else float("nan"))
+        linhas.append({
+            "Modelo":         nome,
+            "RMSEP (pooled)": round(rmsep_pooled, 3),
+            "R2val (pooled)": round(r2_pooled, 4),
+            "N especies":     len(rmsep_por_especie[nome]),
+            "RMSEP std (entre especies)": round(
+                float(np.std(rmsep_por_especie[nome])), 3),
+        })
+        rmsep_boxplot[nome] = np.array(rmsep_por_especie[nome])
+
+    df_bench = pd.DataFrame(linhas)
+
+    cam_csv = os.path.join(pasta, "dados", "benchmark_regressao.csv")
+    df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
+    print(f"  -> {cam_csv}")
+
+    if rmsep_boxplot:
+        fig_benchmark_regressores(rmsep_boxplot, n_especies_ok, cfg, pasta)
+
+    return df_bench

@@ -26,7 +26,7 @@ CONTRATO = {
         "hotelling_t2_limite", "q_residuos", "q_residuos_limite",
         "variancia_explicada", "figuras_merito_regressao",
         "dominio_aplicabilidade", "dominio_aplicabilidade_treino",
-        "dominio_aplicabilidade_amostras_novas",
+        "dominio_aplicabilidade_amostras_novas", "rmse_flat",
     ],
     "paleta_cores": [
         "PALETA", "MARCADORES", "cor", "mapear_cores_classes",
@@ -36,7 +36,7 @@ CONTRATO = {
         "parse_title", "extrair_title_do_dx", "carregar_dados", "carregar_dx",
         "carregar_csv", "gerar_dados_sinteticos", "parse_dx", "parse_spectrum",
         "CODIGO_ESPECIE", "ADULTERANTE_NOME",
-        "kennard_stone", "kennard_stone_split",
+        "kennard_stone", "kennard_stone_split", "kennard_stone_split_group_aware",
     ],
     "dados_imagem": [
         "carregar_imagens", "carregar_imagem_arquivo", "recortar_relativo",
@@ -67,6 +67,7 @@ CONTRATO = {
     "avaliacao_modelos": [
         "PLSDAClassifier", "benchmark_classificadores", "monte_carlo_cv",
         "fig_det_curvas", "fig_shap_benchmark",
+        "benchmark_regressao_por_especie", "fig_benchmark_regressores",
     ],
 }
 
