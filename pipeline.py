@@ -476,6 +476,7 @@ from chemometric_stats import (   # noqa: E402
     q_residuos_limite,
     variancia_explicada,
     figuras_merito_regressao,
+    dominio_aplicabilidade,
 )
 
 
@@ -591,6 +592,79 @@ def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
                     line += w + " "
             if line.strip():
                 f.write(line + "\n")
+
+
+def anexar_regressao_resumo(
+        pasta: str,
+        pooled: Optional[Dict[str, object]] = None,
+        tabela_especie: Optional[List[Dict[str, object]]] = None,
+        fom_pooled: Optional[Dict[str, float]] = None) -> None:
+    """Anexa o bloco de regressao PLS (com figuras de merito analiticas de
+    Valderrama, Braga & Poppi 2009) ao resumo_modelo.txt.
+
+    Motivacao: LOD/LOQ/SEN/SEL/gamma so eram impressos no console/log; agora
+    tambem entram no resumo persistido (que a aba Relatorios do app captura).
+    E append-only DE PROPOSITO: a regressao roda depois de o resumo ser gravado
+    a 1a vez em executar(), e reordenar esse orquestrador seria arriscado.
+    """
+    caminho = os.path.join(pasta, "resumo_modelo.txt")
+
+    def _fmt(v: object, nd: int = 3, suf: str = "") -> str:
+        try:
+            fv = float(v)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return "n/a"
+        return f"{fv:.{nd}f}{suf}" if np.isfinite(fv) else "n/a"
+
+    linhas: List[str] = [
+        "", "=" * 60,
+        "  PLS Regression — Analytical Figures of Merit",
+        "  (Valderrama, Braga & Poppi, 2009, Quim. Nova 32(5):1278-1287)",
+        "=" * 60,
+    ]
+    if pooled is not None:
+        linhas.append("")
+        linhas.append("  Pooled metrics:")
+        linhas.append(f"    R2cal .....: {_fmt(pooled.get('r2c'), 4)}")
+        linhas.append(f"    R2val .....: {_fmt(pooled.get('r2v'), 4)}")
+        linhas.append(f"    RMSEC .....: {_fmt(pooled.get('rmsec'))}")
+        linhas.append(f"    RMSECV ....: {_fmt(pooled.get('rmsecv'))}")
+        linhas.append(f"    RMSEP .....: {_fmt(pooled.get('rmsep'))}")
+        if pooled.get('bias') is not None:
+            linhas.append(f"    Bias ......: {_fmt(pooled.get('bias'), 4)}")
+    if tabela_especie:
+        linhas.append("")
+        linhas.append("  Per-species figures of merit:")
+        hdr = (f"    {'Species':<18s} {'LVs':>3s} {'RMSEP':>7s} {'R2val':>6s} "
+               f"{'LOD':>7s} {'LOQ':>7s} {'SEN':>7s} {'SEL':>6s}")
+        linhas.append(hdr)
+        linhas.append("    " + "-" * (len(hdr) - 4))
+        for t in tabela_especie:
+            linhas.append(
+                f"    {str(t.get('especie', ''))[:18]:<18s} "
+                f"{int(t.get('n_lv', 0) or 0):>3d} "
+                f"{_fmt(t.get('rmsep'), 2):>7s} {_fmt(t.get('r2val'), 3):>6s} "
+                f"{_fmt(t.get('lod'), 2):>7s} {_fmt(t.get('loq'), 2):>7s} "
+                f"{_fmt(t.get('sensibilidade'), 3):>7s} "
+                f"{_fmt(t.get('seletividade_media'), 3):>6s}")
+    if fom_pooled is not None:
+        linhas.append("")
+        linhas.append("  Figures of merit (single pooled model):")
+        linhas.append(f"    LOD .......: {_fmt(fom_pooled.get('lod'), 2, '%')}")
+        linhas.append(f"    LOQ .......: {_fmt(fom_pooled.get('loq'), 2, '%')}")
+        linhas.append(f"    SEN .......: {_fmt(fom_pooled.get('sensibilidade'), 3)}")
+        linhas.append(f"    gamma .....: {_fmt(fom_pooled.get('sensibilidade_analitica'), 2)}")
+        linhas.append(f"    SEL .......: {_fmt(fom_pooled.get('seletividade_media'), 3)}")
+        linhas.append(f"    delta_x ...: {_fmt(fom_pooled.get('delta_x_ruido'), 5)}")
+    linhas.append("")
+    linhas.append("  Note: LOD/LOQ/SEN require physical replicates (mae_id) to")
+    linhas.append("  estimate instrumental noise; 'n/a' means none available.")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except Exception as e:
+        print(f"  [AVISO] Nao foi possivel anexar regressao ao resumo: {e}")
 
 
 def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
@@ -930,6 +1004,8 @@ from validacao_estatistica import (   # noqa: E402
 # `executar()` (`pipeline.carregar_dados(cfg)` etc.).
 from dados_io import (   # noqa: E402
     gerar_dados_sinteticos,
+    kennard_stone,
+    kennard_stone_split,
     carregar_csv,
     _flush_asdf,
     _decodificar_linha_asdf,
@@ -2150,6 +2226,12 @@ def executar(cfg: Config):
                             else:
                                 print("      LOD/LOQ: N/A (sem replicas fisicas "
                                       "suficientes para estimar ruido instrumental)")
+                        anexar_regressao_resumo(
+                            pasta_logs,
+                            pooled={k: reg_esp.get(k) for k in
+                                    ("r2c", "r2v", "rmsec", "rmsecv",
+                                     "rmsep", "bias")},
+                            tabela_especie=reg_esp["tabela_especie"])
                     else:
                         print("  [AVISO] Nenhuma especie com amostras "
                               "suficientes para regressao (>= 6 adulteradas "
@@ -2256,6 +2338,11 @@ def executar(cfg: Config):
         else:
             print("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
                   "estimar ruido instrumental)")
+        anexar_regressao_resumo(
+            pasta_logs,
+            pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
+                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v},
+            fom_pooled=_fom_reg)
     elif conc is None:
         print("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
 

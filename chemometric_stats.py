@@ -209,3 +209,78 @@ def figuras_merito_regressao(modelo: PLSRegression, X_cal: np.ndarray,
             resultado["loq"] = 10.0 * delta_x * norm_b
 
     return resultado
+
+
+# =========================================================================
+#  Dominio de Aplicabilidade (Applicability Domain, AD)
+# =========================================================================
+
+def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
+                           alpha: float = 0.05) -> Dict[str, np.ndarray]:
+    """Dominio de aplicabilidade via distancia ao modelo PCA/PLS, combinando
+    as duas distancias complementares ja usadas para deteccao de outliers:
+
+        Hotelling T2  -> distancia DENTRO do plano do modelo (leverage): quao
+                         extrema a amostra e ao longo das direcoes de maior
+                         variancia capturadas pela calibracao.
+        Q-residuos    -> distancia ORTOGONAL ao plano (residuo espectral): quao
+                         mal o modelo reconstroi a amostra (quimica nova, nao
+                         vista no treino).
+
+    Uma amostra nova esta DENTRO do dominio se T2 <= T2_limite E Q <= Q_limite,
+    ambos os limites derivados EXCLUSIVAMENTE do conjunto de treino (mesma
+    formula de Tracy-Young-Mason e chi2-Jackson-Mudholkar ja usadas no
+    diagnostico de outliers). Amostras fora do dominio tem predicao pouco
+    confiavel — a extrapolacao nao e garantida.
+
+    Referencias: Jaworska, Nikolova-Jeliazkova & Aldenberg (2005), SAR QSAR
+    Environ. Res. 16:445-466; Gadaleta et al. (2016), J. Chem. Inf. Model.
+    A convencao T2+Q e o "AD baseado em leverage/residuo" padrao em
+    espectroscopia (equivalente ao par distance-to-model do SIMCA).
+
+    Parametros
+    ----------
+    pca      : modelo PCA ja ajustado no treino (precisa de .transform(),
+               .components_ (k, p) e .mean_ (p,) — sklearn PCA satisfaz).
+    X_train  : matriz de treino no MESMO espaco pre-processado do ajuste.
+    X_new    : amostras novas a avaliar (mesmo pre-processamento).
+    alpha    : nivel de significancia dos limites (default 0.05 -> 95%).
+
+    Retorna dict com t2/q por amostra nova, os limites, e as mascaras
+    booleanas dentro_t2 / dentro_q / dentro_dominio + a fracao dentro.
+    """
+    X_train = np.asarray(X_train, dtype=float)
+    X_new = np.asarray(X_new, dtype=float)
+    T_train = np.asarray(pca.transform(X_train), dtype=float)
+    T_new = np.asarray(pca.transform(X_new), dtype=float)
+    P = np.asarray(pca.components_, dtype=float)          # (k, p)
+    mean = np.asarray(pca.mean_, dtype=float)             # (p,)
+    n, k = T_train.shape
+
+    # T2 das amostras novas usando a variancia dos scores do TREINO (nunca a
+    # das novas — senao o limite deixaria de ser um teste de extrapolacao).
+    var_t = T_train.var(axis=0, ddof=1)
+    var_t[var_t == 0] = 1.0
+    t2_new = np.sum((T_new ** 2) / var_t, axis=1)
+    t2_lim = hotelling_t2_limite(n, k, alpha)
+
+    # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
+    q_train = q_residuos(X_train - mean, T_train, P)
+    q_new = q_residuos(X_new - mean, T_new, P)
+    q_lim = q_residuos_limite(q_train, alpha)
+
+    dentro_t2 = t2_new <= t2_lim
+    dentro_q = q_new <= q_lim
+    dentro = dentro_t2 & dentro_q
+    return {
+        "t2": t2_new,
+        "q": q_new,
+        "t2_limite": np.asarray(t2_lim, dtype=float),
+        "q_limite": np.asarray(q_lim, dtype=float),
+        "dentro_t2": dentro_t2,
+        "dentro_q": dentro_q,
+        "dentro_dominio": dentro,
+        "fracao_dentro": np.asarray(
+            float(np.mean(dentro)) if dentro.size else float("nan"),
+            dtype=float),
+    }

@@ -127,6 +127,22 @@ def test_todos_pngs_validos_e_nao_vazios(figuras_geradas):
 
 
 @pytest.mark.slow
+def test_resumo_persiste_figuras_de_merito(figuras_geradas):
+    """resumo_modelo.txt guarda o bloco de figuras de merito da regressao
+    (LOD/LOQ/SEN/SEL) — antes so saiam no console. Fecha o item do roadmap
+    'figuras de merito no relatorio' (o resumo alimenta a aba Relatorios)."""
+    figbase, _pngs = figuras_geradas
+    run_dir = os.path.dirname(figbase)
+    resumo = os.path.join(run_dir, "logs", "resumo_modelo.txt")
+    assert os.path.isfile(resumo), "resumo_modelo.txt nao foi gerado"
+    with open(resumo, encoding="utf-8") as f:
+        txt = f.read()
+    assert "Analytical Figures of Merit" in txt, "bloco de FOM ausente no resumo"
+    assert ("Per-species figures of merit" in txt
+            or "single pooled model" in txt), "tabela/bloco de FOM ausente"
+
+
+@pytest.mark.slow
 def test_dimensoes_sanas(figuras_geradas):
     """Largura/altura de cada figura ficam numa faixa plausível (não 1x1 nem gigante)."""
     _figbase, pngs = figuras_geradas

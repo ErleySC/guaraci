@@ -121,6 +121,70 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
 #  Data loading
 # =========================================================================
 
+def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
+    """Selecao de amostras de Kennard & Stone (1969), Technometrics 11:137-148.
+
+    Escolhe `n_selecionar` amostras que cobrem o espaco espectral de forma
+    MAXIMAMENTE representativa (uniforme), em vez de aleatoria/estratificada:
+    comeca pelas amostras mais extremas e vai sempre adicionando a amostra
+    mais distante (em distancia euclidiana) do conjunto ja escolhido. E o
+    padrao para dividir calibracao/validacao em calibracao multivariada — a
+    validacao herda amostras dentro do span do treino (nao extrapola) e o
+    treino cobre bem as bordas do espaco.
+
+    Semente: para evitar a matriz de distancias n×n (custosa em memoria para
+    milhares de espectros), o par inicial e aproximado pelo ponto mais distante
+    do centroide e, em seguida, o mais distante desse — variante eficiente e
+    comum de KS. As iteracoes seguintes sao exatas (distancia minima ao
+    conjunto selecionado, atualizada incrementalmente).
+
+    Retorna os indices selecionados, na ORDEM de selecao (os primeiros sao os
+    mais extremos), o que permite usar um prefixo como subconjunto menor.
+    """
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    if n == 0:
+        return np.array([], dtype=int)
+    n_sel = int(min(max(n_selecionar, 1), n))
+
+    centroide = X.mean(axis=0)
+    i1 = int(np.argmax(np.sum((X - centroide) ** 2, axis=1)))
+    selecionados = [i1]
+    min_dist = np.sqrt(np.sum((X - X[i1]) ** 2, axis=1))
+
+    if n_sel >= 2:
+        i2 = int(np.argmax(min_dist))
+        selecionados.append(i2)
+        min_dist = np.minimum(min_dist,
+                              np.sqrt(np.sum((X - X[i2]) ** 2, axis=1)))
+
+    while len(selecionados) < n_sel:
+        candidato_dist = min_dist.copy()
+        candidato_dist[selecionados] = -np.inf   # nunca reescolher
+        prox = int(np.argmax(candidato_dist))
+        selecionados.append(prox)
+        min_dist = np.minimum(min_dist,
+                              np.sqrt(np.sum((X - X[prox]) ** 2, axis=1)))
+
+    return np.array(selecionados, dtype=int)
+
+
+def kennard_stone_split(X: np.ndarray, frac_treino: float = 0.7
+                        ) -> Tuple[np.ndarray, np.ndarray]:
+    """Divisao calibracao/validacao por Kennard-Stone: o treino recebe as
+    `frac_treino` amostras mais representativas (bordas + cobertura uniforme);
+    o resto vai para validacao. Retorna (idx_treino, idx_val), ambos ordenados.
+    """
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    n_treino = int(round(max(0.0, min(1.0, frac_treino)) * n))
+    n_treino = int(min(max(n_treino, 1), n)) if n > 0 else 0
+    ordem = kennard_stone(X, n)          # ranking completo por KS
+    idx_treino = np.sort(ordem[:n_treino])
+    idx_val = np.sort(ordem[n_treino:])
+    return idx_treino, idx_val
+
+
 def gerar_dados_sinteticos(cfg: "Config"):
     """Gera espectros sinteticos de teste, incluindo REPLICAS FISICAS
     (n_replicas_sint por ponto amostral, como T1/T2/T3 do mesmo ponto real) e

@@ -474,3 +474,123 @@ def test_paleta_externa_sem_libs_opcionais_retorna_none(pq):
     normal quando as libs opcionais de paleta não estão presentes."""
     resultado = pq._paleta_externa(30)
     assert resultado is None or isinstance(resultado, list)
+
+
+# ── FOM no resumo: anexar_regressao_resumo (unidade, rapido) ─────────────────
+
+def test_anexar_regressao_resumo_escreve_bloco(pq, tmp_path):
+    """anexar_regressao_resumo grava o bloco de figuras de merito no
+    resumo_modelo.txt (append), com valores formatados e NaN -> 'n/a'."""
+    pasta = str(tmp_path)
+    with open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8") as f:
+        f.write("HEADER PREEXISTENTE\n")
+    pq.anexar_regressao_resumo(
+        pasta,
+        pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
+                "rmsep": 1.8, "bias": -0.1},
+        tabela_especie=[
+            {"especie": "Coco", "n_lv": 4, "rmsep": 1.7, "r2val": 0.94,
+             "lod": 2.1, "loq": 6.4, "sensibilidade": 0.033,
+             "seletividade_media": 0.71},
+            {"especie": "Babacu", "n_lv": 3, "rmsep": 2.2, "r2val": 0.88,
+             "lod": float("nan"), "loq": float("nan"),
+             "sensibilidade": float("nan"), "seletividade_media": 0.6},
+        ])
+    txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
+    assert "HEADER PREEXISTENTE" in txt          # nao sobrescreve
+    assert "Analytical Figures of Merit" in txt
+    assert "Per-species figures of merit" in txt
+    assert "Coco" in txt and "Babacu" in txt
+    assert "n/a" in txt                          # NaN da especie 2 -> n/a
+    assert "2.10" in txt                         # LOD do Coco formatado
+
+
+def test_anexar_regressao_resumo_fom_pooled(pq, tmp_path):
+    """Caminho de modelo pooled unico (fom_pooled) tambem grava LOD/LOQ/SEN."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.anexar_regressao_resumo(
+        pasta,
+        pooled={"r2c": 0.9, "r2v": 0.8, "rmsec": 1.0, "rmsecv": 1.1,
+                "rmsep": 1.3, "bias": 0.0},
+        fom_pooled={"lod": 3.0, "loq": 9.1, "sensibilidade": 0.05,
+                    "sensibilidade_analitica": 12.3, "seletividade_media": 0.8,
+                    "delta_x_ruido": 0.001})
+    txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
+    assert "single pooled model" in txt
+    assert "LOD" in txt and "LOQ" in txt
+
+
+# ── Dominio de Aplicabilidade (Applicability Domain) ─────────────────────────
+
+def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
+    """Amostras do proprio treino caem dentro do dominio em ~(1-alpha) dos
+    casos — o limite e um teste de 95%, entao a fracao dentro deve ser alta."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(120, 30))
+    pca = PCA(n_components=5).fit(X)
+    ad = pq.dominio_aplicabilidade(pca, X, X, alpha=0.05)
+    assert 0.80 <= float(ad["fracao_dentro"]) <= 1.0
+    assert ad["dentro_dominio"].shape == (120,)
+    assert float(ad["t2_limite"]) > 0 and float(ad["q_limite"]) > 0
+
+
+def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
+    """Uma amostra espectralmente muito distante do treino (deslocada em
+    varias ordens de grandeza) e sinalizada FORA do dominio."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(100, 20))
+    pca = PCA(n_components=4).fit(X)
+    X_out = X[:5] + 50.0            # empurra 5 amostras para longe do plano
+    ad = pq.dominio_aplicabilidade(pca, X, X_out, alpha=0.05)
+    # Todas as 5 deslocadas devem estar fora (T2 e/ou Q estourados).
+    assert not ad["dentro_dominio"].any()
+
+
+def test_dominio_aplicabilidade_retorno_consistente(pq):
+    """Mascaras booleanas e vetores t2/q tem o mesmo tamanho de X_new; dentro
+    = dentro_t2 AND dentro_q."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(80, 15))
+    Xn = rng.normal(size=(12, 15))
+    pca = PCA(n_components=3).fit(X)
+    ad = pq.dominio_aplicabilidade(pca, X, Xn)
+    assert ad["t2"].shape == (12,) and ad["q"].shape == (12,)
+    assert np.array_equal(ad["dentro_dominio"],
+                          ad["dentro_t2"] & ad["dentro_q"])
+
+
+# ── Kennard-Stone: selecao representativa de amostras ────────────────────────
+
+def test_kennard_stone_seleciona_extremos_primeiro(pq):
+    """KS deve escolher amostras nas bordas do espaco antes das centrais.
+    Com pontos 1D em [0..10], os dois primeiros selecionados sao os extremos."""
+    import numpy as np
+    X = np.linspace(0, 10, 11).reshape(-1, 1)   # 0,1,...,10
+    ordem = pq.kennard_stone(X, 3)
+    assert set(ordem[:2].tolist()) == {0, 10}   # extremos primeiro
+    assert len(ordem) == 3 and len(set(ordem.tolist())) == 3
+
+
+def test_kennard_stone_pede_mais_que_n_devolve_n(pq):
+    """Pedir mais amostras do que existem devolve todas, sem repetir indice."""
+    import numpy as np
+    X = np.random.default_rng(0).normal(size=(8, 4))
+    ordem = pq.kennard_stone(X, 50)
+    assert len(ordem) == 8 and len(set(ordem.tolist())) == 8
+
+
+def test_kennard_stone_split_particiona_sem_overlap(pq):
+    """kennard_stone_split devolve treino/val disjuntos que cobrem todo o n."""
+    import numpy as np
+    X = np.random.default_rng(1).normal(size=(40, 6))
+    tr, val = pq.kennard_stone_split(X, frac_treino=0.75)
+    assert len(tr) == 30 and len(val) == 10
+    assert set(tr.tolist()).isdisjoint(val.tolist())
+    assert set(tr.tolist()) | set(val.tolist()) == set(range(40))
