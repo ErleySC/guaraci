@@ -6,10 +6,16 @@
 #  Assistente:   python guaraci.py
 # ============================================================
 
-# Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | sintetico (teste)
-#   opcoes: dx | csv | sintetico
+# Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) |
+# imagem (colorimetria digital, prototipo) | sintetico (teste)
+#   opcoes: dx | csv | imagem | sintetico
 #   Use "sintetico" para testar sem dados reais (dados gerados em memoria)
 modo_entrada: sintetico
+
+# Modo imagem: incluir features de textura (GLCM) alem de cor (media/desvio
+# RGB+HSV+Lab) -- requer 'pip install scikit-image'. So' importa se
+# modo_entrada: imagem.
+imagem_incluir_textura: false
 
 # Pasta com os arquivos .dx (modo dx; uma subpasta por classe)
 #   Necessario apenas quando modo_entrada: dx
@@ -75,17 +81,61 @@ teste_wold: false
 # Rodar CV-ANOVA (Eriksson)
 teste_cv_anova: false
 
+# Teste de incerteza de Martens (jackknifing dos coeficientes PLS) -- teste
+# de hipotese formal (p-valor) de significancia por variavel, mais rigoroso
+# que VIP/Selectivity Ratio (medidas de magnitude, sem p-valor)
+teste_martens: false
+
 # Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)
 selecao_variaveis_etapa4: false
 
-# Rodar DD-SIMCA (classificacao one-class) -- automatico em nivel=N2
+# Etapa 4: rodar tambem SPA/APS (Algoritmo das Projecoes Sucessivas,
+# Araujo et al. 2001) -- mais lento que iPLS/VIP/SR
+selecao_spa: false
+
+# Etapa 4: rodar tambem AG (Algoritmo Genetico, GA-PLS) -- o mais lento dos
+# metodos de selecao de variaveis
+selecao_ag: false
+
+# Rodar DD-SIMCA (classificacao one-class) -- automatico em nivel=N2,
+# ignorado com aviso em nivel=N1 (nao agrega a identificacao de especie)
 ddsimca: false
+
+# DD-SIMCA: modo de treino -- 'puros' treina SO com amostras de referencia
+# pura (o resto da classe conta como contaminante/adulterado -- autenticacao
+# de verdade, requer >=15 puras/classe); 'todos' treina com a classe inteira
+# (exploratorio, mais robusto com poucas puras, porem menos rigoroso)
+#   opcoes: puros | todos
+modo_ddsimca: puros
 
 # Rodar OPLS-DA
 opls_da: false
 
 # Comparar varios pre-processamentos
 comparar_pre_processamentos: false
+
+# Auto-Benchmark: SVM RBF / RF / XGBoost vs PLS-DA (mesma CV group-aware)
+benchmark: false
+
+# Auto-Benchmark de regressao: Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R
+# (so' roda com regressao multi-especie ja calculada, N2/N3)
+benchmark_regressao: false
+
+# Monte Carlo CV: IC95% por percentil (N repeticoes estratificadas por grupo)
+monte_carlo: false
+
+# Numero de repeticoes do Monte Carlo CV
+n_monte_carlo: 60
+
+# MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento)
+monte_carlo_incluir_todos: false
+
+# SHAP values (TreeExplainer) para RF/XGBoost/GBM -- interpretabilidade
+# espectral (requer 'pip install shap')
+shap_benchmark: false
+
+# Limite de amostras para calculo de SHAP (controle de memoria)
+shap_max_amostras: 500
 
 # Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA,
 # pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman).
