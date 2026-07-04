@@ -326,6 +326,18 @@ class Config:
     vip_threshold_sel: float = 1.0      # selection by VIP >= threshold
     sr_top_frac: float = 0.20           # selection by SR: top fraction
     splsda_keep_por_comp: int = 50      # sPLS-DA: non-zero variables/component
+    # SPA/APS (Successive Projections Algorithm, Araujo et al. 2001) and
+    # AG (Genetic Algorithm, GA-PLS) — opt-in (default False) because they
+    # run many more CV evaluations than iPLS/VIP/SR/sPLS-DA (heavier, like
+    # executar_benchmark/executar_shap).
+    executar_spa: bool = False
+    spa_n_vars_max: int = 20            # SPA: max chain length (variables)
+    spa_n_starts: int = 25              # SPA: starting variables sampled (evenly across spectrum)
+    executar_ag: bool = False
+    ag_tam_populacao: int = 20          # AG: chromosomes per generation
+    ag_n_geracoes: int = 15             # AG: number of generations
+    ag_prob_mutacao: float = 0.02       # AG: per-bit mutation probability
+    ag_frac_inicial: float = 0.10       # AG: initial fraction of variables "on" per chromosome
 
 
 CFG = Config()
@@ -934,7 +946,11 @@ from selecao_variaveis import (   # noqa: E402
     _avaliar_subset_cv,
     selecao_ipls,
     sparse_plsda_mask,
+    _spa_cadeia,
+    selecao_spa,
+    selecao_ag,
     fig_etapa4_ipls,
+    fig_etapa4_ag_convergencia,
     fig_etapa4_comparacao,
     etapa4_selecao_variaveis,
 )
@@ -2285,6 +2301,15 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Rodar CV-ANOVA (Eriksson)", "opcoes": None},
     {"key": "selecao_variaveis_etapa4", "attr": "executar_etapa4", "tipo": "bool",
      "desc": "Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)", "opcoes": None},
+    {"key": "selecao_spa", "attr": "executar_spa", "tipo": "bool",
+     "desc": "Etapa 4: rodar tambem SPA/APS (Algoritmo das Projecoes "
+             "Sucessivas, Araujo et al. 2001) — mais lento que iPLS/VIP/SR",
+     "opcoes": None},
+    {"key": "selecao_ag", "attr": "executar_ag", "tipo": "bool",
+     "desc": "Etapa 4: rodar tambem AG (Algoritmo Genetico, GA-PLS) — o mais "
+             "lento dos metodos de selecao de variaveis (populacao x geracoes "
+             "avaliacoes de CV)",
+     "opcoes": None},
     {"key": "ddsimca", "attr": "executar_ddsimca", "tipo": "bool",
      "desc": "Rodar DD-SIMCA (classificacao one-class)", "opcoes": None},
     {"key": "modo_ddsimca", "attr": "ddsimca_treinar_em", "tipo": "choice",

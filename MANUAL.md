@@ -1,136 +1,172 @@
 # Manual do GUARACI — Plataforma de Quimiometria
 
 > Manual de instruções das funcionalidades do projeto. Mantido atualizado a
-> cada mudança relevante. Para instalação/citação/licença, ver `README.md`.
+> cada mudança relevante. Para instalação, citação e licença, ver `README.md`.
 
 O **GUARACI** é uma plataforma de quimiometria multi-técnica para autenticação
-e caracterização de matrizes (óleos amazônicos por FT-NIR, e qualquer dado
-espectral/tabular: Raman, UV-Vis, FTIR, cromatografia). Faz desde a análise
-exploratória até classificação, autenticação, quantificação e relatórios de
-publicação — com validação estatística rigorosa e anti-vazamento de réplicas.
+e caracterização de matrizes complexas — óleos amazônicos por FT-NIR, e
+qualquer dado espectral/tabular (Raman, UV-Vis, FTIR, cromatografia). Cobre
+todo o fluxo científico: análise exploratória, classificação, autenticação,
+quantificação e relatórios de publicação, com validação estatística rigorosa
+e anti-vazamento de réplicas em cada etapa.
+
+**Sumário**
+1. [As três formas de usar](#1-as-três-formas-de-usar)
+2. [Modos de análise (N1 / N2 / N3)](#2-modos-de-análise-n1--n2--n3)
+3. [Funcionalidades científicas](#3-funcionalidades-científicas)
+4. [Fluxo típico na interface web](#4-fluxo-típico-na-interface-web)
+5. [Mapa dos módulos (para desenvolvedores)](#5-mapa-dos-módulos-para-desenvolvedores)
+6. [Desenvolvimento](#6-desenvolvimento)
 
 ---
 
 ## 1. As três formas de usar
 
 | Forma | Comando | Para quem |
-|-------|---------|-----------|
-| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 7 abas guiadas. Também no demo: https://guaraci.streamlit.app |
+|---|---|---|
+| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 7 abas guiadas. Demo público: <https://guaraci.streamlit.app> |
 | **Assistente de terminal** | `python guaraci.py` | Menu interativo colorido, sem editar código |
 | **Pipeline direto** | `python pipeline.py --rodar` | Execução automatizada a partir de `config.yaml` |
 
-As três compartilham o mesmo motor (`pipeline.py`) e a mesma configuração
-(`config.yaml` / classe `Config`) — não há divergência de resultado entre elas.
+As três formas compartilham o mesmo motor (`pipeline.py`) e a mesma
+configuração (`config.yaml` / classe `Config`) — não há divergência de
+resultado entre elas.
 
 ---
 
 ## 2. Modos de análise (N1 / N2 / N3)
 
 O **modo de análise** define o que o pipeline faz. Na interface aparecem com
-nomes amigáveis; internamente são N1/N2/N3.
+nomes amigáveis; internamente são identificados como N1/N2/N3.
 
-- **N1 — Classificação (por espécie).** Identifica a qual espécie/classe cada
-  amostra pertence (ex.: 13-14 óleos). Método: **PLS-DA** com GroupKFold
-  anti-vazamento de réplicas (T1/T2/T3 do mesmo ponto ficam juntas).
-- **N2 — Discriminação (puro vs. adulterado).** Autentica pureza **por espécie**
-  via **DD-SIMCA** one-class (T² + Q-resíduos com limites por classe).
-- **N3 — Quantificação (% de adulterante).** Estima o teor por **regressão PLS
-  por espécie** (`pls_regressao_por_espécie`), com **figuras de mérito
-  analíticas** (LOD, LOQ, sensibilidade, sensibilidade analítica γ,
-  seletividade — Valderrama, Braga & Poppi, 2009) calculadas automaticamente
-  por espécie a partir das réplicas físicas (T1/T2/T3); aparecem no console/
-  log de execução logo após RMSEP/R².
+- **N1 — Classificação (por espécie).**
+  Identifica a qual espécie/classe cada amostra pertence (ex.: 13–14 óleos
+  amazônicos). Método: **PLS-DA** com GroupKFold anti-vazamento de réplicas
+  (as réplicas T1/T2/T3 do mesmo ponto amostral nunca são separadas entre
+  treino e validação).
+
+- **N2 — Discriminação (puro vs. adulterado).**
+  Autentica a pureza **por espécie** via **DD-SIMCA** one-class (T² e
+  Q-resíduos com limites de aceitação específicos por classe).
+
+- **N3 — Quantificação (% de adulterante).**
+  Estima o teor de adulterante por **regressão PLS calibrada por espécie**
+  (`pls_regressao_por_espécie`). Reporta também as **figuras de mérito
+  analíticas** — LOD, LOQ, sensibilidade, sensibilidade analítica (γ) e
+  seletividade, segundo Valderrama, Braga & Poppi (2009) — calculadas
+  automaticamente a partir das réplicas físicas (T1/T2/T3) de cada espécie.
+  Aparecem no console/log de execução logo após RMSEP e R².
 
 ---
 
 ## 3. Funcionalidades científicas
 
-**Pré-processamento espectral** (dentro do Pipeline, sem vazamento entre folds):
-SNV, MSC, Savitzky-Golay (suavização/derivada), mean-centering, autoscaling.
-Presets: `msc_sg_mc` (melhor no dataset), `snv_sg_mc`, `mc`, `autoscaling`,
-`custom`.
+**Pré-processamento espectral** (dentro do `Pipeline` do scikit-learn, sem
+vazamento entre folds de validação cruzada): SNV, MSC, Savitzky-Golay
+(suavização ou derivada), mean-centering, autoscaling. Presets prontos:
+`msc_sg_mc` (melhor desempenho no dataset de referência), `snv_sg_mc`, `mc`,
+`autoscaling`, `custom`.
 
-**Análise exploratória:** PCA (scores/loadings), HCA (dendrograma Ward sobre PCs).
+**Análise exploratória:** PCA (scores e loadings), HCA (dendrograma de Ward
+sobre componentes principais).
 
-**Classificação/discriminação:** PLS-DA, OPLS-DA (com S-Plot), DD-SIMCA
+**Classificação e discriminação:** PLS-DA, OPLS-DA (com S-Plot), DD-SIMCA
 (com Cooman's Plot).
 
-**Seleção de variáveis (Etapa 4):** iPLS (por intervalos), VIP ≥ 1,
-Selectivity Ratio (top-20%), sPLS-DA esparso.
+**Seleção de variáveis (Etapa 4)** — sempre executados: iPLS (por
+intervalos), VIP ≥ 1, Selectivity Ratio (top 20%), sPLS-DA esparso.
+Opcionais (mais lentos, ligar quando quiser comparar mais a fundo):
+- **SPA/APS** — Algoritmo das Projeções Sucessivas (Araújo et al., 2001):
+  monta cadeias de variáveis com baixa colinearidade entre si.
+- **AG** — Algoritmo Genético (GA-PLS): evolui uma população de
+  subconjuntos de variáveis por seleção, cruzamento e mutação, usando
+  acurácia balanceada via validação cruzada como aptidão.
+
+Todos os métodos — sempre-ligados e opcionais — são avaliados sob o **mesmo
+esquema de validação cruzada group-aware**, permitindo comparação direta
+numa única tabela e figura.
 
 **Validação estatística:** teste de permutação, teste de Wold (R²Y/Q²Y),
-CV-ANOVA (Eriksson), bootstrap BCa (IC de acurácia), holdout externo
-group-aware, Monte Carlo CV (IC95%).
+CV-ANOVA (Eriksson), bootstrap BCa (intervalo de confiança da acurácia),
+holdout externo group-aware, Monte Carlo CV (IC95%).
 
-**Comparação de modelos (Auto-Benchmark):** PLS-DA vs SVM RBF vs Random Forest
-vs Gradient Boosting vs XGBoost, na mesma CV group-aware. Curvas DET e
-interpretabilidade via **SHAP** (TreeExplainer).
+**Comparação de modelos (Auto-Benchmark):** PLS-DA vs. SVM RBF vs. Random
+Forest vs. Gradient Boosting vs. XGBoost, sob a mesma CV group-aware. Curvas
+DET e interpretabilidade via **SHAP** (TreeExplainer).
 
-**Figuras:** conjunto essencial por padrão (~8) + figuras detalhadas opcionais
-(`figuras_detalhadas=True`). Formatos PNG/PDF/SVG, DPI configurável.
+**Figuras:** conjunto essencial por padrão (~8 figuras) com opção de
+figuras detalhadas adicionais (`figuras_detalhadas=True`). Formatos
+PNG/PDF/SVG, DPI configurável.
 
-**Relatórios:** PDF, Word (.docx), Excel (5 abas), LaTeX e PowerPoint, com capa
-de projeto (nome/autor/instituição/objetivo — o "tipo de estudo" é derivado
-automaticamente do modo de análise).
+**Relatórios:** PDF, Word (`.docx`), Excel (5 abas), LaTeX e PowerPoint, com
+capa de projeto (nome, autor, instituição, objetivo — o "tipo de estudo" é
+derivado automaticamente do modo de análise escolhido).
 
 ---
 
 ## 4. Fluxo típico na interface web
 
-1. **Projeto** — preencha nome/autor/instituição/objetivo (descritivo, vai nos
-   relatórios).
+1. **Projeto** — preencha nome, autor, instituição e objetivo (campos
+   descritivos, entram na capa dos relatórios).
 2. **Dados** — faça upload de um CSV ou aponte a pasta de espectros `.dx`
    (uma subpasta por classe).
-3. **Pré-processamento** — escolha o preset; veja o antes/depois.
-4. **Modelo** — escolha o modo de análise, ajuste parâmetros (LVs, holdout,
-   validação, módulos extras, figuras) e clique **▶️ Run pipeline**.
-5. **Validação / Predição / Relatórios** — inspecione métricas por classe,
-   figuras, e baixe os relatórios/ZIP.
+3. **Pré-processamento** — escolha o preset e confira a visualização de
+   antes/depois.
+4. **Modelo** — escolha o modo de análise, ajuste os parâmetros (variáveis
+   latentes, holdout, validação, módulos extras, figuras) e clique em
+   **▶️ Run pipeline**.
+5. **Validação / Predição / Relatórios** — inspecione as métricas por
+   classe e as figuras geradas, e baixe os relatórios e o ZIP de resultados.
 
-Tema claro/escuro: menu ⋮ → Settings → Theme (segue o sistema por padrão).
+Tema claro/escuro: menu ⋮ → *Settings* → *Theme* (segue a preferência do
+sistema operacional por padrão).
 
 ---
 
 ## 5. Mapa dos módulos (para desenvolvedores)
 
-Desde a Fase H, o motor está modularizado. `pipeline.py` é a **fachada**:
-reexporta tudo, então `import pipeline as pq; pq.X` continua funcionando.
+Desde a Fase H, o motor do pipeline está modularizado por responsabilidade.
+`pipeline.py` funciona como **fachada**: reexporta todos os símbolos
+públicos dos módulos abaixo, então `import pipeline as pq; pq.X` continua
+funcionando sem alteração, não importa em qual arquivo `X` esteja
+implementado de fato.
 
 | Módulo | Responsabilidade |
-|--------|------------------|
-| `pipeline.py` | `Config`, `_CONFIG_SPEC`, orquestrador `executar()`, IO de config, CLI e fachada de reexport |
-| `chemometric_stats.py` | VIP, Selectivity Ratio, Hotelling T², Q-resíduos, variância explicada |
-| `paleta_cores.py` | Paleta/marcadores de máxima distintividade por classe |
-| `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV, sintético; metadados de TITLE |
+|---|---|
+| `pipeline.py` | `Config`, `_CONFIG_SPEC`, orquestrador `executar()`, IO de configuração, CLI embutido e fachada de reexport |
+| `chemometric_stats.py` | VIP, Selectivity Ratio, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL) |
+| `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
+| `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE` |
 | `preprocessamento.py` | Transformers SNV/SavGol/MSC + `construir_preprocessador` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
-| `figuras.py` | Camada de plotagem (todas as figuras) |
-| `validacao_estatistica.py` | BCa, CV-ANOVA, permutação, Wold, CV manual |
-| `hardware.py` | Probe de RAM/CPU/disco, auto-ajuste, guarda de RAM |
-| `selecao_variaveis.py` | Etapa 4 (iPLS, sPLS-DA) + figuras da etapa |
-| `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, DET, SHAP |
+| `figuras.py` | Camada de plotagem (todas as figuras do pipeline) |
+| `validacao_estatistica.py` | BCa, CV-ANOVA, permutação, teste de Wold, CV manual |
+| `hardware.py` | Detecção de RAM/CPU/disco, auto-ajuste de `Config`, guarda de RAM |
+| `selecao_variaveis.py` | Etapa 4 completa: iPLS, sPLS-DA, SPA/APS, AG + figuras da etapa |
+| `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, curvas DET, SHAP |
 
-Interfaces: `app_quimiometria.py` (web), `guaraci.py` (assistente CLI),
-`cli_assistente.py` (menu detalhado). Tema compartilhado: `guaraci_theme.py`,
-`design_tokens.py`.
+Interfaces de usuário: `app_quimiometria.py` (web), `guaraci.py` (assistente
+de terminal), `cli_assistente.py` (menu detalhado). Tema visual
+compartilhado entre elas: `guaraci_theme.py`, `design_tokens.py`.
 
 ---
 
 ## 6. Desenvolvimento
 
 ```bash
-pytest tests/                 # suíte completa (inclui end-to-end 'slow')
+pytest tests/                 # suíte completa (inclui o teste end-to-end 'slow')
 pytest tests/ -m "not slow"   # só os testes rápidos
 ruff check .                  # lint estático
 ```
 
-- **Testes:** `test_pipeline_smoke.py`, `test_pipeline_core.py` (unidade),
+- **Testes:** `test_pipeline_smoke.py` e `test_pipeline_core.py` (unidade),
   `test_figuras_regressao.py` (regressão de figuras), `test_fachada_reexport.py`
-  (protege o contrato de reexport da fachada).
-- **CI (GitHub Actions):** lint (ruff) + testes com cobertura, a cada push/PR.
-  Dependabot abre PRs semanais de atualização de dependências.
+  (protege o contrato de reexport da fachada contra regressões futuras).
+- **CI (GitHub Actions):** lint (`ruff`) e testes com cobertura a cada push
+  ou pull request. O Dependabot abre PRs semanais de atualização de
+  dependências.
 
 ---
 
-*Última revisão do manual: modularização (Fase H) + higiene de CI (ruff,
-cobertura, dependabot).*
+*Última revisão do manual: seleção de variáveis SPA/APS e AG (Algoritmo
+Genético), figuras de mérito analíticas (N3).*

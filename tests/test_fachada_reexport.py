@@ -55,6 +55,7 @@ CONTRATO = {
     "selecao_variaveis": [
         "selecao_ipls", "sparse_plsda_mask", "etapa4_selecao_variaveis",
         "fig_etapa4_ipls", "fig_etapa4_comparacao",
+        "selecao_spa", "selecao_ag", "fig_etapa4_ag_convergencia",
     ],
     "avaliacao_modelos": [
         "PLSDAClassifier", "benchmark_classificadores", "monte_carlo_cv",

@@ -202,6 +202,7 @@ RISK_CLASS: Dict[str, str] = {
     "faixa_min_cm": "ANALITICO", "faixa_max_cm": "ANALITICO",
     "modo_ddsimca": "ANALITICO", "ddsimca": "ANALITICO",
     "opls_da": "ANALITICO", "selecao_variaveis_etapa4": "ANALITICO",
+    "selecao_spa": "ANALITICO", "selecao_ag": "ANALITICO",
     "comparar_pre_processamentos": "ANALITICO",
     "validacao_group_aware": "ANALITICO", "teste_wold": "ANALITICO",
     "teste_cv_anova": "ANALITICO", "pasta_dados": "ANALITICO",
@@ -266,6 +267,8 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "ddsimca":                      {"PT": "DD-SIMCA",                "EN": "DD-SIMCA"},
     "modo_ddsimca":                 {"PT": "Modo DD-SIMCA",           "EN": "DD-SIMCA mode"},
     "selecao_variaveis_etapa4":     {"PT": "Selecao de variaveis",    "EN": "Variable selection"},
+    "selecao_spa":                  {"PT": "SPA (APS)",               "EN": "SPA (successive proj.)"},
+    "selecao_ag":                   {"PT": "AG (Genetico)",           "EN": "GA (genetic algorithm)"},
     "holdout_fracao":               {"PT": "Fracao holdout",          "EN": "Holdout fraction"},
     "validacao_group_aware":        {"PT": "Validacao group-aware",   "EN": "Group-aware CV"},
     "n_permutacoes":                {"PT": "N. permutacoes",          "EN": "N permutations"},
@@ -707,6 +710,47 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "exemplos": {"true": "Publication (recommended)", "false": "Quick exploration"},
         },
         "default": True, "range": "true | false",
+    },
+    "selecao_spa": {
+        "PT": {
+            "desc": "Alem dos metodos acima, roda tambem SPA/APS (Algoritmo das "
+                    "Projecoes Sucessivas, Araujo et al. 2001) — constroi cadeias "
+                    "de variaveis com baixa colinearidade a partir de varios "
+                    "pontos de partida do espectro.",
+            "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
+                       "avaliacoes de CV por ponto de partida).",
+            "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
+        },
+        "EN": {
+            "desc": "In addition to the methods above, also runs SPA (Successive "
+                    "Projections Algorithm, Araujo et al. 2001) — builds "
+                    "low-collinearity variable chains from several spectral "
+                    "starting points.",
+            "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several CV "
+                       "evaluations per starting point).",
+            "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
+        },
+        "default": False, "range": "true | false",
+    },
+    "selecao_ag": {
+        "PT": {
+            "desc": "Alem dos metodos acima, roda tambem AG (Algoritmo Genetico, "
+                    "GA-PLS) — populacao de subconjuntos de variaveis evoluida "
+                    "por selecao/crossover/mutacao, fitness = acuracia via CV.",
+            "impacto": "ANALITICO — o mais lento dos metodos de selecao "
+                       "(populacao x geracoes avaliacoes de CV).",
+            "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
+        },
+        "EN": {
+            "desc": "In addition to the methods above, also runs GA (Genetic "
+                    "Algorithm, GA-PLS) — a population of variable subsets "
+                    "evolved via selection/crossover/mutation, fitness = CV "
+                    "accuracy.",
+            "impacto": "ANALYTICAL — the slowest selection method (population x "
+                       "generations CV evaluations).",
+            "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
+        },
+        "default": False, "range": "true | false",
     },
     "comparar_pre_processamentos": {
         "PT": {

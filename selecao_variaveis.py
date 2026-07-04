@@ -1,6 +1,7 @@
 """
 selecao_variaveis.py — Etapa 4: selecao de variaveis espectrais (iPLS por
-intervalos, sPLS-DA esparso) + figuras de intervalos/comparacao de metodos.
+intervalos, sPLS-DA esparso, SPA/APS, AG) + figuras de intervalos/convergencia/
+comparacao de metodos.
 
 Extraido de pipeline.py (Fase H). Usa modulos ja extraidos (chemometric_stats,
 preprocessamento, validacao_estatistica, figuras, paleta_cores); Config so em
@@ -10,7 +11,7 @@ etapa4_selecao_variaveis).
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Dict, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -125,6 +126,180 @@ def sparse_plsda_mask(X_proc, Y_bin, n_comp: int,
     return mask
 
 
+# =========================================================================
+#  SPA / APS — Algoritmo das Projecoes Sucessivas (Araujo et al. 2001,
+#  Chemom. Intell. Lab. Syst. 57:65-73)
+# =========================================================================
+
+def _spa_cadeia(X: np.ndarray, idx_inicial: int, n_vars_max: int) -> np.ndarray:
+    """Constroi UMA cadeia SPA a partir de uma variavel inicial.
+
+    A cada passo, projeta TODAS as variaveis candidatas ainda nao
+    selecionadas ortogonalmente ao subespaco das ja selecionadas (deflacao
+    cumulativa, estilo Gram-Schmidt) e escolhe a de MAIOR norma residual —
+    minimiza a colinearidade entre as variaveis escolhidas (Araujo et al.
+    2001). Retorna os indices selecionados, na ordem em que entraram.
+    """
+    n, p = X.shape
+    n_vars_max = int(max(1, min(n_vars_max, p, n)))
+    Xw = X.astype(float).copy()
+    selecionadas = [int(idx_inicial)]
+    disponiveis = [j for j in range(p) if j != idx_inicial]
+    vetor_atual = Xw[:, idx_inicial]
+
+    for _ in range(n_vars_max - 1):
+        if not disponiveis:
+            break
+        norma_sq = float(vetor_atual @ vetor_atual)
+        if norma_sq < 1e-12:
+            break
+        melhor_j, melhor_norma = None, -1.0
+        for j in disponiveis:
+            xj = Xw[:, j]
+            coef = float(vetor_atual @ xj) / norma_sq
+            Xw[:, j] = xj - coef * vetor_atual   # deflacao cumulativa, persiste
+            nr = float(np.linalg.norm(Xw[:, j]))
+            if nr > melhor_norma:
+                melhor_norma, melhor_j = nr, j
+        selecionadas.append(int(melhor_j))
+        disponiveis.remove(melhor_j)
+        vetor_atual = Xw[:, melhor_j]
+
+    return np.array(selecionadas, dtype=int)
+
+
+def selecao_spa(X_proc: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
+                 cv_indices: list, n_lv: int, n_vars_max: int, n_starts: int,
+                 seed: int) -> Tuple[List[Dict], np.ndarray]:
+    """SPA/APS: constroi cadeias de baixa colinearidade a partir de varios
+    pontos de partida (distribuidos uniformemente pelo espectro, para
+    limitar o custo sem deixar de cobrir toda a faixa espectral) e escolhe
+    a cadeia com maior balanced_accuracy via CV — mesmo esquema de
+    avaliacao (`_avaliar_subset_cv`) do resto da Etapa 4.
+
+    Retorna (lista de resultados por ponto de partida, mascara da melhor
+    cadeia)."""
+    p = X_proc.shape[1]
+    n_starts_eff = int(max(1, min(n_starts, p)))
+    starts = np.unique(np.linspace(0, p - 1, n_starts_eff).astype(int))
+
+    resultados: List[Dict] = []
+    melhor_bal = -1.0
+    melhor_mask: np.ndarray = np.zeros(p, dtype=bool)
+
+    for k0 in starts:
+        cadeia = _spa_cadeia(X_proc, int(k0), n_vars_max)
+        if len(cadeia) < 2:
+            continue
+        mask = np.zeros(p, dtype=bool)
+        mask[cadeia] = True
+        m = _avaliar_subset_cv(X_proc[:, mask], Y_bin, y_int, cv_indices, n_lv)
+        m["inicio_idx"] = int(k0)
+        resultados.append(m)
+        if m["balanced_accuracy"] > melhor_bal:
+            melhor_bal = m["balanced_accuracy"]
+            melhor_mask = mask
+
+    return resultados, melhor_mask
+
+
+# =========================================================================
+#  AG — Algoritmo Genetico para selecao de variaveis (GA-PLS; Leardi 2000
+#  e variantes: populacao binaria + fitness via CV + torneio/crossover/
+#  mutacao/elitismo)
+# =========================================================================
+
+def _torneio_ag(populacao: np.ndarray, fitnesses: np.ndarray,
+                 rng: np.random.Generator, k: int = 3) -> np.ndarray:
+    """Selecao por torneio: sorteia k cromossomos, devolve o de maior fitness."""
+    idxs = rng.choice(len(populacao), size=min(k, len(populacao)), replace=False)
+    melhor_idx = idxs[int(np.argmax(fitnesses[idxs]))]
+    return populacao[melhor_idx].copy()
+
+
+def selecao_ag(X_proc: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
+                cv_indices: list, n_lv: int, tam_populacao: int,
+                n_geracoes: int, prob_mutacao: float, frac_inicial: float,
+                seed: int) -> Tuple[List[Dict], np.ndarray]:
+    """AG (Algoritmo Genetico) para selecao de variaveis: cada cromossomo e
+    um vetor binario (1 = variavel selecionada); fitness = balanced_accuracy
+    via CV (mesmo `_avaliar_subset_cv` do resto da Etapa 4). Selecao por
+    torneio (k=3), crossover de 1 ponto, mutacao bit-flip, elitismo (o
+    melhor cromossomo da geracao sempre sobrevive).
+
+    Retorna (historico por geracao [melhor/media fitness, n_vars], mascara
+    do melhor cromossomo encontrado em toda a busca)."""
+    p = X_proc.shape[1]
+    rng = np.random.default_rng(seed)
+
+    def _garantir_min_2(cromo: np.ndarray) -> np.ndarray:
+        if cromo.sum() < 2:
+            idx = rng.choice(p, size=2, replace=False)
+            cromo = cromo.copy()
+            cromo[idx] = True
+        return cromo
+
+    def _fitness(mask: np.ndarray) -> float:
+        if mask.sum() < 2:
+            return -1.0
+        m = _avaliar_subset_cv(X_proc[:, mask], Y_bin, y_int, cv_indices, n_lv)
+        return float(m["balanced_accuracy"])
+
+    populacao = rng.random((tam_populacao, p)) < frac_inicial
+    populacao = np.array([_garantir_min_2(populacao[i]) for i in range(tam_populacao)])
+
+    historico: List[Dict] = []
+    melhor_mask = np.zeros(p, dtype=bool)
+    melhor_fitness = -1.0
+
+    for geracao in range(n_geracoes):
+        fitnesses = np.array([_fitness(populacao[i]) for i in range(tam_populacao)])
+        idx_melhor_ger = int(np.argmax(fitnesses))
+        if fitnesses[idx_melhor_ger] > melhor_fitness:
+            melhor_fitness = float(fitnesses[idx_melhor_ger])
+            melhor_mask = populacao[idx_melhor_ger].copy()
+        historico.append({
+            "geracao": geracao + 1,
+            "melhor_fitness": float(fitnesses.max()),
+            "media_fitness": float(fitnesses.mean()),
+            "n_vars_melhor": int(populacao[idx_melhor_ger].sum()),
+        })
+
+        nova_populacao = np.empty_like(populacao)
+        nova_populacao[0] = melhor_mask   # elitismo
+        for i in range(1, tam_populacao):
+            pai1 = _torneio_ag(populacao, fitnesses, rng)
+            pai2 = _torneio_ag(populacao, fitnesses, rng)
+            ponto = int(rng.integers(1, p)) if p > 1 else 1
+            filho = np.concatenate([pai1[:ponto], pai2[ponto:]])
+            mutar = rng.random(p) < prob_mutacao
+            filho[mutar] = ~filho[mutar]
+            nova_populacao[i] = _garantir_min_2(filho)
+        populacao = nova_populacao
+
+    return historico, melhor_mask
+
+
+def fig_etapa4_ag_convergencia(historico: List[Dict], cfg, pasta):
+    """Convergencia do AG: melhor e media fitness (balanced_accuracy) por
+    geracao — diagnostico padrao de algoritmos evolutivos."""
+    geracoes = [h["geracao"] for h in historico]
+    melhores  = [h["melhor_fitness"] for h in historico]
+    medias    = [h["media_fitness"] for h in historico]
+
+    fig, ax = plt.subplots(figsize=(9.0, 4.0), constrained_layout=True)
+    ax.plot(geracoes, melhores, color=cor(2), lw=1.6, marker="o", ms=3.5,
+            label="Melhor da geracao")
+    ax.plot(geracoes, medias, color=cor(3), lw=1.2, ls="--",
+            label="Media da populacao")
+    ax.set_xlabel("Geracao")
+    ax.set_ylabel("Balanced accuracy (CV)")
+    ax.set_title("Etapa 4 — AG: convergencia da busca genetica", loc="left")
+    ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
+    ax.legend(loc="lower right", frameon=False)
+    salvar(fig, "fig_etapa4_ag_convergencia", pasta, cfg)
+
+
 def fig_etapa4_ipls(resultados, wavenumbers, baseline_bal, cfg, pasta):
     """Barras de balanced_acc por intervalo iPLS, com linha do modelo global."""
     intervalos = [r["intervalo"] for r in resultados]
@@ -180,10 +355,14 @@ def fig_etapa4_comparacao(tabela, cfg, pasta):
 
 def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
                               cv_indices, n_lv, cfg, pasta, pasta_dados):
-    """Orquestra a Etapa 4: avalia Full vs iPLS vs VIP vs SR vs sPLS-DA
-    sob o MESMO esquema de CV group-aware. Salva tabela (dados/) e figuras
-    (figuras/). Retorna dict-resumo para o resumo_modelo.txt."""
-    print("\n[Etapa4] Selecao de variaveis (iPLS, VIP, SR, sPLS-DA)...")
+    """Orquestra a Etapa 4: avalia Full vs iPLS vs VIP vs SR vs sPLS-DA (sempre)
+    e, se ligados em cfg, SPA/APS e AG (opt-in, mais lentos) — sob o MESMO
+    esquema de CV group-aware. Salva tabela (dados/) e figuras (figuras/).
+    Retorna dict-resumo para o resumo_modelo.txt."""
+    print("\n[Etapa4] Selecao de variaveis "
+          f"(iPLS, VIP, SR, sPLS-DA"
+          f"{', SPA' if cfg.executar_spa else ''}"
+          f"{', AG' if cfg.executar_ag else ''})...")
     p = X_proc.shape[1]
     tabela = []
 
@@ -233,6 +412,40 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
         tabela.append({"metodo": "sPLS-DA", **m_sp})
         print(f"  sPLS-DA: bal.acc={m_sp['balanced_accuracy']:.3f} "
               f"({m_sp['n_vars']} vars)")
+
+    # 5) SPA/APS (opt-in — mais lento que os metodos acima: n_starts avaliacoes de CV)
+    if cfg.executar_spa:
+        spa_res, mask_spa = selecao_spa(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            cfg.spa_n_vars_max, cfg.spa_n_starts, cfg.seed)
+        if mask_spa.sum() >= 2:
+            m_spa = _avaliar_subset_cv(X_proc[:, mask_spa], Y_bin, y_int,
+                                        cv_indices, n_lv)
+            tabela.append({"metodo": "SPA (APS)", **m_spa})
+            if spa_res:
+                pd.DataFrame(spa_res).to_csv(
+                    os.path.join(pasta_dados, "etapa4_spa_cadeias.csv"),
+                    sep=";", decimal=",", index=False)
+            print(f"  SPA: bal.acc={m_spa['balanced_accuracy']:.3f} "
+                  f"({m_spa['n_vars']} vars)")
+
+    # 6) AG (opt-in — o mais lento: tam_populacao x n_geracoes avaliacoes de CV)
+    if cfg.executar_ag:
+        historico_ag, mask_ag = selecao_ag(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            cfg.ag_tam_populacao, cfg.ag_n_geracoes, cfg.ag_prob_mutacao,
+            cfg.ag_frac_inicial, cfg.seed)
+        if mask_ag.sum() >= 2:
+            m_ag = _avaliar_subset_cv(X_proc[:, mask_ag], Y_bin, y_int,
+                                       cv_indices, n_lv)
+            tabela.append({"metodo": "AG (Genetico)", **m_ag})
+            if historico_ag:
+                pd.DataFrame(historico_ag).to_csv(
+                    os.path.join(pasta_dados, "etapa4_ag_historico.csv"),
+                    sep=";", decimal=",", index=False)
+                fig_etapa4_ag_convergencia(historico_ag, cfg, pasta)
+            print(f"  AG: bal.acc={m_ag['balanced_accuracy']:.3f} "
+                  f"({m_ag['n_vars']} vars)")
 
     # Tabela + figura comparativa
     pd.DataFrame(tabela).to_csv(

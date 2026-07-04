@@ -287,3 +287,113 @@ def test_validar_semantico_faixa_invertida(pq):
 def test_validar_semantico_config_padrao_ok(pq):
     """Config padrão não gera erros semânticos."""
     assert pq._validar_semantico(pq.Config()) == []
+
+
+# ── SPA/APS e AG — seleção de variáveis (futuro: já em selecao_variaveis.py) ──
+
+def _dados_classificacao_sinteticos(seed=0, n=80, p=40, vars_informativas=(5, 6, 7, 20, 21)):
+    """2 classes separáveis SÓ em `vars_informativas` — permite checar se um
+    método de seleção de fato prioriza as variáveis que carregam sinal."""
+    rng = np.random.default_rng(seed)
+    classes = rng.integers(0, 2, size=n)
+    X = rng.normal(size=(n, p))
+    for i in range(n):
+        if classes[i] == 1:
+            X[i, list(vars_informativas)] += 3.0
+    Y_bin = np.zeros((n, 2))
+    for i, c in enumerate(classes):
+        Y_bin[i, c] = 1
+    from sklearn.model_selection import StratifiedKFold
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=seed)
+    cv_indices = list(cv.split(X, classes))
+    return X, Y_bin, classes, cv_indices
+
+
+def test_spa_cadeia_deflaciona_colunas_duplicadas(pq):
+    """SPA: uma coluna DUPLICADA da já selecionada deve ficar com norma ~0
+    após a projeção (colinear = sem informação nova) — não deve ser
+    escolhida logo em seguida, propriedade central do algoritmo (Araújo
+    et al. 2001: minimizar colinearidade entre variáveis selecionadas)."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(30, 6))
+    X[:, 1] = X[:, 0]           # coluna 1 é DUPLICATA exata da coluna 0
+    X[:, 2] = X[:, 0] * 2.0     # coluna 2 é colinear (múltiplo escalar) da 0
+    cadeia = pq._spa_cadeia(X, idx_inicial=0, n_vars_max=4)
+    # as colunas 1 e 2 (colineares com a 0) devem vir DEPOIS das genuinamente
+    # novas (3, 4, 5) na ordem de seleção, pois sua norma residual é ~0
+    pos = {int(idx): pos for pos, idx in enumerate(cadeia)}
+    assert pos[0] == 0  # a de partida sempre entra primeiro
+    novas = [pos[j] for j in (3, 4, 5) if j in pos]
+    colineares = [pos[j] for j in (1, 2) if j in pos]
+    if novas and colineares:
+        assert min(novas) < min(colineares)
+
+
+def test_selecao_spa_retorna_mascara_valida(pq):
+    """SPA: roda sem crash, mask tem >=2 variáveis, uma avaliação por início."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos()
+    resultados, mask = pq.selecao_spa(X, Y_bin, y_int, cv_indices, n_lv=2,
+                                       n_vars_max=8, n_starts=10, seed=0)
+    assert mask.sum() >= 2
+    assert len(resultados) <= 10
+    assert all("balanced_accuracy" in r for r in resultados)
+
+
+def test_selecao_ag_fitness_nao_decresce_por_elitismo(pq):
+    """AG: com elitismo, o melhor fitness da geração NUNCA piora ao longo das
+    gerações (o melhor cromossomo sempre sobrevive) — propriedade de design,
+    não coincidência estatística."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=2)
+    historico, mask = pq.selecao_ag(X, Y_bin, y_int, cv_indices, n_lv=2,
+                                     tam_populacao=10, n_geracoes=6,
+                                     prob_mutacao=0.05, frac_inicial=0.15, seed=2)
+    assert len(historico) == 6
+    melhores = [h["melhor_fitness"] for h in historico]
+    assert all(b2 >= b1 - 1e-12 for b1, b2 in zip(melhores, melhores[1:]))
+    assert mask.sum() >= 2
+
+
+def test_selecao_ag_recupera_variaveis_informativas(pq):
+    """AG: com sinal forte e claro, a máscara final deve conter pelo menos
+    parte das variáveis genuinamente informativas (não é seleção ao acaso)."""
+    informativas = (5, 6, 7, 20, 21)
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(
+        seed=3, vars_informativas=informativas)
+    _historico, mask = pq.selecao_ag(X, Y_bin, y_int, cv_indices, n_lv=2,
+                                      tam_populacao=12, n_geracoes=8,
+                                      prob_mutacao=0.05, frac_inicial=0.15, seed=3)
+    selecionadas = set(np.where(mask)[0].tolist())
+    assert len(selecionadas & set(informativas)) >= 2
+
+
+def test_config_spec_spa_ag_opt_in_por_padrao(pq):
+    """SPA/AG são opt-in (default False) — mais lentos que os métodos
+    sempre-ligados; não devem rodar sem o usuário pedir explicitamente."""
+    cfg = pq.Config()
+    assert cfg.executar_spa is False
+    assert cfg.executar_ag is False
+    chaves = {s["key"] for s in pq._CONFIG_SPEC}
+    assert "selecao_spa" in chaves and "selecao_ag" in chaves
+
+
+def test_etapa4_integra_spa_e_ag_quando_ligados(pq):
+    """Integração: com executar_spa/executar_ag=True, a tabela final da
+    Etapa 4 inclui as linhas 'SPA (APS)' e 'AG (Genetico)' ao lado dos
+    métodos sempre-ligados (Full/iPLS/VIP/SR/sPLS-DA)."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=4, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+    vip = np.abs(np.random.default_rng(4).normal(size=X.shape[1])) + 0.5
+    sr = np.abs(np.random.default_rng(5).normal(size=X.shape[1]))
+
+    cfg = pq.Config(executar_spa=True, executar_ag=True,
+                     spa_n_vars_max=6, spa_n_starts=6,
+                     ag_tam_populacao=8, ag_n_geracoes=3, seed=4)
+    with tempfile.TemporaryDirectory() as pasta:
+        pasta_dados = pasta
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, vip, sr, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta_dados)
+    metodos = {t["metodo"] for t in resumo["tabela"]}
+    assert "SPA (APS)" in metodos
+    assert "AG (Genetico)" in metodos

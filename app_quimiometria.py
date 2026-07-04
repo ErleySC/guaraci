@@ -1829,7 +1829,8 @@ with tab_modelo:
                               "validacao_group_aware"]
     _MODELO_KEYS_VALID    = ["n_permutacoes", "teste_wold", "teste_cv_anova",
                               "n_jobs_permutacao"]
-    _MODELO_KEYS_EXTRAS   = ["selecao_variaveis_etapa4", "ddsimca", "opls_da",
+    _MODELO_KEYS_EXTRAS   = ["selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
+                              "ddsimca", "opls_da",
                               "comparar_pre_processamentos", "benchmark",
                               "monte_carlo", "n_monte_carlo",
                               "monte_carlo_incluir_todos",
