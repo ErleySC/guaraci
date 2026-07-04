@@ -22,7 +22,6 @@ from __future__ import annotations
 import logging
 import io
 import os
-import re
 import sys
 import time
 import tempfile
@@ -50,6 +49,12 @@ if os.path.isdir(_SRC) and _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
 from guaraci.design_tokens import tokens as _theme_tokens
+# Lógica pura extraída da UI (item 19): testável sem Streamlit. Ver app_logic.py.
+from guaraci.app_logic import (
+    coletar_config as _coletar_config,
+    fmt_tempo as _fmt_tempo,
+    progresso_do_log as _progresso_do_log,
+)
 
 
 def _active_theme() -> str:
@@ -306,20 +311,7 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     return st.text_input(rotulo, value=str(valor_atual), help=ajuda, key=chave)
 
 
-def _coletar_config(cfg_base, valores: Dict):
-    """Applies widget values to a deep copy of Config."""
-    import copy
-    cfg = copy.deepcopy(cfg_base)
-    erros: List[str] = []
-    for s in pq._CONFIG_SPEC:
-        if s["key"] not in valores:
-            continue
-        try:
-            setattr(cfg, s["attr"], pq._coagir_valor(s, valores[s["key"]]))
-        except Exception as e:
-            erros.append(f"{s['key']}: {e}")
-    return cfg, erros
-
+# _coletar_config foi movida para guaraci.app_logic (item 19) e importada acima.
 
 # ──────────────────────────────────────────────────────────────────────────
 # File helpers
@@ -1231,56 +1223,8 @@ class _LogThreadSafe:
             return "".join(self._buf)
 
 
-_RE_ETAPA = re.compile(r"\[(\d+)[a-z]?/7\]")
-_ETAPA_NOMES = {
-    0: "Validating input",
-    1: "Spectral preprocessing",
-    2: "Latent variable (LV) selection",
-    3: "Exploratory PCA",
-    4: "Validation tests (permutation / Wold / CV-ANOVA)",
-    5: "Final metrics + bootstrap CI",
-    6: "Figures, DD-SIMCA, OPLS-DA, holdout",
-    7: "Regression / finalization and model saved",
-}
-# Sub-steps after step 7 (benchmark / MC CV)
-_ETAPA_SUBSTEP = {
-    "[7b/7]": "Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...",
-    "[7c/7]": "Monte Carlo CV (95% CI by percentile)...",
-}
-
-
-def _progresso_do_log(txt: str):
-    achados = _RE_ETAPA.findall(txt)
-    if not achados:
-        return 0.0, "Starting..."
-    n = max(int(a) for a in achados)
-    nome = _ETAPA_NOMES.get(n, f"Step {n}/7")
-    # Heavy sub-steps: show specific name for benchmark and MC CV
-    if n >= 7:
-        for tag, descricao in _ETAPA_SUBSTEP.items():
-            if tag in txt:
-                nome = descricao
-                break
-    return min(0.99, n / 7.0), nome
-
-
-def _fmt_tempo(seg) -> str:
-    if seg is None:
-        return "—"
-    try:
-        seg = float(seg)
-    except (TypeError, ValueError):
-        return "—"
-    if seg != seg or seg < 0:
-        return "0s"
-    seg = int(round(seg))
-    d, r = divmod(seg, 86400)
-    h, r = divmod(r, 3600)
-    m, s = divmod(r, 60)
-    if d: return f"{d}d {h}h"
-    if h: return f"{h}h {m:02d}min"
-    if m: return f"{m}min {s:02d}s"
-    return f"{s}s"
+# _RE_ETAPA/_ETAPA_NOMES/_ETAPA_SUBSTEP + _progresso_do_log + _fmt_tempo foram
+# movidos para guaraci.app_logic (item 19) e importados no topo do arquivo.
 
 
 def _ram_mb() -> Optional[float]:
