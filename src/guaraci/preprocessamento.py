@@ -21,7 +21,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 
 class SNV(BaseEstimator, TransformerMixin):

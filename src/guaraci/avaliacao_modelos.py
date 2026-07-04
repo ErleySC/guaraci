@@ -10,6 +10,7 @@ monte_carlo_cv/fig_det_curvas/fig_shap_benchmark).
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 import warnings
@@ -23,14 +24,14 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import balanced_accuracy_score
 
-from preprocessamento import construir_preprocessador
-from figuras import salvar, cor
-from hardware import _verificar_ram
-from dados_io import kennard_stone_split_group_aware
-from chemometric_stats import rmse_flat
+from guaraci.preprocessamento import construir_preprocessador
+from guaraci.figuras import salvar, cor
+from guaraci.hardware import _verificar_ram
+from guaraci.dados_io import kennard_stone_split_group_aware
+from guaraci.chemometric_stats import rmse_flat
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 
 
@@ -217,7 +218,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                             nc = min(p.shape[1], n_classes)
                             proba_oof[te_idx, :nc] = p[:, :nc]
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             elapsed = time.time() - t0
             ba = np.array(ba_folds)
             f1 = np.array(f1_folds)
@@ -451,7 +452,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
                     f1_list.append(
                         float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
         elapsed = time.time() - t0
         arr_ba = np.array(ba_list) if ba_list else np.array([np.nan])
@@ -545,7 +546,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                                            left=fnmr[0], right=fnmr[-1])
                     n_valid += 1
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             if n_valid == 0:
                 continue
             fnmr_media = fnmr_acum / n_valid

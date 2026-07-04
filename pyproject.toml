@@ -36,19 +36,16 @@ imagem = ["scikit-image>=0.19,<1.0"]  # features de textura (GLCM) no modo_entra
 all = ["guaraci-chemometrics[web,reports,benchmark,imagem]"]
 
 [project.scripts]
-guaraci = "guaraci:main"
+guaraci = "guaraci.guaraci:main"
 
 [project.urls]
 Repository = "https://github.com/ErleySC/guaraci"
 
+# Pacote real em src/guaraci/ (migração item 17). app_quimiometria.py fica na
+# raiz (entry point do Streamlit) e não faz parte do pacote instalável.
 [tool.setuptools]
-py-modules = [
-    "pipeline", "guaraci", "cli_assistente", "app_quimiometria",
-    "guaraci_theme", "design_tokens", "chemometric_stats",
-    "paleta_cores", "dados_io", "preprocessamento", "classificadores",
-    "figuras", "validacao_estatistica", "hardware", "selecao_variaveis",
-    "avaliacao_modelos", "dados_imagem", "predicao",
-]
+package-dir = { "" = "src" }
+packages = ["guaraci"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -86,10 +83,10 @@ ignore = [
 # pipeline.py e uma FACHADA (Fase H): reexporta simbolos dos 10 modulos
 # extraidos, entao muitos imports sao "nao usados" de proposito — e o contrato
 # publico que guaraci/cli/app consomem via `pq.X`. Ver test_fachada_reexport.py.
-"pipeline.py" = ["F401"]
+"src/guaraci/pipeline.py" = ["F401"]
 # Camada de UI (CLI/desktop/web): variaveis locais de rotulo/idioma calculadas
 # para clareza mas nem sempre usadas em todo ramo — tolera F841 aqui; o rigor
 # de "variavel nao usada" fica no nucleo cientifico (pipeline + modulos).
-"guaraci.py" = ["F841"]
-"cli_assistente.py" = ["F841"]
+"src/guaraci/guaraci.py" = ["F841"]
+"src/guaraci/cli_assistente.py" = ["F841"]
 "app_quimiometria.py" = ["F841"]

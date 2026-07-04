@@ -23,11 +23,15 @@ e anti-vazamento de réplicas em cada etapa.
 
 ## 1. As três formas de usar
 
+O código fica no pacote `guaraci` (em `src/`). Instale uma vez com
+`pip install -e .` (disponibiliza o comando `guaraci`); sem instalar, use
+`PYTHONPATH=src`.
+
 | Forma | Comando | Para quem |
 |---|---|---|
 | **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 7 abas guiadas. Demo público: <https://guaraci.streamlit.app> |
-| **Assistente de terminal** | `python guaraci.py` | Menu interativo colorido, sem editar código |
-| **Pipeline direto** | `python pipeline.py --rodar` | Execução automatizada a partir de `config.yaml` |
+| **Assistente de terminal** | `guaraci` (ou `PYTHONPATH=src python -m guaraci.guaraci`) | Menu interativo colorido, sem editar código |
+| **Pipeline direto** | `python -m guaraci.pipeline --rodar` | Execução automatizada a partir de `config.yaml` |
 
 As três formas compartilham o mesmo motor (`pipeline.py`) e a mesma
 configuração (`config.yaml` / classe `Config`) — não há divergência de
@@ -225,6 +229,17 @@ compartilhado, zero duplicação):
   + os dois diagnósticos acima. Útil para automação/scripts e integração
   com LIMS sem precisar do navegador.
 
+> **⚠️ Segurança — upload de modelo em deploy público.** Um arquivo `.joblib`
+> é um *pickle*: carregá-lo **executa código** contido no arquivo. Em uso local
+> (sua máquina) isso é seguro, pois o modelo é seu. Mas num **demo hospedado
+> público**, aceitar upload de `.joblib` de qualquer visitante é um vetor de
+> execução remota de código (RCE). Por isso, no deploy público, defina a
+> variável de ambiente **`GUARACI_DISABLE_MODEL_UPLOAD=1`**: o app esconde o
+> uploader de modelo e passa a aceitar apenas **caminho local** (controlado pelo
+> operador). O upload de CSV de espectros permanece liberado (dado inerte). Sem
+> a variável (padrão), o upload fica habilitado com um aviso — apropriado para
+> uso local single-user.
+
 **Figuras:** conjunto essencial por padrão (~8 figuras) com opção de
 figuras detalhadas adicionais (`figuras_detalhadas=True`). Formatos
 PNG/PDF/SVG, DPI configurável.
@@ -292,9 +307,11 @@ implementado de fato.
 | `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, curvas DET, SHAP |
 | `predicao.py` | Predição em amostras novas a partir de um `.joblib` salvo — compartilhado entre app (aba Prediction) e CLI (menu `[B]`) |
 
-Interfaces de usuário: `app_quimiometria.py` (web), `guaraci.py` (assistente
-de terminal), `cli_assistente.py` (menu detalhado). Tema visual
-compartilhado entre elas: `guaraci_theme.py`, `design_tokens.py`.
+Os módulos acima vivem no pacote `src/guaraci/`. As interfaces de usuário:
+`app_quimiometria.py` (web — fica na **raiz**, é o entry point do Streamlit),
+`guaraci/guaraci.py` (assistente de terminal), `guaraci/cli_assistente.py`
+(menu detalhado). Tema visual compartilhado: `guaraci_theme.py`,
+`design_tokens.py`.
 
 ---
 

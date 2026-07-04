@@ -40,7 +40,7 @@ _RGB: Dict[str, tuple] = {
 # Fonte unica de cor para web (Streamlit), figuras e CLI. Mantidos em modulo
 # separado para que o app Streamlit possa importar tokens sem arrastar `rich`.
 # ---------------------------------------------------------------------------
-from design_tokens import TOKENS, tokens  # noqa: E402,F401  (re-export)
+from guaraci.design_tokens import TOKENS, tokens  # noqa: E402,F401  (re-export)
 
 
 def ansi(tom: str) -> str:

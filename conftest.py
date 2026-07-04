@@ -1,28 +1,24 @@
 """pytest configuration — root conftest.py.
 
-Adds project root to sys.path and provides a session-scoped fixture
-that loads the pipeline module once (avoids reloading ~6k-line file per test).
+Adds ./src to sys.path so the `guaraci` package is importable without an
+editable install, and provides a session-scoped fixture that loads the
+pipeline module once (avoids reloading the large module per test).
 """
 import sys
 import os
-import importlib.util
 
 import pytest
 
-# Make project root importable without sys.path.insert in every test file
-sys.path.insert(0, os.path.dirname(__file__))
+# Torna o pacote `guaraci` (em ./src) importável nos testes sem `pip install -e .`.
+_SRC = os.path.join(os.path.dirname(__file__), "src")
+if _SRC not in sys.path:
+    sys.path.insert(0, _SRC)
 
 
 @pytest.fixture(scope="session")
 def pq():
     """Session-scoped pipeline module — loaded once, reused across all tests."""
-    _name = "pipeline"
-    spec = importlib.util.spec_from_file_location(
-        _name, os.path.join(os.path.dirname(__file__), f"{_name}.py")
-    )
-    assert spec is not None and spec.loader is not None
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    import guaraci.pipeline as mod
     return mod
 
 

@@ -11,6 +11,7 @@ reexporta estes nomes, então `pipeline.carregar_dados(...)`,
 from __future__ import annotations
 
 import glob
+import logging
 import os
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -19,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 # =========================================================================
 #  parse_title v3 — metadata extraction from ##TITLE= JCAMP-DX
@@ -113,7 +114,7 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
                 if linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
                     break
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     return None
 
 
@@ -742,7 +743,7 @@ def carregar_dados(cfg: "Config"
                             cfg.extrair_conc_filename,
                             cfg.usar_parse_title)
     if cfg.modo == "imagem":
-        from dados_imagem import carregar_imagens
+        from guaraci.dados_imagem import carregar_imagens
         return carregar_imagens(cfg.pasta_entrada, cfg.imagem_recorte,
                                  cfg.imagem_incluir_textura)
     raise ValueError(f"Unknown MODE: '{cfg.modo}'.")

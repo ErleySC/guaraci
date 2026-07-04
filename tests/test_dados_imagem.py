@@ -14,7 +14,7 @@ def test_rgb_para_hsv_bate_com_colorsys(pq):
     """RGB->HSV deve bater com colorsys.rgb_to_hsv (referência da stdlib)."""
     rng = np.random.default_rng(0)
     amostras = rng.random((50, 3))
-    from dados_imagem import _rgb_para_hsv
+    from guaraci.dados_imagem import _rgb_para_hsv
     hsv = _rgb_para_hsv(amostras)
     for i in range(50):
         h_ref, s_ref, v_ref = colorsys.rgb_to_hsv(*amostras[i])
@@ -26,7 +26,7 @@ def test_rgb_para_hsv_bate_com_colorsys(pq):
 def test_rgb_para_lab_branco_e_preto(pq):
     """Branco puro -> L=100,a=0,b=0; preto puro -> L=0,a=0,b=0 (referência
     conhecida de colorimetria, D65)."""
-    from dados_imagem import _rgb_para_lab
+    from guaraci.dados_imagem import _rgb_para_lab
     branco = np.array([[[1.0, 1.0, 1.0]]])
     preto = np.array([[[0.0, 0.0, 0.0]]])
     lab_branco = _rgb_para_lab(branco)[0, 0]

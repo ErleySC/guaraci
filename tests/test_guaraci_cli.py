@@ -5,19 +5,13 @@ test_predicao.py::test_menu_predicao_cli_end_to_end) -- guaraci.py e' seguro
 de importar (guard `if __name__ == "__main__"`, sem I/O bloqueante em nivel
 de modulo).
 """
-import importlib.util
-import os
 
 import pytest
 
 
 @pytest.fixture(scope="module")
 def guaraci_mod():
-    proj_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    spec = importlib.util.spec_from_file_location(
-        "guaraci_cli_test_naming", os.path.join(proj_root, "guaraci.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    import guaraci.guaraci as mod
     return mod
 
 

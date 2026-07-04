@@ -12,6 +12,7 @@ tests/test_figuras_regressao.py.
 """
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
@@ -30,15 +31,15 @@ from sklearn.metrics import (
     f1_score, precision_score, recall_score, roc_auc_score, roc_curve,
 )
 
-from paleta_cores import (
+from guaraci.paleta_cores import (
     cor, edge_para_cor,
 )
-from chemometric_stats import (
+from guaraci.chemometric_stats import (
     hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
 )
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 
 def setup_matplotlib(cfg: Config) -> None:
@@ -387,7 +388,7 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
         for g, membros in comp.items():
             print(f"    Cluster {g}: {', '.join(membros)}")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
 
 def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,

@@ -7,11 +7,12 @@ pipeline.py e app_quimiometria.py usam via reexport (pipeline.hardware_probe()).
 """
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, List
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 
 def hardware_probe() -> Dict[str, Any]:
@@ -39,7 +40,7 @@ def hardware_probe() -> Dict[str, Any]:
             info["disco_livre_gb"] = round(
                 _ps.disk_usage(os.path.abspath(".")).free / 1024**3, 1)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         info["psutil_ok"] = True
     except ImportError:
         # Fallback Windows: GlobalMemoryStatusEx via ctypes
@@ -61,15 +62,15 @@ def hardware_probe() -> Dict[str, Any]:
             info["ram_total_gb"] = round(ms.ullTotalPhys / 1024**3, 1)
             info["ram_livre_gb"] = round(ms.ullAvailPhys / 1024**3, 1)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         # CPU via os
         try:
             info["cpu_logicos"] = os.cpu_count() or 2
             info["cpu_fisicos"] = max(1, (os.cpu_count() or 2) // 2)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     return info
 
 
@@ -152,5 +153,5 @@ def _verificar_ram(min_gb: float, operacao: str) -> bool:
     except ImportError:
         pass   # sem psutil: assume que ha memoria (falha graciosamente)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     return True

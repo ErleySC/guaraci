@@ -21,8 +21,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
-from validacao_estatistica import _cv_predict_manual
-from figuras import salvar, cor, _ticks_x_inteiros
+from guaraci.validacao_estatistica import _cv_predict_manual
+from guaraci.figuras import salvar, cor, _ticks_x_inteiros
 
 if TYPE_CHECKING:
     pass

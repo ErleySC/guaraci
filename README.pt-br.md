@@ -81,10 +81,13 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 
 ## Instalação
 
-Requer **Python 3.10+**.
+Requer **Python 3.10+**. O código fica no pacote `guaraci`, em `src/`.
 
 ```bash
-pip install -r requirements.txt
+pip install -e .          # pacote `guaraci` + núcleo científico (adiciona o comando `guaraci`)
+# tudo (web + relatórios + benchmark + imagem):
+pip install -e .[all]
+# alternativa p/ deploy (ex.: Streamlit Cloud): pip install -r requirements.txt
 ```
 
 ---
@@ -100,9 +103,13 @@ cp config.example.yaml config.yaml   # Windows: copy config.example.yaml config.
 
 Edite `pasta_dados` para apontar à pasta com seus arquivos `.dx`.
 
+O código fica no pacote `guaraci`, em `src/`. Instale uma vez com
+`pip install -e .` (ou `pip install -e .[all]` para web/relatórios/benchmark);
+isso disponibiliza o comando `guaraci`. Sem instalar, use `PYTHONPATH=src`.
+
 ### 1. Interface GUARACI (terminal, recomendada)
 ```bash
-python guaraci.py
+guaraci                               # ou: PYTHONPATH=src python -m guaraci.guaraci
 ```
 Interface bilíngue (PT/EN) em Rich: menus guiados para configurar tudo, escolher
 a técnica analítica (FT-NIR, NIR, MIR, Raman, UV-Vis, fluorescência, HPLC, GC-MS,
@@ -111,7 +118,7 @@ assistente científico em qualquer menu.
 
 ### 2. Direto pelo `config.yaml`
 ```bash
-python pipeline.py --rodar
+python -m guaraci.pipeline --rodar
 ```
 
 ### 3. Interface web (navegador)
@@ -119,9 +126,10 @@ python pipeline.py --rodar
 streamlit run app_quimiometria.py
 ```
 Campos clicáveis, validação imediata da pasta, execução com log ao vivo, exibição
-do resumo + figuras e download `.zip` de todos os resultados.
+do resumo + figuras e download `.zip` de todos os resultados. O app coloca `src/`
+no path sozinho, então funciona mesmo sem `pip install -e .`.
 
-> Modo legado: `python pipeline.py --codigo` usa a `Config`
+> Modo legado: `python -m guaraci.pipeline --codigo` usa a `Config`
 > embutida no código (para quem prefere editar o `.py`).
 
 ---

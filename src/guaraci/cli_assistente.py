@@ -1,6 +1,6 @@
 """
 cli_assistente.py — Assistente CLI hierarquico para o Pipeline Quimiometrico FT-NIR
-AmaNIR — Plataforma Quimiometrica FT-NIR
+GUARACI — Plataforma Quimiometrica Multitecnica
 GEAAp / UFPA — Plataforma de autenticacao de oleos vegetais amazonicos.
 
 Uso:
@@ -12,10 +12,10 @@ Requer: pipeline.py no mesmo diretorio.
 
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re as _re
-import sys
 import textwrap as _textwrap
 from pathlib import Path
 from typing import Any, Dict
@@ -23,8 +23,7 @@ from typing import Any, Dict
 # ---------------------------------------------------------------------------
 # Integracao com o pipeline (sem modificar nenhuma funcao analitica)
 # ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pipeline as pq
+import guaraci.pipeline as pq
 
 # Atalhos
 Config = pq.Config
@@ -37,7 +36,7 @@ _fmt_yaml = pq._fmt_yaml
 _coagir_valor = pq._coagir_valor
 
 # Tema visual compartilhado com guaraci.py (mesma paleta e Console Rich).
-from guaraci_theme import (
+from guaraci.guaraci_theme import (
     console as _console, ansi as _ansi_tom, _W as _theme_W,
     ANSI_RESET as _RESET, ANSI_BOLD as _BOLD, ANSI_DIM as _DIM,
     err as _err,
@@ -2392,7 +2391,7 @@ def _gerar_pca_biplot(cfg: Config) -> None:
                                   linestyle="--")
                     ax.add_patch(ell)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
                 # Scatter
                 ax.scatter(Tc[:, 0], Tc[:, 1],
@@ -3243,27 +3242,27 @@ def menu_tecnica(cfg: Config) -> None:
                 try:
                     setattr(cfg, spec_min["attr"], _coagir_valor(spec_min, tec["faixa_min"]))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             spec_max = _SPEC_BY_KEY.get("faixa_max_cm")
             if spec_max:
                 try:
                     setattr(cfg, spec_max["attr"], _coagir_valor(spec_max, tec["faixa_max"]))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             # Aplicar pre-processamento recomendado
             spec_pp = _SPEC_BY_KEY.get("pre_processamento")
             if spec_pp:
                 try:
                     setattr(cfg, spec_pp["attr"], _coagir_valor(spec_pp, tec["preproc"]))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             # Aplicar modo de entrada
             spec_modo = _SPEC_BY_KEY.get("modo_entrada")
             if spec_modo:
                 try:
                     setattr(cfg, spec_modo["attr"], _coagir_valor(spec_modo, tec["modo"]))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             tec_lang = tec.get(lang, tec.get("PT", {}))
             if lang == "PT":
                 ok = f"  Tecnica '{tec_lang.get('nome', key)}' aplicada."
@@ -3447,7 +3446,7 @@ def menu_codificacao(cfg: Config) -> None:
             for cod, nome in sorted(pq.CODIGO_ESPECIE.items()):
                 print(f"    {cod:<6s} = {nome}")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         if codigos_u:
             print()
             if lang == "PT":
@@ -3678,7 +3677,7 @@ def wizard_inicial() -> None:
     cls()
     w = 68
     print("\n" + "╔" + "═" * (w - 2) + "╗")
-    print("║" + _ansi_ljust("  AmaNIR — Plataforma Quimiometrica FT-NIR", w - 2) + "║")
+    print("║" + _ansi_ljust("  GUARACI — Plataforma Quimiometrica Multitecnica", w - 2) + "║")
     print("║" + _ansi_ljust("  GEAAp / UFPA  |  Oleos Vegetais Amazonicos", w - 2) + "║")
     print("╠" + "═" * (w - 2) + "╣")
     print("║" + _ansi_ljust("  Qual e o seu idioma? / What is your language?", w - 2) + "║")
@@ -3889,7 +3888,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         try:
             pq.CODIGO_ESPECIE.update(codigos_u)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     if lang == "PT":
         print(f"\n  Salvando configuracao em {_CFG_PATH}...")
@@ -3912,7 +3911,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         try:
             plt.style.use(estilo)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         cores = paleta.get("cores")
         if cores:
             plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)  # type: ignore[attr-defined]
@@ -3939,7 +3938,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         plt.rcParams["scatter.marker"] = "o"
         plt.rcParams["lines.alpha"] = alpha_val  # hint global
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     try:
         executar(cfg)

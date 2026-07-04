@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import predicao as pr
+import guaraci.predicao as pr
 
 
 @pytest.fixture(scope="session")
@@ -153,14 +153,7 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     e confirma que o CSV de resultados foi gravado com as colunas certas.
     Sem mock de logica cientifica -- so' o input() do terminal e' simulado.
     """
-    import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    import importlib.util as ilu
-    proj_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    spec = ilu.spec_from_file_location("guaraci_cli_test",
-                                        os.path.join(proj_root, "guaraci.py"))
-    guaraci_mod = ilu.module_from_spec(spec)
-    spec.loader.exec_module(guaraci_mod)
+    import guaraci.guaraci as guaraci_mod
 
     pkg, X_novos, wn = modelo_e_dados
     cam_modelo = tmp_path / "modelo_teste.joblib"

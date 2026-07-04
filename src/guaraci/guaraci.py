@@ -8,12 +8,11 @@ Uso:
 
 Requer: pipeline.py e cli_assistente.py no mesmo diretorio.
 Rich 15.0+ necessario (pip install rich).
-
-type: ignore[all]  # Interface code; Pylance stubs incomplete for config access patterns
 """
 
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re as _re
@@ -32,12 +31,12 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     try:
         import subprocess
         subprocess.run(["chcp", "65001"], capture_output=True, shell=True)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
 # ---------------------------------------------------------------------------
@@ -59,26 +58,18 @@ from rich import box as rbox
 # ---------------------------------------------------------------------------
 # Pipeline — ZERO modificacoes analiticas
 # ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pipeline as pq
+import guaraci.pipeline as pq
 
 Config        = pq.Config
 executar      = pq.executar
 salvar_config = pq.salvar_config
 carregar_config = pq.carregar_config
 
-# Carregar dicionarios do cli_assistente sem disparar main()
-import importlib.util as _ilu
-_spec = _ilu.spec_from_file_location(
-    "cli_assistente",
-    Path(os.path.dirname(os.path.abspath(__file__))) / "cli_assistente.py",
-)
-_cli = _ilu.module_from_spec(_spec) if _spec is not None else None  # type: ignore[arg-type]
-try:
-    if _spec is not None and _spec.loader is not None:
-        _spec.loader.exec_module(_cli)  # type: ignore[union-attr]
-except (SystemExit, Exception):
-    pass
+# Dicionarios de i18n/perfis do cli_assistente. Import de pacote normal (mesmo
+# pacote): importar o modulo NAO dispara main() (guardado por __main__), entao
+# nao ha efeito colateral — o antigo carregamento por caminho (spec_from_file)
+# so existia porque os modulos eram scripts soltos na raiz.
+import guaraci.cli_assistente as _cli
 
 def _try(name, fallback=None):
     return getattr(_cli, name, fallback if fallback is not None else {})
@@ -155,7 +146,7 @@ def _toggle_idioma() -> str:
 # PALETA + tema + console: fonte unica em guaraci_theme (compartilhada com o
 # cli_assistente para visual identico). Nomes reexportados sem alteracao.
 # ---------------------------------------------------------------------------
-from guaraci_theme import (  # noqa: E402
+from guaraci.guaraci_theme import (  # noqa: E402
     PA, PF, PS, PR, PW, PM, PD, PG, console, _W,
 )
 
@@ -1581,7 +1572,8 @@ def menu_visualizacao(cfg: Config) -> None:
             vcfg["grid_style"] = ests[(ests.index(gs)+1)%3] if gs in ests else "dotted"
         elif r == "4":
             try: vcfg["grid_alpha"] = float(_input("  Valor [0.1-0.9]: "))
-            except Exception: pass
+            except Exception:
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         _salvar_visual_cfg(vcfg)
 
     def _alpha():
@@ -2160,7 +2152,7 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
     try:
         import joblib
         import pandas as pd
-        import predicao as _pred
+        import guaraci.predicao as _pred
         status_msg = ("Carregando modelo e aplicando..." if is_pt
                        else "Loading model and applying...")
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
@@ -2257,7 +2249,7 @@ def menu_perfis(cfg: Config) -> None:
                 try:
                     setattr(cfg, sp["attr"], v); n += 1
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         paleta = pdata.get("_paleta")
         if paleta and PALETAS_COR and paleta in PALETAS_COR:
             vcfg = _carregar_visual_cfg()
@@ -2860,7 +2852,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         cod_u = _carregar_codigos_usuario()
         if cod_u: pq.CODIGO_ESPECIE.update(cod_u)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # Aplicar configuracoes visuais
     try:
@@ -2870,7 +2862,8 @@ def _rodar_pipeline(cfg: Config) -> None:
         vcfg = _carregar_visual_cfg()
         paleta = PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
         try: plt.style.use(paleta.get("style", "default"))
-        except Exception: pass
+        except Exception:
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         cores = paleta.get("cores")
         if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
         cmap = paleta.get("cmap")
@@ -2886,7 +2879,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         alpha_map = {"baixo":0.9,"medio":0.65,"alto":0.35}
         plt.rcParams["lines.alpha"] = alpha_map.get(vcfg.get("alpha_pontos","medio"), 0.65)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # Sincronizar DPI do visual_config antes de salvar
     _sincronizar_dpi(cfg)
@@ -3016,7 +3009,8 @@ def _carregar_yaml(cfg: Config) -> None:
             cfg2 = carregar_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
-                except Exception: pass
+                except Exception:
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             _lbl = "Carregado" if _lang() == "PT" else "Loaded"
             console.print(f"  [g]✓ {_lbl}: {escape(path.stem)}[/g]")
         except Exception as e:
@@ -3037,7 +3031,7 @@ def main() -> None:
         try:
             cfg = carregar_config(str(_CFG_PATH))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # Recuperar idioma salvo
     try:

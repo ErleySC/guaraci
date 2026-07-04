@@ -79,7 +79,7 @@ _CASOS = [(mod, sym) for mod, syms in CONTRATO.items() for sym in syms]
                          ids=[f"{m}.{s}" for m, s in _CASOS])
 def test_reexport_identidade(pq, modulo, simbolo):
     """pq.<simbolo> existe e É o mesmo objeto do módulo de origem."""
-    origem = importlib.import_module(modulo)
+    origem = importlib.import_module("guaraci." + modulo)
     assert hasattr(pq, simbolo), (
         f"pipeline não reexporta '{simbolo}' (esperado de {modulo}.py) — "
         f"o contrato de fachada foi quebrado; guaraci/cli/app dependem de pq.{simbolo}")

@@ -25,11 +25,20 @@ jobs:
         run: ruff check --output-format=github .
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
+  # Matriz cruzada: o produto é Windows-first (código de encoding/console
+  # específico de win32 em guaraci.py/cli_assistente.py), então validamos em
+  # windows-latest além de ubuntu, nas pontas da faixa suportada (3.10–3.12).
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.11"]
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    defaults:
+      run:
+        shell: bash   # Git Bash no Windows: mesma sintaxe de comando nos 2 SOs
 
     steps:
       - uses: actions/checkout@v4
@@ -51,18 +60,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
+          pip install -e .   # valida o empacotamento (src/guaraci, entry point `guaraci`)
 
       - name: Run tests with coverage
         # Suíte completa (inclui o end-to-end 'slow'): valida a integração dos
         # 10 módulos extraídos na Fase H e dá cobertura real do caminho de
         # execução, não só das funções puras.
-        run: |
-          pytest tests/ \
-            --cov=. --cov-report=term-missing --cov-report=xml
+        # --cov-fail-under=30 é um PISO-CATRACA: hoje o total (~32%) é puxado
+        # para baixo pelos arquivos de UI ainda sem teste. O gate impede
+        # REGRESSÃO; suba o número conforme extrair lógica das UIs.
+        run: pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=30
 
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-xml
+          name: coverage-xml-${{ matrix.os }}-py${{ matrix.python-version }}
           path: coverage.xml

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 ============================================================================
- Chemometrics Platform — Streamlit Interface v30.1 · 7 tabs
+ Chemometrics Platform — Streamlit Interface · 7 tabs
+ (version is sourced from pipeline.__version__ at runtime — see _APP_VERSION)
 ============================================================================
 Organization:
    1. Project      — study identification and objective
@@ -18,6 +19,7 @@ No code editing required: configure, run, download.
 """
 from __future__ import annotations
 
+import logging
 import io
 import os
 import re
@@ -38,7 +40,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from design_tokens import tokens as _theme_tokens
+# Bootstrap do pacote: este arquivo e o ENTRY POINT do Streamlit (roda como
+# script solto, `streamlit run app_quimiometria.py`), entao o pacote `guaraci`
+# em ./src precisa entrar no path antes de qualquer `import guaraci.*`. Esta e
+# a unica insercao de sys.path que resta no projeto — justificada por ser o
+# ponto de entrada. Módulos internos do pacote usam imports absolutos limpos.
+_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
+if os.path.isdir(_SRC) and _SRC not in sys.path:
+    sys.path.insert(0, _SRC)
+
+from guaraci.design_tokens import tokens as _theme_tokens
 
 
 def _active_theme() -> str:
@@ -53,7 +64,7 @@ def _active_theme() -> str:
         if t is not None and getattr(t, "type", None) in ("light", "dark"):
             return t.type
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     return "light"
 
 
@@ -83,22 +94,15 @@ _CFG_PATH = os.path.join(_AQUI, "config.yaml")
 
 @st.cache_resource(show_spinner="Loading pipeline engine...")
 def _carregar_motor():
-    """Load the chemometrics pipeline module.
+    """Load the chemometrics pipeline module (guaraci.pipeline).
 
-    Uses a direct sys.path import (more robust than importlib.exec_module
-    on Streamlit Cloud / Python 3.11 where exec_module can produce partial
-    module objects when any top-level import fails).
+    Import de pacote normal — o bootstrap de ./src no topo do arquivo garante
+    que `guaraci` esteja no path (inclusive no Streamlit Cloud). O sentinela
+    `_CONFIG_SPEC` mantém uma mensagem de erro clara se algum import de nível
+    de módulo falhar e deixar o pacote parcialmente carregado.
     """
-    if _AQUI not in sys.path:
-        sys.path.insert(0, _AQUI)
-
-    # Remove any stale cached version so reimport is always fresh
-    _mod_name = "pipeline"
-    if _mod_name in sys.modules:
-        del sys.modules[_mod_name]
-
     try:
-        import pipeline as _pq  # type: ignore[import]
+        import guaraci.pipeline as _pq  # type: ignore[import]
     except Exception as exc:
         raise RuntimeError(
             f"Failed to import pipeline engine:\n"
@@ -112,13 +116,29 @@ def _carregar_motor():
         attrs = sorted(a for a in dir(_pq) if not a.startswith("__"))
         raise RuntimeError(
             f"Pipeline module loaded but _CONFIG_SPEC is missing.\n"
-            f"This means exec_module stopped before line ~5795.\n"
             f"Attributes present ({len(attrs)}): {attrs[:30]}"
         )
     return _pq
 
 
 pq = _carregar_motor()
+
+# Fonte UNICA de versao: derivada de pipeline.__version__ (evita version drift).
+# Toda string exibida ao usuario (relatorios PDF/DOCX, template LaTeX, rodapes)
+# deve usar esta constante, nunca um literal "vXX.Y" hardcoded.
+_APP_VERSION = f"v{getattr(pq, '__version__', '?')}"
+
+# ── Segurança: upload de modelo (.joblib) ────────────────────────────────────
+# joblib.load usa pickle, que EXECUTA código arbitrário DURANTE o load (RCE).
+# A validação de estrutura (_validar_pacote_modelo) só roda DEPOIS de carregar,
+# tarde demais para impedir a execução. Logo, aceitar upload de .joblib de
+# origem desconhecida é um vetor de RCE — inaceitável num demo hospedado
+# público. O operador do deploy público deve exportar
+# GUARACI_DISABLE_MODEL_UPLOAD=1 para esconder o upload e aceitar apenas
+# caminhos locais (controlados pelo próprio operador). O uso local single-user
+# (máquina do pesquisador) mantém o upload habilitado por padrão.
+_UPLOAD_MODELO_BLOQUEADO = os.getenv(
+    "GUARACI_DISABLE_MODEL_UPLOAD", "").strip().lower() in ("1", "true", "yes", "on")
 
 # ── Language state ──────────────────────────────────────────────────────────
 # Light/dark é gerido pelo TEMA NATIVO do Streamlit (menu ⋮ → Settings → Theme),
@@ -317,6 +337,7 @@ def _zip_da_pasta(pasta: str) -> io.BytesIO:
     return buf
 
 
+@st.cache_data(show_spinner=False, ttl=120)
 def _listar_figuras(pasta: str) -> List[str]:
     imgs: List[str] = []
     for raiz, _dirs, arqs in os.walk(pasta):
@@ -326,6 +347,7 @@ def _listar_figuras(pasta: str) -> List[str]:
     return sorted(imgs)
 
 
+@st.cache_data(show_spinner=False, ttl=120)
 def _ler_resumo(pasta: str) -> Optional[str]:
     for candidato in [
         os.path.join(pasta, "logs", "resumo_modelo.txt"),
@@ -337,6 +359,7 @@ def _ler_resumo(pasta: str) -> Optional[str]:
     return None
 
 
+@st.cache_data(show_spinner=False, ttl=120)
 def _ler_model_card(pasta: str) -> Optional[str]:
     for candidato in [
         os.path.join(pasta, "logs", "model_card.md"),
@@ -469,7 +492,7 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
     pdf.rect(0, pdf.get_y(), 210, 30, style="F")
     pdf.set_xy(15, pdf.get_y() + 5)
     pdf.cell(0, 5,
-             "Generated by: Chemometrics Platform v30.1  |  GEAAp / UFPA  |  PIBIC Project",
+             f"Generated by: Chemometrics Platform {_APP_VERSION}  |  GEAAp / UFPA  |  PIBIC Project",
              align="C")
 
     # ── SECTION 1: METRICS ───────────────────────────────────────────────
@@ -547,7 +570,7 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
             try:
                 pdf.image(imgs[par], x=15, y=y_top, w=fig_w, h=fig_h)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             pdf.set_xy(15, y_top + fig_h + 1)
             pdf.set_font("Helvetica", "I", 7)
             pdf.set_text_color(80, 80, 80)
@@ -563,7 +586,7 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
                 try:
                     pdf.image(imgs[par + 1], x=15, y=y_bot, w=fig_w, h=fig_h)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
                 pdf.set_xy(15, y_bot + fig_h + 1)
                 pdf.set_font("Helvetica", "I", 7)
                 pdf.cell(fig_w, cap_h,
@@ -604,7 +627,7 @@ def _gerar_pdf_relatorio(pasta: str, projeto: Dict,
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(120, 120, 120)
     pdf.multi_cell(0, 5,
-                   "Report automatically generated by the Chemometrics Platform v30.1. "
+                   f"Report automatically generated by the Chemometrics Platform {_APP_VERSION}. "
                    "Engine: pipeline.py | Interface: app_quimiometria.py. "
                    "GEAAp/UFPA — PIBIC Project.")
 
@@ -752,7 +775,7 @@ def _gerar_word_relatorio(pasta: str, projeto: Dict,
 
     doc.add_paragraph()
     nota = doc.add_paragraph(
-        "Report generated by the Chemometrics Platform v30.1. "
+        f"Report generated by the Chemometrics Platform {_APP_VERSION}. "
         "Engine: pipeline.py | GEAAp/UFPA — PIBIC Project."
     )
     if nota.runs:
@@ -1004,7 +1027,7 @@ def _gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
     figs_block = "\n".join(blocos_fig)
 
     tex = f"""% ================================================================
-% LaTeX Template — Chemometrics Platform v30.1
+% LaTeX Template — Chemometrics Platform {_APP_VERSION}
 % Compatible with: Talanta, Food Chemistry, J. Chemometrics (Elsevier)
 % Generated: {time.strftime('%Y-%m-%d %H:%M')}
 % ================================================================
@@ -1193,13 +1216,15 @@ class _LogThreadSafe:
             self._buf.append(s)
         if self._tee is not None:
             try: self._tee.write(s)
-            except Exception: pass
+            except Exception:
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         return len(s)
 
     def flush(self):
         if self._tee is not None:
             try: self._tee.flush()
-            except Exception: pass
+            except Exception:
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     def text(self) -> str:
         with self._lock:
@@ -1371,7 +1396,7 @@ def _plot_espectros_media(wn: np.ndarray, X: np.ndarray,
 # ──────────────────────────────────────────────────────────────────────────
 # Extracted to predicao.py (shared with the CLI's batch prediction menu) —
 # same Fase H pattern: move once, reexport by name, never duplicate.
-from predicao import (  # noqa: E402
+from guaraci.predicao import (  # noqa: E402
     predizer_amostras as _predizer,
     validar_pacote_modelo as _validar_pacote_modelo,
     carregar_csv_predicao as _carregar_csv_predicao,
@@ -1866,7 +1891,7 @@ with tab_modelo:
                     "SHAP and Monte Carlo CV limits will be adjusted "
                     "automatically. Closing other programs is recommended.")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
         cols_e = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_EXTRAS):
@@ -2146,9 +2171,20 @@ with tab_pred:
     col_m1, col_m2 = st.columns(2)
     with col_m1:
         st.markdown("**1. Trained model (.joblib)**")
-        upld_jbl = st.file_uploader("Upload the .joblib model",
-                                    type=["joblib", "pkl"],
-                                    key="pred_model_upload")
+        if _UPLOAD_MODELO_BLOQUEADO:
+            upld_jbl = None
+            st.info(
+                "🔒 Model upload is disabled on this public deployment "
+                "(a `.joblib`/pickle can execute arbitrary code when loaded). "
+                "Provide a local path to a model file below instead.")
+        else:
+            st.caption(
+                "⚠️ Only upload `.joblib` models you generated yourself. "
+                "A model file is a pickle and **runs code when loaded** — "
+                "never load one from an untrusted source.")
+            upld_jbl = st.file_uploader("Upload the .joblib model",
+                                        type=["joblib", "pkl"],
+                                        key="pred_model_upload")
         cam_jbl  = st.text_input("Or local path to model",
                                   key="pred_model_path",
                                   placeholder="C:/results/model_pls.joblib")
@@ -2176,14 +2212,18 @@ with tab_pred:
         # Load model
         try:
             import joblib
-            if upld_jbl is not None:
+            if upld_jbl is not None and not _UPLOAD_MODELO_BLOQUEADO:
                 tmp_jbl = Path(tempfile.gettempdir()) / "pq_pred_model.joblib"
                 with open(tmp_jbl, "wb") as f:
                     f.write(upld_jbl.getvalue())
                 pkg_pred = joblib.load(str(tmp_jbl))
             elif cam_jbl and os.path.exists(cam_jbl):
                 pkg_pred = joblib.load(cam_jbl)
-            # Minimal structure validation to avoid RCE via malicious pickle
+            # NOTE: this is STRUCTURE validation only — it runs AFTER joblib.load,
+            # so it does NOT prevent RCE from a malicious pickle (the code already
+            # ran during load). The real mitigation is upstream: only trusted
+            # sources reach here (upload gated by _UPLOAD_MODELO_BLOQUEADO on
+            # public deployments; local paths are operator-controlled).
             if pkg_pred is not None:
                 _validar_pacote_modelo(pkg_pred)
             else:
@@ -2515,7 +2555,7 @@ def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
                          col_w - int(Inches(0.1)), int(Inches(0.45)),
                          size=10, color=_SLATE)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # ── Final SLIDE: Conclusions ───────────────────────────────────────────
     slide_c = _slide_novo()
@@ -2712,7 +2752,8 @@ with tab_rel:
                 for raiz, _, arqs in os.walk(pasta_p):
                     for a in arqs:
                         try: tot += os.path.getsize(os.path.join(raiz, a))
-                        except Exception: pass
+                        except Exception:
+                            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
                 return round(tot / (1024 * 1024), 1)
 
             st.caption(f"Results folder: `{_pasta_base_lim}`  "

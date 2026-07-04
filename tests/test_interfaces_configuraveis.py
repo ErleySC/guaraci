@@ -20,7 +20,6 @@ defasado quando uma aba nova for adicionada). cli_assistente.py é seguro de
 importar (sem I/O bloqueante em nível de módulo) e expõe `MENU_FIELDS`
 diretamente.
 """
-import importlib.util
 import os
 import re
 
@@ -36,10 +35,7 @@ def _chaves_no_app() -> set:
 
 
 def _menu_fields_do_cli() -> dict:
-    caminho = os.path.join(os.path.dirname(__file__), "..", "cli_assistente.py")
-    spec = importlib.util.spec_from_file_location("cli_assistente", caminho)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    import guaraci.cli_assistente as mod
     return mod.MENU_FIELDS
 
 

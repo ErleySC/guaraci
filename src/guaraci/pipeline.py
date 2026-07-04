@@ -1,124 +1,3 @@
-# =============================================================================
-# CHANGELOG
-# v08  base: Sprints 1-3, GroupKFold mae_id, spectral truncation
-# v10  2026-05-28  max_lvs=30; ddsimca_n_components=7;
-#                    C2: comparar_pipelines uses max_lv=cfg.max_lvs (was min(8,..))
-# v11 — 2026-05-28 — C3: HCA dendrogram (Ward); C4: DD-SIMCA one-class
-#                    (trains only on pure samples, sens/spec); C5: N3 PLS reg GroupKFold
-#                    by mae_id; C6: T2 outliers per class in model summary
-# v12 — 2026-05-28 — M1: pure(*)/adulterated(o) markers in score plots;
-#                    M2: sens/spec in DD-SIMCA acceptance plot titles
-# v13 — 2026-05-28 — M3: chemical annotation of VIP bands; M4: accuracy per
-#                    class in resumo_modelo.txt
-# v14 — 2026-05-28 — FINDING: MSC->SG+MC = 0.923 bal.acc on full dataset
-#                    (1807) vs autoscaling 0.472 (AUTO advantage was
-#                    artifact of 80% subset). Changes:
-#                    (1) preset "msc_sg_mc" in construir_preprocessador;
-#                    (2) preprocessamento_padrao default = "msc_sg_mc";
-#                    (3) frac_holdout default = 0.20;
-#                    (4) gerar_nome_saida case "msc_sg_mc" -> "MSC-SGd-MC";
-#                    (5) M1: stars -> circle with black edge (avoids cluttering 1807pts);
-#                    (6) DD-SIMCA reverts to training on ALL samples (3 pure/class
-#                        makes one-class infeasible; requires >=15 pure/class)
-# v15 — 2026-05-28 — (1) holdout_preserva_puros=True: pure samples always in training
-#                        (fixes "pure=0" in 4 classes after holdout);
-#                    (2) automatic warning "LVs at ceiling" (console + summary);
-#                    (3) DD-SIMCA acceptance plot in LOG-LOG scale
-#                        (fixes data squeezed in corner; Pomerantsev standard)
-# v16 — 2026-05-28 — Organization/visualization:
-#                    (1) salvar() accepts subfolder; (2) fig3 Hotelling T2 in
-#                    log scale (Y) and T2vsQ in log-log (centers the cloud);
-#                    (3) score_contribution split into 2 figs (spectrum +
-#                    top-discriminant tall/readable with side legend);
-#                    (4) DD-SIMCA: 14 individual plots in ddsimca/ subfolder
-# v17 — 2026-05-28 — MAXIMUM PERCEPTUAL DISTINCTIVENESS color system:
-#                    (1) PALETTE Trubetskoy/Glasbey 20 colors (deltaE_min 27.4
-#                        vs ~15 before; eliminates 3 near-identical blues/2 greens);
-#                    (2) optional detection of glasbey/colorcet libs;
-#                    (3) SEQUENTIAL deterministic assignment (adjacent contrast)
-#                        replaces hash; (4) secondary SHAPE channel
-#                        (mapear_marcadores_classes, 14 shapes) for
-#                        colorblindness/B&W; (5) edge_para_cor by luminance
-# v18 — 2026-05-28 — Axis readability: _ticks_x_inteiros() applies
-#                    MaxNLocator(integer, nbins=10) when >15 ticks
-#                    (LV selection and PLS regression with 30-50 LVs no longer
-#                    overlap numbers); <=15 shows all values.
-# v19 — 2026-05-28 — V3 HCA/VIP:
-#                    (1) HCA on centroids in PCA(hca_n_pcs=65) — reduces
-#                        noise; (2) dendrogram axes inverted
-#                        (orientation=top: species on lower X axis colored
-#                        and rotated, distance on left Y axis);
-#                    (3) fig_hca_comparacao_pipelines: dendrogram panel
-#                        (raw/SNV/MSC/SG1/SG2/SNV+SG1/MSC+SG1/norm);
-#                    (4) automatic cluster interpretation (k=2);
-#                    (5) VIP: y-lim on real range + statistics box
-#                        (min/max/mean/std/n>=1) — checks real dispersion
-#                    + Config flags: mostrar_marcadores_classe/elipses_grupo
-# v20 — 2026-05-28 — Organization Q1: folder PLSDA_OE_{level}_{preproc}_
-#                    {YYYYMMDD_HHMMSS} with subfolders dados/ figuras/
-#                    modelos/ logs/. Figures->figuras/; metadata,
-#                    identifiers, comparison->dados/; summary->logs/;
-#                    final model (joblib: preproc+PLS+LB+wavenumbers)
-#                    ->modelos/. Sprint1 audit (A1,A2,A3,A5,A6,A11):
-#                    confirmed ALREADY implemented in previous versions.
-# v22 — 2026-05-29 — Phase 0 (rigor fixes):
-#                    B1: validar_entrada synchronizes mae_id with the SAME mask
-#                        for NaN/Inf removal (before, 1 NaN silently disabled
-#                        GroupKFold = replica leakage);
-#                    B4: DD-SIMCA 'todos' mode no longer reports misleading
-#                        in-sample "spec" (spec=n/a; mode label in
-#                        summary makes clear that sens/spec != authentication);
-#                    B7: Q-residual in summary with adaptive notation (:.4g
-#                        when <1e-3) instead of displaying 0.0000.
-# v21 — 2026-05-28 — STAGE 4 (variable selection) + class exclusion:
-#                    (1) Config.excluir_classes (e.g. Copaiba anomalous batch);
-#                    (2) iPLS (intervals), selection by VIP>=threshold, by SR
-#                        (top fraction), sPLS-DA (NIPALS soft-selection);
-#                    (3) single evaluator _avaliar_subset_cv (group-aware CV,
-#                        MC re-fitted per fold = no leakage);
-#                    (4) figures fig_etapa4_ipls_intervalos +
-#                        fig_etapa4_comparacao_metodos; CSVs in dados/;
-#                    (5) most PARSIMONIOUS method selected (bal.acc within
-#                        1% of max, fewer variables) in summary.
-# v24 — 2026-05-29 — Sprint v24: Publication Figures:
-#                    (1) fig_loadings_pca: PCA Loading Plot PC1/PC2 (bars
-#                        colored by sign, NIR inverted X axis);
-#                    (2) fig_roc_auc: Multiclass ROC curves OvR (scores
-#                        group-aware CV; macro AUC in title and summary);
-#                    (3) fig_splot_opls: OPLS-DA S-Plot (covariance x
-#                        correlation with t_pred; top-N annotated; colormap
-#                        RdBu_r; ref. Bylesjo 2006);
-#                    (4) fig_cooman_ddsimca: DD-SIMCA Cooman's Plot (pairs
-#                        A x B; sqrt(dQ) scale; subplot grid;
-#                        ref. Pomerantsev 2020).
-#                    Integration: aucs_roc added to resumo_modelo.txt.
-# v23 — 2026-05-29 — ACCESSIBLE LAYER (no code editing):
-#                    (1) _CONFIG_SPEC: single source mapping friendly names
-#                        <-> Config attributes, with type,
-#                        description and options for validation;
-#                    (2) salvar_config/carregar_config: commented YAML in
-#                        plain language; defaults preserved for missing keys;
-#                        unknown keys ignored;
-#                    (3) menu_interativo: terminal assistant (CMD-style)
-#                        to edit fields, save/load and run without opening
-#                        the code editor;
-#                    (4) new __main__: --rodar (uses config.yaml), --codigo
-#                        (legacy CFG), or interactive menu when in terminal;
-#                    (5) config.yaml template generated (excludes Copaiba
-#                        anomalous batch, max_lvs=40). Pipeline logic INTACT.
-# v27  benchmark_classificadores integrated into executar()
-# v28  Monte Carlo CV (IC95%); SHAP TreeExplainer; DET curves (linear+log)
-# v29  hardware_probe; auto RAM tiers (4 levels); RAM guards; cleanup util
-# v30  PowerPoint export; .streamlit/config.toml; CLAUDE.md; English i18n
-# v31  Bugfix: (1) iPLS/comparar_pipelines Q2 overflow guard (ss_res non-finite
-#              → q2=nan; eliminates -3.9e31 artifact in narrow intervals);
-#           (2) Wold permutation loop: filter non-finite r2/q2 before polyfit
-#              (fixes NaN intercept when degenerate model produces blow-up);
-#           (3) Wold fig: correct N/A status when intercept is NaN;
-#           (4) resumo_modelo.txt: Q2 NaN shown as "n/a" instead of crash;
-#           (5) config.yaml: N1 14-class, pasta dados/, ddsimca todos
-# =============================================================================
-
 """Chemometric pipeline for FT-NIR spectroscopy of Amazonian vegetable oils.
 
 Publication-quality implementation — GEAAp / UFPA (PIBIC).
@@ -142,7 +21,6 @@ __version__ = "31.0.0"
 import os
 import glob
 import warnings
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple, Dict, List, Callable, cast, Any
 
@@ -191,190 +69,10 @@ _NIVEL_NOME = {
 }
 
 
-@dataclass
-class Config:
-    modo: str = "dx"                          # "dx" | "csv" | "imagem" | "sintetico"
-
-    # ---- INPUT ----
-    # Root folder with subfolders per species (each subfolder = 1 class) OR
-    # single folder with .dx files (legacy mode). Auto-detected.
-    # DO NOT version personal paths: the real path goes in config.yaml
-    # (gitignored). This default is just a portable example.
-    pasta_entrada: str = r"dados"
-    parte_classe: int = 0                     # fallback if no subfolders
-    extrair_conc_filename: bool = True        # only used in old fallback
-    arquivo_csv: str = "seus_espectros.csv"
-    coluna_classe: str = "classe"
-    coluna_conc: Optional[str] = None
-    usar_parse_title: bool = True             # uses ##TITLE= from JCAMP-DX
-    # modo="imagem" (colorimetria digital, prototipo): extrai estatisticas de
-    # cor (RGB/HSV/Lab) de cada imagem, reaproveitando pasta_entrada (mesma
-    # convencao de 1 subpasta por classe do modo dx). Use preprocessamento_
-    # padrao="autoscaling" (NAO "msc_sg_mc"/"snv_sg_mc" — SG exige janela <=
-    # n_variaveis e MSC/SG pressupoem sinal espectral continuo, sem sentido
-    # p/ um vetor curto de estatisticas de cor) e ajuste wn_min/wn_max p/
-    # cobrir o eixo simbolico 0..n_features-1 (ver dados_imagem.py).
-    imagem_recorte: Tuple[float, float, float, float] = (0.0, 0.0, 1.0, 1.0)
-    imagem_incluir_textura: bool = False       # GLCM — requer scikit-image
-
-    # ---- OUTPUT (auto-generated by gerar_nome_saida) ----
-    pasta_saida_raiz: str = "resultados_tcc"
-    nivel: str = "N1"                         # "N1" | "N2" | "N3"
-    tag:   str = ""                            # free label e.g. "pure", "soybean"
-    pasta_saida: str = ""                     # DO NOT edit manually
-    formato_saida: str = "png"                # png | pdf | svg
-    dpi_salvar: int = 600
-    mostrar_graficos: bool = False
-
-    # ---- Score plot style (PCA / PLS-DA / OPLS) ----
-    # Disable for "clean" scatter (color by class only, no shapes/contours).
-    mostrar_marcadores_classe: bool = False   # False -> all circles 'o'
-    mostrar_elipses_grupo:     bool = False   # False -> no T2/convex hull ellipse
-
-    # ---- Figure detail level ----
-    # False (default): gera apenas o conjunto ESSENCIAL de figuras (scores PCA/
-    #   PLS-DA, confusao, ROC/AUC, selecao de LVs, SR+VIP, outliers T2/Q, e a
-    #   aceitacao DD-SIMCA quando aplicavel). Mais rapido e menos arquivos.
-    # True: gera tambem as figuras EXPLORATORIAS/detalhadas (HCA, loadings PCA,
-    #   pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman).
-    figuras_detalhadas: bool = False
-
-    # ---- Group-aware validation (Q1 differentiator) ----
-    # When True and mae_id is available, uses GroupKFold/GroupShuffleSplit
-    # so that T1/T2/T3 of the same physical point stay in the same fold/holdout.
-    agrupar_por_mae_id: bool = True
-
-    # ---- Spectral truncation (useful FT-NIR range: 4000-10000 cm-1) -------
-    # Removes FFT edge noise (0/8/16/24 cm-1 appear as false top
-    # VIP when the SG derivative amplifies that region). Applied BEFORE
-    # any preprocessing.
-    wn_min: float = 4000.0
-    wn_max: float = 10000.0
-
-    # ---- Preprocessing ---------------------------------------------------
-    # Quick preset. When != 'custom', overrides individual flags.
-    #   'msc_sg_mc'   : MSC -> SG -> mean-centering (BEST: 0.923 bal.acc full)
-    #   'snv_sg_mc'   : SNV -> SG -> mean-centering (Rinnan et al.)
-    #   'autoscaling' : StandardScaler only (good on subset, poor on full: 0.472)
-    #   'mc'          : mean-centering only
-    #   'custom'      : honors aplicar_snv / aplicar_sg / aplicar_mc below
-    preprocessamento_padrao: str = "msc_sg_mc"   # v14: best on full dataset (1807)
-
-    aplicar_snv: bool = True
-    aplicar_sg: bool = True
-    sg_window: int = 25
-    sg_polyorder: int = 2
-    sg_deriv: int = 1
-    aplicar_mc: bool = True
-
-    max_lvs: int = 40
-    n_pcs_pca: int = 10
-    # HCA: dendrogram uses PCA scores with hca_n_pcs components
-    # (reduces spectral noise before clustering). comparar_hca_pipelines
-    # generates a dendrogram panel per preprocessing method.
-    hca_n_pcs: int = 65
-    # Extra opt-in (fora do conjunto padrao de ~7 figuras "core"; ligar na mao).
-    comparar_hca_pipelines: bool = False
-    n_splits_cv: int = 5
-    n_repeats_cv: int = 3
-
-    frac_cal: float = 0.70
-    # Metodo de split calibracao/validacao da regressao PLS (N2/N3):
-    # 'aleatoria' (default, comportamento historico -- GroupShuffleSplit
-    # group-aware por mae_id, ou permutacao simples sem mae_id) |
-    # 'kennard_stone' (Kennard & Stone 1969 -- cobertura maximamente
-    # representativa do espaco espectral em vez de aleatoria; group-aware,
-    # colapsa replicas fisicas num espectro medio por grupo antes de
-    # selecionar). Hiperparametro avancado, config-only (mesmo precedente
-    # de ipls_n_intervalos/vip_threshold_sel/etc -- nao exposto no app/CLI).
-    divisao_cal_val: str = "aleatoria"   # 'aleatoria' | 'kennard_stone'
-
-    n_permutacoes: int = 200
-    n_permutacoes_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic
-    n_bootstrap_vip: int = 30
-    n_bootstrap_bca: int = 500
-    # Os 3 abaixo sao "extra" opt-in (fora do conjunto padrao de ~7 figuras
-    # "core"): validacoes/comparacoes adicionais, uteis mas nao essenciais
-    # para o resultado principal. Ligar na mao quando quiser mais rigor.
-    comparar_pipelines: bool = False
-    executar_wold: bool = False
-    executar_cv_anova: bool = False
-    # Teste de incerteza de Martens (Martens & Martens 2000): jackknifing
-    # group-aware dos coeficientes PLS -- teste de hipotese formal (p-valor)
-    # de significancia por variavel, mais rigoroso que VIP/SR (magnitude).
-    executar_martens: bool = False
-    # Paralelismo (processos, via joblib/loky) para os testes de permutacao/
-    # Wold — cada iteracao e independente (mesma X, so o rotulo e
-    # reembaralhado), entao rodar em paralelo NAO altera nenhum resultado
-    # numerico, so o tempo de execucao (verificado por teste de regressao).
-    # Padrao 1 (sequencial) preserva o comportamento atual sem mudanca.
-    # Medido: n_jobs=4 ~2x mais rapido no pipeline completo (threading NAO
-    # ajuda aqui — overhead do sklearn e Python/GIL-bound; processos sim).
-    # Em ambientes com pouca RAM/CPU (ex.: Streamlit Cloud gratuito), deixe em 1
-    # (processos extras multiplicam o uso de memoria).
-    n_jobs_permutacao: int = 1
-
-    frac_holdout: float = 0.20         # v14: external holdout by default
-    # v15: pure samples (conc==0) ALWAYS stay in training — they are scarce (3/class)
-    # and precious for DD-SIMCA/interpretation. Only adulterated go to holdout.
-    holdout_preserva_puros: bool = True
-    seed_holdout: int = 42
-
-    n_por_classe: int = 20
-    n_pontos_sint: int = 1000
-    n_replicas_sint: int = 3   # replicas fisicas/ponto (estilo T1/T2/T3) no modo sintetico
-
-    seed: int = 42
-
-    # Sprint 3
-    # DD-SIMCA e' o "core" automatico de N2 (executar() forca True quando
-    # nivel=="N2", e ignora o toggle quando nivel=="N1" -- ver executar()).
-    # Default False aqui so' afeta N3, onde vira extra opt-in de verdade.
-    executar_ddsimca: bool = False
-    ddsimca_n_components: int = 7       # PCA LVs per DD-SIMCA model (3 was insufficient — UCL poorly calibrated)
-    ddsimca_ucl_method: str = "empirical"  # 'empirical' | 'theoretical' | 'chi2'
-    # v14: 'todos' trains each model with ALL samples of the class
-    # (exploratory; works with few pure samples). 'puros' = true one-class N2
-    # but requires >=15 pure/class (current data: 3/class).
-    ddsimca_treinar_em: str = "puros"   # 'todos' | 'puros'
-    # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
-    executar_opls: bool = False
-    n_ortho_opls: int = 1               # OPLS-DA orthogonal components
-    executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
-    # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/SVR/RF vs
-    # PLS-R, por especie, mesmo split cal/val e pre-processamento (ver
-    # avaliacao_modelos.benchmark_regressao_por_especie). So' roda quando
-    # ha regressao multi-especie (mesma condicao de pls_regressao_por_especie).
-    executar_benchmark_regressao: bool = False
-    executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
-    n_monte_carlo: int = 100               # number of MC repetitions
-    monte_carlo_test_size: float = 0.25    # test fraction per MC repetition
-    monte_carlo_incluir_todos: bool = False # v28: run all benchmark models in MC CV
-    executar_shap: bool = False            # v28: SHAP values (TreeExplainer) for ensemble
-    shap_max_amostras: int = 500        # sample limit for SHAP (memory control)
-
-    # ---- Class exclusion (e.g. Copaiba with anomalous batch) ----
-    excluir_classes: Tuple[str, ...] = ()
-
-    # ---- STAGE 4: Variable selection ----
-    # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
-    executar_etapa4: bool = False
-    ipls_n_intervalos: int = 20         # iPLS: number of intervals
-    vip_threshold_sel: float = 1.0      # selection by VIP >= threshold
-    sr_top_frac: float = 0.20           # selection by SR: top fraction
-    splsda_keep_por_comp: int = 50      # sPLS-DA: non-zero variables/component
-    # SPA/APS (Successive Projections Algorithm, Araujo et al. 2001) and
-    # AG (Genetic Algorithm, GA-PLS) — opt-in (default False) because they
-    # run many more CV evaluations than iPLS/VIP/SR/sPLS-DA (heavier, like
-    # executar_benchmark/executar_shap).
-    executar_spa: bool = False
-    spa_n_vars_max: int = 20            # SPA: max chain length (variables)
-    spa_n_starts: int = 25              # SPA: starting variables sampled (evenly across spectrum)
-    executar_ag: bool = False
-    ag_tam_populacao: int = 20          # AG: chromosomes per generation
-    ag_n_geracoes: int = 15             # AG: number of generations
-    ag_prob_mutacao: float = 0.02       # AG: per-bit mutation probability
-    ag_frac_inicial: float = 0.10       # AG: initial fraction of variables "on" per chromosome
+# Config extraida para config.py (item 10 da auditoria): dataclass pura de
+# ~80 campos, sem dependencia deste modulo. Reexportada aqui para nao quebrar
+# `pipeline.Config` nem os modulos que fazem `from pipeline import Config`.
+from guaraci.config import Config  # noqa: F401
 
 
 CFG = Config()
@@ -387,7 +85,7 @@ CFG = Config()
 # parse_title/JCAMP-DX (CODIGO_ESPECIE, ADULTERANTE_NOME, parse_title,
 # extrair_title_do_dx) extraidos p/ dados_io.py (Fase H). Reexportados aqui
 # para nao quebrar `pipeline.parse_title(...)` nem o restante do modulo.
-from dados_io import (   # noqa: E402
+from guaraci.dados_io import (   # noqa: E402
     CODIGO_ESPECIE,
     ADULTERANTE_NOME,
     parse_title,
@@ -428,7 +126,7 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
 # Paleta/marcadores de classes extraidos p/ paleta_cores.py (Fase H). Reexpor-
 # tados aqui para nao quebrar `pipeline.cor(...)`/`pipeline.PALETA` nem as
 # ~52 chamadas internas nas funcoes de figura.
-from paleta_cores import (   # noqa: E402
+from guaraci.paleta_cores import (   # noqa: E402
     PALETA,
     MARCADORES,
     _paleta_externa,
@@ -444,7 +142,7 @@ from paleta_cores import (   # noqa: E402
 # helpers de plot e ~30 funcoes fig_*) extraida p/ figuras.py (Fase H).
 # Reexportada aqui para nao quebrar pipeline.fig1_pca_scores(...),
 # pipeline.salvar(...) nem as chamadas de executar()/figuras remanescentes.
-from figuras import (   # noqa: E402
+from guaraci.figuras import (   # noqa: E402
     setup_matplotlib,
     salvar,
     especificidade_por_classe,
@@ -481,7 +179,7 @@ from figuras import (   # noqa: E402
 # Transformers de pre-processamento (SNV/SavGol/MSC) + construir_preprocessador
 # extraidos p/ preprocessamento.py (Fase H). Reexportados aqui para nao quebrar
 # pipeline.SNV / pipeline.construir_preprocessador(...) nem o restante do modulo.
-from preprocessamento import (   # noqa: E402
+from guaraci.preprocessamento import (   # noqa: E402
     SNV,
     SavGol,
     MSC,
@@ -494,7 +192,7 @@ from preprocessamento import (   # noqa: E402
 #  Extraidos para chemometric_stats.py (Fase H — modularizacao). Reexportados
 #  aqui para nao quebrar `pipeline.vip_scores(...)` nem as chamadas internas.
 # =========================================================================
-from chemometric_stats import (   # noqa: E402
+from guaraci.chemometric_stats import (   # noqa: E402
     vip_scores,
     calcular_selectivity_ratio,
     teste_incerteza_martens,
@@ -516,7 +214,7 @@ from chemometric_stats import (   # noqa: E402
 # DDSimca / OPLSDAWrapper extraidos p/ classificadores.py (Fase H).
 # Reexportados aqui para nao quebrar pipeline.DDSimca(...) /
 # pipeline.OPLSDAWrapper(...) nem as chamadas internas em executar().
-from classificadores import (   # noqa: E402
+from guaraci.classificadores import (   # noqa: E402
     DDSimca,
     OPLSDAWrapper,
 )
@@ -1253,7 +951,7 @@ def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
 # Reexportada para nao quebrar pipeline.teste_permutacao(...),
 # pipeline._cv_predict_manual(...) nem as chamadas em comparar_pipelines/
 # etapa4/executar.
-from validacao_estatistica import (   # noqa: E402
+from guaraci.validacao_estatistica import (   # noqa: E402
     _cv_predict_manual,
     bootstrap_bca_ci,
     cv_anova_eriksson,
@@ -1267,7 +965,7 @@ from validacao_estatistica import (   # noqa: E402
 # Carregamento de dados (.dx JCAMP-DX/ASDF, CSV, sintetico) extraido p/
 # dados_io.py (Fase H). Reexportado aqui para nao quebrar as chamadas de
 # `executar()` (`pipeline.carregar_dados(cfg)` etc.).
-from dados_io import (   # noqa: E402
+from guaraci.dados_io import (   # noqa: E402
     gerar_dados_sinteticos,
     kennard_stone,
     kennard_stone_split,
@@ -1286,7 +984,7 @@ from dados_io import (   # noqa: E402
 
 # Colorimetria digital (modo="imagem", prototipo) extraida p/ dados_imagem.py
 # (Fase de expansao pos-H). Reexportada p/ pipeline.carregar_imagens(...) etc.
-from dados_imagem import (   # noqa: E402
+from guaraci.dados_imagem import (   # noqa: E402
     carregar_imagens,
     carregar_imagem_arquivo,
     recortar_relativo,
@@ -1303,7 +1001,7 @@ from dados_imagem import (   # noqa: E402
 # STAGE 4 — Selecao de variaveis (iPLS/sPLS-DA) + figuras da etapa extraidas
 # p/ selecao_variaveis.py (Fase H). Reexportadas p/ nao quebrar as chamadas em
 # executar() (etapa4_selecao_variaveis, selecao_ipls, ...).
-from selecao_variaveis import (   # noqa: E402
+from guaraci.selecao_variaveis import (   # noqa: E402
     _avaliar_subset_cv,
     selecao_ipls,
     sparse_plsda_mask,
@@ -1320,7 +1018,7 @@ from selecao_variaveis import (   # noqa: E402
 # Auto-Benchmark / Monte Carlo CV / DET / SHAP + PLSDAClassifier extraidos p/
 # avaliacao_modelos.py (Fase H). Reexportados p/ nao quebrar as chamadas em
 # executar() e o uso de PLSDAClassifier.
-from avaliacao_modelos import (   # noqa: E402
+from guaraci.avaliacao_modelos import (   # noqa: E402
     PLSDAClassifier,
     fig_benchmark_classificadores,
     benchmark_classificadores,
@@ -1345,7 +1043,7 @@ from avaliacao_modelos import (   # noqa: E402
 # Compatibilidade de hardware (probe, auto-ajuste, guarda de RAM) extraida p/
 # hardware.py (Fase H). Reexportada p/ nao quebrar pipeline.hardware_probe(),
 # pipeline.auto_ajustar_config_hardware(...) nem o uso em app_quimiometria.py.
-from hardware import (   # noqa: E402
+from guaraci.hardware import (   # noqa: E402
     hardware_probe,
     auto_ajustar_config_hardware,
     _verificar_ram,
@@ -3178,8 +2876,9 @@ def menu_interativo(cfg: Optional[Config] = None,
 
 if __name__ == "__main__":
     import sys
-    _CFG_PATH = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+    # config.yaml e um arquivo de runtime do usuario: resolvido relativo ao
+    # diretorio de trabalho (raiz do projeto), nao ao pacote instalado.
+    _CFG_PATH = os.path.join(os.getcwd(), "config.yaml")
     if "--rodar" in sys.argv:
         # Modo direto: usa config.yaml se existir, senao a Config do codigo.
         _cfg = carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
@@ -3188,7 +2887,7 @@ if __name__ == "__main__":
         executar(CFG)                       # modo legado (Config embutida)
     elif sys.stdin is not None and sys.stdin.isatty():
         try:
-            from cli_assistente import main as _cli_main
+            from guaraci.cli_assistente import main as _cli_main
             _cli_main()
         except ImportError:
             menu_interativo(CFG, _CFG_PATH)  # fallback para o menu antigo
