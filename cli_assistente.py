@@ -192,12 +192,13 @@ I18N: Dict[str, Dict[str, str]] = {
 # ---------------------------------------------------------------------------
 RISK_CLASS: Dict[str, str] = {
     # VISUAL
-    "dpi": "VISUAL", "formato_figura": "VISUAL",
+    "dpi": "VISUAL", "formato_figura": "VISUAL", "figuras_detalhadas": "VISUAL",
     "figuras_mostrar_marcadores": "VISUAL", "figuras_mostrar_elipses": "VISUAL",
     "abrir_figuras_na_tela": "VISUAL", "tag": "VISUAL", "nome_execucao": "VISUAL",
     # ANALITICO
     "pre_processamento": "ANALITICO", "max_lvs": "ANALITICO",
-    "n_permutacoes": "ANALITICO", "holdout_fracao": "ANALITICO",
+    "n_permutacoes": "ANALITICO", "n_jobs_permutacao": "ANALITICO",
+    "holdout_fracao": "ANALITICO",
     "nivel": "ANALITICO", "excluir_classes": "ANALITICO",
     "faixa_min_cm": "ANALITICO", "faixa_max_cm": "ANALITICO",
     "modo_ddsimca": "ANALITICO", "ddsimca": "ANALITICO",
@@ -272,6 +273,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "holdout_fracao":               {"PT": "Fracao holdout",          "EN": "Holdout fraction"},
     "validacao_group_aware":        {"PT": "Validacao group-aware",   "EN": "Group-aware CV"},
     "n_permutacoes":                {"PT": "N. permutacoes",          "EN": "N permutations"},
+    "n_jobs_permutacao":            {"PT": "Processos paralelos",     "EN": "Parallel processes"},
     "teste_wold":                   {"PT": "Teste de Wold",           "EN": "Wold test"},
     "teste_cv_anova":               {"PT": "CV-ANOVA",                "EN": "CV-ANOVA"},
     "benchmark":                    {"PT": "Benchmark",               "EN": "Benchmark"},
@@ -280,6 +282,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "monte_carlo_incluir_todos":    {"PT": "MC incluir todos",        "EN": "MC include all"},
     "shap_benchmark":               {"PT": "SHAP values",             "EN": "SHAP values"},
     "shap_max_amostras":            {"PT": "SHAP max. amostras",      "EN": "SHAP max samples"},
+    "figuras_detalhadas":           {"PT": "Figuras detalhadas",      "EN": "Detailed figures"},
     "figuras_mostrar_marcadores":   {"PT": "Marcadores por classe",   "EN": "Class markers"},
     "figuras_mostrar_elipses":      {"PT": "Elipses de confianca",    "EN": "Confidence ellipses"},
     "formato_figura":               {"PT": "Formato das figuras",     "EN": "Figure format"},
@@ -869,6 +872,21 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": True, "range": "true | false",
     },
+    "figuras_detalhadas": {
+        "PT": {
+            "desc": "Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA, "
+                    "pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman).",
+            "impacto": "VISUAL — mais arquivos e tempo de execucao; nao altera o modelo.",
+            "exemplos": {"false": "So o essencial (mais rapido, recomendado)", "true": "Analise exploratoria completa"},
+        },
+        "EN": {
+            "desc": "Also generate exploratory/detailed figures (HCA, PCA loadings, "
+                    "preprocessing, score contribution, per-class DD-SIMCA, Cooman's plot).",
+            "impacto": "VISUAL — more files and runtime; does not change the model.",
+            "exemplos": {"false": "Essentials only (faster, recommended)", "true": "Full exploratory analysis"},
+        },
+        "default": False, "range": "true | false",
+    },
     "figuras_mostrar_marcadores": {
         "PT": {
             "desc": "Usar formas diferentes (circulo, triangulo, quadrado) por classe nos graficos de score.",
@@ -1371,12 +1389,13 @@ MENU_FIELDS: Dict[str, list] = {
               "faixa_min_cm", "faixa_max_cm", "excluir_classes"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
-               "selecao_variaveis_etapa4"],
+               "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
-                  "teste_wold", "teste_cv_anova"],
+                  "teste_wold", "teste_cv_anova", "n_jobs_permutacao"],
     "avancado": ["benchmark", "monte_carlo", "n_monte_carlo",
                  "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"],
-    "visualizacao": ["figuras_mostrar_marcadores", "figuras_mostrar_elipses",
+    "visualizacao": ["figuras_detalhadas", "figuras_mostrar_marcadores",
+                     "figuras_mostrar_elipses",
                      "formato_figura", "dpi", "abrir_figuras_na_tela"],
 }
 
