@@ -2214,10 +2214,11 @@ with tab_pred:
                         f" color:{_tkp['error']}")
             return ""
 
-        aceito_col = "aceito" if "aceito" in df_show.columns else None
-        if aceito_col:
+        cols_bool_colorir = [c for c in ("aceito", "AD_dentro_dominio")
+                             if c in df_show.columns]
+        if cols_bool_colorir:
             st.dataframe(
-                df_show.style.map(_colorir_aceito, subset=[aceito_col]),
+                df_show.style.map(_colorir_aceito, subset=cols_bool_colorir),
                 use_container_width=True,
             )
         else:
@@ -2234,12 +2235,24 @@ with tab_pred:
         )
 
         # Quick summary
+        col_m1, col_m2 = st.columns(2)
         if "aceito" in df_show.columns:
             n_ac = int(df_show["aceito"].sum())
             n_tot = len(df_show)
-            st.metric("Accepted samples (T² ≤ UCL and Q ≤ UCL)",
-                      f"{n_ac} / {n_tot}",
-                      delta=f"{n_ac/n_tot*100:.1f}%")
+            with col_m1:
+                st.metric("Accepted samples (PLS-DA fit, T² ≤ UCL and Q ≤ UCL)",
+                          f"{n_ac} / {n_tot}",
+                          delta=f"{n_ac/n_tot*100:.1f}%")
+        # Applicability Domain (PCA-based, Jaworska et al. 2005) — only
+        # present if the .joblib package carries the AD artifacts (pipeline
+        # versions exporting pca/ad_var_t/ad_t2_limite/ad_q_limite).
+        if "AD_dentro_dominio" in df_show.columns:
+            n_ad = int(df_show["AD_dentro_dominio"].sum())
+            n_tot = len(df_show)
+            with col_m2:
+                st.metric("Within applicability domain (PCA T²/Q)",
+                          f"{n_ad} / {n_tot}",
+                          delta=f"{n_ad/n_tot*100:.1f}%")
 
 def _gerar_pptx_relatorio(pasta: str, projeto: Dict,
                            max_figuras: int = 12) -> io.BytesIO:

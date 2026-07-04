@@ -566,6 +566,44 @@ def test_dominio_aplicabilidade_retorno_consistente(pq):
                           ad["dentro_t2"] & ad["dentro_q"])
 
 
+def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinado(pq):
+    """dominio_aplicabilidade_treino + dominio_aplicabilidade_amostras_novas
+    (usadas por predicao.py para nao precisar reexportar X_train inteiro no
+    pacote .joblib) devem produzir EXATAMENTE o mesmo resultado que a funcao
+    combinada dominio_aplicabilidade -- e' a mesma matematica, so' partida
+    em 2 etapas (treino gera artefatos leves; predicao os consome)."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(90, 12))
+    Xn = rng.normal(size=(10, 12)) + 0.5
+    pca = PCA(n_components=4).fit(X)
+
+    combinado = pq.dominio_aplicabilidade(pca, X, Xn, alpha=0.05)
+    treino = pq.dominio_aplicabilidade_treino(pca, X, alpha=0.05)
+    split = pq.dominio_aplicabilidade_amostras_novas(
+        pca, Xn, treino["var_t"], treino["t2_limite"], treino["q_limite"])
+
+    assert np.allclose(combinado["t2"], split["t2"])
+    assert np.allclose(combinado["q"], split["q"])
+    assert np.array_equal(combinado["dentro_dominio"], split["dentro_dominio"])
+    assert float(combinado["t2_limite"]) == pytest.approx(treino["t2_limite"])
+    assert float(combinado["q_limite"]) == pytest.approx(treino["q_limite"])
+
+
+def test_dominio_aplicabilidade_treino_var_t_tem_tamanho_n_componentes(pq):
+    """var_t (variancia dos scores) tem 1 valor por componente PCA -- e' o
+    artefato leve que substitui reexportar X_train inteiro no pacote."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(60, 10))
+    pca = PCA(n_components=3).fit(X)
+    treino = pq.dominio_aplicabilidade_treino(pca, X)
+    assert treino["var_t"].shape == (3,)
+    assert treino["t2_limite"] > 0 and treino["q_limite"] > 0
+
+
 # ── Kennard-Stone: selecao representativa de amostras ────────────────────────
 
 def test_kennard_stone_seleciona_extremos_primeiro(pq):

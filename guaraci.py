@@ -2185,13 +2185,30 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
 
     resumo_txt = (
         f"  [{PG}]✔ {n_tot} amostras processadas[/{PG}]  |  "
-        f"[{PG}]{n_ac}[/{PG}] aceitas (T2/Q) / "
-        f"[{PR}]{n_tot - n_ac}[/{PR}] fora do dominio de aplicabilidade"
+        f"[{PG}]{n_ac}[/{PG}] aceitas (ajuste ao modelo PLS-DA, T2/Q) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] rejeitadas"
         if is_pt else
         f"  [{PG}]✔ {n_tot} samples processed[/{PG}]  |  "
-        f"[{PG}]{n_ac}[/{PG}] accepted (T2/Q) / "
-        f"[{PR}]{n_tot - n_ac}[/{PR}] out of applicability domain"
+        f"[{PG}]{n_ac}[/{PG}] accepted (PLS-DA model fit, T2/Q) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] rejected"
     )
+    # Dominio de Aplicabilidade (PCA exploratorio, Jaworska et al. 2005) --
+    # so' aparece se o pacote .joblib foi salvo por uma versao do pipeline
+    # que exporta os artefatos leves (retrocompativel com pacotes antigos).
+    if "AD_dentro_dominio" in df_res.columns:
+        n_ad_dentro = int(df_res["AD_dentro_dominio"].sum())
+        ad_txt = (
+            f"  [{PG}]🔎 Dominio de aplicabilidade:[/{PG}] "
+            f"[{PG}]{n_ad_dentro}[/{PG}] dentro / "
+            f"[{PR}]{n_tot - n_ad_dentro}[/{PR}] fora "
+            "(espectro atipico frente a calibracao)"
+            if is_pt else
+            f"  [{PG}]🔎 Applicability domain:[/{PG}] "
+            f"[{PG}]{n_ad_dentro}[/{PG}] within / "
+            f"[{PR}]{n_tot - n_ad_dentro}[/{PR}] outside "
+            "(atypical spectrum vs. calibration)"
+        )
+        resumo_txt += "\n" + ad_txt
     console.print()
     console.print(Panel(
         Group(Text.from_markup(resumo_txt), Text(""), t_res),

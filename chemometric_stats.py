@@ -249,34 +249,71 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
     Retorna dict com t2/q por amostra nova, os limites, e as mascaras
     booleanas dentro_t2 / dentro_q / dentro_dominio + a fracao dentro.
     """
+    treino = dominio_aplicabilidade_treino(pca, X_train, alpha)
+    return dominio_aplicabilidade_amostras_novas(
+        pca, X_new, treino["var_t"], treino["t2_limite"], treino["q_limite"])
+
+
+def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
+                                   alpha: float = 0.05) -> Dict[str, object]:
+    """Deriva do TREINO os 3 artefatos leves necessarios para avaliar o
+    dominio de aplicabilidade em amostras novas depois, sem precisar
+    re-exportar X_train inteiro (que pode ser um artefato pesado -- MB a
+    dezenas de MB para datasets espectrais reais): a variancia dos scores
+    PCA (var_t, um vetor por componente) e os 2 limites T2/Q (Tracy-Young-
+    Mason / chi2-Jackson-Mudholkar). Usado ao SALVAR um modelo (ver
+    pipeline.py, pacote_modelo); `dominio_aplicabilidade_amostras_novas`
+    consome o resultado na hora de PREDIZER, sem X_train.
+    """
     X_train = np.asarray(X_train, dtype=float)
-    X_new = np.asarray(X_new, dtype=float)
     T_train = np.asarray(pca.transform(X_train), dtype=float)
-    T_new = np.asarray(pca.transform(X_new), dtype=float)
     P = np.asarray(pca.components_, dtype=float)          # (k, p)
     mean = np.asarray(pca.mean_, dtype=float)             # (p,)
     n, k = T_train.shape
 
-    # T2 das amostras novas usando a variancia dos scores do TREINO (nunca a
-    # das novas — senao o limite deixaria de ser um teste de extrapolacao).
     var_t = T_train.var(axis=0, ddof=1)
     var_t[var_t == 0] = 1.0
-    t2_new = np.sum((T_new ** 2) / var_t, axis=1)
     t2_lim = hotelling_t2_limite(n, k, alpha)
 
-    # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
     q_train = q_residuos(X_train - mean, T_train, P)
-    q_new = q_residuos(X_new - mean, T_new, P)
     q_lim = q_residuos_limite(q_train, alpha)
 
-    dentro_t2 = t2_new <= t2_lim
-    dentro_q = q_new <= q_lim
+    return {
+        "var_t": var_t,
+        "t2_limite": float(t2_lim),
+        "q_limite": float(q_lim),
+    }
+
+
+def dominio_aplicabilidade_amostras_novas(
+        pca, X_new: np.ndarray, var_t: np.ndarray,
+        t2_limite: float, q_limite: float) -> Dict[str, np.ndarray]:
+    """Aplica os limites de dominio de aplicabilidade (ja derivados do
+    treino por `dominio_aplicabilidade_treino`) a amostras novas -- nao
+    precisa de X_train, so' dos artefatos leves (var_t + 2 limites), ideal
+    para predicao em producao sem reexportar o dataset de calibracao.
+    """
+    X_new = np.asarray(X_new, dtype=float)
+    T_new = np.asarray(pca.transform(X_new), dtype=float)
+    P = np.asarray(pca.components_, dtype=float)          # (k, p)
+    mean = np.asarray(pca.mean_, dtype=float)             # (p,)
+    var_t = np.asarray(var_t, dtype=float)
+
+    # T2 das amostras novas usando a variancia dos scores do TREINO (nunca a
+    # das novas — senao o limite deixaria de ser um teste de extrapolacao).
+    t2_new = np.sum((T_new ** 2) / var_t, axis=1)
+
+    # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
+    q_new = q_residuos(X_new - mean, T_new, P)
+
+    dentro_t2 = t2_new <= t2_limite
+    dentro_q = q_new <= q_limite
     dentro = dentro_t2 & dentro_q
     return {
         "t2": t2_new,
         "q": q_new,
-        "t2_limite": np.asarray(t2_lim, dtype=float),
-        "q_limite": np.asarray(q_lim, dtype=float),
+        "t2_limite": np.asarray(t2_limite, dtype=float),
+        "q_limite": np.asarray(q_limite, dtype=float),
         "dentro_t2": dentro_t2,
         "dentro_q": dentro_q,
         "dentro_dominio": dentro,

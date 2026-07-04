@@ -161,15 +161,25 @@ DET e interpretabilidade via **SHAP** (TreeExplainer).
 (`modelo_plsda.joblib`, salvo automaticamente ao final de cada execução) a
 espectros novos, sem rodar o pipeline inteiro de novo. Entrada: CSV com
 colunas = número de onda (sem coluna de classe). Saída: classe predita,
-confiança (%) e diagnóstico de domínio de aplicabilidade (T²/Q de Hotelling
-frente aos limites do treino — amostra "aceita" só se estiver dentro de
-ambos). Disponível em dois lugares, com a **mesma lógica científica**
-(`predicao.py`, compartilhado, zero duplicação):
+confiança (%) e **dois diagnósticos complementares** de confiabilidade:
+- **Ajuste ao modelo PLS-DA** (colunas `T2`/`Q`/`aceito`) — o quanto a
+  amostra se afasta do que o modelo de classificação capturou.
+- **Domínio de Aplicabilidade** (colunas `AD_*`, Jaworska et al. 2005) —
+  o quanto a amostra é um espectro atípico frente ao dataset de calibração
+  em geral, via T²/Q num PCA exploratório independente da classe. Reaproveita
+  `chemometric_stats.dominio_aplicabilidade_amostras_novas`; só aparece se o
+  modelo foi salvo por uma versão do pipeline que exporta esses artefatos
+  (retrocompatível — modelos antigos continuam predizendo normalmente, só
+  sem essas colunas extras).
+
+Disponível em dois lugares, com a **mesma lógica científica** (`predicao.py`,
+compartilhado, zero duplicação):
 - **App web** — aba 🔮 *Prediction*.
 - **CLI** — menu principal, tecla `[B]` *Predição em Lote*: pede o caminho
   do modelo, do CSV de espectros novos e do CSV de saída (Enter = mesmo
-  nome do CSV de entrada + `_predicao.csv`), e imprime um resumo por classe.
-  Útil para automação/scripts e integração com LIMS sem precisar do navegador.
+  nome do CSV de entrada + `_predicao.csv`), e imprime um resumo por classe
+  + os dois diagnósticos acima. Útil para automação/scripts e integração
+  com LIMS sem precisar do navegador.
 
 **Figuras:** conjunto essencial por padrão (~8 figuras) com opção de
 figuras detalhadas adicionais (`figuras_detalhadas=True`). Formatos
@@ -211,7 +221,7 @@ implementado de fato.
 | Módulo | Responsabilidade |
 |---|---|
 | `pipeline.py` | `Config`, `_CONFIG_SPEC`, orquestrador `executar()`, IO de configuração, CLI embutido e fachada de reexport |
-| `chemometric_stats.py` | VIP, Selectivity Ratio, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), **domínio de aplicabilidade** (`dominio_aplicabilidade`, T²+Q) |
+| `chemometric_stats.py` | VIP, Selectivity Ratio, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), **domínio de aplicabilidade** (`dominio_aplicabilidade` + variantes `_treino`/`_amostras_novas`, T²+Q — usado por `predicao.py` na predição em lote) |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
 | `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; **seleção de amostras Kennard-Stone** (`kennard_stone`, `kennard_stone_split`) |
 | `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de features RGB/HSV/Lab + textura opcional |

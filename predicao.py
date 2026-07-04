@@ -13,8 +13,14 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from chemometric_stats import dominio_aplicabilidade_amostras_novas
+
 _CHAVES_PACOTE_REQUERIDAS = {
     "preprocessador", "pls_final", "label_binarizer", "wavenumbers"}
+# Chaves OPCIONAIS do Dominio de Aplicabilidade (AD, PCA exploratorio) --
+# pacotes salvos por versoes antigas do pipeline nao tem essas chaves, e a
+# predicao continua funcionando normalmente (so' sem as colunas AD_*).
+_CHAVES_AD = {"pca", "ad_var_t", "ad_t2_limite", "ad_q_limite"}
 
 
 def validar_pacote_modelo(pkg: Dict) -> None:
@@ -64,7 +70,18 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
 
     Interpola para o eixo de referencia do treino, aplica o pre-processador
     ajustado, calcula classe predita (scores PLS softmax-normalizados),
-    e residuos T2/Q para diagnostico de dominio de aplicabilidade.
+    e dois diagnosticos complementares de "esta amostra e' confiavel?":
+
+    - T2/Q no espaco PLS (colunas T2/Q/aceito): mede o quanto a amostra se
+      afasta do que o MODELO DE CLASSIFICACAO capturou -- ja existia.
+    - Dominio de Aplicabilidade no espaco PCA (colunas AD_*, Jaworska et
+      al. 2005): mede o quanto a amostra e' um espectro atipico frente ao
+      dataset de calibracao em geral, INDEPENDENTE da classe -- reaproveita
+      `chemometric_stats.dominio_aplicabilidade_amostras_novas` com os
+      artefatos leves salvos no pacote (`pca`, `ad_var_t`, `ad_t2_limite`,
+      `ad_q_limite`). So' aparece se o pacote foi salvo por uma versao do
+      pipeline que exporta esses campos (opcional, retrocompativel).
+
     Retorna um DataFrame com o diagnostico por amostra.
     """
     preproc = pkg["preprocessador"]
@@ -123,7 +140,7 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     confianca  = Y_norm.max(axis=1)
 
     n = X_new_raw.shape[0]
-    return pd.DataFrame({
+    resultado = pd.DataFrame({
         "amostra":    [f"S{i+1:03d}" for i in range(n)],
         "classe_pred": classe_pred,
         "confianca_%": np.round(confianca * 100, 1),
@@ -135,3 +152,18 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
         "Q_ok":        Q_new  <= q_ucl,
         "aceito":      (T2_new <= t2_ucl) & (Q_new <= q_ucl),
     })
+
+    # Dominio de Aplicabilidade (opcional -- so' se o pacote tiver os
+    # artefatos leves do PCA exploratorio; retrocompativel com pacotes
+    # antigos, que simplesmente nao ganham essas colunas).
+    if _CHAVES_AD.issubset(pkg.keys()):
+        ad = dominio_aplicabilidade_amostras_novas(
+            pkg["pca"], X_proc, pkg["ad_var_t"],
+            pkg["ad_t2_limite"], pkg["ad_q_limite"])
+        resultado["AD_T2"] = np.round(ad["t2"], 3)
+        resultado["AD_T2_limite"] = round(float(ad["t2_limite"]), 3)
+        resultado["AD_Q"] = np.round(ad["q"], 6)
+        resultado["AD_Q_limite"] = round(float(ad["q_limite"]), 6)
+        resultado["AD_dentro_dominio"] = ad["dentro_dominio"]
+
+    return resultado

@@ -486,6 +486,8 @@ from chemometric_stats import (   # noqa: E402
     variancia_explicada,
     figuras_merito_regressao,
     dominio_aplicabilidade,
+    dominio_aplicabilidade_treino,
+    dominio_aplicabilidade_amostras_novas,
 )
 
 
@@ -2169,6 +2171,20 @@ def executar(cfg: Config):
             "t2_ucl":         float(t2_lim),
             "q_ucl":          float(q_lim),
         }
+        # Dominio de Aplicabilidade (Jaworska et al. 2005): reaproveita o PCA
+        # exploratorio ja ajustado (fig1_pca_scores) para avisar, na predicao
+        # em amostras novas, quando o espectro cai fora do espaco coberto pela
+        # calibracao. So' salva var_t/limites (leve, ~poucos floats) em vez
+        # de X_processed inteiro (que pode pesar dezenas de MB em dados reais).
+        try:
+            _ad_treino = dominio_aplicabilidade_treino(pca, X_processed, alpha=0.05)
+            pacote_modelo["pca"] = pca
+            pacote_modelo["ad_var_t"] = _ad_treino["var_t"]
+            pacote_modelo["ad_t2_limite"] = _ad_treino["t2_limite"]
+            pacote_modelo["ad_q_limite"] = _ad_treino["q_limite"]
+        except Exception as _e_ad:
+            print(f"  [AVISO] Dominio de aplicabilidade nao pode ser "
+                  f"exportado: {_e_ad}")
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
         print(f"  -> {cam_modelo}")
