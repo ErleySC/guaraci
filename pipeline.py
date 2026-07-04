@@ -279,6 +279,15 @@ class Config:
     n_repeats_cv: int = 3
 
     frac_cal: float = 0.70
+    # Metodo de split calibracao/validacao da regressao PLS (N2/N3):
+    # 'aleatoria' (default, comportamento historico -- GroupShuffleSplit
+    # group-aware por mae_id, ou permutacao simples sem mae_id) |
+    # 'kennard_stone' (Kennard & Stone 1969 -- cobertura maximamente
+    # representativa do espaco espectral em vez de aleatoria; group-aware,
+    # colapsa replicas fisicas num espectro medio por grupo antes de
+    # selecionar). Hiperparametro avancado, config-only (mesmo precedente
+    # de ipls_n_intervalos/vip_threshold_sel/etc -- nao exposto no app/CLI).
+    divisao_cal_val: str = "aleatoria"   # 'aleatoria' | 'kennard_stone'
 
     n_permutacoes: int = 200
     n_permutacoes_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic
@@ -1135,6 +1144,33 @@ def rmse_flat(a, b):
                                   - np.asarray(b).flatten()) ** 2)))
 
 
+def _kennard_stone_split_group_aware(
+        X: np.ndarray, mae_subset: Optional[np.ndarray], frac_cal: float
+        ) -> Tuple[np.ndarray, np.ndarray]:
+    """Split calibracao/validacao por Kennard-Stone (1969), group-aware.
+
+    Kennard-Stone escolhe as amostras que cobrem o espaco espectral de
+    forma maximamente representativa (bordas + cobertura uniforme), em vez
+    de aleatoria -- o padrao classico p/ dividir cal/val em calibracao
+    multivariada. Com mae_id disponivel (>=4 grupos), colapsa cada grupo de
+    replicas fisicas (T1/T2/T3) num espectro MEDIO antes de rodar KS (no
+    nivel de GRUPO, nao de amostra individual) e depois expande de volta
+    para os indices de amostra -- preserva o invariante do projeto de nunca
+    separar replicas fisicas entre calibracao e validacao. Sem mae_id
+    suficiente, roda KS diretamente por amostra.
+    """
+    if mae_subset is not None and len(np.unique(mae_subset)) >= 4:
+        grupos_unicos = np.unique(mae_subset)
+        X_grupo = np.array([X[mae_subset == g].mean(axis=0)
+                             for g in grupos_unicos])
+        idx_treino_g, _idx_val_g = kennard_stone_split(
+            X_grupo, frac_treino=frac_cal)
+        grupos_treino = set(grupos_unicos[idx_treino_g].tolist())
+        mask_treino = np.isin(mae_subset, list(grupos_treino))
+        return np.where(mask_treino)[0], np.where(~mask_treino)[0]
+    return kennard_stone_split(X, frac_treino=frac_cal)
+
+
 def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
                                    mae_subset: Optional[np.ndarray],
                                    preproc_ajustado) -> List[np.ndarray]:
@@ -1199,7 +1235,10 @@ def pls_regressao_por_especie(
 
         # group-aware cal/val split (replicates never split)
         try:
-            if mae_c is not None and len(np.unique(mae_c)) >= 4:
+            if cfg.divisao_cal_val == "kennard_stone":
+                ic, iv = _kennard_stone_split_group_aware(
+                    X_c, mae_c, cfg.frac_cal)
+            elif mae_c is not None and len(np.unique(mae_c)) >= 4:
                 gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                         random_state=cfg.seed)
                 ic, iv = next(gss.split(X_c, Y_c, groups=mae_c))
@@ -2287,7 +2326,12 @@ def executar(cfg: Config):
 
         # Calibration/validation split — group-aware if mae_id available
         # (T1/T2/T3 replicates of the same sample point never split between cal/val).
-        if mae_id is not None:
+        if cfg.divisao_cal_val == "kennard_stone":
+            ic, iv = _kennard_stone_split_group_aware(
+                X_raw, mae_id, cfg.frac_cal)
+            print(f"  Split cal/val: Kennard-Stone "
+                  f"({len(ic)} cal / {len(iv)} val)")
+        elif mae_id is not None:
             gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                          random_state=cfg.seed)
             ic, iv = next(gss_reg.split(X_raw, Y_reg, groups=mae_id))

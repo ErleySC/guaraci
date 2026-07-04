@@ -634,6 +634,72 @@ def test_kennard_stone_split_particiona_sem_overlap(pq):
     assert set(tr.tolist()) | set(val.tolist()) == set(range(40))
 
 
+# ── Kennard-Stone group-aware (usado no split cal/val da regressao) ─────────
+
+def test_ks_group_aware_nunca_separa_replicas(pq):
+    """Com mae_id (>=4 grupos), _kennard_stone_split_group_aware nunca deixa
+    replicas do MESMO grupo em lados diferentes (o invariante central do
+    projeto: T1/T2/T3 sempre juntas entre cal/val)."""
+    import numpy as np
+    rng = np.random.default_rng(5)
+    grupos = np.repeat([f"G{i:02d}" for i in range(10)], 3)   # 10 grupos x 3 replicas
+    X = rng.normal(size=(30, 5))
+    ic, iv = pq._kennard_stone_split_group_aware(X, grupos, frac_cal=0.7)
+    grupos_ic = set(grupos[ic].tolist())
+    grupos_iv = set(grupos[iv].tolist())
+    assert grupos_ic.isdisjoint(grupos_iv), (
+        "replicas do mesmo grupo (mae_id) apareceram em cal E val")
+    assert set(ic.tolist()) | set(iv.tolist()) == set(range(30))
+
+
+def test_ks_group_aware_sem_mae_id_roda_por_amostra(pq):
+    """Sem mae_id, cai no KS direto por amostra (kennard_stone_split)."""
+    import numpy as np
+    X = np.random.default_rng(6).normal(size=(20, 4))
+    ic, iv = pq._kennard_stone_split_group_aware(X, None, frac_cal=0.7)
+    assert len(ic) == 14 and len(iv) == 6
+    assert set(ic.tolist()).isdisjoint(iv.tolist())
+
+
+def test_ks_group_aware_poucos_grupos_cai_no_split_por_amostra(pq):
+    """Com menos de 4 grupos unicos, o colapso por grupo nao compensa (dados
+    de menos) -- cai no KS direto por amostra, sem quebrar."""
+    import numpy as np
+    grupos = np.array(["G1", "G1", "G2", "G2", "G3"])
+    X = np.random.default_rng(7).normal(size=(5, 3))
+    ic, iv = pq._kennard_stone_split_group_aware(X, grupos, frac_cal=0.6)
+    assert set(ic.tolist()) | set(iv.tolist()) == set(range(5))
+
+
+@pytest.mark.slow
+def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
+    """Integracao real: executar() em N3 sintetico com
+    divisao_cal_val='kennard_stone' completa sem erro e gera o resumo com
+    o bloco de figuras de merito (mesmo caminho da regressao, so' o metodo
+    de split cal/val muda)."""
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "dados"),
+        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", nivel="N3",
+        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        divisao_cal_val="kennard_stone",
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = list((tmp_path / "saida").iterdir())
+    assert runs, "executar() nao criou pasta de saida"
+    resumo = runs[0] / "logs" / "resumo_modelo.txt"
+    assert resumo.is_file()
+    txt = resumo.read_text(encoding="utf-8")
+    assert "Analytical Figures of Merit" in txt
+
+
 # ── DD-SIMCA bloqueado em N1 (nao agrega a identificacao de especie) ────────
 
 @pytest.mark.slow

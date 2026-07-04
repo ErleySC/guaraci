@@ -59,6 +59,15 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   Aparecem no console/log de execução logo após RMSEP e R² **e também são
   gravadas no `resumo_modelo.txt`** (bloco "Analytical Figures of Merit"),
   que a aba **Relatórios** do app captura — antes só saíam no console.
+  O split calibração/validação dessa regressão aceita dois métodos via
+  `divisao_cal_val` no `config.yaml` (hiperparâmetro avançado, **não**
+  exposto no app/CLI — mesmo padrão de `ipls_n_intervalos`/`vip_threshold_sel`):
+  `"aleatoria"` (padrão, `GroupShuffleSplit` group-aware) ou
+  `"kennard_stone"` (Kennard & Stone, 1969 — cobertura maximamente
+  representativa do espaço espectral em vez de aleatória; com réplicas
+  físicas, colapsa cada grupo T1/T2/T3 num espectro médio antes de
+  selecionar, preservando o mesmo invariante de nunca separar réplicas
+  entre calibração e validação).
 
 **Curadoria de figuras por tipo de análise:** o pipeline só gera gráficos
 relevantes para o modo de análise escolhido, mesmo que um módulo tenha sido
