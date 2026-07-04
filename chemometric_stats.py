@@ -11,6 +11,8 @@ Coberto por tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
+from typing import Dict, List
+
 import numpy as np
 from scipy.stats import f as f_dist, chi2
 from sklearn.cross_decomposition import PLSRegression
@@ -111,3 +113,99 @@ def variancia_explicada(X: np.ndarray, T: np.ndarray) -> np.ndarray:
     if var_X_total <= 0:
         return np.zeros(T.shape[1])
     return np.var(T, axis=0) / var_X_total * 100
+
+
+# =========================================================================
+#  Figuras de merito analiticas (calibracao multivariada, UM analito)
+# =========================================================================
+
+def figuras_merito_regressao(modelo: PLSRegression, X_cal: np.ndarray,
+                              grupos_replicas: List[np.ndarray]
+                              ) -> Dict[str, float]:
+    """Figuras de merito analiticas para um modelo PLS de calibracao
+    multivariada de um analito, seguindo Valderrama, Braga & Poppi (2009),
+    Quim. Nova 32(5):1278-1287 ("Estado da arte de figuras de merito em
+    calibracao multivariada").
+
+    Usa o vetor de regressao b do modelo (tal que y_hat = b.(x-x_mean)+y_mean,
+    no espaco JA PRE-PROCESSADO -- SNV/MSC/SG/MC etc. -- que e o "sinal" que o
+    modelo de fato usa):
+
+        Sensibilidade       SEN   = 1 / ||b||
+        Sensib. analitica   gamma = SEN / delta_x
+        Seletividade        SEL_i = |b.(x_i-xbar)| / (||b|| . ||x_i-xbar||)
+                            (reportada como a media sobre as amostras)
+        Limite de deteccao  LOD   = 3.3 * delta_x / SEN = 3.3 * delta_x * ||b||
+        Limite de quantif.  LOQ   = 10  * delta_x / SEN = 10  * delta_x * ||b||
+
+    delta_x (ruido instrumental/repetibilidade) e estimado empiricamente a
+    partir de REPLICAS FISICAS do mesmo ponto amostral (ex.: T1/T2/T3 via
+    mae_id) -- a forma mais rigorosa recomendada na literatura, em vez de uma
+    especificacao generica do instrumento. Usa a variancia pooled por
+    variavel espectral (estilo ANOVA / ISO 5725 de repetibilidade), agregada
+    via RMS sobre as variaveis. Requer pelo menos um grupo com >=2 replicas;
+    sem isso os campos dependentes de ruido voltam NaN (nao ha como estimar
+    ruido instrumental sem medidas repetidas do mesmo ponto).
+
+    `X_cal` e cada array de `grupos_replicas` devem estar no MESMO espaco
+    pre-processado usado para ajustar `modelo` (aplicar so `.transform()`,
+    nunca reajustar o preprocessador, nas replicas).
+    """
+    X_cal = np.asarray(X_cal, dtype=float)
+    # .coef_ varia de forma (n_features, 1) ou (1, n_features) conforme a
+    # versao do sklearn; com y de 1 coluna (um analito) o total de elementos
+    # e sempre n_features, entao reshape(-1) e robusto a ambas convencoes.
+    b = np.asarray(modelo.coef_, dtype=float).reshape(-1)
+    norm_b = float(np.linalg.norm(b))
+
+    resultado: Dict[str, float] = {
+        "sensibilidade": float("nan"),
+        "sensibilidade_analitica": float("nan"),
+        "seletividade_media": float("nan"),
+        "delta_x_ruido": float("nan"),
+        "lod": float("nan"),
+        "loq": float("nan"),
+        "n_grupos_replicas": 0.0,
+    }
+    if norm_b < 1e-12:
+        return resultado
+
+    sen = 1.0 / norm_b
+    resultado["sensibilidade"] = sen
+
+    # Seletividade: |cos(angulo)| entre b e cada amostra centrada -- fracao
+    # do sinal total de cada amostra que e "util" (colinear com a direcao
+    # de calibracao), o resto e atribuido a interferentes/matriz.
+    x_mean = X_cal.mean(axis=0)
+    Xc = X_cal - x_mean
+    norm_xi = np.linalg.norm(Xc, axis=1)
+    norm_xi_seguro = np.where(norm_xi < 1e-12, 1.0, norm_xi)
+    sel_i = np.abs(Xc @ b) / (norm_b * norm_xi_seguro)
+    resultado["seletividade_media"] = float(np.mean(sel_i))
+
+    # delta_x: variancia pooled (ANOVA) por variavel, a partir de replicas
+    # fisicas -- soma dos quadrados dentro de cada grupo / soma dos graus de
+    # liberdade, RMS sobre as variaveis.
+    soma_ss = None
+    soma_df = 0
+    n_grupos_validos = 0
+    for grupo in grupos_replicas:
+        grupo = np.asarray(grupo, dtype=float)
+        if grupo.shape[0] < 2:
+            continue
+        d = grupo - grupo.mean(axis=0, keepdims=True)
+        ss = np.sum(d ** 2, axis=0)
+        soma_ss = ss if soma_ss is None else soma_ss + ss
+        soma_df += (grupo.shape[0] - 1)
+        n_grupos_validos += 1
+    resultado["n_grupos_replicas"] = float(n_grupos_validos)
+    if soma_ss is not None and soma_df > 0:
+        var_pooled = soma_ss / soma_df
+        delta_x = float(np.sqrt(np.mean(var_pooled)))
+        resultado["delta_x_ruido"] = delta_x
+        if delta_x > 1e-12:
+            resultado["sensibilidade_analitica"] = sen / delta_x
+            resultado["lod"] = 3.3 * delta_x * norm_b
+            resultado["loq"] = 10.0 * delta_x * norm_b
+
+    return resultado

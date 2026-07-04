@@ -107,6 +107,77 @@ def test_variancia_explicada_range(pq):
     assert np.all(ve >= 0)
 
 
+# ── Figuras de mérito (Valderrama, Braga & Poppi, 2009) ───────────────────────
+
+def _modelo_e_replicas_conhecidos(seed=0, n=60, p=25, ruido_replica=0.02):
+    """PLS com direção verdadeira conhecida + grupos de réplicas com ruído
+    de magnitude CONHECIDA — permite verificar se delta_x é recuperado
+    corretamente (não é só "não quebrou", é "dá o número certo")."""
+    rng = np.random.default_rng(seed)
+    w_true = rng.normal(size=p); w_true /= np.linalg.norm(w_true)
+    X = rng.normal(size=(n, p))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=n)
+    modelo = PLSRegression(n_components=3, scale=False)
+    modelo.fit(X, y.reshape(-1, 1))
+    grupos = []
+    for _ in range(8):
+        base = X[rng.integers(0, n)]
+        grupos.append(base + rng.normal(scale=ruido_replica, size=(3, p)))
+    return modelo, X, grupos, ruido_replica
+
+
+def test_figuras_merito_recupera_ruido_injetado(pq):
+    """delta_x estimado (via variância pooled das réplicas) deve bater com o
+    ruído REALMENTE injetado nas réplicas sintéticas (não é chute)."""
+    modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos()
+    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
+    assert fom["n_grupos_replicas"] == 8
+
+
+def test_figuras_merito_razao_loq_lod_e_exata(pq):
+    """LOQ/LOD = 10/3.3 por definição (mesmo delta_x e SEN cancelam)."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=7)
+    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    assert fom["loq"] / fom["lod"] == pytest.approx(10.0 / 3.3, rel=1e-9)
+
+
+def test_figuras_merito_sensibilidade_e_inverso_da_norma_de_b(pq):
+    """SEN = 1/||b|| — checagem direta contra o vetor de regressão do modelo."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=1)
+    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    norm_b = np.linalg.norm(np.asarray(modelo.coef_).reshape(-1))
+    assert fom["sensibilidade"] == pytest.approx(1.0 / norm_b, rel=1e-9)
+
+
+def test_figuras_merito_seletividade_entre_0_e_1(pq):
+    """SEL_i é um cosseno (|.|) — sempre em [0, 1]; a média reportada também."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=2)
+    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    assert 0.0 <= fom["seletividade_media"] <= 1.0
+
+
+def test_figuras_merito_sem_replicas_nao_quebra(pq):
+    """Sem réplicas físicas não há como estimar ruído — NaN, não crash nem 0."""
+    modelo, X, _grupos, _ = _modelo_e_replicas_conhecidos(seed=3)
+    fom = pq.figuras_merito_regressao(modelo, X, [])
+    assert fom["n_grupos_replicas"] == 0
+    assert np.isnan(fom["lod"]) and np.isnan(fom["loq"])
+    assert np.isnan(fom["sensibilidade_analitica"])
+    # SEN/SEL não dependem de réplicas — continuam calculáveis
+    assert np.isfinite(fom["sensibilidade"])
+
+
+def test_figuras_merito_modelo_degenerado_b_zero(pq):
+    """Vetor de regressão nulo (modelo sem poder preditivo) -> tudo NaN,
+    nunca ZeroDivisionError/inf silencioso."""
+    class _ModeloNulo:
+        coef_ = np.zeros((1, 10))
+    fom = pq.figuras_merito_regressao(
+        _ModeloNulo(), np.random.default_rng(0).normal(size=(20, 10)), [])
+    assert all(np.isnan(v) for k, v in fom.items() if k != "n_grupos_replicas")
+
+
 # ── DD-SIMCA (futuro: guaraci/models/ddsimca.py) ──────────────────────────────
 
 def test_ddsimca_aceita_proprio_treino(pq):

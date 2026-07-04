@@ -24,7 +24,7 @@ CONTRATO = {
     "chemometric_stats": [
         "vip_scores", "calcular_selectivity_ratio", "hotelling_t2",
         "hotelling_t2_limite", "q_residuos", "q_residuos_limite",
-        "variancia_explicada",
+        "variancia_explicada", "figuras_merito_regressao",
     ],
     "paleta_cores": [
         "PALETA", "MARCADORES", "cor", "mapear_cores_classes",

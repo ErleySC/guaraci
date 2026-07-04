@@ -35,7 +35,11 @@ nomes amigáveis; internamente são N1/N2/N3.
 - **N2 — Discriminação (puro vs. adulterado).** Autentica pureza **por espécie**
   via **DD-SIMCA** one-class (T² + Q-resíduos com limites por classe).
 - **N3 — Quantificação (% de adulterante).** Estima o teor por **regressão PLS
-  por espécie** (`pls_regressao_por_espécie`).
+  por espécie** (`pls_regressao_por_espécie`), com **figuras de mérito
+  analíticas** (LOD, LOQ, sensibilidade, sensibilidade analítica γ,
+  seletividade — Valderrama, Braga & Poppi, 2009) calculadas automaticamente
+  por espécie a partir das réplicas físicas (T1/T2/T3); aparecem no console/
+  log de execução logo após RMSEP/R².
 
 ---
 

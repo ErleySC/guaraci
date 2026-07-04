@@ -454,6 +454,7 @@ from chemometric_stats import (   # noqa: E402
     q_residuos,
     q_residuos_limite,
     variancia_explicada,
+    figuras_merito_regressao,
 )
 
 
@@ -1012,6 +1013,23 @@ def rmse_flat(a, b):
                                   - np.asarray(b).flatten()) ** 2)))
 
 
+def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
+                                   mae_subset: Optional[np.ndarray],
+                                   preproc_ajustado) -> List[np.ndarray]:
+    """Agrupa espectros por mae_id (fisicas T1/T2/T3 do mesmo ponto, >=2
+    replicas) e aplica o pre-processador JA AJUSTADO (so .transform(), nunca
+    reajusta) a cada grupo — usado para estimar ruido instrumental/
+    repetibilidade nas figuras de merito (Valderrama et al. 2009)."""
+    if mae_subset is None:
+        return []
+    grupos: List[np.ndarray] = []
+    for g in np.unique(mae_subset):
+        idxg = np.where(mae_subset == g)[0]
+        if len(idxg) >= 2:
+            grupos.append(np.asarray(preproc_ajustado.transform(X_raw_subset[idxg])))
+    return grupos
+
+
 def pls_regressao_por_especie(
         X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
@@ -1114,6 +1132,16 @@ def pls_regressao_por_especie(
         rmsep_c = rmse_flat(Yv, Yv_hat)
         r2v_c = float(r2_score(Yv, Yv_hat)) if len(np.unique(Yv)) > 1 else float("nan")
 
+        # Figuras de merito analiticas (Valderrama, Braga & Poppi, 2009):
+        # ruido instrumental estimado a partir de replicas fisicas (T1/T2/T3
+        # via mae_id) SOMENTE do lado de calibracao (nao usa dados de validacao).
+        _preproc_ajustado = pipe_final.named_steps["preproc"]
+        _X_cal_proc = np.asarray(_preproc_ajustado.transform(Xc))
+        _grupos_rep = _agrupar_replicas_processadas(
+            Xc, mae_c[ic] if mae_c is not None else None, _preproc_ajustado)
+        _fom = figuras_merito_regressao(
+            pipe_final.named_steps["pls"], _X_cal_proc, _grupos_rep)
+
         Yc_all.append(np.asarray(Yc).flatten())
         Ych_all.append(Yc_hat)
         Yv_all.append(np.asarray(Yv).flatten())
@@ -1122,6 +1150,10 @@ def pls_regressao_por_especie(
             "especie": str(cls), "n_lv": n_opt_reg,
             "n_cal": int(len(ic)), "n_val": int(len(iv)),
             "rmsep": rmsep_c, "r2val": r2v_c,
+            "lod": _fom["lod"], "loq": _fom["loq"],
+            "sensibilidade": _fom["sensibilidade"],
+            "sensibilidade_analitica": _fom["sensibilidade_analitica"],
+            "seletividade_media": _fom["seletividade_media"],
         })
 
         # keep the RMSECV curve of the species with most samples (for panel a)
@@ -2061,6 +2093,15 @@ def executar(cfg: Config):
                                   f"LV={t['n_lv']:2d}  RMSEP={t['rmsep']:.2f}  "
                                   f"R2val={t['r2val']:.3f}  "
                                   f"(cal={t['n_cal']}, val={t['n_val']})")
+                            _lod_t, _loq_t = t.get("lod"), t.get("loq")
+                            if _lod_t is not None and np.isfinite(_lod_t):
+                                print(f"      LOD={_lod_t:.2f}%  LOQ={_loq_t:.2f}%  "
+                                      f"SEN={t['sensibilidade']:.3f}  "
+                                      f"gamma={t['sensibilidade_analitica']:.2f}  "
+                                      f"SEL={t['seletividade_media']:.3f}")
+                            else:
+                                print("      LOD/LOQ: N/A (sem replicas fisicas "
+                                      "suficientes para estimar ruido instrumental)")
                     else:
                         print("  [AVISO] Nenhuma especie com amostras "
                               "suficientes para regressao (>= 6 adulteradas "
@@ -2147,6 +2188,26 @@ def executar(cfg: Config):
               f"|  RMSEP: {rmsep:.3f}")
         print(f"  R2cal  : {r2c:.4f}  |  R2val : {r2v:.4f}  "
               f"|  Bias: {bias_v:.4f}")
+
+        # Figuras de merito analiticas (Valderrama, Braga & Poppi, 2009):
+        # ruido instrumental estimado a partir de replicas fisicas (T1/T2/T3
+        # via mae_id) SOMENTE do lado de calibracao.
+        _preproc_ajustado_reg = pipe_final.named_steps["preproc"]
+        _X_cal_proc_reg = np.asarray(_preproc_ajustado_reg.transform(Xc_raw))
+        _grupos_rep_reg = _agrupar_replicas_processadas(
+            Xc_raw, mae_id[ic] if mae_id is not None else None,
+            _preproc_ajustado_reg)
+        _fom_reg = figuras_merito_regressao(
+            pipe_final.named_steps["pls"], _X_cal_proc_reg, _grupos_rep_reg)
+        if np.isfinite(_fom_reg["lod"]):
+            print(f"  LOD    : {_fom_reg['lod']:.2f}%  |  "
+                  f"LOQ: {_fom_reg['loq']:.2f}%")
+            print(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
+                  f"gamma: {_fom_reg['sensibilidade_analitica']:.2f}  |  "
+                  f"SEL: {_fom_reg['seletividade_media']:.3f}")
+        else:
+            print("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
+                  "estimar ruido instrumental)")
     elif conc is None:
         print("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
 
