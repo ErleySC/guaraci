@@ -206,7 +206,8 @@ RISK_CLASS: Dict[str, str] = {
     "selecao_spa": "ANALITICO", "selecao_ag": "ANALITICO",
     "comparar_pre_processamentos": "ANALITICO",
     "validacao_group_aware": "ANALITICO", "teste_wold": "ANALITICO",
-    "teste_cv_anova": "ANALITICO", "pasta_dados": "ANALITICO",
+    "teste_cv_anova": "ANALITICO", "teste_martens": "ANALITICO",
+    "pasta_dados": "ANALITICO",
     "pasta_saida": "ANALITICO", "modo_entrada": "ANALITICO",
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
     "coluna_concentracao": "ANALITICO", "imagem_incluir_textura": "ANALITICO",
@@ -278,6 +279,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "n_jobs_permutacao":            {"PT": "Processos paralelos",     "EN": "Parallel processes"},
     "teste_wold":                   {"PT": "Teste de Wold",           "EN": "Wold test"},
     "teste_cv_anova":               {"PT": "CV-ANOVA",                "EN": "CV-ANOVA"},
+    "teste_martens":                {"PT": "Teste de Martens",        "EN": "Martens test"},
     "benchmark":                    {"PT": "Benchmark",               "EN": "Benchmark"},
     "benchmark_regressao":          {"PT": "Benchmark de regressao",  "EN": "Regression benchmark"},
     "monte_carlo":                  {"PT": "Monte Carlo CV",          "EN": "Monte Carlo CV"},
@@ -913,6 +915,23 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": True, "range": "true | false",
     },
+    "teste_martens": {
+        "PT": {
+            "desc": "Jackknifing group-aware dos coeficientes PLS (Martens & Martens, 2000) -- "
+                    "teste de hipotese formal (p-valor) de significancia por variavel, mais "
+                    "rigoroso que VIP/Selectivity Ratio (medidas de magnitude).",
+            "impacto": "ANALITICO — gera teste_martens.csv com t/p-valor por comprimento de onda.",
+            "exemplos": {"true": "Artigo com selecao de variaveis rigorosa", "false": "Exploracao rapida"},
+        },
+        "EN": {
+            "desc": "Group-aware jackknifing of PLS coefficients (Martens & Martens, 2000) -- "
+                    "formal hypothesis test (p-value) of per-variable significance, more "
+                    "rigorous than VIP/Selectivity Ratio (magnitude measures).",
+            "impacto": "ANALYTICAL — generates teste_martens.csv with t/p-value per wavenumber.",
+            "exemplos": {"true": "Article with rigorous variable selection", "false": "Quick exploration"},
+        },
+        "default": False, "range": "true | false",
+    },
     "figuras_detalhadas": {
         "PT": {
             "desc": "Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA, "
@@ -1433,7 +1452,7 @@ MENU_FIELDS: Dict[str, list] = {
     "modelo": ["nivel", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
-                  "teste_wold", "teste_cv_anova", "n_jobs_permutacao"],
+                  "teste_wold", "teste_cv_anova", "teste_martens", "n_jobs_permutacao"],
     "avancado": ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
                  "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"],
     "visualizacao": ["figuras_detalhadas", "figuras_mostrar_marcadores",

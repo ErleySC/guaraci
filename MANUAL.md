@@ -162,6 +162,17 @@ numa única tabela e figura.
 CV-ANOVA (Eriksson), bootstrap BCa (intervalo de confiança da acurácia),
 holdout externo group-aware, Monte Carlo CV (IC95%).
 
+**Teste de incerteza de Martens** (Martens & Martens, 2000) — opt-in via
+`teste_martens` (app e CLI, aba/menu Validação): jackknifing *group-aware*
+dos coeficientes de regressão PLS (reaproveita a mesma CV de seleção de
+LVs). Produz um **teste de hipótese formal** (estatística t + p-valor) de
+significância por variável — mais rigoroso que VIP/Selectivity Ratio, que
+são medidas de *magnitude* sem p-valor associado. Em modelos multiclasse, o
+resultado por variável é o máximo |t| entre as classes (significativa se
+discrimina pelo menos uma). Gera `dados/teste_martens.csv`
+(comprimento de onda, t, p, significativo) e um resumo (nº de variáveis
+significativas) no `resumo_modelo.txt`/`model_card.md`.
+
 **Comparação de modelos (Auto-Benchmark):** PLS-DA vs. SVM RBF vs. Random
 Forest vs. Gradient Boosting vs. XGBoost, sob a mesma CV group-aware. Curvas
 DET e interpretabilidade via **SHAP** (TreeExplainer).
@@ -257,7 +268,7 @@ implementado de fato.
 | Módulo | Responsabilidade |
 |---|---|
 | `pipeline.py` | `Config`, `_CONFIG_SPEC`, orquestrador `executar()`, IO de configuração, CLI embutido e fachada de reexport |
-| `chemometric_stats.py` | VIP, Selectivity Ratio, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), **domínio de aplicabilidade** (`dominio_aplicabilidade` + variantes `_treino`/`_amostras_novas`, T²+Q — usado por `predicao.py` na predição em lote) |
+| `chemometric_stats.py` | VIP, Selectivity Ratio, **teste de incerteza de Martens** (`teste_incerteza_martens`, jackknifing), Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), **domínio de aplicabilidade** (`dominio_aplicabilidade` + variantes `_treino`/`_amostras_novas`, T²+Q — usado por `predicao.py` na predição em lote) |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
 | `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; **seleção de amostras Kennard-Stone** (`kennard_stone`, `kennard_stone_split`) |
 | `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de features RGB/HSV/Lab + textura opcional |

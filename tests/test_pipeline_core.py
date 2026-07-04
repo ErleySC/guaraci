@@ -8,6 +8,7 @@ para travar o comportamento atual e detectar regressões durante o corte.
 Usa a fixture `pq` (sessão) do conftest.py.
 """
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.cross_decomposition import PLSRegression
 
@@ -76,6 +77,85 @@ def test_selectivity_ratio_nao_negativo(pq):
     sr = pq.calcular_selectivity_ratio(modelo, X)
     assert sr.shape == (X.shape[1],)
     assert np.all(sr >= 0)
+
+
+# ── Teste de incerteza de Martens (jackknifing dos coeficientes PLS) ──────────
+
+def _dados_regressao_1_variavel_preditiva(seed=0, n=80, p=20):
+    """y depende SO' da variavel 0 (coeficiente forte); as outras 19 sao
+    ruido puro, sem relacao com y -- permite verificar se Martens separa
+    corretamente sinal de ruido (nao e' so' 'nao quebrou')."""
+    rng = np.random.default_rng(seed)
+    X = rng.normal(size=(n, p))
+    y = 5.0 * X[:, 0] + rng.normal(scale=0.3, size=n)
+    return X, y
+
+
+def test_martens_identifica_variavel_preditiva_como_significativa(pq):
+    """A variavel realmente preditiva (0) deve ter p-valor < 0.05."""
+    from sklearn.model_selection import KFold
+    X, y = _dados_regressao_1_variavel_preditiva()
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = list(KFold(n_splits=8, shuffle=True, random_state=0).split(X))
+
+    res = pq.teste_incerteza_martens(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+
+    assert res["n_folds_validos"] == 8
+    assert res["p_valores"][0] < 0.05
+    assert bool(res["significativo"][0])
+
+
+def test_martens_maioria_das_variaveis_de_ruido_nao_significativa(pq):
+    """Das 19 variaveis SEM relacao com y, a maioria (>= 15) deve ficar
+    nao-significativa -- alpha=0.05 permite alguns falsos positivos por
+    acaso, mas nao deveria marcar quase todas como 'significativas'."""
+    from sklearn.model_selection import KFold
+    X, y = _dados_regressao_1_variavel_preditiva(seed=1)
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = list(KFold(n_splits=8, shuffle=True, random_state=1).split(X))
+
+    res = pq.teste_incerteza_martens(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+
+    n_sig_ruido = int(np.sum(res["significativo"][1:]))
+    assert n_sig_ruido <= 4, (
+        f"{n_sig_ruido}/19 variaveis de ruido marcadas como significativas "
+        "(esperado poucos falsos positivos)")
+
+
+def test_martens_multiclasse_agrega_por_maximo_entre_classes(pq):
+    """Com Y_bin multiclasse (coef_ como matriz k x p), o resultado agrega
+    corretamente por MAXIMO |t| entre classes -- shapes batem, sem erro."""
+    from sklearn.model_selection import StratifiedKFold
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(90, 15))
+    y_int = np.repeat([0, 1, 2], 30)
+    Y_bin = np.zeros((90, 3))
+    Y_bin[np.arange(90), y_int] = 1.0
+    modelo = PLSRegression(n_components=2, scale=False).fit(X, Y_bin)
+    cv = list(StratifiedKFold(n_splits=5, shuffle=True,
+                              random_state=2).split(X, y_int))
+
+    res = pq.teste_incerteza_martens(X, Y_bin, 2, cv, modelo.coef_)
+
+    assert res["t_valores"].shape == (15,)
+    assert res["p_valores"].shape == (15,)
+    assert res["significativo"].shape == (15,)
+    assert np.all(res["p_valores"][~np.isnan(res["p_valores"])] >= 0)
+    assert np.all(res["p_valores"][~np.isnan(res["p_valores"])] <= 1)
+
+
+def test_martens_poucos_folds_validos_retorna_nan_sem_quebrar(pq):
+    """Com menos de 3 folds validos, retorna NaN/False (nao ha como
+    estimar variancia jackknife com sentido), sem lancar excecao."""
+    X, y = _dados_regressao_1_variavel_preditiva(seed=3, n=10)
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = [(np.arange(8), np.arange(8, 10))]   # so' 1 fold
+
+    res = pq.teste_incerteza_martens(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+
+    assert int(res["n_folds_validos"]) == 1
+    assert np.all(np.isnan(res["p_valores"]))
+    assert not np.any(res["significativo"])
 
 
 def test_hotelling_limite_positivo_e_monotonico(pq):
@@ -698,6 +778,42 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
     assert resumo.is_file()
     txt = resumo.read_text(encoding="utf-8")
     assert "Analytical Figures of Merit" in txt
+
+
+@pytest.mark.slow
+def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
+    """Integracao real: executar() com executar_martens=True gera
+    dados/teste_martens.csv e as chaves 'Martens n_*' aparecem no
+    resumo_modelo.txt e no model_card.md (via _NOTAS_METODOLOGICAS/filtro
+    de metricas ja existentes)."""
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "dados"),
+        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=3, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        executar_martens=True,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = list((tmp_path / "saida").iterdir())
+    assert runs, "executar() nao criou pasta de saida"
+    run_dir = runs[0]
+
+    cam_csv = run_dir / "dados" / "teste_martens.csv"
+    assert cam_csv.is_file(), "teste_martens.csv nao foi gerado"
+    df = pd.read_csv(cam_csv, sep=";", decimal=",")
+    assert {"wavenumber", "t_valor", "p_valor", "significativo"}.issubset(df.columns)
+
+    resumo_txt = (run_dir / "logs" / "resumo_modelo.txt").read_text(encoding="utf-8")
+    assert "Martens n_significativas" in resumo_txt
+
+    card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
+    assert "Martens n_significativas" in card_txt
 
 
 # ── DD-SIMCA bloqueado em N1 (nao agrega a identificacao de especie) ────────

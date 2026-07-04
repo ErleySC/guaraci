@@ -11,10 +11,10 @@ Coberto por tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
-from scipy.stats import f as f_dist, chi2
+from scipy.stats import f as f_dist, chi2, t as t_dist
 from sklearn.cross_decomposition import PLSRegression
 
 
@@ -66,6 +66,98 @@ def calcular_selectivity_ratio(modelo: PLSRegression,
     var_res = X_res.var(axis=0, ddof=1)
     var_res[var_res < 1e-12] = 1e-12
     return var_tp / var_res
+
+
+def teste_incerteza_martens(
+        X: np.ndarray, Y: np.ndarray, n_components: int,
+        cv_indices: List[Tuple[np.ndarray, np.ndarray]],
+        coef_completo: np.ndarray,
+        alpha: float = 0.05) -> Dict[str, np.ndarray]:
+    """Teste de incerteza de Martens (Martens & Martens, 2000) para os
+    coeficientes de regressao PLS, via jackknifing group-aware.
+
+    Reajusta um PLSRegression(n_components, scale=False) em cada fold de
+    `cv_indices` (a MESMA CV group-aware ja usada p/ selecao de LVs -- sem
+    recalcular splits novos), coleta os coeficientes de regressao b_i por
+    fold, e estima a variancia jackknife por variavel:
+
+        var_j = (n_folds - 1)/n_folds * sum_i (b_i,j - b_bar_j)^2
+        t_j   = b_completo_j / sqrt(var_j)
+
+    t_j e' comparado a distribuicao t de Student com (n_folds - 1) graus de
+    liberdade -- um TESTE DE HIPOTESE FORMAL (p-valor) de significancia por
+    variavel, mais rigoroso que VIP/Selectivity Ratio (medidas de
+    MAGNITUDE, sem p-valor associado).
+
+    Y pode ter multiplas colunas (Y_bin one-hot, classificacao multiclasse)
+    -- nesse caso o coeficiente e' uma matriz (k, p) (convencao sklearn
+    PLSRegression.coef_) e o resultado agrega por MAXIMO |t| entre as
+    classes: uma variavel e' reportada como significativa se discrimina
+    PELO MENOS uma classe (mesmo espirito da agregacao multi-saida ja
+    embutida no VIP, que soma a contribuicao de todas as colunas de Y).
+
+    Ref: Martens, H. & Martens, M. (2000), "Modified Jack-knife Estimation
+    of Parameter Uncertainty in Bilinear Modelling (PLSR)", Food Quality
+    and Preference 11:5-16.
+
+    Retorna dict com t_valores/p_valores/significativo (um por variavel,
+    ja agregados entre classes se multi-saida), n_folds_validos e
+    coef_medio_folds (para diagnostico).
+    """
+    X = np.asarray(X, dtype=float)
+    Y = np.asarray(Y, dtype=float)
+    coef_completo = np.asarray(coef_completo, dtype=float)
+    if coef_completo.ndim == 1:
+        coef_completo = coef_completo.reshape(1, -1)
+    p = coef_completo.shape[1]
+
+    coefs_fold: List[np.ndarray] = []
+    for tr, _va in cv_indices:
+        try:
+            modelo_fold = PLSRegression(n_components=n_components, scale=False)
+            modelo_fold.fit(X[tr], Y[tr])
+            b_fold = np.asarray(modelo_fold.coef_, dtype=float)
+            if b_fold.ndim == 1:
+                b_fold = b_fold.reshape(1, -1)
+            if b_fold.shape == coef_completo.shape:
+                coefs_fold.append(b_fold)
+        except Exception:
+            continue   # fold degenerado (ex.: classe ausente no treino) -- descartado
+
+    n_folds = len(coefs_fold)
+    if n_folds < 3:
+        # Jackknife precisa de >= 3 folds validos p/ estimar variancia com
+        # sentido estatistico -- sem isso, retorna NaN em vez de um numero
+        # enganoso (ex.: variancia de 1 unica observacao e' sempre 0).
+        return {
+            "t_valores": np.full(p, np.nan),
+            "p_valores": np.full(p, np.nan),
+            "significativo": np.zeros(p, dtype=bool),
+            "n_folds_validos": np.asarray(n_folds),
+            "coef_medio_folds": np.full(p, np.nan),
+        }
+
+    B = np.stack(coefs_fold, axis=0)          # (n_folds, k, p)
+    b_bar = B.mean(axis=0)                    # (k, p)
+    var_jk = ((n_folds - 1) / n_folds) * np.sum((B - b_bar) ** 2, axis=0)  # (k, p)
+    se_jk = np.sqrt(var_jk)
+    se_jk_seguro = np.where(se_jk < 1e-12, 1.0, se_jk)
+
+    t_por_classe = coef_completo / se_jk_seguro           # (k, p)
+    t_por_classe = np.where(se_jk < 1e-12, 0.0, t_por_classe)
+    p_por_classe = 2.0 * t_dist.sf(np.abs(t_por_classe), df=n_folds - 1)  # (k, p)
+
+    idx_max = np.argmax(np.abs(t_por_classe), axis=0)     # (p,) -- classe dominante
+    t_valores = t_por_classe[idx_max, np.arange(p)]
+    p_valores = p_por_classe[idx_max, np.arange(p)]
+
+    return {
+        "t_valores": t_valores,
+        "p_valores": p_valores,
+        "significativo": p_valores < alpha,
+        "n_folds_validos": np.asarray(n_folds),
+        "coef_medio_folds": b_bar[idx_max, np.arange(p)],
+    }
 
 
 def hotelling_t2(T: np.ndarray) -> np.ndarray:

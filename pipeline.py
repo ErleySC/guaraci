@@ -299,6 +299,10 @@ class Config:
     comparar_pipelines: bool = False
     executar_wold: bool = False
     executar_cv_anova: bool = False
+    # Teste de incerteza de Martens (Martens & Martens 2000): jackknifing
+    # group-aware dos coeficientes PLS -- teste de hipotese formal (p-valor)
+    # de significancia por variavel, mais rigoroso que VIP/SR (magnitude).
+    executar_martens: bool = False
     # Paralelismo (processos, via joblib/loky) para os testes de permutacao/
     # Wold — cada iteracao e independente (mesma X, so o rotulo e
     # reembaralhado), entao rodar em paralelo NAO altera nenhum resultado
@@ -493,6 +497,7 @@ from preprocessamento import (   # noqa: E402
 from chemometric_stats import (   # noqa: E402
     vip_scores,
     calcular_selectivity_ratio,
+    teste_incerteza_martens,
     hotelling_t2,
     hotelling_t2_limite,
     q_residuos,
@@ -798,7 +803,8 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                      "Permutation p-value", "Hotelling T2 (95%)",
                      "Q-residual (95%)", "ROC AUC macro (OvR)",
                      "BCa Accuracy", "BCa Balanced acc.", "BCa F1 (macro)",
-                     "BCa Cohen's kappa")
+                     "BCa Cohen's kappa", "Martens n_significativas",
+                     "Martens n_folds_validos")
         ]),
         "",
         "## 5. Dados de Avaliacao/Treino",
@@ -2029,6 +2035,33 @@ def executar(cfg: Config):
                                         wavenumbers, mapa_cores, top_n=20,
                                         cfg=cfg, pasta=pasta)
 
+    # Teste de incerteza de Martens (opcional) -- jackknifing group-aware
+    # dos coeficientes PLS, complementa VIP/SR com um teste de hipotese
+    # formal (p-valor) de significancia por variavel.
+    _martens_n_sig: Optional[int] = None
+    _martens_n_folds: Optional[int] = None
+    if cfg.executar_martens:
+        print("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
+        martens = teste_incerteza_martens(
+            X_processed, Y_bin, n_opt, cv_indices, pls_final.coef_)
+        _martens_n_folds = int(martens["n_folds_validos"])
+        if _martens_n_folds >= 3:
+            _martens_n_sig = int(np.sum(martens["significativo"]))
+            print(f"  {_martens_n_sig}/{len(wavenumbers)} variaveis "
+                  f"significativas (p<0.05, {_martens_n_folds} folds validos)")
+        else:
+            print(f"  [AVISO] Apenas {_martens_n_folds} folds validos "
+                  "(<3) -- jackknife nao pode estimar variancia.")
+        df_martens = pd.DataFrame({
+            "wavenumber":    wavenumbers,
+            "t_valor":       martens["t_valores"],
+            "p_valor":       martens["p_valores"],
+            "significativo": martens["significativo"],
+        })
+        cam_martens = os.path.join(pasta_dados, "teste_martens.csv")
+        df_martens.to_csv(cam_martens, index=False, sep=";", decimal=",")
+        print(f"  -> {cam_martens}")
+
     # DD-SIMCA — configurable training mode (v14).
     #   'todos' (default): trains each model on all class samples
     #     (exploratory; robust with few pure samples). sens = fraction of
@@ -2327,6 +2360,9 @@ def executar(cfg: Config):
                     f"(puros={npc}, adult={nac})")
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
+    if _martens_n_sig is not None:
+        resumo["Martens n_significativas"] = _martens_n_sig
+        resumo["Martens n_folds_validos"] = cast(int, _martens_n_folds)
 
     # Stage 4 — variable selection
     if etapa4_res is not None:
@@ -2737,6 +2773,9 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "opcoes": None, "min": 1, "max": 64},
     {"key": "teste_cv_anova", "attr": "executar_cv_anova", "tipo": "bool",
      "desc": "Rodar CV-ANOVA (Eriksson)", "opcoes": None},
+    {"key": "teste_martens", "attr": "executar_martens", "tipo": "bool",
+     "desc": "Teste de incerteza de Martens: jackknifing dos coeficientes "
+             "PLS, p-valor de significancia por variavel", "opcoes": None},
     {"key": "selecao_variaveis_etapa4", "attr": "executar_etapa4", "tipo": "bool",
      "desc": "Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)", "opcoes": None},
     {"key": "selecao_spa", "attr": "executar_spa", "tipo": "bool",
