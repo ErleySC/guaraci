@@ -8,8 +8,9 @@ em isolamento (ver tests/test_app_logic.py). A UI apenas importa e usa.
 from __future__ import annotations
 
 import copy
+import os
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # ── Parsing do log de progresso do pipeline ──────────────────────────────────
 # O pipeline emite marcadores "[N/7]" (e sub-passos "[7b/7]", "[7c/7]") no
@@ -95,5 +96,43 @@ def coletar_config(cfg_base, valores: Dict):
     return cfg, erros
 
 
+# ── Leitura de artefatos de uma pasta de resultados ──────────────────────────
+# Puro I/O de arquivo; a UI envolve com @st.cache_data (ver app_quimiometria.py)
+# e guaraci.reports as usa diretamente (sem cache — geração é one-shot).
+def listar_figuras(pasta: str) -> List[str]:
+    """Lista os caminhos de figuras (.png/.jpg/.jpeg) em `pasta`, recursivo."""
+    imgs: List[str] = []
+    for raiz, _dirs, arqs in os.walk(pasta):
+        for a in sorted(arqs):
+            if a.lower().endswith((".png", ".jpg", ".jpeg")):
+                imgs.append(os.path.join(raiz, a))
+    return sorted(imgs)
+
+
+def ler_resumo(pasta: str) -> Optional[str]:
+    """Lê logs/resumo_modelo.txt (ou resumo_modelo.txt na raiz), se existir."""
+    for candidato in [
+        os.path.join(pasta, "logs", "resumo_modelo.txt"),
+        os.path.join(pasta, "resumo_modelo.txt"),
+    ]:
+        if os.path.exists(candidato):
+            with open(candidato, encoding="utf-8", errors="replace") as f:
+                return f.read()
+    return None
+
+
+def ler_model_card(pasta: str) -> Optional[str]:
+    """Lê logs/model_card.md (ou model_card.md na raiz), se existir."""
+    for candidato in [
+        os.path.join(pasta, "logs", "model_card.md"),
+        os.path.join(pasta, "model_card.md"),
+    ]:
+        if os.path.exists(candidato):
+            with open(candidato, encoding="utf-8", errors="replace") as f:
+                return f.read()
+    return None
+
+
 __all__ = ["progresso_do_log", "fmt_tempo", "coletar_config",
+           "listar_figuras", "ler_resumo", "ler_model_card",
            "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP"]

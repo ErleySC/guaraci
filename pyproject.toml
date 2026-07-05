@@ -90,3 +90,7 @@ ignore = [
 "src/guaraci/guaraci.py" = ["F841"]
 "src/guaraci/cli_assistente.py" = ["F841"]
 "app_quimiometria.py" = ["F841"]
+# reports.py (item 18): extraido verbatim de app_quimiometria.py — mesma
+# tolerancia (variaveis de layout/formatacao de documento calculadas mas nem
+# sempre usadas em todo ramo de geracao de relatorio).
+"src/guaraci/reports.py" = ["F841"]
