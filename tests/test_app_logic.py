@@ -6,7 +6,10 @@ o objetivo do item 19 é justamente tirar lógica dos monólitos de UI para cá.
 
 import pytest
 
-from guaraci.app_logic import progresso_do_log, fmt_tempo, coletar_config
+from guaraci.app_logic import (
+    progresso_do_log, fmt_tempo, coletar_config,
+    listar_figuras, ler_resumo, ler_model_card,
+)
 
 
 # ── progresso_do_log ─────────────────────────────────────────────────────────
@@ -100,3 +103,45 @@ def test_coletar_config_reporta_erro_de_coercao(pq):
     # max_lvs espera int; um valor não-coercível deve ir para `erros`, sem lançar.
     cfg, erros = coletar_config(base, {"max_lvs": "não-é-número"})
     assert any("max_lvs" in e for e in erros)
+
+
+# ── listar_figuras / ler_resumo / ler_model_card ─────────────────────────────
+def test_listar_figuras_encontra_png_jpg_recursivo(tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "a.png").write_text("x")
+    (tmp_path / "sub" / "b.jpg").write_text("x")
+    (tmp_path / "nota.txt").write_text("x")  # ignorado (nao e figura)
+    imgs = listar_figuras(str(tmp_path))
+    assert len(imgs) == 2
+    assert all(im.lower().endswith((".png", ".jpg")) for im in imgs)
+
+
+def test_listar_figuras_pasta_sem_imagens_retorna_vazio(tmp_path):
+    assert listar_figuras(str(tmp_path)) == []
+
+
+def test_ler_resumo_prioriza_logs_subpasta(tmp_path):
+    (tmp_path / "logs").mkdir()
+    (tmp_path / "logs" / "resumo_modelo.txt").write_text("conteudo em logs/")
+    (tmp_path / "resumo_modelo.txt").write_text("conteudo na raiz")
+    assert ler_resumo(str(tmp_path)) == "conteudo em logs/"
+
+
+def test_ler_resumo_cai_para_raiz_sem_logs(tmp_path):
+    (tmp_path / "resumo_modelo.txt").write_text("so' na raiz")
+    assert ler_resumo(str(tmp_path)) == "so' na raiz"
+
+
+def test_ler_resumo_arquivo_ausente_retorna_none(tmp_path):
+    assert ler_resumo(str(tmp_path)) is None
+
+
+def test_ler_model_card_prioriza_logs_subpasta(tmp_path):
+    (tmp_path / "logs").mkdir()
+    (tmp_path / "logs" / "model_card.md").write_text("card em logs/")
+    (tmp_path / "model_card.md").write_text("card na raiz")
+    assert ler_model_card(str(tmp_path)) == "card em logs/"
+
+
+def test_ler_model_card_ausente_retorna_none(tmp_path):
+    assert ler_model_card(str(tmp_path)) is None
