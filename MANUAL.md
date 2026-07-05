@@ -293,7 +293,8 @@ implementado de fato.
 
 | Módulo | Responsabilidade |
 |---|---|
-| `pipeline.py` | `Config`, `_CONFIG_SPEC`, orquestrador `executar()`, IO de configuração, CLI embutido e fachada de reexport |
+| `pipeline.py` | Orquestrador `executar()`, menu de terminal legado e **fachada de reexport** de todos os módulos |
+| `config_io.py` | **Fonte única da configuração**: `_CONFIG_SPEC` (campo amigável ↔ atributo), ler/gravar/validar/coagir (`carregar_config`, `salvar_config`, `_coagir_valor`, `_validar_semantico`) — extraído de `pipeline.py` |
 | `chemometric_stats.py` | VIP, Selectivity Ratio, **teste de incerteza de Martens** (`teste_incerteza_martens`, jackknifing), Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), **domínio de aplicabilidade** (`dominio_aplicabilidade` + variantes `_treino`/`_amostras_novas`, T²+Q — usado por `predicao.py` na predição em lote) |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
 | `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; **seleção de amostras Kennard-Stone** (`kennard_stone`, `kennard_stone_split`); despacha a leitura via `io_registry.py` |
