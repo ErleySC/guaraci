@@ -2886,8 +2886,10 @@ if __name__ == "__main__":
     elif "--codigo" in sys.argv:
         executar(CFG)                       # modo legado (Config embutida)
     elif sys.stdin is not None and sys.stdin.isatty():
+        # CLI unica (item 16 da auditoria): guaraci.py e' o unico ponto de
+        # entrada interativo (cli_assistente.py virou modulo de dados/i18n).
         try:
-            from guaraci.cli_assistente import main as _cli_main
+            from guaraci.guaraci import main as _cli_main
             _cli_main()
         except ImportError:
             menu_interativo(CFG, _CFG_PATH)  # fallback para o menu antigo

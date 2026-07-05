@@ -88,7 +88,6 @@ ignore = [
 # para clareza mas nem sempre usadas em todo ramo — tolera F841 aqui; o rigor
 # de "variavel nao usada" fica no nucleo cientifico (pipeline + modulos).
 "src/guaraci/guaraci.py" = ["F841"]
-"src/guaraci/cli_assistente.py" = ["F841"]
 "app_quimiometria.py" = ["F841"]
 # reports.py (item 18): extraido verbatim de app_quimiometria.py — mesma
 # tolerancia (variaveis de layout/formatacao de documento calculadas mas nem

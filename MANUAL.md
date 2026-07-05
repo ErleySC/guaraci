@@ -307,11 +307,17 @@ implementado de fato.
 | `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, curvas DET, SHAP |
 | `predicao.py` | Predição em amostras novas a partir de um `.joblib` salvo — compartilhado entre app (aba Prediction) e CLI (menu `[B]`) |
 
-Os módulos acima vivem no pacote `src/guaraci/`. As interfaces de usuário:
-`app_quimiometria.py` (web — fica na **raiz**, é o entry point do Streamlit),
-`guaraci/guaraci.py` (assistente de terminal), `guaraci/cli_assistente.py`
-(menu detalhado). Tema visual compartilhado: `guaraci_theme.py`,
+Os módulos acima vivem no pacote `src/guaraci/`. Interfaces de usuário:
+`app_quimiometria.py` (web — fica na **raiz**, é o entry point do Streamlit)
+e `guaraci/guaraci.py` (assistente de terminal — **único** ponto de entrada
+interativo; ver nota abaixo). Tema visual compartilhado: `guaraci_theme.py`,
 `design_tokens.py`.
+
+**CLI unificada (item 16 da auditoria):** `guaraci/cli_assistente.py` foi um
+assistente hierárquico completo e independente — hoje é só um módulo de
+**dados/i18n compartilhado** (rótulos, textos de ajuda, perfis, paletas,
+técnicas analíticas) que `guaraci.py` consome; não tem mais `main()` nem
+menus próprios e não deve ser executado diretamente.
 
 ---
 
