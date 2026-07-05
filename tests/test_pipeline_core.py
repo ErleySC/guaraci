@@ -53,6 +53,43 @@ def test_construir_preprocessador_presets(pq):
     assert list(pq.construir_preprocessador(cfg).named_steps) == ["auto"]
 
 
+def test_construir_preprocessador_custom_combina_flags_individuais(pq):
+    """preset='custom' honra aplicar_snv/aplicar_sg/aplicar_mc individualmente
+    -- nunca testado antes (só os 4 presets nomeados tinham teste)."""
+    cfg = pq.Config()
+    cfg.preprocessamento_padrao = "custom"
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, True, True
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "sg", "mc"]
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, False
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv"]
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, True, False
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["sg"]
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, False, True
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+
+
+def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
+    """Nenhuma flag marcada seria um Pipeline VAZIO (quebraria .fit()) --
+    fallback de seguranca: usa mean-centering sozinho."""
+    cfg = pq.Config()
+    cfg.preprocessamento_padrao = "custom"
+    cfg.aplicar_snv = cfg.aplicar_sg = cfg.aplicar_mc = False
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+
+
+def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
+    """Qualquer preset nao reconhecido cai no ramo custom (mesmo
+    comportamento de 'custom', usando as flags individuais)."""
+    cfg = pq.Config()
+    cfg.preprocessamento_padrao = "isto_nao_existe"
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, True
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "mc"]
+
+
 # ── Estatística quimiométrica (futuro: guaraci/diagnostics.py) ────────────────
 
 def _pls_ajustado(seed=0, n=60, p=30, n_comp=3):
