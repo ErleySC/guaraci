@@ -303,6 +303,70 @@ def test_figuras_merito_modelo_degenerado_b_zero(pq):
     assert all(np.isnan(v) for k, v in fom.items() if k != "n_grupos_replicas")
 
 
+def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
+    """Um grupo de réplicas com só 1 amostra não tem variância intra-grupo
+    calculável (graus de liberdade = 0) — deve ser IGNORADO no cálculo de
+    delta_x, não contar como grupo válido nem quebrar a soma pooled."""
+    modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos(seed=9)
+    grupos_com_singleton = grupos + [np.array([X[0]])]  # grupo de 1 amostra so'
+    fom = pq.figuras_merito_regressao(modelo, X, grupos_com_singleton)
+    # o singleton nao conta: mesmo numero de grupos validos que sem ele
+    assert fom["n_grupos_replicas"] == len(grupos)
+    assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
+
+
+# ── Selectivity Ratio: casos degenerados (peso/projeção nulos) ──────────────
+
+def test_selectivity_ratio_peso_w1_nulo_retorna_zeros(pq):
+    """Se o primeiro peso PLS (w1) é todo zero (modelo degenerado/patológico),
+    calcular_selectivity_ratio não deve dividir por zero — retorna vetor de
+    zeros (SR indefinido = sem seletividade nenhuma), nunca NaN/inf silencioso."""
+    class _ModeloWZero:
+        x_weights_ = np.zeros((10, 2))
+    sr = pq.calcular_selectivity_ratio(_ModeloWZero(),
+                                        np.random.default_rng(0).normal(size=(15, 10)))
+    assert np.array_equal(sr, np.zeros(10))
+
+
+def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
+    """Se X é ortogonal ao peso w1 (projeção target tem norma ~0), o SR
+    também não pode ser calculado -- mesmo fallback de zeros."""
+    class _ModeloWOrtogonal:
+        x_weights_ = np.array([[1.0, 0.0], [0.0, 0.0]])  # so' a 1a variavel pesa
+    # X com a 1a coluna sempre zero -> t_tp = X @ w1_unit = 0 para todas as amostras
+    X = np.zeros((10, 2))
+    X[:, 1] = np.random.default_rng(1).normal(size=10)
+    sr = pq.calcular_selectivity_ratio(_ModeloWOrtogonal(), X)
+    assert np.array_equal(sr, np.zeros(2))
+
+
+# ── q_residuos_limite: fallback quando variância/média não-positivas ────────
+
+def test_q_residuos_limite_variancia_zero_cai_no_percentil(pq):
+    """Q-residuals todos iguais (variância = 0) inviabiliza a aproximação
+    chi2 de Jackson & Mudholkar (g=var/2*media seria 0) -- cai no percentil
+    empírico em vez de gerar limite 0/NaN."""
+    q = np.full(20, 5.0)
+    limite = pq.q_residuos_limite(q, alpha=0.05)
+    assert limite == pytest.approx(5.0)
+
+
+def test_q_residuos_limite_array_vazio_retorna_zero(pq):
+    limite = pq.q_residuos_limite(np.array([]), alpha=0.05)
+    assert limite == 0.0
+
+
+# ── variancia_explicada: X com variância total zero ─────────────────────────
+
+def test_variancia_explicada_x_constante_retorna_zeros(pq):
+    """X sem variância nenhuma (todas as amostras idênticas) não tem % de
+    variância explicada calculável -- retorna zeros, não divide por zero."""
+    X = np.ones((10, 5))          # variancia total = 0
+    T = np.random.default_rng(0).normal(size=(10, 3))
+    ve = pq.variancia_explicada(X, T)
+    assert np.array_equal(ve, np.zeros(3))
+
+
 # ── DD-SIMCA (futuro: guaraci/models/ddsimca.py) ──────────────────────────────
 
 def test_ddsimca_aceita_proprio_treino(pq):

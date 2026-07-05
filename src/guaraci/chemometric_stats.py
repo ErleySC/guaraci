@@ -192,9 +192,15 @@ def q_residuos(X: np.ndarray, T: np.ndarray, P: np.ndarray) -> np.ndarray:
 
 
 def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
+    # Guarda explicita p/ array vazio ANTES de mean()/var(): numpy retorna
+    # NaN com RuntimeWarning nesse caso, e NaN <= 0 e' sempre False em Python
+    # (nunca aciona o fallback abaixo) -- sem isso, q vazio silenciosamente
+    # devolvia NaN em vez de 0.0 (achado pela rede de seguranca de testes).
+    if q.size == 0:
+        return 0.0
     media = float(q.mean()); var = float(q.var())
     if var <= 0 or media <= 0:
-        return float(np.percentile(q, (1 - alpha) * 100)) if q.size else 0.0
+        return float(np.percentile(q, (1 - alpha) * 100))
     g = var / (2 * media); h = 2 * (media ** 2) / var
     return float(g * chi2.ppf(1 - alpha, h))
 
