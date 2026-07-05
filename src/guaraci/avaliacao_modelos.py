@@ -29,6 +29,7 @@ from guaraci.figuras import salvar, cor
 from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
 from guaraci.chemometric_stats import rmse_flat
+from guaraci.model_registry import construir_lista_benchmark
 
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
@@ -140,9 +141,6 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
 
     Ref: Westerhuis et al. (2008) Chemom. Intell. Lab. Syst. 92:58-64.
     """
-    from sklearn.svm import SVC
-    from sklearn.ensemble import (RandomForestClassifier,
-                                  GradientBoostingClassifier)
     from sklearn.model_selection import StratifiedGroupKFold
     from sklearn.metrics import f1_score
     from sklearn.base import clone
@@ -155,32 +153,9 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     n_classes = len(lb.classes_)
     preproc   = construir_preprocessador(cfg)
 
-    # ── Classifiers ──────────────────────────────────────────────────────
-    clfs: List[Tuple[str, Any]] = [
-        ("PLS-DA",
-         PLSDAClassifier(n_components=n_opt)),
-        ("SVM RBF",
-         SVC(kernel="rbf", C=10.0, gamma="scale", probability=True,
-             random_state=cfg.seed, class_weight="balanced")),
-        ("Random Forest",
-         RandomForestClassifier(n_estimators=300, max_features="sqrt",
-                                class_weight="balanced_subsample",
-                                n_jobs=1, random_state=cfg.seed)),
-        ("Grad. Boost.",
-         GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
-                                    max_depth=3, subsample=0.8,
-                                    random_state=cfg.seed)),
-    ]
-    try:
-        from xgboost import XGBClassifier  # type: ignore
-        clfs.append(("XGBoost",
-                      XGBClassifier(n_estimators=300, learning_rate=0.05,
-                                    max_depth=4, subsample=0.8,
-                                    colsample_bytree=0.8,
-                                    eval_metric="mlogloss", verbosity=0,
-                                    n_jobs=1, random_state=cfg.seed)))
-    except ImportError:
-        pass
+    # ── Classifiers (fonte unica: guaraci.model_registry, item 20) ────────
+    clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+        n_opt, cfg, incluir_opcionais=True)
 
     cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True,
                                random_state=cfg.seed)
@@ -369,48 +344,24 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     Gera distribuicao empirica de Balanced Accuracy com IC95% por percentil.
 
     Se cfg.monte_carlo_incluir_todos=True, roda tambem SVM RBF, RF e XGBoost
-    (mesmos hiperparametros do benchmark); caso contrario, apenas PLS-DA.
+    (mesmos hiperparametros do benchmark, via guaraci.model_registry — item
+    20 da auditoria: fonte unica, antes duplicada e divergente aqui: este
+    Grad. Boost. nao tinha subsample=0.8 como o do benchmark); caso
+    contrario, apenas PLS-DA.
 
     Ref: Filzmoser et al. (2009) Anal. Chim. Acta 652:133-142.
     """
     from sklearn.base import clone
     from sklearn.metrics import f1_score
     from sklearn.pipeline import Pipeline as _SKPipeline
-    from sklearn.svm import SVC
-    from sklearn.ensemble import (RandomForestClassifier,
-                                  GradientBoostingClassifier)
 
     n_iter  = cfg.n_monte_carlo
     test_sz = cfg.monte_carlo_test_size
     preproc = construir_preprocessador(cfg)
 
-    # Montar lista de modelos
-    mc_clfs: List[Tuple[str, Any]] = [
-        ("PLS-DA", PLSDAClassifier(n_components=n_opt)),
-    ]
-    if cfg.monte_carlo_incluir_todos:
-        mc_clfs += [
-            ("SVM RBF",
-             SVC(kernel="rbf", C=10.0, gamma="scale", probability=True,
-                 random_state=cfg.seed, class_weight="balanced")),
-            ("Random Forest",
-             RandomForestClassifier(n_estimators=300, max_features="sqrt",
-                                    class_weight="balanced_subsample",
-                                    n_jobs=1, random_state=cfg.seed)),
-            ("Grad. Boost.",
-             GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
-                                        max_depth=3, random_state=cfg.seed)),
-        ]
-        try:
-            from xgboost import XGBClassifier  # type: ignore
-            mc_clfs.append(("XGBoost",
-                             XGBClassifier(n_estimators=300, learning_rate=0.05,
-                                           max_depth=4, subsample=0.8,
-                                           colsample_bytree=0.8,
-                                           eval_metric="mlogloss", verbosity=0,
-                                           n_jobs=1, random_state=cfg.seed)))
-        except ImportError:
-            pass
+    # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
+    mc_clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_incluir_todos)
 
     # Gerar splits estratificados por grupo (risco 3 resolvido)
     if grupos_cv is not None:

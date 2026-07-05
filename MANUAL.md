@@ -296,7 +296,8 @@ implementado de fato.
 | `pipeline.py` | `Config`, `_CONFIG_SPEC`, orquestrador `executar()`, IO de configuração, CLI embutido e fachada de reexport |
 | `chemometric_stats.py` | VIP, Selectivity Ratio, **teste de incerteza de Martens** (`teste_incerteza_martens`, jackknifing), Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), **domínio de aplicabilidade** (`dominio_aplicabilidade` + variantes `_treino`/`_amostras_novas`, T²+Q — usado por `predicao.py` na predição em lote) |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
-| `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; **seleção de amostras Kennard-Stone** (`kennard_stone`, `kennard_stone_split`) |
+| `dados_io.py` | Parsing JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; **seleção de amostras Kennard-Stone** (`kennard_stone`, `kennard_stone_split`); despacha a leitura via `io_registry.py` |
+| `io_registry.py` | **Registry de leitores de dados** (item 20 da auditoria): mapeia `cfg.modo` ("dx"/"csv"/"imagem"/"sintetico") ao leitor correspondente. Novo formato de entrada = `registrar_leitor("modo", funcao)`, sem editar `dados_io.carregar_dados()` |
 | `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de features RGB/HSV/Lab + textura opcional |
 | `preprocessamento.py` | Transformers SNV/SavGol/MSC + `construir_preprocessador` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
@@ -304,8 +305,12 @@ implementado de fato.
 | `validacao_estatistica.py` | BCa, CV-ANOVA, permutação, teste de Wold, CV manual |
 | `hardware.py` | Detecção de RAM/CPU/disco, auto-ajuste de `Config`, guarda de RAM |
 | `selecao_variaveis.py` | Etapa 4 completa: iPLS, sPLS-DA, SPA/APS, AG + figuras da etapa |
-| `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, curvas DET, SHAP |
+| `avaliacao_modelos.py` | PLS-DA, Auto-Benchmark, Monte Carlo CV, curvas DET, SHAP — modelos de comparação vêm de `model_registry.py` |
+| `model_registry.py` | **Registry de modelos de benchmark** (item 20 da auditoria): fonte única da lista PLS-DA/SVM/RF/GBM/XGBoost, usada por `benchmark_classificadores()` **e** `monte_carlo_cv()` (antes duplicada nas duas funções e divergente) |
 | `predicao.py` | Predição em amostras novas a partir de um `.joblib` salvo — compartilhado entre app (aba Prediction) e CLI (menu `[B]`) |
+| `reports.py` | Geração de relatórios do app web (PDF/Word/Excel/LaTeX/PowerPoint), extraída de `app_quimiometria.py` |
+| `app_logic.py` | Lógica pura da UI web (progresso, formatação, coleta de config), testável sem Streamlit |
+| `cli_logic.py` | Lógica pura da CLI de terminal (truncamento, validação de faixas, contagem de arquivos), testável sem Rich |
 
 Os módulos acima vivem no pacote `src/guaraci/`. Interfaces de usuário:
 `app_quimiometria.py` (web — fica na **raiz**, é o entry point do Streamlit)
