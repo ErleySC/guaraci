@@ -61,10 +61,10 @@ filterwarnings = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-# Nao lintar codigo arquivado, dados de resultados nem scripts pessoais (gitignored).
+# Nao lintar dados de perfis nem scripts pessoais (gitignored).
 extend-exclude = [
-    "_arquivo_antigo", "perfis", "resultados_tcc", "__pycache__",
-    "gerar_relatorio_abnt.py", "run_benchmark_tcc.py",
+    "perfis", "__pycache__",
+    "scripts/gerar_relatorio_abnt.py", "scripts/run_benchmark_tcc.py",
 ]
 
 [tool.ruff.lint]

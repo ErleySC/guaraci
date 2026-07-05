@@ -86,7 +86,7 @@ def _tok() -> Dict[str, str]:
 # ──────────────────────────────────────────────────────────────────────────
 # Page config (must be the first Streamlit command)
 # ──────────────────────────────────────────────────────────────────────────
-_icon_path = Path(__file__).parent / "guaraci_icon.png"
+_icon_path = Path(__file__).parent / "assets" / "guaraci_icon.png"
 _page_icon = Image.open(_icon_path) if _icon_path.exists() else "🧪"
 
 st.set_page_config(

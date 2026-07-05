@@ -139,7 +139,7 @@ use, provided authorship is credited and derivatives stay open-source.
 
 **Commercial use:** embedding Guaraci in proprietary/closed-source or commercial
 products requires a separate **commercial license** — see
-[`COMMERCIAL.md`](COMMERCIAL.md) (contact: erleysdacosta@gmail.com). The author
+[`COMMERCIAL.md`](docs/COMMERCIAL.md) (contact: erleysdacosta@gmail.com). The author
 retains full copyright (dual licensing).
 
 Machine-readable metadata in [`CITATION.cff`](CITATION.cff). A permanent Zenodo

@@ -209,7 +209,7 @@ acadêmico, desde que a autoria seja creditada e os derivados permaneçam aberto
 
 **Uso comercial:** embutir a Guaraci em produtos proprietários/fechados ou
 comerciais exige uma **licença comercial** separada — veja
-[`COMMERCIAL.md`](COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
+[`COMMERCIAL.md`](docs/COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
 retém integralmente o copyright (licenciamento duplo).
 
 Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
