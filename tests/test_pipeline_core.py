@@ -370,6 +370,14 @@ def test_parse_title_invalido(pq):
     assert pq.parse_title("isto nao e um title") is None
 
 
+def test_parse_title_teor_zero_e_invalido(pq):
+    """Teor de adulteração = 0 não faz sentido (adulterado com 0% == puro,
+    mal rotulado) — parse_title rejeita em vez de aceitar um dado incoerente.
+    (o regex de adulteração não aceita sinal negativo, então 0 é o único
+    valor não-positivo alcançável por esse caminho.)"""
+    assert pq.parse_title("AND-10-06-2020-AD-S-0.00%-T1") is None
+
+
 def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
     """Caminho de saída embute nível e pré-processamento (rastreável)."""
     cfg = pq.Config()
