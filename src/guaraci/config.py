@@ -13,6 +13,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
+# Versão canônica do pacote. Mora aqui (módulo sem dependências) para ser
+# importável por qualquer módulo — pipeline.py e guaraci/__init__.py a
+# reexportam, então `pipeline.__version__` e `from guaraci import __version__`
+# seguem funcionando. Fonte ÚNICA: nunca duplicar um literal "vXX.Y".
+__version__ = "31.0.0"
+
+# Nome amigavel de cada nivel de analise (valor interno N1/N2/N3 inalterado).
+_NIVEL_NOME = {
+    "N1": "Classificacao por especie",
+    "N2": "Discriminacao puro/adulterado",
+    "N3": "Quantificacao de teor",
+}
+
 
 @dataclass
 class Config:
