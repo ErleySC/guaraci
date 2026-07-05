@@ -77,6 +77,36 @@ def test_extrair_features_cor_distingue_cores_diferentes(pq):
     assert f_azul["B_media"] > f_amarelo["B_media"]
 
 
+def test_extrair_features_cor_aceita_imagem_2d_tons_de_cinza(pq):
+    """Imagem 2D (H, W) sem canal de cor -- e' replicada em 3 canais R=G=B
+    automaticamente (linha de compatibilidade pouco exercitada)."""
+    cinza = np.full((20, 20), 128, dtype=np.uint8)
+    feats = pq.extrair_features_cor(cinza)
+    assert len(feats) == 18
+    assert feats["R_media"] == pytest.approx(feats["G_media"])
+    assert feats["G_media"] == pytest.approx(feats["B_media"])
+
+
+def test_extrair_features_textura_sem_scikit_image_devolve_vazio(pq, monkeypatch, capsys):
+    """scikit-image e' dependencia OPCIONAL (extra [imagem]) -- sem ela,
+    extrair_features_textura devolve dict vazio com aviso, nunca lanca
+    ImportError pro chamador. Forca o ImportError via monkeypatch (nao
+    depende de scikit-image estar ou nao instalado no ambiente de teste)."""
+    import builtins
+    _import_real = builtins.__import__
+
+    def _import_bloqueado(nome, *args, **kwargs):
+        if nome.startswith("skimage"):
+            raise ImportError(f"simulado: {nome} indisponivel")
+        return _import_real(nome, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _import_bloqueado)
+    img = np.zeros((10, 10, 3), dtype=np.uint8)
+    feats = pq.extrair_features_textura(img)
+    assert feats == {}
+    assert "scikit-image" in capsys.readouterr().out
+
+
 # ── Carregamento fim-a-fim (arquivos reais em disco) ──────────────────────
 
 def _salvar_imagem_solida(caminho, rgb, tamanho=30, ruido=3, seed=0):
@@ -87,6 +117,11 @@ def _salvar_imagem_solida(caminho, rgb, tamanho=30, ruido=3, seed=0):
             rgb[c] + rng.integers(-ruido, ruido + 1, size=(tamanho, tamanho)),
             0, 255)
     Image.fromarray(arr, "RGB").save(caminho)
+
+
+def test_detectar_subpastas_imagem_raiz_inexistente(pq):
+    from guaraci.dados_imagem import _detectar_subpastas_imagem
+    assert _detectar_subpastas_imagem("/caminho/que/nao/existe") == []
 
 
 def test_carregar_imagens_estrutura_multi_pasta(pq, tmp_path):
@@ -111,6 +146,51 @@ def test_carregar_imagens_estrutura_multi_pasta(pq, tmp_path):
     assert meta_df is not None and len(meta_df) == 7
     # a classe "Puro" (mais amarela) deve ter R_media maior que "Adulterado"
     assert X[rotulos == "Puro", 0].mean() > X[rotulos == "Adulterado", 0].mean()
+
+
+def test_carregar_imagens_pasta_inexistente_levanta_filenotfound(pq, tmp_path):
+    with pytest.raises(FileNotFoundError, match="Pasta nao existe"):
+        pq.carregar_imagens(str(tmp_path / "nao_existe"))
+
+
+def test_carregar_imagens_pasta_vazia_levanta_filenotfound(pq, tmp_path):
+    (tmp_path / "vazia").mkdir()
+    with pytest.raises(FileNotFoundError, match="nao contem imagens"):
+        pq.carregar_imagens(str(tmp_path / "vazia"))
+
+
+def test_carregar_imagens_modo_flat_usa_nome_do_arquivo_como_classe(pq, tmp_path):
+    """Sem subpastas (arquivos soltos na raiz), cada imagem vira sua PROPRIA
+    classe (nome do arquivo sem extensao) -- fallback documentado."""
+    raiz = tmp_path / "flat"
+    raiz.mkdir()
+    _salvar_imagem_solida(str(raiz / "amostra1.png"), (100, 150, 200))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_imagens(str(raiz))
+    assert X.shape[0] == 1
+    assert rotulos[0] == "amostra1"
+
+
+def test_carregar_imagens_arquivo_corrompido_e_pulado_com_aviso(pq, tmp_path, capsys):
+    """Uma imagem corrompida no meio do lote nao derruba o carregamento --
+    e' contada como falha, avisada, e as demais seguem normalmente."""
+    raiz = tmp_path / "com_corrompida"
+    (raiz / "Classe").mkdir(parents=True)
+    _salvar_imagem_solida(str(raiz / "Classe" / "boa1.png"), (100, 150, 200))
+    (raiz / "Classe" / "corrompida.png").write_bytes(b"nao e uma imagem valida")
+
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_imagens(str(raiz))
+    assert X.shape[0] == 1   # so' a imagem boa foi carregada
+    assert "ERROR" in capsys.readouterr().out
+
+
+def test_carregar_imagens_todas_corrompidas_levanta_valueerror(pq, tmp_path):
+    """Se NENHUMA imagem do lote carrega com sucesso, levanta ValueError
+    explicito (em vez de devolver um X vazio silenciosamente)."""
+    raiz = tmp_path / "todas_corrompidas"
+    (raiz / "Classe").mkdir(parents=True)
+    (raiz / "Classe" / "ruim.png").write_bytes(b"lixo binario, nao e imagem")
+    with pytest.raises(ValueError, match="Nenhuma imagem valida"):
+        pq.carregar_imagens(str(raiz))
 
 
 def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
