@@ -309,8 +309,12 @@ implementado de fato.
 | `model_registry.py` | **Registry de modelos de benchmark** (item 20 da auditoria): fonte única da lista PLS-DA/SVM/RF/GBM/XGBoost, usada por `benchmark_classificadores()` **e** `monte_carlo_cv()` (antes duplicada nas duas funções e divergente) |
 | `predicao.py` | Predição em amostras novas a partir de um `.joblib` salvo — compartilhado entre app (aba Prediction) e CLI (menu `[B]`) |
 | `reports.py` | Geração de relatórios do app web (PDF/Word/Excel/LaTeX/PowerPoint), extraída de `app_quimiometria.py` |
-| `app_logic.py` | Lógica pura da UI web (progresso, formatação, coleta de config), testável sem Streamlit |
+| `app_logic.py` | Lógica pura da UI web (progresso, formatação, coleta de config, leitura de artefatos), testável sem Streamlit |
 | `cli_logic.py` | Lógica pura da CLI de terminal (truncamento, validação de faixas, contagem de arquivos), testável sem Rich |
+| `resumo_parse.py` | **Parsing puro do resumo_modelo.txt** (item 19): `parse_metricas_modelo` (12 métricas) e `parse_acuracia_por_classe`, antes duplicados nos 5 geradores de relatório e na aba Validation |
+| `spectra_preview.py` | Carregamento/plotagem de amostra de espectros para prévia (abas Data e Preprocessing) |
+| `app_tabs/` | Um módulo por aba do app web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `relatorios`) — item 18: cada aba é uma função `render(...)`, `app_quimiometria.py` só orquestra |
+| `io_registry.py` | **Registry de leitores de dados** (item 20): mapeia `cfg.modo` ao leitor; novo formato = `registrar_leitor(...)` sem editar `dados_io.carregar_dados()` |
 
 Os módulos acima vivem no pacote `src/guaraci/`. Interfaces de usuário:
 `app_quimiometria.py` (web — fica na **raiz**, é o entry point do Streamlit)

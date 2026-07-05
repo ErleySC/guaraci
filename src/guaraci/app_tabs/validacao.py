@@ -4,11 +4,12 @@ execução. Extraído de app_quimiometria.py (item 18).
 from __future__ import annotations
 
 import os
-import re as _re_acc
 from typing import Callable, Dict
 
 import pandas as pd
 import streamlit as st
+
+from guaraci.resumo_parse import parse_acuracia_por_classe
 
 _CATS = {
     "All":              "",
@@ -64,11 +65,7 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
 
     # ── Per-Class Accuracy table (extracted from summary) ───────────────
     if resumo_txt:
-        acc_map: Dict[str, float] = {}
-        for _linha in resumo_txt.splitlines():
-            _m = _re_acc.match(r"\s*Acc\s+(.+?)\s*[:=]\s*([\d.]+)", _linha)
-            if _m:
-                acc_map[_m.group(1).strip()] = float(_m.group(2))
+        acc_map = parse_acuracia_por_classe(resumo_txt)
         if acc_map:
             with st.expander("📊 Accuracy by Class", expanded=True):
                 _df_acc = pd.DataFrame(

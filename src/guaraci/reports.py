@@ -22,6 +22,9 @@ from guaraci.app_logic import (
     ler_resumo as _ler_resumo,
     listar_figuras as _listar_figuras,
 )
+# Parsing do resumo_modelo.txt centralizado (item 19): _ex e o dicionario de
+# metricas eram duplicados nos 5 geradores; agora vem de resumo_parse.
+from guaraci.resumo_parse import extrair_metrica, parse_metricas_modelo
 
 # Fonte unica de versao (mesmo padrao de app_quimiometria.py: pipeline.__version__).
 _APP_VERSION = f"v{getattr(_pq, '__version__', '?')}"
@@ -34,7 +37,6 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
     Structure: Cover | Metrics | Figures (2/page) | References.
     Returns BytesIO ready for st.download_button.
     """
-    import re as _re
     import unicodedata
     from fpdf import FPDF
 
@@ -45,24 +47,7 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
     # ── Parse resumo_modelo.txt ───────────────────────────────────────
     resumo_raw = _ler_resumo(pasta) or ""
 
-    def _ex(padrao: str, default: str = "-") -> str:
-        m = _re.search(padrao, resumo_raw, _re.IGNORECASE | _re.MULTILINE)
-        return m.group(1).strip() if m else default
-
-    metricas = {
-        "Balanced Accuracy (CV)":   _ex(r"[Bb]alanced[_ ]?[Aa]ccuracy.*?[:=]\s*([\d.]+)"),
-        "AUC macro OvR":            _ex(r"ROC AUC macro.*?[:=]\s*([\d.]+)"),
-        "R2Y":                      _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
-        "Q2Y":                      _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
-        "R2X":                      _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "Optimal LVs":              _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
-        "p-value (permutation)":    _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
-        "Preprocessing":            _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
-        "Hotelling T2 UCL (95%)":   _ex(r"[Hh]otelling.*?[:=]\s*([\d.]+)"),
-        "Q-residual UCL (95%)":     _ex(r"Q.residual.*?[:=]\s*([\d.E+-]+)"),
-        "n samples (training)":     _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
-        "n classes":                _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
-    }
+    metricas = parse_metricas_modelo(resumo_raw)
 
     imgs = _listar_figuras(pasta)[:max_figuras]
 
@@ -299,31 +284,13 @@ def gerar_word_relatorio(pasta: str, projeto: Dict,
     Generates an editable Word report (.docx) with python-docx.
     Same structure as the PDF: cover, metrics, figures, references.
     """
-    import re as _re
     from docx import Document
     from docx.shared import Inches, Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     resumo_raw = _ler_resumo(pasta) or ""
 
-    def _ex(padrao: str, default: str = "-") -> str:
-        m = _re.search(padrao, resumo_raw, _re.IGNORECASE | _re.MULTILINE)
-        return m.group(1).strip() if m else default
-
-    metricas = {
-        "Balanced Accuracy (CV)":  _ex(r"[Bb]alanced[_ ]?[Aa]ccuracy.*?[:=]\s*([\d.]+)"),
-        "AUC macro OvR":           _ex(r"ROC AUC macro.*?[:=]\s*([\d.]+)"),
-        "R2Y":                     _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
-        "Q2Y":                     _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
-        "R2X":                     _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "Optimal LVs":             _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
-        "p-value (permutation)":   _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
-        "Preprocessing":           _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
-        "Hotelling T2 UCL (95%)":  _ex(r"[Hh]otelling.*?[:=]\s*([\d.]+)"),
-        "Q-residual UCL (95%)":    _ex(r"Q.residual.*?[:=]\s*([\d.E+-]+)"),
-        "n samples (training)":    _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
-        "n classes":               _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
-    }
+    metricas = parse_metricas_modelo(resumo_raw)
     imgs = _listar_figuras(pasta)[:max_figuras]
 
     doc = Document()
@@ -452,15 +419,13 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
       - VIP_Selection: VIP/SR scores (pipeline CSV, if present)
       - Raw_Summary: full text of resumo_modelo.txt
     """
-    import re as _re
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "-") -> str:
-        m = _re.search(padrao, resumo_raw, _re.IGNORECASE | _re.MULTILINE)
-        return m.group(1).strip() if m else default
+        return extrair_metrica(resumo_raw, padrao, default)
 
     metricas_dict = {
         "Balanced Accuracy (CV)":  _ex(r"[Bb]alanced[_ ]?[Aa]ccuracy.*?[:=]\s*([\d.]+)"),
@@ -612,13 +577,11 @@ def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
     blocks for figures, and complete bibliography.
     Returns UTF-8 bytes (.tex file).
     """
-    import re as _re
 
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "-") -> str:
-        m = _re.search(padrao, resumo_raw, _re.IGNORECASE | _re.MULTILINE)
-        return m.group(1).strip() if m else default
+        return extrair_metrica(resumo_raw, padrao, default)
 
     def _esc(txt: str) -> str:
         """Escapes LaTeX special characters."""
@@ -872,7 +835,6 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
     from pptx.util import Inches, Pt, Emu
     from pptx.dml.color import RGBColor
     from pptx.enum.text import PP_ALIGN
-    import re as _re
 
     # ── UI Pro Max — B2B Professional palette ──────────────────────────────
     _NAVY   = RGBColor(0x0F, 0x17, 0x2A)
@@ -885,8 +847,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "—") -> str:
-        m = _re.search(padrao, resumo_raw, _re.IGNORECASE | _re.MULTILINE)
-        return m.group(1).strip() if m else default
+        return extrair_metrica(resumo_raw, padrao, default)
 
     metricas = {
         "Balanced Accuracy (CV)": _ex(r"[Bb]alanced[_ ]?[Aa]cc.*?[:=]\s*([\d.]+)"),
