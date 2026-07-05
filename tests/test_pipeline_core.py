@@ -315,6 +315,34 @@ def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
     assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
 
 
+# ── metricas_modelo_pls: R2X/R2Y/Q2 (sem teste dedicado ate' agora) ─────────
+
+def test_metricas_modelo_pls_bom_ajuste_da_r2_alto(pq):
+    """Y fortemente correlacionado com X: R2X/R2Y/Q2 devem ficar altos
+    (proximos de 1), nao zero nem negativos."""
+    rng = np.random.default_rng(0)
+    w_true = rng.normal(size=8); w_true /= np.linalg.norm(w_true)
+    X = rng.normal(size=(50, 8))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=50)
+    modelo = PLSRegression(n_components=2, scale=False).fit(X, y.reshape(-1, 1))
+    Y_cv = modelo.predict(X)  # CV "perfeita" simulada p/ o teste
+    r2x, r2y, q2 = pq.metricas_modelo_pls(modelo, X, y.reshape(-1, 1), Y_cv)
+    assert 0.0 < r2x <= 1.0
+    assert 0.9 < r2y <= 1.0
+    assert 0.9 < q2 <= 1.0
+
+
+def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
+    """Y sem variancia nenhuma (constante) -> ss_total=0 -> R2Y/Q2 nao
+    calculaveis, funcao devolve 0.0 em vez de dividir por zero."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(20, 5))
+    y = np.full((20, 1), 3.0)  # Y constante
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y)
+    r2x, r2y, q2 = pq.metricas_modelo_pls(modelo, X, y, y.copy())
+    assert r2y == 0.0 and q2 == 0.0
+
+
 # ── Selectivity Ratio: casos degenerados (peso/projeção nulos) ──────────────
 
 def test_selectivity_ratio_peso_w1_nulo_retorna_zeros(pq):
@@ -702,6 +730,19 @@ def test_anexar_regressao_resumo_escreve_bloco(pq, tmp_path):
     assert "2.10" in txt                         # LOD do Coco formatado
 
 
+def test_anexar_regressao_resumo_valor_nao_numerico_vira_na(pq, tmp_path):
+    """Valor genuinamente NAO conversivel p/ float (nao so' NaN) tambem cai
+    no fallback 'n/a', sem lancar TypeError/ValueError pro chamador."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.anexar_regressao_resumo(
+        pasta,
+        pooled={"r2c": "indisponivel", "r2v": 0.9, "rmsec": 1.0,
+                "rmsecv": 1.1, "rmsep": 1.3, "bias": 0.0})
+    txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
+    assert "n/a" in txt
+
+
 def test_anexar_regressao_resumo_fom_pooled(pq, tmp_path):
     """Caminho de modelo pooled unico (fom_pooled) tambem grava LOD/LOQ/SEN."""
     pasta = str(tmp_path)
@@ -1078,3 +1119,25 @@ def test_anexar_regressao_model_card_sem_arquivo_previo_nao_quebra(pq, tmp_path)
     anexar_regressao_model_card nao deve lancar excecao -- so' nao faz nada."""
     pq.anexar_regressao_model_card(str(tmp_path), pooled={"rmsep": 1.0})
     assert not (tmp_path / "model_card.md").exists()
+
+
+def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
+    """Valor NaN/nao-numerico em tabela_especie vira 'n/a' (nunca 'nan' cru
+    no documento); fom_pooled (modelo unico, sem tabela por especie) tambem
+    e' escrito."""
+    cfg = pq.Config(nivel="N3")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+
+    pq.anexar_regressao_model_card(
+        str(tmp_path),
+        pooled={"rmsep": 3.21, "r2v": 0.88},
+        tabela_especie=[{"especie": "Esp_A", "rmsep": float("nan"),
+                         "lod": float("nan"), "loq": 4.5}],
+        fom_pooled={"lod": 2.0, "loq": 6.0, "sensibilidade": 0.04})
+
+    txt = (tmp_path / "model_card.md").read_text(encoding="utf-8")
+    secao9 = txt[txt.index("## 9. Addendum"):]
+    assert "n/a" in secao9
+    assert "nan" not in secao9.lower()  # nunca "nan" cru (sempre formatado como n/a)
+    assert "LOD" in secao9 and "LOQ" in secao9 and "Sensibilidade" in secao9
