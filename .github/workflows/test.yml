@@ -64,12 +64,14 @@ jobs:
 
       - name: Run tests with coverage
         # Suíte completa (inclui o end-to-end 'slow'): valida a integração dos
-        # 10 módulos extraídos na Fase H e dá cobertura real do caminho de
-        # execução, não só das funções puras.
-        # --cov-fail-under=30 é um PISO-CATRACA: hoje o total (~32%) é puxado
-        # para baixo pelos arquivos de UI ainda sem teste. O gate impede
-        # REGRESSÃO; suba o número conforme extrair lógica das UIs.
-        run: pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=30
+        # módulos extraídos e dá cobertura real do caminho de execução, não só
+        # das funções puras.
+        # --cov-fail-under=60 é um PISO-CATRACA anti-regressão. O total local
+        # (--cov=.) está em ~68% após a extração de lógica pura das UIs e do
+        # núcleo (app_logic, cli_logic, resumo_parse, config_io, resultados_io);
+        # 60 deixa ~8 pts de margem p/ diferenças de plataforma/versão. Suba o
+        # número conforme cobrir mais UI/orquestrador.
+        run: pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=60
 
       - name: Upload coverage report
         if: always()
