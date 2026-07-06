@@ -157,13 +157,17 @@ FFT que, com SG derivativo, vira falso top-VIP).
 
 ## Saída
 
-Cada execução cria uma pasta versionada:
+Cada execução grava em `resultados_tcc/<amostra>/<Modo>/<execução>/`, onde
+`<amostra>` é o rótulo do conjunto de dados (`tag`, ou derivado da pasta/
+arquivo de entrada) e `<Modo>` é o objetivo científico resolvido para a
+execução (`Exploratorio` / `Classificacao` / `Quantificacao` — ver
+`docs/MANUAL.md`, seções 2.2 e 3):
 ```
-resultados_tcc/PLSDA_OE_{nível}_{pré-proc}_{AAAAMMDD_HHMMSS}/
-├── dados/      # metadados, identificadores, comparações (.csv)
-├── figuras/    # scores, VIP, dendrograma, acceptance plots, etc.
-├── modelos/    # modelo final (.joblib: pré-proc + PLS + LabelBinarizer + wavenumbers)
-└── logs/       # resumo_modelo.txt
+resultados_tcc/<amostra>/<Modo>/PLSDA_OE_{nível}_{pré-proc}_{AAAAMMDD_HHMMSS}/
+├── Graficos/    # scores, VIP, dendrograma, acceptance plots, etc.
+├── Tabelas/     # metadados, identificadores, comparações (.csv)
+├── Relatorios/  # resumo_modelo.txt, model_card.md
+└── Modelos/     # modelo final (.joblib: pré-proc + PLS + LabelBinarizer + wavenumbers)
 ```
 
 ---
