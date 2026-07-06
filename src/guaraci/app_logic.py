@@ -12,6 +12,8 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
+from guaraci.config import NOME_RELATORIOS
+
 # ── Parsing do log de progresso do pipeline ──────────────────────────────────
 # O pipeline emite marcadores "[N/7]" (e sub-passos "[7b/7]", "[7c/7]") no
 # stdout; a UI converte isso numa barra de progresso + rótulo legível.
@@ -110,9 +112,11 @@ def listar_figuras(pasta: str) -> List[str]:
 
 
 def ler_resumo(pasta: str) -> Optional[str]:
-    """Lê logs/resumo_modelo.txt (ou resumo_modelo.txt na raiz), se existir."""
+    """Lê Relatorios/resumo_modelo.txt (ou variantes antigas: logs/ da
+    estrutura pre-jul/2026, ou resumo_modelo.txt na raiz), se existir."""
     for candidato in [
-        os.path.join(pasta, "logs", "resumo_modelo.txt"),
+        os.path.join(pasta, NOME_RELATORIOS, "resumo_modelo.txt"),
+        os.path.join(pasta, "logs", "resumo_modelo.txt"),  # runs antigos
         os.path.join(pasta, "resumo_modelo.txt"),
     ]:
         if os.path.exists(candidato):
@@ -122,9 +126,11 @@ def ler_resumo(pasta: str) -> Optional[str]:
 
 
 def ler_model_card(pasta: str) -> Optional[str]:
-    """Lê logs/model_card.md (ou model_card.md na raiz), se existir."""
+    """Lê Relatorios/model_card.md (ou variantes antigas: logs/ da estrutura
+    pre-jul/2026, ou model_card.md na raiz), se existir."""
     for candidato in [
-        os.path.join(pasta, "logs", "model_card.md"),
+        os.path.join(pasta, NOME_RELATORIOS, "model_card.md"),
+        os.path.join(pasta, "logs", "model_card.md"),   # runs antigos
         os.path.join(pasta, "model_card.md"),
     ]:
         if os.path.exists(candidato):

@@ -28,6 +28,7 @@ from guaraci.preprocessamento import construir_preprocessador
 from guaraci.figuras import salvar, cor
 from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
+from guaraci.config import NOME_TABELAS
 from guaraci.chemometric_stats import rmse_flat
 from guaraci.model_registry import construir_lista_benchmark
 
@@ -232,7 +233,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     df_bench = pd.DataFrame(resultados)
 
     # ── Salvar CSV ────────────────────────────────────────────────────────
-    cam_csv = os.path.join(pasta, "dados", "benchmark_classificadores.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
     df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 
@@ -431,7 +432,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     print(f"  [MC CV total: {time.time()-t0_total:.1f}s]")
     df_mc = pd.DataFrame(resultados_mc)
 
-    cam_csv = os.path.join(pasta, "dados", "monte_carlo_cv.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "monte_carlo_cv.csv")
     df_mc.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 
@@ -885,7 +886,7 @@ def benchmark_regressao_por_especie(
 
     df_bench = pd.DataFrame(linhas)
 
-    cam_csv = os.path.join(pasta, "dados", "benchmark_regressao.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_regressao.csv")
     df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 

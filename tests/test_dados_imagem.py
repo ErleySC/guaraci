@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from conftest import achar_pastas_run
+
 
 # ── Conversões de cor (validadas contra referências conhecidas) ──────────────
 
@@ -258,7 +260,8 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
     )
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    from pathlib import Path
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida p/ modo imagem"
-    resumo = runs[0] / "logs" / "resumo_modelo.txt"
+    resumo = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
     assert resumo.exists(), "resumo_modelo.txt nao gerado p/ modo imagem"

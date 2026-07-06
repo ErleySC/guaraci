@@ -22,6 +22,7 @@ from guaraci.app_logic import (
     ler_resumo as _ler_resumo,
     listar_figuras as _listar_figuras,
 )
+from guaraci.config import NOME_TABELAS
 # Parsing do resumo_modelo.txt centralizado (item 19): _ex e o dicionario de
 # metricas eram duplicados nos 5 geradores; agora vem de resumo_parse.
 from guaraci.resumo_parse import extrair_metrica, parse_metricas_modelo
@@ -504,7 +505,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
 
     # ── SHEET 2: Identifiers ────────────────────────────────────────────────
     ws2 = wb.create_sheet("Identifiers")
-    id_csv = os.path.join(pasta, "dados", "amostras_identificadores.csv")
+    id_csv = os.path.join(pasta, NOME_TABELAS, "amostras_identificadores.csv")
     if os.path.exists(id_csv):
         try:
             df_id = pd.read_csv(id_csv, sep=";", decimal=",")
@@ -517,7 +518,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
 
     # ── SHEET 3: VIP_Selection ────────────────────────────────────────────────
     ws3 = wb.create_sheet("VIP_Selection")
-    vip_csv = os.path.join(pasta, "dados", "etapa4_selecao_variaveis.csv")
+    vip_csv = os.path.join(pasta, NOME_TABELAS, "etapa4_selecao_variaveis.csv")
     if os.path.exists(vip_csv):
         try:
             df_vip = pd.read_csv(vip_csv, sep=";", decimal=",")
@@ -536,8 +537,8 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
     ws4.column_dimensions["A"].width = 80
 
     # ── SHEET 5: Benchmark (if it exists) ─────────────────────────────────
-    bench_csv = os.path.join(pasta, "dados", "benchmark_classificadores.csv")
-    mc_csv    = os.path.join(pasta, "dados", "monte_carlo_cv.csv")
+    bench_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
+    mc_csv    = os.path.join(pasta, NOME_TABELAS, "monte_carlo_cv.csv")
     if os.path.exists(bench_csv) or os.path.exists(mc_csv):
         ws5 = wb.create_sheet("Benchmark")
         row_cursor = 1
@@ -1021,7 +1022,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
                  size=9, color=_MUTED, align=PP_ALIGN.CENTER)
 
     # ── SLIDE Benchmark (if CSV exists) ──────────────────────────────────
-    bench_csv = os.path.join(pasta, "dados", "benchmark_classificadores.csv")
+    bench_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
     if os.path.exists(bench_csv):
         try:
             df_b = pd.read_csv(bench_csv, sep=";", decimal=",")

@@ -37,6 +37,7 @@ from guaraci.paleta_cores import (
 from guaraci.chemometric_stats import (
     hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
 )
+from guaraci.config import NOME_GRAFICOS
 
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
@@ -82,9 +83,9 @@ _AVISO_MOSTRAR_GRAFICOS_EMITIDO = False
 
 def salvar(fig, nome: str, pasta: str, cfg: Config,
            subpasta: str = "") -> None:
-    """Always saves figure under pasta/figuras/[subpasta]/ (v20 structure).
-    subpasta groups detailed figures (e.g. 'ddsimca')."""
-    base = os.path.join(pasta, "figuras")
+    """Always saves figure under pasta/Graficos/[subpasta]/ (auditoria jul/2026
+    item 4). subpasta groups detailed figures (e.g. 'ddsimca')."""
+    base = os.path.join(pasta, NOME_GRAFICOS)
     destino = os.path.join(base, subpasta) if subpasta else base
     os.makedirs(destino, exist_ok=True)
     caminho = os.path.join(destino, f"{nome}.{cfg.formato_saida}")

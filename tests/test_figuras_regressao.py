@@ -20,6 +20,8 @@ import struct
 
 import pytest
 
+from conftest import achar_pastas_run
+
 
 # Figuras de CLASSIFICAÇÃO que devem existir num run de classificação (N2 com
 # módulos supervisionados ligados). Se alguma sumir, é regressão.
@@ -113,11 +115,10 @@ def _cfg_base(pq, base, **overrides):
 
 def _rodar(pq, cfg):
     pq.executar(cfg)
-    runs = [os.path.join(cfg.pasta_saida_raiz, r)
-            for r in os.listdir(cfg.pasta_saida_raiz)]
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
     assert runs, "executar() não criou pasta de saída"
-    figbase = os.path.join(runs[0], "figuras")
-    assert os.path.isdir(figbase), "pasta figuras/ não foi criada"
+    figbase = os.path.join(runs[0], pq.NOME_GRAFICOS)
+    assert os.path.isdir(figbase), f"pasta {pq.NOME_GRAFICOS}/ não foi criada"
     return figbase, _coletar_pngs(figbase)
 
 
@@ -215,7 +216,7 @@ def test_resumo_persiste_figuras_de_merito(figuras_quantificacao):
     'figuras de merito no relatorio' (o resumo alimenta a aba Relatorios)."""
     figbase, _pngs = figuras_quantificacao
     run_dir = os.path.dirname(figbase)
-    resumo = os.path.join(run_dir, "logs", "resumo_modelo.txt")
+    resumo = os.path.join(run_dir, "Relatorios", "resumo_modelo.txt")
     assert os.path.isfile(resumo), "resumo_modelo.txt nao foi gerado"
     with open(resumo, encoding="utf-8") as f:
         txt = f.read()
@@ -231,7 +232,7 @@ def test_model_card_gerado_com_addendum_de_regressao(figuras_quantificacao):
     fecha o item do roadmap 'Model Card automatico'."""
     figbase, _pngs = figuras_quantificacao
     run_dir = os.path.dirname(figbase)
-    card = os.path.join(run_dir, "logs", "model_card.md")
+    card = os.path.join(run_dir, "Relatorios", "model_card.md")
     assert os.path.isfile(card), "model_card.md nao foi gerado"
     with open(card, encoding="utf-8") as f:
         txt = f.read()

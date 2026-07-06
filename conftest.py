@@ -22,5 +22,23 @@ def pq():
     return mod
 
 
+def achar_pastas_run(pasta_saida_raiz):
+    """Localiza as pastas de EXECUCAO (folha) sob pasta_saida_raiz.
+
+    Desde a auditoria jul/2026 (item 4), gerar_nome_saida aninha a saida em
+    pasta_saida_raiz/<Amostra>/<Modo>/<execucao>/ em vez de uma pasta direta
+    em pasta_saida_raiz/<execucao>/. Esta funcao encontra as pastas-folha
+    (identificadas pelo prefixo "PLSDA_OE_") em qualquer profundidade, para
+    que os testes nao precisem hardcodar o numero de niveis.
+    """
+    import os as _os
+    achadas = []
+    for raiz, dirs, _arqs in _os.walk(str(pasta_saida_raiz)):
+        for d in dirs:
+            if d.startswith("PLSDA_OE_"):
+                achadas.append(_os.path.join(raiz, d))
+    return achadas
+
+
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: marks tests as slow (deselect with -m 'not slow')")

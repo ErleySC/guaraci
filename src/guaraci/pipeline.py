@@ -19,6 +19,12 @@ Best result: MSC -> SG -> MC, balanced accuracy = 0.923
 # __version__ e _NIVEL_NOME sao a fonte unica em config.py (modulo sem
 # dependencias); reexportados aqui p/ `pipeline.__version__` e `pq._NIVEL_NOME`.
 from guaraci.config import __version__, _NIVEL_NOME  # noqa: F401,E402
+from guaraci.config import (   # noqa: F401,E402
+    NOME_GRAFICOS,
+    NOME_TABELAS,
+    NOME_RELATORIOS,
+    NOME_MODELOS,
+)
 
 import os
 import glob
@@ -87,12 +93,43 @@ from guaraci.dados_io import (   # noqa: E402
 )
 
 
+def _slug(texto: str) -> str:
+    """Normaliza um texto livre para nome de pasta seguro (sem espacos/barras)."""
+    import re as _re
+    limpo = _re.sub(r"[^\w\-]+", "_", texto.strip())
+    return limpo.strip("_") or ""
+
+
+def _dataset_id(cfg: Config) -> str:
+    """Identificador do DATASET/AMOSTRA (nivel de topo da saida, auditoria
+    jul/2026 item 4: Resultados/Amostra/Modo/...). Prioridade:
+    1) cfg.tag (rotulo livre ja existente, ex.: 'oleos_essenciais') quando
+       preenchido — o usuario esta nomeando o conjunto explicitamente;
+    2) senao, deriva do modo de entrada (nome do CSV, da pasta de dados, ou
+       'sintetico' para dados de teste) — sempre disponivel, nunca vazio.
+    """
+    if cfg.tag.strip():
+        return _slug(cfg.tag) or "dataset"
+    if cfg.modo == "csv":
+        base = os.path.splitext(os.path.basename(cfg.arquivo_csv or ""))[0]
+    elif cfg.modo == "sintetico":
+        base = "sintetico"
+    else:  # "dx" | "imagem"
+        base = os.path.basename(os.path.normpath(cfg.pasta_entrada or ""))
+    return _slug(base) or "dataset"
+
+
 def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
-    """Default output path (v20): project prefix + analysis type
-    (level + preprocessing) + compact date/time.
-        {root}/PLSDA_OE_{level}_{preproc}_{YYYYMMDD_HHMMSS}
-    Example: resultados_tcc/PLSDA_OE_N1_MSC-SG1-MC_20260528_191500
-    Subfolders (created in executar): dados/ figuras/ modelos/ logs/
+    """Default output path (auditoria jul/2026, item 4): reestrutura a saida
+    em Amostra/Modo/Execucao para nao misturar resultados de objetivos
+    diferentes na mesma pasta.
+        {root}/{dataset}/{Modo}/PLSDA_OE_{level}_{preproc}_{YYYYMMDD_HHMMSS}
+    Example: resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_N2_MSC-SG1-MC_20260528_191500
+    'dataset' vem de cfg.tag (se preenchido) ou e' derivado do modo de
+    entrada (ver _dataset_id). 'Modo' e' o rotulo amigavel do objetivo
+    cientifico resolvido (ver modos_analise.resolver_objetivo) — Exploratorio
+    | Classificacao | Quantificacao.
+    Subfolders (created in executar): Graficos/ Tabelas/ Relatorios/ Modelos/
     """
     preset = (cfg.preprocessamento_padrao or "custom").lower()
     if preset == "autoscaling":
@@ -110,11 +147,12 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
         if cfg.aplicar_mc:  preproc.append("MC")
         if not preproc:     preproc.append("raw")
     partes = ["PLSDA_OE", cfg.nivel]
-    if cfg.tag.strip():
-        partes.append(cfg.tag.strip().replace(" ", "_"))
     partes.append("-".join(preproc))
     partes.append(datetime.now().strftime("%Y%m%d_%H%M%S"))
-    return os.path.join(cfg.pasta_saida_raiz, "_".join(partes))
+    dataset_id = _dataset_id(cfg)
+    modo_pasta = OBJETIVO_ROTULO.get(resolver_objetivo(cfg), "Analise")
+    return os.path.join(cfg.pasta_saida_raiz, dataset_id, modo_pasta,
+                         "_".join(partes))
 
 
 # Paleta/marcadores de classes extraidos p/ paleta_cores.py (Fase H). Reexpor-
@@ -983,18 +1021,22 @@ def executar(cfg: Config):
             mae_id  = mae_id[mask_keep] if mae_id is not None else None
 
     # --- 1b. Pasta de saida descritiva -------------------------------------
+    # Layout (auditoria jul/2026, item 4): pasta_saida_raiz/Amostra/Modo/
+    # Execucao/{Graficos,Tabelas,Relatorios,Modelos} — separa fisicamente os
+    # resultados por objetivo cientifico, alem do gating de conteudo (ver
+    # modos_analise.py) que ja impede a figura errada de ser GERADA.
     cfg.pasta_saida = gerar_nome_saida(cfg, len(np.unique(rotulos)),
                                          X_raw.shape[0])
     pasta = cfg.pasta_saida
-    # Estrutura de subpastas (v20): dados/ figuras/ modelos/ logs/
-    pasta_dados   = os.path.join(pasta, "dados")
-    pasta_modelos = os.path.join(pasta, "modelos")
-    pasta_logs    = os.path.join(pasta, "logs")
-    for _p in (pasta, pasta_dados, os.path.join(pasta, "figuras"),
+    pasta_dados   = os.path.join(pasta, NOME_TABELAS)
+    pasta_modelos = os.path.join(pasta, NOME_MODELOS)
+    pasta_logs    = os.path.join(pasta, NOME_RELATORIOS)
+    for _p in (pasta, pasta_dados, os.path.join(pasta, NOME_GRAFICOS),
                pasta_modelos, pasta_logs):
         os.makedirs(_p, exist_ok=True)
     print(f"[INFO] Saida: {pasta}")
-    print("[INFO] Subpastas: dados/ figuras/ modelos/ logs/")
+    print(f"[INFO] Subpastas: {NOME_GRAFICOS}/ {NOME_TABELAS}/ "
+          f"{NOME_MODELOS}/ {NOME_RELATORIOS}/")
     if metadados_df is not None:
         cam_meta = os.path.join(pasta_dados, "metadados.csv")
         metadados_df.to_csv(cam_meta, index=False, sep=";", decimal=",")

@@ -26,6 +26,16 @@ _NIVEL_NOME = {
     "N3": "Quantificacao de teor",
 }
 
+# Nomes de subpasta da saida de cada execucao (auditoria jul/2026, item 4:
+# reestruturacao Amostra/Modo/{Graficos,Tabelas,Relatorios}). Fonte UNICA —
+# writers (pipeline.py/figuras.py/avaliacao_modelos.py/selecao_variaveis.py)
+# e readers (reports.py/app_logic.py/app_tabs/) importam daqui, nunca com a
+# string literal, para que um rename futuro seja de 1 lugar so.
+NOME_GRAFICOS   = "Graficos"     # antigo "figuras"
+NOME_TABELAS    = "Tabelas"      # antigo "dados"
+NOME_RELATORIOS = "Relatorios"   # antigo "logs"
+NOME_MODELOS    = "Modelos"      # antigo "modelos" (so' capitalizacao)
+
 
 @dataclass
 class Config:

@@ -13,6 +13,8 @@ import pytest
 
 import guaraci.predicao as pr
 
+from conftest import achar_pastas_run
+
 
 @pytest.fixture(scope="session")
 def modelo_e_dados(pq, tmp_path_factory):
@@ -30,10 +32,9 @@ def modelo_e_dados(pq, tmp_path_factory):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = [os.path.join(cfg.pasta_saida_raiz, r)
-            for r in os.listdir(cfg.pasta_saida_raiz)]
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
     assert runs, "executar() nao criou pasta de saida"
-    cam_modelo = os.path.join(runs[0], "modelos", "modelo_plsda.joblib")
+    cam_modelo = os.path.join(runs[0], pq.NOME_MODELOS, "modelo_plsda.joblib")
     assert os.path.isfile(cam_modelo), "modelo_plsda.joblib nao foi salvo"
     pkg = joblib.load(cam_modelo)
 

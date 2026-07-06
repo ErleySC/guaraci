@@ -7,10 +7,14 @@ para travar o comportamento atual e detectar regressões durante o corte.
 
 Usa a fixture `pq` (sessão) do conftest.py.
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.cross_decomposition import PLSRegression
+
+from conftest import achar_pastas_run
 
 
 # ── Pré-processamento (futuro: guaraci/preprocessing.py) ──────────────────────
@@ -967,9 +971,9 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    resumo = runs[0] / "logs" / "resumo_modelo.txt"
+    resumo = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
     assert resumo.is_file()
     txt = resumo.read_text(encoding="utf-8")
     assert "Analytical Figures of Merit" in txt
@@ -995,19 +999,19 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    run_dir = runs[0]
+    run_dir = Path(runs[0])
 
-    cam_csv = run_dir / "dados" / "teste_martens.csv"
+    cam_csv = run_dir / pq.NOME_TABELAS / "teste_martens.csv"
     assert cam_csv.is_file(), "teste_martens.csv nao foi gerado"
     df = pd.read_csv(cam_csv, sep=";", decimal=",")
     assert {"wavenumber", "t_valor", "p_valor", "significativo"}.issubset(df.columns)
 
-    resumo_txt = (run_dir / "logs" / "resumo_modelo.txt").read_text(encoding="utf-8")
+    resumo_txt = (run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(encoding="utf-8")
     assert "Martens n_significativas" in resumo_txt
 
-    card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
+    card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
     assert "Martens n_significativas" in card_txt
 
 
@@ -1030,15 +1034,15 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    run_dir = runs[0]
+    run_dir = Path(runs[0])
 
-    resumo_txt = (run_dir / "logs" / "resumo_modelo.txt").read_text(encoding="utf-8")
+    resumo_txt = (run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(encoding="utf-8")
     assert "DModX critico (SIMCA)" in resumo_txt
     assert "N amostras fora do DModX" in resumo_txt
 
-    card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
+    card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
     assert "DModX critico (SIMCA)" in card_txt
     assert "DModY critico (SIMCA)" in card_txt   # addendum de regressao, N3
 
@@ -1070,9 +1074,9 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    figbase = runs[0] / "figuras"
+    figbase = Path(runs[0]) / pq.NOME_GRAFICOS
     nomes_pngs = {p.name for p in figbase.rglob("*.png")} if figbase.exists() else set()
     ddsimca_figs = {n for n in nomes_pngs if "ddsimca" in n.lower()
                     or "cooman" in n.lower()}

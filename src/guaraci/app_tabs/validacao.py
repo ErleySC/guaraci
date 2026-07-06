@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from guaraci.resumo_parse import parse_acuracia_por_classe
+from guaraci.config import NOME_TABELAS
 
 _CATS = {
     "All":              "",
@@ -94,9 +95,9 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
                     use_container_width=True, height=min(400, 35 * len(_df_acc) + 38))
 
     # ── Benchmark and MC CV tables (if they exist) ───────────────────
-    _bench_csv_v = os.path.join(pasta_v, "dados",
+    _bench_csv_v = os.path.join(pasta_v, NOME_TABELAS,
                                 "benchmark_classificadores.csv")
-    _mc_csv_v    = os.path.join(pasta_v, "dados", "monte_carlo_cv.csv")
+    _mc_csv_v    = os.path.join(pasta_v, NOME_TABELAS, "monte_carlo_cv.csv")
     if os.path.exists(_bench_csv_v) or os.path.exists(_mc_csv_v):
         with st.expander("🏅 Classifier Benchmark", expanded=False):
             if os.path.exists(_bench_csv_v):

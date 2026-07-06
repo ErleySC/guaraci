@@ -37,6 +37,13 @@ pasta_saida: resultados_tcc
 #   opcoes: N1 | N2 | N3
 nivel: N1
 
+# Objetivo cientifico: filtra QUAIS figuras/relatorios sao gerados.
+# 'auto' deriva do nivel acima (N1/N2=Classificacao, N3=Quantificacao) e
+# preserva o comportamento historico. Defina explicitamente para o Modo
+# Exploratorio (so PCA/HCA/loadings/pre-proc, sem PLS-DA/regressao).
+#   opcoes: auto | exploratorio | classificacao | quantificacao
+objetivo: auto
+
 # Pre-processamento espectral
 #   opcoes: MSC+SG+MC | SNV+SG+MC | Autoscaling | Mean-centering
 pre_processamento: MSC+SG+MC
