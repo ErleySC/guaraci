@@ -6,8 +6,23 @@ hospedado. Uma regressão de limiar aqui = freeze silencioso em produção.
 Testável por completo passando um `hw` dict sintético (sem depender da RAM
 real da máquina de teste).
 """
+import builtins
+
 from guaraci.config import Config
 from guaraci import hardware
+
+
+def _bloquear_psutil(monkeypatch):
+    """Força ImportError em `import psutil`, exercitando os caminhos de
+    fallback (ctypes/os.cpu_count) de hardware_probe/_verificar_ram sem
+    depender de psutil estar de fato ausente no ambiente de teste."""
+    real_import = builtins.__import__
+
+    def _fake_import(name, *args, **kwargs):
+        if name == "psutil":
+            raise ImportError("psutil bloqueado no teste")
+        return real_import(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, "__import__", _fake_import)
 
 
 def _cfg_pesado():
@@ -115,3 +130,38 @@ def test_verificar_ram_absurdo_retorna_false_ou_failsafe():
     # Nunca lança exceção — é a garantia principal da função.
     resultado = hardware._verificar_ram(1e9, "op impossivel")
     assert resultado in (True, False)
+
+
+# ── Fallback sem psutil (ctypes/os.cpu_count) ────────────────────────────────
+
+def test_hardware_probe_sem_psutil_usa_fallback_ctypes(monkeypatch):
+    """Sem psutil, hardware_probe() ainda retorna todas as chaves esperadas
+    (via GlobalMemoryStatusEx no Windows / os.cpu_count), com psutil_ok=False."""
+    _bloquear_psutil(monkeypatch)
+    hw = hardware.hardware_probe()
+    assert hw["psutil_ok"] is False
+    for chave in ("ram_total_gb", "ram_livre_gb", "cpu_fisicos",
+                  "cpu_logicos", "disco_livre_gb"):
+        assert chave in hw
+    assert hw["cpu_logicos"] >= 1
+    assert hw["cpu_fisicos"] >= 1
+
+
+def test_verificar_ram_sem_psutil_e_fail_safe(monkeypatch):
+    """Sem psutil, _verificar_ram nunca lança e assume que há memória
+    suficiente (fail-safe True), mesmo exigindo uma quantidade absurda."""
+    _bloquear_psutil(monkeypatch)
+    assert hardware._verificar_ram(1e9, "op impossivel") is True
+
+
+def test_hardware_probe_disco_livre_com_disk_usage_falhando(monkeypatch):
+    """Se psutil.disk_usage() lançar, hardware_probe() não quebra e mantém
+    o default conservador de disco_livre_gb (guard de exceção isolado)."""
+    import psutil as _ps
+
+    def _quebra(*a, **k):
+        raise OSError("disco inacessivel")
+    monkeypatch.setattr(_ps, "disk_usage", _quebra)
+    hw = hardware.hardware_probe()
+    assert hw["psutil_ok"] is True
+    assert hw["disco_livre_gb"] == 5.0
