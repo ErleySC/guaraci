@@ -169,6 +169,22 @@ from guaraci.figuras import (   # noqa: E402
     fig_cooman_ddsimca,
 )
 
+# Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
+# fonte unica que decide QUAIS figuras/relatorios cada modo gera, para que
+# um run so' produza os resultados pertinentes ao seu objetivo (ver
+# modos_analise.py). Reexportado para pipeline.resolver_objetivo(...) etc.
+from guaraci.modos_analise import (   # noqa: E402
+    resolver_objetivo,
+    deve_gerar,
+    figuras_exploratorias_ligadas,
+    plano_de_figuras,
+    descrever_plano,
+    OBJETIVO_ROTULO,
+    EXPLORATORIO,
+    CLASSIFICACAO,
+    QUANTIFICACAO,
+)
+
 
 # Transformers de pre-processamento (SNV/SavGol/MSC) + construir_preprocessador
 # extraidos p/ preprocessamento.py (Fase H). Reexportados aqui para nao quebrar
@@ -870,6 +886,20 @@ def pls_regressao_por_especie(
 def executar(cfg: Config):
     setup_matplotlib(cfg)
 
+    # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
+    # Quantificacao). Decide quais figuras/relatorios serao gerados, para
+    # que cada modo produza EXCLUSIVAMENTE o que e' pertinente ao seu
+    # objetivo (ver modos_analise.py). Preserva N1/N2/N3 quando objetivo=auto.
+    objetivo = resolver_objetivo(cfg)
+    _fig_explor_on = figuras_exploratorias_ligadas(cfg)
+    print(f"\n[MODO] Objetivo cientifico: "
+          f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}  "
+          f"(nivel={cfg.nivel}, objetivo_cfg={cfg.objetivo})")
+    _plano = descrever_plano(cfg)
+    if _plano:
+        print(f"[MODO] Figuras pertinentes a este objetivo ({len(_plano)}): "
+              + "; ".join(_plano))
+
     # --- 0. Hardware probe + auto-ajuste preventivo -------------------------
     _hw = hardware_probe()
     _avisos_hw = auto_ajustar_config_hardware(cfg, _hw)
@@ -1297,17 +1327,21 @@ def executar(cfg: Config):
     # Flag de simbolos por classe (None -> todos circulo 'o')
     marcadores_fig = (mapa_marcadores if cfg.mostrar_marcadores_classe
                       else None)
-    # ---- ESSENCIAIS (sempre) ----
+    # ---- OVERVIEW (sempre — contexto valido em qualquer objetivo) ----
     fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                      puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
-    # ---- EXPLORATORIAS (so com figuras_detalhadas) ----
-    if cfg.figuras_detalhadas:
+    # ---- EXPLORATORIAS: nucleo do Modo Exploratorio; escotilha detalhada
+    # dentro de Classificacao; FILTRADAS em Quantificacao. ----
+    if _fig_explor_on:
         fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta)
         fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
-    if cfg.comparar_hca_pipelines:
+    if cfg.comparar_hca_pipelines and _fig_explor_on:
         fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta)
-    fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
-                       puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
+    # ---- CLASSIFICACAO (supervisionada) — filtrada fora de N1/N2 ----
+    if deve_gerar(cfg, "plsda_scores"):
+        fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
+                           puros_mask=puros_mask_fig,
+                           mapa_marcadores=marcadores_fig)
     T2, Q, t2_lim, q_lim, out_t2, out_q = fig3_outliers(
         T_pls, P_pls, X_processed, rotulos, mapa_cores, n_opt, cfg, pasta)
     # DModX (Eriksson et al. 2006) -- mesma reapresentacao do Q-residuo
@@ -1316,16 +1350,18 @@ def executar(cfg: Config):
     # acima); reportado no resumo/console/model card.
     _dmodx_res = dmodx(Q, n_variaveis=X_processed.shape[1],
                         n_componentes=n_opt, n_amostras=X_processed.shape[0])
-    fig4_confusao(cm_mat, lb.classes_, rotulos, pred_lab, cfg, pasta)
-    try:
-        aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
-    except Exception as _e_roc:
-        print(f"  [AVISO] ROC/AUC: {_e_roc}")
+    if deve_gerar(cfg, "confusao"):
+        fig4_confusao(cm_mat, lb.classes_, rotulos, pred_lab, cfg, pasta)
+    if deve_gerar(cfg, "roc"):
+        try:
+            aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
+        except Exception as _e_roc:
+            print(f"  [AVISO] ROC/AUC: {_e_roc}")
     # fig4b_metricas_globais e fig5_vip removidas: a primeira e redundante com
     # resumo_modelo.txt; a segunda (VIP puro) esta contida em fig_sprint3_sr_vip,
     # que mostra VIP + Selectivity Ratio lado a lado (ver abaixo).
 
-    if cfg.n_bootstrap_vip > 0:
+    if cfg.n_bootstrap_vip > 0 and deve_gerar(cfg, "vip"):
         print(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
         boot = bootstrap_vip_estratificado(
             X_processed, Y_bin, y_int, n_opt,
@@ -1340,16 +1376,20 @@ def executar(cfg: Config):
         else:
             print("  [AVISO] Bootstrap VIP: 0 iteracoes validas — fig5b pulada.")
 
-    if cfg.figuras_detalhadas:
+    if _fig_explor_on:
         fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
                                mapa_cores, cfg, pasta)
-    fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta)
+    if deve_gerar(cfg, "selecao_lvs"):
+        fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta)
 
     # ---- Sprint 3 — SR (essencial) + Score Contribution (detalhada) -----
+    # sr e' computado SEMPRE (consumido tambem pela Etapa 4); apenas as
+    # FIGURAS de SR/VIP sao filtradas por objetivo (classificacao).
     print("\n[Sprint3] Selectivity Ratio + Score Contribution...")
     sr = calcular_selectivity_ratio(pls_final, X_processed)
-    fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
-    if cfg.figuras_detalhadas:
+    if deve_gerar(cfg, "sr_vip"):
+        fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
+    if cfg.figuras_detalhadas and deve_gerar(cfg, "score_contribution"):
         fig_sprint3_score_contribution(pls_final, X_processed, rotulos,
                                         wavenumbers, mapa_cores, top_n=20,
                                         cfg=cfg, pasta=pasta)
@@ -1359,7 +1399,7 @@ def executar(cfg: Config):
     # formal (p-valor) de significancia por variavel.
     _martens_n_sig: Optional[int] = None
     _martens_n_folds: Optional[int] = None
-    if cfg.executar_martens:
+    if cfg.executar_martens and deve_gerar(cfg, "martens"):
         print("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
         martens = teste_incerteza_martens(
             X_processed, Y_bin, n_opt, cv_indices, pls_final.coef_)
@@ -1404,7 +1444,7 @@ def executar(cfg: Config):
               "especie). DD-SIMCA e um diagnostico de autenticacao de pureza "
               "(conceito de N2); nao agrega a este tipo de analise. Troque "
               "para nivel=N2 se quiser autenticar pureza por especie.")
-    elif cfg.executar_ddsimca:
+    elif cfg.executar_ddsimca and deve_gerar(cfg, "ddsimca"):
         modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
         if conc is not None:
             # Pure samples: conc loaded as None -> NaN after asarray(float), OR 0.0.
@@ -1487,7 +1527,7 @@ def executar(cfg: Config):
 
     # OPLS-DA
     _opls_n_ortho: Optional[int] = None
-    if cfg.executar_opls:
+    if cfg.executar_opls and deve_gerar(cfg, "opls"):
         n_cls_opls = len(classes_unicas)
         print(f"\n[Sprint3] OPLS-DA "
               f"(n_ortho={cfg.n_ortho_opls}, {n_cls_opls} classes)...")
@@ -1509,7 +1549,7 @@ def executar(cfg: Config):
 
     # --- STAGE 4: Variable Selection ------------------------------------
     etapa4_res: Optional[Dict[str, Any]] = None
-    if cfg.executar_etapa4:
+    if cfg.executar_etapa4 and deve_gerar(cfg, "etapa4"):
         try:
             etapa4_res = etapa4_selecao_variaveis(
                 X_processed, Y_bin, y_int, vip, sr, wavenumbers,
@@ -1517,7 +1557,7 @@ def executar(cfg: Config):
         except Exception as _e_e4:
             print(f"  [ERRO] Etapa 4: {_e_e4}")
 
-    if cfg.comparar_pipelines:
+    if cfg.comparar_pipelines and deve_gerar(cfg, "comparar_pipelines"):
         print("\n[6b/7] Comparacao de pipelines de pre-processamento...")
         comp = comparar_pipelines(cfg, X_raw, Y_bin, y_int, cv_indices,
                                     max_lv=cfg.max_lvs)
@@ -1526,13 +1566,15 @@ def executar(cfg: Config):
             os.path.join(pasta_dados, "comparacao_pipelines.csv"),
             sep=";", decimal=",")
 
-    if wold_res is not None and cast(int, wold_res["n_validos"]) > 2:
+    if (wold_res is not None and cast(int, wold_res["n_validos"]) > 2
+            and deve_gerar(cfg, "wold")):
         fig_extra_wold(wold_res, cfg, pasta)
 
     # --- 8b. Avaliacao em holdout independente ----------------------------
     metricas_holdout: Optional[Dict[str, float]] = None
     bca_holdout:      Optional[Dict[str, Tuple[float, float, float]]] = None
-    if X_holdout is not None and rotulos_holdout is not None:
+    if (X_holdout is not None and rotulos_holdout is not None
+            and deve_gerar(cfg, "holdout")):
         rot_ho: np.ndarray = rotulos_holdout
         print(f"\n[6c/7] Avaliacao em holdout ({n_holdout} amostras)...")
         try:
@@ -1728,7 +1770,7 @@ def executar(cfg: Config):
     print(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
-    if cfg.executar_benchmark:
+    if cfg.executar_benchmark and deve_gerar(cfg, "benchmark"):
         print("\n[7b/7] Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...")
         # Guarda: ~1.2 GB pico (SVM kernel matrix + OOF proba)
         if _verificar_ram(1.2, "Auto-Benchmark"):
@@ -1741,7 +1783,7 @@ def executar(cfg: Config):
                 print(f"  [AVISO] Benchmark falhou: {_e_bench}")
 
     # --- 9a2. Monte Carlo CV (opcional) ────────────────────────────────────
-    if cfg.executar_monte_carlo:
+    if cfg.executar_monte_carlo and deve_gerar(cfg, "monte_carlo"):
         print("\n[7c/7] Monte Carlo CV (IC95% por percentil)...")
         # Guarda: ~400 MB (PLS-DA x N splits em serie)
         if _verificar_ram(0.5, "Monte Carlo CV"):
@@ -1808,11 +1850,14 @@ def executar(cfg: Config):
         n_nan    = int(np.isnan(conc_arr).sum())
         n_nonzero = int(np.sum(conc_arr > 0))
 
-        if cfg.nivel == "N1":
-            print(f"\n[7/7] PLS regressao — PULADA: nivel=N1. "
-                  f"Regressao de concentracao requer nivel=N2 ou N3 "
-                  f"(N1 mistura {len(classes_unicas)} especies cujos "
-                  f"espectros dominam o sinal de adulteracao).")
+        if objetivo != QUANTIFICACAO:
+            print(f"\n[7/7] PLS regressao — PULADA: objetivo="
+                  f"{OBJETIVO_ROTULO.get(objetivo, objetivo)} "
+                  f"(nivel={cfg.nivel}). A regressao de concentracao pertence "
+                  f"ao Modo Quantificacao (N3); nos modos Exploratorio/"
+                  f"Classificacao ela seria um resultado fora de escopo (e "
+                  f"em N1 as {len(classes_unicas)} especies dominam o sinal "
+                  f"de adulteracao, produzindo R2~0).")
         elif n_nan > 0:
             print(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
                   f"conc=NaN.")

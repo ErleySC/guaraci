@@ -52,7 +52,7 @@ RISK_CLASS: Dict[str, str] = {
     "pre_processamento": "ANALITICO", "max_lvs": "ANALITICO",
     "n_permutacoes": "ANALITICO", "n_jobs_permutacao": "ANALITICO",
     "holdout_fracao": "ANALITICO",
-    "nivel": "ANALITICO", "excluir_classes": "ANALITICO",
+    "nivel": "ANALITICO", "objetivo": "ANALITICO", "excluir_classes": "ANALITICO",
     "faixa_min_cm": "ANALITICO", "faixa_max_cm": "ANALITICO",
     "modo_ddsimca": "ANALITICO", "ddsimca": "ANALITICO",
     "opls_da": "ANALITICO", "selecao_variaveis_etapa4": "ANALITICO",
@@ -86,6 +86,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "pre_processamento":            {"PT": "Pre-processamento",       "EN": "Preprocessing"},
     "comparar_pre_processamentos":  {"PT": "Comparar pre-proc.",      "EN": "Compare preproc."},
     "nivel":                        {"PT": "Nivel de analise",        "EN": "Analysis level"},
+    "objetivo":                     {"PT": "Objetivo cientifico",     "EN": "Scientific objective"},
     "max_lvs":                      {"PT": "Maximo de LVs",           "EN": "Max LVs"},
     "opls_da":                      {"PT": "OPLS-DA",                 "EN": "OPLS-DA"},
     "ddsimca":                      {"PT": "DD-SIMCA",                "EN": "DD-SIMCA"},
@@ -323,6 +324,35 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                 "N3": "Adulterant content quantification (PLS-R)"},
         },
         "default": "N2", "range": "N1 | N2 | N3",
+    },
+    "objetivo": {
+        "PT": {
+            "desc": "Objetivo cientifico do run — FILTRA quais figuras e "
+                    "relatorios sao gerados, para que cada modo produza apenas "
+                    "o pertinente. 'auto' deriva do nivel (N1/N2=Classificacao, "
+                    "N3=Quantificacao) e preserva o comportamento historico.",
+            "impacto": "ANALITICO — controla as figuras/relatorios de saida.",
+            "exemplos": {
+                "auto": "Deriva do nivel (recomendado)",
+                "exploratorio": "So PCA/HCA/loadings/pre-proc (sem PLS-DA)",
+                "classificacao": "PLS-DA, confusao, ROC, VIP, DD-SIMCA",
+                "quantificacao": "Regressao PLS + figuras de merito analiticas"},
+        },
+        "EN": {
+            "desc": "Scientific objective of the run — FILTERS which figures "
+                    "and reports are generated, so each mode produces only what "
+                    "is pertinent. 'auto' derives from the level "
+                    "(N1/N2=Classification, N3=Quantification), preserving "
+                    "historical behavior.",
+            "impacto": "ANALYTICAL — controls the output figures/reports.",
+            "exemplos": {
+                "auto": "Derive from level (recommended)",
+                "exploratorio": "Only PCA/HCA/loadings/preproc (no PLS-DA)",
+                "classificacao": "PLS-DA, confusion, ROC, VIP, DD-SIMCA",
+                "quantificacao": "PLS regression + analytical figures of merit"},
+        },
+        "default": "auto",
+        "range": "auto | exploratorio | classificacao | quantificacao",
     },
     "holdout_fracao": {
         "PT": {
@@ -1186,7 +1216,7 @@ MENU_FIELDS: Dict[str, list] = {
               "faixa_min_cm", "faixa_max_cm", "excluir_classes",
               "imagem_incluir_textura"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
-    "modelo": ["nivel", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
+    "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
                   "teste_wold", "teste_cv_anova", "teste_martens", "n_jobs_permutacao"],

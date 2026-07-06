@@ -54,6 +54,13 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Modo de analise: Classificacao (especie) | Discriminacao "
              "(puro vs. adulterado) | Quantificacao (teor de adulterante)",
      "opcoes": ["N1", "N2", "N3"]},
+    {"key": "objetivo", "attr": "objetivo", "tipo": "choice",
+     "desc": "Objetivo cientifico que filtra QUAIS figuras/relatorios sao "
+             "gerados: auto (deriva do nivel — N1/N2=Classificacao, "
+             "N3=Quantificacao) | exploratorio (so PCA/HCA/loadings/pre-proc, "
+             "sem PLS-DA) | classificacao (PLS-DA e derivados) | "
+             "quantificacao (regressao PLS + figuras de merito)",
+     "opcoes": ["auto", "exploratorio", "classificacao", "quantificacao"]},
     {"key": "pre_processamento", "attr": "preprocessamento_padrao", "tipo": "preproc",
      "desc": "Pre-processamento espectral", "opcoes": list(_PRE_PROC_FRIENDLY)},
     {"key": "faixa_min_cm", "attr": "wn_min", "tipo": "float",
