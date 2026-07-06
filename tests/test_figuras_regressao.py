@@ -266,3 +266,37 @@ def test_dimensoes_sanas(figuras_classificacao, figuras_quantificacao):
                 problemas.append(
                     f"{os.path.basename(p)}: dimensões {w}x{h} fora da faixa")
     assert not problemas, "Dimensões fora do esperado:\n  " + "\n  ".join(problemas)
+
+
+# ── Otimizacao de desempenho por objetivo (auditoria jul/2026, item 8) ──────
+# O teste de permutacao (200 refits de CV) e o BCa CI (bootstrap de metricas
+# de classificacao) so' sao pertinentes ao objetivo Classificacao; fora dele
+# o pipeline deve PULAR a computacao (nao so' a figura) e o resumo/model_card
+# nao devem trazer esses campos (em vez de "nan"/"CI indisponivel").
+
+@pytest.mark.slow
+def test_classificacao_calcula_permutacao_e_bca(figuras_classificacao):
+    """No modo Classificacao, o teste de permutacao e o BCa CI RODAM de
+    verdade e aparecem no resumo com valores finitos."""
+    figbase, _pngs = figuras_classificacao
+    run_dir = os.path.dirname(figbase)
+    resumo = os.path.join(run_dir, "Relatorios", "resumo_modelo.txt")
+    with open(resumo, encoding="utf-8") as f:
+        txt = f.read()
+    assert "Permutation p-value" in txt
+    assert "BCa Accuracy" in txt
+    assert "nan" not in txt.split("Permutation p-value")[1].split("\n")[0].lower()
+
+
+@pytest.mark.slow
+def test_quantificacao_pula_permutacao_e_bca(figuras_quantificacao):
+    """Fora do modo Classificacao, a computacao cara de permutacao/BCa e'
+    pulada e os campos correspondentes NAO aparecem no resumo (em vez de
+    poluir o relatorio com placeholders 'nan')."""
+    figbase, _pngs = figuras_quantificacao
+    run_dir = os.path.dirname(figbase)
+    resumo = os.path.join(run_dir, "Relatorios", "resumo_modelo.txt")
+    with open(resumo, encoding="utf-8") as f:
+        txt = f.read()
+    assert "Permutation p-value" not in txt
+    assert "BCa Accuracy" not in txt

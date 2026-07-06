@@ -1279,8 +1279,9 @@ def executar(cfg: Config):
           f"acumulado(2): {sum(var_pca[:2]):.2f}%")
 
     # --- 6. Permutation test (Y-randomization) ----------------------------
-    print(f"\n[4/7] Teste de permutacao (Y-randomization, "
-          f"n={cfg.n_permutacoes})")
+    # cv_perm e' construido sempre (barato, so' um objeto de split) pois o
+    # teste de Wold (bloco 6b, opt-in) o reaproveita mesmo quando o teste de
+    # permutacao abaixo e' pulado.
     if usar_grupos:
         cv_perm = StratifiedGroupKFold(n_splits=max(n_splits, 2),
                                          shuffle=True,
@@ -1288,19 +1289,38 @@ def executar(cfg: Config):
     else:
         cv_perm = StratifiedKFold(n_splits=n_splits, shuffle=True,
                                    random_state=cfg.seed)
-    perm_res = teste_permutacao(
-        lambda: fabrica_pipeline(n_opt),
-        X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes, cfg.seed,
-        groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
-    perm_obs : float      = cast(float, perm_res["acc_observada"])
-    perm_dist: np.ndarray = cast(np.ndarray, perm_res["accs_permutadas"])
-    perm_p   : float      = cast(float, perm_res["p_value"])
-    media_h0 = float(perm_dist.mean()) if len(perm_dist) > 0 else float("nan")
-    print(f"  Bal.Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
-          f"|  bal.acc media H0 = {media_h0:.4f}")
-    print(f"  Iteracoes validas: {cast(int, perm_res['n_validos'])}/"
-          f"{cfg.n_permutacoes}  "
-          f"(failure_rate = {cast(float, perm_res['failure_rate']):.1%})")
+    # Otimizacao de desempenho (auditoria jul/2026, item 8): o teste de
+    # permutacao (200 refits de CV por padrao) so' alimenta o p-valor de
+    # SIGNIFICANCIA DE CLASSIFICACAO no resumo — sem sentido cientifico fora
+    # do objetivo Classificacao (ver deve_gerar/_FIG_OBJETIVOS). Pular a
+    # computacao (nao so' a figura/linha do resumo) evita o refit mais caro
+    # do pipeline quando o run e' Exploratorio/Quantificacao.
+    if objetivo == CLASSIFICACAO:
+        print(f"\n[4/7] Teste de permutacao (Y-randomization, "
+              f"n={cfg.n_permutacoes})")
+        perm_res = teste_permutacao(
+            lambda: fabrica_pipeline(n_opt),
+            X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes, cfg.seed,
+            groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
+        perm_obs : float      = cast(float, perm_res["acc_observada"])
+        perm_dist: np.ndarray = cast(np.ndarray, perm_res["accs_permutadas"])
+        perm_p   : float      = cast(float, perm_res["p_value"])
+        media_h0 = float(perm_dist.mean()) if len(perm_dist) > 0 else float("nan")
+        print(f"  Bal.Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
+              f"|  bal.acc media H0 = {media_h0:.4f}")
+        print(f"  Iteracoes validas: {cast(int, perm_res['n_validos'])}/"
+              f"{cfg.n_permutacoes}  "
+              f"(failure_rate = {cast(float, perm_res['failure_rate']):.1%})")
+    else:
+        print(f"\n[4/7] Teste de permutacao — PULADO: objetivo="
+              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Significancia de "
+              f"classificacao nao e' pertinente fora do modo Classificacao "
+              f"(economiza {cfg.n_permutacoes} refits de CV).")
+        perm_res = {"acc_observada": float("nan"),
+                    "accs_permutadas": np.array([], dtype=float),
+                    "p_value": float("nan"), "n_validos": 0, "n_falhos": 0,
+                    "failure_rate": float("nan")}
+        perm_p = float("nan")
 
     # --- 6b. Teste de Wold (R2Y / Q2Y intercept) --------------------------
     wold_res: Optional[Dict[str, object]] = None
@@ -1338,7 +1358,12 @@ def executar(cfg: Config):
         print(f"  {k:>22s}: {v:.4f}")
 
     # --- 5b. BCa CI 95% para metricas via bootstrap estratificado ----------
-    print(f"\n[5b/7] BCa CI 95% (n_boot={cfg.n_bootstrap_bca})")
+    # metricas_funcoes tambem e' reaproveitado pelo bloco de holdout (8b),
+    # que ja e' filtrado por deve_gerar(cfg,"holdout") = so' Classificacao —
+    # entao o dict de lambdas (barato: so' fecha funcoes, nao executa nada)
+    # pode ficar definido sempre; o CUSTO real esta no LOOP de bootstrap
+    # abaixo, que e' o que a otimizacao de desempenho pula fora do objetivo
+    # Classificacao (economiza n_bootstrap_bca resamples x 4 metricas).
     bca: Dict[str, Tuple[float, float, float]] = {}
     cls_arr = np.asarray(lb.classes_)
     metricas_funcoes = {
@@ -1348,12 +1373,19 @@ def executar(cfg: Config):
                                                        average="macro", zero_division=0),
         "cohen_kappa":       lambda yt, yp: cohen_kappa_score(yt, yp),
     }
-    for nome, fn in metricas_funcoes.items():
-        lo, hi, obs = bootstrap_bca_ci(rotulos, pred_lab, fn,
-                                         n_boot=cfg.n_bootstrap_bca,
-                                         alpha=0.05, seed=cfg.seed)
-        bca[nome] = (lo, hi, obs)
-        print(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
+    if objetivo != CLASSIFICACAO:
+        print(f"\n[5b/7] BCa CI 95% — PULADO: objetivo="
+              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intervalo de "
+              f"confianca de metricas de classificacao nao e' pertinente "
+              f"fora do modo Classificacao.")
+    else:
+        print(f"\n[5b/7] BCa CI 95% (n_boot={cfg.n_bootstrap_bca})")
+        for nome, fn in metricas_funcoes.items():
+            lo, hi, obs = bootstrap_bca_ci(rotulos, pred_lab, fn,
+                                            n_boot=cfg.n_bootstrap_bca,
+                                            alpha=0.05, seed=cfg.seed)
+            bca[nome] = (lo, hi, obs)
+            print(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
     print("\n" + str(classification_report(rotulos, pred_lab,
                                              target_names=lb.classes_,
                                              zero_division=0)))
@@ -1699,10 +1731,6 @@ def executar(cfg: Config):
         "R2X":                    float(r2x),
         "R2Y":                    float(r2y),
         "Q2":                     float(q2),
-        "Permutation p-value":    float(perm_p),
-        "Permutation n_validos":  cast(int, perm_res["n_validos"]),
-        "Permutation n_falhos":   cast(int, perm_res["n_falhos"]),
-        "Permutation failure_rate": cast(float, perm_res["failure_rate"]),
         "Hotelling T2 (95%)":     float(t2_lim),
         # B7: notacao adaptativa — com SG-derivada + muitas LVs, Q_lim e
         # minusculo e ":.4f" exibia 0.0000 (mascarando o valor real).
@@ -1720,11 +1748,19 @@ def executar(cfg: Config):
         "Variaveis constantes":   cast(int, relatorio_entrada["n_constantes_removidas"]),
         "Duplicatas exatas":      cast(int, relatorio_entrada["n_duplicatas_exatas"]),
         "Duplicatas aproximadas": cast(int, relatorio_entrada["n_duplicatas_aproximadas"]),
-        "BCa Accuracy":           _ci_str(bca.get("accuracy")),
-        "BCa Balanced acc.":      _ci_str(bca.get("balanced_accuracy")),
-        "BCa F1 (macro)":         _ci_str(bca.get("f1_macro")),
-        "BCa Cohen's kappa":      _ci_str(bca.get("cohen_kappa")),
     }
+    # Permutacao + BCa (v.jul/2026): computados so' em objetivo Classificacao
+    # (ver otimizacao de desempenho acima) -- por isso so' aparecem no resumo
+    # quando pertinentes, em vez de "nan"/"CI indisponivel" fora de escopo.
+    if objetivo == CLASSIFICACAO:
+        resumo["Permutation p-value"]      = float(perm_p)
+        resumo["Permutation n_validos"]    = cast(int, perm_res["n_validos"])
+        resumo["Permutation n_falhos"]     = cast(int, perm_res["n_falhos"])
+        resumo["Permutation failure_rate"] = cast(float, perm_res["failure_rate"])
+        resumo["BCa Accuracy"]      = _ci_str(bca.get("accuracy"))
+        resumo["BCa Balanced acc."] = _ci_str(bca.get("balanced_accuracy"))
+        resumo["BCa F1 (macro)"]    = _ci_str(bca.get("f1_macro"))
+        resumo["BCa Cohen's kappa"] = _ci_str(bca.get("cohen_kappa"))
     # ROC/AUC (v24)
     if aucs_roc:
         resumo["ROC AUC macro (OvR)"] = float(aucs_roc.get("macro", float("nan")))
