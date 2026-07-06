@@ -44,6 +44,7 @@ FIGURAS_QUANTIFICACAO = {
     "fig1_pca_scores",       # overview
     "fig3_outliers_T2_Q",    # overview
     "figS2_pls_regressao",   # nome de arquivo de fig7_pls_regressao (só em Quantificação)
+    "figS3_merito_regressao",  # LOD/LOQ/Seletividade dedicada (auditoria item 5)
 }
 
 # Contrato de filtragem: figuras que NÃO podem aparecer no modo Quantificação
@@ -59,6 +60,7 @@ FIGURAS_PROIBIDAS_EM_QUANTIFICACAO = {
 # Contrato de filtragem: a figura de regressão não pode aparecer em Classificação.
 FIGURAS_PROIBIDAS_EM_CLASSIFICACAO = {
     "figS2_pls_regressao",
+    "figS3_merito_regressao",
 }
 
 # Piso de contagem por modo (abaixo disso algo quebrou em massa).

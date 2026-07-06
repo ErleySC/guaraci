@@ -1114,6 +1114,66 @@ def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     salvar(fig, "figS2_pls_regressao", pasta, cfg)
 
 
+def fig_merito_regressao(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> None:
+    """Figura de merito analitica dedicada (auditoria jul/2026, item 5):
+    LOD/LOQ e Seletividade media por especie, lado a lado — Valderrama,
+    Braga & Poppi (2009), Quim. Nova 32(5):1278-1287. Ate aqui, LOD/LOQ/SEN/
+    SEL so apareciam como tabela de TEXTO em resumo_modelo.txt/model_card.md;
+    esta e' a primeira representacao visual.
+
+    `tabela_especie` e' a mesma lista de dicts usada no resumo (chaves
+    'especie'/'lod'/'loq'/'seletividade_media'; ver
+    chemometric_stats.figuras_merito_regressao). Especies sem replicas
+    fisicas suficientes tem lod/loq/seletividade = NaN — aparecem no eixo
+    com rotulo 'n/a' em vez de quebrar o layout ou sumir silenciosamente.
+    """
+    if not tabela_especie:
+        return
+    especies = [str(t.get("especie", "?")) for t in tabela_especie]
+    lod = np.array([t.get("lod", float("nan")) for t in tabela_especie], dtype=float)
+    loq = np.array([t.get("loq", float("nan")) for t in tabela_especie], dtype=float)
+    sel = np.array([t.get("seletividade_media", float("nan"))
+                    for t in tabela_especie], dtype=float)
+
+    n = len(especies)
+    x = np.arange(n)
+    largura = 0.35
+    fig, axes = plt.subplots(1, 2, figsize=(max(8.5, 1.05 * n), 4.6),
+                              constrained_layout=True)
+
+    ax = axes[0]
+    tem_lod = np.isfinite(lod)
+    if tem_lod.any():
+        ax.bar(x[tem_lod] - largura / 2, lod[tem_lod], largura,
+               label="LOD", color=cor(0))
+        ax.bar(x[tem_lod] + largura / 2, loq[tem_lod], largura,
+               label="LOQ", color=cor(1))
+        ax.legend()
+    for xi, ok in zip(x, tem_lod):
+        if not ok:
+            ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
+                    color="gray", rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(especies, rotation=40, ha="right")
+    ax.set_ylabel("Concentration (%)")
+    ax.set_title("(a) LOD / LOQ per species", loc="left")
+
+    ax = axes[1]
+    tem_sel = np.isfinite(sel)
+    if tem_sel.any():
+        ax.bar(x[tem_sel], sel[tem_sel], color=cor(2))
+    for xi, ok in zip(x, tem_sel):
+        if not ok:
+            ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
+                    color="gray", rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(especies, rotation=40, ha="right")
+    ax.set_ylabel("Selectivity ratio (mean)")
+    ax.set_title("(b) Analytical selectivity", loc="left")
+
+    salvar(fig, "figS3_merito_regressao", pasta, cfg)
+
+
 # =========================================================================
 #  Sprint 3 Figures
 # =========================================================================

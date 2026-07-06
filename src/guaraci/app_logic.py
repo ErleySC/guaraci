@@ -10,9 +10,77 @@ from __future__ import annotations
 import copy
 import os
 import re
+import threading
 from typing import Dict, List, Optional, Tuple
 
 from guaraci.config import NOME_RELATORIOS
+
+
+class LogThreadSafe:
+    """Captura stdout/stderr de executar() num buffer protegido por lock.
+
+    Extraido do app web (item 18/auditoria jul/2026, item 5: painel de
+    acompanhamento tambem no terminal) para ser reutilizado pelo CLI
+    (guaraci.py) e pelo app (app_tabs/modelo.py) a partir da MESMA classe —
+    antes cada interface tinha sua propria copia. `tee`, se fornecido,
+    recebe uma copia de cada escrita (usado pelo CLI para nao perder o
+    log em disco/console caso o usuario redirecione stdout externamente).
+    """
+    def __init__(self, tee=None):
+        self._buf: List[str] = []
+        self._lock = threading.Lock()
+        self._tee = tee
+
+    def write(self, s: str):
+        with self._lock:
+            self._buf.append(s)
+        if self._tee is not None:
+            try:
+                self._tee.write(s)
+            except Exception:
+                pass
+        return len(s)
+
+    def flush(self):
+        if self._tee is not None:
+            try:
+                self._tee.flush()
+            except Exception:
+                pass
+
+    def text(self) -> str:
+        with self._lock:
+            return "".join(self._buf)
+
+
+# ── Parsing de figuras concluidas e avisos (painel de acompanhamento) ───────
+# O pipeline imprime "  -> <caminho>.<ext>" apos salvar cada figura/tabela/
+# relatorio, e "[AVISO] <texto>" para inconsistencias nao-fatais. Ambos os
+# padroes ja existiam no log; aqui so' extraimos estrutura deles para
+# alimentar o painel ao vivo (CLI) e a barra de progresso (app web).
+_RE_ARQUIVO_SALVO = re.compile(
+    r"^\s*->\s*.*[\\/]([\w\-]+)\.(?:png|jpg|jpeg|pdf|svg)\s*$", re.MULTILINE)
+_RE_AVISO = re.compile(r"^\s*\[AVISO\]\s*(.+)$", re.MULTILINE)
+
+
+def figuras_concluidas(txt: str) -> List[str]:
+    """Nomes (sem extensao) das figuras já salvas em disco, na ordem em que
+    apareceram no log, sem duplicatas."""
+    vistos: List[str] = []
+    for nome in _RE_ARQUIVO_SALVO.findall(txt or ""):
+        if nome not in vistos:
+            vistos.append(nome)
+    return vistos
+
+
+def avisos_do_log(txt: str) -> List[str]:
+    """Textos de aviso ([AVISO] ...) já emitidos, na ordem, sem duplicatas."""
+    vistos: List[str] = []
+    for aviso in _RE_AVISO.findall(txt or ""):
+        aviso = aviso.strip()
+        if aviso and aviso not in vistos:
+            vistos.append(aviso)
+    return vistos
 
 # ── Parsing do log de progresso do pipeline ──────────────────────────────────
 # O pipeline emite marcadores "[N/7]" (e sub-passos "[7b/7]", "[7c/7]") no
@@ -141,4 +209,5 @@ def ler_model_card(pasta: str) -> Optional[str]:
 
 __all__ = ["progresso_do_log", "fmt_tempo", "coletar_config",
            "listar_figuras", "ler_resumo", "ler_model_card",
-           "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP"]
+           "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP",
+           "LogThreadSafe", "figuras_concluidas", "avisos_do_log"]

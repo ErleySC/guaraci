@@ -12,6 +12,7 @@ Rich 15.0+ necessario (pip install rich).
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import json
 import os
@@ -48,10 +49,7 @@ from rich.table import Table
 from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
-from rich.progress import (
-    Progress, SpinnerColumn, BarColumn, TextColumn,
-    TimeElapsedColumn, TaskProgressColumn,
-)
+from rich.live import Live
 from rich.markup import escape
 from rich import box as rbox
 
@@ -59,6 +57,13 @@ from rich import box as rbox
 # Pipeline — ZERO modificacoes analiticas
 # ---------------------------------------------------------------------------
 import guaraci.pipeline as pq
+from guaraci.app_logic import (
+    LogThreadSafe as _LogThreadSafe,
+    figuras_concluidas as _figuras_concluidas,
+    avisos_do_log as _avisos_do_log,
+    progresso_do_log as _progresso_do_log,
+    fmt_tempo as _fmt_tempo,
+)
 
 Config        = pq.Config
 executar      = pq.executar
@@ -259,6 +264,11 @@ I18N: Dict[str, Dict[str, str]] = {
         "exec_erro":    "Erro na execucao",
         "exec_saida":   "Resultados salvos em",
         "exec_interrompido": "Interrompido pelo usuario",
+        "exec_objetivo": "Objetivo",
+        "exec_eta":      "Tempo estimado restante",
+        "exec_figuras":  "Figuras geradas",
+        "exec_avisos":   "Avisos",
+        "exec_sem_avisos": "Nenhum aviso ate agora",
         # Resumo cientifico
         "res_tecnica":  "Tecnica",
         "res_preproc":  "Pre-processamento",
@@ -391,6 +401,11 @@ I18N: Dict[str, Dict[str, str]] = {
         "exec_erro":    "Pipeline error",
         "exec_saida":   "Results saved in",
         "exec_interrompido": "Interrupted by user",
+        "exec_objetivo": "Objective",
+        "exec_eta":      "Estimated time remaining",
+        "exec_figuras":  "Figures generated",
+        "exec_avisos":   "Warnings",
+        "exec_sem_avisos": "No warnings so far",
         "res_tecnica":  "Technique",
         "res_preproc":  "Preprocessing",
         "res_modelo":   "Main model",
@@ -2789,6 +2804,50 @@ def _print_resumo(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # EXECUCAO DO PIPELINE
 # ---------------------------------------------------------------------------
+def _montar_painel_execucao(texto_log: str, elapsed: float,
+                             objetivo_rotulo: str,
+                             plano_figuras: List[str]) -> Panel:
+    """Monta o painel de acompanhamento ao vivo (auditoria jul/2026, item 5):
+    objetivo cientifico, barra de progresso + rotulo da analise em
+    andamento (via app_logic.progresso_do_log), figuras ja concluidas
+    (app_logic.figuras_concluidas) contra o plano do modo (modos_analise.
+    descrever_plano), tempo decorrido/estimado restante e avisos nao-fatais
+    (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
+    modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
+    precisar rodar o pipeline de verdade nem simular entrada interativa."""
+    frac, label = _progresso_do_log(texto_log)
+    figs = _figuras_concluidas(texto_log)
+    avisos = _avisos_do_log(texto_log)
+
+    bar_w = 32
+    preenchido = int(bar_w * frac)
+    barra = "█" * preenchido + "░" * (bar_w - preenchido)
+    eta_txt = "…"
+    if frac > 0.05:
+        eta_txt = _fmt_tempo(max(0.0, elapsed / frac - elapsed))
+
+    partes = [
+        Text.assemble(
+            (f"{_t('exec_objetivo')}: ", PM), (objetivo_rotulo, f"bold {PA}")),
+        Text(f"[{barra}] {frac * 100:5.1f}%  {label}", style=PA),
+        Text(f"{_t('exec_eta')}: {eta_txt}   |   "
+             f"{_fmt_tempo(elapsed)}", style=PW),
+        Rule(style=PD),
+        Text(f"{_t('exec_figuras')} ({len(figs)}/{len(plano_figuras)} "
+             "planejadas):", style=f"bold {PM}"),
+        Text("  ".join(f"✓ {f}" for f in figs) if figs else "…",
+             style=PW),
+    ]
+    if avisos:
+        partes += [
+            Rule(style=PD),
+            Text(f"{_t('exec_avisos')} ({len(avisos)}):", style=f"bold {PR}"),
+            Text("\n".join(f"⚠ {a}" for a in avisos), style=PR),
+        ]
+    return Panel(Group(*partes), border_style=PA, box=rbox.ROUNDED,
+                 padding=(0, 1), title=f"  {_t('exec_inicio')}  ")
+
+
 def _rodar_pipeline(cfg: Config) -> None:
     lang = _lang()
     cls(); _print_header()
@@ -2862,22 +2921,23 @@ def _rodar_pipeline(cfg: Config) -> None:
             or _cfgv(cfg, "comparar_pre_processamentos", False)):
         _sugerir_cafe()
 
-    # Etapas para progress bar
-    etapas = [
-        _t("exec_leitura"), _t("exec_preproc"), _t("exec_pca"),
-        _t("exec_plsda"),
-        _t("exec_opls") if _cfgv(cfg,"opls_da",True) else _t("exec_valid"),
-        _t("exec_dds") if _cfgv(cfg,"ddsimca",True) else _t("exec_valid"),
-        _t("exec_valid"), _t("exec_relat"),
-    ]
-    if _cfgv(cfg,"benchmark",False): etapas.append(_t("exec_bench"))
-    if _cfgv(cfg,"monte_carlo",False): etapas.append(_t("exec_mc"))
+    # Painel de acompanhamento (auditoria jul/2026, item 5): o terminal deve
+    # mostrar quais figuras serao calculadas, quais ja foram concluidas,
+    # analise em andamento, % de progresso, tempo estimado e avisos — em vez
+    # da simulacao por tempo decorrido usada antes (etapas fixas avancando a
+    # cada 15s, sem relacao real com o que o pipeline estava fazendo).
+    objetivo_rotulo = pq.OBJETIVO_ROTULO.get(
+        pq.resolver_objetivo(cfg), cfg.nivel)
+    plano_figuras = pq.descrever_plano(cfg)
 
-    _done = {"ok": False, "error": None}
+    _done: Dict[str, object] = {"ok": False, "error": None}
+    _logger = _LogThreadSafe()
 
     def _run():
         try:
-            executar(cfg)
+            with contextlib.redirect_stdout(_logger), \
+                 contextlib.redirect_stderr(_logger):
+                executar(cfg)
         except KeyboardInterrupt:
             _done["error"] = _t("exec_interrompido")
         except Exception as e:
@@ -2885,30 +2945,21 @@ def _rodar_pipeline(cfg: Config) -> None:
         finally:
             _done["ok"] = True
 
+    def _render_painel(elapsed: float) -> Panel:
+        return _montar_painel_execucao(
+            texto_log=_logger.text(), elapsed=elapsed,
+            objetivo_rotulo=objetivo_rotulo, plano_figuras=plano_figuras)
+
     console.print()
     t_ini = time.time()
     thr = threading.Thread(target=_run, daemon=True)
     thr.start()
 
-    with Progress(
-        SpinnerColumn(spinner_name="dots2", style=PA),
-        TextColumn(f"[{PA}]{{task.description}}[/{PA}]"),
-        BarColumn(bar_width=32, style=PD, complete_style=PF),
-        TaskProgressColumn(style=PM),
-        TimeElapsedColumn(),
-        console=console,
-        refresh_per_second=3,
-    ) as prog:
-        task = prog.add_task(_t("exec_inicio"), total=len(etapas))
-        idx = 0
+    with Live(console=console, refresh_per_second=3) as live:
         while not _done["ok"]:
-            elapsed = time.time() - t_ini
-            new_idx = min(int(elapsed / 15), len(etapas) - 1)
-            if new_idx > idx:
-                idx = new_idx
-                prog.update(task, completed=idx, description=etapas[min(idx, len(etapas)-1)])
-            time.sleep(0.4)
-        prog.update(task, completed=len(etapas), description=_t("exec_concluido"))
+            live.update(_render_painel(time.time() - t_ini))
+            time.sleep(0.3)
+        live.update(_render_painel(time.time() - t_ini))
 
     thr.join()
     console.print()

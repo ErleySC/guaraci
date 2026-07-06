@@ -205,6 +205,7 @@ from guaraci.figuras import (   # noqa: E402
     fig_roc_auc,
     fig_splot_opls,
     fig_cooman_ddsimca,
+    fig_merito_regressao,
 )
 
 # Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
@@ -904,6 +905,9 @@ def pls_regressao_por_especie(
     fig7_pls_regressao(Yc_p, Ych_p, Yv_p, Yvh_p, erros_reg_repr or [rmsec],
                        n_opt_repr, r2c, r2v, rmsec, rmsecv, rmsep, bias_v,
                        cfg, pasta)
+    # Figura de merito analitica dedicada (auditoria jul/2026, item 5):
+    # LOD/LOQ/Seletividade por especie, ate aqui so' em texto no resumo.
+    fig_merito_regressao(tabela_esp, cfg, pasta)
 
     # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
     # validacao ja usado no RMSEP/bias acima, na nomenclatura SIMCA-P/
@@ -2092,6 +2096,16 @@ def executar(cfg: Config):
             _preproc_ajustado_reg)
         _fom_reg = figuras_merito_regressao(
             pipe_final.named_steps["pls"], _X_cal_proc_reg, _grupos_rep_reg)
+        # Figura de merito dedicada (auditoria jul/2026, item 5): caminho
+        # single-especie so' tem 1 modelo pooled, entao a "tabela" tem 1 linha.
+        _especies_unicas_reg = np.unique(rotulos)
+        _nome_esp_pooled = (str(_especies_unicas_reg[0])
+                             if len(_especies_unicas_reg) == 1 else "Pooled")
+        fig_merito_regressao([{
+            "especie": _nome_esp_pooled,
+            "lod": _fom_reg["lod"], "loq": _fom_reg["loq"],
+            "seletividade_media": _fom_reg["seletividade_media"],
+        }], cfg, pasta)
         if np.isfinite(_fom_reg["lod"]):
             print(f"  LOD    : {_fom_reg['lod']:.2f}%  |  "
                   f"LOQ: {_fom_reg['loq']:.2f}%")

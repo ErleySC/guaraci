@@ -9,38 +9,12 @@ import os
 import sys
 import threading
 import time
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 
 import streamlit as st
 
 from guaraci.app_logic import coletar_config, fmt_tempo, progresso_do_log
-
-
-class _LogThreadSafe:
-    """Captures pipeline stdout/stderr into a lock-protected list."""
-    def __init__(self, tee=None):
-        self._buf: List[str] = []
-        self._lock = threading.Lock()
-        self._tee = tee
-
-    def write(self, s: str):
-        with self._lock:
-            self._buf.append(s)
-        if self._tee is not None:
-            try: self._tee.write(s)
-            except Exception:
-                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
-        return len(s)
-
-    def flush(self):
-        if self._tee is not None:
-            try: self._tee.flush()
-            except Exception:
-                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
-
-    def text(self) -> str:
-        with self._lock:
-            return "".join(self._buf)
+from guaraci.app_logic import LogThreadSafe as _LogThreadSafe
 
 
 def _ram_mb() -> Optional[float]:
