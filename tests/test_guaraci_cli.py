@@ -5,19 +5,13 @@ test_predicao.py::test_menu_predicao_cli_end_to_end) -- guaraci.py e' seguro
 de importar (guard `if __name__ == "__main__"`, sem I/O bloqueante em nivel
 de modulo).
 """
-import importlib.util
-import os
 
 import pytest
 
 
 @pytest.fixture(scope="module")
 def guaraci_mod():
-    proj_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    spec = importlib.util.spec_from_file_location(
-        "guaraci_cli_test_naming", os.path.join(proj_root, "guaraci.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    import guaraci.guaraci as mod
     return mod
 
 
@@ -66,3 +60,56 @@ def test_modo_ddsimca_set_val_rejeita_valor_invalido(guaraci_mod):
     cfg = guaraci_mod.Config()
     with pytest.raises(ValueError):
         guaraci_mod._set_val(cfg, "modo_ddsimca", "valor-que-nao-existe")
+
+
+# ── Painel de acompanhamento ao vivo (auditoria jul/2026, item 5) ──────────
+# _montar_painel_execucao foi extraida de _rodar_pipeline (fecho local) para
+# ser testavel sem rodar o pipeline de verdade nem simular entrada
+# interativa (_rodar_pipeline pede tag/confirmacao via input()).
+
+def test_montar_painel_execucao_retorna_renderable_sem_erro(guaraci_mod):
+    """Renderiza sem lançar exceção e produz texto reconhecível (objetivo,
+    percentual, contagem de figuras) quando capturado por um Console."""
+    from rich.console import Console
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log="[1/7] Validating input\n"
+                   "  -> /x/Graficos/fig1_pca_scores.png\n",
+        elapsed=10.0, objetivo_rotulo="Classificacao",
+        plano_figuras=["a", "b", "c"])
+    console = Console(width=100, file=__import__("io").StringIO())
+    console.print(painel)
+    saida = console.file.getvalue()
+    assert "Classificacao" in saida
+    assert "fig1_pca_scores" in saida
+    assert "1/3" in saida
+
+
+def test_montar_painel_execucao_mostra_avisos_quando_presentes(guaraci_mod):
+    from rich.console import Console
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log="[AVISO] Bootstrap VIP: 0 iteracoes validas\n",
+        elapsed=5.0, objetivo_rotulo="Quantificacao", plano_figuras=["x"])
+    console = Console(width=100, file=__import__("io").StringIO())
+    console.print(painel)
+    saida = console.file.getvalue()
+    assert "Bootstrap VIP" in saida
+
+
+def test_montar_painel_execucao_sem_avisos_nao_mostra_secao(guaraci_mod):
+    from rich.console import Console
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log="[1/7] ok\n", elapsed=1.0,
+        objetivo_rotulo="Exploratorio", plano_figuras=[])
+    console = Console(width=100, file=__import__("io").StringIO())
+    console.print(painel)
+    saida = console.file.getvalue()
+    assert "Avisos" not in saida
+
+
+def test_montar_painel_execucao_progresso_zero_sem_log(guaraci_mod):
+    """Sem nenhuma linha de progresso ainda (inicio da execucao), nao
+    lanca excecao e mostra ETA como 'calculando' em vez de dividir por zero."""
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log="", elapsed=0.5, objetivo_rotulo="Classificacao",
+        plano_figuras=["a"])
+    assert painel is not None

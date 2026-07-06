@@ -18,7 +18,7 @@ from sklearn.base import BaseEstimator
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
-from chemometric_stats import hotelling_t2_limite, q_residuos_limite
+from guaraci.chemometric_stats import hotelling_t2_limite, q_residuos_limite
 
 
 class DDSimca:

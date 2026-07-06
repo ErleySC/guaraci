@@ -11,7 +11,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import predicao as pr
+import guaraci.predicao as pr
+
+from conftest import achar_pastas_run
 
 
 @pytest.fixture(scope="session")
@@ -30,10 +32,9 @@ def modelo_e_dados(pq, tmp_path_factory):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = [os.path.join(cfg.pasta_saida_raiz, r)
-            for r in os.listdir(cfg.pasta_saida_raiz)]
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
     assert runs, "executar() nao criou pasta de saida"
-    cam_modelo = os.path.join(runs[0], "modelos", "modelo_plsda.joblib")
+    cam_modelo = os.path.join(runs[0], pq.NOME_MODELOS, "modelo_plsda.joblib")
     assert os.path.isfile(cam_modelo), "modelo_plsda.joblib nao foi salvo"
     pkg = joblib.load(cam_modelo)
 
@@ -153,14 +154,7 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     e confirma que o CSV de resultados foi gravado com as colunas certas.
     Sem mock de logica cientifica -- so' o input() do terminal e' simulado.
     """
-    import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    import importlib.util as ilu
-    proj_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    spec = ilu.spec_from_file_location("guaraci_cli_test",
-                                        os.path.join(proj_root, "guaraci.py"))
-    guaraci_mod = ilu.module_from_spec(spec)
-    spec.loader.exec_module(guaraci_mod)
+    import guaraci.guaraci as guaraci_mod
 
     pkg, X_novos, wn = modelo_e_dados
     cam_modelo = tmp_path / "modelo_teste.joblib"

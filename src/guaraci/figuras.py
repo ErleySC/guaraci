@@ -12,6 +12,7 @@ tests/test_figuras_regressao.py.
 """
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
@@ -30,15 +31,16 @@ from sklearn.metrics import (
     f1_score, precision_score, recall_score, roc_auc_score, roc_curve,
 )
 
-from paleta_cores import (
+from guaraci.paleta_cores import (
     cor, edge_para_cor,
 )
-from chemometric_stats import (
+from guaraci.chemometric_stats import (
     hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
 )
+from guaraci.config import NOME_GRAFICOS
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 
 def setup_matplotlib(cfg: Config) -> None:
@@ -81,9 +83,9 @@ _AVISO_MOSTRAR_GRAFICOS_EMITIDO = False
 
 def salvar(fig, nome: str, pasta: str, cfg: Config,
            subpasta: str = "") -> None:
-    """Always saves figure under pasta/figuras/[subpasta]/ (v20 structure).
-    subpasta groups detailed figures (e.g. 'ddsimca')."""
-    base = os.path.join(pasta, "figuras")
+    """Always saves figure under pasta/Graficos/[subpasta]/ (auditoria jul/2026
+    item 4). subpasta groups detailed figures (e.g. 'ddsimca')."""
+    base = os.path.join(pasta, NOME_GRAFICOS)
     destino = os.path.join(base, subpasta) if subpasta else base
     os.makedirs(destino, exist_ok=True)
     caminho = os.path.join(destino, f"{nome}.{cfg.formato_saida}")
@@ -387,7 +389,7 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
         for g, membros in comp.items():
             print(f"    Cluster {g}: {', '.join(membros)}")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
 
 def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
@@ -1110,6 +1112,66 @@ def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     ax.legend(loc="best")
 
     salvar(fig, "figS2_pls_regressao", pasta, cfg)
+
+
+def fig_merito_regressao(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> None:
+    """Figura de merito analitica dedicada (auditoria jul/2026, item 5):
+    LOD/LOQ e Seletividade media por especie, lado a lado — Valderrama,
+    Braga & Poppi (2009), Quim. Nova 32(5):1278-1287. Ate aqui, LOD/LOQ/SEN/
+    SEL so apareciam como tabela de TEXTO em resumo_modelo.txt/model_card.md;
+    esta e' a primeira representacao visual.
+
+    `tabela_especie` e' a mesma lista de dicts usada no resumo (chaves
+    'especie'/'lod'/'loq'/'seletividade_media'; ver
+    chemometric_stats.figuras_merito_regressao). Especies sem replicas
+    fisicas suficientes tem lod/loq/seletividade = NaN — aparecem no eixo
+    com rotulo 'n/a' em vez de quebrar o layout ou sumir silenciosamente.
+    """
+    if not tabela_especie:
+        return
+    especies = [str(t.get("especie", "?")) for t in tabela_especie]
+    lod = np.array([t.get("lod", float("nan")) for t in tabela_especie], dtype=float)
+    loq = np.array([t.get("loq", float("nan")) for t in tabela_especie], dtype=float)
+    sel = np.array([t.get("seletividade_media", float("nan"))
+                    for t in tabela_especie], dtype=float)
+
+    n = len(especies)
+    x = np.arange(n)
+    largura = 0.35
+    fig, axes = plt.subplots(1, 2, figsize=(max(8.5, 1.05 * n), 4.6),
+                              constrained_layout=True)
+
+    ax = axes[0]
+    tem_lod = np.isfinite(lod)
+    if tem_lod.any():
+        ax.bar(x[tem_lod] - largura / 2, lod[tem_lod], largura,
+               label="LOD", color=cor(0))
+        ax.bar(x[tem_lod] + largura / 2, loq[tem_lod], largura,
+               label="LOQ", color=cor(1))
+        ax.legend()
+    for xi, ok in zip(x, tem_lod):
+        if not ok:
+            ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
+                    color="gray", rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(especies, rotation=40, ha="right")
+    ax.set_ylabel("Concentration (%)")
+    ax.set_title("(a) LOD / LOQ per species", loc="left")
+
+    ax = axes[1]
+    tem_sel = np.isfinite(sel)
+    if tem_sel.any():
+        ax.bar(x[tem_sel], sel[tem_sel], color=cor(2))
+    for xi, ok in zip(x, tem_sel):
+        if not ok:
+            ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
+                    color="gray", rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(especies, rotation=40, ha="right")
+    ax.set_ylabel("Selectivity ratio (mean)")
+    ax.set_title("(b) Analytical selectivity", loc="left")
+
+    salvar(fig, "figS3_merito_regressao", pasta, cfg)
 
 
 # =========================================================================

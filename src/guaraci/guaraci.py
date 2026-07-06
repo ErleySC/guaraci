@@ -8,12 +8,12 @@ Uso:
 
 Requer: pipeline.py e cli_assistente.py no mesmo diretorio.
 Rich 15.0+ necessario (pip install rich).
-
-type: ignore[all]  # Interface code; Pylance stubs incomplete for config access patterns
 """
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import json
 import os
 import re as _re
@@ -32,12 +32,12 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     try:
         import subprocess
         subprocess.run(["chcp", "65001"], capture_output=True, shell=True)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
 # ---------------------------------------------------------------------------
@@ -49,36 +49,32 @@ from rich.table import Table
 from rich.align import Align
 from rich.text import Text
 from rich.rule import Rule
-from rich.progress import (
-    Progress, SpinnerColumn, BarColumn, TextColumn,
-    TimeElapsedColumn, TaskProgressColumn,
-)
+from rich.live import Live
 from rich.markup import escape
 from rich import box as rbox
 
 # ---------------------------------------------------------------------------
 # Pipeline — ZERO modificacoes analiticas
 # ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pipeline as pq
+import guaraci.pipeline as pq
+from guaraci.app_logic import (
+    LogThreadSafe as _LogThreadSafe,
+    figuras_concluidas as _figuras_concluidas,
+    avisos_do_log as _avisos_do_log,
+    progresso_do_log as _progresso_do_log,
+    fmt_tempo as _fmt_tempo,
+)
 
 Config        = pq.Config
 executar      = pq.executar
 salvar_config = pq.salvar_config
 carregar_config = pq.carregar_config
 
-# Carregar dicionarios do cli_assistente sem disparar main()
-import importlib.util as _ilu
-_spec = _ilu.spec_from_file_location(
-    "cli_assistente",
-    Path(os.path.dirname(os.path.abspath(__file__))) / "cli_assistente.py",
-)
-_cli = _ilu.module_from_spec(_spec) if _spec is not None else None  # type: ignore[arg-type]
-try:
-    if _spec is not None and _spec.loader is not None:
-        _spec.loader.exec_module(_cli)  # type: ignore[union-attr]
-except (SystemExit, Exception):
-    pass
+# Dicionarios de i18n/perfis do cli_assistente. Import de pacote normal (mesmo
+# pacote): importar o modulo NAO dispara main() (guardado por __main__), entao
+# nao ha efeito colateral — o antigo carregamento por caminho (spec_from_file)
+# so existia porque os modulos eram scripts soltos na raiz.
+import guaraci.cli_assistente as _cli
 
 def _try(name, fallback=None):
     return getattr(_cli, name, fallback if fallback is not None else {})
@@ -155,8 +151,16 @@ def _toggle_idioma() -> str:
 # PALETA + tema + console: fonte unica em guaraci_theme (compartilhada com o
 # cli_assistente para visual identico). Nomes reexportados sem alteracao.
 # ---------------------------------------------------------------------------
-from guaraci_theme import (  # noqa: E402
+from guaraci.guaraci_theme import (  # noqa: E402
     PA, PF, PS, PR, PW, PM, PD, PG, console, _W,
+)
+# Lógica pura extraída da CLI (item 19): testável sem Rich/console. Ver cli_logic.py.
+from guaraci.cli_logic import (  # noqa: E402
+    trunc as _trunc,
+    truncar_desc_por_frase as _truncar_desc_por_frase,
+    fmt_bool as _fmt_bool_puro,
+    validar_faixas as _validar_faixas_puro,
+    contar_dx as _contar_dx,
 )
 
 # Estado global da tecnica selecionada (persiste entre menus)
@@ -260,6 +264,11 @@ I18N: Dict[str, Dict[str, str]] = {
         "exec_erro":    "Erro na execucao",
         "exec_saida":   "Resultados salvos em",
         "exec_interrompido": "Interrompido pelo usuario",
+        "exec_objetivo": "Objetivo",
+        "exec_eta":      "Tempo estimado restante",
+        "exec_figuras":  "Figuras geradas",
+        "exec_avisos":   "Avisos",
+        "exec_sem_avisos": "Nenhum aviso ate agora",
         # Resumo cientifico
         "res_tecnica":  "Tecnica",
         "res_preproc":  "Pre-processamento",
@@ -392,6 +401,11 @@ I18N: Dict[str, Dict[str, str]] = {
         "exec_erro":    "Pipeline error",
         "exec_saida":   "Results saved in",
         "exec_interrompido": "Interrupted by user",
+        "exec_objetivo": "Objective",
+        "exec_eta":      "Estimated time remaining",
+        "exec_figuras":  "Figures generated",
+        "exec_avisos":   "Warnings",
+        "exec_sem_avisos": "No warnings so far",
         "res_tecnica":  "Technique",
         "res_preproc":  "Preprocessing",
         "res_modelo":   "Main model",
@@ -629,31 +643,14 @@ def _cfgv(cfg: Config, key: str, default: Any = None) -> Any:
     return getattr(cfg, attr, default)
 
 
-def _contar_dx(pasta: str) -> int:
-    """Count .dx files in pasta — checks root AND immediate subfolders
-    (supports both flat layout and one-subfolder-per-class layout)."""
-    try:
-        p = Path(pasta)
-        if not p.is_dir():
-            return 0
-        # root-level .dx files
-        n = sum(1 for f in p.iterdir() if f.is_file() and f.suffix.lower() == ".dx")
-        if n > 0:
-            return n
-        # one level down (one subfolder per species/class)
-        for sub in p.iterdir():
-            if sub.is_dir():
-                n += sum(1 for f in sub.iterdir()
-                         if f.is_file() and f.suffix.lower() == ".dx")
-        return n
-    except Exception:
-        return 0
+# _contar_dx importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
 
 def _fmt_bool(v: Any, lang: str = "") -> str:
+    """Wrapper fino: resolve o idioma ativo (ou usa o passado) e delega o
+    formato Sim/Não a `guaraci.cli_logic.fmt_bool` (função pura, testada)."""
     l = lang or _lang()
     if isinstance(v, bool):
-        return ("[g]Sim[/g]" if l == "PT" else "[g]Yes[/g]") if v \
-               else ("[m]Nao[/m]" if l == "PT" else "[m]No[/m]")
+        return _fmt_bool_puro(v, l)
     return escape(str(v))
 
 # ---------------------------------------------------------------------------
@@ -738,13 +735,11 @@ def _sugerir_cafe() -> None:
 # VALIDACAO DE INTEGRIDADE — faixas e paleta antes de rodar
 # ---------------------------------------------------------------------------
 def _validar_faixas(cfg: Config) -> list:
-    """Retorna lista de avisos se faixa_min/max estiver fora do esperado."""
-    avisos = []
+    """Wrapper fino: le faixa_min/max do Config e delega a validacao pura
+    a `guaraci.cli_logic.validar_faixas` (testada)."""
     f_min = _cfgv(cfg, "faixa_min_cm", 400)
     f_max = _cfgv(cfg, "faixa_max_cm", 4000)
-    if f_min >= f_max:
-        avisos.append(f"ERRO: faixa_min ({f_min}) >= faixa_max ({f_max}) — intervalo invalido.")
-    return avisos
+    return _validar_faixas_puro(f_min, f_max)
 
 def _sincronizar_dpi(cfg: Config) -> None:
     """Garante que cfg.dpi reflita o visual_config.json antes de rodar."""
@@ -1113,41 +1108,22 @@ def _print_run_box(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # SUBMENU COMPACTO — campos com valor na mesma linha
 # ---------------------------------------------------------------------------
-def _trunc(s: str, n: int) -> str:
-    """Trunca uma string em n chars sem partir palavra (reticencias se cortar)."""
-    s = str(s)
-    if len(s) <= n:
-        return s
-    corte = s[:n - 1]
-    if " " in corte:
-        corte = corte[:corte.rfind(" ")]
-    return corte.rstrip() + "…"
+# _trunc importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
 
 
 def _desc_curta(key: str, max_c: int = 42) -> str:
     """Retorna descricao resumida do campo (max_c chars) para exibicao inline.
 
-    Corta no limite de palavra (nunca no meio) e usa o _CONFIG_SPEC como
-    fallback quando o HELP_DB nao cobre o campo.
+    Resolve idioma/HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
+    truncamento a `guaraci.cli_logic.truncar_desc_por_frase` (funcao pura,
+    testada).
     """
     lang = _lang()
     h = HELP_DB.get(key, {})
     desc = h.get(lang, h.get("PT", {})).get("desc", "")
     if not desc:
         desc = _SPEC_BY_KEY.get(key, {}).get("desc", "")
-    desc = desc.strip()
-    if not desc:
-        return ""
-    # Trunca na primeira frase, se couber
-    if "." in desc[:max_c]:
-        return desc[:desc.index(".") + 1]
-    if len(desc) <= max_c:
-        return desc
-    # Corta no ultimo espaco antes do limite (sem partir palavra)
-    corte = desc[:max_c - 1]
-    if " " in corte:
-        corte = corte[:corte.rfind(" ")]
-    return corte.rstrip() + "…"
+    return _truncar_desc_por_frase(desc, max_c)
 
 
 def _print_submenu_compact(
@@ -1581,7 +1557,8 @@ def menu_visualizacao(cfg: Config) -> None:
             vcfg["grid_style"] = ests[(ests.index(gs)+1)%3] if gs in ests else "dotted"
         elif r == "4":
             try: vcfg["grid_alpha"] = float(_input("  Valor [0.1-0.9]: "))
-            except Exception: pass
+            except Exception:
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         _salvar_visual_cfg(vcfg)
 
     def _alpha():
@@ -2160,7 +2137,7 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
     try:
         import joblib
         import pandas as pd
-        import predicao as _pred
+        import guaraci.predicao as _pred
         status_msg = ("Carregando modelo e aplicando..." if is_pt
                        else "Loading model and applying...")
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
@@ -2257,7 +2234,7 @@ def menu_perfis(cfg: Config) -> None:
                 try:
                     setattr(cfg, sp["attr"], v); n += 1
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         paleta = pdata.get("_paleta")
         if paleta and PALETAS_COR and paleta in PALETAS_COR:
             vcfg = _carregar_visual_cfg()
@@ -2827,6 +2804,50 @@ def _print_resumo(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # EXECUCAO DO PIPELINE
 # ---------------------------------------------------------------------------
+def _montar_painel_execucao(texto_log: str, elapsed: float,
+                             objetivo_rotulo: str,
+                             plano_figuras: List[str]) -> Panel:
+    """Monta o painel de acompanhamento ao vivo (auditoria jul/2026, item 5):
+    objetivo cientifico, barra de progresso + rotulo da analise em
+    andamento (via app_logic.progresso_do_log), figuras ja concluidas
+    (app_logic.figuras_concluidas) contra o plano do modo (modos_analise.
+    descrever_plano), tempo decorrido/estimado restante e avisos nao-fatais
+    (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
+    modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
+    precisar rodar o pipeline de verdade nem simular entrada interativa."""
+    frac, label = _progresso_do_log(texto_log)
+    figs = _figuras_concluidas(texto_log)
+    avisos = _avisos_do_log(texto_log)
+
+    bar_w = 32
+    preenchido = int(bar_w * frac)
+    barra = "█" * preenchido + "░" * (bar_w - preenchido)
+    eta_txt = "…"
+    if frac > 0.05:
+        eta_txt = _fmt_tempo(max(0.0, elapsed / frac - elapsed))
+
+    partes = [
+        Text.assemble(
+            (f"{_t('exec_objetivo')}: ", PM), (objetivo_rotulo, f"bold {PA}")),
+        Text(f"[{barra}] {frac * 100:5.1f}%  {label}", style=PA),
+        Text(f"{_t('exec_eta')}: {eta_txt}   |   "
+             f"{_fmt_tempo(elapsed)}", style=PW),
+        Rule(style=PD),
+        Text(f"{_t('exec_figuras')} ({len(figs)}/{len(plano_figuras)} "
+             "planejadas):", style=f"bold {PM}"),
+        Text("  ".join(f"✓ {f}" for f in figs) if figs else "…",
+             style=PW),
+    ]
+    if avisos:
+        partes += [
+            Rule(style=PD),
+            Text(f"{_t('exec_avisos')} ({len(avisos)}):", style=f"bold {PR}"),
+            Text("\n".join(f"⚠ {a}" for a in avisos), style=PR),
+        ]
+    return Panel(Group(*partes), border_style=PA, box=rbox.ROUNDED,
+                 padding=(0, 1), title=f"  {_t('exec_inicio')}  ")
+
+
 def _rodar_pipeline(cfg: Config) -> None:
     lang = _lang()
     cls(); _print_header()
@@ -2860,7 +2881,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         cod_u = _carregar_codigos_usuario()
         if cod_u: pq.CODIGO_ESPECIE.update(cod_u)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # Aplicar configuracoes visuais
     try:
@@ -2870,7 +2891,8 @@ def _rodar_pipeline(cfg: Config) -> None:
         vcfg = _carregar_visual_cfg()
         paleta = PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
         try: plt.style.use(paleta.get("style", "default"))
-        except Exception: pass
+        except Exception:
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
         cores = paleta.get("cores")
         if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
         cmap = paleta.get("cmap")
@@ -2886,7 +2908,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         alpha_map = {"baixo":0.9,"medio":0.65,"alto":0.35}
         plt.rcParams["lines.alpha"] = alpha_map.get(vcfg.get("alpha_pontos","medio"), 0.65)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # Sincronizar DPI do visual_config antes de salvar
     _sincronizar_dpi(cfg)
@@ -2899,22 +2921,23 @@ def _rodar_pipeline(cfg: Config) -> None:
             or _cfgv(cfg, "comparar_pre_processamentos", False)):
         _sugerir_cafe()
 
-    # Etapas para progress bar
-    etapas = [
-        _t("exec_leitura"), _t("exec_preproc"), _t("exec_pca"),
-        _t("exec_plsda"),
-        _t("exec_opls") if _cfgv(cfg,"opls_da",True) else _t("exec_valid"),
-        _t("exec_dds") if _cfgv(cfg,"ddsimca",True) else _t("exec_valid"),
-        _t("exec_valid"), _t("exec_relat"),
-    ]
-    if _cfgv(cfg,"benchmark",False): etapas.append(_t("exec_bench"))
-    if _cfgv(cfg,"monte_carlo",False): etapas.append(_t("exec_mc"))
+    # Painel de acompanhamento (auditoria jul/2026, item 5): o terminal deve
+    # mostrar quais figuras serao calculadas, quais ja foram concluidas,
+    # analise em andamento, % de progresso, tempo estimado e avisos — em vez
+    # da simulacao por tempo decorrido usada antes (etapas fixas avancando a
+    # cada 15s, sem relacao real com o que o pipeline estava fazendo).
+    objetivo_rotulo = pq.OBJETIVO_ROTULO.get(
+        pq.resolver_objetivo(cfg), cfg.nivel)
+    plano_figuras = pq.descrever_plano(cfg)
 
-    _done = {"ok": False, "error": None}
+    _done: Dict[str, object] = {"ok": False, "error": None}
+    _logger = _LogThreadSafe()
 
     def _run():
         try:
-            executar(cfg)
+            with contextlib.redirect_stdout(_logger), \
+                 contextlib.redirect_stderr(_logger):
+                executar(cfg)
         except KeyboardInterrupt:
             _done["error"] = _t("exec_interrompido")
         except Exception as e:
@@ -2922,30 +2945,21 @@ def _rodar_pipeline(cfg: Config) -> None:
         finally:
             _done["ok"] = True
 
+    def _render_painel(elapsed: float) -> Panel:
+        return _montar_painel_execucao(
+            texto_log=_logger.text(), elapsed=elapsed,
+            objetivo_rotulo=objetivo_rotulo, plano_figuras=plano_figuras)
+
     console.print()
     t_ini = time.time()
     thr = threading.Thread(target=_run, daemon=True)
     thr.start()
 
-    with Progress(
-        SpinnerColumn(spinner_name="dots2", style=PA),
-        TextColumn(f"[{PA}]{{task.description}}[/{PA}]"),
-        BarColumn(bar_width=32, style=PD, complete_style=PF),
-        TaskProgressColumn(style=PM),
-        TimeElapsedColumn(),
-        console=console,
-        refresh_per_second=3,
-    ) as prog:
-        task = prog.add_task(_t("exec_inicio"), total=len(etapas))
-        idx = 0
+    with Live(console=console, refresh_per_second=3) as live:
         while not _done["ok"]:
-            elapsed = time.time() - t_ini
-            new_idx = min(int(elapsed / 15), len(etapas) - 1)
-            if new_idx > idx:
-                idx = new_idx
-                prog.update(task, completed=idx, description=etapas[min(idx, len(etapas)-1)])
-            time.sleep(0.4)
-        prog.update(task, completed=len(etapas), description=_t("exec_concluido"))
+            live.update(_render_painel(time.time() - t_ini))
+            time.sleep(0.3)
+        live.update(_render_painel(time.time() - t_ini))
 
     thr.join()
     console.print()
@@ -3016,7 +3030,8 @@ def _carregar_yaml(cfg: Config) -> None:
             cfg2 = carregar_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
-                except Exception: pass
+                except Exception:
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             _lbl = "Carregado" if _lang() == "PT" else "Loaded"
             console.print(f"  [g]✓ {_lbl}: {escape(path.stem)}[/g]")
         except Exception as e:
@@ -3037,7 +3052,7 @@ def main() -> None:
         try:
             cfg = carregar_config(str(_CFG_PATH))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
     # Recuperar idioma salvo
     try:

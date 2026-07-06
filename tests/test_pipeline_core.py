@@ -7,10 +7,14 @@ para travar o comportamento atual e detectar regressões durante o corte.
 
 Usa a fixture `pq` (sessão) do conftest.py.
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.cross_decomposition import PLSRegression
+
+from conftest import achar_pastas_run
 
 
 # ── Pré-processamento (futuro: guaraci/preprocessing.py) ──────────────────────
@@ -51,6 +55,43 @@ def test_construir_preprocessador_presets(pq):
     assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
     cfg.preprocessamento_padrao = "autoscaling"
     assert list(pq.construir_preprocessador(cfg).named_steps) == ["auto"]
+
+
+def test_construir_preprocessador_custom_combina_flags_individuais(pq):
+    """preset='custom' honra aplicar_snv/aplicar_sg/aplicar_mc individualmente
+    -- nunca testado antes (só os 4 presets nomeados tinham teste)."""
+    cfg = pq.Config()
+    cfg.preprocessamento_padrao = "custom"
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, True, True
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "sg", "mc"]
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, False
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv"]
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, True, False
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["sg"]
+
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, False, True
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+
+
+def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
+    """Nenhuma flag marcada seria um Pipeline VAZIO (quebraria .fit()) --
+    fallback de seguranca: usa mean-centering sozinho."""
+    cfg = pq.Config()
+    cfg.preprocessamento_padrao = "custom"
+    cfg.aplicar_snv = cfg.aplicar_sg = cfg.aplicar_mc = False
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+
+
+def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
+    """Qualquer preset nao reconhecido cai no ramo custom (mesmo
+    comportamento de 'custom', usando as flags individuais)."""
+    cfg = pq.Config()
+    cfg.preprocessamento_padrao = "isto_nao_existe"
+    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, True
+    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "mc"]
 
 
 # ── Estatística quimiométrica (futuro: guaraci/diagnostics.py) ────────────────
@@ -303,6 +344,98 @@ def test_figuras_merito_modelo_degenerado_b_zero(pq):
     assert all(np.isnan(v) for k, v in fom.items() if k != "n_grupos_replicas")
 
 
+def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
+    """Um grupo de réplicas com só 1 amostra não tem variância intra-grupo
+    calculável (graus de liberdade = 0) — deve ser IGNORADO no cálculo de
+    delta_x, não contar como grupo válido nem quebrar a soma pooled."""
+    modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos(seed=9)
+    grupos_com_singleton = grupos + [np.array([X[0]])]  # grupo de 1 amostra so'
+    fom = pq.figuras_merito_regressao(modelo, X, grupos_com_singleton)
+    # o singleton nao conta: mesmo numero de grupos validos que sem ele
+    assert fom["n_grupos_replicas"] == len(grupos)
+    assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
+
+
+# ── metricas_modelo_pls: R2X/R2Y/Q2 (sem teste dedicado ate' agora) ─────────
+
+def test_metricas_modelo_pls_bom_ajuste_da_r2_alto(pq):
+    """Y fortemente correlacionado com X: R2X/R2Y/Q2 devem ficar altos
+    (proximos de 1), nao zero nem negativos."""
+    rng = np.random.default_rng(0)
+    w_true = rng.normal(size=8); w_true /= np.linalg.norm(w_true)
+    X = rng.normal(size=(50, 8))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=50)
+    modelo = PLSRegression(n_components=2, scale=False).fit(X, y.reshape(-1, 1))
+    Y_cv = modelo.predict(X)  # CV "perfeita" simulada p/ o teste
+    r2x, r2y, q2 = pq.metricas_modelo_pls(modelo, X, y.reshape(-1, 1), Y_cv)
+    assert 0.0 < r2x <= 1.0
+    assert 0.9 < r2y <= 1.0
+    assert 0.9 < q2 <= 1.0
+
+
+def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
+    """Y sem variancia nenhuma (constante) -> ss_total=0 -> R2Y/Q2 nao
+    calculaveis, funcao devolve 0.0 em vez de dividir por zero."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(20, 5))
+    y = np.full((20, 1), 3.0)  # Y constante
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y)
+    r2x, r2y, q2 = pq.metricas_modelo_pls(modelo, X, y, y.copy())
+    assert r2y == 0.0 and q2 == 0.0
+
+
+# ── Selectivity Ratio: casos degenerados (peso/projeção nulos) ──────────────
+
+def test_selectivity_ratio_peso_w1_nulo_retorna_zeros(pq):
+    """Se o primeiro peso PLS (w1) é todo zero (modelo degenerado/patológico),
+    calcular_selectivity_ratio não deve dividir por zero — retorna vetor de
+    zeros (SR indefinido = sem seletividade nenhuma), nunca NaN/inf silencioso."""
+    class _ModeloWZero:
+        x_weights_ = np.zeros((10, 2))
+    sr = pq.calcular_selectivity_ratio(_ModeloWZero(),
+                                        np.random.default_rng(0).normal(size=(15, 10)))
+    assert np.array_equal(sr, np.zeros(10))
+
+
+def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
+    """Se X é ortogonal ao peso w1 (projeção target tem norma ~0), o SR
+    também não pode ser calculado -- mesmo fallback de zeros."""
+    class _ModeloWOrtogonal:
+        x_weights_ = np.array([[1.0, 0.0], [0.0, 0.0]])  # so' a 1a variavel pesa
+    # X com a 1a coluna sempre zero -> t_tp = X @ w1_unit = 0 para todas as amostras
+    X = np.zeros((10, 2))
+    X[:, 1] = np.random.default_rng(1).normal(size=10)
+    sr = pq.calcular_selectivity_ratio(_ModeloWOrtogonal(), X)
+    assert np.array_equal(sr, np.zeros(2))
+
+
+# ── q_residuos_limite: fallback quando variância/média não-positivas ────────
+
+def test_q_residuos_limite_variancia_zero_cai_no_percentil(pq):
+    """Q-residuals todos iguais (variância = 0) inviabiliza a aproximação
+    chi2 de Jackson & Mudholkar (g=var/2*media seria 0) -- cai no percentil
+    empírico em vez de gerar limite 0/NaN."""
+    q = np.full(20, 5.0)
+    limite = pq.q_residuos_limite(q, alpha=0.05)
+    assert limite == pytest.approx(5.0)
+
+
+def test_q_residuos_limite_array_vazio_retorna_zero(pq):
+    limite = pq.q_residuos_limite(np.array([]), alpha=0.05)
+    assert limite == 0.0
+
+
+# ── variancia_explicada: X com variância total zero ─────────────────────────
+
+def test_variancia_explicada_x_constante_retorna_zeros(pq):
+    """X sem variância nenhuma (todas as amostras idênticas) não tem % de
+    variância explicada calculável -- retorna zeros, não divide por zero."""
+    X = np.ones((10, 5))          # variancia total = 0
+    T = np.random.default_rng(0).normal(size=(10, 3))
+    ve = pq.variancia_explicada(X, T)
+    assert np.array_equal(ve, np.zeros(3))
+
+
 # ── DD-SIMCA (futuro: guaraci/models/ddsimca.py) ──────────────────────────────
 
 def test_ddsimca_aceita_proprio_treino(pq):
@@ -368,6 +501,14 @@ def test_parse_title_adulterado(pq):
 def test_parse_title_invalido(pq):
     """String fora do padrão retorna None (não quebra o carregamento)."""
     assert pq.parse_title("isto nao e um title") is None
+
+
+def test_parse_title_teor_zero_e_invalido(pq):
+    """Teor de adulteração = 0 não faz sentido (adulterado com 0% == puro,
+    mal rotulado) — parse_title rejeita em vez de aceitar um dado incoerente.
+    (o regex de adulteração não aceita sinal negativo, então 0 é o único
+    valor não-positivo alcançável por esse caminho.)"""
+    assert pq.parse_title("AND-10-06-2020-AD-S-0.00%-T1") is None
 
 
 def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
@@ -630,6 +771,19 @@ def test_anexar_regressao_resumo_escreve_bloco(pq, tmp_path):
     assert "2.10" in txt                         # LOD do Coco formatado
 
 
+def test_anexar_regressao_resumo_valor_nao_numerico_vira_na(pq, tmp_path):
+    """Valor genuinamente NAO conversivel p/ float (nao so' NaN) tambem cai
+    no fallback 'n/a', sem lancar TypeError/ValueError pro chamador."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.anexar_regressao_resumo(
+        pasta,
+        pooled={"r2c": "indisponivel", "r2v": 0.9, "rmsec": 1.0,
+                "rmsecv": 1.1, "rmsep": 1.3, "bias": 0.0})
+    txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
+    assert "n/a" in txt
+
+
 def test_anexar_regressao_resumo_fom_pooled(pq, tmp_path):
     """Caminho de modelo pooled unico (fom_pooled) tambem grava LOD/LOQ/SEN."""
     pasta = str(tmp_path)
@@ -817,9 +971,9 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    resumo = runs[0] / "logs" / "resumo_modelo.txt"
+    resumo = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
     assert resumo.is_file()
     txt = resumo.read_text(encoding="utf-8")
     assert "Analytical Figures of Merit" in txt
@@ -845,19 +999,19 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    run_dir = runs[0]
+    run_dir = Path(runs[0])
 
-    cam_csv = run_dir / "dados" / "teste_martens.csv"
+    cam_csv = run_dir / pq.NOME_TABELAS / "teste_martens.csv"
     assert cam_csv.is_file(), "teste_martens.csv nao foi gerado"
     df = pd.read_csv(cam_csv, sep=";", decimal=",")
     assert {"wavenumber", "t_valor", "p_valor", "significativo"}.issubset(df.columns)
 
-    resumo_txt = (run_dir / "logs" / "resumo_modelo.txt").read_text(encoding="utf-8")
+    resumo_txt = (run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(encoding="utf-8")
     assert "Martens n_significativas" in resumo_txt
 
-    card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
+    card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
     assert "Martens n_significativas" in card_txt
 
 
@@ -880,15 +1034,15 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    run_dir = runs[0]
+    run_dir = Path(runs[0])
 
-    resumo_txt = (run_dir / "logs" / "resumo_modelo.txt").read_text(encoding="utf-8")
+    resumo_txt = (run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(encoding="utf-8")
     assert "DModX critico (SIMCA)" in resumo_txt
     assert "N amostras fora do DModX" in resumo_txt
 
-    card_txt = (run_dir / "logs" / "model_card.md").read_text(encoding="utf-8")
+    card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
     assert "DModX critico (SIMCA)" in card_txt
     assert "DModY critico (SIMCA)" in card_txt   # addendum de regressao, N3
 
@@ -920,9 +1074,9 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)
     pq.executar(cfg)
 
-    runs = list((tmp_path / "saida").iterdir())
+    runs = achar_pastas_run(tmp_path / "saida")
     assert runs, "executar() nao criou pasta de saida"
-    figbase = runs[0] / "figuras"
+    figbase = Path(runs[0]) / pq.NOME_GRAFICOS
     nomes_pngs = {p.name for p in figbase.rglob("*.png")} if figbase.exists() else set()
     ddsimca_figs = {n for n in nomes_pngs if "ddsimca" in n.lower()
                     or "cooman" in n.lower()}
@@ -1006,3 +1160,25 @@ def test_anexar_regressao_model_card_sem_arquivo_previo_nao_quebra(pq, tmp_path)
     anexar_regressao_model_card nao deve lancar excecao -- so' nao faz nada."""
     pq.anexar_regressao_model_card(str(tmp_path), pooled={"rmsep": 1.0})
     assert not (tmp_path / "model_card.md").exists()
+
+
+def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
+    """Valor NaN/nao-numerico em tabela_especie vira 'n/a' (nunca 'nan' cru
+    no documento); fom_pooled (modelo unico, sem tabela por especie) tambem
+    e' escrito."""
+    cfg = pq.Config(nivel="N3")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+
+    pq.anexar_regressao_model_card(
+        str(tmp_path),
+        pooled={"rmsep": 3.21, "r2v": 0.88},
+        tabela_especie=[{"especie": "Esp_A", "rmsep": float("nan"),
+                         "lod": float("nan"), "loq": 4.5}],
+        fom_pooled={"lod": 2.0, "loq": 6.0, "sensibilidade": 0.04})
+
+    txt = (tmp_path / "model_card.md").read_text(encoding="utf-8")
+    secao9 = txt[txt.index("## 9. Addendum"):]
+    assert "n/a" in secao9
+    assert "nan" not in secao9.lower()  # nunca "nan" cru (sempre formatado como n/a)
+    assert "LOD" in secao9 and "LOQ" in secao9 and "Sensibilidade" in secao9

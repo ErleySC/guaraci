@@ -9,6 +9,7 @@ continuam funcionando sem alteração.
 """
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Optional
 
 import matplotlib.colors as mcolors
@@ -54,13 +55,13 @@ def _paleta_externa(n: int) -> Optional[List[str]]:
         import glasbey as _gb  # type: ignore
         return list(_gb.create_palette(palette_size=n))
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     try:
         import colorcet as _cc  # type: ignore
         base = _cc.glasbey_category10
         return [base[i % len(base)] for i in range(n)]
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     return None
 
 

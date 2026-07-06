@@ -11,6 +11,7 @@ reexporta estes nomes, então `pipeline.carregar_dados(...)`,
 from __future__ import annotations
 
 import glob
+import logging
 import os
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -18,8 +19,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from guaraci.io_registry import registrar_leitor, obter_leitor
+
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 # =========================================================================
 #  parse_title v3 — metadata extraction from ##TITLE= JCAMP-DX
@@ -113,7 +116,7 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
                 if linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
                     break
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
     return None
 
 
@@ -722,27 +725,43 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
             conc_arr, mae_arr, metadados_df)
 
 
+def _leitor_sintetico(cfg: "Config"):
+    wn, X, rot, conc, mae = gerar_dados_sinteticos(cfg)
+    return wn, X, rot, conc, mae, None
+
+
+def _leitor_csv(cfg: "Config"):
+    wn, X, rot, conc = carregar_csv(
+        cfg.arquivo_csv, cfg.coluna_classe, cfg.coluna_conc)
+    return wn, X, rot, conc, None, None
+
+
+def _leitor_dx(cfg: "Config"):
+    return carregar_dx(cfg.pasta_entrada, cfg.parte_classe,
+                        cfg.extrair_conc_filename, cfg.usar_parse_title)
+
+
+def _leitor_imagem(cfg: "Config"):
+    from guaraci.dados_imagem import carregar_imagens
+    return carregar_imagens(cfg.pasta_entrada, cfg.imagem_recorte,
+                             cfg.imagem_incluir_textura)
+
+
+# Leitores built-in (item 20 da auditoria: registry em vez de if/elif fixo —
+# ver io_registry.py para o contrato e como registrar um novo modo).
+registrar_leitor("sintetico", _leitor_sintetico)
+registrar_leitor("csv", _leitor_csv)
+registrar_leitor("dx", _leitor_dx)
+registrar_leitor("imagem", _leitor_imagem)
+
+
 def carregar_dados(cfg: "Config"
                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                                 Optional[np.ndarray], Optional[np.ndarray],
                                 Optional[pd.DataFrame]]:
-    """Unified data loader. Returns 6-tuple:
+    """Unified data loader. Despacha para o leitor registrado em `cfg.modo`
+    (ver io_registry.py). Returns 6-tuple:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     metadados_df is always None in 'sintetico'/'csv' mode; mae_id is None
     only in 'csv'/'imagem' mode (sem replicas fisicas conhecidas)."""
-    if cfg.modo == "sintetico":
-        wn, X, rot, conc, mae = gerar_dados_sinteticos(cfg)
-        return wn, X, rot, conc, mae, None
-    if cfg.modo == "csv":
-        wn, X, rot, conc = carregar_csv(
-            cfg.arquivo_csv, cfg.coluna_classe, cfg.coluna_conc)
-        return wn, X, rot, conc, None, None
-    if cfg.modo == "dx":
-        return carregar_dx(cfg.pasta_entrada, cfg.parte_classe,
-                            cfg.extrair_conc_filename,
-                            cfg.usar_parse_title)
-    if cfg.modo == "imagem":
-        from dados_imagem import carregar_imagens
-        return carregar_imagens(cfg.pasta_entrada, cfg.imagem_recorte,
-                                 cfg.imagem_incluir_textura)
-    raise ValueError(f"Unknown MODE: '{cfg.modo}'.")
+    return obter_leitor(cfg.modo)(cfg)

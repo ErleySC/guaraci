@@ -10,6 +10,7 @@ monte_carlo_cv/fig_det_curvas/fig_shap_benchmark).
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 import warnings
@@ -23,14 +24,16 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import balanced_accuracy_score
 
-from preprocessamento import construir_preprocessador
-from figuras import salvar, cor
-from hardware import _verificar_ram
-from dados_io import kennard_stone_split_group_aware
-from chemometric_stats import rmse_flat
+from guaraci.preprocessamento import construir_preprocessador
+from guaraci.figuras import salvar, cor
+from guaraci.hardware import _verificar_ram
+from guaraci.dados_io import kennard_stone_split_group_aware
+from guaraci.config import NOME_TABELAS
+from guaraci.chemometric_stats import rmse_flat
+from guaraci.model_registry import construir_lista_benchmark
 
 if TYPE_CHECKING:
-    from pipeline import Config
+    from guaraci.pipeline import Config
 
 
 
@@ -139,9 +142,6 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
 
     Ref: Westerhuis et al. (2008) Chemom. Intell. Lab. Syst. 92:58-64.
     """
-    from sklearn.svm import SVC
-    from sklearn.ensemble import (RandomForestClassifier,
-                                  GradientBoostingClassifier)
     from sklearn.model_selection import StratifiedGroupKFold
     from sklearn.metrics import f1_score
     from sklearn.base import clone
@@ -154,32 +154,9 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     n_classes = len(lb.classes_)
     preproc   = construir_preprocessador(cfg)
 
-    # ── Classifiers ──────────────────────────────────────────────────────
-    clfs: List[Tuple[str, Any]] = [
-        ("PLS-DA",
-         PLSDAClassifier(n_components=n_opt)),
-        ("SVM RBF",
-         SVC(kernel="rbf", C=10.0, gamma="scale", probability=True,
-             random_state=cfg.seed, class_weight="balanced")),
-        ("Random Forest",
-         RandomForestClassifier(n_estimators=300, max_features="sqrt",
-                                class_weight="balanced_subsample",
-                                n_jobs=1, random_state=cfg.seed)),
-        ("Grad. Boost.",
-         GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
-                                    max_depth=3, subsample=0.8,
-                                    random_state=cfg.seed)),
-    ]
-    try:
-        from xgboost import XGBClassifier  # type: ignore
-        clfs.append(("XGBoost",
-                      XGBClassifier(n_estimators=300, learning_rate=0.05,
-                                    max_depth=4, subsample=0.8,
-                                    colsample_bytree=0.8,
-                                    eval_metric="mlogloss", verbosity=0,
-                                    n_jobs=1, random_state=cfg.seed)))
-    except ImportError:
-        pass
+    # ── Classifiers (fonte unica: guaraci.model_registry, item 20) ────────
+    clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+        n_opt, cfg, incluir_opcionais=True)
 
     cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True,
                                random_state=cfg.seed)
@@ -217,7 +194,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                             nc = min(p.shape[1], n_classes)
                             proba_oof[te_idx, :nc] = p[:, :nc]
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             elapsed = time.time() - t0
             ba = np.array(ba_folds)
             f1 = np.array(f1_folds)
@@ -256,7 +233,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     df_bench = pd.DataFrame(resultados)
 
     # ── Salvar CSV ────────────────────────────────────────────────────────
-    cam_csv = os.path.join(pasta, "dados", "benchmark_classificadores.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
     df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 
@@ -368,48 +345,24 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     Gera distribuicao empirica de Balanced Accuracy com IC95% por percentil.
 
     Se cfg.monte_carlo_incluir_todos=True, roda tambem SVM RBF, RF e XGBoost
-    (mesmos hiperparametros do benchmark); caso contrario, apenas PLS-DA.
+    (mesmos hiperparametros do benchmark, via guaraci.model_registry — item
+    20 da auditoria: fonte unica, antes duplicada e divergente aqui: este
+    Grad. Boost. nao tinha subsample=0.8 como o do benchmark); caso
+    contrario, apenas PLS-DA.
 
     Ref: Filzmoser et al. (2009) Anal. Chim. Acta 652:133-142.
     """
     from sklearn.base import clone
     from sklearn.metrics import f1_score
     from sklearn.pipeline import Pipeline as _SKPipeline
-    from sklearn.svm import SVC
-    from sklearn.ensemble import (RandomForestClassifier,
-                                  GradientBoostingClassifier)
 
     n_iter  = cfg.n_monte_carlo
     test_sz = cfg.monte_carlo_test_size
     preproc = construir_preprocessador(cfg)
 
-    # Montar lista de modelos
-    mc_clfs: List[Tuple[str, Any]] = [
-        ("PLS-DA", PLSDAClassifier(n_components=n_opt)),
-    ]
-    if cfg.monte_carlo_incluir_todos:
-        mc_clfs += [
-            ("SVM RBF",
-             SVC(kernel="rbf", C=10.0, gamma="scale", probability=True,
-                 random_state=cfg.seed, class_weight="balanced")),
-            ("Random Forest",
-             RandomForestClassifier(n_estimators=300, max_features="sqrt",
-                                    class_weight="balanced_subsample",
-                                    n_jobs=1, random_state=cfg.seed)),
-            ("Grad. Boost.",
-             GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
-                                        max_depth=3, random_state=cfg.seed)),
-        ]
-        try:
-            from xgboost import XGBClassifier  # type: ignore
-            mc_clfs.append(("XGBoost",
-                             XGBClassifier(n_estimators=300, learning_rate=0.05,
-                                           max_depth=4, subsample=0.8,
-                                           colsample_bytree=0.8,
-                                           eval_metric="mlogloss", verbosity=0,
-                                           n_jobs=1, random_state=cfg.seed)))
-        except ImportError:
-            pass
+    # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
+    mc_clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_incluir_todos)
 
     # Gerar splits estratificados por grupo (risco 3 resolvido)
     if grupos_cv is not None:
@@ -451,7 +404,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
                     f1_list.append(
                         float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
 
         elapsed = time.time() - t0
         arr_ba = np.array(ba_list) if ba_list else np.array([np.nan])
@@ -479,7 +432,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     print(f"  [MC CV total: {time.time()-t0_total:.1f}s]")
     df_mc = pd.DataFrame(resultados_mc)
 
-    cam_csv = os.path.join(pasta, "dados", "monte_carlo_cv.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "monte_carlo_cv.csv")
     df_mc.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 
@@ -545,7 +498,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                                            left=fnmr[0], right=fnmr[-1])
                     n_valid += 1
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
             if n_valid == 0:
                 continue
             fnmr_media = fnmr_acum / n_valid
@@ -933,7 +886,7 @@ def benchmark_regressao_por_especie(
 
     df_bench = pd.DataFrame(linhas)
 
-    cam_csv = os.path.join(pasta, "dados", "benchmark_regressao.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_regressao.csv")
     df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 

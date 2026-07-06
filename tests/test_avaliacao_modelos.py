@@ -14,6 +14,8 @@ import numpy as np
 import pytest
 from sklearn.preprocessing import LabelBinarizer
 
+from conftest import achar_pastas_run
+
 
 def _dados_benchmark(seed=0, n_por_classe=15, p=25, n_classes=3):
     """Dados sintéticos com grupos (estilo mae_id) para exercitar CV
@@ -42,7 +44,7 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     X, y_int, grupos, lb = _dados_benchmark()
     cfg = pq.Config(n_splits_cv=3, seed=0, executar_shap=False)
     pasta = str(tmp_path)
-    os.makedirs(os.path.join(pasta, "dados"), exist_ok=True)
+    os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
     df = pq.benchmark_classificadores(X, y_int, grupos, lb, n_opt=2,
                                        cfg=cfg, pasta=pasta)
@@ -51,10 +53,10 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     assert "PLS-DA" in nomes
     assert "XGBoost" in nomes  # confirma que o import opcional funcionou de verdade
     assert os.path.exists(
-        os.path.join(pasta, "dados", "benchmark_classificadores.csv"))
+        os.path.join(pasta, pq.NOME_TABELAS, "benchmark_classificadores.csv"))
     assert os.path.exists(
-        os.path.join(pasta, "figuras", "fig_benchmark_classificadores.png"))
-    assert glob.glob(os.path.join(pasta, "figuras", "fig_det_curvas*.png"))
+        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_classificadores.png"))
+    assert glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_det_curvas*.png"))
     for v in df["Bal.Acc media"]:
         assert 0.0 <= v <= 1.0
 
@@ -67,14 +69,14 @@ def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
     cfg = pq.Config(n_monte_carlo=8, monte_carlo_test_size=0.3,
                      monte_carlo_incluir_todos=False, seed=1)
     pasta = str(tmp_path)
-    os.makedirs(os.path.join(pasta, "dados"), exist_ok=True)
+    os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
     assert list(df["Classificador"]) == ["PLS-DA"]
     assert df["Iteracoes validas"].iloc[0] > 0
     assert 0.0 <= df["IC95% inf"].iloc[0] <= df["IC95% sup"].iloc[0] <= 1.0
-    assert os.path.exists(os.path.join(pasta, "dados", "monte_carlo_cv.csv"))
+    assert os.path.exists(os.path.join(pasta, pq.NOME_TABELAS, "monte_carlo_cv.csv"))
 
 
 @pytest.mark.slow
@@ -86,7 +88,7 @@ def test_monte_carlo_cv_todos_os_modelos(pq, tmp_path):
     cfg = pq.Config(n_monte_carlo=6, monte_carlo_test_size=0.3,
                      monte_carlo_incluir_todos=True, seed=2)
     pasta = str(tmp_path)
-    os.makedirs(os.path.join(pasta, "dados"), exist_ok=True)
+    os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
@@ -109,7 +111,7 @@ def test_fig_shap_benchmark_gera_figura(pq, tmp_path):
     pq.fig_shap_benchmark(X, y_int, n_opt=2, cfg=cfg, pasta=pasta,
                            wavenumbers=wavenumbers)
 
-    assert glob.glob(os.path.join(pasta, "figuras", "fig_shap_*.png"))
+    assert glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_shap_*.png"))
 
 
 # ── Auto-Benchmark de regressao (Ridge/Lasso/EN/SVR/RF vs PLS-R) ───────────
@@ -151,8 +153,8 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     X, conc, rotulos, mae_id, classes_unicas = _dados_regressao_multi_especie()
     cfg = pq.Config(seed=0, max_lvs=5, frac_cal=0.7)
     pasta = str(tmp_path)
-    os.makedirs(os.path.join(pasta, "dados"), exist_ok=True)
-    os.makedirs(os.path.join(pasta, "figuras"), exist_ok=True)
+    os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
+    os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
 
     reg_esp = pq.pls_regressao_por_especie(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
@@ -167,9 +169,9 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     assert modelos_esperados.issubset(set(df["Modelo"]))
     assert (df["RMSEP (pooled)"] >= 0).all()
     assert os.path.exists(
-        os.path.join(pasta, "dados", "benchmark_regressao.csv"))
+        os.path.join(pasta, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
-        os.path.join(pasta, "figuras", "fig_benchmark_regressores.png"))
+        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
 
     # PLS-R do benchmark bate com o ja calculado por pls_regressao_por_especie
     # (reaproveitado, nao deve ser refeito com numeros diferentes)
@@ -215,10 +217,10 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
 
-    runs = os.listdir(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
     assert runs, "executar() nao criou pasta de saida"
-    pasta_run = os.path.join(cfg.pasta_saida_raiz, runs[0])
+    pasta_run = runs[0]
     assert os.path.exists(
-        os.path.join(pasta_run, "dados", "benchmark_regressao.csv"))
+        os.path.join(pasta_run, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
-        os.path.join(pasta_run, "figuras", "fig_benchmark_regressores.png"))
+        os.path.join(pasta_run, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))

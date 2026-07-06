@@ -145,6 +145,13 @@ def cv_anova_eriksson(Y: np.ndarray, Y_cv: np.ndarray, n_components: int
                 "Q2": 1.0 - press / ss_total,
                 "df_model": df_model, "df_resid": df_resid}
 
+    if press <= 0:
+        # Predicao perfeita (PRESS=0): o modelo explica tudo. F -> infinito e
+        # p -> 0. Sem esta guarda, `press` no denominador causava
+        # ZeroDivisionError (achado pela rede de seguranca / test_validacao_estatistica).
+        return {"F": float("inf"), "p_value": 0.0, "Q2": 1.0,
+                "df_model": int(df_model), "df_resid": int(df_resid)}
+
     F = ((ss_total - press) / df_model) / (press / df_resid)
     p = float(1.0 - f_dist.cdf(F, df_model, df_resid))
     return {"F":        float(F),

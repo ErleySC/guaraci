@@ -13,6 +13,7 @@ resultados*/
 *.joblib
 
 # --- Local run drivers / logs (scratch, personal paths — keep out of repo) ---
+# (vivem em scripts/, mas os padroes abaixo (sem barra) casam em qualquer nivel)
 run_benchmark_tcc.py
 gerar_relatorio_abnt.py
 benchmark_run.log
@@ -24,7 +25,6 @@ dados/
 dados_oleos/
 
 # --- Local archive of old versions / scratch (kept out of the repo) ---
-_arquivo_antigo/
 _test*/
 "pineline_quimiometria_14 copy.py"
 *\ copy.py

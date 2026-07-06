@@ -74,10 +74,11 @@ external hold-out. That is what separates an honest metric from an artifact.
 
 ## Install
 
-Python 3.10+.
+Python 3.10+. The code lives in the `guaraci` package under `src/`.
 
 ```bash
-pip install -r requirements.txt
+pip install -e .        # installs the `guaraci` package + core deps (adds the `guaraci` command)
+# or, for the full web/reports/benchmark stack:  pip install -e .[all]
 ```
 
 ## Use (3 ways, no code editing)
@@ -89,10 +90,13 @@ cp config.example.yaml config.yaml   # then set `pasta_dados` to your .dx folder
 ```
 
 ```bash
-python guaraci.py                             # 1. GUARACI terminal interface (recommended)
-python pipeline.py --rodar                    # 2. run straight from config.yaml
+guaraci                                       # 1. GUARACI terminal interface (recommended)
+python -m guaraci.pipeline --rodar            # 2. run straight from config.yaml
 streamlit run app_quimiometria.py             # 3. web app (browser)
 ```
+
+> Without installing, prepend `PYTHONPATH=src` (e.g. `PYTHONPATH=src python -m guaraci.guaraci`).
+> The web app bootstraps `src/` itself, so `streamlit run app_quimiometria.py` works either way.
 
 **GUARACI** is the bilingual (PT/EN) Rich terminal interface: configure every
 parameter through guided menus, pick analytical techniques (FT-NIR, NIR, MIR,
@@ -108,9 +112,13 @@ metadata are also parsed from the JCAMP-DX `##TITLE=` field. Triplicate tag
 
 ## Output
 
-Each run writes a versioned folder
-`resultados_tcc/PLSDA_OE_{level}_{preproc}_{timestamp}/` with `dados/`,
-`figuras/`, `modelos/` (final `.joblib`), and `logs/resumo_modelo.txt`.
+Each run writes to
+`resultados_tcc/{sample}/{Mode}/PLSDA_OE_{level}_{preproc}_{timestamp}/`,
+where `{sample}` is the dataset label (`tag`, or derived from the input
+folder/file) and `{Mode}` is the scientific objective resolved for the run
+(`Exploratorio` / `Classificacao` / `Quantificacao` — see `docs/MANUAL.md`).
+Inside: `Graficos/` (figures), `Tabelas/` (CSV data), `Relatorios/`
+(`resumo_modelo.txt`, `model_card.md`), and `Modelos/` (final `.joblib`).
 
 ## Known limitations
 
@@ -135,7 +143,7 @@ use, provided authorship is credited and derivatives stay open-source.
 
 **Commercial use:** embedding Guaraci in proprietary/closed-source or commercial
 products requires a separate **commercial license** — see
-[`COMMERCIAL.md`](COMMERCIAL.md) (contact: erleysdacosta@gmail.com). The author
+[`COMMERCIAL.md`](docs/COMMERCIAL.md) (contact: erleysdacosta@gmail.com). The author
 retains full copyright (dual licensing).
 
 Machine-readable metadata in [`CITATION.cff`](CITATION.cff). A permanent Zenodo

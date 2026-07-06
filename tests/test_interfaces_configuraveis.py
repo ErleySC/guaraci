@@ -16,30 +16,32 @@ um ScriptRunContext ativo, não é seguro importar fora de `streamlit run`);
 em vez disso faz parsing de texto de QUALQUER lista `_..._KEYS...` do
 código-fonte (`_DADOS_KEYS`, `_PREPROC_KEYS`, `_MODELO_KEYS_*`, e futuras —
 regex genérico, não uma lista hardcoded de nomes conhecidos, para não ficar
-defasado quando uma aba nova for adicionada). cli_assistente.py é seguro de
-importar (sem I/O bloqueante em nível de módulo) e expõe `MENU_FIELDS`
-diretamente.
+defasado quando uma aba nova for adicionada). Desde a quebra do app por aba
+(item 18), essas listas moram nos módulos de guaraci/app_tabs/, não mais em
+app_quimiometria.py — o scan cobre os dois lugares. cli_assistente.py é
+seguro de importar (sem I/O bloqueante em nível de módulo) e expõe
+`MENU_FIELDS` diretamente.
 """
-import importlib.util
+import glob
 import os
 import re
 
 
 def _chaves_no_app() -> set:
-    caminho = os.path.join(os.path.dirname(__file__), "..", "app_quimiometria.py")
-    with open(caminho, encoding="utf-8") as f:
-        src = f.read()
+    raiz = os.path.join(os.path.dirname(__file__), "..")
+    caminhos = [os.path.join(raiz, "app_quimiometria.py")]
+    caminhos += glob.glob(os.path.join(raiz, "src", "guaraci", "app_tabs", "*.py"))
     chaves = set()
-    for m in re.finditer(r"_\w*KEYS\w*\s*=\s*\[(.*?)\]", src, re.S):
-        chaves.update(re.findall(r'"(\w+)"', m.group(1)))
+    for caminho in caminhos:
+        with open(caminho, encoding="utf-8") as f:
+            src = f.read()
+        for m in re.finditer(r"_\w*KEYS\w*\s*=\s*\[(.*?)\]", src, re.S):
+            chaves.update(re.findall(r'"(\w+)"', m.group(1)))
     return chaves
 
 
 def _menu_fields_do_cli() -> dict:
-    caminho = os.path.join(os.path.dirname(__file__), "..", "cli_assistente.py")
-    spec = importlib.util.spec_from_file_location("cli_assistente", caminho)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    import guaraci.cli_assistente as mod
     return mod.MENU_FIELDS
 
 
@@ -52,7 +54,7 @@ def test_todo_campo_do_config_spec_aparece_no_app(pq):
     assert not faltando, (
         f"Campo(s) do _CONFIG_SPEC sem widget no app web: {sorted(faltando)}. "
         f"Adicione em _MODELO_KEYS_ANALISE/_VALID/_EXTRAS/_FIGURAS "
-        f"(app_quimiometria.py) ou na aba correspondente.")
+        f"(guaraci/app_tabs/modelo.py) ou na aba correspondente.")
 
 
 def test_todo_campo_do_config_spec_aparece_no_menu_cli(pq):

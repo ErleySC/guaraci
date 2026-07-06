@@ -13,7 +13,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from chemometric_stats import dominio_aplicabilidade_amostras_novas
+from guaraci.chemometric_stats import dominio_aplicabilidade_amostras_novas
 
 _CHAVES_PACOTE_REQUERIDAS = {
     "preprocessador", "pls_final", "label_binarizer", "wavenumbers"}

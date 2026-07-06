@@ -1,3 +1,15 @@
+# =============================================================================
+# requirements.txt — MANIFESTO DE DEPLOY (Streamlit Cloud roda o app web a partir
+# daqui). Por isso inclui o superconjunto: núcleo + web + relatórios + benchmark.
+#
+# A FONTE CANÔNICA das dependências é pyproject.toml, que as separa em extras
+# (`[web]`, `[reports]`, `[benchmark]`, `[imagem]`). Para instalar só o que
+# precisa (ex.: uso como biblioteca/CLI, sem Streamlit), prefira:
+#     pip install -e .            # apenas o núcleo científico
+#     pip install -e .[all]       # tudo (equivalente a este arquivo)
+# Mantenha os pins deste arquivo em sincronia com os de pyproject.toml.
+# =============================================================================
+
 # ── Core scientific stack ────────────────────────────────────────────────────
 # Pinned ranges: wide enough for pip solver, tight enough to avoid breaking changes.
 numpy>=1.24,<3.0
