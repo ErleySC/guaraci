@@ -28,7 +28,7 @@ rich>=13.0   # tema visual do assistente de terminal (guaraci.py/cli_assistente.
 # ── Web interface ────────────────────────────────────────────────────────────
 # Pinned to 1.x: st.status() requires >= 1.28; avoids Streamlit 2.x DOM changes.
 streamlit>=1.35,<2.0
-psutil>=5.9,<7.0   # live RAM readout; graceful fallback if absent
+psutil>=5.9,<8.0   # live RAM readout; graceful fallback if absent
 
 # ── Reports (Tab 7) ──────────────────────────────────────────────────────────
 fpdf2>=2.7,<3.0       # PDF with tables and figures

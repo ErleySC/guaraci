@@ -29,13 +29,21 @@ def test_w_retorna_largura_dentro_dos_limites(theme):
     assert 60 <= w <= 100
 
 
-def test_w_robusto_a_falha_do_terminal(theme, monkeypatch):
+def test_w_robusto_a_falha_do_terminal(theme):
     """Se shutil.get_terminal_size lançar, cai no fallback de 80 colunas
-    (clampado para a faixa [60,100])."""
-    def _quebra(*a, **k):
-        raise OSError("sem terminal")
-    monkeypatch.setattr(theme.shutil, "get_terminal_size", _quebra)
-    assert theme._W() == 80
+    (clampado para a faixa [60,100]).
+
+    Usa um context manager (em vez de monkeypatch) de proposito: o patch
+    substitui shutil.get_terminal_size, funcao que o proprio pytest usa para
+    desenhar a barra de progresso. Com monkeypatch, o undo so ocorre no
+    teardown — depois de o pytest ja ter tentado renderizar o progresso do
+    'call', o que fazia a sessao inteira quebrar (INTERNALERROR) de forma
+    intermitente. O `with` reverte ainda dentro do corpo do teste, antes de
+    devolver o controle ao pytest."""
+    from unittest.mock import patch
+    with patch.object(theme.shutil, "get_terminal_size",
+                      side_effect=OSError("sem terminal")):
+        assert theme._W() == 80
 
 
 @pytest.mark.parametrize("fn,tag", [

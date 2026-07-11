@@ -15,6 +15,36 @@ if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
 
+def _cgroup_ram_limit_gb() -> "float | None":
+    """
+    Le o limite de RAM do cgroup (Linux, containers Docker/Streamlit Cloud/
+    Kubernetes), quando existir. psutil.virtual_memory() le /proc/meminfo,
+    que reporta a RAM da maquina HOSPEDEIRA fisica, nao a fatia alocada ao
+    container — em nuvens compartilhadas isso infla o "Total RAM" exibido
+    (ex.: mostra 128GB do host quando o container so tem 1-2GB reservados).
+    Retorna None se nao houver cgroup, se o valor for o sentinela de
+    "sem limite" (cgroup v1: ~2^63-4096; v2: literal "max"), ou se for maior
+    que a RAM total real (nesse caso o cgroup nao esta de fato limitando).
+    """
+    candidatos = [
+        "/sys/fs/cgroup/memory.max",                      # cgroup v2
+        "/sys/fs/cgroup/memory/memory.limit_in_bytes",     # cgroup v1
+    ]
+    for caminho in candidatos:
+        try:
+            with open(caminho, "r", encoding="ascii") as f:
+                bruto = f.read().strip()
+            if bruto == "max":
+                continue
+            limite_bytes = int(bruto)
+            if limite_bytes <= 0 or limite_bytes >= 2**62:
+                continue  # sentinela de "sem limite"
+            return round(limite_bytes / 1024**3, 1)
+        except (OSError, ValueError):
+            continue
+    return None
+
+
 def hardware_probe() -> Dict[str, Any]:
     """
     Detecta RAM, CPU e disco disponiveis.
@@ -28,6 +58,7 @@ def hardware_probe() -> Dict[str, Any]:
         "cpu_fisicos":   1,
         "disco_livre_gb": 5.0,
         "psutil_ok":     False,
+        "ram_limitada_por_container": False,
     }
     try:
         import psutil as _ps
@@ -41,6 +72,18 @@ def hardware_probe() -> Dict[str, Any]:
                 _ps.disk_usage(os.path.abspath(".")).free / 1024**3, 1)
         except Exception:
             logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+
+        limite_cgroup = _cgroup_ram_limit_gb()
+        if limite_cgroup is not None and limite_cgroup < info["ram_total_gb"]:
+            # Container com limite real menor que a RAM do host: o total
+            # exibido passa a ser o limite do container (o que a analise
+            # de fato pode usar), e a RAM livre e recalculada dentro desse
+            # teto (psutil.available pode ultrapassar o limite do cgroup).
+            usada_gb = max(0.0, info["ram_total_gb"] - info["ram_livre_gb"])
+            info["ram_total_gb"] = limite_cgroup
+            info["ram_livre_gb"] = round(max(0.0, limite_cgroup - usada_gb), 1)
+            info["ram_limitada_por_container"] = True
+
         info["psutil_ok"] = True
     except ImportError:
         # Fallback Windows: GlobalMemoryStatusEx via ctypes

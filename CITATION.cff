@@ -17,11 +17,16 @@ authors:
     affiliation: "GEAAp/UFPA — Grupo de Espectroscopia Analítica Aplicada"
     email: "erleysdacosta@gmail.com"
     website: "http://lattes.cnpq.br/5755582193284309"
+    orcid: "https://orcid.org/0009-0005-9655-6349"
 repository-code: "https://github.com/ErleySC/guaraci"
 url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
-version: "31.1.0"
+version: "31.1.1"
 date-released: "2026-07-11"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21311868"
+    description: "Versioned DOI for this release (v31.1.0) on Zenodo."
 keywords:
   - chemometrics
   - spectroscopy
@@ -74,9 +79,10 @@ preferred-citation:
       given-names: "Erley S. da"
       affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
-  version: "31.1.0"
+      orcid: "https://orcid.org/0009-0005-9655-6349"
+  version: "31.1.1"
   year: 2026
   institution:
     name: "GEAAp/UFPA"
   url: "https://github.com/ErleySC/guaraci"
-  # doi: "10.5281/zenodo.XXXXXXX"  <- inserir apos o Zenodo gerar o DOI
+  doi: "10.5281/zenodo.21311868"

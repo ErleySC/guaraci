@@ -8,8 +8,19 @@ from typing import Callable
 import streamlit as st
 
 
-def _hardware_status_widget(pq) -> None:
-    """Exibe o painel de hardware com alertas de compatibilidade."""
+def _hardware_status_widget(pq, is_public_demo: bool = False) -> None:
+    """Exibe o painel de hardware com alertas de compatibilidade.
+
+    No deploy publico (Streamlit Community Cloud), psutil le a RAM da
+    maquina HOSPEDEIRA fisica compartilhada, nao a fatia real alocada ao
+    container — o numero absoluto pode enganar (ex.: "125.8 GB" quando o
+    container so tem ~1-2GB). hardware_probe() ja tenta corrigir isso lendo
+    o limite via cgroup (Linux); quando o cgroup NAO esta exposto (limitacao
+    da propria sandbox do Streamlit Cloud, fora do nosso controle), o numero
+    continua sem confirmacao — nesse caso, no deploy publico, escondemos o
+    valor absoluto (que pode ser falso) e mostramos so o essencial e
+    verdadeiro: que os limites sao ajustados automaticamente.
+    """
     try:
         hw = pq.hardware_probe()
         ram_t = hw["ram_total_gb"]
@@ -18,6 +29,7 @@ def _hardware_status_widget(pq) -> None:
         cpu_l = hw["cpu_logicos"]
         disco = hw["disco_livre_gb"]
         psutil_ok = hw["psutil_ok"]
+        limitada_por_container = hw.get("ram_limitada_por_container", False)
 
         if ram_l < 2.0:
             cor_ram = "🔴"
@@ -32,12 +44,23 @@ def _hardware_status_widget(pq) -> None:
             cor_ram = "🟢"
             dica = "Sufficient RAM for all operations."
 
-        _ram_note = " ⚠️ (Cloud container)" if ram_t > 64 else ""
+        # Numero absoluto de RAM so eh confiavel se: (a) nao estamos no
+        # deploy publico, ou (b) o cgroup confirmou o limite real do
+        # container. Fora isso (deploy publico + cgroup nao exposto), o
+        # valor pode ser o da maquina host inteira — escondido.
+        ram_confiavel = (not is_public_demo) or limitada_por_container
+
         c_hw1, c_hw2, c_hw3 = st.columns(3)
         with c_hw1:
-            st.metric("Total RAM", f"{ram_t:.1f} GB{_ram_note}",
-                      delta=f"{cor_ram} {ram_l:.1f} GB free",
-                      delta_color="off")
+            if ram_confiavel:
+                _ram_note = " (container limit)" if limitada_por_container else ""
+                st.metric("Total RAM", f"{ram_t:.1f} GB{_ram_note}",
+                          delta=f"{cor_ram} {ram_l:.1f} GB free",
+                          delta_color="off")
+            else:
+                st.metric("Total RAM", "Managed by host",
+                          delta="Cloud demo — limits applied automatically",
+                          delta_color="off")
         with c_hw2:
             st.metric("CPU", f"{cpu_f} cores",
                       delta=f"{cpu_l} logical threads",
@@ -47,7 +70,7 @@ def _hardware_status_widget(pq) -> None:
                       delta="working folder",
                       delta_color="off")
 
-        if ram_l < 8.0:
+        if ram_confiavel and ram_l < 8.0:
             st.warning(f"**Limited hardware detected.** {dica}")
         if not psutil_ok:
             st.caption("⚠️ psutil not available — approximate readings. "
@@ -56,7 +79,7 @@ def _hardware_status_widget(pq) -> None:
         st.caption("Hardware: could not detect hardware specifications.")
 
 
-def render(pq, T: Callable[[str], str]) -> None:
+def render(pq, T: Callable[[str], str], is_public_demo: bool = False) -> None:
     """Renderiza a aba Project. `T` é a função de tradução `_T` do app."""
     st.subheader(T("Project Identification"))
     st.caption(
@@ -81,7 +104,7 @@ def render(pq, T: Callable[[str], str]) -> None:
                      placeholder="Describe the objective of the chemometric analysis...")
 
     with st.expander("💻 Hardware Status", expanded=False):
-        _hardware_status_widget(pq)
+        _hardware_status_widget(pq, is_public_demo=is_public_demo)
 
     run_proj = st.session_state.get("proj_nome", "")
     if run_proj:

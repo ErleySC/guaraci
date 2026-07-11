@@ -165,3 +165,69 @@ def test_hardware_probe_disco_livre_com_disk_usage_falhando(monkeypatch):
     hw = hardware.hardware_probe()
     assert hw["psutil_ok"] is True
     assert hw["disco_livre_gb"] == 5.0
+
+
+# ── cgroup (containers Docker/Streamlit Cloud/Kubernetes) ───────────────────
+def test_cgroup_ram_limit_ausente_retorna_none(monkeypatch):
+    """Sem arquivos de cgroup (ambiente sem container, ex.: Windows/macOS
+    bare metal), retorna None e nao afeta o resultado do psutil."""
+    def _sem_arquivo(*a, **k):
+        raise FileNotFoundError()
+    monkeypatch.setattr("builtins.open", _sem_arquivo)
+    assert hardware._cgroup_ram_limit_gb() is None
+
+
+def test_cgroup_ram_limit_sentinela_sem_limite_retorna_none(monkeypatch):
+    """cgroup v2 com 'max' (sem limite real) e cgroup v1 com o sentinela de
+    ~2^63 bytes (praticamente ilimitado) sao ambos ignorados."""
+    import builtins
+    _real_open = builtins.open
+
+    def _fake_open(caminho, *a, **k):
+        if caminho == "/sys/fs/cgroup/memory.max":
+            import io
+            return io.StringIO("max")
+        raise FileNotFoundError()
+    monkeypatch.setattr("builtins.open", _fake_open)
+    assert hardware._cgroup_ram_limit_gb() is None
+
+
+def test_cgroup_ram_limit_com_valor_real_retorna_gb(monkeypatch):
+    """cgroup v2 com limite real (ex.: 2GB, tipico de containers de nuvem
+    gratuitos) e convertido corretamente para GB."""
+    def _fake_open(caminho, *a, **k):
+        if caminho == "/sys/fs/cgroup/memory.max":
+            import io
+            return io.StringIO(str(2 * 1024**3))  # 2 GiB
+        raise FileNotFoundError()
+    monkeypatch.setattr("builtins.open", _fake_open)
+    assert hardware._cgroup_ram_limit_gb() == 2.0
+
+
+def test_hardware_probe_usa_limite_de_cgroup_quando_menor_que_host(monkeypatch):
+    """Caso real do bug reportado: psutil.virtual_memory() reporta a RAM do
+    HOST (ex.: 128GB, maquina fisica compartilhada de um provedor de nuvem),
+    mas o container so tem 2GB alocados via cgroup. hardware_probe() deve
+    reportar o limite do container, nao o do host, e marcar a flag."""
+    import psutil as _ps
+
+    class _MemFake:
+        total = 128 * 1024**3       # 128 GiB do host
+        available = 100 * 1024**3   # 100 GiB "livres" do host (irreal p/ o container)
+
+    monkeypatch.setattr(_ps, "virtual_memory", lambda: _MemFake())
+    monkeypatch.setattr(hardware, "_cgroup_ram_limit_gb", lambda: 2.0)
+
+    hw = hardware.hardware_probe()
+    assert hw["ram_total_gb"] == 2.0
+    assert hw["ram_limitada_por_container"] is True
+    assert hw["ram_livre_gb"] <= 2.0
+
+
+def test_hardware_probe_ignora_cgroup_quando_maior_que_host(monkeypatch):
+    """Se o valor lido do cgroup for MAIOR que a RAM total do host (cgroup
+    nao esta de fato limitando, ou leitura invalida), o total do host
+    prevalece e a flag de container permanece False."""
+    monkeypatch.setattr(hardware, "_cgroup_ram_limit_gb", lambda: 999.0)
+    hw = hardware.hardware_probe()
+    assert hw["ram_limitada_por_container"] is False

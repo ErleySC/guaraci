@@ -455,10 +455,16 @@ st.markdown(f"""
 }}
 /* Header / hero */
 .gua-hero {{ display:flex; align-items:center; gap:14px; margin-bottom:.15rem; }}
-.gua-hero .gua-logo {{ font-size: 2.4rem; line-height:1; }}
-.gua-hero .gua-logo-img {{
-    width: 46px; height: 46px; border-radius: 11px; object-fit: cover;
+.gua-hero .gua-logo {{ font-size: 3.4rem; line-height:1; }}
+.gua-hero .gua-logo-frame {{
+    width: 96px; height: 96px; min-width: 96px; flex-shrink: 0;
+    padding: 8px; box-sizing: border-box;
+    border-radius: 20px; overflow: hidden;
     box-shadow: 0 1px 4px rgba(0,0,0,.18);
+    display: flex; align-items: center; justify-content: center;
+}}
+.gua-hero .gua-logo-img {{
+    width: 100%; height: 100%; object-fit: contain; display: block;
 }}
 .gua-hero .gua-title {{
     font-size: 1.95rem; font-weight: 800; letter-spacing:-.02em; line-height:1.1;
@@ -481,7 +487,8 @@ st.markdown(f"""
 # ──────────────────────────────────────────────────────────────────────────
 
 _logo_uri = _logo_data_uri()
-_logo_html = (f'<img class="gua-logo-img" src="{_logo_uri}" alt="GUARACI">'
+_logo_html = (f'<div class="gua-logo-frame"><img class="gua-logo-img" '
+              f'src="{_logo_uri}" alt="GUARACI"></div>'
               if _logo_uri else '<span class="gua-logo">🧪</span>')
 
 st.markdown(
@@ -546,7 +553,7 @@ valores: Dict = {}  # accumulated by widgets from each tab
 #  TAB 1 — PROJECT (guaraci.app_tabs.projeto — item 18)
 # ==========================================================================
 with tab_proj:
-    _tab_projeto.render(pq, _T)
+    _tab_projeto.render(pq, _T, is_public_demo=_IS_PUBLIC_DEMO)
 
 # ==========================================================================
 #  TAB 2 — DATA
