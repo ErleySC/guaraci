@@ -60,3 +60,8 @@ Thumbs.db
 
 # --- Code review graph (local tool artifact) ---
 .code-review-graph
+
+# --- Saidas de execucao/diagnostico locais (contem caminhos pessoais) ---
+sanity_out.txt
+val_out.txt
+*_out.txt
