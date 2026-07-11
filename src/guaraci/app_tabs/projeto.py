@@ -18,6 +18,7 @@ def _hardware_status_widget(pq) -> None:
         cpu_l = hw["cpu_logicos"]
         disco = hw["disco_livre_gb"]
         psutil_ok = hw["psutil_ok"]
+        limitada_por_container = hw.get("ram_limitada_por_container", False)
 
         if ram_l < 2.0:
             cor_ram = "🔴"
@@ -32,7 +33,14 @@ def _hardware_status_widget(pq) -> None:
             cor_ram = "🟢"
             dica = "Sufficient RAM for all operations."
 
-        _ram_note = " ⚠️ (Cloud container)" if ram_t > 64 else ""
+        if limitada_por_container:
+            _ram_note = " (container limit)"
+        elif ram_t > 64:
+            # psutil sem cgroup exposto (ex.: macOS, ou cgroup nao montado):
+            # nao da pra confirmar o limite real do container, so alertar.
+            _ram_note = " ⚠️ (host value — container may be smaller)"
+        else:
+            _ram_note = ""
         c_hw1, c_hw2, c_hw3 = st.columns(3)
         with c_hw1:
             st.metric("Total RAM", f"{ram_t:.1f} GB{_ram_note}",

@@ -455,9 +455,10 @@ st.markdown(f"""
 }}
 /* Header / hero */
 .gua-hero {{ display:flex; align-items:center; gap:14px; margin-bottom:.15rem; }}
-.gua-hero .gua-logo {{ font-size: 2.4rem; line-height:1; }}
+.gua-hero .gua-logo {{ font-size: 3.4rem; line-height:1; }}
 .gua-hero .gua-logo-img {{
-    width: 46px; height: 46px; border-radius: 11px; object-fit: cover;
+    width: 68px; height: 68px; min-width: 68px; flex-shrink: 0;
+    border-radius: 14px; object-fit: contain;
     box-shadow: 0 1px 4px rgba(0,0,0,.18);
 }}
 .gua-hero .gua-title {{
