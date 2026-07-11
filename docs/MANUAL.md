@@ -33,7 +33,7 @@ O código fica no pacote `guaraci` (em `src/`). Instale uma vez com
 
 | Forma | Comando | Para quem |
 |---|---|---|
-| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 7 abas guiadas. Demo público: <https://guaraci.streamlit.app> |
+| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 8 abas guiadas. Demo público: <https://guaraci.streamlit.app> |
 | **Assistente de terminal** | `guaraci` (ou `PYTHONPATH=src python -m guaraci.guaraci`) | Menu interativo colorido, sem editar código |
 | **Pipeline direto** | `python -m guaraci.pipeline --rodar` | Execução automatizada a partir de `config.yaml` |
 
@@ -413,9 +413,17 @@ próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
 5. **Validação / Predição / Relatórios** — inspecione as métricas por
    classe e as figuras geradas, e baixe os relatórios e o ZIP de
    resultados.
+6. **Sobre** — identidade do projeto, comparativo com softwares
+   comerciais, licença (GPL-3.0-or-later) e como citar (APA/ABNT/BibTeX).
 
 Tema claro/escuro: menu ⋮ → *Settings* → *Theme* (segue a preferência do
 sistema operacional por padrão).
+
+Cabeçalho: logo, versão e badges (licença/instituição) ficam sempre
+visíveis no topo, antes das abas. Quando o app roda **sem** `config.yaml`
+local (caso do deploy público em `guaraci.streamlit.app`, que não tem
+acesso aos dados reais de pesquisa), aparece um aviso de **modo
+demonstração** explicando que os espectros são sintéticos.
 
 ---
 
@@ -429,7 +437,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | Módulo | Responsabilidade |
 |---|---|
 | `pipeline.py` | Orquestrador `executar()`, menu de terminal legado e **fachada de reexport** de todos os módulos |
-| `modos_analise.py` | **Objetivo científico** (Exploratório/Classificação/Quantificação, seção 2.2): fonte única que decide quais figuras/relatórios cada execução gera (`resolver_objetivo`, `deve_gerar`, `descrever_plano`) |
+| `modos_analise.py` | **Objetivo científico** (Exploratório/Classificação/Quantificação, seção 2.2): fonte única que decide quais figuras/relatórios cada execução gera (`resolver_objetivo`, `deve_gerar`, `descrever_plano`). `descrever_plano` filtra tanto pelo objetivo quanto pelos módulos opt-in ligados (DD-SIMCA, OPLS-DA, Benchmark...) — alimenta o painel ao vivo do terminal **e** a prévia "O que será gerado" da aba Model do app web, que atualiza em tempo real conforme os toggles mudam |
 | `config_io.py` | **Fonte única da configuração**: `_CONFIG_SPEC` (campo amigável ↔ atributo), ler/gravar/validar/coagir (`carregar_config`, `salvar_config`, `_coagir_valor`, `_validar_semantico`) |
 | `resultados_io.py` | Escrita dos artefatos de uma corrida: `resumo_modelo.txt`, `model_card.md`, identificadores CSV, notas metodológicas, métricas PLS |
 | `config.py` | *dataclass* `Config`, fonte única de `__version__`/`_NIVEL_NOME` e das constantes de nome de pasta (`NOME_GRAFICOS`/`NOME_TABELAS`/`NOME_RELATORIOS`/`NOME_MODELOS`, seção 3) |
@@ -452,7 +460,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `cli_logic.py` | Lógica pura da CLI de terminal (truncamento, validação de faixas, contagem de arquivos), testável sem *Rich* |
 | `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_metricas_modelo` e `parse_acuracia_por_classe` |
 | `spectra_preview.py` | Carregamento/plotagem de amostra de espectros para prévia (abas Data e Preprocessing) |
-| `app_tabs/` | Um módulo por aba do aplicativo web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `relatorios`) |
+| `app_tabs/` | Um módulo por aba do aplicativo web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `relatorios`, `sobre`) |
 
 Os módulos acima vivem no pacote `src/guaraci/`. Interfaces de usuário:
 `app_quimiometria.py` (web — fica na **raiz**, é o ponto de entrada do
@@ -530,8 +538,7 @@ p. 397-405, 1978.
 
 ---
 
-*Última revisão do manual: gating de figuras/relatórios por objetivo
-científico (Exploratório/Classificação/Quantificação), reestruturação da
-saída em Amostra/Modo/Execução, figura de mérito analítica dedicada, painel
-de acompanhamento em tempo real no terminal e otimização de desempenho fora
-do objetivo Classificação.*
+*Última revisão do manual: prévia "O que será gerado" em tempo real na aba
+Model (web), 8ª aba **Sobre** (identidade, licença, como citar), cabeçalho
+com logo/versão/badges e aviso de modo demonstração no deploy público sem
+`config.yaml` local.*

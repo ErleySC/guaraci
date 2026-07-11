@@ -1,5 +1,5 @@
 """
-guaraci.py v31.0.0 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v31.1.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
 GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
 
@@ -2350,7 +2350,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     _AUTOR_GITHUB  = "https://github.com/ErleySC"
     _AUTOR_EMAIL   = "erleysdacosta@gmail.com"
     _REPO          = "https://github.com/ErleySC/guaraci"
-    _VERSAO        = "31.0.0"
+    _VERSAO        = pq.__version__
     _ANO           = "2026"
     _TITULO_CURTO  = "GUARACI"
     _TITULO_LONGO  = ("Inteligencia Quimiometrica para Matrizes Amazonicas"

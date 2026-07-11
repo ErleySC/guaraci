@@ -99,8 +99,17 @@ def test_plano_de_figuras_por_objetivo():
 
     cfg = Config(objetivo=m.CLASSIFICACAO)
     plano = set(m.plano_de_figuras(cfg))
-    assert {"plsda_scores", "confusao", "roc", "ddsimca"} <= plano
+    assert {"plsda_scores", "confusao", "roc"} <= plano
     assert "regressao" not in plano
+    # nivel=N1 (default) + toggle desligado (default): ddsimca nao entra.
+    assert "ddsimca" not in plano
+
+    # DD-SIMCA no preview segue a mesma regra de pipeline.executar(): N2
+    # forca ligado (mesmo sem tocar no toggle); N1 sempre ignora, mesmo com
+    # o toggle ligado manualmente.
+    assert "ddsimca" in set(m.plano_de_figuras(Config(nivel="N2")))
+    assert "ddsimca" not in set(
+        m.plano_de_figuras(Config(nivel="N1", executar_ddsimca=True)))
 
 
 def test_descrever_plano_retorna_texto_legivel():

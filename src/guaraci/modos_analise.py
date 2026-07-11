@@ -27,7 +27,7 @@ importavel por qualquer camada (motor, CLI, app) sem risco de ciclo.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import TYPE_CHECKING, Callable, Dict, List, Set
 
 if TYPE_CHECKING:                      # evita import circular em runtime
     from guaraci.config import Config
@@ -85,6 +85,48 @@ _FIG_OBJETIVOS: Dict[str, Set[str]] = {
     "shap":               {CLASSIFICACAO},
     # --- Quantificacao (regressao PLS) ---
     "regressao":          {QUANTIFICACAO},
+    "benchmark_regressao": {QUANTIFICACAO},
+}
+
+def _ddsimca_efetivo(cfg: "Config") -> bool:
+    """True se DD-SIMCA sera de fato gerado (ver pipeline.executar()).
+
+    N1 sempre ignora (mesmo com o toggle ligado); N2 forca ligado
+    internamente; demais casos respeitam o toggle explicito do usuario.
+    """
+    nivel = getattr(cfg, "nivel", "N1")
+    if nivel == "N1":
+        return False
+    if nivel == "N2":
+        return True
+    return bool(getattr(cfg, "executar_ddsimca", False))
+
+
+# Requisito ADICIONAL (alem do objetivo) para uma figura opt-in realmente
+# ser gerada: o toggle correspondente em Config precisa estar ligado. Chaves
+# ausentes daqui sao incondicionais dentro do seu objetivo (sempre geradas).
+# Espelha as condicoes reais checadas em pipeline.executar() -- mantido aqui
+# para que o PREVIEW (plano_de_figuras/descrever_plano) nunca prometa uma
+# figura que o motor vai pular por causa de um toggle desligado.
+_FIG_REQUISITO: Dict[str, Callable[["Config"], bool]] = {
+    "vip":                lambda cfg: getattr(cfg, "n_bootstrap_vip", 0) > 0,
+    "score_contribution": lambda cfg: bool(getattr(cfg, "figuras_detalhadas", False)),
+    "martens":            lambda cfg: bool(getattr(cfg, "executar_martens", False)),
+    # DD-SIMCA depende do NIVEL, nao so' do toggle (ver pipeline.executar()):
+    # N1 sempre IGNORA (mesmo com toggle ligado -- diagnostico de pureza nao
+    # agrega a identificacao de especie); N2 FORCA ligado internamente
+    # (quando ha dados de concentracao); demais niveis respeitam o toggle.
+    "ddsimca":            lambda cfg: _ddsimca_efetivo(cfg),
+    "opls":               lambda cfg: bool(getattr(cfg, "executar_opls", False)),
+    "etapa4":             lambda cfg: bool(getattr(cfg, "executar_etapa4", False)),
+    "comparar_pipelines": lambda cfg: bool(getattr(cfg, "comparar_pipelines", False)),
+    "wold":               lambda cfg: bool(getattr(cfg, "executar_wold", False)),
+    "holdout":            lambda cfg: getattr(cfg, "frac_holdout", 0.0) > 0.0,
+    "benchmark":          lambda cfg: bool(getattr(cfg, "executar_benchmark", False)),
+    "monte_carlo":        lambda cfg: bool(getattr(cfg, "executar_monte_carlo", False)),
+    "shap":               lambda cfg: (bool(getattr(cfg, "executar_benchmark", False))
+                                        and bool(getattr(cfg, "executar_shap", False))),
+    "benchmark_regressao": lambda cfg: bool(getattr(cfg, "executar_benchmark_regressao", False)),
 }
 
 # Descricao curta de cada chave (para o painel de terminal / UI).
@@ -110,6 +152,7 @@ _FIG_DESCRICAO: Dict[str, str] = {
     "monte_carlo": "Monte Carlo CV",
     "shap": "SHAP values",
     "regressao": "Regressao PLS + figuras de merito analiticas",
+    "benchmark_regressao": "Auto-Benchmark de regressao (Ridge/Lasso/EN/SVR/RF vs PLS-R)",
 }
 
 
@@ -156,13 +199,20 @@ def figuras_exploratorias_ligadas(cfg: "Config") -> bool:
 
 
 def plano_de_figuras(cfg: "Config") -> List[str]:
-    """Lista ordenada das chaves de figura pertinentes ao objetivo do run.
+    """Lista ordenada das chaves de figura que este run VAI de fato produzir.
+
+    Filtra por dois criterios, ambos necessarios: (1) a figura pertence ao
+    objetivo cientifico resolvido (`_FIG_OBJETIVOS`); (2) se a figura e'
+    opt-in, o toggle correspondente em `cfg` esta ligado (`_FIG_REQUISITO`).
+    Sem o segundo filtro, o preview prometeria figuras (ex.: DD-SIMCA,
+    Benchmark) que o motor pula porque o usuario nao ligou o toggle.
 
     Base para o painel de terminal (secao 5 da auditoria) e para a UI
     informar 'quais graficos serao produzidos' antes de executar.
     """
     obj = resolver_objetivo(cfg)
-    return [chave for chave, objs in _FIG_OBJETIVOS.items() if obj in objs]
+    return [chave for chave, objs in _FIG_OBJETIVOS.items()
+            if obj in objs and _FIG_REQUISITO.get(chave, lambda _cfg: True)(cfg)]
 
 
 def descrever_plano(cfg: "Config") -> List[str]:

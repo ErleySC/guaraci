@@ -185,6 +185,22 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     if erros_run:
         st.error("Invalid fields in configuration:\n- " + "\n- ".join(erros_run))
 
+    _objetivo_run = pq.resolver_objetivo(cfg_run)
+    _plano_run = pq.descrever_plano(cfg_run)
+    with st.expander(
+        f"📋 {T('What will be generated')} — "
+        f"{pq.OBJETIVO_ROTULO.get(_objetivo_run, _objetivo_run.capitalize())}",
+        expanded=False,
+    ):
+        st.caption(
+            T("Preview of the analyses/figures this run will produce, "
+              "based on the scientific objective above."))
+        if _plano_run:
+            st.markdown("\n".join(f"- {item}" for item in _plano_run))
+        else:
+            st.caption(T("No mode-specific figures for this objective "
+                          "(only the always-on overview figures)."))
+
     pode_rodar = ok_run and not erros_run
     rodar = st.button("▶️ " + T("Run pipeline"), type="primary",
                       disabled=not pode_rodar, use_container_width=True,

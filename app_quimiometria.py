@@ -61,6 +61,7 @@ from guaraci.app_tabs import modelo as _tab_modelo
 from guaraci.app_tabs import validacao as _tab_validacao
 from guaraci.app_tabs import predicao as _tab_predicao
 from guaraci.app_tabs import relatorios as _tab_relatorios
+from guaraci.app_tabs import sobre as _tab_sobre
 
 
 def _active_theme() -> str:
@@ -90,10 +91,22 @@ _icon_path = Path(__file__).parent / "assets" / "guaraci_icon.png"
 _page_icon = Image.open(_icon_path) if _icon_path.exists() else "🧪"
 
 st.set_page_config(
-    page_title="Chemometrics Platform",
+    page_title="GUARACI — Chemometrics Platform",
     page_icon=_page_icon,
     layout="wide",
 )
+
+
+@st.cache_data(show_spinner=False)
+def _logo_data_uri() -> str:
+    """Logo embutido como data URI (mesmo arquivo do favicon) — usado no
+    cabeçalho para não depender de um segundo `st.image` fora do layout."""
+    import base64
+    try:
+        return "data:image/png;base64," + base64.b64encode(
+            _icon_path.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
 
 # ──────────────────────────────────────────────────────────────────────────
 # Pipeline engine
@@ -167,6 +180,7 @@ _TR: Dict[str, Dict[str, str]] = {
     "Validation":           {"PT": "Validação",            "EN": "Validation"},
     "Prediction":           {"PT": "Predição",             "EN": "Prediction"},
     "Reports":              {"PT": "Relatórios",           "EN": "Reports"},
+    "About":                {"PT": "Sobre",                "EN": "About"},
     # Sidebar
     "Language":             {"PT": "Idioma",               "EN": "Language"},
     "Dark mode":            {"PT": "Modo noturno",         "EN": "Dark mode"},
@@ -221,6 +235,9 @@ _TR: Dict[str, Dict[str, str]] = {
     "Save to session":        {"PT": "Salvar na sessão",         "EN": "Save to session"},
     "No results yet. Run the pipeline in the Model tab.": {"PT": "Sem resultados ainda. Execute o pipeline na aba Modelo.", "EN": "No results yet. Run the pipeline in the Model tab."},
     "Fix the data input (Data tab) to enable.": {"PT": "Corrija os dados de entrada (aba Dados) para habilitar.", "EN": "Fix the data input (Data tab) to enable."},
+    "What will be generated": {"PT": "O que será gerado", "EN": "What will be generated"},
+    "Preview of the analyses/figures this run will produce, based on the scientific objective above.": {"PT": "Prévia das análises/figuras que esta execução vai produzir, com base no objetivo científico acima.", "EN": "Preview of the analyses/figures this run will produce, based on the scientific objective above."},
+    "No mode-specific figures for this objective (only the always-on overview figures).": {"PT": "Nenhuma figura específica de modo para este objetivo (só as figuras de visão geral, sempre geradas).", "EN": "No mode-specific figures for this objective (only the always-on overview figures)."},
     "Step 1: Fill project info": {"PT": "Passo 1: Preencha as informações do projeto", "EN": "Step 1: Fill project info"},
     "Step 2: Upload or select spectra folder": {"PT": "Passo 2: Faça upload ou selecione a pasta de espectros", "EN": "Step 2: Upload or select spectra folder"},
     "Step 3: Configure parameters and run": {"PT": "Passo 3: Configure os parâmetros e execute", "EN": "Step 3: Configure parameters and run"},
@@ -372,6 +389,8 @@ def _ler_model_card(pasta: str) -> Optional[str]:
 # Initial state
 # ──────────────────────────────────────────────────────────────────────────
 
+_IS_PUBLIC_DEMO = not os.path.exists(_CFG_PATH)
+
 if "cfg_base" not in st.session_state:
     try:
         st.session_state.cfg_base = (
@@ -437,6 +456,10 @@ st.markdown(f"""
 /* Header / hero */
 .gua-hero {{ display:flex; align-items:center; gap:14px; margin-bottom:.15rem; }}
 .gua-hero .gua-logo {{ font-size: 2.4rem; line-height:1; }}
+.gua-hero .gua-logo-img {{
+    width: 46px; height: 46px; border-radius: 11px; object-fit: cover;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}}
 .gua-hero .gua-title {{
     font-size: 1.95rem; font-weight: 800; letter-spacing:-.02em; line-height:1.1;
     background: linear-gradient(90deg, var(--gua-primary), var(--gua-accent));
@@ -444,6 +467,11 @@ st.markdown(f"""
     background-clip: text;
 }}
 .gua-sub {{ color: rgba(128,128,128,1); font-size:.95rem; margin:.15rem 0 0; }}
+.gua-badges {{ display:flex; gap:6px; margin:.35rem 0 0; flex-wrap:wrap; }}
+.gua-badge {{
+    font-size:.72rem; font-weight:600; padding:.15rem .55rem; border-radius:999px;
+    border:1px solid rgba(128,128,128,.3); color: rgba(128,128,128,1);
+}}
 .stTabs [data-baseweb="tab"] {{ font-weight: 600; }}
 </style>
 """, unsafe_allow_html=True)
@@ -452,10 +480,14 @@ st.markdown(f"""
 # Header
 # ──────────────────────────────────────────────────────────────────────────
 
+_logo_uri = _logo_data_uri()
+_logo_html = (f'<img class="gua-logo-img" src="{_logo_uri}" alt="GUARACI">'
+              if _logo_uri else '<span class="gua-logo">🧪</span>')
+
 st.markdown(
-    """
+    f"""
     <div class="gua-hero">
-      <span class="gua-logo">🧪</span>
+      {_logo_html}
       <div>
         <div class="gua-title">GUARACI · Chemometrics Platform</div>
       </div>
@@ -465,16 +497,39 @@ st.markdown(
       group-aware validation (anti-leakage of replicates).
       FT-NIR (.dx) or CSV table (Raman, UV-Vis, FTIR, chromatography…).
     </p>
+    <div class="gua-badges">
+      <span class="gua-badge">v{pq.__version__}</span>
+      <span class="gua-badge">GPL-3.0-or-later</span>
+      <span class="gua-badge">GEAAp/UFPA</span>
+    </div>
     """,
     unsafe_allow_html=True,
 )
+
+if _IS_PUBLIC_DEMO:
+    st.info(
+        "🔬 **Modo demonstração pública** — sem dados reais configurados "
+        "neste servidor, então o pipeline roda com **espectros sintéticos** "
+        "gerados automaticamente (nenhuma amostra real de óleo). Explore "
+        "livremente: todas as análises, gráficos e relatórios funcionam de "
+        "verdade. Para usar com seus próprios dados, envie um CSV na aba "
+        "Data ou rode o projeto localmente — ver "
+        f"[repositório]({_tab_sobre._REPO})."
+        if st.session_state.lang == "PT" else
+        "🔬 **Public demo mode** — no real data configured on this server, "
+        "so the pipeline runs on **synthetic spectra** generated "
+        "automatically (no real oil samples). Feel free to explore: every "
+        "analysis, figure and report is fully functional. To use your own "
+        "data, upload a CSV in the Data tab or run the project locally — "
+        f"see the [repository]({_tab_sobre._REPO})."
+    )
 
 # ──────────────────────────────────────────────────────────────────────────
 # 7 Tabs
 # ──────────────────────────────────────────────────────────────────────────
 
 (tab_proj, tab_dados, tab_preproc, tab_modelo,
- tab_valid, tab_pred, tab_rel) = st.tabs([
+ tab_valid, tab_pred, tab_rel, tab_sobre) = st.tabs([
     "📋 " + _T("Project"),
     "📂 " + _T("Data"),
     "⚗️ " + _T("Preprocessing"),
@@ -482,6 +537,7 @@ st.markdown(
     "📊 " + _T("Validation"),
     "🔮 " + _T("Prediction"),
     "📄 " + _T("Reports"),
+    "ℹ️ " + _T("About"),
 ])
 
 valores: Dict = {}  # accumulated by widgets from each tab
@@ -565,3 +621,10 @@ with tab_rel:
                           _pdf_bytes, _word_bytes, _excel_bytes,
                           _latex_bytes, _pptx_bytes,
                           _ler_resumo, _ler_model_card, _listar_figuras)
+
+
+# ==========================================================================
+#  TAB 8 — ABOUT
+# ==========================================================================
+with tab_sobre:
+    _tab_sobre.render(pq, _T)
