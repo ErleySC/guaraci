@@ -8,6 +8,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.cross_decomposition import PLSRegression
 
+from conftest import achar_pastas_run
+
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
 
@@ -304,11 +306,13 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
     pq.executar(cfg)
 
     # Verify at least one output folder was created with the summary
+    from pathlib import Path
     saida_root = tmp_path / "saida"
-    runs = list(saida_root.iterdir()) if saida_root.exists() else []
+    runs = [Path(r) for r in achar_pastas_run(saida_root)] if saida_root.exists() else []
     assert runs, "No output folder created by executar()"
-    logs_dirs = [r / "logs" for r in runs if (r / "logs").exists()]
-    assert logs_dirs, "No logs/ subfolder found in output"
+    logs_dirs = [r / pq.NOME_RELATORIOS for r in runs
+                 if (r / pq.NOME_RELATORIOS).exists()]
+    assert logs_dirs, f"No {pq.NOME_RELATORIOS}/ subfolder found in output"
     resumo_files = [d / "resumo_modelo.txt" for d in logs_dirs
                     if (d / "resumo_modelo.txt").exists()]
     assert resumo_files, "resumo_modelo.txt not found — pipeline may have crashed silently"

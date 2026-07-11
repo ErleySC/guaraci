@@ -1,3 +1,15 @@
+# =============================================================================
+# requirements.txt — MANIFESTO DE DEPLOY (Streamlit Cloud roda o app web a partir
+# daqui). Por isso inclui o superconjunto: núcleo + web + relatórios + benchmark.
+#
+# A FONTE CANÔNICA das dependências é pyproject.toml, que as separa em extras
+# (`[web]`, `[reports]`, `[benchmark]`, `[imagem]`). Para instalar só o que
+# precisa (ex.: uso como biblioteca/CLI, sem Streamlit), prefira:
+#     pip install -e .            # apenas o núcleo científico
+#     pip install -e .[all]       # tudo (equivalente a este arquivo)
+# Mantenha os pins deste arquivo em sincronia com os de pyproject.toml.
+# =============================================================================
+
 # ── Core scientific stack ────────────────────────────────────────────────────
 # Pinned ranges: wide enough for pip solver, tight enough to avoid breaking changes.
 numpy>=1.24,<3.0
@@ -8,6 +20,10 @@ matplotlib>=3.7,<4.0
 joblib>=1.3,<2.0
 threadpoolctl>=3.1,<4.0  # limits BLAS threads/worker in parallel permutation tests (avoids oversubscription)
 PyYAML>=6.0,<7.0
+Pillow>=9.0   # leitura de imagens no modo_entrada="imagem" (colorimetria digital, prototipo)
+
+# ── CLI interface ────────────────────────────────────────────────────────────
+rich>=13.0   # tema visual do assistente de terminal (guaraci.py/cli_assistente.py)
 
 # ── Web interface ────────────────────────────────────────────────────────────
 # Pinned to 1.x: st.status() requires >= 1.28; avoids Streamlit 2.x DOM changes.

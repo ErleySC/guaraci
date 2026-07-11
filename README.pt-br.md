@@ -4,7 +4,7 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
   <img alt="Licença: GPLv3" src="https://img.shields.io/badge/Licen%C3%A7a-GPLv3-3D8B57">
   <img alt="Licença comercial disponível" src="https://img.shields.io/badge/comercial-licen%C3%A7a%20dispon%C3%ADvel-B8963E">
-  <img alt="Version" src="https://img.shields.io/badge/version-31.0.0-B8963E">
+  <img alt="Version" src="https://img.shields.io/badge/version-31.1.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Idiomas" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-ativo-55B06A">
@@ -81,10 +81,13 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 
 ## Instalação
 
-Requer **Python 3.10+**.
+Requer **Python 3.10+**. O código fica no pacote `guaraci`, em `src/`.
 
 ```bash
-pip install -r requirements.txt
+pip install -e .          # pacote `guaraci` + núcleo científico (adiciona o comando `guaraci`)
+# tudo (web + relatórios + benchmark + imagem):
+pip install -e .[all]
+# alternativa p/ deploy (ex.: Streamlit Cloud): pip install -r requirements.txt
 ```
 
 ---
@@ -100,9 +103,13 @@ cp config.example.yaml config.yaml   # Windows: copy config.example.yaml config.
 
 Edite `pasta_dados` para apontar à pasta com seus arquivos `.dx`.
 
+O código fica no pacote `guaraci`, em `src/`. Instale uma vez com
+`pip install -e .` (ou `pip install -e .[all]` para web/relatórios/benchmark);
+isso disponibiliza o comando `guaraci`. Sem instalar, use `PYTHONPATH=src`.
+
 ### 1. Interface GUARACI (terminal, recomendada)
 ```bash
-python guaraci.py
+guaraci                               # ou: PYTHONPATH=src python -m guaraci.guaraci
 ```
 Interface bilíngue (PT/EN) em Rich: menus guiados para configurar tudo, escolher
 a técnica analítica (FT-NIR, NIR, MIR, Raman, UV-Vis, fluorescência, HPLC, GC-MS,
@@ -111,7 +118,7 @@ assistente científico em qualquer menu.
 
 ### 2. Direto pelo `config.yaml`
 ```bash
-python pipeline.py --rodar
+python -m guaraci.pipeline --rodar
 ```
 
 ### 3. Interface web (navegador)
@@ -119,9 +126,10 @@ python pipeline.py --rodar
 streamlit run app_quimiometria.py
 ```
 Campos clicáveis, validação imediata da pasta, execução com log ao vivo, exibição
-do resumo + figuras e download `.zip` de todos os resultados.
+do resumo + figuras e download `.zip` de todos os resultados. O app coloca `src/`
+no path sozinho, então funciona mesmo sem `pip install -e .`.
 
-> Modo legado: `python pipeline.py --codigo` usa a `Config`
+> Modo legado: `python -m guaraci.pipeline --codigo` usa a `Config`
 > embutida no código (para quem prefere editar o `.py`).
 
 ---
@@ -149,13 +157,17 @@ FFT que, com SG derivativo, vira falso top-VIP).
 
 ## Saída
 
-Cada execução cria uma pasta versionada:
+Cada execução grava em `resultados_tcc/<amostra>/<Modo>/<execução>/`, onde
+`<amostra>` é o rótulo do conjunto de dados (`tag`, ou derivado da pasta/
+arquivo de entrada) e `<Modo>` é o objetivo científico resolvido para a
+execução (`Exploratorio` / `Classificacao` / `Quantificacao` — ver
+`docs/MANUAL.md`, seções 2.2 e 3):
 ```
-resultados_tcc/PLSDA_OE_{nível}_{pré-proc}_{AAAAMMDD_HHMMSS}/
-├── dados/      # metadados, identificadores, comparações (.csv)
-├── figuras/    # scores, VIP, dendrograma, acceptance plots, etc.
-├── modelos/    # modelo final (.joblib: pré-proc + PLS + LabelBinarizer + wavenumbers)
-└── logs/       # resumo_modelo.txt
+resultados_tcc/<amostra>/<Modo>/PLSDA_OE_{nível}_{pré-proc}_{AAAAMMDD_HHMMSS}/
+├── Graficos/    # scores, VIP, dendrograma, acceptance plots, etc.
+├── Tabelas/     # metadados, identificadores, comparações (.csv)
+├── Relatorios/  # resumo_modelo.txt, model_card.md
+└── Modelos/     # modelo final (.joblib: pré-proc + PLS + LabelBinarizer + wavenumbers)
 ```
 
 ---
@@ -201,7 +213,7 @@ acadêmico, desde que a autoria seja creditada e os derivados permaneçam aberto
 
 **Uso comercial:** embutir a Guaraci em produtos proprietários/fechados ou
 comerciais exige uma **licença comercial** separada — veja
-[`COMMERCIAL.md`](COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
+[`COMMERCIAL.md`](docs/COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
 retém integralmente o copyright (licenciamento duplo).
 
 Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
@@ -211,13 +223,13 @@ Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.0.0. GEAAp/UFPA, 2026. Disponível em:
+> Amazônicas**. Versão 31.1.0. GEAAp/UFPA, 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
-> Matrices* (v31.0.0) [Software]. GEAAp/UFPA.
+> Matrices* (v31.1.0) [Software]. GEAAp/UFPA.
 > https://github.com/ErleySC/guaraci
 
 **BibTeX**
@@ -226,7 +238,7 @@ Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
   title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
-  version     = {31.0.0},
+  version     = {31.1.0},
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},

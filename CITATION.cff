@@ -20,8 +20,8 @@ authors:
 repository-code: "https://github.com/ErleySC/guaraci"
 url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
-version: "31.0.0"
-date-released: "2026-07-04"
+version: "31.1.0"
+date-released: "2026-07-11"
 keywords:
   - chemometrics
   - spectroscopy
@@ -74,7 +74,7 @@ preferred-citation:
       given-names: "Erley S. da"
       affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
-  version: "31.0.0"
+  version: "31.1.0"
   year: 2026
   institution:
     name: "GEAAp/UFPA"

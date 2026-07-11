@@ -22,9 +22,12 @@ import pytest
 # módulo de origem -> símbolos que pipeline.py deve reexportar (contrato público)
 CONTRATO = {
     "chemometric_stats": [
-        "vip_scores", "calcular_selectivity_ratio", "hotelling_t2",
+        "vip_scores", "calcular_selectivity_ratio", "teste_incerteza_martens",
+        "dmodx", "dmody", "hotelling_t2",
         "hotelling_t2_limite", "q_residuos", "q_residuos_limite",
-        "variancia_explicada",
+        "variancia_explicada", "figuras_merito_regressao",
+        "dominio_aplicabilidade", "dominio_aplicabilidade_treino",
+        "dominio_aplicabilidade_amostras_novas", "rmse_flat",
     ],
     "paleta_cores": [
         "PALETA", "MARCADORES", "cor", "mapear_cores_classes",
@@ -34,6 +37,11 @@ CONTRATO = {
         "parse_title", "extrair_title_do_dx", "carregar_dados", "carregar_dx",
         "carregar_csv", "gerar_dados_sinteticos", "parse_dx", "parse_spectrum",
         "CODIGO_ESPECIE", "ADULTERANTE_NOME",
+        "kennard_stone", "kennard_stone_split", "kennard_stone_split_group_aware",
+    ],
+    "dados_imagem": [
+        "carregar_imagens", "carregar_imagem_arquivo", "recortar_relativo",
+        "extrair_features_cor", "extrair_features_textura",
     ],
     "preprocessamento": [
         "SNV", "SavGol", "MSC", "construir_preprocessador",
@@ -55,10 +63,12 @@ CONTRATO = {
     "selecao_variaveis": [
         "selecao_ipls", "sparse_plsda_mask", "etapa4_selecao_variaveis",
         "fig_etapa4_ipls", "fig_etapa4_comparacao",
+        "selecao_spa", "selecao_ag", "fig_etapa4_ag_convergencia",
     ],
     "avaliacao_modelos": [
         "PLSDAClassifier", "benchmark_classificadores", "monte_carlo_cv",
         "fig_det_curvas", "fig_shap_benchmark",
+        "benchmark_regressao_por_especie", "fig_benchmark_regressores",
     ],
 }
 
@@ -69,7 +79,7 @@ _CASOS = [(mod, sym) for mod, syms in CONTRATO.items() for sym in syms]
                          ids=[f"{m}.{s}" for m, s in _CASOS])
 def test_reexport_identidade(pq, modulo, simbolo):
     """pq.<simbolo> existe e É o mesmo objeto do módulo de origem."""
-    origem = importlib.import_module(modulo)
+    origem = importlib.import_module("guaraci." + modulo)
     assert hasattr(pq, simbolo), (
         f"pipeline não reexporta '{simbolo}' (esperado de {modulo}.py) — "
         f"o contrato de fachada foi quebrado; guaraci/cli/app dependem de pq.{simbolo}")
