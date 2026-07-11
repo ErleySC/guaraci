@@ -8,6 +8,7 @@
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Idiomas" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-ativo-55B06A">
+  <a href="https://doi.org/10.5281/zenodo.21311868"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21311868.svg"></a>
 </p>
 
 > 🇧🇷 Versão em português (de trabalho). • 🇬🇧 [English version](README.md)
@@ -216,7 +217,8 @@ comerciais exige uma **licença comercial** separada — veja
 [`COMMERCIAL.md`](docs/COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
 retém integralmente o copyright (licenciamento duplo).
 
-Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
+Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff). DOI Zenodo
+permanente: [10.5281/zenodo.21311868](https://doi.org/10.5281/zenodo.21311868).
 
 ## Como citar
 
@@ -242,6 +244,7 @@ Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff).
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},
-  license     = {GPL-3.0-or-later}
+  license     = {GPL-3.0-or-later},
+  doi         = {10.5281/zenodo.21311868}
 }
 ```

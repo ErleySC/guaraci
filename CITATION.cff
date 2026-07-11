@@ -22,6 +22,10 @@ url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
 version: "31.1.0"
 date-released: "2026-07-11"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21311868"
+    description: "Versioned DOI for this release (v31.1.0) on Zenodo."
 keywords:
   - chemometrics
   - spectroscopy
@@ -79,4 +83,4 @@ preferred-citation:
   institution:
     name: "GEAAp/UFPA"
   url: "https://github.com/ErleySC/guaraci"
-  # doi: "10.5281/zenodo.XXXXXXX"  <- inserir apos o Zenodo gerar o DOI
+  doi: "10.5281/zenodo.21311868"
