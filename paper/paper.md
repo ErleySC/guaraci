@@ -73,11 +73,12 @@ same configuration file.
 The software is aimed at two audiences: academic researchers who need
 citable, reproducible chemometric analysis without a commercial license, and
 quality-control laboratories that need the same rigor with an auditable
-trail. `GUARACI` has already been used to support undergraduate thesis work
-authenticating and quantifying adulteration in Amazonian vegetable oils by
-FT-NIR, and its input/output layer is deliberately generic (JCAMP-DX and
-tabular formats) so it can be applied to other matrices and analytical
-techniques without code changes.
+trail. Its input/output layer is deliberately generic (JCAMP-DX and tabular
+formats), so it applies to matrices and analytical techniques beyond the one
+that motivated it, without code changes. The codebase is covered by an
+automated test suite (500+ tests) and continuous integration (linting,
+coverage gate), so contributions and future chemometric methods can be added
+without regressing existing behaviour.
 
 # Acknowledgements
 
