@@ -1,0 +1,88 @@
+---
+title: 'GUARACI: An open, reproducible multi-technique chemometrics platform with leakage-safe validation'
+tags:
+  - Python
+  - chemometrics
+  - spectroscopy
+  - FT-NIR
+  - PLS-DA
+  - SIMCA
+  - food authentication
+  - multivariate analysis
+authors:
+  - name: Erley S. da Costa
+    orcid: "0000-0000-0000-0000"
+    affiliation: 1
+affiliations:
+  - name: Grupo de Espectroscopia Analítica Aplicada (GEAAp), Universidade Federal do Pará (UFPA), Brazil
+    index: 1
+date: 11 July 2026
+bibliography: paper.bib
+---
+
+# Summary
+
+`GUARACI` is an open-source Python platform for chemometric classification,
+authentication, and quantification of complex sample matrices. It targets
+vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
+(HPLC, GC-MS), and resonance (NMR, IMS) data, and implements the standard
+multivariate toolkit used in analytical chemistry — PLS-DA, OPLS-DA
+[@TryggWold2002], PLS regression, PCA, hierarchical clustering, and DD-SIMCA
+one-class modelling [@RodionovaPomerantsev2020] — together with the
+diagnostics and validation battery that turn a fitted model into a defensible
+scientific claim: VIP [@ChongJun2005] and Selectivity Ratio
+[@Rajalahti2009] for variable importance, Hotelling T² and Q-residuals for
+outlier and applicability-domain detection, permutation testing, Wold
+R²Y/Q²Y intercepts, CV-ANOVA, BCa bootstrap confidence intervals, and
+Martens' uncertainty test for PLS coefficients [@MartensMartens2000]. Two
+user-facing interfaces — a bilingual (Portuguese/English) guided terminal
+application and a Streamlit web app — expose the full pipeline without
+requiring the user to write code, while a shared Python package
+(`src/guaraci`) keeps the scientific logic identical across both.
+
+`GUARACI` was originally developed for an undergraduate thesis on the FT-NIR
+authentication of Amazonian vegetable oils, and has since been generalised
+into a matrix- and technique-agnostic platform.
+
+# Statement of need
+
+Laboratories that need rigorous multivariate analysis of spectral or
+chromatographic data today face a choice between two unsatisfactory options.
+General-purpose libraries such as scikit-learn [@Pedregosa2011] provide the
+underlying algorithms but not the chemometric diagnostics
+(VIP, Selectivity Ratio, Hotelling T²/Q-residuals, DD-SIMCA, OPLS-DA) that
+analytical chemists rely on to interpret and validate a model, leaving users
+to reimplement well-established statistics from scratch. Commercial suites
+(e.g. The Unscrambler, SIMCA-P, PLS_Toolbox) provide those diagnostics but are
+closed-source, expensive, and not reproducible or scriptable in an open
+research pipeline.
+
+`GUARACI` fills this gap. Its main methodological differentiator is
+**group-aware (leakage-safe) validation**: samples measured in physical
+replicate are tagged with a group key (`mae_id`) that is honoured by every
+cross-validation and hold-out split (`StratifiedGroupKFold` /
+`GroupShuffleSplit`), preventing replicates of the same physical sample from
+appearing on both sides of a split — a common and under-reported source of
+inflated accuracy in spectroscopy studies. Every run also produces a
+versioned, human- and machine-readable record: figures of merit (LOD, LOQ,
+sensitivity, selectivity), an automatically generated model card
+[@Mitchell2019] documenting intended use and limitations, and a fixed random
+seed, so that a reported result can be independently reproduced from the
+same configuration file.
+
+The software is aimed at two audiences: academic researchers who need
+citable, reproducible chemometric analysis without a commercial license, and
+quality-control laboratories that need the same rigor with an auditable
+trail. `GUARACI` has already been used to support undergraduate thesis work
+authenticating and quantifying adulteration in Amazonian vegetable oils by
+FT-NIR, and its input/output layer is deliberately generic (JCAMP-DX and
+tabular formats) so it can be applied to other matrices and analytical
+techniques without code changes.
+
+# Acknowledgements
+
+The author thanks the Grupo de Espectroscopia Analítica Aplicada (GEAAp) at
+Universidade Federal do Pará (UFPA) for the FT-NIR data and infrastructure
+that motivated this work.
+
+# References

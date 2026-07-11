@@ -150,6 +150,11 @@ retains full copyright (dual licensing).
 Machine-readable metadata in [`CITATION.cff`](CITATION.cff). Permanent Zenodo
 DOI: [10.5281/zenodo.21311868](https://doi.org/10.5281/zenodo.21311868).
 
+## Contributing
+
+Bug reports, feature requests and pull requests are welcome — see
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
