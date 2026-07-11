@@ -8,7 +8,7 @@
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Languages" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-active-55B06A">
-  <a href="https://doi.org/10.5281/zenodo.21311868"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21311868.svg"></a>
+  <a href="https://doi.org/10.5281/zenodo.21313436"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21313436.svg"></a>
 </p>
 
 > 🇬🇧 English (lean). • 🇧🇷 [Versão completa em português](README.pt-br.md)
@@ -148,7 +148,7 @@ products requires a separate **commercial license** — see
 retains full copyright (dual licensing).
 
 Machine-readable metadata in [`CITATION.cff`](CITATION.cff). Permanent Zenodo
-DOI: [10.5281/zenodo.21311868](https://doi.org/10.5281/zenodo.21311868).
+DOI: [10.5281/zenodo.21313436](https://doi.org/10.5281/zenodo.21313436).
 
 ## Contributing
 
@@ -178,6 +178,6 @@ Bug reports, feature requests and pull requests are welcome — see
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},
   license     = {GPL-3.0-or-later},
-  doi         = {10.5281/zenodo.21311868}
+  doi         = {10.5281/zenodo.21313436}
 }
 ```
