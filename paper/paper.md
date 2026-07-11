@@ -11,7 +11,7 @@ tags:
   - multivariate analysis
 authors:
   - name: Erley S. da Costa
-    orcid: "0000-0000-0000-0000"
+    orcid: "0009-0005-9655-6349"
     affiliation: 1
 affiliations:
   - name: Grupo de Espectroscopia Analítica Aplicada (GEAAp), Universidade Federal do Pará (UFPA), Brazil

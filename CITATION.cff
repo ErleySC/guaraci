@@ -17,6 +17,7 @@ authors:
     affiliation: "GEAAp/UFPA — Grupo de Espectroscopia Analítica Aplicada"
     email: "erleysdacosta@gmail.com"
     website: "http://lattes.cnpq.br/5755582193284309"
+    orcid: "https://orcid.org/0009-0005-9655-6349"
 repository-code: "https://github.com/ErleySC/guaraci"
 url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
@@ -78,6 +79,7 @@ preferred-citation:
       given-names: "Erley S. da"
       affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
+      orcid: "https://orcid.org/0009-0005-9655-6349"
   version: "31.1.0"
   year: 2026
   institution:
