@@ -547,7 +547,7 @@ valores: Dict = {}  # accumulated by widgets from each tab
 #  TAB 1 — PROJECT (guaraci.app_tabs.projeto — item 18)
 # ==========================================================================
 with tab_proj:
-    _tab_projeto.render(pq, _T)
+    _tab_projeto.render(pq, _T, is_public_demo=_IS_PUBLIC_DEMO)
 
 # ==========================================================================
 #  TAB 2 — DATA
