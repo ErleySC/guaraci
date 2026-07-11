@@ -4,7 +4,7 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
   <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-3D8B57">
   <img alt="Commercial license available" src="https://img.shields.io/badge/commercial-license%20available-B8963E">
-  <img alt="Version" src="https://img.shields.io/badge/version-31.0.0-B8963E">
+  <img alt="Version" src="https://img.shields.io/badge/version-31.1.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Languages" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-active-55B06A">
@@ -152,13 +152,13 @@ DOI is being generated for this release — update `CITATION.cff` when it is rea
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
-> Matrices* (v31.0.0) [Software]. GEAAp/UFPA.
+> Matrices* (v31.1.0) [Software]. GEAAp/UFPA.
 > https://github.com/ErleySC/guaraci
 
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.0.0. GEAAp/UFPA, 2026. Disponível em:
+> Amazônicas**. Versão 31.1.0. GEAAp/UFPA, 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **BibTeX**
@@ -167,7 +167,7 @@ DOI is being generated for this release — update `CITATION.cff` when it is rea
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
   title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
-  version     = {31.0.0},
+  version     = {31.1.0},
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},
