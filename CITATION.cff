@@ -21,7 +21,7 @@ authors:
 repository-code: "https://github.com/ErleySC/guaraci"
 url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
-version: "31.1.0"
+version: "31.1.1"
 date-released: "2026-07-11"
 identifiers:
   - type: doi
@@ -80,7 +80,7 @@ preferred-citation:
       affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
       orcid: "https://orcid.org/0009-0005-9655-6349"
-  version: "31.1.0"
+  version: "31.1.1"
   year: 2026
   institution:
     name: "GEAAp/UFPA"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "guaraci-chemometrics"
-version = "31.1.0"
+version = "31.1.1"
 description = "GUARACI — multi-technique chemometrics platform for Amazonian matrices (group-aware validation)"
 readme = "README.md"
 license = { file = "LICENSE" }
