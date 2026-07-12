@@ -37,7 +37,11 @@ class LogThreadSafe:
         if self._tee is not None:
             try:
                 self._tee.write(s)
-            except Exception:
+            except (OSError, ValueError):
+                # tee quebrado (ex.: stdout fechado/pipe partido) -- o buffer
+                # acima (fonte do painel) ja recebeu a linha; logar aqui
+                # spamaria a cada escrita (chamado por linha de output do
+                # pipeline inteiro), entao so' para de espelhar, sem crashar.
                 pass
         return len(s)
 
@@ -45,8 +49,8 @@ class LogThreadSafe:
         if self._tee is not None:
             try:
                 self._tee.flush()
-            except Exception:
-                pass
+            except (OSError, ValueError):
+                pass   # mesmo motivo de write() acima
 
     def text(self) -> str:
         with self._lock:
@@ -161,7 +165,7 @@ def coletar_config(cfg_base, valores: Dict):
             continue
         try:
             setattr(cfg, s["attr"], pq._coagir_valor(s, valores[s["key"]]))
-        except Exception as e:
+        except ValueError as e:   # _coagir_valor: valor do widget invalido
             erros.append(f"{s['key']}: {e}")
     return cfg, erros
 

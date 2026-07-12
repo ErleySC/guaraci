@@ -8,8 +8,14 @@ pipeline+CV e são cobertas pelos testes end-to-end 'slow').
 """
 import numpy as np
 from sklearn.metrics import accuracy_score
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedKFold
 
 from guaraci.validacao_estatistica import bootstrap_bca_ci, cv_anova_eriksson
+# Alias com prefixo _ para o pytest NAO coletar a funcao importada como teste
+# (o nome 'teste_permutacao' casa com o padrao de coleta 'test*').
+from guaraci.validacao_estatistica import teste_permutacao as _teste_permutacao
 
 
 # ── bootstrap_bca_ci ─────────────────────────────────────────────────────────
@@ -94,3 +100,48 @@ def test_cv_anova_q2_formula():
     Y_cv = np.array([1.0, 2.0, 4.0, 5.0])        # PRESS = 1+0+0+1 = 2
     r = cv_anova_eriksson(Y, Y_cv, n_components=1)
     assert abs(r["Q2"] - (1.0 - 2.0 / 20.0)) < 1e-9
+
+
+# ── teste_permutacao (Y-randomization) ──────────────────────────────────────
+def _dados_perm(separavel: bool, seed: int):
+    """Dataset binario de 2x20 amostras, 10 variaveis. `separavel=True` cria
+    duas nuvens bem afastadas (sinal real); False = ruido puro (rotulos sem
+    relacao com X)."""
+    rng = np.random.default_rng(seed)
+    n = 40
+    y_int = np.array([0] * (n // 2) + [1] * (n // 2))
+    if separavel:
+        X = np.vstack([rng.normal(-3.0, 0.5, size=(n // 2, 10)),
+                       rng.normal(+3.0, 0.5, size=(n // 2, 10))])
+    else:
+        X = rng.normal(0.0, 1.0, size=(n, 10))
+    Y_bin = np.zeros((n, 2)); Y_bin[np.arange(n), y_int] = 1.0
+    return X, Y_bin, y_int
+
+
+def _factory_pls():
+    return Pipeline([("pls", PLSRegression(n_components=2, scale=False))])
+
+
+def test_permutacao_da_p_baixo_com_sinal_real():
+    """VALIDACAO: com classes bem separadas, a acuracia observada deve superar
+    quase todas as permutacoes -> p pequeno. Se o teste desse p alto aqui,
+    estaria mascarando sinal real como se fosse acaso."""
+    X, Y_bin, y_int = _dados_perm(separavel=True, seed=1)
+    cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=0)
+    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+                           n_perm=40, seed=1)
+    assert res["p_value"] < 0.05
+    assert res["acc_observada"] > 0.9
+
+
+def test_permutacao_da_p_alto_com_rotulos_aleatorios():
+    """VALIDACAO: sob H0 (rotulos sem relacao com X) a acuracia observada e'
+    apenas mais uma amostra da distribuicao permutada -> p NAO deve ser
+    pequeno. Se desse p baixo aqui, seria um falso positivo (acha estrutura
+    onde so ha ruido)."""
+    X, Y_bin, y_int = _dados_perm(separavel=False, seed=2)
+    cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=0)
+    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+                           n_perm=40, seed=2)
+    assert res["p_value"] > 0.10

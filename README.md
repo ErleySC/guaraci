@@ -4,11 +4,11 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
   <img alt="License: GPLv3" src="https://img.shields.io/badge/License-GPLv3-3D8B57">
   <img alt="Commercial license available" src="https://img.shields.io/badge/commercial-license%20available-B8963E">
-  <img alt="Version" src="https://img.shields.io/badge/version-31.1.1-B8963E">
+  <img alt="Version" src="https://img.shields.io/badge/version-31.2.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Languages" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-active-55B06A">
-  <a href="https://doi.org/10.5281/zenodo.21311868"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21311868.svg"></a>
+  <a href="https://doi.org/10.5281/zenodo.21313436"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21313436.svg"></a>
 </p>
 
 > 🇬🇧 English (lean). • 🇧🇷 [Versão completa em português](README.pt-br.md)
@@ -64,7 +64,7 @@ external hold-out. That is what separates an honest metric from an artifact.
 
 ## Features
 
-- **Levels:** N1 species (14 classes) · N2 pure vs. adulterated · N3 adulterant-content regression.
+- **Analysis modes:** species classification (14 classes) · pure vs. adulterated discrimination · adulterant-content quantification (regression).
 - **Preprocessing** (Rinnan et al. 2009 order): MSC/SNV → Savitzky-Golay → mean-centering. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
 - **Models:** PLS-DA, PLS regression, PCA, HCA (Ward), DD-SIMCA (one-class), OPLS-DA.
 - **Validation battery:** permutation test, Wold R²Y/Q²Y intercepts, CV-ANOVA, **BCa bootstrap CIs**, Hotelling T², Q-residuals.
@@ -121,6 +121,24 @@ folder/file) and `{Mode}` is the scientific objective resolved for the run
 Inside: `Graficos/` (figures), `Tabelas/` (CSV data), `Relatorios/`
 (`resumo_modelo.txt`, `model_card.md`), and `Modelos/` (final `.joblib`).
 
+## Validation
+
+Every number in the table below comes from an automated test that runs on
+every commit — see [`docs/VALIDATION.md`](docs/VALIDATION.md) for the full
+table, tolerances, and how to reproduce: PLS-DA matches
+`sklearn.PLSRegression` + argmax exactly (max|Δcoef| = 0.0), SNV/VIP/MSC/
+CV-ANOVA match their defining formulas to numerical tolerance, DD-SIMCA's
+UCL matches the Tracy-Young-Mason/χ² closed forms, OPLS-DA's orthogonal
+component is orthogonal to <1e-6.
+
+## Security
+
+Loading a `.joblib` model executes arbitrary code (it's a pickle) — see
+[`SECURITY.md`](SECURITY.md). Every load in the CLI and web app goes
+through a single guard that refuses to run without explicit confirmation,
+plus a SHA-256 manifest that blocks loading if the file was tampered with
+after export.
+
 ## Known limitations
 
 - **Babaçu vs. Palmiste** overlap — both are palms with near-identical NIR
@@ -148,7 +166,7 @@ products requires a separate **commercial license** — see
 retains full copyright (dual licensing).
 
 Machine-readable metadata in [`CITATION.cff`](CITATION.cff). Permanent Zenodo
-DOI: [10.5281/zenodo.21311868](https://doi.org/10.5281/zenodo.21311868).
+DOI: [10.5281/zenodo.21313436](https://doi.org/10.5281/zenodo.21313436).
 
 ## Contributing
 
@@ -158,13 +176,13 @@ Bug reports, feature requests and pull requests are welcome — see
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
-> Matrices* (v31.1.1) [Software]. GEAAp/UFPA.
+> Matrices* (v31.2.0) [Software]. GEAAp/UFPA.
 > https://github.com/ErleySC/guaraci
 
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.1.1. GEAAp/UFPA, 2026. Disponível em:
+> Amazônicas**. Versão 31.2.0. GEAAp/UFPA, 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **BibTeX**
@@ -173,11 +191,11 @@ Bug reports, feature requests and pull requests are welcome — see
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
   title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
-  version     = {31.1.1},
+  version     = {31.2.0},
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},
   license     = {GPL-3.0-or-later},
-  doi         = {10.5281/zenodo.21311868}
+  doi         = {10.5281/zenodo.21313436}
 }
 ```

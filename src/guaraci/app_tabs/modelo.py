@@ -21,7 +21,9 @@ def _ram_mb() -> Optional[float]:
     try:
         import psutil
         return psutil.Process().memory_info().rss / (1024 * 1024)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- indicador cosmetico best-effort
+        # (psutil ausente ou probe falha por variacao de SO/permissao);
+        # None e' o fallback documentado pelo tipo de retorno Optional.
         return None
 
 
@@ -32,7 +34,11 @@ def _rodar_worker(pq, cfg, logger: _LogThreadSafe, estado: Dict):
             pq.executar(cfg)
         estado["pasta"] = getattr(cfg, "pasta_saida", None)
         estado["erro"] = None
-    except Exception:
+    except Exception:  # noqa: BLE001 -- boundary de topo da thread de
+        # execucao (mesmo padrao de guaraci.py): qualquer excecao do
+        # pipeline precisa ser capturada aqui p/ nao morrer silenciosamente
+        # numa thread -- traceback completo salvo em estado["erro"] e
+        # exibido na UI.
         import traceback
         estado["erro"] = traceback.format_exc()
     finally:
@@ -149,8 +155,11 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                     f"⚠️ Free RAM: **{_ram_l:.1f} GB** — "
                     "SHAP and Monte Carlo CV limits will be adjusted "
                     "automatically. Closing other programs is recommended.")
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except Exception:  # noqa: BLE001 -- aviso cosmetico best-effort
+            # (hardware_probe ja e' fail-safe por contrato, mas psutil pode
+            # variar entre plataformas); sem o aviso, o pipeline ainda roda.
+            logging.getLogger(__name__).debug(
+                "aviso de RAM nao exibido (hardware_probe falhou)")
 
         cols_e = st.columns(2)
         for i, k in enumerate(_MODELO_KEYS_EXTRAS):
@@ -222,7 +231,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
             st.stop()
         try:
             pq.salvar_config(cfg_run, cfg_path)
-        except Exception as _e_cfg:
+        except OSError as _e_cfg:
             # Não impede a execução (a config vai em memória para o worker),
             # mas avisa: sem isso, um filesystem só-leitura (comum no Cloud)
             # falhava em silêncio e "Reload config.yaml" restaurava config antiga.

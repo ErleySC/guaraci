@@ -1,5 +1,5 @@
 """
-guaraci.py v31.1.1 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v31.2.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
 GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
 
@@ -31,13 +31,13 @@ if sys.platform == "win32":
         try:
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except (OSError, ValueError):
+            pass   # stdout/stderr redirecionado p/ algo sem reconfigure util
     try:
         import subprocess
         subprocess.run(["chcp", "65001"], capture_output=True, shell=True)
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except OSError:
+        pass   # chcp indisponivel neste shell
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
 # ---------------------------------------------------------------------------
@@ -486,8 +486,8 @@ GUARACI_TIPS: Dict[str, Dict[str, str]] = {
         "EN": "Tests all 6 pipelines. Use once to find the best one — then fix it and disable this.",
     },
     "nivel": {
-        "PT": "N1 para explorar dados novos, N2 para TCC/publicação, N3 só se tiver tempo (pode levar horas).",
-        "EN": "N1 for new data exploration, N2 for papers/thesis, N3 only if you have time (may take hours).",
+        "PT": "Classificação (N1) para uma checagem rápida por espécie, Discriminação (N2) para TCC/publicação (autenticação completa), Quantificação (N3) só se tiver tempo (pode levar horas).",
+        "EN": "Classification (N1) for a quick per-species check, Discrimination (N2) for papers/thesis (full authentication), Quantification (N3) only if you have time (may take hours).",
     },
     "max_lvs": {
         "PT": "O criterio de Wold para automaticamente antes do maximo. Comece com 40; suba se o modelo nao convergir.",
@@ -604,8 +604,11 @@ def _rotulo_opcao(key: str, op: Any) -> str:
     """Nome amigavel de um valor de opcao (so exibicao; o valor gravado no
     config continua o codigo interno, ex.: N1/N2/N3, puros/todos)."""
     if key == "nivel":
+        # Lidera com o nome amigavel (P8: aposentar N1/N2/N3 como termo
+        # PRIMARIO na UI); o codigo interno fica entre parenteses so' como
+        # referencia tecnica, nunca como o rotulo principal exibido ao usuario.
         nome = pq._NIVEL_NOME.get(str(op), "")
-        return f"{op} — {nome}" if nome else str(op)
+        return f"{nome} ({op})" if nome else str(op)
     if key == "modo_ddsimca":
         return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(op), str(op))
     return str(op)
@@ -1058,7 +1061,9 @@ def _print_run_box(cfg: Config) -> None:
         else:
             ram_cor, ram_ico = PR, "●○○"
         ram_txt = f"[{ram_cor}]{ram_ico}  RAM {ram_livre:.1f}/{ram_total:.0f} GB[/{ram_cor}]"
-    except Exception:
+    except Exception:  # noqa: BLE001 -- indicador visual best-effort (psutil
+        # ausente ou probe falha por variacao de SO); "N/A" e' o fallback
+        # documentado, nunca impede a tela de renderizar.
         ram_txt = f"[{PM}]RAM N/A[/{PM}]"
 
     # Prontidao + cor da chamada
@@ -1212,7 +1217,7 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     nome     = _nome_campo(key)
     val_atual = _get_val(cfg, key)
     # Valor interno cru (ex.: "N1") para comparar com as opcoes — val_atual
-    # pode ser um rotulo amigavel de exibicao ("N1 — Classificacao...").
+    # pode ser um rotulo amigavel de exibicao ("Classificacao... (N1)").
     val_cru   = _attr_para_yaml(spec, cfg)
     tipo      = spec.get("tipo", "str")
     opcoes    = spec.get("opcoes")
@@ -1269,7 +1274,7 @@ def _editar_campo(cfg: Config, key: str) -> bool:
         msg = _t("atualizado", campo=nome, valor=raw)
         console.print(f"  [g]✓ {escape(msg)}[/g]")
         return True
-    except Exception as e:
+    except ValueError as e:   # _set_val/_coagir_valor: valor digitado invalido
         console.print(f"  [err]Erro: {escape(str(e))}[/err]")
         return False
 
@@ -1557,8 +1562,8 @@ def menu_visualizacao(cfg: Config) -> None:
             vcfg["grid_style"] = ests[(ests.index(gs)+1)%3] if gs in ests else "dotted"
         elif r == "4":
             try: vcfg["grid_alpha"] = float(_input("  Valor [0.1-0.9]: "))
-            except Exception:
-                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+            except ValueError:
+                pass   # entrada nao-numerica -- mantem o valor anterior
         _salvar_visual_cfg(vcfg)
 
     def _alpha():
@@ -1587,7 +1592,9 @@ def menu_visualizacao(cfg: Config) -> None:
         try:
             fn(cfg) if fn else (_ for _ in ()).throw(ValueError("Funcao nao disponivel"))
             console.print(f"  [g]✓ {_t('viz_ok')}[/g]")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- dispatcher generico p/
+            # varias figuras diferentes (heatmap/matriz de confusao/biplot/
+            # variancia); erro exibido ao usuario via viz_erro, tela continua.
             console.print(f"  [err]{_t('viz_erro', e=str(e))}[/err]")
         _pause()
 
@@ -1682,7 +1689,7 @@ def menu_tecnica(cfg: Config) -> None:
             console.print(f"  [g]✓ {escape(_trunc(nm_sel, 44))} {'selecionado' if lang=='PT' else 'selected'}.[/g]")
             console.print(f"  [info]  {'Faixa' if lang=='PT' else 'Range'}: {escape(_trunc(str(fa_str), 44))}[/info]")
             console.print(f"  [info]  Preproc.: {escape(str(prep))}  |  {'Modo' if lang=='PT' else 'Mode'}: {modo}[/info]")
-        except Exception as e:
+        except ValueError as e:   # _set_val: faixa/preproc/modo invalido p/ a tecnica
             console.print(f"  [err]{escape(str(e))}[/err]")
 
     while True:
@@ -1765,14 +1772,14 @@ def menu_codificacao(cfg: Config) -> None:
         try:
             p = _CODIGOS_PATH
             return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-        except Exception:
-            return {}
+        except (OSError, json.JSONDecodeError):
+            return {}   # arquivo ausente/corrompido -- sem codigos extras do usuario
 
     def _salvar_cod(d: dict) -> bool:
         try:
             _CODIGOS_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
             return True
-        except Exception as e:
+        except OSError as e:
             # Antes engolia o erro: o usuario "salvava" um codigo, nao via aviso,
             # e ele sumia no proximo inicio se a gravacao tivesse falhado.
             console.print(f"[err]✗ Falha ao salvar codigos: {e}[/err]")
@@ -1845,7 +1852,7 @@ def menu_codificacao(cfg: Config) -> None:
             msg = (f"{n_add} codigo(s) importado(s)." if lang=="PT"
                    else f"{n_add} code(s) imported.")
             console.print(f"  [g]✓ {msg}[/g]")
-        except Exception as e:
+        except (OSError, UnicodeDecodeError, _csv.Error) as e:
             console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
         _pause()
 
@@ -1864,7 +1871,7 @@ def menu_codificacao(cfg: Config) -> None:
             msg = (f"Exportado para: {destino}" if lang=="PT"
                    else f"Exported to: {destino}")
             console.print(f"  [g]✓ {escape(msg)}[/g]")
-        except Exception as e:
+        except OSError as e:
             console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
         _pause()
 
@@ -2120,6 +2127,21 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
         console.print(f"  [{PR}]{nao_encontrado}: {escape(cam_modelo)}[/{PR}]")
         _pause(); return
 
+    # Aviso de seguranca (P5): .joblib e' pickle -- executa codigo arbitrario
+    # NO CARREGAMENTO, antes de qualquer validacao ser possivel. Confirmacao
+    # explicita do operador e' a unica protecao real (ver docs/SECURITY.md).
+    aviso_pickle = (
+        f"  [{PR}]⚠ '.joblib' executa codigo ao ser carregado (formato "
+        f"pickle). So confirme se voce mesmo treinou este modelo ou confia "
+        f"plenamente na origem.[/{PR}]" if is_pt else
+        f"  [{PR}]⚠ '.joblib' runs code when loaded (pickle format). Only "
+        f"confirm if you trained this model yourself or fully trust its "
+        f"source.[/{PR}]")
+    console.print(aviso_pickle)
+    conf_lbl = "Confirma o carregamento? (s/n)" if is_pt else "Confirm loading? (y/n)"
+    if _ask(f"  [{PA}]{conf_lbl}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+        console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
     cam_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
     if not cam_csv:
         return
@@ -2135,20 +2157,22 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
         cam_saida = padrao_saida
 
     try:
-        import joblib
         import pandas as pd
         import guaraci.predicao as _pred
         status_msg = ("Carregando modelo e aplicando..." if is_pt
                        else "Loading model and applying...")
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
-            pkg = joblib.load(cam_modelo)
+            # confiar=True: o operador ja confirmou explicitamente acima.
+            pkg = _pred.carregar_modelo(cam_modelo, confiar=True)
             _pred.validar_pacote_modelo(pkg)
             X_new, wn_new, meta_df = _pred.carregar_csv_predicao(cam_csv)
             df_res = _pred.predizer_amostras(pkg, X_new, wn_new)
             if len(meta_df.columns) > 0 and len(meta_df) == len(df_res):
                 df_res = pd.concat([meta_df.reset_index(drop=True), df_res], axis=1)
             df_res.to_csv(cam_saida, index=False, sep=";", decimal=",")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- multi-etapa (joblib.load +
+        # validacao do pacote + parsing CSV + predicao + escrita); erro
+        # exibido ao usuario, tela volta ao menu sem crashar a CLI.
         console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
         _pause(); return
 
@@ -2233,8 +2257,12 @@ def menu_perfis(cfg: Config) -> None:
             if sp:
                 try:
                     setattr(cfg, sp["attr"], v); n += 1
-                except Exception:
-                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+                except (AttributeError, TypeError) as _e_prof:
+                    # Campo de perfil desalinhado com o Config atual (dado
+                    # constante do PROFILES, nao input do usuario) -- pulado.
+                    logging.getLogger(__name__).debug(
+                        "perfil '%s': campo '%s' nao aplicado: %s",
+                        pname, k, _e_prof)
         paleta = pdata.get("_paleta")
         if paleta and PALETAS_COR and paleta in PALETAS_COR:
             vcfg = _carregar_visual_cfg()
@@ -2880,8 +2908,9 @@ def _rodar_pipeline(cfg: Config) -> None:
     try:
         cod_u = _carregar_codigos_usuario()
         if cod_u: pq.CODIGO_ESPECIE.update(cod_u)
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except (OSError, json.JSONDecodeError) as _e_cod:
+        logging.getLogger(__name__).debug(
+            "codigos de usuario nao mesclados: %s", _e_cod)
 
     # Aplicar configuracoes visuais
     try:
@@ -2891,8 +2920,8 @@ def _rodar_pipeline(cfg: Config) -> None:
         vcfg = _carregar_visual_cfg()
         paleta = PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
         try: plt.style.use(paleta.get("style", "default"))
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except OSError:
+            pass   # nome de estilo matplotlib desconhecido -- mantem o default
         cores = paleta.get("cores")
         if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
         cmap = paleta.get("cmap")
@@ -2907,8 +2936,11 @@ def _rodar_pipeline(cfg: Config) -> None:
             plt.rcParams["axes.grid"] = False
         alpha_map = {"baixo":0.9,"medio":0.65,"alto":0.35}
         plt.rcParams["lines.alpha"] = alpha_map.get(vcfg.get("alpha_pontos","medio"), 0.65)
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except Exception as _e_vis:  # noqa: BLE001 -- configuracao visual
+        # cosmetica (paleta/fonte/grid); um erro aqui nunca deve impedir a
+        # corrida de acontecer, so' os defaults do matplotlib ficam em uso.
+        logging.getLogger(__name__).debug(
+            "configuracao visual nao aplicada: %s", _e_vis)
 
     # Sincronizar DPI do visual_config antes de salvar
     _sincronizar_dpi(cfg)
@@ -2940,7 +2972,11 @@ def _rodar_pipeline(cfg: Config) -> None:
                 executar(cfg)
         except KeyboardInterrupt:
             _done["error"] = _t("exec_interrompido")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- boundary de topo da thread de
+            # execucao: QUALQUER excecao do pipeline (1269 linhas de
+            # executar()) precisa ser capturada aqui para nao matar a
+            # thread silenciosamente -- e' reportada em _done["error"] e
+            # exibida ao usuario, nunca perdida.
             _done["error"] = str(e)
         finally:
             _done["ok"] = True
@@ -3003,7 +3039,7 @@ def _salvar_yaml(cfg: Config) -> None:
         salvar_config(cfg, str(path))
         _lbl = "Salvo" if _lang() == "PT" else "Saved"
         console.print(f"  [g]✓ {_lbl}: {escape(str(path))}[/g]")
-    except Exception as e:
+    except OSError as e:
         console.print(f"  [err]{escape(str(e))}[/err]")
     _pause()
 
@@ -3030,11 +3066,15 @@ def _carregar_yaml(cfg: Config) -> None:
             cfg2 = carregar_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
-                except Exception:
-                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+                except (AttributeError, TypeError) as _e_attr:
+                    # Campo do perfil salvo desalinhado com o Config atual
+                    # (ex.: perfil antigo de uma versao com schema diferente).
+                    logging.getLogger(__name__).debug(
+                        "perfil '%s': campo '%s' nao aplicado: %s",
+                        path.stem, k, _e_attr)
             _lbl = "Carregado" if _lang() == "PT" else "Loaded"
             console.print(f"  [g]✓ {_lbl}: {escape(path.stem)}[/g]")
-        except Exception as e:
+        except (RuntimeError, FileNotFoundError, ValueError) as e:
             console.print(f"  [err]{escape(str(e))}[/err]")
     else:
         console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]")
@@ -3051,8 +3091,9 @@ def main() -> None:
     if _CFG_PATH.exists():
         try:
             cfg = carregar_config(str(_CFG_PATH))
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except (RuntimeError, FileNotFoundError, ValueError) as _e_cfg:
+            logging.getLogger(__name__).debug(
+                "config.yaml nao carregado no boot, usando defaults: %s", _e_cfg)
 
     # Recuperar idioma salvo
     try:

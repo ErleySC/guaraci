@@ -121,8 +121,11 @@ def teste_incerteza_martens(
                 b_fold = b_fold.reshape(1, -1)
             if b_fold.shape == coef_completo.shape:
                 coefs_fold.append(b_fold)
-        except Exception:
-            continue   # fold degenerado (ex.: classe ausente no treino) -- descartado
+        except (ValueError, np.linalg.LinAlgError):
+            # Fold degenerado (ex.: classe ausente no treino, matriz singular)
+            # -- descartado; n_folds_validos abaixo reflete a perda. Excecoes
+            # fora deste tipo (ex.: bug real) NAO sao engolidas.
+            continue
 
     n_folds = len(coefs_fold)
     if n_folds < 3:

@@ -8,7 +8,6 @@ guaraci.reports — ver item 18, primeira fatia).
 """
 from __future__ import annotations
 
-import logging
 import os
 from typing import Callable, Dict
 
@@ -43,8 +42,8 @@ def _tamanho_pasta_mb(pasta_p: str) -> float:
     for raiz, _, arqs in os.walk(pasta_p):
         for a in arqs:
             try: tot += os.path.getsize(os.path.join(raiz, a))
-            except Exception:
-                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+            except OSError:
+                pass   # arquivo removido/inacessivel entre o walk e o stat
     return round(tot / (1024 * 1024), 1)
 
 
@@ -93,7 +92,9 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
                 mime="application/zip",
                 use_container_width=True,
             )
-        except Exception as e_zip:
+        except Exception as e_zip:  # noqa: BLE001 -- 1 botao de download de 6
+            # (ZIP/PDF/Word/Excel/LaTeX/PPTX, cada um c/ gerador proprio);
+            # erro exibido ao usuario via st.warning, os demais continuam.
             st.warning(f"ZIP: {e_zip}")
 
     with col_b:
@@ -106,7 +107,8 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
                 use_container_width=True,
                 type="primary",
             )
-        except Exception as e_pdf:
+        except Exception as e_pdf:  # noqa: BLE001 -- mesma logica: 1 de 6
+            # botoes de download, erro exibido via st.error.
             st.error(f"PDF: {e_pdf}")
 
     # Row 2: Word + Excel
@@ -121,7 +123,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
                      ".wordprocessingml.document",
                 use_container_width=True,
             )
-        except Exception as e_word:
+        except Exception as e_word:  # noqa: BLE001 -- 1 de 6 botoes de download.
             st.error(f"Word: {e_word}")
 
     with col_d:
@@ -134,7 +136,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
                      ".spreadsheetml.sheet",
                 use_container_width=True,
             )
-        except Exception as e_xlsx:
+        except Exception as e_xlsx:  # noqa: BLE001 -- 1 de 6 botoes de download.
             st.error(f"Excel: {e_xlsx}")
 
     # Row 3: LaTeX + PowerPoint
@@ -148,7 +150,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
                 mime="text/plain",
                 use_container_width=True,
             )
-        except Exception as e_tex:
+        except Exception as e_tex:  # noqa: BLE001 -- 1 de 6 botoes de download.
             st.error(f"LaTeX: {e_tex}")
 
     with col_f:
@@ -168,7 +170,8 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
                 "Run: `pip install python-pptx>=1.1`",
                 icon="⚠️",
             )
-        except Exception as e_pptx:
+        except Exception as e_pptx:  # noqa: BLE001 -- 1 de 6 botoes de download
+            # (ImportError ja tratado acima separadamente).
             st.error(f"PowerPoint: {e_pptx}")
 
     st.divider()

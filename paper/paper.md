@@ -16,7 +16,7 @@ authors:
 affiliations:
   - name: Grupo de Espectroscopia Analítica Aplicada (GEAAp), Universidade Federal do Pará (UFPA), Brazil
     index: 1
-date: 11 July 2026
+date: 12 July 2026
 bibliography: paper.bib
 ---
 
@@ -63,12 +63,20 @@ replicate are tagged with a group key (`mae_id`) that is honoured by every
 cross-validation and hold-out split (`StratifiedGroupKFold` /
 `GroupShuffleSplit`), preventing replicates of the same physical sample from
 appearing on both sides of a split — a common and under-reported source of
-inflated accuracy in spectroscopy studies. Every run also produces a
-versioned, human- and machine-readable record: figures of merit (LOD, LOQ,
-sensitivity, selectivity), an automatically generated model card
-[@Mitchell2019] documenting intended use and limitations, and a fixed random
-seed, so that a reported result can be independently reproduced from the
-same configuration file.
+inflated accuracy in spectroscopy studies. This same principle governs
+one-class (DD-SIMCA) sensitivity: it is estimated by leave-one-group-out
+cross-validation rather than by re-substitution on the training set, and the
+number of groups used is always reported alongside the estimate so that
+users can judge its reliability instead of trusting a single inflated
+percentage. Every run also produces a versioned, human- and
+machine-readable record: figures of merit (LOD, LOQ, sensitivity,
+selectivity), an automatically generated model card [@Mitchell2019]
+documenting intended use and limitations, and a fixed random seed, so that a
+reported result can be independently reproduced from the same configuration
+file. Saved models are accompanied by a SHA-256 integrity manifest, and
+loading a model requires an explicit trust flag, since deserialising a
+`.joblib` file executes arbitrary code — a risk that is otherwise easy to
+overlook when sharing pretrained models between labs.
 
 The software is aimed at two audiences: academic researchers who need
 citable, reproducible chemometric analysis without a commercial license, and
@@ -76,9 +84,11 @@ quality-control laboratories that need the same rigor with an auditable
 trail. Its input/output layer is deliberately generic (JCAMP-DX and tabular
 formats), so it applies to matrices and analytical techniques beyond the one
 that motivated it, without code changes. The codebase is covered by an
-automated test suite (500+ tests) and continuous integration (linting,
-coverage gate), so contributions and future chemometric methods can be added
-without regressing existing behaviour.
+automated test suite (525+ tests) and continuous integration (linting,
+coverage gate), and each implemented method is checked against a reference
+implementation or a closed-form analytical property (documented in
+`docs/VALIDATION.md`), so contributions and future chemometric methods can
+be added without regressing existing behaviour.
 
 # Acknowledgements
 

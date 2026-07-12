@@ -21,7 +21,8 @@ estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
 6. [Fluxo típico na interface web](#6-fluxo-típico-na-interface-web)
 7. [Mapa dos módulos (para desenvolvedores)](#7-mapa-dos-módulos-para-desenvolvedores)
 8. [Desenvolvimento](#8-desenvolvimento)
-9. [Referências](#referências)
+9. [Limitações conhecidas](#9-limitações-conhecidas)
+10. [Referências](#referências)
 
 ---
 
@@ -70,6 +71,15 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 - **N2 — Discriminação (puro vs. adulterado).**
   Autentica a pureza **por espécie** via **DD-SIMCA** *one-class* (T² e
   Q-resíduos com limites de aceitação específicos por classe).
+  A **sensibilidade** (fração de puros aceitos) é estimada por
+  **leave-one-group-out (LOGO) por réplica `mae_id`**, não por
+  re-substituição: para cada grupo de réplica, o modelo é retreinado nos
+  demais e testado no grupo retido. Toda figura, tabela e relatório mostra o
+  **número de grupos** ao lado da sensibilidade; com **menos de 10 grupos** o
+  valor vem acompanhado de aviso de incerteza (exploratório) e, com **apenas
+  1 grupo** de puros, é reportado como `n/a (não validado)` — sem replicação
+  independente não há validação possível. A especificidade (rejeição de
+  adulterados) permanece uma medida externa legítima.
 
 - **N3 — Quantificação (% de adulterante).**
   Estima o teor de adulterante por **regressão PLS calibrada por espécie**
@@ -91,6 +101,19 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   aleatória; com réplicas físicas, colapsa cada grupo T1/T2/T3 num espectro
   médio antes de selecionar, preservando o mesmo invariante de nunca separar
   réplicas entre calibração e validação).
+  Gera ainda o **mapa de calor espécie × adulterante**
+  (`figN3_heatmap_especie_adulterante.png`): um **R²cv** (R² em validação
+  cruzada *group-aware* — mede o acerto do teor em amostras não vistas no
+  treino) por combinação de espécie e adulterante. Existe porque a regressão
+  que *junta* os adulterantes de uma espécie mascara que alguns adulterantes
+  simplesmente **não são quantificáveis** (o sinal afoga no ruído). Cada
+  célula **abaixo do limiar de aceite (R²cv = 0,70)** aparece **hachurada e em
+  negrito** (nunca some), célula sem dados suficientes vira cinza com "n/a", e
+  o título + o `resumo_modelo.txt` trazem o **contador de falhas** (ex.: "3/9
+  combinações abaixo de R²cv = 0,70") — para que uma quantificação que só
+  funciona em parte das combinações não seja lida como sucesso geral. O
+  adulterante de cada amostra é derivado do `mae_id`. *(No modo sintético, ative
+  com `sint_adulterantes` no `config.yaml`, ex.: `["S","M","A"]`.)*
 
 ### 2.2 Objetivo científico: Exploratório, Classificação, Quantificação
 
@@ -124,14 +147,16 @@ supervisionado.
 
 | Objetivo | Figuras/relatórios pertinentes |
 |---|---|
-| **Exploratório** | PCA (*scores*), HCA (dendrograma), *loadings* PCA, efeito do pré-processamento |
+| **Exploratório** | PCA (*scores*), HCA (dendrograma), *loadings* PCA, *biplot* PCA (scores + loadings sobrepostos), efeito do pré-processamento |
 | **Classificação** | PLS-DA (*scores*), matriz de confusão, ROC/AUC, VIP, seleção de LVs, Selectivity Ratio, DD-SIMCA, OPLS-DA, Etapa 4, teste de Wold, holdout, teste de Martens, Auto-Benchmark, Monte Carlo CV, SHAP |
 | **Quantificação** | Regressão PLS + figuras de mérito analíticas (LOD/LOQ/SEN/SEL) |
 
-Figuras de **contexto geral** — PCA de *scores* (visão geral) e o painel de
-*outliers* T²/Q — aparecem em **qualquer** objetivo, pois derivam do próprio
-ajuste do modelo usado para a visão geral da amostragem, independentemente
-do propósito específico da corrida.
+Figuras de **contexto geral** — **espectros médios por classe** (banda =
+±1 desvio-padrão, dado bruto antes de qualquer modelagem), PCA de *scores*
+(visão geral) e o painel de *outliers* T²/Q — aparecem em **qualquer**
+objetivo, pois oferecem contexto químico/diagnóstico válido
+independentemente do propósito específico da corrida (a primeira nem
+depende de um modelo ajustado — é só o dado bruto agrupado por classe).
 
 **Otimização de desempenho:** a filtragem por objetivo não suprime apenas a
 *figura* — também evita a **computação** cara que só interessaria à
@@ -154,16 +179,17 @@ aparecerem como valores não computados.
   **espécie** (mesmo alvo do PLS-DA, via LDA quando há mais de duas
   classes), então continua disponível como extra no objetivo Classificação.
 
-**Conjunto padrão de fábrica (~7 a 9 figuras "*core*"), qualquer nível:**
-PCA (*scores*), PLS-DA (*scores*), *outliers* T²/Q, matriz de confusão,
-ROC/AUC, curva de seleção de LVs, VIP + Selectivity Ratio — mais *bootstrap*
-VIP e avaliação em *holdout* quando os respectivos parâmetros estão ativos
-(padrão). N2 soma a figura de aceitação DD-SIMCA; N3 soma a figura de
-regressão PLS e a figura de mérito analítica dedicada. Tudo o mais —
-OPLS-DA, Etapa 4 (seleção de variáveis), comparação de *pipelines* de
-pré-processamento, HCA comparativo, teste de Wold, CV-ANOVA, Auto-Benchmark,
-Monte Carlo CV, SHAP, figuras detalhadas (`figuras_detalhadas`) — é *opt-in*:
-o usuário liga explicitamente quando quiser ir além do conjunto padrão.
+**Conjunto padrão de fábrica (~8 a 10 figuras "*core*"), qualquer nível:**
+espectros médios por classe, PCA (*scores*), PLS-DA (*scores*), *outliers*
+T²/Q, matriz de confusão, ROC/AUC, curva de seleção de LVs, VIP +
+Selectivity Ratio — mais *bootstrap* VIP e avaliação em *holdout* quando os
+respectivos parâmetros estão ativos (padrão). N2 soma a figura de aceitação
+DD-SIMCA; N3 soma a figura de regressão PLS e a figura de mérito analítica
+dedicada. Tudo o mais — OPLS-DA, Etapa 4 (seleção de variáveis), *biplot*
+PCA, comparação de *pipelines* de pré-processamento, HCA comparativo, teste
+de Wold, CV-ANOVA, Auto-Benchmark, Monte Carlo CV, SHAP, figuras detalhadas
+(`figuras_detalhadas`) — é *opt-in*: o usuário liga explicitamente quando
+quiser ir além do conjunto padrão.
 
 ---
 
@@ -356,17 +382,27 @@ Disponível em dois lugares, com a **mesma lógica científica**
   classe mais os dois diagnósticos acima. Útil para automação/*scripts* e
   integração com LIMS sem precisar do navegador.
 
-> **Segurança — upload de modelo em implantação pública.** Um arquivo
-> `.joblib` é um *pickle*: carregá-lo **executa código** contido no
-> arquivo. Em uso local (própria máquina) isso é seguro, pois o modelo é
-> do próprio usuário. Mas num demonstrativo hospedado publicamente, aceitar
-> *upload* de `.joblib` de qualquer visitante é um vetor de execução remota
-> de código (RCE). Por isso, na implantação pública, defina a variável de
-> ambiente **`GUARACI_DISABLE_MODEL_UPLOAD=1`**: o aplicativo esconde o
-> carregador de modelo e passa a aceitar apenas **caminho local**
-> (controlado pelo operador). O *upload* de CSV de espectros permanece
-> liberado (dado inerte). Sem a variável (padrão), o *upload* fica
-> habilitado com um aviso — apropriado para uso local com um único usuário.
+> **Segurança — carregar um `.joblib` executa código.** Um arquivo `.joblib`
+> é um *pickle*: carregá-lo **executa qualquer código contido nele**, antes
+> de qualquer validação de conteúdo ser possível. Por isso, todo
+> carregamento de modelo (CLI e aplicativo) passa por
+> `guaraci.predicao.carregar_modelo(caminho, confiar=True)` — um portão
+> único que **recusa carregar sem confirmação explícita**: na CLI, uma
+> pergunta (s/n); no aplicativo, uma caixa de seleção obrigatória. Além
+> disso, todo `modelo_plsda.joblib` exportado pelo pipeline vem com um
+> **manifesto** (`<modelo>.joblib.manifest.json`, hash SHA-256 + versões de
+> biblioteca) ao lado — se o arquivo for trocado ou corrompido depois que o
+> manifesto foi gerado, o carregamento é **bloqueado antes** de o pickle
+> executar (não apenas avisado depois). Detalhes completos, incluindo o que
+> essas proteções **não** resolvem (não há verificação automática de "isto
+> é seguro" para pickle — a decisão de confiar é sempre humana), em
+> `SECURITY.md`.
+>
+> Em implantação pública (demonstrativo hospedado), o operador ainda pode
+> definir **`GUARACI_DISABLE_MODEL_UPLOAD=1`** para desabilitar o *upload*
+> de `.joblib` pela interface web por completo, aceitando só caminho local
+> controlado pelo próprio operador. O *upload* de CSV de espectros
+> permanece liberado (dado inerte, não executa nada ao ser lido).
 
 **Figuras:** conjunto essencial por padrão (cerca de 8 a 10 figuras, a
 depender do objetivo — seção 2.2) com opção de figuras detalhadas adicionais
@@ -495,6 +531,92 @@ ruff check .                  # lint estático
 
 ---
 
+## 9 Limitações conhecidas
+
+Esta seção existe porque declarar limites **aumenta** a confiança no
+software — o oposto de esconder os pontos fracos. Cada item abaixo foi
+verificado no código desta revisão (ou está marcado explicitamente quando
+o número vem de uma rodada anterior contra o dataset real, não
+re-executada nesta sessão).
+
+- **Sensibilidade DD-SIMCA (N2) depende do número de grupos de réplica
+  pura.** É estimada por *leave-one-group-out* (LOGO) por `mae_id` — ver
+  seção 2.1. Com um único grupo de puros por espécie (réplicas físicas da
+  **mesma** amostra, não amostras independentes), a sensibilidade **não é
+  validável** e o campo mostra `n/a (não validado)`, nunca um número
+  inflado. Para ter sensibilidade defensável é preciso ≥2 amostras puras
+  **fisicamente independentes** por espécie. A especificidade (rejeição de
+  adulterados) não tem essa limitação — é medida em amostras que nunca
+  entraram no treino.
+
+- **Regressão de teor agrupando espécies não funciona (R²≈0).** A variação
+  espectral entre espécies (~90% da variância total) domina completamente
+  o sinal de adulteração — o modelo "aprende a prever a média" em vez de
+  quantificar. A granularidade correta é **por espécie** (padrão do
+  Guaraci, `pls_regressao_por_especie`) ou, mais fino ainda, **por espécie
+  × adulterante** (o mapa de calor da seção 2.1) — nem todo par
+  espécie/adulterante é quantificável, e o heatmap marca explicitamente
+  quais falham em vez de escondê-los numa média.
+
+- **Modo imagem (colorimetria digital) é protótipo, não validado com
+  dataset real.** O carregador (`dados_imagem.py`) está documentado no
+  próprio código como protótipo: `conc` e `mae_id` são sempre `None`
+  (sem quantificação, sem proteção anti-vazamento de réplica nesse modo),
+  e o eixo de "variáveis" retornado não corresponde a comprimento de onda
+  físico. Não usar para resultado publicável sem validação adicional.
+
+- **Validado majoritariamente em FT-NIR.** O motor de pré-processamento e
+  modelagem é agnóstico ao tipo de espectro (o parser JCAMP-DX aceita
+  FT-NIR, NIR, MIR e Raman, e a interface oferece presets de
+  pré-processamento para MIR), mas **nenhuma rodada com dado real de MIR
+  ou Raman foi validada neste projeto** — o caso de uso âncora e todos os
+  resultados reportados são FT-NIR de óleos amazônicos. Relatos de uso com
+  outras técnicas são bem-vindos, mas trate como não testado até prova em
+  contrário.
+
+- **Carregar um modelo `.joblib` executa código arbitrário.** É uma
+  limitação do formato pickle, não do Guaraci — ver `SECURITY.md` na raiz
+  para a política completa e as proteções implementadas (confirmação
+  explícita obrigatória + manifesto de integridade).
+
+- **`mae_id` mal formado vira "órfão" (grupo de 1 amostra), perdendo a
+  proteção anti-vazamento só para essa amostra.** Quando o nome do arquivo
+  `.dx` não casa com o padrão esperado no `##TITLE=` (JCAMP-DX), o parser
+  não trava o carregamento — atribui um `mae_id` único (`orfao_<arquivo>`)
+  a essa amostra isolada, para não desabilitar o `GroupKFold` do dataset
+  inteiro por causa de um arquivo mal nomeado. O `[INFO]` impresso no
+  console/log mostra quantos arquivos viraram órfãos; **conferir sempre
+  esse número** — muitos órfãos indicam um problema sistemático de
+  nomenclatura, não ruído isolado.
+
+- **Auto-Benchmark e Monte Carlo CV usam hiperparâmetros por heurística de
+  literatura, sem *tuning* por validação cruzada interna** (mesmo padrão
+  para todos os classificadores/regressores comparados — SVM, Random
+  Forest, XGBoost, Ridge, Lasso, Elastic Net, SVR). É uma comparação justa
+  entre modelos *fora da caixa*, não a melhor versão possível de cada um;
+  não usar essas tabelas para afirmar que um algoritmo é *inerentemente*
+  melhor que outro sem otimizar os hiperparâmetros de ambos.
+
+- **Sem *benchmark* ainda contra um dataset público externo** (ex.:
+  Tecator, dataset de milho da Eigenvector). Toda a validação numérica
+  disponível hoje (ver `docs/VALIDATION.md`) é contra fórmulas fechadas e
+  propriedades matemáticas, não contra resultados publicados de terceiros
+  rodando o pipeline inteiro. Item de roadmap em aberto.
+
+- **Classes com poucas amostras ou espectralmente próximas têm recall mais
+  baixo** — reporte sempre a **matriz de confusão completa**, nunca só a
+  acurácia agregada, que pode esconder uma classe minoritária mal
+  classificada. Duas espécies de palmácea com assinatura NIR muito
+  próxima (Babaçu e Palmiste) são um caso conhecido de limitação
+  **botânica/química**, não de código — ver `README.md`. *(Números
+  específicos de recall por classe e de espectros descartados por faixa
+  incompatível variam por dataset; a última rodada completa contra o
+  dataset real do TCC não foi re-executada nesta sessão de auditoria —
+  conferir o `resumo_modelo.txt`/matriz de confusão da rodada mais
+  recente para os valores atuais.)*
+
+---
+
 ## REFERÊNCIAS
 
 ARAÚJO, M. C. U. et al. The successive projections algorithm for variable
@@ -538,7 +660,46 @@ p. 397-405, 1978.
 
 ---
 
-*Última revisão do manual: prévia "O que será gerado" em tempo real na aba
-Model (web), 8ª aba **Sobre** (identidade, licença, como citar), cabeçalho
-com logo/versão/badges e aviso de modo demonstração no deploy público sem
-`config.yaml` local.*
+*Última revisão do manual: novo `docs/VALIDATION.md` (cartão de visita
+técnico) — tabela com 11 linhas de validação contra sklearn/fórmulas
+fechadas (PLS-DA, SNV normalização+invariância de espalhamento, VIP, MSC,
+DD-SIMCA T²/Q-resíduos, CV-ANOVA, BCa, teste de permutação, OPLS-DA),
+valores obtidos rodando a suíte nesta sessão, com seção honesta do que
+ainda NÃO está validado (dataset público externo, cobertura empírica do
+BCa). Linkado em README.md/README.pt-br.md. Antes: terminologia da
+interface (CLI e README) revisada
+para liderar com o nome amigável do modo de análise ("Classificação por
+espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N3
+passa a aparecer como referência técnica secundária, nunca como o rótulo
+principal — a tabela de equivalência nível↔objetivo (seção 2.2) já estava
+correta e não mudou. Antes disso: `SECURITY.md` novo (raiz) — carregamento
+de modelo `.joblib` agora passa por `carregar_modelo(confiar=True)`
+obrigatório (CLI: confirmação s/n; app: caixa de seleção) + manifesto
+SHA-256 gerado junto de todo modelo exportado, que bloqueia o carregamento
+se o arquivo for trocado depois. Antes disso: nova seção 9 "Limitações
+2 figuras que faltavam (CLAUDE.md seção 5): **espectros médios por classe**
+(`fig0_espectros_medios_classe.png`, banda ±1 DP, dado bruto, gerada em
+qualquer objetivo — contexto químico antes da modelagem) e **biplot PCA**
+(`fig_biplot_pca.png`, scores + top-12 loadings sobrepostos, objetivo
+Exploratório) — as outras 2 figuras "que faltavam" (RMSECV×LVs e o heatmap
+espécie×adulterante) já existiam, achado ao verificar antes de implementar.
+Bug real corrigido no biplot antes do commit: escala única calibrada pelo
+maior score conjunto (PC1+PC2) desenhava vetores com componente forte no
+eixo de menor alcance fora da área visível — corrigido calibrando por eixo
+e usando o mais restritivo (`_escala_vetores_biplot`, com teste de
+regressão dedicado). Antes disso: nova seção 9 "Limitações
+conhecidas" (item do roadmap CLAUDE.md) — 9 itens verificados no código
+desta revisão (DD-SIMCA/LOGO, regressão por espécie, modo imagem
+protótipo, FT-NIR vs. MIR/Raman não validado, `.joblib`/RCE, `mae_id`
+órfão, hiperparâmetros do benchmark sem tuning, sem dataset público
+externo, recall por classe) — números específicos de dataset real
+marcados como não re-executados nesta sessão. Antes: mapa de calor espécie × adulterante (N3,
+`figN3_heatmap_especie_adulterante.png`) — R²cv por combinação, com células
+reprovadas hachuradas e contador de falhas no título e no relatório;
+sensibilidade DD-SIMCA (N2) agora estimada por
+leave-one-group-out honesto por réplica `mae_id` — sempre exibida com o número
+de grupos e aviso de incerteza; `n/a (não validado)` quando há um só grupo de
+puros (substitui a re-substituição, que inflava até 100%). Antes: prévia "O que
+será gerado" em tempo real na aba Model (web), 8ª aba **Sobre** (identidade,
+licença, como citar), cabeçalho com logo/versão/badges e aviso de modo
+demonstração no deploy público sem `config.yaml` local.*

@@ -8,12 +8,19 @@ mover codigo coeso + reexportar por nome, nunca duplicar.
 """
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
+import hashlib
+import json
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from guaraci.chemometric_stats import dominio_aplicabilidade_amostras_novas
+from guaraci.config import __version__ as _guaraci_version
 
 _CHAVES_PACOTE_REQUERIDAS = {
     "preprocessador", "pls_final", "label_binarizer", "wavenumbers"}
@@ -21,6 +28,95 @@ _CHAVES_PACOTE_REQUERIDAS = {
 # pacotes salvos por versoes antigas do pipeline nao tem essas chaves, e a
 # predicao continua funcionando normalmente (so' sem as colunas AD_*).
 _CHAVES_AD = {"pca", "ad_var_t", "ad_t2_limite", "ad_q_limite"}
+
+
+class SecurityError(Exception):
+    """Operacao bloqueada por falta de confirmacao explicita de confianca,
+    ou por falha de integridade detectada (arquivo alterado apos o manifesto
+    ter sido gerado). Ver docs/SECURITY.md."""
+
+
+# =========================================================================
+#  Manifesto de proveniencia/integridade (P5 -- CLAUDE.md)
+# =========================================================================
+def gerar_manifesto(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any]:
+    """Monta o manifesto de proveniencia de um pacote de modelo ja salvo em
+    disco. Resolve seguranca (hash p/ detectar arquivo trocado/corrompido)
+    E reprodutibilidade (versoes exatas de biblioteca) na mesma estrutura.
+    """
+    import sklearn
+    sha256 = hashlib.sha256(Path(caminho_joblib).read_bytes()).hexdigest()
+    return {
+        "guaraci_version": _guaraci_version,
+        "sklearn_version": sklearn.__version__,
+        "numpy_version":   np.__version__,
+        "python_version":  sys.version.split()[0],
+        "sha256":          sha256,
+        "gerado_em":       datetime.now(timezone.utc).isoformat(),
+        "classes":         [str(c) for c in pkg.get("classes", [])],
+        "n_variaveis":     int(len(pkg["wavenumbers"]))
+                           if "wavenumbers" in pkg else None,
+    }
+
+
+def salvar_manifesto(caminho_joblib: str, pkg: Dict[str, Any]) -> str:
+    """Gera e grava `<caminho_joblib>.manifest.json` ao lado do modelo.
+    Chamado por pipeline.executar() logo apos joblib.dump(). Retorna o
+    caminho do manifesto escrito."""
+    manifesto = gerar_manifesto(caminho_joblib, pkg)
+    caminho_manifesto = caminho_joblib + ".manifest.json"
+    with open(caminho_manifesto, "w", encoding="utf-8") as f:
+        json.dump(manifesto, f, ensure_ascii=False, indent=2)
+    return caminho_manifesto
+
+
+def carregar_modelo(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
+    """Carrega um pacote de modelo `.joblib` treinado pelo Guaraci.
+
+    AVISO DE SEGURANCA: `.joblib` usa pickle, que EXECUTA CODIGO ARBITRARIO
+    contido no arquivo NO MOMENTO DO CARREGAMENTO -- antes de qualquer
+    validacao de conteudo ser sequer possivel (`validar_pacote_modelo` so'
+    roda DEPOIS, tarde demais para impedir a execucao). Carregue apenas
+    modelos que voce mesmo treinou ou de origem CONHECIDA e CONFIAVEL.
+    Ver `docs/SECURITY.md`.
+
+    `confiar=True` e' uma confirmacao EXPLICITA da origem -- nao existe
+    verificacao automatica de "isto e' seguro" para pickle (nao e'
+    sandboxed). Se um manifesto (`<caminho>.manifest.json`, gerado por
+    `salvar_manifesto` no momento do treino) existir ao lado do arquivo, o
+    hash SHA-256 e' conferido ANTES de chamar joblib.load -- isso E' uma
+    protecao real (deteccao de arquivo trocado/corrompido acontece antes da
+    execucao do pickle, nao depois). Sem manifesto, nao ha' nada a conferir;
+    a unica garantia continua sendo a decisao humana em `confiar=True`.
+    """
+    if not confiar:
+        raise SecurityError(
+            f"Carregar '{caminho}' executa qualquer codigo contido no "
+            "arquivo (formato pickle) -- inclusive antes de qualquer "
+            "validacao de conteudo. Passe confiar=True somente se voce "
+            "confia na origem deste arquivo (voce mesmo treinou, ou fonte "
+            "conhecida e verificada). Ver docs/SECURITY.md.")
+
+    caminho_manifesto = str(caminho) + ".manifest.json"
+    if os.path.isfile(caminho_manifesto):
+        try:
+            with open(caminho_manifesto, encoding="utf-8") as f:
+                manifesto = json.load(f)
+            sha_esperado = manifesto.get("sha256")
+            if sha_esperado:
+                sha_atual = hashlib.sha256(Path(caminho).read_bytes()).hexdigest()
+                if sha_atual != sha_esperado:
+                    raise SecurityError(
+                        f"Integridade falhou: '{caminho}' nao bate com o "
+                        f"hash SHA-256 registrado em '{caminho_manifesto}' "
+                        "-- o arquivo foi alterado desde que o manifesto foi "
+                        "gerado (ou pertence a outro modelo). Carregamento "
+                        "BLOQUEADO antes de executar o pickle.")
+        except (OSError, json.JSONDecodeError):
+            pass   # manifesto ilegivel -- nao ha' nada a conferir, segue
+
+    import joblib
+    return joblib.load(caminho)
 
 
 def validar_pacote_modelo(pkg: Dict) -> None:

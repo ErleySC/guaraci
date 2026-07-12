@@ -83,7 +83,9 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                 with col_dep:
                     st.pyplot(fig_depois, use_container_width=True)
                     plt.close(fig_depois)
-            except Exception as e_pp:
+            except Exception as e_pp:  # noqa: BLE001 -- previa ao vivo
+                # (multi-etapa: fit+transform+2 figuras); erro exibido ao
+                # usuario, nao afeta o pipeline real (so' esta previa).
                 st.error(f"Error applying preprocessing: {e_pp}")
         else:
             st.warning("Could not load spectra. Check the Data tab.")

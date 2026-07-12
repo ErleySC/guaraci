@@ -6,7 +6,11 @@ rejeitaria/aceitaria amostras erradas sem nenhum sinal de alerta.
 import numpy as np
 import pytest
 
-from guaraci.classificadores import DDSimca, OPLSDAWrapper
+from guaraci.classificadores import (
+    DDSimca,
+    OPLSDAWrapper,
+    sensibilidade_ddsimca_logo,
+)
 
 
 def _classe_compacta(rng, centro, n, k=5, escala=0.3):
@@ -169,3 +173,63 @@ def test_oplsda_fit_multiclasse_usa_lda_para_y_continuo():
 
     opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)
     assert isinstance(opls.W_orth_, list)
+
+
+# ── Sensibilidade DD-SIMCA por LOGO (P1: fim da re-substituicao) ──────────────
+def _puros_agrupados(rng, centros, reps=3, k=5, escala=0.2):
+    """Puros de UMA classe em grupos de replica (mae_id): cada centro = 1 grupo
+    com `reps` replicas fisicas."""
+    X, g = [], []
+    for i, c in enumerate(centros):
+        X.append(rng.normal(c, escala, size=(reps, k)))
+        g += [f"grp{i}"] * reps
+    return np.vstack(X), np.array(g)
+
+
+def test_logo_sempre_retorna_n_grupos():
+    """CONTRATO: 'n_grupos' NUNCA pode faltar do resultado. Sensibilidade sem o
+    denominador de grupos independentes e enganosa — era o buraco da
+    re-substituicao. Este teste falha se alguem remover a chave."""
+    rng = np.random.default_rng(0)
+    X, g = _puros_agrupados(rng, [0.0, 0.5, 1.0])
+    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    assert "n_grupos" in r
+    assert r["n_grupos"] == 3
+
+
+def test_logo_cai_abaixo_de_100pct_com_grupo_outlier():
+    """LOGO detecta um grupo de replica retido que cai FORA da regiao treinada
+    nos demais — exatamente o que a re-substituicao mascarava dando ~100%."""
+    rng = np.random.default_rng(1)
+    X, g = _puros_agrupados(rng, [0.0, 0.0, 0.0, 0.0, 20.0])  # 1 grupo distante
+    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    assert r["n_grupos"] == 5
+    assert r["sensibilidade"] < 1.0            # < 100%: o objetivo do P1
+
+    # Re-substituicao: modelo treinado em TODOS os puros e avaliado neles mesmos
+    # (o small-n guard aceita todo o treino) -> infla a sensibilidade.
+    dd = DDSimca(n_components=2).fit(X, np.array(["_c"] * len(X)))
+    m = dd.score_matrix(X)["_c"]
+    aceito = (np.asarray(m["T2_norm"]) <= 1.0) & (np.asarray(m["Q_norm"]) <= 1.0)
+    sens_resub = float(np.mean(aceito))
+    assert sens_resub > r["sensibilidade"]     # re-sub sempre >= LOGO honesto
+
+
+def test_logo_um_unico_grupo_nao_e_estimavel():
+    """Com um unico grupo de replica pura NAO ha validacao possivel: retorna
+    nan + aviso, nunca um numero falsamente confiante."""
+    rng = np.random.default_rng(2)
+    X, g = _puros_agrupados(rng, [0.0])        # 1 grupo apenas
+    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    assert r["n_grupos"] == 1
+    assert np.isnan(r["sensibilidade"])
+    assert r["aviso"] is not None
+
+
+def test_logo_avisa_com_poucos_grupos():
+    """n_grupos < 10 dispara aviso de incerteza (interpretacao exploratoria)."""
+    rng = np.random.default_rng(3)
+    X, g = _puros_agrupados(rng, [0.0, 0.3, 0.6, 0.9])
+    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    assert r["n_grupos"] == 4
+    assert r["aviso"] is not None and "LOGO" in r["aviso"]

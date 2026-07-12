@@ -64,6 +64,7 @@ _FIG_OBJETIVOS: Dict[str, Set[str]] = {
     # --- Exploratorias (nao-supervisionadas) ---
     "hca":                {EXPLORATORIO},
     "loadings":           {EXPLORATORIO},
+    "biplot":             {EXPLORATORIO},
     "preprocessamento":   {EXPLORATORIO},
     # --- Classificacao (supervisionada PLS-DA e derivados) ---
     "plsda_scores":       {CLASSIFICACAO},
@@ -133,6 +134,7 @@ _FIG_REQUISITO: Dict[str, Callable[["Config"], bool]] = {
 _FIG_DESCRICAO: Dict[str, str] = {
     "hca": "Dendrograma HCA",
     "loadings": "Loadings PCA",
+    "biplot": "Biplot PCA (scores + loadings)",
     "preprocessamento": "Efeito do pre-processamento",
     "plsda_scores": "Scores PLS-DA",
     "confusao": "Matriz de confusao + metricas por classe",

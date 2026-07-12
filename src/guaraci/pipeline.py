@@ -88,6 +88,7 @@ CFG = Config()
 from guaraci.dados_io import (   # noqa: E402
     CODIGO_ESPECIE,
     ADULTERANTE_NOME,
+    adulterante_de_mae_id,
     parse_title,
     extrair_title_do_dx,
 )
@@ -206,6 +207,9 @@ from guaraci.figuras import (   # noqa: E402
     fig_splot_opls,
     fig_cooman_ddsimca,
     fig_merito_regressao,
+    fig_heatmap_especie_adulterante,
+    fig_espectros_medios_classe,
+    fig_biplot_pca,
 )
 
 # Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
@@ -266,6 +270,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
 from guaraci.classificadores import (   # noqa: E402
     DDSimca,
     OPLSDAWrapper,
+    sensibilidade_ddsimca_logo,
 )
 
 
@@ -275,7 +280,7 @@ from guaraci.classificadores import (   # noqa: E402
 from guaraci.resultados_io import (   # noqa: F401
     metricas_modelo_pls, salvar_identificadores, _NOTAS_METODOLOGICAS,
     salvar_resumo_modelo, anexar_regressao_resumo, _md_tabela,
-    gerar_model_card, anexar_regressao_model_card,
+    gerar_model_card, anexar_regressao_model_card, anexar_heatmap_resumo,
 )
 def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
@@ -454,8 +459,8 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
                     ("pls", PLSRegression(n_components=_n, scale=False))])
             try:
                 y_cv = _cv_predict_manual(factory, X_raw, Y_bin, cv_indices)
-            except Exception:
-                continue
+            except (ValueError, np.linalg.LinAlgError):
+                continue   # fold/preset degenerado (matriz singular etc.)
             n_lv_ok += 1
             ss_res = float(np.sum((Y_bin - y_cv) ** 2))
             if ss_total < 1e-12 or not np.isfinite(ss_res):
@@ -546,7 +551,9 @@ def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
                 n_validos += 1
             else:
                 n_falhos += 1
-        except Exception:
+        except (ValueError, np.linalg.LinAlgError):
+            # Grupo/amostra reamostrada degenerada -- contado, nao mascarado
+            # (n_falhos reportado ao chamador).
             n_falhos += 1
 
     if not vips_arr:
@@ -584,8 +591,8 @@ def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
             pls = PLSRegression(n_components=n_opt, scale=False)
             pls.fit(X_processed[idx], Y_bin[idx])
             vips.append(vip_scores(pls))
-        except Exception:
-            continue
+        except (ValueError, np.linalg.LinAlgError):
+            continue   # amostra reamostrada degenerada
     if not vips:
         p = X_processed.shape[1]
         return np.zeros(p), np.zeros(p)
@@ -637,6 +644,14 @@ from guaraci.dados_imagem import (   # noqa: E402
     recortar_relativo,
     extrair_features_cor,
     extrair_features_textura,
+)
+
+# Manifesto de proveniencia/integridade do modelo exportado (P5). Reexportado
+# para nao quebrar pipeline.salvar_manifesto(...) nem pipeline.carregar_modelo(...).
+from guaraci.predicao import (   # noqa: E402
+    salvar_manifesto,
+    carregar_modelo,
+    SecurityError,
 )
 
 
@@ -726,7 +741,7 @@ def limpar_resultados_antigos(pasta_base: str,
             shutil.rmtree(p)
             resultado["removidas"].append(str(p))
             resultado["liberado_mb"] += tam / (1024 * 1024)
-        except Exception as _e:
+        except OSError as _e:   # permissao/arquivo em uso/etc.
             resultado["erro"] = (resultado["erro"] or "") + f"\n{p}: {_e}"
     resultado["liberado_mb"] = round(resultado["liberado_mb"], 1)
     return resultado
@@ -749,6 +764,89 @@ def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
         if len(idxg) >= 2:
             grupos.append(np.asarray(preproc_ajustado.transform(X_raw_subset[idxg])))
     return grupos
+
+
+def r2cv_especie_adulterante(
+        X: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
+        mae_id: Optional[np.ndarray], cfg: "Config", *,
+        limiar_r2: float = 0.70, min_niveis: int = 3,
+        min_grupos: int = 3) -> Optional[Dict[str, Any]]:
+    """R2 em validacao cruzada (group-aware) do teor, POR especie x adulterante.
+
+    A regressao agrupando ESPECIES falha (a matriz vegetal domina o sinal,
+    R2~0); a que agrupa ADULTERANTES dentro da especie mascara que alguns
+    adulterantes nao sao quantificaveis. A granularidade honesta e
+    especie x adulterante: para cada combinacao, junta os PUROS da especie
+    (teor=0, ancora da calibracao) + as amostras daquele adulterante, faz
+    cross_val_predict group-aware por mae_id (replicas nunca se separam entre
+    treino e teste) e calcula o R2cv. Combinacoes sem dados/replicas
+    suficientes viram 'n/a' (nunca inventam numero).
+
+    O adulterante de cada amostra vem do mae_id (que sobrevive alinhado a
+    validar_entrada) via adulterante_de_mae_id -- evita desalinhar com o
+    metadados_df, que NAO passa pela remocao de NaN/Inf.
+
+    Returns dict {especies, adulterantes, matriz{(esp,adult): r2|nan}, n_ok,
+    n_falhas, n_na, n_total, limiar_r2} ou None se nao ha adulterante/combinacao.
+    """
+    if mae_id is None:
+        return None
+    conc = np.asarray(conc, dtype=float)
+    conc = np.where(np.isnan(conc), 0.0, conc)
+    adult_por_amostra = np.array(
+        [adulterante_de_mae_id(m) for m in mae_id], dtype=object)
+    especies = sorted({str(r) for r in rotulos})
+    adulterantes = sorted({a for a in adult_por_amostra if a})
+    if not adulterantes:
+        return None
+
+    matriz: Dict[Tuple[str, str], float] = {}
+    n_ok = n_falhas = n_na = 0
+    for esp in especies:
+        mask_esp = (rotulos == esp)
+        mask_puro = mask_esp & (conc <= 0.0)
+        for adult in adulterantes:
+            mask_ad = mask_esp & (adult_por_amostra == adult) & (conc > 0.0)
+            mask = mask_puro | mask_ad
+            X_c, Y_c, mae_c = X[mask], conc[mask], mae_id[mask]
+            n_niveis = int(len(np.unique(Y_c)))
+            n_grp = int(len(np.unique(mae_c)))
+            if (int(mask_ad.sum()) == 0 or n_niveis < min_niveis
+                    or n_grp < min_grupos or float(Y_c.std()) < 1e-8):
+                matriz[(esp, adult)] = float("nan")
+                n_na += 1
+                continue
+            n_sp = max(2, min(cfg.n_splits_cv, n_grp))
+            lv = max(1, min(cfg.max_lvs, X_c.shape[0] // 5, n_niveis - 1))
+            pipe = Pipeline([
+                ("preproc", construir_preprocessador(cfg)),
+                ("pls", PLSRegression(n_components=lv, scale=False)),
+            ])
+            try:
+                Y_hat = cross_val_predict(pipe, X_c, Y_c,
+                                          cv=GroupKFold(n_splits=n_sp),
+                                          groups=mae_c)
+            except (ValueError, np.linalg.LinAlgError) as _e_cv:
+                # Combinacao degenerada apesar dos guards acima (grupos
+                # insuficientes p/ o n_splits escolhido etc.) -- vira n/a,
+                # nunca um R2 inventado.
+                print(f"  [AVISO] R2cv {esp} x {adult}: {_e_cv}")
+                matriz[(esp, adult)] = float("nan")
+                n_na += 1
+                continue
+            r2 = float(r2_score(Y_c, Y_hat))
+            matriz[(esp, adult)] = r2
+            if r2 >= limiar_r2:
+                n_ok += 1
+            else:
+                n_falhas += 1
+
+    n_total = n_ok + n_falhas
+    if n_total == 0:
+        return None
+    return {"especies": especies, "adulterantes": adulterantes,
+            "matriz": matriz, "n_ok": n_ok, "n_falhas": n_falhas,
+            "n_na": n_na, "n_total": n_total, "limiar_r2": limiar_r2}
 
 
 def pls_regressao_por_especie(
@@ -810,8 +908,8 @@ def pls_regressao_por_especie(
                 perm = rng.permutation(len(conc_c))
                 ncal = max(2, int(cfg.frac_cal * len(conc_c)))
                 ic, iv = perm[:ncal], perm[ncal:]
-        except Exception:
-            continue
+        except (ValueError, IndexError):
+            continue   # especie com amostras/grupos insuficientes p/ o split
         if len(ic) < 4 or len(iv) < 2:
             continue
 
@@ -840,8 +938,8 @@ def pls_regressao_por_especie(
                 ])
                 Y_hat = cross_val_predict(pipe, Xc, Yc, cv=cv_reg, groups=grp)
                 erros_reg.append(rmse_flat(Yc, Y_hat))
-        except Exception:
-            continue
+        except (ValueError, np.linalg.LinAlgError):
+            continue   # LV degenerado p/ esta especie
         if not erros_reg:
             continue
 
@@ -1123,7 +1221,7 @@ def executar(cfg: Config):
             print(f"[INFO] Hold-out ({tipo_ho}): {n_holdout} amostras "
                   f"reservadas (frac={cfg.frac_holdout:.2f}). "
                   f"Pipeline rodara em {len(tr_idx)} amostras.")
-        except Exception as e:
+        except ValueError as e:   # test_size/n_splits incompativel com os dados
             print(f"[AVISO] Hold-out falhou ({e}). Continuando sem holdout.")
             X_holdout = None
 
@@ -1406,6 +1504,11 @@ def executar(cfg: Config):
     marcadores_fig = (mapa_marcadores if cfg.mostrar_marcadores_classe
                       else None)
     # ---- OVERVIEW (sempre — contexto valido em qualquer objetivo) ----
+    # Espectros medios por classe: dado BRUTO, antes de qualquer modelagem
+    # -- mesma logica de "sempre" do PCA/T2-Q abaixo (nao e' uma analise
+    # exploratoria opcional, e' contexto quimico minimo para ler o resto).
+    fig_espectros_medios_classe(wavenumbers, X_raw, rotulos, mapa_cores,
+                                 cfg, pasta)
     fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                      puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
     # ---- EXPLORATORIAS: nucleo do Modo Exploratorio; escotilha detalhada
@@ -1413,6 +1516,8 @@ def executar(cfg: Config):
     if _fig_explor_on:
         fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta)
         fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
+        fig_biplot_pca(pca, scores_pca, wavenumbers, rotulos, mapa_cores,
+                       cfg, pasta)
     if cfg.comparar_hca_pipelines and _fig_explor_on:
         fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta)
     # ---- CLASSIFICACAO (supervisionada) — filtrada fora de N1/N2 ----
@@ -1433,7 +1538,8 @@ def executar(cfg: Config):
     if deve_gerar(cfg, "roc"):
         try:
             aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
-        except Exception as _e_roc:
+        except Exception as _e_roc:  # noqa: BLE001 -- figura opcional (curva
+            # ROC/AUC); erro impresso, resultado central da corrida intacto.
             print(f"  [AVISO] ROC/AUC: {_e_roc}")
     # fig4b_metricas_globais e fig5_vip removidas: a primeira e redundante com
     # resumo_modelo.txt; a segunda (VIP puro) esta contida em fig_sprint3_sr_vip,
@@ -1508,7 +1614,9 @@ def executar(cfg: Config):
     #     and ~all samples become 'Unknown'. sens = pure accepted; esp = adult rejected.
     ddsimca_res: Optional[Dict[str, Dict[str, Any]]] = None
     simca_pred: np.ndarray = np.array([], dtype=str)
-    ddsimca_sens_esp: Dict[str, Tuple[float, float, int, int]] = {}
+    # (sens_LOGO, esp, n_puros, n_adult, n_grupos_LOGO, aviso)
+    ddsimca_sens_esp: Dict[
+        str, Tuple[float, float, int, int, int, Optional[str]]] = {}
     modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
     # DD-SIMCA e' um diagnostico de AUTENTICACAO DE PUREZA (N2): pergunta se
     # a amostra pertence a regiao de aceitacao da sua propria especie/classe.
@@ -1556,7 +1664,8 @@ def executar(cfg: Config):
         n_unknown     = int(np.sum(simca_pred == "Desconhecido"))
         n_ambig       = int(np.sum(simca_pred == "Ambiguo"))
 
-        print(f"  {'Classe':18s} {'sens':>7s} {'esp(adult)':>11s}")
+        print(f"  {'Classe':18s} {'sens(LOGO)':>11s} {'grupos':>7s} "
+              f"{'esp(adult)':>11s}")
         for cls in classes_unicas:
             if cls not in ddsimca_res:
                 continue
@@ -1568,11 +1677,33 @@ def executar(cfg: Config):
             idx_cls     = (rotulos == cls)
             n_puro_c    = int(idx_puro_c.sum())
             n_adult_c   = int(idx_adult_c.sum())
-            # sensitivity: 'puros' mode uses pure samples; 'todos' uses the whole class
+            n_grupos_c  = 0
+            aviso_sens: Optional[str] = None
+            # Sensibilidade:
+            #   'puros' (one-class N2): leave-one-group-out HONESTO por mae_id.
+            #     Re-substituicao (media sobre os proprios puros de treino) infla
+            #     para ~100% e NAO e evidencia de autenticacao -- mede o modelo
+            #     reconhecendo dados que ja viu. LOGO retreina sem um grupo de
+            #     replica e testa os puros retidos (ver sensibilidade_ddsimca_logo).
+            #   'todos': fracao in-sample da classe inteira aceita (ja rotulada
+            #     como nao-autenticacao no resumo/figuras).
             if modo_dd == "puros" and n_puro_c > 0:
-                sens = float(np.mean(aceito[idx_puro_c]))
+                if mae_id is not None:
+                    _logo = sensibilidade_ddsimca_logo(
+                        X_processed[idx_puro_c], mae_id[idx_puro_c],
+                        n_components=cfg.ddsimca_n_components,
+                        alpha=0.05, ucl_method=cfg.ddsimca_ucl_method)
+                    sens       = _logo["sensibilidade"]
+                    n_grupos_c = int(_logo["n_grupos"])
+                    aviso_sens = _logo["aviso"]
+                else:
+                    sens = float("nan")
+                    aviso_sens = ("Sensibilidade nao estimavel: mae_id ausente "
+                                  "(sem grupos de replica para LOGO).")
             else:
                 sens = float(np.mean(aceito[idx_cls]))
+                n_grupos_c = (int(len(np.unique(mae_id[idx_cls])))
+                              if mae_id is not None else 0)
             # B4: in 'todos' mode adulterated samples are IN TRAINING, so
             # "specificity" would be in-sample (not authentication) and misleading.
             # Only reported in 'puros' mode (true one-class).
@@ -1581,10 +1712,14 @@ def executar(cfg: Config):
                        if n_adult_c > 0 else float("nan"))
             else:
                 esp = float("nan")
-            ddsimca_sens_esp[cls] = (sens, esp, n_puro_c, n_adult_c)
-            esp_txt = f"{esp*100:9.1f}%" if esp == esp else "      n/a"
-            print(f"  {cls:18s} {sens*100:6.1f}% {esp_txt}"
+            ddsimca_sens_esp[cls] = (sens, esp, n_puro_c, n_adult_c,
+                                     n_grupos_c, aviso_sens)
+            sens_txt = f"{sens*100:.1f}%" if sens == sens else "n/a"
+            esp_txt  = f"{esp*100:9.1f}%" if esp == esp else "      n/a"
+            print(f"  {cls:18s} {sens_txt:>11s} {n_grupos_c:>7d} {esp_txt}"
                   f"   (puros={n_puro_c}, adult={n_adult_c})")
+            if aviso_sens:
+                print(f"    [AVISO] {cls}: {aviso_sens}")
         print(f"  Desconhecidos: {n_unknown}  |  Ambiguos: {n_ambig}")
         if ddsimca_res:
             # Essencial: painel de aceitacao consolidado (todas as classes).
@@ -1600,7 +1735,9 @@ def executar(cfg: Config):
                     try:
                         fig_cooman_ddsimca(ddsimca_res, rotulos, mapa_cores,
                                            cfg, pasta)
-                    except Exception as _e_coom:
+                    except Exception as _e_coom:  # noqa: BLE001 -- figura
+                        # opcional (Cooman's Plot); erro impresso, DD-SIMCA
+                        # ja calculado e reportado independentemente.
                         print(f"  [AVISO] Cooman's Plot: {_e_coom}")
 
     # OPLS-DA
@@ -1622,7 +1759,10 @@ def executar(cfg: Config):
                 fig_splot_opls(X_processed, t_pred_opls, wavenumbers, cfg, pasta)
                 _opls_n_ortho = opls.n_ortho_fitted_
                 print(f"  Componentes ortogonais ajustados: {_opls_n_ortho}")
-            except Exception as _e_opls:
+            except Exception as _e_opls:  # noqa: BLE001 -- modulo opcional
+                # (OPLS-DA/S-Plot); erro impresso, _opls_n_ortho fica None e
+                # some do resumo em vez de exibir um valor inventado; PLS-DA
+                # (resultado central) ja calculado antes deste bloco.
                 print(f"  [ERRO] OPLS-DA: {_e_opls}")
 
     # --- STAGE 4: Variable Selection ------------------------------------
@@ -1632,7 +1772,9 @@ def executar(cfg: Config):
             etapa4_res = etapa4_selecao_variaveis(
                 X_processed, Y_bin, y_int, vip, sr, wavenumbers,
                 cv_indices, n_opt, cfg, pasta, pasta_dados)
-        except Exception as _e_e4:
+        except Exception as _e_e4:  # noqa: BLE001 -- modulo opcional (selecao
+            # de variaveis); erro impresso, etapa4_res fica None e some do
+            # resumo; PLS-DA (resultado central) ja calculado antes.
             print(f"  [ERRO] Etapa 4: {_e_e4}")
 
     if cfg.comparar_pipelines and deve_gerar(cfg, "comparar_pipelines"):
@@ -1675,7 +1817,10 @@ def executar(cfg: Config):
                     n_boot=cfg.n_bootstrap_bca, alpha=0.05,
                     seed=cfg.seed + 1)
                 bca_holdout[nome] = (lo, hi, obs)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- avaliacao externa opcional;
+            # erro impresso, metricas_holdout fica None e some do resumo
+            # (nunca um valor inventado); metricas de CV (resultado central)
+            # ja calculadas antes deste bloco.
             print(f"  [ERRO] Avaliacao em holdout falhou: {e}")
             metricas_holdout = None
 
@@ -1795,14 +1940,20 @@ def executar(cfg: Config):
         resumo["DD-SIMCA modo treino"] = (
             modo_dd + (" (one-class)" if modo_dd == "puros"
                        else " (in-sample; sens/esp NAO sao autenticacao)"))
-        # C4 — sensibilidade/especificidade one-class por classe
+        # C4 — sensibilidade (LOGO honesto por mae_id) / especificidade one-class.
+        # A sensibilidade NUNCA aparece sem o numero de grupos LOGO ao lado:
+        # com poucos grupos ela e exploratoria e o AVISO explicita a incerteza.
         for cls in classes_unicas:
             if cls in ddsimca_sens_esp:
-                s_c, e_c, npc, nac = ddsimca_sens_esp[cls]
+                s_c, e_c, npc, nac, ng, av = ddsimca_sens_esp[cls]
+                sens_s = (f"{s_c*100:.1f}%" if s_c == s_c
+                          else "n/a (nao validado)")
                 esp_s = f"{e_c*100:.1f}%" if e_c == e_c else "n/a"
-                resumo[f"DD-SIMCA {cls} sens/esp"] = (
-                    f"{s_c*100:.1f}% / {esp_s} "
-                    f"(puros={npc}, adult={nac})")
+                resumo[f"DD-SIMCA {cls} sens(LOGO)/esp"] = (
+                    f"{sens_s} / {esp_s} "
+                    f"(grupos_LOGO={ng}, puros={npc}, adult={nac})")
+                if av:
+                    resumo[f"DD-SIMCA {cls} AVISO"] = av
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
     if _martens_n_sig is not None:
@@ -1861,7 +2012,10 @@ def executar(cfg: Config):
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta,
                     wavenumbers=wavenumbers)
                 print(bench_df.to_string(index=False))
-            except Exception as _e_bench:
+            except Exception as _e_bench:  # noqa: BLE001 -- modulo opcional
+                # (comparacao com outros classificadores); erro impresso,
+                # bench_df so' usado neste bloco; PLS-DA (resultado central)
+                # ja calculado.
                 print(f"  [AVISO] Benchmark falhou: {_e_bench}")
 
     # --- 9a2. Monte Carlo CV (opcional) ────────────────────────────────────
@@ -1873,7 +2027,8 @@ def executar(cfg: Config):
                 mc_df = monte_carlo_cv(
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta)
                 print(mc_df.to_string(index=False))
-            except Exception as _e_mc:
+            except Exception as _e_mc:  # noqa: BLE001 -- modulo opcional;
+                # erro impresso, mc_df so' usado neste bloco.
                 print(f"  [AVISO] Monte Carlo CV falhou: {_e_mc}")
 
     # --- 9b. Exportar modelo final (modelos/) — joblib opcional -----------
@@ -1904,13 +2059,22 @@ def executar(cfg: Config):
             pacote_modelo["ad_var_t"] = _ad_treino["var_t"]
             pacote_modelo["ad_t2_limite"] = _ad_treino["t2_limite"]
             pacote_modelo["ad_q_limite"] = _ad_treino["q_limite"]
-        except Exception as _e_ad:
+        except Exception as _e_ad:  # noqa: BLE001 -- anexo opcional do
+            # pacote de modelo; erro impresso, modelo principal (pls_final)
+            # exportado normalmente logo abaixo mesmo sem o AD.
             print(f"  [AVISO] Dominio de aplicabilidade nao pode ser "
                   f"exportado: {_e_ad}")
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
         print(f"  -> {cam_modelo}")
-    except Exception as _e_mod:
+        # Manifesto de proveniencia/integridade (P5 -- CLAUDE.md): sha256 do
+        # arquivo + versoes de biblioteca, usado por predicao.carregar_modelo
+        # para detectar arquivo trocado/corrompido ANTES de executar o pickle.
+        cam_manifesto = salvar_manifesto(cam_modelo, pacote_modelo)
+        print(f"  -> {cam_manifesto}")
+    except Exception as _e_mod:  # noqa: BLE001 -- exportacao opcional
+        # (predicao em amostra nova); erro impresso, nao afeta as figuras/
+        # relatorios ja gerados desta corrida.
         print(f"  [AVISO] Exportacao do modelo pulada: {_e_mod}")
 
     if out_t2.size or out_q.size:
@@ -2021,15 +2185,42 @@ def executar(cfg: Config):
                                         print("  [AVISO] Nenhuma especie com "
                                               "amostras suficientes para o "
                                               "benchmark de regressao.")
-                                except Exception as _e_bench_reg:
+                                except Exception as _e_bench_reg:  # noqa: BLE001
+                                    # modulo opcional (compara PLS-R com
+                                    # outros regressores); erro impresso,
+                                    # regressao principal (reg_esp) intacta.
                                     print(f"  [AVISO] Benchmark de regressao "
                                           f"falhou: {_e_bench_reg}")
                     else:
                         print("  [AVISO] Nenhuma especie com amostras "
                               "suficientes para regressao (>= 6 adulteradas "
                               "e variancia de teor > 0).")
-                except Exception as _e_reg_esp:
+                except Exception as _e_reg_esp:  # noqa: BLE001 -- rede de
+                    # seguranca do bloco inteiro de regressao (multi-etapa:
+                    # split + selecao de LV + fit + figuras); erro impresso,
+                    # classificacao (resultado central, calculada antes) intacta.
                     print(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+
+                # Heatmap R2cv especie x adulterante: granularidade honesta da
+                # quantificacao. A regressao pooled por especie junta os
+                # adulterantes e esconde que alguns nao sao quantificaveis; o
+                # heatmap expoe cada combinacao e MARCA as que falham (so roda
+                # em Quantificacao, ja garantido pelo guard objetivo acima).
+                try:
+                    _r2cv = r2cv_especie_adulterante(
+                        X_raw, conc_arr, rotulos, mae_id, cfg)
+                    if _r2cv is not None:
+                        print(f"\n[7c/7] R2cv por especie x adulterante — "
+                              f"{_r2cv['n_falhas']}/{_r2cv['n_total']} "
+                              f"combinacoes abaixo de R2cv="
+                              f"{_r2cv['limiar_r2']:.2f}  (n/a: {_r2cv['n_na']})")
+                        fig_heatmap_especie_adulterante(_r2cv, cfg, pasta)
+                        anexar_heatmap_resumo(pasta_logs, _r2cv)
+                except Exception as _e_hm:  # noqa: BLE001 -- figura/relatorio
+                    # opcional (o calculo R2cv em si ja tem tratamento
+                    # granular por combinacao); erro impresso, resto da
+                    # corrida intacto.
+                    print(f"  [AVISO] Heatmap especie x adulterante: {_e_hm}")
                 _pls_reg_ok = False   # per-species path handled the figure
             else:
                 _pls_reg_ok = True
@@ -2212,7 +2403,7 @@ def _editar_campo(cfg: Config, s: Dict[str, Any]) -> None:
             try:
                 setattr(cfg, s["attr"], _coagir_valor(s, ops[int(r) - 1]))
                 print("  -> ok")
-            except Exception as e:
+            except ValueError as e:   # _coagir_valor: opcao/faixa invalida
                 print(f"  erro: {e}")
         else:
             print("  cancelado.")
@@ -2224,7 +2415,7 @@ def _editar_campo(cfg: Config, s: Dict[str, Any]) -> None:
     try:
         setattr(cfg, s["attr"], _coagir_valor(s, novo))
         print("  -> ok")
-    except Exception as e:
+    except ValueError as e:   # _coagir_valor: valor digitado invalido
         print(f"  erro: {e}")
 
 
@@ -2237,7 +2428,9 @@ def menu_interativo(cfg: Optional[Config] = None,
         try:
             cfg = carregar_config(caminho_cfg, base=cfg)
             print(f"[config] carregado de {caminho_cfg}")
-        except Exception as e:
+        except (RuntimeError, FileNotFoundError, ValueError) as e:
+            # carregar_config so' lanca esses 3 tipos (PyYAML ausente,
+            # arquivo ausente, chaves invalidas) -- ver config_io.py.
             print(f"[config] nao foi possivel carregar ({e}). Usando padroes.")
 
     while True:
@@ -2264,7 +2457,7 @@ def menu_interativo(cfg: Optional[Config] = None,
             try:
                 cfg = carregar_config(caminho_cfg, base=cfg)
                 print("  recarregado.")
-            except Exception as e:
+            except (RuntimeError, FileNotFoundError, ValueError) as e:
                 print(f"  erro: {e}")
             continue
         if escolha in ("r", "rodar", "run"):

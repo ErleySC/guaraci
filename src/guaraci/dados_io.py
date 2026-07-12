@@ -41,6 +41,30 @@ CODIGO_ESPECIE: Dict[str, str] = {
 }
 ADULTERANTE_NOME: Dict[str, str] = {"A": "algodão", "M": "milho", "S": "soja"}
 
+
+def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
+    """Nome do adulterante (algodão/milho/soja) a partir do mae_id, ou None.
+
+    O mae_id de uma amostra ADULTERADA termina no token '{letra}{teor}':
+        real       'CAP-04-11-2020-A1.03' -> 'A' -> 'algodão'
+        sintetico  'ESA-S05.00'           -> 'S' -> 'soja'
+    Amostras PURAS ('CAP-04-11-2020') e orfaos ('orfao_...') nao tem esse
+    token e retornam None. Deriva o adulterante do mae_id (que sobrevive
+    alinhado a validar_entrada), evitando desalinhamento com metadados_df.
+    """
+    if mae_id is None:
+        return None
+    ultimo = str(mae_id).split("-")[-1]
+    m = re.match(r"^([A-Za-z])[0-9]", ultimo)
+    if not m:
+        return None
+    letra = m.group(1).upper()
+    # So' A/M/S sao adulterantes reais; qualquer outra letra+digito (ex.: o
+    # ponto puro sintetico 'ESA-P00') NAO e adulterante -> None.
+    if letra not in ADULTERANTE_NOME:
+        return None
+    return ADULTERANTE_NOME[letra]
+
 # Regex robust to deviations found in the real GEAAp/UFPA dataset:
 #   - surrounding whitespace                   "## TITLE= GOI-..."
 #   - separator after COD/DATE: "-" or "_"     "AND_10-06-2020_AD-S-..."
@@ -115,8 +139,9 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
                     return linha[len("##TITLE="):]
                 if linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
                     break
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except OSError as _e_title:   # arquivo ilegivel/ausente/permissao
+        logging.getLogger(__name__).debug(
+            "extrair_title_do_dx('%s'): %s", caminho, _e_title)
     return None
 
 
@@ -247,15 +272,43 @@ def gerar_dados_sinteticos(cfg: "Config"):
     classes = ["Esp_A", "Esp_B", "Esp_C"]
     codigos = {"Esp_A": "ESA", "Esp_B": "ESB", "Esp_C": "ESC"}
     X_list, rot_list, conc_list, mae_list = [], [], [], []
+    adults = [a.upper() for a in (getattr(cfg, "sint_adulterantes", None) or ())]
     for (p1, p2), cls in zip(params, classes):
         cod = codigos[cls]
-        for i, c in enumerate(conc_base):
-            mae_ponto = f"{cod}-{i:02d}"
-            for _ in range(n_replicas):
-                X_list.append(esp(c, p1, p2))
-                rot_list.append(cls)
-                conc_list.append(c)
-                mae_list.append(mae_ponto)
+        if adults:
+            # Puros (teor=0): 3 pontos amostrais independentes por especie
+            # (mae_id 'ESA-P00'... sem token de adulterante -> lidos como puros).
+            for i in range(3):
+                mae_ponto = f"{cod}-P{i:02d}"
+                for _ in range(n_replicas):
+                    X_list.append(esp(0.0, p1, p2)); rot_list.append(cls)
+                    conc_list.append(0.0); mae_list.append(mae_ponto)
+            # Adulterados: cada adulterante = uma banda marcadora limpa,
+            # proporcional ao teor (PLS quantifica), em posicao propria. A
+            # FORCA do marcador difere por adulterante -> alguns combos ficam
+            # quantificaveis (R2cv alto) e outros afogam no ruido (R2cv baixo),
+            # gerando um heatmap com a mistura realista de aprovados/reprovados.
+            desloc_por_adult = {"A": 0.0, "M": 8.0, "S": -8.0}
+            forca_marcador   = {"S": 0.055, "M": 0.030, "A": 0.008}
+            n_niveis = max(3, cfg.n_por_classe // 2)
+            for a in adults:
+                dp = desloc_por_adult.get(a, 4.0)
+                fm = forca_marcador.get(a, 0.02)
+                banda = np.exp(-((wavenumbers - (p1 + dp)) ** 2) / (2 * 25 ** 2))
+                for c in np.linspace(5, 40, n_niveis):
+                    mae_ponto = f"{cod}-{a}{c:.2f}"   # 'ESA-S05.00'
+                    for _ in range(n_replicas):
+                        X_list.append(esp(0.0, p1, p2) + fm * float(c) * banda)
+                        rot_list.append(cls); conc_list.append(float(c))
+                        mae_list.append(mae_ponto)
+        else:
+            for i, c in enumerate(conc_base):
+                mae_ponto = f"{cod}-{i:02d}"
+                for _ in range(n_replicas):
+                    X_list.append(esp(c, p1, p2))
+                    rot_list.append(cls)
+                    conc_list.append(c)
+                    mae_list.append(mae_ponto)
 
     return (wavenumbers,
             np.array(X_list, dtype=float),
@@ -562,7 +615,11 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
     for arq, subpasta_nome in arquivos:
         try:
             x, y = parser(arq)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- parsing defensivo de arquivo
+            # externo (JCAMP-DX/CSV de instrumento, formato variavel entre
+            # fabricantes/versoes); erro impresso COM NOME DO ARQUIVO e
+            # contabilizado em n_falhos (reportado ao usuario abaixo), nunca
+            # silencioso -- 1 arquivo malformado nao derruba o dataset inteiro.
             n_falhos += 1
             print(f"  [ERROR] {os.path.basename(arq)}: {e}")
             continue

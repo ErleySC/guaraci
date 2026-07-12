@@ -120,5 +120,5 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                 st.session_state.cfg_base = pq.carregar_config(cfg_path)
                 st.success("Config reloaded.")
                 st.rerun()
-            except Exception as e:
+            except (RuntimeError, FileNotFoundError, ValueError) as e:
                 st.error(f"Error: {e}")

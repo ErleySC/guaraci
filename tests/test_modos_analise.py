@@ -95,7 +95,8 @@ def test_plano_de_figuras_por_objetivo():
     assert m.plano_de_figuras(cfg) == ["regressao"]
 
     cfg = Config(objetivo=m.EXPLORATORIO)
-    assert set(m.plano_de_figuras(cfg)) == {"hca", "loadings", "preprocessamento"}
+    assert set(m.plano_de_figuras(cfg)) == {
+        "hca", "loadings", "biplot", "preprocessamento"}
 
     cfg = Config(objetivo=m.CLASSIFICACAO)
     plano = set(m.plano_de_figuras(cfg))

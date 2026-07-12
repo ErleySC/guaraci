@@ -26,6 +26,7 @@ from conftest import achar_pastas_run
 # Figuras de CLASSIFICAÇÃO que devem existir num run de classificação (N2 com
 # módulos supervisionados ligados). Se alguma sumir, é regressão.
 FIGURAS_CLASSIFICACAO = {
+    "fig0_espectros_medios_classe",       # overview (comum a todos os modos)
     "fig1_pca_scores",                    # overview (comum a todos os modos)
     "fig2_plsda_scores",
     "fig3_outliers_T2_Q",                 # overview/diagnóstico
@@ -35,12 +36,14 @@ FIGURAS_CLASSIFICACAO = {
     "fig6_preprocessamento",              # exploratória via escotilha figuras_detalhadas
     "fig_hca_dendrograma",
     "fig_loadings_pca",
+    "fig_biplot_pca",                     # exploratória via escotilha figuras_detalhadas
     "fig_roc_auc_multiclasse",
     "fig_sprint3_ddsimca_acceptance",     # N2 força DD-SIMCA one-class
 }
 
 # Figuras de QUANTIFICAÇÃO que devem existir num run N3.
 FIGURAS_QUANTIFICACAO = {
+    "fig0_espectros_medios_classe",  # overview
     "fig1_pca_scores",       # overview
     "fig3_outliers_T2_Q",    # overview
     "figS2_pls_regressao",   # nome de arquivo de fig7_pls_regressao (só em Quantificação)

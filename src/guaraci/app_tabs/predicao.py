@@ -50,6 +50,10 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
         cam_jbl  = st.text_input("Or local path to model",
                                   key="pred_model_path",
                                   placeholder="C:/results/model_pls.joblib")
+        confia_modelo = st.checkbox(
+            "I trust the source of this model file (required to load it — "
+            "`.joblib` executes code when loaded, see docs/SECURITY.md)",
+            key="pred_model_confia", value=False)
 
     with col_m2:
         st.markdown("**2. New spectra (CSV)**")
@@ -73,24 +77,31 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
 
         # Load model
         try:
-            import joblib
-            if upld_jbl is not None and not upload_bloqueado:
+            from guaraci.predicao import carregar_modelo as _carregar_modelo
+            if not confia_modelo:
+                erros_pred.append(
+                    "Check 'I trust the source of this model file' above "
+                    "before loading — required (see docs/SECURITY.md).")
+            elif upld_jbl is not None and not upload_bloqueado:
                 tmp_jbl = Path(tempfile.gettempdir()) / "pq_pred_model.joblib"
                 with open(tmp_jbl, "wb") as f:
                     f.write(upld_jbl.getvalue())
-                pkg_pred = joblib.load(str(tmp_jbl))
+                pkg_pred = _carregar_modelo(str(tmp_jbl), confiar=True)
             elif cam_jbl and os.path.exists(cam_jbl):
-                pkg_pred = joblib.load(cam_jbl)
-            # NOTE: this is STRUCTURE validation only — it runs AFTER joblib.load,
-            # so it does NOT prevent RCE from a malicious pickle (the code already
-            # ran during load). The real mitigation is upstream: only trusted
-            # sources reach here (upload gated by upload_bloqueado on
-            # public deployments; local paths are operator-controlled).
+                pkg_pred = _carregar_modelo(cam_jbl, confiar=True)
+            # NOTE: this is STRUCTURE validation only — it runs AFTER the model
+            # is loaded, so it does NOT prevent RCE from a malicious pickle
+            # (the code already ran during load). The real mitigation is the
+            # confia_modelo checkbox above (explicit human confirmation) plus
+            # the sha256 manifest check inside carregar_modelo, which DOES
+            # run before joblib.load when a manifest is present.
             if pkg_pred is not None:
                 _validar_pacote_modelo(pkg_pred)
-            else:
+            elif not erros_pred:
                 erros_pred.append("No valid model provided (upload or path).")
-        except Exception as e_jbl:
+        except Exception as e_jbl:  # noqa: BLE001 -- multi-etapa (joblib.load
+            # + validacao de estrutura do pacote); erro exibido ao usuario
+            # via erros_pred/st.error abaixo.
             erros_pred.append(f"Error loading model: {e_jbl}")
 
         # Load prediction CSV
@@ -105,7 +116,8 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
             else:
                 X_pred_raw, wn_pred, meta_pred = _carregar_csv_predicao(fonte_csv)
                 st.session_state["pred_amostras"] = meta_pred
-        except Exception as e_csv:
+        except Exception as e_csv:  # noqa: BLE001 -- parsing defensivo de
+            # CSV de amostra nova (formato variavel); erro exibido ao usuario.
             erros_pred.append(f"Error reading CSV: {e_csv}")
 
         if erros_pred:
@@ -122,7 +134,8 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                             [meta_df.reset_index(drop=True), df_res], axis=1)
                 st.session_state["pred_resultados"] = df_res
                 st.success(f"Prediction complete: {len(df_res)} samples.")
-            except Exception as e_pred:
+            except Exception as e_pred:  # noqa: BLE001 -- multi-etapa
+                # (predizer + concat de metadados); erro exibido ao usuario.
                 st.error(f"Prediction error: {e_pred}")
 
     # ---- Results display ----------------------------------------

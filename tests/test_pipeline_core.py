@@ -36,6 +36,22 @@ def test_snv_linha_constante_nao_estoura(pq):
     assert np.all(np.isfinite(Z))
 
 
+def test_snv_invariante_a_escala_e_offset(pq):
+    """VALIDACAO (Barnes, Dhanoa & Lister, 1989): o SNV DEVE anular uma
+    transformacao afim por-espectro  x -> a + b*x  (b>0), pois e' exatamente
+    o efeito de espalhamento (caminho optico) que ele existe para corrigir.
+    Se SNV(a + b*x) != SNV(x), o metodo nao esta cumprindo sua definicao."""
+    rng = np.random.default_rng(0)
+    X = rng.normal(loc=5.0, scale=3.0, size=(15, 80))
+    # Cada espectro recebe seu proprio ganho b>0 e offset a (espalhamento real).
+    b = rng.uniform(0.5, 4.0, size=(15, 1))
+    a = rng.uniform(-2.0, 2.0, size=(15, 1))
+    X_afim = a + b * X
+    Z_orig = pq.SNV().fit_transform(X)
+    Z_afim = pq.SNV().fit_transform(X_afim)
+    np.testing.assert_allclose(Z_orig, Z_afim, atol=1e-10)
+
+
 def test_savgol_preserva_shape(pq):
     """SavGol: preserva o shape; suaviza (não retorna o mesmo array)."""
     rng = np.random.default_rng(1)
@@ -423,6 +439,21 @@ def test_q_residuos_limite_variancia_zero_cai_no_percentil(pq):
 def test_q_residuos_limite_array_vazio_retorna_zero(pq):
     limite = pq.q_residuos_limite(np.array([]), alpha=0.05)
     assert limite == 0.0
+
+
+def test_q_residuos_limite_bate_com_formula_jackson_mudholkar(pq):
+    """VALIDACAO (Jackson & Mudholkar, 1979): no regime normal (var>0, media>0)
+    o limite de Q e' a aproximacao g*chi2(1-alpha, h), com
+    g = var/(2*media) e h = 2*media^2/var. Recomputa a formula de referencia
+    de forma independente e compara com a implementacao."""
+    from scipy.stats import chi2
+    rng = np.random.default_rng(7)
+    q = rng.gamma(shape=3.0, scale=2.0, size=500)   # positivo, var>0, media>0
+    media = float(q.mean()); var = float(q.var())
+    g = var / (2.0 * media); h = 2.0 * media ** 2 / var
+    esperado = g * chi2.ppf(0.95, h)
+    obtido = pq.q_residuos_limite(q, alpha=0.05)
+    assert obtido == pytest.approx(esperado, rel=1e-12)
 
 
 # ── variancia_explicada: X com variância total zero ─────────────────────────

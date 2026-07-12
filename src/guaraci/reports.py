@@ -211,8 +211,9 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
             nome1 = os.path.splitext(os.path.basename(imgs[par]))[0]
             try:
                 pdf.image(imgs[par], x=15, y=y_top, w=fig_w, h=fig_h)
-            except Exception:
-                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+            except OSError as _e_img:   # arquivo ausente/corrompido/formato invalido
+                logging.getLogger(__name__).warning(
+                    "PDF: figura nao embutida (%s): %s", imgs[par], _e_img)
             pdf.set_xy(15, y_top + fig_h + 1)
             pdf.set_font("Helvetica", "I", 7)
             pdf.set_text_color(80, 80, 80)
@@ -227,8 +228,10 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
                 nome2 = os.path.splitext(os.path.basename(imgs[par + 1]))[0]
                 try:
                     pdf.image(imgs[par + 1], x=15, y=y_bot, w=fig_w, h=fig_h)
-                except Exception:
-                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+                except OSError as _e_img:
+                    logging.getLogger(__name__).warning(
+                        "PDF: figura nao embutida (%s): %s",
+                        imgs[par + 1], _e_img)
                 pdf.set_xy(15, y_bot + fig_h + 1)
                 pdf.set_font("Helvetica", "I", 7)
                 pdf.cell(fig_w, cap_h,
@@ -374,7 +377,7 @@ def gerar_word_relatorio(pasta: str, projeto: Dict,
                 if leg.runs:
                     leg.runs[0].italic = True
                     leg.runs[0].font.size = Pt(9)
-            except Exception:
+            except OSError:   # arquivo ausente/corrompido/formato invalido
                 doc.add_paragraph(f"[Fig. {i}: {nome_fig} — image not available]")
             if i % 2 == 0 and i < len(imgs):
                 doc.add_page_break()
@@ -511,7 +514,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
             df_id = pd.read_csv(id_csv, sep=";", decimal=",")
             _preencher_df(ws2, df_id)
             _auto_width(ws2)
-        except Exception:
+        except (pd.errors.ParserError, OSError, UnicodeDecodeError):
             ws2.cell(1, 1, "Error reading amostras_identificadores.csv")
     else:
         ws2.cell(1, 1, "File not found (run pipeline Step 5 first).")
@@ -524,7 +527,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
             df_vip = pd.read_csv(vip_csv, sep=";", decimal=",")
             _preencher_df(ws3, df_vip)
             _auto_width(ws3)
-        except Exception:
+        except (pd.errors.ParserError, OSError, UnicodeDecodeError):
             ws3.cell(1, 1, "Error reading etapa4_selecao_variaveis.csv")
     else:
         ws3.cell(1, 1, "Step 4 (variable selection) was not executed.")
@@ -551,7 +554,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
                 _preencher_df_ws(ws5, df_bench, row_start=row_cursor)
                 row_cursor += len(df_bench) + 3
                 _auto_width(ws5)
-            except Exception:
+            except (pd.errors.ParserError, OSError, UnicodeDecodeError):
                 ws5.cell(row_cursor, 1, "Error reading benchmark_classificadores.csv")
                 row_cursor += 2
         if os.path.exists(mc_csv):
@@ -562,7 +565,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
                 row_cursor += 1
                 _preencher_df_ws(ws5, df_mc, row_start=row_cursor)
                 _auto_width(ws5)
-            except Exception:
+            except (pd.errors.ParserError, OSError, UnicodeDecodeError):
                 ws5.cell(row_cursor, 1, "Error reading monte_carlo_cv.csv")
 
     buf = io.BytesIO()
@@ -1012,7 +1015,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
                     Emu(x), Emu(int(Inches(1.15))),
                     width=Emu(int(Inches(6.1))),
                     height=Emu(int(Inches(5.6))))
-            except Exception:
+            except OSError:   # arquivo ausente/corrompido/formato invalido
                 _txt(slide_f, f"[Figura: {os.path.basename(img_path)}]",
                      x, int(Inches(2.0)), int(Inches(6.0)), int(Inches(1.0)),
                      size=11, color=_MUTED)
@@ -1056,8 +1059,11 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
                          fy + int(Inches(0.05)),
                          col_w - int(Inches(0.1)), int(Inches(0.45)),
                          size=10, color=_SLATE)
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except Exception as _e_slide:  # noqa: BLE001 -- slide opcional
+            # (leitura CSV + N formas desenhadas); erro logado, o restante
+            # do PPTX (capa, figuras, conclusoes) continua sendo gerado.
+            logging.getLogger(__name__).warning(
+                "PPTX: slide de benchmark nao gerado: %s", _e_slide)
 
     # ── Final SLIDE: Conclusions ───────────────────────────────────────────
     slide_c = _slide_novo()

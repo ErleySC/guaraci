@@ -60,7 +60,9 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
         idx = np.concatenate(partes)
         try:
             boot_stats.append(float(metric_fn(y_true[idx], y_pred[idx])))
-        except Exception:
+        except (ValueError, ZeroDivisionError):
+            # Reamostragem degenerada (ex.: classe minoritaria ausente apos
+            # bootstrap) -- descartada; downstream cai p/ NaN se restarem <20.
             continue
     boot_stats = np.asarray(boot_stats)
 
@@ -81,7 +83,10 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
         mask = np.ones(n, dtype=bool); mask[i] = False
         try:
             jack[i] = float(metric_fn(y_true[mask], y_pred[mask]))
-        except Exception:
+        except (ValueError, ZeroDivisionError):
+            # Remover a i-esima amostra deixou uma classe sem exemplos --
+            # aproxima a influencia dessa amostra pelo valor observado (nao
+            # crasha o jackknife inteiro por 1 amostra degenerada).
             jack[i] = observed
     mean_jack = jack.mean()
     diffs = mean_jack - jack
@@ -185,7 +190,10 @@ def _iter_wold(pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups):
         r2 = max(-1.0, 1.0 - ss_res_r2 / ss_tot_p)
         q2 = max(-1.0, 1.0 - ss_res_q2 / ss_tot_p)
         return ("ok", sim, r2, q2)
-    except Exception:
+    except (ValueError, np.linalg.LinAlgError):
+        # Y permutado degenerado p/ este fold (ex.: classe some do treino
+        # apos a permutacao) -- contado como falha em teste_wold (n_falhos),
+        # nao mascarado. Excecoes de outro tipo (bug real) propagam.
         return ("fail", None, None, None)
 
 
@@ -322,7 +330,9 @@ def _iter_permutacao(pipeline_factory, X, Y_perm, y_perm_int, cv, groups):
         y_hat = _cv_predict_manual(pipeline_factory, X, Y_perm, cv_perm_idx)
         acc = float(balanced_accuracy_score(y_perm_int, np.argmax(y_hat, axis=1)))
         return ("ok", acc)
-    except Exception:
+    except (ValueError, np.linalg.LinAlgError):
+        # Mesma logica de _iter_wold: falha contada em teste_permutacao
+        # (n_falhos), nao mascarada.
         return ("fail", None)
 
 

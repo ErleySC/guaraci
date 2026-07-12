@@ -81,6 +81,37 @@ def test_plsda_classifier_multiclass(pq):
     assert set(preds).issubset(set(classes))
 
 
+def test_plsda_classifier_vs_sklearn_manual(pq):
+    """VALIDACAO (docs/VALIDATION.md): PLSDAClassifier.predict() deve
+    reproduzir EXATAMENTE argmax(PLSRegression manual) -- prova que o
+    wrapper (LabelBinarizer + PLS + argmax) nao introduz nenhum desvio
+    sobre o sklearn.PLSRegression puro, que e' o motor por baixo."""
+    from sklearn.cross_decomposition import PLSRegression as _SkPLS
+    from sklearn.preprocessing import LabelBinarizer as _SkLB
+    rng = np.random.default_rng(3)
+    n_per = 25
+    classes = ["Andiroba", "Acai", "Castanha", "Copaiba"]
+    X = np.vstack([rng.normal(loc=i * 1.7, scale=1.0, size=(n_per, 24))
+                   for i in range(len(classes))])
+    y = np.repeat(classes, n_per)
+
+    clf = pq.PLSDAClassifier(n_components=3).fit(X, y)
+    preds_guaraci = clf.predict(X)
+
+    # Reproducao manual, sem passar pelo wrapper Guaraci.
+    lb = _SkLB().fit(y)
+    Yb = np.asarray(lb.transform(y))
+    pls_ref = _SkPLS(n_components=3, scale=False).fit(X, Yb)
+    preds_ref = lb.classes_[np.argmax(np.asarray(pls_ref.predict(X)), axis=1)]
+
+    assert list(preds_guaraci) == list(preds_ref)
+    # Coeficientes de regressao identicos (mesmo estimador por baixo).
+    coef_guaraci = np.asarray(clf._pls.coef_)
+    coef_ref = np.asarray(pls_ref.coef_)
+    diff = float(np.max(np.abs(coef_guaraci - coef_ref)))
+    assert diff == 0.0, f"max|Δcoef| = {diff} (esperado 0.0)"
+
+
 def test_opls_orthogonality_binary(pq):
     """OPLS binary: t_orth ⊥ t_pred by Gram-Schmidt construction."""
     rng = np.random.default_rng(7)

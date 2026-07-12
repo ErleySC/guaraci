@@ -7,5 +7,5 @@ from __future__ import annotations
 
 try:
     from guaraci.config import __version__  # noqa: F401
-except Exception:  # pragma: no cover - durante bootstrap parcial de import
+except ImportError:  # pragma: no cover - durante bootstrap parcial de import
     __version__ = "unknown"
