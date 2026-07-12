@@ -1,5 +1,5 @@
 """
-guaraci.py v31.4.0 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v31.5.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
 GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
 

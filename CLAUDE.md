@@ -97,7 +97,7 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.4.0 | `grep -r version pyproject.toml` |
+| Versão | 31.5.0 | `grep -r version pyproject.toml` |
 | Testes | 550 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
@@ -333,9 +333,27 @@ manifesto = {
 
 ---
 
-### 🟡 P6 — 159 `print()` em vez de `logging`
-**Problema real (além de estética):** o painel de progresso do CLI faz *parsing de stdout
-com regex*. Mude uma string de print e o painel quebra silenciosamente.
+### 🟢 P6 (PARCIAL, 2026-07-13) — 164 `print()` em vez de `logging`
+**Feito:** `pipeline.py` migrado por completo para `log.info()`
+(`src/guaraci/log.py` novo, handler que escreve em `sys.stdout` NO
+MOMENTO do emit — não uma referência capturada na importação — para
+continuar funcionando dentro do `contextlib.redirect_stdout` do CLI/app
+web). Verificado com teste de integração dedicado
+(`tests/test_pipeline_log_parsing_integration.py`) que roda o pipeline
+sintético de verdade e confirma que os 3 regex do painel
+(`_RE_ETAPA`/`_RE_ARQUIVO_SALVO`/`_RE_AVISO` em `app_logic.py`) ainda
+casam com o texto capturado.
+
+**NÃO feito (escopo maior, ver abaixo):** o painel do CLI e do app web
+**continuam fazendo parsing de texto por regex**, não consumindo
+`logging.Handler`/registros estruturados como a solução completa abaixo
+propõe. `log.info(msg)` preserva o MESMO texto que `print(msg)` produzia
+— resolve a inconsistência entre módulos e dá logger/verbosidade
+configurável, mas **não** resolve a fragilidade de fundo ("mude uma
+string e o painel quebra silenciosamente") — só relocou onde o texto
+precisa ser preservado (de `print()` para `log.info()`). A reescrita do
+painel para consumir registros estruturados (`extra={...}`) é um projeto
+à parte, não feito nesta rodada.
 
 **Solução:**
 ```python
@@ -368,11 +386,18 @@ class PainelHandler(logging.Handler):
         self.painel.atualizar(record.getMessage(), record.levelname)
 ```
 
-**Bônus:** ganha de graça um **log de execução auditável** — o arquivo que prova, meses
-depois, quais parâmetros geraram aquela figura do TCC.
+**Bônus (ainda não aproveitado):** um `arquivo=` em `guaraci.log.configurar()`
+já permite log de execução em disco — ninguém liga isso ainda por padrão.
 
-**Migração:** módulo por módulo, do menor para o maior. `pipeline.py` (159 prints) por
-último, junto com a quebra de `executar()`. **Não faça `sed` cego.**
+**Migração:** `pipeline.py` (164 prints) migrado em 2026-07-13 — decisão
+tomada de fazer JUSTO o módulo maior primeiro (contrariando a ordem
+sugerida aqui) porque era o único item concreto pedido; substituição
+`print(` → `log.info(` foi mecânica mas verificada (não um `sed` cego às
+cegas): confirmado antes por grep que as 164 chamadas eram todas de
+argumento único (sem `flush=`/`sep=`/múltiplos args posicionais), e
+depois por um teste de integração dedicado que roda o pipeline de
+verdade e confere que os regex do painel ainda casam. Os demais módulos
+já usavam `logging` desde antes desta sessão.
 
 ---
 
@@ -682,7 +707,7 @@ nas primeiras linhas em inglês.
 | # | Item | Prazo |
 |---|---|---|
 | 10 | P4 — Cobertura núcleo → 95% | 2–3 semanas |
-| 11 | P6 — `print` → `logging` em `pipeline.py` (164 chamadas) | 1 semana |
+| ~~11~~ | ~~P6 — `print` → `logging` em `pipeline.py`~~ ✅ parcial | feito 2026-07-13 — falta reescrever o painel p/ Handler estruturado (ver P6) |
 | 12 | MkDocs + GitHub Pages | 1 dia |
 | ~~13~~ | ~~Rodar em dataset público externo (Tecator)~~ ✅ | feito 2026-07-13 — `docs/BENCHMARK_TECATOR.md`; falta um 2º dataset (corn) e cobertura de classificação/DD-SIMCA externa |
 | 14 | Paper JOSS: state of the field | 2 semanas |
