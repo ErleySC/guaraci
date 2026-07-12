@@ -16,6 +16,7 @@
 ### 🚀 [Try the live demo — no install required](https://guaraci.streamlit.app/)
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://guaraci.streamlit.app/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
 
 A **free and open** alternative to paid chemometrics suites (MATLAB/PLS_Toolbox,
 The Unscrambler, SIMCA): a reproducible **multi-technique chemometrics platform**
@@ -81,6 +82,16 @@ Python 3.10+. The code lives in the `guaraci` package under `src/`.
 pip install -e .        # installs the `guaraci` package + core deps (adds the `guaraci` command)
 # or, for the full web/reports/benchmark stack:  pip install -e .[all]
 ```
+
+**5-minute checkout, no data of your own required:**
+
+```bash
+guaraci doctor    # checks Python/RAM/CPU/deps, writes guaraci_doctor.txt
+guaraci demo      # runs the full pipeline on synthetic spectra, opens the results folder
+guaraci --version
+```
+
+Or run it in the browser with zero local install: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
 
 ## Use (3 ways, no code editing)
 

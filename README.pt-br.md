@@ -16,6 +16,7 @@
 ### 🚀 [Teste a demo ao vivo — sem instalar nada](https://guaraci.streamlit.app/)
 
 [![Abrir no Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://guaraci.streamlit.app/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
 
 Uma alternativa **livre e aberta** aos softwares pagos de quimiometria
 (MATLAB/PLS_Toolbox, The Unscrambler, SIMCA): plataforma reprodutível de
@@ -90,6 +91,16 @@ pip install -e .          # pacote `guaraci` + núcleo científico (adiciona o c
 pip install -e .[all]
 # alternativa p/ deploy (ex.: Streamlit Cloud): pip install -r requirements.txt
 ```
+
+**Checkout de 5 minutos, sem precisar de dado seu:**
+
+```bash
+guaraci doctor    # checa Python/RAM/CPU/dependências, grava guaraci_doctor.txt
+guaraci demo      # roda o pipeline completo com espectros sintéticos, abre a pasta de resultados
+guaraci --version
+```
+
+Ou rode no navegador sem instalar nada: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
 
 ---
 
