@@ -6,6 +6,29 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.6.0 — 2026-07-13 — Cobertura do nucleo cientifico -> 95% (CLAUDE.md P4):
+             (1) classificadores.py 93% -> 97%: testes de propriedade para
+                 casos degenerados do NIPALS PLS1 (X todo-zero interrompe
+                 sem divergir), da deflacao OPLS (componente ortogonal com
+                 norma ~0), do fallback LDA->PLS2 quando a LDA multiclasse
+                 falha (matriz de dispersao intra-classe singular --
+                 forcado via monkeypatch, dificil de reproduzir
+                 naturalmente), e de sensibilidade_ddsimca_logo com folds
+                 sem dado suficiente (nao lanca excecao, fica inconclusivo);
+             (2) validacao_estatistica.py 90% -> 95%: teste_permutacao e
+                 teste_wold agora tem cobertura para o caso em que TODA
+                 iteracao do loop falha (fold impossivel apos embaralhar
+                 rotulos) -- p-valor vira 1.0 nao-informativo, slopes viram
+                 NaN, nunca um calculo sobre lista vazia. Injetado via cv
+                 fake deterministico (falha a partir da 2a chamada), nao
+                 uma coincidencia estatistica fragil;
+             (3) chemometric_stats.py (98%) e preprocessamento.py (100%)
+                 ja estavam acima da meta antes desta sessao -- confirmado,
+                 nao alterado. Cobertura TOTAL do projeto continua 64%
+                 (fora do escopo desta rodada: dados_io/figuras/guaraci.py).
+```
+
+```
 v31.5.0 — 2026-07-13 — print() -> logging em pipeline.py (CLAUDE.md P6, parcial):
              (1) 164 chamadas `print()` em `pipeline.py` migradas para
                  `log.info()` (`log = logging.getLogger(__name__)`).
