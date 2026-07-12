@@ -560,7 +560,13 @@ p. 397-405, 1978.
 
 ---
 
-*Última revisão do manual: terminologia da interface (CLI e README) revisada
+*Última revisão do manual: novo `docs/VALIDATION.md` (cartão de visita
+técnico) — tabela com 8 linhas de validação contra sklearn/fórmulas
+fechadas (PLS-DA, SNV, VIP, MSC, DD-SIMCA/T², CV-ANOVA, BCa, OPLS-DA),
+valores obtidos rodando a suíte nesta sessão, com seção honesta do que
+ainda NÃO está validado (dataset público externo, cobertura empírica do
+BCa). Linkado em README.md/README.pt-br.md. Antes: terminologia da
+interface (CLI e README) revisada
 para liderar com o nome amigável do modo de análise ("Classificação por
 espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N3
 passa a aparecer como referência técnica secundária, nunca como o rótulo

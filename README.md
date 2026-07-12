@@ -121,6 +121,16 @@ folder/file) and `{Mode}` is the scientific objective resolved for the run
 Inside: `Graficos/` (figures), `Tabelas/` (CSV data), `Relatorios/`
 (`resumo_modelo.txt`, `model_card.md`), and `Modelos/` (final `.joblib`).
 
+## Validation
+
+Every number in the table below comes from an automated test that runs on
+every commit — see [`docs/VALIDATION.md`](docs/VALIDATION.md) for the full
+table, tolerances, and how to reproduce: PLS-DA matches
+`sklearn.PLSRegression` + argmax exactly (max|Δcoef| = 0.0), SNV/VIP/MSC/
+CV-ANOVA match their defining formulas to numerical tolerance, DD-SIMCA's
+UCL matches the Tracy-Young-Mason/χ² closed forms, OPLS-DA's orthogonal
+component is orthogonal to <1e-6.
+
 ## Known limitations
 
 - **Babaçu vs. Palmiste** overlap — both are palms with near-identical NIR

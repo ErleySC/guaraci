@@ -173,6 +173,17 @@ resultados_tcc/<amostra>/<Modo>/PLSDA_OE_{nível}_{pré-proc}_{AAAAMMDD_HHMMSS}/
 
 ---
 
+## Validação
+
+Cada número da tabela abaixo vem de um teste automatizado que roda a cada
+commit — tabela completa, tolerâncias e como reproduzir em
+[`docs/VALIDATION.md`](docs/VALIDATION.md): o PLS-DA reproduz
+`sklearn.PLSRegression` + argmax exatamente (max|Δcoef| = 0,0), SNV/VIP/MSC/
+CV-ANOVA batem com suas fórmulas de definição dentro da tolerância
+numérica, o UCL do DD-SIMCA bate com as fórmulas fechadas de
+Tracy-Young-Mason/χ², a componente ortogonal do OPLS-DA é ortogonal a
+menos de 1e-6.
+
 ## Limitações conhecidas (honestidade científica)
 
 - **Babaçu × Palmiste**: classe mais fraca — ambas são palmáceas e têm assinatura
