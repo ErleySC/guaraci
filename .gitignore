@@ -5,6 +5,7 @@ codigos_usuario.json
 codigos_exportados.csv
 tecnica_usuario.json
 .cli_wizard_done
+.cli_modo_usuario
 perfis/
 
 # --- Results (large PNGs / joblib models — keep out of repo) ---
