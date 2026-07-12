@@ -88,6 +88,7 @@ CFG = Config()
 from guaraci.dados_io import (   # noqa: E402
     CODIGO_ESPECIE,
     ADULTERANTE_NOME,
+    adulterante_de_mae_id,
     parse_title,
     extrair_title_do_dx,
 )
@@ -206,6 +207,7 @@ from guaraci.figuras import (   # noqa: E402
     fig_splot_opls,
     fig_cooman_ddsimca,
     fig_merito_regressao,
+    fig_heatmap_especie_adulterante,
 )
 
 # Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
@@ -276,7 +278,7 @@ from guaraci.classificadores import (   # noqa: E402
 from guaraci.resultados_io import (   # noqa: F401
     metricas_modelo_pls, salvar_identificadores, _NOTAS_METODOLOGICAS,
     salvar_resumo_modelo, anexar_regressao_resumo, _md_tabela,
-    gerar_model_card, anexar_regressao_model_card,
+    gerar_model_card, anexar_regressao_model_card, anexar_heatmap_resumo,
 )
 def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
@@ -750,6 +752,86 @@ def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
         if len(idxg) >= 2:
             grupos.append(np.asarray(preproc_ajustado.transform(X_raw_subset[idxg])))
     return grupos
+
+
+def r2cv_especie_adulterante(
+        X: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
+        mae_id: Optional[np.ndarray], cfg: "Config", *,
+        limiar_r2: float = 0.70, min_niveis: int = 3,
+        min_grupos: int = 3) -> Optional[Dict[str, Any]]:
+    """R2 em validacao cruzada (group-aware) do teor, POR especie x adulterante.
+
+    A regressao agrupando ESPECIES falha (a matriz vegetal domina o sinal,
+    R2~0); a que agrupa ADULTERANTES dentro da especie mascara que alguns
+    adulterantes nao sao quantificaveis. A granularidade honesta e
+    especie x adulterante: para cada combinacao, junta os PUROS da especie
+    (teor=0, ancora da calibracao) + as amostras daquele adulterante, faz
+    cross_val_predict group-aware por mae_id (replicas nunca se separam entre
+    treino e teste) e calcula o R2cv. Combinacoes sem dados/replicas
+    suficientes viram 'n/a' (nunca inventam numero).
+
+    O adulterante de cada amostra vem do mae_id (que sobrevive alinhado a
+    validar_entrada) via adulterante_de_mae_id -- evita desalinhar com o
+    metadados_df, que NAO passa pela remocao de NaN/Inf.
+
+    Returns dict {especies, adulterantes, matriz{(esp,adult): r2|nan}, n_ok,
+    n_falhas, n_na, n_total, limiar_r2} ou None se nao ha adulterante/combinacao.
+    """
+    if mae_id is None:
+        return None
+    conc = np.asarray(conc, dtype=float)
+    conc = np.where(np.isnan(conc), 0.0, conc)
+    adult_por_amostra = np.array(
+        [adulterante_de_mae_id(m) for m in mae_id], dtype=object)
+    especies = sorted({str(r) for r in rotulos})
+    adulterantes = sorted({a for a in adult_por_amostra if a})
+    if not adulterantes:
+        return None
+
+    matriz: Dict[Tuple[str, str], float] = {}
+    n_ok = n_falhas = n_na = 0
+    for esp in especies:
+        mask_esp = (rotulos == esp)
+        mask_puro = mask_esp & (conc <= 0.0)
+        for adult in adulterantes:
+            mask_ad = mask_esp & (adult_por_amostra == adult) & (conc > 0.0)
+            mask = mask_puro | mask_ad
+            X_c, Y_c, mae_c = X[mask], conc[mask], mae_id[mask]
+            n_niveis = int(len(np.unique(Y_c)))
+            n_grp = int(len(np.unique(mae_c)))
+            if (int(mask_ad.sum()) == 0 or n_niveis < min_niveis
+                    or n_grp < min_grupos or float(Y_c.std()) < 1e-8):
+                matriz[(esp, adult)] = float("nan")
+                n_na += 1
+                continue
+            n_sp = max(2, min(cfg.n_splits_cv, n_grp))
+            lv = max(1, min(cfg.max_lvs, X_c.shape[0] // 5, n_niveis - 1))
+            pipe = Pipeline([
+                ("preproc", construir_preprocessador(cfg)),
+                ("pls", PLSRegression(n_components=lv, scale=False)),
+            ])
+            try:
+                Y_hat = cross_val_predict(pipe, X_c, Y_c,
+                                          cv=GroupKFold(n_splits=n_sp),
+                                          groups=mae_c)
+            except Exception as _e_cv:
+                print(f"  [AVISO] R2cv {esp} x {adult}: {_e_cv}")
+                matriz[(esp, adult)] = float("nan")
+                n_na += 1
+                continue
+            r2 = float(r2_score(Y_c, Y_hat))
+            matriz[(esp, adult)] = r2
+            if r2 >= limiar_r2:
+                n_ok += 1
+            else:
+                n_falhas += 1
+
+    n_total = n_ok + n_falhas
+    if n_total == 0:
+        return None
+    return {"especies": especies, "adulterantes": adulterantes,
+            "matriz": matriz, "n_ok": n_ok, "n_falhas": n_falhas,
+            "n_na": n_na, "n_total": n_total, "limiar_r2": limiar_r2}
 
 
 def pls_regressao_por_especie(
@@ -2066,6 +2148,24 @@ def executar(cfg: Config):
                               "e variancia de teor > 0).")
                 except Exception as _e_reg_esp:
                     print(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+
+                # Heatmap R2cv especie x adulterante: granularidade honesta da
+                # quantificacao. A regressao pooled por especie junta os
+                # adulterantes e esconde que alguns nao sao quantificaveis; o
+                # heatmap expoe cada combinacao e MARCA as que falham (so roda
+                # em Quantificacao, ja garantido pelo guard objetivo acima).
+                try:
+                    _r2cv = r2cv_especie_adulterante(
+                        X_raw, conc_arr, rotulos, mae_id, cfg)
+                    if _r2cv is not None:
+                        print(f"\n[7c/7] R2cv por especie x adulterante — "
+                              f"{_r2cv['n_falhas']}/{_r2cv['n_total']} "
+                              f"combinacoes abaixo de R2cv="
+                              f"{_r2cv['limiar_r2']:.2f}  (n/a: {_r2cv['n_na']})")
+                        fig_heatmap_especie_adulterante(_r2cv, cfg, pasta)
+                        anexar_heatmap_resumo(pasta_logs, _r2cv)
+                except Exception as _e_hm:
+                    print(f"  [AVISO] Heatmap especie x adulterante: {_e_hm}")
                 _pls_reg_ok = False   # per-species path handled the figure
             else:
                 _pls_reg_ok = True

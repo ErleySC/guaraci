@@ -100,6 +100,19 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   aleatória; com réplicas físicas, colapsa cada grupo T1/T2/T3 num espectro
   médio antes de selecionar, preservando o mesmo invariante de nunca separar
   réplicas entre calibração e validação).
+  Gera ainda o **mapa de calor espécie × adulterante**
+  (`figN3_heatmap_especie_adulterante.png`): um **R²cv** (R² em validação
+  cruzada *group-aware* — mede o acerto do teor em amostras não vistas no
+  treino) por combinação de espécie e adulterante. Existe porque a regressão
+  que *junta* os adulterantes de uma espécie mascara que alguns adulterantes
+  simplesmente **não são quantificáveis** (o sinal afoga no ruído). Cada
+  célula **abaixo do limiar de aceite (R²cv = 0,70)** aparece **hachurada e em
+  negrito** (nunca some), célula sem dados suficientes vira cinza com "n/a", e
+  o título + o `resumo_modelo.txt` trazem o **contador de falhas** (ex.: "3/9
+  combinações abaixo de R²cv = 0,70") — para que uma quantificação que só
+  funciona em parte das combinações não seja lida como sucesso geral. O
+  adulterante de cada amostra é derivado do `mae_id`. *(No modo sintético, ative
+  com `sint_adulterantes` no `config.yaml`, ex.: `["S","M","A"]`.)*
 
 ### 2.2 Objetivo científico: Exploratório, Classificação, Quantificação
 
@@ -547,7 +560,10 @@ p. 397-405, 1978.
 
 ---
 
-*Última revisão do manual: sensibilidade DD-SIMCA (N2) agora estimada por
+*Última revisão do manual: mapa de calor espécie × adulterante (N3,
+`figN3_heatmap_especie_adulterante.png`) — R²cv por combinação, com células
+reprovadas hachuradas e contador de falhas no título e no relatório;
+sensibilidade DD-SIMCA (N2) agora estimada por
 leave-one-group-out honesto por réplica `mae_id` — sempre exibida com o número
 de grupos e aviso de incerteza; `n/a (não validado)` quando há um só grupo de
 puros (substitui a re-substituição, que inflava até 100%). Antes: prévia "O que

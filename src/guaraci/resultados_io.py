@@ -211,6 +211,49 @@ def anexar_regressao_resumo(
         print(f"  [AVISO] Nao foi possivel anexar regressao ao resumo: {e}")
 
 
+def anexar_heatmap_resumo(pasta: str, resultado: Dict[str, object]) -> None:
+    """Anexa ao resumo_modelo.txt o balanco do heatmap especie x adulterante
+    (R2cv por combinacao). Deixa EXPLICITO quantas combinacoes NAO atingem o
+    limiar de aceite -- uma quantificacao que so funciona em parte das
+    combinacoes nao deve ser lida como sucesso geral. Append-only pelo mesmo
+    motivo de anexar_regressao_resumo (roda depois do 1o flush do resumo).
+    """
+    caminho = os.path.join(pasta, "resumo_modelo.txt")
+    limiar   = float(resultado.get("limiar_r2", 0.70))   # type: ignore[arg-type]
+    n_falhas = int(resultado.get("n_falhas", 0))          # type: ignore[arg-type]
+    n_ok     = int(resultado.get("n_ok", 0))              # type: ignore[arg-type]
+    n_na     = int(resultado.get("n_na", 0))              # type: ignore[arg-type]
+    n_total  = int(resultado.get("n_total", 0))           # type: ignore[arg-type]
+    matriz   = resultado.get("matriz", {}) or {}
+    linhas: List[str] = [
+        "", "=" * 60,
+        "  Quantificacao por especie x adulterante (R2cv, group-aware)",
+        "=" * 60,
+        f"  Limiar de aceite: R2cv >= {limiar:.2f}",
+        f"  Combinacoes avaliadas: {n_total} | aprovadas: {n_ok} | "
+        f"abaixo do limiar: {n_falhas} | sem dados (n/a): {n_na}",
+        f"  >> {n_falhas}/{n_total} combinacoes abaixo de R2cv = {limiar:.2f}",
+    ]
+    if isinstance(matriz, dict) and matriz:
+        abaixo = []
+        for (esp, ad), r2 in matriz.items():
+            try:
+                fr = float(r2)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(fr) and fr < limiar:
+                abaixo.append(f"    {esp} x {ad}: R2cv={fr:.3f}")
+        linhas.append("")
+        linhas.append("  Combinacoes abaixo do limiar (nao quantificaveis):")
+        linhas.extend(abaixo or
+                      ["    (nenhuma — todas as combinacoes com dados passaram)"])
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except Exception as e:
+        print(f"  [AVISO] Nao foi possivel anexar heatmap ao resumo: {e}")
+
+
 # =========================================================================
 #  Model Card (Mitchell et al. 2019, "Model Cards for Model Reporting",
 #  FAT* '19) -- resumo de 1 documento por execucao para uso pretendido,

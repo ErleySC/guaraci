@@ -176,6 +176,11 @@ class Config:
     n_por_classe: int = 20
     n_pontos_sint: int = 1000
     n_replicas_sint: int = 3   # replicas fisicas/ponto (estilo T1/T2/T3) no modo sintetico
+    # Modo sintetico: adulterantes a gerar por especie (letras A/M/S). Vazio =
+    # so o gradiente puro legado (nao muda dados de teste existentes). Quando
+    # preenchido, cada especie ganha puros + esses adulterantes em varios teores
+    # -> permite exercitar o heatmap especie x adulterante (N3) sinteticamente.
+    sint_adulterantes: Tuple[str, ...] = ()
 
     seed: int = 42
 

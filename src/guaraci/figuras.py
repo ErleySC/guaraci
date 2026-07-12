@@ -1706,6 +1706,66 @@ def fig_splot_opls(X_proc: np.ndarray, t_pred: np.ndarray,
     salvar(fig, "fig_splot_opls", pasta, cfg)
 
 
+def fig_heatmap_especie_adulterante(resultado: Dict[str, Any], cfg,
+                                     pasta: str) -> None:
+    """Heatmap R2cv por especie (linhas) x adulterante (colunas).
+
+    Cor = R2cv numa escala divergente ancorada no limiar de aceite. Celula
+    ABAIXO do limiar fica HACHURADA e com o valor em negrito (nunca some);
+    celula sem dados/replicas suficientes vira cinza com 'n/a'. O titulo tras
+    o contador de falhas (ex.: '16/37 combinacoes abaixo de R²cv = 0.70'),
+    o mesmo numero registrado no relatorio -- para que uma quantificacao que
+    so funciona em parte das combinacoes nao seja lida como sucesso geral.
+    """
+    especies     = resultado["especies"]
+    adulterantes = resultado["adulterantes"]
+    matriz       = resultado["matriz"]
+    limiar       = float(resultado["limiar_r2"])
+    n_falhas     = int(resultado["n_falhas"])
+    n_total      = int(resultado["n_total"])
+
+    n_lin, n_col = len(especies), len(adulterantes)
+    M = np.full((n_lin, n_col), np.nan)
+    for i, esp in enumerate(especies):
+        for j, ad in enumerate(adulterantes):
+            M[i, j] = matriz.get((esp, ad), np.nan)
+
+    fig, ax = plt.subplots(figsize=(max(4.5, 1.6 * n_col + 2.5),
+                                    max(3.0, 0.55 * n_lin + 1.6)))
+    cmap = plt.cm.RdYlGn.copy()
+    cmap.set_bad(color="0.85")                 # n/a -> cinza explicito
+    vmin = min(0.0, 2.0 * limiar - 1.0)        # escala divergente centra no limiar
+    im = ax.imshow(np.ma.masked_invalid(M), cmap=cmap, vmin=vmin, vmax=1.0,
+                   aspect="auto")
+
+    for i in range(n_lin):
+        for j in range(n_col):
+            v = M[i, j]
+            if np.isnan(v):
+                ax.text(j, i, "n/a", ha="center", va="center",
+                        fontsize=8, color="0.35")
+                continue
+            falha = v < limiar
+            if falha:                          # hachura marca a falha
+                ax.add_patch(mpl.patches.Rectangle(
+                    (j - 0.5, i - 0.5), 1, 1, fill=False, hatch="////",
+                    edgecolor="0.12", lw=0.0, zorder=3))
+            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=8,
+                    fontweight="bold" if falha else "normal", color="0.10")
+
+    ax.set_xticks(range(n_col)); ax.set_xticklabels(adulterantes, fontsize=9)
+    ax.set_yticks(range(n_lin)); ax.set_yticklabels(especies, fontsize=9)
+    ax.set_xlabel("Adulterante"); ax.set_ylabel("Especie")
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(f"R²cv  (limiar de aceite = {limiar:.2f})")
+    ax.set_title(
+        f"Quantificacao especie x adulterante — {n_falhas}/{n_total} "
+        f"combinacoes abaixo de R²cv = {limiar:.2f}",
+        fontsize=10, fontweight="bold", loc="left")
+    fig.tight_layout()
+    salvar(fig, "figN3_heatmap_especie_adulterante", pasta, cfg)
+
+
 def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
                         rotulos: np.ndarray,
                         mapa_cores: Dict[str, str],
