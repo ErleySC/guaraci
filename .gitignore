@@ -23,6 +23,9 @@ gerar_relatorio_abnt.py
 benchmark_run.log
 *.log
 
+# --- Saida gerada por scripts/benchmark_tecator.py (reproduzivel, nao versionado) ---
+resultados_tecator.json
+
 # --- Research data (kept local; use modo=sintetico to test without real data) ---
 dados/
 *.dx

@@ -18,6 +18,28 @@ from guaraci.app_logic import coletar_config
 from guaraci.cli_assistente import PROFILES
 
 
+def _sincronizar_widgets_com_cfg(pq, cfg, apenas_chaves=None) -> None:
+    """Escreve o valor de cada campo (via `_CONFIG_SPEC`) direto em
+    `st.session_state["w_"+key]`, forcando os widgets a refletir `cfg` no
+    proximo render.
+
+    Necessario porque widgets com `key=` estatico (todo `_widget_para_campo`
+    em app_quimiometria.py, e o selectbox "nivel" em app_tabs/modelo.py) so'
+    re-sincronizam o valor EXIBIDO a partir de uma escrita explicita em
+    session_state -- mudar `value=`/`index=` ou apagar a chave nao basta
+    (verificado empiricamente: um combobox ficou mostrando o rotulo antigo
+    enquanto o valor usado ja' era o novo por baixo -- corrigido 2026-07-13).
+
+    `apenas_chaves`: se dado, sincroniza so' esses campos (aplicacao PARCIAL
+    de um preset, sem mexer no resto da config atual do usuario). Se `None`,
+    sincroniza TODOS os campos do spec (reload completo de um config.yaml).
+    """
+    for s in pq._CONFIG_SPEC:
+        if apenas_chaves is not None and s["key"] not in apenas_chaves:
+            continue
+        st.session_state[f"w_{s['key']}"] = pq._attr_para_yaml(s, cfg)
+
+
 def render(pq, cfg_base, specs: Dict, valores: Dict,
            widget_para_campo: Callable, cfg_path: str) -> None:
     """Renderiza a aba Data.
@@ -55,20 +77,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                 for s in pq._CONFIG_SPEC:
                     if s["key"] in pdata:
                         setattr(cfg_novo, s["attr"], pdata[s["key"]])
-                        # Every widget is bound to a STATIC key ("w_"+spec
-                        # key, app_quimiometria.py's _widget_para_campo /
-                        # app_tabs/modelo.py's inline "nivel" selectbox).
-                        # Once a widget with a given `key` has been mounted,
-                        # its underlying component only re-syncs its
-                        # DISPLAYED value from an EXPLICIT session_state
-                        # WRITE, not from a changed `value=`/`index=` default
-                        # and not from simply deleting the key (verified: a
-                        # `pop()` here left the combobox showing the OLD
-                        # label while the value used downstream was already
-                        # correct — a silent visual desync, not just stale
-                        # data). Writing the raw value directly is the
-                        # documented way to programmatically set a widget.
-                        st.session_state[f"w_{s['key']}"] = pdata[s["key"]]
+                _sincronizar_widgets_com_cfg(pq, cfg_novo, apenas_chaves=pdata.keys())
                 st.session_state.cfg_base = cfg_novo
                 st.success(f"Preset '{pname}' applied — check the Model tab.")
                 st.rerun()
@@ -163,7 +172,15 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         if st.button("↺ Reload config.yaml", key="btn_reload_cfg_dados",
                      use_container_width=True):
             try:
-                st.session_state.cfg_base = pq.carregar_config(cfg_path)
+                cfg_recarregado = pq.carregar_config(cfg_path)
+                st.session_state.cfg_base = cfg_recarregado
+                # Sem isso, widgets ja' renderizados (ex.: "Modo de
+                # analise") continuam mostrando o valor ANTIGO mesmo com
+                # cfg_base atualizado (mesmo bug corrigido nos presets
+                # acima, 2026-07-13 -- nunca notado aqui porque poucos
+                # usuarios trocam nivel/objetivo via reload em sessao ja'
+                # em andamento).
+                _sincronizar_widgets_com_cfg(pq, cfg_recarregado)
                 st.success("Config reloaded.")
                 st.rerun()
             except (RuntimeError, FileNotFoundError, ValueError) as e:

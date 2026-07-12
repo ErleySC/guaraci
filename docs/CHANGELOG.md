@@ -6,6 +6,29 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.4.0 — 2026-07-13 — Preparação para submissão JOSS:
+             (1) Benchmark contra dataset público externo (Tecator, NIR,
+                 teor de gordura em carne — Thodberg 1996): roda o motor
+                 real de pré-processamento + regressão PLS do GUARACI
+                 (não uma reimplementação) no split oficial 172/43,
+                 RMSEP 2,0-2,3% / R²pred 0,97-0,98, dentro da faixa
+                 esperada da literatura. Script reprodutível
+                 (`scripts/benchmark_tecator.py`, baixa o dado da fonte
+                 original a cada execução) + write-up completo
+                 (`docs/BENCHMARK_TECATOR.md`) com metodologia, resultados
+                 e limitações honestas (não cobre DD-SIMCA/classificação/
+                 group-aware — Tecator não tem réplicas físicas). Fecha a
+                 lacuna citada em VALIDATION.md/MANUAL.md;
+             (2) fix(web): mesmo bug de sincronização de widget do preset
+                 (v31.3.0) também corrigido no botão pré-existente
+                 "↺ Reload config.yaml" — extraído para
+                 `_sincronizar_widgets_com_cfg()` compartilhada;
+             (3) docs: `paper.md`/`CONTRIBUTING.md` sincronizados com a
+                 contagem real de testes (550+, não 525+/498+);
+                 `paper.bib` ganha a referência Thodberg1996.
+```
+
+```
 v31.3.0 — 2026-07-13 — Correções da auditoria multidisciplinar de 15 etapas (2026-07-12):
              (1) BREAKING: Etapa 4 (seleção de variáveis) corrige viés de
                  seleção não-aninhada. VIP>=threshold, SR top-fração e

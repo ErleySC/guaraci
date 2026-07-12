@@ -97,8 +97,8 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.3.0 | `grep -r version pyproject.toml` |
-| Testes | 531 pass, 1 skip | `pytest -q` |
+| Versão | 31.4.0 | `grep -r version pyproject.toml` |
+| Testes | 550 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
 | `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
@@ -684,7 +684,7 @@ nas primeiras linhas em inglês.
 | 10 | P4 — Cobertura núcleo → 95% | 2–3 semanas |
 | 11 | P6 — `print` → `logging` em `pipeline.py` (164 chamadas) | 1 semana |
 | 12 | MkDocs + GitHub Pages | 1 dia |
-| 13 | Rodar em dataset público externo (Tecator/corn) | 1 semana |
+| ~~13~~ | ~~Rodar em dataset público externo (Tecator)~~ ✅ | feito 2026-07-13 — `docs/BENCHMARK_TECATOR.md`; falta um 2º dataset (corn) e cobertura de classificação/DD-SIMCA externa |
 | 14 | Paper JOSS: state of the field | 2 semanas |
 | ~~—~~ | ~~Renomear pastas/arquivos de saída para tirar N1/N2/N3~~ ✅ | corrigido 2026-07-13, com aprovação explícita — ver P8 |
 | ~~—~~ | ~~Viés de seleção do AG/SPA~~ ✅ | corrigido 2026-07-13 — nested-CV via `_avaliar_busca_nested_cv` |

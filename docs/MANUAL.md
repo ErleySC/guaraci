@@ -612,11 +612,14 @@ re-executada nesta sessão).
   não usar essas tabelas para afirmar que um algoritmo é *inerentemente*
   melhor que outro sem otimizar os hiperparâmetros de ambos.
 
-- **Sem *benchmark* ainda contra um dataset público externo** (ex.:
-  Tecator, dataset de milho da Eigenvector). Toda a validação numérica
-  disponível hoje (ver `docs/VALIDATION.md`) é contra fórmulas fechadas e
-  propriedades matemáticas, não contra resultados publicados de terceiros
-  rodando o pipeline inteiro. Item de roadmap em aberto.
+- **Benchmark contra dataset público externo: feito (Tecator), parcial.**
+  Ver `docs/BENCHMARK_TECATOR.md` — motor de pré-processamento + regressão
+  PLS testado num dataset de terceiros (NIR, teor de gordura em carne,
+  Thodberg 1996), fora do dataset próprio do autor. RMSEP dentro da faixa
+  esperada da literatura. Cobre pré-processamento+PLS; **ainda falta**
+  benchmark de classificação/DD-SIMCA/OPLS-DA contra dataset externo, e
+  um segundo dataset (ex.: corn, Eigenvector) para reforçar a
+  generalização além de um único caso.
 
 - **Classes com poucas amostras ou espectralmente próximas têm recall mais
   baixo** — reporte sempre a **matriz de confusão completa**, nunca só a

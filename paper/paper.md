@@ -84,11 +84,15 @@ quality-control laboratories that need the same rigor with an auditable
 trail. Its input/output layer is deliberately generic (JCAMP-DX and tabular
 formats), so it applies to matrices and analytical techniques beyond the one
 that motivated it, without code changes. The codebase is covered by an
-automated test suite (525+ tests) and continuous integration (linting,
+automated test suite (550+ tests) and continuous integration (linting,
 coverage gate), and each implemented method is checked against a reference
 implementation or a closed-form analytical property (documented in
 `docs/VALIDATION.md`), so contributions and future chemometric methods can
-be added without regressing existing behaviour.
+be added without regressing existing behaviour. Beyond internal validation,
+the preprocessing and PLS regression engine has been benchmarked against
+Tecator, a public NIR dataset unrelated to the authors' own data
+[@Thodberg1996], reproducing RMSEP/R² in the range reported in the
+chemometrics literature for this dataset (`docs/BENCHMARK_TECATOR.md`).
 
 # Acknowledgements
 
