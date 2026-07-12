@@ -73,11 +73,14 @@ em vez de re-substituição — ver a seção "Limitações" abaixo.
   grupo de réplica pura por classe (`mae_id`), a sensibilidade **não é
   validável por LOGO** (retorna `n/a`, nunca um número inflado por
   re-substituição). Ver `docs/MANUAL.md`, seção 2.1.
-- **Sem *benchmark* contra um dataset público externo (Tecator, corn,
-  etc.).** Todas as validações desta página usam dados sintéticos ou
-  propriedades matemáticas — nenhuma delas roda o pipeline inteiro num
-  dataset publicado por terceiros e compara com resultados da literatura
-  para aquele dataset. Item de roadmap em aberto.
+- **Benchmark contra dataset público externo: feito (2026-07-13), parcial.**
+  `docs/BENCHMARK_TECATOR.md` roda o motor real de pré-processamento +
+  regressão PLS do GUARACI no dataset Tecator (NIR, teor de gordura em
+  carne, Thodberg 1996) — RMSEP 2,0–2,3% / R²pred 0,97–0,98, dentro da
+  faixa esperada da literatura. Cobre pré-processamento + PLS; **não**
+  cobre DD-SIMCA, OPLS-DA, classificação, nem a validação *group-aware*
+  via `mae_id` (Tecator não tem réplicas físicas — não aplicável a este
+  dataset). Reproduzível: `python scripts/benchmark_tecator.py`.
 - **Bootstrap BCa: propriedades, não cobertura empírica.** As 5 checagens
   confirmam que o intervalo se comporta como deveria (contém o valor
   observado, é reprodutível, degrada honestamente com poucas reamostragens)
@@ -119,6 +122,11 @@ and OPLS models. **Journal of Chemometrics**, v. 22, n. 11-12, p. 594-600,
 JACKSON, J.E.; MUDHOLKAR, G.S. Control procedures for residuals associated
 with principal component analysis. **Technometrics**, v. 21, n. 3, p.
 341-349, 1979.
+
+THODBERG, H.H. A review of Bayesian neural networks with an application to
+near infrared spectroscopy. **IEEE Transactions on Neural Networks**, v. 7,
+n. 1, p. 56-72, 1996. doi:10.1109/72.478392 — origem do dataset Tecator
+usado em `docs/BENCHMARK_TECATOR.md`.
 
 TRACY, N.D.; YOUNG, J.C.; MASON, R.L. Multivariate control charts for
 individual observations. **Journal of Quality Technology**, v. 24, n. 2,

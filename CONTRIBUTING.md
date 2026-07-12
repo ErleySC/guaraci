@@ -22,7 +22,7 @@ avoids duplicated or divergent implementation effort.
 
 ```bash
 pip install -e .[all]
-pytest -q            # run the test suite (498+ tests)
+pytest -q            # run the test suite (550+ tests)
 ruff check .          # lint
 ```
 
