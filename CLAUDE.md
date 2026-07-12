@@ -715,10 +715,12 @@ nas primeiras linhas em inglês.
 **Ainda pendente antes do TCC (bloqueiam defesa ou credibilidade):**
 | # | Item | Prazo | Bloqueia |
 |---|---|---|---|
-| 4 | `docs/VALIDATION.md` — acrescentar nota sobre nested-CV da Etapa 4 | 1 dia | Credibilidade |
-| 5 | Seção "Limitações" no MANUAL — idem | 1 dia | Honestidade |
-| 7 | P3 — 51 `except` restantes, 100% já justificados (ver P3 acima) | concluído em essência | Correção dos resultados |
 | 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos) | depende de conta do autor | **Adoção** |
+| — | **Rodar o pipeline atual (pós-correções 07-13) contra o dataset real do TCC** | só o autor pode (dataset fora do checkout) | Defesa — números antigos citados na monografia não refletem mais o código |
+
+~~4~~ ~~`docs/VALIDATION.md` — nota sobre nested-CV da Etapa 4~~ ✅ feito — ver seção "AG e SPA (Etapa 4, opcionais)" em `VALIDATION.md`.
+~~5~~ ~~Seção "Limitações" no MANUAL~~ ✅ já existia (seção 9) e cobre DD-SIMCA/regressão agrupada/modo imagem/FT-NIR-only/joblib/`mae_id` órfão.
+~~7~~ ~~P3 — 51 `except` restantes~~ ✅ concluído em essência, 100% justificados.
 
 **Depois do TCC:**
 | # | Item | Prazo |
@@ -732,7 +734,7 @@ nas primeiras linhas em inglês.
 | ~~—~~ | ~~Viés de seleção do AG/SPA~~ ✅ | corrigido 2026-07-13 — nested-CV via `_avaliar_busca_nested_cv` |
 | ~~—~~ | ~~3 presets Autenticar/Explorar/Quantificar + "rodar recomendada"~~ ✅ | corrigido 2026-07-13 (CLI + app web) — ver seção 6 |
 | ~~—~~ | ~~Modo Iniciante/Avançado (esconder campos avançados)~~ ✅ | feito 2026-07-13 — ver seção 6 (toggle `[M]` global + revelação local `[V]`) |
-| — | **Bug latente**: botão "↺ Reload config.yaml" (`app_tabs/dados.py`) provavelmente tem o mesmo desync de widget `key=` já corrigido nos presets novos — nunca notado, mas não verificado/corrigido | Baixo esforço uma vez identificado — ver seção 6 |
+| ~~—~~ | ~~Bug do botão "↺ Reload config.yaml" (`app_tabs/dados.py`)~~ ✅ | corrigido 2026-07-13 (commit `73bb522`) — mesmo desync de widget `key=` dos presets, resolvido via `_sincronizar_widgets_com_cfg()` compartilhado — ver seção 6 |
 
 **Quando sobrar tempo:**
 | 15 | P9 — Golden tests + quebrar `executar()` | 3–4 semanas |
