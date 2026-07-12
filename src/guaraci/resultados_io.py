@@ -207,7 +207,7 @@ def anexar_regressao_resumo(
     try:
         with open(caminho, "a", encoding="utf-8") as f:
             f.write("\n".join(linhas) + "\n")
-    except Exception as e:
+    except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar regressao ao resumo: {e}")
 
 
@@ -250,7 +250,7 @@ def anexar_heatmap_resumo(pasta: str, resultado: Dict[str, object]) -> None:
     try:
         with open(caminho, "a", encoding="utf-8") as f:
             f.write("\n".join(linhas) + "\n")
-    except Exception as e:
+    except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar heatmap ao resumo: {e}")
 
 
@@ -415,7 +415,7 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     try:
         with open(caminho, "w", encoding="utf-8") as f:
             f.write("\n".join(linhas) + "\n")
-    except Exception as e:
+    except OSError as e:
         print(f"  [AVISO] Nao foi possivel gerar model_card.md: {e}")
 
 
@@ -472,5 +472,5 @@ def anexar_regressao_model_card(
     try:
         with open(caminho, "a", encoding="utf-8") as f:
             f.write("\n".join(linhas) + "\n")
-    except Exception as e:
+    except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar regressao ao model card: {e}")

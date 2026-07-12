@@ -80,7 +80,7 @@ def contar_dx(pasta: str) -> int:
                 n += sum(1 for f in sub.iterdir()
                          if f.is_file() and f.suffix.lower() == ".dx")
         return n
-    except Exception:
+    except OSError:   # pasta inacessivel (permissao/race condition)
         return 0
 
 

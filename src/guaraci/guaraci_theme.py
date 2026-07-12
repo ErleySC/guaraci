@@ -89,7 +89,7 @@ def _W() -> int:
     """Largura util do console (minimo 60, maximo 100)."""
     try:
         w = shutil.get_terminal_size((80, 24)).columns
-    except Exception:
+    except (OSError, ValueError):   # COLUMNS/LINES malformado no ambiente
         w = 80
     return max(60, min(w, 100))
 

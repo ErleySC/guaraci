@@ -139,8 +139,9 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
                     return linha[len("##TITLE="):]
                 if linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
                     break
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except OSError as _e_title:   # arquivo ilegivel/ausente/permissao
+        logging.getLogger(__name__).debug(
+            "extrair_title_do_dx('%s'): %s", caminho, _e_title)
     return None
 
 
@@ -614,7 +615,11 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
     for arq, subpasta_nome in arquivos:
         try:
             x, y = parser(arq)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- parsing defensivo de arquivo
+            # externo (JCAMP-DX/CSV de instrumento, formato variavel entre
+            # fabricantes/versoes); erro impresso COM NOME DO ARQUIVO e
+            # contabilizado em n_falhos (reportado ao usuario abaixo), nunca
+            # silencioso -- 1 arquivo malformado nao derruba o dataset inteiro.
             n_falhos += 1
             print(f"  [ERROR] {os.path.basename(arq)}: {e}")
             continue

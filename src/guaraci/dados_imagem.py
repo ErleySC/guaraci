@@ -259,7 +259,9 @@ def carregar_imagens(
             feats = extrair_features_cor(img)
             if incluir_textura:
                 feats.update(extrair_features_textura(img))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- parsing defensivo de imagem
+            # externa (formato/tamanho variavel); erro impresso COM NOME DO
+            # ARQUIVO e contabilizado em n_falhos, nunca silencioso.
             n_falhos += 1
             print(f"  [ERROR] {os.path.basename(arq)}: {e}")
             continue

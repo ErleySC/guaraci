@@ -70,8 +70,11 @@ def hardware_probe() -> Dict[str, Any]:
         try:
             info["disco_livre_gb"] = round(
                 _ps.disk_usage(os.path.abspath(".")).free / 1024**3, 1)
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except Exception as _e_disco:  # noqa: BLE001 -- probe best-effort por
+            # contrato da funcao (docstring: "nunca lanca excecao"); mantem o
+            # default conservador de disco_livre_gb ja setado acima.
+            logging.getLogger(__name__).debug(
+                "hardware_probe: disco nao detectado: %s", _e_disco)
 
         limite_cgroup = _cgroup_ram_limit_gb()
         if limite_cgroup is not None and limite_cgroup < info["ram_total_gb"]:
@@ -104,16 +107,24 @@ def hardware_probe() -> Dict[str, Any]:
             ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms))  # type: ignore
             info["ram_total_gb"] = round(ms.ullTotalPhys / 1024**3, 1)
             info["ram_livre_gb"] = round(ms.ullAvailPhys / 1024**3, 1)
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except Exception as _e_win:  # noqa: BLE001 -- fallback Windows
+            # best-effort; mantem os defaults conservadores de RAM ja setados.
+            logging.getLogger(__name__).debug(
+                "hardware_probe: RAM (ctypes) nao detectada: %s", _e_win)
         # CPU via os
         try:
             info["cpu_logicos"] = os.cpu_count() or 2
             info["cpu_fisicos"] = max(1, (os.cpu_count() or 2) // 2)
-        except Exception:
-            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+        except Exception as _e_cpu:  # noqa: BLE001 -- mesmo contrato
+            # best-effort; mantem os defaults conservadores de CPU.
+            logging.getLogger(__name__).debug(
+                "hardware_probe: CPU nao detectada: %s", _e_cpu)
+    except Exception as _e_probe:  # noqa: BLE001 -- ultimo recurso do
+        # probe inteiro (docstring: "nunca lanca excecao"); os defaults
+        # conservadores setados no topo da funcao ja cobrem este caso.
+        logging.getLogger(__name__).debug(
+            "hardware_probe: deteccao de hardware falhou por completo: %s",
+            _e_probe)
     return info
 
 
@@ -195,6 +206,9 @@ def _verificar_ram(min_gb: float, operacao: str) -> bool:
             return False
     except ImportError:
         pass   # sem psutil: assume que ha memoria (falha graciosamente)
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except Exception as _e_ram:  # noqa: BLE001 -- fail-safe por contrato da
+        # funcao (docstring: "nunca lanca excecao"); assume OK e prossegue.
+        logging.getLogger(__name__).debug(
+            "_verificar_ram('%s'): deteccao falhou, assumindo OK: %s",
+            operacao, _e_ram)
     return True

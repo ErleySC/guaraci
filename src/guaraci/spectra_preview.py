@@ -46,12 +46,16 @@ def preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
                         sp_a = np.interp(wn_ref, wn_a, sp_a)
                     specs.append(sp_a)
                     labs.append(sp.name)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 1 arquivo de ate
+                    # max_por_classe numa PREVIA visual (nao a analise real);
+                    # excluido do preview, os demais continuam.
                     continue
         if not specs or wn_ref is None:
             return None, None, None
         return wn_ref, np.array(specs), np.array(labs)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- previa da UI, best-effort por
+        # design: (None, None, None) e' o contrato documentado de "sem
+        # previa disponivel"; nunca afeta o pipeline real.
         return None, None, None
 
 
@@ -73,7 +77,8 @@ def preview_espectros_csv(caminho: str, col_cls: str,
         labs = df[col_cls].astype(str).values if col_cls in df.columns else \
                np.array(["?"] * len(df))
         return wn[mask], X, labs
-    except Exception:
+    except Exception:  # noqa: BLE001 -- mesmo contrato de preview_espectros_dx
+        # acima: (None, None, None) = "sem previa", nunca afeta o pipeline real.
         return None, None, None
 
 
