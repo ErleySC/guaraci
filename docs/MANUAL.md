@@ -62,6 +62,12 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 ### 2.1 Os três níveis (N1 / N2 / N3)
 
+> `N1`/`N2`/`N3` é o código interno de `cfg.nivel` (usado em `config.yaml`,
+> nunca exibido como termo primário na CLI/web). No nome da pasta de saída
+> (seção 3), cada nível vira um slug amigável: `N1`→`PorEspecie`,
+> `N2`→`Autenticacao`, `N3`→`Quantificacao` (corrigido em 2026-07-13 —
+> versões anteriores gravavam `N1`/`N2`/`N3` cru no nome do diretório).
+
 - **N1 — Classificação (por espécie).**
   Identifica a qual espécie/classe cada amostra pertence (por exemplo, 13 a
   14 óleos amazônicos). Método: **PLS-DA** com `GroupKFold` anti-vazamento
@@ -102,7 +108,7 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   médio antes de selecionar, preservando o mesmo invariante de nunca separar
   réplicas entre calibração e validação).
   Gera ainda o **mapa de calor espécie × adulterante**
-  (`figN3_heatmap_especie_adulterante.png`): um **R²cv** (R² em validação
+  (`fig_heatmap_especie_adulterante.png`): um **R²cv** (R² em validação
   cruzada *group-aware* — mede o acerto do teor em amostras não vistas no
   treino) por combinação de espécie e adulterante. Existe porque a regressão
   que *junta* os adulterantes de uma espécie mascara que alguns adulterantes
@@ -217,7 +223,10 @@ conteúdo por categoria:
 - **`<Modo>`** — rótulo amigável do objetivo científico resolvido:
   `Exploratorio`, `Classificacao` ou `Quantificacao`.
 - **`<Execução>`** — identificador único da corrida (nível, pré-processamento
-  e data/hora), no formato `PLSDA_OE_<nivel>_<preproc>_<AAAAMMDD_HHMMSS>`.
+  e data/hora), no formato `PLSDA_OE_<slug-do-nivel>_<preproc>_<AAAAMMDD_HHMMSS>`.
+  `<slug-do-nivel>` é o nome amigável do nível (`PorEspecie`/`Autenticacao`/
+  `Quantificacao` — corrigido em 2026-07-13; versões anteriores usavam
+  `N1`/`N2`/`N3` cru aqui).
 - **`Graficos/`** — todas as figuras (`.png`/`.pdf`/`.svg`, conforme
   `formato_saida`), incluindo subpastas de figuras detalhadas (por exemplo,
   `ddsimca/`).
@@ -229,7 +238,7 @@ conteúdo por categoria:
 Exemplo real (execução de Classificação com `tag="oleos_essenciais"`):
 
 ```text
-resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_N2_MSC-SG1-MC_20260705_222028/
+resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_Autenticacao_MSC-SG1-MC_20260705_222028/
   Graficos/fig1_pca_scores.png
   Graficos/fig2_plsda_scores.png
   ...
@@ -298,6 +307,12 @@ Ward sobre componentes principais).
 
 **Seleção de variáveis (Etapa 4)** — sempre executados: iPLS (por
 intervalos), VIP ≥ 1, Selectivity Ratio (20% superior), sPLS-DA esparso.
+Desde a v31.3.0, VIP/SR/sPLS-DA usam **seleção aninhada (nested-CV)**: a
+máscara de variáveis é recalculada a cada *fold* usando só as amostras de
+treino daquele *fold*, não um VIP/SR pré-calculado no dataset inteiro —
+evita o viés de seleção (*double dipping*, Ambroise & McLachlan, 2002)
+que inflava o `balanced_accuracy` reportado em versões anteriores. iPLS
+não precisou dessa correção (a partição em intervalos não usa rótulo).
 Opcionais (mais lentos, ligar quando quiser comparar mais a fundo):
 - **SPA/APS** — Algoritmo das Projeções Sucessivas (Araújo et al., 2001):
   monta cadeias de variáveis com baixa colinearidade entre si.
@@ -694,7 +709,7 @@ protótipo, FT-NIR vs. MIR/Raman não validado, `.joblib`/RCE, `mae_id`
 órfão, hiperparâmetros do benchmark sem tuning, sem dataset público
 externo, recall por classe) — números específicos de dataset real
 marcados como não re-executados nesta sessão. Antes: mapa de calor espécie × adulterante (N3,
-`figN3_heatmap_especie_adulterante.png`) — R²cv por combinação, com células
+`fig_heatmap_especie_adulterante.png` — nome sem "N3" desde 2026-07-13) — R²cv por combinação, com células
 reprovadas hachuradas e contador de falhas no título e no relatório;
 sensibilidade DD-SIMCA (N2) agora estimada por
 leave-one-group-out honesto por réplica `mae_id` — sempre exibida com o número

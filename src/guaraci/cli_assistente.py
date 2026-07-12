@@ -991,6 +991,36 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
 }
 
 PROFILES: Dict[str, Dict[str, Any]] = {
+    # ── Presets por OBJETIVO CIENTIFICO (CLAUDE.md secao 6 / auditoria
+    #    2026-07-12: "3 presets Autenticar/Explorar/Quantificar" p/ reduzir a
+    #    barreira dos 84 campos de Config para quem so' quer "rodar a analise
+    #    certa" sem entender nivel/objetivo primeiro). Diferem dos perfis
+    #    abaixo (que sao niveis de RIGOR: rapido -> tese) — estes escolhem O
+    #    QUE analisar, nao QUAO A FUNDO. Nomes sem sufixo N1/N2/N3 (P8).
+    "Explorar Dados": {
+        "nivel": "N1", "objetivo": "exploratorio",
+        "max_lvs": 15, "n_permutacoes": 50,
+        "ddsimca": False, "opls_da": False,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": False, "comparar_pre_processamentos": False,
+        "dpi": 200,
+    },
+    "Autenticar Pureza": {
+        "nivel": "N2", "objetivo": "auto",
+        "ddsimca": True, "modo_ddsimca": "puros",
+        "max_lvs": 15, "n_permutacoes": 100,
+        "opls_da": False, "benchmark": False, "monte_carlo": False,
+        "shap_benchmark": False, "selecao_variaveis_etapa4": False,
+        "comparar_pre_processamentos": False, "dpi": 300,
+    },
+    "Quantificar Teor": {
+        "nivel": "N3", "objetivo": "auto",
+        "max_lvs": 30, "n_permutacoes": 100,
+        "ddsimca": False, "opls_da": False,
+        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
+        "selecao_variaveis_etapa4": False, "comparar_pre_processamentos": False,
+        "dpi": 300, "figuras_mostrar_elipses": True,
+    },
     # 1 — primeiro contato com os dados, sem esperar
     "Exploracao Rapida": {
         "max_lvs": 20, "n_permutacoes": 50,
@@ -1057,6 +1087,36 @@ PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 PROFILE_DESC: Dict[str, Dict[str, str]] = {
+    "Explorar Dados": {
+        "PT": ("Primeiro olhar nos dados: PCA, HCA, espectros medios — sem forcar\n"
+               "    classificacao. Use quando ainda nao sabe o que procurar.\n"
+               "    Ideal para: checar agrupamentos, outliers, qualidade do dado bruto.\n"
+               "    Tempo estimado: ~5-10 min."),
+        "EN": ("First look at the data: PCA, HCA, mean spectra — no forced\n"
+               "    classification. Use when you don't know what to look for yet.\n"
+               "    Ideal for: checking clusters, outliers, raw data quality.\n"
+               "    Estimated time: ~5-10 min."),
+    },
+    "Autenticar Pureza": {
+        "PT": ("Puro vs. adulterado, por especie, via DD-SIMCA one-class.\n"
+               "    Sensibilidade honesta por leave-one-group-out (LOGO) — nunca\n"
+               "    re-substituicao. Use quando o objetivo e' checar autenticidade.\n"
+               "    Tempo estimado: ~10-20 min."),
+        "EN": ("Pure vs. adulterated, per species, via one-class DD-SIMCA.\n"
+               "    Honest leave-one-group-out (LOGO) sensitivity — never\n"
+               "    re-substitution. Use when the goal is authenticity checking.\n"
+               "    Estimated time: ~10-20 min."),
+    },
+    "Quantificar Teor": {
+        "PT": ("Estima o teor (%) de adulterante por regressao PLS calibrada por\n"
+               "    especie, com figuras de merito (LOD/LOQ/seletividade) e o mapa\n"
+               "    de calor espécie x adulterante (mostra o que NAO e' quantificavel).\n"
+               "    Tempo estimado: ~15-30 min."),
+        "EN": ("Estimates adulterant content (%) via species-calibrated PLS\n"
+               "    regression, with figures of merit (LOD/LOQ/selectivity) and the\n"
+               "    species x adulterant heatmap (shows what is NOT quantifiable).\n"
+               "    Estimated time: ~15-30 min."),
+    },
     "Exploracao Rapida": {
         "PT": ("Primeiro contato com os dados. Somente PLS-DA basico, sem modulos pesados.\n"
                "    Ideal para: verificar se os dados carregam, testar o pipeline.\n"
@@ -1128,6 +1188,18 @@ PROFILE_DESC: Dict[str, Dict[str, str]] = {
 }
 
 PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
+    "Explorar Dados": {
+        "PT": "objetivo=exploratorio | LVs=15 | PCA/HCA | sem PLS-DA/DD-SIMCA",
+        "EN": "objective=exploratory | LVs=15 | PCA/HCA | no PLS-DA/DD-SIMCA",
+    },
+    "Autenticar Pureza": {
+        "PT": "DD-SIMCA=ON (puros) | LVs=15 | sensibilidade LOGO | sem benchmark",
+        "EN": "DD-SIMCA=ON (pure) | LVs=15 | LOGO sensitivity | no benchmark",
+    },
+    "Quantificar Teor": {
+        "PT": "regressao PLS por especie | heatmap especie x adulterante | LVs=30",
+        "EN": "species-wise PLS regression | species x adulterant heatmap | LVs=30",
+    },
     "Exploracao Rapida": {
         "PT": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",
         "EN": "LVs=20 | perm=50 | DD-SIMCA=OFF | OPLS=OFF | DPI=150",

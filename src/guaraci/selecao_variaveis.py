@@ -21,6 +21,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
+from guaraci.chemometric_stats import vip_scores, calcular_selectivity_ratio
 from guaraci.validacao_estatistica import _cv_predict_manual
 from guaraci.figuras import salvar, cor, _ticks_x_inteiros
 
@@ -57,6 +58,182 @@ def _avaliar_subset_cv(X_sel: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
         "q2":                float(q2),
         "n_vars":            int(X_sel.shape[1]),
         "n_lv":              n_lv_eff,
+    }
+
+
+# =========================================================================
+#  Selecao ANINHADA (nested-CV) para VIP/SR/sPLS-DA
+#
+#  Auditoria de 2026-07-12 (CLAUDE.md secao 13, item 03): VIP>=threshold,
+#  SR top-fracao e sPLS-DA escolhiam a mascara de variaveis usando um
+#  modelo ajustado no dataset INTEIRO (via vip/sr pre-calculados em
+#  pipeline.py a partir de pls_final.fit(X_processed, ...)) e so DEPOIS
+#  avaliavam o subconjunto ja fixo por CV. Isso e' "double dipping"
+#  (Ambroise & McLachlan, 2002, PNAS 99:6562-6566): a selecao ve rotulo
+#  de amostras que mais tarde servem de fold de validacao, inflando o
+#  balanced_accuracy reportado em relacao a uma selecao re-feita a cada
+#  fold. iPLS fica de fora desta correcao: a particao em intervalos NAO
+#  usa rotulo (so a escolha do "melhor intervalo" usa CV), o mesmo tipo
+#  de vies brando de qualquer selecao de hiperparametro via CV -- nao o
+#  double dipping que este bloco corrige.
+# =========================================================================
+
+def _mask_vip_threshold(X_train: np.ndarray, Y_train: np.ndarray,
+                         n_lv: int, threshold: float) -> np.ndarray:
+    """Mascara VIP>=threshold usando SO dados de treino do fold."""
+    n_lv_eff = int(max(1, min(n_lv, X_train.shape[1], X_train.shape[0] - 1)))
+    pls = PLSRegression(n_components=n_lv_eff, scale=False)
+    pls.fit(X_train, Y_train)
+    vip = vip_scores(pls)
+    return np.asarray(vip) >= threshold
+
+
+def _mask_sr_top_frac(X_train: np.ndarray, Y_train: np.ndarray,
+                       n_lv: int, top_frac: float) -> np.ndarray:
+    """Mascara top-fracao por Selectivity Ratio usando SO dados de treino."""
+    n_lv_eff = int(max(1, min(n_lv, X_train.shape[1], X_train.shape[0] - 1)))
+    pls = PLSRegression(n_components=n_lv_eff, scale=False)
+    pls.fit(X_train, Y_train)
+    sr = calcular_selectivity_ratio(pls, X_train)
+    p = X_train.shape[1]
+    n_top = max(2, int(round(top_frac * p)))
+    idx = np.argsort(np.asarray(sr))[::-1][:n_top]
+    mask = np.zeros(p, dtype=bool)
+    mask[idx] = True
+    return mask
+
+
+def _avaliar_subset_nested_cv(X_proc: np.ndarray, Y_bin: np.ndarray,
+                               y_int: np.ndarray, cv_indices: list,
+                               n_lv: int, selecionar_fn) -> Dict[str, float]:
+    """Como `_avaliar_subset_cv`, mas refaz a SELECAO de variaveis a cada
+    fold usando `selecionar_fn(X_treino, Y_treino, n_lv) -> mascara`,
+    sem olhar as amostras de validacao daquele fold. Se um fold selecionar
+    menos de 2 variaveis (raro, threshold agressivo + fold pequeno), cai
+    de volta para todas as variaveis NAQUELE fold, em vez de descartar o
+    fold inteiro -- mantem a CV cobrindo 100% das amostras.
+
+    `n_vars` no retorno e' a MEDIA de variaveis selecionadas entre folds
+    (pode variar fold a fold, ao contrario da selecao nao-aninhada, que
+    tinha um n_vars fixo); `n_vars_min`/`n_vars_max` dao o intervalo.
+    """
+    p = X_proc.shape[1]
+    y_hat = np.zeros_like(Y_bin, dtype=float)
+    contador = np.zeros(len(Y_bin), dtype=int)
+    n_vars_por_fold: List[int] = []
+    for tr, va in cv_indices:
+        mask = selecionar_fn(X_proc[tr], Y_bin[tr], n_lv)
+        if mask is None or mask.sum() < 2:
+            mask = np.ones(p, dtype=bool)
+        n_vars_por_fold.append(int(mask.sum()))
+        n_lv_eff = int(max(1, min(n_lv, int(mask.sum()), len(tr) - 1)))
+        pipe = Pipeline([
+            ("mc",  StandardScaler(with_std=False)),
+            ("pls", PLSRegression(n_components=n_lv_eff, scale=False)),
+        ])
+        pipe.fit(X_proc[tr][:, mask], Y_bin[tr])
+        y_hat[va] += pipe.predict(X_proc[va][:, mask])
+        contador[va] += 1
+    contador[contador == 0] = 1
+    y_cv = y_hat / contador[:, None]
+
+    ss_tot = float(np.sum((Y_bin - Y_bin.mean(axis=0)) ** 2))
+    ss_res = float(np.sum((Y_bin - y_cv) ** 2))
+    if ss_tot < 1e-12 or not np.isfinite(ss_res):
+        q2 = float("nan")
+    else:
+        q2 = max(-1.0, 1.0 - ss_res / ss_tot)
+    yhat = np.argmax(y_cv, axis=1)
+    return {
+        "accuracy":          float(accuracy_score(y_int, yhat)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_int, yhat)),
+        "q2":                float(q2),
+        "n_vars":            float(np.mean(n_vars_por_fold)),
+        "n_vars_min":        int(min(n_vars_por_fold)),
+        "n_vars_max":        int(max(n_vars_por_fold)),
+        "n_lv":              n_lv,
+    }
+
+
+# =========================================================================
+#  Selecao ANINHADA (nested-CV) para metodos de BUSCA (AG/SPA)
+#
+#  Achado colateral da correcao de 2026-07-13 (CLAUDE.md secao 8): a
+#  *fitness* do AG (a cada individuo, a cada geracao) e a pontuacao usada
+#  p/ escolher a melhor cadeia do SPA sao ambas `_avaliar_subset_cv` na
+#  MESMA `cv_indices` cujo resultado e' depois reportado como numero final
+#  na tabela da Etapa 4 -- a busca otimiza DIRETAMENTE contra a particao
+#  que mede o resultado. E' double dipping mais severo que o do VIP/SR
+#  (aqui a busca tem centenas de avaliacoes tentando "acertar" a mesma CV).
+#
+#  Correcao: nested-CV completo. A CADA fold EXTERNO (cv_indices, group-
+#  aware), a busca inteira (GA ou SPA) roda de novo usando SO' os dados de
+#  TREINO daquele fold, com uma CV INTERNA propria (StratifiedKFold local,
+#  nao group-aware -- mae_id nao chega ate aqui) para guiar a fitness. A
+#  mascara resultante e' avaliada no fold de TESTE externo, nunca visto
+#  pela busca. Custo: a busca roda ~len(cv_indices) vezes mais (aceitavel
+#  -- AG/SPA ja sao opt-in e documentados como mais lentos).
+# =========================================================================
+
+def _cv_local(y_local: np.ndarray, seed: int, n_splits: int = 3) -> list:
+    """K-fold local (indices 0..len(y_local)-1) p/ guiar a busca DENTRO de
+    um fold externo. Nao e' group-aware (mae_id nao chega ate aqui) -- so'
+    orienta a otimizacao; o numero CIENTIFICO reportado usa sempre o fold
+    de teste do cv_indices EXTERNO (esse sim group-aware), nunca visto
+    pela busca."""
+    from sklearn.model_selection import StratifiedKFold
+    y_local = np.asarray(y_local)
+    _classes, contagens = np.unique(y_local, return_counts=True)
+    n_splits_eff = max(2, min(n_splits, int(contagens.min())))
+    skf = StratifiedKFold(n_splits=n_splits_eff, shuffle=True, random_state=seed)
+    return list(skf.split(np.zeros(len(y_local)), y_local))
+
+
+def _avaliar_busca_nested_cv(X_proc: np.ndarray, Y_bin: np.ndarray,
+                              y_int: np.ndarray, cv_indices: list,
+                              n_lv: int, buscar_fn, seed: int) -> Dict[str, float]:
+    """Nested-CV p/ AG/SPA: `buscar_fn(X_treino, Y_treino, y_treino,
+    cv_interna) -> mascara` roda a busca completa usando so' o subconjunto
+    de TREINO do fold externo (reindexado localmente) + uma CV interna
+    propria; a mascara e' avaliada no fold de TESTE externo (nunca visto
+    pela busca). Mesma estrutura de retorno de `_avaliar_subset_nested_cv`."""
+    p = X_proc.shape[1]
+    y_hat = np.zeros_like(Y_bin, dtype=float)
+    contador = np.zeros(len(Y_bin), dtype=int)
+    n_vars_por_fold: List[int] = []
+    for tr, va in cv_indices:
+        X_tr, Y_tr, y_tr = X_proc[tr], Y_bin[tr], y_int[tr]
+        cv_interna = _cv_local(y_tr, seed)
+        mask = buscar_fn(X_tr, Y_tr, y_tr, cv_interna)
+        if mask is None or mask.sum() < 2:
+            mask = np.ones(p, dtype=bool)
+        n_vars_por_fold.append(int(mask.sum()))
+        n_lv_eff = int(max(1, min(n_lv, int(mask.sum()), len(tr) - 1)))
+        pipe = Pipeline([
+            ("mc",  StandardScaler(with_std=False)),
+            ("pls", PLSRegression(n_components=n_lv_eff, scale=False)),
+        ])
+        pipe.fit(X_proc[tr][:, mask], Y_bin[tr])
+        y_hat[va] += pipe.predict(X_proc[va][:, mask])
+        contador[va] += 1
+    contador[contador == 0] = 1
+    y_cv = y_hat / contador[:, None]
+
+    ss_tot = float(np.sum((Y_bin - Y_bin.mean(axis=0)) ** 2))
+    ss_res = float(np.sum((Y_bin - y_cv) ** 2))
+    if ss_tot < 1e-12 or not np.isfinite(ss_res):
+        q2 = float("nan")
+    else:
+        q2 = max(-1.0, 1.0 - ss_res / ss_tot)
+    yhat = np.argmax(y_cv, axis=1)
+    return {
+        "accuracy":          float(accuracy_score(y_int, yhat)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_int, yhat)),
+        "q2":                float(q2),
+        "n_vars":            float(np.mean(n_vars_por_fold)),
+        "n_vars_min":        int(min(n_vars_por_fold)),
+        "n_vars_max":        int(max(n_vars_por_fold)),
+        "n_lv":              n_lv,
     }
 
 
@@ -353,12 +530,24 @@ def fig_etapa4_comparacao(tabela, cfg, pasta):
     salvar(fig, "fig_etapa4_comparacao_metodos", pasta, cfg)
 
 
-def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
+def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
                               cv_indices, n_lv, cfg, pasta, pasta_dados):
     """Orquestra a Etapa 4: avalia Full vs iPLS vs VIP vs SR vs sPLS-DA (sempre)
     e, se ligados em cfg, SPA/APS e AG (opt-in, mais lentos) — sob o MESMO
     esquema de CV group-aware. Salva tabela (dados/) e figuras (figuras/).
-    Retorna dict-resumo para o resumo_modelo.txt."""
+    Retorna dict-resumo para o resumo_modelo.txt.
+
+    VIP/SR/sPLS-DA usam selecao ANINHADA (nested-CV, `_avaliar_subset_nested_cv`):
+    a mascara de variaveis e' recalculada a cada fold usando so as amostras de
+    treino daquele fold, nao um vip/sr pre-calculado no dataset inteiro (ver
+    correcao da auditoria de 2026-07-12, CLAUDE.md secao 13, item 03). Por isso
+    esta funcao nao recebe mais `vip`/`sr` pre-calculados como parametro.
+
+    SPA/AG (quando ligados) usam nested-CV equivalente (`_avaliar_busca_nested_cv`,
+    achado colateral de 2026-07-13): a fitness/pontuacao usada pela BUSCA nunca
+    e' a mesma cv_indices do numero reportado. A busca no dataset inteiro
+    continua rodando 1x so' para as figuras/CSV de diagnostico (convergencia
+    do AG, cadeias do SPA) — nao para o bal.acc reportado na tabela."""
     print("\n[Etapa4] Selecao de variaveis "
           f"(iPLS, VIP, SR, sPLS-DA"
           f"{', SPA' if cfg.executar_spa else ''}"
@@ -385,67 +574,89 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, vip, sr, wavenumbers,
     print(f"  iPLS: bal.acc={m_ipls['balanced_accuracy']:.3f} "
           f"({m_ipls['n_vars']} vars)")
 
-    # 2) Selection by VIP >= threshold
-    mask_vip = np.asarray(vip) >= cfg.vip_threshold_sel
-    if mask_vip.sum() >= 2:
-        m_vip = _avaliar_subset_cv(X_proc[:, mask_vip], Y_bin, y_int,
-                                    cv_indices, n_lv)
+    # 2) Selection by VIP >= threshold (nested-CV: mascara refeita por fold,
+    #    so' com dados de treino -- ver docstring da funcao)
+    m_vip = _avaliar_subset_nested_cv(
+        X_proc, Y_bin, y_int, cv_indices, n_lv,
+        lambda Xtr, Ytr, nlv: _mask_vip_threshold(Xtr, Ytr, nlv, cfg.vip_threshold_sel))
+    if m_vip["n_vars_max"] >= 2:
         tabela.append({"metodo": f"VIP>={cfg.vip_threshold_sel:g}", **m_vip})
         print(f"  VIP: bal.acc={m_vip['balanced_accuracy']:.3f} "
-              f"({m_vip['n_vars']} vars)")
+              f"({m_vip['n_vars']:.0f} vars, media/fold; "
+              f"faixa {m_vip['n_vars_min']}-{m_vip['n_vars_max']})")
 
-    # 3) Selection by SR (top fraction)
-    n_top = max(2, int(round(cfg.sr_top_frac * p)))
-    idx_sr = np.argsort(np.asarray(sr))[::-1][:n_top]
-    mask_sr = np.zeros(p, dtype=bool); mask_sr[idx_sr] = True
-    m_sr = _avaliar_subset_cv(X_proc[:, mask_sr], Y_bin, y_int,
-                               cv_indices, n_lv)
+    # 3) Selection by SR (top fraction, nested-CV)
+    m_sr = _avaliar_subset_nested_cv(
+        X_proc, Y_bin, y_int, cv_indices, n_lv,
+        lambda Xtr, Ytr, nlv: _mask_sr_top_frac(Xtr, Ytr, nlv, cfg.sr_top_frac))
     tabela.append({"metodo": f"SR top {cfg.sr_top_frac:.0%}", **m_sr})
     print(f"  SR: bal.acc={m_sr['balanced_accuracy']:.3f} "
-          f"({m_sr['n_vars']} vars)")
+          f"({m_sr['n_vars']:.0f} vars, media/fold; "
+          f"faixa {m_sr['n_vars_min']}-{m_sr['n_vars_max']})")
 
-    # 4) sPLS-DA
-    mask_sp = sparse_plsda_mask(X_proc, Y_bin, n_lv, cfg.splsda_keep_por_comp)
-    if mask_sp.sum() >= 2:
-        m_sp = _avaliar_subset_cv(X_proc[:, mask_sp], Y_bin, y_int,
-                                   cv_indices, n_lv)
+    # 4) sPLS-DA (nested-CV: sparse_plsda_mask ja' e' fold-agnostica, so'
+    #    precisa ser chamada dentro do fold em vez de 1x no dataset inteiro)
+    m_sp = _avaliar_subset_nested_cv(
+        X_proc, Y_bin, y_int, cv_indices, n_lv,
+        lambda Xtr, Ytr, nlv: sparse_plsda_mask(Xtr, Ytr, nlv, cfg.splsda_keep_por_comp))
+    if m_sp["n_vars_max"] >= 2:
         tabela.append({"metodo": "sPLS-DA", **m_sp})
         print(f"  sPLS-DA: bal.acc={m_sp['balanced_accuracy']:.3f} "
-              f"({m_sp['n_vars']} vars)")
+              f"({m_sp['n_vars']:.0f} vars, media/fold; "
+              f"faixa {m_sp['n_vars_min']}-{m_sp['n_vars_max']})")
 
-    # 5) SPA/APS (opt-in — mais lento que os metodos acima: n_starts avaliacoes de CV)
+    # 5) SPA/APS (opt-in — mais lento que os metodos acima: n_starts avaliacoes
+    #    de CV, agora vezes len(cv_indices) por causa do nested-CV abaixo).
+    #    A chamada no dataset inteiro fica so' p/ diagnostico (CSV de cadeias
+    #    avaliadas); o numero REPORTADO na tabela vem do nested-CV, que nunca
+    #    deixa a busca ver o fold de teste que mede o resultado final.
     if cfg.executar_spa:
-        spa_res, mask_spa = selecao_spa(
+        spa_res, _mask_spa_diagnostico = selecao_spa(
             X_proc, Y_bin, y_int, cv_indices, n_lv,
             cfg.spa_n_vars_max, cfg.spa_n_starts, cfg.seed)
-        if mask_spa.sum() >= 2:
-            m_spa = _avaliar_subset_cv(X_proc[:, mask_spa], Y_bin, y_int,
-                                        cv_indices, n_lv)
+        if spa_res:
+            pd.DataFrame(spa_res).to_csv(
+                os.path.join(pasta_dados, "etapa4_spa_cadeias.csv"),
+                sep=";", decimal=",", index=False)
+        m_spa = _avaliar_busca_nested_cv(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            lambda Xtr, Ytr, ytr, cvin: selecao_spa(
+                Xtr, Ytr, ytr, cvin, n_lv, cfg.spa_n_vars_max,
+                cfg.spa_n_starts, cfg.seed)[1],
+            cfg.seed)
+        if m_spa["n_vars_max"] >= 2:
             tabela.append({"metodo": "SPA (APS)", **m_spa})
-            if spa_res:
-                pd.DataFrame(spa_res).to_csv(
-                    os.path.join(pasta_dados, "etapa4_spa_cadeias.csv"),
-                    sep=";", decimal=",", index=False)
             print(f"  SPA: bal.acc={m_spa['balanced_accuracy']:.3f} "
-                  f"({m_spa['n_vars']} vars)")
+                  f"({m_spa['n_vars']:.0f} vars, media/fold; "
+                  f"faixa {m_spa['n_vars_min']}-{m_spa['n_vars_max']})")
 
-    # 6) AG (opt-in — o mais lento: tam_populacao x n_geracoes avaliacoes de CV)
+    # 6) AG (opt-in — o mais lento: tam_populacao x n_geracoes avaliacoes de
+    #    CV, agora vezes len(cv_indices) por causa do nested-CV abaixo).
+    #    Convergencia (historico/figura) usa a busca no dataset inteiro
+    #    (diagnostico de comportamento da busca, nao um numero cientifico);
+    #    o bal.acc REPORTADO na tabela vem do nested-CV.
     if cfg.executar_ag:
-        historico_ag, mask_ag = selecao_ag(
+        historico_ag, _mask_ag_diagnostico = selecao_ag(
             X_proc, Y_bin, y_int, cv_indices, n_lv,
             cfg.ag_tam_populacao, cfg.ag_n_geracoes, cfg.ag_prob_mutacao,
             cfg.ag_frac_inicial, cfg.seed)
-        if mask_ag.sum() >= 2:
-            m_ag = _avaliar_subset_cv(X_proc[:, mask_ag], Y_bin, y_int,
-                                       cv_indices, n_lv)
+        if historico_ag:
+            pd.DataFrame(historico_ag).to_csv(
+                os.path.join(pasta_dados, "etapa4_ag_historico.csv"),
+                sep=";", decimal=",", index=False)
+            fig_etapa4_ag_convergencia(historico_ag, cfg, pasta)
+        m_ag = _avaliar_busca_nested_cv(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            lambda Xtr, Ytr, ytr, cvin: selecao_ag(
+                Xtr, Ytr, ytr, cvin, n_lv, cfg.ag_tam_populacao,
+                cfg.ag_n_geracoes, cfg.ag_prob_mutacao, cfg.ag_frac_inicial,
+                cfg.seed)[1],
+            cfg.seed)
+        if m_ag["n_vars_max"] >= 2:
             tabela.append({"metodo": "AG (Genetico)", **m_ag})
-            if historico_ag:
-                pd.DataFrame(historico_ag).to_csv(
-                    os.path.join(pasta_dados, "etapa4_ag_historico.csv"),
-                    sep=";", decimal=",", index=False)
-                fig_etapa4_ag_convergencia(historico_ag, cfg, pasta)
             print(f"  AG: bal.acc={m_ag['balanced_accuracy']:.3f} "
-                  f"({m_ag['n_vars']} vars)")
+                  f"({m_ag['n_vars']:.0f} vars, media/fold; "
+                  f"faixa {m_ag['n_vars_min']}-{m_ag['n_vars_max']})")
 
     # Tabela + figura comparativa
     pd.DataFrame(tabela).to_csv(

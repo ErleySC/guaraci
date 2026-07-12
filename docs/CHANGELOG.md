@@ -6,6 +6,68 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.3.0 — 2026-07-13 — Correções da auditoria multidisciplinar de 15 etapas (2026-07-12):
+             (1) BREAKING: Etapa 4 (seleção de variáveis) corrige viés de
+                 seleção não-aninhada. VIP>=threshold, SR top-fração e
+                 sPLS-DA calculavam a máscara de variáveis a partir de um
+                 modelo ajustado no DATASET INTEIRO (double dipping —
+                 Ambroise & McLachlan, 2002, PNAS) antes de avaliar por CV.
+                 Agora usam nested-CV (`_avaliar_subset_nested_cv`,
+                 `selecao_variaveis.py`): a máscara é recalculada a cada
+                 fold usando só os dados de treino daquele fold. Resultados
+                 numéricos de balanced_accuracy da Etapa 4 para esses 3
+                 métodos NÃO são comparáveis com versões anteriores (tende
+                 a cair, o que é o objetivo — número anterior era otimista).
+                 iPLS não precisou de correção: a partição em intervalos não
+                 usa rótulo, só a escolha do "melhor intervalo" usa CV (viés
+                 padrão de qualquer seleção de hiperparâmetro, não double
+                 dipping). `etapa4_selecao_variaveis()` não recebe mais
+                 `vip`/`sr` pré-calculados como parâmetro;
+             (2) menu "Visualização" da CLI (`guaraci.py`) tinha 4 opções
+                 (H/M/B/V — heatmap espectral, matriz de confusão, biplot,
+                 variância×wavelength) que sempre falhavam: apontavam para
+                 funções que nunca existiram em nenhum módulo do projeto,
+                 mascaradas por um `except Exception` genérico. Opções
+                 removidas do menu (gerar essas figuras fora de uma
+                 execução completa é feature nova, não bugfix — fica para
+                 quando for implementada de verdade);
+             (3) tooltip do assistente "G" (`GUARACI_TIPS["nivel"]`) não
+                 seguia a convenção "nome amigável primeiro, código entre
+                 parênteses" já usada nos rótulos de menu (P8) — corrigido;
+             (4) CLAUDE.md sincronizado com o estado real do código (a
+                 tabela "estado alegado" e a lista de problemas P1-P9
+                 estavam desatualizadas desde a v31.2.0);
+             (5) BREAKING: mesma correção de (1), agora para AG/SPA (Etapa
+                 4, opt-in) — achado colateral mais grave que o de VIP/SR:
+                 a fitness do AG e a pontuação do SPA usavam a MESMA CV do
+                 número final reportado (double dipping por construção,
+                 não só double dipping indireto via modelo pré-ajustado).
+                 Corrigido com `_avaliar_busca_nested_cv`: busca refeita a
+                 cada fold externo, usando só o treino daquele fold; custo
+                 de execução sobe ~N vezes (N = nº de folds), aceitável
+                 pois ambos já são opt-in/documentados como lentos;
+             (6) nomes de pasta de saída (`PLSDA_OE_N2_...`) e de figura
+                 (`figN3_heatmap_...`) não expõem mais N1/N2/N3 cru — slugs
+                 amigáveis (`_NIVEL_SLUG_PASTA`, `config.py`):
+                 `PLSDA_OE_Autenticacao_...`, `fig_heatmap_especie_adulterante.png`.
+                 `cfg.nivel` continua "N1"/"N2"/"N3" internamente; só o nome
+                 em disco mudou (P8 residual, decisão aprovada explicitamente
+                 por ser mudança de formato de saída);
+             (7) 3 presets por objetivo científico — "Explorar Dados" /
+                 "Autenticar Pureza" / "Quantificar Teor" (CLI: `menu_perfis`;
+                 app web: aba Dados) — reaproveitam `PROFILES`
+                 (`cli_assistente.py`), mesma fonte usada pelos perfis de
+                 rigor já existentes. CLI: aplicar um perfil agora pergunta
+                 "Rodar agora?" e chama `_rodar_pipeline` direto. App web:
+                 corrigido também um bug de sincronização de estado dos
+                 widgets do Streamlit (`key=` estático só honra o valor novo
+                 se escrito direto em `st.session_state[key]`, não bastando
+                 apagar a chave) — sem essa correção os presets mudavam
+                 `cfg_base` mas os widgets da aba Model continuavam
+                 mostrando o valor antigo.
+```
+
+```
 v31.2.0 — 2026-07-12 — Mudanças de COMPORTAMENTO CIENTÍFICO (CLAUDE.md P1/P2/P5):
              (1) BREAKING: sensibilidade DD-SIMCA deixa de ser re-substituição
                  (treino==teste, inflava para ~100%) e passa a ser estimada por

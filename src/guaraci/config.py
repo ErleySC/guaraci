@@ -17,13 +17,24 @@ from typing import Optional, Tuple
 # importável por qualquer módulo — pipeline.py e guaraci/__init__.py a
 # reexportam, então `pipeline.__version__` e `from guaraci import __version__`
 # seguem funcionando. Fonte ÚNICA: nunca duplicar um literal "vXX.Y".
-__version__ = "31.2.0"
+__version__ = "31.3.0"
 
 # Nome amigavel de cada nivel de analise (valor interno N1/N2/N3 inalterado).
 _NIVEL_NOME = {
     "N1": "Classificacao por especie",
     "N2": "Discriminacao puro/adulterado",
     "N3": "Quantificacao de teor",
+}
+
+# Slug curto p/ NOME DE PASTA de saida (auditoria de 2026-07-12, P8 residual:
+# o nome de pasta ainda expunha N1/N2/N3 cru, ex. PLSDA_OE_N2_..., mesmo com
+# os menus ja mostrando o nome amigavel). cfg.nivel continua sendo "N1"/"N2"/
+# "N3" internamente -- so' o SLUG usado no nome do diretorio muda; nao afeta
+# nenhuma logica de negocio, so' o texto do caminho gravado em disco.
+_NIVEL_SLUG_PASTA = {
+    "N1": "PorEspecie",
+    "N2": "Autenticacao",
+    "N3": "Quantificacao",
 }
 
 # Nomes de subpasta da saida de cada execucao (auditoria jul/2026, item 4:

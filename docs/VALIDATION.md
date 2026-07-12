@@ -83,6 +83,17 @@ em vez de re-substituição — ver a seção "Limitações" abaixo.
   observado, é reprodutível, degrada honestamente com poucas reamostragens)
   — não uma simulação de Monte Carlo medindo se o IC 95% nominal realmente
   cobre o valor verdadeiro em ~95% das repetições.
+- **AG e SPA (Etapa 4, opcionais): nested-CV desde a v31.3.0.** A *fitness*
+  do AG e a pontuação do SPA usavam a MESMA CV (`cv_indices`) cujo
+  resultado era depois reportado como número final — double dipping por
+  construção (a busca otimizava diretamente contra a partição que media o
+  resultado). Corrigido com `_avaliar_busca_nested_cv`: a cada fold
+  externo, a busca inteira roda de novo usando só os dados de treino
+  daquele fold (com uma CV interna própria, não *group-aware*, só para
+  guiar a otimização); a máscara resultante é avaliada no fold de teste
+  externo, nunca visto pela busca. Custo: a busca roda ~N vezes mais
+  (N = número de folds) — aceitável, pois ambos já são *opt-in* e
+  documentados como mais lentos.
 
 ## Referências completas
 

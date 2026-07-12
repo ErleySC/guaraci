@@ -125,10 +125,12 @@ metadata are also parsed from the JCAMP-DX `##TITLE=` field. Triplicate tag
 ## Output
 
 Each run writes to
-`resultados_tcc/{sample}/{Mode}/PLSDA_OE_{level}_{preproc}_{timestamp}/`,
+`resultados_tcc/{sample}/{Mode}/PLSDA_OE_{level_slug}_{preproc}_{timestamp}/`,
 where `{sample}` is the dataset label (`tag`, or derived from the input
-folder/file) and `{Mode}` is the scientific objective resolved for the run
-(`Exploratorio` / `Classificacao` / `Quantificacao` — see `docs/MANUAL.md`).
+folder/file), `{Mode}` is the scientific objective resolved for the run
+(`Exploratorio` / `Classificacao` / `Quantificacao` — see `docs/MANUAL.md`),
+and `{level_slug}` is a friendly name for the analysis level (`PorEspecie` /
+`Autenticacao` / `Quantificacao`).
 Inside: `Graficos/` (figures), `Tabelas/` (CSV data), `Relatorios/`
 (`resumo_modelo.txt`, `model_card.md`), and `Modelos/` (final `.joblib`).
 

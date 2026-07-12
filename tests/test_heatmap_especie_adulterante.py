@@ -75,6 +75,6 @@ def test_heatmap_gera_png_valido(tmp_path, dados_adulterados):
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
     pq.fig_heatmap_especie_adulterante(res, cfg, pasta)
     caminho = os.path.join(pasta, pq.NOME_GRAFICOS,
-                           f"figN3_heatmap_especie_adulterante.{cfg.formato_saida}")
+                           f"fig_heatmap_especie_adulterante.{cfg.formato_saida}")
     assert os.path.isfile(caminho)
     assert os.path.getsize(caminho) > 3000   # PNG real, nao arquivo vazio
