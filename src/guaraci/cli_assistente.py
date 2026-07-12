@@ -304,9 +304,11 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "nivel": {
         "PT": {
-            "desc": "Modo de analise: N1=Classificacao (identifica a especie), "
-                    "N2=Discriminacao (puro vs. adulterado, com DD-SIMCA), "
-                    "N3=Quantificacao (estima o teor de adulterante, PLS-R).",
+            "desc": "Modo de analise: Classificacao por especie (identifica a "
+                    "especie; codigo interno N1), Discriminacao puro/adulterado "
+                    "(autenticacao com DD-SIMCA; codigo interno N2) ou "
+                    "Quantificacao (estima o teor de adulterante, PLS-R; "
+                    "codigo interno N3).",
             "impacto": "ANALITICO — define quais modulos sao executados.",
             "exemplos": {
                 "N1": "Classificacao por especie (PLS-DA/OPLS-DA)",
@@ -314,9 +316,11 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                 "N3": "Quantificacao do teor de adulterante (PLS-R)"},
         },
         "EN": {
-            "desc": "Analysis mode: N1=Classification (identify species), "
-                    "N2=Discrimination (pure vs. adulterated, with DD-SIMCA), "
-                    "N3=Quantification (estimate adulterant content, PLS-R).",
+            "desc": "Analysis mode: Species classification (identifies the "
+                    "species; internal code N1), Pure/adulterated "
+                    "discrimination (authentication with DD-SIMCA; internal "
+                    "code N2), or Quantification (estimates adulterant "
+                    "content, PLS-R; internal code N3).",
             "impacto": "ANALYTICAL — defines which modules are executed.",
             "exemplos": {
                 "N1": "Species classification (PLS-DA/OPLS-DA)",
@@ -329,8 +333,10 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         "PT": {
             "desc": "Objetivo cientifico do run — FILTRA quais figuras e "
                     "relatorios sao gerados, para que cada modo produza apenas "
-                    "o pertinente. 'auto' deriva do nivel (N1/N2=Classificacao, "
-                    "N3=Quantificacao) e preserva o comportamento historico.",
+                    "o pertinente. 'auto' deriva do modo de analise "
+                    "(Classificacao/Discriminacao -> Classificacao, "
+                    "Quantificacao -> Quantificacao) e preserva o "
+                    "comportamento historico.",
             "impacto": "ANALITICO — controla as figuras/relatorios de saida.",
             "exemplos": {
                 "auto": "Deriva do nivel (recomendado)",
@@ -341,9 +347,10 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         "EN": {
             "desc": "Scientific objective of the run — FILTERS which figures "
                     "and reports are generated, so each mode produces only what "
-                    "is pertinent. 'auto' derives from the level "
-                    "(N1/N2=Classification, N3=Quantification), preserving "
-                    "historical behavior.",
+                    "is pertinent. 'auto' derives from the analysis mode "
+                    "(Classification/Discrimination -> Classification, "
+                    "Quantification -> Quantification), preserving historical "
+                    "behavior.",
             "impacto": "ANALYTICAL — controls the output figures/reports.",
             "exemplos": {
                 "auto": "Derive from level (recommended)",
@@ -397,13 +404,13 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         "PT": {
             "desc": "Compara PLS-R (ja calibrado por especie) contra Ridge, Lasso, Elastic Net, "
                     "SVR e Random Forest -- mesmo split cal/val e pre-processamento, por especie.",
-            "impacto": "AVANCADO — so' roda em N2/N3 com regressao multi-especie ja calculada.",
+            "impacto": "AVANCADO — so' roda em Discriminacao/Quantificacao (N2/N3) com regressao multi-especie ja calculada.",
             "exemplos": {"false": "TCC/producao (recomendado)", "true": "Artigo com comparacao de regressores"},
         },
         "EN": {
             "desc": "Compares PLS-R (already calibrated per species) against Ridge, Lasso, Elastic Net, "
                     "SVR and Random Forest -- same cal/val split and preprocessing, per species.",
-            "impacto": "ADVANCED — only runs on N2/N3 with multi-species regression already computed.",
+            "impacto": "ADVANCED — only runs on Discrimination/Quantification (N2/N3) with multi-species regression already computed.",
             "exemplos": {"false": "TCC/production (recommended)", "true": "Article with regressor comparison"},
         },
         "default": False, "range": "true | false",
@@ -793,13 +800,15 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     "coluna_concentracao": {
         "PT": {
             "desc": "Nome da coluna de concentracao no CSV (deixe vazio se nao houver).",
-            "impacto": "ANALITICO — usado no nivel N3 (regressao de adulterantes).",
-            "exemplos": {"": "Sem concentracao — use para N1/N2", "conc": "Com concentracao — use para N3"},
+            "impacto": "ANALITICO — usado na Quantificacao (N3, regressao de adulterantes).",
+            "exemplos": {"": "Sem concentracao — use para Classificacao/Discriminacao (N1/N2)",
+                        "conc": "Com concentracao — use para Quantificacao (N3)"},
         },
         "EN": {
             "desc": "Name of the concentration column in CSV (leave empty if not present).",
-            "impacto": "ANALYTICAL — used at level N3 (adulterant regression).",
-            "exemplos": {"": "No concentration — use for N1/N2", "conc": "With concentration — use for N3"},
+            "impacto": "ANALYTICAL — used for Quantification (N3, adulterant regression).",
+            "exemplos": {"": "No concentration — use for Classification/Discrimination (N1/N2)",
+                        "conc": "With concentration — use for Quantification (N3)"},
         },
         "default": "", "range": "Column name or empty",
     },

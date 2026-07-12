@@ -39,10 +39,12 @@ def test_set_val_chave_desconhecida_levanta_keyerror(g):
         g._set_val(cfg, "chave_totalmente_inexistente", "1")
 
 
-# ── _rotulo_opcao: caso "nivel" (N1/N2/N3 com nome amigável) ─────────────────
-def test_rotulo_opcao_nivel_inclui_nome_amigavel(g):
+# ── _rotulo_opcao: caso "nivel" (nome amigável lidera; N1/N2/N3 e' referencia
+# tecnica secundaria — P8, aposentar o codigo interno como termo PRIMARIO) ────
+def test_rotulo_opcao_nivel_lidera_com_nome_amigavel(g):
     rotulo = g._rotulo_opcao("nivel", "N1")
-    assert rotulo.startswith("N1")
+    assert rotulo.startswith("Classificacao")   # nome amigavel e' o rotulo principal
+    assert rotulo.endswith("(N1)")              # codigo interno so' como referencia
     assert "N1" in rotulo and len(rotulo) > len("N1")  # tem o nome anexado
 
 

@@ -486,8 +486,8 @@ GUARACI_TIPS: Dict[str, Dict[str, str]] = {
         "EN": "Tests all 6 pipelines. Use once to find the best one — then fix it and disable this.",
     },
     "nivel": {
-        "PT": "N1 para explorar dados novos, N2 para TCC/publicação, N3 só se tiver tempo (pode levar horas).",
-        "EN": "N1 for new data exploration, N2 for papers/thesis, N3 only if you have time (may take hours).",
+        "PT": "Classificação (N1) para uma checagem rápida por espécie, Discriminação (N2) para TCC/publicação (autenticação completa), Quantificação (N3) só se tiver tempo (pode levar horas).",
+        "EN": "Classification (N1) for a quick per-species check, Discrimination (N2) for papers/thesis (full authentication), Quantification (N3) only if you have time (may take hours).",
     },
     "max_lvs": {
         "PT": "O criterio de Wold para automaticamente antes do maximo. Comece com 40; suba se o modelo nao convergir.",
@@ -604,8 +604,11 @@ def _rotulo_opcao(key: str, op: Any) -> str:
     """Nome amigavel de um valor de opcao (so exibicao; o valor gravado no
     config continua o codigo interno, ex.: N1/N2/N3, puros/todos)."""
     if key == "nivel":
+        # Lidera com o nome amigavel (P8: aposentar N1/N2/N3 como termo
+        # PRIMARIO na UI); o codigo interno fica entre parenteses so' como
+        # referencia tecnica, nunca como o rotulo principal exibido ao usuario.
         nome = pq._NIVEL_NOME.get(str(op), "")
-        return f"{op} — {nome}" if nome else str(op)
+        return f"{nome} ({op})" if nome else str(op)
     if key == "modo_ddsimca":
         return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(op), str(op))
     return str(op)
@@ -1212,7 +1215,7 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     nome     = _nome_campo(key)
     val_atual = _get_val(cfg, key)
     # Valor interno cru (ex.: "N1") para comparar com as opcoes — val_atual
-    # pode ser um rotulo amigavel de exibicao ("N1 — Classificacao...").
+    # pode ser um rotulo amigavel de exibicao ("Classificacao... (N1)").
     val_cru   = _attr_para_yaml(spec, cfg)
     tipo      = spec.get("tipo", "str")
     opcoes    = spec.get("opcoes")

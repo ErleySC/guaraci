@@ -560,7 +560,12 @@ p. 397-405, 1978.
 
 ---
 
-*Última revisão do manual: mapa de calor espécie × adulterante (N3,
+*Última revisão do manual: terminologia da interface (CLI e README) revisada
+para liderar com o nome amigável do modo de análise ("Classificação por
+espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N3
+passa a aparecer como referência técnica secundária, nunca como o rótulo
+principal — a tabela de equivalência nível↔objetivo (seção 2.2) já estava
+correta e não mudou. Antes: mapa de calor espécie × adulterante (N3,
 `figN3_heatmap_especie_adulterante.png`) — R²cv por combinação, com células
 reprovadas hachuradas e contador de falhas no título e no relatório;
 sensibilidade DD-SIMCA (N2) agora estimada por

@@ -68,10 +68,10 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 
 ## O que o pipeline faz
 
-- **Níveis de análise**
-  - **N1** — classificação por espécie (14 classes)
-  - **N2** — puro × adulterado
-  - **N3** — regressão de teor (% de adulterante)
+- **Modos de análise**
+  - **Classificação por espécie** (14 classes; código interno N1)
+  - **Discriminação puro × adulterado** (autenticação; código interno N2)
+  - **Quantificação de teor** (% de adulterante, regressão; código interno N3)
 - **Pré-processamento** (ordem de Rinnan et al., 2009): MSC ou SNV → Savitzky-Golay → *mean-centering*. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
 - **Modelos**: PLS-DA, PLS regressão, PCA, HCA (Ward), **DD-SIMCA** (one-class), **OPLS-DA**.
 - **Bateria de validação**: teste de permutação (Y-randomization), interceptos R²Y/Q²Y de Wold, CV-ANOVA (Eriksson), **IC por bootstrap BCa**, Hotelling T² (UCL Tracy-Young-Mason), Q-resíduos (Jackson-Mudholkar).
