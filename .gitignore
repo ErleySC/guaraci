@@ -12,6 +12,10 @@ resultados_tcc/
 resultados*/
 *.joblib
 
+# --- guaraci demo / guaraci doctor output (P7) ---
+GUARACI_Demo/
+guaraci_doctor.txt
+
 # --- Local run drivers / logs (scratch, personal paths — keep out of repo) ---
 # (vivem em scripts/, mas os padroes abaixo (sem barra) casam em qualquer nivel)
 run_benchmark_tcc.py
