@@ -561,8 +561,9 @@ p. 397-405, 1978.
 ---
 
 *Última revisão do manual: novo `docs/VALIDATION.md` (cartão de visita
-técnico) — tabela com 8 linhas de validação contra sklearn/fórmulas
-fechadas (PLS-DA, SNV, VIP, MSC, DD-SIMCA/T², CV-ANOVA, BCa, OPLS-DA),
+técnico) — tabela com 11 linhas de validação contra sklearn/fórmulas
+fechadas (PLS-DA, SNV normalização+invariância de espalhamento, VIP, MSC,
+DD-SIMCA T²/Q-resíduos, CV-ANOVA, BCa, teste de permutação, OPLS-DA),
 valores obtidos rodando a suíte nesta sessão, com seção honesta do que
 ainda NÃO está validado (dataset público externo, cobertura empírica do
 BCa). Linkado em README.md/README.pt-br.md. Antes: terminologia da

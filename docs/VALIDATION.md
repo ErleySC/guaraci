@@ -12,13 +12,16 @@
 | Método | Referência | O que é verificado | Resultado | Teste |
 |---|---|---|---|---|
 | PLS-DA (`PLSDAClassifier`) | `sklearn.PLSRegression` + argmax manual | max\|Δcoef\| entre o wrapper Guaraci e a reprodução manual sklearn | **0.0** (exato) | `test_plsda_classifier_vs_sklearn_manual` |
-| SNV | Barnes, Dhanoa & Lister (1989) | cada espectro após SNV tem média 0 e desvio-padrão 1 (definição analítica do método) | \|média\| < 1e-9, \|desvio − 1\| < 1e-9 | `test_snv_normaliza_por_amostra` |
+| SNV — normalização | Barnes, Dhanoa & Lister (1989) | cada espectro após SNV tem média 0 e desvio-padrão 1 (definição analítica do método) | \|média\| < 1e-9, \|desvio − 1\| < 1e-9 | `test_snv_normaliza_por_amostra` |
+| SNV — invariância de espalhamento | Barnes, Dhanoa & Lister (1989) | SNV(a + b·x) = SNV(x) para b>0 (anula ganho/offset por espectro — a justificativa física do método) | \|Δ\| < 1e-10 | `test_snv_invariante_a_escala_e_offset` |
 | VIP (Chong & Jun, 2005) | propriedade Σ VIP² = p (nº de variáveis) | `mean(VIP²)` deve ser exatamente 1.0 | 1.0 (tolerância relativa 1e-6) | `test_vip_propriedade_soma_igual_p` |
 | MSC | *stateful* (referência do treino) | `ref_` é ajustado **somente** no conjunto de treino (nunca refeito no teste) — a propriedade que evita vazamento | verificado (shape e ausência de refit) | `test_msc_no_leakage` |
 | DD-SIMCA — UCL de T² (`ucl_method="theoretical"`) | Tracy-Young-Mason (1992), fórmula de pequena amostra | limite calculado bate com `hotelling_t2_limite()` (mesma fórmula, computada independentemente no teste) | igual (tolerância relativa 1e-6) | `test_compute_t2_ucl_theoretical_usa_formula_tracy_young` |
 | DD-SIMCA — UCL de T² (`ucl_method="chi2"`) | χ²(1−α, k) | limite calculado bate com `scipy.stats.chi2.ppf(0.95, k)` | igual (tolerância relativa 1e-6) | `test_compute_t2_ucl_chi2` |
+| DD-SIMCA — UCL de Q-resíduos | Jackson & Mudholkar (1979), aproximação g·χ²(h) | limite bate com `g·χ²(1−α, h)` recomputado independentemente (g=var/2μ, h=2μ²/var) | igual (tolerância relativa 1e-12) | `test_q_residuos_limite_bate_com_formula_jackson_mudholkar` |
 | CV-ANOVA (Eriksson, Trygg & Wold, 2008) | Q² = 1 − PRESS/SS_total | caso com valores manualmente calculados (SS_total=20, PRESS=2 → Q²=0.90) | \|Δ\| < 1e-9 | `test_cv_anova_q2_formula` |
 | Bootstrap BCa (Efron & Tibshirani, 1993) | propriedades do intervalo (não simulação de cobertura) | predição perfeita → IC=[1,1]; valor observado sempre dentro do IC e em [0,1]; reprodutível com a mesma seed; `n_boot` baixo devolve NaN em vez de um IC enganoso | 5/5 propriedades verificadas | `test_bca_*` (`tests/test_validacao_estatistica.py`) |
+| Teste de permutação (*Y-randomization*) | discriminação sinal × ruído | classes separáveis → p baixo (acc=1.000, **p=0.024**); rótulos aleatórios → p alto (acc=0.475, **p=0.781**) | ambos verificados | `test_permutacao_da_p_baixo_com_sinal_real`, `test_permutacao_da_p_alto_com_rotulos_aleatorios` |
 | OPLS-DA (Trygg & Wold, 2002; Bylesjö et al., 2006) | ortogonalidade de Gram-Schmidt: `t_orth ⟂ t_pred` | produto interno `t_pred · t_orth` — binário e 14 classes (LDA) | < 1e-6 em ambos os casos | `test_opls_orthogonality_binary`, `test_opls_orthogonality_multiclass` |
 
 **Reproduzir:**
@@ -26,6 +29,8 @@
 pytest tests/test_pipeline_smoke.py::test_plsda_classifier_vs_sklearn_manual \
        tests/test_pipeline_core.py::test_vip_propriedade_soma_igual_p \
        tests/test_pipeline_core.py::test_snv_normaliza_por_amostra \
+       tests/test_pipeline_core.py::test_snv_invariante_a_escala_e_offset \
+       tests/test_pipeline_core.py::test_q_residuos_limite_bate_com_formula_jackson_mudholkar \
        tests/test_pipeline_smoke.py::test_msc_no_leakage \
        tests/test_classificadores.py::test_compute_t2_ucl_theoretical_usa_formula_tracy_young \
        tests/test_classificadores.py::test_compute_t2_ucl_chi2 \
@@ -99,6 +104,10 @@ Raton: CRC Press, 1993.
 ERIKSSON, L.; TRYGG, J.; WOLD, S. CV-ANOVA for significance testing of PLS
 and OPLS models. **Journal of Chemometrics**, v. 22, n. 11-12, p. 594-600,
 2008.
+
+JACKSON, J.E.; MUDHOLKAR, G.S. Control procedures for residuals associated
+with principal component analysis. **Technometrics**, v. 21, n. 3, p.
+341-349, 1979.
 
 TRACY, N.D.; YOUNG, J.C.; MASON, R.L. Multivariate control charts for
 individual observations. **Journal of Quality Technology**, v. 24, n. 2,
