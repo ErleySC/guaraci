@@ -6,6 +6,30 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.5.0 — 2026-07-13 — print() -> logging em pipeline.py (CLAUDE.md P6, parcial):
+             (1) 164 chamadas `print()` em `pipeline.py` migradas para
+                 `log.info()` (`log = logging.getLogger(__name__)`).
+                 `src/guaraci/log.py` novo: ponto único de configuração,
+                 com handler que escreve em `sys.stdout` NO MOMENTO do
+                 emit (não uma referência capturada na importação) --
+                 necessário para continuar funcionando dentro do
+                 `contextlib.redirect_stdout` que o CLI e o worker do app
+                 web usam para capturar o log e alimentar o painel de
+                 progresso ao vivo. Verificado com teste de integração
+                 dedicado que roda o pipeline sintético de verdade e
+                 confirma que os regex do painel (`app_logic.py`) ainda
+                 casam com o texto capturado antes E depois da migração;
+             (2) PARCIAL DE PROPÓSITO: o painel do CLI/app web continua
+                 fazendo parsing de texto por regex, não consumindo
+                 registros de logging estruturados -- essa reescrita
+                 (a solução completa que o CLAUDE.md P6 propõe) é um
+                 projeto à parte, não feito aqui. `log.info()` preserva o
+                 mesmo texto que `print()` produzia, então resolve a
+                 inconsistência entre módulos mas não a fragilidade de
+                 fundo (mudar uma string ainda quebraria o painel).
+```
+
+```
 v31.4.0 — 2026-07-13 — Preparação para submissão JOSS:
              (1) Benchmark contra dataset público externo (Tecator, NIR,
                  teor de gordura em carne — Thodberg 1996): roda o motor

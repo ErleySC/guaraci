@@ -26,6 +26,7 @@ from guaraci.config import (   # noqa: F401,E402
     NOME_MODELOS,
 )
 
+import logging
 import os
 import glob
 import warnings
@@ -92,6 +93,9 @@ from guaraci.dados_io import (   # noqa: E402
     parse_title,
     extrair_title_do_dx,
 )
+
+
+log = logging.getLogger(__name__)
 
 
 def _slug(texto: str) -> str:
@@ -336,7 +340,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
         relatorio["n_amostras_removidas"] = n_rem
         warnings_list.append(
             f"{n_rem} samples removed due to NaN ({n_nan}) or Inf ({n_inf})")
-        print(f"[WARNING] Removed {n_rem} samples with NaN/Inf.")
+        log.info(f"[WARNING] Removed {n_rem} samples with NaN/Inf.")
         keep = ~bad_mask
         X = X[keep]; rotulos = rotulos[keep]
         if conc is not None:
@@ -352,7 +356,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
     if n_const > 0:
         warnings_list.append(
             f"{n_const} variables with variance ~= 0 removed")
-        print(f"[WARNING] Removed {n_const} constant variables.")
+        log.info(f"[WARNING] Removed {n_const} constant variables.")
         X = X[:, mask_var]
         wavenumbers = wavenumbers[mask_var]
 
@@ -365,7 +369,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
                 f"detected. Possible train/validation leakage if "
                 f"copies fall in different folds.")
         warnings_list.append(msg)
-        print(f"[CAUTION] {msg}")
+        log.info(f"[CAUTION] {msg}")
 
     # --- Approximate duplicates (high correlation) ----------------------
     if len(X) <= max_n_para_corr and len(X) >= 2:
@@ -385,7 +389,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
                     f"CAUTION: {n_aprox} samples with correlation > "
                     f"{limiar_correlacao} (possible technical replicates). "
                     f"Consider GroupKFold to avoid leakage.")
-                print(f"[CAUTION] {n_aprox} samples with corr > "
+                log.info(f"[CAUTION] {n_aprox} samples with corr > "
                       f"{limiar_correlacao:.5f}.")
 
     relatorio["n_final"] = int(len(X))
@@ -409,9 +413,9 @@ def verificar_balanceamento(rotulos: np.ndarray, ratio_alvo: float = 5.0
         "desbalanceado":   ratio > ratio_alvo,
     }
     if ratio > ratio_alvo:
-        print(f"[WARNING] Severe class imbalance: max/min ratio = "
+        log.info(f"[WARNING] Severe class imbalance: max/min ratio = "
               f"{ratio:.2f} (max={n_max}, min={n_min}).")
-        print("          Suggestions: prioritize balanced_accuracy/F1-macro "
+        log.info("          Suggestions: prioritize balanced_accuracy/F1-macro "
               "over accuracy; consider class_weight or subsampling.")
     return rel
 
@@ -481,11 +485,11 @@ def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
             # Nenhum numero de LVs convergiu: o preset falhou por completo.
             # Sem este aviso, Acc=0.000 seria exibido como se fosse um
             # resultado ruim de verdade, mascarando a falha numerica.
-            print(f"  {nome:<26s} -> [AVISO] nenhum modelo convergiu "
+            log.info(f"  {nome:<26s} -> [AVISO] nenhum modelo convergiu "
                   f"({max_lv} LVs testados) — preset ignorado")
             continue
         _q2_disp = f"{melhor['q2']:.3f}" if np.isfinite(melhor['q2']) else "n/a"
-        print(f"  {nome:<26s} -> LVs={melhor['n_lv']:2d}  "
+        log.info(f"  {nome:<26s} -> LVs={melhor['n_lv']:2d}  "
               f"Acc={melhor['accuracy']:.3f}  "
               f"BalAcc={melhor['balanced_acc']:.3f}  "
               f"Q2={_q2_disp}")
@@ -583,7 +587,7 @@ def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
 def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
     """DEPRECATED: use bootstrap_vip_estratificado. Kept for
     backward compatibility. Does NOT use per-class stratification."""
-    print("[WARNING] Non-stratified bootstrap_vip is DEPRECATED. "
+    log.info("[WARNING] Non-stratified bootstrap_vip is DEPRECATED. "
           "Use bootstrap_vip_estratificado.")
     rng = np.random.default_rng(seed)
     n = len(X_processed)
@@ -838,7 +842,7 @@ def r2cv_especie_adulterante(
                 # Combinacao degenerada apesar dos guards acima (grupos
                 # insuficientes p/ o n_splits escolhido etc.) -- vira n/a,
                 # nunca um R2 inventado.
-                print(f"  [AVISO] R2cv {esp} x {adult}: {_e_cv}")
+                log.info(f"  [AVISO] R2cv {esp} x {adult}: {_e_cv}")
                 matriz[(esp, adult)] = float("nan")
                 n_na += 1
                 continue
@@ -1032,6 +1036,11 @@ def pls_regressao_por_especie(
 
 
 def executar(cfg: Config):
+    from guaraci.log import configurar as _configurar_log
+    # Chamado aqui (nao em nivel de modulo) para rodar DENTRO de qualquer
+    # contextlib.redirect_stdout ja ativo no chamador (CLI/app web) --
+    # ver guaraci/log.py:_StdoutHandler.
+    _configurar_log()
     setup_matplotlib(cfg)
 
     # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
@@ -1040,22 +1049,22 @@ def executar(cfg: Config):
     # objetivo (ver modos_analise.py). Preserva N1/N2/N3 quando objetivo=auto.
     objetivo = resolver_objetivo(cfg)
     _fig_explor_on = figuras_exploratorias_ligadas(cfg)
-    print(f"\n[MODO] Objetivo cientifico: "
-          f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}  "
-          f"(nivel={cfg.nivel}, objetivo_cfg={cfg.objetivo})")
+    log.info(f"\n[MODO] Objetivo cientifico: "
+             f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}  "
+             f"(nivel={cfg.nivel}, objetivo_cfg={cfg.objetivo})")
     _plano = descrever_plano(cfg)
     if _plano:
-        print(f"[MODO] Figuras pertinentes a este objetivo ({len(_plano)}): "
+        log.info(f"[MODO] Figuras pertinentes a este objetivo ({len(_plano)}): "
               + "; ".join(_plano))
 
     # --- 0. Hardware probe + auto-ajuste preventivo -------------------------
     _hw = hardware_probe()
     _avisos_hw = auto_ajustar_config_hardware(cfg, _hw)
-    print(f"[HARDWARE] RAM total: {_hw['ram_total_gb']:.1f} GB  "
+    log.info(f"[HARDWARE] RAM total: {_hw['ram_total_gb']:.1f} GB  "
           f"livre: {_hw['ram_livre_gb']:.1f} GB  "
           f"CPU: {_hw['cpu_fisicos']}f/{_hw['cpu_logicos']}l")
     for _av in _avisos_hw:
-        print(f"  [AUTO-AJUSTE] {_av}")
+        log.info(f"  [AUTO-AJUSTE] {_av}")
 
     # --- 1. Carregamento (6-tupla com mae_id + metadados) ------------------
     wavenumbers, X_raw, rotulos, conc, mae_id, metadados_df = carregar_dados(cfg)
@@ -1085,7 +1094,7 @@ def executar(cfg: Config):
         if conc is not None:
             n_puro = int(np.sum(np.isnan(conc) | (conc == 0.0)))
             n_adul = int(np.sum(~(np.isnan(conc) | (conc == 0.0))))
-            print(f"[INFO] N2 (autenticação por espécie): rótulos de espécie "
+            log.info(f"[INFO] N2 (autenticação por espécie): rótulos de espécie "
                   f"preservados para DD-SIMCA one-class "
                   f"(puros={n_puro} | adulterados={n_adul}). "
                   f"DD-SIMCA forçado para modo 'puros'.")
@@ -1093,7 +1102,7 @@ def executar(cfg: Config):
             cfg.ddsimca_treinar_em = "puros"
             cfg.executar_ddsimca = True
         else:
-            print("[AVISO] nivel=N2 sem dados de concentração (##TITLE= sem "
+            log.info("[AVISO] nivel=N2 sem dados de concentração (##TITLE= sem "
                   "adulterante). Não é possível separar puro/adulterado — "
                   "verifique os arquivos .dx.")
 
@@ -1112,7 +1121,7 @@ def executar(cfg: Config):
     n_removidas = n_orig - int(mask_wn.sum())
     X_raw       = X_raw[:, mask_wn]
     wavenumbers = wavenumbers[mask_wn]
-    print(f"[INFO] Truncamento espectral [{cfg.wn_min:.0f}, {cfg.wn_max:.0f}]"
+    log.info(f"[INFO] Truncamento espectral [{cfg.wn_min:.0f}, {cfg.wn_max:.0f}]"
           f" cm-1: {n_removidas}/{n_orig} variaveis removidas, "
           f"restam {len(wavenumbers)} ({wavenumbers.min():.1f}-"
           f"{wavenumbers.max():.1f}).")
@@ -1123,7 +1132,7 @@ def executar(cfg: Config):
         mask_keep = ~np.isin(rotulos, list(excl))
         n_rem = int((~mask_keep).sum())
         if n_rem > 0:
-            print(f"[INFO] Excluindo classes {sorted(excl)}: "
+            log.info(f"[INFO] Excluindo classes {sorted(excl)}: "
                   f"{n_rem} amostras removidas.")
             X_raw   = X_raw[mask_keep]
             rotulos = rotulos[mask_keep]
@@ -1144,16 +1153,16 @@ def executar(cfg: Config):
     for _p in (pasta, pasta_dados, os.path.join(pasta, NOME_GRAFICOS),
                pasta_modelos, pasta_logs):
         os.makedirs(_p, exist_ok=True)
-    print(f"[INFO] Saida: {pasta}")
-    print(f"[INFO] Subpastas: {NOME_GRAFICOS}/ {NOME_TABELAS}/ "
+    log.info(f"[INFO] Saida: {pasta}")
+    log.info(f"[INFO] Subpastas: {NOME_GRAFICOS}/ {NOME_TABELAS}/ "
           f"{NOME_MODELOS}/ {NOME_RELATORIOS}/")
     if metadados_df is not None:
         cam_meta = os.path.join(pasta_dados, "metadados.csv")
         metadados_df.to_csv(cam_meta, index=False, sep=";", decimal=",")
-        print(f"[INFO] Metadados salvos: {cam_meta}")
+        log.info(f"[INFO] Metadados salvos: {cam_meta}")
 
     # --- 1c. Input integrity validation -----------------------------------
-    print("\n[0/7] Input integrity validation...")
+    log.info("\n[0/7] Input integrity validation...")
     X_raw, wavenumbers, rotulos, conc, mae_id, relatorio_entrada = validar_entrada(
         X_raw, wavenumbers, rotulos, conc, mae_id)
     relatorio_balanco = verificar_balanceamento(rotulos)
@@ -1168,11 +1177,11 @@ def executar(cfg: Config):
     usar_grupos = (cfg.agrupar_por_mae_id and mae_id is not None
                    and len(np.unique(mae_id)) >= 3)
     if cfg.agrupar_por_mae_id and not usar_grupos:
-        print("[INFO] GroupKFold desabilitado: mae_id indisponivel ou "
+        log.info("[INFO] GroupKFold desabilitado: mae_id indisponivel ou "
               "grupos insuficientes — usando StratifiedKFold (estratificada).")
     if usar_grupos and mae_id is not None:
         n_grupos = int(len(np.unique(mae_id)))
-        print(f"[INFO] Validacao group-aware ATIVA: {n_grupos} grupos "
+        log.info(f"[INFO] Validacao group-aware ATIVA: {n_grupos} grupos "
               f"unicos via mae_id.")
 
     # --- 1d. Hold-out externo (group-aware se possivel) --------------------
@@ -1226,11 +1235,11 @@ def executar(cfg: Config):
             if mae_id is not None:
                 mae_id = mae_id[tr_idx]
             n_holdout = int(len(ho_idx))
-            print(f"[INFO] Hold-out ({tipo_ho}): {n_holdout} amostras "
+            log.info(f"[INFO] Hold-out ({tipo_ho}): {n_holdout} amostras "
                   f"reservadas (frac={cfg.frac_holdout:.2f}). "
                   f"Pipeline rodara em {len(tr_idx)} amostras.")
         except ValueError as e:   # test_size/n_splits incompativel com os dados
-            print(f"[AVISO] Hold-out falhou ({e}). Continuando sem holdout.")
+            log.info(f"[AVISO] Hold-out falhou ({e}). Continuando sem holdout.")
             X_holdout = None
 
     # SG so entra no preprocessador ativo dependendo do PRESET (ver
@@ -1255,14 +1264,14 @@ def executar(cfg: Config):
     mapa_cores     = mapear_cores_classes(classes_unicas)
     mapa_marcadores = mapear_marcadores_classes(classes_unicas)
 
-    print(f"\n[INFO] Amostras : {X_raw.shape[0]}")
-    print(f"[INFO] Variaveis: {X_raw.shape[1]}")
-    print(f"[INFO] Classes  : {classes_unicas.tolist()}")
-    print(f"[INFO] Conc.    : {'sim' if conc is not None else 'nao'}")
+    log.info(f"\n[INFO] Amostras : {X_raw.shape[0]}")
+    log.info(f"[INFO] Variaveis: {X_raw.shape[1]}")
+    log.info(f"[INFO] Classes  : {classes_unicas.tolist()}")
+    log.info(f"[INFO] Conc.    : {'sim' if conc is not None else 'nao'}")
     _mae_info = (f"sim ({int(len(np.unique(mae_id)))} grupos)"
                   if mae_id is not None else "nao")
-    print(f"[INFO] mae_id   : {_mae_info}")
-    print(f"[INFO] Imbalance ratio: {relatorio_balanco['imbalance_ratio']:.2f}  "
+    log.info(f"[INFO] mae_id   : {_mae_info}")
+    log.info(f"[INFO] Imbalance ratio: {relatorio_balanco['imbalance_ratio']:.2f}  "
           f"(max={relatorio_balanco['n_max']}, min={relatorio_balanco['n_min']})")
 
     contagem = {cls: int(np.sum(rotulos == cls)) for cls in classes_unicas}
@@ -1277,10 +1286,10 @@ def executar(cfg: Config):
         min_grupos_classe = min(n_grupos_por_classe)
         n_splits = min(n_splits, min_grupos_classe)
         if n_splits < cfg.n_splits_cv:
-            print(f"[AVISO] n_splits ajustado para {n_splits} "
+            log.info(f"[AVISO] n_splits ajustado para {n_splits} "
                   f"(min de grupos/classe = {min_grupos_classe}).")
     elif n_splits < cfg.n_splits_cv:
-        print(f"[AVISO] n_splits_cv={cfg.n_splits_cv} excede minimo por "
+        log.info(f"[AVISO] n_splits_cv={cfg.n_splits_cv} excede minimo por "
               f"classe ({min_por_classe}). Usando {n_splits}.")
 
     if usar_grupos:
@@ -1305,12 +1314,12 @@ def executar(cfg: Config):
     y_int = np.argmax(Y_bin, axis=1)
 
     # --- 2. Pre-processamento (uma vez, para visualizacao e PCA) -----------
-    print(f"\n[1/7] Pre-processamento (preset='{cfg.preprocessamento_padrao}')")
+    log.info(f"\n[1/7] Pre-processamento (preset='{cfg.preprocessamento_padrao}')")
     preproc_full = construir_preprocessador(cfg).fit(X_raw)
     X_processed  = np.asarray(preproc_full.transform(X_raw), dtype=float)
 
     # --- 3. LV selection by CV (no leakage, group-aware if possible) -------
-    print(f"\n[2/7] LV selection by CV ({cv_label})")
+    log.info(f"\n[2/7] LV selection by CV ({cv_label})")
 
     def fabrica_pipeline(n_lv: int):
         return Pipeline([
@@ -1354,16 +1363,16 @@ def executar(cfg: Config):
     n_opt = int(candidatos_wold[0]) + 1   # smallest LV satisfying criterion
 
     if n_opt < n_opt_minrmsecv:
-        print(f"  LVs otimas (Wold parcimonia): {n_opt} "
+        log.info(f"  LVs otimas (Wold parcimonia): {n_opt} "
               f"(min-RMSECV em {n_opt_minrmsecv} LVs, delta <2%)")
     else:
-        print(f"  LVs otimas: {n_opt}")
+        log.info(f"  LVs otimas: {n_opt}")
 
     Y_cv  = preds_por_lv[n_opt]
     pred_lab = lb.classes_[np.argmax(Y_cv, axis=1)]
     lvs_no_teto = (n_opt >= cfg.max_lvs)
     if lvs_no_teto:
-        print(f"  [ATENCAO] LVs otimas ({n_opt}) == max_lvs ({cfg.max_lvs}): "
+        log.info(f"  [ATENCAO] LVs otimas ({n_opt}) == max_lvs ({cfg.max_lvs}): "
               f"RMSECV ainda nao atingiu plateau. Aumente max_lvs "
               f"(ex: {cfg.max_lvs + 10}) e rode novamente.")
 
@@ -1376,12 +1385,12 @@ def executar(cfg: Config):
     vip = vip_scores(pls_final)
 
     # --- 5. PCA exploratoria -----------------------------------------------
-    print("\n[3/7] PCA exploratoria")
+    log.info("\n[3/7] PCA exploratoria")
     pca = PCA(n_components=min(cfg.n_pcs_pca, X_processed.shape[1],
                                 X_processed.shape[0]))
     scores_pca = pca.fit_transform(X_processed)
     var_pca = pca.explained_variance_ratio_ * 100
-    print(f"  PC1: {var_pca[0]:.2f}%  PC2: {var_pca[1]:.2f}%  "
+    log.info(f"  PC1: {var_pca[0]:.2f}%  PC2: {var_pca[1]:.2f}%  "
           f"acumulado(2): {sum(var_pca[:2]):.2f}%")
 
     # --- 6. Permutation test (Y-randomization) ----------------------------
@@ -1402,7 +1411,7 @@ def executar(cfg: Config):
     # computacao (nao so' a figura/linha do resumo) evita o refit mais caro
     # do pipeline quando o run e' Exploratorio/Quantificacao.
     if objetivo == CLASSIFICACAO:
-        print(f"\n[4/7] Teste de permutacao (Y-randomization, "
+        log.info(f"\n[4/7] Teste de permutacao (Y-randomization, "
               f"n={cfg.n_permutacoes})")
         perm_res = teste_permutacao(
             lambda: fabrica_pipeline(n_opt),
@@ -1412,13 +1421,13 @@ def executar(cfg: Config):
         perm_dist: np.ndarray = cast(np.ndarray, perm_res["accs_permutadas"])
         perm_p   : float      = cast(float, perm_res["p_value"])
         media_h0 = float(perm_dist.mean()) if len(perm_dist) > 0 else float("nan")
-        print(f"  Bal.Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
+        log.info(f"  Bal.Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
               f"|  bal.acc media H0 = {media_h0:.4f}")
-        print(f"  Iteracoes validas: {cast(int, perm_res['n_validos'])}/"
+        log.info(f"  Iteracoes validas: {cast(int, perm_res['n_validos'])}/"
               f"{cfg.n_permutacoes}  "
               f"(failure_rate = {cast(float, perm_res['failure_rate']):.1%})")
     else:
-        print(f"\n[4/7] Teste de permutacao — PULADO: objetivo="
+        log.info(f"\n[4/7] Teste de permutacao — PULADO: objetivo="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Significancia de "
               f"classificacao nao e' pertinente fora do modo Classificacao "
               f"(economiza {cfg.n_permutacoes} refits de CV).")
@@ -1431,7 +1440,7 @@ def executar(cfg: Config):
     # --- 6b. Teste de Wold (R2Y / Q2Y intercept) --------------------------
     wold_res: Optional[Dict[str, object]] = None
     if cfg.executar_wold:
-        print(f"\n[4b/7] Teste de Wold (R2Y/Q2Y intercept, "
+        log.info(f"\n[4b/7] Teste de Wold (R2Y/Q2Y intercept, "
               f"n={cfg.n_permutacoes_wold})")
         wold_res = teste_wold(
             lambda: fabrica_pipeline(n_opt),
@@ -1441,10 +1450,10 @@ def executar(cfg: Config):
         _wq2 = cast(float, wold_res['intercept_q2'])
         _wr2_s = f"{_wr2:.4f}" if np.isfinite(_wr2) else "n/a (permutacoes insuficientes)"
         _wq2_s = f"{_wq2:.4f}" if np.isfinite(_wq2) else "n/a (permutacoes insuficientes)"
-        print(f"  R2Y obs = {cast(float, wold_res['r2_obs']):.4f}  |  "
+        log.info(f"  R2Y obs = {cast(float, wold_res['r2_obs']):.4f}  |  "
               f"intercepto = {_wr2_s}  "
               f"{'VALIDO' if wold_res['valid_r2'] else 'FALHA'} (limiar < 0.40)")
-        print(f"  Q2Y obs = {cast(float, wold_res['q2_obs']):.4f}  |  "
+        log.info(f"  Q2Y obs = {cast(float, wold_res['q2_obs']):.4f}  |  "
               f"intercepto = {_wq2_s}  "
               f"{'VALIDO' if wold_res['valid_q2'] else 'FALHA'} (limiar < 0.05)")
 
@@ -1452,16 +1461,16 @@ def executar(cfg: Config):
     cv_anova_res: Optional[Dict[str, float]] = None
     if cfg.executar_cv_anova:
         cv_anova_res = cv_anova_eriksson(Y_bin, Y_cv, n_opt)
-        print(f"\n[4c/7] CV-ANOVA (Eriksson): F = {cv_anova_res['F']:.3f}  "
+        log.info(f"\n[4c/7] CV-ANOVA (Eriksson): F = {cv_anova_res['F']:.3f}  "
               f"p = {cv_anova_res['p_value']:.4g}  "
               f"(df = {cv_anova_res['df_model']}, {cv_anova_res['df_resid']})")
 
     # --- 7. Metricas e relatorio -------------------------------------------
     cm_mat = confusion_matrix(rotulos, pred_lab, labels=lb.classes_)
     metricas_finais = metricas_classificacao(rotulos, pred_lab, lb.classes_)
-    print("\n[5/7] Metricas finais (CV):")
+    log.info("\n[5/7] Metricas finais (CV):")
     for k, v in metricas_finais.items():
-        print(f"  {k:>22s}: {v:.4f}")
+        log.info(f"  {k:>22s}: {v:.4f}")
 
     # --- 5b. BCa CI 95% para metricas via bootstrap estratificado ----------
     # metricas_funcoes tambem e' reaproveitado pelo bloco de holdout (8b),
@@ -1480,28 +1489,28 @@ def executar(cfg: Config):
         "cohen_kappa":       lambda yt, yp: cohen_kappa_score(yt, yp),
     }
     if objetivo != CLASSIFICACAO:
-        print(f"\n[5b/7] BCa CI 95% — PULADO: objetivo="
+        log.info(f"\n[5b/7] BCa CI 95% — PULADO: objetivo="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intervalo de "
               f"confianca de metricas de classificacao nao e' pertinente "
               f"fora do modo Classificacao.")
     else:
-        print(f"\n[5b/7] BCa CI 95% (n_boot={cfg.n_bootstrap_bca})")
+        log.info(f"\n[5b/7] BCa CI 95% (n_boot={cfg.n_bootstrap_bca})")
         for nome, fn in metricas_funcoes.items():
             lo, hi, obs = bootstrap_bca_ci(rotulos, pred_lab, fn,
                                             n_boot=cfg.n_bootstrap_bca,
                                             alpha=0.05, seed=cfg.seed)
             bca[nome] = (lo, hi, obs)
-            print(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
-    print("\n" + str(classification_report(rotulos, pred_lab,
+            log.info(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
+    log.info("\n" + str(classification_report(rotulos, pred_lab,
                                              target_names=lb.classes_,
                                              zero_division=0)))
 
     # --- 7b. R²X, R²Y, Q² ---------------------------------------------------
     r2x, r2y, q2 = metricas_modelo_pls(pls_final, X_processed, Y_bin, Y_cv)
-    print(f"\n[5b/7] R2X = {r2x:.4f}  |  R2Y = {r2y:.4f}  |  Q2 = {q2:.4f}")
+    log.info(f"\n[5b/7] R2X = {r2x:.4f}  |  R2Y = {r2y:.4f}  |  Q2 = {q2:.4f}")
 
     # --- 8. Figuras --------------------------------------------------------
-    print("\n[6/7] Gerando figuras...")
+    log.info("\n[6/7] Gerando figuras...")
     aucs_roc: Dict[str, float] = {}
     # M1: mascara de puros para marcadores diferenciados
     # Pure samples: conc loaded as None -> NaN after asarray(float), OR stored as 0.0
@@ -1548,25 +1557,25 @@ def executar(cfg: Config):
             aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
         except Exception as _e_roc:  # noqa: BLE001 -- figura opcional (curva
             # ROC/AUC); erro impresso, resultado central da corrida intacto.
-            print(f"  [AVISO] ROC/AUC: {_e_roc}")
+            log.info(f"  [AVISO] ROC/AUC: {_e_roc}")
     # fig4b_metricas_globais e fig5_vip removidas: a primeira e redundante com
     # resumo_modelo.txt; a segunda (VIP puro) esta contida em fig_sprint3_sr_vip,
     # que mostra VIP + Selectivity Ratio lado a lado (ver abaixo).
 
     if cfg.n_bootstrap_vip > 0 and deve_gerar(cfg, "vip"):
-        print(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
+        log.info(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
         boot = bootstrap_vip_estratificado(
             X_processed, Y_bin, y_int, n_opt,
             cfg.n_bootstrap_vip, cfg.seed,
             mae_id=grupos_cv)   # group-aware: respects mae_id replicates
         boot_validos = cast(int, boot["n_validos"])
-        print(f"  Iteracoes validas: {boot_validos}/"
+        log.info(f"  Iteracoes validas: {boot_validos}/"
               f"{cfg.n_bootstrap_vip}  (falhos: {cast(int, boot['n_falhos'])})")
         if boot_validos > 0:
             fig5b_vip_estabilidade(boot, wavenumbers, top_n=20,
                                      cfg=cfg, pasta=pasta)
         else:
-            print("  [AVISO] Bootstrap VIP: 0 iteracoes validas — fig5b pulada.")
+            log.info("  [AVISO] Bootstrap VIP: 0 iteracoes validas — fig5b pulada.")
 
     if _fig_explor_on:
         fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
@@ -1577,7 +1586,7 @@ def executar(cfg: Config):
     # ---- Sprint 3 — SR (essencial) + Score Contribution (detalhada) -----
     # sr e' computado SEMPRE (consumido tambem pela Etapa 4); apenas as
     # FIGURAS de SR/VIP sao filtradas por objetivo (classificacao).
-    print("\n[Sprint3] Selectivity Ratio + Score Contribution...")
+    log.info("\n[Sprint3] Selectivity Ratio + Score Contribution...")
     sr = calcular_selectivity_ratio(pls_final, X_processed)
     if deve_gerar(cfg, "sr_vip"):
         fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
@@ -1592,16 +1601,16 @@ def executar(cfg: Config):
     _martens_n_sig: Optional[int] = None
     _martens_n_folds: Optional[int] = None
     if cfg.executar_martens and deve_gerar(cfg, "martens"):
-        print("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
+        log.info("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
         martens = teste_incerteza_martens(
             X_processed, Y_bin, n_opt, cv_indices, pls_final.coef_)
         _martens_n_folds = int(martens["n_folds_validos"])
         if _martens_n_folds >= 3:
             _martens_n_sig = int(np.sum(martens["significativo"]))
-            print(f"  {_martens_n_sig}/{len(wavenumbers)} variaveis "
+            log.info(f"  {_martens_n_sig}/{len(wavenumbers)} variaveis "
                   f"significativas (p<0.05, {_martens_n_folds} folds validos)")
         else:
-            print(f"  [AVISO] Apenas {_martens_n_folds} folds validos "
+            log.info(f"  [AVISO] Apenas {_martens_n_folds} folds validos "
                   "(<3) -- jackknife nao pode estimar variancia.")
         df_martens = pd.DataFrame({
             "wavenumber":    wavenumbers,
@@ -1611,7 +1620,7 @@ def executar(cfg: Config):
         })
         cam_martens = os.path.join(pasta_dados, "teste_martens.csv")
         df_martens.to_csv(cam_martens, index=False, sep=";", decimal=",")
-        print(f"  -> {cam_martens}")
+        log.info(f"  -> {cam_martens}")
 
     # DD-SIMCA — configurable training mode (v14).
     #   'todos' (default): trains each model on all class samples
@@ -1634,7 +1643,7 @@ def executar(cfg: Config):
     # isso o toggle e' ignorado (nao bloqueado no Config, so' na execucao) com
     # aviso explicito, mesmo que o usuario tenha ligado manualmente.
     if cfg.executar_ddsimca and cfg.nivel == "N1":
-        print("\n[Sprint3] DD-SIMCA — IGNORADO: nivel=N1 (identificacao de "
+        log.info("\n[Sprint3] DD-SIMCA — IGNORADO: nivel=N1 (identificacao de "
               "especie). DD-SIMCA e um diagnostico de autenticacao de pureza "
               "(conceito de N2); nao agrega a este tipo de analise. Troque "
               "para nivel=N2 se quiser autenticar pureza por especie.")
@@ -1656,12 +1665,12 @@ def executar(cfg: Config):
             mask_treino = np.ones(len(rotulos), dtype=bool)
             n_treino = len(rotulos)
 
-        print(f"\n[Sprint3] DD-SIMCA "
+        log.info(f"\n[Sprint3] DD-SIMCA "
               f"(n_components={cfg.ddsimca_n_components}, alpha=0.05, "
               f"ucl={cfg.ddsimca_ucl_method}, treino='{modo_dd}') "
               f"— {n_treino} amostras de treino")
         if modo_dd == "puros" and n_treino < (cfg.ddsimca_n_components + 2) * 2:
-            print(f"  [AVISO] Poucos puros ({n_treino}) para one-class robusto"
+            log.info(f"  [AVISO] Poucos puros ({n_treino}) para one-class robusto"
                   f" (recomendado >=15/classe). Resultados exploratorios.")
 
         ddsimca = DDSimca(n_components=cfg.ddsimca_n_components, alpha=0.05,
@@ -1672,7 +1681,7 @@ def executar(cfg: Config):
         n_unknown     = int(np.sum(simca_pred == "Desconhecido"))
         n_ambig       = int(np.sum(simca_pred == "Ambiguo"))
 
-        print(f"  {'Classe':18s} {'sens(LOGO)':>11s} {'grupos':>7s} "
+        log.info(f"  {'Classe':18s} {'sens(LOGO)':>11s} {'grupos':>7s} "
               f"{'esp(adult)':>11s}")
         for cls in classes_unicas:
             if cls not in ddsimca_res:
@@ -1724,11 +1733,11 @@ def executar(cfg: Config):
                                      n_grupos_c, aviso_sens)
             sens_txt = f"{sens*100:.1f}%" if sens == sens else "n/a"
             esp_txt  = f"{esp*100:9.1f}%" if esp == esp else "      n/a"
-            print(f"  {cls:18s} {sens_txt:>11s} {n_grupos_c:>7d} {esp_txt}"
+            log.info(f"  {cls:18s} {sens_txt:>11s} {n_grupos_c:>7d} {esp_txt}"
                   f"   (puros={n_puro_c}, adult={n_adult_c})")
             if aviso_sens:
-                print(f"    [AVISO] {cls}: {aviso_sens}")
-        print(f"  Desconhecidos: {n_unknown}  |  Ambiguos: {n_ambig}")
+                log.info(f"    [AVISO] {cls}: {aviso_sens}")
+        log.info(f"  Desconhecidos: {n_unknown}  |  Ambiguos: {n_ambig}")
         if ddsimca_res:
             # Essencial: painel de aceitacao consolidado (todas as classes).
             fig_sprint3_ddsimca_acceptance(
@@ -1746,16 +1755,16 @@ def executar(cfg: Config):
                     except Exception as _e_coom:  # noqa: BLE001 -- figura
                         # opcional (Cooman's Plot); erro impresso, DD-SIMCA
                         # ja calculado e reportado independentemente.
-                        print(f"  [AVISO] Cooman's Plot: {_e_coom}")
+                        log.info(f"  [AVISO] Cooman's Plot: {_e_coom}")
 
     # OPLS-DA
     _opls_n_ortho: Optional[int] = None
     if cfg.executar_opls and deve_gerar(cfg, "opls"):
         n_cls_opls = len(classes_unicas)
-        print(f"\n[Sprint3] OPLS-DA "
+        log.info(f"\n[Sprint3] OPLS-DA "
               f"(n_ortho={cfg.n_ortho_opls}, {n_cls_opls} classes)...")
         if n_cls_opls < 2:
-            print("  [AVISO] OPLS-DA requer >= 2 classes.")
+            log.info("  [AVISO] OPLS-DA requer >= 2 classes.")
         else:
             try:
                 opls = OPLSDAWrapper(n_ortho=cfg.n_ortho_opls)
@@ -1766,12 +1775,12 @@ def executar(cfg: Config):
                     opls.n_ortho_fitted_, cfg=cfg, pasta=pasta)
                 fig_splot_opls(X_processed, t_pred_opls, wavenumbers, cfg, pasta)
                 _opls_n_ortho = opls.n_ortho_fitted_
-                print(f"  Componentes ortogonais ajustados: {_opls_n_ortho}")
+                log.info(f"  Componentes ortogonais ajustados: {_opls_n_ortho}")
             except Exception as _e_opls:  # noqa: BLE001 -- modulo opcional
                 # (OPLS-DA/S-Plot); erro impresso, _opls_n_ortho fica None e
                 # some do resumo em vez de exibir um valor inventado; PLS-DA
                 # (resultado central) ja calculado antes deste bloco.
-                print(f"  [ERRO] OPLS-DA: {_e_opls}")
+                log.info(f"  [ERRO] OPLS-DA: {_e_opls}")
 
     # --- STAGE 4: Variable Selection ------------------------------------
     etapa4_res: Optional[Dict[str, Any]] = None
@@ -1783,10 +1792,10 @@ def executar(cfg: Config):
         except Exception as _e_e4:  # noqa: BLE001 -- modulo opcional (selecao
             # de variaveis); erro impresso, etapa4_res fica None e some do
             # resumo; PLS-DA (resultado central) ja calculado antes.
-            print(f"  [ERRO] Etapa 4: {_e_e4}")
+            log.info(f"  [ERRO] Etapa 4: {_e_e4}")
 
     if cfg.comparar_pipelines and deve_gerar(cfg, "comparar_pipelines"):
-        print("\n[6b/7] Comparacao de pipelines de pre-processamento...")
+        log.info("\n[6b/7] Comparacao de pipelines de pre-processamento...")
         comp = comparar_pipelines(cfg, X_raw, Y_bin, y_int, cv_indices,
                                     max_lv=cfg.max_lvs)
         fig_extra_comparacao_pipelines(comp, cfg, pasta)
@@ -1804,7 +1813,7 @@ def executar(cfg: Config):
     if (X_holdout is not None and rotulos_holdout is not None
             and deve_gerar(cfg, "holdout")):
         rot_ho: np.ndarray = rotulos_holdout
-        print(f"\n[6c/7] Avaliacao em holdout ({n_holdout} amostras)...")
+        log.info(f"\n[6c/7] Avaliacao em holdout ({n_holdout} amostras)...")
         try:
             X_holdout_proc = preproc_full.transform(X_holdout)
             Y_holdout_hat = pls_final.predict(X_holdout_proc)
@@ -1814,7 +1823,7 @@ def executar(cfg: Config):
             metricas_holdout = metricas_classificacao(
                 rot_ho, pred_holdout, lb.classes_)
             for k, v in metricas_holdout.items():
-                print(f"  {k:>22s}: {v:.4f}")
+                log.info(f"  {k:>22s}: {v:.4f}")
             fig_extra_holdout(metricas_finais, metricas_holdout,
                                 cm_holdout, lb.classes_, n_holdout, cfg, pasta)
             # BCa CI no holdout tambem
@@ -1829,13 +1838,13 @@ def executar(cfg: Config):
             # erro impresso, metricas_holdout fica None e some do resumo
             # (nunca um valor inventado); metricas de CV (resultado central)
             # ja calculadas antes deste bloco.
-            print(f"  [ERRO] Avaliacao em holdout falhou: {e}")
+            log.info(f"  [ERRO] Avaliacao em holdout falhou: {e}")
             metricas_holdout = None
 
     # --- 9. Identificadores e resumo (separados dos graficos) --------------
     salvar_identificadores(rotulos, pred_lab, T_pls, T2, Q,
                             t2_lim, q_lim, pasta_dados)
-    print(f"  -> {os.path.join(pasta_dados, 'amostras_identificadores.csv')}")
+    log.info(f"  -> {os.path.join(pasta_dados, 'amostras_identificadores.csv')}")
 
     # Formata strings de CI para o resumo
     def _ci_str(b):
@@ -1993,7 +2002,7 @@ def executar(cfg: Config):
         resumo[f"  T2-outliers {cls}"] = (
             f"{n_out_c}/{n_tot_c} ({frac_c*100:.1f}%){flag}")
         if frac_c > 0.30:
-            print(f"[ATENCAO] Classe '{cls}': {frac_c*100:.0f}% outliers T2 "
+            log.info(f"[ATENCAO] Classe '{cls}': {frac_c*100:.0f}% outliers T2 "
                   f"({n_out_c}/{n_tot_c}) — possivel batch/lote anomalo.")
 
     # M4 — Accuracy (recall) por classe
@@ -2004,40 +2013,40 @@ def executar(cfg: Config):
         resumo[f"  Acc {cls}"] = float(rec_c)
 
     salvar_resumo_modelo(pasta_logs, resumo)
-    print(f"  -> {os.path.join(pasta_logs, 'resumo_modelo.txt')}")
+    log.info(f"  -> {os.path.join(pasta_logs, 'resumo_modelo.txt')}")
 
     # Model Card (Mitchell et al. 2019) -- mesmo ponto/dados do resumo acima.
     gerar_model_card(pasta_logs, cfg, resumo, _hw, classes_unicas)
-    print(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
+    log.info(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
     if cfg.executar_benchmark and deve_gerar(cfg, "benchmark"):
-        print("\n[7b/7] Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...")
+        log.info("\n[7b/7] Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...")
         # Guarda: ~1.2 GB pico (SVM kernel matrix + OOF proba)
         if _verificar_ram(1.2, "Auto-Benchmark"):
             try:
                 bench_df = benchmark_classificadores(
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta,
                     wavenumbers=wavenumbers)
-                print(bench_df.to_string(index=False))
+                log.info(bench_df.to_string(index=False))
             except Exception as _e_bench:  # noqa: BLE001 -- modulo opcional
                 # (comparacao com outros classificadores); erro impresso,
                 # bench_df so' usado neste bloco; PLS-DA (resultado central)
                 # ja calculado.
-                print(f"  [AVISO] Benchmark falhou: {_e_bench}")
+                log.info(f"  [AVISO] Benchmark falhou: {_e_bench}")
 
     # --- 9a2. Monte Carlo CV (opcional) ────────────────────────────────────
     if cfg.executar_monte_carlo and deve_gerar(cfg, "monte_carlo"):
-        print("\n[7c/7] Monte Carlo CV (IC95% por percentil)...")
+        log.info("\n[7c/7] Monte Carlo CV (IC95% por percentil)...")
         # Guarda: ~400 MB (PLS-DA x N splits em serie)
         if _verificar_ram(0.5, "Monte Carlo CV"):
             try:
                 mc_df = monte_carlo_cv(
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta)
-                print(mc_df.to_string(index=False))
+                log.info(mc_df.to_string(index=False))
             except Exception as _e_mc:  # noqa: BLE001 -- modulo opcional;
                 # erro impresso, mc_df so' usado neste bloco.
-                print(f"  [AVISO] Monte Carlo CV falhou: {_e_mc}")
+                log.info(f"  [AVISO] Monte Carlo CV falhou: {_e_mc}")
 
     # --- 9b. Exportar modelo final (modelos/) — joblib opcional -----------
     try:
@@ -2070,24 +2079,24 @@ def executar(cfg: Config):
         except Exception as _e_ad:  # noqa: BLE001 -- anexo opcional do
             # pacote de modelo; erro impresso, modelo principal (pls_final)
             # exportado normalmente logo abaixo mesmo sem o AD.
-            print(f"  [AVISO] Dominio de aplicabilidade nao pode ser "
+            log.info(f"  [AVISO] Dominio de aplicabilidade nao pode ser "
                   f"exportado: {_e_ad}")
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
-        print(f"  -> {cam_modelo}")
+        log.info(f"  -> {cam_modelo}")
         # Manifesto de proveniencia/integridade (P5 -- CLAUDE.md): sha256 do
         # arquivo + versoes de biblioteca, usado por predicao.carregar_modelo
         # para detectar arquivo trocado/corrompido ANTES de executar o pickle.
         cam_manifesto = salvar_manifesto(cam_modelo, pacote_modelo)
-        print(f"  -> {cam_manifesto}")
+        log.info(f"  -> {cam_manifesto}")
     except Exception as _e_mod:  # noqa: BLE001 -- exportacao opcional
         # (predicao em amostra nova); erro impresso, nao afeta as figuras/
         # relatorios ja gerados desta corrida.
-        print(f"  [AVISO] Exportacao do modelo pulada: {_e_mod}")
+        log.info(f"  [AVISO] Exportacao do modelo pulada: {_e_mod}")
 
     if out_t2.size or out_q.size:
-        print(f"\n[INFO] Outliers (T2 > lim): {out_t2.tolist()}")
-        print(f"[INFO] Outliers (Q  > lim): {out_q.tolist()}")
+        log.info(f"\n[INFO] Outliers (T2 > lim): {out_t2.tolist()}")
+        log.info(f"[INFO] Outliers (Q  > lim): {out_q.tolist()}")
 
     # --- 9. PLS regression (optional) -------------------------------------
     # Guard: only runs if (1) concentration data present, (2) no NaN,
@@ -2105,7 +2114,7 @@ def executar(cfg: Config):
         n_nonzero = int(np.sum(conc_arr > 0))
 
         if objetivo != QUANTIFICACAO:
-            print(f"\n[7/7] PLS regressao — PULADA: objetivo="
+            log.info(f"\n[7/7] PLS regressao — PULADA: objetivo="
                   f"{OBJETIVO_ROTULO.get(objetivo, objetivo)} "
                   f"(nivel={cfg.nivel}). A regressao de concentracao pertence "
                   f"ao Modo Quantificacao (N3); nos modos Exploratorio/"
@@ -2113,12 +2122,12 @@ def executar(cfg: Config):
                   f"em N1 as {len(classes_unicas)} especies dominam o sinal "
                   f"de adulteracao, produzindo R2~0).")
         elif n_nan > 0:
-            print(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
+            log.info(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
                   f"conc=NaN.")
         elif float(conc_arr.std()) < 1e-8:
-            print("\n[7/7] PLS regressao — PULADA: variancia de conc ~= 0.")
+            log.info("\n[7/7] PLS regressao — PULADA: variancia de conc ~= 0.")
         elif n_nonzero < 10:
-            print(f"\n[7/7] PLS regressao — PULADA: apenas {n_nonzero} "
+            log.info(f"\n[7/7] PLS regressao — PULADA: apenas {n_nonzero} "
                   f"amostras com teor > 0 (precisa >= 10).")
         else:
             # Guard (6): check number of unique species via mae_id prefix
@@ -2134,7 +2143,7 @@ def executar(cfg: Config):
                 # Multi-species: a SINGLE pooled model is confounded by inter-
                 # species variation. Instead, calibrate PER SPECIES and pool
                 # the predictions — recovers the proper diagonal.
-                print(f"\n[7/7] PLS regressao POR ESPECIE "
+                log.info(f"\n[7/7] PLS regressao POR ESPECIE "
                       f"({n_especies} especies — calibracao separada para "
                       f"evitar confusao inter-especies)")
                 try:
@@ -2142,26 +2151,26 @@ def executar(cfg: Config):
                         X_raw, conc_arr, rotulos, mae_id, classes_unicas,
                         cfg, pasta, n_splits)
                     if reg_esp is not None:
-                        print(f"  Especies modeladas: {reg_esp['n_especies']}")
-                        print(f"  R2cal (pooled): {reg_esp['r2c']:.4f}  |  "
+                        log.info(f"  Especies modeladas: {reg_esp['n_especies']}")
+                        log.info(f"  R2cal (pooled): {reg_esp['r2c']:.4f}  |  "
                               f"R2val (pooled): {reg_esp['r2v']:.4f}")
-                        print(f"  RMSEP (pooled): {reg_esp['rmsep']:.3f}")
-                        print(f"  DModY critico (SIMCA): "
+                        log.info(f"  RMSEP (pooled): {reg_esp['rmsep']:.3f}")
+                        log.info(f"  DModY critico (SIMCA): "
                               f"{reg_esp['dmody_crit']:.3f}  |  "
                               f"amostras fora: {reg_esp['n_fora_do_dmody']}")
                         for t in reg_esp["tabela_especie"]:
-                            print(f"    {t['especie']:18s} "
+                            log.info(f"    {t['especie']:18s} "
                                   f"LV={t['n_lv']:2d}  RMSEP={t['rmsep']:.2f}  "
                                   f"R2val={t['r2val']:.3f}  "
                                   f"(cal={t['n_cal']}, val={t['n_val']})")
                             _lod_t, _loq_t = t.get("lod"), t.get("loq")
                             if _lod_t is not None and np.isfinite(_lod_t):
-                                print(f"      LOD={_lod_t:.2f}%  LOQ={_loq_t:.2f}%  "
+                                log.info(f"      LOD={_lod_t:.2f}%  LOQ={_loq_t:.2f}%  "
                                       f"SEN={t['sensibilidade']:.3f}  "
                                       f"gamma={t['sensibilidade_analitica']:.2f}  "
                                       f"SEL={t['seletividade_media']:.3f}")
                             else:
-                                print("      LOD/LOQ: N/A (sem replicas fisicas "
+                                log.info("      LOD/LOQ: N/A (sem replicas fisicas "
                                       "suficientes para estimar ruido instrumental)")
                         anexar_regressao_resumo(
                             pasta_logs,
@@ -2180,7 +2189,7 @@ def executar(cfg: Config):
 
                         # --- Auto-Benchmark de regressao (opcional) ------
                         if cfg.executar_benchmark_regressao:
-                            print("\n[7b/7] Auto-Benchmark de regressao "
+                            log.info("\n[7b/7] Auto-Benchmark de regressao "
                                   "(Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R)...")
                             if _verificar_ram(0.6, "Auto-Benchmark de regressao"):
                                 try:
@@ -2188,26 +2197,26 @@ def executar(cfg: Config):
                                         X_raw, conc_arr, rotulos, mae_id,
                                         classes_unicas, cfg, pasta, reg_esp)
                                     if bench_reg_df is not None:
-                                        print(bench_reg_df.to_string(index=False))
+                                        log.info(bench_reg_df.to_string(index=False))
                                     else:
-                                        print("  [AVISO] Nenhuma especie com "
+                                        log.info("  [AVISO] Nenhuma especie com "
                                               "amostras suficientes para o "
                                               "benchmark de regressao.")
                                 except Exception as _e_bench_reg:  # noqa: BLE001
                                     # modulo opcional (compara PLS-R com
                                     # outros regressores); erro impresso,
                                     # regressao principal (reg_esp) intacta.
-                                    print(f"  [AVISO] Benchmark de regressao "
+                                    log.info(f"  [AVISO] Benchmark de regressao "
                                           f"falhou: {_e_bench_reg}")
                     else:
-                        print("  [AVISO] Nenhuma especie com amostras "
+                        log.info("  [AVISO] Nenhuma especie com amostras "
                               "suficientes para regressao (>= 6 adulteradas "
                               "e variancia de teor > 0).")
                 except Exception as _e_reg_esp:  # noqa: BLE001 -- rede de
                     # seguranca do bloco inteiro de regressao (multi-etapa:
                     # split + selecao de LV + fit + figuras); erro impresso,
                     # classificacao (resultado central, calculada antes) intacta.
-                    print(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+                    log.info(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
 
                 # Heatmap R2cv especie x adulterante: granularidade honesta da
                 # quantificacao. A regressao pooled por especie junta os
@@ -2218,7 +2227,7 @@ def executar(cfg: Config):
                     _r2cv = r2cv_especie_adulterante(
                         X_raw, conc_arr, rotulos, mae_id, cfg)
                     if _r2cv is not None:
-                        print(f"\n[7c/7] R2cv por especie x adulterante — "
+                        log.info(f"\n[7c/7] R2cv por especie x adulterante — "
                               f"{_r2cv['n_falhas']}/{_r2cv['n_total']} "
                               f"combinacoes abaixo de R2cv="
                               f"{_r2cv['limiar_r2']:.2f}  (n/a: {_r2cv['n_na']})")
@@ -2228,13 +2237,13 @@ def executar(cfg: Config):
                     # opcional (o calculo R2cv em si ja tem tratamento
                     # granular por combinacao); erro impresso, resto da
                     # corrida intacto.
-                    print(f"  [AVISO] Heatmap especie x adulterante: {_e_hm}")
+                    log.info(f"  [AVISO] Heatmap especie x adulterante: {_e_hm}")
                 _pls_reg_ok = False   # per-species path handled the figure
             else:
                 _pls_reg_ok = True
 
     if _pls_reg_ok and conc is not None:
-        print(f"\n[7/7] PLS regressao "
+        log.info(f"\n[7/7] PLS regressao "
               f"(target=teor%, {int(np.sum(conc > 0))} adulterados + "
               f"{int(np.sum(conc == 0))} puros)")
         Y_reg = np.asarray(conc, dtype=float).reshape(-1, 1)
@@ -2244,13 +2253,13 @@ def executar(cfg: Config):
         if cfg.divisao_cal_val == "kennard_stone":
             ic, iv = kennard_stone_split_group_aware(
                 X_raw, mae_id, cfg.frac_cal)
-            print(f"  Split cal/val: Kennard-Stone "
+            log.info(f"  Split cal/val: Kennard-Stone "
                   f"({len(ic)} cal / {len(iv)} val)")
         elif mae_id is not None:
             gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                          random_state=cfg.seed)
             ic, iv = next(gss_reg.split(X_raw, Y_reg, groups=mae_id))
-            print(f"  Split cal/val: GroupShuffleSplit por mae_id "
+            log.info(f"  Split cal/val: GroupShuffleSplit por mae_id "
                   f"({len(ic)} cal / {len(iv)} val)")
         else:
             rng   = np.random.default_rng(cfg.seed)
@@ -2269,7 +2278,7 @@ def executar(cfg: Config):
             n_splits_reg = max(2, min(n_splits, n_grupos_cal))
             cv_reg = GroupKFold(n_splits=n_splits_reg)
             grupos_cv_reg: Optional[np.ndarray] = grupos_cal
-            print(f"  CV interna: GroupKFold n_splits={n_splits_reg} "
+            log.info(f"  CV interna: GroupKFold n_splits={n_splits_reg} "
                   f"({n_grupos_cal} grupos na calibracao)")
         else:
             n_splits_reg = max(2, min(n_splits, Xc_raw.shape[0] // 2))
@@ -2315,10 +2324,10 @@ def executar(cfg: Config):
             np.asarray(Yv_hat).flatten() - np.asarray(Yv).flatten(),
             n_componentes=n_opt_reg, n_amostras=len(Yv))
 
-        print(f"  LVs    : {n_opt_reg}")
-        print(f"  RMSEC  : {rmsec:.3f}  |  RMSECV: {rmsecv:.3f}  "
+        log.info(f"  LVs    : {n_opt_reg}")
+        log.info(f"  RMSEC  : {rmsec:.3f}  |  RMSECV: {rmsecv:.3f}  "
               f"|  RMSEP: {rmsep:.3f}")
-        print(f"  R2cal  : {r2c:.4f}  |  R2val : {r2v:.4f}  "
+        log.info(f"  R2cal  : {r2c:.4f}  |  R2val : {r2v:.4f}  "
               f"|  Bias: {bias_v:.4f}")
 
         # Figuras de merito analiticas (Valderrama, Braga & Poppi, 2009):
@@ -2342,15 +2351,15 @@ def executar(cfg: Config):
             "seletividade_media": _fom_reg["seletividade_media"],
         }], cfg, pasta)
         if np.isfinite(_fom_reg["lod"]):
-            print(f"  LOD    : {_fom_reg['lod']:.2f}%  |  "
+            log.info(f"  LOD    : {_fom_reg['lod']:.2f}%  |  "
                   f"LOQ: {_fom_reg['loq']:.2f}%")
-            print(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
+            log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
                   f"gamma: {_fom_reg['sensibilidade_analitica']:.2f}  |  "
                   f"SEL: {_fom_reg['seletividade_media']:.3f}")
         else:
-            print("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
+            log.info("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
                   "estimar ruido instrumental)")
-        print(f"  DModY critico (SIMCA): {_dmody_res_pooled['dmody_crit']:.3f}"
+        log.info(f"  DModY critico (SIMCA): {_dmody_res_pooled['dmody_crit']:.3f}"
               f"  |  amostras fora: {_dmody_res_pooled['n_fora_do_modelo']}")
         anexar_regressao_resumo(
             pasta_logs,
@@ -2367,12 +2376,12 @@ def executar(cfg: Config):
                     "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
             fom_pooled=_fom_reg)
     elif conc is None:
-        print("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
+        log.info("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
 
-    print(f"\n{'=' * 60}")
-    print("  Pipeline concluido.")
-    print(f"  Resultados em: {pasta}")
-    print(f"{'=' * 60}")
+    log.info(f"\n{'=' * 60}")
+    log.info("  Pipeline concluido.")
+    log.info(f"  Resultados em: {pasta}")
+    log.info(f"{'=' * 60}")
 
 
 # =========================================================================
@@ -2396,35 +2405,35 @@ from guaraci.config_io import (   # noqa: F401
 
 def _editar_campo(cfg: Config, s: Dict[str, Any]) -> None:
     """Edita um campo via terminal, com validacao."""
-    print(f"\n  {s['desc']}")
-    print(f"  valor atual: {_fmt_yaml(_attr_para_yaml(s, cfg))}")
+    log.info(f"\n  {s['desc']}")
+    log.info(f"  valor atual: {_fmt_yaml(_attr_para_yaml(s, cfg))}")
     if s["tipo"] == "bool":
         setattr(cfg, s["attr"], not bool(getattr(cfg, s["attr"])))
-        print(f"  -> alterado para {getattr(cfg, s['attr'])}")
+        log.info(f"  -> alterado para {getattr(cfg, s['attr'])}")
         return
     if s["tipo"] in ("choice", "preproc"):
         ops = s["opcoes"] or []
         for i, o in enumerate(ops, 1):
-            print(f"    ({i}) {o}")
+            log.info(f"    ({i}) {o}")
         r = input("  escolha o numero (Enter cancela): ").strip()
         if r.isdigit() and 1 <= int(r) <= len(ops):
             try:
                 setattr(cfg, s["attr"], _coagir_valor(s, ops[int(r) - 1]))
-                print("  -> ok")
+                log.info("  -> ok")
             except ValueError as e:   # _coagir_valor: opcao/faixa invalida
-                print(f"  erro: {e}")
+                log.info(f"  erro: {e}")
         else:
-            print("  cancelado.")
+            log.info("  cancelado.")
         return
     novo = input("  novo valor (Enter cancela): ").strip()
     if novo == "":
-        print("  cancelado.")
+        log.info("  cancelado.")
         return
     try:
         setattr(cfg, s["attr"], _coagir_valor(s, novo))
-        print("  -> ok")
+        log.info("  -> ok")
     except ValueError as e:   # _coagir_valor: valor digitado invalido
-        print(f"  erro: {e}")
+        log.info(f"  erro: {e}")
 
 
 def menu_interativo(cfg: Optional[Config] = None,
@@ -2435,55 +2444,55 @@ def menu_interativo(cfg: Optional[Config] = None,
     if os.path.exists(caminho_cfg):
         try:
             cfg = carregar_config(caminho_cfg, base=cfg)
-            print(f"[config] carregado de {caminho_cfg}")
+            log.info(f"[config] carregado de {caminho_cfg}")
         except (RuntimeError, FileNotFoundError, ValueError) as e:
             # carregar_config so' lanca esses 3 tipos (PyYAML ausente,
             # arquivo ausente, chaves invalidas) -- ver config_io.py.
-            print(f"[config] nao foi possivel carregar ({e}). Usando padroes.")
+            log.info(f"[config] nao foi possivel carregar ({e}). Usando padroes.")
 
     while True:
-        print("\n" + "=" * 62)
-        print("  ASSISTENTE DO PIPELINE QUIMIOMETRICO")
-        print("=" * 62)
+        log.info("\n" + "=" * 62)
+        log.info("  ASSISTENTE DO PIPELINE QUIMIOMETRICO")
+        log.info("=" * 62)
         for i, s in enumerate(_CONFIG_SPEC, 1):
-            print(f"  [{i:2d}] {s['key']:<28s}: "
+            log.info(f"  [{i:2d}] {s['key']:<28s}: "
                   f"{_fmt_yaml(_attr_para_yaml(s, cfg))}")
         ok, msg = _validar_pasta_dados(cfg)
-        print("-" * 62)
-        print(f"  dados: {msg}")
-        print("-" * 62)
-        print("  digite o NUMERO p/ editar  |  [S]alvar  [L]carregar  "
+        log.info("-" * 62)
+        log.info(f"  dados: {msg}")
+        log.info("-" * 62)
+        log.info("  digite o NUMERO p/ editar  |  [S]alvar  [L]carregar  "
               "[R]odar  [Q]sair")
         escolha = input("  > ").strip().lower()
 
         if escolha in ("q", "sair", "quit"):
-            print("  encerrado."); return
+            log.info("  encerrado."); return
         if escolha in ("s", "salvar"):
             salvar_config(cfg, caminho_cfg)
-            print(f"  salvo em {caminho_cfg}"); continue
+            log.info(f"  salvo em {caminho_cfg}"); continue
         if escolha in ("l", "carregar"):
             try:
                 cfg = carregar_config(caminho_cfg, base=cfg)
-                print("  recarregado.")
+                log.info("  recarregado.")
             except (RuntimeError, FileNotFoundError, ValueError) as e:
-                print(f"  erro: {e}")
+                log.info(f"  erro: {e}")
             continue
         if escolha in ("r", "rodar", "run"):
             ok, msg = _validar_pasta_dados(cfg)
             if not ok:
-                print(f"  [!] {msg}. Corrija antes de rodar."); continue
+                log.info(f"  [!] {msg}. Corrija antes de rodar."); continue
             _erros_sem = _validar_semantico(cfg)
             if _erros_sem:
                 for _e in _erros_sem:
-                    print(f"  [!] {_e}")
-                print("  Corrija antes de rodar."); continue
+                    log.info(f"  [!] {_e}")
+                log.info("  Corrija antes de rodar."); continue
             salvar_config(cfg, caminho_cfg)
-            print("  iniciando pipeline...\n")
+            log.info("  iniciando pipeline...\n")
             executar(cfg); return
         if escolha.isdigit() and 1 <= int(escolha) <= len(_CONFIG_SPEC):
             _editar_campo(cfg, _CONFIG_SPEC[int(escolha) - 1])
         else:
-            print("  opcao invalida.")
+            log.info("  opcao invalida.")
 
 
 if __name__ == "__main__":
