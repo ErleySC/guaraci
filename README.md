@@ -131,6 +131,14 @@ CV-ANOVA match their defining formulas to numerical tolerance, DD-SIMCA's
 UCL matches the Tracy-Young-Mason/χ² closed forms, OPLS-DA's orthogonal
 component is orthogonal to <1e-6.
 
+## Security
+
+Loading a `.joblib` model executes arbitrary code (it's a pickle) — see
+[`SECURITY.md`](SECURITY.md). Every load in the CLI and web app goes
+through a single guard that refuses to run without explicit confirmation,
+plus a SHA-256 manifest that blocks loading if the file was tampered with
+after export.
+
 ## Known limitations
 
 - **Babaçu vs. Palmiste** overlap — both are palms with near-identical NIR

@@ -4,6 +4,7 @@ pelo CLI (guaraci.py, menu_predicao). Roda executar() sintetico UMA vez
 estrutura que o pipeline grava em producao), depois exercita a predicao
 sobre espectros novos sem mock nenhum do lado cientifico.
 """
+import json
 import os
 
 import joblib
@@ -164,8 +165,9 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     cam_csv = tmp_path / "novos.csv"
     df_in.to_csv(cam_csv, index=False, sep=";")
 
-    # 3a resposta "" = aceita a saida padrao; 4a "" = Enter no _pause() final
-    respostas = iter([str(cam_modelo), str(cam_csv), "", ""])
+    # 2a resposta "s" = confirma o aviso de seguranca do .joblib (P5);
+    # 4a resposta "" = aceita a saida padrao; 5a "" = Enter no _pause() final
+    respostas = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
 
     guaraci_mod.menu_predicao(guaraci_mod.Config())
@@ -175,3 +177,70 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     df_res = pd.read_csv(cam_saida_esperada, sep=";", decimal=",")
     assert "classe_pred" in df_res.columns
     assert len(df_res) == X_novos.shape[0]
+
+
+# ── Seguranca do carregamento de modelo (P5 -- CLAUDE.md) ──────────────────
+def test_carregar_modelo_sem_confiar_lanca_security_error(tmp_path, modelo_e_dados):
+    """carregar_modelo() NUNCA le o arquivo sem confiar=True explicito --
+    e' a unica protecao real contra RCE via pickle (nao ha' sandboxing
+    possivel para joblib.load)."""
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    with pytest.raises(pr.SecurityError, match="confiar=True"):
+        pr.carregar_modelo(str(cam))
+
+
+def test_carregar_modelo_com_confiar_funciona(tmp_path, modelo_e_dados):
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    carregado = pr.carregar_modelo(str(cam), confiar=True)
+    assert set(carregado.keys()) == set(pkg.keys())
+
+
+def test_salvar_manifesto_grava_json_com_sha256_correto(tmp_path, modelo_e_dados):
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    cam_manifesto = pr.salvar_manifesto(str(cam), pkg)
+
+    assert os.path.isfile(cam_manifesto)
+    with open(cam_manifesto, encoding="utf-8") as f:
+        manifesto = json.load(f)
+
+    import hashlib
+    sha_real = hashlib.sha256(cam.read_bytes()).hexdigest()
+    assert manifesto["sha256"] == sha_real
+    assert manifesto["guaraci_version"] == pr._guaraci_version
+    assert set(manifesto["classes"]) == set(str(c) for c in pkg["classes"])
+
+
+def test_carregar_modelo_bloqueia_arquivo_alterado_apos_manifesto(tmp_path, modelo_e_dados):
+    """VALIDACAO DE SEGURANCA: se o arquivo .joblib for trocado/corrompido
+    DEPOIS do manifesto ter sido gerado, carregar_modelo deve recusar --
+    ANTES de chamar joblib.load (a verificacao de hash nao executa pickle,
+    entao bloqueia antes do RCE poder acontecer, nao so' avisa depois)."""
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    pr.salvar_manifesto(str(cam), pkg)
+
+    # Simula adulteracao: sobrescreve o .joblib com outro conteudo qualquer
+    # DEPOIS do manifesto existir -- o hash registrado fica desatualizado.
+    joblib.dump({"outra_coisa": 123}, cam)
+
+    with pytest.raises(pr.SecurityError, match="Integridade falhou"):
+        pr.carregar_modelo(str(cam), confiar=True)
+
+
+def test_carregar_modelo_sem_manifesto_carrega_normalmente(tmp_path, modelo_e_dados):
+    """Sem manifesto ao lado (modelo de origem externa, ou salvo por versao
+    antiga), carregar_modelo() nao tem o que conferir -- carrega normalmente
+    se confiar=True (a decisao humana continua sendo a unica protecao)."""
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo_sem_manifesto.joblib"
+    joblib.dump(pkg, cam)
+    assert not os.path.isfile(str(cam) + ".manifest.json")
+    carregado = pr.carregar_modelo(str(cam), confiar=True)
+    assert "pls_final" in carregado

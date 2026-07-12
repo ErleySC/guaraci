@@ -2127,6 +2127,21 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
         console.print(f"  [{PR}]{nao_encontrado}: {escape(cam_modelo)}[/{PR}]")
         _pause(); return
 
+    # Aviso de seguranca (P5): .joblib e' pickle -- executa codigo arbitrario
+    # NO CARREGAMENTO, antes de qualquer validacao ser possivel. Confirmacao
+    # explicita do operador e' a unica protecao real (ver docs/SECURITY.md).
+    aviso_pickle = (
+        f"  [{PR}]⚠ '.joblib' executa codigo ao ser carregado (formato "
+        f"pickle). So confirme se voce mesmo treinou este modelo ou confia "
+        f"plenamente na origem.[/{PR}]" if is_pt else
+        f"  [{PR}]⚠ '.joblib' runs code when loaded (pickle format). Only "
+        f"confirm if you trained this model yourself or fully trust its "
+        f"source.[/{PR}]")
+    console.print(aviso_pickle)
+    conf_lbl = "Confirma o carregamento? (s/n)" if is_pt else "Confirm loading? (y/n)"
+    if _ask(f"  [{PA}]{conf_lbl}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+        console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
     cam_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
     if not cam_csv:
         return
@@ -2142,13 +2157,13 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
         cam_saida = padrao_saida
 
     try:
-        import joblib
         import pandas as pd
         import guaraci.predicao as _pred
         status_msg = ("Carregando modelo e aplicando..." if is_pt
                        else "Loading model and applying...")
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
-            pkg = joblib.load(cam_modelo)
+            # confiar=True: o operador ja confirmou explicitamente acima.
+            pkg = _pred.carregar_modelo(cam_modelo, confiar=True)
             _pred.validar_pacote_modelo(pkg)
             X_new, wn_new, meta_df = _pred.carregar_csv_predicao(cam_csv)
             df_res = _pred.predizer_amostras(pkg, X_new, wn_new)

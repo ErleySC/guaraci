@@ -644,6 +644,14 @@ from guaraci.dados_imagem import (   # noqa: E402
     extrair_features_textura,
 )
 
+# Manifesto de proveniencia/integridade do modelo exportado (P5). Reexportado
+# para nao quebrar pipeline.salvar_manifesto(...) nem pipeline.carregar_modelo(...).
+from guaraci.predicao import (   # noqa: E402
+    salvar_manifesto,
+    carregar_modelo,
+    SecurityError,
+)
+
 
 # (Camada de plotagem extraida p/ figuras.py — ver reexport acima.)
 # =========================================================================
@@ -2050,6 +2058,11 @@ def executar(cfg: Config):
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
         print(f"  -> {cam_modelo}")
+        # Manifesto de proveniencia/integridade (P5 -- CLAUDE.md): sha256 do
+        # arquivo + versoes de biblioteca, usado por predicao.carregar_modelo
+        # para detectar arquivo trocado/corrompido ANTES de executar o pickle.
+        cam_manifesto = salvar_manifesto(cam_modelo, pacote_modelo)
+        print(f"  -> {cam_manifesto}")
     except Exception as _e_mod:  # noqa: BLE001 -- exportacao opcional
         # (predicao em amostra nova); erro impresso, nao afeta as figuras/
         # relatorios ja gerados desta corrida.

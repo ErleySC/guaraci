@@ -378,17 +378,27 @@ Disponível em dois lugares, com a **mesma lógica científica**
   classe mais os dois diagnósticos acima. Útil para automação/*scripts* e
   integração com LIMS sem precisar do navegador.
 
-> **Segurança — upload de modelo em implantação pública.** Um arquivo
-> `.joblib` é um *pickle*: carregá-lo **executa código** contido no
-> arquivo. Em uso local (própria máquina) isso é seguro, pois o modelo é
-> do próprio usuário. Mas num demonstrativo hospedado publicamente, aceitar
-> *upload* de `.joblib` de qualquer visitante é um vetor de execução remota
-> de código (RCE). Por isso, na implantação pública, defina a variável de
-> ambiente **`GUARACI_DISABLE_MODEL_UPLOAD=1`**: o aplicativo esconde o
-> carregador de modelo e passa a aceitar apenas **caminho local**
-> (controlado pelo operador). O *upload* de CSV de espectros permanece
-> liberado (dado inerte). Sem a variável (padrão), o *upload* fica
-> habilitado com um aviso — apropriado para uso local com um único usuário.
+> **Segurança — carregar um `.joblib` executa código.** Um arquivo `.joblib`
+> é um *pickle*: carregá-lo **executa qualquer código contido nele**, antes
+> de qualquer validação de conteúdo ser possível. Por isso, todo
+> carregamento de modelo (CLI e aplicativo) passa por
+> `guaraci.predicao.carregar_modelo(caminho, confiar=True)` — um portão
+> único que **recusa carregar sem confirmação explícita**: na CLI, uma
+> pergunta (s/n); no aplicativo, uma caixa de seleção obrigatória. Além
+> disso, todo `modelo_plsda.joblib` exportado pelo pipeline vem com um
+> **manifesto** (`<modelo>.joblib.manifest.json`, hash SHA-256 + versões de
+> biblioteca) ao lado — se o arquivo for trocado ou corrompido depois que o
+> manifesto foi gerado, o carregamento é **bloqueado antes** de o pickle
+> executar (não apenas avisado depois). Detalhes completos, incluindo o que
+> essas proteções **não** resolvem (não há verificação automática de "isto
+> é seguro" para pickle — a decisão de confiar é sempre humana), em
+> `SECURITY.md`.
+>
+> Em implantação pública (demonstrativo hospedado), o operador ainda pode
+> definir **`GUARACI_DISABLE_MODEL_UPLOAD=1`** para desabilitar o *upload*
+> de `.joblib` pela interface web por completo, aceitando só caminho local
+> controlado pelo próprio operador. O *upload* de CSV de espectros
+> permanece liberado (dado inerte, não executa nada ao ser lido).
 
 **Figuras:** conjunto essencial por padrão (cerca de 8 a 10 figuras, a
 depender do objetivo — seção 2.2) com opção de figuras detalhadas adicionais
@@ -572,7 +582,11 @@ para liderar com o nome amigável do modo de análise ("Classificação por
 espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N3
 passa a aparecer como referência técnica secundária, nunca como o rótulo
 principal — a tabela de equivalência nível↔objetivo (seção 2.2) já estava
-correta e não mudou. Antes: mapa de calor espécie × adulterante (N3,
+correta e não mudou. Antes disso: `SECURITY.md` novo (raiz) — carregamento
+de modelo `.joblib` agora passa por `carregar_modelo(confiar=True)`
+obrigatório (CLI: confirmação s/n; app: caixa de seleção) + manifesto
+SHA-256 gerado junto de todo modelo exportado, que bloqueia o carregamento
+se o arquivo for trocado depois. Antes: mapa de calor espécie × adulterante (N3,
 `figN3_heatmap_especie_adulterante.png`) — R²cv por combinação, com células
 reprovadas hachuradas e contador de falhas no título e no relatório;
 sensibilidade DD-SIMCA (N2) agora estimada por

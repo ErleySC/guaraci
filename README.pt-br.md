@@ -184,6 +184,14 @@ numérica, o UCL do DD-SIMCA bate com as fórmulas fechadas de
 Tracy-Young-Mason/χ², a componente ortogonal do OPLS-DA é ortogonal a
 menos de 1e-6.
 
+## Segurança
+
+Carregar um modelo `.joblib` executa código arbitrário (é um pickle) — ver
+[`SECURITY.md`](SECURITY.md). Todo carregamento na CLI e no app web passa
+por um único portão que recusa rodar sem confirmação explícita, mais um
+manifesto SHA-256 que bloqueia o carregamento se o arquivo foi alterado
+depois de exportado.
+
 ## Limitações conhecidas (honestidade científica)
 
 - **Babaçu × Palmiste**: classe mais fraca — ambas são palmáceas e têm assinatura
