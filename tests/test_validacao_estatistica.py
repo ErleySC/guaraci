@@ -16,6 +16,27 @@ from guaraci.validacao_estatistica import bootstrap_bca_ci, cv_anova_eriksson
 # Alias com prefixo _ para o pytest NAO coletar a funcao importada como teste
 # (o nome 'teste_permutacao' casa com o padrao de coleta 'test*').
 from guaraci.validacao_estatistica import teste_permutacao as _teste_permutacao
+from guaraci.validacao_estatistica import teste_wold as _teste_wold
+
+
+class _CVFalhaApartirDaSegundaChamada:
+    """cv fake que delega para um StratifiedKFold real na 1a chamada (a
+    observada, computada ANTES do loop de permutacao em teste_permutacao/
+    teste_wold) e levanta ValueError em TODAS as chamadas seguintes (as do
+    loop de permutacao) -- simula "fold impossivel apos embaralhar
+    rotulos" de forma deterministica, sem depender de uma coincidencia
+    estatistica fragil para acionar o caminho de erro/falha de
+    _iter_permutacao/_iter_wold."""
+
+    def __init__(self, n_splits=4):
+        self._real = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=0)
+        self._chamadas = 0
+
+    def split(self, X, y=None, groups=None):
+        self._chamadas += 1
+        if self._chamadas == 1:
+            return self._real.split(X, y, groups)
+        raise ValueError("simulada: estratificacao impossivel neste fold")
 
 
 # ── bootstrap_bca_ci ─────────────────────────────────────────────────────────
@@ -145,3 +166,32 @@ def test_permutacao_da_p_alto_com_rotulos_aleatorios():
     res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
                            n_perm=40, seed=2)
     assert res["p_value"] > 0.10
+
+
+def test_permutacao_todas_as_iteracoes_falham_da_p_1_nao_informativo():
+    """Se TODA iteracao do loop de permutacao falhar (fold impossivel apos
+    embaralhar rotulos -- caso real com classes muito desbalanceadas), o
+    p-valor deve ser 1.0 (nao-informativo), nunca um numero calculado sobre
+    uma lista vazia de acertos. n_falhos deve contar TODAS as permutacoes."""
+    X, Y_bin, y_int = _dados_perm(separavel=True, seed=3)
+    cv = _CVFalhaApartirDaSegundaChamada(n_splits=4)
+    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+                           n_perm=10, seed=3)
+    assert res["n_validos"] == 0
+    assert res["n_falhos"] == 10
+    assert res["failure_rate"] == 1.0
+    assert res["p_value"] == 1.0
+
+
+def test_wold_todas_as_iteracoes_falham_nao_quebra():
+    """Mesma propriedade de teste_permutacao, para teste_wold: se toda
+    iteracao falhar, n_falhos conta todas, n_validos fica 0, e o ajuste
+    linear (slope/intercept) vira NaN em vez de tentar np.polyfit com
+    menos de 2 pontos validos."""
+    X, Y_bin, y_int = _dados_perm(separavel=True, seed=4)
+    cv = _CVFalhaApartirDaSegundaChamada(n_splits=4)
+    res = _teste_wold(_factory_pls, X, Y_bin, y_int, cv, n_perm=10, seed=4)
+    assert res["n_validos"] == 0
+    assert res["n_falhos"] == 10
+    assert np.isnan(res["intercept_r2"])
+    assert np.isnan(res["intercept_q2"])

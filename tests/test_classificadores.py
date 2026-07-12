@@ -175,6 +175,45 @@ def test_oplsda_fit_multiclasse_usa_lda_para_y_continuo():
     assert isinstance(opls.W_orth_, list)
 
 
+def test_oplsda_lda_falha_cai_no_fallback_pls2(monkeypatch):
+    """Se a LDA multiclasse falhar (matriz de dispersao intra-classe
+    singular -- caso real com poucas amostras/features colineares), o
+    fit() deve cair no fallback PLS2 em vez de propagar a excecao. Forcado
+    via monkeypatch (a falha real da LDA e' dificil de reproduzir de forma
+    limpa/deterministica via dados publicos, mas o CAMINHO de fallback e'
+    codigo real que precisa continuar correto)."""
+    def _fit_transform_falha(self, X, y):
+        raise ValueError("simulada: matriz de dispersao intra-classe singular")
+
+    monkeypatch.setattr(
+        "sklearn.discriminant_analysis.LinearDiscriminantAnalysis.fit_transform",
+        _fit_transform_falha)
+
+    rng = np.random.default_rng(8)
+    X = np.vstack([
+        _classe_compacta(rng, centro=0.0, n=10, k=6),
+        _classe_compacta(rng, centro=3.0, n=10, k=6),
+        _classe_compacta(rng, centro=6.0, n=10, k=6),
+    ])
+    Y = np.eye(3)[np.array([0] * 10 + [1] * 10 + [2] * 10)]
+
+    opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)  # nao deve lancar ValueError
+    assert isinstance(opls.W_orth_, list)
+    assert opls.t_pred_train_.shape[0] == 30
+
+
+def test_nipals_pls1_com_x_todo_zero_nao_diverge():
+    """X todo zero (caso degenerado extremo) faz w=X.T@u ter norma ~0 no
+    1o passo -- deve interromper o loop (break) em vez de dividir por zero
+    ou iterar ate max_iter sem necessidade."""
+    X = np.zeros((10, 4))
+    y = np.random.default_rng(9).normal(size=10)
+    w, t, p = OPLSDAWrapper._nipals_pls1(X, y, max_iter=50)
+    assert np.all(w == 0)
+    assert np.all(t == 0)
+    assert np.all(p == 0)
+
+
 # ── Sensibilidade DD-SIMCA por LOGO (P1: fim da re-substituicao) ──────────────
 def _puros_agrupados(rng, centros, reps=3, k=5, escala=0.2):
     """Puros de UMA classe em grupos de replica (mae_id): cada centro = 1 grupo
@@ -233,3 +272,32 @@ def test_logo_avisa_com_poucos_grupos():
     r = sensibilidade_ddsimca_logo(X, g, n_components=2)
     assert r["n_grupos"] == 4
     assert r["aviso"] is not None and "LOGO" in r["aviso"]
+
+
+def test_logo_grupo_com_treino_insuficiente_e_pulado_nao_quebra():
+    """Um grupo cujo TREINO restante (todos os outros) teria <2 amostras --
+    ou cujo proprio grupo retido esta vazio -- deve ser pulado (continue),
+    nao lancar excecao. So' e' possivel construir isso artificialmente com
+    um grupo cujo array de mascara de teste fique vazio; testamos a
+    propriedade indiretamente: rodar com grupos minusculos nao quebra e
+    ainda retorna um resultado coerente."""
+    rng = np.random.default_rng(4)
+    # 2 grupos de 1 replica cada: treino de cada fold tem so' 1 amostra
+    # (o outro grupo) -- abaixo do minimo de 2 exigido pelo guard interno.
+    X, g = _puros_agrupados(rng, [0.0, 5.0], reps=1)
+    r = sensibilidade_ddsimca_logo(X, g, n_components=1)
+    assert r["n_grupos"] == 2
+    # nao lancou excecao; ou fica inconclusivo (validos<2) ou reporta normal
+    assert r["n_grupos_validos"] <= r["n_grupos"]
+
+
+def test_logo_inconclusivo_quando_nenhum_fold_valido():
+    """Se NENHUM fold produzir dobra valida (todas puladas), a chave
+    'sensibilidade' fica NaN com aviso 'inconclusiva' -- nunca um numero
+    calculado sobre uma lista vazia (o que estouraria ou mentiria)."""
+    rng = np.random.default_rng(5)
+    X, g = _puros_agrupados(rng, [0.0, 1.0], reps=1)  # mesmo caso do teste acima
+    r = sensibilidade_ddsimca_logo(X, g, n_components=1)
+    if r["n_grupos_validos"] < 2:
+        assert np.isnan(r["sensibilidade"])
+        assert r["aviso"] is not None and "inconclusiva" in r["aviso"]

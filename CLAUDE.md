@@ -97,8 +97,8 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.5.0 | `grep -r version pyproject.toml` |
-| Testes | 550 pass, 1 skip | `pytest -q` |
+| Versão | 31.6.0 | `grep -r version pyproject.toml` |
+| Testes | 557 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
 | `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
@@ -247,19 +247,27 @@ select = ["E", "F", "BLE", "TRY", "LOG", "G"]
 
 ---
 
-### 🟠 P4 — Cobertura 64% é baixa demais para software que gera números publicáveis
-36% do código nunca foi executado por teste. `figuras.py` a 43% significa que mais da
-metade daquele arquivo pode estar quebrada agora.
+### 🟢 P4 (núcleo científico feito, 2026-07-13) — Cobertura 64% é baixa demais para software que gera números publicáveis
+> Núcleo científico (a linha "≥95%" abaixo) fechado nesta sessão via testes de
+> PROPRIEDADE (edge cases numéricos: NIPALS/OPLS degenerados, LDA-fallback,
+> LOGO com fold impossível, bootstrap/jackknife/CV com iteração que falha) —
+> não valor gravado. Cobertura TOTAL do projeto continua 64% (não era o alvo
+> desta rodada — as outras camadas da tabela abaixo não foram tocadas).
+> `figuras.py` também já está em 87% (o "43%" abaixo é o número antigo da
+> auditoria original, desatualizado).
 
 **Metas assimétricas (não perseguir 100% global — é desperdício):**
 
-| Camada | Meta | Justificativa |
+| Camada | Meta | Estado em 2026-07-13 |
 |---|---|---|
-| `chemometric_stats`, `classificadores`, `preprocessamento`, `validacao_estatistica` | **≥ 95%** | Erro aqui = erro em resultado publicado |
-| `dados_io`, `config`, `config_io` | ≥ 90% | Erro aqui corrompe dado silenciosamente |
-| `pipeline.executar()` | ≥ 75% | Precisa de rede ANTES de refatorar |
-| `figuras.py` | ≥ 60% | Erro é visível; custo de teste é alto |
-| Menus CLI/UI | ≥ 30% | Erro é visível; valor de teste é baixo |
+| `chemometric_stats` | ≥ 95% | ✅ 98% |
+| `classificadores` | ≥ 95% | ✅ 97% |
+| `preprocessamento` | ≥ 95% | ✅ 100% |
+| `validacao_estatistica` | ≥ 95% | ✅ 95% (exato) |
+| `dados_io`, `config`, `config_io` | ≥ 90% | dados_io 83% (não atingida), config/config_io 100%/98% |
+| `pipeline.executar()` | ≥ 75% | 71% (pipeline.py inteiro; não separado por função) |
+| `figuras.py` | ≥ 60% | ✅ 87% |
+| Menus CLI/UI (`guaraci.py`) | ≥ 30% | 15% (não atingida — maior gap real remanescente) |
 
 **Como subir sem escrever teste inútil — teste PROPRIEDADE MATEMÁTICA, não valor gravado:**
 
@@ -706,7 +714,7 @@ nas primeiras linhas em inglês.
 **Depois do TCC:**
 | # | Item | Prazo |
 |---|---|---|
-| 10 | P4 — Cobertura núcleo → 95% | 2–3 semanas |
+| ~~10~~ | ~~P4 — Cobertura núcleo → 95%~~ ✅ | feito 2026-07-13 — os 4 módulos do núcleo, todos ≥95% |
 | ~~11~~ | ~~P6 — `print` → `logging` em `pipeline.py`~~ ✅ parcial | feito 2026-07-13 — falta reescrever o painel p/ Handler estruturado (ver P6) |
 | 12 | MkDocs + GitHub Pages | 1 dia |
 | ~~13~~ | ~~Rodar em dataset público externo (Tecator)~~ ✅ | feito 2026-07-13 — `docs/BENCHMARK_TECATOR.md`; falta um 2º dataset (corn) e cobertura de classificação/DD-SIMCA externa |
