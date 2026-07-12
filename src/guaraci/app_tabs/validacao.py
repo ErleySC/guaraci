@@ -105,14 +105,14 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
                     _df_b = pd.read_csv(_bench_csv_v, sep=";", decimal=",")
                     st.markdown("**Auto-Benchmark — Balanced Accuracy by model (GroupKFold)**")
                     st.dataframe(_df_b, use_container_width=True)
-                except Exception as _e_b:
+                except (pd.errors.ParserError, OSError, UnicodeDecodeError) as _e_b:
                     st.warning(f"Error reading benchmark CSV: {_e_b}")
             if os.path.exists(_mc_csv_v):
                 try:
                     _df_mc = pd.read_csv(_mc_csv_v, sep=";", decimal=",")
                     st.markdown("**Monte Carlo CV — 95% CI by percentile**")
                     st.dataframe(_df_mc, use_container_width=True)
-                except Exception as _e_mc:
+                except (pd.errors.ParserError, OSError, UnicodeDecodeError) as _e_mc:
                     st.warning(f"Error reading MC CV CSV: {_e_mc}")
 
     # Gallery filtered by figure category

@@ -19,7 +19,6 @@ No code editing required: configure, run, download.
 """
 from __future__ import annotations
 
-import logging
 import io
 import os
 import sys
@@ -75,8 +74,10 @@ def _active_theme() -> str:
         t = getattr(st.context, "theme", None)
         if t is not None and getattr(t, "type", None) in ("light", "dark"):
             return t.type
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except (AttributeError, RuntimeError):
+        # Streamlit antigo sem st.context, ou contexto indisponivel fora de
+        # uma sessao ativa (ex.: import/teste) -- fallback claro documentado.
+        pass
     return "light"
 
 
@@ -399,7 +400,10 @@ if "cfg_base" not in st.session_state:
             # synthetic data so first-time visitors get a working demo
             # instead of an empty "dados/" folder error.
             else pq.Config(modo="sintetico"))
-    except Exception:
+    except (RuntimeError, FileNotFoundError, ValueError):
+        # carregar_config so' lanca esses 3 tipos (PyYAML ausente, arquivo
+        # ausente, chaves invalidas) -- config.yaml quebrado nunca impede o
+        # primeiro carregamento do app, cai para o modo demo sintetico.
         st.session_state.cfg_base = pq.Config(modo="sintetico")
 
 cfg_base = st.session_state.cfg_base

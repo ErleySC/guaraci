@@ -71,7 +71,10 @@ extend-exclude = [
 # Pragmatico p/ codigo cientifico: pega bugs reais (pyflakes = F) + erros/avisos
 # de pycodestyle, ignorando estilo DELIBERADO (multiplos statements por linha,
 # nomes de 1 letra comuns em algebra/matematica, linhas longas com formulas).
-select = ["E", "F", "W"]
+# BLE = blind except (CLAUDE.md P3): trava a auditoria de except amplos --
+# todo `except Exception`/`except:` precisa capturar um tipo especifico OU
+# ter `# noqa: BLE001` com comentario justificando (best-effort documentado).
+select = ["E", "F", "W", "BLE"]
 ignore = [
     "E501",                    # line too long (formulas cientificas)
     "E701", "E702", "E703",    # multiple statements on one line (estilo do projeto)

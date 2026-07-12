@@ -90,7 +90,9 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                 _validar_pacote_modelo(pkg_pred)
             else:
                 erros_pred.append("No valid model provided (upload or path).")
-        except Exception as e_jbl:
+        except Exception as e_jbl:  # noqa: BLE001 -- multi-etapa (joblib.load
+            # + validacao de estrutura do pacote); erro exibido ao usuario
+            # via erros_pred/st.error abaixo.
             erros_pred.append(f"Error loading model: {e_jbl}")
 
         # Load prediction CSV
@@ -105,7 +107,8 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
             else:
                 X_pred_raw, wn_pred, meta_pred = _carregar_csv_predicao(fonte_csv)
                 st.session_state["pred_amostras"] = meta_pred
-        except Exception as e_csv:
+        except Exception as e_csv:  # noqa: BLE001 -- parsing defensivo de
+            # CSV de amostra nova (formato variavel); erro exibido ao usuario.
             erros_pred.append(f"Error reading CSV: {e_csv}")
 
         if erros_pred:
@@ -122,7 +125,8 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                             [meta_df.reset_index(drop=True), df_res], axis=1)
                 st.session_state["pred_resultados"] = df_res
                 st.success(f"Prediction complete: {len(df_res)} samples.")
-            except Exception as e_pred:
+            except Exception as e_pred:  # noqa: BLE001 -- multi-etapa
+                # (predizer + concat de metadados); erro exibido ao usuario.
                 st.error(f"Prediction error: {e_pred}")
 
     # ---- Results display ----------------------------------------

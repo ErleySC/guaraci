@@ -75,7 +75,9 @@ def _hardware_status_widget(pq, is_public_demo: bool = False) -> None:
         if not psutil_ok:
             st.caption("⚠️ psutil not available — approximate readings. "
                        "Install with `pip install psutil`.")
-    except Exception:
+    except Exception:  # noqa: BLE001 -- painel cosmetico best-effort (mesmo
+        # padrao de hardware_probe/psutil em outros pontos da UI); fallback
+        # textual documentado, nunca impede a aba de renderizar.
         st.caption("Hardware: could not detect hardware specifications.")
 
 
