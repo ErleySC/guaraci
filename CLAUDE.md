@@ -97,8 +97,8 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.1.1 | `grep -r version pyproject.toml` |
-| Testes | 503 pass, 1 skip | `pytest -q` |
+| Versão | 31.2.0 | `grep -r version pyproject.toml` |
+| Testes | 525 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
 | `executar()` | 1269 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
@@ -388,7 +388,7 @@ guaraci demo               # ← esse comando existe? Deveria.
 - `requirements-lock.txt` → **pins exatos** (`pip-compile` / `uv pip compile`)
 
 O lock é o que se cita no TCC e no paper:
-> "Resultados obtidos com Guaraci v31.1.1 no ambiente descrito em `requirements-lock.txt`."
+> "Resultados obtidos com Guaraci v31.2.0 no ambiente descrito em `requirements-lock.txt`."
 
 Isso é reprodutibilidade real, não retórica.
 

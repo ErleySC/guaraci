@@ -6,6 +6,31 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.2.0 — 2026-07-12 — Mudanças de COMPORTAMENTO CIENTÍFICO (CLAUDE.md P1/P2/P5):
+             (1) BREAKING: sensibilidade DD-SIMCA deixa de ser re-substituição
+                 (treino==teste, inflava para ~100%) e passa a ser estimada por
+                 leave-one-group-out (LOGO) sobre mae_id. O dict de resultado
+                 passa a expor `n_grupos` e um `aviso` quando n_grupos<10.
+                 Resultados numéricos de sensibilidade gerados por versões
+                 anteriores NÃO são comparáveis com esta versão;
+             (2) heatmap espécie×adulterante (R²cv) passa a ser figura nativa
+                 de `executar()` no objetivo Quantificação, com contagem de
+                 combinações abaixo de R²cv=0.70 no título;
+             (3) `predicao.carregar_modelo` passa a exigir `confiar=True`
+                 explícito (joblib/pickle executa código arbitrário) e cada
+                 modelo salvo passa a vir com manifesto SHA-256
+                 (docs/SECURITY.md);
+             (4) auditoria dos blocos `except Exception`/`except:` (P3):
+                 maioria estreitada para o tipo real de erro; 1 bug real
+                 corrigido (fallback silencioso LDA→PLS2 no OPLS-DA sem log);
+             (5) 2 figuras novas: espectros médios por classe (±1 desvio) e
+                 biplot PCA (scores+loadings);
+             (6) vocabulário N1/N2/N3 aposentado da UI (P8; mantido como
+                 apelido interno) — ver tabela de equivalência no MANUAL;
+             (7) docs/VALIDATION.md e seção "Limitações conhecidas" no MANUAL.
+```
+
+```
 v08  base: Sprints 1-3, GroupKFold mae_id, spectral truncation
 v10  2026-05-28  max_lvs=30; ddsimca_n_components=7;
                    C2: comparar_pipelines uses max_lv=cfg.max_lvs (was min(8,..))

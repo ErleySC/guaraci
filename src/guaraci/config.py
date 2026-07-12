@@ -17,7 +17,7 @@ from typing import Optional, Tuple
 # importável por qualquer módulo — pipeline.py e guaraci/__init__.py a
 # reexportam, então `pipeline.__version__` e `from guaraci import __version__`
 # seguem funcionando. Fonte ÚNICA: nunca duplicar um literal "vXX.Y".
-__version__ = "31.1.1"
+__version__ = "31.2.0"
 
 # Nome amigavel de cada nivel de analise (valor interno N1/N2/N3 inalterado).
 _NIVEL_NOME = {
