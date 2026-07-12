@@ -32,6 +32,8 @@ from guaraci.config import NOME_TABELAS
 from guaraci.chemometric_stats import rmse_flat
 from guaraci.model_registry import construir_lista_benchmark
 
+log = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
@@ -193,8 +195,12 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                             p = pipe_i.predict_proba(X_raw[te_idx])
                             nc = min(p.shape[1], n_classes)
                             proba_oof[te_idx, :nc] = p[:, :nc]
-                        except Exception:
-                            logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+                        except (ValueError, AttributeError) as _e_proba:
+                            # predict_proba degenerado neste fold -- so'
+                            # afeta a curva DET auxiliar (nao a metrica
+                            # bal.acc/F1 principal, ja calculada acima).
+                            log.debug("predict_proba falhou p/ %s: %s",
+                                     nome, _e_proba)
             elapsed = time.time() - t0
             ba = np.array(ba_folds)
             f1 = np.array(f1_folds)
@@ -209,7 +215,10 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                 "Tempo total (s)":    round(elapsed, 2),
             })
             print(f"bal.acc={ba.mean():.4f} ± {ba.std():.4f}  [{elapsed:.1f}s]")
-        except Exception as _e:
+        except Exception as _e:  # noqa: BLE001 -- 1 classificador do
+            # benchmark (multi-etapa: N folds de fit+predict+proba); erro
+            # impresso, ausente de resultados[] -- os demais classificadores
+            # continuam sendo avaliados normalmente.
             print(f"FALHA ({_e})")
 
     # ── Wilcoxon vs PLS-DA ────────────────────────────────────────────────
@@ -227,7 +236,9 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                     r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), 4)  # type: ignore[arg-type]
                 else:
                     r["p Wilcoxon (vs PLS-DA)"] = "n/a"
-            except Exception:
+            except ValueError:
+                # wilcoxon: diferencas todas zero ou n insuficiente -- "n/a"
+                # e' a leitura honesta (nao um p-valor inventado).
                 r["p Wilcoxon (vs PLS-DA)"] = "n/a"
 
     df_bench = pd.DataFrame(resultados)
@@ -245,7 +256,9 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     if len(oof_probas) >= 2:
         try:
             fig_det_curvas(oof_probas, y_int, n_classes, cfg, pasta)
-        except Exception as _e_det:
+        except Exception as _e_det:  # noqa: BLE001 -- figura auxiliar
+            # (curvas DET); erro impresso, tabela de benchmark (resultado
+            # central) ja salva antes deste bloco.
             print(f"\n  [AVISO] DET curves falhou: {_e_det}")
 
     # ── SHAP values (opcional) ────────────────────────────────────────────
@@ -403,8 +416,11 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
                     ba_list.append(float(balanced_accuracy_score(y_te, y_pred)))
                     f1_list.append(
                         float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
-            except Exception:
-                logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+            except (ValueError, np.linalg.LinAlgError) as _e_mc:
+                # Iteracao Monte Carlo degenerada -- NAO silenciosa: a
+                # contagem de falhas aparece em "Iteracoes validas" no CSV.
+                log.debug("Monte Carlo CV: iteracao descartada p/ %s: %s",
+                         nome, _e_mc)
 
         elapsed = time.time() - t0
         arr_ba = np.array(ba_list) if ba_list else np.array([np.nan])
@@ -497,8 +513,11 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                     fnmr_acum += np.interp(fmr_grid_frac, fmr, fnmr,
                                            left=fnmr[0], right=fnmr[-1])
                     n_valid += 1
-                except Exception:
-                    logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+                except ValueError as _e_det:
+                    # Classe k degenerada p/ det_curve -- so' afeta a media
+                    # DET deste classificador (n_valid ja contabiliza).
+                    log.debug("DET curve: classe %d descartada p/ %s: %s",
+                             k, nome, _e_det)
             if n_valid == 0:
                 continue
             fnmr_media = fnmr_acum / n_valid
@@ -680,7 +699,9 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                     plt.close(fig2)
 
                 print("salvo.")
-        except Exception as _e:
+        except Exception as _e:  # noqa: BLE001 -- geracao de figura SHAP
+            # (multi-etapa: TreeExplainer + N plots de dependencia); erro
+            # impresso, nao afeta o benchmark/metricas ja calculados.
             print(f"FALHA ({_e})")
 
 
@@ -817,8 +838,8 @@ def benchmark_regressao_por_especie(
                 perm = rng.permutation(len(conc_c))
                 ncal = max(2, int(cfg.frac_cal * len(conc_c)))
                 ic, iv = perm[:ncal], perm[ncal:]
-        except Exception:
-            continue
+        except (ValueError, IndexError):
+            continue   # especie com amostras/grupos insuficientes p/ o split
         if len(ic) < 4 or len(iv) < 2:
             continue
 
@@ -840,7 +861,9 @@ def benchmark_regressao_por_especie(
                 rmsep_por_especie[nome].append(rmse_flat(Yv, Yv_hat))
                 yv_pool[nome].append(Yv)
                 yvh_pool[nome].append(Yv_hat)
-            except Exception as _e:
+            except Exception as _e:  # noqa: BLE001 -- 1 modelo x 1 especie
+                # (5 modelos independentes no benchmark); erro impresso com
+                # nome+especie, os demais pares modelo/especie continuam.
                 print(f"  [AVISO] {nome} falhou em especie '{cls}': {_e}")
 
     if n_especies_ok == 0:

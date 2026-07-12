@@ -10,6 +10,7 @@ reexporta estes nomes, então `pipeline.DDSimca(...)`,
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -19,6 +20,8 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
 from guaraci.chemometric_stats import hotelling_t2_limite, q_residuos_limite
+
+log = logging.getLogger(__name__)
 
 
 class DDSimca:
@@ -259,8 +262,13 @@ class OPLSDAWrapper(BaseEstimator):
             try:
                 _lda = _LDA(n_components=1)
                 y = _lda.fit_transform(X, y_int_opls)[:, 0].astype(float)
-            except Exception:
-                # Fallback: PLS2 first y-score (less optimal but correct for multiclass)
+            except (ValueError, np.linalg.LinAlgError) as _e_lda:
+                # LDA falha tipicamente com matriz de dispersao intra-classe
+                # singular (classe com poucas/colineares amostras) -- cai p/
+                # o fallback PLS2 (menos otimo mas correto p/ multiclasse).
+                # Registrado pois muda o eixo y do OPLS-DA/S-Plot silenciosamente.
+                log.warning("OPLS-DA: LDA falhou (%s); usando fallback PLS2.",
+                           _e_lda)
                 from sklearn.cross_decomposition import PLSRegression as _PLSr
                 _pls2 = _PLSr(n_components=1, scale=False)
                 _pls2.fit(X, Y)

@@ -92,7 +92,7 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
     try:
         fig.savefig(caminho)
         print(f"  -> {caminho}")
-    except Exception as e:
+    except OSError as e:   # disco cheio, permissao negada, path invalido
         print(f"  [ERROR] {caminho}: {e}")
     if cfg.mostrar_graficos:
         global _AVISO_MOSTRAR_GRAFICOS_EMITIDO
@@ -160,15 +160,15 @@ def convex_hull_contorno(ax, x, y, color, lw=1.4, alpha=0.85):
     if len(pts) < 3:
         return False
     try:
-        from scipy.spatial import ConvexHull
+        from scipy.spatial import ConvexHull, QhullError
         hull = ConvexHull(pts)
         verts = pts[hull.vertices]
         verts = np.vstack([verts, verts[0]])
         ax.plot(verts[:, 0], verts[:, 1], color=color, lw=lw, alpha=alpha,
                 zorder=2)
         return True
-    except Exception:
-        return False
+    except QhullError:
+        return False   # pontos colineares/degenerados -- sem contorno a tracar
 
 
 def parametros_scatter_adaptativos(n_total: int, n_classes: int
@@ -388,8 +388,11 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
         print("  [HCA] Main clusters (k=2):")
         for g, membros in comp.items():
             print(f"    Cluster {g}: {', '.join(membros)}")
-    except Exception:
-        logging.getLogger(__name__).debug("suppressed non-critical exception", exc_info=True)
+    except ValueError as _e_fc:
+        # Interpretacao de cluster e' so' um printout auxiliar no console;
+        # a figura do dendrograma ja foi salva acima, intacta.
+        logging.getLogger(__name__).debug(
+            "HCA: interpretacao de clusters (k=2) falhou: %s", _e_fc)
 
 
 def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
@@ -449,7 +452,9 @@ def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
             ax.set_yticks([])
             for sp in ("top", "right"):
                 ax.spines[sp].set_visible(False)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 1 painel de N (comparacao de
+            # pre-processamentos); erro exibido DENTRO do proprio painel
+            # (mais visivel que print), os demais paineis continuam.
             ax.text(0.5, 0.5, f"failed\n{e}", ha="center", va="center",
                     fontsize=7, transform=ax.transAxes); ax.axis("off")
     for j in range(n, len(axes)):
@@ -1641,7 +1646,10 @@ def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
         ax.set_title(
             f"Curvas ROC — PLS-DA (CV group-aware) | AUC macro = {macro_auc:.3f}",
             loc="left")
-    except Exception:
+    except ValueError:
+        # AUC macro degenerado (ex.: classe ausente em Y_bin/Y_cv) -- titulo
+        # so' omite o numero, nao mostra um AUC inventado; aucs["macro"]
+        # fica ausente do dict (o chamador ja trata a chave como opcional).
         ax.set_title("Curvas ROC — PLS-DA (CV group-aware)", loc="left")
 
     ax.legend(loc="lower right", fontsize=7.5, frameon=False)

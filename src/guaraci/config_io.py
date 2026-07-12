@@ -316,7 +316,12 @@ def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
             continue
         try:
             setattr(cfg, s["attr"], _coagir_valor(s, val))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- agregador DELIBERADO: junta
+            # o erro de CADA chave num relatorio unico (raise ValueError
+            # abaixo) em vez de parar na 1a falha; _coagir_valor lanca
+            # majoritariamente ValueError, mas um TypeError isolado (ex.:
+            # tipo incompativel no YAML) nao deve impedir reportar as
+            # demais chaves invalidas.
             erros.append(f"  - '{key}': {e}")
     if erros:
         raise ValueError("Problemas no config.yaml:\n" + "\n".join(erros))
