@@ -16,6 +16,7 @@
 ### 🚀 [Teste a demo ao vivo — sem instalar nada](https://guaraci.streamlit.app/)
 
 [![Abrir no Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://guaraci.streamlit.app/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
 
 Uma alternativa **livre e aberta** aos softwares pagos de quimiometria
 (MATLAB/PLS_Toolbox, The Unscrambler, SIMCA): plataforma reprodutível de
@@ -91,6 +92,16 @@ pip install -e .[all]
 # alternativa p/ deploy (ex.: Streamlit Cloud): pip install -r requirements.txt
 ```
 
+**Checkout de 5 minutos, sem precisar de dado seu:**
+
+```bash
+guaraci doctor    # checa Python/RAM/CPU/dependências, grava guaraci_doctor.txt
+guaraci demo      # roda o pipeline completo com espectros sintéticos, abre a pasta de resultados
+guaraci --version
+```
+
+Ou rode no navegador sem instalar nada: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
+
 ---
 
 ## Como usar (3 formas — sem editar código)
@@ -164,7 +175,7 @@ arquivo de entrada) e `<Modo>` é o objetivo científico resolvido para a
 execução (`Exploratorio` / `Classificacao` / `Quantificacao` — ver
 `docs/MANUAL.md`, seções 2.2 e 3):
 ```
-resultados_tcc/<amostra>/<Modo>/PLSDA_OE_{nível}_{pré-proc}_{AAAAMMDD_HHMMSS}/
+resultados_tcc/<amostra>/<Modo>/PLSDA_OE_{nível-amigável}_{pré-proc}_{AAAAMMDD_HHMMSS}/
 ├── Graficos/    # scores, VIP, dendrograma, acceptance plots, etc.
 ├── Tabelas/     # metadados, identificadores, comparações (.csv)
 ├── Relatorios/  # resumo_modelo.txt, model_card.md

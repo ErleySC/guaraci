@@ -397,7 +397,17 @@ def figuras_merito_regressao(modelo: PLSRegression, X_cal: np.ndarray,
 
 def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
                            alpha: float = 0.05) -> Dict[str, np.ndarray]:
-    """Dominio de aplicabilidade via distancia ao modelo PCA/PLS, combinando
+    """API de CONVENIENCIA (uma chamada so') p/ uso exploratorio/notebook,
+    quando X_train e X_new estao ambos disponiveis em memoria ao mesmo
+    tempo. Em PRODUCAO (salvar modelo -> prever amostra nova depois, sem
+    reexportar X_train inteiro), use `dominio_aplicabilidade_treino` +
+    `dominio_aplicabilidade_amostras_novas` diretamente -- e' o que
+    pipeline.py/predicao.py fazem internamente. Esta funcao so' chama as
+    duas em sequencia; nao e' dead code, e' a forma simples da mesma API
+    (auditoria de 2026-07-12 apontou como "semi-orfa" por nao ter chamador
+    de producao -- e' esperado: os dois usos servem publicos diferentes).
+
+    Dominio de aplicabilidade via distancia ao modelo PCA/PLS, combinando
     as duas distancias complementares ja usadas para deteccao de outliers:
 
         Hotelling T2  -> distancia DENTRO do plano do modelo (leverage): quao

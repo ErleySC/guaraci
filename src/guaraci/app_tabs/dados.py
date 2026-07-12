@@ -3,6 +3,7 @@
 """
 from __future__ import annotations
 
+import copy
 import os
 import tempfile
 from pathlib import Path
@@ -14,6 +15,7 @@ import streamlit as st
 
 from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
 from guaraci.app_logic import coletar_config
+from guaraci.cli_assistente import PROFILES
 
 
 def render(pq, cfg_base, specs: Dict, valores: Dict,
@@ -26,6 +28,50 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     """
     st.subheader("Data Input")
     st.caption("📂 Step 2: Upload or select spectra folder → then go to **Model** tab.")
+
+    # ---- Recommended analysis presets (CLAUDE.md sec. 6 / audit 2026-07-12:
+    # "3 presets Autenticar/Explorar/Quantificar" so a new user doesn't have
+    # to understand nivel/objetivo before picking something reasonable).
+    # Same PROFILES dict as the CLI's [P] menu — one source of truth, no
+    # duplicated preset definitions between interfaces.
+    st.markdown("**🎯 Recommended analysis** *(optional shortcut)*")
+    st.caption("Pick what you want to do — sets sensible defaults across all "
+               "tabs; fine-tune afterwards if needed.")
+    _PRESETS_OBJETIVO = [
+        ("Explorar Dados", "🔍 Explore",
+         "First look: PCA/HCA, no forced classification"),
+        ("Autenticar Pureza", "🛡️ Authenticate",
+         "Pure vs. adulterated per species (DD-SIMCA)"),
+        ("Quantificar Teor", "📊 Quantify",
+         "Adulterant content via species-wise PLS regression"),
+    ]
+    cols_preset = st.columns(3)
+    for (pname, label, help_txt), col in zip(_PRESETS_OBJETIVO, cols_preset):
+        with col:
+            if st.button(label, key=f"btn_preset_{pname}",
+                         use_container_width=True, help=help_txt):
+                pdata = PROFILES.get(pname, {})
+                cfg_novo = copy.deepcopy(cfg_base)
+                for s in pq._CONFIG_SPEC:
+                    if s["key"] in pdata:
+                        setattr(cfg_novo, s["attr"], pdata[s["key"]])
+                        # Every widget is bound to a STATIC key ("w_"+spec
+                        # key, app_quimiometria.py's _widget_para_campo /
+                        # app_tabs/modelo.py's inline "nivel" selectbox).
+                        # Once a widget with a given `key` has been mounted,
+                        # its underlying component only re-syncs its
+                        # DISPLAYED value from an EXPLICIT session_state
+                        # WRITE, not from a changed `value=`/`index=` default
+                        # and not from simply deleting the key (verified: a
+                        # `pop()` here left the combobox showing the OLD
+                        # label while the value used downstream was already
+                        # correct — a silent visual desync, not just stale
+                        # data). Writing the raw value directly is the
+                        # documented way to programmatically set a widget.
+                        st.session_state[f"w_{s['key']}"] = pdata[s["key"]]
+                st.session_state.cfg_base = cfg_novo
+                st.success(f"Preset '{pname}' applied — check the Model tab.")
+                st.rerun()
 
     # ---- CSV Upload (at top for easy access) -----------------------------
     st.markdown("**Upload CSV** *(alternative to the local path below)*")

@@ -1888,7 +1888,10 @@ def fig_heatmap_especie_adulterante(resultado: Dict[str, Any], cfg,
         f"combinacoes abaixo de R²cv = {limiar:.2f}",
         fontsize=10, fontweight="bold", loc="left")
     fig.tight_layout()
-    salvar(fig, "figN3_heatmap_especie_adulterante", pasta, cfg)
+    # Nome de arquivo sem "N3" cru (P8 residual, corrigido 2026-07-13) --
+    # ja e' gerada so' no objetivo Quantificacao (deve_gerar), entao o nome
+    # nao perde informacao ao deixar de repetir o codigo interno do nivel.
+    salvar(fig, "fig_heatmap_especie_adulterante", pasta, cfg)
 
 
 def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],

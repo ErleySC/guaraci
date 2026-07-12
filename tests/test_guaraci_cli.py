@@ -113,3 +113,48 @@ def test_montar_painel_execucao_progresso_zero_sem_log(guaraci_mod):
         texto_log="", elapsed=0.5, objetivo_rotulo="Classificacao",
         plano_figuras=["a"])
     assert painel is not None
+
+
+# ── Presets por objetivo cientifico (CLAUDE.md secao 6 / auditoria 2026-07-12,
+#    item "Modo Iniciante/Avancado + presets"): "Explorar Dados"/"Autenticar
+#    Pureza"/"Quantificar Teor" escolhem O QUE analisar, sem o usuario ter
+#    que entender nivel/objetivo primeiro. Sem sufixo N1/N2/N3 no nome (P8).
+@pytest.mark.parametrize("pname,nivel_esperado,objetivo_esperado", [
+    ("Explorar Dados",    "N1", "exploratorio"),
+    ("Autenticar Pureza", "N2", "auto"),
+    ("Quantificar Teor",  "N3", "auto"),
+])
+def test_presets_objetivo_existem_e_tem_descricao_bilingue(
+        guaraci_mod, pname, nivel_esperado, objetivo_esperado):
+    assert pname in guaraci_mod.PROFILES
+    assert guaraci_mod.PROFILES[pname]["nivel"] == nivel_esperado
+    assert guaraci_mod.PROFILES[pname]["objetivo"] == objetivo_esperado
+    for lang in ("PT", "EN"):
+        assert guaraci_mod.PROFILE_DESC[pname][lang].strip()
+        assert guaraci_mod.PROFILE_KEY_SUMMARY[pname][lang].strip()
+
+
+@pytest.mark.parametrize("pname,attr,valor_esperado", [
+    ("Explorar Dados",    "nivel", "N1"),
+    ("Explorar Dados",    "objetivo", "exploratorio"),
+    ("Explorar Dados",    "executar_ddsimca", False),
+    ("Autenticar Pureza", "nivel", "N2"),
+    ("Autenticar Pureza", "executar_ddsimca", True),
+    ("Autenticar Pureza", "ddsimca_treinar_em", "puros"),
+    ("Quantificar Teor",  "nivel", "N3"),
+    ("Quantificar Teor",  "executar_ddsimca", False),
+])
+def test_preset_objetivo_aplica_no_config_via_spec(
+        guaraci_mod, pname, attr, valor_esperado):
+    """Mesma resolucao de chave->attr usada por menu_perfis._aplicar
+    (_SPEC_BY_KEY): confirma que aplicar o preset grava o ATRIBUTO REAL
+    do Config, nao so' a chave amigavel do dict PROFILES."""
+    cfg = guaraci_mod.Config()
+    pdata = guaraci_mod.PROFILES[pname]
+    for k, v in pdata.items():
+        if k.startswith("_"):
+            continue
+        sp = guaraci_mod._SPEC_BY_KEY.get(k)
+        if sp:
+            setattr(cfg, sp["attr"], v)
+    assert getattr(cfg, attr) == valor_esperado

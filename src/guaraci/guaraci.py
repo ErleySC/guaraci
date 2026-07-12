@@ -1,5 +1,5 @@
 """
-guaraci.py v31.2.0 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v31.3.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
 GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
 
@@ -111,12 +111,6 @@ def _salvar_visual_cfg(d: dict) -> None:
 def _carregar_codigos_usuario() -> dict:
     fn = getattr(_cli, "_carregar_codigos_usuario", None)
     return fn() if callable(fn) else {}
-
-# Graficos opcionais
-_gerar_heatmap      = getattr(_cli, "_gerar_heatmap_espectros", None)
-_gerar_cm           = getattr(_cli, "_gerar_confusion_matrix", None)
-_gerar_biplot       = getattr(_cli, "_gerar_pca_biplot", None)
-_gerar_var_wave     = getattr(_cli, "_gerar_variancia_wavelength", None)
 
 # ---------------------------------------------------------------------------
 # Caminhos
@@ -304,13 +298,6 @@ I18N: Dict[str, Dict[str, str]] = {
         "viz_fonte":    "Tamanho de Fonte",
         "viz_grid":     "Grade",
         "viz_alpha":    "Transparencia dos Pontos",
-        "viz_heatmap":  "Gerar Heatmap Espectral",
-        "viz_cm":       "Gerar Matriz de Confusao",
-        "viz_biplot":   "Gerar PCA Biplot + Elipse",
-        "viz_varwave":  "Gerar Variancia + Wavelength",
-        "viz_gerando":  "Gerando figura...",
-        "viz_ok":       "Figura gerada com sucesso.",
-        "viz_erro":     "Erro ao gerar figura: {e}",
         # Pipeline info
         "pip_sem_dados": "Corrija a pasta de dados antes de rodar.",
         # Guaraci fala
@@ -436,13 +423,6 @@ I18N: Dict[str, Dict[str, str]] = {
         "viz_fonte":    "Font Size",
         "viz_grid":     "Grid",
         "viz_alpha":    "Point Transparency",
-        "viz_heatmap":  "Generate Spectral Heatmap",
-        "viz_cm":       "Generate Confusion Matrix",
-        "viz_biplot":   "Generate PCA Biplot + Ellipse",
-        "viz_varwave":  "Generate Variance + Wavelength",
-        "viz_gerando":  "Generating figure...",
-        "viz_ok":       "Figure generated.",
-        "viz_erro":     "Figure error: {e}",
         "pip_sem_dados": "Fix data folder before running.",
         "g_prefixo":    "Guaraci:",
     },
@@ -486,8 +466,13 @@ GUARACI_TIPS: Dict[str, Dict[str, str]] = {
         "EN": "Tests all 6 pipelines. Use once to find the best one — then fix it and disable this.",
     },
     "nivel": {
-        "PT": "Classificação (N1) para uma checagem rápida por espécie, Discriminação (N2) para TCC/publicação (autenticação completa), Quantificação (N3) só se tiver tempo (pode levar horas).",
-        "EN": "Classification (N1) for a quick per-species check, Discrimination (N2) for papers/thesis (full authentication), Quantification (N3) only if you have time (may take hours).",
+        # Nome amigavel primeiro, codigo interno (N1/N2/N3) entre parenteses
+        # so' como referencia tecnica -- mesma convencao de _rotulo_opcao()
+        # (P8). Corrigido em 2026-07-13: antes o codigo vinha colado ao
+        # nome sem essa hierarquia, unico ponto do assistente "G" que
+        # ainda vazava N1/N2/N3 como termo primario.
+        "PT": "Classificação por espécie (N1) para uma checagem rápida, Discriminação puro/adulterado (N2) para TCC/publicação (autenticação completa), Quantificação de teor (N3) só se tiver tempo (pode levar horas).",
+        "EN": "Species classification (N1) for a quick check, Pure/adulterated discrimination (N2) for papers/thesis (full authentication), Content quantification (N3) only if you have time (may take hours).",
     },
     "max_lvs": {
         "PT": "O criterio de Wold para automaticamente antes do maximo. Comece com 40; suba se o modelo nao convergir.",
@@ -1483,11 +1468,18 @@ def menu_avancado(cfg: Config) -> None:
 def menu_visualizacao(cfg: Config) -> None:
     fields = ["figuras_mostrar_marcadores", "figuras_mostrar_elipses",
               "formato_figura", "dpi", "abrir_figuras_na_tela"]
+    # H/M/B/V (heatmap espectral, matriz de confusao, biplot PCA, variancia
+    # x wavelength) removidos daqui: auditoria de 2026-07-12 encontrou que
+    # apontavam para _gerar_heatmap_espectros/_gerar_confusion_matrix/
+    # _gerar_pca_biplot/_gerar_variancia_wavelength, funcoes que nunca
+    # existiram em nenhum modulo do projeto -- as 4 opcoes sempre falhavam
+    # com "Funcao nao disponivel", mascarado por um except Exception generico.
+    # Gerar essas figuras fora de uma execucao completa exigiria carregar
+    # dados + ajustar modelo aqui (feature nova, nao um bugfix) -- por isso
+    # as opcoes foram retiradas em vez de remendadas. Ver CLAUDE.md secao 13.
     extras_pt = [
         ("P", _t("viz_paleta")), ("F", _t("viz_fonte")),
         ("D", _t("viz_grid")),   ("A", _t("viz_alpha")),
-        ("H", _t("viz_heatmap")),("M", _t("viz_cm")),
-        ("B", _t("viz_biplot")), ("V", _t("viz_varwave")),
     ]
 
     def _pal():
@@ -1587,17 +1579,6 @@ def menu_visualizacao(cfg: Config) -> None:
             vcfg["alpha_pontos"] = ops[int(r)-1][0]
             _salvar_visual_cfg(vcfg)
 
-    def _gerar(fn, nome_str):
-        console.print(f"  [{PS}]{_t('viz_gerando')}[/{PS}]")
-        try:
-            fn(cfg) if fn else (_ for _ in ()).throw(ValueError("Funcao nao disponivel"))
-            console.print(f"  [g]✓ {_t('viz_ok')}[/g]")
-        except Exception as e:  # noqa: BLE001 -- dispatcher generico p/
-            # varias figuras diferentes (heatmap/matriz de confusao/biplot/
-            # variancia); erro exibido ao usuario via viz_erro, tela continua.
-            console.print(f"  [err]{_t('viz_erro', e=str(e))}[/err]")
-        _pause()
-
     while True:
         cls(); _print_header()
         _print_submenu_compact(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt)
@@ -1609,10 +1590,6 @@ def menu_visualizacao(cfg: Config) -> None:
         elif raw == "F": _fonte(); _pause()
         elif raw == "D": _grid(); _pause()
         elif raw == "A": _alpha(); _pause()
-        elif raw == "H": _gerar(_gerar_heatmap, _t("viz_heatmap"))
-        elif raw == "M": _gerar(_gerar_cm, _t("viz_cm"))
-        elif raw == "B": _gerar(_gerar_biplot, _t("viz_biplot"))
-        elif raw == "V": _gerar(_gerar_var_wave, _t("viz_varwave"))
         elif raw.isdigit() and 1 <= int(raw) <= len(fields):
             _editar_campo(cfg, fields[int(raw)-1]); _pause()
         else:
@@ -2230,8 +2207,20 @@ def menu_perfis(cfg: Config) -> None:
     """Perfis prontos — lista enxuta de 1 linha; detalhes so com [?]."""
     lang = _lang()
     # (nome_chave, tempo, cor, foco_curto). Foco curto = 1 linha, sem cortar.
+    # Os 3 primeiros escolhem O QUE analisar (objetivo cientifico); os
+    # demais escolhem QUAO A FUNDO (rigor). Cor PA nos 3 primeiros = "comece
+    # aqui" (CLAUDE.md secao 6: presets Autenticar/Explorar/Quantificar).
     perfis = [
-        ("Exploracao Rapida",         "~5 min",     PA,
+        ("Explorar Dados",            "~5-10 min",  PA,
+         "Primeiro olhar: PCA/HCA, sem forcar classificacao" if lang=="PT"
+         else "First look: PCA/HCA, no forced classification"),
+        ("Autenticar Pureza",         "~10-20 min", PA,
+         "Puro vs. adulterado por especie (DD-SIMCA)" if lang=="PT"
+         else "Pure vs. adulterated per species (DD-SIMCA)"),
+        ("Quantificar Teor",          "~15-30 min", PA,
+         "Teor de adulterante por regressao PLS" if lang=="PT"
+         else "Adulterant content via PLS regression"),
+        ("Exploracao Rapida",         "~5 min",     PW,
          "Teste rapido do pipeline" if lang=="PT" else "Quick pipeline test"),
         ("Analise Padrao",            "~15-30 min", PF,
          "Uso geral equilibrado (recomendado)" if lang=="PT" else "Balanced general use (recommended)"),
@@ -2343,7 +2332,18 @@ def menu_perfis(cfg: Config) -> None:
             console.print(f"  [g]✓ {'Perfil' if lang=='PT' else 'Profile'} "
                           f"'{escape(pname)}' {'aplicado' if lang=='PT' else 'applied'} "
                           f"({n} {'campos' if lang=='PT' else 'fields'})[/g]")
-            _pause(); break
+            # "Rodar analise recomendada" (CLAUDE.md secao 6): aplicar +
+            # rodar num so' fluxo, sem precisar voltar ao menu principal e
+            # digitar R separadamente. Continua exigindo confirmacao (nunca
+            # roda sem o usuario decidir).
+            pergunta = ("  Rodar agora com essa configuracao? [S/n]: " if lang=="PT"
+                        else "  Run now with this configuration? [Y/n]: ")
+            resp = _input(pergunta).strip().lower()
+            if resp in ("", "s", "y", "sim", "yes"):
+                _rodar_pipeline(cfg)
+            else:
+                _pause()
+            break
         else:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
@@ -3082,10 +3082,182 @@ def _carregar_yaml(cfg: Config) -> None:
 
 
 # ===========================================================================
+# COMANDOS DE LINHA DE COMANDO (--version, demo, doctor) — P7 (CLAUDE.md)
+# ===========================================================================
+def _comando_versao() -> None:
+    print(f"GUARACI v{pq.__version__}")
+
+
+def _comando_doctor() -> None:
+    """Diagnostico de ambiente: Python, dependencias, RAM/CPU/disco.
+
+    Nao lanca excecao — cada checagem e best-effort, pensada para rodar
+    em qualquer maquina antes do usuario abrir um issue de instalacao.
+    """
+    import importlib.util
+    import platform
+
+    linhas: List[str] = []
+    linhas.append(f"GUARACI v{pq.__version__} — diagnostico de ambiente")
+    linhas.append(f"Data: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    linhas.append("")
+    linhas.append(f"Python:   {platform.python_version()} ({platform.python_implementation()})")
+    linhas.append(f"SO:       {platform.system()} {platform.release()} ({platform.machine()})")
+
+    hw = pq.hardware_probe()
+    linhas.append(f"RAM:      {hw['ram_livre_gb']:.1f} GB livre / {hw['ram_total_gb']:.1f} GB total")
+    linhas.append(f"CPU:      {hw['cpu_fisicos']} fisicos / {hw['cpu_logicos']} logicos")
+    linhas.append(f"Disco:    {hw['disco_livre_gb']:.1f} GB livre (pasta atual)")
+    if not hw["psutil_ok"]:
+        linhas.append("          (psutil ausente — valores conservadores/estimados)")
+
+    linhas.append("")
+    linhas.append("Dependencias obrigatorias:")
+    obrigatorias = ["numpy", "pandas", "scipy", "sklearn", "matplotlib",
+                     "joblib", "threadpoolctl", "yaml", "rich", "PIL"]
+    faltando_obrig = []
+    for mod in obrigatorias:
+        spec = importlib.util.find_spec(mod)
+        if spec is None:
+            linhas.append(f"  [FALTA] {mod}")
+            faltando_obrig.append(mod)
+        else:
+            try:
+                m = importlib.import_module(mod)
+                ver = getattr(m, "__version__", "?")
+            except ImportError as _e_imp:
+                ver = f"erro ao importar: {_e_imp}"
+            linhas.append(f"  [ok]    {mod} {ver}")
+
+    linhas.append("")
+    linhas.append("Extras opcionais ([web], [reports], [benchmark], [imagem]):")
+    opcionais = {
+        "streamlit": "web", "psutil": "web",
+        "fpdf2": "reports", "docx": "reports (python-docx)",
+        "openpyxl": "reports", "pptx": "reports (python-pptx)",
+        "xgboost": "benchmark", "shap": "benchmark",
+        "skimage": "imagem (scikit-image)",
+    }
+    for mod, extra in opcionais.items():
+        spec = importlib.util.find_spec(mod)
+        status = "ok" if spec is not None else "ausente"
+        linhas.append(f"  [{status:7s}] {mod:12s} ({extra})")
+
+    console.print()
+    for l in linhas:
+        console.print(f"  {escape(l)}")
+    console.print()
+
+    if faltando_obrig:
+        console.print(f"  [err]✗ Dependencias obrigatorias faltando: "
+                       f"{', '.join(faltando_obrig)}. Rode: pip install guaraci-chemometrics[/err]")
+    else:
+        console.print("  [g]✓ Todas as dependencias obrigatorias estao instaladas.[/g]")
+
+    destino = Path.cwd() / "guaraci_doctor.txt"
+    try:
+        destino.write_text("\n".join(linhas), encoding="utf-8")
+        console.print(f"  [{PM}]Relatorio salvo em: {escape(str(destino))}[/{PM}]")
+    except OSError as e:
+        console.print(f"  [err]Nao foi possivel salvar o relatorio: {escape(str(e))}[/err]")
+
+
+def _comando_demo() -> None:
+    """Roda o pipeline completo com dados sinteticos, sem exigir dado do
+    usuario. Fluxo dos 5 minutos: pip install -> guaraci demo -> figuras."""
+    console.print()
+    console.print(f"  [{PA}]GUARACI demo — gerando espectros sinteticos e rodando o pipeline...[/{PA}]")
+    console.print(f"  [{PM}](nenhum dado seu e usado; tudo aqui e gerado artificialmente)[/{PM}]")
+    console.print()
+
+    saida = Path.cwd() / "GUARACI_Demo"
+    cfg = Config(
+        pasta_entrada=str(saida / "dados_dummy"),  # modo sintetico ignora isto
+        pasta_saida_raiz=str(saida),
+        modo="sintetico",
+        tag="demo",
+        nivel="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
+        objetivo="auto",
+        n_por_classe=15,
+        n_pontos_sint=300,
+        wn_min=400.0,
+        wn_max=4001.0,
+        sint_adulterantes=("S", "M", "A"),
+        max_lvs=15,
+        n_splits_cv=3,
+        n_repeats_cv=1,
+        n_permutacoes=50,
+        n_permutacoes_wold=50,
+        n_bootstrap_vip=10,
+        n_bootstrap_bca=100,
+        n_monte_carlo=20,
+        executar_benchmark=False,
+        executar_monte_carlo=False,
+        executar_shap=False,
+        executar_wold=False,
+        executar_cv_anova=False,
+        executar_opls=False,
+        executar_etapa4=False,
+        comparar_pipelines=False,
+        comparar_hca_pipelines=False,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+
+    try:
+        pq.executar(cfg)
+    except Exception as e:  # noqa: BLE001 -- demo deve reportar erro legivel, nao stack trace cru
+        console.print(f"  [err]✗ A demo falhou: {escape(str(e))}[/err]")
+        console.print(f"  [{PM}]Rode 'guaraci doctor' para checar o ambiente.[/{PM}]")
+        raise SystemExit(1) from e
+
+    runs: List[str] = []
+    if saida.exists():
+        for raiz, dirs, _arqs in os.walk(str(saida)):
+            for d in dirs:
+                if d.startswith("PLSDA_OE_"):
+                    runs.append(os.path.join(raiz, d))
+    if not runs:
+        console.print(f"  [err]✗ Pipeline rodou mas nenhuma pasta de saida foi encontrada em {escape(str(saida))}[/err]")
+        raise SystemExit(1)
+
+    pasta_run = Path(sorted(runs)[-1])
+    console.print()
+    console.print(f"  [g]✓ Demo concluida.[/g] Resultados em: [{PA}]{escape(str(pasta_run))}[/{PA}]")
+    console.print(f"  [{PM}]Veja {pq.NOME_GRAFICOS}/ para as figuras e {pq.NOME_RELATORIOS}/resumo_modelo.txt "
+                  f"para o resumo numerico.[/{PM}]")
+
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(pasta_run))  # noqa: S606 -- abre o explorador, caminho e nosso proprio output
+        elif sys.platform == "darwin":
+            os.system(f'open "{pasta_run}"')  # noqa: S605
+        else:
+            os.system(f'xdg-open "{pasta_run}"')  # noqa: S605
+    except OSError as _e_open:
+        logging.getLogger(__name__).debug("nao foi possivel abrir a pasta de saida: %s", _e_open)
+
+
+# ===========================================================================
 # MAIN LOOP
 # ===========================================================================
 def main() -> None:
     """Ponto de entrada GUARACI (versao unica em _VERSAO)."""
+    if len(sys.argv) > 1:
+        comando = sys.argv[1].strip().lower().lstrip("-")
+        if comando in ("version", "v"):
+            _comando_versao(); return
+        if comando == "demo":
+            _comando_demo(); return
+        if comando == "doctor":
+            _comando_doctor(); return
+        if comando in ("help", "h"):
+            print("Uso: guaraci [demo|doctor|--version]\n"
+                  "  (sem argumentos)  abre o assistente interativo\n"
+                  "  demo              roda o pipeline com dados sinteticos\n"
+                  "  doctor            diagnostica o ambiente (deps, RAM, CPU)\n"
+                  "  --version         mostra a versao instalada")
+            return
+
     # Carregar config
     cfg = Config()
     if _CFG_PATH.exists():

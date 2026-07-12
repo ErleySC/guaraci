@@ -97,21 +97,27 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.2.0 | `grep -r version pyproject.toml` |
-| Testes | 525 pass, 1 skip | `pytest -q` |
+| Versão | 31.3.0 | `grep -r version pyproject.toml` |
+| Testes | 531 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
-| `executar()` | 1269 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
-| `print()` em pipeline | 159 | `grep -c "print(" src/guaraci/pipeline.py` |
-| `except` amplos | 114 | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
-| `guaraci.py` | 3133 linhas | `wc -l src/guaraci/guaraci.py` |
-| TODO/FIXME | 11 | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| wc -l` |
+| `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
+| `print()` em pipeline | 164 | `grep -c "print(" src/guaraci/pipeline.py` |
+| `except` amplos | 51 (100% com `noqa: BLE001` justificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
+| `guaraci.py` | 3318 linhas | `wc -l src/guaraci/guaraci.py` |
+| TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
+
+> Atualizado em 2026-07-13 após a auditoria de 15 etapas de 2026-07-12. A tabela
+> anterior (114 `except`, `executar()` 1269 linhas, `guaraci.py` 3133 linhas)
+> estava desatualizada em relação ao código desde a v31.2.0 — não foi
+> reverificada por várias sessões seguidas. **Reverifique a cada sessão nova,
+> não confie neste valor por mais de uma sessão de trabalho.**
 
 ---
 
 ## 3. OS PROBLEMAS, EM ORDEM DE GRAVIDADE
 
-### 🔴 P1 — Sensibilidade DD-SIMCA reportada como 100% é re-substituição
+### ✅ P1 (RESOLVIDO em 2026-07-11) — Sensibilidade DD-SIMCA reportada como 100% é re-substituição
 **O que acontece:** só existem 3–4 amostras puras por espécie, e **todas estão no treino**.
 A sensibilidade reportada mede o modelo classificando dados que ele já viu. É a prova
 que o próprio aluno corrigiu. O número é vazio.
@@ -156,7 +162,7 @@ def sensibilidade_logo(X, mae_ids, construir_modelo):
 
 ---
 
-### 🔴 P2 — Regressão agrupando espécies esconde as falhas por adulterante
+### ✅ P2 (RESOLVIDO em 2026-07-11) — Regressão agrupando espécies esconde as falhas por adulterante
 **O que acontece:** a regressão PLS agrupando espécies dá R² ≈ 0 — a matriz vegetal
 domina o sinal. A leitura correta é **espécie × adulterante**: 21 de 37 combinações
 funcionam (R²cv ≥ 0,70). **16 falham.** Hoje isso só existe em script externo e não
@@ -179,7 +185,17 @@ Especificação:
 
 ---
 
-### 🟠 P3 — 114 blocos `except Exception` / `except:` — dívida de CORREÇÃO, não de estilo
+### 🟢 P3 (MAJORITARIAMENTE RESOLVIDO) — 114 blocos `except Exception` / `except:` — dívida de CORREÇÃO, não de estilo
+
+> Estado em 2026-07-13: já caiu para **51** blocos, **100% com `noqa: BLE001`
+> justificado** (zero `except` nu sem tratamento). A trava de lint `BLE` da
+> seção abaixo está ativa e sendo seguida de fato. Achado residual real na
+> auditoria de 2026-07-12: um desses `except Exception` (`guaraci.py`, menu
+> Visualização) mascarava um bug permanente — 4 opções de menu apontando
+> para funções que nunca existiram no código. Corrigido em 2026-07-13
+> removendo as opções quebradas (ver `docs/CHANGELOG.md`). O restante dos
+> 51 continua categorizado A/B corretamente — não precisa de nova varredura
+> completa, só reverificar quando o número subir de novo.
 **Por que é pior do que parece:** um `except: pass` numa função de cálculo faz o Guaraci
 **produzir um número errado sem avisar ninguém**. Em software científico isso é o pior
 tipo de bug: não trava, não avisa, só mente. Pode haver um R² errado no TCC agora mesmo.
@@ -278,7 +294,7 @@ def test_snv_nunca_produz_nan(X):
 
 ---
 
-### 🟡 P5 — `joblib.load` é execução remota de código
+### ✅ P5 (RESOLVIDO) — `joblib.load` é execução remota de código
 `predicao.py` carrega modelos `.joblib`. Pickle **executa código arbitrário** ao carregar.
 Se um usuário baixar um `.joblib` de terceiro, é RCE. Isso pode barrar a revisão JOSS.
 
@@ -394,7 +410,18 @@ Isso é reprodutibilidade real, não retórica.
 
 ---
 
-### 🟡 P8 — Vocabulário N1/N2/N3 vs. Objetivo
+### ✅ P8 (RESOLVIDO em 2026-07-13) — Vocabulário N1/N2/N3 vs. Objetivo
+
+> Menus principais lideram com o nome amigável (`_rotulo_opcao`,
+> `guaraci.py:583`), tooltip do assistente "G" corrigido para a mesma
+> convenção, e o residual (nomes de pasta `PLSDA_OE_N2_...` → agora
+> `PLSDA_OE_Autenticacao_...`, e arquivo `figN3_heatmap_...` → agora
+> `fig_heatmap_...`) também corrigido — com aprovação explícita do autor,
+> já que era mudança de formato de saída. `cfg.nivel` continua "N1"/"N2"/
+> "N3" internamente (config.yaml, lógica); só o SLUG usado no nome de
+> pasta/arquivo mudou (`_NIVEL_SLUG_PASTA`, `config.py`). Documentação
+> (README, MANUAL) e testes (`test_gerar_nome_saida_contem_nivel_e_preproc`,
+> `test_heatmap_gera_png_valido`) atualizados.
 Duas linguagens vivas no projeto. Ninguém de fora entende "N1/N2/N3".
 
 **Solução:** aposentar N1/N2/N3 da UI e de todo documento externo. Manter como apelido
@@ -545,24 +572,55 @@ plugins: [search, mkdocstrings]   # gera API docs dos docstrings automaticamente
 
 ---
 
-## 5. FIGURAS QUE FALTAM
-1. **Heatmap espécie × adulterante (R²cv)** — ver P2. Alta prioridade.
-2. **Curva RMSECV × nº de LVs** — justifica visualmente a escolha de componentes.
-   Sem ela, "24 LVs" parece arbitrário e a banca vai perguntar.
-3. **Espectros médios por classe com banda de ±1 desvio** — contexto químico antes
-   da modelagem. Hoje o leitor vai direto para PCA sem ver o dado bruto.
-4. **Biplot PCA** (scores + loadings sobrepostos) — interpretação química direta.
+## 5. FIGURAS QUE FALTAM — ✅ TODAS ENTREGUES (verificado 2026-07-12)
+As 4 abaixo já existem em `figuras.py` e são chamadas por `executar()` — não
+são mais um item de roadmap. Mantido aqui só como registro do que foi pedido
+e resolvido:
+1. ~~Heatmap espécie × adulterante (R²cv)~~ — `fig_heatmap_especie_adulterante`, ver P2.
+2. ~~Curva RMSECV × nº de LVs~~ — `fig1_selecao_lvs`.
+3. ~~Espectros médios por classe com banda de ±1 desvio~~ — `fig_espectros_medios_classe`.
+4. ~~Biplot PCA~~ (scores + loadings sobrepostos) — `fig_biplot_pca`.
 
 ---
 
 ## 6. UX — O QUE ESTÁ ERRADO
-- **Densidade de configuração.** Muitos parâmetros expostos de uma vez. Usuário novo
-  se perde. → Modo "Iniciante / Avançado". Esconder hiperparâmetros atrás de expander.
-  Oferecer 3 presets: **Autenticar / Explorar / Quantificar**.
-- **Cliques até resultado.** O caminho feliz exige passar por várias abas.
-  → Botão "Rodar análise recomendada" na aba Dados, usando `objetivo=auto` e defaults sãos.
+
+> Atualizado em 2026-07-13. Ver correção parcial abaixo — a parte "3 presets
+> + botão de análise recomendada" foi implementada; a parte "esconder
+> hiperparâmetros atrás de expander em CADA submenu" não foi (escopo maior,
+> ver nota).
+
+- **Densidade de configuração.** ✅ **Parcialmente resolvido.** 3 presets por
+  objetivo científico — **Explorar Dados / Autenticar Pureza / Quantificar
+  Teor** (nomes sem sufixo N1/N2/N3, P8) — implementados em `PROFILES`
+  (`cli_assistente.py`), reaproveitando a mesma infraestrutura dos perfis de
+  rigor já existentes (`menu_perfis`, CLI) e espelhados na aba Dados do app
+  web (`app_tabs/dados.py`, botões 🔍/🛡️/📊). Aplicar um preset já ajusta
+  `nivel`+`objetivo`+módulos pesados de uma vez.
+  **Não feito** (escopo maior, ficou de fora desta rodada): esconder os 84
+  campos atrás de um alternador Iniciante/Avançado em CADA submenu
+  (`menu_preproc`, `menu_modelagem`, `menu_validacao`, `menu_tecnica`,
+  `menu_codificacao`) — isso exigiria threading de um flag de modo por
+  todos os `_print_submenu_compact`, um projeto à parte.
+- **Cliques até resultado.** ✅ **Resolvido.** No CLI, `menu_perfis` agora
+  pergunta "Rodar agora com essa configuração?" logo após aplicar qualquer
+  perfil (`_rodar_pipeline(cfg)` direto, sem passar pelo menu principal). No
+  app web, aplicar um preset na aba Dados já configura `nivel`/`objetivo`;
+  falta só ir na aba Model e clicar "Run pipeline" (não há um botão de
+  "rodar" cross-tab no Streamlit por design — cada aba é independente).
 - **Mensagens de erro** poderiam linkar direto ao campo problemático.
 - **Falta tour guiado / tooltip contextual** dentro do app.
+
+**Achado técnico não previsto no escopo original:** o app Streamlit tem um
+bug de sincronização de estado — widgets com `key=` estático (`"w_"+campo`)
+só honram `value=`/`index=` na primeira renderização; depois disso, seguem
+mostrando o valor antigo mesmo que `cfg_base` mude, **a menos que o valor
+seja escrito diretamente em `st.session_state[key]`** (apagar a chave não
+basta — verificado empiricamente). Corrigido nos presets novos; **mas o
+botão pré-existente "↺ Reload config.yaml" (`app_tabs/dados.py`)
+provavelmente tem o MESMO bug latente** (nunca teria sido notado, já que
+poucos usuários trocam nivel/objetivo via reload no meio de uma sessão) —
+não corrigido nesta rodada por estar fora do escopo pedido; ver roadmap.
 
 ---
 
@@ -601,27 +659,38 @@ nas primeiras linhas em inglês.
 
 ## 8. ORDEM DE EXECUÇÃO
 
-**Antes do TCC (bloqueiam defesa ou credibilidade):**
+**Status em 2026-07-13 — itens ✅ concluídos nesta sessão (pós-auditoria de 15 etapas):**
 | # | Item | Prazo | Bloqueia |
 |---|---|---|---|
-| 1 | P1 — Sensibilidade LOGO | 1–2 dias | **Defesa** |
-| 2 | P2 — Heatmap espécie×adulterante nativo | 2–3 dias | **Defesa** |
-| 3 | P8 — Vocabulário N1/N2/N3 | 2 h | Clareza |
-| 4 | `docs/VALIDATION.md` | 1 dia | Credibilidade |
-| 5 | Seção "Limitações" no MANUAL | 1 dia | Honestidade |
-| 6 | P5 — `SECURITY.md` + guarda no joblib | 2 dias | JOSS |
-| 7 | P3 — Auditoria dos 114 `except` | 1 semana | **Correção dos resultados** |
-| 8 | P7 — PyPI + `guaraci demo` + Colab | 1 semana | **Adoção** |
-| 9 | Curva RMSECV × LVs + espectros médios | 2 dias | Banca vai perguntar |
+| ~~1~~ | ~~P1 — Sensibilidade LOGO~~ ✅ | feito 2026-07-11 | Defesa |
+| ~~2~~ | ~~P2 — Heatmap espécie×adulterante nativo~~ ✅ | feito 2026-07-11 | Defesa |
+| ~~3~~ | ~~P8 — Vocabulário N1/N2/N3 (menus + tooltip)~~ ✅ parcial | feito 2026-07-13 — pastas/arquivos ainda vazam N1/N2/N3, ver P8 acima | Clareza |
+| ~~6~~ | ~~P5 — `SECURITY.md` + guarda no joblib~~ ✅ | feito | JOSS |
+| ~~9~~ | ~~Curva RMSECV × LVs + espectros médios + biplot~~ ✅ | feito, ver seção 5 | Banca vai perguntar |
+| — | **Viés de seleção de variáveis (Etapa 4, achado da auditoria 2026-07-12)** ✅ | corrigido 2026-07-13 — nested-CV para VIP/SR/sPLS-DA (`selecao_variaveis.py`) | **Correção científica** |
+| — | **Submenu Visualização quebrado (H/M/B/V)** ✅ | corrigido 2026-07-13 — opções removidas (funções nunca existiram) | Robustez |
+
+**Ainda pendente antes do TCC (bloqueiam defesa ou credibilidade):**
+| # | Item | Prazo | Bloqueia |
+|---|---|---|---|
+| 4 | `docs/VALIDATION.md` — acrescentar nota sobre nested-CV da Etapa 4 | 1 dia | Credibilidade |
+| 5 | Seção "Limitações" no MANUAL — idem | 1 dia | Honestidade |
+| 7 | P3 — 51 `except` restantes, 100% já justificados (ver P3 acima) | concluído em essência | Correção dos resultados |
+| 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos) | depende de conta do autor | **Adoção** |
 
 **Depois do TCC:**
 | # | Item | Prazo |
 |---|---|---|
 | 10 | P4 — Cobertura núcleo → 95% | 2–3 semanas |
-| 11 | P6 — `print` → `logging` | 1 semana |
+| 11 | P6 — `print` → `logging` em `pipeline.py` (164 chamadas) | 1 semana |
 | 12 | MkDocs + GitHub Pages | 1 dia |
-| 13 | Rodar em dataset público externo | 1 semana |
+| 13 | Rodar em dataset público externo (Tecator/corn) | 1 semana |
 | 14 | Paper JOSS: state of the field | 2 semanas |
+| ~~—~~ | ~~Renomear pastas/arquivos de saída para tirar N1/N2/N3~~ ✅ | corrigido 2026-07-13, com aprovação explícita — ver P8 |
+| ~~—~~ | ~~Viés de seleção do AG/SPA~~ ✅ | corrigido 2026-07-13 — nested-CV via `_avaliar_busca_nested_cv` |
+| ~~—~~ | ~~3 presets Autenticar/Explorar/Quantificar + "rodar recomendada"~~ ✅ | corrigido 2026-07-13 (CLI + app web) — ver seção 6 |
+| — | Modo Iniciante/Avançado (esconder campos avançados em CADA submenu) | escopo maior, não feito — ver seção 6 |
+| — | **Bug latente**: botão "↺ Reload config.yaml" (`app_tabs/dados.py`) provavelmente tem o mesmo desync de widget `key=` já corrigido nos presets novos — nunca notado, mas não verificado/corrigido | Baixo esforço uma vez identificado — ver seção 6 |
 
 **Quando sobrar tempo:**
 | 15 | P9 — Golden tests + quebrar `executar()` | 3–4 semanas |

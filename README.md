@@ -16,6 +16,7 @@
 ### 🚀 [Try the live demo — no install required](https://guaraci.streamlit.app/)
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://guaraci.streamlit.app/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
 
 A **free and open** alternative to paid chemometrics suites (MATLAB/PLS_Toolbox,
 The Unscrambler, SIMCA): a reproducible **multi-technique chemometrics platform**
@@ -82,6 +83,16 @@ pip install -e .        # installs the `guaraci` package + core deps (adds the `
 # or, for the full web/reports/benchmark stack:  pip install -e .[all]
 ```
 
+**5-minute checkout, no data of your own required:**
+
+```bash
+guaraci doctor    # checks Python/RAM/CPU/deps, writes guaraci_doctor.txt
+guaraci demo      # runs the full pipeline on synthetic spectra, opens the results folder
+guaraci --version
+```
+
+Or run it in the browser with zero local install: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ErleySC/guaraci/blob/master/notebooks/guaraci_5_minutos.ipynb)
+
 ## Use (3 ways, no code editing)
 
 Config lives in `config.yaml` (plain language). Start from the template:
@@ -114,10 +125,12 @@ metadata are also parsed from the JCAMP-DX `##TITLE=` field. Triplicate tag
 ## Output
 
 Each run writes to
-`resultados_tcc/{sample}/{Mode}/PLSDA_OE_{level}_{preproc}_{timestamp}/`,
+`resultados_tcc/{sample}/{Mode}/PLSDA_OE_{level_slug}_{preproc}_{timestamp}/`,
 where `{sample}` is the dataset label (`tag`, or derived from the input
-folder/file) and `{Mode}` is the scientific objective resolved for the run
-(`Exploratorio` / `Classificacao` / `Quantificacao` — see `docs/MANUAL.md`).
+folder/file), `{Mode}` is the scientific objective resolved for the run
+(`Exploratorio` / `Classificacao` / `Quantificacao` — see `docs/MANUAL.md`),
+and `{level_slug}` is a friendly name for the analysis level (`PorEspecie` /
+`Autenticacao` / `Quantificacao`).
 Inside: `Graficos/` (figures), `Tabelas/` (CSV data), `Relatorios/`
 (`resumo_modelo.txt`, `model_card.md`), and `Modelos/` (final `.joblib`).
 

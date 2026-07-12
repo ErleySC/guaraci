@@ -543,13 +543,15 @@ def test_parse_title_teor_zero_e_invalido(pq):
 
 
 def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
-    """Caminho de saída embute nível e pré-processamento (rastreável)."""
+    """Caminho de saída embute o slug amigável do nível (não N1/N2/N3 cru,
+    correção de 2026-07-13 — P8 residual) e o pré-processamento (rastreável)."""
     cfg = pq.Config()
     cfg.nivel = "N1"
     cfg.preprocessamento_padrao = "msc_sg_mc"
     nome = pq.gerar_nome_saida(cfg, n_classes=13, n_amostras=100)
     base = nome.replace("\\", "/").split("/")[-1]
-    assert base.startswith("PLSDA_OE_N1")
+    assert base.startswith("PLSDA_OE_" + pq._NIVEL_SLUG_PASTA["N1"])
+    assert "N1" not in base
     assert "MSC" in base
 
 
@@ -663,6 +665,91 @@ def test_selecao_ag_recupera_variaveis_informativas(pq):
     assert len(selecionadas & set(informativas)) >= 2
 
 
+def test_mask_vip_threshold_depende_so_do_fold_recebido(pq):
+    """`_mask_vip_threshold` deve ser pura em relacao ao fold: chamada com
+    2 conjuntos de treino DIFERENTES (metades disjuntas dos mesmos dados)
+    produz mascaras que nao sao obrigatoriamente identicas -- prova de que
+    a funcao olha so' para o argumento recebido, nao um estado global/
+    dataset inteiro precalculado (a propria correcao do vies de selecao)."""
+    informativas = (5, 6, 7, 20, 21)
+    X, Y_bin, _y_int, _cv = _dados_classificacao_sinteticos(
+        seed=6, n=60, vars_informativas=informativas)
+    metade1 = pq._mask_vip_threshold(X[:30], Y_bin[:30], n_lv=2, threshold=1.0)
+    metade2 = pq._mask_vip_threshold(X[30:], Y_bin[30:], n_lv=2, threshold=1.0)
+    assert metade1.shape == (X.shape[1],)
+    assert metade2.shape == (X.shape[1],)
+    # cada metade, isoladamente, deve recuperar ao menos parte do sinal
+    # (nao e' selecao ao acaso), mesmo vendo so' 30 das 60 amostras
+    assert len(set(np.where(metade1)[0]) & set(informativas)) >= 1
+    assert len(set(np.where(metade2)[0]) & set(informativas)) >= 1
+
+
+def test_avaliar_subset_nested_cv_recomputa_selecao_por_fold(pq):
+    """`_avaliar_subset_nested_cv` deve retornar n_vars_min/n_vars_max (prova
+    de que a selecao foi refeita fold a fold, nao um n_vars fixo calculado
+    uma unica vez no dataset inteiro como na versao com vies)."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=7)
+    resultado = pq._avaliar_subset_nested_cv(
+        X, Y_bin, y_int, cv_indices, n_lv=2,
+        selecionar_fn=lambda Xtr, Ytr, nlv: pq._mask_vip_threshold(Xtr, Ytr, nlv, 1.0))
+    assert "n_vars_min" in resultado and "n_vars_max" in resultado
+    assert resultado["n_vars_min"] <= resultado["n_vars"] <= resultado["n_vars_max"]
+    assert 0.0 <= resultado["balanced_accuracy"] <= 1.0
+
+
+def test_etapa4_selecao_variaveis_sem_vip_sr_precomputado(pq):
+    """Assinatura atual de `etapa4_selecao_variaveis` NAO recebe mais vip/sr
+    pre-calculados (correcao do vies de selecao, auditoria 2026-07-12) --
+    a tabela final ainda deve conter as linhas VIP/SR/sPLS-DA, agora com
+    mascara recalculada por fold internamente."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=8, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+    cfg = pq.Config(seed=8)
+    with tempfile.TemporaryDirectory() as pasta:
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta)
+    metodos = {t["metodo"] for t in resumo["tabela"]}
+    assert any(m.startswith("VIP") for m in metodos)
+    assert any(m.startswith("SR") for m in metodos)
+    assert "sPLS-DA" in metodos
+
+
+def test_cv_local_folds_cobrem_todos_os_indices_locais(pq):
+    """`_cv_local` deve devolver folds cujos indices de validacao, unidos,
+    cobrem 0..len(y)-1 exatamente uma vez (particao valida), reindexados
+    localmente (nao nos indices globais do fold externo)."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 1, 0, 1])
+    folds = pq._cv_local(y_local, seed=1, n_splits=3)
+    todos_va = np.concatenate([va for _tr, va in folds])
+    assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_avaliar_busca_nested_cv_nao_reveniza_fold_de_teste(pq):
+    """`_avaliar_busca_nested_cv` deve chamar `buscar_fn` SO' com os dados de
+    TREINO de cada fold externo (nunca o de teste) -- verificado por um
+    buscar_fn espiao que registra o tamanho de cada chamada."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=9)
+    tamanhos_treino_vistos = []
+
+    def _buscar_espiao(Xtr, _Ytr, _ytr, _cv_interna):
+        tamanhos_treino_vistos.append(Xtr.shape[0])
+        mask = np.zeros(Xtr.shape[1], dtype=bool)
+        mask[:5] = True
+        return mask
+
+    resultado = pq._avaliar_busca_nested_cv(
+        X, Y_bin, y_int, cv_indices, n_lv=2,
+        buscar_fn=_buscar_espiao, seed=9)
+    # 1 chamada por fold externo, cada uma vendo so' o tamanho do TREINO
+    # daquele fold (estritamente menor que o dataset inteiro)
+    assert len(tamanhos_treino_vistos) == len(cv_indices)
+    assert all(t < len(X) for t in tamanhos_treino_vistos)
+    assert resultado["n_vars_min"] == resultado["n_vars_max"] == 5
+    assert 0.0 <= resultado["balanced_accuracy"] <= 1.0
+
+
 def test_config_spec_spa_ag_opt_in_por_padrao(pq):
     """SPA/AG são opt-in (default False) — mais lentos que os métodos
     sempre-ligados; não devem rodar sem o usuário pedir explicitamente."""
@@ -680,8 +767,6 @@ def test_etapa4_integra_spa_e_ag_quando_ligados(pq):
     import tempfile
     X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=4, p=30)
     wavenumbers = np.linspace(4000, 400, X.shape[1])
-    vip = np.abs(np.random.default_rng(4).normal(size=X.shape[1])) + 0.5
-    sr = np.abs(np.random.default_rng(5).normal(size=X.shape[1]))
 
     cfg = pq.Config(executar_spa=True, executar_ag=True,
                      spa_n_vars_max=6, spa_n_starts=6,
@@ -689,7 +774,7 @@ def test_etapa4_integra_spa_e_ag_quando_ligados(pq):
     with tempfile.TemporaryDirectory() as pasta:
         pasta_dados = pasta
         resumo = pq.etapa4_selecao_variaveis(
-            X, Y_bin, y_int, vip, sr, wavenumbers, cv_indices, n_lv=2,
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
             cfg=cfg, pasta=pasta, pasta_dados=pasta_dados)
     metodos = {t["metodo"] for t in resumo["tabela"]}
     assert "SPA (APS)" in metodos

@@ -18,7 +18,7 @@ Best result: MSC -> SG -> MC, balanced accuracy = 0.923
 
 # __version__ e _NIVEL_NOME sao a fonte unica em config.py (modulo sem
 # dependencias); reexportados aqui p/ `pipeline.__version__` e `pq._NIVEL_NOME`.
-from guaraci.config import __version__, _NIVEL_NOME  # noqa: F401,E402
+from guaraci.config import __version__, _NIVEL_NOME, _NIVEL_SLUG_PASTA  # noqa: F401,E402
 from guaraci.config import (   # noqa: F401,E402
     NOME_GRAFICOS,
     NOME_TABELAS,
@@ -124,12 +124,15 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
     """Default output path (auditoria jul/2026, item 4): reestrutura a saida
     em Amostra/Modo/Execucao para nao misturar resultados de objetivos
     diferentes na mesma pasta.
-        {root}/{dataset}/{Modo}/PLSDA_OE_{level}_{preproc}_{YYYYMMDD_HHMMSS}
-    Example: resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_N2_MSC-SG1-MC_20260528_191500
+        {root}/{dataset}/{Modo}/PLSDA_OE_{slug}_{preproc}_{YYYYMMDD_HHMMSS}
+    Example: resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_Autenticacao_MSC-SG1-MC_20260528_191500
     'dataset' vem de cfg.tag (se preenchido) ou e' derivado do modo de
     entrada (ver _dataset_id). 'Modo' e' o rotulo amigavel do objetivo
     cientifico resolvido (ver modos_analise.resolver_objetivo) — Exploratorio
-    | Classificacao | Quantificacao.
+    | Classificacao | Quantificacao. '{slug}' e' o nome amigavel de cfg.nivel
+    (_NIVEL_SLUG_PASTA) -- necessario porque N1 e N2 caem no MESMO 'Modo'
+    (Classificacao) mas sao analises distintas (por-especie vs autenticacao);
+    corrigido em 2026-07-13 (P8 residual: pasta ainda expunha N1/N2/N3 cru).
     Subfolders (created in executar): Graficos/ Tabelas/ Relatorios/ Modelos/
     """
     preset = (cfg.preprocessamento_padrao or "custom").lower()
@@ -147,7 +150,7 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
         if cfg.aplicar_sg:  preproc.append(f"SG{cfg.sg_deriv}")
         if cfg.aplicar_mc:  preproc.append("MC")
         if not preproc:     preproc.append("raw")
-    partes = ["PLSDA_OE", cfg.nivel]
+    partes = ["PLSDA_OE", _NIVEL_SLUG_PASTA.get(cfg.nivel, cfg.nivel)]
     partes.append("-".join(preproc))
     partes.append(datetime.now().strftime("%Y%m%d_%H%M%S"))
     dataset_id = _dataset_id(cfg)
@@ -665,6 +668,11 @@ from guaraci.predicao import (   # noqa: E402
 # executar() (etapa4_selecao_variaveis, selecao_ipls, ...).
 from guaraci.selecao_variaveis import (   # noqa: E402
     _avaliar_subset_cv,
+    _avaliar_subset_nested_cv,
+    _avaliar_busca_nested_cv,
+    _cv_local,
+    _mask_vip_threshold,
+    _mask_sr_top_frac,
     selecao_ipls,
     sparse_plsda_mask,
     _spa_cadeia,
@@ -1770,7 +1778,7 @@ def executar(cfg: Config):
     if cfg.executar_etapa4 and deve_gerar(cfg, "etapa4"):
         try:
             etapa4_res = etapa4_selecao_variaveis(
-                X_processed, Y_bin, y_int, vip, sr, wavenumbers,
+                X_processed, Y_bin, y_int, wavenumbers,
                 cv_indices, n_opt, cfg, pasta, pasta_dados)
         except Exception as _e_e4:  # noqa: BLE001 -- modulo opcional (selecao
             # de variaveis); erro impresso, etapa4_res fica None e some do
