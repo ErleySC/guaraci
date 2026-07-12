@@ -70,6 +70,15 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 - **N2 — Discriminação (puro vs. adulterado).**
   Autentica a pureza **por espécie** via **DD-SIMCA** *one-class* (T² e
   Q-resíduos com limites de aceitação específicos por classe).
+  A **sensibilidade** (fração de puros aceitos) é estimada por
+  **leave-one-group-out (LOGO) por réplica `mae_id`**, não por
+  re-substituição: para cada grupo de réplica, o modelo é retreinado nos
+  demais e testado no grupo retido. Toda figura, tabela e relatório mostra o
+  **número de grupos** ao lado da sensibilidade; com **menos de 10 grupos** o
+  valor vem acompanhado de aviso de incerteza (exploratório) e, com **apenas
+  1 grupo** de puros, é reportado como `n/a (não validado)` — sem replicação
+  independente não há validação possível. A especificidade (rejeição de
+  adulterados) permanece uma medida externa legítima.
 
 - **N3 — Quantificação (% de adulterante).**
   Estima o teor de adulterante por **regressão PLS calibrada por espécie**
@@ -538,7 +547,10 @@ p. 397-405, 1978.
 
 ---
 
-*Última revisão do manual: prévia "O que será gerado" em tempo real na aba
-Model (web), 8ª aba **Sobre** (identidade, licença, como citar), cabeçalho
-com logo/versão/badges e aviso de modo demonstração no deploy público sem
-`config.yaml` local.*
+*Última revisão do manual: sensibilidade DD-SIMCA (N2) agora estimada por
+leave-one-group-out honesto por réplica `mae_id` — sempre exibida com o número
+de grupos e aviso de incerteza; `n/a (não validado)` quando há um só grupo de
+puros (substitui a re-substituição, que inflava até 100%). Antes: prévia "O que
+será gerado" em tempo real na aba Model (web), 8ª aba **Sobre** (identidade,
+licença, como citar), cabeçalho com logo/versão/badges e aviso de modo
+demonstração no deploy público sem `config.yaml` local.*

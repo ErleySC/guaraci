@@ -359,3 +359,96 @@ class OPLSDAWrapper(BaseEstimator):
         t_orth = (np.column_stack(T_orth)
                   if T_orth else np.zeros((len(X), 1)))
         return t_pred, t_orth
+
+
+def sensibilidade_ddsimca_logo(
+    X_puros: np.ndarray,
+    grupos_puros: np.ndarray,
+    *,
+    n_components: int,
+    alpha: float = 0.05,
+    ucl_method: str = "empirical",
+) -> Dict[str, Any]:
+    """Sensibilidade DD-SIMCA honesta por leave-one-group-out (LOGO).
+
+    Re-substituicao (treinar o modelo one-class nos puros e medir a
+    sensibilidade nos MESMOS puros) infla o valor ate ~100% e nao prova
+    nada: mede o modelo reconhecendo dados que ele ja viu. Com poucos grupos
+    de replica fisica (``mae_id``), LOGO e a unica estimativa defensavel:
+    para cada grupo retira-se um grupo inteiro, treina-se o modelo nos
+    demais e verifica-se se as amostras retidas caem na regiao de aceitacao.
+
+    O numero de componentes de cada dobra e limitado internamente pelo
+    ``DDSimca`` a ``min(n_components, n_treino - 1, n_variaveis)``; com poucos
+    puros o modelo LOGO e necessariamente mais simples que o modelo final --
+    isso e uma limitacao dos dados, nao um artefato.
+
+    Parameters
+    ----------
+    X_puros : (n, p) espectros das amostras PURAS de UMA classe.
+    grupos_puros : (n,) identificador de replica (mae_id) de cada amostra pura.
+    n_components, alpha, ucl_method : hiperparametros do ``DDSimca``, iguais
+        aos do modelo final para comparabilidade.
+
+    Returns
+    -------
+    dict com chaves:
+        sensibilidade (float|nan), n_grupos (int), n_grupos_validos (int),
+        n_amostras (int), aviso (str|None).
+    O valor tende a cair abaixo de 100% — esse e o objetivo, nao um defeito.
+    """
+    X_puros = np.asarray(X_puros, dtype=float)
+    grupos = np.asarray(grupos_puros)
+    grupos_unicos = np.unique(grupos)
+    n_grupos = int(len(grupos_unicos))
+    resultado: Dict[str, Any] = {
+        "sensibilidade": float("nan"),
+        "n_grupos": n_grupos,
+        "n_grupos_validos": 0,
+        "n_amostras": int(len(X_puros)),
+        "aviso": None,
+    }
+    if n_grupos < 2:
+        resultado["aviso"] = (
+            f"Sensibilidade nao estimavel por LOGO: apenas {n_grupos} grupo(s) "
+            "de replica pura. Sem replicacao independente nao ha validacao "
+            "possivel; re-substituicao seria enganosa."
+        )
+        return resultado
+
+    aceitos: List[bool] = []
+    validos = 0
+    for g in grupos_unicos:
+        treino = grupos != g
+        teste = grupos == g
+        if int(treino.sum()) < 2 or int(teste.sum()) == 0:
+            continue
+        modelo = DDSimca(n_components=n_components, alpha=alpha,
+                         ucl_method=ucl_method)
+        modelo.fit(X_puros[treino], np.array(["_c"] * int(treino.sum())))
+        res = modelo.score_matrix(X_puros[teste])
+        if "_c" not in res:   # classe pulada (puros de treino insuficientes)
+            continue
+        m = res["_c"]
+        aceito = ((np.asarray(m["T2_norm"]) <= 1.0) &
+                  (np.asarray(m["Q_norm"]) <= 1.0))
+        aceitos.extend(bool(a) for a in aceito)
+        validos += 1
+
+    resultado["n_grupos_validos"] = validos
+    if validos < 2 or not aceitos:
+        resultado["aviso"] = (
+            f"Sensibilidade LOGO inconclusiva: {validos} dobra(s) valida(s) de "
+            f"{n_grupos} grupos (puros por grupo insuficientes para ajustar o "
+            "modelo). Interpretar como nao-validado."
+        )
+        return resultado
+
+    resultado["sensibilidade"] = float(np.mean(aceitos))
+    if n_grupos < 10:
+        resultado["aviso"] = (
+            f"Sensibilidade estimada por LOGO com apenas {n_grupos} grupos de "
+            "replica. Incerteza alta; IC bootstrap nao e confiavel neste "
+            "regime. Interpretar como exploratoria."
+        )
+    return resultado

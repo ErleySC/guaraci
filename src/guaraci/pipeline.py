@@ -266,6 +266,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
 from guaraci.classificadores import (   # noqa: E402
     DDSimca,
     OPLSDAWrapper,
+    sensibilidade_ddsimca_logo,
 )
 
 
@@ -1508,7 +1509,9 @@ def executar(cfg: Config):
     #     and ~all samples become 'Unknown'. sens = pure accepted; esp = adult rejected.
     ddsimca_res: Optional[Dict[str, Dict[str, Any]]] = None
     simca_pred: np.ndarray = np.array([], dtype=str)
-    ddsimca_sens_esp: Dict[str, Tuple[float, float, int, int]] = {}
+    # (sens_LOGO, esp, n_puros, n_adult, n_grupos_LOGO, aviso)
+    ddsimca_sens_esp: Dict[
+        str, Tuple[float, float, int, int, int, Optional[str]]] = {}
     modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
     # DD-SIMCA e' um diagnostico de AUTENTICACAO DE PUREZA (N2): pergunta se
     # a amostra pertence a regiao de aceitacao da sua propria especie/classe.
@@ -1556,7 +1559,8 @@ def executar(cfg: Config):
         n_unknown     = int(np.sum(simca_pred == "Desconhecido"))
         n_ambig       = int(np.sum(simca_pred == "Ambiguo"))
 
-        print(f"  {'Classe':18s} {'sens':>7s} {'esp(adult)':>11s}")
+        print(f"  {'Classe':18s} {'sens(LOGO)':>11s} {'grupos':>7s} "
+              f"{'esp(adult)':>11s}")
         for cls in classes_unicas:
             if cls not in ddsimca_res:
                 continue
@@ -1568,11 +1572,33 @@ def executar(cfg: Config):
             idx_cls     = (rotulos == cls)
             n_puro_c    = int(idx_puro_c.sum())
             n_adult_c   = int(idx_adult_c.sum())
-            # sensitivity: 'puros' mode uses pure samples; 'todos' uses the whole class
+            n_grupos_c  = 0
+            aviso_sens: Optional[str] = None
+            # Sensibilidade:
+            #   'puros' (one-class N2): leave-one-group-out HONESTO por mae_id.
+            #     Re-substituicao (media sobre os proprios puros de treino) infla
+            #     para ~100% e NAO e evidencia de autenticacao -- mede o modelo
+            #     reconhecendo dados que ja viu. LOGO retreina sem um grupo de
+            #     replica e testa os puros retidos (ver sensibilidade_ddsimca_logo).
+            #   'todos': fracao in-sample da classe inteira aceita (ja rotulada
+            #     como nao-autenticacao no resumo/figuras).
             if modo_dd == "puros" and n_puro_c > 0:
-                sens = float(np.mean(aceito[idx_puro_c]))
+                if mae_id is not None:
+                    _logo = sensibilidade_ddsimca_logo(
+                        X_processed[idx_puro_c], mae_id[idx_puro_c],
+                        n_components=cfg.ddsimca_n_components,
+                        alpha=0.05, ucl_method=cfg.ddsimca_ucl_method)
+                    sens       = _logo["sensibilidade"]
+                    n_grupos_c = int(_logo["n_grupos"])
+                    aviso_sens = _logo["aviso"]
+                else:
+                    sens = float("nan")
+                    aviso_sens = ("Sensibilidade nao estimavel: mae_id ausente "
+                                  "(sem grupos de replica para LOGO).")
             else:
                 sens = float(np.mean(aceito[idx_cls]))
+                n_grupos_c = (int(len(np.unique(mae_id[idx_cls])))
+                              if mae_id is not None else 0)
             # B4: in 'todos' mode adulterated samples are IN TRAINING, so
             # "specificity" would be in-sample (not authentication) and misleading.
             # Only reported in 'puros' mode (true one-class).
@@ -1581,10 +1607,14 @@ def executar(cfg: Config):
                        if n_adult_c > 0 else float("nan"))
             else:
                 esp = float("nan")
-            ddsimca_sens_esp[cls] = (sens, esp, n_puro_c, n_adult_c)
-            esp_txt = f"{esp*100:9.1f}%" if esp == esp else "      n/a"
-            print(f"  {cls:18s} {sens*100:6.1f}% {esp_txt}"
+            ddsimca_sens_esp[cls] = (sens, esp, n_puro_c, n_adult_c,
+                                     n_grupos_c, aviso_sens)
+            sens_txt = f"{sens*100:.1f}%" if sens == sens else "n/a"
+            esp_txt  = f"{esp*100:9.1f}%" if esp == esp else "      n/a"
+            print(f"  {cls:18s} {sens_txt:>11s} {n_grupos_c:>7d} {esp_txt}"
                   f"   (puros={n_puro_c}, adult={n_adult_c})")
+            if aviso_sens:
+                print(f"    [AVISO] {cls}: {aviso_sens}")
         print(f"  Desconhecidos: {n_unknown}  |  Ambiguos: {n_ambig}")
         if ddsimca_res:
             # Essencial: painel de aceitacao consolidado (todas as classes).
@@ -1795,14 +1825,20 @@ def executar(cfg: Config):
         resumo["DD-SIMCA modo treino"] = (
             modo_dd + (" (one-class)" if modo_dd == "puros"
                        else " (in-sample; sens/esp NAO sao autenticacao)"))
-        # C4 — sensibilidade/especificidade one-class por classe
+        # C4 — sensibilidade (LOGO honesto por mae_id) / especificidade one-class.
+        # A sensibilidade NUNCA aparece sem o numero de grupos LOGO ao lado:
+        # com poucos grupos ela e exploratoria e o AVISO explicita a incerteza.
         for cls in classes_unicas:
             if cls in ddsimca_sens_esp:
-                s_c, e_c, npc, nac = ddsimca_sens_esp[cls]
+                s_c, e_c, npc, nac, ng, av = ddsimca_sens_esp[cls]
+                sens_s = (f"{s_c*100:.1f}%" if s_c == s_c
+                          else "n/a (nao validado)")
                 esp_s = f"{e_c*100:.1f}%" if e_c == e_c else "n/a"
-                resumo[f"DD-SIMCA {cls} sens/esp"] = (
-                    f"{s_c*100:.1f}% / {esp_s} "
-                    f"(puros={npc}, adult={nac})")
+                resumo[f"DD-SIMCA {cls} sens(LOGO)/esp"] = (
+                    f"{sens_s} / {esp_s} "
+                    f"(grupos_LOGO={ng}, puros={npc}, adult={nac})")
+                if av:
+                    resumo[f"DD-SIMCA {cls} AVISO"] = av
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
     if _martens_n_sig is not None:

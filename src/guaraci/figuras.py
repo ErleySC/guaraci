@@ -1354,9 +1354,11 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
     Each panel = 1 one-class model. Unit square = acceptance region.
     Points colored by true class.
 
-    If sens_esp is provided {class: (sens, spec, n_pure, n_adult)}, the title
-    shows 'sens.=XX% | spec.=YY%' (M2): sens = accepted pure samples,
-    spec = rejected adulterated samples.
+    If sens_esp is provided {class: (sens, spec, n_pure, n_adult, n_grupos,
+    aviso)}, the title shows 'sens.=XX% (LOGO n=G) | spec.=YY%' (M2): sens =
+    honest leave-one-group-out sensitivity (accepted held-out pure replicate
+    groups), spec = rejected adulterated samples, n_grupos = number of
+    independent pure replicate groups the LOGO estimate is based on.
     """
     classes = [c for c in scores.keys()]
     n_cls = len(classes)
@@ -1410,10 +1412,14 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         # Title: uses sens/spec from one-class model if available (M2);
         # otherwise falls back to fraction of own class accepted.
         if sens_esp is not None and cls in sens_esp:
-            sens_c, esp_c = sens_esp[cls][0], sens_esp[cls][1]
+            _info = sens_esp[cls]
+            sens_c, esp_c = _info[0], _info[1]
+            n_grp = _info[4] if len(_info) > 4 else None
             s_txt = f"{sens_c*100:.0f}%" if sens_c == sens_c else "n/a"
             e_txt = f"{esp_c*100:.0f}%"  if esp_c == esp_c else "n/a"
-            titulo_painel = f"Model: {cls}  sens.={s_txt} | spec.={e_txt}"
+            g_txt = f" (LOGO n={n_grp})" if n_grp is not None else ""
+            titulo_painel = (f"Model: {cls}  sens.={s_txt}{g_txt} "
+                             f"| spec.={e_txt}")
         else:
             idx_cls   = rotulos == cls
             n_cls_tot = int(idx_cls.sum())
@@ -1479,10 +1485,13 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
                      3.0)
         ax.set_xlim(piso * 0.8, lim_hi); ax.set_ylim(piso * 0.8, lim_hi)
         if sens_esp is not None and cls in sens_esp:
-            sc, ec = sens_esp[cls][0], sens_esp[cls][1]
+            _info = sens_esp[cls]
+            sc, ec = _info[0], _info[1]
+            n_grp = _info[4] if len(_info) > 4 else None
             st = f"{sc*100:.0f}%" if sc == sc else "n/a"
             et = f"{ec*100:.0f}%" if ec == ec else "n/a"
-            tt = f"DD-SIMCA: {cls}  sens.={st} | spec.={et}"
+            gt = f" (LOGO n={n_grp})" if n_grp is not None else ""
+            tt = f"DD-SIMCA: {cls}  sens.={st}{gt} | spec.={et}"
         else:
             tt = f"DD-SIMCA: {cls}"
         ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)")
