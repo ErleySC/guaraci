@@ -783,6 +783,41 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0, janela=120.0,
         )
 
 
+def fig_espectros_medios_classe(wavenumbers, X_raw, rotulos, mapa_cores,
+                                 cfg, pasta):
+    """Espectros medios por classe (banda = +-1 desvio-padrao) do dado
+    BRUTO -- contexto quimico antes de qualquer modelagem (item 3 da
+    lista de figuras que faltavam, CLAUDE.md secao 5). Ao contrario de
+    fig6_preprocessamento (comparacao antes/depois do pre-processamento,
+    restrita ao objetivo Exploratorio), esta e' CONTEXTO valido em
+    qualquer objetivo -- mesma logica de fig1_pca_scores/fig3_outliers,
+    por isso e' chamada incondicionalmente pelo executar()."""
+    rotulos = np.asarray(rotulos, dtype=str)
+    fig = plt.figure(figsize=(10.5, 5.4), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[6.0, 1.3])
+    ax = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+
+    for cls in np.unique(rotulos):
+        idx = rotulos == cls
+        m = X_raw[idx].mean(axis=0)
+        s = X_raw[idx].std(axis=0)
+        c = mapa_cores.get(cls, "0.4")
+        ax.plot(wavenumbers, m, color=c, lw=1.2, label=str(cls))
+        ax.fill_between(wavenumbers, m - s, m + s, color=c, alpha=0.15, lw=0)
+
+    ax.set_xlabel("Número de onda (cm$^{-1}$)")
+    ax.set_ylabel("Absorbância")
+    ax.set_title("Espectros médios por classe (banda = ±1 DP) — "
+                 "dado bruto, antes da modelagem", loc="left")
+    if len(wavenumbers) > 1 and wavenumbers[0] < wavenumbers[-1]:
+        ax.invert_xaxis()
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg, ax)
+
+    salvar(fig, "fig0_espectros_medios_classe", pasta, cfg)
+
+
 def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
                            mapa_cores, cfg, pasta):
     rotulos = np.asarray(rotulos, dtype=str)
@@ -1599,6 +1634,88 @@ def fig_loadings_pca(pca, wavenumbers: np.ndarray, cfg: "Config",
     fig.suptitle("Loading Plot PCA — contribuição espectral por componente",
                   fontsize=10, fontweight="bold")
     salvar(fig, "fig_loadings_pca", pasta, cfg)
+
+
+def _escala_vetores_biplot(scores2: np.ndarray, loadings: np.ndarray,
+                            frac: float = 0.8) -> float:
+    """Fator de escala UNICO p/ desenhar vetores de loading sobre scores,
+    tal que NENHUM vetor (em nenhum dos 2 eixos) ultrapasse `frac` do maior
+    score visivel NAQUELE eixo especifico.
+
+    Extraida como funcao pura (testavel sem renderizar figura) apos um bug
+    real: usar um unico fator calibrado pelo maior score CONJUNTO (max sobre
+    as 2 colunas juntas) deixava vetores com componente forte no eixo de
+    menor alcance (ex.: PC2, quando PC1 domina a variancia) desenhados MUITO
+    alem da area visivel daquele eixo -- rotulos apareciam flutuando fora do
+    grafico. Calibrando por eixo e usando o mais restritivo, todo vetor cabe
+    dentro do alcance visivel dos DOIS eixos, preservando um fator uniforme
+    (o angulo entre vetores continua interpretavel).
+    """
+    max_score_x = float(np.abs(scores2[:, 0]).max()) if scores2.size else 1.0
+    max_score_y = float(np.abs(scores2[:, 1]).max()) if scores2.size else 1.0
+    max_load_x  = float(np.abs(loadings[:, 0]).max()) if loadings.size else 1e-12
+    max_load_y  = float(np.abs(loadings[:, 1]).max()) if loadings.size else 1e-12
+    escala_x = frac * max_score_x / max(max_load_x, 1e-12)
+    escala_y = frac * max_score_y / max(max_load_y, 1e-12)
+    return min(escala_x, escala_y)
+
+
+def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
+                    rotulos, mapa_cores, cfg: "Config", pasta: str,
+                    n_vars_destacadas: int = 12) -> None:
+    """Biplot PCA classico: scores (PC1 x PC2, por amostra) + vetores de
+    loading das variaveis mais influentes SOBREPOSTOS no mesmo painel --
+    interpretacao quimica direta de quais regioes espectrais empurram cada
+    grupo de amostras na direcao observada (item 4 da lista de figuras que
+    faltavam, CLAUDE.md secao 5). Como um espectro tem centenas/milhares
+    de variaveis, mostra so' as `n_vars_destacadas` de maior magnitude
+    conjunta em PC1/PC2 -- senao o painel vira um emaranhado ilegivel
+    (pratica padrao em biplots de dados de alta dimensao).
+
+    Ref: Bro & Smilde (2014) Anal. Methods 6:2812-2831 (mesma referencia
+    de fig_loadings_pca).
+    """
+    rotulos = np.asarray(rotulos, dtype=str)
+    loadings = np.asarray(pca.components_[:2]).T   # (p, 2)
+    scores2  = np.asarray(scores_pca)[:, :2]
+
+    fig = plt.figure(figsize=(9.5, 7.2), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[6.0, 1.3])
+    ax = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+
+    for cls in np.unique(rotulos):
+        idx = rotulos == cls
+        ax.scatter(scores2[idx, 0], scores2[idx, 1], s=32, alpha=0.65,
+                   color=mapa_cores.get(cls, "0.4"), edgecolors="white",
+                   linewidths=0.4, label=str(cls), zorder=2)
+
+    escala = _escala_vetores_biplot(scores2, loadings)
+    mag = np.sqrt((loadings ** 2).sum(axis=1))
+    idx_top = np.argsort(mag)[::-1][:min(n_vars_destacadas, len(mag))]
+
+    for i in idx_top:
+        vx, vy = loadings[i, 0] * escala, loadings[i, 1] * escala
+        ax.annotate("", xy=(vx, vy), xytext=(0, 0),
+                    arrowprops=dict(arrowstyle="-|>", color="0.15", lw=1.1,
+                                    shrinkA=0, shrinkB=0), zorder=4)
+        ax.text(vx * 1.08, vy * 1.08, f"{wavenumbers[i]:.0f}",
+               fontsize=7, color="0.15", ha="center", va="center",
+               fontweight="bold", zorder=5)
+
+    ax.axhline(0, color="0.75", lw=0.5, ls=":")
+    ax.axvline(0, color="0.75", lw=0.5, ls=":")
+    var1 = float(pca.explained_variance_ratio_[0]) * 100
+    var2 = float(pca.explained_variance_ratio_[1]) * 100
+    ax.set_xlabel(f"PC1 ({var1:.1f}%)")
+    ax.set_ylabel(f"PC2 ({var2:.1f}%)")
+    ax.set_title(
+        f"Biplot PCA — scores + top-{len(idx_top)} loadings "
+        f"(número de onda, cm$^{{-1}}$)", loc="left")
+    ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg, ax)
+
+    salvar(fig, "fig_biplot_pca", pasta, cfg)
 
 
 def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,

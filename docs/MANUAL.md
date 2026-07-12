@@ -147,14 +147,16 @@ supervisionado.
 
 | Objetivo | Figuras/relatórios pertinentes |
 |---|---|
-| **Exploratório** | PCA (*scores*), HCA (dendrograma), *loadings* PCA, efeito do pré-processamento |
+| **Exploratório** | PCA (*scores*), HCA (dendrograma), *loadings* PCA, *biplot* PCA (scores + loadings sobrepostos), efeito do pré-processamento |
 | **Classificação** | PLS-DA (*scores*), matriz de confusão, ROC/AUC, VIP, seleção de LVs, Selectivity Ratio, DD-SIMCA, OPLS-DA, Etapa 4, teste de Wold, holdout, teste de Martens, Auto-Benchmark, Monte Carlo CV, SHAP |
 | **Quantificação** | Regressão PLS + figuras de mérito analíticas (LOD/LOQ/SEN/SEL) |
 
-Figuras de **contexto geral** — PCA de *scores* (visão geral) e o painel de
-*outliers* T²/Q — aparecem em **qualquer** objetivo, pois derivam do próprio
-ajuste do modelo usado para a visão geral da amostragem, independentemente
-do propósito específico da corrida.
+Figuras de **contexto geral** — **espectros médios por classe** (banda =
+±1 desvio-padrão, dado bruto antes de qualquer modelagem), PCA de *scores*
+(visão geral) e o painel de *outliers* T²/Q — aparecem em **qualquer**
+objetivo, pois oferecem contexto químico/diagnóstico válido
+independentemente do propósito específico da corrida (a primeira nem
+depende de um modelo ajustado — é só o dado bruto agrupado por classe).
 
 **Otimização de desempenho:** a filtragem por objetivo não suprime apenas a
 *figura* — também evita a **computação** cara que só interessaria à
@@ -177,16 +179,17 @@ aparecerem como valores não computados.
   **espécie** (mesmo alvo do PLS-DA, via LDA quando há mais de duas
   classes), então continua disponível como extra no objetivo Classificação.
 
-**Conjunto padrão de fábrica (~7 a 9 figuras "*core*"), qualquer nível:**
-PCA (*scores*), PLS-DA (*scores*), *outliers* T²/Q, matriz de confusão,
-ROC/AUC, curva de seleção de LVs, VIP + Selectivity Ratio — mais *bootstrap*
-VIP e avaliação em *holdout* quando os respectivos parâmetros estão ativos
-(padrão). N2 soma a figura de aceitação DD-SIMCA; N3 soma a figura de
-regressão PLS e a figura de mérito analítica dedicada. Tudo o mais —
-OPLS-DA, Etapa 4 (seleção de variáveis), comparação de *pipelines* de
-pré-processamento, HCA comparativo, teste de Wold, CV-ANOVA, Auto-Benchmark,
-Monte Carlo CV, SHAP, figuras detalhadas (`figuras_detalhadas`) — é *opt-in*:
-o usuário liga explicitamente quando quiser ir além do conjunto padrão.
+**Conjunto padrão de fábrica (~8 a 10 figuras "*core*"), qualquer nível:**
+espectros médios por classe, PCA (*scores*), PLS-DA (*scores*), *outliers*
+T²/Q, matriz de confusão, ROC/AUC, curva de seleção de LVs, VIP +
+Selectivity Ratio — mais *bootstrap* VIP e avaliação em *holdout* quando os
+respectivos parâmetros estão ativos (padrão). N2 soma a figura de aceitação
+DD-SIMCA; N3 soma a figura de regressão PLS e a figura de mérito analítica
+dedicada. Tudo o mais — OPLS-DA, Etapa 4 (seleção de variáveis), *biplot*
+PCA, comparação de *pipelines* de pré-processamento, HCA comparativo, teste
+de Wold, CV-ANOVA, Auto-Benchmark, Monte Carlo CV, SHAP, figuras detalhadas
+(`figuras_detalhadas`) — é *opt-in*: o usuário liga explicitamente quando
+quiser ir além do conjunto padrão.
 
 ---
 
@@ -674,6 +677,17 @@ de modelo `.joblib` agora passa por `carregar_modelo(confiar=True)`
 obrigatório (CLI: confirmação s/n; app: caixa de seleção) + manifesto
 SHA-256 gerado junto de todo modelo exportado, que bloqueia o carregamento
 se o arquivo for trocado depois. Antes disso: nova seção 9 "Limitações
+2 figuras que faltavam (CLAUDE.md seção 5): **espectros médios por classe**
+(`fig0_espectros_medios_classe.png`, banda ±1 DP, dado bruto, gerada em
+qualquer objetivo — contexto químico antes da modelagem) e **biplot PCA**
+(`fig_biplot_pca.png`, scores + top-12 loadings sobrepostos, objetivo
+Exploratório) — as outras 2 figuras "que faltavam" (RMSECV×LVs e o heatmap
+espécie×adulterante) já existiam, achado ao verificar antes de implementar.
+Bug real corrigido no biplot antes do commit: escala única calibrada pelo
+maior score conjunto (PC1+PC2) desenhava vetores com componente forte no
+eixo de menor alcance fora da área visível — corrigido calibrando por eixo
+e usando o mais restritivo (`_escala_vetores_biplot`, com teste de
+regressão dedicado). Antes disso: nova seção 9 "Limitações
 conhecidas" (item do roadmap CLAUDE.md) — 9 itens verificados no código
 desta revisão (DD-SIMCA/LOGO, regressão por espécie, modo imagem
 protótipo, FT-NIR vs. MIR/Raman não validado, `.joblib`/RCE, `mae_id`

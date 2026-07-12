@@ -208,6 +208,8 @@ from guaraci.figuras import (   # noqa: E402
     fig_cooman_ddsimca,
     fig_merito_regressao,
     fig_heatmap_especie_adulterante,
+    fig_espectros_medios_classe,
+    fig_biplot_pca,
 )
 
 # Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
@@ -1502,6 +1504,11 @@ def executar(cfg: Config):
     marcadores_fig = (mapa_marcadores if cfg.mostrar_marcadores_classe
                       else None)
     # ---- OVERVIEW (sempre — contexto valido em qualquer objetivo) ----
+    # Espectros medios por classe: dado BRUTO, antes de qualquer modelagem
+    # -- mesma logica de "sempre" do PCA/T2-Q abaixo (nao e' uma analise
+    # exploratoria opcional, e' contexto quimico minimo para ler o resto).
+    fig_espectros_medios_classe(wavenumbers, X_raw, rotulos, mapa_cores,
+                                 cfg, pasta)
     fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                      puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
     # ---- EXPLORATORIAS: nucleo do Modo Exploratorio; escotilha detalhada
@@ -1509,6 +1516,8 @@ def executar(cfg: Config):
     if _fig_explor_on:
         fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta)
         fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
+        fig_biplot_pca(pca, scores_pca, wavenumbers, rotulos, mapa_cores,
+                       cfg, pasta)
     if cfg.comparar_hca_pipelines and _fig_explor_on:
         fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta)
     # ---- CLASSIFICACAO (supervisionada) — filtrada fora de N1/N2 ----
