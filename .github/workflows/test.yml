@@ -56,6 +56,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # xgboost (extra [benchmark]) linka contra libomp em runtime no macOS;
+      # macos-latest nao vem com o Homebrew OpenMP pre-instalado (ao contrario
+      # de ubuntu/windows, onde o wheel do xgboost ja embute o equivalente).
+      # Sem isso, todo teste que importa xgboost falha com dlopen "Library
+      # not loaded: @rpath/libomp.dylib" -- nao e' um bug do guaraci.
+      - name: Install libomp (macOS only, required by xgboost)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
       - name: Cache pip
         uses: actions/cache@v6
         with:
