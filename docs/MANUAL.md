@@ -21,7 +21,8 @@ estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
 6. [Fluxo típico na interface web](#6-fluxo-típico-na-interface-web)
 7. [Mapa dos módulos (para desenvolvedores)](#7-mapa-dos-módulos-para-desenvolvedores)
 8. [Desenvolvimento](#8-desenvolvimento)
-9. [Referências](#referências)
+9. [Limitações conhecidas](#9-limitações-conhecidas)
+10. [Referências](#referências)
 
 ---
 
@@ -527,6 +528,92 @@ ruff check .                  # lint estático
 
 ---
 
+## 9 Limitações conhecidas
+
+Esta seção existe porque declarar limites **aumenta** a confiança no
+software — o oposto de esconder os pontos fracos. Cada item abaixo foi
+verificado no código desta revisão (ou está marcado explicitamente quando
+o número vem de uma rodada anterior contra o dataset real, não
+re-executada nesta sessão).
+
+- **Sensibilidade DD-SIMCA (N2) depende do número de grupos de réplica
+  pura.** É estimada por *leave-one-group-out* (LOGO) por `mae_id` — ver
+  seção 2.1. Com um único grupo de puros por espécie (réplicas físicas da
+  **mesma** amostra, não amostras independentes), a sensibilidade **não é
+  validável** e o campo mostra `n/a (não validado)`, nunca um número
+  inflado. Para ter sensibilidade defensável é preciso ≥2 amostras puras
+  **fisicamente independentes** por espécie. A especificidade (rejeição de
+  adulterados) não tem essa limitação — é medida em amostras que nunca
+  entraram no treino.
+
+- **Regressão de teor agrupando espécies não funciona (R²≈0).** A variação
+  espectral entre espécies (~90% da variância total) domina completamente
+  o sinal de adulteração — o modelo "aprende a prever a média" em vez de
+  quantificar. A granularidade correta é **por espécie** (padrão do
+  Guaraci, `pls_regressao_por_especie`) ou, mais fino ainda, **por espécie
+  × adulterante** (o mapa de calor da seção 2.1) — nem todo par
+  espécie/adulterante é quantificável, e o heatmap marca explicitamente
+  quais falham em vez de escondê-los numa média.
+
+- **Modo imagem (colorimetria digital) é protótipo, não validado com
+  dataset real.** O carregador (`dados_imagem.py`) está documentado no
+  próprio código como protótipo: `conc` e `mae_id` são sempre `None`
+  (sem quantificação, sem proteção anti-vazamento de réplica nesse modo),
+  e o eixo de "variáveis" retornado não corresponde a comprimento de onda
+  físico. Não usar para resultado publicável sem validação adicional.
+
+- **Validado majoritariamente em FT-NIR.** O motor de pré-processamento e
+  modelagem é agnóstico ao tipo de espectro (o parser JCAMP-DX aceita
+  FT-NIR, NIR, MIR e Raman, e a interface oferece presets de
+  pré-processamento para MIR), mas **nenhuma rodada com dado real de MIR
+  ou Raman foi validada neste projeto** — o caso de uso âncora e todos os
+  resultados reportados são FT-NIR de óleos amazônicos. Relatos de uso com
+  outras técnicas são bem-vindos, mas trate como não testado até prova em
+  contrário.
+
+- **Carregar um modelo `.joblib` executa código arbitrário.** É uma
+  limitação do formato pickle, não do Guaraci — ver `SECURITY.md` na raiz
+  para a política completa e as proteções implementadas (confirmação
+  explícita obrigatória + manifesto de integridade).
+
+- **`mae_id` mal formado vira "órfão" (grupo de 1 amostra), perdendo a
+  proteção anti-vazamento só para essa amostra.** Quando o nome do arquivo
+  `.dx` não casa com o padrão esperado no `##TITLE=` (JCAMP-DX), o parser
+  não trava o carregamento — atribui um `mae_id` único (`orfao_<arquivo>`)
+  a essa amostra isolada, para não desabilitar o `GroupKFold` do dataset
+  inteiro por causa de um arquivo mal nomeado. O `[INFO]` impresso no
+  console/log mostra quantos arquivos viraram órfãos; **conferir sempre
+  esse número** — muitos órfãos indicam um problema sistemático de
+  nomenclatura, não ruído isolado.
+
+- **Auto-Benchmark e Monte Carlo CV usam hiperparâmetros por heurística de
+  literatura, sem *tuning* por validação cruzada interna** (mesmo padrão
+  para todos os classificadores/regressores comparados — SVM, Random
+  Forest, XGBoost, Ridge, Lasso, Elastic Net, SVR). É uma comparação justa
+  entre modelos *fora da caixa*, não a melhor versão possível de cada um;
+  não usar essas tabelas para afirmar que um algoritmo é *inerentemente*
+  melhor que outro sem otimizar os hiperparâmetros de ambos.
+
+- **Sem *benchmark* ainda contra um dataset público externo** (ex.:
+  Tecator, dataset de milho da Eigenvector). Toda a validação numérica
+  disponível hoje (ver `docs/VALIDATION.md`) é contra fórmulas fechadas e
+  propriedades matemáticas, não contra resultados publicados de terceiros
+  rodando o pipeline inteiro. Item de roadmap em aberto.
+
+- **Classes com poucas amostras ou espectralmente próximas têm recall mais
+  baixo** — reporte sempre a **matriz de confusão completa**, nunca só a
+  acurácia agregada, que pode esconder uma classe minoritária mal
+  classificada. Duas espécies de palmácea com assinatura NIR muito
+  próxima (Babaçu e Palmiste) são um caso conhecido de limitação
+  **botânica/química**, não de código — ver `README.md`. *(Números
+  específicos de recall por classe e de espectros descartados por faixa
+  incompatível variam por dataset; a última rodada completa contra o
+  dataset real do TCC não foi re-executada nesta sessão de auditoria —
+  conferir o `resumo_modelo.txt`/matriz de confusão da rodada mais
+  recente para os valores atuais.)*
+
+---
+
 ## REFERÊNCIAS
 
 ARAÚJO, M. C. U. et al. The successive projections algorithm for variable
@@ -586,7 +673,13 @@ correta e não mudou. Antes disso: `SECURITY.md` novo (raiz) — carregamento
 de modelo `.joblib` agora passa por `carregar_modelo(confiar=True)`
 obrigatório (CLI: confirmação s/n; app: caixa de seleção) + manifesto
 SHA-256 gerado junto de todo modelo exportado, que bloqueia o carregamento
-se o arquivo for trocado depois. Antes: mapa de calor espécie × adulterante (N3,
+se o arquivo for trocado depois. Antes disso: nova seção 9 "Limitações
+conhecidas" (item do roadmap CLAUDE.md) — 9 itens verificados no código
+desta revisão (DD-SIMCA/LOGO, regressão por espécie, modo imagem
+protótipo, FT-NIR vs. MIR/Raman não validado, `.joblib`/RCE, `mae_id`
+órfão, hiperparâmetros do benchmark sem tuning, sem dataset público
+externo, recall por classe) — números específicos de dataset real
+marcados como não re-executados nesta sessão. Antes: mapa de calor espécie × adulterante (N3,
 `figN3_heatmap_especie_adulterante.png`) — R²cv por combinação, com células
 reprovadas hachuradas e contador de falhas no título e no relatório;
 sensibilidade DD-SIMCA (N2) agora estimada por
