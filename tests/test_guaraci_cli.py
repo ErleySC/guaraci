@@ -158,3 +158,70 @@ def test_preset_objetivo_aplica_no_config_via_spec(
         if sp:
             setattr(cfg, sp["attr"], v)
     assert getattr(cfg, attr) == valor_esperado
+
+
+# ── Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12) ───────
+@pytest.fixture(autouse=False)
+def _modo_iniciante_limpo(guaraci_mod):
+    """Reseta o estado global de modo antes/depois de cada teste desta secao
+    -- _STATE e' um dict de modulo, persiste entre testes sem isolamento."""
+    anterior = guaraci_mod._modo_usuario()
+    guaraci_mod._STATE["modo_usuario"] = "iniciante"
+    yield
+    guaraci_mod._STATE["modo_usuario"] = anterior
+
+
+def test_toggle_modo_usuario_alterna_iniciante_avancado(guaraci_mod, _modo_iniciante_limpo):
+    assert guaraci_mod._modo_usuario() == "iniciante"
+    assert guaraci_mod._toggle_modo_usuario() == "avancado"
+    assert guaraci_mod._modo_usuario() == "avancado"
+    assert guaraci_mod._toggle_modo_usuario() == "iniciante"
+
+
+def test_print_submenu_compact_esconde_avancados_no_modo_iniciante(
+        guaraci_mod, _modo_iniciante_limpo):
+    """No modo Iniciante, sem 'mostrar_avancado', os campos em
+    campos_avancados NAO aparecem na lista retornada (que e' a fonte da
+    verdade p/ indexacao numerica do menu)."""
+    cfg = guaraci_mod.Config()
+    fields = ["nivel", "max_lvs", "opls_da", "ddsimca"]
+    visiveis = guaraci_mod._print_submenu_compact(
+        "t", "d", fields, cfg,
+        campos_avancados={"opls_da", "ddsimca"}, mostrar_avancado=False)
+    assert visiveis == ["nivel", "max_lvs"]
+
+
+def test_print_submenu_compact_revela_avancados_quando_pedido(
+        guaraci_mod, _modo_iniciante_limpo):
+    """Com mostrar_avancado=True (usuario apertou [V] naquela visita ao
+    menu), a lista completa volta a aparecer, mesmo em modo Iniciante."""
+    cfg = guaraci_mod.Config()
+    fields = ["nivel", "max_lvs", "opls_da", "ddsimca"]
+    visiveis = guaraci_mod._print_submenu_compact(
+        "t", "d", fields, cfg,
+        campos_avancados={"opls_da", "ddsimca"}, mostrar_avancado=True)
+    assert visiveis == fields
+
+
+def test_print_submenu_compact_modo_avancado_ignora_ocultacao(
+        guaraci_mod, _modo_iniciante_limpo):
+    """No modo Avancado (sessao inteira), campos_avancados nao esconde nada
+    -- so' faz sentido filtrar quando o usuario esta no modo Iniciante."""
+    guaraci_mod._STATE["modo_usuario"] = "avancado"
+    cfg = guaraci_mod.Config()
+    fields = ["nivel", "max_lvs", "opls_da", "ddsimca"]
+    visiveis = guaraci_mod._print_submenu_compact(
+        "t", "d", fields, cfg,
+        campos_avancados={"opls_da", "ddsimca"}, mostrar_avancado=False)
+    assert visiveis == fields
+
+
+def test_print_submenu_compact_sem_campos_avancados_nunca_filtra(
+        guaraci_mod, _modo_iniciante_limpo):
+    """Compatibilidade: chamadores que nao passam campos_avancados (a
+    maioria dos menus existentes) continuam vendo TODOS os campos --
+    comportamento identico ao de antes desta feature."""
+    cfg = guaraci_mod.Config()
+    fields = ["pre_processamento", "comparar_pre_processamentos"]
+    visiveis = guaraci_mod._print_submenu_compact("t", "d", fields, cfg)
+    assert visiveis == fields

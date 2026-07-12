@@ -6,6 +6,41 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.7.0 — 2026-07-13 — Modo Iniciante/Avancado nos submenus da CLI (CLAUDE.md secao 6):
+             (1) Toggle global [M] no menu principal (Modo: Iniciante/
+                 Avancado), persistido em .cli_modo_usuario (mesmo padrao
+                 de persistencia do idioma). Default: Iniciante;
+             (2) `_print_submenu_compact` ganha `campos_avancados`/
+                 `mostrar_avancado`: quando o modo e' Iniciante e o reveal
+                 local nao foi ativado, esconde os campos marcados como
+                 avancados e retorna a lista de campos REALMENTE exibidos
+                 (a fonte da verdade p/ indexacao numerica -- callers
+                 precisam usar essa lista, nao o `fields` original, senao
+                 o numero digitado pelo usuario aponta pro campo errado
+                 quando ha' campos escondidos). Compatibilidade: chamadores
+                 que nao passam `campos_avancados` (menu_preproc,
+                 menu_avancado, menu_visualizacao) continuam vendo todos os
+                 campos, sem mudanca de comportamento;
+             (3) revelacao LOCAL [V] por submenu (menu_modelagem via
+                 `_loop_menu`, menu_validacao com loop proprio): expande
+                 so' aquela visita ao menu, sem mudar o modo da sessao
+                 inteira -- design pedido explicitamente pelo autor;
+             (4) Campos escondidos por padrao: menu_modelagem ->
+                 opls_da/ddsimca/modo_ddsimca/selecao_variaveis_etapa4
+                 (nivel N2 ja forca DD-SIMCA automaticamente); menu_validacao
+                 -> n_permutacoes/teste_wold/teste_cv_anova (testes extras,
+                 tuning fino). menu_preproc (so' 2 campos), menu_avancado
+                 (ja e' uma secao separada de modulos pesados) e
+                 menu_tecnica/menu_codificacao (nao sao listas de
+                 hiperparametro) foram deixados de fora, de proposito;
+             (5) Verificado interativamente via CLI real (stdin scriptado):
+                 modo Iniciante esconde 4/6 campos em Modelagem com o aviso
+                 "[V] Mostrar opcoes avancadas (4 ocultas)"; [V] revela
+                 tudo so' naquela visita; [M] alterna o modo global e a
+                 proxima entrada no menu ja reflete os 6 campos completos.
+```
+
+```
 v31.6.0 — 2026-07-13 — Cobertura do nucleo cientifico -> 95% (CLAUDE.md P4):
              (1) classificadores.py 93% -> 97%: testes de propriedade para
                  casos degenerados do NIPALS PLS1 (X todo-zero interrompe

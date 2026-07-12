@@ -1,5 +1,5 @@
 """
-guaraci.py v31.6.0 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v31.7.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
 GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
 
@@ -124,7 +124,7 @@ _CODIGOS_PATH= _BASE_DIR / "codigos_usuario.json"
 # ---------------------------------------------------------------------------
 # Estado global
 # ---------------------------------------------------------------------------
-_STATE: Dict[str, Any] = {"lang": "PT"}
+_STATE: Dict[str, Any] = {"lang": "PT", "modo_usuario": "iniciante"}
 
 def _lang() -> str:
     return _STATE["lang"]
@@ -140,6 +140,38 @@ def _toggle_idioma() -> str:
     novo = "EN" if _lang() == "PT" else "PT"
     _set_lang(novo)
     return novo
+
+# Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12): alterna
+# GLOBALMENTE se os submenus escondem campos avancados por padrao. Mesmo
+# padrao de persistencia do idioma (arquivo-flag lido no proximo start);
+# NAO usa o mecanismo de visual_config.json -- esse esta quebrado (achado
+# 2026-07-13: _cli nao define _carregar_visual_cfg/_salvar_visual_cfg, os
+# wrappers em guaraci.py sempre retornam {} / viram no-op silenciosamente;
+# fora do escopo desta feature consertar isso).
+_MODO_FLAG = _BASE_DIR / ".cli_modo_usuario"
+
+def _modo_usuario() -> str:
+    return _STATE["modo_usuario"]
+
+def _set_modo_usuario(m: str) -> None:
+    _STATE["modo_usuario"] = m
+    try:
+        _MODO_FLAG.write_text(m, encoding="utf-8")
+    except OSError:
+        pass
+
+def _toggle_modo_usuario() -> str:
+    novo = "avancado" if _modo_usuario() == "iniciante" else "iniciante"
+    _set_modo_usuario(novo)
+    return novo
+
+if _MODO_FLAG.exists():
+    try:
+        _v = _MODO_FLAG.read_text(encoding="utf-8").strip()
+        if _v in ("iniciante", "avancado"):
+            _STATE["modo_usuario"] = _v
+    except OSError:
+        pass
 
 # ---------------------------------------------------------------------------
 # PALETA + tema + console: fonte unica em guaraci_theme (compartilhada com o
@@ -1000,8 +1032,12 @@ def _print_main_menu() -> None:
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
-    t.add_row(*row("P", _t("t_perfis"),  "I", _t("t_idioma"), style1=S, style2=S))
-    t.add_row(*row("G", "Guaraci ☀",    "?", _t("t_ajuda"),  style1=PA, style2=M))
+    modo_lbl = (f"Modo: {'Iniciante' if _modo_usuario()=='iniciante' else 'Avancado'}"
+                if is_pt else
+                f"Mode: {'Beginner' if _modo_usuario()=='iniciante' else 'Advanced'}")
+    t.add_row(*row("P", _t("t_perfis"),  "M", modo_lbl, style1=S, style2=S))
+    t.add_row(*row("I", _t("t_idioma"),  "?", _t("t_ajuda"),  style1=S, style2=M))
+    t.add_row(*row("G", "Guaraci ☀", style1=PA))
     sobre_lbl = "Sobre" if lang == "PT" else "About"
     t.add_row(*row("A", sobre_lbl,       "Q", _t("sair"),     style1=S, style2=M))
 
@@ -1119,12 +1155,31 @@ def _desc_curta(key: str, max_c: int = 42) -> str:
 def _print_submenu_compact(
     title: str, desc: str, fields: List[str], cfg: Config,
     extras: Optional[List[Tuple[str, str]]] = None,
-) -> None:
+    campos_avancados: Optional[set] = None,
+    mostrar_avancado: bool = True,
+) -> List[str]:
     """
     Submenu compacto: [N] ICON Nome  Valor  Descricao-breve
     Exibe o valor atual e uma descricao curta na mesma linha.
+
+    `campos_avancados`: subconjunto de `fields` a ESCONDER quando o modo do
+    usuario e' Iniciante e `mostrar_avancado=False` (CLAUDE.md secao 6 /
+    auditoria 2026-07-12: reduzir a densidade de configuracao p/ quem so'
+    quer usar os defaults). Quando `None`, nenhum campo e' escondido --
+    comportamento identico ao de antes desta feature (compatibilidade com
+    chamadores que nao passam esse argumento).
+
+    Retorna a lista de campos REALMENTE exibidos (numerados 1..N na tela),
+    que o chamador deve usar para indexar a escolha do usuario -- os
+    numeros na tela sempre correspondem a esta lista, nunca ao `fields`
+    original quando ha' campos escondidos.
     """
     lang = _lang()
+    ocultos = (campos_avancados or set()) if (
+        campos_avancados and _modo_usuario() == "iniciante" and not mostrar_avancado
+    ) else set()
+    fields_visiveis = [f for f in fields if f not in ocultos]
+
     t = Table(box=None, show_header=False, padding=(0, 0), expand=True)
     t.add_column("N",    no_wrap=True, width=5)
     t.add_column("Ico",  no_wrap=True, width=2)
@@ -1132,7 +1187,7 @@ def _print_submenu_compact(
     t.add_column("Val",  no_wrap=True, min_width=10, max_width=18)
     t.add_column("Desc", no_wrap=True, style=PM)
 
-    for i, key in enumerate(fields, 1):
+    for i, key in enumerate(fields_visiveis, 1):
         nome  = _nome_campo(key)
         val   = _get_val(cfg, key)
         r_hex = _risco_hex(key)
@@ -1168,7 +1223,15 @@ def _print_submenu_compact(
             )
 
     # Rodape: legenda de risco + comandos
+    n_ocultos = len(fields) - len(fields_visiveis)
+    aviso_ocultos = (
+        (f"  [{PR}][V][/{PR}] Mostrar opcoes avancadas ({n_ocultos} ocultas)\n"
+         if lang == "PT" else
+         f"  [{PR}][V][/{PR}] Show advanced options ({n_ocultos} hidden)\n")
+        if n_ocultos > 0 else ""
+    )
     rodape = Text.from_markup(
+        f"{aviso_ocultos}"
         f"  [{PF}]●[/{PF}] Visual  "
         f"[{PA}]◆[/{PA}] Analitico  "
         f"[{PR}]▲[/{PR}] Avancado  "
@@ -1186,6 +1249,7 @@ def _print_submenu_compact(
         box=rbox.ROUNDED,
         padding=(0, 1),
     ))
+    return fields_visiveis
 
 # ---------------------------------------------------------------------------
 # EDICAO DE CAMPO
@@ -1327,31 +1391,42 @@ def _mostrar_ajuda(key: str) -> None:
 
 def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
                extras: Optional[List[Tuple[str, str]]] = None,
-               on_extra: Optional[Dict[str, Any]] = None) -> None:
-    """Loop generico para submenus de configuracao."""
+               on_extra: Optional[Dict[str, Any]] = None,
+               campos_avancados: Optional[set] = None) -> None:
+    """Loop generico para submenus de configuracao.
+
+    `campos_avancados`: ver `_print_submenu_compact`. O reveal ("V") e'
+    local a esta visita ao menu -- sai e volta a entrar reseta p/ escondido
+    de novo quando o modo do usuario e' Iniciante (design: expandir um
+    submenu especifico nao muda o modo da sessao inteira)."""
+    mostrar_avancado = False
     while True:
         cls()
         _print_header()
-        _print_submenu_compact(title, desc, fields, cfg, extras)
+        fields_visiveis = _print_submenu_compact(
+            title, desc, fields, cfg, extras,
+            campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
 
         if raw in ("0", "Q", ""):
             break
+        elif raw == "V" and campos_avancados:
+            mostrar_avancado = not mostrar_avancado
         elif raw == "I":
             _toggle_idioma()
         elif raw == "G":
             _abrir_assistente(title, cfg)
         elif raw == "?":
             r2 = _input("  Campo (N ou nome): ").strip()
-            if r2.isdigit() and 1 <= int(r2) <= len(fields):
-                _mostrar_ajuda(fields[int(r2) - 1])
+            if r2.isdigit() and 1 <= int(r2) <= len(fields_visiveis):
+                _mostrar_ajuda(fields_visiveis[int(r2) - 1])
             elif r2 in HELP_DB:
                 _mostrar_ajuda(r2)
             else:
                 found = [k for k in HELP_DB if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
                 _mostrar_ajuda(found[0]) if found else console.print(f"  [{PM}]{_t('invalido')}[/{PM}]")
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields):
-            _editar_campo(cfg, fields[int(raw) - 1])
+        elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
+            _editar_campo(cfg, fields_visiveis[int(raw) - 1])
             _pause()
         elif on_extra and raw in on_extra:
             on_extra[raw]()
@@ -1408,14 +1483,25 @@ def menu_preproc(cfg: Config) -> None:
 
 
 def menu_modelagem(cfg: Config) -> None:
+    # Essenciais p/ Iniciante: nivel (o que estou fazendo) + max_lvs (unico
+    # numero que costuma precisar ajustar). Avancados: DD-SIMCA/OPLS-DA/
+    # selecao de variaveis sao metodos extras, nao o caminho basico.
     _loop_menu(_t("t_modelagem"), _t("d_modelagem"),
                ["nivel", "max_lvs", "opls_da", "ddsimca",
-                "modo_ddsimca", "selecao_variaveis_etapa4"], cfg)
+                "modo_ddsimca", "selecao_variaveis_etapa4"], cfg,
+               campos_avancados={"opls_da", "ddsimca", "modo_ddsimca",
+                                  "selecao_variaveis_etapa4"})
 
 
 def menu_validacao(cfg: Config) -> None:
     fields = ["holdout_fracao", "validacao_group_aware",
               "n_permutacoes", "teste_wold", "teste_cv_anova"]
+    # Essenciais p/ Iniciante: holdout_fracao (facil de entender: quanto fica
+    # de fora p/ teste) + validacao_group_aware (o diferencial central do
+    # projeto -- fica visivel mesmo p/ quem nao vai mexer nele). Avancados:
+    # testes estatisticos extras (Wold/CV-ANOVA), permutacoes sao tuning fino.
+    campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova"}
+    mostrar_avancado = False
     while True:
         cls(); _print_header()
         ga = _cfgv(cfg, "validacao_group_aware", True)
@@ -1425,16 +1511,20 @@ def menu_validacao(cfg: Config) -> None:
                 "[err]  Ative o campo [2] imediatamente.[/err]",
                 border_style=PR, box=rbox.HEAVY, padding=(0, 1)
             ))
-        _print_submenu_compact(_t("t_validacao"), _t("d_validacao"), fields, cfg)
+        fields_visiveis = _print_submenu_compact(
+            _t("t_validacao"), _t("d_validacao"), fields, cfg,
+            campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0", "Q"):
             break
+        elif raw == "V":
+            mostrar_avancado = not mostrar_avancado
         elif raw == "I":
             _toggle_idioma()
         elif raw == "G":
             _abrir_assistente(_t("t_validacao"), cfg)
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields):
-            _editar_campo(cfg, fields[int(raw) - 1]); _pause()
+        elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
+            _editar_campo(cfg, fields_visiveis[int(raw) - 1]); _pause()
         else:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
@@ -3312,6 +3402,14 @@ def main() -> None:
             menu_perfis(cfg)
         elif escolha == "G":
             _abrir_assistente("menu principal", cfg)
+        elif escolha == "M":
+            novo_modo = _toggle_modo_usuario()
+            _lbl = ("Iniciante" if novo_modo == "iniciante" else "Avancado") \
+                if _lang() == "PT" else \
+                ("Beginner" if novo_modo == "iniciante" else "Advanced")
+            console.print(f"  [g]✓ Modo: {_lbl}[/g]" if _lang() == "PT"
+                         else f"  [g]✓ Mode: {_lbl}[/g]")
+            _pause()
         elif escolha == "I":
             _toggle_idioma()
         elif escolha == "S":

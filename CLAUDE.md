@@ -97,8 +97,8 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.6.0 | `grep -r version pyproject.toml` |
-| Testes | 557 pass, 1 skip | `pytest -q` |
+| Versão | 31.7.0 | `grep -r version pyproject.toml` |
+| Testes | 562 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
 | `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
@@ -618,23 +618,33 @@ e resolvido:
 
 ## 6. UX — O QUE ESTÁ ERRADO
 
-> Atualizado em 2026-07-13. Ver correção parcial abaixo — a parte "3 presets
-> + botão de análise recomendada" foi implementada; a parte "esconder
-> hiperparâmetros atrás de expander em CADA submenu" não foi (escopo maior,
-> ver nota).
+> Atualizado em 2026-07-13.
 
-- **Densidade de configuração.** ✅ **Parcialmente resolvido.** 3 presets por
-  objetivo científico — **Explorar Dados / Autenticar Pureza / Quantificar
-  Teor** (nomes sem sufixo N1/N2/N3, P8) — implementados em `PROFILES`
+- **Densidade de configuração.** ✅ **Resolvido.** 3 presets por objetivo
+  científico — **Explorar Dados / Autenticar Pureza / Quantificar Teor**
+  (nomes sem sufixo N1/N2/N3, P8) — implementados em `PROFILES`
   (`cli_assistente.py`), reaproveitando a mesma infraestrutura dos perfis de
   rigor já existentes (`menu_perfis`, CLI) e espelhados na aba Dados do app
   web (`app_tabs/dados.py`, botões 🔍/🛡️/📊). Aplicar um preset já ajusta
   `nivel`+`objetivo`+módulos pesados de uma vez.
-  **Não feito** (escopo maior, ficou de fora desta rodada): esconder os 84
-  campos atrás de um alternador Iniciante/Avançado em CADA submenu
-  (`menu_preproc`, `menu_modelagem`, `menu_validacao`, `menu_tecnica`,
-  `menu_codificacao`) — isso exigiria threading de um flag de modo por
-  todos os `_print_submenu_compact`, um projeto à parte.
+  **Modo Iniciante/Avançado** implementado com o design híbrido pedido:
+  toggle global `[M]` no menu principal (persistido em `.cli_modo_usuario`,
+  mesmo padrão do idioma) + revelação LOCAL `[V]` por submenu (não muda o
+  modo da sessão, só expande aquela visita). Implementado em
+  `_print_submenu_compact` (retorna a lista de campos REALMENTE exibidos —
+  chamador usa essa lista para indexação numérica, não o `fields` original)
+  e propagado para `_loop_menu` (usado por `menu_modelagem`) e o loop
+  próprio de `menu_validacao`. Campos escondidos por padrão:
+  `menu_modelagem` → `opls_da`/`ddsimca`/`modo_ddsimca`/
+  `selecao_variaveis_etapa4` (nível N2 já força DD-SIMCA automaticamente,
+  então o beginner não precisa tocar nesses); `menu_validacao` →
+  `n_permutacoes`/`teste_wold`/`teste_cv_anova` (testes estatísticos extras,
+  tuning fino). **Não tocado, de propósito:** `menu_preproc` (só 2 campos,
+  não vale a pena), `menu_avancado` (já é uma seção separada só de módulos
+  pesados — a própria existência da seção já cumpre a função), `menu_tecnica`/
+  `menu_codificacao` (não são listas de hiperparâmetro — são escolha de
+  técnica analítica e consulta de código de espécie, não se encaixam no
+  conceito "esconder avançado").
 - **Cliques até resultado.** ✅ **Resolvido.** No CLI, `menu_perfis` agora
   pergunta "Rodar agora com essa configuração?" logo após aplicar qualquer
   perfil (`_rodar_pipeline(cfg)` direto, sem passar pelo menu principal). No
@@ -644,16 +654,15 @@ e resolvido:
 - **Mensagens de erro** poderiam linkar direto ao campo problemático.
 - **Falta tour guiado / tooltip contextual** dentro do app.
 
-**Achado técnico não previsto no escopo original:** o app Streamlit tem um
-bug de sincronização de estado — widgets com `key=` estático (`"w_"+campo`)
-só honram `value=`/`index=` na primeira renderização; depois disso, seguem
-mostrando o valor antigo mesmo que `cfg_base` mude, **a menos que o valor
-seja escrito diretamente em `st.session_state[key]`** (apagar a chave não
-basta — verificado empiricamente). Corrigido nos presets novos; **mas o
-botão pré-existente "↺ Reload config.yaml" (`app_tabs/dados.py`)
-provavelmente tem o MESMO bug latente** (nunca teria sido notado, já que
-poucos usuários trocam nivel/objetivo via reload no meio de uma sessão) —
-não corrigido nesta rodada por estar fora do escopo pedido; ver roadmap.
+**Achado técnico não previsto no escopo original (✅ resolvido):** o app
+Streamlit tinha um bug de sincronização de estado — widgets com `key=`
+estático (`"w_"+campo`) só honram `value=`/`index=` na primeira
+renderização; depois disso, seguem mostrando o valor antigo mesmo que
+`cfg_base` mude, **a menos que o valor seja escrito diretamente em
+`st.session_state[key]`** (apagar a chave não basta — verificado
+empiricamente). Corrigido nos presets novos E no botão pré-existente
+"↺ Reload config.yaml" (`app_tabs/dados.py`), via helper compartilhado
+`_sincronizar_widgets_com_cfg()` — commit `73bb522`.
 
 ---
 
@@ -722,7 +731,7 @@ nas primeiras linhas em inglês.
 | ~~—~~ | ~~Renomear pastas/arquivos de saída para tirar N1/N2/N3~~ ✅ | corrigido 2026-07-13, com aprovação explícita — ver P8 |
 | ~~—~~ | ~~Viés de seleção do AG/SPA~~ ✅ | corrigido 2026-07-13 — nested-CV via `_avaliar_busca_nested_cv` |
 | ~~—~~ | ~~3 presets Autenticar/Explorar/Quantificar + "rodar recomendada"~~ ✅ | corrigido 2026-07-13 (CLI + app web) — ver seção 6 |
-| — | Modo Iniciante/Avançado (esconder campos avançados em CADA submenu) | escopo maior, não feito — ver seção 6 |
+| ~~—~~ | ~~Modo Iniciante/Avançado (esconder campos avançados)~~ ✅ | feito 2026-07-13 — ver seção 6 (toggle `[M]` global + revelação local `[V]`) |
 | — | **Bug latente**: botão "↺ Reload config.yaml" (`app_tabs/dados.py`) provavelmente tem o mesmo desync de widget `key=` já corrigido nos presets novos — nunca notado, mas não verificado/corrigido | Baixo esforço uma vez identificado — ver seção 6 |
 
 **Quando sobrar tempo:**
