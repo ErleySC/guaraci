@@ -789,3 +789,8 @@ grep -rn "TODO\|FIXME\|HACK" src/guaraci/
 - [ ] Nenhum número inventado em docs — todo valor foi rodado e verificado
 - [ ] Toda referência bibliográfica é real e verificável
 - [ ] O diff faz **uma** coisa
+- [ ] Se o commit muda `version` em `pyproject.toml`/`config.py`, criar e enviar
+      a tag Git correspondente (`git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`)
+      **no mesmo momento** — nunca deixar acumular bumps sem tag. A aba Releases do
+      GitHub é a linha do tempo pública do projeto; um salto (ex.: v31.1.0 → v31.8.0
+      sem nada no meio) é confuso para quem audita o histórico de fora.
