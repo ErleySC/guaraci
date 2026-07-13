@@ -97,7 +97,7 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.7.0 | `grep -r version pyproject.toml` |
+| Versão | 31.8.0 | `grep -r version pyproject.toml` |
 | Testes | 562 pass, 1 skip | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
@@ -727,9 +727,9 @@ nas primeiras linhas em inglês.
 |---|---|---|
 | ~~10~~ | ~~P4 — Cobertura núcleo → 95%~~ ✅ | feito 2026-07-13 — os 4 módulos do núcleo, todos ≥95% |
 | ~~11~~ | ~~P6 — `print` → `logging` em `pipeline.py`~~ ✅ parcial | feito 2026-07-13 — falta reescrever o painel p/ Handler estruturado (ver P6) |
-| 12 | MkDocs + GitHub Pages | 1 dia |
+| ~~12~~ | ~~MkDocs + GitHub Pages~~ ✅ | feito 2026-07-13 — `mkdocs.yml` (tema Material + mkdocstrings no núcleo), `docs/index.md`, `.github/workflows/docs.yml` (build `--strict` + deploy); falta só habilitar a fonte "GitHub Actions" em Settings → Pages do repo (ação de configuração do GitHub, feita uma vez pelo dono) |
 | ~~13~~ | ~~Rodar em dataset público externo (Tecator)~~ ✅ | feito 2026-07-13 — `docs/BENCHMARK_TECATOR.md`; falta um 2º dataset (corn) e cobertura de classificação/DD-SIMCA externa |
-| 14 | Paper JOSS: state of the field | 2 semanas |
+| ~~14~~ | ~~Paper JOSS: state of the field~~ ✅ | feito 2026-07-13 — nova seção comparando com mdatools/hyperSpec/pyChemometrics/scikit-learn, citações verificadas por busca antes de escrever (não geradas de memória) |
 | ~~—~~ | ~~Renomear pastas/arquivos de saída para tirar N1/N2/N3~~ ✅ | corrigido 2026-07-13, com aprovação explícita — ver P8 |
 | ~~—~~ | ~~Viés de seleção do AG/SPA~~ ✅ | corrigido 2026-07-13 — nested-CV via `_avaliar_busca_nested_cv` |
 | ~~—~~ | ~~3 presets Autenticar/Explorar/Quantificar + "rodar recomendada"~~ ✅ | corrigido 2026-07-13 (CLI + app web) — ver seção 6 |

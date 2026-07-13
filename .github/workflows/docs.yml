@@ -1,0 +1,56 @@
+name: Docs
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "src/guaraci/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências de doc (pacote + MkDocs Material + mkdocstrings)
+        run: pip install -e ".[all]" mkdocs-material "mkdocstrings[python]"
+
+      - name: Copiar SECURITY.md p/ dentro de docs/ (fica na raiz do repo, fora de docs_dir)
+        run: cp SECURITY.md docs/SECURITY.md
+
+      - name: Build (--strict: qualquer link quebrado novo falha o job)
+        run: mkdocs build --strict
+
+      - name: Upload do artefato do Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

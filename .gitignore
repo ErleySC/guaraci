@@ -49,6 +49,10 @@ coverage.xml
 htmlcov/
 .ruff_cache/
 
+# --- MkDocs build output (gerado pelo CI, nao versionado) ---
+site/
+docs/SECURITY.md
+
 # --- Virtual environments ---
 .venv/
 venv/

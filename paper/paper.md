@@ -44,6 +44,31 @@ requiring the user to write code, while a shared Python package
 authentication of Amazonian vegetable oils, and has since been generalised
 into a matrix- and technique-agnostic platform.
 
+# State of the field
+
+Several existing packages address parts of the same problem space.
+`mdatools` [@Kucheryavskiy2020] is a mature R package offering PCA, PLS,
+PLS-DA and SIMCA with a broad validation toolkit, but reproducibility and
+cross-validation splitting strategy are left entirely to the user's script,
+and there is no distinct interface layer for users who do not write code.
+`hyperSpec` [@BeleitesSergo] targets a narrower problem: representing and
+manipulating hyperspectral data structures in R, without a built-in
+modelling or validation layer. `pyChemometrics` [@Correia] implements
+PCA, PLS and PLS-DA for NMR and mass-spectrometry metabolomics in Python,
+but is a research codebase without a packaged CLI or web interface, and,
+like `mdatools`, does not surface a first-class, guided option to keep
+physical replicates on the same side of a cross-validation split.
+`scikit-learn` [@Pedregosa2011] supplies general-purpose primitives
+(including `GroupKFold`) that any of these packages, or a user's own
+script, could combine to prevent replicate leakage — but doing so is
+opt-in and requires the user to already know the risk exists; to the
+author's knowledge, none of the surveyed domain-specific chemometrics
+packages document group-aware splitting as a default or a guided setting.
+`GUARACI`'s contribution is not a new statistical method but making this
+protection, together with the accompanying chemometric diagnostics (VIP,
+Selectivity Ratio, Hotelling T²/Q-residuals, DD-SIMCA sensitivity), the
+default path for a user who does not write code.
+
 # Statement of need
 
 Laboratories that need rigorous multivariate analysis of spectral or

@@ -1,0 +1,73 @@
+site_name: GUARACI
+site_description: Plataforma de quimiometria multitécnica, aberta e reprodutível
+site_url: https://ErleySC.github.io/guaraci/
+repo_url: https://github.com/ErleySC/guaraci
+repo_name: ErleySC/guaraci
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: pt-BR
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      toggle:
+        icon: material/brightness-7
+        name: Modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: green
+      toggle:
+        icon: material/brightness-4
+        name: Modo claro
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+
+nav:
+  - Início: index.md
+  - Manual:
+      - Manual completo: MANUAL.md
+  - Validação científica: VALIDATION.md
+  - Segurança: SECURITY.md
+  - Benchmark externo (Tecator): BENCHMARK_TECATOR.md
+  - Licenciamento comercial: COMMERCIAL.md
+  - Changelog: CHANGELOG.md
+  - Referência da API (núcleo científico):
+      - chemometric_stats: api/chemometric_stats.md
+      - classificadores: api/classificadores.md
+      - preprocessamento: api/preprocessamento.md
+      - validacao_estatistica: api/validacao_estatistica.md
+      - selecao_variaveis: api/selecao_variaveis.md
+      - predicao: api/predicao.md
+
+validation:
+  links:
+    # BENCHMARK_TECATOR.md linka scripts/benchmark_tecator.py, que fica fora
+    # de docs_dir (é código, não documentação) -- link real e correto no
+    # GitHub, só não resolvido pelo build local do site.
+    not_found: ignore
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences

@@ -6,6 +6,26 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.8.0 — 2026-07-13 — MkDocs + GitHub Pages (item #12) e secao State of the
+             field no paper JOSS (item #14):
+             (1) mkdocs.yml novo: tema Material, plugin mkdocstrings (API
+                 do nucleo cientifico: chemometric_stats, classificadores,
+                 preprocessamento, validacao_estatistica, selecao_variaveis,
+                 predicao), reaproveita docs/*.md existentes (nenhuma
+                 duplicacao de conteudo -- so' SECURITY.md, que vive na raiz
+                 do repo, e' copiado p/ dentro de docs/ NO CI, nunca
+                 commitado, p/ nao divergir do original);
+             (2) docs/index.md novo: landing page propria do site (nao e'
+                 copia do README -- proposito diferente, texto proprio);
+             (3) .github/workflows/docs.yml novo: builda com `mkdocs build
+                 --strict` (link quebrado novo falha o job) e publica em
+                 GitHub Pages via actions/deploy-pages;
+             (4) paper/paper.md: nova secao "State of the field" comparando
+                 com mdatools (Kucheryavskiy 2020), hyperSpec (Beleites &
+                 Sergo) e pyChemometrics (Correia) -- as 3 citacoes foram
+                 verificadas via busca antes de escrever (regra do
+                 CLAUDE.md 0.2: nunca inventar referencia), nao geradas de
+                 memoria. paper.bib ganha as 3 entradas correspondentes.
 v31.7.0 — 2026-07-13 — Modo Iniciante/Avancado nos submenus da CLI (CLAUDE.md secao 6):
              (1) Toggle global [M] no menu principal (Modo: Iniciante/
                  Avancado), persistido em .cli_modo_usuario (mesmo padrao
