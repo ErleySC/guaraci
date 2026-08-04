@@ -43,6 +43,10 @@ __pycache__/
 *.egg-info/
 .ipynb_checkpoints/
 
+# --- Artefatos de build de pacote (sdist/wheel; regeraveis por `uv build`) ---
+build/
+dist/
+
 # --- Test / coverage artifacts ---
 .coverage
 coverage.xml
@@ -77,3 +81,9 @@ Thumbs.db
 sanity_out.txt
 val_out.txt
 *_out.txt
+
+# --- Artefatos de sessao de ferramenta (llm-council, auditorias de sessao) ---
+# Sao registros de UMA sessao, nao documentacao do projeto: envelhecem mal
+# (citam numeros de estado que mudam a cada commit) e poluem o git status.
+council-*
+docs/_*.md
