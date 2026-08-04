@@ -11,7 +11,7 @@ Coberto por tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, cast
 
 import numpy as np
 from scipy.stats import f as f_dist, chi2, t as t_dist
@@ -440,8 +440,13 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
     booleanas dentro_t2 / dentro_q / dentro_dominio + a fracao dentro.
     """
     treino = dominio_aplicabilidade_treino(pca, X_train, alpha)
+    # cast: o dict é Dict[str, object] (chaves heterogêneas — 1 array + 2
+    # floats); os tipos concretos são garantidos na construção do dict.
     return dominio_aplicabilidade_amostras_novas(
-        pca, X_new, treino["var_t"], treino["t2_limite"], treino["q_limite"])
+        pca, X_new,
+        cast(np.ndarray, treino["var_t"]),
+        cast(float, treino["t2_limite"]),
+        cast(float, treino["q_limite"]))
 
 
 def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,

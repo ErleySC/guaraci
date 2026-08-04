@@ -24,6 +24,35 @@ jobs:
       - name: Ruff (lint)
         run: ruff check --output-format=github .
 
+  # ── Type-check dos módulos de cálculo puro ────────────────────────────────
+  # Escopo estreito de propósito (ver [tool.mypy] em pyproject.toml): só os
+  # módulos sem I/O/UI/estado global. Rodar mypy na base inteira geraria ruído
+  # de bibliotecas sem stub (streamlit, rich) sem pegar bug de cálculo.
+  # Ao criar um módulo puro novo, adicionar à lista abaixo.
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install mypy + deps de tipo
+        run: pip install mypy numpy scipy scikit-learn
+
+      - name: Mypy (módulos puros)
+        run: |
+          mypy \
+            src/guaraci/preprocessamento.py \
+            src/guaraci/chemometric_stats.py \
+            src/guaraci/classificadores.py \
+            src/guaraci/validacao_estatistica.py \
+            src/guaraci/modos_analise.py \
+            src/guaraci/design_tokens.py \
+            src/guaraci/resumo_parse.py
+
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console
   # específico de win32 em guaraci.py/cli_assistente.py), então validamos em

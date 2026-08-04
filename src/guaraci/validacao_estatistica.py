@@ -51,7 +51,7 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
     classes = np.unique(y_true)
     idx_por_classe = {c: np.where(y_true == c)[0] for c in classes}
 
-    boot_stats = []
+    boot_vals: List[float] = []
     for _ in range(n_boot):
         partes = []
         for c in classes:
@@ -59,12 +59,12 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
             partes.append(rng.choice(ic, size=len(ic), replace=True))
         idx = np.concatenate(partes)
         try:
-            boot_stats.append(float(metric_fn(y_true[idx], y_pred[idx])))
+            boot_vals.append(float(metric_fn(y_true[idx], y_pred[idx])))
         except (ValueError, ZeroDivisionError):
             # Reamostragem degenerada (ex.: classe minoritaria ausente apos
             # bootstrap) -- descartada; downstream cai p/ NaN se restarem <20.
             continue
-    boot_stats = np.asarray(boot_stats)
+    boot_stats = np.asarray(boot_vals)
 
     if len(boot_stats) < 20:
         return float("nan"), float("nan"), observed
