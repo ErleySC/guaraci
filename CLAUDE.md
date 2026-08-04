@@ -117,8 +117,55 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 ## 3. OS PROBLEMAS, EM ORDEM DE GRAVIDADE
 
-### ✅ P1 (RESOLVIDO em 2026-07-11) — Sensibilidade DD-SIMCA reportada como 100% é re-substituição
-**O que acontece:** só existem 3–4 amostras puras por espécie, e **todas estão no treino**.
+### ✅ P1 (RESOLVIDO em 2026-07-11, bug estrutural achado e corrigido em 2026-07-19) — Sensibilidade DD-SIMCA reportada como 100% é re-substituição
+
+> **Atualizado em 2026-07-19** após auditoria multi-agente adversarial: a
+> correção LOGO de 2026-07-11 (abaixo) tinha DOIS bugs que a re-substituição
+> nunca teria revelado porque ambos só se manifestam quando o modelo é
+> testado em dado que ele não viu — exatamente o regime que o LOGO introduziu.
+>
+> 1. **Clamp de UCL anulava alpha.** `classificadores.py` tinha um bloco
+>    "small-n guard" que elevava T2_ucl/Q_ucl até `max(estatística de
+>    treino)` sempre que `nc < 20` — o que é o caminho **sempre** ativo em
+>    produção (`ddsimca_treinar_em="puros"` força nc=3–4). Isso forçava
+>    100% de aceitação do próprio treino por construção, isto é, alpha
+>    efetivo = 0. O comentário do código chamava de "BUG A" o fato de
+>    `percentile(T2,95) < max(T2)` — **isso não é bug, é a definição de
+>    alpha=0.05**; o código "consertava" um comportamento estatisticamente
+>    correto. **Removido.**
+> 2. **Q_ucl estruturalmente enviesado para baixo com n≪p** (causa real do
+>    colapso da sensibilidade LOGO, não o clamp): `Q_train` era calculado
+>    in-sample (`pca.fit_transform` nas mesmas amostras que definem o
+>    modelo) — com poucos puros e milhares de variáveis espectrais, a PCA
+>    reconstrói o próprio treino quase exatamente por construção (todo grau
+>    de liberdade entre as `nc` amostras foi consumido), então `Q_train ≈ 0`
+>    e o UCL derivado dele rejeita **qualquer** amostra retida, mesmo vinda
+>    da mesma distribuição do treino. Verificado empiricamente: com 4 grupos
+>    de réplica **estatisticamente idênticos**, a sensibilidade LOGO dava
+>    **0,0** — não porque o modelo falhou, mas porque a calibração do limite
+>    é inerentemente otimista quando `n≪p`. Corrigido calculando `Q_train`
+>    via **leave-one-out (jackknife)**: cada amostra de treino é reconstruída
+>    por um modelo ajustado nas *outras* `nc-1` amostras, removendo o viés
+>    in-sample na raiz (`DDSimca._q_residuals_loo`). Mesmo cenário (grupos
+>    idênticos) passa a dar sensibilidade ≈ 1,0, e um outlier real continua
+>    sendo corretamente rejeitado.
+>
+> Testes atualizados: `tests/test_classificadores.py` (o teste que exigia
+> 100% de aceitação do treino — a negação do próprio alpha=0.05 — foi
+> reescrito para verificar a propriedade correta: maioria aceita, não
+> totalidade; novo teste de regressão específico para o colapso do Q_ucl
+> com grupos idênticos) e `tests/test_pipeline_core.py` (mesmo padrão).
+> 558→559 testes passam (suíte completa reverificada).
+>
+> **Não corrigido nesta rodada, achado separado (menor prioridade, não
+> bloqueia):** a região de aceitação é T2≤UCL **E** Q≤UCL com alpha
+> independente em cada — isso dá alpha conjunto efetivo ≈ 0,10, não 0,05
+> (Rodionova/Pomerantsev, citados na docstring do módulo, usam uma
+> distância combinada contra um quantil χ² único; a implementação atual
+> não é esse método apesar de citá-lo). Requer reescrever `predict()`, não
+> só recalibrar um limite — fica para uma sessão dedicada.
+
+**O que acontecia (achado original, 2026-07-11):** só existem 3–4 amostras puras por espécie, e **todas estavam no treino**.
 A sensibilidade reportada mede o modelo classificando dados que ele já viu. É a prova
 que o próprio aluno corrigiu. O número é vazio.
 
@@ -704,7 +751,7 @@ nas primeiras linhas em inglês.
 **Status em 2026-07-13 — itens ✅ concluídos nesta sessão (pós-auditoria de 15 etapas):**
 | # | Item | Prazo | Bloqueia |
 |---|---|---|---|
-| ~~1~~ | ~~P1 — Sensibilidade LOGO~~ ✅ | feito 2026-07-11 | Defesa |
+| ~~1~~ | ~~P1 — Sensibilidade LOGO~~ ✅ | feito 2026-07-11, bug estrutural (clamp de UCL + Q_ucl enviesado com n≪p) achado e corrigido 2026-07-19 — ver P1 acima | Defesa |
 | ~~2~~ | ~~P2 — Heatmap espécie×adulterante nativo~~ ✅ | feito 2026-07-11 | Defesa |
 | ~~3~~ | ~~P8 — Vocabulário N1/N2/N3 (menus + tooltip)~~ ✅ parcial | feito 2026-07-13 — pastas/arquivos ainda vazam N1/N2/N3, ver P8 acima | Clareza |
 | ~~6~~ | ~~P5 — `SECURITY.md` + guarda no joblib~~ ✅ | feito | JOSS |

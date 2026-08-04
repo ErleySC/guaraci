@@ -3,6 +3,8 @@ estimadores que fazem a autenticação one-class e a análise discriminante
 ortogonal, o diferencial metodológico do projeto. Corrupção silenciosa aqui
 rejeitaria/aceitaria amostras erradas sem nenhum sinal de alerta.
 """
+import logging
+
 import numpy as np
 import pytest
 
@@ -18,20 +20,34 @@ def _classe_compacta(rng, centro, n, k=5, escala=0.3):
 
 
 # ── DDSimca.fit / predict: caso feliz ────────────────────────────────────────
-def test_ddsimca_amostras_de_treino_sao_aceitas_pela_propria_classe():
-    """Toda amostra de treino DEVE ser aceita pelo próprio modelo — é o
-    invariante central que o 'small-n guard' (comentado no código) existe
-    para garantir. Se isso falhar, o DD-SIMCA rejeitaria dados legítimos."""
+def test_ddsimca_treino_e_majoritariamente_mas_nao_100pct_aceito():
+    """A UCL empirica e' o quantil (1-alpha) do treino: por definicao, uma
+    fracao proxima de alpha das PROPRIAS amostras de treino cai FORA da
+    regiao de aceitacao -- e' o que faz de um limite um limite, nao um teto
+    frouxo que aceita tudo. Exigir 100% de aceitacao no treino (o invariante
+    antigo deste teste) e' a NEGACAO de alpha=0.05: e' exatamente o
+    comportamento que o 'small-n clamp' removido de classificadores.py
+    forcava (ele elevava o UCL ate o max(treino), zerando alpha de fato --
+    achado de auditoria adversarial, 2026-07-19). Um modelo correto ainda
+    reconhece a MAIORIA da propria classe, so' nao 100%."""
     rng = np.random.default_rng(0)
-    Xa = _classe_compacta(rng, centro=0.0, n=10)
-    Xb = _classe_compacta(rng, centro=5.0, n=10)
+    n_por_classe = 40
+    Xa = _classe_compacta(rng, centro=0.0, n=n_por_classe)
+    Xb = _classe_compacta(rng, centro=5.0, n=n_por_classe)
     X = np.vstack([Xa, Xb])
-    y = np.array(["A"] * 10 + ["B"] * 10)
+    y = np.array(["A"] * n_por_classe + ["B"] * n_por_classe)
 
     dd = DDSimca(n_components=3, alpha=0.05, ucl_method="empirical").fit(X, y)
     preds = dd.predict(X)
-    assert list(preds[:10]) == ["A"] * 10
-    assert list(preds[10:]) == ["B"] * 10
+
+    taxa_a = float(np.mean(preds[:n_por_classe] == "A"))
+    taxa_b = float(np.mean(preds[n_por_classe:] == "B"))
+
+    # Reconhece a propria classe na maioria dos casos...
+    assert taxa_a > 0.70
+    assert taxa_b > 0.70
+    # ...mas NAO 100%: alpha>0 exige alguma rejeicao por definicao.
+    assert taxa_a < 1.0 or taxa_b < 1.0
 
 
 def test_ddsimca_amostra_distante_e_desconhecida():
@@ -56,18 +72,18 @@ def test_ddsimca_score_matrix_contem_campos_esperados():
 
 
 # ── DDSimca: classe com amostras insuficientes é pulada (não quebra) ────────
-def test_ddsimca_classe_com_1_amostra_e_pulada(capsys):
+def test_ddsimca_classe_com_1_amostra_e_pulada(caplog):
     rng = np.random.default_rng(3)
     Xa = _classe_compacta(rng, centro=0.0, n=10)
     Xb = np.array([[1.0, 1.0, 1.0, 1.0, 1.0]])  # so' 1 amostra: n_comp < 1
     X = np.vstack([Xa, Xb])
     y = np.array(["A"] * 10 + ["B"])
 
-    dd = DDSimca(n_components=3).fit(X, y)
+    with caplog.at_level(logging.WARNING, logger="guaraci.classificadores"):
+        dd = DDSimca(n_components=3).fit(X, y)
     assert "B" not in dd._modelos          # modelo pulado
     assert "A" in dd._modelos               # classe valida seguiu normal
-    saida = capsys.readouterr().out
-    assert "insufficient samples" in saida
+    assert "insufficient samples" in caplog.text
 
 
 def test_ddsimca_score_matrix_ignora_classe_sem_modelo():
@@ -223,6 +239,26 @@ def _puros_agrupados(rng, centros, reps=3, k=5, escala=0.2):
         X.append(rng.normal(c, escala, size=(reps, k)))
         g += [f"grp{i}"] * reps
     return np.vstack(X), np.array(g)
+
+
+def test_logo_nao_colapsa_para_zero_quando_grupos_sao_identicos_com_n_menor_que_p():
+    """Regressao: com poucos puros por especie (regime real deste projeto,
+    ~3-4/especie) e MUITAS variaveis (espectro), o Q-residuo IN-SAMPLE usado
+    para calibrar o UCL colapsava perto de zero -- a propria amostra ajuda a
+    ajustar a PCA que depois a reconstroi quase exatamente quando n<<p. O
+    UCL resultante rejeitava QUALQUER amostra retida, mesmo vinda da MESMA
+    distribuicao dos grupos de treino: sensibilidade LOGO ~= 0.0 mesmo sem
+    nenhuma diferenca real entre os grupos (achado de auditoria adversarial,
+    2026-07-19). Corrigido usando residuo leave-one-out (jackknife) para
+    calibrar o UCL (ver DDSimca._q_residuals_loo). Aqui, 4 grupos
+    ESTATISTICAMENTE IDENTICOS (mesmo centro) com p=200 variaveis e apenas
+    3 replicas/grupo (9 amostras de treino por dobra LOGO) devem gerar
+    sensibilidade proxima de 1.0 -- nao 0.0."""
+    rng = np.random.default_rng(7)
+    X, g = _puros_agrupados(rng, [0.0, 0.0, 0.0, 0.0], reps=3, k=200, escala=0.02)
+    r = sensibilidade_ddsimca_logo(X, g, n_components=7)
+    assert r["n_grupos_validos"] == 4
+    assert r["sensibilidade"] > 0.7
 
 
 def test_logo_sempre_retorna_n_grupos():

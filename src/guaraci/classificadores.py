@@ -23,6 +23,22 @@ from guaraci.chemometric_stats import hotelling_t2_limite, q_residuos_limite
 
 log = logging.getLogger(__name__)
 
+# Graus de liberdade residuais minimos exigidos apos a PCA (nc - n_comp).
+# Com nc amostras de treino, PCA com n_comp = nc-1 componentes reconstroi
+# o treino EXATAMENTE (Q_train ~= 0 para toda amostra, pois todos os graus
+# de liberdade entre as nc amostras centradas foram consumidos). Isso nao
+# e' ruido numerico: e' uma propriedade exata de PCA quando n_comp se
+# aproxima de nc-1. q_residuos_limite() estima o UCL a partir de
+# media/variancia de Q_train (Jackson & Mudholkar) -- com Q_train ~= 0
+# para todas as amostras, a variancia colapsa e o UCL colapsa junto,
+# rejeitando qualquer amostra nova/retida por um fator de ordens de
+# magnitude (achado de auditoria adversarial, 2026-07-19: sensibilidade
+# LOGO cai para 0.0 mesmo com grupos estatisticamente identicos). Exigir
+# um minimo de graus de liberdade residuais evita o colapso; abaixo do
+# minimo, o modelo daquela classe e' pulado (mesmo tratamento que amostras
+# insuficientes) em vez de produzir um UCL que nao significa nada.
+_MIN_Q_RESIDUAL_DF = 2
+
 
 class DDSimca:
     """Data-Driven SIMCA: per-class one-class classifier via PCA.
@@ -36,9 +52,17 @@ class DDSimca:
                   'empirical' is the only one that VARIES PER CLASS
                   (theoretical and chi2 depend only on n,k); recommended.
         Q_UCL   — chi2 approximation (Jackson & Mudholkar) via mean/var of
-                  training Q-residuals — naturally data-driven.
+                  training Q-residuals — naturally data-driven. Requires at
+                  least `_MIN_Q_RESIDUAL_DF` residual degrees of freedom
+                  (nc - n_comp); classes without enough training samples for
+                  that are skipped (see fit()), same as the existing
+                  insufficient-samples case.
 
     A new sample is 'accepted' by the class if T2 <= UCL **and** Q <= UCL.
+    Note: with independent per-statistic alpha, the effective joint
+    acceptance rate is looser than alpha (approx. 1-(1-alpha)^2 for the
+    rejection rate) — the acceptance region is rectangular, not the
+    Rodionova/Pomerantsev combined-distance ellipsoid. Tracked separately.
 
     Referencias:
         Rodionova O.Y. & Pomerantsev A.L. (2020). Chemom. Intell. Lab.
@@ -66,6 +90,45 @@ class DDSimca:
         # fallback
         return float(np.percentile(T2_train, 100 * (1 - self.alpha)))
 
+    @staticmethod
+    def _q_residuals_loo(Xc: np.ndarray, n_comp: int) -> np.ndarray:
+        """Q-residuo leave-one-out (jackknife) de cada amostra de treino.
+
+        PCA ajustada em TODAS as nc amostras reconstroi cada uma delas de
+        forma otimista: a propria amostra ajudou a definir o subespaco que
+        depois a reconstroi. Com nc pequeno frente a p (regime deste
+        projeto: poucos puros por especie, espectros de milhares de
+        variaveis), esse viés faz Q_train colapsar perto de zero -- e o UCL
+        derivado dele rejeita qualquer amostra genuinamente nova (achado de
+        auditoria adversarial, 2026-07-19).
+
+        Aqui, o Q de cada amostra i e' medido contra um modelo ajustado nas
+        OUTRAS nc-1 amostras (i excluida) -- a mesma logica de validacao
+        cruzada, aplicada dentro do proprio calculo do limite. Remove o
+        viés estruturalmente, sem depender de escolher um limiar de graus
+        de liberdade "grande o bastante" (nenhum limiar resolve o viés
+        in-sample; so' excluir a amostra do seu proprio ajuste resolve).
+
+        Custo: nc ajustes extras de PCA por classe -- aceitavel porque nc e'
+        pequeno justamente no regime em que isso importa.
+        """
+        nc = Xc.shape[0]
+        Q = np.empty(nc)
+        idx = np.arange(nc)
+        for i in range(nc):
+            Xtr = Xc[idx != i]
+            n_comp_i = min(n_comp, Xtr.shape[0] - 1, Xtr.shape[1])
+            if n_comp_i < 1:
+                Q[i] = 0.0
+                continue
+            pca_i = PCA(n_components=n_comp_i)
+            pca_i.fit(Xtr)
+            xi = Xc[i:i + 1]
+            t_i = pca_i.transform(xi)
+            x_rec = pca_i.inverse_transform(t_i)
+            Q[i] = float(np.sum((xi - x_rec) ** 2))
+        return Q
+
     def fit(self, X: np.ndarray, y: np.ndarray) -> "DDSimca":
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=str)
@@ -75,45 +138,33 @@ class DDSimca:
             Xc = X[y == cls]
             nc = len(Xc)
             n_comp = min(self.n_components, nc - 1, Xc.shape[1])
+            # Se o n_comp cabivel deixa menos que _MIN_Q_RESIDUAL_DF graus de
+            # liberdade residuais, reduz n_comp para preservar o minimo --
+            # sem isso, Q_train colapsa para ~0 (PCA reconstroi o treino
+            # quase exatamente) e o UCL derivado dele nao significa nada.
+            if n_comp >= 1 and (nc - n_comp) < _MIN_Q_RESIDUAL_DF:
+                n_comp = nc - _MIN_Q_RESIDUAL_DF
             if n_comp < 1:
-                print(f"[DDSimca] Class '{cls}': insufficient samples "
-                      f"(n={nc}) — model skipped.")
+                log.warning(
+                    "[DDSimca] Class '%s': insufficient samples (n=%d) for a "
+                    "non-degenerate Q-residual estimate (needs n >= "
+                    "n_components + %d) — model skipped.",
+                    cls, nc, _MIN_Q_RESIDUAL_DF)
                 continue
             pca = PCA(n_components=n_comp)
             T = pca.fit_transform(Xc)
             var_t = T.var(axis=0, ddof=1)
             var_t[var_t == 0] = 1.0
-            X_rec = pca.inverse_transform(T)
-            Q_train = np.sum((Xc - X_rec) ** 2, axis=1)
             T2_train = np.sum((T ** 2) / var_t, axis=1)
+
+            # Q_train usa residuo leave-one-out (ver _q_residuals_loo) em vez
+            # do residuo in-sample -- o in-sample colapsa para ~0 quando
+            # nc << p, porque a propria amostra ajudou a ajustar a PCA que
+            # depois a reconstroi.
+            Q_train = self._q_residuals_loo(Xc, n_comp)
 
             t2_ucl = self._compute_t2_ucl(T2_train, nc, n_comp)
             q_ucl  = q_residuos_limite(Q_train, self.alpha)
-
-            # Small-n guard: with nc < 20 two numerical bugs cause training samples
-            # to be rejected by their OWN model.
-            #
-            # BUG A (T2): np.percentile([a,b,c], 95) < max → the max-T2 sample
-            #   always gets T2_norm = max/(0.9·max) ≈ 1.11 > 1 → rejected.
-            #
-            # BUG B (Q): PCA with n_comp = n-1 fits training perfectly → Q≈0
-            #   → q_ucl ≈ 0 → Q_norm = Q/1e-12 → ∞ for all samples.
-            #
-            # Fix: clamp UCLs to at least max(training statistic), then add a
-            # tiny RELATIVE tolerance (1 ppm = 1e-6) to absorb floating-point
-            # discrepancies between pca.fit_transform() (used during fit) and
-            # pca.transform() (used during score_matrix evaluation). Without
-            # the tolerance, the exact-max sample gets T2_norm ≈ 1.0000004 > 1
-            # and is silently rejected. 1 ppm is imperceptible for real samples
-            # (adulterated oils have T2_norm >> 1) but fixes precision artefacts.
-            _EPS_UCL = 1e-6   # 1 ppm relative tolerance
-            if nc < 20:
-                if T2_train.size > 0:
-                    t2_ucl = max(t2_ucl,
-                                 float(T2_train.max()) * (1.0 + _EPS_UCL) + 1e-12)
-                if Q_train.size > 0:
-                    q_ucl  = max(q_ucl,
-                                 float(Q_train.max())  * (1.0 + _EPS_UCL) + 1e-12)
 
             self._modelos[cls] = {
                 "pca":      pca,
@@ -387,9 +438,14 @@ def sensibilidade_ddsimca_logo(
     demais e verifica-se se as amostras retidas caem na regiao de aceitacao.
 
     O numero de componentes de cada dobra e limitado internamente pelo
-    ``DDSimca`` a ``min(n_components, n_treino - 1, n_variaveis)``; com poucos
-    puros o modelo LOGO e necessariamente mais simples que o modelo final --
-    isso e uma limitacao dos dados, nao um artefato.
+    ``DDSimca`` a ``min(n_components, n_treino - 1, n_variaveis)``, com reducao
+    adicional para preservar graus de liberdade residuais minimos (ver
+    ``_MIN_Q_RESIDUAL_DF`` em classificadores.py). Dobras cujo treino nao
+    comporta um modelo nao-degenerado sao puladas (o mesmo caminho de "classe
+    ausente" ja tratado abaixo) em vez de produzir uma sensibilidade
+    artificialmente baixa por colapso numerico do limite de Q -- se
+    ``n_grupos_validos`` vier menor que ``n_grupos``, e' porque dobras foram
+    puladas por dados insuficientes, nao porque o modelo rejeitou tudo.
 
     Parameters
     ----------

@@ -469,19 +469,26 @@ def test_variancia_explicada_x_constante_retorna_zeros(pq):
 
 # ── DD-SIMCA (futuro: guaraci/models/ddsimca.py) ──────────────────────────────
 
-def test_ddsimca_aceita_proprio_treino(pq):
-    """DD-SIMCA: amostras de treino de uma classe são aceitas pelo próprio
-    modelo (T2_norm e Q_norm <= 1). Regressão do clamp de UCL para n pequeno
-    (13 espécies 100%/100% em dados reais)."""
+def test_ddsimca_aceita_maioria_do_proprio_treino(pq):
+    """DD-SIMCA: a maioria das amostras de treino de uma classe e' aceita
+    pelo proprio modelo (T2_norm e Q_norm <= 1), mas NAO 100%: a UCL
+    empirica e' o quantil (1-alpha) do treino, entao uma fracao proxima de
+    alpha cai fora por definicao. Exigir 100% (o invariante antigo deste
+    teste) e' a negacao de alpha>0 -- era exatamente o efeito do clamp de
+    UCL que forcava o limite ate max(treino), removido por anular alpha de
+    fato (achado de auditoria adversarial, 2026-07-19)."""
     rng = np.random.default_rng(4)
-    X = np.vstack([rng.normal(loc=0.0, size=(10, 30)),
-                   rng.normal(loc=5.0, size=(10, 30))])
-    y = np.array(["A"] * 10 + ["B"] * 10)
+    n = 40
+    X = np.vstack([rng.normal(loc=0.0, size=(n, 30)),
+                   rng.normal(loc=5.0, size=(n, 30))])
+    y = np.array(["A"] * n + ["B"] * n)
     dd = pq.DDSimca(n_components=3, alpha=0.05, ucl_method="empirical").fit(X, y)
     res = dd.score_matrix(X)
-    for cls, sl in (("A", slice(0, 10)), ("B", slice(10, 20))):
-        assert res[cls]["T2_norm"][sl].max() <= 1.0 + 1e-3
-        assert res[cls]["Q_norm"][sl].max() <= 1.0 + 1e-3
+    for cls, sl in (("A", slice(0, n)), ("B", slice(n, 2 * n))):
+        aceito = ((res[cls]["T2_norm"][sl] <= 1.0)
+                  & (res[cls]["Q_norm"][sl] <= 1.0))
+        assert aceito.mean() > 0.70
+        assert aceito.mean() < 1.0
 
 
 # ── Métricas (futuro: guaraci/metrics.py) ─────────────────────────────────────
