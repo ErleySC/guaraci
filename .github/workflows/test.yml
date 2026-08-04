@@ -119,6 +119,17 @@ jobs:
         # número conforme cobrir mais UI/orquestrador.
         run: pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=60
 
+      # O piso de 60% acima é sobre o TOTAL do projeto — sozinho, ele deixaria
+      # o núcleo científico despencar de 97% para ~70% sem falhar nada, desde
+      # que a UI compensasse. Este passo é a trava que o CLAUDE.md (P4) afirma
+      # existir: os 4 módulos que produzem número publicável não podem cair
+      # abaixo de 95%. Usa os dados de cobertura já coletados no passo anterior.
+      - name: "Gate de cobertura do núcleo científico (>= 95%)"
+        run: |
+          coverage report \
+            --include="*/guaraci/chemometric_stats.py,*/guaraci/classificadores.py,*/guaraci/preprocessamento.py,*/guaraci/validacao_estatistica.py" \
+            --fail-under=95
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7
