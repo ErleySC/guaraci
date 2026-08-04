@@ -10,6 +10,29 @@ readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Erley S. Costa", email = "erleysdacosta@gmail.com" }]
 requires-python = ">=3.10"
+# Termos em ingles de proposito: sao o vetor de busca no PyPI (CLAUDE.md 7.3 —
+# "Guaraci" nao e' pesquisavel por quem nao conhece o projeto).
+keywords = [
+    "chemometrics", "spectroscopy", "NIR", "FT-NIR", "PLS-DA", "OPLS-DA",
+    "SIMCA", "DD-SIMCA", "PCA", "authentication", "adulteration-detection",
+    "food-authenticity", "group-aware-validation", "GroupKFold",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Natural Language :: Portuguese (Brazilian)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "numpy>=1.24,<3.0",
     "pandas>=2.0,<4.0",
@@ -39,7 +62,10 @@ all = ["guaraci-chemometrics[web,reports,benchmark,imagem]"]
 guaraci = "guaraci.guaraci:main"
 
 [project.urls]
-Repository = "https://github.com/ErleySC/guaraci"
+Repository    = "https://github.com/ErleySC/guaraci"
+Documentation = "https://erleysc.github.io/guaraci/"
+Issues        = "https://github.com/ErleySC/guaraci/issues"
+Changelog     = "https://github.com/ErleySC/guaraci/blob/master/docs/CHANGELOG.md"
 
 # Pacote real em src/guaraci/ (migração item 17). app_quimiometria.py fica na
 # raiz (entry point do Streamlit) e não faz parte do pacote instalável.

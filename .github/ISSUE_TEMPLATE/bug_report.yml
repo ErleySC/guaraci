@@ -1,0 +1,88 @@
+name: Bug report
+description: Something crashes, or produces a result you believe is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues in Portuguese are welcome — *pode abrir a issue em português.*
+
+        **If this is about a numerical result being wrong, please say so
+        explicitly.** A wrong number that does not crash is the most serious
+        class of bug in this project and is triaged first.
+
+  - type: input
+    id: version
+    attributes:
+      label: GUARACI version
+      description: Output of `guaraci --version`
+      placeholder: "31.9.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Environment
+      description: >
+        Paste the output of `guaraci doctor` (it reports Python version, OS,
+        and which optional dependencies are installed). This resolves most
+        "works on my machine" reports without a round trip.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem is it?
+      options:
+        - Crash / traceback
+        - Numerical result looks wrong
+        - Figure or report is wrong or missing
+        - Installation / import problem
+        - Interface (CLI or web app) behaves unexpectedly
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >
+        Exact command or menu path. If you can reproduce it with `guaraci demo`
+        or with the synthetic mode (`modo=sintetico`), that is by far the most
+        useful report — it means we can reproduce it without your data.
+      placeholder: |
+        1. guaraci demo
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: >
+        Relevant part of your `config.yaml` (objetivo, nivel, preprocessing,
+        validation settings). Remove any file paths you would rather not share.
+      render: yaml
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+      description: >
+        For numerical issues, include both values and say how you know the
+        expected one is right (reference implementation, published value,
+        hand calculation, property that should hold).
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Full traceback or log
+      description: Paste the complete error, not just the last line.
+      render: text

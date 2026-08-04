@@ -1,0 +1,13 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/ErleySC/guaraci/blob/master/SECURITY.md
+    about: >
+      Do not open a public issue for a security problem. Follow the private
+      reporting process described in SECURITY.md.
+  - name: How to interpret a result
+    url: https://github.com/ErleySC/guaraci/blob/master/docs/MANUAL.md
+    about: >
+      "Is my R2cv good enough?", "why did DD-SIMCA reject this sample?" — the
+      manual has a section on reading each figure and on known limitations.
+      If it does not answer your case, open a blank issue.

@@ -1,16 +1,25 @@
 # Contributing to GUARACI
 
 Thanks for your interest in improving GUARACI. Bug reports, feature requests
-and pull requests are all welcome.
+and pull requests are all welcome. Contributions in Portuguese are fine —
+*pode escrever em português.*
+
+Participation in this project is governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Reporting a bug
 
-Open an [issue](https://github.com/ErleySC/guaraci/issues) with:
+Open an [issue](https://github.com/ErleySC/guaraci/issues) — the bug report
+template asks for what is needed. In short:
 
 - What you ran (`guaraci`, `app_quimiometria.py`, or `python -m guaraci.pipeline`).
+- The output of `guaraci doctor` (Python version, OS, optional dependencies).
 - Your `config.yaml` (redact any private paths/data).
 - The full error/traceback, or a screenshot for UI issues.
-- Python version and OS.
+
+**If the problem is a wrong number rather than a crash, say so explicitly.** A
+result that is silently wrong is the most serious class of bug here and is
+triaged first.
 
 ## Proposing a feature
 

@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose a new method, figure, export format, or interface change.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues in Portuguese are welcome — *pode abrir a issue em português.*
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >
+        Describe the analysis you are trying to do and where GUARACI gets in
+        the way. Proposals grounded in a concrete analysis are much easier to
+        evaluate than proposals for a method in the abstract.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference
+      description: >
+        If this is a chemometric method, cite the paper that defines it
+        (author, year, journal). Methods are implemented against a published
+        definition and validated against it — see `docs/VALIDATION.md`. A
+        request without a reference is much slower to act on.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the project?
+      options:
+        - Preprocessing
+        - Exploratory analysis (PCA, HCA)
+        - Classification / authentication (PLS-DA, OPLS-DA, DD-SIMCA)
+        - Quantification (PLS regression)
+        - Variable selection
+        - Validation / statistics
+        - Figures
+        - Reports and export
+        - CLI
+        - Web app
+        - Packaging / installation
+        - Documentation
+    validations:
+      required: true
