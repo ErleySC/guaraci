@@ -464,20 +464,25 @@ importante que qualquer refatoração.
 **Teste dos 5 minutos — em VM limpa, cronometrado:**
 ```bash
 pip install guaraci        # ou guaraci[web]
-guaraci demo               # ← esse comando existe? Deveria.
-# → roda com dados embutidos, gera figuras, abre a pasta. Sem o usuário ter dado nenhum.
+guaraci demo               # já existe — ver checklist abaixo
 ```
 
-**Checklist:**
-- [ ] Publicado no PyPI
-- [ ] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[all]`
-- [ ] Dataset de demo **embutido no pacote** (~1 MB, licença livre)
-- [ ] `guaraci demo` — fluxo completo sem dado do usuário
-- [ ] `guaraci doctor` — checa deps, RAM, versões, escreve diagnóstico
-- [ ] `guaraci --version`
-- [ ] CI testa instalação em Linux + Windows + macOS, py3.10–3.13
-- [ ] **Notebook Colab "Guaraci em 5 minutos"** ← maior alavancagem de adoção da lista.
-      Um link que o professor manda para a turma e 40 pessoas rodam no navegador.
+**Checklist (reverificado em 2026-08-04):**
+- [ ] Publicado no PyPI — depende de conta do autor
+- [x] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[all]` (pyproject.toml)
+- [x] ~~Dataset de demo embutido no pacote~~ — **resolvido de outra forma**: `guaraci demo`
+      usa `modo="sintetico"` (espectro gerado na hora, `_comando_demo()` em `guaraci.py`),
+      não um dataset real embutido. Estritamente melhor — zero questão de licença/proveniência
+      de dado real no pacote publicado. Não é dívida pendente.
+- [x] `guaraci demo` — fluxo completo sem dado do usuário (`_comando_demo()`)
+- [x] `guaraci doctor` — checa deps, RAM, versões, escreve diagnóstico
+- [x] `guaraci --version`
+- [x] CI testa instalação em Linux + Windows + macOS, py3.10–3.13 (`.github/workflows/test.yml`,
+      matriz `os: [ubuntu-latest, windows-latest]` + macOS em `include`)
+- [x] **Notebook Colab "Guaraci em 5 minutos"** (`notebooks/guaraci_5_minutos.ipynb`, linkado
+      no README e no badge)
+- [ ] `requirements-lock.txt` — **não existe ainda**, único item real deste checklist ainda
+      em aberto além da publicação no PyPI em si.
 
 **Pins vs. faixas — os dois, com papéis diferentes:**
 - `pyproject.toml` → **faixas** (para ser instalável junto com outros pacotes)
