@@ -69,9 +69,15 @@ Changelog     = "https://github.com/ErleySC/guaraci/blob/master/docs/CHANGELOG.m
 
 # Pacote real em src/guaraci/ (migração item 17). app_quimiometria.py fica na
 # raiz (entry point do Streamlit) e não faz parte do pacote instalável.
+#
+# `guaraci.app_tabs` PRECISA ser listado explicitamente: uma lista `packages`
+# explícita no setuptools NÃO inclui subpacotes automaticamente. Sem isso o
+# wheel sai sem as 8 abas do app web, e o bug fica invisível na CI porque
+# `pip install -e .` (editável) enxerga a árvore fonte inteira — só um wheel
+# real revela. Ao criar um subpacote novo, adicionar aqui.
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["guaraci"]
+packages = ["guaraci", "guaraci.app_tabs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
