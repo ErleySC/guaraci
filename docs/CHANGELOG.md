@@ -6,6 +6,40 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+v31.9.0 — 2026-08-04 — CORRECAO CIENTIFICA no DD-SIMCA + itens de comunidade
+             JOSS. Achados de auditoria adversarial (2026-07-19) sobre a
+             correcao LOGO da v31.1.x -- os dois bugs abaixo so' se
+             manifestam quando o modelo e' testado em dado que nao viu, ou
+             seja, a re-substituicao anterior jamais os revelaria:
+             (1) o "small-n guard" elevava T2_ucl/Q_ucl ate max(estatistica
+                 de treino) sempre que nc < 20 -- caminho SEMPRE ativo em
+                 producao (ddsimca_treinar_em="puros" forca nc=3-4). Efeito:
+                 alpha efetivo = 0, aceitacao de 100% do proprio treino por
+                 construcao. Removido;
+             (2) Q_ucl estruturalmente enviesado para baixo com n<<p: Q_train
+                 era in-sample, e com poucos puros e milhares de variaveis a
+                 PCA reconstroi o proprio treino quase exatamente, colapsando
+                 o UCL a ponto de rejeitar QUALQUER amostra retida. Medido:
+                 4 grupos estatisticamente identicos davam sensibilidade LOGO
+                 0,0. Corrigido com residuo leave-one-out
+                 (DDSimca._q_residuals_loo); o mesmo cenario passa a dar ~1,0
+                 e um outlier real continua sendo rejeitado.
+             ATENCAO: numeros de DD-SIMCA produzidos por versoes anteriores
+             a esta nao sao comparaveis com os desta. Reexecutar antes de
+             citar em texto.
+             Achado nao corrigido (registrado, menor prioridade): a regiao de
+             aceitacao e' T2<=UCL E Q<=UCL com alpha independente em cada, o
+             que da alpha conjunto ~0,10, nao 0,05 -- nao e' o metodo de
+             distancia combinada de Rodionova/Pomerantsev citado na docstring.
+             Requer reescrever predict(), nao so' recalibrar um limite.
+             Comunidade/empacotamento: CODE_OF_CONDUCT.md (Contributor
+             Covenant 2.1), templates de issue (.yml) e de PR, classifiers
+             trove + keywords em ingles + urls no pyproject.toml.
+             Correcao de metadados: CITATION.cff estava travado em 31.1.1
+             (a auditoria de 2026-07-13 reportou, erradamente, que estava
+             sincronizado); READMEs e CITATION passam a usar o CONCEPT DOI
+             do Zenodo (10.5281/zenodo.21311867), que sempre resolve para a
+             ultima versao, em vez do DOI versionado da v31.1.1.
 v31.8.0 — 2026-07-13 — MkDocs + GitHub Pages (item #12) e secao State of the
              field no paper JOSS (item #14):
              (1) mkdocs.yml novo: tema Material, plugin mkdocstrings (API

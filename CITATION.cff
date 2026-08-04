@@ -21,12 +21,15 @@ authors:
 repository-code: "https://github.com/ErleySC/guaraci"
 url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
-version: "31.1.1"
-date-released: "2026-07-11"
+version: "31.9.0"
+date-released: "2026-08-04"
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.21313436"
-    description: "Versioned DOI for this release (v31.1.1) on Zenodo."
+    value: "10.5281/zenodo.21311867"
+    description: >
+      Concept DOI on Zenodo — always resolves to the latest release. Cite this
+      unless you need to pin a specific version, in which case use the
+      versioned DOI shown on the Zenodo page for that release.
 keywords:
   - chemometrics
   - spectroscopy
@@ -80,9 +83,9 @@ preferred-citation:
       affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
       orcid: "https://orcid.org/0009-0005-9655-6349"
-  version: "31.1.1"
+  version: "31.9.0"
   year: 2026
   institution:
     name: "GEAAp/UFPA"
   url: "https://github.com/ErleySC/guaraci"
-  doi: "10.5281/zenodo.21313436"
+  doi: "10.5281/zenodo.21311867"

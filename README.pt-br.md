@@ -4,11 +4,11 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
   <img alt="Licença: GPLv3" src="https://img.shields.io/badge/Licen%C3%A7a-GPLv3-3D8B57">
   <img alt="Licença comercial disponível" src="https://img.shields.io/badge/comercial-licen%C3%A7a%20dispon%C3%ADvel-B8963E">
-  <img alt="Version" src="https://img.shields.io/badge/version-31.8.0-B8963E">
+  <img alt="Version" src="https://img.shields.io/badge/version-31.9.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Idiomas" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-ativo-55B06A">
-  <a href="https://doi.org/10.5281/zenodo.21313436"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21313436.svg"></a>
+  <a href="https://doi.org/10.5281/zenodo.21311867"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21311867.svg"></a>
 </p>
 
 > 🇧🇷 Versão em português (de trabalho). • 🇬🇧 [English version](README.md)
@@ -248,20 +248,20 @@ comerciais exige uma **licença comercial** separada — veja
 retém integralmente o copyright (licenciamento duplo).
 
 Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff). DOI Zenodo
-permanente: [10.5281/zenodo.21313436](https://doi.org/10.5281/zenodo.21313436).
+permanente: [10.5281/zenodo.21311867](https://doi.org/10.5281/zenodo.21311867).
 
 ## Como citar
 
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.8.0. GEAAp/UFPA, 2026. Disponível em:
+> Amazônicas**. Versão 31.9.0. GEAAp/UFPA, 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
-> Matrices* (v31.8.0) [Software]. GEAAp/UFPA.
+> Matrices* (v31.9.0) [Software]. GEAAp/UFPA.
 > https://github.com/ErleySC/guaraci
 
 **BibTeX**
@@ -270,11 +270,11 @@ permanente: [10.5281/zenodo.21313436](https://doi.org/10.5281/zenodo.21313436).
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
   title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
-  version     = {31.8.0},
+  version     = {31.9.0},
   year        = {2026},
   institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},
   license     = {GPL-3.0-or-later},
-  doi         = {10.5281/zenodo.21313436}
+  doi         = {10.5281/zenodo.21311867}
 }
 ```
