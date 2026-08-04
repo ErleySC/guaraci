@@ -91,6 +91,12 @@ python_version = "3.10"
 ignore_missing_imports = true   # numpy/scipy/sklearn não têm stubs completos
 strict_optional = false
 warn_unused_ignores = true
+# follow_imports=silent é o que TORNA o escopo estreito de fato: sem ele, o
+# mypy segue os imports e reporta erros dentro de guaraci.py/pipeline.py (as
+# camadas de UI/orquestração que este gate exclui de propósito). Sem a flag o
+# resultado ainda depende de o pacote estar instalado ou não no ambiente — o
+# gate passava local (editable install) e falhava na CI (pacote ausente).
+follow_imports = "silent"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
