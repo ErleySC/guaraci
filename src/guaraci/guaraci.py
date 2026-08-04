@@ -2471,8 +2471,6 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     _VERSAO        = pq.__version__
     _ANO           = "2026"
     _TITULO_CURTO  = "GUARACI"
-    _TITULO_LONGO  = ("Inteligencia Quimiometrica para Matrizes Amazonicas"
-                      if True else "")  # resolvido abaixo por lang
     _INST          = "GEAAp/UFPA"
     _LIC           = "GPL-3.0-or-later"
 
@@ -2889,7 +2887,7 @@ def _print_resumo(cfg: Config) -> None:
     t.add_column("P", style=PM, width=22, no_wrap=True)
     t.add_column("V", style=PS, no_wrap=True)
 
-    def row(lbl, val, fmt="s"):
+    def row(lbl, val):
         if isinstance(val, bool):
             v_txt = Text("[g]Sim[/g]" if lang=="PT" else "[g]Yes[/g]") if val \
                     else Text("[m]Nao[/m]" if lang=="PT" else "[m]No[/m]")
