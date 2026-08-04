@@ -1,7 +1,7 @@
 """
 guaraci.py v31.9.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
-GEAAp / UFPA  |  Quimiometria • Machine Learning • Espectroscopia multitecnica
+Quimiometria • Machine Learning • Espectroscopia multitecnica
 
 Uso:
     python guaraci.py
@@ -912,7 +912,7 @@ def _print_header() -> None:
         "Chemometric Intelligence for Amazonian Matrices",
         style=PS, justify="center"
     )
-    rod_txt = f"Quimiometria  |  Machine Learning  |  GEAAp / UFPA  |  {tec_str}"
+    rod_txt = f"Quimiometria  |  Machine Learning  |  {tec_str}"
     rod = Text(rod_txt, style=PM, justify="center")
     console.print(Panel(
         Align.center(Group(titulo, sub, rod)),
@@ -2463,7 +2463,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     """Secao Sobre — proposito, autor, citacao em multiplos formatos e referencias."""
     # Dados fixos do projeto e do autor
     _AUTOR_NOME    = "Erley S. da Costa"
-    _AUTOR_TAG     = "Pesquisador / Desenvolvedor  |  GEAAp / UFPA"
+    _AUTOR_TAG     = "Pesquisador / Desenvolvedor"
     _AUTOR_LATTES  = "http://lattes.cnpq.br/5755582193284309"
     _AUTOR_GITHUB  = "https://github.com/ErleySC"
     _AUTOR_EMAIL   = "erleysdacosta@gmail.com"
@@ -2471,7 +2471,6 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     _VERSAO        = pq.__version__
     _ANO           = "2026"
     _TITULO_CURTO  = "GUARACI"
-    _INST          = "GEAAp/UFPA"
     _LIC           = "GPL-3.0-or-later"
 
     def _titulo(lang: str) -> str:
@@ -2567,10 +2566,10 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
 
         # APA
         apa = (f"Costa, E. S. da. ({_ANO}). {tit_full} (v{_VERSAO})"
-               f" [Software]. {_INST}. {_REPO}")
+               f" [Software]. {_REPO}")
         # ABNT (NBR 6023:2018 — software)
         abnt = (f"{autor_abnt}. {_TITULO_CURTO}: {_titulo('PT')}."
-                f" Versao {_VERSAO}. {_INST}, {_ANO}."
+                f" Versao {_VERSAO}. {_ANO}."
                 f" Disponivel em: <{_REPO}>.")
         # BibTeX
         bibtex = (
@@ -2579,7 +2578,6 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             f"  title     = {{{{{_TITULO_CURTO}: {_titulo('PT')}}}}},\n"
             f"  version   = {{{_VERSAO}}},\n"
             f"  year      = {{{_ANO}}},\n"
-            f"  institution = {{{_INST}}},\n"
             f"  url       = {{{_REPO}}},\n"
             f"  license   = {{{_LIC}}}\n"
             f"}}"

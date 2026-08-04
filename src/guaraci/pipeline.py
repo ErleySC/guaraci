@@ -1,6 +1,6 @@
 """Chemometric pipeline for FT-NIR spectroscopy of Amazonian vegetable oils.
 
-Publication-quality implementation — GEAAp / UFPA (PIBIC).
+Publication-quality implementation.
 
 Capabilities:
     Preprocessing    : SNV, MSC (stateful), SG, MC, Autoscaling

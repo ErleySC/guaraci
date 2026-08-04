@@ -11,7 +11,6 @@ import streamlit as st
 
 _REPO         = "https://github.com/ErleySC/guaraci"
 _LICENCA      = "GPL-3.0-or-later"
-_INST         = "GEAAp/UFPA"
 _AUTOR_NOME   = "Erley S. da Costa"
 _AUTOR_LATTES = "http://lattes.cnpq.br/5755582193284309"
 _AUTOR_GITHUB = "https://github.com/ErleySC"
@@ -27,7 +26,6 @@ def _bibtex(versao: str) -> str:
         f" para Matrizes Amazonicas}}}},\n"
         f"  version     = {{{versao}}},\n"
         f"  year        = {{{_ANO}}},\n"
-        f"  institution = {{{_INST}}},\n"
         f"  url         = {{{_REPO}}},\n"
         f"  license     = {{{_LICENCA}}}\n"
         f"}}"
@@ -44,10 +42,9 @@ def render(pq, T: Callable[[str], str]) -> None:
         "Inteligência Quimiométrica para Matrizes Amazônicas"
         if pt else
         "Chemometric Intelligence for Amazonian Matrices")
-    c_b1, c_b2, c_b3 = st.columns(3)
+    c_b1, c_b2 = st.columns(2)
     c_b1.metric("Versão" if pt else "Version", versao)
     c_b2.metric("Licença" if pt else "License", _LICENCA)
-    c_b3.metric("Instituição" if pt else "Institution", _INST)
 
     st.divider()
 
@@ -140,8 +137,7 @@ def render(pq, T: Callable[[str], str]) -> None:
     with c_cit:
         st.markdown("#### " + ("Autor / Contato" if pt else "Author / Contact"))
         st.markdown(f"**{_AUTOR_NOME}**  \n"
-                     f"{'Pesquisador / Desenvolvedor' if pt else 'Researcher / Developer'} "
-                     f"— {_INST}")
+                     f"{'Pesquisador / Desenvolvedor' if pt else 'Researcher / Developer'}")
         st.markdown(f"[Lattes]({_AUTOR_LATTES}) · [GitHub]({_AUTOR_GITHUB}) · "
                      f"[{_AUTOR_EMAIL}](mailto:{_AUTOR_EMAIL})")
 
@@ -152,9 +148,9 @@ def render(pq, T: Callable[[str], str]) -> None:
                 if pt else
                 "GUARACI: Chemometric Intelligence for Amazonian Matrices")
     apa = (f"Costa, E. S. da. ({_ANO}). {tit_full} (v{versao})"
-           f" [Software]. {_INST}. {_REPO}")
+           f" [Software]. {_REPO}")
     abnt = (f"COSTA, E. S. da. GUARACI: Inteligência Quimiométrica para "
-            f"Matrizes Amazônicas. Versão {versao}. {_INST}, {_ANO}. "
+            f"Matrizes Amazônicas. Versão {versao}. {_ANO}. "
             f"Disponível em: <{_REPO}>.")
     with st.expander("APA", expanded=True):
         st.code(apa, language=None)

@@ -511,7 +511,6 @@ st.markdown(
     <div class="gua-badges">
       <span class="gua-badge">v{pq.__version__}</span>
       <span class="gua-badge">GPL-3.0-or-later</span>
-      <span class="gua-badge">GEAAp/UFPA</span>
     </div>
     """,
     unsafe_allow_html=True,
