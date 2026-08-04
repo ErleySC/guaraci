@@ -1,13 +1,19 @@
 name: Docs
 
+# Gatilho de push DESATIVADO em 2026-08-04: o repo está privado por decisão
+# deliberada (ver CLAUDE.md/histórico do prompt de lançamento) e GitHub Pages
+# não pode ser habilitado em repo privado no plano Free — o job de deploy
+# falhava em 0s a cada push desde 13/07. Só workflow_dispatch (manual) fica
+# ativo. Reativar o gatilho de push (descomentar abaixo) quando o repo virar
+# público e Pages estiver habilitado em Settings → Pages.
 on:
-  push:
-    branches: [master, main]
-    paths:
-      - "docs/**"
-      - "mkdocs.yml"
-      - "src/guaraci/**"
-      - ".github/workflows/docs.yml"
+  # push:
+  #   branches: [master, main]
+  #   paths:
+  #     - "docs/**"
+  #     - "mkdocs.yml"
+  #     - "src/guaraci/**"
+  #     - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
@@ -36,7 +42,7 @@ jobs:
       - name: Copiar SECURITY.md p/ dentro de docs/ (fica na raiz do repo, fora de docs_dir)
         run: cp SECURITY.md docs/SECURITY.md
 
-      - name: Build (--strict: qualquer link quebrado novo falha o job)
+      - name: "Build (--strict: qualquer link quebrado novo falha o job)"
         run: mkdocs build --strict
 
       - name: Upload do artefato do Pages
