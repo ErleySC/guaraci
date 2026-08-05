@@ -3174,6 +3174,22 @@ def _comando_versao() -> None:
     print(f"GUARACI v{pq.__version__}")
 
 
+# Modulos cujo nome de import difere do nome da distribuicao no PyPI. Sem este
+# mapa, buscar os metadados por `<nome do modulo>` falha e a versao sai como "?".
+_DIST_DE_MODULO = {"sklearn": "scikit-learn", "yaml": "PyYAML", "PIL": "pillow",
+                   "skimage": "scikit-image", "fpdf": "fpdf2",
+                   "docx": "python-docx", "pptx": "python-pptx"}
+
+
+def _versao_por_metadados(modulo: str) -> str:
+    """Versao pelos metadados da distribuicao, para pacotes sem __version__."""
+    from importlib import metadata
+    try:
+        return metadata.version(_DIST_DE_MODULO.get(modulo, modulo))
+    except metadata.PackageNotFoundError:
+        return "?"
+
+
 def _comando_doctor() -> None:
     """Diagnostico de ambiente: Python, dependencias, RAM/CPU/disco.
 
@@ -3210,24 +3226,38 @@ def _comando_doctor() -> None:
         else:
             try:
                 m = importlib.import_module(mod)
-                ver = getattr(m, "__version__", "?")
+                ver = getattr(m, "__version__", None)
+                if ver is None:
+                    # Nem todo pacote expoe __version__ (rich, por exemplo) --
+                    # os metadados da distribuicao sempre tem. Sem este fallback
+                    # o doctor imprimia "rich ?" com o rich instalado e sao.
+                    ver = _versao_por_metadados(mod)
             except ImportError as _e_imp:
                 ver = f"erro ao importar: {_e_imp}"
             linhas.append(f"  [ok]    {mod} {ver}")
 
     linhas.append("")
     linhas.append("Extras opcionais ([web], [reports], [benchmark], [imagem]):")
+    # CHAVE = nome do MODULO a importar; valor = (rotulo exibido, extra).
+    # Nao confundir com o nome do PACOTE no pip: `pip install fpdf2` instala o
+    # modulo `fpdf`, e `find_spec("fpdf2")` sempre devolve None -- o doctor
+    # reportava "ausente" com o pacote instalado (bug achado em 2026-08-05
+    # rodando o doctor de verdade num ambiente completo).
     opcionais = {
-        "streamlit": "web", "psutil": "web",
-        "fpdf2": "reports", "docx": "reports (python-docx)",
-        "openpyxl": "reports", "pptx": "reports (python-pptx)",
-        "xgboost": "benchmark", "shap": "benchmark",
-        "skimage": "imagem (scikit-image)",
+        "streamlit": ("streamlit", "web"),
+        "psutil":    ("psutil", "web"),
+        "fpdf":      ("fpdf2", "reports"),
+        "docx":      ("python-docx", "reports"),
+        "openpyxl":  ("openpyxl", "reports"),
+        "pptx":      ("python-pptx", "reports"),
+        "xgboost":   ("xgboost", "benchmark"),
+        "shap":      ("shap", "benchmark"),
+        "skimage":   ("scikit-image", "imagem"),
     }
-    for mod, extra in opcionais.items():
+    for mod, (rotulo, extra) in opcionais.items():
         spec = importlib.util.find_spec(mod)
         status = "ok" if spec is not None else "ausente"
-        linhas.append(f"  [{status:7s}] {mod:12s} ({extra})")
+        linhas.append(f"  [{status:7s}] {rotulo:13s} ({extra})")
 
     console.print()
     for l in linhas:
