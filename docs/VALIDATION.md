@@ -81,16 +81,22 @@ em vez de re-substituição — ver a seção "Limitações" abaixo.
   cobre DD-SIMCA, OPLS-DA, classificação, nem a validação *group-aware*
   via `mae_id` (Tecator não tem réplicas físicas — não aplicável a este
   dataset). Reproduzível: `python scripts/benchmark_tecator.py`.
-- **Reprodutibilidade numérica é *condicional ao ambiente*, não absoluta.**
-  Medido em 2026-08-05 pelo golden test (`tests/test_golden_valores.py`), que
-  trava 26 valores do pipeline sintético: 25 deles são **idênticos** em
-  Linux/Windows/macOS e em Python 3.10–3.13. `Q2` não é: dá **0,9693** com
-  scikit-learn 1.9.0 e **0,9766** com 1.7.2 (0,75% — muito acima de ruído de
-  ponto flutuante). Ou seja, a reprodutibilidade entre *plataformas* é forte,
-  mas entre *versões de dependência* não é garantida para toda métrica.
-  Por isso `requirements-lock.txt` existe e por isso o golden grava as
-  versões de numpy/scipy/scikit-learn junto dos valores de referência.
-  **Ao citar `Q2` ou `R²cv` em texto publicável, cite também o ambiente.**
+- **Partição de validação cruzada: estável por implementação própria, não
+  herdada do scikit-learn.** Achado em 2026-08-05 pelo golden test
+  (`tests/test_golden_valores.py`): o `StratifiedGroupKFold` do scikit-learn
+  **muda a partição entre versões mesmo com `random_state` fixo** — com dados
+  idênticos (72 amostras, 3 classes, 24 grupos, `random_state=42`), **42% das
+  amostras caíam em fold diferente** entre 1.7.2 e 1.9.0. Isso tornava `Q2`,
+  `RMSECV`, acurácia, F1, kappa e o nº de LVs ótimas dependentes da versão
+  instalada — incompatível com a alegação de reprodutibilidade que sustenta o
+  projeto. O Guaraci passou a usar `StratifiedGroupKFoldEstavel`
+  (`guaraci.validacao_estatistica`), que congela a ordenação por hash
+  determinístico do id do grupo. **Verificação:** a partição tem hash
+  idêntico em scikit-learn 1.7.2 e 1.9.0 (antes: dois hashes diferentes).
+  Testada por 9 testes de propriedade, incluindo o que garante que réplicas
+  de um mesmo `mae_id` nunca se separam. Mesmo assim, continua sendo boa
+  prática citar o ambiente (`requirements-lock.txt`) junto de números
+  publicados — o golden grava numpy/scipy/scikit-learn junto dos valores.
 - **Bootstrap BCa: propriedades, não cobertura empírica.** As 5 checagens
   confirmam que o intervalo se comporta como deveria (contém o valor
   observado, é reprodutível, degrada honestamente com poucas reamostragens)

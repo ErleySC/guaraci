@@ -6,6 +6,42 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-05 — CORRECAO CIENTIFICA: particao de
+             validacao cruzada estavel entre versoes do scikit-learn.
+             [Sem numero de versao de proposito: a proxima versao publicada
+             sera a v1.0.0, reiniciando o SemVer -- decisao do autor em
+             2026-08-04. Nao criar tag v31.10.0.]
+             O StratifiedGroupKFold do sklearn muda a particao entre versoes
+             MESMO com random_state fixo. Medido com dados identicos (72
+             amostras, 3 classes, 24 grupos de replica, random_state=42):
+             42% das amostras caem em fold diferente entre sklearn 1.7.2 e
+             1.9.0 -- 10 dos 24 grupos trocam de lado.
+             Efeito: Q2, RMSECV, acuracia, F1, kappa e ate' o numero de LVs
+             otimas dependiam da versao de biblioteca instalada. Para um
+             projeto cujo argumento central e' validacao group-aware
+             REPRODUTIVEL, era contradicao direta: os numeros de uma
+             monografia mudariam ao reinstalar o ambiente.
+             Correcao: StratifiedGroupKFoldEstavel (validacao_estatistica.py)
+             -- mesma heuristica gulosa de estratificacao com grupos, com a
+             ordenacao fixada por hash blake2b determinístico do id do grupo
+             + seed. Estavel entre versoes de Python/numpy/sklearn e entre
+             plataformas. Verificado: hash da particao IDENTICO em sklearn
+             1.7.2 e 1.9.0 (antes, dois hashes distintos).
+             ATENCAO: numeros de validacao cruzada de versoes anteriores NAO
+             sao comparaveis com os desta -- a particao mudou uma vez, de
+             proposito. Reexecutar antes de citar.
+             Achado pelo golden test novo (tests/test_golden_valores.py), que
+             trava 26 valores numericos do pipeline; no run sintetico so' o
+             Q2 denunciava, pois as demais metricas estao saturadas em 1,0.
+             Tambem nesta versao: correcao do `guaraci doctor`, que reportava
+             fpdf2 como ausente com o pacote instalado (nome de modulo `fpdf`
+             != nome do pacote pip) e exibia "rich ?" por rich nao expor
+             __version__; launcher da area de trabalho, que chamava o Python
+             do PATH (sem dependencias) em vez do venv; e requirements-lock
+             .txt, cuja primeira versao era ININSTALAVEL (llvmlite 0.36.0,
+             que exige Python <3.10, junto de numpy 2.5.1).
+             573 testes (era 562), ruff limpo, mypy limpo.
+
 v31.9.0 — 2026-08-04 — CORRECAO CIENTIFICA no DD-SIMCA + itens de comunidade
              JOSS. Achados de auditoria adversarial (2026-07-19) sobre a
              correcao LOGO da v31.1.x -- os dois bugs abaixo so' se

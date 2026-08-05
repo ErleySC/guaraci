@@ -564,17 +564,24 @@ re-executada nesta sessão).
   adulterados) não tem essa limitação — é medida em amostras que nunca
   entraram no treino.
 
-- **`Q2` muda com a versão do scikit-learn.** Medido em 2026-08-05 no
-  pipeline sintético: `Q2 = 0,9693` com scikit-learn 1.9.0 e `0,9766` com
-  1.7.2 — 0,75% de diferença, ordens de grandeza acima de ruído de ponto
-  flutuante, com **todo o resto idêntico** (as outras 25 métricas travadas
-  pelo golden test batem em Linux/Windows/macOS e Python 3.10–3.13). A causa
-  é a versão da biblioteca, não a plataforma nem o sistema operacional.
-  **Consequência para quem publica:** ao citar `Q2` (ou `R²cv`) em artigo ou
-  monografia, informe o ambiente — `requirements-lock.txt` na raiz do repo
-  fixa as versões exatas — e não apenas a versão do Guaraci. O teste
-  `tests/test_golden_valores.py` grava as versões junto dos valores de
-  referência exatamente por isso.
+- **~~`Q2` muda com a versão do scikit-learn~~ — RESOLVIDO em 2026-08-05.**
+  Registrado aqui porque afeta a comparação com resultados anteriores.
+  *O problema:* o `StratifiedGroupKFold` do scikit-learn muda a partição
+  entre versões **mesmo com `random_state` fixo** — medido com dados
+  idênticos, **42% das amostras caíam em fold diferente** entre 1.7.2 e
+  1.9.0 (10 de 24 grupos de réplica trocando de lado). Isso fazia `Q2`,
+  `RMSECV`, acurácia, F1, kappa e até o nº de LVs ótimas dependerem da
+  versão instalada.
+  *A correção:* o Guaraci passou a usar partição própria
+  (`StratifiedGroupKFoldEstavel`), com ordenação fixada por hash
+  determinístico — mesma partição em qualquer versão de scikit-learn,
+  numpy ou Python, em qualquer sistema operacional (verificado: hash da
+  partição idêntico em 1.7.2 e 1.9.0).
+  **Atenção ao comparar com rodadas antigas:** números de validação cruzada
+  gerados antes desta versão não são diretamente comparáveis com os de
+  agora — a partição mudou (uma vez, de propósito). Reexecute antes de
+  citar. Continua sendo boa prática informar o ambiente
+  (`requirements-lock.txt`) junto de qualquer número publicado.
 
 - **Regressão de teor agrupando espécies não funciona (R²≈0).** A variação
   espectral entre espécies (~90% da variância total) domina completamente
