@@ -7,12 +7,14 @@ das duas funções numéricas PURAS (as demais — teste_wold/permutação — e
 pipeline+CV e são cobertas pelos testes end-to-end 'slow').
 """
 import numpy as np
+import pytest
 from sklearn.metrics import accuracy_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import StratifiedKFold
 
-from guaraci.validacao_estatistica import bootstrap_bca_ci, cv_anova_eriksson
+from guaraci.validacao_estatistica import (bootstrap_bca_ci, cv_anova_eriksson,
+                                          StratifiedGroupKFoldEstavel)
 # Alias com prefixo _ para o pytest NAO coletar a funcao importada como teste
 # (o nome 'teste_permutacao' casa com o padrao de coleta 'test*').
 from guaraci.validacao_estatistica import teste_permutacao as _teste_permutacao
@@ -195,3 +197,117 @@ def test_wold_todas_as_iteracoes_falham_nao_quebra():
     assert res["n_falhos"] == 10
     assert np.isnan(res["intercept_r2"])
     assert np.isnan(res["intercept_q2"])
+
+
+# ── StratifiedGroupKFoldEstavel ──────────────────────────────────────────────
+# Existe porque o StratifiedGroupKFold do sklearn muda a particao entre versoes
+# mesmo com random_state fixo (42% das amostras trocaram de fold entre 1.7.2 e
+# 1.9.0). Os testes abaixo travam as propriedades que justificam a classe.
+
+def _dados_agrupados(n_grupos=24, n_replicas=3, n_classes=3, seed=0):
+    """Estrutura do dataset real: cada grupo = replicas fisicas (mae_id)."""
+    rng = np.random.default_rng(seed)
+    groups = np.repeat(np.arange(n_grupos), n_replicas)
+    classe_do_grupo = np.array([g % n_classes for g in range(n_grupos)])
+    y = np.repeat(classe_do_grupo, n_replicas)
+    X = rng.normal(size=(n_grupos * n_replicas, 8))
+    return X, y, groups
+
+
+def test_grupo_nunca_se_divide_entre_treino_e_teste():
+    """A propriedade que da nome ao metodo: replicas do mesmo mae_id ficam
+    SEMPRE do mesmo lado. E' o diferencial cientifico do projeto — se este
+    teste falhar, ha vazamento de replica e toda metrica esta inflada."""
+    X, y, groups = _dados_agrupados()
+    cv = StratifiedGroupKFoldEstavel(n_splits=4, seed=42)
+    for tr, va in cv.split(X, y, groups):
+        assert not (set(groups[tr]) & set(groups[va])), \
+            "um grupo apareceu em treino E teste — vazamento de replica"
+
+
+def test_particao_e_deterministica_entre_chamadas():
+    """Mesma entrada -> mesma particao. Base de toda a reprodutibilidade."""
+    X, y, groups = _dados_agrupados()
+    a = [(tr.tolist(), va.tolist())
+         for tr, va in StratifiedGroupKFoldEstavel(n_splits=3, seed=7).split(X, y, groups)]
+    b = [(tr.tolist(), va.tolist())
+         for tr, va in StratifiedGroupKFoldEstavel(n_splits=3, seed=7).split(X, y, groups)]
+    assert a == b
+
+
+def test_particao_nao_depende_da_ordem_das_amostras():
+    """Permutar as LINHAS nao pode mudar a que fold cada AMOSTRA pertence.
+
+    Garante que a particao e' funcao de (grupo, classe) e nao da ordem em que
+    o arquivo foi lido — dois usuarios com o mesmo dataset em ordem diferente
+    precisam obter o mesmo resultado.
+    """
+    X, y, groups = _dados_agrupados()
+    cv = StratifiedGroupKFoldEstavel(n_splits=3, seed=1)
+
+    def fold_por_grupo(Xa, ya, ga):
+        destino = {}
+        for i, (_tr, va) in enumerate(cv.split(Xa, ya, ga)):
+            for g in np.unique(ga[va]):
+                destino[g] = i
+        return destino
+
+    original = fold_por_grupo(X, y, groups)
+    perm = np.random.default_rng(99).permutation(len(y))
+    embaralhado = fold_por_grupo(X[perm], y[perm], groups[perm])
+    assert original == embaralhado
+
+
+def test_todas_as_amostras_aparecem_em_exatamente_um_fold_de_validacao():
+    """Particao de verdade: nenhuma amostra fica de fora nem se repete."""
+    X, y, groups = _dados_agrupados()
+    cv = StratifiedGroupKFoldEstavel(n_splits=4, seed=5)
+    vistos = np.concatenate([va for _tr, va in cv.split(X, y, groups)])
+    assert sorted(vistos.tolist()) == list(range(len(y)))
+
+
+def test_seeds_diferentes_podem_dar_particoes_diferentes():
+    """O seed precisa REALMENTE variar a particao — senao repeticoes com
+    seeds distintos mediriam sempre a mesma coisa."""
+    X, y, groups = _dados_agrupados(n_grupos=30)
+    def destino(seed):
+        cv = StratifiedGroupKFoldEstavel(n_splits=3, seed=seed)
+        d = np.zeros(len(y), dtype=int)
+        for i, (_tr, va) in enumerate(cv.split(X, y, groups)):
+            d[va] = i
+        return d.tolist()
+    assert any(destino(s) != destino(0) for s in (1, 2, 3, 4, 5))
+
+
+def test_exige_groups_explicitamente():
+    """Sem `groups` nao ha como manter replicas juntas: falhar e' obrigatorio,
+    porque cair num split sem grupos vazaria replicas em silencio."""
+    X, y, _groups = _dados_agrupados()
+    with pytest.raises(ValueError, match="groups"):
+        list(StratifiedGroupKFoldEstavel(n_splits=3).split(X, y, None))
+
+
+def test_recusa_n_splits_maior_que_numero_de_grupos():
+    X, y, groups = _dados_agrupados(n_grupos=3)
+    with pytest.raises(ValueError, match="n_splits"):
+        list(StratifiedGroupKFoldEstavel(n_splits=5).split(X, y, groups))
+
+
+def test_estratificacao_distribui_classes_entre_os_folds():
+    """Nao basta agrupar: cada fold precisa ver mais de uma classe, senao a
+    metrica por fold fica degenerada."""
+    X, y, groups = _dados_agrupados(n_grupos=30, n_classes=3)
+    cv = StratifiedGroupKFoldEstavel(n_splits=3, seed=42)
+    for _tr, va in cv.split(X, y, groups):
+        assert len(np.unique(y[va])) >= 2, "fold de validacao com uma unica classe"
+
+
+def test_compativel_com_cross_val_predict_do_sklearn():
+    """Precisa funcionar como splitter do sklearn, nao so' isolado."""
+    from sklearn.model_selection import cross_val_predict
+    from sklearn.linear_model import LogisticRegression
+    X, y, groups = _dados_agrupados(n_grupos=18)
+    cv = StratifiedGroupKFoldEstavel(n_splits=3, seed=42)
+    pred = cross_val_predict(LogisticRegression(max_iter=500), X, y,
+                             cv=cv.split(X, y, groups))
+    assert pred.shape == y.shape

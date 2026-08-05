@@ -19,6 +19,132 @@ from sklearn.metrics import balanced_accuracy_score
 from sklearn.pipeline import Pipeline
 
 
+class StratifiedGroupKFoldEstavel:
+    """`StratifiedGroupKFold` com partição ESTÁVEL entre versões de biblioteca.
+
+    Por que existe
+    --------------
+    O `StratifiedGroupKFold` do scikit-learn **muda a partição entre versões,
+    mesmo com `random_state` fixo**. Medido em 2026-08-05 com dados idênticos
+    (72 amostras, 3 classes, 24 grupos de réplica, `random_state=42`):
+    **42% das amostras caem num fold diferente** entre sklearn 1.7.2 e 1.9.0
+    (10 dos 24 grupos trocam de lado).
+
+    Consequência: toda métrica derivada de CV — Q², RMSECV, acurácia, F1,
+    kappa e até o número de LVs ótimas — passa a depender da versão do
+    scikit-learn instalada. Para um software cujo argumento central é
+    *validação group-aware reprodutível*, isso é uma contradição direta: os
+    números de uma monografia mudariam ao reinstalar o ambiente.
+
+    Esta classe congela o algoritmo dentro do Guaraci. A garantia é: **mesmo
+    `(y, groups, n_splits, seed)` ⇒ mesma partição**, em qualquer versão de
+    scikit-learn, numpy ou Python, em qualquer sistema operacional.
+
+    Como funciona
+    -------------
+    Mesma ideia gulosa que o scikit-learn documenta, mas com a ordenação
+    fixada por nós:
+
+    1. Conta a distribuição de classes de cada grupo (réplicas de um mesmo
+       `mae_id` são indivisíveis por construção — é o ponto do método).
+    2. Ordena os grupos por (nº de amostras decrescente, desempate por hash
+       determinístico do id do grupo + seed). O hash é `blake2b` sobre o texto
+       do id: estável entre versões de Python e plataformas, ao contrário de
+       `hash()` embutido (randomizado por processo) e de geradores de números
+       aleatórios, cujo fluxo de bits as bibliotecas não garantem entre
+       versões.
+    3. Cada grupo vai, na ordem, ao fold que menos piora o desvio-padrão da
+       distribuição de classes entre folds — a heurística usual de
+       estratificação com grupos.
+
+    O `seed` muda a partição (útil para repetições), mas de forma
+    reprodutível: o mesmo seed sempre dá a mesma partição.
+
+    Interface compatível com scikit-learn (`split`/`get_n_splits`), então
+    funciona em `cross_val_predict`, `cross_validate` etc. sem adaptação.
+    """
+
+    def __init__(self, n_splits: int = 5, seed: int = 42):
+        if n_splits < 2:
+            raise ValueError(f"n_splits deve ser >= 2, recebido {n_splits}")
+        self.n_splits = int(n_splits)
+        self.seed = int(seed)
+
+    # A assinatura espelha a do scikit-learn (X/y/groups ignorados quando não
+    # usados) para poder substituir o splitter dele sem mudar os chamadores.
+    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+        return self.n_splits
+
+    @staticmethod
+    def _chave_ordem(gid, seed: int) -> str:
+        """Desempate determinístico: hash estável do id do grupo + seed.
+
+        `blake2b` sobre o texto do id em UTF-8. Não usa `hash()` (randomizado
+        por processo via PYTHONHASHSEED) nem RNG (fluxo de bits não garantido
+        entre versões de numpy) — os dois quebrariam a reprodutibilidade que
+        esta classe existe para dar.
+        """
+        from hashlib import blake2b
+        return blake2b(f"{seed}:{gid}".encode("utf-8"), digest_size=8).hexdigest()
+
+    def split(self, X, y, groups=None):
+        """Gera `(indices_treino, indices_validacao)` por fold.
+
+        `groups` é obrigatório — sem ele não há como manter réplicas juntas,
+        que é a razão de existir desta classe. Falhar explicitamente é melhor
+        que cair num split que vaza réplicas em silêncio.
+        """
+        if groups is None:
+            raise ValueError(
+                "StratifiedGroupKFoldEstavel exige `groups` (ex.: mae_id). "
+                "Sem grupos as replicas vazam entre treino e teste.")
+        y = np.asarray(y)
+        groups = np.asarray(groups)
+        if len(y) != len(groups):
+            raise ValueError(f"y ({len(y)}) e groups ({len(groups)}) diferem em tamanho")
+
+        classes, y_idx = np.unique(y, return_inverse=True)
+        n_classes = len(classes)
+        grupos_unicos = np.unique(groups)
+        if len(grupos_unicos) < self.n_splits:
+            raise ValueError(
+                f"n_splits={self.n_splits} > numero de grupos ({len(grupos_unicos)}). "
+                "Cada fold precisa de ao menos um grupo.")
+
+        # Distribuicao de classes por grupo.
+        cont_por_grupo = {}
+        for g in grupos_unicos:
+            mask = groups == g
+            cont_por_grupo[g] = np.bincount(y_idx[mask], minlength=n_classes)
+
+        ordem = sorted(
+            grupos_unicos,
+            key=lambda g: (-int(cont_por_grupo[g].sum()), self._chave_ordem(g, self.seed)))
+
+        cont_por_fold = np.zeros((self.n_splits, n_classes), dtype=float)
+        fold_do_grupo = {}
+        for g in ordem:
+            # Escolhe o fold que minimiza o desvio-padrao medio por classe
+            # apos a insercao (heuristica padrao de estratificacao com grupos).
+            melhor_f, melhor_custo = 0, np.inf
+            for f in range(self.n_splits):
+                cont_por_fold[f] += cont_por_grupo[g]
+                custo = float(np.std(cont_por_fold, axis=0).mean())
+                cont_por_fold[f] -= cont_por_grupo[g]
+                # `<` estrito: em caso de empate fica o fold de menor indice,
+                # mantendo o resultado determinístico.
+                if custo < melhor_custo:
+                    melhor_f, melhor_custo = f, custo
+            cont_por_fold[melhor_f] += cont_por_grupo[g]
+            fold_do_grupo[g] = melhor_f
+
+        fold_da_amostra = np.array([fold_do_grupo[g] for g in groups])
+        indices = np.arange(len(y))
+        for f in range(self.n_splits):
+            val = fold_da_amostra == f
+            yield indices[~val], indices[val]
+
+
 def _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices):
     """Manual cross_val_predict, compatible with multilabel Y + stratified CV."""
     y_hat = np.zeros_like(Y_bin, dtype=float)

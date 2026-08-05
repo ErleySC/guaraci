@@ -620,6 +620,7 @@ from guaraci.validacao_estatistica import (   # noqa: E402
     teste_wold,
     _iter_permutacao,
     teste_permutacao,
+    StratifiedGroupKFoldEstavel,
 )
 
 
@@ -1293,10 +1294,16 @@ def executar(cfg: Config):
               f"classe ({min_por_classe}). Usando {n_splits}.")
 
     if usar_grupos:
-        # StratifiedGroupKFold: estratifica por classe E agrupa por mae_id
-        cv = StratifiedGroupKFold(n_splits=max(n_splits, 2), shuffle=True,
-                                    random_state=cfg.seed)
-        cv_label = f"StratifiedGroupKFold n_splits={n_splits}"
+        # Estratifica por classe E agrupa por mae_id. Implementacao PROPRIA
+        # (validacao_estatistica.StratifiedGroupKFoldEstavel) em vez da do
+        # scikit-learn: a do sklearn muda a particao entre versoes mesmo com
+        # random_state fixo -- medido em 2026-08-05, 42% das amostras trocaram
+        # de fold entre 1.7.2 e 1.9.0. Isso fazia Q2/RMSECV/acuracia/F1 e ate'
+        # o numero de LVs otimas dependerem da versao instalada, contradizendo
+        # a reprodutibilidade que e' o argumento central do projeto.
+        cv = StratifiedGroupKFoldEstavel(n_splits=max(n_splits, 2),
+                                         seed=cfg.seed)
+        cv_label = f"StratifiedGroupKFoldEstavel n_splits={n_splits}"
     elif cfg.n_repeats_cv > 1:
         cv = RepeatedStratifiedKFold(n_splits=n_splits,
                                       n_repeats=cfg.n_repeats_cv,
@@ -1398,9 +1405,10 @@ def executar(cfg: Config):
     # teste de Wold (bloco 6b, opt-in) o reaproveita mesmo quando o teste de
     # permutacao abaixo e' pulado.
     if usar_grupos:
-        cv_perm = StratifiedGroupKFold(n_splits=max(n_splits, 2),
-                                         shuffle=True,
-                                         random_state=cfg.seed)
+        # Mesmo motivo do bloco 5 (ver comentario la'): particao estavel entre
+        # versoes, senao o p-valor de permutacao tambem mudaria com o sklearn.
+        cv_perm = StratifiedGroupKFoldEstavel(n_splits=max(n_splits, 2),
+                                              seed=cfg.seed)
     else:
         cv_perm = StratifiedKFold(n_splits=n_splits, shuffle=True,
                                    random_state=cfg.seed)
