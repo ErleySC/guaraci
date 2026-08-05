@@ -564,6 +564,18 @@ re-executada nesta sessão).
   adulterados) não tem essa limitação — é medida em amostras que nunca
   entraram no treino.
 
+- **`Q2` muda com a versão do scikit-learn.** Medido em 2026-08-05 no
+  pipeline sintético: `Q2 = 0,9693` com scikit-learn 1.9.0 e `0,9766` com
+  1.7.2 — 0,75% de diferença, ordens de grandeza acima de ruído de ponto
+  flutuante, com **todo o resto idêntico** (as outras 25 métricas travadas
+  pelo golden test batem em Linux/Windows/macOS e Python 3.10–3.13). A causa
+  é a versão da biblioteca, não a plataforma nem o sistema operacional.
+  **Consequência para quem publica:** ao citar `Q2` (ou `R²cv`) em artigo ou
+  monografia, informe o ambiente — `requirements-lock.txt` na raiz do repo
+  fixa as versões exatas — e não apenas a versão do Guaraci. O teste
+  `tests/test_golden_valores.py` grava as versões junto dos valores de
+  referência exatamente por isso.
+
 - **Regressão de teor agrupando espécies não funciona (R²≈0).** A variação
   espectral entre espécies (~90% da variância total) domina completamente
   o sinal de adulteração — o modelo "aprende a prever a média" em vez de

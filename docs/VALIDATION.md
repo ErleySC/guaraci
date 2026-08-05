@@ -81,6 +81,16 @@ em vez de re-substituição — ver a seção "Limitações" abaixo.
   cobre DD-SIMCA, OPLS-DA, classificação, nem a validação *group-aware*
   via `mae_id` (Tecator não tem réplicas físicas — não aplicável a este
   dataset). Reproduzível: `python scripts/benchmark_tecator.py`.
+- **Reprodutibilidade numérica é *condicional ao ambiente*, não absoluta.**
+  Medido em 2026-08-05 pelo golden test (`tests/test_golden_valores.py`), que
+  trava 26 valores do pipeline sintético: 25 deles são **idênticos** em
+  Linux/Windows/macOS e em Python 3.10–3.13. `Q2` não é: dá **0,9693** com
+  scikit-learn 1.9.0 e **0,9766** com 1.7.2 (0,75% — muito acima de ruído de
+  ponto flutuante). Ou seja, a reprodutibilidade entre *plataformas* é forte,
+  mas entre *versões de dependência* não é garantida para toda métrica.
+  Por isso `requirements-lock.txt` existe e por isso o golden grava as
+  versões de numpy/scipy/scikit-learn junto dos valores de referência.
+  **Ao citar `Q2` ou `R²cv` em texto publicável, cite também o ambiente.**
 - **Bootstrap BCa: propriedades, não cobertura empírica.** As 5 checagens
   confirmam que o intervalo se comporta como deveria (contém o valor
   observado, é reprodutível, degrada honestamente com poucas reamostragens)
