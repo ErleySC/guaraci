@@ -31,9 +31,27 @@ Verificado empiricamente antes de escrever este teste: duas execuções
 independentes com a mesma config (seed=42) produzem `resumo_modelo.txt`
 byte-idêntico. A tolerância `_RTOL` existe apenas para diferenças de BLAS
 entre plataformas (a CI roda Linux/Windows/macOS), não para instabilidade do
-próprio pipeline — é frouxa o suficiente para não dar falso positivo entre
-sistemas e apertada o suficiente para pegar qualquer regressão real, que
-sempre move os valores muito mais que isso.
+próprio pipeline.
+
+O golden é AMARRADO A UM CONJUNTO DE DEPENDÊNCIAS
+--------------------------------------------------
+Achado real da primeira execução deste teste na CI (2026-08-05): de 26
+métricas, 25 são idênticas em Linux/Windows/macOS e em Python 3.10–3.13 —
+mas **`Q2` muda com a versão do scikit-learn** (0.9693 com sklearn 1.9.0 vs
+0.9766 com 1.7.2, que é o que o Python 3.10 resolve pelas faixas do
+`requirements.txt`). Diferença de 0,75%: ordens de grandeza acima de ruído
+de ponto flutuante, portanto comportamento real, não imprecisão.
+
+Consequência prática, e não é sobre este teste: **`Q2` é métrica de cabeçalho
+de artigo, e não é reproduzível entre versões de dependência.** Qualquer
+número citado em texto precisa vir acompanhado do ambiente
+(`requirements-lock.txt`), não só da versão do Guaraci.
+
+Por isso o golden registra as versões com que foi gravado. Quando o ambiente
+de execução diverge, a comparação estrita é pulada com mensagem explícita em
+vez de falhar — uma divergência de versão não é uma regressão de código, e
+tratá-la como tal só ensinaria a ignorar o teste. Os testes estruturais
+continuam rodando em qualquer ambiente.
 """
 from __future__ import annotations
 
@@ -82,6 +100,21 @@ _METRICAS_TRAVADAS = [
     "DD-SIMCA n_components",
     "DD-SIMCA n_desconhecidos",
 ]
+
+def _versoes_ambiente() -> dict:
+    """Versões que afetam o resultado numérico do pipeline.
+
+    scikit-learn entrou nesta lista por evidência, não por precaução: foi ele
+    que mudou o `Q2` entre 1.7.2 e 1.9.0 (ver docstring do módulo). numpy e
+    scipy entram pelo mesmo motivo em potencial — são a base de todo cálculo.
+    """
+    import numpy
+    import scipy
+    import sklearn
+    return {"numpy": numpy.__version__,
+            "scipy": scipy.__version__,
+            "scikit-learn": sklearn.__version__}
+
 
 _RE_NUM = re.compile(r"^\s*(.+?)\s*:\s*([-\d.]+(?:[eE][-+]?\d+)?)\s*$")
 # Linha de DD-SIMCA por espécie:
@@ -169,17 +202,36 @@ def test_valores_numericos_nao_mudaram(valores_run):
 
     Ver docstring do módulo para o procedimento quando este teste falha.
     """
+    versoes_agora = _versoes_ambiente()
+
     if os.environ.get("GUARACI_REGRAVAR_GOLDEN") == "1":
         _GOLDEN.parent.mkdir(parents=True, exist_ok=True)
         _GOLDEN.write_text(
-            json.dumps(valores_run, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+            json.dumps({"_versoes": versoes_agora, "valores": valores_run},
+                       indent=2, sort_keys=True, ensure_ascii=False) + "\n",
             encoding="utf-8")
         pytest.skip(f"golden regravado em {_GOLDEN} (GUARACI_REGRAVAR_GOLDEN=1)")
 
     assert _GOLDEN.is_file(), (
         f"arquivo golden ausente: {_GOLDEN}\n"
         "Gere com: GUARACI_REGRAVAR_GOLDEN=1 pytest tests/test_golden_valores.py")
-    esperado = json.loads(_GOLDEN.read_text(encoding="utf-8"))
+    dados = json.loads(_GOLDEN.read_text(encoding="utf-8"))
+    esperado = dados["valores"]
+    versoes_golden = dados["_versoes"]
+
+    # Divergência de versão não é regressão de código — ver docstring do módulo.
+    # Pular (em vez de falhar) é deliberado: um teste que falha por motivo que
+    # não é bug ensina a ignorar o teste.
+    difs = {lib: (versoes_golden.get(lib), versoes_agora.get(lib))
+            for lib in versoes_golden
+            if versoes_golden.get(lib) != versoes_agora.get(lib)}
+    if difs:
+        detalhe = "; ".join(f"{lib}: golden={a} != atual={b}" for lib, (a, b) in difs.items())
+        pytest.skip(
+            "comparacao estrita pulada — ambiente difere do golden (" + detalhe + "). "
+            "Nao e' regressao de codigo: o pipeline produz numeros diferentes com "
+            "versoes diferentes de dependencia (ex.: Q2 muda entre sklearn 1.7 e 1.9). "
+            "Reproduza o ambiente com requirements-lock.txt para comparar.")
 
     faltando = sorted(set(esperado) - set(valores_run))
     assert not faltando, (
