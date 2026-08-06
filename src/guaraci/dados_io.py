@@ -554,6 +554,125 @@ def _detectar_subpastas_classe(raiz: str) -> List[str]:
     return subpastas
 
 
+def prescan_dx(pasta: str) -> Dict[str, Any]:
+    """Varredura BARATA dos cabecalhos .dx, para avisar ANTES de executar.
+
+    Le apenas o cabecalho JCAMP-DX (`##TITLE=` e `##LASTX=`), parando no
+    inicio dos dados espectrais -- nao carrega os 8192 pontos de cada
+    arquivo. Medido no dataset real do TCC: **0,26 s para 1741 arquivos**,
+    contra ~21 s da carga completa (80x mais rapido), o que a torna viavel
+    num checklist interativo.
+
+    Existe porque dois efeitos que MUDAM O N DA ANALISE so' apareciam no meio
+    do log da execucao, quando o usuario ja tinha se comprometido com uma
+    rodada longa:
+
+    1. **Descarte por faixa espectral.** Datasets reais misturam janelas de
+       aquisicao (ex.: NIR completo [0, 15797] vs faixa estreita [300, 4000]).
+       Misturar e' invalido, entao `carregar_dx` mantem so' a faixa dominante
+       e descarta o resto. No dataset do TCC isso remove 68 espectros
+       concentrados em 2 especies -- Graviola e Goiaba perdem N sem que isso
+       fosse visivel antes de rodar.
+    2. **Amostras sem `mae_id`.** Sem grupo, a amostra entra na analise SEM
+       protecao contra vazamento de replica -- exatamente o que a validacao
+       group-aware existe para impedir.
+
+    Nao levanta excecao: e' diagnostico best-effort. Arquivo ilegivel ou sem
+    cabecalho reconhecivel entra em `n_sem_cabecalho` e segue.
+
+    Returns
+    -------
+    dict com:
+        n_arquivos       : total de .dx encontrados
+        faixa_dominante  : xmax (cm-1) da janela majoritaria, ou None
+        n_fora_da_faixa  : quantos serao DESCARTADOS na carga
+        fora_por_especie : {especie: n} dos descartados (pasta = especie)
+        n_sem_mae_id     : amostras sem grupo de replica identificavel
+        n_grupos         : grupos `mae_id` distintos
+        n_sem_cabecalho  : arquivos ilegiveis/sem ##LASTX
+    """
+    import glob as _glob
+    from collections import Counter
+
+    arquivos = _glob.glob(os.path.join(str(pasta), "**", "*.dx"), recursive=True)
+    # (caminho, lastx, mae_id_ou_None) por arquivo legivel.
+    lidos: List[Tuple[str, float, Optional[str]]] = []
+    n_sem_cabecalho = 0
+
+    for caminho in arquivos:
+        titulo = lastx = None
+        try:
+            with open(caminho, "r", encoding="latin-1", errors="replace") as f:
+                for linha in f:
+                    if linha.startswith("##TITLE="):
+                        titulo = linha[len("##TITLE="):].strip()
+                    elif linha.startswith("##LASTX="):
+                        lastx = linha[len("##LASTX="):].strip()
+                    elif linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
+                        break
+        except OSError:
+            n_sem_cabecalho += 1
+            continue
+
+        try:
+            valor_lastx = float(str(lastx).replace(",", "."))
+        except (TypeError, ValueError):
+            n_sem_cabecalho += 1
+            continue
+
+        info = parse_title(titulo) if titulo else None
+        mae = str(info["mae_id"]) if info and info.get("mae_id") else None
+        lidos.append((caminho, valor_lastx, mae))
+
+    faixa_dominante: Optional[float] = None
+    n_fora = 0
+    fora_por_especie: Dict[str, int] = {}
+    sobreviventes = lidos
+    if lidos:
+        # Mesma regra de `carregar_dx`: moda do xmax arredondado a 100 cm-1,
+        # tolerancia de 50 cm-1. Manter identico e' o que faz o aviso PREVER
+        # o descarte real em vez de dar um numero proximo porem diferente.
+        maxes = np.array([v for _c, v, _m in lidos])
+        chave = np.round(maxes / 100.0) * 100.0
+        valores, contagens = np.unique(chave, return_counts=True)
+        faixa_dominante = float(valores[int(np.argmax(contagens))])
+        incompat = np.abs(chave - faixa_dominante) >= 50.0
+        n_fora = int(incompat.sum())
+        if n_fora:
+            # A especie vem da PASTA (o layout esperado e' uma subpasta por
+            # especie); e' o mesmo agrupamento que o relatorio da carga usa.
+            fora_por_especie = dict(Counter(
+                os.path.basename(os.path.dirname(lidos[i][0]))
+                for i in range(len(lidos)) if incompat[i]))
+        sobreviventes = [lidos[i] for i in range(len(lidos)) if not incompat[i]]
+
+    # mae_id contado SO' entre os sobreviventes: e' o numero que o usuario vera'
+    # no log da carga. Contar sobre o total daria um valor maior e sem
+    # correspondencia com a analise (no dataset do TCC: 52 sobre o total vs 7
+    # entre os que ficam -- os outros 45 sao Graviola, que tem padrao de titulo
+    # diferente E faixa espectral incompativel, logo ja' saem pelo descarte).
+    n_sem_mae_id = sum(1 for _c, _v, m in sobreviventes if m is None)
+    grupos = {m for _c, _v, m in sobreviventes if m is not None}
+    # `carregar_dx` transforma cada orfa num grupo de 1 (`orfao_<arquivo>`),
+    # para isolar a amostra sem desligar o GroupKFold do dataset inteiro.
+    # Somamos aqui pela MESMA razao de sempre nesta funcao: o numero exibido
+    # tem de ser o que o usuario vera' no log da carga (dataset do TCC:
+    # 561 grupos reais + 7 orfas = 568).
+    n_grupos_efetivos = len(grupos) + n_sem_mae_id
+
+    return {
+        "n_arquivos":       len(arquivos),
+        "n_apos_descarte":  len(sobreviventes),
+        "faixa_dominante":  faixa_dominante,
+        "n_fora_da_faixa":  n_fora,
+        "fora_por_especie": fora_por_especie,
+        "n_sem_mae_id":     n_sem_mae_id,
+        "n_grupos":         n_grupos_efetivos,
+        "n_grupos_reais":   len(grupos),
+        "n_sem_cabecalho":  n_sem_cabecalho,
+    }
+
+
 def carregar_dx(pasta: str, parte_classe: int = 0,
                  extrair_conc: bool = False,
                  usar_parse_title: bool = True

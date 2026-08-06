@@ -109,3 +109,97 @@ def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dados(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "Andiroba"
+
+
+# ── prescan_dx ───────────────────────────────────────────────────────────────
+# Varredura barata de cabecalho que ANTECIPA, no checklist, os dois efeitos que
+# mudam o N da analise e antes so' apareciam no meio do log da execucao:
+# descarte por faixa espectral incompativel e amostras sem mae_id.
+
+def _montar_dataset(base, especie_a=("CAP", 6), especie_b=("BAB", 3),
+                     fora_da_faixa=0, sem_titulo_valido=0):
+    """Monta uma arvore <base>/<especie>/*.dx como o layout real do projeto."""
+    import os
+    y = [1, 2, 3, 4, 5]
+    for cod, n in (especie_a, especie_b):
+        pasta = os.path.join(str(base), cod)
+        os.makedirs(pasta, exist_ok=True)
+        for i in range(n):
+            # 2 replicas por ponto de coleta -> mae_id compartilhado.
+            title = f"{cod}-0{i // 2 + 1}-11-2020_T{i % 2 + 1}"
+            _escrever_dx(os.path.join(pasta, f"{title}.dx"), title, 0.0, 4000.0, y)
+    pasta_a = os.path.join(str(base), especie_a[0])
+    for i in range(fora_da_faixa):
+        # LASTX bem diferente -> cai fora da faixa dominante.
+        title = f"{especie_a[0]}-09-09-2020_T{i + 1}"
+        _escrever_dx(os.path.join(pasta_a, f"forafaixa{i}.dx"), title,
+                     0.0, 15797.0, y)
+    for i in range(sem_titulo_valido):
+        # Titulo que parse_title rejeita -> amostra sem mae_id.
+        _escrever_dx(os.path.join(pasta_a, f"semtitulo{i}.dx"),
+                     "TITULO_INVALIDO_SEM_PADRAO", 0.0, 4000.0, y)
+    return str(base)
+
+
+def test_prescan_conta_arquivos_e_grupos(pq, tmp_path):
+    """Sem anomalias: conta tudo, nenhum descarte, nenhuma orfa."""
+    pasta = _montar_dataset(tmp_path / "ds1")
+    r = pq.prescan_dx(pasta)
+    assert r["n_arquivos"] == 9          # 6 + 3
+    assert r["n_apos_descarte"] == 9
+    assert r["n_fora_da_faixa"] == 0
+    assert r["n_sem_mae_id"] == 0
+    assert r["n_grupos"] == 5            # CAP: 3 pontos, BAB: 2 pontos
+    assert r["n_sem_cabecalho"] == 0
+
+
+def test_prescan_preve_o_descarte_por_faixa_espectral(pq, tmp_path):
+    """O numero previsto tem de ser o MESMO que carregar_dx vai descartar --
+    e' o que torna o aviso confiavel em vez de so' indicativo."""
+    pasta = _montar_dataset(tmp_path / "ds2", fora_da_faixa=2)
+    r = pq.prescan_dx(pasta)
+    assert r["n_arquivos"] == 11
+    assert r["n_fora_da_faixa"] == 2
+    assert r["n_apos_descarte"] == 9
+    assert r["fora_por_especie"] == {"CAP": 2}, \
+        "o descarte tem de ser atribuido a especie (pasta) certa"
+
+    # A previsao tem de bater com a carga REAL do mesmo dataset.
+    _wn, X, _rot, _conc, _mae, _meta = pq.carregar_dx(pasta, extrair_conc=False)
+    assert X.shape[0] == r["n_apos_descarte"]
+
+
+def test_prescan_conta_orfas_apos_o_descarte(pq, tmp_path):
+    """Amostra sem mae_id entra na analise SEM protecao anti-leakage, entao o
+    numero precisa aparecer. Conta so' entre as SOBREVIVENTES: contar sobre o
+    total daria um valor sem correspondencia com o que a analise vera'."""
+    pasta = _montar_dataset(tmp_path / "ds3", sem_titulo_valido=2)
+    r = pq.prescan_dx(pasta)
+    assert r["n_sem_mae_id"] == 2
+    # Cada orfa vira um grupo de 1 em carregar_dx -> 5 reais + 2 orfas.
+    assert r["n_grupos_reais"] == 5
+    assert r["n_grupos"] == 7
+
+
+def test_prescan_orfa_descartada_nao_e_contada(pq, tmp_path):
+    """Uma amostra que ja' sai pelo descarte de faixa NAO deve aparecer como
+    orfa -- ela nem chega na analise. (No dataset real do TCC e' exatamente o
+    caso da Graviola: titulo fora do padrao E faixa incompativel.)"""
+    import os
+    pasta = _montar_dataset(tmp_path / "ds4")
+    # Orfa E fora da faixa ao mesmo tempo.
+    _escrever_dx(os.path.join(pasta, "CAP", "orfa_e_fora.dx"),
+                 "TITULO_INVALIDO", 0.0, 15797.0, [1, 2, 3, 4, 5])
+    r = pq.prescan_dx(pasta)
+    assert r["n_fora_da_faixa"] == 1
+    assert r["n_sem_mae_id"] == 0, "orfa descartada nao pode contar como orfa"
+
+
+def test_prescan_pasta_vazia_nao_quebra(pq, tmp_path):
+    import os
+    vazia = tmp_path / "vazia"
+    os.makedirs(vazia, exist_ok=True)
+    r = pq.prescan_dx(str(vazia))
+    assert r["n_arquivos"] == 0
+    assert r["faixa_dominante"] is None
+    assert r["n_grupos"] == 0

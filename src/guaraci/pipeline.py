@@ -640,6 +640,7 @@ from guaraci.dados_io import (   # noqa: E402
     _extrair_conc_filename,
     _listar_arquivos_espectro,
     _detectar_subpastas_classe,
+    prescan_dx,
     carregar_dx,
     carregar_dados,
 )
