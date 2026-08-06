@@ -631,3 +631,64 @@ def test_editar_campo_nivel_sem_mudanca_nao_mexe_em_nada(guaraci_mod, monkeypatc
     assert ok is False
     assert cfg.nivel == "N1"
     assert cfg.executar_ddsimca is False
+
+
+# ── Alcancabilidade de campos do _CONFIG_SPEC (achado 2026-08-06) ────────────
+# n_jobs_permutacao (e mais 6 campos: teste_martens, benchmark_regressao,
+# figuras_detalhadas, imagem_incluir_textura, selecao_ag, selecao_spa,
+# objetivo) existiam no Config/_CONFIG_SPEC/HELP_DB, mas nunca tinham sido
+# colocados em NENHUM menu -- so' editaveis a mao no YAML. O usuario so'
+# descobriu porque o assistente recomendou mudar um campo que era, na
+# pratica, inacessivel pela interface. Teste sistemico para a classe inteira
+# do bug, nao so' o campo que apareceu desta vez.
+
+def test_todo_campo_do_spec_e_alcancavel_por_algum_menu(guaraci_mod):
+    """Varre toda funcao menu_* via AST (nao regex sobre texto de origem --
+    a primeira tentativa de diagnostico teve um bug proprio nisso) e
+    confirma que toda chave do _CONFIG_SPEC aparece como string literal em
+    pelo menos uma delas, exceto os aliases com caminho de edicao proprio
+    documentados abaixo."""
+    import ast
+    import inspect
+
+    # Aliases com caminho de edicao PROPRIO e melhor que o generico
+    # _editar_campo -- nao sao bugs, sao design deliberado:
+    #   nome_execucao: mesmo atributo de "tag" (attr="tag" no spec), editado
+    #   pelo prompt dedicado "Identificador atual / Novo identificador" em
+    #   _rodar_pipeline()/main(), nao pelo menu numerado generico.
+    ALIASES_COM_CAMINHO_PROPRIO = {"nome_execucao"}
+
+    todas_chaves = set(guaraci_mod._SPEC_BY_KEY.keys())
+    alcancaveis = set()
+    for nome in dir(guaraci_mod):
+        if not nome.startswith("menu_"):
+            continue
+        fn = getattr(guaraci_mod, nome)
+        try:
+            src = inspect.getsource(fn)
+        except (OSError, TypeError):
+            continue
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                if node.value in todas_chaves:
+                    alcancaveis.add(node.value)
+
+    faltando = todas_chaves - alcancaveis - ALIASES_COM_CAMINHO_PROPRIO
+    assert not faltando, (
+        f"Campos no _CONFIG_SPEC sem NENHUM menu que os alcance: "
+        f"{sorted(faltando)} -- editaveis so' a mao no YAML. Adicione a um "
+        f"menu_* existente ou a ALIASES_COM_CAMINHO_PROPRIO (com "
+        f"justificativa) se houver caminho de edicao alternativo legitimo.")
+
+
+def test_nome_execucao_alias_tem_mesmo_attr_que_tag(guaraci_mod):
+    """Trava a premissa do whitelist acima: nome_execucao SO' pode ficar de
+    fora do teste de alcancabilidade porque aponta pro MESMO atributo que
+    "tag" (editado por um prompt dedicado). Se algum dia apontar para outro
+    atributo, deixa de ser um alias legitimo e o teste acima precisa
+    cobri-lo de novo."""
+    spec_tag = guaraci_mod._SPEC_BY_KEY.get("tag")
+    spec_nome_exec = guaraci_mod._SPEC_BY_KEY.get("nome_execucao")
+    assert spec_tag is not None and spec_nome_exec is not None
+    assert spec_tag["attr"] == spec_nome_exec["attr"] == "tag"

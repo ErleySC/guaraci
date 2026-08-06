@@ -1590,9 +1590,15 @@ def menu_projeto(cfg: Config) -> None:
 
 
 def menu_dados(cfg: Config) -> None:
+    # imagem_incluir_textura adicionado 2026-08-06: mesma classe de bug de
+    # n_jobs_permutacao. So' relevante quando modo_entrada="imagem"
+    # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
+    # campos_avancados por ser niche, nao por risco.
     _loop_menu(_t("t_dados"), _t("d_dados"),
                ["modo_entrada", "arquivo_csv", "coluna_classe",
-                "coluna_concentracao", "faixa_min_cm", "faixa_max_cm", "excluir_classes"], cfg)
+                "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
+                "excluir_classes", "imagem_incluir_textura"], cfg,
+               campos_avancados={"imagem_incluir_textura"})
 
 
 def menu_preproc(cfg: Config) -> None:
@@ -1636,21 +1642,39 @@ def menu_modelagem(cfg: Config) -> None:
     # Essenciais p/ Iniciante: nivel (o que estou fazendo) + max_lvs (unico
     # numero que costuma precisar ajustar). Avancados: DD-SIMCA/OPLS-DA/
     # selecao de variaveis sao metodos extras, nao o caminho basico.
+    # objetivo/selecao_ag/selecao_spa adicionados 2026-08-06: mesma classe de
+    # bug de n_jobs_permutacao. "objetivo" sobrepoe a derivacao automatica
+    # nivel->objetivo (uso avancado: a maioria usa "auto" via PROFILES);
+    # selecao_ag/selecao_spa sao sub-opcoes de selecao_variaveis_etapa4, so'
+    # fazem sentido com ele ligado -- todos em campos_avancados.
     _loop_menu(_t("t_modelagem"), _t("d_modelagem"),
-               ["nivel", "max_lvs", "opls_da", "ddsimca",
-                "modo_ddsimca", "selecao_variaveis_etapa4"], cfg,
-               campos_avancados={"opls_da", "ddsimca", "modo_ddsimca",
-                                  "selecao_variaveis_etapa4"})
+               ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca",
+                "modo_ddsimca", "selecao_variaveis_etapa4",
+                "selecao_spa", "selecao_ag"], cfg,
+               campos_avancados={"objetivo", "opls_da", "ddsimca", "modo_ddsimca",
+                                  "selecao_variaveis_etapa4",
+                                  "selecao_spa", "selecao_ag"})
 
 
 def menu_validacao(cfg: Config) -> None:
+    # n_jobs_permutacao/teste_martens adicionados 2026-08-06: mesma classe de
+    # bug -- existiam no Config/_CONFIG_SPEC/HELP_DB, mas nunca tinham sido
+    # colocados em NENHUM menu (so' editaveis a mao no YAML).
     fields = ["holdout_fracao", "validacao_group_aware",
-              "n_permutacoes", "teste_wold", "teste_cv_anova"]
+              "n_permutacoes", "n_jobs_permutacao", "teste_wold",
+              "teste_cv_anova", "teste_martens"]
     # Essenciais p/ Iniciante: holdout_fracao (facil de entender: quanto fica
     # de fora p/ teste) + validacao_group_aware (o diferencial central do
     # projeto -- fica visivel mesmo p/ quem nao vai mexer nele). Avancados:
-    # testes estatisticos extras (Wold/CV-ANOVA), permutacoes sao tuning fino.
-    campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova"}
+    # testes estatisticos extras (Wold/CV-ANOVA/Martens), permutacoes sao
+    # tuning fino.
+    #
+    # n_jobs_permutacao FORA de campos_avancados de proposito: nao muda
+    # nenhum resultado (so' o tempo), e o proprio checklist de pre-execucao
+    # (_checklist) sugere subir esse valor quando ha' muitas permutacoes
+    # sequenciais -- esconder atras do modo Avancado criaria uma dica que o
+    # usuario Iniciante nao consegue seguir.
+    campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova", "teste_martens"}
     mostrar_avancado = False
     while True:
         cls(); _print_header()
@@ -1680,7 +1704,9 @@ def menu_validacao(cfg: Config) -> None:
 
 
 def menu_avancado(cfg: Config) -> None:
-    fields = ["benchmark", "monte_carlo", "n_monte_carlo",
+    # benchmark_regressao adicionado 2026-08-06: existia no Config/
+    # _CONFIG_SPEC/HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
+    fields = ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
               "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"]
     while True:
         cls(); _print_header()
@@ -1706,8 +1732,12 @@ def menu_avancado(cfg: Config) -> None:
 # VISUALIZACAO — submenu especial com sub-handlers
 # ---------------------------------------------------------------------------
 def menu_visualizacao(cfg: Config) -> None:
-    fields = ["figuras_mostrar_marcadores", "figuras_mostrar_elipses",
-              "formato_figura", "dpi", "abrir_figuras_na_tela"]
+    # figuras_detalhadas adicionado 2026-08-06: mesma classe de bug de
+    # n_jobs_permutacao -- existia no Config/_CONFIG_SPEC/HELP_DB, mas nunca
+    # tinha sido colocado em NENHUM menu.
+    fields = ["figuras_detalhadas", "figuras_mostrar_marcadores",
+              "figuras_mostrar_elipses", "formato_figura", "dpi",
+              "abrir_figuras_na_tela"]
     # H/M/B/V (heatmap espectral, matriz de confusao, biplot PCA, variancia
     # x wavelength) removidos daqui: auditoria de 2026-07-12 encontrou que
     # apontavam para _gerar_heatmap_espectros/_gerar_confusion_matrix/
