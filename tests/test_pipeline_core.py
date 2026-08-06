@@ -7,6 +7,7 @@ para travar o comportamento atual e detectar regressões durante o corte.
 
 Usa a fixture `pq` (sessão) do conftest.py.
 """
+import re
 from pathlib import Path
 
 import numpy as np
@@ -1136,6 +1137,89 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
 
     card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
     assert "Martens n_significativas" in card_txt
+
+
+@pytest.mark.slow
+def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
+    """Achado em 2026-08-06: teste_wold/teste_cv_anova rodavam SEM checar o
+    objetivo (diferente do teste de permutacao, que ja tinha esse guard) --
+    em N3 (Quantificacao), refaziam n_permutacoes_wold refits de CV usando
+    rotulos de CLASSE (Y_bin one-hot) para um run que nao classifica nada, e
+    escreviam "Wold R2Y/Q2Y intercept"/"CV-ANOVA F" no resumo sem sentido
+    nenhum nesse contexto. Trava que, com os dois toggles LIGADOS num run
+    N3, nenhuma das duas chaves aparece no resumo -- e que a mensagem de
+    PULADO e' emitida (nao um silencio sem explicacao).
+
+    Usa contextlib.redirect_stdout (nao caplog): o logger "guaraci" tem
+    propagate=False de proposito (guaraci/log.py, p/ funcionar com o painel
+    de progresso do CLI/app web que faz parsing do stdout capturado) --
+    registros de "guaraci.pipeline" NUNCA chegam no logger raiz, entao
+    caplog fica sempre vazio aqui. E' o mesmo padrao ja usado em
+    test_pipeline_log_parsing_integration.py."""
+    import contextlib
+    import io
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "dados"),
+        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", nivel="N3",
+        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        executar_wold=True, executar_cv_anova=True,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    resumo_txt = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8")
+    # Ancorado no ":" do formato de linha de dado (`f"  {k:<N}: {v}"`, ver
+    # resultados_io.salvar_resumo_modelo) -- NAO usar so' "CV-ANOVA F" como
+    # substring: a secao de notas metodologicas do resumo tem o cabecalho
+    # estatico "[CV-ANOVA F-test]" (documentacao do metodo, sempre presente),
+    # que contem "CV-ANOVA F" como prefixo e daria falso-negativo no teste.
+    assert not re.search(r"Wold R2Y intercept\s*:", resumo_txt)
+    assert not re.search(r"Wold Q2Y intercept\s*:", resumo_txt)
+    assert not re.search(r"CV-ANOVA F\s*:", resumo_txt)
+
+    log_txt = buf.getvalue()
+    assert "Teste de Wold — PULADO" in log_txt
+    assert "CV-ANOVA — PULADO" in log_txt
+
+
+@pytest.mark.slow
+def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
+    """Contraparte positiva do teste acima: em objetivo=Classificacao (N1/N2),
+    onde os dois testes SAO pertinentes, o guard novo (objetivo ==
+    CLASSIFICACAO) nao pode bloquear o caminho que sempre funcionou."""
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "dados"),
+        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", nivel="N1",
+        n_por_classe=10, n_pontos_sint=60,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        executar_wold=True, executar_cv_anova=True,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    resumo_txt = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8")
+    assert "Wold R2Y intercept" in resumo_txt
+    assert "Wold Q2Y intercept" in resumo_txt
+    assert "CV-ANOVA F" in resumo_txt
 
 
 @pytest.mark.slow

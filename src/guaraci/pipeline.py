@@ -1447,8 +1447,16 @@ def executar(cfg: Config):
         perm_p = float("nan")
 
     # --- 6b. Teste de Wold (R2Y / Q2Y intercept) --------------------------
+    # Gated por objetivo == CLASSIFICACAO, no MESMO padrao do teste de
+    # permutacao acima (bloco 6/6a). Achado em 2026-08-06: faltava esse
+    # guard aqui -- o bloco rodava incondicionalmente mesmo em objetivo=
+    # Quantificacao/Exploratorio, refazendo n_permutacoes_wold refits de CV
+    # usando Y_bin (rotulos de CLASSE, one-hot) para um run que nao classifica
+    # nada, e escrevendo "Wold R2Y/Q2Y intercept" no resumo sem nenhum
+    # sentido nesse contexto -- nem gasto de tempo silencioso, nem numero
+    # espurio no relatorio sao aceitaveis em software cientifico.
     wold_res: Optional[Dict[str, object]] = None
-    if cfg.executar_wold:
+    if cfg.executar_wold and objetivo == CLASSIFICACAO:
         log.info(f"\n[4b/7] Teste de Wold (R2Y/Q2Y intercept, "
               f"n={cfg.n_permutacoes_wold})")
         wold_res = teste_wold(
@@ -1465,14 +1473,28 @@ def executar(cfg: Config):
         log.info(f"  Q2Y obs = {cast(float, wold_res['q2_obs']):.4f}  |  "
               f"intercepto = {_wq2_s}  "
               f"{'VALIDO' if wold_res['valid_q2'] else 'FALHA'} (limiar < 0.05)")
+    elif cfg.executar_wold:
+        log.info(f"\n[4b/7] Teste de Wold — PULADO: objetivo="
+              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intercepto R2Y/Q2Y "
+              f"e' diagnostico de CLASSIFICACAO (usa rotulos de especie/classe "
+              f"one-hot); nao pertinente fora desse modo "
+              f"(economiza {cfg.n_permutacoes_wold} refits de CV).")
 
     # --- 6c. CV-ANOVA Eriksson --------------------------------------------
+    # Mesmo motivo e mesmo achado do bloco 6b acima: sem o guard de objetivo,
+    # rodava (barato, mas gerava numero sem sentido no resumo) mesmo fora de
+    # Classificacao -- Y_bin/Y_cv sao rotulos de classe.
     cv_anova_res: Optional[Dict[str, float]] = None
-    if cfg.executar_cv_anova:
+    if cfg.executar_cv_anova and objetivo == CLASSIFICACAO:
         cv_anova_res = cv_anova_eriksson(Y_bin, Y_cv, n_opt)
         log.info(f"\n[4c/7] CV-ANOVA (Eriksson): F = {cv_anova_res['F']:.3f}  "
               f"p = {cv_anova_res['p_value']:.4g}  "
               f"(df = {cv_anova_res['df_model']}, {cv_anova_res['df_resid']})")
+    elif cfg.executar_cv_anova:
+        log.info(f"\n[4c/7] CV-ANOVA — PULADO: objetivo="
+              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Teste de "
+              f"significancia de CLASSIFICACAO (Eriksson et al. 2008); "
+              f"nao pertinente fora desse modo.")
 
     # --- 7. Metricas e relatorio -------------------------------------------
     cm_mat = confusion_matrix(rotulos, pred_lab, labels=lb.classes_)
