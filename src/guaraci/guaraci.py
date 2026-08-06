@@ -252,6 +252,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "confirmar":    "Confirmar? (s/n): ",
         "conf_anal":    "Alteracao afeta resultados — confirmar? (s/n): ",
         "atualizado":   "Atualizado: {campo} = {valor}",
+        "opt_sim":      "Sim",
+        "opt_nao":      "Nao",
+        "escolha_num":  "Numero ou Enter=manter: ",
+        "ajuste_nivel": "Ajustado automaticamente (nao pertinente a este nivel): {campos}",
         # Checklist
         "chk_dados":    "Dados carregados",
         "chk_csv":      "CSV localizado",
@@ -392,6 +396,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "novo_valor":   "New value (Enter=keep, ?=help): ",
         "confirmar":    "Confirm? (y/n): ",
         "conf_anal":    "This changes results — confirm? (y/n): ",
+        "opt_sim":      "Yes",
+        "opt_nao":      "No",
+        "escolha_num":  "Number or Enter=keep: ",
+        "ajuste_nivel": "Automatically adjusted (not relevant to this level): {campos}",
         "atualizado":   "Updated: {campo} = {valor}",
         "chk_dados":    "Data loaded",
         "chk_csv":      "CSV located",
@@ -1280,6 +1288,72 @@ def _print_submenu_compact(
     ))
     return fields_visiveis
 
+# Toggles cuja utilidade depende do OBJETIVO cientifico resolvido (nao do
+# nivel em si) -- espelha 1:1 modos_analise._FIG_OBJETIVOS: fora do objetivo
+# listado, o motor nem computa (gated por deve_gerar() em pipeline.executar(),
+# ou, no caso de teste_wold/teste_cv_anova, pelo guard adicionado no achado
+# de 2026-08-06 -- antes rodavam incondicionalmente e escreviam metrica de
+# CLASSIFICACAO sem sentido no resumo de um run de Quantificacao).
+_TOGGLES_SO_CLASSIFICACAO = (
+    "opls_da", "selecao_variaveis_etapa4", "comparar_pre_processamentos",
+    "teste_wold", "teste_cv_anova", "teste_martens",
+    "benchmark", "monte_carlo", "shap_benchmark",
+)
+_TOGGLES_SO_QUANTIFICACAO = ("benchmark_regressao",)
+
+
+def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
+    """Desliga toggles que ficam INERTES no nivel/objetivo atual de `cfg`.
+
+    Chamado apos o campo "nivel" mudar de valor (pedido do usuario,
+    2026-08-06: "quando mudo de modo... continua ativado a dd simca e
+    semelhantes... gostaria que ao mudar o N, mudasse as opcoes de modos
+    como esse que nao agrega a analise"). Antes disso, o toggle DD-SIMCA
+    permanecia visualmente "ligado" no menu mesmo em N1 -- funcionalmente
+    inerte (pipeline.executar() ignora com aviso), mas confuso na tela.
+
+    A logica espelha EXATAMENTE o que pipeline.executar()/modos_analise.py
+    decidem em runtime -- nao e' uma aproximacao da UI, e' a mesma regra:
+      - DD-SIMCA: N1 sempre ignora (forca False); N2 sempre forca ligado
+        internamente (forca True, refletindo o que vai acontecer de
+        qualquer forma); demais niveis respeitam deve_gerar (objetivo).
+      - Demais toggles (ver `_TOGGLES_SO_CLASSIFICACAO`): forcados False
+        fora de objetivo=Classificacao; `benchmark_regressao` fora de
+        Quantificacao.
+
+    Retorna a lista de CHAVES (_CONFIG_SPEC) efetivamente alteradas, para o
+    chamador avisar o usuario -- um reset silencioso seria tao confuso
+    quanto o problema original.
+    """
+    mudou: List[str] = []
+
+    def _forcar(key: str, valor: bool) -> None:
+        spec = _SPEC_BY_KEY.get(key)
+        if spec is None:
+            return
+        attr = spec["attr"]
+        if bool(getattr(cfg, attr, False)) != valor:
+            setattr(cfg, attr, valor)
+            mudou.append(key)
+
+    if cfg.nivel == "N1":
+        _forcar("ddsimca", False)
+    elif cfg.nivel == "N2":
+        _forcar("ddsimca", True)
+    else:
+        _forcar("ddsimca", pq.deve_gerar(cfg, "ddsimca"))
+
+    objetivo = pq.resolver_objetivo(cfg)
+    if objetivo != pq.CLASSIFICACAO:
+        for key in _TOGGLES_SO_CLASSIFICACAO:
+            _forcar(key, False)
+    if objetivo != pq.QUANTIFICACAO:
+        for key in _TOGGLES_SO_QUANTIFICACAO:
+            _forcar(key, False)
+
+    return mudou
+
+
 # ---------------------------------------------------------------------------
 # EDICAO DE CAMPO
 # ---------------------------------------------------------------------------
@@ -1306,8 +1380,23 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     info = Table(box=None, show_header=False, padding=(0, 1))
     info.add_column("L", style=PM, width=10, no_wrap=True)
     info.add_column("V", no_wrap=False)
+    # Campos booleanos SEMPRE viram escolha numerada [1]/[2], nunca texto
+    # livre. Antes disso, os 20 campos bool do _CONFIG_SPEC caiam no ramo
+    # else (texto livre): _coagir_valor aceitava so' um punhado de palavras
+    # magicas ("true"/"sim"/"1"/"yes"/"s"/"v") como True e tratava QUALQUER
+    # outra coisa como False SEM AVISO — digitar "y" (comum em outros
+    # softwares) virava False silenciosamente, e um erro de digitacao nunca
+    # dava mensagem de erro. Unificado com o MESMO padrao numerado que todo
+    # campo de escolha ja usa (nivel, modo_ddsimca, etc.) — "transformar tudo
+    # em modelo padrao" (pedido do usuario, 2026-08-06).
+    eh_bool = (tipo == "bool")
+    if eh_bool:
+        val_txt_atual = _t("opt_sim") if bool(val_cru) else _t("opt_nao")
+    else:
+        val_txt_atual = str(val_atual)
+
     info.add_row("Campo:", Text(nome, style=f"bold {r_hex}"))
-    info.add_row("Atual:", Text(str(val_atual), style=PS))
+    info.add_row("Atual:", Text(val_txt_atual, style=PS))
     info.add_row("Tipo:", Text(tipo, style=PM))
     if opcoes:
         info.add_row("Opcoes:", Text(
@@ -1319,7 +1408,29 @@ def _editar_campo(cfg: Config, key: str) -> bool:
         border_style=r_hex, box=rbox.ROUNDED, padding=(0, 1)
     ))
 
-    if opcoes:
+    if eh_bool:
+        opcoes_bool = (True, False)   # [1]=Sim/Yes, [2]=Nao/No, sempre nesta ordem
+        console.print()
+        for j, op in enumerate(opcoes_bool, 1):
+            mk = f"[{PA}]►[/{PA}]" if bool(op) == bool(val_cru) else " "
+            rotulo = _t("opt_sim") if op else _t("opt_nao")
+            console.print(f"  {mk} [{PA}][{j}][/{PA}] {rotulo}")
+        console.print()
+        raw = _input(f"  {_t('escolha_num')}")
+        if not raw:
+            console.print(f"  [{PM}]{_t('mantido')}[/{PM}]"); return False
+        if raw == "?":
+            _mostrar_ajuda(key); return False
+        if raw.isdigit() and 1 <= int(raw) <= 2:
+            # Sempre "true"/"false" em ingles: e' o vocabulario que
+            # _coagir_valor reconhece de forma inequivoca, independente do
+            # idioma da interface (mesmo padrao do resto do _CONFIG_SPEC,
+            # que grava sempre em ingles/codigo interno no YAML).
+            raw = "true" if opcoes_bool[int(raw) - 1] else "false"
+        else:
+            _msg = ("Digite 1 ou 2." if lang == "PT" else "Enter 1 or 2.")
+            console.print(f"  [err]{_msg}[/err]"); return False
+    elif opcoes:
         console.print()
         for j, op in enumerate(opcoes, 1):
             mk = f"[{PA}]►[/{PA}]" if str(op) == str(val_cru) else " "
@@ -1348,9 +1459,19 @@ def _editar_campo(cfg: Config, key: str) -> bool:
             console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); return False
 
     try:
+        nivel_mudou = (key == "nivel" and raw != str(val_cru))
         _set_val(cfg, key, raw)
-        msg = _t("atualizado", campo=nome, valor=raw)
+        # Bool sempre mostra o rotulo localizado (Sim/Nao ou Yes/No), nunca
+        # o "true"/"false" cru gravado internamente.
+        valor_msg = (_t("opt_sim") if raw == "true" else _t("opt_nao")) \
+                    if eh_bool else raw
+        msg = _t("atualizado", campo=nome, valor=valor_msg)
         console.print(f"  [g]✓ {escape(msg)}[/g]")
+        if nivel_mudou:
+            ajustados = _ajustar_toggles_por_nivel(cfg)
+            if ajustados:
+                nomes = ", ".join(_nome_campo(k) for k in ajustados)
+                console.print(f"  [{PM}]{_t('ajuste_nivel', campos=nomes)}[/{PM}]")
         return True
     except ValueError as e:   # _set_val/_coagir_valor: valor digitado invalido
         console.print(f"  [err]Erro: {escape(str(e))}[/err]")

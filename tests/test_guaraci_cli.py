@@ -398,3 +398,236 @@ def test_rotulo_de_nivel_traduz_mas_nao_muda_o_arquivo_de_saida(guaraci_mod):
 def test_todo_rotulo_de_nivel_tem_traducao(guaraci_mod):
     """Se alguem adicionar um nivel N4, a traducao nao pode ficar para tras."""
     assert set(guaraci_mod._NIVEL_NOME_EN) == set(guaraci_mod.pq._NIVEL_NOME)
+
+
+# ── Padronizacao de campos booleanos (achado 2026-08-06) ─────────────────────
+# Antes: os 20 campos bool do _CONFIG_SPEC caiam em texto livre (`opcoes=None`
+# no spec), e _coagir_valor so' reconhecia um punhado de palavras magicas
+# ("true"/"sim"/"1"/"yes"/"s"/"v") como True -- QUALQUER outra coisa virava
+# False SEM AVISO. Digitar "y" (comum em outros softwares) virava False
+# silenciosamente; um erro de digitacao nunca dava mensagem de erro. Agora
+# todo campo bool e' escolha numerada [1]=Sim/Yes [2]=Nao/No, igual a
+# qualquer outro campo de opcao (nivel, modo_ddsimca) -- "modelo padrao"
+# pedido pelo usuario.
+
+def test_editar_campo_bool_escolha_1_liga(guaraci_mod, monkeypatch):
+    cfg = guaraci_mod.Config(mostrar_elipses_grupo=False)
+    respostas = iter(["1"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
+    assert ok is True
+    assert cfg.mostrar_elipses_grupo is True
+
+
+def test_editar_campo_bool_escolha_2_desliga(guaraci_mod, monkeypatch):
+    cfg = guaraci_mod.Config(mostrar_elipses_grupo=True)
+    respostas = iter(["2"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
+    assert ok is True
+    assert cfg.mostrar_elipses_grupo is False
+
+
+def test_editar_campo_bool_enter_mantem_valor(guaraci_mod, monkeypatch):
+    cfg = guaraci_mod.Config(mostrar_elipses_grupo=True)
+    respostas = iter([""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
+    assert ok is False
+    assert cfg.mostrar_elipses_grupo is True
+
+
+@pytest.mark.parametrize("entrada", ["9", "abc", "y", "true", "sim"])
+def test_editar_campo_bool_entrada_fora_de_1_2_e_rejeitada(guaraci_mod, monkeypatch, entrada):
+    """O bug original: digitar "y" (ou qualquer coisa fora do vocabulario
+    magico) virava False SEM AVISO. Agora qualquer coisa que nao seja "1"
+    ou "2" e' rejeitada explicitamente e o valor NAO muda -- nem "y", nem
+    palavras que faziam parte do vocabulario antigo ("true"/"sim"), porque
+    a escolha agora e' estritamente numerada."""
+    cfg = guaraci_mod.Config(mostrar_elipses_grupo=False)
+    respostas = iter([entrada])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
+    assert ok is False
+    assert cfg.mostrar_elipses_grupo is False, (
+        f"entrada {entrada!r} nao devia ter alterado o campo")
+
+
+def test_editar_campo_bool_com_confirmacao_analitica_aceita(guaraci_mod, monkeypatch):
+    """Campo ANALITICO (ddsimca) pede confirmacao extra -- fluxo completo:
+    escolhe [1] e confirma com 's'."""
+    cfg = guaraci_mod.Config(executar_ddsimca=False)
+    respostas = iter(["1", "s"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "ddsimca")
+    assert ok is True
+    assert cfg.executar_ddsimca is True
+
+
+def test_editar_campo_bool_com_confirmacao_analitica_recusada(guaraci_mod, monkeypatch):
+    """Mesmo fluxo, mas recusando a confirmacao -- o valor NAO muda."""
+    cfg = guaraci_mod.Config(executar_ddsimca=False)
+    respostas = iter(["1", "n"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "ddsimca")
+    assert ok is False
+    assert cfg.executar_ddsimca is False
+
+
+@pytest.mark.parametrize("lang", ["PT", "EN"])
+def test_editar_campo_bool_grava_valor_canonico_independente_do_idioma(
+        guaraci_mod, monkeypatch, lang):
+    """O valor GRAVADO no config (true/false internos) nao pode depender do
+    idioma da interface -- so' o ROTULO exibido muda."""
+    lang_antes = guaraci_mod._STATE["lang"]
+    try:
+        guaraci_mod._STATE["lang"] = lang
+        cfg = guaraci_mod.Config(mostrar_elipses_grupo=False)
+        respostas = iter(["1"])
+        monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+        guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
+        assert cfg.mostrar_elipses_grupo is True
+    finally:
+        guaraci_mod._STATE["lang"] = lang_antes
+
+
+# ── Reset automatico de toggles inertes ao trocar "nivel" (2026-08-06) ───────
+# Pedido do usuario: "quando mudo de modo... continua ativado a dd simca e
+# semelhantes... gostaria que ao mudar o N, mudasse as opcoes de modos como
+# esse que nao agrega a analise". A regra espelha EXATAMENTE o que
+# pipeline.executar()/modos_analise.py decidem (ver docstring de
+# _ajustar_toggles_por_nivel), nao uma aproximacao da UI.
+
+def test_ajustar_toggles_ddsimca_desliga_em_n1(guaraci_mod):
+    """DD-SIMCA em N1 e' sempre ignorado por pipeline.executar() (aviso, nao
+    bloqueio no Config) -- a UI passa a refletir isso desligando o toggle."""
+    cfg = guaraci_mod.Config(nivel="N1", executar_ddsimca=True)
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_ddsimca is False
+    assert "ddsimca" in mudou
+
+
+def test_ajustar_toggles_ddsimca_liga_em_n2(guaraci_mod):
+    """N2 forca DD-SIMCA internamente em pipeline.executar() (linha ~1105)
+    independente do toggle -- a UI passa a mostrar True de antemao, refletindo
+    o que vai acontecer de qualquer forma, em vez de mostrar 'desligado' e
+    surpreender o usuario com o log dizendo o contrario."""
+    cfg = guaraci_mod.Config(nivel="N2", executar_ddsimca=False)
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_ddsimca is True
+    assert "ddsimca" in mudou
+
+
+def test_ajustar_toggles_ddsimca_desliga_em_n3(guaraci_mod):
+    """N3 (Quantificacao): deve_gerar(cfg,'ddsimca') e' False (figura so'
+    pertence a Classificacao) -- toggle inerte, igual N1, mas SEM aviso no
+    pipeline (achado: N1 tem log explicito, N3 nao tinha nenhum)."""
+    cfg = guaraci_mod.Config(nivel="N3", executar_ddsimca=True)
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_ddsimca is False
+    assert "ddsimca" in mudou
+
+
+def test_ajustar_toggles_classificacao_only_desligam_fora_de_classificacao(guaraci_mod):
+    """opls_da, etapa4, comparar_pre_processamentos, teste_wold,
+    teste_cv_anova, teste_martens, benchmark, monte_carlo, shap_benchmark:
+    todos pertencem exclusivamente a objetivo=Classificacao (ver
+    modos_analise._FIG_OBJETIVOS) -- inertes em N3."""
+    cfg = guaraci_mod.Config(
+        nivel="N3", executar_opls=True, executar_etapa4=True,
+        comparar_pipelines=True, executar_wold=True, executar_cv_anova=True,
+        executar_martens=True, executar_benchmark=True,
+        executar_monte_carlo=True, executar_shap=True,
+    )
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_opls is False
+    assert cfg.executar_etapa4 is False
+    assert cfg.comparar_pipelines is False
+    assert cfg.executar_wold is False
+    assert cfg.executar_cv_anova is False
+    assert cfg.executar_martens is False
+    assert cfg.executar_benchmark is False
+    assert cfg.executar_monte_carlo is False
+    assert cfg.executar_shap is False
+    assert set(mudou) >= {
+        "opls_da", "selecao_variaveis_etapa4", "comparar_pre_processamentos",
+        "teste_wold", "teste_cv_anova", "teste_martens", "benchmark",
+        "monte_carlo", "shap_benchmark",
+    }
+
+
+def test_ajustar_toggles_classificacao_only_preservados_em_n1_e_n2(guaraci_mod):
+    """Contraparte positiva: os mesmos toggles NAO podem ser mexidos em N1/N2
+    -- la' eles SAO pertinentes (objetivo=Classificacao)."""
+    for nivel in ("N1", "N2"):
+        cfg = guaraci_mod.Config(nivel=nivel, executar_opls=True,
+                                 executar_benchmark=True)
+        guaraci_mod._ajustar_toggles_por_nivel(cfg)
+        assert cfg.executar_opls is True, f"opls_da nao devia mudar em {nivel}"
+        assert cfg.executar_benchmark is True, f"benchmark nao devia mudar em {nivel}"
+
+
+def test_ajustar_toggles_benchmark_regressao_desliga_fora_de_quantificacao(guaraci_mod):
+    cfg = guaraci_mod.Config(nivel="N1", executar_benchmark_regressao=True)
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_benchmark_regressao is False
+    assert "benchmark_regressao" in mudou
+
+
+def test_ajustar_toggles_benchmark_regressao_preservado_em_n3(guaraci_mod):
+    cfg = guaraci_mod.Config(nivel="N3", executar_benchmark_regressao=True)
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_benchmark_regressao is True
+    assert "benchmark_regressao" not in mudou
+
+
+def test_ajustar_toggles_respeita_objetivo_explicito_sobre_nivel(guaraci_mod):
+    """Se o usuario sobrepoe cfg.objetivo explicitamente (avancado), a regra
+    segue o OBJETIVO resolvido, nao uma leitura ingenua do nivel -- mesma
+    precedencia de modos_analise.resolver_objetivo()."""
+    cfg = guaraci_mod.Config(nivel="N3", objetivo="classificacao",
+                             executar_opls=True)
+    guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert cfg.executar_opls is True, (
+        "objetivo=classificacao explicito deveria preservar toggle "
+        "de classificacao mesmo em nivel=N3")
+
+
+def test_ajustar_toggles_nao_mexe_quando_ja_esta_correto(guaraci_mod):
+    """Idempotencia: se os toggles ja estao no estado certo para o nivel,
+    a lista de 'mudou' fica vazia -- nao reporta ajuste que nao aconteceu."""
+    cfg = guaraci_mod.Config(nivel="N1", executar_ddsimca=False,
+                             executar_opls=False)
+    mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
+    assert mudou == []
+
+
+def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
+    """Fluxo completo via _editar_campo: trocar nivel N2->N1 (que tem
+    confirmacao ANALITICA) desliga ddsimca automaticamente e a mensagem de
+    aviso e' impressa."""
+    cfg = guaraci_mod.Config(nivel="N2", executar_ddsimca=True)
+    respostas = iter(["1", "s"])   # [1]=N1 no menu de opcoes; 's'=confirma
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    from rich.console import Console
+    import io
+    buf_console = Console(file=io.StringIO(), force_terminal=False, width=100)
+    monkeypatch.setattr(guaraci_mod, "console", buf_console)
+    ok = guaraci_mod._editar_campo(cfg, "nivel")
+    assert ok is True
+    assert cfg.nivel == "N1"
+    assert cfg.executar_ddsimca is False
+    saida = buf_console.file.getvalue()
+    assert "DD-SIMCA" in saida or "ddsimca" in saida.lower()
+
+
+def test_editar_campo_nivel_sem_mudanca_nao_mexe_em_nada(guaraci_mod, monkeypatch):
+    """Reescolher o MESMO nivel (Enter=manter, ou escolher o numero atual)
+    nao deve reportar nenhum ajuste."""
+    cfg = guaraci_mod.Config(nivel="N1", executar_ddsimca=False)
+    respostas = iter([""])   # Enter = mantem
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "nivel")
+    assert ok is False
+    assert cfg.nivel == "N1"
+    assert cfg.executar_ddsimca is False
