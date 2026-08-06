@@ -263,6 +263,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "chk_err_csv":  "Arquivo CSV nao encontrado",
         "chk_err_leak": "GroupKFold DESATIVADO — risco de leakage",
         "chk_warn_hw":  "RAM baixa com modulos pesados ativos",
+        "chk_tempo":    "Tempo estimado",
+        "chk_descarte": "{n} espectros serao DESCARTADOS (faixa espectral incompativel)",
+        "chk_orfaos":   "{n} amostras sem mae_id — entram SEM protecao anti-leakage",
+        "chk_grupos":   "{n} grupos de replica (mae_id)",
         # Hardware
         "hw_alto":      "Alto Desempenho",
         "hw_medio":     "Desempenho Medio",
@@ -395,6 +399,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "chk_err_csv":  "CSV file not found",
         "chk_err_leak": "GroupKFold DISABLED — leakage risk",
         "chk_warn_hw":  "Low RAM with heavy modules active",
+        "chk_tempo":    "Estimated time",
+        "chk_descarte": "{n} spectra will be DISCARDED (incompatible spectral range)",
+        "chk_orfaos":   "{n} samples without mae_id — enter WITHOUT anti-leakage protection",
+        "chk_grupos":   "{n} replicate groups (mae_id)",
         "hw_alto":      "High Performance",
         "hw_medio":     "Medium Performance",
         "hw_basico":    "Basic Performance",
@@ -2800,6 +2808,72 @@ def menu_ajuda(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # CHECKLIST PRE-EXECUCAO
 # ---------------------------------------------------------------------------
+def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
+    """Estimativa de ORDEM DE GRANDEZA do tempo de execucao, em texto.
+
+    Existe porque o usuario apertava [R] sem nenhuma nocao de estar
+    comprometendo 5 minutos ou 3 horas -- e a diferenca entre esses dois
+    casos e' so' um campo de configuracao (n_jobs_permutacao).
+
+    Calibracao (medida em 2026-08-05 no dataset real do TCC: 1673 amostras
+    x 2000 variaveis, CPython 3.12, 8 nucleos fisicos):
+        - 1 ajuste PLS com 40 LVs .......... 3,5 s
+        - carga de 1741 arquivos .dx ....... 21 s
+    O custo de um ajuste escala aproximadamente com (n_amostras x n_LVs),
+    o que da a constante `_S_POR_AMOSTRA_LV` abaixo.
+
+    E' ESTIMATIVA, nao promessa: ignora I/O de figuras, variacao de hardware
+    e o custo dos modulos opcionais mais pesados (SHAP em especial). Por isso
+    o texto devolvido usa faixa ("~15-25 min"), nunca um numero exato.
+    Devolve None quando nao ha' base para estimar (n_amostras desconhecido).
+    """
+    if not n_amostras or n_amostras <= 0:
+        return None
+
+    # 3,5 s / (1673 amostras * 40 LVs) — segundos por amostra por LV.
+    _S_POR_AMOSTRA_LV = 3.5 / (1673 * 40)
+
+    max_lvs = int(_cfgv(cfg, "max_lvs", 40) or 40)
+    n_splits = int(_cfgv(cfg, "n_splits_cv", 5) or 5)
+    frac_treino = 1.0 - 1.0 / max(n_splits, 2)
+
+    # Selecao de LVs: para cada n=1..max_lvs, um ajuste por fold. O custo
+    # cresce com n, entao a soma equivale a max_lvs*(max_lvs+1)/2 "LVs-ajuste".
+    lvs_ajuste = max_lvs * (max_lvs + 1) / 2.0
+    t_cv = lvs_ajuste * n_splits * n_amostras * frac_treino * _S_POR_AMOSTRA_LV
+
+    # Permutacao/Wold: n_perm repeticoes de uma CV completa no LV escolhido
+    # (aproximado por max_lvs/2, o valor tipico do criterio de parcimonia).
+    t_perm = 0.0
+    n_perm = int(_cfgv(cfg, "n_permutacoes", 0) or 0)
+    if _cfgv(cfg, "teste_wold", False):
+        n_perm += int(_cfgv(cfg, "n_permutacoes_wold", 0) or 0)
+    if n_perm:
+        n_jobs = max(1, int(_cfgv(cfg, "n_jobs_permutacao", 1) or 1))
+        t_1perm = (max_lvs / 2.0) * n_splits * n_amostras * frac_treino * _S_POR_AMOSTRA_LV
+        t_perm = n_perm * t_1perm / n_jobs
+
+    # Modulos opcionais pesados, como multiplicadores grosseiros do custo de CV.
+    t_extra = 0.0
+    if _cfgv(cfg, "benchmark", False):      t_extra += 3.0 * t_cv
+    if _cfgv(cfg, "monte_carlo", False):
+        t_extra += int(_cfgv(cfg, "n_monte_carlo", 60) or 60) / max(n_splits, 2) * (t_cv / max_lvs)
+    if _cfgv(cfg, "shap_benchmark", False): t_extra += 2.0 * t_cv
+    if _cfgv(cfg, "selecao_variaveis_etapa4", False): t_extra += 2.0 * t_cv
+    if _cfgv(cfg, "selecao_ag", False):     t_extra += 10.0 * t_cv
+    if _cfgv(cfg, "selecao_spa", False):    t_extra += 4.0 * t_cv
+
+    total_s = t_cv + t_perm + t_extra
+    if total_s < 90:
+        return "< 2 min"
+    minutos = total_s / 60.0
+    # Faixa de +-40%: a incerteza real e' dessa ordem (hardware, figuras, I/O).
+    lo, hi = max(1, int(minutos * 0.6)), int(minutos * 1.4) + 1
+    if hi < 60:
+        return f"~{lo}-{hi} min"
+    return f"~{lo / 60.0:.1f}-{hi / 60.0:.1f} h"
+
+
 def _checklist(cfg: Config) -> Tuple[bool, List]:
     lang = _lang()
     checks = []; erros = []
@@ -2808,8 +2882,30 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
     n_dx = _contar_dx(pasta) if pasta_ok else 0
 
+    n_para_estimar = n_dx
     if pasta_ok and n_dx > 0:
         checks.append((True,  _t("chk_dados") + f" ({n_dx} .dx)"))
+        # Varredura barata dos cabecalhos (~0,3 s p/ 1741 arquivos): antecipa
+        # os dois efeitos que MUDAM O N da analise e que antes so' apareciam
+        # no meio do log, depois de o usuario ja' ter iniciado a rodada.
+        if _cfgv(cfg, "modo_entrada", "dx") == "dx":
+            try:
+                from guaraci.dados_io import prescan_dx
+                pre = prescan_dx(str(pasta))
+            except (OSError, ValueError) as _e_pre:  # diagnostico e' best-effort
+                checks.append((None, f"pre-varredura indisponivel ({_e_pre})"))
+            else:
+                n_para_estimar = pre["n_apos_descarte"] or n_dx
+                if pre["n_fora_da_faixa"]:
+                    detalhe = ", ".join(
+                        f"{esp} {n}" for esp, n in
+                        sorted(pre["fora_por_especie"].items(), key=lambda kv: -kv[1]))
+                    checks.append((None, _t("chk_descarte", n=pre["n_fora_da_faixa"])
+                                          + f" — {detalhe}"))
+                if pre["n_sem_mae_id"]:
+                    checks.append((None, _t("chk_orfaos", n=pre["n_sem_mae_id"])))
+                if pre["n_grupos"]:
+                    checks.append((True, _t("chk_grupos", n=pre["n_grupos"])))
     elif pasta_ok:
         checks.append((None,  _t("chk_dados") + " (0 .dx)"))
         erros.append("pasta_dados vazia")
@@ -2853,6 +2949,18 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
 
     pp = _cfgv(cfg, "pre_processamento", "")
     checks.append((True if pp else None, f"{_t('chk_preproc')}: {pp or '—'}"))
+
+    est = _estimar_tempo(cfg, n_para_estimar)
+    if est:
+        # Dica acionavel junto da estimativa: o unico campo que muda a ordem
+        # de grandeza sem mudar nenhum resultado e' o paralelismo do teste de
+        # permutacao (resultado identico, so' o tempo muda).
+        dica = ""
+        n_jobs = int(_cfgv(cfg, "n_jobs_permutacao", 1) or 1)
+        if n_jobs == 1 and int(_cfgv(cfg, "n_permutacoes", 0) or 0) >= 50:
+            dica = ("  (n_jobs_permutacao=1 — subir p/ 4 reduz o tempo "
+                    "sem mudar o resultado)")
+        checks.append((True, f"{_t('chk_tempo')}: {est}{dica}"))
 
     return (len(erros) == 0), erros, checks
 

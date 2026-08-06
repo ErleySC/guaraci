@@ -225,3 +225,77 @@ def test_print_submenu_compact_sem_campos_avancados_nunca_filtra(
     fields = ["pre_processamento", "comparar_pre_processamentos"]
     visiveis = guaraci_mod._print_submenu_compact("t", "d", fields, cfg)
     assert visiveis == fields
+
+
+# ── _estimar_tempo ───────────────────────────────────────────────────────────
+# Existe para o usuario nao apertar [R] sem saber se espera 5 min ou 3 horas.
+# E' ESTIMATIVA de ordem de grandeza — os testes travam MONOTONICIDADE e
+# formato, nunca um valor exato (que dependeria de hardware).
+
+def _min_inferior(txt: str) -> float:
+    """Limite inferior da estimativa, sempre em MINUTOS.
+
+    Normalizar a unidade e' obrigatorio: "~0.4-1.0 h" e' MAIOR que
+    "~16-40 min", mas a comparacao ingenua dos numeros crus diria o oposto.
+    """
+    import re
+    m = re.search(r"([\d.]+)", txt)
+    if not m:
+        return 0.0
+    valor = float(m.group(1))
+    return valor * 60.0 if "h" in txt else valor
+
+
+def test_estimar_tempo_sem_amostras_retorna_none(guaraci_mod):
+    """Sem base para estimar, nao inventa um numero."""
+    cfg = guaraci_mod.Config()
+    assert guaraci_mod._estimar_tempo(cfg, 0) is None
+    assert guaraci_mod._estimar_tempo(cfg, None) is None
+
+
+def test_estimar_tempo_cresce_com_o_numero_de_amostras(guaraci_mod):
+    """Propriedade basica: mais amostras nao pode estimar MENOS tempo."""
+    cfg = guaraci_mod.Config()
+    cfg.n_permutacoes = 200
+    valores = [guaraci_mod._estimar_tempo(cfg, n) for n in (200, 1000, 5000)]
+    assert all(v is not None for v in valores)
+    # Compara pelo limite inferior numerico extraido do texto ("~16-40 min").
+    assert _min_inferior(valores[0]) <= _min_inferior(valores[1])
+
+
+def test_paralelismo_reduz_a_estimativa(guaraci_mod):
+    """n_jobs_permutacao e' o unico campo que muda a ordem de grandeza sem
+    mudar nenhum resultado — a estimativa precisa refletir isso, senao a
+    dica que o checklist exibe seria falsa."""
+    cfg = guaraci_mod.Config()
+    cfg.n_permutacoes = 200
+    cfg.n_jobs_permutacao = 1
+    seq = guaraci_mod._estimar_tempo(cfg, 1673)
+    cfg.n_jobs_permutacao = 4
+    par = guaraci_mod._estimar_tempo(cfg, 1673)
+    assert _min_inferior(par) < _min_inferior(seq), \
+        f"paralelo ({par}) deveria ser menor que sequencial ({seq})"
+
+
+def test_modulos_pesados_aumentam_a_estimativa(guaraci_mod):
+    """Ligar benchmark/SHAP/AG tem de aparecer no numero — sao justamente os
+    que transformam minutos em horas."""
+    base = guaraci_mod.Config()
+    base.n_permutacoes = 200
+    t_base = _min_inferior(guaraci_mod._estimar_tempo(base, 1673))
+    for attr in ("executar_benchmark", "executar_shap", "executar_ag"):
+        cfg = guaraci_mod.Config()
+        cfg.n_permutacoes = 200
+        setattr(cfg, attr, True)
+        assert _min_inferior(guaraci_mod._estimar_tempo(cfg, 1673)) > t_base, \
+            f"{attr}=True deveria aumentar a estimativa"
+
+
+def test_estimativa_usa_faixa_nunca_valor_exato(guaraci_mod):
+    """Formato: a incerteza precisa estar visivel. Um numero seco seria lido
+    como promessa."""
+    cfg = guaraci_mod.Config()
+    cfg.n_permutacoes = 200
+    txt = guaraci_mod._estimar_tempo(cfg, 1673)
+    assert ("-" in txt and ("min" in txt or "h" in txt)) or txt.startswith("<"), \
+        f"esperava faixa (ex.: '~16-40 min'), veio {txt!r}"
