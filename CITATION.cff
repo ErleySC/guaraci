@@ -85,7 +85,5 @@ preferred-citation:
       orcid: "https://orcid.org/0009-0005-9655-6349"
   version: "31.9.0"
   year: 2026
-  institution:
-    name: "GEAAp/UFPA"
   url: "https://github.com/ErleySC/guaraci"
   doi: "10.5281/zenodo.21311867"

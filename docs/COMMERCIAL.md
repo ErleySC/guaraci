@@ -1,6 +1,6 @@
 # Commercial Licensing / Licenciamento Comercial
 
-**Guaraci** (`pipeline.py`) — © 2026 Erley S. da Costa & GEAAp/UFPA.
+**Guaraci** (`pipeline.py`) — © 2026 Erley S. da Costa.
 All rights reserved / Todos os direitos reservados.
 
 ---

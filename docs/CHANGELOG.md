@@ -6,6 +6,54 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-06 — UI: markup cru, vazamento de PT em
+             EN, padronizacao de booleanos, reset por nivel, 7 campos
+             inalcancaveis por qualquer menu, e limpeza de identificacao.
+             [Sem numero de versao de proposito -- ver nota de 2026-08-05
+             abaixo: proxima versao publicada sera v1.0.0.]
+             Markup do Rich cru na tela: Text("[g]Yes[/g]") tratava a string
+             como literal em vez de interpretar -- precisa ser
+             Text.from_markup(). Afetava PT e EN, so' nao tinha sido notado
+             porque o default de Config() tem os campos booleanos em False
+             (ramo que nao tinha o bug). Junto: varredura completa por
+             vazamento de portugues em modo EN ("Modo:", "(automatico)",
+             rotulo de nivel sem traducao).
+             Wold/CV-ANOVA rodavam SEM checar o objetivo cientifico
+             (diferente do teste de permutacao, que ja tinha esse guard) --
+             em Quantificacao, refaziam refits de CV com rotulos de CLASSE
+             e escreviam metrica sem sentido no resumo. Corrigido com o
+             mesmo guard do teste de permutacao.
+             Campos booleanos (20 no total) padronizados para escolha
+             numerada [1]=Sim [2]=Nao -- antes caiam em texto livre, e
+             _coagir_valor tratava QUALQUER entrada fora de um punhado de
+             palavras magicas como False SEM AVISO (digitar "y" virava
+             False silenciosamente).
+             Trocar "nivel" agora desliga automaticamente toggles inertes
+             nesse nivel/objetivo (DD-SIMCA, OPLS-DA, Etapa4, Wold,
+             CV-ANOVA, Martens, Benchmark, Monte Carlo, SHAP,
+             Benchmark-regressao), espelhando a logica real de
+             pipeline.executar()/modos_analise.py, com aviso explicito do
+             que mudou.
+             Achado sistemico: n_jobs_permutacao, teste_martens,
+             benchmark_regressao, figuras_detalhadas,
+             imagem_incluir_textura, objetivo, selecao_ag e selecao_spa
+             existiam no Config/_CONFIG_SPEC/HELP_DB, mas nunca tinham sido
+             colocados em NENHUM menu -- so' editaveis a mao no YAML.
+             Adicionados aos menus corretos. Teste sistemico novo varre
+             todo o _CONFIG_SPEC via AST contra toda funcao menu_* para a
+             classe inteira do bug nao voltar.
+             Identificacao: exemplos de citacao do README (APA/ABNT/BibTeX)
+             atualizados para bater com o que o software gera desde a
+             remocao do branding institucional (ver nota de 2026-08-05
+             abaixo); contradicao de copyright corrigida em README.md/
+             README.pt-br.md/COMMERCIAL.md ("Erley S. da Costa & GEAAp/UFPA"
+             vs "o autor retem integralmente o copyright" no mesmo
+             documento -- ficava so' com Erley, conforme decisao ja
+             registrada no CLAUDE.md); CITATION.cff perde o bloco
+             preferred-citation.institution (mantido affiliation:, que e'
+             padrao e legitimo).
+             617 testes (era 573), ruff limpo, mypy limpo.
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-05 — CORRECAO CIENTIFICA: particao de
              validacao cruzada estavel entre versoes do scikit-learn.
              [Sem numero de versao de proposito: a proxima versao publicada

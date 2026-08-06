@@ -42,7 +42,30 @@ As três formas compartilham o mesmo motor (`pipeline.py`) e a mesma
 configuração (`config.yaml` / classe `Config`) — não há divergência de
 resultado entre elas.
 
-### 1.1 Painel de acompanhamento em tempo real (terminal)
+### 1.1 Checklist pré-execução (terminal)
+
+Antes de confirmar a execução (`[R]`), o assistente de terminal mostra um
+checklist com uma varredura barata dos arquivos `.dx` (~0,3 s para milhares
+de arquivos — só lê o cabeçalho JCAMP-DX, não os 8192 pontos espectrais),
+que antecipa dois efeitos que **mudam o N da análise** e antes só apareciam
+no meio do log, depois de a execução já ter começado:
+
+- **Descarte por faixa espectral incompatível** — datasets reais podem
+  misturar janelas de aquisição (ex.: NIR completo `[0, 15797]` vs. faixa
+  estreita `[300, 4000]`); o motor mantém só a faixa dominante e descarta o
+  resto. O checklist mostra quantos espectros serão descartados e de qual
+  espécie, antes de rodar.
+- **Amostras sem `mae_id`** — entram na análise **sem** proteção contra
+  vazamento de réplica (o diferencial central do projeto). O checklist
+  avisa quantas.
+
+Também mostra uma **estimativa de tempo** (faixa, não valor exato — ex.:
+`~6-15 min`), calibrada em medição real, não em regra de bolso. Quando
+`n_jobs_permutacao=1` e há muitas permutações, o checklist sugere
+explicitamente subir esse valor: o resultado é idêntico (mesmo seed, mesma
+partição), só o tempo de execução muda.
+
+### 1.2 Painel de acompanhamento em tempo real (terminal)
 
 Ao rodar pelo assistente de terminal, a execução é acompanhada por um painel
 ao vivo (biblioteca *Rich*) que mostra, a cada instante: o objetivo científico

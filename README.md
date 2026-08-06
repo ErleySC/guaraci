@@ -170,7 +170,7 @@ erleysdacosta@gmail.com
 ## License & citation
 
 Licensed under the **GNU General Public License v3.0** ([GPLv3](LICENSE)) —
-© 2026 Erley S. da Costa & GEAAp/UFPA. Free for research, teaching and academic
+© 2026 Erley S. da Costa. Free for research, teaching and academic
 use, provided authorship is credited and derivatives stay open-source.
 
 **Commercial use:** embedding Guaraci in proprietary/closed-source or commercial
@@ -189,13 +189,13 @@ Bug reports, feature requests and pull requests are welcome — see
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
-> Matrices* (v31.9.0) [Software]. GEAAp/UFPA.
+> Matrices* (v31.9.0) [Software].
 > https://github.com/ErleySC/guaraci
 
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.9.0. GEAAp/UFPA, 2026. Disponível em:
+> Amazônicas**. Versão 31.9.0. 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **BibTeX**
@@ -206,7 +206,6 @@ Bug reports, feature requests and pull requests are welcome — see
   title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
   version     = {31.9.0},
   year        = {2026},
-  institution = {GEAAp/UFPA},
   url         = {https://github.com/ErleySC/guaraci},
   license     = {GPL-3.0-or-later},
   doi         = {10.5281/zenodo.21311867}
