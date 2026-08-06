@@ -267,6 +267,9 @@ I18N: Dict[str, Dict[str, str]] = {
         "chk_descarte": "{n} espectros serao DESCARTADOS (faixa espectral incompativel)",
         "chk_orfaos":   "{n} amostras sem mae_id — entram SEM protecao anti-leakage",
         "chk_grupos":   "{n} grupos de replica (mae_id)",
+        "chk_dica_jobs": "(n_jobs_permutacao=1 — subir p/ 4 reduz o tempo sem mudar o resultado)",
+        "chk_modo":     "Modo",
+        "chk_prescan_erro": "pre-varredura indisponivel ({erro})",
         # Hardware
         "hw_alto":      "Alto Desempenho",
         "hw_medio":     "Desempenho Medio",
@@ -317,6 +320,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "res_tag":      "Identificador",
         # Nome de pasta
         "tag_atual":    "Identificador atual",
+        "tag_auto":     "(automatico)",
         "tag_novo":     "Novo identificador (Enter=manter, ?=limpar): ",
         "tag_limpo":    "Identificador removido — proximo run usa timestamp.",
         # Perfis
@@ -403,6 +407,9 @@ I18N: Dict[str, Dict[str, str]] = {
         "chk_descarte": "{n} spectra will be DISCARDED (incompatible spectral range)",
         "chk_orfaos":   "{n} samples without mae_id — enter WITHOUT anti-leakage protection",
         "chk_grupos":   "{n} replicate groups (mae_id)",
+        "chk_dica_jobs": "(n_jobs_permutacao=1 — raising it to 4 cuts the time without changing results)",
+        "chk_modo":     "Mode",
+        "chk_prescan_erro": "pre-scan unavailable ({erro})",
         "hw_alto":      "High Performance",
         "hw_medio":     "Medium Performance",
         "hw_basico":    "Basic Performance",
@@ -449,6 +456,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "res_nivel":    "Level",
         "res_tag":      "Run ID",
         "tag_atual":    "Current ID",
+        "tag_auto":     "(automatic)",
         "tag_novo":     "New ID (Enter=keep, ?=clear): ",
         "tag_limpo":    "ID cleared — next run uses timestamp.",
         "perf_tempo":   "Time",
@@ -625,6 +633,18 @@ def _pause(msg: str = "") -> None:
 def _nome_campo(key: str) -> str:
     return FIELD_NAMES.get(key, {}).get(_lang(), key)
 
+# Traducao dos nomes de nivel APENAS para exibicao. `pq._NIVEL_NOME` (em
+# config.py) segue sendo a fonte unica em portugues, porque tambem alimenta o
+# `resumo_modelo.txt` — traduzir la' mudaria um ARQUIVO DE SAIDA conforme o
+# idioma da interface, o que quebraria a comparabilidade entre execucoes.
+# Mesmo padrao ja' usado por _DDSIMCA_DISPLAY.
+_NIVEL_NOME_EN = {
+    "N1": "Species classification",
+    "N2": "Pure vs. adulterated discrimination",
+    "N3": "Adulterant content quantification",
+}
+
+
 def _rotulo_opcao(key: str, op: Any) -> str:
     """Nome amigavel de um valor de opcao (so exibicao; o valor gravado no
     config continua o codigo interno, ex.: N1/N2/N3, puros/todos)."""
@@ -632,7 +652,8 @@ def _rotulo_opcao(key: str, op: Any) -> str:
         # Lidera com o nome amigavel (P8: aposentar N1/N2/N3 como termo
         # PRIMARIO na UI); o codigo interno fica entre parenteses so' como
         # referencia tecnica, nunca como o rotulo principal exibido ao usuario.
-        nome = pq._NIVEL_NOME.get(str(op), "")
+        nome = (_NIVEL_NOME_EN.get(str(op), "") if _lang() == "EN"
+                else pq._NIVEL_NOME.get(str(op), ""))
         return f"{nome} ({op})" if nome else str(op)
     if key == "modo_ddsimca":
         return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(op), str(op))
@@ -2893,7 +2914,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
                 from guaraci.dados_io import prescan_dx
                 pre = prescan_dx(str(pasta))
             except (OSError, ValueError) as _e_pre:  # diagnostico e' best-effort
-                checks.append((None, f"pre-varredura indisponivel ({_e_pre})"))
+                checks.append((None, _t("chk_prescan_erro", erro=_e_pre)))
             else:
                 n_para_estimar = pre["n_apos_descarte"] or n_dx
                 if pre["n_fora_da_faixa"]:
@@ -2922,7 +2943,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
             checks.append((False, _t("chk_err_csv")))
             erros.append("arquivo_csv")
     else:
-        checks.append((True, f"Modo: {modo}"))
+        checks.append((True, f"{_t('chk_modo')}: {modo}"))
 
     ga = _cfgv(cfg, "validacao_group_aware", True)
     if ga:
@@ -2958,8 +2979,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
         dica = ""
         n_jobs = int(_cfgv(cfg, "n_jobs_permutacao", 1) or 1)
         if n_jobs == 1 and int(_cfgv(cfg, "n_permutacoes", 0) or 0) >= 50:
-            dica = ("  (n_jobs_permutacao=1 — subir p/ 4 reduz o tempo "
-                    "sem mudar o resultado)")
+            dica = "  " + _t("chk_dica_jobs")
         checks.append((True, f"{_t('chk_tempo')}: {est}{dica}"))
 
     return (len(erros) == 0), erros, checks
@@ -2995,11 +3015,19 @@ def _print_resumo(cfg: Config) -> None:
 
     def row(lbl, val):
         if isinstance(val, bool):
-            v_txt = Text("[g]Sim[/g]" if lang=="PT" else "[g]Yes[/g]") if val \
-                    else Text("[m]Nao[/m]" if lang=="PT" else "[m]No[/m]")
+            # Text.from_markup, NAO Text(): o construtor trata a string como
+            # LITERAL e imprimia "[g]Yes[/g]" cru na tela (em PT e EN).
+            if val:
+                v_txt = Text.from_markup("[g]Sim[/g]" if lang == "PT" else "[g]Yes[/g]")
+            else:
+                v_txt = Text.from_markup("[m]Nao[/m]" if lang == "PT" else "[m]No[/m]")
             t.add_row(lbl, v_txt)
         else:
-            t.add_row(lbl, Text(str(val), style=PS))
+            # Mesmo motivo: alguns valores (ex.: "[err]KFold[/err]") carregam
+            # markup e precisam ser interpretados, nao exibidos literalmente.
+            texto = str(val)
+            t.add_row(lbl, Text.from_markup(texto) if "[" in texto
+                            else Text(texto, style=PS))
 
     row(_t("res_tecnica"),  _TECNICA_SELECIONADA.get("nome", "FT-NIR"))
     row(_t("res_preproc"),  _cfgv(cfg, "pre_processamento", "—"))
@@ -3084,7 +3112,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     # Nome da execucao
     console.print()
     tag_atual = getattr(cfg, "tag", "") or ""
-    console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or '(automatico)'}[/{PA}]")
+    console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or _t('tag_auto')}[/{PA}]")
     novo = _input(f"  {_t('tag_novo')}")
     if novo == "?":
         cfg.tag = ""; console.print(f"  [{PM}]{_t('tag_limpo')}[/{PM}]")
@@ -3555,7 +3583,7 @@ def main() -> None:
         elif escolha == "N":
             console.print()
             tag_atual = getattr(cfg, "tag", "") or ""
-            console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or '(automatico)'}[/{PA}]")
+            console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or _t('tag_auto')}[/{PA}]")
             novo = _input(f"  {_t('tag_novo')}")
             if novo == "?":
                 cfg.tag = ""; console.print(f"  [{PM}]{_t('tag_limpo')}[/{PM}]")

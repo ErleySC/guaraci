@@ -299,3 +299,102 @@ def test_estimativa_usa_faixa_nunca_valor_exato(guaraci_mod):
     txt = guaraci_mod._estimar_tempo(cfg, 1673)
     assert ("-" in txt and ("min" in txt or "h" in txt)) or txt.startswith("<"), \
         f"esperava faixa (ex.: '~16-40 min'), veio {txt!r}"
+
+
+# ── i18n: vazamento de idioma e markup cru ───────────────────────────────────
+# Achados em 2026-08-06 numa tela real do usuario em modo EN: "[g]Yes[/g]"
+# impresso LITERALMENTE (Text() em vez de Text.from_markup) e varios textos
+# ainda em portugues. Os testes abaixo travam os dois problemas de uma vez,
+# renderizando os paineis de verdade e inspecionando a saida.
+
+def _render(guaraci_mod, fn, cfg, lang):
+    """Renderiza um painel no idioma pedido e devolve o texto SEM cores.
+
+    `console.file` e' uma PROPERTY: le' `self._file or sys.stdout`
+    (resolvida dinamicamente a cada chamada). Salvar `console.file` guarda o
+    stdout JA' RESOLVIDO daquele instante; reatribuir esse valor na volta
+    prende `_file` nesse objeto concreto para sempre, em vez de devolve-lo a
+    `None` (dinamico) -- quebra o `capsys` de QUALQUER teste que rodar depois
+    deste, no processo inteiro, nao so' o painel testado aqui. Precisa
+    restaurar o atributo `_file` (que pode ser `None`), nao a property.
+    """
+    import io
+    import re as _re
+    import contextlib
+    lang_antes = guaraci_mod._STATE["lang"]
+    guaraci_mod._STATE["lang"] = lang
+    buf = io.StringIO()
+    file_antes = guaraci_mod.console._file
+    try:
+        guaraci_mod.console.file = buf
+        with contextlib.redirect_stdout(io.StringIO()):
+            fn(cfg)
+    finally:
+        guaraci_mod.console._file = file_antes
+        guaraci_mod._STATE["lang"] = lang_antes
+    return _re.sub(r"\x1b\[[0-9;]*m", "", buf.getvalue())
+
+
+@pytest.mark.parametrize("lang", ["PT", "EN"])
+@pytest.mark.parametrize("ligado", [True, False])
+def test_paineis_nao_imprimem_markup_cru(guaraci_mod, lang, ligado):
+    """`Text("[g]Yes[/g]")` trata a string como LITERAL e vaza a tag para a
+    tela. Tem de ser Text.from_markup. Vale nos DOIS idiomas — o bug original
+    afetava "[g]Sim[/g]" igualmente, so' foi notado em ingles.
+
+    Parametrizado por `ligado` porque os ramos True/False sao strings
+    DIFERENTES no codigo: um teste so' com o Config() padrao (tudo False)
+    exercitaria apenas o ramo "Nao/No" e passaria com o ramo "Sim/Yes"
+    quebrado. Foi exatamente o que aconteceu ao validar este teste.
+    """
+    import re as _re
+    cfg = guaraci_mod.Config()
+    for attr in ("executar_opls", "executar_ddsimca", "executar_benchmark",
+                 "executar_monte_carlo", "executar_shap"):
+        setattr(cfg, attr, ligado)
+    for fn in (guaraci_mod._print_resumo, guaraci_mod._print_checklist):
+        txt = _render(guaraci_mod, fn, cfg, lang)
+        cru = _re.findall(r"\[/?(?:g|m|err|b|bold)\]", txt)
+        assert not cru, (f"{fn.__name__} [{lang}, ligado={ligado}] imprimiu "
+                          f"markup cru: {sorted(set(cru))}")
+
+
+def test_painel_em_ingles_nao_vaza_portugues(guaraci_mod):
+    """Em modo EN nenhuma palavra inequivocamente portuguesa pode aparecer.
+
+    Lista curta e especifica de proposito: termos que so' existem em PT e que
+    ja' vazaram de verdade (rotulo de nivel, "Modo", "(automatico)"), para o
+    teste falhar por motivo real e nao por acidente de vocabulario comum aos
+    dois idiomas.
+    """
+    import re as _re
+    cfg = guaraci_mod.Config()
+    proibidas = _re.compile(
+        r"\b(Modo|automatico|Classificacao|Discriminacao|Quantificacao|"
+        r"Configuracao|Cientifica|Nivel|Tecnica|Ativo|Nenhum)\b")
+    for fn in (guaraci_mod._print_resumo, guaraci_mod._print_checklist):
+        txt = _render(guaraci_mod, fn, cfg, "EN")
+        achados = sorted(set(proibidas.findall(txt)))
+        assert not achados, f"{fn.__name__} vazou portugues em modo EN: {achados}"
+
+
+def test_rotulo_de_nivel_traduz_mas_nao_muda_o_arquivo_de_saida(guaraci_mod):
+    """O rotulo do nivel traduz na TELA, mas `pq._NIVEL_NOME` (que alimenta o
+    resumo_modelo.txt) continua em portugues — traduzir la' faria um ARQUIVO
+    DE SAIDA mudar conforme o idioma da interface, quebrando a comparabilidade
+    entre execucoes."""
+    lang_antes = guaraci_mod._STATE["lang"]
+    try:
+        guaraci_mod._STATE["lang"] = "EN"
+        assert "Species" in guaraci_mod._rotulo_opcao("nivel", "N1")
+        guaraci_mod._STATE["lang"] = "PT"
+        assert "Classificacao" in guaraci_mod._rotulo_opcao("nivel", "N1")
+    finally:
+        guaraci_mod._STATE["lang"] = lang_antes
+    # Fonte unica do arquivo de saida: sempre PT, independente do idioma.
+    assert guaraci_mod.pq._NIVEL_NOME["N1"] == "Classificacao por especie"
+
+
+def test_todo_rotulo_de_nivel_tem_traducao(guaraci_mod):
+    """Se alguem adicionar um nivel N4, a traducao nao pode ficar para tras."""
+    assert set(guaraci_mod._NIVEL_NOME_EN) == set(guaraci_mod.pq._NIVEL_NOME)
