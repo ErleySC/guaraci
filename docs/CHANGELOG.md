@@ -6,6 +6,60 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Figuras: curva DET era uma reta sem
+             significado, rotulos do biplot ilegiveis, painel de execucao
+             apagava a tela, e diagnostico novo de faixa espectral.
+             [CURVA DET ERRADA] `sklearn.metrics.det_curve` devolve os pontos
+             em ordem de limiar CRESCENTE, o que deixa `fmr` DECRESCENTE.
+             `np.interp` exige `xp` crescente e NAO ordena sozinho -- a
+             interpolacao degenerava e devolvia `fnmr[-1]` constante para todo
+             FMR > 0. Resultado: TODA figura DET gerada ate hoje era uma RETA
+             HORIZONTAL, nao uma curva. Nenhum erro era lancado. O teste
+             existente so' verificava que o arquivo .png existia, por isso o
+             defeito sobreviveu. Extraida `interpolar_det()` como funcao pura
+             + 3 testes de propriedade (monotonicidade, extremos, degenerado);
+             verificado que o teste FALHA com o codigo antigo. A diagonal, que
+             era rotulada "Ref. diagonal" (induzindo a leitura errada de que a
+             curva deveria segui-la), agora e' identificada como a linha de
+             EER, e o EER de cada classificador aparece na legenda.
+             [BIPLOT ILEGIVEL] Dois defeitos somados: (a) o top-N por
+             magnitude selecionava canais VIZINHOS da mesma banda (no espectro
+             real: 5875/5883/5891/5899... = 2 bandas contadas 12 vezes) e (b)
+             nao havia anti-colisao de rotulos, entao os numeros de onda saiam
+             impressos uns por cima dos outros. Corrigido com
+             `selecionar_loadings_distintos()` (separacao espectral minima +
+             piso relativo de magnitude, para nao completar a cota com ruido:
+             o titulo passa a mostrar "top-5" quando so' ha' 5 bandas reais) e
+             `afastar_rotulos()` (agrupa em colunas por x e empilha em y,
+             convergencia garantida em uma passada + linha-guia ate a seta).
+             Uma primeira versao por repulsao par-a-par iterativa OSCILAVA e
+             deixava 7 pares sobrepostos mesmo apos 120 iteracoes -- medido,
+             descartado e substituido.
+             [TELA PRETA] `figuras_concluidas`/`avisos_do_log` cresciam sem
+             teto; numa corrida completa (26 figuras + varios avisos) o painel
+             passava de 35 linhas num terminal de 24. O `Live` do Rich perde o
+             controle do cursor quando o bloco nao cabe na janela: a tela fica
+             preta com so' o cursor piscando, embora o calculo siga rodando
+             normalmente por baixo. Painel limitado (4 avisos mais recentes +
+             contador do que ficou de fora, lista de figuras truncada) e
+             `vertical_overflow="crop"` como rede de seguranca. Medido: pior
+             caso caiu de 35 para 22 linhas.
+             [FAIXA ESPECTRAL] Novo `diagnosticar_faixa_espectral()`: separa
+             regiao MORTA (sem sinal) de RUIDOSA (dominada por alta
+             frequencia) via SNR entre componente suave e residuo, e sugere a
+             faixa com sinal. Emite AVISO e entra no resumo_modelo.txt; NUNCA
+             corta sozinho -- mudar a faixa muda o resultado, e a decisao e'
+             do usuario. Verificado que nao da' falso positivo em espectro
+             que usa a faixa inteira.
+             [np.interp SEM ORDENAR — latente] Auditoria do mesmo tipo de bug
+             achou 3 outros sitios sem ordenacao do eixo: dados_io (preenche
+             NaN), predicao (aplica modelo a amostra nova) e spectra_preview.
+             O ABB MB3600 grava numero de onda CRESCENTE, entao NAO afeta os
+             resultados deste dataset -- mas um .dx de terceiro em ordem
+             decrescente (convencao comum em FTIR) daria predicao errada em
+             silencio. Corrigidos os tres.
+             634 testes passam (eram 617), ruff e mypy limpos.
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-06 — UI: markup cru, vazamento de PT em
              EN, padronizacao de booleanos, reset por nivel, 7 campos
              inalcancaveis por qualquer menu, e limpeza de identificacao.

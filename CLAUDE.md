@@ -98,7 +98,7 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
 | Versão | 31.8.0 | `grep -r version pyproject.toml` |
-| Testes | 562 pass, 1 skip | `pytest -q` |
+| Testes | 634 pass, 2 skip (reverificado 2026-08-07) | `pytest -q` |
 | Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
 | `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
@@ -654,6 +654,31 @@ site_name: Guaraci
 theme: {name: material, language: pt-BR}
 plugins: [search, mkdocstrings]   # gera API docs dos docstrings automaticamente
 ```
+
+---
+
+### ✅ P10 (RESOLVIDO em 2026-08-07) — Figuras erradas que ninguém checava
+
+Achado ao revisar as figuras da 1ª execução real (Gate 0 / N1). **Lição
+transversal: os testes de figura verificavam que o `.png` existia, não que
+o conteúdo estava certo.** Um `.png` gerado com sucesso pode conter uma
+curva sem significado.
+
+1. **Curva DET era uma reta horizontal.** `sklearn.det_curve` devolve `fmr`
+   decrescente; `np.interp` exige `xp` crescente e não ordena sozinho. Toda
+   DET gerada até 2026-08-07 era um artefato. Corrigido com `interpolar_det()`
+   (função pura) + teste que **falha** com o código antigo — verificado.
+2. **Biplot ilegível.** Top-N por magnitude escolhia canais vizinhos da mesma
+   banda (2 bandas contadas 12×) e não havia anti-colisão de rótulos.
+3. **`np.interp` sem ordenar em mais 3 lugares** (`dados_io`, `predicao`,
+   `spectra_preview`) — latente com o ABB MB3600 (grava crescente), mas daria
+   **predição errada em silêncio** com `.dx` de terceiro em ordem decrescente.
+4. **Painel do CLI apagava a tela** ("tela preta"): crescia além da altura do
+   terminal e o `Live` do Rich perdia o cursor. O cálculo seguia normal.
+
+**Regra que fica:** teste de figura tem que verificar uma **propriedade do
+conteúdo** (monotonicidade, ausência de sobreposição, extremos), nunca só a
+existência do arquivo.
 
 ---
 
