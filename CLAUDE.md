@@ -98,14 +98,20 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
 | Versão | 31.9.0 | `grep -r version pyproject.toml` |
-| Testes | 663 pass, 2 skip (reverificado 2026-08-08) | `pytest -q` |
-| Cobertura | 67% (reverificado 2026-08-08) | `pytest --cov=src/guaraci --cov-report=term-missing` |
-| Lint | ruff limpo | `ruff check .` |
+| Testes | 672 pass, 2 skip (reverificado 2026-08-07, sessão de auditoria metodológica) | `pytest -q` |
+| Cobertura | 67% (reverificado 2026-08-07) | `pytest --cov=src/guaraci --cov-report=term-missing` |
+| Lint | ruff limpo (repo inteiro, incl. `docs/auditoria/`) | `ruff check .` |
 | `executar()` | 1438 linhas (contagem AST, não a linha do `def`) | `grep -n "def executar" src/guaraci/pipeline.py` |
 | `print()` em pipeline | 0 (migração do P6 completa — tabela desatualizada até agora) | `grep -c "print(" src/guaraci/pipeline.py` |
 | `except` amplos | 53 (100% com `noqa: BLE001` justificado, reverificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
 | `guaraci.py` | 3813 linhas (+495 desde 07-13 — wiring de menus/i18n desta sessão) | `wc -l src/guaraci/guaraci.py` |
 | TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
+
+> Atualizado em 2026-08-07 após a auditoria metodológica de 5 achados
+> (P11 abaixo — testes 663→672, +9 líquido: 4 novos em A1, 3 em A2, 1 em
+> A3, 2 novos −1 removido em A4). Reverificado que a tabela anterior
+> (2026-08-08, sensibilidade DD-SIMCA/PCV) continuava batendo antes de
+> começar — nenhuma divergência encontrada nela.
 
 > Atualizado em 2026-08-08 apos a sessao de correcao de figuras + DD-SIMCA
 > (P1 residual fechado, PCV, deteccao robusta). `print()` em pipeline
@@ -695,6 +701,68 @@ existência do arquivo.
 
 ---
 
+### ✅ P11 (RESOLVIDO em 2026-08-07) — Auditoria metodológica: 5 achados no núcleo científico
+
+Auditoria (não só de figuras desta vez — de **equação vs. publicação
+original**) em `chemometric_stats.py`, `classificadores.py`,
+`validacao_estatistica.py`, comparando cada método linha a linha com a
+referência citada e **medindo** a divergência (nunca estimando). Relatório
+completo + scripts reprodutíveis em `docs/auditoria/
+AUDITORIA_METODOLOGICA_2026-08-07.md`. **Mesma lição do P10 e do P1**: os
+663 testes que existiam antes verificavam que a função *roda*, não que ela
+*calcula o que diz calcular*.
+
+1. **Teste de permutação/Wold não era group-aware** (`validacao_estatistica.py`)
+   — embaralhava rótulos por AMOSTRA, ignorando `mae_id`; um mesmo grupo de
+   réplica física ficava com rótulos diferentes após o embaralhamento, o que
+   não pode existir sob H0. Medido: falso positivo de **15,0%** contra 5%
+   nominal (12 grupos × 3 réplicas, 120 repetições). **O mais grave dos 5**:
+   atinge o argumento central do projeto (validação group-aware) — o teste
+   que produz o p-valor citável não era group-aware. Corrigido:
+   `_gerar_permutacoes_rotulo()` permuta a atribuição de rótulo entre
+   grupos (Winkler et al. 2015), preservando a coerência de cada `mae_id`.
+2. **Selectivity Ratio usava `w1` (peso PLS), não `b/‖b‖`** — Rajalahti et
+   al. (2009) define a projeção-alvo sobre o vetor de regressão
+   normalizado; só coincidiam com 1 LV. Medido: `corr(t_tp, ŷ)` (a
+   propriedade que define o método) caía de 1,000000 para ~0,92 com ≥2 LVs;
+   Jaccard@20 entre o ranking implementado e o correto = 0,39. Usado por
+   `selecao_variaveis.py` para SELECIONAR variáveis — o método anterior
+   escolhia um conjunto diferente do que a literatura escolheria.
+3. **Domínio de aplicabilidade usava regra retangular** (T2≤lim **e**
+   Q≤lim, alpha independente por eixo) — a MESMA regra corrigida no
+   DD-SIMCA no P1 (2026-08-08), ainda presente aqui. Medido: rejeição de
+   11,6% contra 5% nominal em amostras da própria distribuição do treino.
+   Usado em produção por `predicao.py`. Corrigido por reúso: as funções
+   puras da distância combinada do DD-SIMCA (`media_e_dof_momentos`,
+   `distancia_combinada`) foram extraídas para `chemometric_stats.py` —
+   `DDSimca` e `dominio_aplicabilidade_*` agora compartilham a mesma
+   implementação em vez de reimplementar cada uma a sua conta.
+4. **OPLS-DA multiclasse construía o alvo via LDA(X, y)** — não é o método
+   publicado (Trygg & Wold 2002 definem OPLS para y binário/contínuo; a
+   extensão multiclasse publicada é OPLS/O2PLS com Y multi-coluna via
+   PLS2). Decisão do autor: trocar pelo caminho publicado em vez de rotular
+   como variante — `OPLSDAWrapper._alvo_continuo()` agora usa o 1º escore Y
+   de um PLS2 ajustado em `(X, Y)`.
+5. **Docstring de `hotelling_t2_limite` contradizia a própria referência
+   citada** — afirmava que a fórmula (Fase II, distribuição F) valia também
+   para amostras de treino (Fase I, que TYM 1992 define via distribuição
+   Beta). Impacto numérico medido como baixo para os tamanhos de amostra
+   deste projeto (~1,01-1,03× com n~300). Corrigida a docstring; limite
+   Beta de Fase I não implementado (impacto real baixo).
+
+**Retratação registrada no próprio relatório:** a alegação original de que
+`q_residuos_limite` atribuía sua fórmula a Jackson & Mudholkar (1979) por
+engano (deveria ser Box 1954) foi **verificada como falsa** após busca
+adicional — a atribuição já existente no código estava correta. Mantido
+como exemplo de que reverificar a própria auditoria também é obrigatório.
+
+**Estado:** todos os 5 corrigidos e commitados nesta sessão. 663→672 testes
+(9 líquidos: novos que travam as propriedades que falhavam antes de cada
+correção). Cobertura/lint/contagens da tabela ESTADO ALEGADO reverificadas
+antes e depois — sem divergência além do esperado.
+
+---
+
 ## 5. FIGURAS QUE FALTAM — ✅ TODAS ENTREGUES (verificado 2026-07-12)
 As 4 abaixo já existem em `figuras.py` e são chamadas por `executar()` — não
 são mais um item de roadmap. Mantido aqui só como registro do que foi pedido
@@ -807,7 +875,7 @@ nas primeiras linhas em inglês.
 |---|---|---|---|
 | 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos) | depende de conta do autor | **Adoção** |
 | — | **N1 (real) rodado e válido** ✅ | feito 2026-08-06, `PLSDA_OE_PorEspecie_...211237` | — |
-| — | **N2 (real) rodado, mas DESATUALIZADO** ⚠️ | rodado 2026-08-07 10:19, **a correção da regra de decisão do DD-SIMCA foi commitada 3h30 depois (13:52, commit `b51f361`)** — o resumo que existe usa a regra retangular antiga (rejeição efetiva ~0,0975, não 0,05). **Precisa reexecutar** antes de citar qualquer número de sensibilidade/especificidade DD-SIMCA do N2 | Defesa — números atuais não refletem o código |
+| — | **N2 (real) rodado, mas DESATUALIZADO — agora por MAIS motivos** ⚠️ | rodado 2026-08-07 10:19, **a correção da regra de decisão do DD-SIMCA foi commitada 3h30 depois (13:52, commit `b51f361`)** — o resumo que existe usa a regra retangular antiga (rejeição efetiva ~0,0975, não 0,05). Depois disso, a auditoria P11 (mesma sessão, mais tarde) corrigiu mais 2 itens que afetam diretamente números de Classificação: A1 (teste de permutação/Wold do objetivo Classificação, falso positivo medido em 15% em vez de 5%) e A3 (domínio de aplicabilidade, mesma classe de bug do DD-SIMCA, usado por `predicao.py`). **Precisa reexecutar** — a lista de motivos só cresceu | Defesa — números atuais não refletem o código |
 | — | **N3 nunca rodado com o código corrigido** | só existe uma rodada de 2026-07-05, anterior a TODAS as correções desta sessão (CV, DD-SIMCA, figuras) — precisa rodar do zero | Defesa |
 
 ~~4~~ ~~`docs/VALIDATION.md` — nota sobre nested-CV da Etapa 4~~ ✅ feito — ver seção "AG e SPA (Etapa 4, opcionais)" em `VALIDATION.md`.
