@@ -1660,6 +1660,115 @@ def _escala_vetores_biplot(scores2: np.ndarray, loadings: np.ndarray,
     return min(escala_x, escala_y)
 
 
+def selecionar_loadings_distintos(mag: np.ndarray, wavenumbers: np.ndarray,
+                                   n_alvo: int,
+                                   sep_min_cm: Optional[float] = None,
+                                   frac_min_mag: float = 0.15) -> np.ndarray:
+    """Indices das `n_alvo` variaveis de maior magnitude, exigindo separacao
+    espectral minima entre elas.
+
+    Motivo (bug real, 2026-08-07): pegar simplesmente as `n` de maior
+    magnitude devolve canais VIZINHOS da mesma banda -- num espectro NIR o
+    top-12 saia como 5888/5896/5903/5911... , isto e', tres bandas contadas
+    doze vezes. Isso (a) empilha rotulos praticamente no mesmo ponto e (b)
+    da a impressao falsa de doze marcadores independentes. Exigindo um
+    espacamento minimo, cada seta passa a representar uma banda distinta.
+
+    `sep_min_cm=None` deriva a separacao da largura da faixa espectral.
+
+    `frac_min_mag` e' um PISO relativo a' maior magnitude: variaveis abaixo
+    dele nao entram, mesmo que sobre espaco em `n_alvo`. Sem esse piso, a
+    exigencia de separacao obrigava a completar a cota com canais de
+    magnitude ~0 -- o biplot ficava com setas de comprimento nulo empilhadas
+    na origem, "linhas que nao dizem nada". Devolve MENOS de `n_alvo`
+    indices quando o espectro so' tem poucas bandas reais; isso e' a leitura
+    honesta, nao uma falha.
+    """
+    mag = np.asarray(mag, dtype=float)
+    wavenumbers = np.asarray(wavenumbers, dtype=float)
+    if mag.size == 0:
+        return np.array([], dtype=int)
+    n_alvo = int(min(n_alvo, mag.size))
+    if sep_min_cm is None:
+        faixa = float(abs(wavenumbers.max() - wavenumbers.min()))
+        # ~1/3 do espacamento uniforme: separa bandas sem ser tao rigido a
+        # ponto de nao conseguir preencher n_alvo em espectros estreitos.
+        sep_min_cm = faixa / max(n_alvo * 3.0, 1.0)
+
+    mag_max = float(np.abs(mag).max())
+    piso = mag_max * float(frac_min_mag)
+
+    escolhidos: List[int] = []
+    for i in np.argsort(mag)[::-1]:
+        i = int(i)
+        if mag[i] < piso:
+            break                      # ordenado: daqui p/ frente so' piora
+        if all(abs(wavenumbers[i] - wavenumbers[j]) >= sep_min_cm
+               for j in escolhidos):
+            escolhidos.append(i)
+        if len(escolhidos) >= n_alvo:
+            break
+    if not escolhidos:                 # tudo abaixo do piso (espectro plano)
+        escolhidos = [int(np.argmax(mag))]
+    return np.array(escolhidos, dtype=int)
+
+
+def afastar_rotulos(pos: np.ndarray, sep_x: float,
+                     sep_y: float) -> np.ndarray:
+    """Afasta rotulos sobrepostos: nenhum par fica a menos de `sep_x` E
+    `sep_y` ao mesmo tempo (criterio de CAIXA -- e' assim que um rotulo de
+    texto realmente ocupa espaco: dois rotulos podem ter o mesmo y desde
+    que estejam longe na horizontal).
+
+    Algoritmo em dois passos, deterministico e com convergencia GARANTIDA
+    (uma passada, sem laco de relaxamento):
+
+      1. Agrupa os rotulos em COLUNAS por proximidade em x (corta onde o
+         intervalo entre x consecutivos ja e' >= sep_x). Por construcao,
+         dois rotulos de colunas diferentes distam >= sep_x em x, logo nao
+         se sobrepoem, independentemente do y.
+      2. Dentro de cada coluna, empilha verticalmente com espacamento
+         minimo `sep_y`, preservando a ordem original em y e recentrando o
+         bloco na media original -- o deslocamento fica simetrico, sem
+         empurrar tudo para um lado so'.
+
+    Substituiu uma repulsao par-a-par iterativa que OSCILAVA (cada empurrao
+    desfazia o anterior) e deixava sobreposicoes residuais mesmo apos 120
+    iteracoes -- verificado: 12 rotulos coincidentes sobravam com 7 pares
+    sobrepostos. Como o passo 2 nao mexe em x, a garantia do passo 1 e'
+    preservada ate o fim.
+
+    Funcao PURA para poder testar a ausencia de sobreposicao sem renderizar.
+    """
+    p = np.array(pos, dtype=float, copy=True)
+    if len(p) < 2 or sep_x <= 0 or sep_y <= 0:
+        return p
+
+    ordem_x = np.argsort(p[:, 0], kind="stable")
+    # Corta em coluna nova onde o intervalo em x ja separa por si so'
+    col_atual: List[int] = [int(ordem_x[0])]
+    colunas: List[List[int]] = [col_atual]
+    for anterior, atual in zip(ordem_x[:-1], ordem_x[1:]):
+        if p[atual, 0] - p[anterior, 0] >= sep_x:
+            col_atual = []
+            colunas.append(col_atual)
+        col_atual.append(int(atual))
+
+    for coluna in colunas:
+        if len(coluna) < 2:
+            continue
+        idx = np.array(coluna)
+        idx = idx[np.argsort(p[idx, 1], kind="stable")]   # de baixo p/ cima
+        ys = p[idx, 1].astype(float)
+        centro_original = float(ys.mean())
+        # Empilha: cada rotulo fica pelo menos sep_y acima do anterior
+        for k in range(1, len(ys)):
+            ys[k] = max(ys[k], ys[k - 1] + sep_y)
+        ys += centro_original - float(ys.mean())          # recentra o bloco
+        p[idx, 1] = ys
+    return p
+
+
 def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
                     rotulos, mapa_cores, cfg: "Config", pasta: str,
                     n_vars_destacadas: int = 12) -> None:
@@ -1692,16 +1801,34 @@ def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
 
     escala = _escala_vetores_biplot(scores2, loadings)
     mag = np.sqrt((loadings ** 2).sum(axis=1))
-    idx_top = np.argsort(mag)[::-1][:min(n_vars_destacadas, len(mag))]
+    # Bandas ESPECTRALMENTE DISTINTAS, nao canais vizinhos da mesma banda
+    idx_top = selecionar_loadings_distintos(mag, wavenumbers, n_vars_destacadas)
 
-    for i in idx_top:
-        vx, vy = loadings[i, 0] * escala, loadings[i, 1] * escala
+    pontas = np.column_stack([loadings[idx_top, 0] * escala,
+                              loadings[idx_top, 1] * escala])
+    # Rotulo nasce um pouco alem da ponta da seta...
+    alvo = pontas * 1.08
+    # ...e entao e' afastado dos vizinhos. A separacao minima e' derivada da
+    # extensao real dos dados (nao um valor fixo em polegadas), para que a
+    # figura funcione em qualquer escala de score.
+    ext_x = float(np.abs(scores2[:, 0]).max()) if scores2.size else 1.0
+    ext_y = float(np.abs(scores2[:, 1]).max()) if scores2.size else 1.0
+    alvo = afastar_rotulos(alvo, sep_x=ext_x * 0.13, sep_y=ext_y * 0.075)
+
+    for (vx, vy), (lx, ly), i in zip(pontas, alvo, idx_top):
         ax.annotate("", xy=(vx, vy), xytext=(0, 0),
                     arrowprops=dict(arrowstyle="-|>", color="0.15", lw=1.1,
                                     shrinkA=0, shrinkB=0), zorder=4)
-        ax.text(vx * 1.08, vy * 1.08, f"{wavenumbers[i]:.0f}",
+        # Linha-guia fina ligando o rotulo deslocado a' sua seta -- sem ela
+        # o afastamento tornaria ambiguo qual rotulo pertence a qual vetor.
+        if abs(lx - vx * 1.08) > ext_x * 1e-3 or abs(ly - vy * 1.08) > ext_y * 1e-3:
+            ax.plot([vx, lx], [vy, ly], color="0.55", lw=0.5, ls="-",
+                    zorder=3, alpha=0.8)
+        ax.text(lx, ly, f"{wavenumbers[i]:.0f}",
                fontsize=7, color="0.15", ha="center", va="center",
-               fontweight="bold", zorder=5)
+               fontweight="bold", zorder=5,
+               bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none",
+                         alpha=0.75))
 
     ax.axhline(0, color="0.75", lw=0.5, ls=":")
     ax.axvline(0, color="0.75", lw=0.5, ls=":")
