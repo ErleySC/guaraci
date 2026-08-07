@@ -33,9 +33,21 @@ rodar um programa desconhecido** no seu computador.
    é **bloqueado antes de o pickle executar**, não apenas avisado depois.
 3. **Deploy público** (Streamlit Community Cloud ou similar): o operador
    pode definir a variável de ambiente `GUARACI_DISABLE_MODEL_UPLOAD=1`
-   para desabilitar completamente o upload de arquivo `.joblib` pela
-   interface web, aceitando apenas caminhos locais controlados pelo próprio
-   operador do servidor.
+   para desabilitar completamente o carregamento de modelo pela interface
+   web — **isso desliga tanto o uploader de `.joblib` quanto o campo de
+   caminho local** (corrigido em 2026-08-07: um campo de texto num app web
+   público nunca é "só o operador digita", qualquer visitante alcança;
+   antes só o uploader era desligado, e o campo de caminho local sozinho
+   já bastava para contornar a proteção — ver
+   `docs/auditoria/AUDITORIA_SEGURANCA_2026-08-07.md`, achado S1). Com a
+   flag ativa, a aba de Predição não carrega nenhum modelo pela web —
+   rode a CLI localmente para prever amostras nesse modo.
+4. **Uploads isolados por sessão**: quando o carregamento de modelo está
+   habilitado, cada visitante grava seu upload numa subpasta temporária
+   própria (identificador aleatório, nunca exposto ao cliente), não mais
+   um caminho fixo compartilhado entre todas as sessões — fecha uma
+   condição de corrida entre usuários concorrentes e remove o caminho
+   previsível que o achado S1 explorava (ver mesmo relatório, achado S2).
 
 ### O que isso NÃO resolve
 
