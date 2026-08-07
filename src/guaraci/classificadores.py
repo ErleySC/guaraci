@@ -116,6 +116,50 @@ class DDSimca:
         return media, 2.0 * (media / desvio) ** 2
 
     @staticmethod
+    def _outliers_robustos_mad(valores: np.ndarray,
+                               limiar: float = 3.5) -> np.ndarray:
+        """Indices sinalizados como possiveis outliers via z-score
+        modificado (Iglewicz & Hoaglin 1993): M_i = 0.6745*(x_i-mediana)/MAD.
+
+        Kucheryavskiy, Rodionova & Pomerantsev (2024) recomendam
+        explicitamente estimadores ROBUSTOS (mediana/IQR, nao media/desvio)
+        para a DETECCAO de outliers no treino, revertendo para os
+        estimadores classicos so' DEPOIS de remover o que for encontrado
+        ("Once all outliers have been removed, it is recommended to revert
+        to the classic estimates for further calculations").
+
+        Aqui SO' sinaliza (nunca remove automaticamente): com nc=3-4
+        amostras puras de treino -- o regime real deste projeto -- excluir
+        uma amostra pode derrubar o modelo inteiro abaixo do minimo de
+        graus de liberdade (`_MIN_Q_RESIDUAL_DF`). Remocao automatica seria
+        arriscada demais com um treino ja tao escasso; um AVISO deixa a
+        decisao (investigar a replica, ou aceitar o risco) com o usuario,
+        em vez de o software decidir sozinho o que descartar.
+
+        `limiar=3.5` e' o valor recomendado pelos autores do metodo.
+        MAD=0 (valores identicos -- treino degenerado ou n<2) devolve
+        nenhum outlier, nao ZeroDivisionError/NaN.
+
+        LIMITACAO HONESTA (medida, nao suposta): com nc=3, T2/Q_train ja
+        sao inerentemente instaveis (so' 2 graus de liberdade residuais,
+        `_MIN_Q_RESIDUAL_DF`) mesmo sem outlier real algum -- o "sinal" que
+        este detector ve pode ser so' o ruido de amostragem do proprio
+        regime de poucas amostras. Aplicado nos dois eixos (T2 e Q, uniao
+        dos dois), a taxa de falso positivo medida chega a ~10% mesmo em
+        n=20 (3 de 30 seeds testadas). Interpretar o aviso como "vale
+        conferir esta replica", nunca como "esta replica esta errada".
+        """
+        valores = np.asarray(valores, dtype=float)
+        if valores.size < 3:
+            return np.array([], dtype=int)
+        mediana = float(np.median(valores))
+        mad = float(np.median(np.abs(valores - mediana)))
+        if mad <= 0:
+            return np.array([], dtype=int)
+        z_mod = 0.6745 * (valores - mediana) / mad
+        return np.where(np.abs(z_mod) > limiar)[0]
+
+    @staticmethod
     def _f_distance(T2: np.ndarray, Q: np.ndarray,
                     m: Dict[str, Any]) -> np.ndarray:
         """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
@@ -224,6 +268,22 @@ class DDSimca:
             q0, Nq = self._media_e_dof(Q_train)
             f_crit = float(chi2.ppf(1 - self.alpha, Nh + Nq))
 
+            # Diagnostico robusto (mediana/MAD, Iglewicz & Hoaglin 1993):
+            # SO' sinaliza replicas de treino atipicas, NUNCA remove
+            # sozinho -- com nc=3-4 (regime real deste projeto), excluir uma
+            # amostra pode derrubar o modelo abaixo do minimo de graus de
+            # liberdade. Ver docstring de _outliers_robustos_mad.
+            idx_out_t2 = self._outliers_robustos_mad(T2_train)
+            idx_out_q  = self._outliers_robustos_mad(Q_train)
+            idx_out = sorted(set(idx_out_t2) | set(idx_out_q))
+            if idx_out:
+                log.warning(
+                    "[DDSimca] Classe '%s': %d amostra(s) de treino "
+                    "atipica(s) (indices %s de %d, deteccao robusta "
+                    "mediana/MAD). Nao removidas automaticamente -- "
+                    "considere investigar essas replicas.",
+                    cls, len(idx_out), idx_out, nc)
+
             self._modelos[cls] = {
                 "pca":      pca,
                 "var_t":    var_t,
@@ -239,6 +299,7 @@ class DDSimca:
                 "Q_train":  Q_train,
                 "n_train":  nc,
                 "n_comp":   n_comp,
+                "outliers_treino": idx_out,
             }
         return self
 
@@ -280,6 +341,7 @@ class DDSimca:
                 "Q_train":  m["Q_train"],
                 "n_train":  m["n_train"],
                 "n_comp":   m["n_comp"],
+                "outliers_treino": m["outliers_treino"],
             }
         return res
 

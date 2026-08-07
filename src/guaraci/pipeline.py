@@ -2055,6 +2055,17 @@ def executar(cfg: Config):
                     resumo[f"DD-SIMCA {cls} sens(PCV, exploratorio)"] = sens_pcv_s
                     if av_pcv:
                         resumo[f"DD-SIMCA {cls} AVISO PCV"] = av_pcv
+                # Diagnostico robusto (mediana/MAD): replicas de treino
+                # atipicas, so' sinalizadas -- nunca removidas sozinhas (ver
+                # DDSimca._outliers_robustos_mad).
+                if ddsimca_res is not None and cls in ddsimca_res:
+                    _out = ddsimca_res[cls].get("outliers_treino") or []
+                    if _out:
+                        resumo[f"DD-SIMCA {cls} AVISO treino"] = (
+                            f"{len(_out)} replica(s) de treino atipica(s) "
+                            f"(indices {list(_out)}, deteccao robusta "
+                            "mediana/MAD) -- nao removidas automaticamente, "
+                            "considere investigar.")
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
     if _martens_n_sig is not None:

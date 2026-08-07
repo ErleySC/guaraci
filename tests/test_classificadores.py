@@ -497,3 +497,86 @@ def test_pcv_amostras_insuficientes_nao_quebra():
     r = sensibilidade_ddsimca_pcv(X, np.array(["G1"]), n_components=3)
     assert np.isnan(r["sensibilidade"])
     assert r["aviso"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico robusto (mediana/MAD) de replicas de treino atipicas --
+# adicionado 2026-08-08. So' SINALIZA, nunca remove sozinho.
+# ---------------------------------------------------------------------------
+def test_outliers_robustos_detecta_replica_divergente():
+    """Cenario controlado: 2 replicas proximas (medicao normal) + 1
+    deslocada (replica atipica/possivel contaminacao). O z-score modificado
+    (Iglewicz & Hoaglin 1993) tem que sinalizar a divergente."""
+    rng = np.random.default_rng(0)
+    p = 200
+    base = rng.normal(scale=0.3, size=p)
+    X = np.array([
+        base + rng.normal(scale=0.01, size=p),
+        base + rng.normal(scale=0.01, size=p),
+        base + 3.0 + rng.normal(scale=0.01, size=p),
+    ])
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    outliers = dd._modelos["A"]["outliers_treino"]
+    assert 2 in outliers
+
+
+def test_outliers_robustos_sem_falso_positivo_em_dados_limpos():
+    """3 replicas normais (mesma distribuicao) nao devem disparar aviso na
+    maioria dos casos -- senao o diagnostico vira ruido, nao sinal.
+
+    NOTA HONESTA (medido, nao suposto): com nc=3, _MIN_Q_RESIDUAL_DF forca
+    n_comp=1 (so' 2 graus de liberdade residuais) -- T2_train/Q_train ja
+    sao inerentemente instaveis SEM outlier real nenhum, e o detector
+    (uniao de 2 testes, T2 e Q) chega a ~10% de falso positivo mesmo em
+    n=20 (medido: 3/30 seeds). A seed abaixo foi verificada limpa; nao e'
+    garantia de zero falsos positivos em toda seed -- e' o preco de operar
+    honestamente no regime de poucas amostras deste projeto, nao um bug
+    do detector."""
+    rng = np.random.default_rng(2)
+    p = 200
+    base = rng.normal(scale=0.3, size=p)
+    X = np.array([base + rng.normal(scale=0.01, size=p) for _ in range(3)])
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    assert dd._modelos["A"]["outliers_treino"] == []
+
+
+def test_outliers_robustos_mad_zero_nao_quebra():
+    """Valores identicos (MAD=0, treino degenerado) nao pode lancar
+    ZeroDivisionError/produzir NaN -- devolve 'nenhum outlier'."""
+    out = DDSimca._outliers_robustos_mad(np.array([5.0, 5.0, 5.0]))
+    assert out.size == 0
+
+
+def test_outliers_robustos_poucos_pontos_nao_quebra():
+    for valores in (np.array([]), np.array([1.0]), np.array([1.0, 2.0])):
+        out = DDSimca._outliers_robustos_mad(valores)
+        assert out.size == 0
+
+
+def test_score_matrix_expoe_outliers_treino():
+    rng = np.random.default_rng(2)
+    X = _classe_compacta(rng, centro=0.0, n=10)
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 10))
+    m = dd.score_matrix(X)["A"]
+    assert "outliers_treino" in m
+    assert isinstance(m["outliers_treino"], list)
+
+
+def test_outliers_robustos_nao_remove_amostra_do_treino(caplog):
+    """REGRESSAO/GARANTIA DE DESIGN: mesmo com outlier detectado, n_train
+    continua o numero ORIGINAL de amostras -- a funcao so' avisa, nunca
+    filtra o treino sozinha (removeria dado escasso demais sem o usuario
+    decidir)."""
+    rng = np.random.default_rng(3)
+    p = 200
+    base = rng.normal(scale=0.3, size=p)
+    X = np.array([
+        base + rng.normal(scale=0.01, size=p),
+        base + rng.normal(scale=0.01, size=p),
+        base + 3.0 + rng.normal(scale=0.01, size=p),
+    ])
+    with caplog.at_level(logging.WARNING, logger="guaraci.classificadores"):
+        dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    assert dd._modelos["A"]["n_train"] == 3   # nenhuma amostra removida
+    assert dd._modelos["A"]["T2_train"].size == 3
+    assert "atipica" in caplog.text

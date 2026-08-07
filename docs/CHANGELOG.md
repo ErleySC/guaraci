@@ -6,6 +6,34 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: diagnostico robusto
+             (mediana/MAD) de replicas de treino atipicas.
+             [OUTLIERS ROBUSTOS] Terceiro item da pesquisa de "novas
+             tecnologias" pedida: Kucheryavskiy/Rodionova/Pomerantsev
+             (2024) recomendam explicitamente estimadores ROBUSTOS
+             (mediana/IQR) para DETECTAR outliers no treino, revertendo
+             para estimadores classicos so' depois de removidos. Dado que
+             este projeto opera com nc=3-4 amostras puras (excluir uma so'
+             por suspeita pode derrubar o modelo inteiro abaixo do minimo
+             de graus de liberdade), a decisao de escopo foi deliberada:
+             `_outliers_robustos_mad()` (z-score modificado, Iglewicz &
+             Hoaglin 1993) SO' SINALIZA -- nunca remove automaticamente.
+             Verificado empiricamente que funciona no cenario real (2
+             replicas proximas + 1 divergente -> divergente sinalizada) e
+             documentado honestamente que a uniao dos 2 eixos (T2 e Q) tem
+             ~10% de falso positivo mesmo em n=20 (medido: 3/30 seeds) --
+             o proprio T2/Q_train ja e' instavel com so' 2 graus de
+             liberdade residuais, entao o aviso deve ser lido como "vale
+             conferir", nunca como "esta errado".
+             `n_train` do modelo continua o numero ORIGINAL de amostras
+             sempre -- testado explicitamente que nenhuma e' removida.
+             Exposto em score_matrix() (`outliers_treino`) e no resumo
+             (`DD-SIMCA {classe} AVISO treino`).
+             663 testes passam (eram 657), ruff limpo; mypy limpo nos 7
+             modulos puros do gate de CI (pipeline.py tem debito de
+             tipagem pre-existente, fora do escopo, confirmado identico
+             antes/depois via git stash).
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: diagnostico complementar
              por Procrustes Cross-Validation (PCV), opt-in via
              cfg.ddsimca_pcv.
