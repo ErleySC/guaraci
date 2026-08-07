@@ -106,6 +106,50 @@ def test_montar_painel_execucao_sem_avisos_nao_mostra_secao(guaraci_mod):
     assert "Avisos" not in saida
 
 
+def test_painel_nao_estoura_altura_do_terminal(guaraci_mod):
+    """Regressao do bug da "tela preta" (2026-08-07).
+
+    `figuras_concluidas` e `avisos_do_log` cresciam sem teto; numa corrida
+    completa o painel passava de 35 linhas num terminal de 24. O Live do
+    Rich perde o controle do cursor quando o bloco nao cabe na janela e a
+    tela fica preta com so' o cursor piscando -- o calculo continua, mas o
+    usuario nao ve mais nada. O painel tem que ter altura LIMITADA
+    independentemente de quantos avisos/figuras aparecam.
+    """
+    from rich.console import Console
+    figs = "".join(f"  -> C:/x/Graficos/fig_numero_{i}_nome_longo.png\n"
+                   for i in range(40))
+    avisos = "".join(f"  [AVISO] aviso distinto {i} com texto bem longo "
+                     f"que ocupa espaco na horizontal tambem\n"
+                     for i in range(100))
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log=figs + "[7/7]\n" + avisos, elapsed=600.0,
+        objetivo_rotulo="Classificacao",
+        plano_figuras=[f"f{i}" for i in range(40)])
+
+    for largura in (80, 100, 120):
+        altura = len(Console(width=largura).render_lines(painel, pad=False))
+        assert altura <= 24, (
+            f"painel com {altura} linhas em largura {largura} — nao cabe num "
+            "terminal padrao de 24 linhas; o bug da tela preta voltou")
+
+
+def test_painel_indica_quantos_avisos_foram_ocultados(guaraci_mod):
+    """Truncar nao pode ESCONDER informacao silenciosamente: o total real
+    e quantos ficaram de fora tem que aparecer."""
+    from rich.console import Console
+    avisos = "".join(f"  [AVISO] problema numero {i}\n" for i in range(30))
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log=avisos, elapsed=10.0, objetivo_rotulo="Classificacao",
+        plano_figuras=["a"])
+    console = Console(width=110, file=__import__("io").StringIO())
+    console.print(painel)
+    saida = console.file.getvalue()
+    assert "(30)" in saida, "total real de avisos sumiu do painel"
+    assert "+26" in saida, "contador de avisos ocultos ausente"
+    assert "problema numero 29" in saida, "aviso mais recente deveria aparecer"
+
+
 def test_montar_painel_execucao_progresso_zero_sem_log(guaraci_mod):
     """Sem nenhuma linha de progresso ainda (inicio da execucao), nao
     lanca excecao e mostra ETA como 'calculando' em vez de dividir por zero."""

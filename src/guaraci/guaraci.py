@@ -3220,6 +3220,20 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     figs = _figuras_concluidas(texto_log)
     avisos = _avisos_do_log(texto_log)
 
+    # LIMITE DE ALTURA (bug real, 2026-08-07: "tela preta").
+    # `figs` e `avisos` crescem sem teto durante a execucao. Numa corrida
+    # completa (26 figuras + varios avisos distintos) o painel passava de 35
+    # linhas num terminal de 24. O `Live` do Rich reposiciona o cursor para
+    # redesenhar; quando o bloco nao cabe na janela ele nao consegue e a tela
+    # fica preta com so' o cursor piscando -- exatamente o sintoma relatado.
+    # O calculo seguia rodando por baixo, so' o painel morria.
+    # Solucao: manter o painel com altura LIMITADA, mostrando os itens mais
+    # recentes (que e' o que interessa acompanhar) + um contador do resto.
+    MAX_AVISOS  = 4
+    MAX_FIG_LIN = 3      # linhas gastas com a lista de figuras
+    n_ocultos = max(0, len(avisos) - MAX_AVISOS)
+    avisos_vis = avisos[-MAX_AVISOS:]
+
     bar_w = 32
     preenchido = int(bar_w * frac)
     barra = "█" * preenchido + "░" * (bar_w - preenchido)
@@ -3236,14 +3250,21 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
         Rule(style=PD),
         Text(f"{_t('exec_figuras')} ({len(figs)}/{len(plano_figuras)} "
              "planejadas):", style=f"bold {PM}"),
-        Text("  ".join(f"✓ {f}" for f in figs) if figs else "…",
-             style=PW),
+        # overflow="ellipsis" + no_wrap corta na largura; as figuras mais
+        # recentes ficam visiveis e a linha nunca cresce em altura.
+        Text("  ".join(f"✓ {f}" for f in figs[-MAX_FIG_LIN * 3:])
+             if figs else "…",
+             style=PW, overflow="ellipsis", no_wrap=False),
     ]
     if avisos:
+        cab = f"{_t('exec_avisos')} ({len(avisos)})"
+        if n_ocultos:
+            cab += f" — mostrando os {MAX_AVISOS} ultimos, +{n_ocultos} antes"
         partes += [
             Rule(style=PD),
-            Text(f"{_t('exec_avisos')} ({len(avisos)}):", style=f"bold {PR}"),
-            Text("\n".join(f"⚠ {a}" for a in avisos), style=PR),
+            Text(f"{cab}:", style=f"bold {PR}"),
+            Text("\n".join(f"⚠ {a[:110]}" for a in avisos_vis), style=PR,
+                 overflow="ellipsis"),
         ]
     return Panel(Group(*partes), border_style=PA, box=rbox.ROUNDED,
                  padding=(0, 1), title=f"  {_t('exec_inicio')}  ")
@@ -3364,7 +3385,13 @@ def _rodar_pipeline(cfg: Config) -> None:
     thr = threading.Thread(target=_run, daemon=True)
     thr.start()
 
-    with Live(console=console, refresh_per_second=3) as live:
+    # vertical_overflow="crop": rede de seguranca do bug da "tela preta".
+    # Mesmo que o painel volte a crescer alem da janela por algum motivo
+    # futuro, o Rich corta o excesso em vez de perder o controle do cursor
+    # e apagar o terminal. O default ("ellipsis") nao protege o suficiente
+    # no console do Windows.
+    with Live(console=console, refresh_per_second=3,
+              vertical_overflow="crop") as live:
         while not _done["ok"]:
             live.update(_render_painel(time.time() - t_ini))
             time.sleep(0.3)
