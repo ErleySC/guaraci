@@ -158,6 +158,42 @@ def _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices):
     return y_hat / contador[:, None]
 
 
+def _gerar_permutacoes_rotulo(y_int: np.ndarray, groups: Optional[np.ndarray],
+                               n_perm: int, rng: np.random.Generator
+                               ) -> List[np.ndarray]:
+    """Gera `n_perm` vetores de rotulos permutados para os testes de
+    Y-randomization (`teste_permutacao`, `teste_wold`).
+
+    Com `groups` (ex.: `mae_id`), permuta a ATRIBUICAO de rotulo por GRUPO,
+    nao por amostra — preserva a coerencia de cada grupo (todas as replicas
+    fisicas de uma amostra devem ficar com o MESMO rotulo em cada
+    permutacao, exatamente como no dado real). Permutar por amostra quebra
+    essa coerencia: gera conjuntos que nao podem existir sob H0 (um mesmo
+    `mae_id` com rotulos diferentes) e por isso mais dificeis de classificar
+    que o nulo verdadeiro, o que estreita a distribuicao nula
+    artificialmente. Medido (`docs/auditoria/medir_permutacao_grupos.py`,
+    H0 verdadeiro, 12 grupos de 3 replicas, 3 classes): taxa de falso
+    positivo de 15,0% com permutacao por amostra vs. 4,2% com permutacao
+    por grupo (nominal: 5%).
+
+    Ref.: Winkler A.M. et al. (2015), "Multi-level block permutation",
+    NeuroImage 123:253-268 — unidade de troca (exchangeable unit) sob H0
+    e' o GRUPO em dado com estrutura hierarquica, nao a observacao
+    individual.
+
+    Sem `groups`, cai para permutacao por amostra (nao ha estrutura de
+    grupo a preservar).
+    """
+    y_int = np.asarray(y_int)
+    if groups is None:
+        return [y_int[rng.permutation(len(y_int))] for _ in range(n_perm)]
+    groups = np.asarray(groups)
+    gid_unicos, inv = np.unique(groups, return_inverse=True)
+    rot_por_grupo = np.array([y_int[groups == g][0] for g in gid_unicos])
+    n_grupos = len(gid_unicos)
+    return [rot_por_grupo[rng.permutation(n_grupos)][inv] for _ in range(n_perm)]
+
+
 def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
                       metric_fn: Callable, n_boot: int = 500,
                       alpha: float = 0.05, seed: int = 42
@@ -362,12 +398,16 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
     # Permutacoes geradas SEMPRE na mesma ordem/sequencia do rng, independente
     # de n_jobs — garante que o resultado (para um dado seed) e identico seja
     # a execucao sequencial ou paralela; so o tempo de parede muda.
-    permutacoes = [rng.permutation(len(Y_bin)) for _ in range(n_perm)]
+    # Group-aware: permuta a ATRIBUICAO de rotulo por grupo (mae_id), nao por
+    # amostra — ver docstring de _gerar_permutacoes_rotulo (achado A1 da
+    # auditoria de 2026-08-07: permutacao por amostra inflava o falso
+    # positivo de 5% nominal para 15%).
+    K = Y_bin.shape[1]
+    permutacoes = _gerar_permutacoes_rotulo(y_int, groups, n_perm, rng)
 
     if n_jobs <= 1:
-        for i, idx in enumerate(permutacoes):
-            Y_perm = Y_bin[idx]
-            y_perm_int = np.argmax(Y_perm, axis=1)
+        for i, y_perm_int in enumerate(permutacoes):
+            Y_perm = np.eye(K)[y_perm_int]
             status, sim, r2, q2 = _iter_wold(
                 pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups)
             if status == "ok":
@@ -402,9 +442,9 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
         with threadpoolctl.threadpool_limits(1):
             resultados = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_iter_wold)(
-                    pipeline_factory, X, Y_bin[idx], np.argmax(Y_bin[idx], axis=1),
+                    pipeline_factory, X, np.eye(K)[y_perm_int], y_perm_int,
                     y_int, cv, groups)
-                for idx in permutacoes)
+                for y_perm_int in permutacoes)
         for status, sim, r2, q2 in resultados:
             if status == "ok":
                 sims.append(sim); r2s.append(r2); q2s.append(q2)
@@ -494,12 +534,15 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
 
     # Mesma sequencia de permutacoes independente de n_jobs (reprodutibilidade
     # do seed identica, sequencial ou paralelo — so o tempo de parede muda).
-    permutacoes = [rng.permutation(len(Y_bin)) for _ in range(n_perm)]
+    # Group-aware: ver docstring de _gerar_permutacoes_rotulo (achado A1 da
+    # auditoria de 2026-08-07: permutacao por amostra inflava o falso
+    # positivo de 5% nominal para 15%).
+    K = Y_bin.shape[1]
+    permutacoes = _gerar_permutacoes_rotulo(y_int, groups, n_perm, rng)
 
     if n_jobs <= 1:
-        for i, idx in enumerate(permutacoes):
-            Y_perm = Y_bin[idx]
-            y_perm_int = np.argmax(Y_perm, axis=1)
+        for i, y_perm_int in enumerate(permutacoes):
+            Y_perm = np.eye(K)[y_perm_int]
             status, acc = _iter_permutacao(pipeline_factory, X, Y_perm,
                                             y_perm_int, cv, groups)
             if status == "ok":
@@ -528,9 +571,9 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
         with threadpoolctl.threadpool_limits(1):
             resultados = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_iter_permutacao)(
-                    pipeline_factory, X, Y_bin[idx], np.argmax(Y_bin[idx], axis=1),
+                    pipeline_factory, X, np.eye(K)[y_perm_int], y_perm_int,
                     cv, groups)
-                for idx in permutacoes)
+                for y_perm_int in permutacoes)
         for status, acc in resultados:
             if status == "ok":
                 accs.append(acc)
