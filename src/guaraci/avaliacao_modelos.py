@@ -464,6 +464,30 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 #  v28: Curvas DET — Detection Error Tradeoff
 # =========================================================================
 
+def interpolar_det(fmr: np.ndarray, fnmr: np.ndarray,
+                   fmr_grid: np.ndarray) -> np.ndarray:
+    """Reamostra uma curva DET (fmr, fnmr) sobre `fmr_grid`.
+
+    Extraida como funcao PURA (testavel sem renderizar figura) apos um bug
+    real: `sklearn.metrics.det_curve` devolve os pontos em ordem de limiar
+    CRESCENTE, o que deixa `fmr` DECRESCENTE. `np.interp` exige `xp`
+    crescente e nao ordena por conta propria -- passar `fmr` na ordem
+    original fazia a interpolacao degenerar e devolver `fnmr[-1]` constante
+    para todo FMR > 0. O resultado era uma RETA HORIZONTAL no lugar da
+    curva, em toda figura DET gerada ate 2026-08-07.
+
+    Invertendo os dois arrays juntos, `xp` fica crescente e cada fmr segue
+    pareado com o seu fnmr.
+    """
+    fmr = np.asarray(fmr, dtype=float)
+    fnmr = np.asarray(fnmr, dtype=float)
+    if fmr.size == 0:
+        return np.full(len(fmr_grid), np.nan)
+    if fmr.size > 1 and fmr[0] > fmr[-1]:      # ordem decrescente (o caso
+        fmr, fnmr = fmr[::-1], fnmr[::-1]      # devolvido por det_curve)
+    return np.interp(fmr_grid, fmr, fnmr)
+
+
 def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                    y_int: np.ndarray,
                    n_classes: int,
@@ -510,8 +534,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                     continue
                 try:
                     fmr, fnmr, _ = det_curve(y_k, proba[:, k])
-                    fnmr_acum += np.interp(fmr_grid_frac, fmr, fnmr,
-                                           left=fnmr[0], right=fnmr[-1])
+                    fnmr_acum += interpolar_det(fmr, fnmr, fmr_grid_frac)
                     n_valid += 1
                 except ValueError as _e_det:
                     # Classe k degenerada p/ det_curve -- so' afeta a media
@@ -521,11 +544,23 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
             if n_valid == 0:
                 continue
             fnmr_media = fnmr_acum / n_valid
+            # EER = ponto onde FMR == FNMR (cruzamento com a diagonal y=x).
+            # Resumir a curva num numero torna a figura comparavel entre
+            # classificadores sem precisar medir no olho.
+            dif = fnmr_media - fmr_grid_frac
+            i_eer = int(np.argmin(np.abs(dif)))
+            eer_pct = float((fnmr_media[i_eer] + fmr_grid_frac[i_eer]) / 2 * 100)
             ax.plot(fmr_grid_pct, fnmr_media * 100,
-                    lw=1.8, color=c, label=nome, alpha=0.85)
+                    lw=1.8, color=c, label=f"{nome} (EER {eer_pct:.1f}%)",
+                    alpha=0.85)
 
+        # A diagonal y=x nao e' a linha do acaso: e' o lugar geometrico onde
+        # FMR == FNMR, isto e', onde se le o EER. Rotular como "referencia"
+        # generica induzia a leitura errada de que a curva deveria "seguir" a
+        # diagonal -- ela deve ficar o mais LONGE possivel dela, no canto
+        # inferior esquerdo.
         ax.plot([lo, hi], [lo, hi], "k--", lw=0.8, alpha=0.35,
-                label="Ref. diagonal")
+                label="EER (FMR = FNMR)")
         ax.set_xlabel("False Match Rate — FMR (%)")
         ax.set_ylabel("False Non-Match Rate — FNMR (%)")
         escala_str = "log" if log_scale else "linear"

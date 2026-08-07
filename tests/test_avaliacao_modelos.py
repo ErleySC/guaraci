@@ -224,3 +224,52 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
         os.path.join(pasta_run, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
         os.path.join(pasta_run, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
+
+
+# ---------------------------------------------------------------------------
+# Curva DET — regressao do bug de interpolacao (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def test_interpolar_det_aceita_fmr_decrescente_do_sklearn():
+    """`det_curve` devolve fmr DECRESCENTE; a reamostragem tem que lidar
+    com isso. Este teste FALHA com o codigo antigo (np.interp direto), que
+    devolvia fnmr[-1] constante -- a reta horizontal das figuras antigas."""
+    from sklearn.metrics import det_curve
+
+    from guaraci.avaliacao_modelos import interpolar_det
+
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 2, 400)
+    escores = rng.random(400) * 0.9 + y * 0.25      # sobreposicao real
+    fmr, fnmr, _ = det_curve(y, escores)
+    assert fmr[0] > fmr[-1], "premissa do teste: sklearn devolve fmr decrescente"
+
+    grid = np.linspace(0.0, 1.0, 200)
+    out = interpolar_det(fmr, fnmr, grid)
+
+    # 1) NAO pode ser constante (era exatamente o bug)
+    assert out.max() - out.min() > 0.1, (
+        "curva DET degenerou em reta horizontal — bug de interpolacao voltou")
+    # 2) DET e' monotona nao-crescente: afrouxar o limiar aumenta FMR e
+    #    reduz FNMR. Tolerancia p/ ruido de interpolacao.
+    assert np.all(np.diff(out) <= 1e-9), "DET nao e' monotona nao-crescente"
+    # 3) extremos coerentes: FMR=0 => FNMR maximo; FMR=1 => FNMR minimo
+    assert out[0] == pytest.approx(fnmr.max(), abs=1e-6)
+    assert out[-1] == pytest.approx(fnmr.min(), abs=1e-6)
+
+
+def test_interpolar_det_ja_crescente_nao_e_invertido():
+    """Se `fmr` ja vier crescente, a funcao nao pode inverter (senao
+    quebraria o caso generico)."""
+    from guaraci.avaliacao_modelos import interpolar_det
+    fmr = np.array([0.0, 0.5, 1.0])
+    fnmr = np.array([1.0, 0.4, 0.0])
+    out = interpolar_det(fmr, fnmr, np.array([0.0, 0.5, 1.0]))
+    np.testing.assert_allclose(out, fnmr)
+
+
+def test_interpolar_det_um_ponto_nao_quebra():
+    """Classe degenerada (score constante) da' 1-2 pontos; nao pode estourar."""
+    from guaraci.avaliacao_modelos import interpolar_det
+    out = interpolar_det(np.array([0.5]), np.array([0.3]),
+                         np.linspace(0, 1, 10))
+    assert np.all(np.isfinite(out))
