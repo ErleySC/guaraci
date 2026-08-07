@@ -1383,6 +1383,36 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
     salvar(fig2, "fig_score_contribution_top_discriminante", pasta, cfg)
 
 
+def _limites_log_ddsimca(valores: np.ndarray, floor_min: float = 1e-6,
+                          floor_max: float = 1e-2, margem_topo: float = 1.5,
+                          topo_min: float = 3.0) -> Tuple[float, float]:
+    """Escolhe piso e teto do eixo log de um painel DD-SIMCA A PARTIR DOS
+    DADOS, em vez de um piso fixo.
+
+    Bug real (achado 2026-08-07): com poucas amostras puras de treino
+    (nc=3), o modelo one-class fica com apenas 1 componente principal
+    (`n_comp=1` — ver `_MIN_Q_RESIDUAL_DF`). Amostras de OUTRAS classes
+    projetam quase sempre perto de zero nesse unico eixo, que nao tem
+    relacao com a variancia delas. Medido: 91% das amostras caiam abaixo
+    do piso fixo de 1e-2 antes usado, todas empilhadas na MESMA coluna de
+    pixels -- os valores reais variam de 1e-10 a 1e-2 (8 ordens de
+    grandeza), mas o piso fixo escondia essa variacao inteira atras de uma
+    parede visual que parecia um defeito de renderizacao.
+
+    Usa o 1o percentil dos valores positivos (nao o minimo bruto: um unico
+    valor colapsado por underflow numerico nao deve esticar o eixo todo) e
+    o 99o percentil para o teto, com margem. `floor_min`/`floor_max` evitam
+    eixos absurdamente largos OU voltar ao piso antigo sem necessidade.
+    """
+    valores = np.asarray(valores, dtype=float)
+    positivos = valores[np.isfinite(valores) & (valores > 0)]
+    if positivos.size == 0:
+        return floor_max, topo_min
+    piso = float(np.clip(np.percentile(positivos, 1), floor_min, floor_max))
+    teto = max(float(np.percentile(positivos, 99)) * margem_topo, topo_min)
+    return piso, teto
+
+
 def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                                     rotulos: np.ndarray,
                                     mapa_cores: Dict[str, str],
@@ -1429,11 +1459,18 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         t2n = np.asarray(m["T2_norm"])
         qn  = np.asarray(m["Q_norm"])
 
-        # Log-log scale (Pomerantsev): clamp at small floor to avoid
-        # log(0) and make acceptance region visible (lower-left corner).
-        piso = 1e-2
-        t2p = np.clip(t2n, piso, None)
-        qp  = np.clip(qn,  piso, None)
+        # Log-log scale (Pomerantsev): clamp at a floor to avoid log(0).
+        # Piso e teto DINAMICOS por eixo (nao um piso fixo global) -- ver
+        # _limites_log_ddsimca: modelos com poucos componentes (n_comp=1,
+        # comum quando so' ha' 3 amostras puras de treino) fazem a maioria
+        # das amostras de outras classes projetar perto de zero em T2, e um
+        # piso fixo empilhava tudo na mesma coluna de pixels (parecia bug
+        # de renderizacao). Eixos T2 e Q sao independentes: um nao precisa
+        # esticar o outro.
+        piso_t2, teto_t2 = _limites_log_ddsimca(t2n)
+        piso_q,  teto_q  = _limites_log_ddsimca(qn)
+        t2p = np.clip(t2n, piso_t2, None)
+        qp  = np.clip(qn,  piso_q,  None)
         for true_cls in all_classes:
             idx = rotulos == true_cls
             ax.scatter(t2p[idx], qp[idx],
@@ -1446,8 +1483,6 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         # Acceptance boundary at (1,1): lower-left quadrant accepted
         ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
         ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        ax.axvspan(piso, 1.0, ymin=0, ymax=1, color=mapa_cores.get(cls, cor(0)),
-                   alpha=0.0)  # placeholder to keep color in title
 
         # Title: uses sens/spec from one-class model if available (M2);
         # otherwise falls back to fraction of own class accepted.
@@ -1466,17 +1501,22 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
             n_aceitos = int(np.sum((t2n[idx_cls] <= 1.0) & (qn[idx_cls] <= 1.0)))
             titulo_painel = f"Model: {cls}  sens.={n_aceitos/max(n_cls_tot,1):.0%}"
 
-        lim_hi = max(float(np.percentile(np.concatenate([t2p, qp]), 99)) * 1.5,
-                     3.0)
-        ax.set_xlim(piso * 0.8, lim_hi)
-        ax.set_ylim(piso * 0.8, lim_hi)
+        ax.set_xlim(piso_t2 * 0.8, teto_t2)
+        ax.set_ylim(piso_q * 0.8, teto_q)
         ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)", fontsize=8.5)
         ax.set_ylabel("$Q$ / UCL($Q$)  (log)", fontsize=8.5)
         ax.set_title(titulo_painel, loc="left",
                       fontsize=8.5, fontweight="bold")
+        # n_comp exposto na caixa: com poucas amostras puras de treino o
+        # modelo pode ter so' 1 componente -- e' o que explica a maioria
+        # das amostras de outras classes colapsar perto de zero em T2 (ver
+        # _limites_log_ddsimca). Sem essa informacao visivel, o padrao
+        # parece defeito de renderizacao em vez de propriedade do modelo.
+        n_comp_txt = (f"\nn_comp={int(m['n_comp'])} (treino n={int(m['n_train'])})"
+                      if "n_comp" in m else "")
         ax.text(0.98, 0.98,
                 f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
-                f"UCL($Q$)={float(m['Q_ucl']):.2g}",
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{n_comp_txt}",
                 transform=ax.transAxes, ha="right", va="top",
                 fontsize=7.5, color="0.35",
                 bbox=dict(boxstyle="round,pad=0.3", fc="white",

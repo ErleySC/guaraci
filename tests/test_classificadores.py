@@ -66,9 +66,23 @@ def test_ddsimca_score_matrix_contem_campos_esperados():
     scores = dd.score_matrix(X)
     assert "A" in scores
     campos = scores["A"]
-    for chave in ("T2", "Q", "T2_ucl", "Q_ucl", "T2_norm", "Q_norm", "n_train"):
+    for chave in ("T2", "Q", "T2_ucl", "Q_ucl", "T2_norm", "Q_norm", "n_train",
+                  "n_comp"):
         assert chave in campos
     assert campos["n_train"] == 12
+
+
+def test_ddsimca_score_matrix_expoe_n_comp_usado():
+    """REGRESSAO: a figura de aceitacao (fig_sprint3_ddsimca_acceptance)
+    precisa saber quantos componentes o modelo usou para explicar por que
+    a maioria das amostras de outras classes colapsa perto de zero em T2
+    quando n_comp=1 (comum com poucas amostras puras de treino) — sem esse
+    campo, o padrao no grafico parecia bug de renderizacao."""
+    rng = np.random.default_rng(7)
+    X = _classe_compacta(rng, centro=0.0, n=3)   # cenario real: 3 puras
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    scores = dd.score_matrix(X)
+    assert scores["A"]["n_comp"] == 1   # forcado por _MIN_Q_RESIDUAL_DF
 
 
 # ── DDSimca: classe com amostras insuficientes é pulada (não quebra) ────────

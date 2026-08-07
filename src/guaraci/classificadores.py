@@ -208,6 +208,7 @@ class DDSimca:
                 "T_train":  m["T_train"],
                 "Q_train":  m["Q_train"],
                 "n_train":  m["n_train"],
+                "n_comp":   m["n_comp"],
             }
         return res
 

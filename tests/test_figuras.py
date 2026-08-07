@@ -160,3 +160,59 @@ def test_selecionar_loadings_distintos_respeita_n_disponivel():
     idx = selecionar_loadings_distintos(mag, wn, 12)
     assert 1 <= len(idx) <= 5
     assert selecionar_loadings_distintos(np.array([]), np.array([]), 5).size == 0
+
+
+# ---------------------------------------------------------------------------
+# DD-SIMCA acceptance plot: parede de pontos no piso fixo (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def test_limites_log_ddsimca_nao_colapsa_maioria_no_piso():
+    """REGRESSAO: com n_comp=1 (comum quando so' ha' 3 amostras puras de
+    treino), a maioria das amostras de outras classes projeta perto de
+    zero em T2 -- medido em cenario real: 91% dos pontos caiam abaixo do
+    piso FIXO de 1e-2 antigo, todos empilhados na mesma coluna de pixels
+    (parecia bug de renderizacao). O piso dinamico tem que refletir a
+    dispersao real dos dados, nao esconder 90%+ deles atras de uma parede."""
+    from guaraci.figuras import _limites_log_ddsimca
+    rng = np.random.default_rng(0)
+    # Simula o padrao medido: a maioria dos valores entre 1e-10 e 1e-2,
+    # uma minoria (~10%) acima de 1.0
+    baixos = 10 ** rng.uniform(-10, -2, 900)
+    altos = 10 ** rng.uniform(-1, 0.5, 100)
+    valores = np.concatenate([baixos, altos])
+
+    piso, teto = _limites_log_ddsimca(valores)
+    fracao_visivel = float(np.mean(valores >= piso))
+    assert fracao_visivel > 0.5, (
+        f"piso dinamico ainda esconde a maioria dos pontos "
+        f"(so' {fracao_visivel:.0%} visiveis) — parede nao foi eliminada")
+    assert piso < 1e-2, "piso deveria descer abaixo do antigo valor fixo"
+    assert teto > 1.0
+
+
+def test_limites_log_ddsimca_nao_estica_por_um_unico_zero():
+    """Um unico valor colapsado por underflow numerico (T2~0 exato) nao
+    pode esticar o piso ate um extremo absurdo — usa percentil, nao o
+    minimo bruto."""
+    from guaraci.figuras import _limites_log_ddsimca
+    valores = np.concatenate([np.full(99, 0.5), [1e-300]])
+    piso, _teto = _limites_log_ddsimca(valores)
+    assert piso >= 1e-6, "um unico outlier extremo nao deveria dominar o piso"
+
+
+def test_limites_log_ddsimca_caso_degenerado():
+    from guaraci.figuras import _limites_log_ddsimca
+    piso, teto = _limites_log_ddsimca(np.array([]))
+    assert np.isfinite(piso) and np.isfinite(teto)
+    piso, teto = _limites_log_ddsimca(np.zeros(10))
+    assert np.isfinite(piso) and np.isfinite(teto)
+
+
+def test_limites_log_ddsimca_dados_bem_comportados_nao_alarga_demais():
+    """Quando os dados NAO tem o problema (poucos valores extremos, a
+    maioria perto da regiao de aceite), o piso nao deve descer
+    desnecessariamente -- fica perto do antigo 1e-2."""
+    from guaraci.figuras import _limites_log_ddsimca
+    rng = np.random.default_rng(1)
+    valores = 10 ** rng.uniform(-1.5, 0.3, 500)   # tudo entre ~0.03 e ~2
+    piso, _teto = _limites_log_ddsimca(valores)
+    assert piso >= 1e-3, "piso desceu sem necessidade para dados bem comportados"
