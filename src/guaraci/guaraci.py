@@ -17,6 +17,7 @@ import logging
 import json
 import os
 import re as _re
+import shutil
 import sys
 import threading
 import time
@@ -115,11 +116,58 @@ def _carregar_codigos_usuario() -> dict:
 # ---------------------------------------------------------------------------
 # Caminhos
 # ---------------------------------------------------------------------------
+# _BASE_DIR: diretorio de INSTALACAO do pacote -- so' para recursos
+# somente-leitura que o pacote ja traz consigo (ex.: CITATION.cff).
+#
+# _USER_DIR: onde o CLI grava ESTADO do usuario (config.yaml, perfis
+# salvos, flags de idioma/modo, codigos customizados). CORRIGIDO em
+# 2026-08-07 (achado do "checkup geral" de interface -- ver
+# docs/auditoria/): ate' entao esses arquivos eram gravados dentro de
+# _BASE_DIR, ou seja, DENTRO do diretorio de instalacao do pacote. Isso
+# quebra em qualquer instalacao read-only (pip de sistema, imagem Docker,
+# alguns `pip install --user`) -- `salvar_config()` logo antes de rodar o
+# pipeline (ver `_rodar_pipeline`) nao tinha nenhuma guarda contra isso e
+# derrubava o CLI com um PermissionError bem na hora de rodar a analise.
+# Home do usuario e' gravavel em praticamente qualquer instalacao.
 _BASE_DIR    = Path(os.path.dirname(os.path.abspath(__file__)))
-_CFG_PATH    = _BASE_DIR / "config.yaml"
-_PERFIS_DIR  = _BASE_DIR / "perfis"
-_LANG_FLAG   = _BASE_DIR / ".cli_wizard_done"
-_CODIGOS_PATH= _BASE_DIR / "codigos_usuario.json"
+_USER_DIR    = Path.home() / ".guaraci"
+_CFG_PATH    = _USER_DIR / "config.yaml"
+_PERFIS_DIR  = _USER_DIR / "perfis"
+_LANG_FLAG   = _USER_DIR / ".cli_wizard_done"
+_CODIGOS_PATH= _USER_DIR / "codigos_usuario.json"
+
+
+def _migrar_estado_legado() -> None:
+    """Copia, uma vez, o estado gravado pela versao anterior (dentro de
+    _BASE_DIR) para o novo local (_USER_DIR), se o novo local ainda nao
+    tiver esse arquivo. NUNCA sobrescreve nem apaga o arquivo antigo --
+    so' copia o que falta, best-effort (falha de permissao aqui nao pode
+    impedir o CLI de abrir). Chamada uma vez no inicio de `main()`, nao na
+    importacao do modulo (importar `guaraci.guaraci` -- em testes, por
+    exemplo -- nao deve escrever no HOME de quem esta rodando os testes).
+    """
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return
+    for nome, alvo in (
+        ("config.yaml", _CFG_PATH),
+        (".cli_wizard_done", _LANG_FLAG),
+        ("codigos_usuario.json", _CODIGOS_PATH),
+        (".cli_modo_usuario", _MODO_FLAG),
+    ):
+        origem = _BASE_DIR / nome
+        if origem.exists() and not alvo.exists():
+            try:
+                shutil.copy2(origem, alvo)
+            except OSError:
+                pass
+    origem_perfis = _BASE_DIR / "perfis"
+    if origem_perfis.is_dir() and not _PERFIS_DIR.exists():
+        try:
+            shutil.copytree(origem_perfis, _PERFIS_DIR)
+        except OSError:
+            pass
 
 # ---------------------------------------------------------------------------
 # Estado global
@@ -132,6 +180,7 @@ def _lang() -> str:
 def _set_lang(l: str) -> None:
     _STATE["lang"] = l
     try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
         _LANG_FLAG.write_text(l, encoding="utf-8")
     except OSError:
         pass
@@ -148,7 +197,7 @@ def _toggle_idioma() -> str:
 # 2026-07-13: _cli nao define _carregar_visual_cfg/_salvar_visual_cfg, os
 # wrappers em guaraci.py sempre retornam {} / viram no-op silenciosamente;
 # fora do escopo desta feature consertar isso).
-_MODO_FLAG = _BASE_DIR / ".cli_modo_usuario"
+_MODO_FLAG = _USER_DIR / ".cli_modo_usuario"
 
 def _modo_usuario() -> str:
     return _STATE["modo_usuario"]
@@ -156,6 +205,7 @@ def _modo_usuario() -> str:
 def _set_modo_usuario(m: str) -> None:
     _STATE["modo_usuario"] = m
     try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
         _MODO_FLAG.write_text(m, encoding="utf-8")
     except OSError:
         pass
@@ -2024,6 +2074,7 @@ def menu_codificacao(cfg: Config) -> None:
 
     def _salvar_cod(d: dict) -> bool:
         try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
             _CODIGOS_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
             return True
         except OSError as e:
@@ -2106,8 +2157,9 @@ def menu_codificacao(cfg: Config) -> None:
     def _exportar_csv() -> None:
         import csv as _csv
         cod_usr = _cod_usr()
-        destino = str(_BASE_DIR / "codigos_exportados.csv")
+        destino = str(_USER_DIR / "codigos_exportados.csv")
         try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
             with open(destino, "w", newline="", encoding="utf-8-sig") as fh:
                 w = _csv.writer(fh)
                 w.writerow(["codigo", "especie", "origem"])
@@ -3338,7 +3390,22 @@ def _rodar_pipeline(cfg: Config) -> None:
 
     # Sincronizar DPI do visual_config antes de salvar
     _sincronizar_dpi(cfg)
-    salvar_config(cfg, str(_CFG_PATH))
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+        salvar_config(cfg, str(_CFG_PATH))
+    except OSError as _e_cfg_save:
+        # Achado do "checkup geral" de interface (2026-08-07): esta chamada
+        # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
+        # read-only, disco cheio) derrubava o CLI com traceback bem na hora
+        # de rodar a analise, no meio de uma sessao interativa. Config nao
+        # persistida so' significa que as escolhas desta sessao nao vao
+        # sobreviver ao proximo start -- nao pode impedir a corrida atual.
+        _msg = (f"[AVISO] config.yaml nao pode ser salvo ({_e_cfg_save}); "
+               f"as preferencias desta sessao nao serao lembradas."
+               if lang == "PT" else
+               f"[WARNING] config.yaml could not be saved ({_e_cfg_save}); "
+               f"this session's preferences will not be remembered.")
+        console.print(f"  [{PM}]{escape(_msg)}[/{PM}]")
 
     # Sugestao de cafe em execucoes longas
     if (_cfgv(cfg, "monte_carlo", False)
@@ -3716,6 +3783,10 @@ def main() -> None:
                   "  doctor            diagnostica o ambiente (deps, RAM, CPU)\n"
                   "  --version         mostra a versao instalada")
             return
+
+    # Migra estado gravado pela versao anterior (dentro do pacote instalado)
+    # para _USER_DIR, se aplicavel -- ver docstring de _migrar_estado_legado.
+    _migrar_estado_legado()
 
     # Carregar config
     cfg = Config()

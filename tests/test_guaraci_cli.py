@@ -294,9 +294,16 @@ def test_preset_objetivo_aplica_no_config_via_spec(
 
 # ── Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12) ───────
 @pytest.fixture(autouse=False)
-def _modo_iniciante_limpo(guaraci_mod):
+def _modo_iniciante_limpo(guaraci_mod, monkeypatch, tmp_path):
     """Reseta o estado global de modo antes/depois de cada teste desta secao
-    -- _STATE e' um dict de modulo, persiste entre testes sem isolamento."""
+    -- _STATE e' um dict de modulo, persiste entre testes sem isolamento.
+
+    _MODO_FLAG tambem e' redirecionado para tmp_path: _toggle_modo_usuario()
+    grava em disco de verdade (_set_modo_usuario), e sem isso o teste
+    escrevia em _USER_DIR (~/.guaraci por padrao) -- o HOME real de quem
+    roda os testes, achado ao mexer em _CFG_PATH/_LANG_FLAG (2026-08-07)."""
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", tmp_path / ".cli_modo_usuario")
     anterior = guaraci_mod._modo_usuario()
     guaraci_mod._STATE["modo_usuario"] = "iniciante"
     yield
@@ -853,10 +860,14 @@ def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
     # mockar, o teste ficaria lento e poluiria a saida do pytest sem
     # testar nada a mais sobre a correcao.
     monkeypatch.setattr(guaraci_mod, "cls", lambda: None)
-    # Evita escrever config.yaml/.cli_wizard_done no diretorio real do
-    # pacote (onde _CFG_PATH/_LANG_FLAG apontam por padrao) durante o teste.
+    # Evita escrever/migrar estado no HOME real de quem roda os testes
+    # (_USER_DIR aponta por padrao para ~/.guaraci -- ver _migrar_estado_legado).
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
     monkeypatch.setattr(guaraci_mod, "_CFG_PATH", tmp_path / "config.yaml")
     monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", tmp_path / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", tmp_path / "perfis")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", tmp_path / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", tmp_path / ".cli_modo_usuario")
 
     inicio = time.monotonic()
     guaraci_mod.main()   # NAO pode travar -- se travar, o teste tambem trava
@@ -864,3 +875,100 @@ def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
     assert duracao < 5.0, (
         f"main() nao retornou rapido com EOF permanente -- ainda gira? "
         f"({duracao:.2f}s)")
+
+
+# ── _CFG_PATH/_LANG_FLAG fora do diretorio de instalacao (achado 2026-08-07) ─
+# config.yaml/perfis/flags de idioma-modo/codigos de usuario eram gravados
+# dentro de _BASE_DIR (o diretorio de INSTALACAO do pacote) -- quebra em
+# qualquer instalacao read-only (pip de sistema, Docker, `pip install
+# --user` em alguns casos). Movido para _USER_DIR (~/.guaraci), com
+# migracao best-effort do estado gravado pela versao anterior.
+
+def test_estado_do_usuario_fica_fora_do_diretorio_de_instalacao(guaraci_mod):
+    """Propriedade que falhava antes da correcao: nenhum dos caminhos de
+    estado do usuario pode estar DENTRO de _BASE_DIR (o pacote instalado)."""
+    base = str(guaraci_mod._BASE_DIR)
+    for caminho in (guaraci_mod._CFG_PATH, guaraci_mod._PERFIS_DIR,
+                    guaraci_mod._LANG_FLAG, guaraci_mod._CODIGOS_PATH,
+                    guaraci_mod._MODO_FLAG):
+        assert not str(caminho).startswith(base), (
+            f"{caminho} ainda esta dentro do diretorio de instalacao do "
+            "pacote -- quebra em instalacao read-only")
+
+
+def test_migrar_estado_legado_copia_arquivos_que_faltam(guaraci_mod, monkeypatch, tmp_path):
+    """Arquivos existentes no local ANTIGO (_BASE_DIR) e ausentes no NOVO
+    (_USER_DIR) devem ser copiados -- efeito pratico: quem ja usava o CLI
+    antes desta correcao nao perde config/perfis/codigos salvos."""
+    base_antigo = tmp_path / "pacote_antigo"
+    base_antigo.mkdir()
+    (base_antigo / "config.yaml").write_text("nivel: N2\n", encoding="utf-8")
+    (base_antigo / ".cli_wizard_done").write_text("EN", encoding="utf-8")
+    (base_antigo / "codigos_usuario.json").write_text('{"XYZ": "Teste"}',
+                                                       encoding="utf-8")
+    perfis_antigo = base_antigo / "perfis"
+    perfis_antigo.mkdir()
+    (perfis_antigo / "meu_perfil.yaml").write_text("tag: x\n", encoding="utf-8")
+
+    dir_novo = tmp_path / "home_novo" / ".guaraci"
+    monkeypatch.setattr(guaraci_mod, "_BASE_DIR", base_antigo)
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", dir_novo)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", dir_novo / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", dir_novo / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", dir_novo / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", dir_novo / ".cli_modo_usuario")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", dir_novo / "perfis")
+
+    guaraci_mod._migrar_estado_legado()
+
+    assert (dir_novo / "config.yaml").read_text(encoding="utf-8") == "nivel: N2\n"
+    assert (dir_novo / ".cli_wizard_done").read_text(encoding="utf-8") == "EN"
+    assert '"XYZ"' in (dir_novo / "codigos_usuario.json").read_text(encoding="utf-8")
+    assert (dir_novo / "perfis" / "meu_perfil.yaml").exists()
+    # arquivo antigo continua intacto -- migracao NUNCA apaga a origem
+    assert (base_antigo / "config.yaml").exists()
+
+
+def test_migrar_estado_legado_nao_sobrescreve_arquivo_ja_existente(guaraci_mod, monkeypatch, tmp_path):
+    """Se o NOVO local ja tem um config.yaml (usuario ja rodou apos a
+    correcao e mudou algo), a migracao nao pode pisar em cima."""
+    base_antigo = tmp_path / "pacote_antigo"
+    base_antigo.mkdir()
+    (base_antigo / "config.yaml").write_text("nivel: N2\n", encoding="utf-8")
+
+    dir_novo = tmp_path / "home_novo" / ".guaraci"
+    dir_novo.mkdir(parents=True)
+    (dir_novo / "config.yaml").write_text("nivel: N3\n", encoding="utf-8")
+
+    monkeypatch.setattr(guaraci_mod, "_BASE_DIR", base_antigo)
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", dir_novo)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", dir_novo / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", dir_novo / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", dir_novo / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", dir_novo / ".cli_modo_usuario")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", dir_novo / "perfis")
+
+    guaraci_mod._migrar_estado_legado()
+
+    assert (dir_novo / "config.yaml").read_text(encoding="utf-8") == "nivel: N3\n"
+
+
+def test_migrar_estado_legado_sem_arquivos_antigos_nao_lanca(guaraci_mod, monkeypatch, tmp_path):
+    """Instalacao nova (nunca rodou a versao antiga) -- nada para migrar,
+    nao pode lancar excecao nem criar arquivos vazios."""
+    base_antigo = tmp_path / "pacote_sem_nada"
+    base_antigo.mkdir()
+    dir_novo = tmp_path / "home_novo" / ".guaraci"
+
+    monkeypatch.setattr(guaraci_mod, "_BASE_DIR", base_antigo)
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", dir_novo)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", dir_novo / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", dir_novo / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", dir_novo / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", dir_novo / ".cli_modo_usuario")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", dir_novo / "perfis")
+
+    guaraci_mod._migrar_estado_legado()   # nao deve lancar
+
+    assert dir_novo.exists()   # _USER_DIR e' criado mesmo sem nada a copiar
+    assert not (dir_novo / "config.yaml").exists()
