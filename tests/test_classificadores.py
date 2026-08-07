@@ -299,7 +299,7 @@ def test_logo_cai_abaixo_de_100pct_com_grupo_outlier():
     # (o small-n guard aceita todo o treino) -> infla a sensibilidade.
     dd = DDSimca(n_components=2).fit(X, np.array(["_c"] * len(X)))
     m = dd.score_matrix(X)["_c"]
-    aceito = (np.asarray(m["T2_norm"]) <= 1.0) & (np.asarray(m["Q_norm"]) <= 1.0)
+    aceito = np.asarray(m["f"]) <= m["f_crit"]
     sens_resub = float(np.mean(aceito))
     assert sens_resub > r["sensibilidade"]     # re-sub sempre >= LOGO honesto
 
@@ -351,3 +351,83 @@ def test_logo_inconclusivo_quando_nenhum_fold_valido():
     if r["n_grupos_validos"] < 2:
         assert np.isnan(r["sensibilidade"])
         assert r["aviso"] is not None and "inconclusiva" in r["aviso"]
+
+
+# ---------------------------------------------------------------------------
+# Distancia combinada f<=f_crit (corrigido 2026-08-08): regra retangular
+# T2<=UCL e Q<=UCL independente NAO e' o metodo publicado.
+# ---------------------------------------------------------------------------
+def test_score_matrix_expoe_campos_da_distancia_combinada():
+    rng = np.random.default_rng(5)
+    X = _classe_compacta(rng, centro=0.0, n=20)
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 20))
+    m = dd.score_matrix(X)["A"]
+    for chave in ("f", "f_crit", "h0", "q0", "Nh", "Nq"):
+        assert chave in m
+    assert m["f_crit"] > 0
+    assert np.all(np.isfinite(m["f"]))
+
+
+def test_predict_usa_distancia_combinada_nao_regra_retangular():
+    """REGRESSAO: predict() aceitava so' se T2<=UCL(T2) E Q<=UCL(Q)
+    independentemente -- uma caixa retangular. Com alpha independente por
+    eixo, a rejeicao conjunta efetiva era ~1-(1-alpha)^2 (~0.0975 p/
+    alpha=0.05), quase o dobro do declarado. A regra corrigida usa
+    f=(T2/h0)*Nh+(Q/q0)*Nq <= f_crit (Kucheryavskiy/Rodionova/Pomerantsev
+    2024) e fica muito mais proxima do alpha nominal."""
+    rng = np.random.default_rng(0)
+    Xc = rng.normal(scale=1.0, size=(20, 50))
+    dd = DDSimca(n_components=3, alpha=0.05).fit(Xc, np.array(["A"] * 20))
+
+    Xt = rng.normal(scale=1.0, size=(4000, 50))
+    sc = dd.score_matrix(Xt)["A"]
+    t2_aceito = sc["T2_norm"] <= 1.0
+    q_aceito  = sc["Q_norm"]  <= 1.0
+    antiga = t2_aceito & q_aceito
+    nova   = sc["f"] <= sc["f_crit"]
+
+    # As duas regras tem que DISCORDAR em uma fracao real de pontos --
+    # senao o teste nao prova que o comportamento mudou de verdade.
+    discordancia = float(np.mean(antiga != nova))
+    assert discordancia > 0.005, (
+        "regra nova e antiga concordam em quase tudo -- fix nao mudou nada")
+
+    # Propriedade ESTRUTURAL (sempre verdadeira, nao depende do sorteio
+    # aleatorio): P(A ∩ B) <= min(P(A), P(B)). O "E" de dois testes so'
+    # pode aceitar MENOS OU IGUAL do que qualquer um dos dois isolados --
+    # e' exatamente a penalidade que faz a caixa retangular superrejeitar.
+    assert antiga.mean() <= t2_aceito.mean() + 1e-9
+    assert antiga.mean() <= q_aceito.mean() + 1e-9
+
+    # A distancia combinada nao tem essa penalidade estrutural (nao e' um
+    # "E" de dois testes independentes): aceita estritamente mais que a
+    # regra retangular que ela substituiu.
+    assert nova.mean() > antiga.mean(), (
+        f"regra nova (aceita {nova.mean():.3f}) nao superou a antiga "
+        f"(aceita {antiga.mean():.3f}) -- deveria, por construcao")
+
+
+def test_predict_e_score_matrix_f_concordam():
+    """predict() e score_matrix() tem que usar EXATAMENTE a mesma regra
+    (mesmo f/f_crit) -- antes cada metodo (predict, sensibilidade_ddsimca_
+    logo, pipeline) reimplementava a comparacao por conta propria."""
+    rng = np.random.default_rng(3)
+    X = _classe_compacta(rng, centro=0.0, n=15)
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 15))
+    Xt = rng.normal(size=(50, X.shape[1])) * 2.0
+
+    preds = dd.predict(Xt)
+    sc = dd.score_matrix(Xt)["A"]
+    aceito_score = sc["f"] <= sc["f_crit"]
+    aceito_predict = preds == "A"
+    np.testing.assert_array_equal(aceito_score, aceito_predict)
+
+
+def test_media_e_dof_casos_degenerados():
+    from guaraci.classificadores import DDSimca
+    media, N = DDSimca._media_e_dof(np.array([]))
+    assert media == 0.0 and N == 1.0
+    media, N = DDSimca._media_e_dof(np.full(10, 3.0))   # desvio=0
+    assert N == 1.0
+    media, N = DDSimca._media_e_dof(np.array([5.0]))    # n=1, sem desvio
+    assert N == 1.0

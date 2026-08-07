@@ -43,30 +43,46 @@ _MIN_Q_RESIDUAL_DF = 2
 class DDSimca:
     """Data-Driven SIMCA: per-class one-class classifier via PCA.
 
-    For each class, trains an independent PCA model and defines
-    acceptance limits (UCL) for T2 and Q-residuals:
-        T2_UCL  — computed by ucl_method:
+    For each class, trains an independent PCA model. Duas coisas sao
+    reportadas por eixo, mas a DECISAO de aceitar/rejeitar usa a
+    ESTATISTICA COMBINADA do metodo original (corrigido em 2026-08-08 —
+    ver nota abaixo):
+
+        T2_UCL, Q_UCL — limites POR EIXO, so' para diagnostico/plotagem
+                  individual (nao usados para aceitar/rejeitar):
                     'empirical'  : (1-alpha) percentile of training T2
                     'theoretical': Tracy-Young-Mason (F-distribution)
                     'chi2'       : chi2(1-alpha, n_components)
-                  'empirical' is the only one that VARIES PER CLASS
-                  (theoretical and chi2 depend only on n,k); recommended.
-        Q_UCL   — chi2 approximation (Jackson & Mudholkar) via mean/var of
-                  training Q-residuals — naturally data-driven. Requires at
-                  least `_MIN_Q_RESIDUAL_DF` residual degrees of freedom
-                  (nc - n_comp); classes without enough training samples for
-                  that are skipped (see fit()), same as the existing
-                  insufficient-samples case.
+                  ('ucl_method' controla so' o T2_UCL exibido; Q_UCL e'
+                  sempre chi2 Jackson-Mudholkar via mean/var, como antes.)
 
-    A new sample is 'accepted' by the class if T2 <= UCL **and** Q <= UCL.
-    Note: with independent per-statistic alpha, the effective joint
-    acceptance rate is looser than alpha (approx. 1-(1-alpha)^2 for the
-    rejection rate) — the acceptance region is rectangular, not the
-    Rodionova/Pomerantsev combined-distance ellipsoid. Tracked separately.
+        f, f_crit — a DISTANCIA COMBINADA de fato usada em predict():
+                    h0, q0 = media de T2_train, Q_train (respectivamente)
+                    Nh, Nq = graus de liberdade estimados DOS DADOS via
+                             metodo dos momentos (Jackson & Mudholkar
+                             1979): N = 2*(media/desvio)^2 -- o "data-
+                             driven" que da nome ao metodo, aplicado aos
+                             DOIS eixos, nao so' a Q.
+                    f       = (T2/h0)*Nh + (Q/q0)*Nq
+                    f_crit  = chi2.ppf(1-alpha, Nh+Nq)
+                  Um novo objeto e' aceito se f <= f_crit.
+
+    CORRIGIDO em 2026-08-08 (achado por auditoria de figuras + pesquisa de
+    literatura atualizada): a versao anterior aceitava um objeto se
+    T2<=T2_UCL **e** Q<=Q_UCL independentemente -- uma regiao retangular,
+    nao a elipse/reta combinada do metodo publicado. Com alpha independente
+    em cada eixo, a taxa de rejeicao conjunta efetiva era ~1-(1-alpha)^2
+    (~0.0975 para alpha=0.05), quase o dobro do alpha nominal declarado.
+    A formula f/f_crit acima e' a Eq. (3)-(4) de Kucheryavskiy, Rodionova &
+    Pomerantsev (2024) -- ver referencia completa abaixo -- reproduzida
+    exatamente (Nq/Nh la' chamados N_q/N_h, h0/q0 la' chamados h0/q0).
 
     Referencias:
-        Rodionova O.Y. & Pomerantsev A.L. (2020). Chemom. Intell. Lab.
-        Syst. 200:103958.
+        Rodionova O.Y. & Pomerantsev A.L. (2020). Popular decision rules in
+        SIMCA: critical review. J. Chemometrics 200:103958.
+        Kucheryavskiy S., Rodionova O. & Pomerantsev A. (2024). A
+        comprehensive tutorial on Data-Driven SIMCA: theory and
+        implementation in web. J. Chemometrics 38(7):e3556.
     """
 
     def __init__(self, n_components: int = 3, alpha: float = 0.05,
@@ -76,6 +92,41 @@ class DDSimca:
         self.ucl_method = ucl_method
         self._modelos: Dict[str, Dict[str, Any]] = {}
         self._classes: np.ndarray = np.array([], dtype=str)
+
+    @staticmethod
+    def _media_e_dof(valores: np.ndarray) -> Tuple[float, float]:
+        """Media e graus de liberdade (N) por metodo dos momentos
+        (Jackson & Mudholkar 1979) -- a MESMA aproximacao chi-quadrado que
+        `chemometric_stats.q_residuos_limite` ja usa para Q, exposta aqui
+        para reutilizar tambem no T2 (unifica os dois eixos sob um so'
+        metodo "data-driven", o proprio nome do DD-SIMCA).
+
+        N = 2*(media/desvio)^2. Com desvio<=0 ou media<=0 (treino
+        degenerado: valores identicos ou vazio), cai para N=1 -- o minimo
+        que ainda faz sentido como grau de liberdade, em vez de propagar
+        NaN/Inf para a estatistica combinada.
+        """
+        valores = np.asarray(valores, dtype=float)
+        if valores.size == 0:
+            return 0.0, 1.0
+        media = float(valores.mean())
+        desvio = float(valores.std(ddof=1)) if valores.size > 1 else 0.0
+        if desvio <= 0 or media <= 0:
+            return max(media, 1e-12), 1.0
+        return media, 2.0 * (media / desvio) ** 2
+
+    @staticmethod
+    def _f_distance(T2: np.ndarray, Q: np.ndarray,
+                    m: Dict[str, Any]) -> np.ndarray:
+        """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
+        Kucheryavskiy/Rodionova/Pomerantsev 2024) -- a estatistica que de
+        fato decide aceitar/rejeitar, substituindo o teste retangular
+        independente T2<=UCL e Q<=UCL. Extraida como metodo separado para
+        ser a MESMA chamada em predict(), score_matrix() e nos usos
+        externos (sensibilidade_ddsimca_logo, resumo do pipeline) --
+        antes cada um reimplementava a regra retangular por conta propria."""
+        return ((T2 / max(m["h0"], 1e-12)) * m["Nh"]
+                + (Q / max(m["q0"], 1e-12)) * m["Nq"])
 
     def _compute_t2_ucl(self, T2_train: np.ndarray, n: int, k: int) -> float:
         method = (self.ucl_method or "empirical").lower()
@@ -166,11 +217,23 @@ class DDSimca:
             t2_ucl = self._compute_t2_ucl(T2_train, nc, n_comp)
             q_ucl  = q_residuos_limite(Q_train, self.alpha)
 
+            # Estatistica combinada (ver docstring da classe): h0/q0/Nh/Nq
+            # data-driven a partir de T2_train/Q_train, f_crit por chi2 com
+            # Nf=Nh+Nq graus de liberdade. E' o que predict() usa de fato.
+            h0, Nh = self._media_e_dof(T2_train)
+            q0, Nq = self._media_e_dof(Q_train)
+            f_crit = float(chi2.ppf(1 - self.alpha, Nh + Nq))
+
             self._modelos[cls] = {
                 "pca":      pca,
                 "var_t":    var_t,
                 "T2_ucl":   t2_ucl,
                 "Q_ucl":    q_ucl,
+                "h0":       h0,
+                "q0":       q0,
+                "Nh":       Nh,
+                "Nq":       Nq,
+                "f_crit":   f_crit,
                 "T_train":  T,
                 "T2_train": T2_train,
                 "Q_train":  Q_train,
@@ -190,7 +253,9 @@ class DDSimca:
         return T2, Q
 
     def score_matrix(self, X: np.ndarray) -> Dict[str, Dict[str, Any]]:
-        """T2, Q and normalized versions (T2/UCL, Q/UCL) per class."""
+        """T2, Q, versoes normalizadas por eixo (T2/UCL, Q/UCL — so'
+        diagnostico) e a distancia combinada f/f_crit (o que decide
+        aceitar/rejeitar) por classe."""
         X = np.asarray(X, dtype=float)
         res: Dict[str, Dict[str, Any]] = {}
         for cls in self._classes:
@@ -205,6 +270,12 @@ class DDSimca:
                 "Q_ucl":    m["Q_ucl"],
                 "T2_norm":  T2 / max(m["T2_ucl"], 1e-12),
                 "Q_norm":   Q  / max(m["Q_ucl"],  1e-12),
+                "f":        self._f_distance(T2, Q, m),
+                "f_crit":   m["f_crit"],
+                "h0":       m["h0"],
+                "q0":       m["q0"],
+                "Nh":       m["Nh"],
+                "Nq":       m["Nq"],
                 "T_train":  m["T_train"],
                 "Q_train":  m["Q_train"],
                 "n_train":  m["n_train"],
@@ -213,7 +284,10 @@ class DDSimca:
         return res
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Returns: class name | 'Ambiguo' | 'Desconhecido'."""
+        """Returns: class name | 'Ambiguo' | 'Desconhecido'.
+
+        Aceita via distancia combinada f<=f_crit (ver docstring da classe),
+        nao mais o teste retangular independente por eixo."""
         X = np.asarray(X, dtype=float)
         preds = []
         for i in range(len(X)):
@@ -224,7 +298,8 @@ class DDSimca:
                     continue
                 m = self._modelos[cls]
                 T2, Q = self._t2_q(xi, cls)
-                if T2[0] <= m["T2_ucl"] and Q[0] <= m["Q_ucl"]:
+                f = self._f_distance(T2, Q, m)
+                if f[0] <= m["f_crit"]:
                     aceitas.append(cls)
             if   len(aceitas) == 1: preds.append(aceitas[0])
             elif len(aceitas) >  1: preds.append("Ambiguo")
@@ -495,8 +570,7 @@ def sensibilidade_ddsimca_logo(
         if "_c" not in res:   # classe pulada (puros de treino insuficientes)
             continue
         m = res["_c"]
-        aceito = ((np.asarray(m["T2_norm"]) <= 1.0) &
-                  (np.asarray(m["Q_norm"]) <= 1.0))
+        aceito = np.asarray(m["f"]) <= m["f_crit"]
         aceitos.extend(bool(a) for a in aceito)
         validos += 1
 

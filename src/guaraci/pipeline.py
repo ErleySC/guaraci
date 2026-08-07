@@ -1738,8 +1738,7 @@ def executar(cfg: Config):
             if cls not in ddsimca_res:
                 continue
             m = ddsimca_res[cls]
-            aceito = ((np.asarray(m["T2_norm"]) <= 1.0) &
-                      (np.asarray(m["Q_norm"])  <= 1.0))
+            aceito = np.asarray(m["f"]) <= m["f_crit"]
             idx_puro_c  = (rotulos == cls) & mask_puros
             idx_adult_c = (rotulos == cls) & (~mask_puros)
             idx_cls     = (rotulos == cls)

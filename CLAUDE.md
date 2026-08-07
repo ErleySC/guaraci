@@ -157,13 +157,19 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 > com grupos idênticos) e `tests/test_pipeline_core.py` (mesmo padrão).
 > 558→559 testes passam (suíte completa reverificada).
 >
-> **Não corrigido nesta rodada, achado separado (menor prioridade, não
-> bloqueia):** a região de aceitação é T2≤UCL **E** Q≤UCL com alpha
-> independente em cada — isso dá alpha conjunto efetivo ≈ 0,10, não 0,05
-> (Rodionova/Pomerantsev, citados na docstring do módulo, usam uma
-> distância combinada contra um quantil χ² único; a implementação atual
-> não é esse método apesar de citá-lo). Requer reescrever `predict()`, não
-> só recalibrar um limite — fica para uma sessão dedicada.
+> **✅ RESOLVIDO em 2026-08-08** (era: "não corrigido nesta rodada, achado
+> separado, menor prioridade"): a região de aceitação era T2≤UCL **E**
+> Q≤UCL com alpha independente em cada — alpha conjunto efetivo ≈ 0,0975,
+> quase o dobro do declarado. Corrigido reescrevendo `predict()` (e as duas
+> outras cópias da mesma regra — `sensibilidade_ddsimca_logo()` e a
+> especificidade no pipeline, unificadas numa só fonte de verdade) para usar
+> a distância combinada f=(T²/h₀)·N_h+(Q/q₀)·N_q ≤ χ²(1−α, N_h+N_q), Eq. 3–4
+> de Kucheryavskiy, Rodionova & Pomerantsev (2024) *J. Chemometrics*
+> 38(7):e3556 — o tutorial atualizado dos próprios autores do DD-SIMCA, com
+> a fórmula exata que faltava na sessão anterior. Figuras de aceitação
+> atualizadas para desenhar a fronteira diagonal real (antes: duas linhas
+> retas formando uma caixa que nunca foi a região de decisão verdadeira).
+> Ver `docs/CHANGELOG.md` (2026-08-08) para a medição completa.
 
 **O que acontecia (achado original, 2026-07-11):** só existem 3–4 amostras puras por espécie, e **todas estavam no treino**.
 A sensibilidade reportada mede o modelo classificando dados que ele já viu. É a prova

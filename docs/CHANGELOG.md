@@ -6,6 +6,48 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: regra de decisao corrigida
+             para a distancia combinada do metodo publicado (fecha P1
+             residual do CLAUDE.md).
+             [REGRA RETANGULAR -> DISTANCIA COMBINADA] predict() aceitava um
+             objeto se T2<=UCL(T2) E Q<=UCL(Q) independentemente -- uma
+             regiao retangular. O docstring da classe ja documentava isso
+             como divergencia do metodo citado (Rodionova/Pomerantsev), mas
+             sem a formula exata para corrigir. Pesquisa de literatura
+             atualizada achou Kucheryavskiy, Rodionova & Pomerantsev (2024)
+             J. Chemometrics 38(7):e3556 -- tutorial dos proprios autores do
+             DD-SIMCA com as Eq. 3-4 exatas: distancia combinada
+             f=(T2/h0)*Nh+(Q/q0)*Nq comparada a UM UNICO f_crit=chi2(1-alpha,
+             Nh+Nq), com Nh/Nq estimados DOS DADOS por metodo dos momentos
+             (a mesma matematica que chemometric_stats.q_residuos_limite ja
+             usava so' para Q -- estendida agora para T2 tambem, unificando
+             os dois eixos sob o "data-driven" que da nome ao metodo).
+             Com alpha independente por eixo a rejeicao conjunta efetiva era
+             ~1-(1-alpha)^2~=0.0975 (quase o dobro do alpha=0.05 declarado)
+             -- medido num caso sintetico controlado: regra antiga aceitava
+             93.85% dos pontos de uma distribuicao conhecida (deveria ser
+             ~95%), regra nova aceita 96.80%; 2.95% dos pontos MUDAM de
+             classificacao entre as duas regras (nao e' so' um campo novo
+             sem uso). A regra estava duplicada em 3 lugares (predict(),
+             sensibilidade_ddsimca_logo(), especificidade no pipeline) --
+             unificada numa so' fonte de verdade (score_matrix() agora
+             expoe "f"/"f_crit", os 3 usos comparam contra eles).
+             Figuras (fig_sprint3_ddsimca_acceptance, fig_ddsimca_
+             individuais) atualizadas: a "caixa" de duas linhas retas
+             perpendiculares (T2_norm=1, Q_norm=1) nunca foi a regiao de
+             aceitacao real do modelo -- agora desenham a reta diagonal
+             unica que a distancia combinada de fato usa
+             (_fronteira_ddsimca()), senao a figura continuaria mostrando
+             uma fronteira diferente da que o codigo usa para decidir.
+             Golden test regravado: especificidade/n_desconhecidos do
+             cenario sintetico N2 mudaram (ex.: Esp_A 61.9->38.1%) --
+             direcao esperada: a regra antiga super-rejeitava em geral
+             (inclusive amostras da propria classe), inflando especificidade
+             como efeito colateral; a regra correta aceita mais amostras no
+             total (proprias e estranhas), entao a especificidade cai para
+             um valor mais honesto.
+             651 testes passam (eram 644), ruff e mypy limpos.
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Figuras: curva DET era uma reta sem
              significado, rotulos do biplot ilegiveis, painel de execucao
              apagava a tela, e diagnostico novo de faixa espectral.

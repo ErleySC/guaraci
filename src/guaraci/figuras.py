@@ -1442,6 +1442,41 @@ def _limites_log_ddsimca(valores: np.ndarray, floor_min: float = 1e-6,
     return piso, teto
 
 
+def _fronteira_ddsimca(m: Dict[str, Any],
+                        t2_grid: np.ndarray) -> np.ndarray:
+    """Curva de aceitacao VERDADEIRA do DD-SIMCA, na parametrizacao do
+    grafico (T2/UCL(T2), Q/UCL(Q)).
+
+    Corrigido em 2026-08-08 junto com classificadores.DDSimca.predict():
+    antes o grafico desenhava DUAS linhas retas perpendiculares em
+    T2_norm=1 e Q_norm=1 (uma caixa retangular) -- mas essa NUNCA foi a
+    regiao de aceitacao real do modelo, so' uma aproximacao visual. A
+    decisao de fato usa a distancia combinada f=(T2/h0)*Nh+(Q/q0)*Nq
+    comparada a um unico f_crit (ver docstring de DDSimca), que e' uma
+    RETA UNICA (nao um retangulo) na parametrizacao (T2_norm, Q_norm):
+
+        A*T2_norm + B*Q_norm = f_crit,
+        A = (T2_ucl/h0)*Nh,  B = (Q_ucl/q0)*Nq
+
+    Devolve Q_norm ao longo dessa reta para cada T2_norm em `t2_grid`;
+    pontos fora do dominio (T2 sozinho ja excede f_crit) viram NaN --
+    matplotlib pula NaN automaticamente, a curva so' aparece onde existe.
+    """
+    campos = ("h0", "q0", "Nh", "Nq", "f_crit", "T2_ucl", "Q_ucl")
+    if any(m.get(c) is None for c in campos):
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    h0, q0 = float(m["h0"]), float(m["q0"])
+    if h0 <= 0 or q0 <= 0:
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    A = (float(m["T2_ucl"]) / h0) * float(m["Nh"])
+    B = (float(m["Q_ucl"]) / q0) * float(m["Nq"])
+    if B <= 0:
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    q_norm = (float(m["f_crit"]) - A * t2_grid) / B
+    q_norm[q_norm <= 0] = np.nan
+    return q_norm
+
+
 def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                                     rotulos: np.ndarray,
                                     mapa_cores: Dict[str, str],
@@ -1509,9 +1544,13 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                        label=str(true_cls), zorder=3)
         ax.set_xscale("log"); ax.set_yscale("log")
 
-        # Acceptance boundary at (1,1): lower-left quadrant accepted
-        ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
+        # Fronteira de aceitacao VERDADEIRA (reta diagonal da distancia
+        # combinada f<=f_crit -- ver _fronteira_ddsimca). Substituiu as
+        # duas linhas retas em T2_norm=1/Q_norm=1: aquela caixa nunca foi
+        # a regiao de aceitacao real do modelo corrigido em predict().
+        t2_grid = np.logspace(np.log10(piso_t2 * 0.8), np.log10(teto_t2), 300)
+        q_fronteira = _fronteira_ddsimca(m, t2_grid)
+        ax.plot(t2_grid, q_fronteira, color="0.20", ls="--", lw=1.2, zorder=4)
 
         # Title: uses sens/spec from one-class model if available (M2);
         # otherwise falls back to fraction of own class accepted.
@@ -1596,8 +1635,12 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
                        s=s_pt, alpha=alpha_pt, edgecolors="white",
                        linewidths=lw_pt, label=str(true_cls), zorder=3)
         ax.set_xscale("log"); ax.set_yscale("log")
-        ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
+        # Fronteira verdadeira (reta diagonal de f<=f_crit) -- ver
+        # _fronteira_ddsimca e o mesmo comentario em
+        # fig_sprint3_ddsimca_acceptance.
+        t2_grid = np.logspace(np.log10(piso_t2 * 0.8), np.log10(teto_t2), 300)
+        ax.plot(t2_grid, _fronteira_ddsimca(m, t2_grid),
+               color="0.20", ls="--", lw=1.2, zorder=4)
         ax.set_xlim(piso_t2 * 0.8, teto_t2); ax.set_ylim(piso_q * 0.8, teto_q)
         if sens_esp is not None and cls in sens_esp:
             _info = sens_esp[cls]

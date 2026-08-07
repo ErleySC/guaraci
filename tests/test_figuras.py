@@ -255,3 +255,49 @@ def test_ylim_permutacao_entrada_degenerada():
                       (np.array([]), 0.5)):
         lo, hi = _ylim_permutacao(vals, obs)
         assert np.isfinite(lo) and np.isfinite(hi) and lo < hi
+
+
+# ---------------------------------------------------------------------------
+# Fronteira de aceitacao verdadeira do DD-SIMCA (corrigido 2026-08-08)
+# ---------------------------------------------------------------------------
+def test_fronteira_ddsimca_reta_diagonal_nao_caixa():
+    """REGRESSAO: o grafico desenhava DUAS linhas retas perpendiculares
+    (T2_norm=1, Q_norm=1) -- uma caixa. A fronteira real do modelo
+    corrigido e' UMA reta diagonal unica. A curva devolvida tem que VARIAR
+    com T2_norm (nao ser constante em 1.0 -- senao ainda seria a caixa
+    antiga disfarcada)."""
+    from guaraci.figuras import _fronteira_ddsimca
+    m = {"h0": 2.0, "q0": 50.0, "Nh": 3.0, "Nq": 40.0,
+         "T2_ucl": 5.0, "Q_ucl": 80.0}
+    m["f_crit"] = (5.0 / 2.0) * 3.0 + (80.0 / 50.0) * 40.0   # ponto (1,1) na fronteira
+    grid = np.array([0.1, 0.5, 1.0, 2.0])
+    q_front = _fronteira_ddsimca(m, grid)
+    validos = q_front[np.isfinite(q_front)]
+    assert validos.size >= 2
+    assert float(np.ptp(validos)) > 1e-6, "fronteira constante -- ainda e' a caixa antiga"
+    # Ponto de calibracao: em T2_norm=1, a fronteira passa por Q_norm=1
+    idx1 = list(grid).index(1.0)
+    assert abs(q_front[idx1] - 1.0) < 1e-9
+
+
+def test_fronteira_ddsimca_decrescente():
+    """A fronteira tem inclinacao negativa: quanto mais T2 'gasta' do
+    orcamento de f_crit, menos sobra para Q -- e' a mesma logica de
+    trade-off de qualquer reta A*x+B*y=const com A,B>0."""
+    from guaraci.figuras import _fronteira_ddsimca
+    m = {"h0": 2.0, "q0": 50.0, "Nh": 3.0, "Nq": 40.0,
+         "T2_ucl": 5.0, "Q_ucl": 80.0, "f_crit": 100.0}
+    grid = np.linspace(0.05, 5.0, 50)
+    q_front = _fronteira_ddsimca(m, grid)
+    validos = q_front[np.isfinite(q_front)]
+    idx_validos = np.where(np.isfinite(q_front))[0]
+    assert np.all(np.diff(validos) <= 1e-9), "fronteira nao e' monotona decrescente"
+    assert len(idx_validos) >= 2
+
+
+def test_fronteira_ddsimca_campos_ausentes_nao_quebra():
+    from guaraci.figuras import _fronteira_ddsimca
+    grid = np.array([0.1, 1.0, 10.0])
+    out = _fronteira_ddsimca({}, grid)
+    assert out.shape == grid.shape
+    assert np.all(np.isnan(out))
