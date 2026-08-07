@@ -43,7 +43,11 @@ def preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
                         wn_ref = wn_a
                     else:
                         # np.interp replaces deprecated scipy.interpolate.interp1d
-                        sp_a = np.interp(wn_ref, wn_a, sp_a)
+                        # Requires INCREASING xp and does not sort on its own:
+                        # a .dx written in decreasing order (common FTIR
+                        # convention) would silently render a wrong preview.
+                        _ord = np.argsort(wn_a)
+                        sp_a = np.interp(wn_ref, wn_a[_ord], sp_a[_ord])
                     specs.append(sp_a)
                     labs.append(sp.name)
                 except Exception:  # noqa: BLE001 -- 1 arquivo de ate

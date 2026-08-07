@@ -439,7 +439,16 @@ def parse_dx(filepath):
         nan_mask = np.isnan(Y)
         n_nan = int(nan_mask.sum())
         if n_nan > 0 and n_nan < npoints:
-            Y[nan_mask] = np.interp(X[nan_mask], X[~nan_mask], Y[~nan_mask])
+            # np.interp exige `xp` CRESCENTE e nao ordena sozinho. Em JCAMP-DX
+            # firstx pode ser MAIOR que lastx (convencao comum em FTIR), o que
+            # deixa X decrescente -- nesse caso a interpolacao devolveria
+            # valores errados SEM erro, corrompendo o espectro em silencio.
+            # Aqui e' latente com o ABB MB3600 (grava crescente), mas nao com
+            # equipamento de terceiro. Ver tambem predicao.py/spectra_preview.py.
+            xp, fp = X[~nan_mask], Y[~nan_mask]
+            if xp.size > 1 and xp[0] > xp[-1]:
+                xp, fp = xp[::-1], fp[::-1]
+            Y[nan_mask] = np.interp(X[nan_mask], xp, fp)
         return X, Y
 
     # --- Legacy fallback (concatenation with encoded X) -----------------

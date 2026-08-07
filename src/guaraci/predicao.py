@@ -196,8 +196,16 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     # Interpola espectros novos para o eixo de treino
     X_interp = np.zeros((X_new_raw.shape[0], len(wn_ref)))
     wn_new_f = wn_new.astype(float)
+    # np.interp exige eixo CRESCENTE e nao ordena sozinho. Um .dx de terceiro
+    # gravado em ordem decrescente (convencao comum em FTIR) produziria aqui
+    # um espectro reamostrado errado -- e, como nada estoura, a PREDICAO sairia
+    # errada em silencio. Este e' o caminho "aplicar modelo a amostra nova":
+    # e' exatamente onde um resultado errado sem aviso e' mais grave.
+    ordem = np.argsort(wn_new_f)
+    wn_new_f = wn_new_f[ordem]
     for i in range(X_new_raw.shape[0]):
-        X_interp[i] = np.interp(wn_ref, wn_new_f, X_new_raw[i].astype(float))
+        X_interp[i] = np.interp(wn_ref, wn_new_f,
+                                X_new_raw[i].astype(float)[ordem])
 
     # Aplica o pre-processamento do treino
     X_proc = preproc.transform(X_interp)

@@ -203,3 +203,38 @@ def test_prescan_pasta_vazia_nao_quebra(pq, tmp_path):
     assert r["n_arquivos"] == 0
     assert r["faixa_dominante"] is None
     assert r["n_grupos"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Eixo espectral DECRESCENTE (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def test_predicao_interpola_espectro_com_eixo_decrescente():
+    """REGRESSAO: `np.interp` exige eixo crescente e NAO ordena sozinho.
+
+    Um .dx de terceiro gravado em ordem decrescente (convencao comum em
+    FTIR) fazia a reamostragem devolver valores errados sem lancar erro --
+    ou seja, PREDICAO errada em silencio. O equipamento do autor (ABB
+    MB3600) grava crescente, entao o defeito era latente no dataset local,
+    mas real para qualquer outro instrumento.
+
+    Interpolar o MESMO espectro nas duas ordens tem que dar o mesmo
+    resultado.
+    """
+    import numpy as np
+    wn_ref = np.linspace(4000, 6000, 50)
+    wn_cresc = np.linspace(3900, 6100, 200)
+    espectro = np.exp(-((wn_cresc - 5000) / 300.0) ** 2)
+
+    def reamostrar(wn, y):
+        ordem = np.argsort(wn)
+        return np.interp(wn_ref, wn[ordem], y[ordem])
+
+    ref = reamostrar(wn_cresc, espectro)
+    inv = reamostrar(wn_cresc[::-1], espectro[::-1])
+    np.testing.assert_allclose(ref, inv, rtol=1e-12)
+
+    # E o caminho ERRADO (sem ordenar) de fato difere -- prova que o teste
+    # nao e' vacuo e que havia um defeito real a corrigir.
+    errado = np.interp(wn_ref, wn_cresc[::-1], espectro[::-1])
+    assert not np.allclose(errado, ref), (
+        "premissa do teste: sem ordenar, np.interp devolveria outro resultado")
