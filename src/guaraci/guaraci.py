@@ -3755,10 +3755,20 @@ def _comando_demo() -> None:
     try:
         if sys.platform == "win32":
             os.startfile(str(pasta_run))  # noqa: S606 -- abre o explorador, caminho e nosso proprio output
-        elif sys.platform == "darwin":
-            os.system(f'open "{pasta_run}"')  # noqa: S605
         else:
-            os.system(f'xdg-open "{pasta_run}"')  # noqa: S605
+            # subprocess com lista de argumentos (achado de auditoria de
+            # seguranca, 2026-08-07): a versao anterior interpolava
+            # pasta_run direto numa string de shell (os.system(f'open
+            # "{pasta_run}"')) -- pasta_run e' sempre gerado internamente
+            # neste caminho (guaraci demo), entao nao era explora'vel HOJE,
+            # mas e' o mesmo PADRAO que seria uma injecao de comando real
+            # se algum dia alimentado por um caminho influenciado pelo
+            # usuario. Lista de argumentos nunca passa por um shell --
+            # elimina a classe de vulnerabilidade por completo, nao so'
+            # o caso de uso atual.
+            import subprocess
+            cmd = ["open"] if sys.platform == "darwin" else ["xdg-open"]
+            subprocess.run(cmd + [str(pasta_run)], check=False)
     except OSError as _e_open:
         logging.getLogger(__name__).debug("nao foi possivel abrir a pasta de saida: %s", _e_open)
 
