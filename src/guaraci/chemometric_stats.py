@@ -516,3 +516,113 @@ def dominio_aplicabilidade_amostras_novas(
             float(np.mean(dentro)) if dentro.size else float("nan"),
             dtype=float),
     }
+
+
+def diagnosticar_faixa_espectral(X: np.ndarray, wavenumbers: np.ndarray,
+                                  limiar_snr: float = 3.0,
+                                  largura_min_cm: float = 150.0,
+                                  janela_suave: int = 11
+                                  ) -> Dict[str, object]:
+    """Detecta regioes espectrais que nao carregam informacao analitica.
+
+    Motivacao (achado 2026-08-07): rodar com uma faixa larga demais inclui
+    regioes onde o espectro e' so' linha de base e ruido de detector. Isso
+    nao "e' inofensivo": infla o numero de variaveis, dilui metricas por
+    variavel (VIP/SR), aumenta o custo de CV e da' ao modelo espaco para
+    ajustar ruido. O usuario so' percebe olhando o loading plot e vendo uma
+    metade chapada -- este diagnostico automatiza essa leitura.
+
+    Separa DOIS defeitos diferentes, que exigem acoes diferentes:
+
+    - regiao MORTA   : sinal analitico ~ 0 (nada acontece ali).
+    - regiao RUIDOSA : ha' variacao, mas dominada por alta frequencia
+                       (ruido de detector), nao por banda espectral.
+
+    Metodo: para cada numero de onda, separa o espectro medio-centrado em
+    componente suave (sinal) e residuo de alta frequencia (ruido) por media
+    movel, e compara a dispersao ENTRE amostras de cada um --
+    SNR = sd_entre_amostras(suave) / sd(residuo). Regioes com SNR abaixo de
+    `limiar_snr` sao marcadas; blocos contiguos mais estreitos que
+    `largura_min_cm` sao descartados (evita marcar ponto isolado).
+
+    Parameters
+    ----------
+    X : (n_amostras, n_variaveis) — espectros JA na faixa em uso.
+    wavenumbers : (n_variaveis,) — em cm-1.
+
+    Returns
+    -------
+    dict com:
+      snr            : (n_variaveis,) SNR por numero de onda
+      mascara_util   : (n_variaveis,) bool — True onde ha' sinal
+      regioes_ruins  : lista de (wn_ini, wn_fim, tipo) — tipo em
+                       {"morta", "ruidosa"}
+      frac_util      : fracao de variaveis uteis
+      faixa_sugerida : (min, max) contiguo cobrindo a parte util, ou None
+    """
+    X = np.asarray(X, dtype=float)
+    wn = np.asarray(wavenumbers, dtype=float)
+    n_var = X.shape[1]
+    if n_var < 5 or X.shape[0] < 3:
+        return {"snr": np.full(n_var, np.nan),
+                "mascara_util": np.ones(n_var, dtype=bool),
+                "regioes_ruins": [], "frac_util": 1.0,
+                "faixa_sugerida": None,
+                "aviso": "espectro curto demais para diagnosticar"}
+
+    # Suavizacao por media movel (kernel impar), sem depender de savgol para
+    # manter a funcao pura em numpy/scipy basico.
+    jan = int(max(3, min(janela_suave, n_var // 2 * 2 - 1)))
+    if jan % 2 == 0:
+        jan += 1
+    kernel = np.ones(jan) / jan
+    suave = np.apply_along_axis(
+        lambda linha: np.convolve(linha, kernel, mode="same"), 1, X)
+    # Bordas da convolucao 'same' sao atenuadas -> ignora meia janela
+    borda = jan // 2
+    residuo = X - suave
+
+    sd_sinal = suave.std(axis=0, ddof=1)
+    sd_ruido = residuo.std(axis=0, ddof=1)
+    # Piso de ruido global evita SNR explodir onde o residuo e' ~0 por acaso
+    piso = float(np.median(sd_ruido[sd_ruido > 0])) if np.any(sd_ruido > 0) else 1.0
+    snr = sd_sinal / np.maximum(sd_ruido, piso * 1e-3)
+    if borda:
+        snr[:borda] = snr[borda]
+        snr[-borda:] = snr[-borda - 1]
+
+    mascara_util = snr >= limiar_snr
+
+    # Amplitude do sinal (para distinguir "morta" de "ruidosa")
+    amp_rel = sd_sinal / max(float(sd_sinal.max()), 1e-12)
+
+    regioes: List[Tuple[float, float, str]] = []
+    ruim = ~mascara_util
+    i = 0
+    while i < n_var:
+        if not ruim[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n_var and ruim[j + 1]:
+            j += 1
+        wn_a, wn_b = float(wn[i]), float(wn[j])
+        if abs(wn_b - wn_a) >= largura_min_cm:
+            # MEDIANA, nao maximo: as bordas de uma regiao morta encostam na
+            # cauda da banda vizinha, entao o maximo dentro do bloco fica
+            # alto e classificava tudo como "ruidosa" por engano.
+            tipo = ("morta" if float(np.median(amp_rel[i:j + 1])) < 0.10
+                    else "ruidosa")
+            regioes.append((min(wn_a, wn_b), max(wn_a, wn_b), tipo))
+        i = j + 1
+
+    frac_util = float(mascara_util.mean())
+
+    faixa_sugerida = None
+    if mascara_util.any() and frac_util < 0.95:
+        uteis = wn[mascara_util]
+        faixa_sugerida = (float(uteis.min()), float(uteis.max()))
+
+    return {"snr": snr, "mascara_util": mascara_util,
+            "regioes_ruins": regioes, "frac_util": frac_util,
+            "faixa_sugerida": faixa_sugerida, "aviso": None}

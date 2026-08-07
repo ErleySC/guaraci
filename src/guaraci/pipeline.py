@@ -268,6 +268,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     dominio_aplicabilidade_treino,
     dominio_aplicabilidade_amostras_novas,
     rmse_flat,
+    diagnosticar_faixa_espectral,
 )
 
 
@@ -1326,6 +1327,25 @@ def executar(cfg: Config):
     preproc_full = construir_preprocessador(cfg).fit(X_raw)
     X_processed  = np.asarray(preproc_full.transform(X_raw), dtype=float)
 
+    # Diagnostico de faixa espectral (2026-08-07): avisa quando a faixa
+    # configurada inclui regiao sem sinal analitico. Rodar com faixa larga
+    # demais nao e' inofensivo -- infla o n de variaveis, dilui VIP/SR,
+    # encarece a CV e da' ao modelo espaco para ajustar ruido. E' um AVISO,
+    # nunca um corte automatico: mudar a faixa muda o resultado, e essa
+    # decisao e' do usuario.
+    diag_faixa = diagnosticar_faixa_espectral(X_processed, wavenumbers)
+    if diag_faixa.get("faixa_sugerida") and diag_faixa["frac_util"] < 0.95:
+        _fu = float(diag_faixa["frac_util"])
+        _sug = diag_faixa["faixa_sugerida"]
+        log.info(f"  [AVISO] Faixa espectral: so' {_fu * 100:.0f}% das "
+                 f"{X_processed.shape[1]} variaveis carregam sinal (SNR>=3).")
+        for _a, _b, _t in diag_faixa["regioes_ruins"]:
+            log.info(f"          regiao {_t}: {_a:.0f}-{_b:.0f} cm-1")
+        log.info(f"          faixa com sinal: [{_sug[0]:.0f}, {_sug[1]:.0f}] "
+                 f"cm-1 (atual: [{cfg.wn_min:.0f}, {cfg.wn_max:.0f}])")
+        log.info("          Considere reduzir faixa_min_cm/faixa_max_cm e "
+                 "reexecutar; compare Q2 antes de adotar.")
+
     # --- 3. LV selection by CV (no leakage, group-aware if possible) -------
     log.info(f"\n[2/7] LV selection by CV ({cv_label})")
 
@@ -1906,6 +1926,14 @@ def executar(cfg: Config):
         "Metodo":                 "PLS-DA",
         "Pre-processamento":      _pp_descr,
         "Faixa espectral (cm-1)": f"[{cfg.wn_min:.0f}, {cfg.wn_max:.0f}]",
+        # Diagnostico de faixa: fica no relatorio (nao so' no terminal) para
+        # que a decisao de manter/reduzir a faixa seja auditavel depois.
+        "Variaveis com sinal (SNR>=3)": (
+            f"{diag_faixa['frac_util'] * 100:.0f}%"),
+        "Faixa com sinal (cm-1)": (
+            f"[{diag_faixa['faixa_sugerida'][0]:.0f}, "
+            f"{diag_faixa['faixa_sugerida'][1]:.0f}]"
+            if diag_faixa.get("faixa_sugerida") else "faixa toda util"),
         "LVs otimas":             int(n_opt),
         "LVs no teto (max_lvs)":  ("SIM - aumente max_lvs" if lvs_no_teto
                                     else "nao"),

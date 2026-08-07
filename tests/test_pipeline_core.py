@@ -1389,3 +1389,65 @@ def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
     assert "n/a" in secao9
     assert "nan" not in secao9.lower()  # nunca "nan" cru (sempre formatado como n/a)
     assert "LOD" in secao9 and "LOQ" in secao9 and "Sensibilidade" in secao9
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico de faixa espectral (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def _espectros(wn, gen, n=200, seed=0):
+    rng = np.random.default_rng(seed)
+    return np.array([gen(rng) for _ in range(n)])
+
+
+def test_diagnostico_detecta_regiao_morta_e_sugere_faixa():
+    """Faixa larga demais (o caso real: 4000-10000 cm-1 com sinal so' abaixo
+    de ~6200) tem que ser detectada e reportada com faixa sugerida."""
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 5900) / 70) ** 2)
+        + (0.8 + 0.3 * r.normal()) * np.exp(-((wn - 4450) / 55) ** 2)
+        + r.normal(scale=0.01, size=wn.size)))
+    d = diagnosticar_faixa_espectral(X, wn)
+
+    assert d["frac_util"] < 0.5
+    assert d["faixa_sugerida"] is not None
+    lo, hi = d["faixa_sugerida"]
+    assert hi < 6500, f"faixa sugerida ({lo:.0f}-{hi:.0f}) nao cortou a zona morta"
+    tipos = {t for _a, _b, t in d["regioes_ruins"]}
+    assert "morta" in tipos, f"zona sem sinal classificada como {tipos}"
+
+
+def test_diagnostico_nao_da_falso_positivo_em_espectro_todo_util():
+    """Se a faixa inteira carrega sinal, nao pode sugerir corte — um
+    diagnostico que sempre acusa problema e' ruido, nao informacao."""
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 7000) / 2500) ** 2)
+        + r.normal(scale=0.005, size=wn.size)))
+    d = diagnosticar_faixa_espectral(X, wn)
+    assert d["frac_util"] > 0.95
+    assert d["faixa_sugerida"] is None
+    assert d["regioes_ruins"] == []
+
+
+def test_diagnostico_separa_ruidosa_de_morta():
+    """Regiao com MUITA variacao de alta frequencia e' 'ruidosa', nao
+    'morta' — sao defeitos diferentes e pedem acoes diferentes."""
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 5000) / 700) ** 2)
+        + r.normal(scale=0.005, size=wn.size)
+        + np.where(wn > 8000, r.normal(scale=0.3, size=wn.size), 0.0)))
+    d = diagnosticar_faixa_espectral(X, wn)
+    tipos = {t for _a, _b, t in d["regioes_ruins"]}
+    assert "ruidosa" in tipos, f"regiao de ruido alto classificada como {tipos}"
+
+
+def test_diagnostico_entrada_degenerada_nao_quebra():
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    d = diagnosticar_faixa_espectral(np.zeros((2, 3)), np.array([1., 2., 3.]))
+    assert d["faixa_sugerida"] is None
+    assert bool(np.all(d["mascara_util"]))
