@@ -87,8 +87,9 @@ def avisos_do_log(txt: str) -> List[str]:
     return vistos
 
 # ── Parsing do log de progresso do pipeline ──────────────────────────────────
-# O pipeline emite marcadores "[N/7]" (e sub-passos "[7b/7]", "[7c/7]") no
-# stdout; a UI converte isso numa barra de progresso + rótulo legível.
+# O pipeline emite marcadores "[N/7]" (e sub-passos "[6b/7]", "[6c/7]",
+# "[7b/7]", "[7c/7]") no stdout; a UI converte isso numa barra de progresso +
+# rótulo legível.
 _RE_ETAPA = re.compile(r"\[(\d+)[a-z]?/7\]")
 _ETAPA_NOMES: Dict[int, str] = {
     0: "Validating input",
@@ -100,31 +101,67 @@ _ETAPA_NOMES: Dict[int, str] = {
     6: "Figures, DD-SIMCA, OPLS-DA, holdout",
     7: "Regression / finalization and model saved",
 }
-# Sub-steps after step 7 (benchmark / MC CV)
-_ETAPA_SUBSTEP: Dict[str, str] = {
-    "[7b/7]": "Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...",
-    "[7c/7]": "Monte Carlo CV (95% CI by percentile)...",
+# Sub-passos de uma etapa (sufixo de letra em "[Nb/7]"/"[Nc/7]"): cada
+# entrada mapeia a tag para (etapa numerica N a que pertence, rotulo
+# legivel). "[6b/7]"/"[6c/7]" adicionados em 2026-08-07 -- ja existiam no
+# log do pipeline (pipeline.py:1866,1884) mas nao eram reconhecidos aqui
+# (so' o `if n >= 7` cobria sub-passos), entao o rotulo ficava generico
+# durante eles. Ver `progresso_do_log` para o bug de fundo que isso ajuda
+# a mitigar.
+_ETAPA_SUBSTEP: Dict[str, Tuple[int, str]] = {
+    "[6b/7]": (6, "Comparing preprocessing pipelines..."),
+    "[6c/7]": (6, "External holdout evaluation..."),
+    "[7b/7]": (7, "Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)..."),
+    "[7c/7]": (7, "Monte Carlo CV (95% CI by percentile)..."),
 }
 
 
-def progresso_do_log(txt: str) -> Tuple[float, str]:
+def progresso_do_log(txt: str,
+                      total_figuras_planejadas: Optional[int] = None
+                      ) -> Tuple[float, str]:
     """Deriva (fração 0..0.99, rótulo) do log acumulado do pipeline.
 
     Usa o MAIOR marcador "[N/7]" visto — o progresso nunca regride mesmo que o
     log traga linhas antigas. Retorna (0.0, "Starting...") se nada casou ainda.
+
+    CORRIGIDO em 2026-08-07 ("bug do progresso" relatado no CLI): a etapa
+    "[6/7]" (geração de figuras + DD-SIMCA + OPLS-DA + holdout) concentra a
+    maior parte do tempo real de execução, mas só tinha 2 marcadores de
+    texto OPCIONAIS ("[6b/7]"/"[6c/7]", nem sempre emitidos) entre o início
+    da etapa e o fim — sem eles, o progresso ficava CRAVADO em 6/7≈85,7%
+    durante toda essa fase. Medido reproduzindo o mecanismo exato do painel
+    (thread em background + `contextlib.redirect_stdout`, ver
+    `docs/auditoria/medir_bug_progresso_cli.py`) num run sintético pequeno:
+    96,1% das amostras de progresso ficaram cravadas em 0,857, mesmo com
+    figuras sendo salvas visivelmente no log. Com a correção, essa mesma
+    fração cai para 31,1% (e o que resta é o platô legítimo perto do fim
+    da etapa, não mais um travamento).
+
+    `total_figuras_planejadas` (opcional, retrocompatível — sem ele o
+    comportamento é IDÊNTICO ao anterior): quando fornecido e a etapa atual
+    é a 6, soma um bônus fracionário proporcional a
+    `len(figuras_concluidas(txt)) / total_figuras_planejadas` — o progresso
+    passa a avançar suavemente conforme cada figura é salva, em vez de só
+    saltar nos 2 marcadores de texto esparsos. Nunca regride e nunca atinge
+    o próximo número inteiro de etapa (capado abaixo de 7/7).
     """
     achados = _RE_ETAPA.findall(txt)
     if not achados:
         return 0.0, "Starting..."
     n = max(int(a) for a in achados)
     nome = _ETAPA_NOMES.get(n, f"Step {n}/7")
-    # Heavy sub-steps: show specific name for benchmark and MC CV
-    if n >= 7:
-        for tag, descricao in _ETAPA_SUBSTEP.items():
-            if tag in txt:
-                nome = descricao
-                break
-    return min(0.99, n / 7.0), nome
+    for tag, (n_tag, descricao) in _ETAPA_SUBSTEP.items():
+        if n_tag == n and tag in txt:
+            nome = descricao
+            break
+
+    n_efetivo = float(n)
+    if n == 6 and total_figuras_planejadas:
+        n_feitas = len(figuras_concluidas(txt))
+        bonus = min(0.99, n_feitas / total_figuras_planejadas)
+        n_efetivo = n + bonus
+
+    return min(0.99, n_efetivo / 7.0), nome
 
 
 def fmt_tempo(seg) -> str:

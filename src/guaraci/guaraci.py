@@ -3216,7 +3216,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
     precisar rodar o pipeline de verdade nem simular entrada interativa."""
-    frac, label = _progresso_do_log(texto_log)
+    frac, label = _progresso_do_log(texto_log, len(plano_figuras) or None)
     figs = _figuras_concluidas(texto_log)
     avisos = _avisos_do_log(texto_log)
 

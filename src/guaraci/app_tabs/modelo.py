@@ -264,7 +264,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                     estado["erro"] = "Pipeline exceeded maximum runtime (2 h)."
                     break
                 txt = logger.text()
-                frac, nome = progresso_do_log(txt)
+                frac, nome = progresso_do_log(txt, len(_plano_run) or None)
                 elapsed = time.monotonic() - t0
                 if frac >= 0.10:
                     eta = elapsed / frac - elapsed

@@ -51,6 +51,73 @@ def test_progresso_ignora_marcador_malformado():
     assert frac == 0.0 and nome == "Starting..."
 
 
+# ── progresso_do_log: "bug do progresso" (achado 2026-08-07) ────────────────
+# A etapa "[6/7]" (figuras + DD-SIMCA + OPLS-DA + holdout) concentra a maior
+# parte do tempo real de execução, mas só tinha 2 marcadores de texto
+# opcionais entre início e fim -- sem eles, a fração ficava CRAVADA em
+# 6/7=0.857 durante toda essa fase (medido: 96,1% das amostras de progresso
+# num run real, ver docs/auditoria/medir_bug_progresso_cli.py). Estes testes
+# travam a correção: com `total_figuras_planejadas`, a fração AVANÇA
+# conforme cada figura é salva.
+
+def test_progresso_etapa6_sem_total_planejado_comportamento_antigo():
+    """Retrocompatibilidade: sem o parâmetro novo, a fração da etapa 6 é
+    EXATAMENTE a mesma de antes da correção (6/7), mesmo com figuras já
+    salvas no log -- ninguém que já chama `progresso_do_log(txt)` (1
+    argumento) é afetado."""
+    txt = "[6/7] Gerando figuras...\n" + "\n".join(
+        f"  -> saida/fig{i}.png" for i in range(5))
+    frac, _ = progresso_do_log(txt)
+    assert frac == pytest.approx(6 / 7.0)
+
+
+def test_progresso_etapa6_avanca_com_figuras_concluidas():
+    """Com `total_figuras_planejadas`, a fração sobe conforme mais figuras
+    aparecem no log -- não fica mais cravada num único número durante toda
+    a etapa mais demorada."""
+    base = "[6/7] Gerando figuras...\n"
+    frac_0fig, _ = progresso_do_log(base, total_figuras_planejadas=10)
+    frac_5fig, _ = progresso_do_log(
+        base + "\n".join(f"  -> saida/fig{i}.png" for i in range(5)),
+        total_figuras_planejadas=10)
+    frac_10fig, _ = progresso_do_log(
+        base + "\n".join(f"  -> saida/fig{i}.png" for i in range(10)),
+        total_figuras_planejadas=10)
+    # Nunca regride, sempre avança com mais figuras.
+    assert frac_0fig == pytest.approx(6 / 7.0)
+    assert frac_0fig < frac_5fig < frac_10fig
+    # Nunca ULTRAPASSA o teto global 0.99 (com o plano 100% concluído,
+    # pode alcançar o teto, mas nunca estourá-lo).
+    assert frac_10fig <= 0.99
+
+
+def test_progresso_etapa6_nao_afeta_outras_etapas():
+    """O bônus de figuras só se aplica DENTRO da etapa 6 -- em qualquer
+    outra etapa, `total_figuras_planejadas` não muda o resultado."""
+    for n in (0, 1, 2, 3, 4, 5, 7):
+        txt = f"[{n}/7] etapa\n  -> saida/fig0.png\n  -> saida/fig1.png"
+        frac_sem, _ = progresso_do_log(txt)
+        frac_com, _ = progresso_do_log(txt, total_figuras_planejadas=10)
+        assert frac_sem == frac_com == pytest.approx(min(0.99, n / 7.0))
+
+
+def test_progresso_etapa6_total_zero_nao_quebra():
+    """total_figuras_planejadas=0 (plano vazio, caso degenerado) não deve
+    causar ZeroDivisionError -- cai no comportamento sem bônus."""
+    frac, _ = progresso_do_log("[6/7] etapa", total_figuras_planejadas=0)
+    assert frac == pytest.approx(6 / 7.0)
+
+
+def test_progresso_substep_holdout_e_comparacao_pipelines():
+    """Sub-passos da etapa 6 (achado 2026-08-07: não eram reconhecidos --
+    só a etapa 7 tinha rótulo específico para sub-passos) mostram rótulo
+    específico em vez do genérico da etapa."""
+    _, nome_holdout = progresso_do_log("[6/7] fig\n[6c/7] holdout rodando")
+    assert "holdout" in nome_holdout.lower()
+    _, nome_comp = progresso_do_log("[6/7] fig\n[6b/7] comparando")
+    assert "preprocessing" in nome_comp.lower() or "pipelines" in nome_comp.lower()
+
+
 # ── fmt_tempo ────────────────────────────────────────────────────────────────
 @pytest.mark.parametrize("entrada,esperado", [
     (0, "0s"),
