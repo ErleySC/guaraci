@@ -863,6 +863,33 @@ def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
     salvar(fig, "fig6_preprocessamento", pasta, cfg)
 
 
+def _ylim_permutacao(valores: np.ndarray, obs: float,
+                      topo: float = 1.08,
+                      base: float = -0.6) -> Tuple[float, float]:
+    """Limite inferior do eixo Y de um grafico de permutacao que NUNCA corta
+    um ponto.
+
+    Bug latente (achado 2026-08-07): o piso era fixo em -0.5/-0.6. Q2Y de
+    rotulos permutados fica tanto mais negativo quanto MAIS componentes o
+    modelo usa. Medido com 13 classes: com 23 LVs o minimo e' -0.465 (cabe
+    no piso antigo), mas com 40 LVs -- valor de `max_lvs` em uso neste
+    projeto -- 80% dos pontos caem abaixo de -0.6 e SUMIRIAM do grafico,
+    enquanto a reta de regressao continuaria sendo calculada sobre eles.
+    Um grafico de validade que esconde parte das permutacoes engana.
+
+    Mantem `base` como piso PADRAO (execucoes normais ficam visualmente
+    identicas) e so' expande quando ha' ponto abaixo dele.
+    """
+    todos = np.concatenate([np.asarray(valores, dtype=float).ravel(),
+                            np.asarray([obs], dtype=float)])
+    finitos = todos[np.isfinite(todos)]
+    if finitos.size == 0:
+        return base, topo
+    minimo = float(finitos.min())
+    margem = 0.05 * max(topo - minimo, 1e-6)
+    return min(base, minimo - margem), topo
+
+
 def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
     """Wold-style permutation plot: R2Y and Q2Y vs similarity of permuted Y."""
     sims = np.asarray(cast(Any, wold["sims"]))
@@ -900,7 +927,8 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
                         ec=cor_status, lw=0.8))
     ax.set_xlabel("Similarity (permuted Y, original Y)")
     ax.set_ylabel("R$^2$Y (training fit)")
-    ax.set_xlim(-0.05, 1.08); ax.set_ylim(-0.5, 1.08)
+    ax.set_xlim(-0.05, 1.08)
+    ax.set_ylim(*_ylim_permutacao(r2s, r2_obs, base=-0.5))
     ax.set_title("(a) Wold — R$^2$Y vs permutation", loc="left")
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
@@ -925,7 +953,8 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
                         ec=cor_status, lw=0.8))
     ax.set_xlabel("Similarity (permuted Y, original Y)")
     ax.set_ylabel("Q$^2$Y (CV)")
-    ax.set_xlim(-0.05, 1.08); ax.set_ylim(-0.6, 1.08)
+    ax.set_xlim(-0.05, 1.08)
+    ax.set_ylim(*_ylim_permutacao(q2s, q2_obs, base=-0.6))
     ax.set_title("(b) Wold — Q$^2$Y vs permutation", loc="left")
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
@@ -1545,11 +1574,19 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
     all_classes = np.unique(rotulos)
     s_pt, alpha_pt, lw_pt = parametros_scatter_adaptativos(
         len(rotulos), len(all_classes))
-    piso = 1e-2
     for cls in scores.keys():
         m = scores[cls]
-        t2p = np.clip(np.asarray(m["T2_norm"]), piso, None)
-        qp  = np.clip(np.asarray(m["Q_norm"]),  piso, None)
+        # Piso/teto DINAMICOS por eixo (mesmo motivo de
+        # fig_sprint3_ddsimca_acceptance -- esta funcao e' a versao
+        # individual da mesma figura e tinha o MESMO piso fixo de 1e-2, que
+        # empilhava ate' 94% dos pontos numa unica coluna quando o modelo
+        # one-class fica com n_comp=1).
+        t2n = np.asarray(m["T2_norm"])
+        qn  = np.asarray(m["Q_norm"])
+        piso_t2, teto_t2 = _limites_log_ddsimca(t2n)
+        piso_q,  teto_q  = _limites_log_ddsimca(qn)
+        t2p = np.clip(t2n, piso_t2, None)
+        qp  = np.clip(qn,  piso_q,  None)
         fig = plt.figure(figsize=(7.2, 5.2), constrained_layout=True)
         gs = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.2])
         ax = fig.add_subplot(gs[0]); ax_leg = fig.add_subplot(gs[1])
@@ -1561,9 +1598,7 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
         ax.set_xscale("log"); ax.set_yscale("log")
         ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
         ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        lim_hi = max(float(np.percentile(np.concatenate([t2p, qp]), 99)) * 1.5,
-                     3.0)
-        ax.set_xlim(piso * 0.8, lim_hi); ax.set_ylim(piso * 0.8, lim_hi)
+        ax.set_xlim(piso_t2 * 0.8, teto_t2); ax.set_ylim(piso_q * 0.8, teto_q)
         if sens_esp is not None and cls in sens_esp:
             _info = sens_esp[cls]
             sc, ec = _info[0], _info[1]
@@ -1577,8 +1612,10 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
         ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)")
         ax.set_ylabel("$Q$ / UCL($Q$)  (log)")
         ax.set_title(tt, loc="left", fontsize=9.5, fontweight="bold")
+        _nc = (f"\nn_comp={int(m['n_comp'])} (treino n={int(m['n_train'])})"
+               if "n_comp" in m else "")
         ax.text(0.98, 0.98, f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
-                f"UCL($Q$)={float(m['Q_ucl']):.2g}",
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{_nc}",
                 transform=ax.transAxes, ha="right", va="top", fontsize=8,
                 color="0.35", bbox=dict(boxstyle="round,pad=0.3", fc="white",
                                          ec="0.82", lw=0.5))

@@ -216,3 +216,42 @@ def test_limites_log_ddsimca_dados_bem_comportados_nao_alarga_demais():
     valores = 10 ** rng.uniform(-1.5, 0.3, 500)   # tudo entre ~0.03 e ~2
     piso, _teto = _limites_log_ddsimca(valores)
     assert piso >= 1e-3, "piso desceu sem necessidade para dados bem comportados"
+
+
+# ---------------------------------------------------------------------------
+# Grafico de permutacao de Wold: piso fixo cortava pontos (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def test_ylim_permutacao_nunca_corta_ponto():
+    """REGRESSAO (bug LATENTE): o piso do eixo Y era fixo em -0.5/-0.6.
+    Q2Y de rotulos permutados fica mais negativo quanto MAIS componentes o
+    modelo usa. Medido com 13 classes: 23 LVs -> minimo -0.465 (cabe), mas
+    40 LVs (o max_lvs em uso) -> 80% dos pontos abaixo de -0.6, sumindo do
+    grafico enquanto a reta de regressao seguia calculada sobre eles."""
+    from guaraci.figuras import _ylim_permutacao
+    casos = {
+        "23_lvs":    (np.array([-0.465, -0.41, -0.38]), 0.43),
+        "40_lvs":    (np.array([-0.647, -0.62, -0.70]), 0.43),
+        "extremo":   (np.array([-2.5, -1.8, -0.9]), 0.40),
+        "positivos": (np.array([0.1, 0.2, 0.05]), 0.90),
+    }
+    for nome, (vals, obs) in casos.items():
+        lo, hi = _ylim_permutacao(vals, obs, base=-0.6)
+        assert lo <= vals.min(), f"caso '{nome}': piso corta pontos de permutacao"
+        assert lo <= obs, f"caso '{nome}': piso corta o ponto observado"
+        assert hi >= obs
+
+
+def test_ylim_permutacao_preserva_base_quando_cabe():
+    """Execucoes normais nao podem mudar de aparencia: se todos os pontos
+    cabem no piso padrao, o piso padrao e' mantido."""
+    from guaraci.figuras import _ylim_permutacao
+    lo, _hi = _ylim_permutacao(np.array([-0.3, -0.2, 0.1]), 0.5, base=-0.6)
+    assert lo == -0.6
+
+
+def test_ylim_permutacao_entrada_degenerada():
+    from guaraci.figuras import _ylim_permutacao
+    for vals, obs in ((np.array([np.nan, np.nan]), np.nan),
+                      (np.array([]), 0.5)):
+        lo, hi = _ylim_permutacao(vals, obs)
+        assert np.isfinite(lo) and np.isfinite(hi) and lo < hi
