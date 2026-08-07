@@ -1,7 +1,7 @@
 """Mede empiricamente o impacto dos achados da auditoria. Nenhum numero
 deste script e' suposto -- todos sao medidos."""
 import numpy as np
-from scipy.stats import beta as beta_dist, f as f_dist, chi2
+from scipy.stats import beta as beta_dist
 from sklearn.cross_decomposition import PLSRegression
 
 import sys
@@ -104,7 +104,7 @@ for seed in range(40):
                                               tr["t2_limite"], tr["q_limite"])
     taxas.append(1.0 - float(r["fracao_dentro"]))
 taxas = np.array(taxas)
-print(f"  alpha nominal declarado          : 0.050")
+print("  alpha nominal declarado          : 0.050")
 print(f"  taxa de rejeicao MEDIDA (n=40 sim): {taxas.mean():.4f} "
       f"(sd={taxas.std():.4f})")
 print(f"  1-(1-alpha)^2 esperado p/ retangular: {1 - 0.95 ** 2:.4f}")
