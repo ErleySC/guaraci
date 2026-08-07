@@ -98,14 +98,23 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
 | Versão | 31.9.0 | `grep -r version pyproject.toml` |
-| Testes | 672 pass, 2 skip (reverificado 2026-08-07, sessão de auditoria metodológica) | `pytest -q` |
-| Cobertura | 67% (reverificado 2026-08-07) | `pytest --cov=src/guaraci --cov-report=term-missing` |
+| Testes | 701 pass, 2 skip (reverificado 2026-08-07, fim de sessão) | `pytest -q` |
+| Cobertura | 70% (reverificado 2026-08-07) | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo (repo inteiro, incl. `docs/auditoria/`) | `ruff check .` |
-| `executar()` | 1438 linhas (contagem AST, não a linha do `def`) | `grep -n "def executar" src/guaraci/pipeline.py` |
-| `print()` em pipeline | 0 (migração do P6 completa — tabela desatualizada até agora) | `grep -c "print(" src/guaraci/pipeline.py` |
+| Typecheck | mypy limpo nos 7 módulos puros do gate de CI | `mypy src/guaraci/{preprocessamento,chemometric_stats,classificadores,validacao_estatistica,modos_analise,design_tokens,resumo_parse}.py` |
+| Dependências | sem CVE conhecida (via OSV; API do PyPI instável na rede local) | `pip-audit -r requirements.txt --vulnerability-service osv` |
+| `executar()` | 1445 linhas (contagem AST, não a linha do `def`) | `grep -n "def executar" src/guaraci/pipeline.py` |
+| `print()` em pipeline | 0 (migração do P6 completa) | `grep -c "print(" src/guaraci/pipeline.py` |
 | `except` amplos | 53 (100% com `noqa: BLE001` justificado, reverificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
-| `guaraci.py` | 3813 linhas (+495 desde 07-13 — wiring de menus/i18n desta sessão) | `wc -l src/guaraci/guaraci.py` |
+| `guaraci.py` | 3906 linhas (+93 desde a sessão anterior — migração de estado, correções de segurança) | `wc -l src/guaraci/guaraci.py` |
 | TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
+
+> Atualizado em 2026-08-07, fim de sessão (auditoria metodológica P11 +
+> checkup de interface + auditoria de segurança S1-S3 + itens pequenos de
+> débito técnico). Testes 663→701 ao longo da sessão inteira (17
+> commits). Gate de cobertura do núcleo científico (P4, ≥95%) reverificado
+> separadamente: 96% agregado, `validacao_estatistica.py` exatamente no
+> piso (95%).
 
 > Atualizado em 2026-08-07 após a auditoria metodológica de 5 achados
 > (P11 abaixo — testes 663→672, +9 líquido: 4 novos em A1, 3 em A2, 1 em
