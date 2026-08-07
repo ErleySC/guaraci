@@ -591,3 +591,124 @@ def sensibilidade_ddsimca_logo(
             "regime. Interpretar como exploratoria."
         )
     return resultado
+
+
+def sensibilidade_ddsimca_pcv(
+    X_puros: np.ndarray,
+    grupos_puros: np.ndarray,
+    *,
+    n_components: int,
+    alpha: float = 0.05,
+    ucl_method: str = "empirical",
+) -> Dict[str, Any]:
+    """Sensibilidade DD-SIMCA por Procrustes Cross-Validation (PCV) --
+    diagnostico COMPLEMENTAR ao LOGO (`sensibilidade_ddsimca_logo`), NUNCA
+    um substituto.
+
+    PCV (Kucheryavskiy, Zhilin, Rodionova & Pomerantsev -- ver referencias)
+    gera um "PV-set" por reamostragem que se comporta estatisticamente como
+    um conjunto de validacao independente, sem exigir mais amostras reais.
+    Isso ajuda quando LOGO fica inconclusivo por FALTA DE DOBRAS validas
+    (poucos grupos com >=2 puros cada) -- mas PCV nao fabrica variacao que
+    nao existe nos dados: se todas as replicas puras de uma classe vem do
+    MESMO grupo `mae_id` (`n_grupos==1`, o caso mais comum neste dataset),
+    o PV-set so' pode reproduzir ruido de MEDICAO (variacao entre T1/T2/T3
+    da mesma amostra fisica), nunca variacao ENTRE amostras fisicas
+    diferentes -- a unica coisa que provaria generalizacao de autenticacao.
+    Por isso este diagnostico e' SEMPRE rotulado como exploratorio e NUNCA
+    substitui o aviso "nao validado" do LOGO quando `n_grupos<2`.
+
+    O split de CV usado dentro do PCV respeita os grupos `mae_id` quando ha'
+    2 ou mais (nao trata cada espectro como independente -- a mesma logica
+    group-aware do resto do projeto). Com `n_grupos==1`, cai para
+    leave-one-out por AMOSTRA individual (nao ha' estrutura de grupo a
+    proteger quando so' existe 1 grupo; testado empiricamente que o split
+    por grupo unico faz o PCV falhar -- ValueError de shape).
+
+    Requer o pacote opcional `prcv` (`pip install
+    guaraci-chemometrics[robusto]`); ausente, devolve `disponivel=False`
+    sem lancar excecao.
+
+    Returns
+    -------
+    dict com chaves: sensibilidade (float|nan), n_grupos (int),
+    n_amostras (int), aviso (str|None), disponivel (bool).
+
+    Referencias:
+        Kucheryavskiy S., Zhilin S., Rodionova O. & Pomerantsev A. (2020).
+        Procrustes cross-validation -- a bridge between cross-validation
+        and independent validation sets. Anal. Chem. 92(17):11842-11850.
+        Pomerantsev A.L. & Rodionova O.Y. (2021). Procrustes
+        cross-validation of short datasets in PCA context. Talanta
+        226:122104.
+    """
+    X_puros = np.asarray(X_puros, dtype=float)
+    grupos = np.asarray(grupos_puros)
+    grupos_unicos = np.unique(grupos)
+    n_grupos = int(len(grupos_unicos))
+    nc = len(X_puros)
+    resultado: Dict[str, Any] = {
+        "sensibilidade": float("nan"),
+        "n_grupos": n_grupos,
+        "n_amostras": int(nc),
+        "aviso": None,
+        "disponivel": True,
+    }
+    try:
+        from prcv.methods import pcvpca
+    except ImportError:
+        resultado["disponivel"] = False
+        resultado["aviso"] = (
+            "Pacote opcional 'prcv' nao instalado -- diagnostico PCV "
+            "indisponivel (pip install guaraci-chemometrics[robusto])."
+        )
+        return resultado
+
+    n_comp_pv = min(n_components, nc - 1)
+    if n_comp_pv < 1:
+        resultado["aviso"] = f"Amostras insuficientes (n={nc}) para gerar PV-set."
+        return resultado
+
+    cv_split: Any
+    if n_grupos >= 2:
+        # Segmentos = grupos mae_id (preserva group-awareness dentro do PCV)
+        _, indices = np.unique(grupos, return_inverse=True)
+        cv_split = (indices + 1).astype(int)   # prcv espera segmentos >=1
+    else:
+        # 1 grupo so': nao ha estrutura a proteger, e o split por grupo
+        # unico faz pcvpca falhar (ValueError de shape, verificado).
+        cv_split = {"type": "loo"}
+
+    try:
+        Xpv = pcvpca(X_puros, ncomp=n_comp_pv, cv=cv_split)
+    except Exception as e:  # noqa: BLE001 -- diagnostico auxiliar opcional;
+        # qualquer falha do PCV (matriz mal condicionada, nc muito pequeno)
+        # nao pode derrubar o resto do pipeline, so' reporta.
+        resultado["aviso"] = f"PCV falhou: {e}"
+        return resultado
+
+    modelo = DDSimca(n_components=n_components, alpha=alpha,
+                     ucl_method=ucl_method)
+    modelo.fit(X_puros, np.array(["_c"] * nc))
+    res = modelo.score_matrix(Xpv)
+    if "_c" not in res:
+        resultado["aviso"] = "Modelo nao ajustavel com estes puros (ver LOGO)."
+        return resultado
+    m = res["_c"]
+    aceito = np.asarray(m["f"]) <= m["f_crit"]
+    resultado["sensibilidade"] = float(np.mean(aceito))
+
+    if n_grupos < 2:
+        resultado["aviso"] = (
+            "PCV com um unico grupo de replica pura: o PV-set reproduz so' "
+            "ruido de MEDICAO (T1/T2/T3 da mesma amostra), nao variacao "
+            "entre amostras fisicas diferentes. Nao e' evidencia de "
+            "generalizacao -- interpretar como robustez a ruido "
+            "instrumental, nunca como autenticacao validada."
+        )
+    elif n_grupos < 10:
+        resultado["aviso"] = (
+            f"PCV com {n_grupos} grupos de replica. Diagnostico "
+            "exploratorio, complementar ao LOGO -- nao o substitui."
+        )
+    return resultado

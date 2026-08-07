@@ -1451,3 +1451,59 @@ def test_diagnostico_entrada_degenerada_nao_quebra():
     d = diagnosticar_faixa_espectral(np.zeros((2, 3)), np.array([1., 2., 3.]))
     assert d["faixa_sugerida"] is None
     assert bool(np.all(d["mascara_util"]))
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico PCV (Procrustes Cross-Validation) opt-in -- adicionado 2026-08-08
+# ---------------------------------------------------------------------------
+def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
+    """Com cfg.ddsimca_pcv=False (default), o resumo nao ganha os campos
+    extras de PCV -- feature opt-in, nao muda o comportamento padrao."""
+    pytest.importorskip("prcv")
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "in"), pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
+        executar_ddsimca=True, executar_opls=False, executar_etapa4=False,
+        executar_wold=False, comparar_pipelines=False,
+        executar_cv_anova=False, executar_benchmark=False,
+        executar_monte_carlo=False, executar_shap=False,
+        ddsimca_pcv=False,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8")
+    assert "sens(PCV" not in resumo
+
+
+def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
+    """Com cfg.ddsimca_pcv=True e pacote 'prcv' instalado, o resumo ganha
+    linhas "sens(PCV, exploratorio)" ALEM das de LOGO (nunca em vez delas)."""
+    pytest.importorskip("prcv")
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "in"), pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
+        executar_ddsimca=True, executar_opls=False, executar_etapa4=False,
+        executar_wold=False, comparar_pipelines=False,
+        executar_cv_anova=False, executar_benchmark=False,
+        executar_monte_carlo=False, executar_shap=False,
+        ddsimca_pcv=True,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8")
+    assert "sens(PCV, exploratorio)" in resumo
+    assert "sens(LOGO)" in resumo   # PCV e' complementar, LOGO continua ali

@@ -75,7 +75,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     _MODELO_KEYS_VALID    = ["n_permutacoes", "teste_wold", "teste_cv_anova",
                               "teste_martens", "n_jobs_permutacao"]
     _MODELO_KEYS_EXTRAS   = ["selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
-                              "ddsimca", "modo_ddsimca", "opls_da",
+                              "ddsimca", "modo_ddsimca", "ddsimca_pcv", "opls_da",
                               "comparar_pre_processamentos", "benchmark",
                               "benchmark_regressao",
                               "monte_carlo", "n_monte_carlo",

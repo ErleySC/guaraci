@@ -6,6 +6,41 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: diagnostico complementar
+             por Procrustes Cross-Validation (PCV), opt-in via
+             cfg.ddsimca_pcv.
+             [PCV] Pesquisa de literatura atualizada (pedido explicito:
+             "busque por novas tecnologias") achou Kucheryavskiy/Zhilin/
+             Rodionova/Pomerantsev (2020) Anal. Chem. 92(17):11842-11850 e
+             Pomerantsev/Rodionova (2021) Talanta 226:122104 ("Procrustes
+             Cross-Validation of SHORT datasets in PCA context" -- mesmos
+             autores do DD-SIMCA, atacando exatamente o problema de poucas
+             amostras puras deste projeto). Integrado via pacote opcional
+             `prcv` (extra [robusto] novo em pyproject.toml). Nova funcao
+             `sensibilidade_ddsimca_pcv()` gera um "PV-set" por reamostragem
+             e reporta sensibilidade sobre ele, ao LADO do LOGO (nunca em
+             vez dele).
+             Caveat cientifico verificado empiricamente, nao suposto: com
+             todas as replicas puras de uma classe pertencendo ao MESMO
+             grupo mae_id (n_grupos=1, o caso mais comum neste dataset), o
+             PV-set so' reproduz ruido de MEDICAO (T1/T2/T3 da mesma
+             amostra), nunca variacao entre amostras fisicas diferentes --
+             PCV nao fabrica a informacao que falta, nenhuma tecnica de
+             validacao fabrica. Testado tambem que passar o split de CV
+             agrupado por mae_id quando so' existe 1 grupo faz `pcvpca`
+             falhar (ValueError de shape) -- corrigido com fallback para
+             leave-one-out por amostra individual nesse caso, unica
+             estrutura possivel quando nao ha' mais de 1 grupo a proteger.
+             O aviso reportado deixa esse limite explicito sempre que
+             n_grupos<2, para o numero nao ser lido como equivalente ao
+             LOGO.
+             Wiring completo: campo em Config/_CONFIG_SPEC, menu CLI
+             (menu_modelagem) E aba do app web (modelo.py) -- os testes de
+             alcancabilidade de campo (test_interfaces_configuraveis.py,
+             AST-based reachability em test_guaraci_cli.py) pegaram os 2
+             pontos que faltavam antes do commit.
+             657 testes passam (eram 651), ruff e mypy limpos.
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: regra de decisao corrigida
              para a distancia combinada do metodo publicado (fecha P1
              residual do CLAUDE.md).

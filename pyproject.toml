@@ -56,7 +56,12 @@ reports = [
 ]
 benchmark = ["xgboost>=1.7,<5.0", "shap>=0.42,<0.53"]
 imagem = ["scikit-image>=0.19,<1.0"]  # features de textura (GLCM) no modo_entrada="imagem"
-all = ["guaraci-chemometrics[web,reports,benchmark,imagem]"]
+# prcv: Procrustes Cross-Validation (Kucheryavskiy/Rodionova/Pomerantsev) --
+# gera um conjunto de validacao por reamostragem quando ha poucos grupos de
+# replica fisica para leave-one-group-out convencional. Ver
+# sensibilidade_ddsimca_pcv() em classificadores.py.
+robusto = ["prcv>=1.2,<2.0"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto]"]
 
 [project.scripts]
 guaraci = "guaraci.guaraci:main"

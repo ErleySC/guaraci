@@ -112,6 +112,12 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "verdade); 'todos' treina com toda a classe (exploratorio, mais "
              "robusto com poucas amostras puras, porem menos rigoroso)",
      "opcoes": ["puros", "todos"]},
+    {"key": "ddsimca_pcv", "attr": "ddsimca_pcv", "tipo": "bool",
+     "desc": "DD-SIMCA: diagnostico complementar por Procrustes Cross-"
+             "Validation (exige extra opcional [robusto], pacote 'prcv'). "
+             "NAO substitui o LOGO -- so' ajuda quando LOGO fica "
+             "inconclusivo por falta de dobras validas",
+     "opcoes": None},
     {"key": "opls_da", "attr": "executar_opls", "tipo": "bool",
      "desc": "Rodar OPLS-DA", "opcoes": None},
     {"key": "comparar_pre_processamentos", "attr": "comparar_pipelines", "tipo": "bool",

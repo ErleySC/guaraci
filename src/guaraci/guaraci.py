@@ -1649,10 +1649,10 @@ def menu_modelagem(cfg: Config) -> None:
     # fazem sentido com ele ligado -- todos em campos_avancados.
     _loop_menu(_t("t_modelagem"), _t("d_modelagem"),
                ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca",
-                "modo_ddsimca", "selecao_variaveis_etapa4",
+                "modo_ddsimca", "ddsimca_pcv", "selecao_variaveis_etapa4",
                 "selecao_spa", "selecao_ag"], cfg,
                campos_avancados={"objetivo", "opls_da", "ddsimca", "modo_ddsimca",
-                                  "selecao_variaveis_etapa4",
+                                  "ddsimca_pcv", "selecao_variaveis_etapa4",
                                   "selecao_spa", "selecao_ag"})
 
 

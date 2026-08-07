@@ -55,6 +55,7 @@ RISK_CLASS: Dict[str, str] = {
     "nivel": "ANALITICO", "objetivo": "ANALITICO", "excluir_classes": "ANALITICO",
     "faixa_min_cm": "ANALITICO", "faixa_max_cm": "ANALITICO",
     "modo_ddsimca": "ANALITICO", "ddsimca": "ANALITICO",
+    "ddsimca_pcv": "ANALITICO",
     "opls_da": "ANALITICO", "selecao_variaveis_etapa4": "ANALITICO",
     "selecao_spa": "ANALITICO", "selecao_ag": "ANALITICO",
     "comparar_pre_processamentos": "ANALITICO",
@@ -91,6 +92,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "opls_da":                      {"PT": "OPLS-DA",                 "EN": "OPLS-DA"},
     "ddsimca":                      {"PT": "DD-SIMCA",                "EN": "DD-SIMCA"},
     "modo_ddsimca":                 {"PT": "Modo de treino (DD-SIMCA)", "EN": "Training mode (DD-SIMCA)"},
+    "ddsimca_pcv":                  {"PT": "Diagnostico PCV (DD-SIMCA)", "EN": "PCV diagnostic (DD-SIMCA)"},
     "selecao_variaveis_etapa4":     {"PT": "Selecao de variaveis",    "EN": "Variable selection"},
     "selecao_spa":                  {"PT": "SPA (APS)",               "EN": "SPA (successive proj.)"},
     "selecao_ag":                   {"PT": "AG (Genetico)",           "EN": "GA (genetic algorithm)"},
@@ -386,6 +388,31 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "exemplos": {"true": "Recommended for publication", "false": "Saves time in exploration"},
         },
         "default": True, "range": "true | false",
+    },
+    "ddsimca_pcv": {
+        "PT": {
+            "desc": "Diagnostico complementar de sensibilidade por Procrustes Cross-Validation "
+                    "(Kucheryavskiy/Rodionova/Pomerantsev) -- gera um conjunto de validacao por "
+                    "reamostragem quando o LOGO fica inconclusivo por falta de grupos de replica "
+                    "validos. NAO substitui o LOGO: com 1 so grupo por classe (cenario comum com "
+                    "poucas amostras puras), so reflete ruido de medicao, nao autenticacao real. "
+                    "Exige o extra opcional [robusto] (pip install guaraci-chemometrics[robusto]).",
+            "impacto": "ANALITICO — adiciona um numero de sensibilidade exploratorio extra no resumo.",
+            "exemplos": {"true": "Quer um segundo diagnostico alem do LOGO",
+                        "false": "Pacote 'prcv' nao instalado, ou LOGO ja suficiente"},
+        },
+        "EN": {
+            "desc": "Complementary sensitivity diagnostic via Procrustes Cross-Validation "
+                    "(Kucheryavskiy/Rodionova/Pomerantsev) -- generates a resampled validation set "
+                    "when LOGO is inconclusive due to lack of valid replicate groups. Does NOT "
+                    "replace LOGO: with only 1 group per class (common with few pure samples), it "
+                    "only reflects measurement noise, not real authentication. Requires the "
+                    "optional [robusto] extra (pip install guaraci-chemometrics[robusto]).",
+            "impacto": "ANALYTICAL — adds an extra exploratory sensitivity figure to the summary.",
+            "exemplos": {"true": "Want a second diagnostic besides LOGO",
+                        "false": "'prcv' package not installed, or LOGO already sufficient"},
+        },
+        "default": False, "range": "true/false",
     },
     "benchmark": {
         "PT": {
@@ -1298,6 +1325,7 @@ MENU_FIELDS: Dict[str, list] = {
               "imagem_incluir_textura"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
+               "ddsimca_pcv",
                "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
                   "teste_wold", "teste_cv_anova", "teste_martens", "n_jobs_permutacao"],

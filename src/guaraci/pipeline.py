@@ -279,6 +279,7 @@ from guaraci.classificadores import (   # noqa: E402
     DDSimca,
     OPLSDAWrapper,
     sensibilidade_ddsimca_logo,
+    sensibilidade_ddsimca_pcv,
 )
 
 
@@ -1685,6 +1686,10 @@ def executar(cfg: Config):
     # (sens_LOGO, esp, n_puros, n_adult, n_grupos_LOGO, aviso)
     ddsimca_sens_esp: Dict[
         str, Tuple[float, float, int, int, int, Optional[str]]] = {}
+    # PCV: diagnostico complementar, opt-in via cfg.ddsimca_pcv (ver
+    # sensibilidade_ddsimca_pcv). (sens_PCV, aviso)
+    ddsimca_pcv_esp: Dict[str, Tuple[float, Optional[str]]] = {}
+    _pcv_indisponivel_avisado = False
     modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
     # DD-SIMCA e' um diagnostico de AUTENTICACAO DE PUREZA (N2): pergunta se
     # a amostra pertence a regiao de aceitacao da sua propria especie/classe.
@@ -1763,6 +1768,19 @@ def executar(cfg: Config):
                     sens       = _logo["sensibilidade"]
                     n_grupos_c = int(_logo["n_grupos"])
                     aviso_sens = _logo["aviso"]
+                    # PCV: diagnostico complementar opt-in (nunca substitui
+                    # o LOGO acima) -- ver sensibilidade_ddsimca_pcv().
+                    if cfg.ddsimca_pcv:
+                        _pcv = sensibilidade_ddsimca_pcv(
+                            X_processed[idx_puro_c], mae_id[idx_puro_c],
+                            n_components=cfg.ddsimca_n_components,
+                            alpha=0.05, ucl_method=cfg.ddsimca_ucl_method)
+                        if _pcv["disponivel"]:
+                            ddsimca_pcv_esp[cls] = (
+                                _pcv["sensibilidade"], _pcv["aviso"])
+                        elif not _pcv_indisponivel_avisado:
+                            log.info(f"    [AVISO] PCV: {_pcv['aviso']}")
+                            _pcv_indisponivel_avisado = True
                 else:
                     sens = float("nan")
                     aviso_sens = ("Sensibilidade nao estimavel: mae_id ausente "
@@ -2029,6 +2047,14 @@ def executar(cfg: Config):
                     f"(grupos_LOGO={ng}, puros={npc}, adult={nac})")
                 if av:
                     resumo[f"DD-SIMCA {cls} AVISO"] = av
+                # PCV: diagnostico complementar opt-in -- SEMPRE ao lado do
+                # LOGO, nunca em vez dele (ver sensibilidade_ddsimca_pcv).
+                if cls in ddsimca_pcv_esp:
+                    s_pcv, av_pcv = ddsimca_pcv_esp[cls]
+                    sens_pcv_s = f"{s_pcv*100:.1f}%" if s_pcv == s_pcv else "n/a"
+                    resumo[f"DD-SIMCA {cls} sens(PCV, exploratorio)"] = sens_pcv_s
+                    if av_pcv:
+                        resumo[f"DD-SIMCA {cls} AVISO PCV"] = av_pcv
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
     if _martens_n_sig is not None:

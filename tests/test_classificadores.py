@@ -12,6 +12,7 @@ from guaraci.classificadores import (
     DDSimca,
     OPLSDAWrapper,
     sensibilidade_ddsimca_logo,
+    sensibilidade_ddsimca_pcv,
 )
 
 
@@ -431,3 +432,68 @@ def test_media_e_dof_casos_degenerados():
     assert N == 1.0
     media, N = DDSimca._media_e_dof(np.array([5.0]))    # n=1, sem desvio
     assert N == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Sensibilidade DD-SIMCA por Procrustes Cross-Validation (PCV) -- diagnostico
+# complementar ao LOGO, adicionado 2026-08-08.
+# ---------------------------------------------------------------------------
+def test_pcv_indisponivel_sem_pacote_nao_lanca_excecao(monkeypatch):
+    """Se 'prcv' nao estiver instalado, devolve disponivel=False com aviso
+    -- nunca quebra o pipeline (mesmo padrao de xgboost/shap opcionais)."""
+    import builtins
+    real_import = builtins.__import__
+
+    def _import_bloqueado(name, *a, **kw):
+        if name == "prcv" or name.startswith("prcv."):
+            raise ImportError("simulado: prcv nao instalado")
+        return real_import(name, *a, **kw)
+
+    monkeypatch.setattr(builtins, "__import__", _import_bloqueado)
+    rng = np.random.default_rng(0)
+    X = _classe_compacta(rng, centro=0.0, n=3)
+    r = sensibilidade_ddsimca_pcv(X, np.array(["G1"] * 3), n_components=3)
+    assert r["disponivel"] is False
+    assert r["aviso"] is not None
+    assert np.isnan(r["sensibilidade"])
+
+
+def test_pcv_um_grupo_nao_quebra_e_avisa_limitacao():
+    """REGRESSAO: passar o split de CV do PCV agrupado por mae_id quando
+    so' existe 1 grupo faz pcvpca falhar (ValueError de shape, verificado
+    manualmente) -- a funcao tem que cair para LOO por amostra nesse caso,
+    nunca lancar excecao. O aviso tem que deixar claro que o resultado nao
+    e' evidencia de autenticacao (so' ruido de medicao), senao o numero
+    seria mal-interpretado como se fosse tao forte quanto LOGO."""
+    pytest.importorskip("prcv")
+    rng = np.random.default_rng(1)
+    X = _classe_compacta(rng, centro=0.0, n=3, k=30, escala=0.05)
+    r = sensibilidade_ddsimca_pcv(X, np.array(["G1", "G1", "G1"]),
+                                  n_components=3)
+    assert r["n_grupos"] == 1
+    assert r["disponivel"] is True
+    assert not np.isnan(r["sensibilidade"])
+    assert "ruido de MEDICAO" in r["aviso"]
+    assert "instrumental" in r["aviso"]
+
+
+def test_pcv_multiplos_grupos_usa_split_por_grupo():
+    """Com 2+ grupos, o resultado nao e' NaN e o aviso e' o generico de
+    complementaridade ao LOGO (nao o de grupo unico)."""
+    pytest.importorskip("prcv")
+    rng = np.random.default_rng(2)
+    X = np.vstack([_classe_compacta(rng, centro=i * 0.3, n=3, k=30,
+                                    escala=0.05) for i in range(4)])
+    grupos = np.array([f"G{i}" for i in range(4) for _ in range(3)])
+    r = sensibilidade_ddsimca_pcv(X, grupos, n_components=3)
+    assert r["n_grupos"] == 4
+    assert not np.isnan(r["sensibilidade"])
+    assert "ruido de MEDICAO" not in (r["aviso"] or "")
+
+
+def test_pcv_amostras_insuficientes_nao_quebra():
+    pytest.importorskip("prcv")
+    X = np.zeros((1, 10))
+    r = sensibilidade_ddsimca_pcv(X, np.array(["G1"]), n_components=3)
+    assert np.isnan(r["sensibilidade"])
+    assert r["aviso"] is not None
