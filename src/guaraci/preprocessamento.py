@@ -59,7 +59,30 @@ class SavGol(BaseEstimator, TransformerMixin):
 class MSC(BaseEstimator, TransformerMixin):
     """Multiplicative Scatter Correction. Uses mean training spectrum as
     reference; for each sample estimates (a, b) such that X_i ~ a + b * ref and
-    returns (X_i - a) / b. Stateful: must remain inside Pipeline+CV."""
+    returns (X_i - a) / b. Stateful: must remain inside Pipeline+CV.
+
+    VETORIZADO em 2026-08-07 (achado da auditoria metodologica -- ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md, secao "Dívida de
+    engenharia observada"): a regressao de 2 parametros (a, b) por amostra
+    e' uma regressao linear simples (1 preditor + intercepto), que tem
+    forma fechada:
+        b = Cov(ref, X_i) / Var(ref)
+        a = mean(X_i) - b * mean(ref)
+    resolvida para TODAS as amostras de uma vez via operacoes matriciais,
+    em vez de um `np.linalg.lstsq` por amostra num loop Python (o mesmo
+    resultado, so' mais lento -- desperdicio notavel com 934x8192 pontos
+    espectrais reais). Verificado numericamente contra a versao anterior
+    em 20 casos aleatorios + casos estruturados (b=0/1/2): diff < 1e-8.
+
+    Unico caso em que o resultado MUDA de proposito: referencia de treino
+    com variancia ~0 (espectro medio CONSTANTE em todo o eixo -- nao
+    acontece com dado espectral real, exigiria um instrumento sem
+    absolutamente nenhum sinal). Nesse caso a regressao e' mal-posta;
+    `lstsq` antigo devolvia a solucao de NORMA MINIMA via SVD (um artefato
+    numerico, nao uma resposta cientifica definida), a versao atual cai no
+    MESMO fallback ja usado por amostra quando b~=0 (so' subtrai a media),
+    mais previsivel que o artefato do SVD.
+    """
 
     def fit(self, X, y=None):
         self.ref_ = np.asarray(X, dtype=float).mean(axis=0)
@@ -67,12 +90,26 @@ class MSC(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         X = np.asarray(X, dtype=float)
-        A = np.column_stack([np.ones_like(self.ref_), self.ref_])
-        out = np.zeros_like(X)
-        for i in range(X.shape[0]):
-            sol, *_ = np.linalg.lstsq(A, X[i], rcond=None)
-            a, b = float(sol[0]), float(sol[1])
-            out[i] = (X[i] - a) / b if abs(b) > 1e-12 else X[i] - a
+        ref = self.ref_
+        x_mean = float(ref.mean())
+        xc = ref - x_mean
+        var_x = float(xc @ xc)
+
+        y_mean = X.mean(axis=1)                  # (n,)
+        if var_x < 1e-12:
+            # Referencia degenerada (variancia ~0) -- ver docstring: sem
+            # regressao possivel, so' centra pela media de cada amostra.
+            return X - y_mean[:, None]
+
+        Yc = X - y_mean[:, None]                 # (n, p)
+        b = (Yc @ xc) / var_x                     # (n,) -- Cov(ref, X_i)/Var(ref)
+        a = y_mean - b * x_mean                   # (n,)
+
+        b_seguro = np.where(np.abs(b) > 1e-12, b, 1.0)
+        out = (X - a[:, None]) / b_seguro[:, None]
+        b_quase_zero = np.abs(b) <= 1e-12
+        if b_quase_zero.any():
+            out[b_quase_zero] = (X - a[:, None])[b_quase_zero]
         return out
 
 

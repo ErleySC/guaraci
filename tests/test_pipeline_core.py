@@ -53,6 +53,74 @@ def test_snv_invariante_a_escala_e_offset(pq):
     np.testing.assert_allclose(Z_orig, Z_afim, atol=1e-10)
 
 
+# ── MSC: forma fechada vetorizada (achado 2026-08-07) ────────────────────────
+# transform() resolvia, por amostra, uma regressao de 2 parametros
+# (a, b) via np.linalg.lstsq num loop Python. Vetorizado usando a forma
+# fechada da regressao linear simples (b=Cov(ref,X_i)/Var(ref),
+# a=mean(X_i)-b*mean(ref)). Estes testes travam a EQUIVALENCIA com o
+# lstsq original (oraculo independente) e o comportamento do caso
+# degenerado (referencia de variancia ~0).
+
+def _msc_lstsq_por_amostra(X, ref):
+    """Oraculo independente: a MESMA logica que MSC.transform() usava antes
+    da vetorizacao (1 np.linalg.lstsq por amostra) -- usada so' nos testes,
+    para verificar que a forma fechada reproduz exatamente esse resultado."""
+    A = np.column_stack([np.ones_like(ref), ref])
+    out = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        sol, *_ = np.linalg.lstsq(A, X[i], rcond=None)
+        a, b = float(sol[0]), float(sol[1])
+        out[i] = (X[i] - a) / b if abs(b) > 1e-12 else X[i] - a
+    return out
+
+
+def test_msc_forma_fechada_bate_com_lstsq_por_amostra(pq):
+    """A regressao vetorizada (forma fechada) tem que reproduzir EXATAMENTE
+    o resultado de resolver a mesma regressao (a + b*ref) via lstsq
+    amostra-por-amostra -- e' a mesma matematica, so' mais rapida."""
+    rng = np.random.default_rng(7)
+    X_train = rng.normal(size=(40, 60)) * rng.uniform(0.5, 5) + rng.uniform(-2, 2)
+    msc = pq.MSC().fit(X_train)
+
+    for seed in range(5):
+        rng2 = np.random.default_rng(seed + 100)
+        X_new = rng2.normal(size=(15, 60)) * rng2.uniform(0.5, 5)
+        esperado = _msc_lstsq_por_amostra(X_new, msc.ref_)
+        obtido = msc.transform(X_new)
+        np.testing.assert_allclose(obtido, esperado, atol=1e-8)
+
+
+def test_msc_recupera_coeficientes_conhecidos(pq):
+    """Caso estruturado com a/b conhecidos por construcao: X_i = a_i + b_i*ref
+    -- MSC deve reconstruir exatamente ref (a menos de arredondamento)."""
+    rng = np.random.default_rng(3)
+    ref = rng.normal(size=50)
+    a_verdadeiro = np.array([5.0, -3.0, 0.0])
+    b_verdadeiro = np.array([2.0, 0.5, 1.0])
+    X = a_verdadeiro[:, None] + b_verdadeiro[:, None] * ref[None, :]
+
+    msc = pq.MSC()
+    msc.ref_ = ref   # simula fit() num treino cuja media e' `ref`
+    out = msc.transform(X)
+    for i in range(3):
+        np.testing.assert_allclose(out[i], ref, atol=1e-8)
+
+
+def test_msc_referencia_degenerada_nao_gera_nan(pq):
+    """Referencia de treino com variancia ~0 (caso degenerado, nao ocorre
+    com dado espectral real) -- a regressao fica mal-posta; MSC cai no
+    fallback documentado (so' subtrai a media da amostra), nunca NaN/Inf."""
+    ref_const = np.full(30, 3.0)
+    rng = np.random.default_rng(9)
+    X = rng.normal(size=(5, 30))
+
+    msc = pq.MSC()
+    msc.ref_ = ref_const
+    out = msc.transform(X)
+    assert np.all(np.isfinite(out))
+    np.testing.assert_allclose(out, X - X.mean(axis=1, keepdims=True), atol=1e-10)
+
+
 def test_savgol_preserva_shape(pq):
     """SavGol: preserva o shape; suaviza (não retorna o mesmo array)."""
     rng = np.random.default_rng(1)
