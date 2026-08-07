@@ -242,6 +242,49 @@ def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
     return float(g * chi2.ppf(1 - alpha, h))
 
 
+def media_e_dof_momentos(valores: np.ndarray) -> Tuple[float, float]:
+    """Media e graus de liberdade (N) por metodo dos momentos (Box 1954,
+    aproximado por Jackson & Mudholkar 1979 para Q-residuos): N =
+    2*(media/desvio)^2. E' o "data-driven" que da nome ao metodo DD-SIMCA
+    (Kucheryavskiy, Rodionova & Pomerantsev, 2024), usado para converter uma
+    estatistica de distancia (T2 ou Q) numa aproximacao chi-quadrado com
+    graus de liberdade estimados dos proprios dados.
+
+    Compartilhada entre `classificadores.DDSimca` e
+    `dominio_aplicabilidade_treino` (achado A3 da auditoria de
+    2026-08-07: as duas reimplementavam a mesma regra de decisao de forma
+    independente e divergente).
+
+    Com desvio<=0 ou media<=0 (dados degenerados: valores identicos ou
+    vazio), cai para N=1 -- o minimo que ainda faz sentido como grau de
+    liberdade, em vez de propagar NaN/Inf para a estatistica combinada.
+    """
+    valores = np.asarray(valores, dtype=float)
+    if valores.size == 0:
+        return 0.0, 1.0
+    media = float(valores.mean())
+    desvio = float(valores.std(ddof=1)) if valores.size > 1 else 0.0
+    if desvio <= 0 or media <= 0:
+        return max(media, 1e-12), 1.0
+    return media, 2.0 * (media / desvio) ** 2
+
+
+def distancia_combinada(T2: np.ndarray, Q: np.ndarray, h0: float, q0: float,
+                        Nh: float, Nq: float) -> np.ndarray:
+    """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
+    Kucheryavskiy, Rodionova & Pomerantsev 2024, J. Chemometrics 38(7):
+    e3556) -- a estatistica de decisao do DD-SIMCA (`f <= chi2.ppf(1-alpha,
+    Nh+Nq)` decide aceitacao). Substitui o teste retangular independente
+    T2<=UCL e Q<=UCL (alpha por eixo), que infla o alpha CONJUNTO efetivo
+    para ~1-(1-alpha)^2 -- achado corrigido no DD-SIMCA em 2026-08-08 e no
+    dominio de aplicabilidade PCA/PLS (achado A3 da auditoria de
+    2026-08-07: medido 11.6% de rejeicao contra 5% nominal em amostras da
+    MESMA distribuicao do treino, ver docs/auditoria/medir_achados.py).
+    """
+    return ((np.asarray(T2, dtype=float) / max(h0, 1e-12)) * Nh
+            + (np.asarray(Q, dtype=float) / max(q0, 1e-12)) * Nq)
+
+
 def dmodx(Q: np.ndarray, n_variaveis: int, n_componentes: int,
           n_amostras: int, alpha: float = 0.05) -> Dict[str, object]:
     """DModX (Distance to Model X) -- nomenclatura e normalizacao padrao do
@@ -451,16 +494,27 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
                          mal o modelo reconstroi a amostra (quimica nova, nao
                          vista no treino).
 
-    Uma amostra nova esta DENTRO do dominio se T2 <= T2_limite E Q <= Q_limite,
-    ambos os limites derivados EXCLUSIVAMENTE do conjunto de treino (mesma
-    formula de Tracy-Young-Mason e chi2-Jackson-Mudholkar ja usadas no
-    diagnostico de outliers). Amostras fora do dominio tem predicao pouco
-    confiavel — a extrapolacao nao e garantida.
+    Uma amostra nova esta DENTRO do dominio se a DISTANCIA COMBINADA
+    f=(T2/h0)*Nh+(Q/q0)*Nq <= chi2.ppf(1-alpha, Nh+Nq) -- mesma estatistica
+    do DD-SIMCA (Kucheryavskiy, Rodionova & Pomerantsev 2024), com h0/q0/Nh/
+    Nq estimados EXCLUSIVAMENTE do conjunto de treino. t2/q individuais e
+    seus limites por eixo sao mantidos so' para diagnostico/plotagem.
+
+    CORRIGIDO em 2026-08-07 (achado A3 da auditoria metodologica — ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a versao anterior
+    decidia dentro/fora por T2<=T2_limite E Q<=Q_limite independentemente
+    (alpha=0.05 em cada eixo) -- a mesma regra retangular corrigida no
+    DD-SIMCA em 2026-08-08, com o mesmo efeito: alpha CONJUNTO efetivo
+    inflado. Medido (docs/auditoria/medir_achados.py, 40 simulacoes,
+    amostras novas da MESMA distribuicao do treino): rejeicao de 11.6%
+    contra 5% nominal.
 
     Referencias: Jaworska, Nikolova-Jeliazkova & Aldenberg (2005), SAR QSAR
     Environ. Res. 16:445-466; Gadaleta et al. (2016), J. Chem. Inf. Model.
     A convencao T2+Q e o "AD baseado em leverage/residuo" padrao em
-    espectroscopia (equivalente ao par distance-to-model do SIMCA).
+    espectroscopia (equivalente ao par distance-to-model do SIMCA);
+    Kucheryavskiy, Rodionova & Pomerantsev (2024), J. Chemometrics 38(7):
+    e3556, para a distancia combinada.
 
     Parametros
     ----------
@@ -468,31 +522,37 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
                .components_ (k, p) e .mean_ (p,) — sklearn PCA satisfaz).
     X_train  : matriz de treino no MESMO espaco pre-processado do ajuste.
     X_new    : amostras novas a avaliar (mesmo pre-processamento).
-    alpha    : nivel de significancia dos limites (default 0.05 -> 95%).
+    alpha    : nivel de significancia (default 0.05 -> 95%).
 
-    Retorna dict com t2/q por amostra nova, os limites, e as mascaras
-    booleanas dentro_t2 / dentro_q / dentro_dominio + a fracao dentro.
+    Retorna dict com t2/q/f por amostra nova, os limites, e a mascara
+    booleana dentro_dominio + a fracao dentro.
     """
     treino = dominio_aplicabilidade_treino(pca, X_train, alpha)
-    # cast: o dict é Dict[str, object] (chaves heterogêneas — 1 array + 2
+    # cast: o dict é Dict[str, object] (chaves heterogêneas — arrays e
     # floats); os tipos concretos são garantidos na construção do dict.
     return dominio_aplicabilidade_amostras_novas(
         pca, X_new,
         cast(np.ndarray, treino["var_t"]),
-        cast(float, treino["t2_limite"]),
-        cast(float, treino["q_limite"]))
+        cast(float, treino["h0"]), cast(float, treino["q0"]),
+        cast(float, treino["Nh"]), cast(float, treino["Nq"]),
+        cast(float, treino["f_crit"]))
 
 
 def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
                                    alpha: float = 0.05) -> Dict[str, object]:
-    """Deriva do TREINO os 3 artefatos leves necessarios para avaliar o
+    """Deriva do TREINO os artefatos leves necessarios para avaliar o
     dominio de aplicabilidade em amostras novas depois, sem precisar
     re-exportar X_train inteiro (que pode ser um artefato pesado -- MB a
     dezenas de MB para datasets espectrais reais): a variancia dos scores
-    PCA (var_t, um vetor por componente) e os 2 limites T2/Q (Tracy-Young-
-    Mason / chi2-Jackson-Mudholkar). Usado ao SALVAR um modelo (ver
-    pipeline.py, pacote_modelo); `dominio_aplicabilidade_amostras_novas`
-    consome o resultado na hora de PREDIZER, sem X_train.
+    PCA (var_t) e os parametros da distancia combinada (h0/q0/Nh/Nq/f_crit,
+    ver `distancia_combinada`). Usado ao SALVAR um modelo (ver pipeline.py,
+    pacote_modelo); `dominio_aplicabilidade_amostras_novas` consome o
+    resultado na hora de PREDIZER, sem X_train.
+
+    t2_limite/q_limite (Tracy-Young-Mason / chi2-Jackson-Mudholkar) sao
+    mantidos no retorno so' para diagnostico/plotagem por eixo -- a decisao
+    dentro/fora usa h0/q0/Nh/Nq/f_crit (ver docstring de
+    `dominio_aplicabilidade`).
     """
     X_train = np.asarray(X_train, dtype=float)
     T_train = np.asarray(pca.transform(X_train), dtype=float)
@@ -502,25 +562,30 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
 
     var_t = T_train.var(axis=0, ddof=1)
     var_t[var_t == 0] = 1.0
-    t2_lim = hotelling_t2_limite(n, k, alpha)
+    T2_train = np.sum((T_train ** 2) / var_t, axis=1)
 
     q_train = q_residuos(X_train - mean, T_train, P)
-    q_lim = q_residuos_limite(q_train, alpha)
+
+    h0, Nh = media_e_dof_momentos(T2_train)
+    q0, Nq = media_e_dof_momentos(q_train)
+    f_crit = float(chi2.ppf(1 - alpha, Nh + Nq))
 
     return {
         "var_t": var_t,
-        "t2_limite": float(t2_lim),
-        "q_limite": float(q_lim),
+        "h0": h0, "q0": q0, "Nh": Nh, "Nq": Nq, "f_crit": f_crit,
+        "t2_limite": float(hotelling_t2_limite(n, k, alpha)),
+        "q_limite": float(q_residuos_limite(q_train, alpha)),
     }
 
 
 def dominio_aplicabilidade_amostras_novas(
         pca, X_new: np.ndarray, var_t: np.ndarray,
-        t2_limite: float, q_limite: float) -> Dict[str, np.ndarray]:
-    """Aplica os limites de dominio de aplicabilidade (ja derivados do
-    treino por `dominio_aplicabilidade_treino`) a amostras novas -- nao
-    precisa de X_train, so' dos artefatos leves (var_t + 2 limites), ideal
-    para predicao em producao sem reexportar o dataset de calibracao.
+        h0: float, q0: float, Nh: float, Nq: float, f_crit: float
+        ) -> Dict[str, np.ndarray]:
+    """Aplica a distancia combinada de dominio de aplicabilidade (ja
+    derivada do treino por `dominio_aplicabilidade_treino`) a amostras
+    novas -- nao precisa de X_train, so' dos artefatos leves, ideal para
+    predicao em producao sem reexportar o dataset de calibracao.
     """
     X_new = np.asarray(X_new, dtype=float)
     T_new = np.asarray(pca.transform(X_new), dtype=float)
@@ -535,16 +600,13 @@ def dominio_aplicabilidade_amostras_novas(
     # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
     q_new = q_residuos(X_new - mean, T_new, P)
 
-    dentro_t2 = t2_new <= t2_limite
-    dentro_q = q_new <= q_limite
-    dentro = dentro_t2 & dentro_q
+    f = distancia_combinada(t2_new, q_new, h0, q0, Nh, Nq)
+    dentro = f <= f_crit
     return {
         "t2": t2_new,
         "q": q_new,
-        "t2_limite": np.asarray(t2_limite, dtype=float),
-        "q_limite": np.asarray(q_limite, dtype=float),
-        "dentro_t2": dentro_t2,
-        "dentro_q": dentro_q,
+        "f": f,
+        "f_crit": np.asarray(f_crit, dtype=float),
         "dentro_dominio": dentro,
         "fracao_dentro": np.asarray(
             float(np.mean(dentro)) if dentro.size else float("nan"),

@@ -27,7 +27,7 @@ _CHAVES_PACOTE_REQUERIDAS = {
 # Chaves OPCIONAIS do Dominio de Aplicabilidade (AD, PCA exploratorio) --
 # pacotes salvos por versoes antigas do pipeline nao tem essas chaves, e a
 # predicao continua funcionando normalmente (so' sem as colunas AD_*).
-_CHAVES_AD = {"pca", "ad_var_t", "ad_t2_limite", "ad_q_limite"}
+_CHAVES_AD = {"pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh", "ad_Nq", "ad_f_crit"}
 
 
 class SecurityError(Exception):
@@ -174,9 +174,11 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
       al. 2005): mede o quanto a amostra e' um espectro atipico frente ao
       dataset de calibracao em geral, INDEPENDENTE da classe -- reaproveita
       `chemometric_stats.dominio_aplicabilidade_amostras_novas` com os
-      artefatos leves salvos no pacote (`pca`, `ad_var_t`, `ad_t2_limite`,
-      `ad_q_limite`). So' aparece se o pacote foi salvo por uma versao do
-      pipeline que exporta esses campos (opcional, retrocompativel).
+      artefatos leves salvos no pacote (`pca`, `ad_var_t`, `ad_h0`, `ad_q0`,
+      `ad_Nh`, `ad_Nq`, `ad_f_crit` -- distancia combinada do DD-SIMCA desde
+      a correcao do achado A3, auditoria 2026-08-07). So' aparece se o
+      pacote foi salvo por uma versao do pipeline que exporta esses campos
+      (opcional, retrocompativel).
 
     Retorna um DataFrame com o diagnostico por amostra.
     """
@@ -263,11 +265,12 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     if _CHAVES_AD.issubset(pkg.keys()):
         ad = dominio_aplicabilidade_amostras_novas(
             pkg["pca"], X_proc, pkg["ad_var_t"],
-            pkg["ad_t2_limite"], pkg["ad_q_limite"])
+            pkg["ad_h0"], pkg["ad_q0"], pkg["ad_Nh"], pkg["ad_Nq"],
+            pkg["ad_f_crit"])
         resultado["AD_T2"] = np.round(ad["t2"], 3)
-        resultado["AD_T2_limite"] = round(float(ad["t2_limite"]), 3)
         resultado["AD_Q"] = np.round(ad["q"], 6)
-        resultado["AD_Q_limite"] = round(float(ad["q_limite"]), 6)
+        resultado["AD_f"] = np.round(ad["f"], 3)
+        resultado["AD_f_crit"] = round(float(ad["f_crit"]), 3)
         resultado["AD_dentro_dominio"] = ad["dentro_dominio"]
 
     return resultado

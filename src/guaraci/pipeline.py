@@ -2163,14 +2163,21 @@ def executar(cfg: Config):
         # Dominio de Aplicabilidade (Jaworska et al. 2005): reaproveita o PCA
         # exploratorio ja ajustado (fig1_pca_scores) para avisar, na predicao
         # em amostras novas, quando o espectro cai fora do espaco coberto pela
-        # calibracao. So' salva var_t/limites (leve, ~poucos floats) em vez
-        # de X_processed inteiro (que pode pesar dezenas de MB em dados reais).
+        # calibracao. So' salva var_t + parametros da distancia combinada
+        # (leve, ~poucos floats) em vez de X_processed inteiro (que pode
+        # pesar dezenas de MB em dados reais). h0/q0/Nh/Nq/f_crit (em vez de
+        # t2_limite/q_limite) desde a correcao do achado A3 (auditoria
+        # 2026-08-07): a decisao dentro/fora usa a distancia combinada do
+        # DD-SIMCA, nao mais o teste retangular por eixo.
         try:
             _ad_treino = dominio_aplicabilidade_treino(pca, X_processed, alpha=0.05)
             pacote_modelo["pca"] = pca
             pacote_modelo["ad_var_t"] = _ad_treino["var_t"]
-            pacote_modelo["ad_t2_limite"] = _ad_treino["t2_limite"]
-            pacote_modelo["ad_q_limite"] = _ad_treino["q_limite"]
+            pacote_modelo["ad_h0"] = _ad_treino["h0"]
+            pacote_modelo["ad_q0"] = _ad_treino["q0"]
+            pacote_modelo["ad_Nh"] = _ad_treino["Nh"]
+            pacote_modelo["ad_Nq"] = _ad_treino["Nq"]
+            pacote_modelo["ad_f_crit"] = _ad_treino["f_crit"]
         except Exception as _e_ad:  # noqa: BLE001 -- anexo opcional do
             # pacote de modelo; erro impresso, modelo principal (pls_final)
             # exportado normalmente logo abaixo mesmo sem o AD.

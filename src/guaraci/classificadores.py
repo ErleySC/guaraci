@@ -19,7 +19,8 @@ from sklearn.base import BaseEstimator
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
-from guaraci.chemometric_stats import hotelling_t2_limite, q_residuos_limite
+from guaraci.chemometric_stats import (hotelling_t2_limite, q_residuos_limite,
+                                       media_e_dof_momentos, distancia_combinada)
 
 log = logging.getLogger(__name__)
 
@@ -94,28 +95,6 @@ class DDSimca:
         self._classes: np.ndarray = np.array([], dtype=str)
 
     @staticmethod
-    def _media_e_dof(valores: np.ndarray) -> Tuple[float, float]:
-        """Media e graus de liberdade (N) por metodo dos momentos
-        (Jackson & Mudholkar 1979) -- a MESMA aproximacao chi-quadrado que
-        `chemometric_stats.q_residuos_limite` ja usa para Q, exposta aqui
-        para reutilizar tambem no T2 (unifica os dois eixos sob um so'
-        metodo "data-driven", o proprio nome do DD-SIMCA).
-
-        N = 2*(media/desvio)^2. Com desvio<=0 ou media<=0 (treino
-        degenerado: valores identicos ou vazio), cai para N=1 -- o minimo
-        que ainda faz sentido como grau de liberdade, em vez de propagar
-        NaN/Inf para a estatistica combinada.
-        """
-        valores = np.asarray(valores, dtype=float)
-        if valores.size == 0:
-            return 0.0, 1.0
-        media = float(valores.mean())
-        desvio = float(valores.std(ddof=1)) if valores.size > 1 else 0.0
-        if desvio <= 0 or media <= 0:
-            return max(media, 1e-12), 1.0
-        return media, 2.0 * (media / desvio) ** 2
-
-    @staticmethod
     def _outliers_robustos_mad(valores: np.ndarray,
                                limiar: float = 3.5) -> np.ndarray:
         """Indices sinalizados como possiveis outliers via z-score
@@ -165,12 +144,15 @@ class DDSimca:
         """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
         Kucheryavskiy/Rodionova/Pomerantsev 2024) -- a estatistica que de
         fato decide aceitar/rejeitar, substituindo o teste retangular
-        independente T2<=UCL e Q<=UCL. Extraida como metodo separado para
-        ser a MESMA chamada em predict(), score_matrix() e nos usos
-        externos (sensibilidade_ddsimca_logo, resumo do pipeline) --
-        antes cada um reimplementava a regra retangular por conta propria."""
-        return ((T2 / max(m["h0"], 1e-12)) * m["Nh"]
-                + (Q / max(m["q0"], 1e-12)) * m["Nq"])
+        independente T2<=UCL e Q<=UCL. Delega para
+        `chemometric_stats.distancia_combinada` (achado A3 da auditoria de
+        2026-08-07: `dominio_aplicabilidade` reimplementava a mesma regra de
+        forma independente; unificado numa so' fonte de verdade). Mantida
+        como metodo (em vez de chamar `distancia_combinada` direto nos usos
+        externos) para preservar a MESMA chamada em predict(), score_matrix()
+        e nos usos externos (sensibilidade_ddsimca_logo, resumo do
+        pipeline)."""
+        return distancia_combinada(T2, Q, m["h0"], m["q0"], m["Nh"], m["Nq"])
 
     def _compute_t2_ucl(self, T2_train: np.ndarray, n: int, k: int) -> float:
         method = (self.ucl_method or "empirical").lower()
@@ -264,8 +246,8 @@ class DDSimca:
             # Estatistica combinada (ver docstring da classe): h0/q0/Nh/Nq
             # data-driven a partir de T2_train/Q_train, f_crit por chi2 com
             # Nf=Nh+Nq graus de liberdade. E' o que predict() usa de fato.
-            h0, Nh = self._media_e_dof(T2_train)
-            q0, Nq = self._media_e_dof(Q_train)
+            h0, Nh = media_e_dof_momentos(T2_train)
+            q0, Nq = media_e_dof_momentos(Q_train)
             f_crit = float(chi2.ppf(1 - self.alpha, Nh + Nq))
 
             # Diagnostico robusto (mediana/MAD, Iglewicz & Hoaglin 1993):

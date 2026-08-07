@@ -999,7 +999,7 @@ def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
     ad = pq.dominio_aplicabilidade(pca, X, X, alpha=0.05)
     assert 0.80 <= float(ad["fracao_dentro"]) <= 1.0
     assert ad["dentro_dominio"].shape == (120,)
-    assert float(ad["t2_limite"]) > 0 and float(ad["q_limite"]) > 0
+    assert float(ad["f_crit"]) > 0
 
 
 def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
@@ -1017,8 +1017,9 @@ def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
 
 
 def test_dominio_aplicabilidade_retorno_consistente(pq):
-    """Mascaras booleanas e vetores t2/q tem o mesmo tamanho de X_new; dentro
-    = dentro_t2 AND dentro_q."""
+    """Vetores t2/q/f tem o mesmo tamanho de X_new; dentro_dominio =
+    (f <= f_crit) -- a distancia COMBINADA (achado A3 da auditoria
+    2026-08-07), nao mais o teste retangular T2<=lim E Q<=lim."""
     import numpy as np
     from sklearn.decomposition import PCA
     rng = np.random.default_rng(2)
@@ -1027,8 +1028,32 @@ def test_dominio_aplicabilidade_retorno_consistente(pq):
     pca = PCA(n_components=3).fit(X)
     ad = pq.dominio_aplicabilidade(pca, X, Xn)
     assert ad["t2"].shape == (12,) and ad["q"].shape == (12,)
-    assert np.array_equal(ad["dentro_dominio"],
-                          ad["dentro_t2"] & ad["dentro_q"])
+    assert ad["f"].shape == (12,)
+    assert np.array_equal(ad["dentro_dominio"], ad["f"] <= ad["f_crit"])
+
+
+def test_dominio_aplicabilidade_calibrada_melhor_que_regra_retangular(pq):
+    """Achado A3: a regra retangular (T2<=lim E Q<=lim, alpha=0.05 por
+    eixo) rejeitava ~11.6% de amostras da MESMA distribuicao do treino
+    (contra 5% nominal). A distancia combinada deve ficar muito mais perto
+    do alpha nominal. Nao trava um valor exato (variabilidade de Monte
+    Carlo com 1 unica amostra de treino) -- so' que fica bem abaixo do
+    patamar da regra retangular (~9.75% no caso ingenuo, medido 11.6%)."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rejeicoes = []
+    for seed in range(15):
+        rng = np.random.default_rng(100 + seed)
+        Xtr = rng.normal(0, 1, (200, 30))
+        Xnew = rng.normal(0, 1, (500, 30))   # mesma distribuicao => H0
+        pca = PCA(n_components=3).fit(Xtr)
+        ad = pq.dominio_aplicabilidade(pca, Xtr, Xnew, alpha=0.05)
+        rejeicoes.append(1.0 - float(ad["fracao_dentro"]))
+    taxa_media = float(np.mean(rejeicoes))
+    assert taxa_media < 0.09, (
+        f"taxa de rejeicao {taxa_media:.3f} proxima demais do patamar da "
+        "regra retangular (~0.10-0.12) -- distancia combinada nao "
+        "parece estar em uso")
 
 
 def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinado(pq):
@@ -1047,13 +1072,14 @@ def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinad
     combinado = pq.dominio_aplicabilidade(pca, X, Xn, alpha=0.05)
     treino = pq.dominio_aplicabilidade_treino(pca, X, alpha=0.05)
     split = pq.dominio_aplicabilidade_amostras_novas(
-        pca, Xn, treino["var_t"], treino["t2_limite"], treino["q_limite"])
+        pca, Xn, treino["var_t"], treino["h0"], treino["q0"],
+        treino["Nh"], treino["Nq"], treino["f_crit"])
 
     assert np.allclose(combinado["t2"], split["t2"])
     assert np.allclose(combinado["q"], split["q"])
+    assert np.allclose(combinado["f"], split["f"])
     assert np.array_equal(combinado["dentro_dominio"], split["dentro_dominio"])
-    assert float(combinado["t2_limite"]) == pytest.approx(treino["t2_limite"])
-    assert float(combinado["q_limite"]) == pytest.approx(treino["q_limite"])
+    assert float(combinado["f_crit"]) == pytest.approx(treino["f_crit"])
 
 
 def test_dominio_aplicabilidade_treino_var_t_tem_tamanho_n_componentes(pq):
