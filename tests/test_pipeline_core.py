@@ -137,6 +137,68 @@ def test_selectivity_ratio_nao_negativo(pq):
     assert np.all(sr >= 0)
 
 
+def _sr_referencia_univariado(modelo, X):
+    """Formula publicada (Rajalahti et al. 2009, Sec. 2.2) para y de 1
+    coluna — usada como oráculo independente nos testes abaixo."""
+    b = np.asarray(modelo.coef_, dtype=float).reshape(-1)
+    w_tp = b / np.linalg.norm(b)
+    t_tp = X @ w_tp
+    tt = float(t_tp @ t_tp)
+    p_tp = (t_tp @ X) / tt
+    X_tp = np.outer(t_tp, p_tp)
+    X_res = X - X_tp
+    var_res = X_res.var(axis=0, ddof=1)
+    var_res[var_res < 1e-12] = 1e-12
+    return X_tp.var(axis=0, ddof=1) / var_res
+
+
+def test_selectivity_ratio_bate_com_formula_de_referencia_qualquer_lv(pq):
+    """Achado A2 da auditoria 2026-08-07: SR deve bater com a formula
+    publicada (b/||b||) para QUALQUER numero de LVs — a versao anterior,
+    baseada no peso w1, so coincidia com a referencia quando o modelo
+    tinha 1 LV (com >=2 LVs corr(t_tp, y_hat) caia para ~0.92, quando
+    deveria ser 1.0 exato)."""
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(50, 12))
+    y = X[:, :3] @ rng.normal(size=3) + rng.normal(scale=0.1, size=50)
+    for n_lv in (1, 2, 4):
+        m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
+        sr = pq.calcular_selectivity_ratio(m, X)
+        sr_ref = _sr_referencia_univariado(m, X)
+        np.testing.assert_allclose(sr, sr_ref, rtol=1e-9)
+
+
+def test_selectivity_ratio_projecao_alvo_proporcional_a_predicao(pq):
+    """Propriedade que DEFINE o metodo (Rajalahti et al. 2009): o escore de
+    projecao-alvo t_tp = X @ (b/||b||) e' proporcional ao vetor de valores
+    preditos y_hat, para qualquer numero de LVs."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(60, 15))
+    y = X[:, :4] @ rng.normal(size=4) + rng.normal(scale=0.1, size=60)
+    for n_lv in (1, 2, 3, 5):
+        m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
+        b = np.asarray(m.coef_, dtype=float).reshape(-1)
+        t_tp = X @ (b / np.linalg.norm(b))
+        yhat = m.predict(X).ravel()
+        corr = np.corrcoef(t_tp, yhat)[0, 1]
+        assert corr == pytest.approx(1.0, abs=1e-9)
+
+
+def test_selectivity_ratio_multiclasse_agrega_por_maximo(pq):
+    """Y one-hot multiclasse (K colunas): SR aplica a formula publicada a
+    cada classe (one-vs-rest) independentemente e agrega por MAXIMO entre
+    classes — shape correto, nao-negativo, finito."""
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(60, 10))
+    y_int = rng.integers(0, 4, size=60)
+    Y_bin = np.eye(4)[y_int]
+    m = PLSRegression(n_components=3, scale=False).fit(X, Y_bin)
+    sr = pq.calcular_selectivity_ratio(m, X)
+    assert sr.shape == (10,)
+    assert np.all(sr >= 0)
+    assert np.all(np.isfinite(sr))
+
+
 # ── Teste de incerteza de Martens (jackknifing dos coeficientes PLS) ──────────
 
 def _dados_regressao_1_variavel_preditiva(seed=0, n=80, p=20):
@@ -403,26 +465,26 @@ def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
 
 # ── Selectivity Ratio: casos degenerados (peso/projeção nulos) ──────────────
 
-def test_selectivity_ratio_peso_w1_nulo_retorna_zeros(pq):
-    """Se o primeiro peso PLS (w1) é todo zero (modelo degenerado/patológico),
+def test_selectivity_ratio_vetor_regressao_nulo_retorna_zeros(pq):
+    """Se o vetor de regressao b e' todo zero (modelo degenerado/patológico),
     calcular_selectivity_ratio não deve dividir por zero — retorna vetor de
     zeros (SR indefinido = sem seletividade nenhuma), nunca NaN/inf silencioso."""
-    class _ModeloWZero:
-        x_weights_ = np.zeros((10, 2))
-    sr = pq.calcular_selectivity_ratio(_ModeloWZero(),
+    class _ModeloCoefZero:
+        coef_ = np.zeros((1, 10))
+    sr = pq.calcular_selectivity_ratio(_ModeloCoefZero(),
                                         np.random.default_rng(0).normal(size=(15, 10)))
     assert np.array_equal(sr, np.zeros(10))
 
 
 def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
-    """Se X é ortogonal ao peso w1 (projeção target tem norma ~0), o SR
-    também não pode ser calculado -- mesmo fallback de zeros."""
-    class _ModeloWOrtogonal:
-        x_weights_ = np.array([[1.0, 0.0], [0.0, 0.0]])  # so' a 1a variavel pesa
-    # X com a 1a coluna sempre zero -> t_tp = X @ w1_unit = 0 para todas as amostras
+    """Se X é ortogonal ao vetor de regressao b (projeção target tem norma
+    ~0), o SR também não pode ser calculado -- mesmo fallback de zeros."""
+    class _ModeloCoefOrtogonal:
+        coef_ = np.array([[1.0, 0.0]])  # so' a 1a variavel pesa
+    # X com a 1a coluna sempre zero -> t_tp = X @ b_unit = 0 para todas as amostras
     X = np.zeros((10, 2))
     X[:, 1] = np.random.default_rng(1).normal(size=10)
-    sr = pq.calcular_selectivity_ratio(_ModeloWOrtogonal(), X)
+    sr = pq.calcular_selectivity_ratio(_ModeloCoefOrtogonal(), X)
     assert np.array_equal(sr, np.zeros(2))
 
 

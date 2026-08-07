@@ -33,39 +33,73 @@ def vip_scores(modelo: PLSRegression) -> np.ndarray:
 def calcular_selectivity_ratio(modelo: PLSRegression,
                                 X: np.ndarray) -> np.ndarray:
     """Selectivity Ratio (SR) per Rajalahti et al. (2009),
-    Chemom. Intell. Lab. Syst. 95:20-28.
+    Chemom. Intell. Lab. Syst. 95:20-28; Kvalheim (2020),
+    J. Chemometrics 34:e3211.
+
+    CORRIGIDO em 2026-08-07 (achado A2 da auditoria metodologica — ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a projecao-alvo
+    (target projection) usa o VETOR DE REGRESSAO NORMALIZADO b/||b||, NAO o
+    primeiro peso PLS w1 -- os dois so' coincidem quando o modelo tem 1
+    variavel latente. A propriedade que define o metodo (Rajalahti et al.
+    2009, Sec. 2.2): o escore projetado t_tp e' PROPORCIONAL ao vetor de
+    valores preditos y_hat. Medido com w1 (versao anterior):
+    corr(t_tp, y_hat) caia para ~0.92 com >=2 LVs (deveria ser 1.000 exato)
+    e o ranking de variaveis selecionadas divergia (Jaccard@20 ~ 0.39 em
+    cenario multi-interferente com 3+ LVs) — ver
+    docs/auditoria/medir_sr_ranking.py.
 
     Para cada variavel j, decompoe X_j em parte explicada pela projecao
-    alvo (primeiro peso preditivo PLS) e residuo:
-        t_tp  = X @ w1 / ||w1||   (target projection scores)
+    alvo e residuo:
+        w_tp   = b / ||b||          (vetor de regressao normalizado)
+        t_tp   = X @ w_tp           (target projection scores, prop. a y_hat)
         p_tp_j = (t_tp^T * X_j) / (t_tp^T * t_tp)
-        SR_j  = Var(t_tp * p_tp_j) / Var(X_j - t_tp * p_tp_j)
+        SR_j   = Var(t_tp * p_tp_j) / Var(X_j - t_tp * p_tp_j)
+
+    Y multi-coluna (one-hot, classificacao multiclasse): o metodo publicado
+    e' definido para y de 1 coluna. Aqui aplica-se a formula EXATA a cada
+    coluna (problema one-vs-rest) independentemente e agrega por MAXIMO
+    entre classes -- uma variavel e' reportada como seletiva se discrimina
+    PELO MENOS uma classe (mesmo espirito da agregacao multi-saida ja usada
+    em `teste_incerteza_martens`, nesta mesma secao do modulo).
 
     Complementa o VIP: SR e mais sensivel a variaveis com correlacao
-    direcional com Y no 1o componente; VIP integra todos os LVs.
+    direcional com Y no componente preditivo; VIP integra todos os LVs.
     Concordancia entre VIP >= 1 e SR alto reforca a relevancia.
     """
     X = np.asarray(X, dtype=float)
-    W = np.asarray(modelo.x_weights_, dtype=float)   # (p, n_lv)
-    w1 = W[:, 0]
-    norm_w = float(np.linalg.norm(w1))
-    if norm_w < 1e-12:
-        return np.zeros(X.shape[1])
-    w1_unit = w1 / norm_w
+    p = X.shape[1]
+    # .coef_ e' (n_targets, n_features) no sklearn atual; versoes antigas
+    # usavam a convencao transposta -- normaliza pelo eixo que bate com p.
+    coef = np.asarray(modelo.coef_, dtype=float)
+    if coef.ndim == 1:
+        coef = coef.reshape(1, -1)
+    if coef.shape[1] != p and coef.shape[0] == p:
+        coef = coef.T
+    n_saidas = coef.shape[0]
 
-    t_tp = X @ w1_unit                  # (n,)
-    tt = float(t_tp @ t_tp)
-    if tt < 1e-12:
-        return np.zeros(X.shape[1])
+    sr_por_saida = np.zeros((n_saidas, p))
+    for k in range(n_saidas):
+        b = coef[k]
+        norm_b = float(np.linalg.norm(b))
+        if norm_b < 1e-12:
+            continue
+        w_tp = b / norm_b
 
-    p_tp   = (t_tp @ X) / tt            # (p,) — target projection loadings
-    X_tp   = np.outer(t_tp, p_tp)       # (n, p) — target-projected X
-    X_res  = X - X_tp                   # (n, p) — residual
+        t_tp = X @ w_tp                     # (n,) -- proporcional a y_hat
+        tt = float(t_tp @ t_tp)
+        if tt < 1e-12:
+            continue
 
-    var_tp  = X_tp.var(axis=0, ddof=1)
-    var_res = X_res.var(axis=0, ddof=1)
-    var_res[var_res < 1e-12] = 1e-12
-    return var_tp / var_res
+        p_tp   = (t_tp @ X) / tt            # (p,) — target projection loadings
+        X_tp   = np.outer(t_tp, p_tp)       # (n, p) — target-projected X
+        X_res  = X - X_tp                   # (n, p) — residual
+
+        var_tp  = X_tp.var(axis=0, ddof=1)
+        var_res = X_res.var(axis=0, ddof=1)
+        var_res[var_res < 1e-12] = 1e-12
+        sr_por_saida[k] = var_tp / var_res
+
+    return sr_por_saida.max(axis=0) if n_saidas > 1 else sr_por_saida[0]
 
 
 def teste_incerteza_martens(
