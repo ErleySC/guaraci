@@ -3382,20 +3382,49 @@ def _rodar_pipeline(cfg: Config) -> None:
 
     console.print()
     t_ini = time.time()
+
+    # CAUSA RAIZ do bug da "tela preta" (2026-08-07/08): `console` (definido
+    # em guaraci_theme.py) e' construido SEM `file=`, entao `Console.file` e'
+    # uma property que resolve `sys.stdout` DINAMICAMENTE a cada escrita
+    # (rich/console.py: `self._file or sys.stdout`). `contextlib.redirect_
+    # stdout` troca `sys.stdout` GLOBALMENTE no processo -- nao por thread.
+    # Enquanto `_run()` (rodando em background) segura esse redirect durante
+    # TODA a execucao do pipeline, o `Live` deste thread principal tambem
+    # passa a escrever no MESMO buffer (`_logger`), nao no terminal de
+    # verdade. Medido isolado: 0 bytes chegavam ao "terminal", 100% ia pro
+    # buffer engolido. O painel nao travava nem estourava altura -- ele
+    # simplesmente escrevia no lugar errado o tempo todo, daí a tela ficar
+    # preta com so' o cursor. A correcao anterior (limitar altura do painel,
+    # vertical_overflow="crop") ficou valida mas nao atacava esta causa.
+    #
+    # Fix: capturar a referencia REAL de stdout/stderr ANTES do redirect
+    # comecar, e fixar `console._file` nela pela duracao do Live -- assim
+    # o Console para de resolver `sys.stdout` dinamicamente e continua
+    # escrevendo no terminal de verdade mesmo com o redirect global ativo
+    # na outra thread.
+    _stdout_real = sys.stdout
+    _file_original = console._file
+    console._file = _stdout_real
+
     thr = threading.Thread(target=_run, daemon=True)
     thr.start()
 
-    # vertical_overflow="crop": rede de seguranca do bug da "tela preta".
-    # Mesmo que o painel volte a crescer alem da janela por algum motivo
-    # futuro, o Rich corta o excesso em vez de perder o controle do cursor
-    # e apagar o terminal. O default ("ellipsis") nao protege o suficiente
-    # no console do Windows.
-    with Live(console=console, refresh_per_second=3,
-              vertical_overflow="crop") as live:
-        while not _done["ok"]:
+    try:
+        # vertical_overflow="crop": rede de seguranca complementar. Mesmo
+        # que o painel volte a crescer alem da janela, o Rich corta o
+        # excesso em vez de perder o controle do cursor.
+        with Live(console=console, refresh_per_second=3,
+                  vertical_overflow="crop") as live:
+            while not _done["ok"]:
+                live.update(_render_painel(time.time() - t_ini))
+                time.sleep(0.3)
             live.update(_render_painel(time.time() - t_ini))
-            time.sleep(0.3)
-        live.update(_render_painel(time.time() - t_ini))
+    finally:
+        # Restaura a resolucao dinamica de sys.stdout assim que o Live
+        # termina -- nao deixar o pin permanente afetaria qualquer outro
+        # uso de `console` depois desta tela (ex.: redirecionamento em
+        # outro comando da mesma sessao do CLI).
+        console._file = _file_original
 
     thr.join()
     console.print()

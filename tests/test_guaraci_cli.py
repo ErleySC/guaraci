@@ -150,6 +150,94 @@ def test_painel_indica_quantos_avisos_foram_ocultados(guaraci_mod):
     assert "problema numero 29" in saida, "aviso mais recente deveria aparecer"
 
 
+def test_console_sem_pin_engole_saida_durante_redirect_global(guaraci_mod):
+    """Reproduz a CAUSA RAIZ do bug da "tela preta" (2026-08-07/08), isolada
+    do resto do CLI.
+
+    `guaraci_theme.console` e' construido sem `file=`, entao `Console.file`
+    resolve `sys.stdout` DINAMICAMENTE a cada escrita (rich/console.py:
+    `self._file or sys.stdout`). `contextlib.redirect_stdout` troca
+    `sys.stdout` GLOBALMENTE no processo, nao por thread -- entao enquanto
+    uma thread de trabalho segura esse redirect (como `_run()` faz durante
+    toda a execucao do pipeline), qualquer `console.print()` do thread
+    principal (como o `Live` do painel) escreve no MESMO buffer
+    redirecionado, nao no terminal. O painel nunca aparecia atualizado --
+    nao porque travasse, mas porque escrevia no lugar errado o tempo todo.
+
+    Sem pin (`console._file = None`, o estado por default), com `sys.stdout`
+    redirecionado por outra thread, a escrita do `console.print()` do thread
+    principal tem que ir parar no buffer redirecionado, nao no "terminal".
+    """
+    import contextlib
+    import io
+    import sys as _sys
+    import threading
+    import time
+
+    console = guaraci_mod.console
+    original_file = console._file
+    terminal = io.StringIO()
+    logger_buf = io.StringIO()
+    real_stdout = _sys.stdout
+    try:
+        console._file = None        # comportamento default: resolve stdout
+        _sys.stdout = terminal      # "terminal" antes do redirect comecar
+
+        def trabalho():
+            with contextlib.redirect_stdout(logger_buf):
+                time.sleep(0.05)
+
+        thr = threading.Thread(target=trabalho)
+        thr.start()
+        time.sleep(0.01)            # garante que o redirect ja esta ativo
+        console.print("progresso")
+        thr.join()
+
+        assert "progresso" in logger_buf.getvalue(), (
+            "premissa do teste nao se confirmou — sem pin, a escrita deveria "
+            "ter sido engolida pelo buffer redirecionado")
+        assert "progresso" not in terminal.getvalue()
+    finally:
+        console._file = original_file
+        _sys.stdout = real_stdout
+
+
+def test_pin_console_file_impede_saida_de_ser_engolida(guaraci_mod):
+    """Com `console._file` FIXADO na referencia real (o fix aplicado em
+    `_rodar_pipeline`), a escrita chega ao destino certo mesmo com um
+    redirect global de `sys.stdout` ativo em outra thread."""
+    import contextlib
+    import io
+    import sys as _sys
+    import threading
+    import time
+
+    console = guaraci_mod.console
+    original_file = console._file
+    real_out = io.StringIO()
+    logger_buf = io.StringIO()
+    try:
+        console._file = real_out   # <-- o fix: pin na referencia real
+
+        def trabalho():
+            with contextlib.redirect_stdout(logger_buf):
+                time.sleep(0.05)
+
+        _sys.stdout = logger_buf   # como ficaria durante a execucao real
+        thr = threading.Thread(target=trabalho)
+        thr.start()
+        console.print("progresso")
+        thr.join()
+
+        assert "progresso" in real_out.getvalue(), (
+            "saida nao chegou ao terminal 'real' mesmo com console._file fixado")
+        assert "progresso" not in logger_buf.getvalue(), (
+            "saida vazou para o buffer de log — pin nao esta protegendo")
+    finally:
+        console._file = original_file
+        _sys.stdout = _sys.__stdout__
+
+
 def test_montar_painel_execucao_progresso_zero_sem_log(guaraci_mod):
     """Sem nenhuma linha de progresso ainda (inicio da execucao), nao
     lanca excecao e mostra ETA como 'calculando' em vez de dividir por zero."""
