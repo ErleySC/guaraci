@@ -97,15 +97,22 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.8.0 | `grep -r version pyproject.toml` |
-| Testes | 634 pass, 2 skip (reverificado 2026-08-07) | `pytest -q` |
-| Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
+| Versão | 31.9.0 | `grep -r version pyproject.toml` |
+| Testes | 663 pass, 2 skip (reverificado 2026-08-08) | `pytest -q` |
+| Cobertura | 67% (reverificado 2026-08-08) | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo | `ruff check .` |
-| `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
-| `print()` em pipeline | 164 | `grep -c "print(" src/guaraci/pipeline.py` |
-| `except` amplos | 51 (100% com `noqa: BLE001` justificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
-| `guaraci.py` | 3318 linhas | `wc -l src/guaraci/guaraci.py` |
+| `executar()` | 1438 linhas (contagem AST, não a linha do `def`) | `grep -n "def executar" src/guaraci/pipeline.py` |
+| `print()` em pipeline | 0 (migração do P6 completa — tabela desatualizada até agora) | `grep -c "print(" src/guaraci/pipeline.py` |
+| `except` amplos | 53 (100% com `noqa: BLE001` justificado, reverificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
+| `guaraci.py` | 3813 linhas (+495 desde 07-13 — wiring de menus/i18n desta sessão) | `wc -l src/guaraci/guaraci.py` |
 | TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
+
+> Atualizado em 2026-08-08 apos a sessao de correcao de figuras + DD-SIMCA
+> (P1 residual fechado, PCV, deteccao robusta). `print()` em pipeline
+> mostrava 164 na tabela desde 07-13 mesmo com a migracao ja concluida
+> naquela mesma data — a tabela nao tinha sido reverificada em nenhuma
+> sessao entre 07-13 e agora, apesar da propria regra deste arquivo pedir
+> reverificacao a cada sessao nova. **Reverifique de novo na proxima.**
 
 > Atualizado em 2026-07-13 após a auditoria de 15 etapas de 2026-07-12. A tabela
 > anterior (114 `except`, `executar()` 1269 linhas, `guaraci.py` 3133 linhas)
@@ -799,7 +806,9 @@ nas primeiras linhas em inglês.
 | # | Item | Prazo | Bloqueia |
 |---|---|---|---|
 | 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos) | depende de conta do autor | **Adoção** |
-| — | **Rodar o pipeline atual (pós-correções 07-13) contra o dataset real do TCC** | só o autor pode (dataset fora do checkout) | Defesa — números antigos citados na monografia não refletem mais o código |
+| — | **N1 (real) rodado e válido** ✅ | feito 2026-08-06, `PLSDA_OE_PorEspecie_...211237` | — |
+| — | **N2 (real) rodado, mas DESATUALIZADO** ⚠️ | rodado 2026-08-07 10:19, **a correção da regra de decisão do DD-SIMCA foi commitada 3h30 depois (13:52, commit `b51f361`)** — o resumo que existe usa a regra retangular antiga (rejeição efetiva ~0,0975, não 0,05). **Precisa reexecutar** antes de citar qualquer número de sensibilidade/especificidade DD-SIMCA do N2 | Defesa — números atuais não refletem o código |
+| — | **N3 nunca rodado com o código corrigido** | só existe uma rodada de 2026-07-05, anterior a TODAS as correções desta sessão (CV, DD-SIMCA, figuras) — precisa rodar do zero | Defesa |
 
 ~~4~~ ~~`docs/VALIDATION.md` — nota sobre nested-CV da Etapa 4~~ ✅ feito — ver seção "AG e SPA (Etapa 4, opcionais)" em `VALIDATION.md`.
 ~~5~~ ~~Seção "Limitações" no MANUAL~~ ✅ já existia (seção 9) e cobre DD-SIMCA/regressão agrupada/modo imagem/FT-NIR-only/joblib/`mae_id` órfão.
