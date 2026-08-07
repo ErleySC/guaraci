@@ -3748,7 +3748,19 @@ def main() -> None:
         console.print()
 
         try:
-            raw = _input(f"  {_t('opcao')}: ")
+            # input() direto (nao _input()): _input() engole EOFError/
+            # KeyboardInterrupt internamente e devolve "" -- com isso o
+            # except abaixo NUNCA disparava em EOF real (stdin fechado/
+            # redirecionado de arquivo vazio/pipe encerrado). "" nao bate
+            # com nenhuma opcao do menu, cai no ramo "invalida" + _pause()
+            # (tambem EOF-safe), e o loop volta a chamar cls() (spawna
+            # subprocesso via os.system) e ler de novo -- SEMPRE "" de novo
+            # em EOF permanente -- girando para sempre, sem sair, gastando
+            # CPU (achado 2026-08-07, "checkup geral" de interface:
+            # reproduzido com stdin vazio, >350 redesenhos em 8s sem
+            # terminar). input() aqui deixa o EOFError propagar ate o
+            # except que ja existe para tratar exatamente este caso.
+            raw = input(f"  {_t('opcao')}: ").strip()
             escolha = "?" if raw == "?" else raw.upper().strip()
         except (EOFError, KeyboardInterrupt):
             _exibir_despedida()

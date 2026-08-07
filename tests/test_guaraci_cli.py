@@ -824,3 +824,43 @@ def test_nome_execucao_alias_tem_mesmo_attr_que_tag(guaraci_mod):
     spec_nome_exec = guaraci_mod._SPEC_BY_KEY.get("nome_execucao")
     assert spec_tag is not None and spec_nome_exec is not None
     assert spec_tag["attr"] == spec_nome_exec["attr"] == "tag"
+
+
+# ── main(): saida graciosa em EOF de stdin (achado 2026-08-07) ─────────────
+# `_input()` engole EOFError/KeyboardInterrupt internamente e devolve "" --
+# no loop principal de main(), "" nao bate com NENHUMA opcao de menu, entao
+# cai no ramo "invalida" + _pause() (tambem EOF-safe) e o loop volta a
+# chamar cls() e ler de novo, sempre "" de novo em EOF permanente. O
+# try/except (EOFError, KeyboardInterrupt) que EXISTIA ao redor da leitura
+# nunca disparava, porque a excecao ja tinha sido engolida por _input()
+# antes de chegar la -- girava para sempre (reproduzido: >350 redesenhos em
+# 8s sem terminar, chamando os.system("cls") a cada iteracao). Corrigido
+# trocando a chamada por input() direto nesse UNICO ponto, deixando o
+# EOFError propagar ate o handler que ja existia.
+
+def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
+    """Propriedade que falhava antes da correcao: main() tem que RETORNAR
+    (nao girar para sempre) quando input() sempre levanta EOFError -- o
+    mesmo efeito de um pipe/redirecionamento de stdin vazio, ou uma sessao
+    interativa que perde a conexao."""
+    import time
+
+    def _input_eof(*_a, **_kw):
+        raise EOFError()
+
+    monkeypatch.setattr("builtins.input", _input_eof)
+    # cls() spawna um subprocesso via os.system a cada iteracao -- sem
+    # mockar, o teste ficaria lento e poluiria a saida do pytest sem
+    # testar nada a mais sobre a correcao.
+    monkeypatch.setattr(guaraci_mod, "cls", lambda: None)
+    # Evita escrever config.yaml/.cli_wizard_done no diretorio real do
+    # pacote (onde _CFG_PATH/_LANG_FLAG apontam por padrao) durante o teste.
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", tmp_path / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", tmp_path / ".cli_wizard_done")
+
+    inicio = time.monotonic()
+    guaraci_mod.main()   # NAO pode travar -- se travar, o teste tambem trava
+    duracao = time.monotonic() - inicio
+    assert duracao < 5.0, (
+        f"main() nao retornou rapido com EOF permanente -- ainda gira? "
+        f"({duracao:.2f}s)")
