@@ -4,8 +4,6 @@ salvo a amostras novas. Extraído de app_quimiometria.py (item 18).
 from __future__ import annotations
 
 import os
-import tempfile
-from pathlib import Path
 from typing import Callable, Dict, List
 
 import pandas as pd
@@ -16,6 +14,7 @@ from guaraci.predicao import (
     validar_pacote_modelo as _validar_pacote_modelo,
     carregar_csv_predicao as _carregar_csv_predicao,
 )
+from guaraci.app_logic import caminho_upload_temp
 
 
 def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
@@ -34,11 +33,31 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
     with col_m1:
         st.markdown("**1. Trained model (.joblib)**")
         if upload_bloqueado:
+            # CORRIGIDO em 2026-08-07 (achado de auditoria de seguranca):
+            # o campo "local path" ficava disponivel MESMO com o upload
+            # bloqueado, e um visitante remoto podia digitar QUALQUER
+            # caminho do servidor ali -- inclusive um arquivo que ele
+            # proprio acabou de subir pelo uploader de CSV da aba Dados
+            # (esse uploader NAO e' bloqueado por GUARACI_DISABLE_MODEL_
+            # UPLOAD, e joblib.load() nao liga para extensao/tipo do
+            # arquivo, so' para o conteudo em bytes). Cadeia completa:
+            # subir um pickle disfarcado de "modelo.csv" -> caminho
+            # previsivel em tempfile.gettempdir()/pq_uploads/ -> colar
+            # esse MESMO caminho aqui -> confiar=True -> RCE remota, sem
+            # autenticacao, apesar da flag de mitigacao estar ativa. Um
+            # campo de texto num app web publico NUNCA e' "so' o
+            # operador digita" -- qualquer visitante alcanca. Por isso
+            # o campo de caminho local tambem fica oculto neste modo, nao
+            # so' o uploader.
             upld_jbl = None
+            cam_jbl = ""
+            confia_modelo = False
             st.info(
-                "🔒 Model upload is disabled on this public deployment "
-                "(a `.joblib`/pickle can execute arbitrary code when loaded). "
-                "Provide a local path to a model file below instead.")
+                "🔒 Model loading (upload and local path) is disabled on "
+                "this public deployment — a `.joblib`/pickle can execute "
+                "arbitrary code when loaded, from ANY path on the server, "
+                "not just uploaded files. Run the CLI or app locally to "
+                "use the Prediction tab.")
         else:
             st.caption(
                 "⚠️ Only upload `.joblib` models you generated yourself. "
@@ -47,13 +66,14 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
             upld_jbl = st.file_uploader("Upload the .joblib model",
                                         type=["joblib", "pkl"],
                                         key="pred_model_upload")
-        cam_jbl  = st.text_input("Or local path to model",
-                                  key="pred_model_path",
-                                  placeholder="C:/results/model_pls.joblib")
-        confia_modelo = st.checkbox(
-            "I trust the source of this model file (required to load it — "
-            "`.joblib` executes code when loaded, see docs/SECURITY.md)",
-            key="pred_model_confia", value=False)
+            cam_jbl  = st.text_input("Or local path to model",
+                                      key="pred_model_path",
+                                      placeholder="C:/results/model_pls.joblib")
+            confia_modelo = st.checkbox(
+                "I trust the source of this model file (required to load "
+                "it — `.joblib` executes code when loaded, see "
+                "docs/SECURITY.md)",
+                key="pred_model_confia", value=False)
 
     with col_m2:
         st.markdown("**2. New spectra (CSV)**")
@@ -83,7 +103,19 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                     "Check 'I trust the source of this model file' above "
                     "before loading — required (see docs/SECURITY.md).")
             elif upld_jbl is not None and not upload_bloqueado:
-                tmp_jbl = Path(tempfile.gettempdir()) / "pq_pred_model.joblib"
+                # Isolado por sessao (achado de auditoria de seguranca,
+                # 2026-08-07 -- ver docstring de app_logic.caminho_upload_temp):
+                # um caminho fixo/previsivel numa pasta temp compartilhada
+                # permite que 2 sessoes concorrentes (deploy multi-usuario)
+                # se pisem -- a sessao B sobrescreve o arquivo entre a
+                # sessao A escrever e carregar, e A acaba executando o
+                # pickle de B sem saber.
+                import uuid
+                if "_upload_session_id" not in st.session_state:
+                    st.session_state["_upload_session_id"] = uuid.uuid4().hex
+                tmp_jbl = caminho_upload_temp(
+                    "pq_pred_model.joblib", st.session_state["_upload_session_id"])
+                tmp_jbl.parent.mkdir(parents=True, exist_ok=True)
                 with open(tmp_jbl, "wb") as f:
                     f.write(upld_jbl.getvalue())
                 pkg_pred = _carregar_modelo(str(tmp_jbl), confiar=True)

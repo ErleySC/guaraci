@@ -4,11 +4,14 @@ Estas funções não dependem de Streamlit, então são testáveis em isolamento
 o objetivo do item 19 é justamente tirar lógica dos monólitos de UI para cá.
 """
 
+from pathlib import Path
+
 import pytest
 
 from guaraci.app_logic import (
     progresso_do_log, fmt_tempo, coletar_config,
     listar_figuras, ler_resumo, ler_model_card,
+    caminho_upload_temp,
 )
 
 
@@ -212,3 +215,51 @@ def test_ler_model_card_prioriza_logs_subpasta(tmp_path):
 
 def test_ler_model_card_ausente_retorna_none(tmp_path):
     assert ler_model_card(str(tmp_path)) is None
+
+
+# ── caminho_upload_temp (achado de auditoria de seguranca, 2026-08-07) ──────
+# Um caminho de upload PREVISIVEL (nome fixo, pasta compartilhada entre
+# sessoes/visitantes) habilitava um bypass de RCE via pickle: um visitante
+# de um deploy publico podia subir um pickle disfarcado de "modelo.csv"
+# pelo uploader de DADOS (nao coberto por GUARACI_DISABLE_MODEL_UPLOAD) e
+# depois apontar a aba Predicao para esse MESMO caminho previsivel
+# (joblib.load nao liga para extensao, so' para os bytes). Estes testes
+# travam as DUAS propriedades que fecham esse bypass.
+
+def test_caminho_upload_temp_bloqueia_path_traversal():
+    """So' o BASENAME do nome original e' usado -- um nome de arquivo
+    malicioso como '../../etc/passwd' nao pode escapar do diretorio de
+    destino."""
+    p = caminho_upload_temp("../../etc/passwd", "sessao123",
+                            base=Path("/base"))
+    assert p == Path("/base/pq_uploads/sessao123/passwd")
+    assert ".." not in p.parts
+
+
+def test_caminho_upload_temp_isola_por_sessao():
+    """Sessoes/visitantes DIFERENTES com o MESMO nome de arquivo devem cair
+    em caminhos DIFERENTES -- e' a propriedade que fecha o bypass de RCE
+    (visitante nao pode mais prever/reusar o caminho de outra sessao)."""
+    p_a = caminho_upload_temp("modelo.csv", "sessao-A", base=Path("/base"))
+    p_b = caminho_upload_temp("modelo.csv", "sessao-B", base=Path("/base"))
+    assert p_a != p_b
+    assert "sessao-A" in p_a.parts
+    assert "sessao-B" in p_b.parts
+
+
+def test_caminho_upload_temp_mesma_sessao_mesmo_nome_da_mesmo_caminho():
+    """Propriedade complementar: DENTRO da mesma sessao, o mesmo nome de
+    arquivo sempre resolve para o mesmo caminho -- preserva a otimizacao de
+    'reusar copia ja salva' que dados.py usa entre reruns do Streamlit."""
+    p1 = caminho_upload_temp("dados.csv", "sessao-X", base=Path("/base"))
+    p2 = caminho_upload_temp("dados.csv", "sessao-X", base=Path("/base"))
+    assert p1 == p2
+
+
+def test_caminho_upload_temp_usa_gettempdir_por_padrao():
+    """Sem `base` explicito, usa o diretorio temporario real do SO (nao
+    lanca, nao exige o parametro)."""
+    p = caminho_upload_temp("x.csv", "sessao1")
+    assert "pq_uploads" in p.parts
+    assert "sessao1" in p.parts
+    assert p.name == "x.csv"

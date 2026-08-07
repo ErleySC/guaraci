@@ -10,7 +10,9 @@ from __future__ import annotations
 import copy
 import os
 import re
+import tempfile
 import threading
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from guaraci.config import NOME_RELATORIOS
@@ -207,6 +209,43 @@ def coletar_config(cfg_base, valores: Dict):
     return cfg, erros
 
 
+# ── Caminho seguro p/ arquivo temporario de upload (achado de auditoria de
+#    seguranca, 2026-08-07) ──────────────────────────────────────────────────
+def caminho_upload_temp(nome_original: str, session_id: str, *,
+                        base: Optional[Path] = None,
+                        subpasta: str = "pq_uploads") -> Path:
+    """Caminho seguro para salvar um arquivo temporario recebido via upload
+    da UI web (CSV de dados, modelo .joblib).
+
+    Duas protecoes:
+
+    1. So' o BASENAME de `nome_original` e' usado (`Path(...).name`) -- um
+       nome de arquivo como "../../etc/passwd" nao consegue escapar do
+       diretorio de destino (bloqueia path traversal).
+    2. Isolado numa subpasta por `session_id`. Sem isso, uploads de
+       sessoes/visitantes DIFERENTES caem no MESMO caminho previsivel
+       (`{tempdir}/pq_uploads/<nome do arquivo>`). Isso habilitava um
+       bypass de RCE via pickle documentado no achado de auditoria de
+       2026-08-07: num deploy publico com upload de MODELO bloqueado
+       (`GUARACI_DISABLE_MODEL_UPLOAD=1`), um visitante ainda podia (a)
+       subir um pickle disfarcado de "modelo.csv" pelo uploader de DADOS
+       (nao coberto pela mesma flag) para um caminho previsivel, e (b)
+       colar esse MESMO caminho no campo "local path" da aba Predicao
+       (joblib.load nao liga para extensao, so' para os bytes) -- RCE
+       remota sem autenticacao, apesar da mitigacao documentada estar
+       ativa. `session_id` deve ser um valor aleatorio gerado uma vez por
+       sessao (nunca exposto ao cliente, ex.: `uuid.uuid4().hex` guardado
+       em `st.session_state`), nunca previsivel/derivado de dado do
+       usuario.
+
+    `base` (opcional, default `tempfile.gettempdir()`) existe so' para
+    tornar a funcao testavel sem depender do diretorio temp real do SO.
+    """
+    raiz = base if base is not None else Path(tempfile.gettempdir())
+    destino = raiz / subpasta / session_id
+    return destino / Path(nome_original).name
+
+
 # ── Leitura de artefatos de uma pasta de resultados ──────────────────────────
 # Puro I/O de arquivo; a UI envolve com @st.cache_data (ver app_quimiometria.py)
 # e guaraci.reports as usa diretamente (sem cache — geração é one-shot).
@@ -251,4 +290,5 @@ def ler_model_card(pasta: str) -> Optional[str]:
 __all__ = ["progresso_do_log", "fmt_tempo", "coletar_config",
            "listar_figuras", "ler_resumo", "ler_model_card",
            "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP",
-           "LogThreadSafe", "figuras_concluidas", "avisos_do_log"]
+           "LogThreadSafe", "figuras_concluidas", "avisos_do_log",
+           "caminho_upload_temp"]
