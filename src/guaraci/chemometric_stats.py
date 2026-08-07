@@ -204,15 +204,32 @@ def hotelling_t2(T: np.ndarray) -> np.ndarray:
 
 
 def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
-    """Hotelling T2 upper control limit (Tracy-Young-Mason 1992).
-
-    Correct small-sample formula, valid for both observations
-    within the calibration set and new observations:
+    """Hotelling T2 upper control limit — Tracy, Young & Mason (1992),
+    Technometrics 34(1):46-53, **Phase II** (new/future observations,
+    F-distribution).
 
         T2_UCL = k * (n - 1) * (n + 1) / (n * (n - k)) * F_(alpha, k, n - k)
 
     Replaces the approximation (k(n-1)/(n-k))*F that underestimated the limit
     by ~5-10% for n<30 (causing false outliers in small datasets).
+
+    CORRIGIDO em 2026-08-07 (achado A5 da auditoria metodologica — ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a docstring
+    anterior afirmava que a formula valia "for both observations within
+    the calibration set and new observations". Isso contradiz o proprio
+    artigo citado: TYM (1992) e' precisamente o trabalho que estabelece
+    que os dois casos usam distribuicoes DIFERENTES -- Fase I (amostras do
+    proprio conjunto de treino) usa distribuicao **Beta**
+    (T2 ~ ((n-1)^2/n) * Beta(k/2, (n-k-1)/2)); Fase II (amostras novas,
+    a formula acima) usa **F**. Esta funcao implementa SO' a de Fase II.
+
+    Onde e' aplicada em contexto de Fase I neste codebase
+    (`dominio_aplicabilidade_treino`, `figuras.fig3_outliers`), o erro
+    numerico medido (razao limite-F / limite-Beta) e' pequeno para os
+    tamanhos de amostra tipicos do projeto (~1.01-1.03x com n~300; sobe a
+    ~2-3x so' com n<20) — ver docs/auditoria/medir_achados.py. Nao
+    corrigido nesta rodada (impacto real medido como baixo); se usada com
+    n pequeno como limite de FASE I, considerar o limite Beta exato.
     """
     if n - k <= 0:
         print(f"[WARNING] Hotelling T2: n={n} too small for k={k} LVs.")

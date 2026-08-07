@@ -29,7 +29,15 @@ percebesse, porque os testes verificam que a função *roda*, não que ela
 | A2 | Selectivity Ratio usa `w1`, não `b/‖b‖` | **CRÍTICA** | `chemometric_stats.py:50` | Jaccard@20 = 0,39 na seleção de variáveis |
 | A3 | Domínio de aplicabilidade usa regra retangular | **ALTA** | `chemometric_stats.py:504-506` | rejeição 11,6% (nominal 5%) |
 | A4 | OPLS-DA multiclasse usa alvo derivado de X (LDA) | MÉDIA | `classificadores.py:448-466` | não medido — método não publicado |
-| A5 | Duas docstrings contradizem a referência citada | BAIXA | `chemometric_stats.py:173,197` | ≤1% no *n* deste projeto |
+| A5 | Docstring de `hotelling_t2_limite` contradiz a referência citada | BAIXA | `chemometric_stats.py:173` | ≤1% no *n* deste projeto |
+
+**Status em 2026-08-07 (pós-correção):** A1, A2, A3 e A5 corrigidos e
+commitados (`validacao_estatistica.py`, `chemometric_stats.py`,
+`classificadores.py`, `pipeline.py`, `predicao.py`); 671 testes passam, 2
+skip. A4 é uma decisão de projeto pendente, não uma correção mecânica — ver
+seção A4. A alegação original de um segundo achado em A5
+(`q_residuos_limite`, atribuição a Jackson & Mudholkar) foi **retratada**
+após reverificação — ver nota na seção A5.
 
 O achado A1 é o mais grave porque atinge exatamente o argumento central do
 projeto: o Guaraci existe para fazer **validação group-aware**, e o teste que
@@ -166,7 +174,7 @@ o caminho publicado. Não deixar como está sem rótulo.
 
 ---
 
-## A5 — Duas docstrings contradizem a referência que citam (BAIXA)
+## A5 — Docstring de `hotelling_t2_limite` contradiz a referência que cita (BAIXA)
 
 **`hotelling_t2_limite` (linha 173).** Cita Tracy-Young-Mason (1992) e afirma
 ser "valid for both observations within the calibration set and new
@@ -189,15 +197,21 @@ Medido — razão limite-F / limite-Beta:
 ordem de centenas (razão ~1,01×). E o caminho `ucl_method="theoretical"`, onde
 n=3-4 tornaria o erro 2-3×, **não é o default** (`config.py:204` =
 `"empirical"`) e desde 2026-08-08 o `T2_UCL` só alimenta a linha de
-diagnóstico, não a decisão. Corrigir a docstring é obrigatório; implementar o
-limite Beta é opcional.
+diagnóstico, não a decisão. **Corrigido em 2026-08-07**: docstring reescrita
+para creditar corretamente Fase II/F e documentar a ressalva de Fase I;
+implementar o limite Beta ficou como melhoria opcional, não feita.
 
-**`q_residuos_limite` (linha 197).** Implementa `g·χ²(h)` por casamento de
-momentos — que é a aproximação de **Box (1954)** / Nomikos & MacGregor (1995),
-não Jackson & Mudholkar (1979), cuja fórmula é outra (baseada em θ₁,θ₂,θ₃,h₀ e
-na normal). As duas são legítimas; a atribuição está trocada, em 3 lugares
-(`chemometric_stats.py:458,474`, `classificadores.py:31,99`). Corrigir a
-citação — o CLAUDE.md exige que toda referência seja verificável.
+**Retratação (`q_residuos_limite`).** A versão original deste relatório
+alegava que a fórmula `g·χ²(h)` de `q_residuos_limite` estava atribuída a
+Jackson & Mudholkar (1979) por engano, e que a atribuição correta seria Box
+(1954). **Reverificado e a alegação estava errada** — buscas adicionais
+confirmam que Jackson & Mudholkar (1979), *Control Procedures for Residuals
+Associated With Principal Component Analysis*, Technometrics 21(3):341-349,
+é exatamente a origem da aproximação por casamento de momentos (`g`, `h`)
+usada para o resíduo Q/SPE em PCA, e é a citação padrão na literatura de
+PCA/quimiometria para essa fórmula (Nomikos & MacGregor 1995 também a citam
+para o mesmo fim). Nenhuma mudança de código ou docstring foi feita para
+este item — a atribuição já existente no código está correta.
 
 ---
 
