@@ -11,12 +11,15 @@ Coberto por tests/test_pipeline_smoke.py e tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
+import logging
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy.stats import f as f_dist, norm as _norm_dist
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.pipeline import Pipeline
+
+log = logging.getLogger(__name__)
 
 
 class StratifiedGroupKFoldEstavel:
@@ -422,15 +425,14 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
                 taxa    = (i + 1) / max(elapsed, 1e-6)
                 eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
                 pct = (i + 1) / n_perm * 100
-                print(f"    Wold {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                      f"valid={n_validos} failed={n_falhos}  "
-                      f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
-                      flush=True)
+                log.info("    Wold %4d/%d  (%5.1f%%)  valid=%d failed=%d  "
+                         "elapsed=%5.1fs  ETA=%5.1fs",
+                         i + 1, n_perm, pct, n_validos, n_falhos, elapsed, eta_s)
     else:
         from joblib import Parallel, delayed
         import threadpoolctl
-        print(f"    Wold: {n_perm} permutacoes em paralelo (n_jobs={n_jobs})...",
-              flush=True)
+        log.info("    Wold: %d permutacoes em paralelo (n_jobs=%d)...",
+                 n_perm, n_jobs)
         # backend="loky" (processos, nao threads): medido que threading NAO
         # acelera aqui — grande parte do tempo e overhead Python do sklearn
         # (validacao/roteamento de metadados), que segura o GIL e nao roda em
@@ -451,8 +453,8 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
                 n_validos += 1
             elif status == "fail":
                 n_falhos += 1
-        print(f"    Wold: concluido em {_time.time() - t0:.1f}s  "
-              f"(valid={n_validos} failed={n_falhos})", flush=True)
+        log.info("    Wold: concluido em %.1fs  (valid=%d failed=%d)",
+                 _time.time() - t0, n_validos, n_falhos)
 
     sims_arr = np.asarray(sims); r2s_arr = np.asarray(r2s); q2s_arr = np.asarray(q2s)
     # Add observed point (sim=1)
@@ -556,15 +558,14 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
                 taxa    = (i + 1) / max(elapsed, 1e-6)
                 eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
                 pct = (i + 1) / n_perm * 100
-                print(f"    Perm {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                      f"valid={len(accs)} failed={n_falhos}  "
-                      f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
-                      flush=True)
+                log.info("    Perm %4d/%d  (%5.1f%%)  valid=%d failed=%d  "
+                         "elapsed=%5.1fs  ETA=%5.1fs",
+                         i + 1, n_perm, pct, len(accs), n_falhos, elapsed, eta_s)
     else:
         from joblib import Parallel, delayed
         import threadpoolctl
-        print(f"    Perm: {n_perm} permutacoes em paralelo (n_jobs={n_jobs})...",
-              flush=True)
+        log.info("    Perm: %d permutacoes em paralelo (n_jobs=%d)...",
+                 n_perm, n_jobs)
         # Ver comentario equivalente em teste_wold: threading nao acelera
         # (overhead Python do sklearn segura o GIL) — loky (processos) sim;
         # threadpool_limits(1) evita oversubscription do BLAS interno.
@@ -579,22 +580,22 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
                 accs.append(acc)
             else:
                 n_falhos += 1
-        print(f"    Perm: concluido em {_time.time() - t0:.1f}s  "
-              f"(valid={len(accs)} failed={n_falhos})", flush=True)
+        log.info("    Perm: concluido em %.1fs  (valid=%d failed=%d)",
+                 _time.time() - t0, len(accs), n_falhos)
 
     n_validos = len(accs)
     failure_rate = n_falhos / n_perm if n_perm > 0 else 0.0
     accs_arr = np.asarray(accs, dtype=float)
 
     if failure_rate > 0.30:
-        print(f"[WARNING] Permutation test: failure rate = "
-              f"{failure_rate:.1%} ({n_falhos}/{n_perm}). "
-              f"Result may be unreliable (classes too "
-              f"imbalanced for stratified CV after shuffle).")
+        log.warning("Permutation test: failure rate = %.1f%% (%d/%d). "
+                    "Result may be unreliable (classes too imbalanced for "
+                    "stratified CV after shuffle).",
+                    failure_rate * 100, n_falhos, n_perm)
 
     if n_validos == 0:
-        print("[ERROR] Permutation test: 0 valid iterations. "
-              "p_value returned as 1.0 (non-informative).")
+        log.error("Permutation test: 0 valid iterations. p_value returned "
+                  "as 1.0 (non-informative).")
         p_val = 1.0
     else:
         p_val = float((np.sum(accs_arr >= acc_obs) + 1) / (n_validos + 1))

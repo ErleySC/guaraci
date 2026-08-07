@@ -11,11 +11,14 @@ Coberto por tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Tuple, cast
 
 import numpy as np
 from scipy.stats import f as f_dist, chi2, t as t_dist
 from sklearn.cross_decomposition import PLSRegression
+
+log = logging.getLogger(__name__)
 
 
 def vip_scores(modelo: PLSRegression) -> np.ndarray:
@@ -232,11 +235,11 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
     n pequeno como limite de FASE I, considerar o limite Beta exato.
     """
     if n - k <= 0:
-        print(f"[WARNING] Hotelling T2: n={n} too small for k={k} LVs.")
+        log.warning("Hotelling T2: n=%d too small for k=%d LVs.", n, k)
         return float("inf")
     if n < 3 * k:
-        print(f"[WARNING] Hotelling T2: n={n} < 3k={3*k}. Limit may be "
-              f"imprecise (wide confidence interval).")
+        log.warning("Hotelling T2: n=%d < 3k=%d. Limit may be imprecise "
+                    "(wide confidence interval).", n, 3 * k)
     return float(((k * (n - 1) * (n + 1)) / (n * (n - k)))
                   * f_dist.ppf(1 - alpha, k, n - k))
 
