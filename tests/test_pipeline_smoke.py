@@ -125,7 +125,8 @@ def test_opls_orthogonality_binary(pq):
 
 
 def test_opls_orthogonality_multiclass(pq):
-    """OPLS 14-class: LDA y-vector used; t_orth still ⊥ t_pred."""
+    """OPLS 14-class: PLS2 y-vector used (achado A4, auditoria 2026-08-07 --
+    era LDA); t_orth still ⊥ t_pred."""
     rng = np.random.default_rng(99)
     n_classes = 14
     n_per = 20

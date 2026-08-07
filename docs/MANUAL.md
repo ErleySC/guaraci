@@ -205,7 +205,7 @@ aparecerem como valores não computados.
   espécie. Em N2 ele é sempre ligado automaticamente (não precisa
   configurar).
 - **OPLS-DA** não é específico de nenhum nível — no Guaraci ele discrimina
-  **espécie** (mesmo alvo do PLS-DA, via LDA quando há mais de duas
+  **espécie** (mesmo alvo do PLS-DA, via PLS2 quando há mais de duas
   classes), então continua disponível como extra no objetivo Classificação.
 
 **Conjunto padrão de fábrica (~8 a 10 figuras "*core*"), qualquer nível:**

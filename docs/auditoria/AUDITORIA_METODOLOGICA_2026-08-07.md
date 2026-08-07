@@ -31,10 +31,11 @@ percebesse, porque os testes verificam que a função *roda*, não que ela
 | A4 | OPLS-DA multiclasse usa alvo derivado de X (LDA) | MÉDIA | `classificadores.py:448-466` | não medido — método não publicado |
 | A5 | Docstring de `hotelling_t2_limite` contradiz a referência citada | BAIXA | `chemometric_stats.py:173` | ≤1% no *n* deste projeto |
 
-**Status em 2026-08-07 (pós-correção):** A1, A2, A3 e A5 corrigidos e
-commitados (`validacao_estatistica.py`, `chemometric_stats.py`,
-`classificadores.py`, `pipeline.py`, `predicao.py`); 671 testes passam, 2
-skip. A4 é uma decisão de projeto pendente, não uma correção mecânica — ver
+**Status em 2026-08-07 (pós-correção): TODOS os 5 achados fechados.** A1-A5
+corrigidos e commitados (`validacao_estatistica.py`, `chemometric_stats.py`,
+`classificadores.py`, `pipeline.py`, `predicao.py`); 672 testes passam, 2
+skip. A4 era uma decisão de projeto (rotular como variante vs. trocar pelo
+método publicado) — o autor optou por trocar por PLS2 multi-coluna, ver
 seção A4. A alegação original de um segundo achado em A5
 (`q_residuos_limite`, atribuição a Jackson & Mudholkar) foi **retratada**
 após reverificação — ver nota na seção A5.
@@ -151,26 +152,36 @@ já existe em vez de uma terceira implementação da regra de decisão.
 
 ---
 
-## A4 — OPLS-DA multiclasse constrói o alvo a partir de X (MÉDIA)
+## A4 — OPLS-DA multiclasse construía o alvo a partir de X (MÉDIA) — ✅ RESOLVIDO em 2026-08-07
 
-`classificadores.py:448-466`: para Y multiclasse, o código ajusta uma
-`LinearDiscriminantAnalysis` em `(X, y)` e usa o **primeiro escore discriminante
+`classificadores.py:448-466`: para Y multiclasse, o código ajustava uma
+`LinearDiscriminantAnalysis` em `(X, y)` e usava o **primeiro escore discriminante
 como o `y` contínuo** do OPLS-DA.
 
 Trygg & Wold (2002) definem OPLS para `y` binário/contínuo; a extensão
 multiclasse publicada é O2PLS/OPLS com Y multi-coluna. Usar um alvo derivado
-de X **não é método publicado** — o comentário no código explica a motivação
-(evitar viés de "primeira classe vs resto"), o que é legítimo como
-raciocínio, mas o resultado é uma variante própria, não OPLS-DA.
+de X **não é método publicado** — o comentário no código explicava a motivação
+(evitar viés de "primeira classe vs resto"), o que era legítimo como
+raciocínio, mas o resultado era uma variante própria, não OPLS-DA.
 
-Dois riscos concretos, nenhum medido nesta rodada:
-- o componente "preditivo" fica parcialmente auto-referencial (alvo é função de X);
-- com p ≫ n a LDA é mal-condicionada; o `except` cai para PLS2 e **muda o eixo
+Dois riscos concretos que a versão anterior tinha, nenhum medido:
+- o componente "preditivo" ficava parcialmente auto-referencial (alvo é função de X);
+- com p ≫ n a LDA é mal-condicionada; o `except` caía para PLS2 e **mudava o eixo
   do S-Plot silenciosamente** (só um `log.warning`).
 
-**Ação:** ou documentar explicitamente como variante do Guaraci (com essa
-palavra) em `VALIDATION.md` e no MANUAL, ou trocar por PLS2 multi-coluna, que é
-o caminho publicado. Não deixar como está sem rótulo.
+**Corrigido:** decisão do autor foi trocar por PLS2 multi-coluna (o caminho
+publicado), em vez de rotular como variante. `OPLSDAWrapper._alvo_continuo`
+(novo método estático, extraído para ser testável) usa o 1º escore Y de um
+`PLSRegression(n_components=1)` ajustado em `(X, Y)` — a direção que capta a
+covariância dominante X-Y entre todas as K classes simultaneamente. Import de
+`LinearDiscriminantAnalysis` e o `try/except` de fallback removidos por
+completo (o fallback virou o único caminho). `MANUAL.md`/`VALIDATION.md`
+atualizados (mencionavam LDA). Testes: os 2 que exercitavam o caminho LDA
+(um smoke test, um teste do fallback via monkeypatch) substituídos por 3 —
+smoke test do caminho PLS2, teste de propriedade que trava `_alvo_continuo`
+contra a fórmula de referência (`y_scores_` do PLS2, centrado), e um teste
+do caso binário (não aciona o ramo multiclasse). 672 testes passam
+(671 + 1 líquido), 2 skip — sem regressão.
 
 ---
 

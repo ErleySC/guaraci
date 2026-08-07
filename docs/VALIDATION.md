@@ -23,7 +23,7 @@
 | CV-ANOVA (Eriksson, Trygg & Wold, 2008) | Q² = 1 − PRESS/SS_total | caso com valores manualmente calculados (SS_total=20, PRESS=2 → Q²=0.90) | \|Δ\| < 1e-9 | `test_cv_anova_q2_formula` |
 | Bootstrap BCa (Efron & Tibshirani, 1993) | propriedades do intervalo (não simulação de cobertura) | predição perfeita → IC=[1,1]; valor observado sempre dentro do IC e em [0,1]; reprodutível com a mesma seed; `n_boot` baixo devolve NaN em vez de um IC enganoso | 5/5 propriedades verificadas | `test_bca_*` (`tests/test_validacao_estatistica.py`) |
 | Teste de permutação (*Y-randomization*) | discriminação sinal × ruído | classes separáveis → p baixo (acc=1.000, **p=0.024**); rótulos aleatórios → p alto (acc=0.475, **p=0.781**) | ambos verificados | `test_permutacao_da_p_baixo_com_sinal_real`, `test_permutacao_da_p_alto_com_rotulos_aleatorios` |
-| OPLS-DA (Trygg & Wold, 2002; Bylesjö et al., 2006) | ortogonalidade de Gram-Schmidt: `t_orth ⟂ t_pred` | produto interno `t_pred · t_orth` — binário e 14 classes (LDA) | < 1e-6 em ambos os casos | `test_opls_orthogonality_binary`, `test_opls_orthogonality_multiclass` |
+| OPLS-DA (Trygg & Wold, 2002; Bylesjö et al., 2006) | ortogonalidade de Gram-Schmidt: `t_orth ⟂ t_pred` | produto interno `t_pred · t_orth` — binário e 14 classes (alvo via PLS2) | < 1e-6 em ambos os casos | `test_opls_orthogonality_binary`, `test_opls_orthogonality_multiclass` |
 
 **Reproduzir:**
 ```bash

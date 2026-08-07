@@ -190,10 +190,14 @@ def test_oplsda_fit_binario_gera_scores_ortogonais():
     assert len(opls.W_orth_) >= 0  # pode convergir com 0 ou 1 componente ortogonal
 
 
-def test_oplsda_fit_multiclasse_usa_lda_para_y_continuo():
-    """Y one-hot multiclasse (>1 coluna) aciona o ramo LDA (fit() reduz a um
-    y continuo antes do NIPALS) -- nao deve lancar excecao e deve treinar
-    componentes ortogonais coerentes com o numero de features."""
+def test_oplsda_fit_multiclasse_usa_pls2_para_y_continuo():
+    """Y one-hot multiclasse (>1 coluna) aciona o ramo PLS2 (fit() reduz a
+    um y continuo antes do NIPALS, via 1o escore Y de um PLS2 ajustado em
+    (X, Y) -- achado A4 da auditoria 2026-08-07: a versao anterior usava
+    LDA, que nao e' o metodo publicado, ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md) -- nao deve
+    lancar excecao e deve treinar componentes ortogonais coerentes com o
+    numero de features."""
     rng = np.random.default_rng(7)
     X = np.vstack([
         _classe_compacta(rng, centro=0.0, n=15, k=6),
@@ -204,33 +208,42 @@ def test_oplsda_fit_multiclasse_usa_lda_para_y_continuo():
 
     opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)
     assert isinstance(opls.W_orth_, list)
+    assert opls.t_pred_train_.shape[0] == 45
 
 
-def test_oplsda_lda_falha_cai_no_fallback_pls2(monkeypatch):
-    """Se a LDA multiclasse falhar (matriz de dispersao intra-classe
-    singular -- caso real com poucas amostras/features colineares), o
-    fit() deve cair no fallback PLS2 em vez de propagar a excecao. Forcado
-    via monkeypatch (a falha real da LDA e' dificil de reproduzir de forma
-    limpa/deterministica via dados publicos, mas o CAMINHO de fallback e'
-    codigo real que precisa continuar correto)."""
-    def _fit_transform_falha(self, X, y):
-        raise ValueError("simulada: matriz de dispersao intra-classe singular")
-
-    monkeypatch.setattr(
-        "sklearn.discriminant_analysis.LinearDiscriminantAnalysis.fit_transform",
-        _fit_transform_falha)
-
-    rng = np.random.default_rng(8)
+def test_oplsda_alvo_multiclasse_bate_com_escore_y_do_pls2():
+    """Propriedade que define a correcao do achado A4: o alvo continuo
+    usado pelo OPLS-DA multiclasse deve ser EXATAMENTE (centrado) o 1o
+    escore Y de um PLS2 ajustado em (X, Y) -- nao mais um escore de LDA,
+    que ignora a covariancia X-Y."""
+    rng = np.random.default_rng(11)
     X = np.vstack([
-        _classe_compacta(rng, centro=0.0, n=10, k=6),
-        _classe_compacta(rng, centro=3.0, n=10, k=6),
-        _classe_compacta(rng, centro=6.0, n=10, k=6),
+        _classe_compacta(rng, centro=0.0, n=12, k=5),
+        _classe_compacta(rng, centro=4.0, n=12, k=5),
+        _classe_compacta(rng, centro=8.0, n=12, k=5),
     ])
-    Y = np.eye(3)[np.array([0] * 10 + [1] * 10 + [2] * 10)]
+    Y = np.eye(3)[np.array([0] * 12 + [1] * 12 + [2] * 12)]
 
-    opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)  # nao deve lancar ValueError
-    assert isinstance(opls.W_orth_, list)
-    assert opls.t_pred_train_.shape[0] == 30
+    y = OPLSDAWrapper._alvo_continuo(X, Y)
+
+    from sklearn.cross_decomposition import PLSRegression
+    pls2 = PLSRegression(n_components=1, scale=False).fit(X, Y)
+    y_esperado = np.asarray(pls2.y_scores_, dtype=float)[:, 0]
+    y_esperado = y_esperado - float(y_esperado.mean())
+
+    np.testing.assert_allclose(y, y_esperado, rtol=1e-9)
+
+
+def test_oplsda_alvo_binario_usa_a_propria_coluna():
+    """Y de 1 coluna (binario): o alvo e' a propria coluna, centrada --
+    nao aciona o ramo PLS2 multiclasse."""
+    rng = np.random.default_rng(12)
+    X = rng.normal(size=(20, 5))
+    y_col = rng.normal(size=20)
+    Y = y_col.reshape(-1, 1)
+
+    y = OPLSDAWrapper._alvo_continuo(X, Y)
+    np.testing.assert_allclose(y, y_col - y_col.mean(), rtol=1e-9)
 
 
 def test_nipals_pls1_com_x_todo_zero_nao_diverge():

@@ -418,37 +418,44 @@ class OPLSDAWrapper(BaseEstimator):
         p = X.T @ t / nt if nt > 1e-12 else np.zeros(X.shape[1])
         return w, t, p
 
+    @staticmethod
+    def _alvo_continuo(X: np.ndarray, Y: np.ndarray) -> np.ndarray:
+        """Alvo y continuo (1 coluna, centrado) usado para achar a direcao
+        preditiva do OPLS via NIPALS PLS1. Captura a direcao de covariancia
+        X-Y dominante. Para Y binario (1 coluna): a propria coluna.
+
+        Para Y multiclasse (K colunas, one-hot): CORRIGIDO em 2026-08-07
+        (achado A4 da auditoria metodologica -- ver
+        docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md). A versao
+        anterior usava o 1o escore de uma LinearDiscriminantAnalysis(X,
+        y_int) como alvo -- nao e' o metodo publicado: Trygg & Wold (2002)
+        definem OPLS para y binario/continuo; a extensao multiclasse
+        publicada e' OPLS/O2PLS com Y multi-coluna via PLS2, nao um alvo
+        derivado separadamente de X por um classificador supervisionado (a
+        LDA usa so' a estrutura de classes em X, ignorando a covariancia
+        X-Y que define o eixo preditivo do (O)PLS). Usa-se agora o escore Y
+        da 1a variavel latente de um PLS2 ajustado em (X, Y) -- a direcao
+        que capta a covariancia dominante X-Y entre TODAS as K classes
+        simultaneamente, o caminho publicado. Using Y[:,0] (first class vs.
+        rest) would silently bias the OPLS toward one class only — a
+        methodological error for 14-class FT-NIR data; PLS2's y_scores_
+        avoids that by construction (all K columns enter the covariance
+        direction jointly).
+        """
+        if Y.ndim == 2 and Y.shape[1] > 1:
+            _pls2 = PLSRegression(n_components=1, scale=False)
+            _pls2.fit(X, Y)
+            _ys = _pls2.y_scores_
+            y = (np.asarray(_ys, dtype=float)[:, 0]
+                 if _ys is not None else Y @ np.ones(Y.shape[1]))
+        else:
+            y = (Y[:, 0] if Y.ndim == 2 else Y.copy()).astype(float)
+        return y - float(y.mean())
+
     def fit(self, X: np.ndarray, Y: np.ndarray) -> "OPLSDAWrapper":
         X = np.asarray(X, dtype=float)
         Y = np.asarray(Y, dtype=float)
-        # Build a single continuous y that captures all-class discriminant structure.
-        # For binary Y (1 column): use that column directly.
-        # For multiclass Y (K columns, one-hot): use the first Linear Discriminant
-        # component (LDA), which maximally separates all K classes simultaneously.
-        # Using Y[:,0] (first class vs. rest) would silently bias the OPLS toward
-        # one class only — a methodological error for 14-class FT-NIR data.
-        if Y.ndim == 2 and Y.shape[1] > 1:
-            from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as _LDA
-            y_int_opls = np.argmax(Y, axis=1)
-            try:
-                _lda = _LDA(n_components=1)
-                y = _lda.fit_transform(X, y_int_opls)[:, 0].astype(float)
-            except (ValueError, np.linalg.LinAlgError) as _e_lda:
-                # LDA falha tipicamente com matriz de dispersao intra-classe
-                # singular (classe com poucas/colineares amostras) -- cai p/
-                # o fallback PLS2 (menos otimo mas correto p/ multiclasse).
-                # Registrado pois muda o eixo y do OPLS-DA/S-Plot silenciosamente.
-                log.warning("OPLS-DA: LDA falhou (%s); usando fallback PLS2.",
-                           _e_lda)
-                from sklearn.cross_decomposition import PLSRegression as _PLSr
-                _pls2 = _PLSr(n_components=1, scale=False)
-                _pls2.fit(X, Y)
-                _ys = _pls2.y_scores_
-                y = (np.asarray(_ys, dtype=float)[:, 0]
-                     if _ys is not None else Y @ np.ones(Y.shape[1]))
-        else:
-            y = (Y[:, 0] if Y.ndim == 2 else Y.copy()).astype(float)
-        y = y - float(y.mean())
+        y = self._alvo_continuo(X, Y)
 
         n = X.shape[0]
         Xr = X.copy()
