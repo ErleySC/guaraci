@@ -2116,6 +2116,11 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
 
     Ref: Rodionova & Pomerantsev (2020) Chemom. Intell. Lab. Syst. 200:103958.
     """
+    rotulos = np.asarray(rotulos, dtype=str)
+    classes_todas = np.unique(rotulos)
+    s_pt, alpha_pt, _lw_pt = parametros_scatter_adaptativos(
+        len(rotulos), len(classes_todas))
+
     classes_dd = sorted(ddsimca_res.keys())
     pares = [(classes_dd[i], classes_dd[j])
              for i in range(len(classes_dd))
@@ -2141,11 +2146,11 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
         qA  = np.sqrt(np.clip(np.asarray(ddsimca_res[clsA]["Q_norm"]), 0, None))
         qB  = np.sqrt(np.clip(np.asarray(ddsimca_res[clsB]["Q_norm"]), 0, None))
 
-        for cls in sorted(set(rotulos)):
+        for cls in classes_todas:
             mask = rotulos == cls
             ax.scatter(qA[mask], qB[mask],
                        color=mapa_cores.get(cls, "#999999"),
-                       s=20, alpha=0.80, label=cls,
+                       s=s_pt, alpha=alpha_pt, label=cls,
                        edgecolors="none", zorder=3)
 
         ax.axhline(1.0, color="black", lw=0.9, ls="--")
