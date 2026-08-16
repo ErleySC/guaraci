@@ -76,7 +76,7 @@ def projeto():
     return {
         "nome": "Projeto de teste",
         "autor": "Autor Teste",
-        "inst": "GEAAp/UFPA",
+        "inst": "Laboratorio de Teste",
         "tipo": "Classificacao",
         "objetivo": "Verificar geracao de relatorio sem erro de encoding.",
     }

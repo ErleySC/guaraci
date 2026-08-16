@@ -100,7 +100,7 @@ def render(pq, T: Callable[[str], str], is_public_demo: bool = False) -> None:
         st.text_input("Author(s)", key="proj_autor",
                       placeholder="e.g.: Silva, J.A.; Costa, M.B.")
         st.text_input("Institution / Laboratory", key="proj_inst",
-                      placeholder="e.g.: GEAAp / UFPA")
+                      placeholder="e.g.: Analytical Chemistry Laboratory")
     with c2:
         st.text_area("Objective", key="proj_objetivo", height=182,
                      placeholder="Describe the objective of the chemometric analysis...")

@@ -2731,7 +2731,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             p2 = ("Oferece um ambiente confiavel, reproducivel e bilingue (PT/EN)"
                   " para classificacao, autenticacao e exploracao de matrizes complexas"
                   " — do FT-NIR ao GC-MS, sem escrever uma linha de codigo.")
-            p3 = ("Desenvolvido no ambito de uma pesquisa PIBIC/UFPA sobre oleos"
+            p3 = ("Desenvolvido no ambito de uma pesquisa sobre oleos"
                   " vegetais amazonicos, com metodologia generalizavel para"
                   " qualquer tecnica analitica com dados multivariados.")
         else:
@@ -2740,7 +2740,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             p2 = ("Provides a reliable, reproducible and bilingual (PT/EN)"
                   " environment for classification, authentication and exploration"
                   " of complex matrices — from FT-NIR to GC-MS, without writing code.")
-            p3 = ("Developed within a PIBIC/UFPA research project on Amazonian"
+            p3 = ("Developed within a research project on Amazonian"
                   " vegetable oils, with a methodology generalized to any"
                   " analytical technique with multivariate data.")
         prop_lbl = "Proposito" if lang == "PT" else "Purpose"

@@ -54,8 +54,14 @@ para classificação, autenticação, exploração e quantificação de matrizes
 Caso de uso âncora: autenticação de óleos fixos amazônicos por FT-NIR (ABB MB3600,
 8192 pts, ~934 amostras, 14 classes, adulterantes soja/milho/algodão).
 
-**Contexto do autor:** Erley, graduação em Química (UFPA), grupo GEAAp. Este é o
-software do TCC, mas a ambição é que ele seja usável por terceiros.
+**Contexto do autor:** Erley, graduação em Química. Este é o software do TCC,
+mas a ambição é que ele seja usável por terceiros.
+
+> **Repositório público desde 2026-08-07.** Não introduzir referência a
+> instituição/grupo de pesquisa em nenhum arquivo versionado (decisão
+> explícita do autor) — nem em código, UI, docs, metadados de citação ou
+> no paper. Vale também para arquivos internos como este: o repo é
+> público, tudo aqui é visível.
 
 ### Diferencial real
 **Validação group-aware (`GroupKFold` por `mae_id`)** — impede que réplicas físicas

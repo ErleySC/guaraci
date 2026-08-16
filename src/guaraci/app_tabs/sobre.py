@@ -57,9 +57,9 @@ def render(pq, T: Callable[[str], str]) -> None:
             "(PT/EN) para classificação, autenticação e exploração de "
             "matrizes complexas — do FT-NIR ao GC-MS, sem escrever uma "
             "linha de código.\n\n"
-            "Desenvolvido no âmbito de uma pesquisa PIBIC/UFPA sobre "
-            "óleos vegetais amazônicos, com metodologia generalizável "
-            "para qualquer técnica analítica com dados multivariados."
+            "Desenvolvido no âmbito de uma pesquisa sobre óleos vegetais "
+            "amazônicos, com metodologia generalizável para qualquer "
+            "técnica analítica com dados multivariados."
         )
     else:
         st.markdown(
@@ -69,9 +69,9 @@ def render(pq, T: Callable[[str], str]) -> None:
             "for classification, authentication and exploration of "
             "complex matrices — from FT-NIR to GC-MS, without writing "
             "a single line of code.\n\n"
-            "Developed within a PIBIC/UFPA research project on Amazonian "
-            "vegetable oils, with a methodology generalized to any "
-            "analytical technique with multivariate data."
+            "Developed within a research project on Amazonian vegetable "
+            "oils, with a methodology generalized to any analytical "
+            "technique with multivariate data."
         )
     st.caption(
         "Técnicas: FT-NIR · NIR · MIR/FTIR · Raman · UV-Vis · "

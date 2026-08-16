@@ -11,14 +11,15 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Seguranca: fecha bypass da
              menores.
              [AUDITORIA DE SEGURANCA] GUARACI_DISABLE_MODEL_UPLOAD=1
              (mitigacao documentada em SECURITY.md p/ deploy publico)
-             desabilitava so' o uploader de .joblib -- o campo de texto
-             "local path" na aba Predicao continuava visivel, e o uploader
-             de CSV da aba Dados (nao coberto pela mesma flag) escrevia em
-             caminho PREVISIVEL (pasta temp compartilhada, nome fixo).
-             joblib.load() nao liga p/ extensao, so' bytes: um visitante
-             remoto podia subir um pickle disfarcado de "modelo.csv" e
-             depois colar esse MESMO caminho no campo local -- RCE sem
-             autenticacao, apesar da mitigacao ativa. Corrigido em 2
+             desabilitava APENAS o uploader de .joblib, deixando um
+             segundo caminho de entrada pelo qual um visitante remoto NAO
+             autenticado conseguia fazer o servidor carregar um pickle
+             escolhido por ele -- RCE, apesar da mitigacao estar
+             corretamente configurada. Passo a passo omitido de proposito
+             enquanto a correcao nao estiver implantada no deploy publico
+             (ver nota de divulgacao adiada em docs/auditoria/
+             AUDITORIA_SEGURANCA_2026-08-07.md); permanece no historico
+             do Git p/ quem precisar auditar. Corrigido em 2
              camadas: (1) campo de caminho local tambem oculto quando
              upload_bloqueado=True -- nesse modo a aba Predicao nao
              carrega nada pela web; (2) nova app_logic.caminho_upload_temp()
@@ -377,7 +378,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-06 — UI: markup cru, vazamento de PT em
              atualizados para bater com o que o software gera desde a
              remocao do branding institucional (ver nota de 2026-08-05
              abaixo); contradicao de copyright corrigida em README.md/
-             README.pt-br.md/COMMERCIAL.md ("Erley S. da Costa & GEAAp/UFPA"
+             README.pt-br.md/COMMERCIAL.md (autor + instituicao
              vs "o autor retem integralmente o copyright" no mesmo
              documento -- ficava so' com Erley, conforme decisao ja
              registrada no CLAUDE.md); CITATION.cff perde o bloco

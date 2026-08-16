@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 # =========================================================================
 #  parse_title v3 — metadata extraction from ##TITLE= JCAMP-DX
-#  Expected format (Amazonian oils, ABB MB3600 — GEAAp/UFPA):
+#  Expected format (Amazonian oils, ABB MB3600):
 #      PURE:        {COD}-{DD-MM-YYYY}_T{N}
 #      ADULTERATED: {COD}-{DD-MM-YYYY}-AD-{A|M|S}-{N,NN}%_T{N}
 # =========================================================================
@@ -36,7 +36,7 @@ CODIGO_ESPECIE: Dict[str, str] = {
     "BCB": "Bacaba",     "BUR": "Buriti",          "CAP": "Castanha do Pará",
     "COC": "Coco",       "COP": "Copaíba",         "GOI": "Goiaba",
     "GRA": "Graviola",   "MAR": "Maracujá",
-    "AR":  "Maracujá",   # codificacao encontrada no dataset GEAAp/UFPA
+    "AR":  "Maracujá",   # codificacao alternativa encontrada no dataset original
     "PAL": "Palmiste",   "PAT": "Patauá",          "PRA": "Pracaxi",
 }
 ADULTERANTE_NOME: Dict[str, str] = {"A": "algodão", "M": "milho", "S": "soja"}
@@ -65,7 +65,7 @@ def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
         return None
     return ADULTERANTE_NOME[letra]
 
-# Regex robust to deviations found in the real GEAAp/UFPA dataset:
+# Regex robust to deviations found in the real reference dataset:
 #   - surrounding whitespace                   "## TITLE= GOI-..."
 #   - separator after COD/DATE: "-" or "_"     "AND_10-06-2020_AD-S-..."
 #   - optional separator before T              "...%T_3"  (no '-' or '_')
