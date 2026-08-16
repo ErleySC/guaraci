@@ -206,6 +206,12 @@ class Config:
     # (exploratory; works with few pure samples). 'puros' = true one-class N2
     # but requires >=15 pure/class (current data: 3/class).
     ddsimca_treinar_em: str = "puros"   # 'todos' | 'puros'
+    # Diagnostico complementar ao LOGO via Procrustes Cross-Validation
+    # (Kucheryavskiy/Rodionova/Pomerantsev) -- exige o extra opcional
+    # [robusto] (pacote 'prcv'). NUNCA substitui o aviso "nao validado" do
+    # LOGO quando ha' so' 1 grupo de replica -- ver
+    # classificadores.sensibilidade_ddsimca_pcv().
+    ddsimca_pcv: bool = False
     # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
     executar_opls: bool = False
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components

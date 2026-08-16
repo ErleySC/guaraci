@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import copy
 import os
-import tempfile
-from pathlib import Path
 from typing import Callable, Dict
 
 import numpy as np
@@ -14,7 +12,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
-from guaraci.app_logic import coletar_config
+from guaraci.app_logic import coletar_config, caminho_upload_temp
 from guaraci.cli_assistente import PROFILES
 
 
@@ -91,9 +89,20 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         help="The file will be saved to a temporary folder and the path adjusted automatically.",
     )
     if upld is not None:
-        tmp_dir = Path(tempfile.gettempdir()) / "pq_uploads"
-        tmp_dir.mkdir(exist_ok=True)
-        tmp_path = str(tmp_dir / Path(upld.name).name)  # basename only — blocks path traversal
+        # Subpasta por SESSAO (achado S1 da auditoria de seguranca,
+        # 2026-08-07 -- ver docstring de app_logic.caminho_upload_temp):
+        # antes, todos os uploads (de todas as sessoes/visitantes) caiam
+        # na MESMA pasta compartilhada com o nome original do arquivo --
+        # um caminho PREVISIVEL, que era uma das pecas do bypass de RCE
+        # via pickle. Um id aleatorio por sessao (nunca exposto ao
+        # cliente) isola os uploads de cada visitante dos demais.
+        import uuid
+        if "_upload_session_id" not in st.session_state:
+            st.session_state["_upload_session_id"] = uuid.uuid4().hex
+        tmp_path_obj = caminho_upload_temp(upld.name,
+                                           st.session_state["_upload_session_id"])
+        tmp_path_obj.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = str(tmp_path_obj)
         if (st.session_state.get("_csv_upload_name") != upld.name
                 or not os.path.exists(tmp_path)):
             with open(tmp_path, "wb") as f:

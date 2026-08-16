@@ -9,12 +9,11 @@ abstract: >
   (HPLC, GC-MS) and resonance (NMR, IMS) data. It implements PLS-DA, OPLS-DA,
   DD-SIMCA, VIP, SHAP and Monte Carlo CV with anti-leakage group-aware
   validation, and offers a Rich-based bilingual terminal interface (GUARACI)
-  plus a Streamlit web app. Originally developed at GEAAp/UFPA for FT-NIR
-  authentication of Amazonian vegetable oils.
+  plus a Streamlit web app. Originally developed for FT-NIR authentication of
+  Amazonian vegetable oils.
 authors:
   - family-names: "Costa"
     given-names: "Erley S. da"
-    affiliation: "GEAAp/UFPA — Grupo de Espectroscopia Analítica Aplicada"
     email: "erleysdacosta@gmail.com"
     website: "http://lattes.cnpq.br/5755582193284309"
     orcid: "https://orcid.org/0009-0005-9655-6349"
@@ -80,7 +79,6 @@ preferred-citation:
   authors:
     - family-names: "Costa"
       given-names: "Erley S. da"
-      affiliation: "GEAAp/UFPA"
       website: "http://lattes.cnpq.br/5755582193284309"
       orcid: "https://orcid.org/0009-0005-9655-6349"
   version: "31.9.0"

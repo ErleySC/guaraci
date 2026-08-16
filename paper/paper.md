@@ -14,7 +14,7 @@ authors:
     orcid: "0009-0005-9655-6349"
     affiliation: 1
 affiliations:
-  - name: Grupo de Espectroscopia Analítica Aplicada (GEAAp), Universidade Federal do Pará (UFPA), Brazil
+  - name: Independent Researcher, Brazil
     index: 1
 date: 12 July 2026
 bibliography: paper.bib
@@ -121,8 +121,7 @@ chemometrics literature for this dataset (`docs/BENCHMARK_TECATOR.md`).
 
 # Acknowledgements
 
-The author thanks the Grupo de Espectroscopia Analítica Aplicada (GEAAp) at
-Universidade Federal do Pará (UFPA) for the FT-NIR data and infrastructure
-that motivated this work.
+The author thanks the research group that provided the FT-NIR data and
+infrastructure that motivated this work.
 
 # References

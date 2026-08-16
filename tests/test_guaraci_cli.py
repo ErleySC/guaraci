@@ -106,6 +106,138 @@ def test_montar_painel_execucao_sem_avisos_nao_mostra_secao(guaraci_mod):
     assert "Avisos" not in saida
 
 
+def test_painel_nao_estoura_altura_do_terminal(guaraci_mod):
+    """Regressao do bug da "tela preta" (2026-08-07).
+
+    `figuras_concluidas` e `avisos_do_log` cresciam sem teto; numa corrida
+    completa o painel passava de 35 linhas num terminal de 24. O Live do
+    Rich perde o controle do cursor quando o bloco nao cabe na janela e a
+    tela fica preta com so' o cursor piscando -- o calculo continua, mas o
+    usuario nao ve mais nada. O painel tem que ter altura LIMITADA
+    independentemente de quantos avisos/figuras aparecam.
+    """
+    from rich.console import Console
+    figs = "".join(f"  -> C:/x/Graficos/fig_numero_{i}_nome_longo.png\n"
+                   for i in range(40))
+    avisos = "".join(f"  [AVISO] aviso distinto {i} com texto bem longo "
+                     f"que ocupa espaco na horizontal tambem\n"
+                     for i in range(100))
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log=figs + "[7/7]\n" + avisos, elapsed=600.0,
+        objetivo_rotulo="Classificacao",
+        plano_figuras=[f"f{i}" for i in range(40)])
+
+    for largura in (80, 100, 120):
+        altura = len(Console(width=largura).render_lines(painel, pad=False))
+        assert altura <= 24, (
+            f"painel com {altura} linhas em largura {largura} — nao cabe num "
+            "terminal padrao de 24 linhas; o bug da tela preta voltou")
+
+
+def test_painel_indica_quantos_avisos_foram_ocultados(guaraci_mod):
+    """Truncar nao pode ESCONDER informacao silenciosamente: o total real
+    e quantos ficaram de fora tem que aparecer."""
+    from rich.console import Console
+    avisos = "".join(f"  [AVISO] problema numero {i}\n" for i in range(30))
+    painel = guaraci_mod._montar_painel_execucao(
+        texto_log=avisos, elapsed=10.0, objetivo_rotulo="Classificacao",
+        plano_figuras=["a"])
+    console = Console(width=110, file=__import__("io").StringIO())
+    console.print(painel)
+    saida = console.file.getvalue()
+    assert "(30)" in saida, "total real de avisos sumiu do painel"
+    assert "+26" in saida, "contador de avisos ocultos ausente"
+    assert "problema numero 29" in saida, "aviso mais recente deveria aparecer"
+
+
+def test_console_sem_pin_engole_saida_durante_redirect_global(guaraci_mod):
+    """Reproduz a CAUSA RAIZ do bug da "tela preta" (2026-08-07/08), isolada
+    do resto do CLI.
+
+    `guaraci_theme.console` e' construido sem `file=`, entao `Console.file`
+    resolve `sys.stdout` DINAMICAMENTE a cada escrita (rich/console.py:
+    `self._file or sys.stdout`). `contextlib.redirect_stdout` troca
+    `sys.stdout` GLOBALMENTE no processo, nao por thread -- entao enquanto
+    uma thread de trabalho segura esse redirect (como `_run()` faz durante
+    toda a execucao do pipeline), qualquer `console.print()` do thread
+    principal (como o `Live` do painel) escreve no MESMO buffer
+    redirecionado, nao no terminal. O painel nunca aparecia atualizado --
+    nao porque travasse, mas porque escrevia no lugar errado o tempo todo.
+
+    Sem pin (`console._file = None`, o estado por default), com `sys.stdout`
+    redirecionado por outra thread, a escrita do `console.print()` do thread
+    principal tem que ir parar no buffer redirecionado, nao no "terminal".
+    """
+    import contextlib
+    import io
+    import sys as _sys
+    import threading
+    import time
+
+    console = guaraci_mod.console
+    original_file = console._file
+    terminal = io.StringIO()
+    logger_buf = io.StringIO()
+    real_stdout = _sys.stdout
+    try:
+        console._file = None        # comportamento default: resolve stdout
+        _sys.stdout = terminal      # "terminal" antes do redirect comecar
+
+        def trabalho():
+            with contextlib.redirect_stdout(logger_buf):
+                time.sleep(0.05)
+
+        thr = threading.Thread(target=trabalho)
+        thr.start()
+        time.sleep(0.01)            # garante que o redirect ja esta ativo
+        console.print("progresso")
+        thr.join()
+
+        assert "progresso" in logger_buf.getvalue(), (
+            "premissa do teste nao se confirmou — sem pin, a escrita deveria "
+            "ter sido engolida pelo buffer redirecionado")
+        assert "progresso" not in terminal.getvalue()
+    finally:
+        console._file = original_file
+        _sys.stdout = real_stdout
+
+
+def test_pin_console_file_impede_saida_de_ser_engolida(guaraci_mod):
+    """Com `console._file` FIXADO na referencia real (o fix aplicado em
+    `_rodar_pipeline`), a escrita chega ao destino certo mesmo com um
+    redirect global de `sys.stdout` ativo em outra thread."""
+    import contextlib
+    import io
+    import sys as _sys
+    import threading
+    import time
+
+    console = guaraci_mod.console
+    original_file = console._file
+    real_out = io.StringIO()
+    logger_buf = io.StringIO()
+    try:
+        console._file = real_out   # <-- o fix: pin na referencia real
+
+        def trabalho():
+            with contextlib.redirect_stdout(logger_buf):
+                time.sleep(0.05)
+
+        _sys.stdout = logger_buf   # como ficaria durante a execucao real
+        thr = threading.Thread(target=trabalho)
+        thr.start()
+        console.print("progresso")
+        thr.join()
+
+        assert "progresso" in real_out.getvalue(), (
+            "saida nao chegou ao terminal 'real' mesmo com console._file fixado")
+        assert "progresso" not in logger_buf.getvalue(), (
+            "saida vazou para o buffer de log — pin nao esta protegendo")
+    finally:
+        console._file = original_file
+        _sys.stdout = _sys.__stdout__
+
+
 def test_montar_painel_execucao_progresso_zero_sem_log(guaraci_mod):
     """Sem nenhuma linha de progresso ainda (inicio da execucao), nao
     lanca excecao e mostra ETA como 'calculando' em vez de dividir por zero."""
@@ -162,9 +294,16 @@ def test_preset_objetivo_aplica_no_config_via_spec(
 
 # ── Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12) ───────
 @pytest.fixture(autouse=False)
-def _modo_iniciante_limpo(guaraci_mod):
+def _modo_iniciante_limpo(guaraci_mod, monkeypatch, tmp_path):
     """Reseta o estado global de modo antes/depois de cada teste desta secao
-    -- _STATE e' um dict de modulo, persiste entre testes sem isolamento."""
+    -- _STATE e' um dict de modulo, persiste entre testes sem isolamento.
+
+    _MODO_FLAG tambem e' redirecionado para tmp_path: _toggle_modo_usuario()
+    grava em disco de verdade (_set_modo_usuario), e sem isso o teste
+    escrevia em _USER_DIR (~/.guaraci por padrao) -- o HOME real de quem
+    roda os testes, achado ao mexer em _CFG_PATH/_LANG_FLAG (2026-08-07)."""
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", tmp_path / ".cli_modo_usuario")
     anterior = guaraci_mod._modo_usuario()
     guaraci_mod._STATE["modo_usuario"] = "iniciante"
     yield
@@ -692,3 +831,144 @@ def test_nome_execucao_alias_tem_mesmo_attr_que_tag(guaraci_mod):
     spec_nome_exec = guaraci_mod._SPEC_BY_KEY.get("nome_execucao")
     assert spec_tag is not None and spec_nome_exec is not None
     assert spec_tag["attr"] == spec_nome_exec["attr"] == "tag"
+
+
+# ── main(): saida graciosa em EOF de stdin (achado 2026-08-07) ─────────────
+# `_input()` engole EOFError/KeyboardInterrupt internamente e devolve "" --
+# no loop principal de main(), "" nao bate com NENHUMA opcao de menu, entao
+# cai no ramo "invalida" + _pause() (tambem EOF-safe) e o loop volta a
+# chamar cls() e ler de novo, sempre "" de novo em EOF permanente. O
+# try/except (EOFError, KeyboardInterrupt) que EXISTIA ao redor da leitura
+# nunca disparava, porque a excecao ja tinha sido engolida por _input()
+# antes de chegar la -- girava para sempre (reproduzido: >350 redesenhos em
+# 8s sem terminar, chamando os.system("cls") a cada iteracao). Corrigido
+# trocando a chamada por input() direto nesse UNICO ponto, deixando o
+# EOFError propagar ate o handler que ja existia.
+
+def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
+    """Propriedade que falhava antes da correcao: main() tem que RETORNAR
+    (nao girar para sempre) quando input() sempre levanta EOFError -- o
+    mesmo efeito de um pipe/redirecionamento de stdin vazio, ou uma sessao
+    interativa que perde a conexao."""
+    import time
+
+    def _input_eof(*_a, **_kw):
+        raise EOFError()
+
+    monkeypatch.setattr("builtins.input", _input_eof)
+    # cls() spawna um subprocesso via os.system a cada iteracao -- sem
+    # mockar, o teste ficaria lento e poluiria a saida do pytest sem
+    # testar nada a mais sobre a correcao.
+    monkeypatch.setattr(guaraci_mod, "cls", lambda: None)
+    # Evita escrever/migrar estado no HOME real de quem roda os testes
+    # (_USER_DIR aponta por padrao para ~/.guaraci -- ver _migrar_estado_legado).
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", tmp_path / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", tmp_path / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", tmp_path / "perfis")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", tmp_path / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", tmp_path / ".cli_modo_usuario")
+
+    inicio = time.monotonic()
+    guaraci_mod.main()   # NAO pode travar -- se travar, o teste tambem trava
+    duracao = time.monotonic() - inicio
+    assert duracao < 5.0, (
+        f"main() nao retornou rapido com EOF permanente -- ainda gira? "
+        f"({duracao:.2f}s)")
+
+
+# ── _CFG_PATH/_LANG_FLAG fora do diretorio de instalacao (achado 2026-08-07) ─
+# config.yaml/perfis/flags de idioma-modo/codigos de usuario eram gravados
+# dentro de _BASE_DIR (o diretorio de INSTALACAO do pacote) -- quebra em
+# qualquer instalacao read-only (pip de sistema, Docker, `pip install
+# --user` em alguns casos). Movido para _USER_DIR (~/.guaraci), com
+# migracao best-effort do estado gravado pela versao anterior.
+
+def test_estado_do_usuario_fica_fora_do_diretorio_de_instalacao(guaraci_mod):
+    """Propriedade que falhava antes da correcao: nenhum dos caminhos de
+    estado do usuario pode estar DENTRO de _BASE_DIR (o pacote instalado)."""
+    base = str(guaraci_mod._BASE_DIR)
+    for caminho in (guaraci_mod._CFG_PATH, guaraci_mod._PERFIS_DIR,
+                    guaraci_mod._LANG_FLAG, guaraci_mod._CODIGOS_PATH,
+                    guaraci_mod._MODO_FLAG):
+        assert not str(caminho).startswith(base), (
+            f"{caminho} ainda esta dentro do diretorio de instalacao do "
+            "pacote -- quebra em instalacao read-only")
+
+
+def test_migrar_estado_legado_copia_arquivos_que_faltam(guaraci_mod, monkeypatch, tmp_path):
+    """Arquivos existentes no local ANTIGO (_BASE_DIR) e ausentes no NOVO
+    (_USER_DIR) devem ser copiados -- efeito pratico: quem ja usava o CLI
+    antes desta correcao nao perde config/perfis/codigos salvos."""
+    base_antigo = tmp_path / "pacote_antigo"
+    base_antigo.mkdir()
+    (base_antigo / "config.yaml").write_text("nivel: N2\n", encoding="utf-8")
+    (base_antigo / ".cli_wizard_done").write_text("EN", encoding="utf-8")
+    (base_antigo / "codigos_usuario.json").write_text('{"XYZ": "Teste"}',
+                                                       encoding="utf-8")
+    perfis_antigo = base_antigo / "perfis"
+    perfis_antigo.mkdir()
+    (perfis_antigo / "meu_perfil.yaml").write_text("tag: x\n", encoding="utf-8")
+
+    dir_novo = tmp_path / "home_novo" / ".guaraci"
+    monkeypatch.setattr(guaraci_mod, "_BASE_DIR", base_antigo)
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", dir_novo)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", dir_novo / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", dir_novo / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", dir_novo / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", dir_novo / ".cli_modo_usuario")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", dir_novo / "perfis")
+
+    guaraci_mod._migrar_estado_legado()
+
+    assert (dir_novo / "config.yaml").read_text(encoding="utf-8") == "nivel: N2\n"
+    assert (dir_novo / ".cli_wizard_done").read_text(encoding="utf-8") == "EN"
+    assert '"XYZ"' in (dir_novo / "codigos_usuario.json").read_text(encoding="utf-8")
+    assert (dir_novo / "perfis" / "meu_perfil.yaml").exists()
+    # arquivo antigo continua intacto -- migracao NUNCA apaga a origem
+    assert (base_antigo / "config.yaml").exists()
+
+
+def test_migrar_estado_legado_nao_sobrescreve_arquivo_ja_existente(guaraci_mod, monkeypatch, tmp_path):
+    """Se o NOVO local ja tem um config.yaml (usuario ja rodou apos a
+    correcao e mudou algo), a migracao nao pode pisar em cima."""
+    base_antigo = tmp_path / "pacote_antigo"
+    base_antigo.mkdir()
+    (base_antigo / "config.yaml").write_text("nivel: N2\n", encoding="utf-8")
+
+    dir_novo = tmp_path / "home_novo" / ".guaraci"
+    dir_novo.mkdir(parents=True)
+    (dir_novo / "config.yaml").write_text("nivel: N3\n", encoding="utf-8")
+
+    monkeypatch.setattr(guaraci_mod, "_BASE_DIR", base_antigo)
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", dir_novo)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", dir_novo / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", dir_novo / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", dir_novo / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", dir_novo / ".cli_modo_usuario")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", dir_novo / "perfis")
+
+    guaraci_mod._migrar_estado_legado()
+
+    assert (dir_novo / "config.yaml").read_text(encoding="utf-8") == "nivel: N3\n"
+
+
+def test_migrar_estado_legado_sem_arquivos_antigos_nao_lanca(guaraci_mod, monkeypatch, tmp_path):
+    """Instalacao nova (nunca rodou a versao antiga) -- nada para migrar,
+    nao pode lancar excecao nem criar arquivos vazios."""
+    base_antigo = tmp_path / "pacote_sem_nada"
+    base_antigo.mkdir()
+    dir_novo = tmp_path / "home_novo" / ".guaraci"
+
+    monkeypatch.setattr(guaraci_mod, "_BASE_DIR", base_antigo)
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", dir_novo)
+    monkeypatch.setattr(guaraci_mod, "_CFG_PATH", dir_novo / "config.yaml")
+    monkeypatch.setattr(guaraci_mod, "_LANG_FLAG", dir_novo / ".cli_wizard_done")
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", dir_novo / "codigos_usuario.json")
+    monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", dir_novo / ".cli_modo_usuario")
+    monkeypatch.setattr(guaraci_mod, "_PERFIS_DIR", dir_novo / "perfis")
+
+    guaraci_mod._migrar_estado_legado()   # nao deve lancar
+
+    assert dir_novo.exists()   # _USER_DIR e' criado mesmo sem nada a copiar
+    assert not (dir_novo / "config.yaml").exists()

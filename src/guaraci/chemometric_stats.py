@@ -11,11 +11,14 @@ Coberto por tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Tuple, cast
 
 import numpy as np
 from scipy.stats import f as f_dist, chi2, t as t_dist
 from sklearn.cross_decomposition import PLSRegression
+
+log = logging.getLogger(__name__)
 
 
 def vip_scores(modelo: PLSRegression) -> np.ndarray:
@@ -33,39 +36,73 @@ def vip_scores(modelo: PLSRegression) -> np.ndarray:
 def calcular_selectivity_ratio(modelo: PLSRegression,
                                 X: np.ndarray) -> np.ndarray:
     """Selectivity Ratio (SR) per Rajalahti et al. (2009),
-    Chemom. Intell. Lab. Syst. 95:20-28.
+    Chemom. Intell. Lab. Syst. 95:20-28; Kvalheim (2020),
+    J. Chemometrics 34:e3211.
+
+    CORRIGIDO em 2026-08-07 (achado A2 da auditoria metodologica — ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a projecao-alvo
+    (target projection) usa o VETOR DE REGRESSAO NORMALIZADO b/||b||, NAO o
+    primeiro peso PLS w1 -- os dois so' coincidem quando o modelo tem 1
+    variavel latente. A propriedade que define o metodo (Rajalahti et al.
+    2009, Sec. 2.2): o escore projetado t_tp e' PROPORCIONAL ao vetor de
+    valores preditos y_hat. Medido com w1 (versao anterior):
+    corr(t_tp, y_hat) caia para ~0.92 com >=2 LVs (deveria ser 1.000 exato)
+    e o ranking de variaveis selecionadas divergia (Jaccard@20 ~ 0.39 em
+    cenario multi-interferente com 3+ LVs) — ver
+    docs/auditoria/medir_sr_ranking.py.
 
     Para cada variavel j, decompoe X_j em parte explicada pela projecao
-    alvo (primeiro peso preditivo PLS) e residuo:
-        t_tp  = X @ w1 / ||w1||   (target projection scores)
+    alvo e residuo:
+        w_tp   = b / ||b||          (vetor de regressao normalizado)
+        t_tp   = X @ w_tp           (target projection scores, prop. a y_hat)
         p_tp_j = (t_tp^T * X_j) / (t_tp^T * t_tp)
-        SR_j  = Var(t_tp * p_tp_j) / Var(X_j - t_tp * p_tp_j)
+        SR_j   = Var(t_tp * p_tp_j) / Var(X_j - t_tp * p_tp_j)
+
+    Y multi-coluna (one-hot, classificacao multiclasse): o metodo publicado
+    e' definido para y de 1 coluna. Aqui aplica-se a formula EXATA a cada
+    coluna (problema one-vs-rest) independentemente e agrega por MAXIMO
+    entre classes -- uma variavel e' reportada como seletiva se discrimina
+    PELO MENOS uma classe (mesmo espirito da agregacao multi-saida ja usada
+    em `teste_incerteza_martens`, nesta mesma secao do modulo).
 
     Complementa o VIP: SR e mais sensivel a variaveis com correlacao
-    direcional com Y no 1o componente; VIP integra todos os LVs.
+    direcional com Y no componente preditivo; VIP integra todos os LVs.
     Concordancia entre VIP >= 1 e SR alto reforca a relevancia.
     """
     X = np.asarray(X, dtype=float)
-    W = np.asarray(modelo.x_weights_, dtype=float)   # (p, n_lv)
-    w1 = W[:, 0]
-    norm_w = float(np.linalg.norm(w1))
-    if norm_w < 1e-12:
-        return np.zeros(X.shape[1])
-    w1_unit = w1 / norm_w
+    p = X.shape[1]
+    # .coef_ e' (n_targets, n_features) no sklearn atual; versoes antigas
+    # usavam a convencao transposta -- normaliza pelo eixo que bate com p.
+    coef = np.asarray(modelo.coef_, dtype=float)
+    if coef.ndim == 1:
+        coef = coef.reshape(1, -1)
+    if coef.shape[1] != p and coef.shape[0] == p:
+        coef = coef.T
+    n_saidas = coef.shape[0]
 
-    t_tp = X @ w1_unit                  # (n,)
-    tt = float(t_tp @ t_tp)
-    if tt < 1e-12:
-        return np.zeros(X.shape[1])
+    sr_por_saida = np.zeros((n_saidas, p))
+    for k in range(n_saidas):
+        b = coef[k]
+        norm_b = float(np.linalg.norm(b))
+        if norm_b < 1e-12:
+            continue
+        w_tp = b / norm_b
 
-    p_tp   = (t_tp @ X) / tt            # (p,) — target projection loadings
-    X_tp   = np.outer(t_tp, p_tp)       # (n, p) — target-projected X
-    X_res  = X - X_tp                   # (n, p) — residual
+        t_tp = X @ w_tp                     # (n,) -- proporcional a y_hat
+        tt = float(t_tp @ t_tp)
+        if tt < 1e-12:
+            continue
 
-    var_tp  = X_tp.var(axis=0, ddof=1)
-    var_res = X_res.var(axis=0, ddof=1)
-    var_res[var_res < 1e-12] = 1e-12
-    return var_tp / var_res
+        p_tp   = (t_tp @ X) / tt            # (p,) — target projection loadings
+        X_tp   = np.outer(t_tp, p_tp)       # (n, p) — target-projected X
+        X_res  = X - X_tp                   # (n, p) — residual
+
+        var_tp  = X_tp.var(axis=0, ddof=1)
+        var_res = X_res.var(axis=0, ddof=1)
+        var_res[var_res < 1e-12] = 1e-12
+        sr_por_saida[k] = var_tp / var_res
+
+    return sr_por_saida.max(axis=0) if n_saidas > 1 else sr_por_saida[0]
 
 
 def teste_incerteza_martens(
@@ -170,22 +207,39 @@ def hotelling_t2(T: np.ndarray) -> np.ndarray:
 
 
 def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
-    """Hotelling T2 upper control limit (Tracy-Young-Mason 1992).
-
-    Correct small-sample formula, valid for both observations
-    within the calibration set and new observations:
+    """Hotelling T2 upper control limit — Tracy, Young & Mason (1992),
+    Technometrics 34(1):46-53, **Phase II** (new/future observations,
+    F-distribution).
 
         T2_UCL = k * (n - 1) * (n + 1) / (n * (n - k)) * F_(alpha, k, n - k)
 
     Replaces the approximation (k(n-1)/(n-k))*F that underestimated the limit
     by ~5-10% for n<30 (causing false outliers in small datasets).
+
+    CORRIGIDO em 2026-08-07 (achado A5 da auditoria metodologica — ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a docstring
+    anterior afirmava que a formula valia "for both observations within
+    the calibration set and new observations". Isso contradiz o proprio
+    artigo citado: TYM (1992) e' precisamente o trabalho que estabelece
+    que os dois casos usam distribuicoes DIFERENTES -- Fase I (amostras do
+    proprio conjunto de treino) usa distribuicao **Beta**
+    (T2 ~ ((n-1)^2/n) * Beta(k/2, (n-k-1)/2)); Fase II (amostras novas,
+    a formula acima) usa **F**. Esta funcao implementa SO' a de Fase II.
+
+    Onde e' aplicada em contexto de Fase I neste codebase
+    (`dominio_aplicabilidade_treino`, `figuras.fig3_outliers`), o erro
+    numerico medido (razao limite-F / limite-Beta) e' pequeno para os
+    tamanhos de amostra tipicos do projeto (~1.01-1.03x com n~300; sobe a
+    ~2-3x so' com n<20) — ver docs/auditoria/medir_achados.py. Nao
+    corrigido nesta rodada (impacto real medido como baixo); se usada com
+    n pequeno como limite de FASE I, considerar o limite Beta exato.
     """
     if n - k <= 0:
-        print(f"[WARNING] Hotelling T2: n={n} too small for k={k} LVs.")
+        log.warning("Hotelling T2: n=%d too small for k=%d LVs.", n, k)
         return float("inf")
     if n < 3 * k:
-        print(f"[WARNING] Hotelling T2: n={n} < 3k={3*k}. Limit may be "
-              f"imprecise (wide confidence interval).")
+        log.warning("Hotelling T2: n=%d < 3k=%d. Limit may be imprecise "
+                    "(wide confidence interval).", n, 3 * k)
     return float(((k * (n - 1) * (n + 1)) / (n * (n - k)))
                   * f_dist.ppf(1 - alpha, k, n - k))
 
@@ -206,6 +260,49 @@ def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
         return float(np.percentile(q, (1 - alpha) * 100))
     g = var / (2 * media); h = 2 * (media ** 2) / var
     return float(g * chi2.ppf(1 - alpha, h))
+
+
+def media_e_dof_momentos(valores: np.ndarray) -> Tuple[float, float]:
+    """Media e graus de liberdade (N) por metodo dos momentos (Box 1954,
+    aproximado por Jackson & Mudholkar 1979 para Q-residuos): N =
+    2*(media/desvio)^2. E' o "data-driven" que da nome ao metodo DD-SIMCA
+    (Kucheryavskiy, Rodionova & Pomerantsev, 2024), usado para converter uma
+    estatistica de distancia (T2 ou Q) numa aproximacao chi-quadrado com
+    graus de liberdade estimados dos proprios dados.
+
+    Compartilhada entre `classificadores.DDSimca` e
+    `dominio_aplicabilidade_treino` (achado A3 da auditoria de
+    2026-08-07: as duas reimplementavam a mesma regra de decisao de forma
+    independente e divergente).
+
+    Com desvio<=0 ou media<=0 (dados degenerados: valores identicos ou
+    vazio), cai para N=1 -- o minimo que ainda faz sentido como grau de
+    liberdade, em vez de propagar NaN/Inf para a estatistica combinada.
+    """
+    valores = np.asarray(valores, dtype=float)
+    if valores.size == 0:
+        return 0.0, 1.0
+    media = float(valores.mean())
+    desvio = float(valores.std(ddof=1)) if valores.size > 1 else 0.0
+    if desvio <= 0 or media <= 0:
+        return max(media, 1e-12), 1.0
+    return media, 2.0 * (media / desvio) ** 2
+
+
+def distancia_combinada(T2: np.ndarray, Q: np.ndarray, h0: float, q0: float,
+                        Nh: float, Nq: float) -> np.ndarray:
+    """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
+    Kucheryavskiy, Rodionova & Pomerantsev 2024, J. Chemometrics 38(7):
+    e3556) -- a estatistica de decisao do DD-SIMCA (`f <= chi2.ppf(1-alpha,
+    Nh+Nq)` decide aceitacao). Substitui o teste retangular independente
+    T2<=UCL e Q<=UCL (alpha por eixo), que infla o alpha CONJUNTO efetivo
+    para ~1-(1-alpha)^2 -- achado corrigido no DD-SIMCA em 2026-08-08 e no
+    dominio de aplicabilidade PCA/PLS (achado A3 da auditoria de
+    2026-08-07: medido 11.6% de rejeicao contra 5% nominal em amostras da
+    MESMA distribuicao do treino, ver docs/auditoria/medir_achados.py).
+    """
+    return ((np.asarray(T2, dtype=float) / max(h0, 1e-12)) * Nh
+            + (np.asarray(Q, dtype=float) / max(q0, 1e-12)) * Nq)
 
 
 def dmodx(Q: np.ndarray, n_variaveis: int, n_componentes: int,
@@ -417,16 +514,27 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
                          mal o modelo reconstroi a amostra (quimica nova, nao
                          vista no treino).
 
-    Uma amostra nova esta DENTRO do dominio se T2 <= T2_limite E Q <= Q_limite,
-    ambos os limites derivados EXCLUSIVAMENTE do conjunto de treino (mesma
-    formula de Tracy-Young-Mason e chi2-Jackson-Mudholkar ja usadas no
-    diagnostico de outliers). Amostras fora do dominio tem predicao pouco
-    confiavel — a extrapolacao nao e garantida.
+    Uma amostra nova esta DENTRO do dominio se a DISTANCIA COMBINADA
+    f=(T2/h0)*Nh+(Q/q0)*Nq <= chi2.ppf(1-alpha, Nh+Nq) -- mesma estatistica
+    do DD-SIMCA (Kucheryavskiy, Rodionova & Pomerantsev 2024), com h0/q0/Nh/
+    Nq estimados EXCLUSIVAMENTE do conjunto de treino. t2/q individuais e
+    seus limites por eixo sao mantidos so' para diagnostico/plotagem.
+
+    CORRIGIDO em 2026-08-07 (achado A3 da auditoria metodologica — ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a versao anterior
+    decidia dentro/fora por T2<=T2_limite E Q<=Q_limite independentemente
+    (alpha=0.05 em cada eixo) -- a mesma regra retangular corrigida no
+    DD-SIMCA em 2026-08-08, com o mesmo efeito: alpha CONJUNTO efetivo
+    inflado. Medido (docs/auditoria/medir_achados.py, 40 simulacoes,
+    amostras novas da MESMA distribuicao do treino): rejeicao de 11.6%
+    contra 5% nominal.
 
     Referencias: Jaworska, Nikolova-Jeliazkova & Aldenberg (2005), SAR QSAR
     Environ. Res. 16:445-466; Gadaleta et al. (2016), J. Chem. Inf. Model.
     A convencao T2+Q e o "AD baseado em leverage/residuo" padrao em
-    espectroscopia (equivalente ao par distance-to-model do SIMCA).
+    espectroscopia (equivalente ao par distance-to-model do SIMCA);
+    Kucheryavskiy, Rodionova & Pomerantsev (2024), J. Chemometrics 38(7):
+    e3556, para a distancia combinada.
 
     Parametros
     ----------
@@ -434,31 +542,37 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
                .components_ (k, p) e .mean_ (p,) — sklearn PCA satisfaz).
     X_train  : matriz de treino no MESMO espaco pre-processado do ajuste.
     X_new    : amostras novas a avaliar (mesmo pre-processamento).
-    alpha    : nivel de significancia dos limites (default 0.05 -> 95%).
+    alpha    : nivel de significancia (default 0.05 -> 95%).
 
-    Retorna dict com t2/q por amostra nova, os limites, e as mascaras
-    booleanas dentro_t2 / dentro_q / dentro_dominio + a fracao dentro.
+    Retorna dict com t2/q/f por amostra nova, os limites, e a mascara
+    booleana dentro_dominio + a fracao dentro.
     """
     treino = dominio_aplicabilidade_treino(pca, X_train, alpha)
-    # cast: o dict é Dict[str, object] (chaves heterogêneas — 1 array + 2
+    # cast: o dict é Dict[str, object] (chaves heterogêneas — arrays e
     # floats); os tipos concretos são garantidos na construção do dict.
     return dominio_aplicabilidade_amostras_novas(
         pca, X_new,
         cast(np.ndarray, treino["var_t"]),
-        cast(float, treino["t2_limite"]),
-        cast(float, treino["q_limite"]))
+        cast(float, treino["h0"]), cast(float, treino["q0"]),
+        cast(float, treino["Nh"]), cast(float, treino["Nq"]),
+        cast(float, treino["f_crit"]))
 
 
 def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
                                    alpha: float = 0.05) -> Dict[str, object]:
-    """Deriva do TREINO os 3 artefatos leves necessarios para avaliar o
+    """Deriva do TREINO os artefatos leves necessarios para avaliar o
     dominio de aplicabilidade em amostras novas depois, sem precisar
     re-exportar X_train inteiro (que pode ser um artefato pesado -- MB a
     dezenas de MB para datasets espectrais reais): a variancia dos scores
-    PCA (var_t, um vetor por componente) e os 2 limites T2/Q (Tracy-Young-
-    Mason / chi2-Jackson-Mudholkar). Usado ao SALVAR um modelo (ver
-    pipeline.py, pacote_modelo); `dominio_aplicabilidade_amostras_novas`
-    consome o resultado na hora de PREDIZER, sem X_train.
+    PCA (var_t) e os parametros da distancia combinada (h0/q0/Nh/Nq/f_crit,
+    ver `distancia_combinada`). Usado ao SALVAR um modelo (ver pipeline.py,
+    pacote_modelo); `dominio_aplicabilidade_amostras_novas` consome o
+    resultado na hora de PREDIZER, sem X_train.
+
+    t2_limite/q_limite (Tracy-Young-Mason / chi2-Jackson-Mudholkar) sao
+    mantidos no retorno so' para diagnostico/plotagem por eixo -- a decisao
+    dentro/fora usa h0/q0/Nh/Nq/f_crit (ver docstring de
+    `dominio_aplicabilidade`).
     """
     X_train = np.asarray(X_train, dtype=float)
     T_train = np.asarray(pca.transform(X_train), dtype=float)
@@ -468,25 +582,30 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
 
     var_t = T_train.var(axis=0, ddof=1)
     var_t[var_t == 0] = 1.0
-    t2_lim = hotelling_t2_limite(n, k, alpha)
+    T2_train = np.sum((T_train ** 2) / var_t, axis=1)
 
     q_train = q_residuos(X_train - mean, T_train, P)
-    q_lim = q_residuos_limite(q_train, alpha)
+
+    h0, Nh = media_e_dof_momentos(T2_train)
+    q0, Nq = media_e_dof_momentos(q_train)
+    f_crit = float(chi2.ppf(1 - alpha, Nh + Nq))
 
     return {
         "var_t": var_t,
-        "t2_limite": float(t2_lim),
-        "q_limite": float(q_lim),
+        "h0": h0, "q0": q0, "Nh": Nh, "Nq": Nq, "f_crit": f_crit,
+        "t2_limite": float(hotelling_t2_limite(n, k, alpha)),
+        "q_limite": float(q_residuos_limite(q_train, alpha)),
     }
 
 
 def dominio_aplicabilidade_amostras_novas(
         pca, X_new: np.ndarray, var_t: np.ndarray,
-        t2_limite: float, q_limite: float) -> Dict[str, np.ndarray]:
-    """Aplica os limites de dominio de aplicabilidade (ja derivados do
-    treino por `dominio_aplicabilidade_treino`) a amostras novas -- nao
-    precisa de X_train, so' dos artefatos leves (var_t + 2 limites), ideal
-    para predicao em producao sem reexportar o dataset de calibracao.
+        h0: float, q0: float, Nh: float, Nq: float, f_crit: float
+        ) -> Dict[str, np.ndarray]:
+    """Aplica a distancia combinada de dominio de aplicabilidade (ja
+    derivada do treino por `dominio_aplicabilidade_treino`) a amostras
+    novas -- nao precisa de X_train, so' dos artefatos leves, ideal para
+    predicao em producao sem reexportar o dataset de calibracao.
     """
     X_new = np.asarray(X_new, dtype=float)
     T_new = np.asarray(pca.transform(X_new), dtype=float)
@@ -501,18 +620,125 @@ def dominio_aplicabilidade_amostras_novas(
     # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
     q_new = q_residuos(X_new - mean, T_new, P)
 
-    dentro_t2 = t2_new <= t2_limite
-    dentro_q = q_new <= q_limite
-    dentro = dentro_t2 & dentro_q
+    f = distancia_combinada(t2_new, q_new, h0, q0, Nh, Nq)
+    dentro = f <= f_crit
     return {
         "t2": t2_new,
         "q": q_new,
-        "t2_limite": np.asarray(t2_limite, dtype=float),
-        "q_limite": np.asarray(q_limite, dtype=float),
-        "dentro_t2": dentro_t2,
-        "dentro_q": dentro_q,
+        "f": f,
+        "f_crit": np.asarray(f_crit, dtype=float),
         "dentro_dominio": dentro,
         "fracao_dentro": np.asarray(
             float(np.mean(dentro)) if dentro.size else float("nan"),
             dtype=float),
     }
+
+
+def diagnosticar_faixa_espectral(X: np.ndarray, wavenumbers: np.ndarray,
+                                  limiar_snr: float = 3.0,
+                                  largura_min_cm: float = 150.0,
+                                  janela_suave: int = 11
+                                  ) -> Dict[str, object]:
+    """Detecta regioes espectrais que nao carregam informacao analitica.
+
+    Motivacao (achado 2026-08-07): rodar com uma faixa larga demais inclui
+    regioes onde o espectro e' so' linha de base e ruido de detector. Isso
+    nao "e' inofensivo": infla o numero de variaveis, dilui metricas por
+    variavel (VIP/SR), aumenta o custo de CV e da' ao modelo espaco para
+    ajustar ruido. O usuario so' percebe olhando o loading plot e vendo uma
+    metade chapada -- este diagnostico automatiza essa leitura.
+
+    Separa DOIS defeitos diferentes, que exigem acoes diferentes:
+
+    - regiao MORTA   : sinal analitico ~ 0 (nada acontece ali).
+    - regiao RUIDOSA : ha' variacao, mas dominada por alta frequencia
+                       (ruido de detector), nao por banda espectral.
+
+    Metodo: para cada numero de onda, separa o espectro medio-centrado em
+    componente suave (sinal) e residuo de alta frequencia (ruido) por media
+    movel, e compara a dispersao ENTRE amostras de cada um --
+    SNR = sd_entre_amostras(suave) / sd(residuo). Regioes com SNR abaixo de
+    `limiar_snr` sao marcadas; blocos contiguos mais estreitos que
+    `largura_min_cm` sao descartados (evita marcar ponto isolado).
+
+    Parameters
+    ----------
+    X : (n_amostras, n_variaveis) — espectros JA na faixa em uso.
+    wavenumbers : (n_variaveis,) — em cm-1.
+
+    Returns
+    -------
+    dict com:
+      snr            : (n_variaveis,) SNR por numero de onda
+      mascara_util   : (n_variaveis,) bool — True onde ha' sinal
+      regioes_ruins  : lista de (wn_ini, wn_fim, tipo) — tipo em
+                       {"morta", "ruidosa"}
+      frac_util      : fracao de variaveis uteis
+      faixa_sugerida : (min, max) contiguo cobrindo a parte util, ou None
+    """
+    X = np.asarray(X, dtype=float)
+    wn = np.asarray(wavenumbers, dtype=float)
+    n_var = X.shape[1]
+    if n_var < 5 or X.shape[0] < 3:
+        return {"snr": np.full(n_var, np.nan),
+                "mascara_util": np.ones(n_var, dtype=bool),
+                "regioes_ruins": [], "frac_util": 1.0,
+                "faixa_sugerida": None,
+                "aviso": "espectro curto demais para diagnosticar"}
+
+    # Suavizacao por media movel (kernel impar), sem depender de savgol para
+    # manter a funcao pura em numpy/scipy basico.
+    jan = int(max(3, min(janela_suave, n_var // 2 * 2 - 1)))
+    if jan % 2 == 0:
+        jan += 1
+    kernel = np.ones(jan) / jan
+    suave = np.apply_along_axis(
+        lambda linha: np.convolve(linha, kernel, mode="same"), 1, X)
+    # Bordas da convolucao 'same' sao atenuadas -> ignora meia janela
+    borda = jan // 2
+    residuo = X - suave
+
+    sd_sinal = suave.std(axis=0, ddof=1)
+    sd_ruido = residuo.std(axis=0, ddof=1)
+    # Piso de ruido global evita SNR explodir onde o residuo e' ~0 por acaso
+    piso = float(np.median(sd_ruido[sd_ruido > 0])) if np.any(sd_ruido > 0) else 1.0
+    snr = sd_sinal / np.maximum(sd_ruido, piso * 1e-3)
+    if borda:
+        snr[:borda] = snr[borda]
+        snr[-borda:] = snr[-borda - 1]
+
+    mascara_util = snr >= limiar_snr
+
+    # Amplitude do sinal (para distinguir "morta" de "ruidosa")
+    amp_rel = sd_sinal / max(float(sd_sinal.max()), 1e-12)
+
+    regioes: List[Tuple[float, float, str]] = []
+    ruim = ~mascara_util
+    i = 0
+    while i < n_var:
+        if not ruim[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n_var and ruim[j + 1]:
+            j += 1
+        wn_a, wn_b = float(wn[i]), float(wn[j])
+        if abs(wn_b - wn_a) >= largura_min_cm:
+            # MEDIANA, nao maximo: as bordas de uma regiao morta encostam na
+            # cauda da banda vizinha, entao o maximo dentro do bloco fica
+            # alto e classificava tudo como "ruidosa" por engano.
+            tipo = ("morta" if float(np.median(amp_rel[i:j + 1])) < 0.10
+                    else "ruidosa")
+            regioes.append((min(wn_a, wn_b), max(wn_a, wn_b), tipo))
+        i = j + 1
+
+    frac_util = float(mascara_util.mean())
+
+    faixa_sugerida = None
+    if mascara_util.any() and frac_util < 0.95:
+        uteis = wn[mascara_util]
+        faixa_sugerida = (float(uteis.min()), float(uteis.max()))
+
+    return {"snr": snr, "mascara_util": mascara_util,
+            "regioes_ruins": regioes, "frac_util": frac_util,
+            "faixa_sugerida": faixa_sugerida, "aviso": None}

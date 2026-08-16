@@ -74,7 +74,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
     _projeto_info = {
         "nome":     st.session_state.get("proj_nome", ""),
         "autor":    st.session_state.get("proj_autor", ""),
-        "inst":     st.session_state.get("proj_inst", "GEAAp / UFPA"),
+        "inst":     st.session_state.get("proj_inst", ""),
         "tipo":     _tipo_estudo,
         "objetivo": st.session_state.get("proj_objetivo", ""),
     }

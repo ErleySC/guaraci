@@ -57,21 +57,25 @@ jobs:
   # Matriz cruzada: o produto é Windows-first (código de encoding/console
   # específico de win32 em guaraci.py/cli_assistente.py), então validamos em
   # windows-latest além de ubuntu e macos, nas pontas da faixa suportada
-  # (3.10–3.13, requires-python em pyproject.toml). macOS só entra nas
-  # pontas (3.10/3.13) para não triplicar o tempo total de CI à toa — Windows
-  # e Linux já cobrem toda a faixa de versão.
+  # (3.10–3.13, requires-python em pyproject.toml).
+  #
+  # REDUZIDA em PR (2026-08-07, cota de minutos do Actions esgotada numa
+  # conta privada): o multiplicador de minutos do GitHub é 1x Linux / 2x
+  # Windows / 10x macOS — a matriz cheia (10 combinações, incl. 2 macOS)
+  # custava caro demais para rodar em CADA push de uma PR em iteração. Em
+  # `pull_request`, roda só 3 combinações (Ubuntu 3.10/3.13 nas pontas da
+  # faixa suportada + 1 Windows, sem macOS — ainda pega regressão de
+  # encoding/console win32, só não a cada iteração). A matriz CHEIA (10
+  # combinações, macOS incluso) só roda em `push` para master/main — ou
+  # seja, uma vez por merge, não uma vez por commit de PR. Se a cota
+  # voltar a sobrar, reverter é so' trocar `matrix.include` de volta pela
+  # combinação de `os`+`python-version` (ver historico do arquivo).
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        include:
-          - os: macos-latest
-            python-version: "3.10"
-          - os: macos-latest
-            python-version: "3.13"
+        include: ${{ github.event_name == 'pull_request' && fromJSON('[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.11"}]') || fromJSON('[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.12"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.10"},{"os":"windows-latest","python-version":"3.11"},{"os":"windows-latest","python-version":"3.12"},{"os":"windows-latest","python-version":"3.13"},{"os":"macos-latest","python-version":"3.10"},{"os":"macos-latest","python-version":"3.13"}]') }}
 
     defaults:
       run:

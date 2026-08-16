@@ -12,6 +12,7 @@ from guaraci.classificadores import (
     DDSimca,
     OPLSDAWrapper,
     sensibilidade_ddsimca_logo,
+    sensibilidade_ddsimca_pcv,
 )
 
 
@@ -66,9 +67,23 @@ def test_ddsimca_score_matrix_contem_campos_esperados():
     scores = dd.score_matrix(X)
     assert "A" in scores
     campos = scores["A"]
-    for chave in ("T2", "Q", "T2_ucl", "Q_ucl", "T2_norm", "Q_norm", "n_train"):
+    for chave in ("T2", "Q", "T2_ucl", "Q_ucl", "T2_norm", "Q_norm", "n_train",
+                  "n_comp"):
         assert chave in campos
     assert campos["n_train"] == 12
+
+
+def test_ddsimca_score_matrix_expoe_n_comp_usado():
+    """REGRESSAO: a figura de aceitacao (fig_sprint3_ddsimca_acceptance)
+    precisa saber quantos componentes o modelo usou para explicar por que
+    a maioria das amostras de outras classes colapsa perto de zero em T2
+    quando n_comp=1 (comum com poucas amostras puras de treino) — sem esse
+    campo, o padrao no grafico parecia bug de renderizacao."""
+    rng = np.random.default_rng(7)
+    X = _classe_compacta(rng, centro=0.0, n=3)   # cenario real: 3 puras
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    scores = dd.score_matrix(X)
+    assert scores["A"]["n_comp"] == 1   # forcado por _MIN_Q_RESIDUAL_DF
 
 
 # ── DDSimca: classe com amostras insuficientes é pulada (não quebra) ────────
@@ -175,10 +190,14 @@ def test_oplsda_fit_binario_gera_scores_ortogonais():
     assert len(opls.W_orth_) >= 0  # pode convergir com 0 ou 1 componente ortogonal
 
 
-def test_oplsda_fit_multiclasse_usa_lda_para_y_continuo():
-    """Y one-hot multiclasse (>1 coluna) aciona o ramo LDA (fit() reduz a um
-    y continuo antes do NIPALS) -- nao deve lancar excecao e deve treinar
-    componentes ortogonais coerentes com o numero de features."""
+def test_oplsda_fit_multiclasse_usa_pls2_para_y_continuo():
+    """Y one-hot multiclasse (>1 coluna) aciona o ramo PLS2 (fit() reduz a
+    um y continuo antes do NIPALS, via 1o escore Y de um PLS2 ajustado em
+    (X, Y) -- achado A4 da auditoria 2026-08-07: a versao anterior usava
+    LDA, que nao e' o metodo publicado, ver
+    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md) -- nao deve
+    lancar excecao e deve treinar componentes ortogonais coerentes com o
+    numero de features."""
     rng = np.random.default_rng(7)
     X = np.vstack([
         _classe_compacta(rng, centro=0.0, n=15, k=6),
@@ -189,33 +208,42 @@ def test_oplsda_fit_multiclasse_usa_lda_para_y_continuo():
 
     opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)
     assert isinstance(opls.W_orth_, list)
+    assert opls.t_pred_train_.shape[0] == 45
 
 
-def test_oplsda_lda_falha_cai_no_fallback_pls2(monkeypatch):
-    """Se a LDA multiclasse falhar (matriz de dispersao intra-classe
-    singular -- caso real com poucas amostras/features colineares), o
-    fit() deve cair no fallback PLS2 em vez de propagar a excecao. Forcado
-    via monkeypatch (a falha real da LDA e' dificil de reproduzir de forma
-    limpa/deterministica via dados publicos, mas o CAMINHO de fallback e'
-    codigo real que precisa continuar correto)."""
-    def _fit_transform_falha(self, X, y):
-        raise ValueError("simulada: matriz de dispersao intra-classe singular")
-
-    monkeypatch.setattr(
-        "sklearn.discriminant_analysis.LinearDiscriminantAnalysis.fit_transform",
-        _fit_transform_falha)
-
-    rng = np.random.default_rng(8)
+def test_oplsda_alvo_multiclasse_bate_com_escore_y_do_pls2():
+    """Propriedade que define a correcao do achado A4: o alvo continuo
+    usado pelo OPLS-DA multiclasse deve ser EXATAMENTE (centrado) o 1o
+    escore Y de um PLS2 ajustado em (X, Y) -- nao mais um escore de LDA,
+    que ignora a covariancia X-Y."""
+    rng = np.random.default_rng(11)
     X = np.vstack([
-        _classe_compacta(rng, centro=0.0, n=10, k=6),
-        _classe_compacta(rng, centro=3.0, n=10, k=6),
-        _classe_compacta(rng, centro=6.0, n=10, k=6),
+        _classe_compacta(rng, centro=0.0, n=12, k=5),
+        _classe_compacta(rng, centro=4.0, n=12, k=5),
+        _classe_compacta(rng, centro=8.0, n=12, k=5),
     ])
-    Y = np.eye(3)[np.array([0] * 10 + [1] * 10 + [2] * 10)]
+    Y = np.eye(3)[np.array([0] * 12 + [1] * 12 + [2] * 12)]
 
-    opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)  # nao deve lancar ValueError
-    assert isinstance(opls.W_orth_, list)
-    assert opls.t_pred_train_.shape[0] == 30
+    y = OPLSDAWrapper._alvo_continuo(X, Y)
+
+    from sklearn.cross_decomposition import PLSRegression
+    pls2 = PLSRegression(n_components=1, scale=False).fit(X, Y)
+    y_esperado = np.asarray(pls2.y_scores_, dtype=float)[:, 0]
+    y_esperado = y_esperado - float(y_esperado.mean())
+
+    np.testing.assert_allclose(y, y_esperado, rtol=1e-9)
+
+
+def test_oplsda_alvo_binario_usa_a_propria_coluna():
+    """Y de 1 coluna (binario): o alvo e' a propria coluna, centrada --
+    nao aciona o ramo PLS2 multiclasse."""
+    rng = np.random.default_rng(12)
+    X = rng.normal(size=(20, 5))
+    y_col = rng.normal(size=20)
+    Y = y_col.reshape(-1, 1)
+
+    y = OPLSDAWrapper._alvo_continuo(X, Y)
+    np.testing.assert_allclose(y, y_col - y_col.mean(), rtol=1e-9)
 
 
 def test_nipals_pls1_com_x_todo_zero_nao_diverge():
@@ -285,7 +313,7 @@ def test_logo_cai_abaixo_de_100pct_com_grupo_outlier():
     # (o small-n guard aceita todo o treino) -> infla a sensibilidade.
     dd = DDSimca(n_components=2).fit(X, np.array(["_c"] * len(X)))
     m = dd.score_matrix(X)["_c"]
-    aceito = (np.asarray(m["T2_norm"]) <= 1.0) & (np.asarray(m["Q_norm"]) <= 1.0)
+    aceito = np.asarray(m["f"]) <= m["f_crit"]
     sens_resub = float(np.mean(aceito))
     assert sens_resub > r["sensibilidade"]     # re-sub sempre >= LOGO honesto
 
@@ -337,3 +365,234 @@ def test_logo_inconclusivo_quando_nenhum_fold_valido():
     if r["n_grupos_validos"] < 2:
         assert np.isnan(r["sensibilidade"])
         assert r["aviso"] is not None and "inconclusiva" in r["aviso"]
+
+
+# ---------------------------------------------------------------------------
+# Distancia combinada f<=f_crit (corrigido 2026-08-08): regra retangular
+# T2<=UCL e Q<=UCL independente NAO e' o metodo publicado.
+# ---------------------------------------------------------------------------
+def test_score_matrix_expoe_campos_da_distancia_combinada():
+    rng = np.random.default_rng(5)
+    X = _classe_compacta(rng, centro=0.0, n=20)
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 20))
+    m = dd.score_matrix(X)["A"]
+    for chave in ("f", "f_crit", "h0", "q0", "Nh", "Nq"):
+        assert chave in m
+    assert m["f_crit"] > 0
+    assert np.all(np.isfinite(m["f"]))
+
+
+def test_predict_usa_distancia_combinada_nao_regra_retangular():
+    """REGRESSAO: predict() aceitava so' se T2<=UCL(T2) E Q<=UCL(Q)
+    independentemente -- uma caixa retangular. Com alpha independente por
+    eixo, a rejeicao conjunta efetiva era ~1-(1-alpha)^2 (~0.0975 p/
+    alpha=0.05), quase o dobro do declarado. A regra corrigida usa
+    f=(T2/h0)*Nh+(Q/q0)*Nq <= f_crit (Kucheryavskiy/Rodionova/Pomerantsev
+    2024) e fica muito mais proxima do alpha nominal."""
+    rng = np.random.default_rng(0)
+    Xc = rng.normal(scale=1.0, size=(20, 50))
+    dd = DDSimca(n_components=3, alpha=0.05).fit(Xc, np.array(["A"] * 20))
+
+    Xt = rng.normal(scale=1.0, size=(4000, 50))
+    sc = dd.score_matrix(Xt)["A"]
+    t2_aceito = sc["T2_norm"] <= 1.0
+    q_aceito  = sc["Q_norm"]  <= 1.0
+    antiga = t2_aceito & q_aceito
+    nova   = sc["f"] <= sc["f_crit"]
+
+    # As duas regras tem que DISCORDAR em uma fracao real de pontos --
+    # senao o teste nao prova que o comportamento mudou de verdade.
+    discordancia = float(np.mean(antiga != nova))
+    assert discordancia > 0.005, (
+        "regra nova e antiga concordam em quase tudo -- fix nao mudou nada")
+
+    # Propriedade ESTRUTURAL (sempre verdadeira, nao depende do sorteio
+    # aleatorio): P(A ∩ B) <= min(P(A), P(B)). O "E" de dois testes so'
+    # pode aceitar MENOS OU IGUAL do que qualquer um dos dois isolados --
+    # e' exatamente a penalidade que faz a caixa retangular superrejeitar.
+    assert antiga.mean() <= t2_aceito.mean() + 1e-9
+    assert antiga.mean() <= q_aceito.mean() + 1e-9
+
+    # A distancia combinada nao tem essa penalidade estrutural (nao e' um
+    # "E" de dois testes independentes): aceita estritamente mais que a
+    # regra retangular que ela substituiu.
+    assert nova.mean() > antiga.mean(), (
+        f"regra nova (aceita {nova.mean():.3f}) nao superou a antiga "
+        f"(aceita {antiga.mean():.3f}) -- deveria, por construcao")
+
+
+def test_predict_e_score_matrix_f_concordam():
+    """predict() e score_matrix() tem que usar EXATAMENTE a mesma regra
+    (mesmo f/f_crit) -- antes cada metodo (predict, sensibilidade_ddsimca_
+    logo, pipeline) reimplementava a comparacao por conta propria."""
+    rng = np.random.default_rng(3)
+    X = _classe_compacta(rng, centro=0.0, n=15)
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 15))
+    Xt = rng.normal(size=(50, X.shape[1])) * 2.0
+
+    preds = dd.predict(Xt)
+    sc = dd.score_matrix(Xt)["A"]
+    aceito_score = sc["f"] <= sc["f_crit"]
+    aceito_predict = preds == "A"
+    np.testing.assert_array_equal(aceito_score, aceito_predict)
+
+
+def test_media_e_dof_casos_degenerados():
+    # media_e_dof_momentos() foi movida p/ chemometric_stats.py (achado A3 da
+    # auditoria 2026-08-07): compartilhada entre DDSimca e
+    # dominio_aplicabilidade_treino, em vez de reimplementada em cada um.
+    from guaraci.chemometric_stats import media_e_dof_momentos
+    media, N = media_e_dof_momentos(np.array([]))
+    assert media == 0.0 and N == 1.0
+    media, N = media_e_dof_momentos(np.full(10, 3.0))   # desvio=0
+    assert N == 1.0
+    media, N = media_e_dof_momentos(np.array([5.0]))    # n=1, sem desvio
+    assert N == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Sensibilidade DD-SIMCA por Procrustes Cross-Validation (PCV) -- diagnostico
+# complementar ao LOGO, adicionado 2026-08-08.
+# ---------------------------------------------------------------------------
+def test_pcv_indisponivel_sem_pacote_nao_lanca_excecao(monkeypatch):
+    """Se 'prcv' nao estiver instalado, devolve disponivel=False com aviso
+    -- nunca quebra o pipeline (mesmo padrao de xgboost/shap opcionais)."""
+    import builtins
+    real_import = builtins.__import__
+
+    def _import_bloqueado(name, *a, **kw):
+        if name == "prcv" or name.startswith("prcv."):
+            raise ImportError("simulado: prcv nao instalado")
+        return real_import(name, *a, **kw)
+
+    monkeypatch.setattr(builtins, "__import__", _import_bloqueado)
+    rng = np.random.default_rng(0)
+    X = _classe_compacta(rng, centro=0.0, n=3)
+    r = sensibilidade_ddsimca_pcv(X, np.array(["G1"] * 3), n_components=3)
+    assert r["disponivel"] is False
+    assert r["aviso"] is not None
+    assert np.isnan(r["sensibilidade"])
+
+
+def test_pcv_um_grupo_nao_quebra_e_avisa_limitacao():
+    """REGRESSAO: passar o split de CV do PCV agrupado por mae_id quando
+    so' existe 1 grupo faz pcvpca falhar (ValueError de shape, verificado
+    manualmente) -- a funcao tem que cair para LOO por amostra nesse caso,
+    nunca lancar excecao. O aviso tem que deixar claro que o resultado nao
+    e' evidencia de autenticacao (so' ruido de medicao), senao o numero
+    seria mal-interpretado como se fosse tao forte quanto LOGO."""
+    pytest.importorskip("prcv")
+    rng = np.random.default_rng(1)
+    X = _classe_compacta(rng, centro=0.0, n=3, k=30, escala=0.05)
+    r = sensibilidade_ddsimca_pcv(X, np.array(["G1", "G1", "G1"]),
+                                  n_components=3)
+    assert r["n_grupos"] == 1
+    assert r["disponivel"] is True
+    assert not np.isnan(r["sensibilidade"])
+    assert "ruido de MEDICAO" in r["aviso"]
+    assert "instrumental" in r["aviso"]
+
+
+def test_pcv_multiplos_grupos_usa_split_por_grupo():
+    """Com 2+ grupos, o resultado nao e' NaN e o aviso e' o generico de
+    complementaridade ao LOGO (nao o de grupo unico)."""
+    pytest.importorskip("prcv")
+    rng = np.random.default_rng(2)
+    X = np.vstack([_classe_compacta(rng, centro=i * 0.3, n=3, k=30,
+                                    escala=0.05) for i in range(4)])
+    grupos = np.array([f"G{i}" for i in range(4) for _ in range(3)])
+    r = sensibilidade_ddsimca_pcv(X, grupos, n_components=3)
+    assert r["n_grupos"] == 4
+    assert not np.isnan(r["sensibilidade"])
+    assert "ruido de MEDICAO" not in (r["aviso"] or "")
+
+
+def test_pcv_amostras_insuficientes_nao_quebra():
+    pytest.importorskip("prcv")
+    X = np.zeros((1, 10))
+    r = sensibilidade_ddsimca_pcv(X, np.array(["G1"]), n_components=3)
+    assert np.isnan(r["sensibilidade"])
+    assert r["aviso"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico robusto (mediana/MAD) de replicas de treino atipicas --
+# adicionado 2026-08-08. So' SINALIZA, nunca remove sozinho.
+# ---------------------------------------------------------------------------
+def test_outliers_robustos_detecta_replica_divergente():
+    """Cenario controlado: 2 replicas proximas (medicao normal) + 1
+    deslocada (replica atipica/possivel contaminacao). O z-score modificado
+    (Iglewicz & Hoaglin 1993) tem que sinalizar a divergente."""
+    rng = np.random.default_rng(0)
+    p = 200
+    base = rng.normal(scale=0.3, size=p)
+    X = np.array([
+        base + rng.normal(scale=0.01, size=p),
+        base + rng.normal(scale=0.01, size=p),
+        base + 3.0 + rng.normal(scale=0.01, size=p),
+    ])
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    outliers = dd._modelos["A"]["outliers_treino"]
+    assert 2 in outliers
+
+
+def test_outliers_robustos_sem_falso_positivo_em_dados_limpos():
+    """3 replicas normais (mesma distribuicao) nao devem disparar aviso na
+    maioria dos casos -- senao o diagnostico vira ruido, nao sinal.
+
+    NOTA HONESTA (medido, nao suposto): com nc=3, _MIN_Q_RESIDUAL_DF forca
+    n_comp=1 (so' 2 graus de liberdade residuais) -- T2_train/Q_train ja
+    sao inerentemente instaveis SEM outlier real nenhum, e o detector
+    (uniao de 2 testes, T2 e Q) chega a ~10% de falso positivo mesmo em
+    n=20 (medido: 3/30 seeds). A seed abaixo foi verificada limpa; nao e'
+    garantia de zero falsos positivos em toda seed -- e' o preco de operar
+    honestamente no regime de poucas amostras deste projeto, nao um bug
+    do detector."""
+    rng = np.random.default_rng(2)
+    p = 200
+    base = rng.normal(scale=0.3, size=p)
+    X = np.array([base + rng.normal(scale=0.01, size=p) for _ in range(3)])
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    assert dd._modelos["A"]["outliers_treino"] == []
+
+
+def test_outliers_robustos_mad_zero_nao_quebra():
+    """Valores identicos (MAD=0, treino degenerado) nao pode lancar
+    ZeroDivisionError/produzir NaN -- devolve 'nenhum outlier'."""
+    out = DDSimca._outliers_robustos_mad(np.array([5.0, 5.0, 5.0]))
+    assert out.size == 0
+
+
+def test_outliers_robustos_poucos_pontos_nao_quebra():
+    for valores in (np.array([]), np.array([1.0]), np.array([1.0, 2.0])):
+        out = DDSimca._outliers_robustos_mad(valores)
+        assert out.size == 0
+
+
+def test_score_matrix_expoe_outliers_treino():
+    rng = np.random.default_rng(2)
+    X = _classe_compacta(rng, centro=0.0, n=10)
+    dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 10))
+    m = dd.score_matrix(X)["A"]
+    assert "outliers_treino" in m
+    assert isinstance(m["outliers_treino"], list)
+
+
+def test_outliers_robustos_nao_remove_amostra_do_treino(caplog):
+    """REGRESSAO/GARANTIA DE DESIGN: mesmo com outlier detectado, n_train
+    continua o numero ORIGINAL de amostras -- a funcao so' avisa, nunca
+    filtra o treino sozinha (removeria dado escasso demais sem o usuario
+    decidir)."""
+    rng = np.random.default_rng(3)
+    p = 200
+    base = rng.normal(scale=0.3, size=p)
+    X = np.array([
+        base + rng.normal(scale=0.01, size=p),
+        base + rng.normal(scale=0.01, size=p),
+        base + 3.0 + rng.normal(scale=0.01, size=p),
+    ])
+    with caplog.at_level(logging.WARNING, logger="guaraci.classificadores"):
+        dd = DDSimca(n_components=3).fit(X, np.array(["A"] * 3))
+    assert dd._modelos["A"]["n_train"] == 3   # nenhuma amostra removida
+    assert dd._modelos["A"]["T2_train"].size == 3
+    assert "atipica" in caplog.text

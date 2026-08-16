@@ -863,6 +863,33 @@ def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
     salvar(fig, "fig6_preprocessamento", pasta, cfg)
 
 
+def _ylim_permutacao(valores: np.ndarray, obs: float,
+                      topo: float = 1.08,
+                      base: float = -0.6) -> Tuple[float, float]:
+    """Limite inferior do eixo Y de um grafico de permutacao que NUNCA corta
+    um ponto.
+
+    Bug latente (achado 2026-08-07): o piso era fixo em -0.5/-0.6. Q2Y de
+    rotulos permutados fica tanto mais negativo quanto MAIS componentes o
+    modelo usa. Medido com 13 classes: com 23 LVs o minimo e' -0.465 (cabe
+    no piso antigo), mas com 40 LVs -- valor de `max_lvs` em uso neste
+    projeto -- 80% dos pontos caem abaixo de -0.6 e SUMIRIAM do grafico,
+    enquanto a reta de regressao continuaria sendo calculada sobre eles.
+    Um grafico de validade que esconde parte das permutacoes engana.
+
+    Mantem `base` como piso PADRAO (execucoes normais ficam visualmente
+    identicas) e so' expande quando ha' ponto abaixo dele.
+    """
+    todos = np.concatenate([np.asarray(valores, dtype=float).ravel(),
+                            np.asarray([obs], dtype=float)])
+    finitos = todos[np.isfinite(todos)]
+    if finitos.size == 0:
+        return base, topo
+    minimo = float(finitos.min())
+    margem = 0.05 * max(topo - minimo, 1e-6)
+    return min(base, minimo - margem), topo
+
+
 def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
     """Wold-style permutation plot: R2Y and Q2Y vs similarity of permuted Y."""
     sims = np.asarray(cast(Any, wold["sims"]))
@@ -900,7 +927,8 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
                         ec=cor_status, lw=0.8))
     ax.set_xlabel("Similarity (permuted Y, original Y)")
     ax.set_ylabel("R$^2$Y (training fit)")
-    ax.set_xlim(-0.05, 1.08); ax.set_ylim(-0.5, 1.08)
+    ax.set_xlim(-0.05, 1.08)
+    ax.set_ylim(*_ylim_permutacao(r2s, r2_obs, base=-0.5))
     ax.set_title("(a) Wold — R$^2$Y vs permutation", loc="left")
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
@@ -925,7 +953,8 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
                         ec=cor_status, lw=0.8))
     ax.set_xlabel("Similarity (permuted Y, original Y)")
     ax.set_ylabel("Q$^2$Y (CV)")
-    ax.set_xlim(-0.05, 1.08); ax.set_ylim(-0.6, 1.08)
+    ax.set_xlim(-0.05, 1.08)
+    ax.set_ylim(*_ylim_permutacao(q2s, q2_obs, base=-0.6))
     ax.set_title("(b) Wold — Q$^2$Y vs permutation", loc="left")
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
@@ -1383,6 +1412,71 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
     salvar(fig2, "fig_score_contribution_top_discriminante", pasta, cfg)
 
 
+def _limites_log_ddsimca(valores: np.ndarray, floor_min: float = 1e-6,
+                          floor_max: float = 1e-2, margem_topo: float = 1.5,
+                          topo_min: float = 3.0) -> Tuple[float, float]:
+    """Escolhe piso e teto do eixo log de um painel DD-SIMCA A PARTIR DOS
+    DADOS, em vez de um piso fixo.
+
+    Bug real (achado 2026-08-07): com poucas amostras puras de treino
+    (nc=3), o modelo one-class fica com apenas 1 componente principal
+    (`n_comp=1` — ver `_MIN_Q_RESIDUAL_DF`). Amostras de OUTRAS classes
+    projetam quase sempre perto de zero nesse unico eixo, que nao tem
+    relacao com a variancia delas. Medido: 91% das amostras caiam abaixo
+    do piso fixo de 1e-2 antes usado, todas empilhadas na MESMA coluna de
+    pixels -- os valores reais variam de 1e-10 a 1e-2 (8 ordens de
+    grandeza), mas o piso fixo escondia essa variacao inteira atras de uma
+    parede visual que parecia um defeito de renderizacao.
+
+    Usa o 1o percentil dos valores positivos (nao o minimo bruto: um unico
+    valor colapsado por underflow numerico nao deve esticar o eixo todo) e
+    o 99o percentil para o teto, com margem. `floor_min`/`floor_max` evitam
+    eixos absurdamente largos OU voltar ao piso antigo sem necessidade.
+    """
+    valores = np.asarray(valores, dtype=float)
+    positivos = valores[np.isfinite(valores) & (valores > 0)]
+    if positivos.size == 0:
+        return floor_max, topo_min
+    piso = float(np.clip(np.percentile(positivos, 1), floor_min, floor_max))
+    teto = max(float(np.percentile(positivos, 99)) * margem_topo, topo_min)
+    return piso, teto
+
+
+def _fronteira_ddsimca(m: Dict[str, Any],
+                        t2_grid: np.ndarray) -> np.ndarray:
+    """Curva de aceitacao VERDADEIRA do DD-SIMCA, na parametrizacao do
+    grafico (T2/UCL(T2), Q/UCL(Q)).
+
+    Corrigido em 2026-08-08 junto com classificadores.DDSimca.predict():
+    antes o grafico desenhava DUAS linhas retas perpendiculares em
+    T2_norm=1 e Q_norm=1 (uma caixa retangular) -- mas essa NUNCA foi a
+    regiao de aceitacao real do modelo, so' uma aproximacao visual. A
+    decisao de fato usa a distancia combinada f=(T2/h0)*Nh+(Q/q0)*Nq
+    comparada a um unico f_crit (ver docstring de DDSimca), que e' uma
+    RETA UNICA (nao um retangulo) na parametrizacao (T2_norm, Q_norm):
+
+        A*T2_norm + B*Q_norm = f_crit,
+        A = (T2_ucl/h0)*Nh,  B = (Q_ucl/q0)*Nq
+
+    Devolve Q_norm ao longo dessa reta para cada T2_norm em `t2_grid`;
+    pontos fora do dominio (T2 sozinho ja excede f_crit) viram NaN --
+    matplotlib pula NaN automaticamente, a curva so' aparece onde existe.
+    """
+    campos = ("h0", "q0", "Nh", "Nq", "f_crit", "T2_ucl", "Q_ucl")
+    if any(m.get(c) is None for c in campos):
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    h0, q0 = float(m["h0"]), float(m["q0"])
+    if h0 <= 0 or q0 <= 0:
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    A = (float(m["T2_ucl"]) / h0) * float(m["Nh"])
+    B = (float(m["Q_ucl"]) / q0) * float(m["Nq"])
+    if B <= 0:
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    q_norm = (float(m["f_crit"]) - A * t2_grid) / B
+    q_norm[q_norm <= 0] = np.nan
+    return q_norm
+
+
 def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                                     rotulos: np.ndarray,
                                     mapa_cores: Dict[str, str],
@@ -1429,11 +1523,18 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         t2n = np.asarray(m["T2_norm"])
         qn  = np.asarray(m["Q_norm"])
 
-        # Log-log scale (Pomerantsev): clamp at small floor to avoid
-        # log(0) and make acceptance region visible (lower-left corner).
-        piso = 1e-2
-        t2p = np.clip(t2n, piso, None)
-        qp  = np.clip(qn,  piso, None)
+        # Log-log scale (Pomerantsev): clamp at a floor to avoid log(0).
+        # Piso e teto DINAMICOS por eixo (nao um piso fixo global) -- ver
+        # _limites_log_ddsimca: modelos com poucos componentes (n_comp=1,
+        # comum quando so' ha' 3 amostras puras de treino) fazem a maioria
+        # das amostras de outras classes projetar perto de zero em T2, e um
+        # piso fixo empilhava tudo na mesma coluna de pixels (parecia bug
+        # de renderizacao). Eixos T2 e Q sao independentes: um nao precisa
+        # esticar o outro.
+        piso_t2, teto_t2 = _limites_log_ddsimca(t2n)
+        piso_q,  teto_q  = _limites_log_ddsimca(qn)
+        t2p = np.clip(t2n, piso_t2, None)
+        qp  = np.clip(qn,  piso_q,  None)
         for true_cls in all_classes:
             idx = rotulos == true_cls
             ax.scatter(t2p[idx], qp[idx],
@@ -1443,11 +1544,13 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
                        label=str(true_cls), zorder=3)
         ax.set_xscale("log"); ax.set_yscale("log")
 
-        # Acceptance boundary at (1,1): lower-left quadrant accepted
-        ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        ax.axvspan(piso, 1.0, ymin=0, ymax=1, color=mapa_cores.get(cls, cor(0)),
-                   alpha=0.0)  # placeholder to keep color in title
+        # Fronteira de aceitacao VERDADEIRA (reta diagonal da distancia
+        # combinada f<=f_crit -- ver _fronteira_ddsimca). Substituiu as
+        # duas linhas retas em T2_norm=1/Q_norm=1: aquela caixa nunca foi
+        # a regiao de aceitacao real do modelo corrigido em predict().
+        t2_grid = np.logspace(np.log10(piso_t2 * 0.8), np.log10(teto_t2), 300)
+        q_fronteira = _fronteira_ddsimca(m, t2_grid)
+        ax.plot(t2_grid, q_fronteira, color="0.20", ls="--", lw=1.2, zorder=4)
 
         # Title: uses sens/spec from one-class model if available (M2);
         # otherwise falls back to fraction of own class accepted.
@@ -1466,17 +1569,22 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
             n_aceitos = int(np.sum((t2n[idx_cls] <= 1.0) & (qn[idx_cls] <= 1.0)))
             titulo_painel = f"Model: {cls}  sens.={n_aceitos/max(n_cls_tot,1):.0%}"
 
-        lim_hi = max(float(np.percentile(np.concatenate([t2p, qp]), 99)) * 1.5,
-                     3.0)
-        ax.set_xlim(piso * 0.8, lim_hi)
-        ax.set_ylim(piso * 0.8, lim_hi)
+        ax.set_xlim(piso_t2 * 0.8, teto_t2)
+        ax.set_ylim(piso_q * 0.8, teto_q)
         ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)", fontsize=8.5)
         ax.set_ylabel("$Q$ / UCL($Q$)  (log)", fontsize=8.5)
         ax.set_title(titulo_painel, loc="left",
                       fontsize=8.5, fontweight="bold")
+        # n_comp exposto na caixa: com poucas amostras puras de treino o
+        # modelo pode ter so' 1 componente -- e' o que explica a maioria
+        # das amostras de outras classes colapsar perto de zero em T2 (ver
+        # _limites_log_ddsimca). Sem essa informacao visivel, o padrao
+        # parece defeito de renderizacao em vez de propriedade do modelo.
+        n_comp_txt = (f"\nn_comp={int(m['n_comp'])} (treino n={int(m['n_train'])})"
+                      if "n_comp" in m else "")
         ax.text(0.98, 0.98,
                 f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
-                f"UCL($Q$)={float(m['Q_ucl']):.2g}",
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{n_comp_txt}",
                 transform=ax.transAxes, ha="right", va="top",
                 fontsize=7.5, color="0.35",
                 bbox=dict(boxstyle="round,pad=0.3", fc="white",
@@ -1505,11 +1613,19 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
     all_classes = np.unique(rotulos)
     s_pt, alpha_pt, lw_pt = parametros_scatter_adaptativos(
         len(rotulos), len(all_classes))
-    piso = 1e-2
     for cls in scores.keys():
         m = scores[cls]
-        t2p = np.clip(np.asarray(m["T2_norm"]), piso, None)
-        qp  = np.clip(np.asarray(m["Q_norm"]),  piso, None)
+        # Piso/teto DINAMICOS por eixo (mesmo motivo de
+        # fig_sprint3_ddsimca_acceptance -- esta funcao e' a versao
+        # individual da mesma figura e tinha o MESMO piso fixo de 1e-2, que
+        # empilhava ate' 94% dos pontos numa unica coluna quando o modelo
+        # one-class fica com n_comp=1).
+        t2n = np.asarray(m["T2_norm"])
+        qn  = np.asarray(m["Q_norm"])
+        piso_t2, teto_t2 = _limites_log_ddsimca(t2n)
+        piso_q,  teto_q  = _limites_log_ddsimca(qn)
+        t2p = np.clip(t2n, piso_t2, None)
+        qp  = np.clip(qn,  piso_q,  None)
         fig = plt.figure(figsize=(7.2, 5.2), constrained_layout=True)
         gs = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.2])
         ax = fig.add_subplot(gs[0]); ax_leg = fig.add_subplot(gs[1])
@@ -1519,11 +1635,13 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
                        s=s_pt, alpha=alpha_pt, edgecolors="white",
                        linewidths=lw_pt, label=str(true_cls), zorder=3)
         ax.set_xscale("log"); ax.set_yscale("log")
-        ax.axvline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        ax.axhline(1.0, color="0.20", ls="--", lw=1.2, zorder=4)
-        lim_hi = max(float(np.percentile(np.concatenate([t2p, qp]), 99)) * 1.5,
-                     3.0)
-        ax.set_xlim(piso * 0.8, lim_hi); ax.set_ylim(piso * 0.8, lim_hi)
+        # Fronteira verdadeira (reta diagonal de f<=f_crit) -- ver
+        # _fronteira_ddsimca e o mesmo comentario em
+        # fig_sprint3_ddsimca_acceptance.
+        t2_grid = np.logspace(np.log10(piso_t2 * 0.8), np.log10(teto_t2), 300)
+        ax.plot(t2_grid, _fronteira_ddsimca(m, t2_grid),
+               color="0.20", ls="--", lw=1.2, zorder=4)
+        ax.set_xlim(piso_t2 * 0.8, teto_t2); ax.set_ylim(piso_q * 0.8, teto_q)
         if sens_esp is not None and cls in sens_esp:
             _info = sens_esp[cls]
             sc, ec = _info[0], _info[1]
@@ -1537,8 +1655,10 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
         ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)")
         ax.set_ylabel("$Q$ / UCL($Q$)  (log)")
         ax.set_title(tt, loc="left", fontsize=9.5, fontweight="bold")
+        _nc = (f"\nn_comp={int(m['n_comp'])} (treino n={int(m['n_train'])})"
+               if "n_comp" in m else "")
         ax.text(0.98, 0.98, f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
-                f"UCL($Q$)={float(m['Q_ucl']):.2g}",
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{_nc}",
                 transform=ax.transAxes, ha="right", va="top", fontsize=8,
                 color="0.35", bbox=dict(boxstyle="round,pad=0.3", fc="white",
                                          ec="0.82", lw=0.5))
@@ -1660,6 +1780,115 @@ def _escala_vetores_biplot(scores2: np.ndarray, loadings: np.ndarray,
     return min(escala_x, escala_y)
 
 
+def selecionar_loadings_distintos(mag: np.ndarray, wavenumbers: np.ndarray,
+                                   n_alvo: int,
+                                   sep_min_cm: Optional[float] = None,
+                                   frac_min_mag: float = 0.15) -> np.ndarray:
+    """Indices das `n_alvo` variaveis de maior magnitude, exigindo separacao
+    espectral minima entre elas.
+
+    Motivo (bug real, 2026-08-07): pegar simplesmente as `n` de maior
+    magnitude devolve canais VIZINHOS da mesma banda -- num espectro NIR o
+    top-12 saia como 5888/5896/5903/5911... , isto e', tres bandas contadas
+    doze vezes. Isso (a) empilha rotulos praticamente no mesmo ponto e (b)
+    da a impressao falsa de doze marcadores independentes. Exigindo um
+    espacamento minimo, cada seta passa a representar uma banda distinta.
+
+    `sep_min_cm=None` deriva a separacao da largura da faixa espectral.
+
+    `frac_min_mag` e' um PISO relativo a' maior magnitude: variaveis abaixo
+    dele nao entram, mesmo que sobre espaco em `n_alvo`. Sem esse piso, a
+    exigencia de separacao obrigava a completar a cota com canais de
+    magnitude ~0 -- o biplot ficava com setas de comprimento nulo empilhadas
+    na origem, "linhas que nao dizem nada". Devolve MENOS de `n_alvo`
+    indices quando o espectro so' tem poucas bandas reais; isso e' a leitura
+    honesta, nao uma falha.
+    """
+    mag = np.asarray(mag, dtype=float)
+    wavenumbers = np.asarray(wavenumbers, dtype=float)
+    if mag.size == 0:
+        return np.array([], dtype=int)
+    n_alvo = int(min(n_alvo, mag.size))
+    if sep_min_cm is None:
+        faixa = float(abs(wavenumbers.max() - wavenumbers.min()))
+        # ~1/3 do espacamento uniforme: separa bandas sem ser tao rigido a
+        # ponto de nao conseguir preencher n_alvo em espectros estreitos.
+        sep_min_cm = faixa / max(n_alvo * 3.0, 1.0)
+
+    mag_max = float(np.abs(mag).max())
+    piso = mag_max * float(frac_min_mag)
+
+    escolhidos: List[int] = []
+    for i in np.argsort(mag)[::-1]:
+        i = int(i)
+        if mag[i] < piso:
+            break                      # ordenado: daqui p/ frente so' piora
+        if all(abs(wavenumbers[i] - wavenumbers[j]) >= sep_min_cm
+               for j in escolhidos):
+            escolhidos.append(i)
+        if len(escolhidos) >= n_alvo:
+            break
+    if not escolhidos:                 # tudo abaixo do piso (espectro plano)
+        escolhidos = [int(np.argmax(mag))]
+    return np.array(escolhidos, dtype=int)
+
+
+def afastar_rotulos(pos: np.ndarray, sep_x: float,
+                     sep_y: float) -> np.ndarray:
+    """Afasta rotulos sobrepostos: nenhum par fica a menos de `sep_x` E
+    `sep_y` ao mesmo tempo (criterio de CAIXA -- e' assim que um rotulo de
+    texto realmente ocupa espaco: dois rotulos podem ter o mesmo y desde
+    que estejam longe na horizontal).
+
+    Algoritmo em dois passos, deterministico e com convergencia GARANTIDA
+    (uma passada, sem laco de relaxamento):
+
+      1. Agrupa os rotulos em COLUNAS por proximidade em x (corta onde o
+         intervalo entre x consecutivos ja e' >= sep_x). Por construcao,
+         dois rotulos de colunas diferentes distam >= sep_x em x, logo nao
+         se sobrepoem, independentemente do y.
+      2. Dentro de cada coluna, empilha verticalmente com espacamento
+         minimo `sep_y`, preservando a ordem original em y e recentrando o
+         bloco na media original -- o deslocamento fica simetrico, sem
+         empurrar tudo para um lado so'.
+
+    Substituiu uma repulsao par-a-par iterativa que OSCILAVA (cada empurrao
+    desfazia o anterior) e deixava sobreposicoes residuais mesmo apos 120
+    iteracoes -- verificado: 12 rotulos coincidentes sobravam com 7 pares
+    sobrepostos. Como o passo 2 nao mexe em x, a garantia do passo 1 e'
+    preservada ate o fim.
+
+    Funcao PURA para poder testar a ausencia de sobreposicao sem renderizar.
+    """
+    p = np.array(pos, dtype=float, copy=True)
+    if len(p) < 2 or sep_x <= 0 or sep_y <= 0:
+        return p
+
+    ordem_x = np.argsort(p[:, 0], kind="stable")
+    # Corta em coluna nova onde o intervalo em x ja separa por si so'
+    col_atual: List[int] = [int(ordem_x[0])]
+    colunas: List[List[int]] = [col_atual]
+    for anterior, atual in zip(ordem_x[:-1], ordem_x[1:]):
+        if p[atual, 0] - p[anterior, 0] >= sep_x:
+            col_atual = []
+            colunas.append(col_atual)
+        col_atual.append(int(atual))
+
+    for coluna in colunas:
+        if len(coluna) < 2:
+            continue
+        idx = np.array(coluna)
+        idx = idx[np.argsort(p[idx, 1], kind="stable")]   # de baixo p/ cima
+        ys = p[idx, 1].astype(float)
+        centro_original = float(ys.mean())
+        # Empilha: cada rotulo fica pelo menos sep_y acima do anterior
+        for k in range(1, len(ys)):
+            ys[k] = max(ys[k], ys[k - 1] + sep_y)
+        ys += centro_original - float(ys.mean())          # recentra o bloco
+        p[idx, 1] = ys
+    return p
+
+
 def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
                     rotulos, mapa_cores, cfg: "Config", pasta: str,
                     n_vars_destacadas: int = 12) -> None:
@@ -1692,16 +1921,34 @@ def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
 
     escala = _escala_vetores_biplot(scores2, loadings)
     mag = np.sqrt((loadings ** 2).sum(axis=1))
-    idx_top = np.argsort(mag)[::-1][:min(n_vars_destacadas, len(mag))]
+    # Bandas ESPECTRALMENTE DISTINTAS, nao canais vizinhos da mesma banda
+    idx_top = selecionar_loadings_distintos(mag, wavenumbers, n_vars_destacadas)
 
-    for i in idx_top:
-        vx, vy = loadings[i, 0] * escala, loadings[i, 1] * escala
+    pontas = np.column_stack([loadings[idx_top, 0] * escala,
+                              loadings[idx_top, 1] * escala])
+    # Rotulo nasce um pouco alem da ponta da seta...
+    alvo = pontas * 1.08
+    # ...e entao e' afastado dos vizinhos. A separacao minima e' derivada da
+    # extensao real dos dados (nao um valor fixo em polegadas), para que a
+    # figura funcione em qualquer escala de score.
+    ext_x = float(np.abs(scores2[:, 0]).max()) if scores2.size else 1.0
+    ext_y = float(np.abs(scores2[:, 1]).max()) if scores2.size else 1.0
+    alvo = afastar_rotulos(alvo, sep_x=ext_x * 0.13, sep_y=ext_y * 0.075)
+
+    for (vx, vy), (lx, ly), i in zip(pontas, alvo, idx_top):
         ax.annotate("", xy=(vx, vy), xytext=(0, 0),
                     arrowprops=dict(arrowstyle="-|>", color="0.15", lw=1.1,
                                     shrinkA=0, shrinkB=0), zorder=4)
-        ax.text(vx * 1.08, vy * 1.08, f"{wavenumbers[i]:.0f}",
+        # Linha-guia fina ligando o rotulo deslocado a' sua seta -- sem ela
+        # o afastamento tornaria ambiguo qual rotulo pertence a qual vetor.
+        if abs(lx - vx * 1.08) > ext_x * 1e-3 or abs(ly - vy * 1.08) > ext_y * 1e-3:
+            ax.plot([vx, lx], [vy, ly], color="0.55", lw=0.5, ls="-",
+                    zorder=3, alpha=0.8)
+        ax.text(lx, ly, f"{wavenumbers[i]:.0f}",
                fontsize=7, color="0.15", ha="center", va="center",
-               fontweight="bold", zorder=5)
+               fontweight="bold", zorder=5,
+               bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none",
+                         alpha=0.75))
 
     ax.axhline(0, color="0.75", lw=0.5, ls=":")
     ax.axvline(0, color="0.75", lw=0.5, ls=":")
@@ -1912,6 +2159,11 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
 
     Ref: Rodionova & Pomerantsev (2020) Chemom. Intell. Lab. Syst. 200:103958.
     """
+    rotulos = np.asarray(rotulos, dtype=str)
+    classes_todas = np.unique(rotulos)
+    s_pt, alpha_pt, _lw_pt = parametros_scatter_adaptativos(
+        len(rotulos), len(classes_todas))
+
     classes_dd = sorted(ddsimca_res.keys())
     pares = [(classes_dd[i], classes_dd[j])
              for i in range(len(classes_dd))
@@ -1937,11 +2189,11 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
         qA  = np.sqrt(np.clip(np.asarray(ddsimca_res[clsA]["Q_norm"]), 0, None))
         qB  = np.sqrt(np.clip(np.asarray(ddsimca_res[clsB]["Q_norm"]), 0, None))
 
-        for cls in sorted(set(rotulos)):
+        for cls in classes_todas:
             mask = rotulos == cls
             ax.scatter(qA[mask], qB[mask],
                        color=mapa_cores.get(cls, "#999999"),
-                       s=20, alpha=0.80, label=cls,
+                       s=s_pt, alpha=alpha_pt, label=cls,
                        edgecolors="none", zorder=3)
 
         ax.axhline(1.0, color="black", lw=0.9, ls="--")

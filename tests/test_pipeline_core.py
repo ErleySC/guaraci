@@ -53,6 +53,74 @@ def test_snv_invariante_a_escala_e_offset(pq):
     np.testing.assert_allclose(Z_orig, Z_afim, atol=1e-10)
 
 
+# ── MSC: forma fechada vetorizada (achado 2026-08-07) ────────────────────────
+# transform() resolvia, por amostra, uma regressao de 2 parametros
+# (a, b) via np.linalg.lstsq num loop Python. Vetorizado usando a forma
+# fechada da regressao linear simples (b=Cov(ref,X_i)/Var(ref),
+# a=mean(X_i)-b*mean(ref)). Estes testes travam a EQUIVALENCIA com o
+# lstsq original (oraculo independente) e o comportamento do caso
+# degenerado (referencia de variancia ~0).
+
+def _msc_lstsq_por_amostra(X, ref):
+    """Oraculo independente: a MESMA logica que MSC.transform() usava antes
+    da vetorizacao (1 np.linalg.lstsq por amostra) -- usada so' nos testes,
+    para verificar que a forma fechada reproduz exatamente esse resultado."""
+    A = np.column_stack([np.ones_like(ref), ref])
+    out = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        sol, *_ = np.linalg.lstsq(A, X[i], rcond=None)
+        a, b = float(sol[0]), float(sol[1])
+        out[i] = (X[i] - a) / b if abs(b) > 1e-12 else X[i] - a
+    return out
+
+
+def test_msc_forma_fechada_bate_com_lstsq_por_amostra(pq):
+    """A regressao vetorizada (forma fechada) tem que reproduzir EXATAMENTE
+    o resultado de resolver a mesma regressao (a + b*ref) via lstsq
+    amostra-por-amostra -- e' a mesma matematica, so' mais rapida."""
+    rng = np.random.default_rng(7)
+    X_train = rng.normal(size=(40, 60)) * rng.uniform(0.5, 5) + rng.uniform(-2, 2)
+    msc = pq.MSC().fit(X_train)
+
+    for seed in range(5):
+        rng2 = np.random.default_rng(seed + 100)
+        X_new = rng2.normal(size=(15, 60)) * rng2.uniform(0.5, 5)
+        esperado = _msc_lstsq_por_amostra(X_new, msc.ref_)
+        obtido = msc.transform(X_new)
+        np.testing.assert_allclose(obtido, esperado, atol=1e-8)
+
+
+def test_msc_recupera_coeficientes_conhecidos(pq):
+    """Caso estruturado com a/b conhecidos por construcao: X_i = a_i + b_i*ref
+    -- MSC deve reconstruir exatamente ref (a menos de arredondamento)."""
+    rng = np.random.default_rng(3)
+    ref = rng.normal(size=50)
+    a_verdadeiro = np.array([5.0, -3.0, 0.0])
+    b_verdadeiro = np.array([2.0, 0.5, 1.0])
+    X = a_verdadeiro[:, None] + b_verdadeiro[:, None] * ref[None, :]
+
+    msc = pq.MSC()
+    msc.ref_ = ref   # simula fit() num treino cuja media e' `ref`
+    out = msc.transform(X)
+    for i in range(3):
+        np.testing.assert_allclose(out[i], ref, atol=1e-8)
+
+
+def test_msc_referencia_degenerada_nao_gera_nan(pq):
+    """Referencia de treino com variancia ~0 (caso degenerado, nao ocorre
+    com dado espectral real) -- a regressao fica mal-posta; MSC cai no
+    fallback documentado (so' subtrai a media da amostra), nunca NaN/Inf."""
+    ref_const = np.full(30, 3.0)
+    rng = np.random.default_rng(9)
+    X = rng.normal(size=(5, 30))
+
+    msc = pq.MSC()
+    msc.ref_ = ref_const
+    out = msc.transform(X)
+    assert np.all(np.isfinite(out))
+    np.testing.assert_allclose(out, X - X.mean(axis=1, keepdims=True), atol=1e-10)
+
+
 def test_savgol_preserva_shape(pq):
     """SavGol: preserva o shape; suaviza (não retorna o mesmo array)."""
     rng = np.random.default_rng(1)
@@ -135,6 +203,68 @@ def test_selectivity_ratio_nao_negativo(pq):
     sr = pq.calcular_selectivity_ratio(modelo, X)
     assert sr.shape == (X.shape[1],)
     assert np.all(sr >= 0)
+
+
+def _sr_referencia_univariado(modelo, X):
+    """Formula publicada (Rajalahti et al. 2009, Sec. 2.2) para y de 1
+    coluna — usada como oráculo independente nos testes abaixo."""
+    b = np.asarray(modelo.coef_, dtype=float).reshape(-1)
+    w_tp = b / np.linalg.norm(b)
+    t_tp = X @ w_tp
+    tt = float(t_tp @ t_tp)
+    p_tp = (t_tp @ X) / tt
+    X_tp = np.outer(t_tp, p_tp)
+    X_res = X - X_tp
+    var_res = X_res.var(axis=0, ddof=1)
+    var_res[var_res < 1e-12] = 1e-12
+    return X_tp.var(axis=0, ddof=1) / var_res
+
+
+def test_selectivity_ratio_bate_com_formula_de_referencia_qualquer_lv(pq):
+    """Achado A2 da auditoria 2026-08-07: SR deve bater com a formula
+    publicada (b/||b||) para QUALQUER numero de LVs — a versao anterior,
+    baseada no peso w1, so coincidia com a referencia quando o modelo
+    tinha 1 LV (com >=2 LVs corr(t_tp, y_hat) caia para ~0.92, quando
+    deveria ser 1.0 exato)."""
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(50, 12))
+    y = X[:, :3] @ rng.normal(size=3) + rng.normal(scale=0.1, size=50)
+    for n_lv in (1, 2, 4):
+        m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
+        sr = pq.calcular_selectivity_ratio(m, X)
+        sr_ref = _sr_referencia_univariado(m, X)
+        np.testing.assert_allclose(sr, sr_ref, rtol=1e-9)
+
+
+def test_selectivity_ratio_projecao_alvo_proporcional_a_predicao(pq):
+    """Propriedade que DEFINE o metodo (Rajalahti et al. 2009): o escore de
+    projecao-alvo t_tp = X @ (b/||b||) e' proporcional ao vetor de valores
+    preditos y_hat, para qualquer numero de LVs."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(60, 15))
+    y = X[:, :4] @ rng.normal(size=4) + rng.normal(scale=0.1, size=60)
+    for n_lv in (1, 2, 3, 5):
+        m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
+        b = np.asarray(m.coef_, dtype=float).reshape(-1)
+        t_tp = X @ (b / np.linalg.norm(b))
+        yhat = m.predict(X).ravel()
+        corr = np.corrcoef(t_tp, yhat)[0, 1]
+        assert corr == pytest.approx(1.0, abs=1e-9)
+
+
+def test_selectivity_ratio_multiclasse_agrega_por_maximo(pq):
+    """Y one-hot multiclasse (K colunas): SR aplica a formula publicada a
+    cada classe (one-vs-rest) independentemente e agrega por MAXIMO entre
+    classes — shape correto, nao-negativo, finito."""
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(60, 10))
+    y_int = rng.integers(0, 4, size=60)
+    Y_bin = np.eye(4)[y_int]
+    m = PLSRegression(n_components=3, scale=False).fit(X, Y_bin)
+    sr = pq.calcular_selectivity_ratio(m, X)
+    assert sr.shape == (10,)
+    assert np.all(sr >= 0)
+    assert np.all(np.isfinite(sr))
 
 
 # ── Teste de incerteza de Martens (jackknifing dos coeficientes PLS) ──────────
@@ -403,26 +533,26 @@ def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
 
 # ── Selectivity Ratio: casos degenerados (peso/projeção nulos) ──────────────
 
-def test_selectivity_ratio_peso_w1_nulo_retorna_zeros(pq):
-    """Se o primeiro peso PLS (w1) é todo zero (modelo degenerado/patológico),
+def test_selectivity_ratio_vetor_regressao_nulo_retorna_zeros(pq):
+    """Se o vetor de regressao b e' todo zero (modelo degenerado/patológico),
     calcular_selectivity_ratio não deve dividir por zero — retorna vetor de
     zeros (SR indefinido = sem seletividade nenhuma), nunca NaN/inf silencioso."""
-    class _ModeloWZero:
-        x_weights_ = np.zeros((10, 2))
-    sr = pq.calcular_selectivity_ratio(_ModeloWZero(),
+    class _ModeloCoefZero:
+        coef_ = np.zeros((1, 10))
+    sr = pq.calcular_selectivity_ratio(_ModeloCoefZero(),
                                         np.random.default_rng(0).normal(size=(15, 10)))
     assert np.array_equal(sr, np.zeros(10))
 
 
 def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
-    """Se X é ortogonal ao peso w1 (projeção target tem norma ~0), o SR
-    também não pode ser calculado -- mesmo fallback de zeros."""
-    class _ModeloWOrtogonal:
-        x_weights_ = np.array([[1.0, 0.0], [0.0, 0.0]])  # so' a 1a variavel pesa
-    # X com a 1a coluna sempre zero -> t_tp = X @ w1_unit = 0 para todas as amostras
+    """Se X é ortogonal ao vetor de regressao b (projeção target tem norma
+    ~0), o SR também não pode ser calculado -- mesmo fallback de zeros."""
+    class _ModeloCoefOrtogonal:
+        coef_ = np.array([[1.0, 0.0]])  # so' a 1a variavel pesa
+    # X com a 1a coluna sempre zero -> t_tp = X @ b_unit = 0 para todas as amostras
     X = np.zeros((10, 2))
     X[:, 1] = np.random.default_rng(1).normal(size=10)
-    sr = pq.calcular_selectivity_ratio(_ModeloWOrtogonal(), X)
+    sr = pq.calcular_selectivity_ratio(_ModeloCoefOrtogonal(), X)
     assert np.array_equal(sr, np.zeros(2))
 
 
@@ -937,7 +1067,7 @@ def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
     ad = pq.dominio_aplicabilidade(pca, X, X, alpha=0.05)
     assert 0.80 <= float(ad["fracao_dentro"]) <= 1.0
     assert ad["dentro_dominio"].shape == (120,)
-    assert float(ad["t2_limite"]) > 0 and float(ad["q_limite"]) > 0
+    assert float(ad["f_crit"]) > 0
 
 
 def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
@@ -955,8 +1085,9 @@ def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
 
 
 def test_dominio_aplicabilidade_retorno_consistente(pq):
-    """Mascaras booleanas e vetores t2/q tem o mesmo tamanho de X_new; dentro
-    = dentro_t2 AND dentro_q."""
+    """Vetores t2/q/f tem o mesmo tamanho de X_new; dentro_dominio =
+    (f <= f_crit) -- a distancia COMBINADA (achado A3 da auditoria
+    2026-08-07), nao mais o teste retangular T2<=lim E Q<=lim."""
     import numpy as np
     from sklearn.decomposition import PCA
     rng = np.random.default_rng(2)
@@ -965,8 +1096,32 @@ def test_dominio_aplicabilidade_retorno_consistente(pq):
     pca = PCA(n_components=3).fit(X)
     ad = pq.dominio_aplicabilidade(pca, X, Xn)
     assert ad["t2"].shape == (12,) and ad["q"].shape == (12,)
-    assert np.array_equal(ad["dentro_dominio"],
-                          ad["dentro_t2"] & ad["dentro_q"])
+    assert ad["f"].shape == (12,)
+    assert np.array_equal(ad["dentro_dominio"], ad["f"] <= ad["f_crit"])
+
+
+def test_dominio_aplicabilidade_calibrada_melhor_que_regra_retangular(pq):
+    """Achado A3: a regra retangular (T2<=lim E Q<=lim, alpha=0.05 por
+    eixo) rejeitava ~11.6% de amostras da MESMA distribuicao do treino
+    (contra 5% nominal). A distancia combinada deve ficar muito mais perto
+    do alpha nominal. Nao trava um valor exato (variabilidade de Monte
+    Carlo com 1 unica amostra de treino) -- so' que fica bem abaixo do
+    patamar da regra retangular (~9.75% no caso ingenuo, medido 11.6%)."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rejeicoes = []
+    for seed in range(15):
+        rng = np.random.default_rng(100 + seed)
+        Xtr = rng.normal(0, 1, (200, 30))
+        Xnew = rng.normal(0, 1, (500, 30))   # mesma distribuicao => H0
+        pca = PCA(n_components=3).fit(Xtr)
+        ad = pq.dominio_aplicabilidade(pca, Xtr, Xnew, alpha=0.05)
+        rejeicoes.append(1.0 - float(ad["fracao_dentro"]))
+    taxa_media = float(np.mean(rejeicoes))
+    assert taxa_media < 0.09, (
+        f"taxa de rejeicao {taxa_media:.3f} proxima demais do patamar da "
+        "regra retangular (~0.10-0.12) -- distancia combinada nao "
+        "parece estar em uso")
 
 
 def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinado(pq):
@@ -985,13 +1140,14 @@ def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinad
     combinado = pq.dominio_aplicabilidade(pca, X, Xn, alpha=0.05)
     treino = pq.dominio_aplicabilidade_treino(pca, X, alpha=0.05)
     split = pq.dominio_aplicabilidade_amostras_novas(
-        pca, Xn, treino["var_t"], treino["t2_limite"], treino["q_limite"])
+        pca, Xn, treino["var_t"], treino["h0"], treino["q0"],
+        treino["Nh"], treino["Nq"], treino["f_crit"])
 
     assert np.allclose(combinado["t2"], split["t2"])
     assert np.allclose(combinado["q"], split["q"])
+    assert np.allclose(combinado["f"], split["f"])
     assert np.array_equal(combinado["dentro_dominio"], split["dentro_dominio"])
-    assert float(combinado["t2_limite"]) == pytest.approx(treino["t2_limite"])
-    assert float(combinado["q_limite"]) == pytest.approx(treino["q_limite"])
+    assert float(combinado["f_crit"]) == pytest.approx(treino["f_crit"])
 
 
 def test_dominio_aplicabilidade_treino_var_t_tem_tamanho_n_componentes(pq):
@@ -1389,3 +1545,121 @@ def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
     assert "n/a" in secao9
     assert "nan" not in secao9.lower()  # nunca "nan" cru (sempre formatado como n/a)
     assert "LOD" in secao9 and "LOQ" in secao9 and "Sensibilidade" in secao9
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico de faixa espectral (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def _espectros(wn, gen, n=200, seed=0):
+    rng = np.random.default_rng(seed)
+    return np.array([gen(rng) for _ in range(n)])
+
+
+def test_diagnostico_detecta_regiao_morta_e_sugere_faixa():
+    """Faixa larga demais (o caso real: 4000-10000 cm-1 com sinal so' abaixo
+    de ~6200) tem que ser detectada e reportada com faixa sugerida."""
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 5900) / 70) ** 2)
+        + (0.8 + 0.3 * r.normal()) * np.exp(-((wn - 4450) / 55) ** 2)
+        + r.normal(scale=0.01, size=wn.size)))
+    d = diagnosticar_faixa_espectral(X, wn)
+
+    assert d["frac_util"] < 0.5
+    assert d["faixa_sugerida"] is not None
+    lo, hi = d["faixa_sugerida"]
+    assert hi < 6500, f"faixa sugerida ({lo:.0f}-{hi:.0f}) nao cortou a zona morta"
+    tipos = {t for _a, _b, t in d["regioes_ruins"]}
+    assert "morta" in tipos, f"zona sem sinal classificada como {tipos}"
+
+
+def test_diagnostico_nao_da_falso_positivo_em_espectro_todo_util():
+    """Se a faixa inteira carrega sinal, nao pode sugerir corte — um
+    diagnostico que sempre acusa problema e' ruido, nao informacao."""
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 7000) / 2500) ** 2)
+        + r.normal(scale=0.005, size=wn.size)))
+    d = diagnosticar_faixa_espectral(X, wn)
+    assert d["frac_util"] > 0.95
+    assert d["faixa_sugerida"] is None
+    assert d["regioes_ruins"] == []
+
+
+def test_diagnostico_separa_ruidosa_de_morta():
+    """Regiao com MUITA variacao de alta frequencia e' 'ruidosa', nao
+    'morta' — sao defeitos diferentes e pedem acoes diferentes."""
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 5000) / 700) ** 2)
+        + r.normal(scale=0.005, size=wn.size)
+        + np.where(wn > 8000, r.normal(scale=0.3, size=wn.size), 0.0)))
+    d = diagnosticar_faixa_espectral(X, wn)
+    tipos = {t for _a, _b, t in d["regioes_ruins"]}
+    assert "ruidosa" in tipos, f"regiao de ruido alto classificada como {tipos}"
+
+
+def test_diagnostico_entrada_degenerada_nao_quebra():
+    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    d = diagnosticar_faixa_espectral(np.zeros((2, 3)), np.array([1., 2., 3.]))
+    assert d["faixa_sugerida"] is None
+    assert bool(np.all(d["mascara_util"]))
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico PCV (Procrustes Cross-Validation) opt-in -- adicionado 2026-08-08
+# ---------------------------------------------------------------------------
+def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
+    """Com cfg.ddsimca_pcv=False (default), o resumo nao ganha os campos
+    extras de PCV -- feature opt-in, nao muda o comportamento padrao."""
+    pytest.importorskip("prcv")
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "in"), pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
+        executar_ddsimca=True, executar_opls=False, executar_etapa4=False,
+        executar_wold=False, comparar_pipelines=False,
+        executar_cv_anova=False, executar_benchmark=False,
+        executar_monte_carlo=False, executar_shap=False,
+        ddsimca_pcv=False,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8")
+    assert "sens(PCV" not in resumo
+
+
+def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
+    """Com cfg.ddsimca_pcv=True e pacote 'prcv' instalado, o resumo ganha
+    linhas "sens(PCV, exploratorio)" ALEM das de LOGO (nunca em vez delas)."""
+    pytest.importorskip("prcv")
+    import os
+    cfg = pq.Config(
+        pasta_entrada=str(tmp_path / "in"), pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
+        executar_ddsimca=True, executar_opls=False, executar_etapa4=False,
+        executar_wold=False, comparar_pipelines=False,
+        executar_cv_anova=False, executar_benchmark=False,
+        executar_monte_carlo=False, executar_shap=False,
+        ddsimca_pcv=True,
+    )
+    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    pq.executar(cfg)
+    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8")
+    assert "sens(PCV, exploratorio)" in resumo
+    assert "sens(LOGO)" in resumo   # PCV e' complementar, LOGO continua ali

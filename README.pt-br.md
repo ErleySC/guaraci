@@ -33,7 +33,7 @@ Suporta dados vibracionais (**FT-NIR, NIR, MIR, Raman, UV-Vis**), de luminescên
 IMS**), por uma interface de terminal bilíngue (**GUARACI**) e um app Streamlit —
 sem precisar programar.
 
-Originalmente desenvolvido como Trabalho de Conclusão de Curso (Química, UFPA)
+Originalmente desenvolvido como Trabalho de Conclusão de Curso em Química
 sobre óleos amazônicos medidos por FT-NIR em **ABB MB3600** (arquivos **JCAMP-DX
 `.dx`**), agora generalizado para outras técnicas e matrizes.
 
@@ -231,7 +231,7 @@ depois de exportado.
 
 ## Autor
 
-**Erley S. da Costa** — Pesquisador / Desenvolvedor · GEAAp/UFPA
+**Erley S. da Costa** — Pesquisador / Desenvolvedor
 [GitHub](https://github.com/ErleySC) ·
 [Lattes](http://lattes.cnpq.br/5755582193284309) ·
 erleysdacosta@gmail.com

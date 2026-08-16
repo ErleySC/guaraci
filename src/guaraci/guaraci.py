@@ -17,6 +17,7 @@ import logging
 import json
 import os
 import re as _re
+import shutil
 import sys
 import threading
 import time
@@ -115,11 +116,58 @@ def _carregar_codigos_usuario() -> dict:
 # ---------------------------------------------------------------------------
 # Caminhos
 # ---------------------------------------------------------------------------
+# _BASE_DIR: diretorio de INSTALACAO do pacote -- so' para recursos
+# somente-leitura que o pacote ja traz consigo (ex.: CITATION.cff).
+#
+# _USER_DIR: onde o CLI grava ESTADO do usuario (config.yaml, perfis
+# salvos, flags de idioma/modo, codigos customizados). CORRIGIDO em
+# 2026-08-07 (achado do "checkup geral" de interface -- ver
+# docs/auditoria/): ate' entao esses arquivos eram gravados dentro de
+# _BASE_DIR, ou seja, DENTRO do diretorio de instalacao do pacote. Isso
+# quebra em qualquer instalacao read-only (pip de sistema, imagem Docker,
+# alguns `pip install --user`) -- `salvar_config()` logo antes de rodar o
+# pipeline (ver `_rodar_pipeline`) nao tinha nenhuma guarda contra isso e
+# derrubava o CLI com um PermissionError bem na hora de rodar a analise.
+# Home do usuario e' gravavel em praticamente qualquer instalacao.
 _BASE_DIR    = Path(os.path.dirname(os.path.abspath(__file__)))
-_CFG_PATH    = _BASE_DIR / "config.yaml"
-_PERFIS_DIR  = _BASE_DIR / "perfis"
-_LANG_FLAG   = _BASE_DIR / ".cli_wizard_done"
-_CODIGOS_PATH= _BASE_DIR / "codigos_usuario.json"
+_USER_DIR    = Path.home() / ".guaraci"
+_CFG_PATH    = _USER_DIR / "config.yaml"
+_PERFIS_DIR  = _USER_DIR / "perfis"
+_LANG_FLAG   = _USER_DIR / ".cli_wizard_done"
+_CODIGOS_PATH= _USER_DIR / "codigos_usuario.json"
+
+
+def _migrar_estado_legado() -> None:
+    """Copia, uma vez, o estado gravado pela versao anterior (dentro de
+    _BASE_DIR) para o novo local (_USER_DIR), se o novo local ainda nao
+    tiver esse arquivo. NUNCA sobrescreve nem apaga o arquivo antigo --
+    so' copia o que falta, best-effort (falha de permissao aqui nao pode
+    impedir o CLI de abrir). Chamada uma vez no inicio de `main()`, nao na
+    importacao do modulo (importar `guaraci.guaraci` -- em testes, por
+    exemplo -- nao deve escrever no HOME de quem esta rodando os testes).
+    """
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return
+    for nome, alvo in (
+        ("config.yaml", _CFG_PATH),
+        (".cli_wizard_done", _LANG_FLAG),
+        ("codigos_usuario.json", _CODIGOS_PATH),
+        (".cli_modo_usuario", _MODO_FLAG),
+    ):
+        origem = _BASE_DIR / nome
+        if origem.exists() and not alvo.exists():
+            try:
+                shutil.copy2(origem, alvo)
+            except OSError:
+                pass
+    origem_perfis = _BASE_DIR / "perfis"
+    if origem_perfis.is_dir() and not _PERFIS_DIR.exists():
+        try:
+            shutil.copytree(origem_perfis, _PERFIS_DIR)
+        except OSError:
+            pass
 
 # ---------------------------------------------------------------------------
 # Estado global
@@ -132,6 +180,7 @@ def _lang() -> str:
 def _set_lang(l: str) -> None:
     _STATE["lang"] = l
     try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
         _LANG_FLAG.write_text(l, encoding="utf-8")
     except OSError:
         pass
@@ -148,7 +197,7 @@ def _toggle_idioma() -> str:
 # 2026-07-13: _cli nao define _carregar_visual_cfg/_salvar_visual_cfg, os
 # wrappers em guaraci.py sempre retornam {} / viram no-op silenciosamente;
 # fora do escopo desta feature consertar isso).
-_MODO_FLAG = _BASE_DIR / ".cli_modo_usuario"
+_MODO_FLAG = _USER_DIR / ".cli_modo_usuario"
 
 def _modo_usuario() -> str:
     return _STATE["modo_usuario"]
@@ -156,6 +205,7 @@ def _modo_usuario() -> str:
 def _set_modo_usuario(m: str) -> None:
     _STATE["modo_usuario"] = m
     try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
         _MODO_FLAG.write_text(m, encoding="utf-8")
     except OSError:
         pass
@@ -1649,10 +1699,10 @@ def menu_modelagem(cfg: Config) -> None:
     # fazem sentido com ele ligado -- todos em campos_avancados.
     _loop_menu(_t("t_modelagem"), _t("d_modelagem"),
                ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca",
-                "modo_ddsimca", "selecao_variaveis_etapa4",
+                "modo_ddsimca", "ddsimca_pcv", "selecao_variaveis_etapa4",
                 "selecao_spa", "selecao_ag"], cfg,
                campos_avancados={"objetivo", "opls_da", "ddsimca", "modo_ddsimca",
-                                  "selecao_variaveis_etapa4",
+                                  "ddsimca_pcv", "selecao_variaveis_etapa4",
                                   "selecao_spa", "selecao_ag"})
 
 
@@ -2024,6 +2074,7 @@ def menu_codificacao(cfg: Config) -> None:
 
     def _salvar_cod(d: dict) -> bool:
         try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
             _CODIGOS_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
             return True
         except OSError as e:
@@ -2106,8 +2157,9 @@ def menu_codificacao(cfg: Config) -> None:
     def _exportar_csv() -> None:
         import csv as _csv
         cod_usr = _cod_usr()
-        destino = str(_BASE_DIR / "codigos_exportados.csv")
+        destino = str(_USER_DIR / "codigos_exportados.csv")
         try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
             with open(destino, "w", newline="", encoding="utf-8-sig") as fh:
                 w = _csv.writer(fh)
                 w.writerow(["codigo", "especie", "origem"])
@@ -2679,7 +2731,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             p2 = ("Oferece um ambiente confiavel, reproducivel e bilingue (PT/EN)"
                   " para classificacao, autenticacao e exploracao de matrizes complexas"
                   " — do FT-NIR ao GC-MS, sem escrever uma linha de codigo.")
-            p3 = ("Desenvolvido no ambito de uma pesquisa PIBIC/UFPA sobre oleos"
+            p3 = ("Desenvolvido no ambito de uma pesquisa sobre oleos"
                   " vegetais amazonicos, com metodologia generalizavel para"
                   " qualquer tecnica analitica com dados multivariados.")
         else:
@@ -2688,7 +2740,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             p2 = ("Provides a reliable, reproducible and bilingual (PT/EN)"
                   " environment for classification, authentication and exploration"
                   " of complex matrices — from FT-NIR to GC-MS, without writing code.")
-            p3 = ("Developed within a PIBIC/UFPA research project on Amazonian"
+            p3 = ("Developed within a research project on Amazonian"
                   " vegetable oils, with a methodology generalized to any"
                   " analytical technique with multivariate data.")
         prop_lbl = "Proposito" if lang == "PT" else "Purpose"
@@ -3216,9 +3268,23 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
     precisar rodar o pipeline de verdade nem simular entrada interativa."""
-    frac, label = _progresso_do_log(texto_log)
+    frac, label = _progresso_do_log(texto_log, len(plano_figuras) or None)
     figs = _figuras_concluidas(texto_log)
     avisos = _avisos_do_log(texto_log)
+
+    # LIMITE DE ALTURA (bug real, 2026-08-07: "tela preta").
+    # `figs` e `avisos` crescem sem teto durante a execucao. Numa corrida
+    # completa (26 figuras + varios avisos distintos) o painel passava de 35
+    # linhas num terminal de 24. O `Live` do Rich reposiciona o cursor para
+    # redesenhar; quando o bloco nao cabe na janela ele nao consegue e a tela
+    # fica preta com so' o cursor piscando -- exatamente o sintoma relatado.
+    # O calculo seguia rodando por baixo, so' o painel morria.
+    # Solucao: manter o painel com altura LIMITADA, mostrando os itens mais
+    # recentes (que e' o que interessa acompanhar) + um contador do resto.
+    MAX_AVISOS  = 4
+    MAX_FIG_LIN = 3      # linhas gastas com a lista de figuras
+    n_ocultos = max(0, len(avisos) - MAX_AVISOS)
+    avisos_vis = avisos[-MAX_AVISOS:]
 
     bar_w = 32
     preenchido = int(bar_w * frac)
@@ -3236,14 +3302,21 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
         Rule(style=PD),
         Text(f"{_t('exec_figuras')} ({len(figs)}/{len(plano_figuras)} "
              "planejadas):", style=f"bold {PM}"),
-        Text("  ".join(f"✓ {f}" for f in figs) if figs else "…",
-             style=PW),
+        # overflow="ellipsis" + no_wrap corta na largura; as figuras mais
+        # recentes ficam visiveis e a linha nunca cresce em altura.
+        Text("  ".join(f"✓ {f}" for f in figs[-MAX_FIG_LIN * 3:])
+             if figs else "…",
+             style=PW, overflow="ellipsis", no_wrap=False),
     ]
     if avisos:
+        cab = f"{_t('exec_avisos')} ({len(avisos)})"
+        if n_ocultos:
+            cab += f" — mostrando os {MAX_AVISOS} ultimos, +{n_ocultos} antes"
         partes += [
             Rule(style=PD),
-            Text(f"{_t('exec_avisos')} ({len(avisos)}):", style=f"bold {PR}"),
-            Text("\n".join(f"⚠ {a}" for a in avisos), style=PR),
+            Text(f"{cab}:", style=f"bold {PR}"),
+            Text("\n".join(f"⚠ {a[:110]}" for a in avisos_vis), style=PR,
+                 overflow="ellipsis"),
         ]
     return Panel(Group(*partes), border_style=PA, box=rbox.ROUNDED,
                  padding=(0, 1), title=f"  {_t('exec_inicio')}  ")
@@ -3317,7 +3390,22 @@ def _rodar_pipeline(cfg: Config) -> None:
 
     # Sincronizar DPI do visual_config antes de salvar
     _sincronizar_dpi(cfg)
-    salvar_config(cfg, str(_CFG_PATH))
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+        salvar_config(cfg, str(_CFG_PATH))
+    except OSError as _e_cfg_save:
+        # Achado do "checkup geral" de interface (2026-08-07): esta chamada
+        # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
+        # read-only, disco cheio) derrubava o CLI com traceback bem na hora
+        # de rodar a analise, no meio de uma sessao interativa. Config nao
+        # persistida so' significa que as escolhas desta sessao nao vao
+        # sobreviver ao proximo start -- nao pode impedir a corrida atual.
+        _msg = (f"[AVISO] config.yaml nao pode ser salvo ({_e_cfg_save}); "
+               f"as preferencias desta sessao nao serao lembradas."
+               if lang == "PT" else
+               f"[WARNING] config.yaml could not be saved ({_e_cfg_save}); "
+               f"this session's preferences will not be remembered.")
+        console.print(f"  [{PM}]{escape(_msg)}[/{PM}]")
 
     # Sugestao de cafe em execucoes longas
     if (_cfgv(cfg, "monte_carlo", False)
@@ -3361,14 +3449,49 @@ def _rodar_pipeline(cfg: Config) -> None:
 
     console.print()
     t_ini = time.time()
+
+    # CAUSA RAIZ do bug da "tela preta" (2026-08-07/08): `console` (definido
+    # em guaraci_theme.py) e' construido SEM `file=`, entao `Console.file` e'
+    # uma property que resolve `sys.stdout` DINAMICAMENTE a cada escrita
+    # (rich/console.py: `self._file or sys.stdout`). `contextlib.redirect_
+    # stdout` troca `sys.stdout` GLOBALMENTE no processo -- nao por thread.
+    # Enquanto `_run()` (rodando em background) segura esse redirect durante
+    # TODA a execucao do pipeline, o `Live` deste thread principal tambem
+    # passa a escrever no MESMO buffer (`_logger`), nao no terminal de
+    # verdade. Medido isolado: 0 bytes chegavam ao "terminal", 100% ia pro
+    # buffer engolido. O painel nao travava nem estourava altura -- ele
+    # simplesmente escrevia no lugar errado o tempo todo, daí a tela ficar
+    # preta com so' o cursor. A correcao anterior (limitar altura do painel,
+    # vertical_overflow="crop") ficou valida mas nao atacava esta causa.
+    #
+    # Fix: capturar a referencia REAL de stdout/stderr ANTES do redirect
+    # comecar, e fixar `console._file` nela pela duracao do Live -- assim
+    # o Console para de resolver `sys.stdout` dinamicamente e continua
+    # escrevendo no terminal de verdade mesmo com o redirect global ativo
+    # na outra thread.
+    _stdout_real = sys.stdout
+    _file_original = console._file
+    console._file = _stdout_real
+
     thr = threading.Thread(target=_run, daemon=True)
     thr.start()
 
-    with Live(console=console, refresh_per_second=3) as live:
-        while not _done["ok"]:
+    try:
+        # vertical_overflow="crop": rede de seguranca complementar. Mesmo
+        # que o painel volte a crescer alem da janela, o Rich corta o
+        # excesso em vez de perder o controle do cursor.
+        with Live(console=console, refresh_per_second=3,
+                  vertical_overflow="crop") as live:
+            while not _done["ok"]:
+                live.update(_render_painel(time.time() - t_ini))
+                time.sleep(0.3)
             live.update(_render_painel(time.time() - t_ini))
-            time.sleep(0.3)
-        live.update(_render_painel(time.time() - t_ini))
+    finally:
+        # Restaura a resolucao dinamica de sys.stdout assim que o Live
+        # termina -- nao deixar o pin permanente afetaria qualquer outro
+        # uso de `console` depois desta tela (ex.: redirecionamento em
+        # outro comando da mesma sessao do CLI).
+        console._file = _file_original
 
     thr.join()
     console.print()
@@ -3632,10 +3755,20 @@ def _comando_demo() -> None:
     try:
         if sys.platform == "win32":
             os.startfile(str(pasta_run))  # noqa: S606 -- abre o explorador, caminho e nosso proprio output
-        elif sys.platform == "darwin":
-            os.system(f'open "{pasta_run}"')  # noqa: S605
         else:
-            os.system(f'xdg-open "{pasta_run}"')  # noqa: S605
+            # subprocess com lista de argumentos (achado de auditoria de
+            # seguranca, 2026-08-07): a versao anterior interpolava
+            # pasta_run direto numa string de shell (os.system(f'open
+            # "{pasta_run}"')) -- pasta_run e' sempre gerado internamente
+            # neste caminho (guaraci demo), entao nao era explora'vel HOJE,
+            # mas e' o mesmo PADRAO que seria uma injecao de comando real
+            # se algum dia alimentado por um caminho influenciado pelo
+            # usuario. Lista de argumentos nunca passa por um shell --
+            # elimina a classe de vulnerabilidade por completo, nao so'
+            # o caso de uso atual.
+            import subprocess
+            cmd = ["open"] if sys.platform == "darwin" else ["xdg-open"]
+            subprocess.run(cmd + [str(pasta_run)], check=False)
     except OSError as _e_open:
         logging.getLogger(__name__).debug("nao foi possivel abrir a pasta de saida: %s", _e_open)
 
@@ -3660,6 +3793,10 @@ def main() -> None:
                   "  doctor            diagnostica o ambiente (deps, RAM, CPU)\n"
                   "  --version         mostra a versao instalada")
             return
+
+    # Migra estado gravado pela versao anterior (dentro do pacote instalado)
+    # para _USER_DIR, se aplicavel -- ver docstring de _migrar_estado_legado.
+    _migrar_estado_legado()
 
     # Carregar config
     cfg = Config()
@@ -3692,7 +3829,19 @@ def main() -> None:
         console.print()
 
         try:
-            raw = _input(f"  {_t('opcao')}: ")
+            # input() direto (nao _input()): _input() engole EOFError/
+            # KeyboardInterrupt internamente e devolve "" -- com isso o
+            # except abaixo NUNCA disparava em EOF real (stdin fechado/
+            # redirecionado de arquivo vazio/pipe encerrado). "" nao bate
+            # com nenhuma opcao do menu, cai no ramo "invalida" + _pause()
+            # (tambem EOF-safe), e o loop volta a chamar cls() (spawna
+            # subprocesso via os.system) e ler de novo -- SEMPRE "" de novo
+            # em EOF permanente -- girando para sempre, sem sair, gastando
+            # CPU (achado 2026-08-07, "checkup geral" de interface:
+            # reproduzido com stdin vazio, >350 redesenhos em 8s sem
+            # terminar). input() aqui deixa o EOFError propagar ate o
+            # except que ja existe para tratar exatamente este caso.
+            raw = input(f"  {_t('opcao')}: ").strip()
             escolha = "?" if raw == "?" else raw.upper().strip()
         except (EOFError, KeyboardInterrupt):
             _exibir_despedida()

@@ -19,6 +19,7 @@ from guaraci.validacao_estatistica import (bootstrap_bca_ci, cv_anova_eriksson,
 # (o nome 'teste_permutacao' casa com o padrao de coleta 'test*').
 from guaraci.validacao_estatistica import teste_permutacao as _teste_permutacao
 from guaraci.validacao_estatistica import teste_wold as _teste_wold
+from guaraci.validacao_estatistica import _gerar_permutacoes_rotulo
 
 
 class _CVFalhaApartirDaSegundaChamada:
@@ -183,6 +184,74 @@ def test_permutacao_todas_as_iteracoes_falham_da_p_1_nao_informativo():
     assert res["n_falhos"] == 10
     assert res["failure_rate"] == 1.0
     assert res["p_value"] == 1.0
+
+
+# ── _gerar_permutacoes_rotulo (achado A1, auditoria 2026-08-07) ────────────
+# O teste de permutacao/Wold permutava ROTULOS POR AMOSTRA, ignorando
+# `groups` (mae_id) -- quebra a coerencia de replica fisica e estreita o
+# nulo artificialmente (medido: falso positivo sobe de 5% nominal p/ 15%,
+# ver docs/auditoria/medir_permutacao_grupos.py). Estes testes travam a
+# propriedade que corrige isso: FALHAM com permutacao por amostra.
+
+def test_permutacoes_por_grupo_preservam_coerencia_dentro_do_grupo():
+    """Cada bloco de replicas fisicas (mesmo grupo) precisa manter o MESMO
+    rotulo permutado em toda permutacao -- e' a propriedade que define uma
+    permutacao group-aware. Uma permutacao por amostra quebraria isso com
+    probabilidade praticamente 1 (grupos de tamanho >= 2)."""
+    rng_dados = np.random.default_rng(0)
+    groups = np.repeat(np.arange(15), 4)
+    y_int = np.repeat(rng_dados.integers(0, 3, size=15), 4)
+    rng = np.random.default_rng(1)
+    permutacoes = _gerar_permutacoes_rotulo(y_int, groups, n_perm=30, rng=rng)
+    assert len(permutacoes) == 30
+    for y_perm in permutacoes:
+        for g in np.unique(groups):
+            rotulos_no_grupo = np.unique(y_perm[groups == g])
+            assert len(rotulos_no_grupo) == 1, (
+                f"grupo {g} recebeu rotulos permutados diferentes entre "
+                "suas replicas -- coerencia de grupo quebrada")
+
+
+def test_permutacoes_por_grupo_preservam_o_multiset_de_rotulos_por_grupo():
+    """A permutacao reatribui rotulos ENTRE grupos (nao inventa rotulo
+    novo): o conjunto de rotulos-por-grupo antes e depois deve ser o
+    mesmo, so a atribuicao muda."""
+    groups = np.repeat(np.arange(10), 3)
+    y_int = np.repeat(np.array([0, 0, 1, 1, 2, 2, 0, 1, 2, 2]), 3)
+    rot_original = sorted(y_int[groups == g][0] for g in np.unique(groups))
+    rng = np.random.default_rng(2)
+    permutacoes = _gerar_permutacoes_rotulo(y_int, groups, n_perm=20, rng=rng)
+    for y_perm in permutacoes:
+        rot_perm = sorted(y_perm[groups == g][0] for g in np.unique(groups))
+        assert rot_perm == rot_original
+
+
+def test_gerar_permutacoes_sem_groups_cai_para_permutacao_por_amostra():
+    """Sem `groups`, nao ha estrutura a preservar -- deve reproduzir
+    exatamente `y_int[rng.permutation(n)]` (mesmo rng, mesma sequencia)."""
+    y_int = np.array([0, 0, 1, 1, 1, 2, 2, 0])
+    rng_a = np.random.default_rng(5)
+    rng_b = np.random.default_rng(5)
+    esperado = [y_int[rng_a.permutation(len(y_int))] for _ in range(10)]
+    obtido = _gerar_permutacoes_rotulo(y_int, None, n_perm=10, rng=rng_b)
+    for e, o in zip(esperado, obtido):
+        np.testing.assert_array_equal(e, o)
+
+
+def test_permutacao_end_to_end_respeita_grupos():
+    """teste_permutacao com `groups` fornecido deve, de ponta a ponta, gerar
+    apenas permutacoes coerentes por grupo (nao so' o helper isolado)."""
+    rng_dados = np.random.default_rng(9)
+    n_grupos, n_rep = 20, 2
+    groups = np.repeat(np.arange(n_grupos), n_rep)
+    y_int_grupo = np.array([i % 2 for i in range(n_grupos)])
+    y_int = np.repeat(y_int_grupo, n_rep)
+    X = rng_dados.normal(0, 1, size=(n_grupos * n_rep, 10))
+    Y_bin = np.zeros((len(y_int), 2)); Y_bin[np.arange(len(y_int)), y_int] = 1.0
+    cv = StratifiedGroupKFoldEstavel(n_splits=4, seed=0)
+    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+                           n_perm=15, seed=9, groups=groups)
+    assert 0.0 <= res["p_value"] <= 1.0
 
 
 def test_wold_todas_as_iteracoes_falham_nao_quebra():

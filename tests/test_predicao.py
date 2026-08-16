@@ -73,15 +73,15 @@ def test_pacote_real_exporta_artefatos_de_ad(modelo_e_dados):
     os artefatos leves do Dominio de Aplicabilidade -- confirma o wiring em
     pipeline.py (pacote_modelo), nao so' a existencia da funcao pura."""
     pkg, _X, _wn = modelo_e_dados
-    for chave in ("pca", "ad_var_t", "ad_t2_limite", "ad_q_limite"):
+    for chave in ("pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh", "ad_Nq",
+                  "ad_f_crit"):
         assert chave in pkg, f"pacote de modelo real nao tem '{chave}'"
 
 
 def test_predizer_amostras_inclui_colunas_ad(modelo_e_dados):
     pkg, X_novos, wn = modelo_e_dados
     df = pr.predizer_amostras(pkg, X_novos, wn)
-    esperado_ad = {"AD_T2", "AD_T2_limite", "AD_Q", "AD_Q_limite",
-                   "AD_dentro_dominio"}
+    esperado_ad = {"AD_T2", "AD_Q", "AD_f", "AD_f_crit", "AD_dentro_dominio"}
     assert esperado_ad.issubset(df.columns)
     assert df["AD_dentro_dominio"].dtype == bool
 
@@ -92,7 +92,8 @@ def test_predizer_amostras_sem_artefatos_ad_nao_gera_colunas_ad(modelo_e_dados):
     colunas AD_*, sem lancar excecao."""
     pkg, X_novos, wn = modelo_e_dados
     pkg_antigo = {k: v for k, v in pkg.items()
-                  if k not in ("pca", "ad_var_t", "ad_t2_limite", "ad_q_limite")}
+                  if k not in ("pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh",
+                              "ad_Nq", "ad_f_crit")}
     df = pr.predizer_amostras(pkg_antigo, X_novos, wn)
     assert not any(c.startswith("AD_") for c in df.columns)
     assert "classe_pred" in df.columns  # predicao principal nao foi afetada

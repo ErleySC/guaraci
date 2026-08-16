@@ -325,7 +325,7 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         "",
         "**Usuarios primarios:** pesquisadores em quimiometria, laboratorios "
         "de controle de qualidade de oleos vegetais, projetos academicos "
-        "(TCC/PIBIC/pos-graduacao).",
+        "(graduacao/pos-graduacao).",
         "",
         "**Fora do escopo:** nao substitui metodos analiticos de referencia "
         "regulamentados (ex.: cromatografia certificada) sem validacao "

@@ -313,7 +313,7 @@ def gerar_word_relatorio(pasta: str, projeto: Dict,
     t_capa.style = "Table Grid"
     campos_capa = [
         ("Author(s)",      projeto.get("autor", "-")),
-        ("Institution",    projeto.get("inst", "GEAAp / UFPA")),
+        ("Institution",    projeto.get("inst", "")),
         ("Study type",     projeto.get("tipo", "-")),
         ("Date",           time.strftime("%Y-%m-%d %H:%M")),
         ("Folder",         os.path.basename(pasta)),
@@ -613,7 +613,7 @@ def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
     imgs = _listar_figuras(pasta)[:8]
     nome_proj = _esc(projeto.get("nome", "Chemometric Analysis by FT-NIR"))
     autor     = _esc(projeto.get("autor", "Surname, N."))
-    inst      = _esc(projeto.get("inst", "GEAAp, Federal University of Para"))
+    inst      = _esc(projeto.get("inst", ""))
 
     # Metrics table
     linhas_met = [
@@ -762,8 +762,8 @@ viability of FT-NIR spectroscopy for rapid authentication of Amazonian vegetable
 
 %% ── Acknowledgements ──────────────────────────────────────────────────────
 \\section*{{Acknowledgements}}
-% TODO: CNPq, CAPES, PIBIC/UFPA, laboratory.
-To GEAAp/UFPA and CNPq for financial support (PIBIC Project).
+% TODO: funding agencies, laboratory, collaborators.
+To the funding agencies and the laboratory that supported this work.
 
 %% ── Referencias ─────────────────────────────────────────────────────────
 \\bibliographystyle{{elsarticle-num}}  %% Elsevier (Talanta, Food Chemistry)
@@ -909,7 +909,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
     def _rodape(slide):
         _rect(slide, 0, int(H - Inches(0.4)), int(W), int(Inches(0.4)), _SLATE)
         data_str = time.strftime("%Y-%m-%d")
-        inst = projeto.get("inst", "GEAAp / UFPA")
+        inst = projeto.get("inst", "")
         _txt(slide,
              f"{inst}  •  Chemometrics Platform  •  {data_str}",
              int(Inches(0.3)), int(H - Inches(0.35)),
@@ -933,7 +933,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
          size=20, color=RGBColor(0xCB, 0xD5, 0xE1))
     # Metadata
     autor  = projeto.get("autor", "")
-    inst   = projeto.get("inst", "GEAAp / UFPA")
+    inst   = projeto.get("inst", "")
     data_s = time.strftime("%Y-%m-%d")
     _txt(slide1, f"{autor}\n{inst}\n{data_s}",
          int(Inches(1.0)), int(Inches(4.0)),

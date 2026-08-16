@@ -54,8 +54,14 @@ para classificação, autenticação, exploração e quantificação de matrizes
 Caso de uso âncora: autenticação de óleos fixos amazônicos por FT-NIR (ABB MB3600,
 8192 pts, ~934 amostras, 14 classes, adulterantes soja/milho/algodão).
 
-**Contexto do autor:** Erley, graduação em Química (UFPA), grupo GEAAp. Este é o
-software do TCC, mas a ambição é que ele seja usável por terceiros.
+**Contexto do autor:** Erley, graduação em Química. Este é o software do TCC,
+mas a ambição é que ele seja usável por terceiros.
+
+> **Repositório público desde 2026-08-07.** Não introduzir referência a
+> instituição/grupo de pesquisa em nenhum arquivo versionado (decisão
+> explícita do autor) — nem em código, UI, docs, metadados de citação ou
+> no paper. Vale também para arquivos internos como este: o repo é
+> público, tudo aqui é visível.
 
 ### Diferencial real
 **Validação group-aware (`GroupKFold` por `mae_id`)** — impede que réplicas físicas
@@ -97,15 +103,37 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
-| Versão | 31.8.0 | `grep -r version pyproject.toml` |
-| Testes | 562 pass, 1 skip | `pytest -q` |
-| Cobertura | 64% | `pytest --cov=src/guaraci --cov-report=term-missing` |
-| Lint | ruff limpo | `ruff check .` |
-| `executar()` | 1363 linhas | `grep -n "def executar" src/guaraci/pipeline.py` |
-| `print()` em pipeline | 164 | `grep -c "print(" src/guaraci/pipeline.py` |
-| `except` amplos | 51 (100% com `noqa: BLE001` justificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
-| `guaraci.py` | 3318 linhas | `wc -l src/guaraci/guaraci.py` |
+| Versão | 31.9.0 | `grep -r version pyproject.toml` |
+| Testes | 701 pass, 2 skip (reverificado 2026-08-07, fim de sessão) | `pytest -q` |
+| Cobertura | 70% (reverificado 2026-08-07) | `pytest --cov=src/guaraci --cov-report=term-missing` |
+| Lint | ruff limpo (repo inteiro, incl. `docs/auditoria/`) | `ruff check .` |
+| Typecheck | mypy limpo nos 7 módulos puros do gate de CI | `mypy src/guaraci/{preprocessamento,chemometric_stats,classificadores,validacao_estatistica,modos_analise,design_tokens,resumo_parse}.py` |
+| Dependências | sem CVE conhecida (via OSV; API do PyPI instável na rede local) | `pip-audit -r requirements.txt --vulnerability-service osv` |
+| `executar()` | 1445 linhas (contagem AST, não a linha do `def`) | `grep -n "def executar" src/guaraci/pipeline.py` |
+| `print()` em pipeline | 0 (migração do P6 completa) | `grep -c "print(" src/guaraci/pipeline.py` |
+| `except` amplos | 53 (100% com `noqa: BLE001` justificado, reverificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
+| `guaraci.py` | 3906 linhas (+93 desde a sessão anterior — migração de estado, correções de segurança) | `wc -l src/guaraci/guaraci.py` |
 | TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
+
+> Atualizado em 2026-08-07, fim de sessão (auditoria metodológica P11 +
+> checkup de interface + auditoria de segurança S1-S3 + itens pequenos de
+> débito técnico). Testes 663→701 ao longo da sessão inteira (17
+> commits). Gate de cobertura do núcleo científico (P4, ≥95%) reverificado
+> separadamente: 96% agregado, `validacao_estatistica.py` exatamente no
+> piso (95%).
+
+> Atualizado em 2026-08-07 após a auditoria metodológica de 5 achados
+> (P11 abaixo — testes 663→672, +9 líquido: 4 novos em A1, 3 em A2, 1 em
+> A3, 2 novos −1 removido em A4). Reverificado que a tabela anterior
+> (2026-08-08, sensibilidade DD-SIMCA/PCV) continuava batendo antes de
+> começar — nenhuma divergência encontrada nela.
+
+> Atualizado em 2026-08-08 apos a sessao de correcao de figuras + DD-SIMCA
+> (P1 residual fechado, PCV, deteccao robusta). `print()` em pipeline
+> mostrava 164 na tabela desde 07-13 mesmo com a migracao ja concluida
+> naquela mesma data — a tabela nao tinha sido reverificada em nenhuma
+> sessao entre 07-13 e agora, apesar da propria regra deste arquivo pedir
+> reverificacao a cada sessao nova. **Reverifique de novo na proxima.**
 
 > Atualizado em 2026-07-13 após a auditoria de 15 etapas de 2026-07-12. A tabela
 > anterior (114 `except`, `executar()` 1269 linhas, `guaraci.py` 3133 linhas)
@@ -157,13 +185,19 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 > com grupos idênticos) e `tests/test_pipeline_core.py` (mesmo padrão).
 > 558→559 testes passam (suíte completa reverificada).
 >
-> **Não corrigido nesta rodada, achado separado (menor prioridade, não
-> bloqueia):** a região de aceitação é T2≤UCL **E** Q≤UCL com alpha
-> independente em cada — isso dá alpha conjunto efetivo ≈ 0,10, não 0,05
-> (Rodionova/Pomerantsev, citados na docstring do módulo, usam uma
-> distância combinada contra um quantil χ² único; a implementação atual
-> não é esse método apesar de citá-lo). Requer reescrever `predict()`, não
-> só recalibrar um limite — fica para uma sessão dedicada.
+> **✅ RESOLVIDO em 2026-08-08** (era: "não corrigido nesta rodada, achado
+> separado, menor prioridade"): a região de aceitação era T2≤UCL **E**
+> Q≤UCL com alpha independente em cada — alpha conjunto efetivo ≈ 0,0975,
+> quase o dobro do declarado. Corrigido reescrevendo `predict()` (e as duas
+> outras cópias da mesma regra — `sensibilidade_ddsimca_logo()` e a
+> especificidade no pipeline, unificadas numa só fonte de verdade) para usar
+> a distância combinada f=(T²/h₀)·N_h+(Q/q₀)·N_q ≤ χ²(1−α, N_h+N_q), Eq. 3–4
+> de Kucheryavskiy, Rodionova & Pomerantsev (2024) *J. Chemometrics*
+> 38(7):e3556 — o tutorial atualizado dos próprios autores do DD-SIMCA, com
+> a fórmula exata que faltava na sessão anterior. Figuras de aceitação
+> atualizadas para desenhar a fronteira diagonal real (antes: duas linhas
+> retas formando uma caixa que nunca foi a região de decisão verdadeira).
+> Ver `docs/CHANGELOG.md` (2026-08-08) para a medição completa.
 
 **O que acontecia (achado original, 2026-07-11):** só existem 3–4 amostras puras por espécie, e **todas estavam no treino**.
 A sensibilidade reportada mede o modelo classificando dados que ele já viu. É a prova
@@ -467,9 +501,12 @@ pip install guaraci        # ou guaraci[web]
 guaraci demo               # já existe — ver checklist abaixo
 ```
 
-**Checklist (reverificado em 2026-08-04):**
-- [ ] Publicado no PyPI — depende de conta do autor
-- [x] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[all]` (pyproject.toml)
+**Checklist (reverificado em 2026-08-07):**
+- [ ] Publicado no PyPI — depende de conta do autor. **Único item realmente
+      em aberto deste checklist.**
+- [x] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[robusto]`,
+      `[all]` (pyproject.toml) — `[robusto]` (pacote `prcv`, para o
+      diagnóstico PCV do DD-SIMCA) faltava nesta lista
 - [x] ~~Dataset de demo embutido no pacote~~ — **resolvido de outra forma**: `guaraci demo`
       usa `modo="sintetico"` (espectro gerado na hora, `_comando_demo()` em `guaraci.py`),
       não um dataset real embutido. Estritamente melhor — zero questão de licença/proveniência
@@ -481,8 +518,15 @@ guaraci demo               # já existe — ver checklist abaixo
       matriz `os: [ubuntu-latest, windows-latest]` + macOS em `include`)
 - [x] **Notebook Colab "Guaraci em 5 minutos"** (`notebooks/guaraci_5_minutos.ipynb`, linkado
       no README e no badge)
-- [ ] `requirements-lock.txt` — **não existe ainda**, único item real deste checklist ainda
-      em aberto além da publicação no PyPI em si.
+- [x] `requirements-lock.txt` — **existe e está atualizado** (reverificado
+      2026-08-07: 117 linhas, pins exatos gerados de um venv real e testado,
+      inclui `prcv==1.2.1` do extra `[robusto]`; os pins de
+      numpy/scipy/sklearn/pandas/matplotlib batem exatamente com o ambiente
+      instalado). A afirmação anterior nesta linha ("não existe ainda") era
+      **falsa** — o arquivo foi criado em `f0387e7` e regenerado em `20e846f`
+      (o primeiro lock não instalava) e `3784c45`. Exemplo de por que a regra
+      do topo deste arquivo (reverificar antes de confiar) vale também para os
+      checklists, não só para a tabela ESTADO ALEGADO.
 
 **Pins vs. faixas — os dois, com papéis diferentes:**
 - `pyproject.toml` → **faixas** (para ser instalável junto com outros pacotes)
@@ -657,6 +701,93 @@ plugins: [search, mkdocstrings]   # gera API docs dos docstrings automaticamente
 
 ---
 
+### ✅ P10 (RESOLVIDO em 2026-08-07) — Figuras erradas que ninguém checava
+
+Achado ao revisar as figuras da 1ª execução real (Gate 0 / N1). **Lição
+transversal: os testes de figura verificavam que o `.png` existia, não que
+o conteúdo estava certo.** Um `.png` gerado com sucesso pode conter uma
+curva sem significado.
+
+1. **Curva DET era uma reta horizontal.** `sklearn.det_curve` devolve `fmr`
+   decrescente; `np.interp` exige `xp` crescente e não ordena sozinho. Toda
+   DET gerada até 2026-08-07 era um artefato. Corrigido com `interpolar_det()`
+   (função pura) + teste que **falha** com o código antigo — verificado.
+2. **Biplot ilegível.** Top-N por magnitude escolhia canais vizinhos da mesma
+   banda (2 bandas contadas 12×) e não havia anti-colisão de rótulos.
+3. **`np.interp` sem ordenar em mais 3 lugares** (`dados_io`, `predicao`,
+   `spectra_preview`) — latente com o ABB MB3600 (grava crescente), mas daria
+   **predição errada em silêncio** com `.dx` de terceiro em ordem decrescente.
+4. **Painel do CLI apagava a tela** ("tela preta"): crescia além da altura do
+   terminal e o `Live` do Rich perdia o cursor. O cálculo seguia normal.
+
+**Regra que fica:** teste de figura tem que verificar uma **propriedade do
+conteúdo** (monotonicidade, ausência de sobreposição, extremos), nunca só a
+existência do arquivo.
+
+---
+
+### ✅ P11 (RESOLVIDO em 2026-08-07) — Auditoria metodológica: 5 achados no núcleo científico
+
+Auditoria (não só de figuras desta vez — de **equação vs. publicação
+original**) em `chemometric_stats.py`, `classificadores.py`,
+`validacao_estatistica.py`, comparando cada método linha a linha com a
+referência citada e **medindo** a divergência (nunca estimando). Relatório
+completo + scripts reprodutíveis em `docs/auditoria/
+AUDITORIA_METODOLOGICA_2026-08-07.md`. **Mesma lição do P10 e do P1**: os
+663 testes que existiam antes verificavam que a função *roda*, não que ela
+*calcula o que diz calcular*.
+
+1. **Teste de permutação/Wold não era group-aware** (`validacao_estatistica.py`)
+   — embaralhava rótulos por AMOSTRA, ignorando `mae_id`; um mesmo grupo de
+   réplica física ficava com rótulos diferentes após o embaralhamento, o que
+   não pode existir sob H0. Medido: falso positivo de **15,0%** contra 5%
+   nominal (12 grupos × 3 réplicas, 120 repetições). **O mais grave dos 5**:
+   atinge o argumento central do projeto (validação group-aware) — o teste
+   que produz o p-valor citável não era group-aware. Corrigido:
+   `_gerar_permutacoes_rotulo()` permuta a atribuição de rótulo entre
+   grupos (Winkler et al. 2015), preservando a coerência de cada `mae_id`.
+2. **Selectivity Ratio usava `w1` (peso PLS), não `b/‖b‖`** — Rajalahti et
+   al. (2009) define a projeção-alvo sobre o vetor de regressão
+   normalizado; só coincidiam com 1 LV. Medido: `corr(t_tp, ŷ)` (a
+   propriedade que define o método) caía de 1,000000 para ~0,92 com ≥2 LVs;
+   Jaccard@20 entre o ranking implementado e o correto = 0,39. Usado por
+   `selecao_variaveis.py` para SELECIONAR variáveis — o método anterior
+   escolhia um conjunto diferente do que a literatura escolheria.
+3. **Domínio de aplicabilidade usava regra retangular** (T2≤lim **e**
+   Q≤lim, alpha independente por eixo) — a MESMA regra corrigida no
+   DD-SIMCA no P1 (2026-08-08), ainda presente aqui. Medido: rejeição de
+   11,6% contra 5% nominal em amostras da própria distribuição do treino.
+   Usado em produção por `predicao.py`. Corrigido por reúso: as funções
+   puras da distância combinada do DD-SIMCA (`media_e_dof_momentos`,
+   `distancia_combinada`) foram extraídas para `chemometric_stats.py` —
+   `DDSimca` e `dominio_aplicabilidade_*` agora compartilham a mesma
+   implementação em vez de reimplementar cada uma a sua conta.
+4. **OPLS-DA multiclasse construía o alvo via LDA(X, y)** — não é o método
+   publicado (Trygg & Wold 2002 definem OPLS para y binário/contínuo; a
+   extensão multiclasse publicada é OPLS/O2PLS com Y multi-coluna via
+   PLS2). Decisão do autor: trocar pelo caminho publicado em vez de rotular
+   como variante — `OPLSDAWrapper._alvo_continuo()` agora usa o 1º escore Y
+   de um PLS2 ajustado em `(X, Y)`.
+5. **Docstring de `hotelling_t2_limite` contradizia a própria referência
+   citada** — afirmava que a fórmula (Fase II, distribuição F) valia também
+   para amostras de treino (Fase I, que TYM 1992 define via distribuição
+   Beta). Impacto numérico medido como baixo para os tamanhos de amostra
+   deste projeto (~1,01-1,03× com n~300). Corrigida a docstring; limite
+   Beta de Fase I não implementado (impacto real baixo).
+
+**Retratação registrada no próprio relatório:** a alegação original de que
+`q_residuos_limite` atribuía sua fórmula a Jackson & Mudholkar (1979) por
+engano (deveria ser Box 1954) foi **verificada como falsa** após busca
+adicional — a atribuição já existente no código estava correta. Mantido
+como exemplo de que reverificar a própria auditoria também é obrigatório.
+
+**Estado:** todos os 5 corrigidos e commitados nesta sessão. 663→672 testes
+(9 líquidos: novos que travam as propriedades que falhavam antes de cada
+correção). Cobertura/lint/contagens da tabela ESTADO ALEGADO reverificadas
+antes e depois — sem divergência além do esperado.
+
+---
+
 ## 5. FIGURAS QUE FALTAM — ✅ TODAS ENTREGUES (verificado 2026-07-12)
 As 4 abaixo já existem em `figuras.py` e são chamadas por `executar()` — não
 são mais um item de roadmap. Mantido aqui só como registro do que foi pedido
@@ -768,7 +899,9 @@ nas primeiras linhas em inglês.
 | # | Item | Prazo | Bloqueia |
 |---|---|---|---|
 | 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos) | depende de conta do autor | **Adoção** |
-| — | **Rodar o pipeline atual (pós-correções 07-13) contra o dataset real do TCC** | só o autor pode (dataset fora do checkout) | Defesa — números antigos citados na monografia não refletem mais o código |
+| — | **N1 (real) rodado e válido** ✅ | feito 2026-08-06, `PLSDA_OE_PorEspecie_...211237` | — |
+| — | **N2 (real) rodado, mas DESATUALIZADO — agora por MAIS motivos** ⚠️ | rodado 2026-08-07 10:19, **a correção da regra de decisão do DD-SIMCA foi commitada 3h30 depois (13:52, commit `b51f361`)** — o resumo que existe usa a regra retangular antiga (rejeição efetiva ~0,0975, não 0,05). Depois disso, a auditoria P11 (mesma sessão, mais tarde) corrigiu mais 2 itens que afetam diretamente números de Classificação: A1 (teste de permutação/Wold do objetivo Classificação, falso positivo medido em 15% em vez de 5%) e A3 (domínio de aplicabilidade, mesma classe de bug do DD-SIMCA, usado por `predicao.py`). **Precisa reexecutar** — a lista de motivos só cresceu | Defesa — números atuais não refletem o código |
+| — | **N3 nunca rodado com o código corrigido** | só existe uma rodada de 2026-07-05, anterior a TODAS as correções desta sessão (CV, DD-SIMCA, figuras) — precisa rodar do zero | Defesa |
 
 ~~4~~ ~~`docs/VALIDATION.md` — nota sobre nested-CV da Etapa 4~~ ✅ feito — ver seção "AG e SPA (Etapa 4, opcionais)" em `VALIDATION.md`.
 ~~5~~ ~~Seção "Limitações" no MANUAL~~ ✅ já existia (seção 9) e cobre DD-SIMCA/regressão agrupada/modo imagem/FT-NIR-only/joblib/`mae_id` órfão.

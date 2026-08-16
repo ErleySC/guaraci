@@ -268,6 +268,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     dominio_aplicabilidade_treino,
     dominio_aplicabilidade_amostras_novas,
     rmse_flat,
+    diagnosticar_faixa_espectral,
 )
 
 
@@ -278,6 +279,7 @@ from guaraci.classificadores import (   # noqa: E402
     DDSimca,
     OPLSDAWrapper,
     sensibilidade_ddsimca_logo,
+    sensibilidade_ddsimca_pcv,
 )
 
 
@@ -1326,6 +1328,25 @@ def executar(cfg: Config):
     preproc_full = construir_preprocessador(cfg).fit(X_raw)
     X_processed  = np.asarray(preproc_full.transform(X_raw), dtype=float)
 
+    # Diagnostico de faixa espectral (2026-08-07): avisa quando a faixa
+    # configurada inclui regiao sem sinal analitico. Rodar com faixa larga
+    # demais nao e' inofensivo -- infla o n de variaveis, dilui VIP/SR,
+    # encarece a CV e da' ao modelo espaco para ajustar ruido. E' um AVISO,
+    # nunca um corte automatico: mudar a faixa muda o resultado, e essa
+    # decisao e' do usuario.
+    diag_faixa = diagnosticar_faixa_espectral(X_processed, wavenumbers)
+    if diag_faixa.get("faixa_sugerida") and diag_faixa["frac_util"] < 0.95:
+        _fu = float(diag_faixa["frac_util"])
+        _sug = diag_faixa["faixa_sugerida"]
+        log.info(f"  [AVISO] Faixa espectral: so' {_fu * 100:.0f}% das "
+                 f"{X_processed.shape[1]} variaveis carregam sinal (SNR>=3).")
+        for _a, _b, _t in diag_faixa["regioes_ruins"]:
+            log.info(f"          regiao {_t}: {_a:.0f}-{_b:.0f} cm-1")
+        log.info(f"          faixa com sinal: [{_sug[0]:.0f}, {_sug[1]:.0f}] "
+                 f"cm-1 (atual: [{cfg.wn_min:.0f}, {cfg.wn_max:.0f}])")
+        log.info("          Considere reduzir faixa_min_cm/faixa_max_cm e "
+                 "reexecutar; compare Q2 antes de adotar.")
+
     # --- 3. LV selection by CV (no leakage, group-aware if possible) -------
     log.info(f"\n[2/7] LV selection by CV ({cv_label})")
 
@@ -1665,6 +1686,10 @@ def executar(cfg: Config):
     # (sens_LOGO, esp, n_puros, n_adult, n_grupos_LOGO, aviso)
     ddsimca_sens_esp: Dict[
         str, Tuple[float, float, int, int, int, Optional[str]]] = {}
+    # PCV: diagnostico complementar, opt-in via cfg.ddsimca_pcv (ver
+    # sensibilidade_ddsimca_pcv). (sens_PCV, aviso)
+    ddsimca_pcv_esp: Dict[str, Tuple[float, Optional[str]]] = {}
+    _pcv_indisponivel_avisado = False
     modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
     # DD-SIMCA e' um diagnostico de AUTENTICACAO DE PUREZA (N2): pergunta se
     # a amostra pertence a regiao de aceitacao da sua propria especie/classe.
@@ -1718,8 +1743,7 @@ def executar(cfg: Config):
             if cls not in ddsimca_res:
                 continue
             m = ddsimca_res[cls]
-            aceito = ((np.asarray(m["T2_norm"]) <= 1.0) &
-                      (np.asarray(m["Q_norm"])  <= 1.0))
+            aceito = np.asarray(m["f"]) <= m["f_crit"]
             idx_puro_c  = (rotulos == cls) & mask_puros
             idx_adult_c = (rotulos == cls) & (~mask_puros)
             idx_cls     = (rotulos == cls)
@@ -1744,6 +1768,19 @@ def executar(cfg: Config):
                     sens       = _logo["sensibilidade"]
                     n_grupos_c = int(_logo["n_grupos"])
                     aviso_sens = _logo["aviso"]
+                    # PCV: diagnostico complementar opt-in (nunca substitui
+                    # o LOGO acima) -- ver sensibilidade_ddsimca_pcv().
+                    if cfg.ddsimca_pcv:
+                        _pcv = sensibilidade_ddsimca_pcv(
+                            X_processed[idx_puro_c], mae_id[idx_puro_c],
+                            n_components=cfg.ddsimca_n_components,
+                            alpha=0.05, ucl_method=cfg.ddsimca_ucl_method)
+                        if _pcv["disponivel"]:
+                            ddsimca_pcv_esp[cls] = (
+                                _pcv["sensibilidade"], _pcv["aviso"])
+                        elif not _pcv_indisponivel_avisado:
+                            log.info(f"    [AVISO] PCV: {_pcv['aviso']}")
+                            _pcv_indisponivel_avisado = True
                 else:
                     sens = float("nan")
                     aviso_sens = ("Sensibilidade nao estimavel: mae_id ausente "
@@ -1906,6 +1943,14 @@ def executar(cfg: Config):
         "Metodo":                 "PLS-DA",
         "Pre-processamento":      _pp_descr,
         "Faixa espectral (cm-1)": f"[{cfg.wn_min:.0f}, {cfg.wn_max:.0f}]",
+        # Diagnostico de faixa: fica no relatorio (nao so' no terminal) para
+        # que a decisao de manter/reduzir a faixa seja auditavel depois.
+        "Variaveis com sinal (SNR>=3)": (
+            f"{diag_faixa['frac_util'] * 100:.0f}%"),
+        "Faixa com sinal (cm-1)": (
+            f"[{diag_faixa['faixa_sugerida'][0]:.0f}, "
+            f"{diag_faixa['faixa_sugerida'][1]:.0f}]"
+            if diag_faixa.get("faixa_sugerida") else "faixa toda util"),
         "LVs otimas":             int(n_opt),
         "LVs no teto (max_lvs)":  ("SIM - aumente max_lvs" if lvs_no_teto
                                     else "nao"),
@@ -2002,6 +2047,25 @@ def executar(cfg: Config):
                     f"(grupos_LOGO={ng}, puros={npc}, adult={nac})")
                 if av:
                     resumo[f"DD-SIMCA {cls} AVISO"] = av
+                # PCV: diagnostico complementar opt-in -- SEMPRE ao lado do
+                # LOGO, nunca em vez dele (ver sensibilidade_ddsimca_pcv).
+                if cls in ddsimca_pcv_esp:
+                    s_pcv, av_pcv = ddsimca_pcv_esp[cls]
+                    sens_pcv_s = f"{s_pcv*100:.1f}%" if s_pcv == s_pcv else "n/a"
+                    resumo[f"DD-SIMCA {cls} sens(PCV, exploratorio)"] = sens_pcv_s
+                    if av_pcv:
+                        resumo[f"DD-SIMCA {cls} AVISO PCV"] = av_pcv
+                # Diagnostico robusto (mediana/MAD): replicas de treino
+                # atipicas, so' sinalizadas -- nunca removidas sozinhas (ver
+                # DDSimca._outliers_robustos_mad).
+                if ddsimca_res is not None and cls in ddsimca_res:
+                    _out = ddsimca_res[cls].get("outliers_treino") or []
+                    if _out:
+                        resumo[f"DD-SIMCA {cls} AVISO treino"] = (
+                            f"{len(_out)} replica(s) de treino atipica(s) "
+                            f"(indices {list(_out)}, deteccao robusta "
+                            "mediana/MAD) -- nao removidas automaticamente, "
+                            "considere investigar.")
     if _opls_n_ortho is not None:
         resumo["OPLS-DA n_ortho"] = int(_opls_n_ortho)
     if _martens_n_sig is not None:
@@ -2099,14 +2163,21 @@ def executar(cfg: Config):
         # Dominio de Aplicabilidade (Jaworska et al. 2005): reaproveita o PCA
         # exploratorio ja ajustado (fig1_pca_scores) para avisar, na predicao
         # em amostras novas, quando o espectro cai fora do espaco coberto pela
-        # calibracao. So' salva var_t/limites (leve, ~poucos floats) em vez
-        # de X_processed inteiro (que pode pesar dezenas de MB em dados reais).
+        # calibracao. So' salva var_t + parametros da distancia combinada
+        # (leve, ~poucos floats) em vez de X_processed inteiro (que pode
+        # pesar dezenas de MB em dados reais). h0/q0/Nh/Nq/f_crit (em vez de
+        # t2_limite/q_limite) desde a correcao do achado A3 (auditoria
+        # 2026-08-07): a decisao dentro/fora usa a distancia combinada do
+        # DD-SIMCA, nao mais o teste retangular por eixo.
         try:
             _ad_treino = dominio_aplicabilidade_treino(pca, X_processed, alpha=0.05)
             pacote_modelo["pca"] = pca
             pacote_modelo["ad_var_t"] = _ad_treino["var_t"]
-            pacote_modelo["ad_t2_limite"] = _ad_treino["t2_limite"]
-            pacote_modelo["ad_q_limite"] = _ad_treino["q_limite"]
+            pacote_modelo["ad_h0"] = _ad_treino["h0"]
+            pacote_modelo["ad_q0"] = _ad_treino["q0"]
+            pacote_modelo["ad_Nh"] = _ad_treino["Nh"]
+            pacote_modelo["ad_Nq"] = _ad_treino["Nq"]
+            pacote_modelo["ad_f_crit"] = _ad_treino["f_crit"]
         except Exception as _e_ad:  # noqa: BLE001 -- anexo opcional do
             # pacote de modelo; erro impresso, modelo principal (pls_final)
             # exportado normalmente logo abaixo mesmo sem o AD.
