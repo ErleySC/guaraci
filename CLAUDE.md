@@ -6,6 +6,78 @@
 
 ---
 
+## STATUS EXECUTIVO (para leitura externa — atualizado 2026-08-16)
+
+**Se você está lendo isto fora do repositório** (ex.: análise externa pedida
+pelo autor), aqui está o resumo do que aconteceu e onde as coisas estão —
+sem precisar ler o histórico de commits inteiro.
+
+**O que é:** plataforma de quimiometria (PLS-DA, OPLS-DA, DD-SIMCA, PCA,
+seleção de variáveis) com diferencial em validação *group-aware* (impede
+vazamento de réplicas físicas entre treino/teste). CLI (Rich) + app web
+(Streamlit) sobre o mesmo motor. Ver seção 1 abaixo para detalhes técnicos.
+
+**Linha do tempo recente (mesma sessão contínua de trabalho):**
+1. Auditoria metodológica encontrou 5 divergências entre o código e os
+   métodos publicados na literatura (permutação não *group-aware*,
+   Selectivity Ratio com fórmula errada, domínio de aplicabilidade com
+   regra estatística inflada, OPLS-DA multiclasse via método não publicado,
+   docstring citando referência incorretamente) — todas corrigidas e
+   medidas (ver seção 3, P11).
+2. Auditoria de segurança encontrou um bypass **crítico** de RCE via pickle
+   no app web (a mitigação documentada só bloqueava metade do vetor de
+   ataque) — corrigido (ver `docs/auditoria/AUDITORIA_SEGURANCA_2026-08-07.md`).
+3. O repositório era **privado** (cota do GitHub Actions esgotada, CI
+   bloqueado). Por decisão do autor, **passou a público em 2026-08-16**.
+4. Isso expôs dois problemas que só apareciam com o CI rodando de verdade:
+   (a) um gate de cobertura falhando por dependência opcional ausente do
+   manifesto de CI (corrigido), e (b) a branch `master` local ainda
+   carregava 48 espectros reais do dataset do TCC no histórico —
+   **purgados antes de qualquer push**, com backup verificado fora do
+   repositório. Nenhum dado chegou a ser exposto publicamente (o remoto
+   já estava limpo em todas as branches/tags).
+5. Toda referência institucional foi removida de arquivos versionados
+   (decisão explícita do autor, sem exceção — inclui metadados do paper
+   JOSS e `CITATION.cff`).
+6. A PR acumulada (~20 commits) foi mergeada em `master`. CI verde
+   (lint/typecheck/testes em Ubuntu+Windows, Python 3.10–3.13).
+
+**Estado verificado agora** (não é alegação — cada linha foi rodada):
+701 testes passam / 2 skip · cobertura `src/guaraci` 70% · núcleo
+científico (4 módulos que produzem número publicável) 96% agregado ·
+`ruff`/`mypy` limpos · pacote empacota e passa `twine check` · nome
+`guaraci-chemometrics` livre no PyPI · zero dado espectral em qualquer
+ref git (local ou remoto) · zero referência institucional em arquivo
+versionado.
+
+**Pendências reais, nesta ordem de bloqueio:**
+1. **Confirmar/redeployar o app público** (`guaraci.streamlit.app`) — o
+   código no `master` está corrigido, mas não há confirmação de que o
+   deploy em produção já reflete isso. Não verificável remotamente sem
+   login (app aparenta estar hibernado). **É o item de segurança mais
+   urgente em aberto.**
+2. Reexecutar N2 e rodar N3 pela primeira vez com o código corrigido —
+   os números de validação citáveis hoje são de ANTES das correções
+   científicas do item 1 da linha do tempo. Sem isso, nenhum resultado
+   do software é citável com confiança.
+3. Publicar no PyPI (mecânica pronta e testada — só falta a conta/upload).
+4. 5 PRs do Dependabot abertas, nunca revisadas (CI estava bloqueado
+   desde antes delas existirem).
+5. Versão **permanece 31.9.0 de propósito** — reinício para v1.0.0 é
+   decisão já tomada pelo autor, mas só deve acontecer DEPOIS que os
+   itens 1–2 acima estiverem resolvidos e revisados. Não bata a versão
+   antes disso.
+
+**O que uma análise externa deveria olhar com mais ceticismo:** (a) se a
+correção de segurança do item 2 da linha do tempo é realmente completa —
+foi verificada por leitura de código e teste automatizado, não por
+tentativa de exploração real; (b) se a remoção institucional (item 5) não
+deixou nenhum resquício em arquivo binário/gerado; (c) se as 5 correções
+científicas (item 1) mudam alguma conclusão já escrita em texto de TCC/
+artigo que o autor tenha em outro lugar, fora deste repositório.
+
+---
+
 ## 0. REGRAS DE COMPORTAMENTO (não negociáveis)
 
 ### 0.1 Tom
@@ -114,6 +186,18 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 | `except` amplos | 53 (100% com `noqa: BLE001` justificado, reverificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
 | `guaraci.py` | 3906 linhas (+93 desde a sessão anterior — migração de estado, correções de segurança) | `wc -l src/guaraci/guaraci.py` |
 | TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
+
+> Atualizado em 2026-08-16 — reverificado após o repositório se tornar
+> público, S4 (espectros no histórico local) ser resolvido, a PR
+> acumulada ser mergeada em `master`, e um gate de cobertura do CI (achado
+> só ao repo ficar público e o CI voltar a rodar de verdade: `prcv`
+> faltava em `requirements.txt`, então o caminho do PCV nunca era
+> exercitado no CI) ser corrigido. Todos os números desta tabela batiam
+> exatos com a rodada de 2026-08-07 — nenhuma divergência nova. Ver seção
+> "STATUS EXECUTIVO" no topo do arquivo para o resumo completo do que
+> mudou. Gate de cobertura do núcleo científico (P4, ≥95%) reverificado
+> separadamente: 96% agregado, `validacao_estatistica.py` exatamente no
+> piso (95%).
 
 > Atualizado em 2026-08-07, fim de sessão (auditoria metodológica P11 +
 > checkup de interface + auditoria de segurança S1-S3 + itens pequenos de
@@ -501,9 +585,13 @@ pip install guaraci        # ou guaraci[web]
 guaraci demo               # já existe — ver checklist abaixo
 ```
 
-**Checklist (reverificado em 2026-08-07):**
+**Checklist (reverificado em 2026-08-16):**
 - [ ] Publicado no PyPI — depende de conta do autor. **Único item realmente
-      em aberto deste checklist.**
+      em aberto deste checklist.** Mecânica verificada e pronta: `python -m
+      build` gera sdist+wheel sem erro, `twine check` passa nos dois, nenhum
+      dado real vaza para o pacote (sdist inspecionado), nome
+      `guaraci-chemometrics` confirmado livre no PyPI (2026-08-16). Falta
+      só a conta e o `twine upload`.
 - [x] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[robusto]`,
       `[all]` (pyproject.toml) — `[robusto]` (pacote `prcv`, para o
       diagnóstico PCV do DD-SIMCA) faltava nesta lista
@@ -896,9 +984,15 @@ nas primeiras linhas em inglês.
 | — | **Submenu Visualização quebrado (H/M/B/V)** ✅ | corrigido 2026-07-13 — opções removidas (funções nunca existiram) | Robustez |
 
 **Ainda pendente antes do TCC (bloqueiam defesa ou credibilidade):**
+
+> Atualização 2026-08-16: as correções abaixo (DD-SIMCA + A1 + A3, entre
+> outras) já estão em `master` (PR mergeada, CI verde). O que falta é
+> puramente a EXECUÇÃO real com o código já corrigido — nada de código
+> bloqueia mais isso.
+
 | # | Item | Prazo | Bloqueia |
 |---|---|---|---|
-| 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos) | depende de conta do autor | **Adoção** |
+| 8 | P7 — publicar no PyPI (`guaraci demo`/`doctor`/Colab já prontos; mecânica de empacotamento verificada 2026-08-16) | depende de conta do autor | **Adoção** |
 | — | **N1 (real) rodado e válido** ✅ | feito 2026-08-06, `PLSDA_OE_PorEspecie_...211237` | — |
 | — | **N2 (real) rodado, mas DESATUALIZADO — agora por MAIS motivos** ⚠️ | rodado 2026-08-07 10:19, **a correção da regra de decisão do DD-SIMCA foi commitada 3h30 depois (13:52, commit `b51f361`)** — o resumo que existe usa a regra retangular antiga (rejeição efetiva ~0,0975, não 0,05). Depois disso, a auditoria P11 (mesma sessão, mais tarde) corrigiu mais 2 itens que afetam diretamente números de Classificação: A1 (teste de permutação/Wold do objetivo Classificação, falso positivo medido em 15% em vez de 5%) e A3 (domínio de aplicabilidade, mesma classe de bug do DD-SIMCA, usado por `predicao.py`). **Precisa reexecutar** — a lista de motivos só cresceu | Defesa — números atuais não refletem o código |
 | — | **N3 nunca rodado com o código corrigido** | só existe uma rodada de 2026-07-05, anterior a TODAS as correções desta sessão (CV, DD-SIMCA, figuras) — precisa rodar do zero | Defesa |
