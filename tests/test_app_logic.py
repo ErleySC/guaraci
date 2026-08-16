@@ -217,14 +217,11 @@ def test_ler_model_card_ausente_retorna_none(tmp_path):
     assert ler_model_card(str(tmp_path)) is None
 
 
-# ── caminho_upload_temp (achado de auditoria de seguranca, 2026-08-07) ──────
+# ── caminho_upload_temp (achado S1 da auditoria de seguranca, 2026-08-07) ───
 # Um caminho de upload PREVISIVEL (nome fixo, pasta compartilhada entre
-# sessoes/visitantes) habilitava um bypass de RCE via pickle: um visitante
-# de um deploy publico podia subir um pickle disfarcado de "modelo.csv"
-# pelo uploader de DADOS (nao coberto por GUARACI_DISABLE_MODEL_UPLOAD) e
-# depois apontar a aba Predicao para esse MESMO caminho previsivel
-# (joblib.load nao liga para extensao, so' para os bytes). Estes testes
-# travam as DUAS propriedades que fecham esse bypass.
+# sessoes/visitantes) era uma das pecas de um bypass de RCE via pickle num
+# deploy publico (ver docs/auditoria/AUDITORIA_SEGURANCA_2026-08-07.md).
+# Estes testes travam as DUAS propriedades que fecham essa peca.
 
 def test_caminho_upload_temp_bloqueia_path_traversal():
     """So' o BASENAME do nome original e' usado -- um nome de arquivo

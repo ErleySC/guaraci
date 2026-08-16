@@ -33,22 +33,14 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
     with col_m1:
         st.markdown("**1. Trained model (.joblib)**")
         if upload_bloqueado:
-            # CORRIGIDO em 2026-08-07 (achado de auditoria de seguranca):
-            # o campo "local path" ficava disponivel MESMO com o upload
-            # bloqueado, e um visitante remoto podia digitar QUALQUER
-            # caminho do servidor ali -- inclusive um arquivo que ele
-            # proprio acabou de subir pelo uploader de CSV da aba Dados
-            # (esse uploader NAO e' bloqueado por GUARACI_DISABLE_MODEL_
-            # UPLOAD, e joblib.load() nao liga para extensao/tipo do
-            # arquivo, so' para o conteudo em bytes). Cadeia completa:
-            # subir um pickle disfarcado de "modelo.csv" -> caminho
-            # previsivel em tempfile.gettempdir()/pq_uploads/ -> colar
-            # esse MESMO caminho aqui -> confiar=True -> RCE remota, sem
-            # autenticacao, apesar da flag de mitigacao estar ativa. Um
-            # campo de texto num app web publico NUNCA e' "so' o
-            # operador digita" -- qualquer visitante alcanca. Por isso
-            # o campo de caminho local tambem fica oculto neste modo, nao
-            # so' o uploader.
+            # CORRIGIDO em 2026-08-07 (achado S1 da auditoria de
+            # seguranca -- ver docs/auditoria/AUDITORIA_SEGURANCA_
+            # 2026-08-07.md): o campo "local path" ficava disponivel MESMO
+            # com o upload bloqueado, e um visitante remoto podia digitar
+            # QUALQUER caminho do servidor ali. Um campo de texto num app
+            # web publico NUNCA e' "so' o operador digita" -- qualquer
+            # visitante alcanca. Por isso o campo de caminho local tambem
+            # fica oculto neste modo, nao so' o uploader.
             upld_jbl = None
             cam_jbl = ""
             confia_modelo = False

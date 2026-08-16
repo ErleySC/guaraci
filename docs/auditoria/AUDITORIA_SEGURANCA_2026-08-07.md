@@ -26,43 +26,32 @@ ausente, sem segredos hardcoded, sem chamada de rede (SSRF não aplicável),
 
 ## S1 (CRÍTICA) — Bypass da mitigação de RCE via pickle
 
+> ⚠️ **DIVULGAÇÃO ADIADA.** O passo a passo de exploração foi **removido
+> deste documento em 2026-08-07**, quando o repositório passou a ser
+> público, porque a correção **ainda não estava na branch `master`** (de
+> onde o deploy público é servido). Publicar o roteiro de ataque antes de
+> a correção estar implantada transforma um relatório de auditoria em um
+> manual de exploração contra um alvo ao vivo.
+>
+> **Reintroduzir o detalhe completo somente depois** de (a) a correção
+> estar em `master` e (b) o deploy público estar rodando a versão
+> corrigida. O detalhe permanece no histórico do Git (commit `fbab311` e
+> a mensagem de commit correspondente) para quem precisar auditar a
+> correção.
+
 `GUARACI_DISABLE_MODEL_UPLOAD=1` é a mitigação documentada em `SECURITY.md`
 para deploys públicos: desabilita o uploader de `.joblib` na aba Predição,
 porque `joblib.load()` executa código arbitrário no momento do carregamento
 (pickle). **A mitigação tinha um desvio que a esvaziava por completo.**
 
-**Cadeia de exploração, confirmada por leitura de código:**
-
-1. Operador de um deploy público configura `GUARACI_DISABLE_MODEL_UPLOAD=1`,
-   seguindo a própria orientação do projeto.
-2. O uploader de `.joblib` desaparece da aba Predição — **mas o campo de
-   texto livre "Or local path to model" continua visível**
-   (`app_tabs/predicao.py`, não estava atrás do mesmo `if upload_bloqueado`).
-3. O uploader de **CSV** na aba Dados (`app_tabs/dados.py`) **não é coberto
-   por essa flag** — segue aceitando upload de qualquer visitante.
-4. `st.file_uploader(type=["csv","txt"])` só filtra no **seletor de arquivo
-   do navegador** — é trivialmente contornável renomeando um arquivo antes
-   de selecioná-lo (ou via requisição HTTP direta). `joblib.load()` não
-   liga para extensão, só para os bytes.
-5. Um visitante remoto sobe um pickle malicioso disfarçado de
-   `"modelo.csv"`. O arquivo cai em
-   `{tempdir}/pq_uploads/modelo.csv` — caminho **previsível**, porque era a
-   MESMA pasta compartilhada entre todas as sessões/visitantes, com o nome
-   original do arquivo como está.
-6. O visitante volta à aba Predição, cola esse mesmo caminho no campo
-   "local path", marca a caixa "I trust the source" (confirmação que só
-   verifica a intenção do PRÓPRIO visitante, não a origem real do arquivo)
-   e clica em Predict.
-7. `carregar_modelo(caminho, confiar=True)` → `joblib.load()` → **RCE remota,
-   sem autenticação**, apesar de `GUARACI_DISABLE_MODEL_UPLOAD=1` estar
-   corretamente configurado.
-
-**Causa raiz de design:** o comentário original em `app_quimiometria.py`
-explica a intenção — "aceitar apenas caminhos locais controlados pelo
-próprio operador". Mas um campo de texto num app web não distingue
-"o operador digitou isso" de "um visitante digitou isso" — qualquer um que
-acesse a página alcança o campo. A suposição de que o campo seria
-"operador-only" nunca foi verdadeira para uma aplicação web pública.
+**Resumo (sem o passo a passo):** a flag desligava apenas o *uploader* de
+`.joblib`, deixando disponível um segundo caminho de entrada pelo qual um
+visitante remoto não autenticado conseguia fazer o servidor carregar um
+pickle escolhido por ele — resultando em execução remota de código, apesar
+de a mitigação estar corretamente configurada. A causa de fundo é de
+design: um campo de texto numa aplicação web pública não distingue "o
+operador digitou isso" de "um visitante digitou isso", e a suposição de que
+seria alcançável apenas pelo operador nunca foi verdadeira.
 
 **Correção** (`src/guaraci/app_tabs/predicao.py`): quando
 `upload_bloqueado=True`, o campo de caminho local também fica oculto, não

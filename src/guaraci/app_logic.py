@@ -224,19 +224,14 @@ def caminho_upload_temp(nome_original: str, session_id: str, *,
        diretorio de destino (bloqueia path traversal).
     2. Isolado numa subpasta por `session_id`. Sem isso, uploads de
        sessoes/visitantes DIFERENTES caem no MESMO caminho previsivel
-       (`{tempdir}/pq_uploads/<nome do arquivo>`). Isso habilitava um
-       bypass de RCE via pickle documentado no achado de auditoria de
-       2026-08-07: num deploy publico com upload de MODELO bloqueado
-       (`GUARACI_DISABLE_MODEL_UPLOAD=1`), um visitante ainda podia (a)
-       subir um pickle disfarcado de "modelo.csv" pelo uploader de DADOS
-       (nao coberto pela mesma flag) para um caminho previsivel, e (b)
-       colar esse MESMO caminho no campo "local path" da aba Predicao
-       (joblib.load nao liga para extensao, so' para os bytes) -- RCE
-       remota sem autenticacao, apesar da mitigacao documentada estar
-       ativa. `session_id` deve ser um valor aleatorio gerado uma vez por
-       sessao (nunca exposto ao cliente, ex.: `uuid.uuid4().hex` guardado
-       em `st.session_state`), nunca previsivel/derivado de dado do
-       usuario.
+       (`{tempdir}/pq_uploads/<nome do arquivo>`), o que (a) e' uma
+       condicao de corrida real entre sessoes concorrentes e (b)
+       participava do bypass de RCE via pickle registrado como achado S1
+       da auditoria de 2026-08-07 (ver docs/auditoria/
+       AUDITORIA_SEGURANCA_2026-08-07.md). `session_id` deve ser um valor
+       aleatorio gerado uma vez por sessao (nunca exposto ao cliente,
+       ex.: `uuid.uuid4().hex` guardado em `st.session_state`), nunca
+       previsivel/derivado de dado do usuario.
 
     `base` (opcional, default `tempfile.gettempdir()`) existe so' para
     tornar a funcao testavel sem depender do diretorio temp real do SO.

@@ -89,16 +89,12 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         help="The file will be saved to a temporary folder and the path adjusted automatically.",
     )
     if upld is not None:
-        # Subpasta por SESSAO (achado de auditoria de seguranca, 2026-08-07
-        # -- ver docstring de app_logic.caminho_upload_temp): antes, todos
-        # os uploads (de todas as sessoes/visitantes) caiam na MESMA pasta
-        # compartilhada com o nome original do arquivo -- um caminho
-        # PREVISIVEL. Combinado com predicao.py aceitando "caminho local"
-        # livre (joblib.load nao liga p/ extensao, so' bytes), um visitante
-        # podia subir um pickle disfarcado de .csv aqui e depois apontar a
-        # aba Predicao para esse MESMO caminho -- RCE mesmo com
-        # GUARACI_DISABLE_MODEL_UPLOAD=1 (que so' bloqueia o uploader de
-        # .joblib, nao este). Um id aleatorio por sessao (nunca exposto ao
+        # Subpasta por SESSAO (achado S1 da auditoria de seguranca,
+        # 2026-08-07 -- ver docstring de app_logic.caminho_upload_temp):
+        # antes, todos os uploads (de todas as sessoes/visitantes) caiam
+        # na MESMA pasta compartilhada com o nome original do arquivo --
+        # um caminho PREVISIVEL, que era uma das pecas do bypass de RCE
+        # via pickle. Um id aleatorio por sessao (nunca exposto ao
         # cliente) isola os uploads de cada visitante dos demais.
         import uuid
         if "_upload_session_id" not in st.session_state:
