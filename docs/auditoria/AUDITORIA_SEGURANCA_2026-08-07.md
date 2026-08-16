@@ -13,7 +13,7 @@ descartar.
 | S1 | Bypass da mitigação de RCE via pickle (`GUARACI_DISABLE_MODEL_UPLOAD`) | **CRÍTICA** | ✅ Corrigido |
 | S2 | Condição de corrida em arquivo temp compartilhado (multi-usuário) | ALTA | ✅ Corrigido |
 | S3 | Interpolação de string em `os.system()` (padrão de injeção de comando) | BAIXA | ✅ Corrigido |
-| S4 | Branch `master` LOCAL ainda contém 48 espectros reais no histórico | **ALTA** (dado, não código) | ⚠️ Requer ação do autor |
+| S4 | Branch `master` LOCAL ainda continha 48 espectros reais no histórico | **ALTA** (dado, não código) | ✅ Resolvido em 2026-08-16 |
 
 **Verificado e correto, sem achado:** guarda de `joblib.load` (P5,
 `carregar_modelo`/`SecurityError`/manifesto SHA-256), ausência de
@@ -135,10 +135,35 @@ uso atual.
   `github.event.*` (título de PR, nome de branch) diretamente em comandos
   de shell — o vetor clássico de injeção de script em GitHub Actions.
 
-## S4 (ALTA — exposição de dado, não vulnerabilidade de código) — `master` local carrega os espectros reais
+## S4 (ALTA — exposição de dado, não vulnerabilidade de código) — `master` local carregava os espectros reais
 
-**Requer ação do autor. Não é corrigível por commit** (é estado de um ref
-local, não conteúdo de arquivo).
+> ✅ **RESOLVIDO em 2026-08-16**, antes de o repositório ir a público ser
+> explorado por qualquer push acidental. O que foi feito, nesta ordem:
+>
+> 1. **Confirmado que o dataset real está fora do repositório** — 1741
+>    arquivos `.dx` em `dados oleos/Por óleos`, e a pasta `dados/` do repo
+>    está vazia e é ignorada pelo Git. Os 48 arquivos no histórico eram
+>    cópias antigas, não a fonte da pesquisa: apagá-los não perde dado.
+> 2. **Backup do histórico antigo antes de destruir qualquer coisa** —
+>    `git bundle` dos 185 commits exclusivos do `master` local, gravado
+>    FORA do repositório (`ERLEY/guaraci_historico_antigo_20260815.bundle`,
+>    12 MB) e verificado com `git bundle verify` ("records a complete
+>    history"). Fora do repo de propósito: não há como ser enviado por
+>    engano.
+> 3. `git branch -f master origin/master` — realinha o ref local ao remoto
+>    limpo.
+> 4. `git reflog expire --expire=now --all && git gc --prune=now` — remove
+>    os objetos órfãos do clone.
+>
+> **Verificado depois:** nenhum `.dx`/`.jdx` alcançável a partir de
+> qualquer ref local, zero objetos desse tipo no banco de objetos, e o
+> `.git` caiu para 5 MB. O remoto já estava limpo antes (todas as branches
+> e as 11 tags).
+>
+> Permanece válida a ressalva do item 3 abaixo sobre objetos no servidor:
+> o histórico antigo **nunca foi enviado com os dados** (verificado ref a
+> ref), então não há o que coletar no GitHub — mas se um dia houver dúvida,
+> o caminho é o mesmo (chamado ao Support pedindo GC).
 
 Levantado ao avaliar se o repositório pode ser tornado **público** — a via
 mais direta para resolver o esgotamento de cota do GitHub Actions (Actions
