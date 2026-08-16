@@ -13,6 +13,7 @@ descartar.
 | S1 | Bypass da mitigação de RCE via pickle (`GUARACI_DISABLE_MODEL_UPLOAD`) | **CRÍTICA** | ✅ Corrigido |
 | S2 | Condição de corrida em arquivo temp compartilhado (multi-usuário) | ALTA | ✅ Corrigido |
 | S3 | Interpolação de string em `os.system()` (padrão de injeção de comando) | BAIXA | ✅ Corrigido |
+| S4 | Branch `master` LOCAL ainda contém 48 espectros reais no histórico | **ALTA** (dado, não código) | ⚠️ Requer ação do autor |
 
 **Verificado e correto, sem achado:** guarda de `joblib.load` (P5,
 `carregar_modelo`/`SecurityError`/manifesto SHA-256), ausência de
@@ -144,6 +145,63 @@ uso atual.
 - Workflows do CI (`.github/workflows/*.yml`) não interpolam
   `github.event.*` (título de PR, nome de branch) diretamente em comandos
   de shell — o vetor clássico de injeção de script em GitHub Actions.
+
+## S4 (ALTA — exposição de dado, não vulnerabilidade de código) — `master` local carrega os espectros reais
+
+**Requer ação do autor. Não é corrigível por commit** (é estado de um ref
+local, não conteúdo de arquivo).
+
+Levantado ao avaliar se o repositório pode ser tornado **público** — a via
+mais direta para resolver o esgotamento de cota do GitHub Actions (Actions
+é gratuito e ilimitado em repositório público; a cota só é consumida em
+repositório privado).
+
+**Situação medida:**
+
+| Ref | Arquivos `.dx` no histórico |
+|---|---|
+| `HEAD` (`historico-limpo-preview`) | 0 |
+| `origin/master` (remoto) | 0 |
+| `origin/historico-limpo-preview` (remoto) | 0 |
+| Todas as 11 tags remotas (`v31.0.0`…`v31.9.0`) | 0 |
+| **`refs/heads/master` (branch LOCAL)** | **48** |
+
+Ou seja: **tudo que está no GitHub hoje está limpo.** O que carrega os 48
+espectros reais (`dados/ACA-04-11-2020_T1.dx` etc. — o dataset FT-NIR não
+publicado do TCC) é a branch `master` **local**, que nunca foi atualizada
+após a reescrita de histórico (`26a8f5b` local vs `88caa27` no remoto).
+
+**Por que isso é um risco e não uma curiosidade:** enquanto esse ref existir
+na máquina, um `git push origin master`, um `git push --all`, ou um
+`git checkout master` seguido de push publica o dataset — e se o
+repositório estiver público nesse momento, publica para qualquer um. É
+exatamente o tipo de acidente de um comando só que a reescrita de histórico
+existia para evitar.
+
+**Ação recomendada, antes de tornar o repositório público:**
+
+1. Confirmar que a branch local não tem nada a salvar que já não esteja no
+   remoto (`git log origin/master..master --oneline`), e então apagá-la ou
+   realinhá-la: `git branch -D master` (ou
+   `git branch -f master origin/master`).
+2. `git reflog expire --expire=now --all && git gc --prune=now --aggressive`
+   para remover os objetos órfãos do clone local.
+3. **Independentemente do local:** objetos de um histórico reescrito podem
+   permanecer acessíveis por SHA direto no GitHub até a coleta de lixo do
+   servidor. Se o histórico antigo **chegou** a ser enviado ao GitHub em
+   algum momento, abrir um chamado no GitHub Support pedindo GC do
+   repositório é o passo que efetivamente os remove. Sem essa confirmação,
+   a alternativa mais segura é **publicar um repositório novo** (criado do
+   zero, com o histórico limpo importado), em vez de tornar público o
+   repositório que já existiu como privado com o dado dentro.
+
+**Escopo desta constatação:** os arquivos foram identificados por nome e
+extensão (`.dx`/`.jdx`) e por qual ref os alcança. Não foi feita inspeção
+de conteúdo dos espectros nem avaliação sobre a política de compartilhamento
+de dados do grupo/instituição — a decisão sobre publicar ou não o dataset é
+do autor e do orientador, não uma conclusão técnica desta auditoria.
+
+---
 
 ## Não auditado nesta rodada
 

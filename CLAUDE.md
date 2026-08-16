@@ -495,9 +495,12 @@ pip install guaraci        # ou guaraci[web]
 guaraci demo               # já existe — ver checklist abaixo
 ```
 
-**Checklist (reverificado em 2026-08-04):**
-- [ ] Publicado no PyPI — depende de conta do autor
-- [x] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[all]` (pyproject.toml)
+**Checklist (reverificado em 2026-08-07):**
+- [ ] Publicado no PyPI — depende de conta do autor. **Único item realmente
+      em aberto deste checklist.**
+- [x] Extras: `[web]`, `[reports]`, `[benchmark]`, `[imagem]`, `[robusto]`,
+      `[all]` (pyproject.toml) — `[robusto]` (pacote `prcv`, para o
+      diagnóstico PCV do DD-SIMCA) faltava nesta lista
 - [x] ~~Dataset de demo embutido no pacote~~ — **resolvido de outra forma**: `guaraci demo`
       usa `modo="sintetico"` (espectro gerado na hora, `_comando_demo()` em `guaraci.py`),
       não um dataset real embutido. Estritamente melhor — zero questão de licença/proveniência
@@ -509,8 +512,15 @@ guaraci demo               # já existe — ver checklist abaixo
       matriz `os: [ubuntu-latest, windows-latest]` + macOS em `include`)
 - [x] **Notebook Colab "Guaraci em 5 minutos"** (`notebooks/guaraci_5_minutos.ipynb`, linkado
       no README e no badge)
-- [ ] `requirements-lock.txt` — **não existe ainda**, único item real deste checklist ainda
-      em aberto além da publicação no PyPI em si.
+- [x] `requirements-lock.txt` — **existe e está atualizado** (reverificado
+      2026-08-07: 117 linhas, pins exatos gerados de um venv real e testado,
+      inclui `prcv==1.2.1` do extra `[robusto]`; os pins de
+      numpy/scipy/sklearn/pandas/matplotlib batem exatamente com o ambiente
+      instalado). A afirmação anterior nesta linha ("não existe ainda") era
+      **falsa** — o arquivo foi criado em `f0387e7` e regenerado em `20e846f`
+      (o primeiro lock não instalava) e `3784c45`. Exemplo de por que a regra
+      do topo deste arquivo (reverificar antes de confiar) vale também para os
+      checklists, não só para a tabela ESTADO ALEGADO.
 
 **Pins vs. faixas — os dois, com papéis diferentes:**
 - `pyproject.toml` → **faixas** (para ser instalável junto com outros pacotes)
