@@ -39,3 +39,12 @@ python-pptx>=1.0,<2.0 # PowerPoint .pptx
 # ── Benchmark / Interpretability ─────────────────────────────────────────────
 xgboost>=1.7,<5.0   # XGBClassifier (falls back to GradientBoosting if absent)
 shap>=0.42,<0.53    # SHAP TreeExplainer — cap: 0.52 is last validated; GBM multiclass guarded
+
+# ── Validação robusta (extra [robusto]) ──────────────────────────────────────
+# Procrustes Cross-Validation — diagnóstico complementar do DD-SIMCA
+# (`sensibilidade_ddsimca_pcv`). Faltava aqui desde que o PCV foi adicionado:
+# o CI instala a partir DESTE arquivo, então o caminho do PCV nunca era
+# exercitado lá e `classificadores.py` caía para 88%, derrubando o gate de
+# cobertura do núcleo científico (>=95%, CLAUDE.md P4). A falha ficou latente
+# porque o CI esteve bloqueado por cota entre a adição do PCV e 2026-08-16.
+prcv>=1.2,<2.0
