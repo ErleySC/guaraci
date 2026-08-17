@@ -30,6 +30,35 @@ from guaraci.resumo_parse import extrair_metrica, parse_metricas_modelo
 # Fonte unica de versao (mesmo padrao de app_quimiometria.py: pipeline.__version__).
 _APP_VERSION = f"v{getattr(_pq, '__version__', '?')}"
 
+# Texto unico do carimbo de prototipo (achado B4-1 da auditoria de
+# 2026-08-16). Fonte unica para os 4 geradores nao divergirem.
+_AVISO_PROTOTIPO_TITULO = "PROTOTYPE OUTPUT - NOT VALIDATED"
+_AVISO_PROTOTIPO_CORPO = (
+    "Generated in digital-colorimetry (image) mode, which has not been "
+    "validated against a reference dataset and provides no replicate-group "
+    "identifier - group-aware validation was therefore DISABLED for this "
+    "run. Not suitable for publication."
+)
+
+
+def _e_modo_prototipo(resumo_raw: str) -> bool:
+    """True quando a execucao veio de um modo de entrada nao validado.
+
+    Hoje so' `modo="imagem"` (colorimetria digital, prototipo): o modulo
+    `dados_imagem` devolve `mae_id=None` sempre, entao o pipeline cai no
+    fallback `StratifiedKFold` e a validacao group-aware -- o diferencial
+    central do projeto -- fica desligada. Sem este carimbo, o PDF/Word/
+    LaTeX gerado e' tipograficamente identico ao de uma analise FT-NIR
+    validada (achado B4-1).
+
+    Le o campo "Modo de entrada" que `pipeline.executar()` grava no
+    resumo_modelo.txt -- mesma fonte unica usada pelo B3-1 para nao
+    afirmar group-aware quando ele nao rodou.
+    """
+    return extrair_metrica(
+        resumo_raw, r"Modo de entrada\s*[:=]\s*(\w+)", ""
+    ).strip().lower() == "imagem"
+
 
 def gerar_pdf_relatorio(pasta: str, projeto: Dict,
                           max_figuras: int = 14) -> io.BytesIO:
@@ -49,6 +78,10 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
     resumo_raw = _ler_resumo(pasta) or ""
 
     metricas = parse_metricas_modelo(resumo_raw)
+    # B4-1: carimbo de prototipo quando a execucao veio do modo imagem
+    # (colorimetria digital) -- nao validado e sem mae_id, logo sem
+    # validacao group-aware. Ver `_e_modo_prototipo`.
+    prototipo = _e_modo_prototipo(resumo_raw)
 
     imgs = _listar_figuras(pasta)[:max_figuras]
 
@@ -125,6 +158,22 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
         pdf.cell(0, 7, "Objective:", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 10)
         pdf.multi_cell(180, 5, _a(obj))
+
+    # B4-1: carimbo de prototipo na CAPA (nao em nota de rodape) -- e' o
+    # primeiro elemento que alguem ve ao abrir o PDF.
+    if prototipo:
+        pdf.ln(6)
+        pdf.set_draw_color(170, 40, 40)
+        pdf.set_fill_color(253, 240, 240)
+        pdf.set_text_color(150, 25, 25)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.multi_cell(180, 8, _a(_AVISO_PROTOTIPO_TITULO),
+                       border=1, align="C", fill=True)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.multi_cell(180, 5, _a(_AVISO_PROTOTIPO_CORPO),
+                       border="LRB", align="C", fill=True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_draw_color(200, 200, 200)
 
     # Cover footer
     pdf.set_y(-30)
@@ -329,6 +378,20 @@ def gerar_word_relatorio(pasta: str, projeto: Dict,
     if obj:
         doc.add_heading("Objective", 2)
         doc.add_paragraph(obj)
+
+    # B4-1: carimbo de prototipo na capa, antes da quebra de pagina.
+    if _e_modo_prototipo(resumo_raw):
+        p_av = doc.add_paragraph()
+        p_av.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_tit = p_av.add_run(_AVISO_PROTOTIPO_TITULO)
+        r_tit.bold = True
+        r_tit.font.size = Pt(13)
+        r_tit.font.color.rgb = RGBColor(150, 25, 25)
+        p_corpo = doc.add_paragraph()
+        p_corpo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_corpo = p_corpo.add_run(_AVISO_PROTOTIPO_CORPO)
+        r_corpo.font.size = Pt(9)
+        r_corpo.font.color.rgb = RGBColor(150, 25, 25)
 
     doc.add_page_break()
 
@@ -608,7 +671,53 @@ def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
         "preproc":   _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "n_train":   _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "n_classes": _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
+        "cv_label":    _ex(r"Validacao\s*[:=]\s*(.+)"),
+        "group_aware": _ex(r"Group-aware \(mae_id\)\s*[:=]\s*(\w+)"),
+        "faixa_min":   _ex(r"Faixa espectral \(cm-1\)\s*[:=]\s*\[\s*([\d.]+)"),
+        "faixa_max":   _ex(r"Faixa espectral \(cm-1\)\s*[:=]\s*\[\s*[\d.]+\s*,\s*([\d.]+)"),
+        "n_perm":      _ex(r"Permutation n_validos\s*[:=]\s*(\d+)"),
     }
+
+    # B4-1: modo="imagem" (colorimetria digital) e' PROTOTIPO nao validado e
+    # nao produz mae_id -- a validacao group-aware fica desligada. Sem este
+    # carimbo, o .tex gerado e' tipograficamente identico ao de uma analise
+    # FT-NIR validada.
+    carimbo_prototipo = (
+        "\n\\begin{center}\n"
+        "\\fbox{\\parbox{0.9\\linewidth}{\\centering\\bfseries\n"
+        f"{_AVISO_PROTOTIPO_TITULO}\\\\[2pt]\n"
+        f"\\normalfont {_AVISO_PROTOTIPO_CORPO}}}}}\n"
+        "\\end{center}\n"
+        if _e_modo_prototipo(resumo_raw) else "")
+    faixa_tex = (f"\\SIrange{{{met['faixa_min']}}}{{{met['faixa_max']}}}"
+                 if met["faixa_min"] != "-" and met["faixa_max"] != "-"
+                 else "\\SIrange{4000}{10000}")  # fallback: nao foi possivel ler do resumo
+
+    # B3-1 (auditoria 2026-08): NAO afirmar "group-aware cross-validation"
+    # cravado no texto -- o pipeline pode cair para StratifiedKFold quando
+    # mae_id esta indisponivel (ex.: modo_entrada="imagem", ver B4-1), e o
+    # manuscrito nao pode alegar uma protecao que nao foi de fato aplicada
+    # naquela execucao. `met['group_aware']`/`met['cv_label']` vem do MESMO
+    # resumo_modelo.txt que grava cv_label (pipeline.py, ~linha 1957),
+    # entao a frase abaixo reflete o que realmente rodou.
+    if met["group_aware"].strip().lower() == "sim":
+        frase_validacao = (
+            f"selected by group-aware cross-validation "
+            f"({_esc(met['cv_label'])}, grouping technical replicates by "
+            f"physical sampling point to prevent data leakage) "
+            f"\\citep{{chong2005}}")
+    elif met["group_aware"].strip().lower() == "nao":
+        frase_validacao = (
+            f"selected by {_esc(met['cv_label'])}. "
+            f"\\textbf{{Warning: group-aware validation was NOT applied in "
+            f"this run}} (no replicate-group identifier available) -- "
+            f"results should not be described as protected against "
+            f"physical-replicate leakage")
+    else:
+        frase_validacao = (
+            f"selected by {_esc(met['cv_label'])} "
+            f"(group-aware status could not be determined from the run "
+            f"summary -- verify before submission)")
 
     imgs = _listar_figuras(pasta)[:8]
     nome_proj = _esc(projeto.get("nome", "Chemometric Analysis by FT-NIR"))
@@ -643,7 +752,8 @@ def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
 \\begin{{figure}}[htbp]
     \\centering
     \\includegraphics[width=0.85\\linewidth]{{{img_tex}}}
-    \\caption{{{_esc(nome_f)}. % TODO: add chemical interpretation.}}
+    % TODO: add chemical interpretation.
+    \\caption{{{_esc(nome_f)}.}}
     \\label{{fig:{label}}}
 \\end{{figure}}""")
     figs_block = "\n".join(blocos_fig)
@@ -683,6 +793,7 @@ def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
 
 \\begin{{document}}
 \\maketitle
+{carimbo_prototipo}
 
 %% ── Abstract ─────────────────────────────────────────────────────────────
 \\begin{{abstract}}
@@ -710,22 +821,20 @@ non-destructive, low-cost technique for oil authentication
 
 \\subsection{{Samples and spectral acquisition}}
 % TODO: describe number of samples, instrument (ABB MB3600 or similar),
-% spectral range, resolution, number of scans, temperature.
-FT-NIR spectra were acquired in the range \\SIrange{{4000}}{{10000}}{{\\per\\centi\\meter}}.
+% resolution, number of scans, temperature.
+FT-NIR spectra were acquired in the range {faixa_tex}{{\\per\\centi\\meter}}.
 
 \\subsection{{Spectral preprocessing}}
 The {_esc(met['preproc'])} preprocessing was selected based on pipeline comparison
 (balanced accuracy in CV validation) according to \\citet{{rinnan2009}}.
 
 \\subsection{{PLS-DA modelling}}
-The PLS-DA model was calibrated with {met['lvs']} latent variables, selected
-by group-aware cross-validation (GroupKFold, grouping technical replicates to
-prevent data leakage) \\citep{{chong2005}}.
+The PLS-DA model was calibrated with {met['lvs']} latent variables, {frase_validacao}.
 
 \\subsection{{Statistical validation}}
 Robustness was assessed by:
 \\begin{{itemize}}
-    \\item \\textbf{{Y-randomization}} (200 permutations) \\citep{{eriksson2008}};
+    \\item \\textbf{{Y-randomization}} ({_esc(met['n_perm'])} permutations) \\citep{{eriksson2008}};
     \\item \\textbf{{Wold's test}} (intercepts $R^2Y < 0.40$ and $Q^2Y < 0.05$);
     \\item \\textbf{{CV-ANOVA}} by Eriksson \\citep{{eriksson2008}};
     \\item \\textbf{{BCa Bootstrap}} 95\\% for balanced accuracy \\citep{{efron1993}}.
