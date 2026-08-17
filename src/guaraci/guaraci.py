@@ -100,18 +100,70 @@ _fmt_yaml            = _try("_fmt_yaml", str)
 salvar_config        = _try("salvar_config", pq.salvar_config)
 carregar_config      = _try("carregar_config", pq.carregar_config)
 
+# Persistencia de estado do CLI.
+#
+# CORRIGIDO em 2026-08-16 (varredura de bugs): estas tres funcoes eram
+# wrappers que procuravam implementacoes em `cli_assistente` -- que NUNCA
+# existiram la'. `getattr(..., None)` devolvia None, entao `_carregar_*`
+# retornava sempre {} e `_salvar_visual_cfg` era um no-op SILENCIOSO. O
+# comentario do proprio codigo (secao do Modo Iniciante/Avancado) ja
+# registrava "esse esta quebrado ... fora do escopo desta feature
+# consertar isso" desde 2026-07-13.
+#
+# Consequencias reais, ambas do tipo que o projeto mais combate (o software
+# mente sem travar):
+#   1. As 4 opcoes do menu Visualizacao (Paleta/Fonte/Grid/Alpha) gravavam
+#      no dicionario, chamavam _salvar_visual_cfg(), imprimiam "OK Paleta:
+#      X" e NAO persistiam nada -- a confirmacao era falsa. Na proxima
+#      abertura o valor voltava ao default. O mesmo valia para o DPI
+#      (`_sincronizar_dpi`) e para toda a aplicacao de estilo em
+#      `_rodar_pipeline` (paleta/fonte/grid/alpha nos rcParams do
+#      matplotlib), que le de `_carregar_visual_cfg()`.
+#   2. Codigos de especie cadastrados pelo usuario eram gravados
+#      corretamente pelo menu (`_salvar_cod`, que tem implementacao propria
+#      e funciona), apareciam listados no proprio menu (`_cod_usr`, idem),
+#      mas NAO eram aplicados a analise: a unica linha que injeta os
+#      codigos no pipeline (`pq.CODIGO_ESPECIE.update(cod_u)`) usava o
+#      wrapper quebrado e recebia {} sempre.
+#
+# Agora as tres leem/gravam direto em _USER_DIR, no mesmo padrao ja usado
+# por `_cod_usr`/`_salvar_cod` (que sempre funcionaram) e pelos demais
+# arquivos de estado (_CFG_PATH, _LANG_FLAG, _MODO_FLAG).
 def _carregar_visual_cfg() -> dict:
-    fn = getattr(_cli, "_carregar_visual_cfg", None)
-    return fn() if callable(fn) else {}
+    """Config visual (paleta/fonte/grid/alpha/dpi) de _VISUAL_PATH.
+
+    Arquivo ausente ou corrompido -> {} (defaults do matplotlib), nunca
+    excecao: configuracao cosmetica nao pode impedir uma analise de rodar.
+    """
+    try:
+        p = _VISUAL_PATH
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 def _salvar_visual_cfg(d: dict) -> None:
-    fn = getattr(_cli, "_salvar_visual_cfg", None)
-    if callable(fn):
-        fn(d)
+    """Grava a config visual. Falha de escrita AVISA em vez de sumir em
+    silencio -- mesma licao de `_salvar_cod`: o usuario nao pode ver um
+    'salvo' que nao aconteceu."""
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+        _VISUAL_PATH.write_text(
+            json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as e:
+        console.print(f"[err]✗ Falha ao salvar config visual: {e}[/err]")
 
 def _carregar_codigos_usuario() -> dict:
-    fn = getattr(_cli, "_carregar_codigos_usuario", None)
-    return fn() if callable(fn) else {}
+    """Codigos de especie cadastrados pelo usuario, de _CODIGOS_PATH.
+
+    Mesma leitura de `_cod_usr()` (menu de codificacao) -- e' de proposito
+    que as duas leiam o MESMO arquivo: o que o menu lista tem de ser o que
+    a analise aplica.
+    """
+    try:
+        p = _CODIGOS_PATH
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 # ---------------------------------------------------------------------------
 # Caminhos
@@ -135,6 +187,7 @@ _CFG_PATH    = _USER_DIR / "config.yaml"
 _PERFIS_DIR  = _USER_DIR / "perfis"
 _LANG_FLAG   = _USER_DIR / ".cli_wizard_done"
 _CODIGOS_PATH= _USER_DIR / "codigos_usuario.json"
+_VISUAL_PATH = _USER_DIR / "visual_config.json"
 
 
 def _migrar_estado_legado() -> None:
@@ -155,6 +208,7 @@ def _migrar_estado_legado() -> None:
         (".cli_wizard_done", _LANG_FLAG),
         ("codigos_usuario.json", _CODIGOS_PATH),
         (".cli_modo_usuario", _MODO_FLAG),
+        ("visual_config.json", _VISUAL_PATH),
     ):
         origem = _BASE_DIR / nome
         if origem.exists() and not alvo.exists():
@@ -162,6 +216,18 @@ def _migrar_estado_legado() -> None:
                 shutil.copy2(origem, alvo)
             except OSError:
                 pass
+    # `visual_config.json` tinha uma origem legada A MAIS: a versao antiga
+    # gravava por caminho RELATIVO, entao o arquivo ficava no diretorio de
+    # onde o CLI foi chamado (tipicamente a raiz do repositorio), nao em
+    # _BASE_DIR. Recuperado aqui para nao perder a paleta que o usuario ja
+    # tinha escolhido -- so' se _USER_DIR ainda nao tiver a sua.
+    if not _VISUAL_PATH.exists():
+        try:
+            origem_cwd = Path.cwd() / "visual_config.json"
+            if origem_cwd.is_file():
+                shutil.copy2(origem_cwd, _VISUAL_PATH)
+        except OSError:
+            pass
     origem_perfis = _BASE_DIR / "perfis"
     if origem_perfis.is_dir() and not _PERFIS_DIR.exists():
         try:
@@ -191,12 +257,15 @@ def _toggle_idioma() -> str:
     return novo
 
 # Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12): alterna
-# GLOBALMENTE se os submenus escondem campos avancados por padrao. Mesmo
-# padrao de persistencia do idioma (arquivo-flag lido no proximo start);
-# NAO usa o mecanismo de visual_config.json -- esse esta quebrado (achado
-# 2026-07-13: _cli nao define _carregar_visual_cfg/_salvar_visual_cfg, os
-# wrappers em guaraci.py sempre retornam {} / viram no-op silenciosamente;
-# fora do escopo desta feature consertar isso).
+# GLOBALMENTE se os submenus escondem campos avancados por padrao. Usa
+# arquivo-flag proprio (mesmo padrao de persistencia do idioma), nao o
+# visual_config.json -- que guarda aparencia de FIGURA (paleta/fonte/grid),
+# nao estado de navegacao do menu; sao coisas diferentes.
+# (Este comentario dizia, ate 2026-08-16, que o mecanismo de
+# visual_config.json estava quebrado e que consertar estava "fora do
+# escopo". Estava mesmo quebrado desde 2026-07-13 e foi CORRIGIDO na
+# varredura de bugs de 2026-08-16 -- ver as funcoes de persistencia no topo
+# do modulo.)
 _MODO_FLAG = _USER_DIR / ".cli_modo_usuario"
 
 def _modo_usuario() -> str:
