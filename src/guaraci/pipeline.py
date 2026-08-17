@@ -1061,6 +1061,19 @@ def executar(cfg: Config):
         log.info(f"[MODO] Figuras pertinentes a este objetivo ({len(_plano)}): "
               + "; ".join(_plano))
 
+    # Aviso de PROTOTIPO (achado B4-1): o modo imagem (colorimetria digital)
+    # nunca foi validado com dataset real, e -- pior -- `dados_imagem` devolve
+    # mae_id=None sempre, o que desliga a validacao group-aware (o diferencial
+    # central do projeto) sem que nada no relatorio dissesse isso. O aviso vai
+    # como WARNING (nao INFO), e o modo tambem entra no resumo_modelo.txt para
+    # que os geradores de relatorio possam carimbar a saida.
+    if cfg.modo == "imagem":
+        log.warning(
+            "[PROTOTIPO] modo='imagem' (colorimetria digital) NAO e validado "
+            "com dataset real e NAO produz mae_id -- a validacao group-aware "
+            "fica DESLIGADA nesta execucao. Nao use estes numeros como "
+            "resultado publicavel; os relatorios gerados sairao carimbados.")
+
     # --- 0. Hardware probe + auto-ajuste preventivo -------------------------
     _hw = hardware_probe()
     _avisos_hw = auto_ajustar_config_hardware(cfg, _hw)
@@ -1731,8 +1744,21 @@ def executar(cfg: Config):
 
         ddsimca = DDSimca(n_components=cfg.ddsimca_n_components, alpha=0.05,
                            ucl_method=cfg.ddsimca_ucl_method)
-        ddsimca.fit(X_processed[mask_treino], rotulos[mask_treino])
-        ddsimca_res   = ddsimca.score_matrix(X_processed)   # prediz em TODOS
+        # mae_id (achado F1/A2-3, auditoria 2026-08-16): calibra h0/q0/Nh/Nq
+        # por AMOSTRA FISICA, nao por espectro -- ver docstring de
+        # DDSimca.fit(). Ausente em modos sem identificador de replica
+        # (ex.: modo_entrada="imagem"), onde None preserva o comportamento
+        # anterior (Nh/Nq por espectro) com aviso explicito no log.
+        ddsimca.fit(X_processed[mask_treino], rotulos[mask_treino],
+                    mae_id=mae_id[mask_treino] if mae_id is not None else None)
+        # mask_treino+rotulos (achado A1): pontos de TREINO recebem o Q
+        # leave-one-out usado para calibrar a fronteira, em vez do Q
+        # in-sample -- sem isso, pontos e fronteira ficam em escalas
+        # diferentes na figura de aceitacao (Q in-sample medido 10-15x
+        # menor no regime real). Amostras novas seguem in-sample, que e' o
+        # valor correto para elas.
+        ddsimca_res   = ddsimca.score_matrix(       # pontua em TODOS
+            X_processed, mask_treino=mask_treino, y=rotulos)
         simca_pred    = ddsimca.predict(X_processed)
         n_unknown     = int(np.sum(simca_pred == "Desconhecido"))
         n_ambig       = int(np.sum(simca_pred == "Ambiguo"))
@@ -1856,7 +1882,12 @@ def executar(cfg: Config):
         try:
             etapa4_res = etapa4_selecao_variaveis(
                 X_processed, Y_bin, y_int, wavenumbers,
-                cv_indices, n_opt, cfg, pasta, pasta_dados)
+                cv_indices, n_opt, cfg, pasta, pasta_dados,
+                # mae_id (achado B1-3): torna group-aware tambem a CV
+                # INTERNA que guia as buscas SPA/AG -- sem isso, a busca
+                # escolhe variaveis que exploram similaridade entre
+                # replicas, ainda que o numero reportado seja honesto.
+                mae_id=mae_id)
         except Exception as _e_e4:  # noqa: BLE001 -- modulo opcional (selecao
             # de variaveis); erro impresso, etapa4_res fica None e some do
             # resumo; PLS-DA (resultado central) ja calculado antes.
@@ -1937,6 +1968,11 @@ def executar(cfg: Config):
              if cfg.aplicar_sg else []) +
             (["mean-centering"] if cfg.aplicar_mc else []))
     resumo = {
+        # Modo de entrada no resumo (achado B4-1): e' o que permite aos
+        # geradores de relatorio carimbarem "PROTOTIPO -- NAO VALIDADO"
+        # quando modo="imagem", em vez de produzirem um PDF/LaTeX
+        # tipograficamente identico ao de uma analise FT-NIR validada.
+        "Modo de entrada":        str(cfg.modo),
         "Total de amostras":      int(X_raw.shape[0]),
         "Total de variaveis":     int(X_raw.shape[1]),
         "Total de classes":       int(len(classes_unicas)),
@@ -2138,7 +2174,11 @@ def executar(cfg: Config):
             try:
                 mc_df = monte_carlo_cv(
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta)
-                log.info(mc_df.to_string(index=False))
+                # DataFrame vazio = MC CV pulado por poucos grupos de
+                # replica (aviso ja emitido la' dentro, B2-1b) -- nao
+                # imprimir "Empty DataFrame" por cima da explicacao.
+                if not mc_df.empty:
+                    log.info(mc_df.to_string(index=False))
             except Exception as _e_mc:  # noqa: BLE001 -- modulo opcional;
                 # erro impresso, mc_df so' usado neste bloco.
                 log.info(f"  [AVISO] Monte Carlo CV falhou: {_e_mc}")
