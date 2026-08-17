@@ -596,3 +596,175 @@ def test_outliers_robustos_nao_remove_amostra_do_treino(caplog):
     assert dd._modelos["A"]["n_train"] == 3   # nenhuma amostra removida
     assert dd._modelos["A"]["T2_train"].size == 3
     assert "atipica" in caplog.text
+
+
+# ── fit(mae_id=...): calibracao do limiar por AMOSTRA FISICA (F1/A2-3) ──────
+# Achado da auditoria de gate 0 (2026-08-16): sem mae_id, replicas tecnicas
+# da MESMA amostra fisica sao tratadas como observacoes independentes ao
+# estimar Nh/Nq (graus de liberdade do limiar) -- o mesmo vazamento de
+# replica que o projeto existe para impedir, cometido no calculo do limiar.
+
+def _replicas_de_um_grupo(rng, centro, n_rep, k=200, escala_replica=0.02):
+    """n_rep espectros da MESMA amostra fisica (ruido de replica pequeno em
+    volta de um unico vetor-base) -- nao adicionam informacao NOVA sobre
+    variabilidade ENTRE amostras."""
+    base = rng.normal(loc=centro, scale=1.0, size=k)
+    return np.array([base + rng.normal(scale=escala_replica, size=k)
+                     for _ in range(n_rep)])
+
+
+def test_mae_id_ausente_de_um_unico_grupo_da_falsa_confianca_nao_degenerada():
+    """REGRESSAO documentada: SEM mae_id, 1 UNICA amostra fisica com varias
+    replicas tecnicas produz Nh/Nq NAO-degenerados (>1) -- o metodo dos
+    momentos "enxerga" a variancia entre replicas (ruido instrumental) e a
+    trata como se fosse informacao sobre variabilidade ENTRE amostras
+    fisicas, que nao existe aqui (so' ha' 1 amostra). Confirma que o bug
+    existia antes da correcao: falsa confianca a partir de ruido de
+    replica, nao de dado real sobre a especie.
+
+    (Nota: uma tentativa anterior desta bateria tentava mostrar que Nh
+    CRESCE monotonicamente com mais replicas -- essa afirmacao nao se
+    sustenta: o estimador por momentos converge para um valor populacional
+    fixo conforme n cresce, nao cresce sem limite. A propriedade correta e'
+    mais simples e mais forte: SEM agrupar, o resultado e' nao-degenerado
+    mesmo quando so' ha' 1 amostra fisica -- e' isso que e' falso.)"""
+    rng = np.random.default_rng(5)
+    X = _replicas_de_um_grupo(rng, centro=0.0, n_rep=10)
+    dd = DDSimca(n_components=2).fit(X, np.array(["A"] * 10))
+    m = dd._modelos["A"]
+    # Nao-degenerado (>1): parece haver "graus de liberdade" reais, mas so'
+    # existe 1 amostra fisica -- e' ruido de replica sendo lido como sinal.
+    assert m["Nh"] > 1.5
+    assert m["Nq"] > 1.5
+
+
+def test_mae_id_presente_duplicar_replicas_nao_infla_limiar():
+    """CORRECAO: COM mae_id, duplicar espectros da MESMA amostra fisica (1
+    unico mae_id, mais replicas) NAO muda h0/q0/Nh/Nq -- a calibracao do
+    limiar so' enxerga 1 amostra fisica independente, goste ou nao do
+    numero de vezes que ela foi escaneada."""
+    rng = np.random.default_rng(1)
+    X_poucas = _replicas_de_um_grupo(rng.spawn(1)[0], centro=0.0, n_rep=3)
+    X_muitas = _replicas_de_um_grupo(rng.spawn(1)[0], centro=0.0, n_rep=15)
+
+    dd_poucas = DDSimca(n_components=2).fit(
+        X_poucas, np.array(["A"] * 3), mae_id=np.array(["g1"] * 3))
+    dd_muitas = DDSimca(n_components=2).fit(
+        X_muitas, np.array(["A"] * 15), mae_id=np.array(["g1"] * 15))
+
+    m_poucas, m_muitas = dd_poucas._modelos["A"], dd_muitas._modelos["A"]
+    assert m_poucas["Nh"] == pytest.approx(1.0)   # degenerado: n_grupos=1
+    assert m_poucas["Nq"] == pytest.approx(1.0)
+    assert m_muitas["Nh"] == pytest.approx(m_poucas["Nh"])
+    assert m_muitas["Nq"] == pytest.approx(m_poucas["Nq"])
+    assert m_poucas["n_grupos_calibracao"] == 1
+    assert m_muitas["n_grupos_calibracao"] == 1
+    assert m_poucas["calibrado_por_amostra"] is True
+
+
+def test_mae_id_com_varios_grupos_reais_usa_n_grupos_nao_n_espectros():
+    """COM mae_id e varios grupos de fato distintos, a calibracao usa o n
+    de GRUPOS (nao de espectros) -- verificado via n_grupos_calibracao no
+    dict do modelo e via divergencia mensuravel de Nh/Nq contra o calculo
+    por espectro (mae_id=None) no MESMO dado."""
+    rng = np.random.default_rng(2)
+    grupos_X, grupos_id = [], []
+    for i, centro_offset in enumerate(rng.normal(scale=0.15, size=6)):
+        rep = _replicas_de_um_grupo(rng.spawn(1)[0], centro=centro_offset, n_rep=3)
+        grupos_X.append(rep)
+        grupos_id.extend([f"g{i}"] * 3)
+    X = np.vstack(grupos_X)
+    y = np.array(["A"] * len(X))
+    mae_id = np.array(grupos_id)
+
+    dd_com_grupo = DDSimca(n_components=2).fit(X, y, mae_id=mae_id)
+    dd_sem_grupo = DDSimca(n_components=2).fit(X, y)
+
+    assert dd_com_grupo._modelos["A"]["n_grupos_calibracao"] == 6
+    assert dd_sem_grupo._modelos["A"]["n_grupos_calibracao"] == 18
+    assert dd_com_grupo._modelos["A"]["calibrado_por_amostra"] is True
+    assert dd_sem_grupo._modelos["A"]["calibrado_por_amostra"] is False
+
+
+def test_score_matrix_usa_q_loo_para_linhas_de_treino():
+    """Achado A1 (auditoria de gate 0): `fit()` calibra q0/Nq/f_crit com
+    Q_train LEAVE-ONE-OUT, mas `_t2_q` recalcula Q IN-SAMPLE -- entao
+    plotar pontos de treino via score_matrix contra a fronteira derivada do
+    q0 LOO poe pontos e fronteira em escalas diferentes (Q in-sample medido
+    10-15x menor no regime real).
+
+    Com `mask_treino`+`y`, o Q das linhas de treino tem que bater EXATAMENTE
+    com o Q_train armazenado; sem eles, o comportamento in-sample (correto
+    para amostras novas) e' preservado."""
+    rng = np.random.default_rng(7)
+    X = _replicas_de_um_grupo(rng, centro=0.0, n_rep=8, k=400)
+    y = np.array(["A"] * 8)
+    dd = DDSimca(n_components=2).fit(X, y)
+
+    q_loo = np.asarray(dd._modelos["A"]["Q_train"], dtype=float)
+    mask_treino = np.ones(len(X), dtype=bool)
+
+    res_loo = dd.score_matrix(X, mask_treino=mask_treino, y=y)
+    np.testing.assert_allclose(res_loo["A"]["Q"], q_loo, rtol=1e-12)
+
+    # Sem os argumentos: in-sample, e ESTRITAMENTE MENOR que o LOO (e' o
+    # vies que motivou o achado -- se deixasse de valer, o teste avisa).
+    res_in = dd.score_matrix(X)
+    assert np.all(np.asarray(res_in["A"]["Q"]) < q_loo)
+
+    # f tem que ser recalculado com o Q trocado, nao herdado do in-sample.
+    assert np.all(np.asarray(res_loo["A"]["f"]) > np.asarray(res_in["A"]["f"]))
+
+
+def test_score_matrix_desalinhado_mantem_in_sample_e_avisa(caplog):
+    """Se X nao confere com o usado em fit(), a correspondencia linha-a-linha
+    com Q_train nao existe -- trocar mesmo assim poria o Q da amostra errada
+    no lugar. Deve manter in-sample e AVISAR, nunca adivinhar."""
+    rng = np.random.default_rng(8)
+    X = _replicas_de_um_grupo(rng, centro=0.0, n_rep=8, k=400)
+    y = np.array(["A"] * 8)
+    dd = DDSimca(n_components=2).fit(X, y)
+
+    # Metade das linhas: contagem nao bate com len(Q_train)=8
+    X_outro, y_outro = X[:4], y[:4]
+    with caplog.at_level(logging.WARNING, logger="guaraci.classificadores"):
+        res = dd.score_matrix(X_outro,
+                              mask_treino=np.ones(4, dtype=bool), y=y_outro)
+    assert "nao confere" in caplog.text
+    np.testing.assert_allclose(res["A"]["Q"],
+                               dd.score_matrix(X_outro)["A"]["Q"], rtol=1e-12)
+
+
+def test_score_matrix_expoe_n_grupos_calibracao():
+    """O consumidor externo (figuras.py) precisa desses dois campos para
+    nunca mostrar um limiar sem dizer com quantas amostras fisicas ele foi
+    calibrado -- mesmo criterio de aceite do P1 (LOGO)."""
+    rng = np.random.default_rng(3)
+    X = _replicas_de_um_grupo(rng, centro=0.0, n_rep=6)
+    dd = DDSimca(n_components=2).fit(
+        X, np.array(["A"] * 6), mae_id=np.array(["g1", "g1", "g1",
+                                                  "g2", "g2", "g2"]))
+    res = dd.score_matrix(X)
+    assert res["A"]["n_grupos_calibracao"] == 2
+    assert res["A"]["calibrado_por_amostra"] is True
+
+
+def test_logo_e_pcv_propagam_mae_id_para_o_limiar_interno():
+    """sensibilidade_ddsimca_logo/pcv fitam um DDSimca temporario por dobra
+    -- esse fit interno tambem precisa ser calibrado por amostra fisica
+    (mae_id=grupos[treino]/grupos), senao a "estimativa honesta" mede
+    aceitacao contra um limiar com o MESMO vies que ela existe para
+    corrigir. Verificado indiretamente: com grupos de tamanho desigual
+    (3 vs 30 replicas), se o fit interno ignorasse mae_id o grupo maior
+    dominaria Nh/Nq; isso nao deve acontecer aqui (regressao coberta pelas
+    chamadas nao lancarem excecao e produzirem sensibilidade valida)."""
+    rng = np.random.default_rng(4)
+    g1 = _replicas_de_um_grupo(rng.spawn(1)[0], centro=0.0, n_rep=3)
+    g2 = _replicas_de_um_grupo(rng.spawn(1)[0], centro=0.05, n_rep=3)
+    g3 = _replicas_de_um_grupo(rng.spawn(1)[0], centro=-0.05, n_rep=3)
+    X = np.vstack([g1, g2, g3])
+    grupos = np.array(["g1"] * 3 + ["g2"] * 3 + ["g3"] * 3)
+
+    r = sensibilidade_ddsimca_logo(X, grupos, n_components=2)
+    assert r["n_grupos"] == 3
+    assert not np.isnan(r["sensibilidade"])

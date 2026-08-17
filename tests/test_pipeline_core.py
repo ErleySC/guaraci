@@ -680,6 +680,87 @@ def test_parse_title_teor_zero_e_invalido(pq):
     assert pq.parse_title("AND-10-06-2020-AD-S-0.00%-T1") is None
 
 
+def test_parse_title_correcoes_carregadas_de_arquivo_externo(pq, monkeypatch):
+    """Achado A2-2: TITLEs com erro de digitação (vírgula extra, dígito
+    cortado, dígito duplicado) quebravam o regex e caíam no fallback por
+    nome de arquivo, que também falhava em extrair o teor -- o espectro
+    entrava como PURO (conc=0.0) quando é ADULTERADO, contaminando o
+    treino "puros" do DD-SIMCA.
+
+    A tabela de correções vive FORA do repositório
+    (`~/.guaraci_local/correcoes_titulo.csv`) porque é metadado de amostra
+    de dataset de terceiro e este repo é público -- ver BLOCO B da
+    auditoria de 2026-08-17. Este teste usa identificadores SINTÉTICOS
+    para exercitar a mesma lógica sem embutir dados reais."""
+    from guaraci import dados_io
+
+    # Título sintético com a mesma patologia do caso real: vírgula extra
+    # antes do "%", que quebra _RE_ADULT.
+    titulo_quebrado = "ZZZ_01-02-2099_AD-S-9,99,%-T_1"
+    assert pq.parse_title(titulo_quebrado) is None   # sem correção: não parseia
+
+    monkeypatch.setattr(dados_io, "_CORRECOES_TITLE_CONHECIDAS", {
+        titulo_quebrado: dict(cod="ZZZ", data="01-02-2099",
+                              adulterante="S", teor=9.99, trip=1),
+    })
+    info = pq.parse_title(titulo_quebrado)
+    assert info is not None
+    assert info["puro"] is False        # o achado: isto tinha virado True
+    assert info["adulterante"] == "S"
+    assert info["teor"] == pytest.approx(9.99)
+    assert info["triplicata"] == 1
+
+
+def test_correcoes_ausentes_nao_quebram_o_parser(pq, monkeypatch):
+    """Sem o arquivo local (outra máquina, outro dataset), o parser tem de
+    seguir funcionando -- só não aplica os casos particulares."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_CORRECOES_TITLE_CONHECIDAS", {})
+    monkeypatch.setattr(dados_io, "_ALIAS_MAE_ID", {})
+    info = pq.parse_title("ZZZ-01-02-2099-T1")
+    assert info is not None and info["cod"] == "ZZZ"
+
+
+def test_csv_local_malformado_levanta_erro_claro(tmp_path, monkeypatch):
+    """Arquivo AUSENTE é legítimo e silencioso; arquivo PRESENTE mas
+    malformado tem de abortar com mensagem clara. Aplicar uma correção de
+    rótulo pela metade produziria amostra com pureza errada -- exatamente
+    o que o achado A2-2 corrigiu."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_DIR_LOCAL", tmp_path)
+
+    assert dados_io._ler_csv_local("nao_existe.csv", 2) == []   # ausente: ok
+
+    (tmp_path / "meio.csv").write_text("so;duas\ntres;colunas;aqui\n",
+                                       encoding="utf-8")
+    with pytest.raises(RuntimeError, match="colunas"):
+        dados_io._ler_csv_local("meio.csv", 2)
+
+
+def test_alias_mae_id_unifica_replicas_separadas_por_data(pq, monkeypatch):
+    """Achado A2-1: a regra `mae_id = cod + data` separa em grupos distintos
+    réplicas da mesma amostra física lidas em datas diferentes -- o
+    GroupKFold então as trata como independentes, que é o vazamento que o
+    projeto existe para impedir.
+
+    Identificadores sintéticos: a tabela real de alias vive fora do repo
+    (`~/.guaraci_local/alias_mae_id.csv`), pela mesma razão do teste
+    acima."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_ALIAS_MAE_ID",
+                        {"ZZZ-01-02-2099": "ZZZ-05-06-2099"})
+
+    t1 = pq.parse_title("ZZZ-01-02-2099-T1")
+    t2 = pq.parse_title("ZZZ-05-06-2099-T2")
+    assert t1["mae_id"] == t2["mae_id"] == "ZZZ-05-06-2099"
+
+    # O alias é da amostra PURA -- não pode capturar a ADULTERADA da mesma
+    # data (mae_id diferente por incluir adulterante+teor).
+    adult = pq.parse_title("ZZZ-01-02-2099-AD-S-4.13%-T1")
+    assert adult is not None
+    assert adult["mae_id"] == "ZZZ-01-02-2099-S4.13"   # intocado pelo alias
+
+
 def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
     """Caminho de saída embute o slug amigável do nível (não N1/N2/N3 cru,
     correção de 2026-07-13 — P8 residual) e o pré-processamento (rastreável)."""
@@ -862,6 +943,106 @@ def test_cv_local_folds_cobrem_todos_os_indices_locais(pq):
     folds = pq._cv_local(y_local, seed=1, n_splits=3)
     todos_va = np.concatenate([va for _tr, va in folds])
     assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_cv_local_group_aware_nao_separa_replicas(pq):
+    """Achado B1-3 (auditoria 2026-08-16): a CV INTERNA que guia as buscas
+    SPA/AG usava sempre StratifiedKFold, entao replicas do mesmo mae_id
+    caiam em treino e validacao da particao que escolhe as VARIAVEIS. O
+    numero reportado seguia honesto (fold externo group-aware), mas o
+    produto cientifico da Etapa 4 -- o conjunto de variaveis selecionadas --
+    era escolhido por um criterio com vazamento de replica.
+
+    Com `grupos_local`, nenhum grupo pode aparecer nos dois lados de um
+    mesmo fold interno."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1])
+    grupos = np.array(["g1"] * 3 + ["g2"] * 3 + ["g3"] * 3 + ["g4"] * 3)
+    folds = pq._cv_local(y_local, seed=1, grupos_local=grupos, n_splits=2)
+    assert folds, "deveria produzir pelo menos um fold"
+    for tr, va in folds:
+        assert not (set(grupos[tr]) & set(grupos[va])), (
+            "grupo de replica apareceu em treino E validacao do mesmo fold")
+    # continua sendo uma particao valida
+    todos_va = np.concatenate([va for _tr, va in folds])
+    assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_cv_local_sem_grupos_preserva_comportamento_anterior(pq):
+    """Sem `grupos_local` (ex.: modo sem identificador de replica), o
+    comportamento antigo e' preservado -- o fix do B1-3 nao pode quebrar o
+    caminho em que mae_id nao existe."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 1, 0, 1])
+    folds_a = pq._cv_local(y_local, seed=7, n_splits=3)
+    folds_b = pq._cv_local(y_local, seed=7, grupos_local=None, n_splits=3)
+    assert len(folds_a) == len(folds_b)
+    for (tr_a, va_a), (tr_b, va_b) in zip(folds_a, folds_b):
+        assert tr_a.tolist() == tr_b.tolist()
+        assert va_a.tolist() == va_b.tolist()
+
+
+def test_splsda_usa_soft_threshold_da_referencia(pq):
+    """Achado B1-2: `sparse_plsda_mask` fazia truncamento DURO (top-k por
+    |w|, sem encolher as sobreviventes) enquanto a docstring a chamava de
+    "soft-selection" -- divergindo de Le Cao et al. (2008), que define a
+    esparsidade por soft-thresholding `w_j <- sign(w_j)*(|w_j|-lambda)_+`.
+
+    Propriedades que travam a implementacao correta:
+      1. cardinalidade -- exatamente `keep` nao-nulas por componente;
+      2. ENCOLHIMENTO -- com 1 componente, os pesos sobreviventes tem de
+         ser estritamente menores em modulo que os do truncamento duro
+         (antes da normalizacao, `|w|-lambda < |w|`). E' isso que
+         distingue soft de hard e o que muda a deflacao dos componentes
+         seguintes."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(60, 200))
+    Y = np.zeros((60, 3))
+    Y[np.arange(60), rng.integers(0, 3, 60)] = 1
+
+    # (1) cardinalidade exata com 1 componente
+    for keep in (5, 15, 40):
+        mask = pq.sparse_plsda_mask(X, Y, 1, keep)
+        assert int(mask.sum()) == keep
+
+    # (2) o conjunto de 1 componente coincide com o top-k por |w| (soft e
+    #     hard selecionam as MESMAS variaveis no 1o componente -- a
+    #     divergencia so' aparece a partir do 2o, via deflacao)
+    Xr = X - X.mean(axis=0)
+    Yc = Y - Y.mean(axis=0)
+    U, _S, _Vt = np.linalg.svd(Xr.T @ Yc, full_matrices=False)
+    w = U[:, 0]
+    top10 = set(np.argsort(np.abs(w))[::-1][:10].tolist())
+    assert set(np.flatnonzero(pq.sparse_plsda_mask(X, Y, 1, 10)).tolist()) == top10
+
+    # (3) com mais componentes a mascara cresce, mas nunca alem de keep*n_comp
+    for n_comp in (2, 3, 4):
+        mask = pq.sparse_plsda_mask(X, Y, n_comp, 15)
+        assert 15 <= int(mask.sum()) <= 15 * n_comp
+
+
+def test_ipls_usa_nested_cv_e_reporta_n_vars_por_fold(pq):
+    """Achado B1-1 (auditoria 2026-08-16): o bal.acc do iPLS era o MAXIMO de
+    n_intervalos avaliacoes feitas na MESMA particao que depois reportava o
+    numero (vies medido: +0,070 bal.acc, positivo em 12/12 seeds), enquanto
+    todos os outros metodos da tabela ja passavam por nested-CV -- a
+    comparacao misturava reguas diferentes, com o vies 7x maior que o
+    criterio de 1% usado para eleger o metodo mais parcimonioso.
+
+    Depois da correcao o iPLS usa `_avaliar_subset_nested_cv` como os
+    demais, o que se verifica pela presenca de n_vars_min/n_vars_max (so'
+    a avaliacao aninhada reporta faixa por fold; a antiga tinha n_vars
+    fixo)."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=11, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+    cfg = pq.Config(seed=11)
+    with tempfile.TemporaryDirectory() as pasta:
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta)
+    linha_ipls = next(t for t in resumo["tabela"]
+                      if t["metodo"].startswith("iPLS"))
+    assert "n_vars_min" in linha_ipls and "n_vars_max" in linha_ipls
+    assert 0.0 <= linha_ipls["balanced_accuracy"] <= 1.0
 
 
 def test_avaliar_busca_nested_cv_nao_reveniza_fold_de_teste(pq):

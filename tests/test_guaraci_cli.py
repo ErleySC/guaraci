@@ -972,3 +972,58 @@ def test_migrar_estado_legado_sem_arquivos_antigos_nao_lanca(guaraci_mod, monkey
 
     assert dir_novo.exists()   # _USER_DIR e' criado mesmo sem nada a copiar
     assert not (dir_novo / "config.yaml").exists()
+
+
+# ── Persistencia de estado do CLI (varredura de bugs, 2026-08-16) ───────────
+# `_carregar_visual_cfg`/`_salvar_visual_cfg`/`_carregar_codigos_usuario` eram
+# wrappers que procuravam implementacoes em `cli_assistente` -- que nunca
+# existiram la'. Resultado: leitura sempre {}, escrita no-op SILENCIOSO. As 4
+# opcoes do menu Visualizacao imprimiam "OK, salvo" sem salvar, e os codigos de
+# especie cadastrados pelo usuario (gravados corretamente pelo menu) nunca eram
+# aplicados a analise.
+
+def test_visual_cfg_round_trip(guaraci_mod, tmp_path, monkeypatch):
+    """REGRESSAO: salvar -> carregar tem que devolver o que foi salvo. Antes
+    da correcao, `_salvar_visual_cfg` era no-op e `_carregar_visual_cfg`
+    devolvia {} sempre -- este teste falha com o codigo antigo."""
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
+    monkeypatch.setattr(guaraci_mod, "_VISUAL_PATH",
+                        tmp_path / "visual_config.json")
+
+    guaraci_mod._salvar_visual_cfg({"paleta": "publicacao", "grid_alpha": 0.4})
+    assert guaraci_mod._carregar_visual_cfg() == {
+        "paleta": "publicacao", "grid_alpha": 0.4}
+
+
+def test_visual_cfg_ausente_ou_corrompido_devolve_dict_vazio(
+        guaraci_mod, tmp_path, monkeypatch):
+    """Config visual e' COSMETICA: arquivo ausente ou corrompido tem que cair
+    nos defaults do matplotlib, nunca derrubar a analise."""
+    alvo = tmp_path / "visual_config.json"
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
+    monkeypatch.setattr(guaraci_mod, "_VISUAL_PATH", alvo)
+
+    assert guaraci_mod._carregar_visual_cfg() == {}      # ausente
+    alvo.write_text("{ isto nao e json", encoding="utf-8")
+    assert guaraci_mod._carregar_visual_cfg() == {}      # corrompido
+
+
+def test_codigos_usuario_lidos_do_mesmo_arquivo_que_o_menu_grava(
+        guaraci_mod, tmp_path, monkeypatch):
+    """REGRESSAO: o menu de codificacao grava em `_CODIGOS_PATH` (via
+    `_salvar_cod`, que sempre funcionou) e lista de la' (`_cod_usr`), mas
+    `_carregar_codigos_usuario` -- a UNICA funcao que injeta os codigos no
+    pipeline (`pq.CODIGO_ESPECIE.update(...)`) -- lia de um wrapper quebrado e
+    recebia {}. Efeito: o codigo aparecia no menu e era ignorado na analise.
+
+    O invariante e' que as duas leiam o MESMO arquivo."""
+    import json
+    alvo = tmp_path / "codigos_usuario.json"
+    monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)
+    monkeypatch.setattr(guaraci_mod, "_CODIGOS_PATH", alvo)
+
+    alvo.write_text(json.dumps({"BUR": "Buriti Teste"}), encoding="utf-8")
+    assert guaraci_mod._carregar_codigos_usuario() == {"BUR": "Buriti Teste"}
+
+    alvo.unlink()
+    assert guaraci_mod._carregar_codigos_usuario() == {}
