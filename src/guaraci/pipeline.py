@@ -12,8 +12,8 @@ Capabilities:
     Uncertainty      : Monte Carlo CV — N x StratifiedGroupShuffleSplit IC95%
     Reports          : PDF, Word, Excel (5 sheets), LaTeX, PowerPoint
 
-Best result: MSC -> SG -> MC, balanced accuracy = 0.923
-(GroupKFold, 1807 samples, 14 Amazonian oil species).
+Preset padrao: MSC -> SG -> MC (FT-NIR difuso com espalhamento forte).
+(GroupKFold por amostra fisica).
 """
 
 # __version__ e _NIVEL_NOME sao a fonte unica em config.py (modulo sem
@@ -92,7 +92,9 @@ from guaraci.dados_io import (   # noqa: E402
     adulterante_de_mae_id,
     parse_title,
     extrair_title_do_dx,
+    sanitizar_metadados,
 )
+from guaraci.perfil_matriz import aplicar_perfil, perfil_de_cfg  # noqa: E402
 
 
 log = logging.getLogger(__name__)
@@ -264,9 +266,12 @@ from guaraci.chemometric_stats import (   # noqa: E402
     dmody,
     variancia_explicada,
     figuras_merito_regressao,
+    rpd_rer,
+    interpretar_rpd,
     dominio_aplicabilidade,
     dominio_aplicabilidade_treino,
     dominio_aplicabilidade_amostras_novas,
+    media_e_dof_momentos,
     rmse_flat,
     diagnosticar_faixa_espectral,
 )
@@ -423,6 +428,31 @@ def verificar_balanceamento(rotulos: np.ndarray, ratio_alvo: float = 5.0
 
 
 def metricas_classificacao(y_true, y_pred, classes) -> Dict[str, float]:
+    """Metricas globais de classificacao.
+
+    Com UMA unica classe no conjunto, toda metrica aqui e' degenerada por
+    construcao: accuracy = 1,0, kappa = 0,0, recall = 1,0 -- nao porque o
+    modelo acertou, mas porque nao havia o que errar. A versao anterior
+    devolvia esses numeros sem nenhuma marca, e eles apareciam no
+    resumo/model card como se fossem desempenho (medido rodando o pipeline
+    sobre um dataset publico de milho, matriz de classe unica -- auditoria
+    mestre de 2026-08-17). A chave `degenerada_uma_classe` deixa isso
+    explicito para quem consome o dicionario.
+    """
+    if len(set(map(str, np.asarray(y_true).ravel().tolist()))) < 2:
+        log.info("  [AVISO] Apenas UMA classe presente: as metricas globais "
+                 "de classificacao (accuracy, kappa, F1) sao degeneradas e "
+                 "nao medem desempenho. Ignore-as neste conjunto.")
+        base = {
+            "accuracy":          float(accuracy_score(y_true, y_pred)),
+            "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+            "cohen_kappa":       float(cohen_kappa_score(y_true, y_pred)),
+            "f1_macro":          float(f1_score(y_true, y_pred, labels=classes, average="macro", zero_division=0)),
+            "precision_macro":   float(precision_score(y_true, y_pred, labels=classes, average="macro", zero_division=0)),
+            "recall_macro":      float(recall_score(y_true, y_pred, labels=classes, average="macro", zero_division=0)),
+        }
+        base["degenerada_uma_classe"] = 1.0
+        return base
     return {
         "accuracy":          float(accuracy_score(y_true, y_pred)),
         "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
@@ -782,6 +812,45 @@ def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
     return grupos
 
 
+def rotulos_para_quantificacao(cfg: "Config", rotulos_verdadeiros: np.ndarray,
+                                rotulos_preditos: Optional[np.ndarray]
+                                ) -> Tuple[np.ndarray, str]:
+    """Quais rotulos a calibracao por classe pode ver. Devolve (rotulos, modo).
+
+    O QUE ESTA EM JOGO. A quantificacao do GUARACI calibra SEPARADAMENTE por
+    classe, porque um unico modelo multi-classe e' dominado pela variacao
+    entre matrizes. Isso obriga a responder: de onde vem a classe de cada
+    amostra na hora de calibrar?
+
+    - `cego` (PADRAO): da PREDICAO do classificador. E' o unico modo que
+      corresponde ao uso real -- quem envia uma amostra desconhecida nao
+      sabe a classe dela. Se o classificador erra, o erro se propaga para a
+      quantificacao, e e' correto que se propague: e' o que aconteceria em
+      producao.
+    - `controle`: da verdade. Util para UMA coisa so' -- isolar o erro de
+      quantificacao do erro de classificacao durante o desenvolvimento.
+      Qualquer numero obtido assim descreve um cenario que o usuario final
+      nunca tera', e por isso a saida marca o modo explicitamente.
+
+    Sem rotulos preditos disponiveis (ex.: objetivo puramente exploratorio,
+    sem classificador ajustado), o modo cego nao tem como operar; a funcao
+    devolve o modo `controle-forcado`, que o chamador deve registrar na
+    saida -- silenciar isso transformaria um resultado de controle num
+    resultado aparentemente cego.
+    """
+    modo = str(getattr(cfg, "modo_rotulo", "cego") or "cego").lower()
+    if modo not in ("cego", "controle"):
+        raise ValueError(
+            f"cfg.modo_rotulo='{modo}' invalido. Use 'cego' (padrao, usa a "
+            f"classe predita) ou 'controle' (usa a classe verdadeira, so' "
+            f"para diagnostico interno).")
+    if modo == "controle":
+        return np.asarray(rotulos_verdadeiros, dtype=str), "controle"
+    if rotulos_preditos is None:
+        return np.asarray(rotulos_verdadeiros, dtype=str), "controle-forcado"
+    return np.asarray(rotulos_preditos, dtype=str), "cego"
+
+
 def r2cv_especie_adulterante(
         X: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], cfg: "Config", *,
@@ -1030,10 +1099,17 @@ def pls_regressao_por_especie(
     _dmody_res = dmody(Yvh_p - Yv_p, n_componentes=n_opt_repr,
                        n_amostras=len(Yv_p))
 
+    # RPD/RER: um RMSEP sozinho nao diz se o modelo serve para alguma coisa.
+    # As razoes normalizam o erro pela variacao do proprio conjunto de
+    # referencia e vem com a faixa de uso da literatura ao lado.
+    _razoes = rpd_rer(Yv_p, Yvh_p)
+
     return {
         "tabela_especie": tabela_esp,
         "r2c": r2c, "r2v": r2v, "rmsec": rmsec, "rmsecv": rmsecv,
         "rmsep": rmsep, "bias": bias_v, "n_especies": len(tabela_esp),
+        "sep": _razoes["sep"], "rpd": _razoes["rpd"], "rer": _razoes["rer"],
+        "rpd_faixa": interpretar_rpd(_razoes["rpd"]),
         "dmody_crit": _dmody_res["dmody_crit"],
         "n_fora_do_dmody": _dmody_res["n_fora_do_modelo"],
     }
@@ -1083,6 +1159,14 @@ def executar(cfg: Config):
     for _av in _avisos_hw:
         log.info(f"  [AUTO-AJUSTE] {_av}")
 
+    # --- 0z. Perfil da matriz ---------------------------------------------
+    # ANTES do carregamento: o perfil define a faixa do eixo espectral, que
+    # e' aplicada na leitura. Um nome desconhecido estoura aqui, com a lista
+    # de perfis existentes -- nunca cai num padrao de outra matriz, porque
+    # isso produziria faixa e vocabulario errados sem nenhum sinal.
+    perfil = perfil_de_cfg(cfg)
+    cfg = aplicar_perfil(cfg, perfil)
+
     # --- 1. Carregamento (6-tupla com mae_id + metadados) ------------------
     wavenumbers, X_raw, rotulos, conc, mae_id, metadados_df = carregar_dados(cfg)
     X_raw   = np.asarray(X_raw,   dtype=float)
@@ -1094,11 +1178,11 @@ def executar(cfg: Config):
 
     # --- 1a0. nivel N2: autenticação por espécie (DD-SIMCA one-class) ------
     # DESIGN (escolha do usuário — opção A):
-    #   N1 = identificar a espécie (PLS-DA 13 classes, bal.acc≈0.906).
+    #   N1 = identificar a classe (PLS-DA multiclasse).
     #   N2 = autenticar pureza POR ESPÉCIE via DD-SIMCA one-class. Treina um
     #        modelo do "puro" para cada espécie e testa se cada amostra é
     #        pura (aceita) ou adulterada (rejeitada). É o método-padrão de
-    #        autenticação e funciona (sens≈90%, esp=100%).
+    #        autenticação one-class na literatura de espectroscopia.
     #
     # CRÍTICO: NÃO remapeamos rotulos para puro/adulterado. Os rótulos de
     # ESPÉCIE são preservados — o DD-SIMCA precisa deles para construir um
@@ -1175,7 +1259,13 @@ def executar(cfg: Config):
           f"{NOME_MODELOS}/ {NOME_RELATORIOS}/")
     if metadados_df is not None:
         cam_meta = os.path.join(pasta_dados, "metadados.csv")
-        metadados_df.to_csv(cam_meta, index=False, sep=";", decimal=",")
+        # Sanitizado antes de tocar o disco: o identificador da amostra de
+        # origem (title/arquivo/cod/data/mae_id) fica em memoria, onde o
+        # pipeline precisa dele, e nunca vai para um arquivo que depois
+        # viaja junto com os resultados. `grupo_replica` preserva o
+        # agrupamento de forma anonima. Ver dados_io.sanitizar_metadados.
+        sanitizar_metadados(metadados_df).to_csv(
+            cam_meta, index=False, sep=";", decimal=",")
         log.info(f"[INFO] Metadados salvos: {cam_meta}")
 
     # --- 1c. Input integrity validation -----------------------------------
@@ -2200,6 +2290,26 @@ def executar(cfg: Config):
             "t2_ucl":         float(t2_lim),
             "q_ucl":          float(q_lim),
         }
+        # Parametros da distancia combinada NO ESPACO PLS. Sem eles,
+        # predizer_amostras() decidia "aceito" pela regra RETANGULAR
+        # (T2<=lim E Q<=lim, alpha independente por eixo) -- a mesma ja
+        # corrigida no DD-SIMCA (2026-08-08) e no dominio de aplicabilidade
+        # (achado A3), com alpha conjunto efetivo ~0,0975 em vez de 0,05.
+        # As colunas AD_* ja usavam a regra certa; a coluna `aceito`, nao.
+        try:
+            _h0, _Nh = media_e_dof_momentos(T2)
+            _q0, _Nq = media_e_dof_momentos(Q)
+            pacote_modelo["pls_h0"] = float(_h0)
+            pacote_modelo["pls_q0"] = float(_q0)
+            pacote_modelo["pls_Nh"] = float(_Nh)
+            pacote_modelo["pls_Nq"] = float(_Nq)
+            from scipy.stats import chi2 as _chi2
+            pacote_modelo["pls_f_crit"] = float(
+                _chi2.ppf(0.95, _Nh + _Nq))
+        except Exception as _e_comb:  # noqa: BLE001 -- anexo opcional do
+            # pacote; sem ele predicao.py cai na regra por eixo e avisa.
+            log.info(f"  [AVISO] parametros da distancia combinada no "
+                     f"espaco PLS nao exportados: {_e_comb}")
         # Dominio de Aplicabilidade (Jaworska et al. 2005): reaproveita o PCA
         # exploratorio ja ajustado (fig1_pca_scores) para avisar, na predicao
         # em amostras novas, quando o espectro cai fora do espaco coberto pela
@@ -2288,10 +2398,20 @@ def executar(cfg: Config):
                 log.info(f"\n[7/7] PLS regressao POR ESPECIE "
                       f"({n_especies} especies — calibracao separada para "
                       f"evitar confusao inter-especies)")
+                # Rotulos da calibracao por classe: PREDITOS no modo cego
+                # (padrao), verdadeiros so' em modo controle. Ver
+                # rotulos_para_quantificacao -- e' a diferenca entre medir o
+                # que o usuario vai obter e medir um cenario que ele nunca
+                # tera'.
+                _rot_quant, _modo_quant = rotulos_para_quantificacao(
+                    cfg, rotulos, pred_lab)
+                log.info(f"  Modo de rotulo na quantificacao: {_modo_quant}"
+                         + ("  [os numeros abaixo NAO representam uso real]"
+                            if _modo_quant != "cego" else ""))
                 try:
                     reg_esp = pls_regressao_por_especie(
-                        X_raw, conc_arr, rotulos, mae_id, classes_unicas,
-                        cfg, pasta, n_splits)
+                        X_raw, conc_arr, _rot_quant, mae_id,
+                        np.unique(_rot_quant), cfg, pasta, n_splits)
                     if reg_esp is not None:
                         log.info(f"  Especies modeladas: {reg_esp['n_especies']}")
                         log.info(f"  R2cal (pooled): {reg_esp['r2c']:.4f}  |  "
@@ -2366,8 +2486,10 @@ def executar(cfg: Config):
                 # heatmap expoe cada combinacao e MARCA as que falham (so roda
                 # em Quantificacao, ja garantido pelo guard objetivo acima).
                 try:
+                    _rot_hm, _ = rotulos_para_quantificacao(
+                        cfg, rotulos, pred_lab)
                     _r2cv = r2cv_especie_adulterante(
-                        X_raw, conc_arr, rotulos, mae_id, cfg)
+                        X_raw, conc_arr, _rot_hm, mae_id, cfg)
                     if _r2cv is not None:
                         log.info(f"\n[7c/7] R2cv por especie x adulterante — "
                               f"{_r2cv['n_falhas']}/{_r2cv['n_total']} "
@@ -2471,6 +2593,15 @@ def executar(cfg: Config):
               f"|  RMSEP: {rmsep:.3f}")
         log.info(f"  R2cal  : {r2c:.4f}  |  R2val : {r2v:.4f}  "
               f"|  Bias: {bias_v:.4f}")
+        # RPD/RER da regressao pooled: um RMSEP sozinho nao diz se o modelo
+        # serve para alguma coisa -- as razoes normalizam o erro pela
+        # variacao do proprio conjunto de referencia, e a faixa de uso vem
+        # junto para o numero nao sair nu (Williams 2014; AACC 39-00.01).
+        _razoes_pooled = rpd_rer(Yv, Yv_hat)
+        _faixa_pooled = interpretar_rpd(_razoes_pooled["rpd"])
+        log.info(f"  SEP    : {_razoes_pooled['sep']:.3f}  "
+                 f"|  RPD: {_razoes_pooled['rpd']:.2f}  "
+                 f"|  RER: {_razoes_pooled['rer']:.1f}  ->  {_faixa_pooled}")
 
         # Figuras de merito analiticas (Valderrama, Braga & Poppi, 2009):
         # ruido instrumental estimado a partir de replicas fisicas (T1/T2/T3
@@ -2507,6 +2638,10 @@ def executar(cfg: Config):
             pasta_logs,
             pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
                     "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
+                    "sep": _razoes_pooled["sep"],
+                    "rpd": _razoes_pooled["rpd"],
+                    "rer": _razoes_pooled["rer"],
+                    "rpd_faixa": _faixa_pooled,
                     "dmody_crit": _dmody_res_pooled["dmody_crit"],
                     "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
             fom_pooled=_fom_reg)
@@ -2514,6 +2649,10 @@ def executar(cfg: Config):
             pasta_logs,
             pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
                     "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
+                    "sep": _razoes_pooled["sep"],
+                    "rpd": _razoes_pooled["rpd"],
+                    "rer": _razoes_pooled["rer"],
+                    "rpd_faixa": _faixa_pooled,
                     "dmody_crit": _dmody_res_pooled["dmody_crit"],
                     "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
             fom_pooled=_fom_reg)

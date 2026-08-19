@@ -13,7 +13,7 @@ from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv,
 from guaraci.app_logic import coletar_config
 
 _PRESET_INFO = {
-    "MSC+SG+MC":      "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Acc=0.923 on 1807 Amazonian oil samples.",
+    "MSC+SG+MC":      "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Compare presets on your own data with `comparar_pre_processamentos`.",
     "SNV+SG+MC":      "SNV (variance normalization) → SG → Mean-Centering. Robust alternative to MSC when global reference is not stable.",
     "Autoscaling":    "Mean-Centering + division by standard deviation. **Caution**: collapses spectral noise when SG is not applied first.",
     "Mean-centering": "Mean centering only. Recommended as a comparative baseline.",

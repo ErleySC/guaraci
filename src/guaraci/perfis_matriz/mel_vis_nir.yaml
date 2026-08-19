@@ -1,0 +1,19 @@
+# Mel por Vis-NIR. Perfil declarado, mas AINDA NAO VALIDADO com dado real:
+# o dataset publico de mel adulterado nao foi obtido ate 2026-08-18 (ver
+# docs/auditoria/VALIDACAO_PUBLICA.md). A faixa abaixo cobre o Vis-NIR
+# tipico de mel liquido; ajuste ao seu instrumento antes de usar.
+descricao: "Mel por Vis-NIR (perfil declarado, nao validado com dado real)"
+unidade_eixo: "nm"
+eixo_min: 400.0
+eixo_max: 1100.0
+preprocessamento_padrao: "snv_sg_mc"
+vocabulario:
+  classe: "tipo"
+  classe_plural: "tipos"
+  matriz: "mel"
+  alvo: "o teor de xarope adicionado"
+  conforme: "puro"
+  nao_conforme: "adulterado"
+codigos_classe: {}
+faixa_trabalho: null
+referencia: ""

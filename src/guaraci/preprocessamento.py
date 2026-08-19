@@ -141,7 +141,7 @@ def construir_preprocessador(cfg: "Config") -> Pipeline:
             ("mc",  StandardScaler(with_std=False)),
         ])
     if preset == "msc_sg_mc":
-        # MSC->SG+MC: best pipeline on the full dataset (0.923 bal.acc).
+        # MSC->SG+MC: default preset for diffuse FT-NIR with strong scatter.
         # MSC is stateful (reference = training mean) -> kept inside
         # Pipeline to avoid leakage between CV folds.
         return Pipeline([

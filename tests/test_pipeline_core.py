@@ -645,13 +645,13 @@ def test_especificidade_por_classe_valores_conhecidos(pq):
 
 def test_parse_title_puro(pq):
     """TITLE de amostra pura: espécie resolvida, puro=True, mae_id sem teor."""
-    info = pq.parse_title("CAP-04-11-2020-T1")
+    info = pq.parse_title("CAP-04-11-2099-T1")
     assert info is not None
     assert info["cod"] == "CAP"
     assert info["especie"] == "Castanha do Pará"
     assert info["puro"] is True
     assert info["triplicata"] == 1
-    assert info["mae_id"] == "CAP-04-11-2020"
+    assert info["mae_id"] == "CAP-04-11-2099"
 
 
 def test_parse_title_adulterado(pq):
@@ -1251,6 +1251,45 @@ def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
     assert float(ad["f_crit"]) > 0
 
 
+def test_dominio_aplicabilidade_nao_rejeita_treino_no_regime_n_menor_que_p(pq):
+    """Regime REAL deste projeto (n << p: poucas amostras, milhares de canais
+    espectrais) -- o unico em que o vies in-sample de Q aparece.
+
+    Os demais testes de AD usam n=80..200 com p=15..30 (n >> p), onde a PCA
+    NAO reconstroi o proprio treino de graca e o vies e' pequeno; por isso o
+    defeito passou despercebido. Com n < p a PCA reconstroi cada amostra de
+    treino quase exatamente (a amostra ajudou a definir o subespaco que
+    depois a reconstroi), Q_train colapsa perto de zero, e o limite derivado
+    dele rejeita amostras da PROPRIA distribuicao de treino.
+
+    E' a MESMA classe de defeito ja corrigida no DD-SIMCA em 2026-07-19
+    (`DDSimca._q_residuals_loo`, CLAUDE.md P1) -- que nao tinha sido
+    propagada para o dominio de aplicabilidade, o caminho que roda em
+    producao em predicao.py (colunas AD_*).
+
+    Medido antes da correcao (docs/auditoria/medir_ad_vies_insample.py):
+    aceitacao de 0.14 a 0.57 conforme n/p, contra 0.95 nominal.
+    """
+    import numpy as np
+    from sklearn.decomposition import PCA
+    fracoes = []
+    for seed in range(3):
+        rng = np.random.default_rng(4000 + seed)
+        X_tr = rng.normal(size=(40, 800))
+        X_novo = rng.normal(size=(200, 800))    # mesma distribuicao => H0
+        pca = PCA(n_components=3).fit(X_tr)
+        art = pq.dominio_aplicabilidade_treino(pca, X_tr, alpha=0.05)
+        r = pq.dominio_aplicabilidade_amostras_novas(
+            pca, X_novo, art["var_t"], art["h0"], art["q0"],
+            art["Nh"], art["Nq"], art["f_crit"])
+        fracoes.append(float(np.mean(r["dentro_dominio"])))
+    media = float(np.mean(fracoes))
+    assert media >= 0.85, (
+        f"AD aceitou apenas {media:.3f} das amostras da propria distribuicao "
+        "de treino (alpha=0.05 => esperado ~0.95). Q de treino calculado "
+        "in-sample com n < p: use residuo leave-one-out (q_residuos_loo).")
+
+
 def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
     """Uma amostra espectralmente muito distante do treino (deslocada em
     varias ordens de grandeza) e sinalizada FORA do dominio."""
@@ -1844,3 +1883,72 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
         encoding="utf-8")
     assert "sens(PCV, exploratorio)" in resumo
     assert "sens(LOGO)" in resumo   # PCV e' complementar, LOGO continua ali
+
+
+def test_metricas_classificacao_marca_conjunto_de_uma_classe(pq):
+    """Com uma unica classe, accuracy=1.0 nao e' desempenho -- e' aritmetica.
+
+    Medido rodando o pipeline sobre o dataset publico Corn (matriz de classe
+    unica): a saida reportava `Accuracy (CV) = 1.0000` e o model card
+    repetia o numero, sem nenhuma marca de que era degenerado (auditoria
+    mestre de 2026-08-17, sec. 1.6).
+    """
+    import numpy as np
+    y = np.array(["corn"] * 20)
+    m = pq.metricas_classificacao(y, y.copy(), ["corn"])
+    assert m.get("degenerada_uma_classe") == 1.0
+
+    y2 = np.array(["a"] * 10 + ["b"] * 10)
+    m2 = pq.metricas_classificacao(y2, y2.copy(), ["a", "b"])
+    assert "degenerada_uma_classe" not in m2
+
+
+# ── RPD / RER (figuras de merito de quantificacao) ───────────────────────────
+
+def test_rpd_rer_reproduz_a_definicao(pq):
+    """RPD = SD(y_ref)/SEP e RER = amplitude/SEP, com SEP corrigido pelo bias.
+
+    Usar RMSEP no lugar de SEP e' o erro comum -- infla o RPD sempre que ha'
+    bias, porque o bias sai da conta do SEP mas nao da do RMSEP.
+    """
+    import numpy as np
+    rng = np.random.default_rng(11)
+    y = rng.uniform(0.0, 20.0, 200)
+    y_hat = y + 2.0 + rng.normal(0, 1.0, y.size)      # bias +2, ruido sd~1
+
+    r = pq.rpd_rer(y, y_hat)
+    residuos = y_hat - y
+    bias_esperado = float(np.mean(residuos))
+    sep_esperado = float(np.std(residuos - bias_esperado, ddof=1))
+    assert r["bias"] == pytest.approx(bias_esperado)
+    assert r["sep"] == pytest.approx(sep_esperado)
+    assert r["rpd"] == pytest.approx(np.std(y, ddof=1) / sep_esperado)
+    assert r["rer"] == pytest.approx((y.max() - y.min()) / sep_esperado)
+
+    # O ponto do SEP: com bias grande, RMSEP >> SEP, e usar RMSEP daria um
+    # RPD MENOR. A conta correta nao e' penalizada duas vezes pelo bias --
+    # ele e' reportado a parte.
+    rmsep = float(np.sqrt(np.mean(residuos ** 2)))
+    assert rmsep > sep_esperado
+
+
+def test_rpd_degenerado_nao_vira_infinito(pq):
+    """Predicao perfeita ou referencia constante devolve NaN, nunca um
+    infinito que o relatorio imprimiria como desempenho excelente."""
+    import numpy as np
+    y = np.linspace(0, 10, 20)
+    assert not np.isfinite(pq.rpd_rer(y, y.copy())["rpd"])      # SEP = 0
+    const = np.full(20, 5.0)
+    assert not np.isfinite(pq.rpd_rer(const, const + 0.1)["rpd"])  # SD = 0
+    assert not np.isfinite(pq.rpd_rer(np.array([1.0]), np.array([1.0]))["rpd"])
+
+
+def test_interpretar_rpd_cobre_as_faixas_publicadas(pq):
+    """As faixas vem de Williams (2014) / AACC 39-00.01 -- um RPD nu vira
+    alegacao exagerada em texto, entao o numero nunca sai sozinho."""
+    assert pq.interpretar_rpd(1.5) == "nao utilizavel"
+    assert pq.interpretar_rpd(2.2) == "triagem grosseira"
+    assert pq.interpretar_rpd(2.7) == "triagem"
+    assert pq.interpretar_rpd(4.0) == "controle de qualidade"
+    assert pq.interpretar_rpd(7.0).startswith("controle de processo")
+    assert pq.interpretar_rpd(float("nan")) == "nao estimavel"

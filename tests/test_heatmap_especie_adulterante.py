@@ -14,13 +14,13 @@ from guaraci.dados_io import adulterante_de_mae_id
 
 # ── Parser de adulterante a partir do mae_id ─────────────────────────────────
 def test_adulterante_de_mae_id_real_e_sintetico():
-    assert adulterante_de_mae_id("CAP-04-11-2020-A1.03") == "algodão"
+    assert adulterante_de_mae_id("CAP-04-11-2099-A1.03") == "algodão"
     assert adulterante_de_mae_id("AND-01-01-2022-S5.00") == "soja"
     assert adulterante_de_mae_id("ESA-M08.00") == "milho"
 
 
 def test_adulterante_de_mae_id_puro_e_orfao_sao_none():
-    assert adulterante_de_mae_id("CAP-04-11-2020") is None   # puro real
+    assert adulterante_de_mae_id("CAP-04-11-2099") is None   # puro real
     assert adulterante_de_mae_id("ESA-P00") is None          # puro sintetico
     assert adulterante_de_mae_id("orfao_arquivo.dx") is None
     assert adulterante_de_mae_id(None) is None

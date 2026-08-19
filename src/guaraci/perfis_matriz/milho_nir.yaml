@@ -1,0 +1,20 @@
+# Milho em grao por NIR de transmitancia/reflectancia (1100-2498 nm).
+# Calibrado contra o dataset publico Eigenvector "Corn"
+# (https://eigenvector.com/data/Corn/): 80 amostras, 3 espectrometros,
+# 700 canais, com moisture/oil/protein/starch de referencia.
+descricao: "Milho em grao por NIR (1100-2498 nm)"
+unidade_eixo: "nm"
+eixo_min: 1100.0
+eixo_max: 2498.0
+preprocessamento_padrao: "msc_sg_mc"
+vocabulario:
+  classe: "variedade"
+  classe_plural: "variedades"
+  matriz: "milho em grao"
+  alvo: "o teor do constituinte (umidade, oleo, proteina ou amido)"
+  conforme: "dentro da especificacao"
+  nao_conforme: "fora da especificacao"
+codigos_classe: {}
+# Faixa de proteina coberta pelo dataset Corn.
+faixa_trabalho: [6.0, 10.0]
+referencia: "Eigenvector Research, Corn dataset (https://eigenvector.com/data/Corn/)"

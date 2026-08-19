@@ -103,8 +103,12 @@ def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    # Pontos individuais (um por fold) com jitter reprodutivel
-    rng = np.random.default_rng(42)
+    # Pontos individuais (um por fold) com jitter reprodutivel. Usa
+    # cfg.seed (nao um 42 fixo): duas execucoes com seeds diferentes devem
+    # diferir em TUDO que e' aleatorio, inclusive no jitter da figura --
+    # caso contrario a figura sugere uma reprodutibilidade que o resto da
+    # execucao nao tem.
+    rng = np.random.default_rng(cfg.seed)
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         jitter = rng.uniform(-0.14, 0.14, len(dado))
         ax.scatter(np.full(len(dado), i) + jitter, dado,
@@ -782,7 +786,7 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(cfg.seed)   # ver nota em fig_benchmark_classificadores
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         if len(dado) == 0:
             continue

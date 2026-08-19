@@ -36,7 +36,10 @@ if sys.platform == "win32":
             pass   # stdout/stderr redirecionado p/ algo sem reconfigure util
     try:
         import subprocess
-        subprocess.run(["chcp", "65001"], capture_output=True, shell=True)
+        # shell=True e' necessario aqui: `chcp` e' builtin do cmd.exe, nao um
+        # executavel. Os argumentos sao constantes -- nada vindo do usuario
+        # chega nesta linha, entao nao ha superficie de injecao.
+        subprocess.run("chcp 65001", capture_output=True, shell=True)  # noqa: S602
     except OSError:
         pass   # chcp indisponivel neste shell
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
@@ -950,7 +953,7 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     inf = f"[{PS}]ℹ[/{PS}]"
 
     linhas.append(f"  {ok if preproc != 'raw' else av} Pre-proc: {preproc}" +
-                  (f"  [{PM}](Para FT-NIR, msc+sg+mc = Bal.Acc 0.923)[/{PM}]" if preproc == "raw" else ""))
+                  (f"  [{PM}](Para FT-NIR difuso, comece por msc+sg+mc)[/{PM}]" if preproc == "raw" else ""))
     linhas.append(f"  {ok if max_lvs <= 40 else av} max_lvs = {max_lvs}" +
                   (f"  [{PM}](>40 aumenta risco de overfitting)[/{PM}]" if max_lvs > 40 else ""))
     linhas.append(f"  {ok if 100 <= n_perm else av} n_permutacoes = {n_perm}" +
@@ -3845,23 +3848,126 @@ def _comando_demo() -> None:
 # ===========================================================================
 # MAIN LOOP
 # ===========================================================================
-def main() -> None:
-    """Ponto de entrada GUARACI (versao unica em _VERSAO)."""
-    if len(sys.argv) > 1:
-        comando = sys.argv[1].strip().lower().lstrip("-")
+#: Texto de `--help`. Fonte unica: `--help`, `help` e a mensagem de
+#: argumento desconhecido leem daqui, para nunca divergirem entre si.
+_TEXTO_AJUDA = """Uso: guaraci [COMANDO] [OPCOES]
+
+Comandos:
+  (sem argumentos)  abre o assistente interativo
+  demo              roda o pipeline com dados sinteticos (nao precisa de dado)
+  doctor            diagnostica o ambiente (dependencias, RAM, CPU)
+  perfis            lista os perfis de matriz disponiveis
+  --version         mostra a versao instalada
+  --help            mostra esta ajuda
+
+Opcoes:
+  --perfil=NOME     perfil da matriz analisada (padrao: generico). Define
+                    faixa espectral, pre-processamento e o vocabulario da
+                    saida. `guaraci perfis` lista os nomes; tambem aceita o
+                    caminho de um YAML proprio.
+  --modo=MODO       'cego' (PADRAO) ou 'controle'.
+                    cego     : a quantificacao usa a classe PREDITA pelo
+                               classificador -- o unico modo que corresponde
+                               ao uso real, em que a classe da amostra e'
+                               desconhecida.
+                    controle : usa a classe VERDADEIRA. So' para diagnostico
+                               interno (separar erro de quantificacao de erro
+                               de classificacao). Os numeros obtidos assim
+                               NAO representam desempenho de uso, e a saida
+                               marca isso explicitamente.
+
+Codigos de saida: 0 sucesso | 1 erro de execucao | 2 uso incorreto."""
+
+#: Opcoes de linha de comando aplicadas ao Config depois de carrega-lo.
+_OPCOES_CLI: Dict[str, str] = {}
+
+
+def _extrair_opcoes(argv: List[str]) -> Tuple[Dict[str, str], List[str]]:
+    """Separa `--chave=valor` dos argumentos posicionais.
+
+    Aceita as opcoes em qualquer posicao (`guaraci --modo=controle demo` e
+    `guaraci demo --modo=controle` sao equivalentes) -- comportamento
+    previsivel importa mais aqui do que economizar codigo.
+    """
+    opcoes: Dict[str, str] = {}
+    restantes: List[str] = []
+    for arg in argv:
+        if arg.startswith("--") and "=" in arg:
+            chave, valor = arg[2:].split("=", 1)
+            opcoes[chave.strip().lower()] = valor.strip()
+        else:
+            restantes.append(arg)
+    return opcoes, restantes
+
+
+def _validar_opcoes(opcoes: Dict[str, str]) -> None:
+    """Valida ANTES de processar qualquer dado. Sai com codigo 2 (uso
+    incorreto), nunca 1 (erro de execucao) -- sao coisas diferentes para
+    quem chama o programa de um script."""
+    for chave in ("perfil", "modo"):
+        if chave in opcoes and not opcoes[chave]:
+            print(f"Erro: --{chave} exige um valor (ex.: --modo=cego).",
+                  file=sys.stderr)
+            raise SystemExit(2)
+    modo = opcoes.get("modo")
+    if modo is not None and modo not in ("cego", "controle"):
+        print(f"Erro: --modo={modo} invalido. Use 'cego' (padrao, usa a "
+              f"classe predita) ou 'controle' (usa a classe verdadeira, "
+              f"so' para diagnostico interno).", file=sys.stderr)
+        raise SystemExit(2)
+    if "perfil" in opcoes:
+        from guaraci.perfil_matriz import (PerfilDesconhecidoError,
+                                           carregar_perfil)
+        try:
+            carregar_perfil(opcoes["perfil"])
+        except PerfilDesconhecidoError as e:
+            print(f"Erro: {e}", file=sys.stderr)
+            raise SystemExit(2) from None
+
+
+def _listar_perfis() -> None:
+    from guaraci.perfil_matriz import DIR_PERFIS, carregar_perfil
+    print("Perfis de matriz disponiveis:")
+    for arquivo in sorted(DIR_PERFIS.glob("*.yaml")):
+        perfil = carregar_perfil(arquivo.stem)
+        print(f"  {perfil.nome:<14} {perfil.descricao}")
+    print("\nUse: guaraci --perfil=NOME  (ou o caminho de um YAML proprio)")
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    """Ponto de entrada GUARACI (versao unica em _VERSAO).
+
+    `argv` sao os argumentos SEM o nome do programa. O default lê de
+    `sys.argv`, que e' o caminho do entry point instalado. Chamadores
+    programaticos (testes, embutimento em outro app) devem passar a lista
+    explicitamente -- caso contrario herdam o `sys.argv` de quem os
+    hospeda, e desde que argumento desconhecido virou erro de uso isso
+    significaria sair com codigo 2 por causa das flags do pytest.
+    """
+    opcoes, restantes = _extrair_opcoes(
+        list(sys.argv[1:]) if argv is None else list(argv))
+    _validar_opcoes(opcoes)
+    _OPCOES_CLI.clear()
+    _OPCOES_CLI.update(opcoes)
+    sys.argv = [sys.argv[0]] + restantes
+
+    if restantes:
+        comando = restantes[0].strip().lower().lstrip("-")
         if comando in ("version", "v"):
             _comando_versao(); return
         if comando == "demo":
             _comando_demo(); return
         if comando == "doctor":
             _comando_doctor(); return
+        if comando == "perfis":
+            _listar_perfis(); return
         if comando in ("help", "h"):
-            print("Uso: guaraci [demo|doctor|--version]\n"
-                  "  (sem argumentos)  abre o assistente interativo\n"
-                  "  demo              roda o pipeline com dados sinteticos\n"
-                  "  doctor            diagnostica o ambiente (deps, RAM, CPU)\n"
-                  "  --version         mostra a versao instalada")
+            print(_TEXTO_AJUDA)
             return
+        print(f"Erro: comando desconhecido '{sys.argv[1]}'.\n",
+              file=sys.stderr)
+        print(_TEXTO_AJUDA, file=sys.stderr)
+        raise SystemExit(2)
 
     # Migra estado gravado pela versao anterior (dentro do pacote instalado)
     # para _USER_DIR, se aplicavel -- ver docstring de _migrar_estado_legado.
@@ -3875,6 +3981,13 @@ def main() -> None:
         except (RuntimeError, FileNotFoundError, ValueError) as _e_cfg:
             logging.getLogger(__name__).debug(
                 "config.yaml nao carregado no boot, usando defaults: %s", _e_cfg)
+
+    # Opcoes de linha de comando vencem o config.yaml: quem digitou a flag
+    # agora quer ela agora. Ja' validadas em _validar_opcoes (saida 2).
+    if "perfil" in _OPCOES_CLI:
+        cfg.perfil_matriz = _OPCOES_CLI["perfil"]
+    if "modo" in _OPCOES_CLI:
+        cfg.modo_rotulo = _OPCOES_CLI["modo"]
 
     # Recuperar idioma salvo
     try:

@@ -870,7 +870,11 @@ def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
     monkeypatch.setattr(guaraci_mod, "_MODO_FLAG", tmp_path / ".cli_modo_usuario")
 
     inicio = time.monotonic()
-    guaraci_mod.main()   # NAO pode travar -- se travar, o teste tambem trava
+    # argv=[] explicito: main() sem argumento le sys.argv, que sob pytest
+    # carrega as flags do proprio pytest -- e desde que argumento
+    # desconhecido virou erro de uso (saida 2), isso abortaria antes do
+    # laco interativo que este teste quer exercitar.
+    guaraci_mod.main([])   # NAO pode travar -- se travar, o teste tambem trava
     duracao = time.monotonic() - inicio
     assert duracao < 5.0, (
         f"main() nao retornou rapido com EOF permanente -- ainda gira? "

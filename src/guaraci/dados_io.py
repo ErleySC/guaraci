@@ -47,9 +47,9 @@ def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
     """Nome do adulterante (algodão/milho/soja) a partir do mae_id, ou None.
 
     O mae_id de uma amostra ADULTERADA termina no token '{letra}{teor}':
-        real       'CAP-04-11-2020-A1.03' -> 'A' -> 'algodão'
+        real       'CAP-04-11-2099-A1.03' -> 'A' -> 'algodão'
         sintetico  'ESA-S05.00'           -> 'S' -> 'soja'
-    Amostras PURAS ('CAP-04-11-2020') e orfaos ('orfao_...') nao tem esse
+    Amostras PURAS ('CAP-04-11-2099') e orfaos ('orfao_...') nao tem esse
     token e retornam None. Deriva o adulterante do mae_id (que sobrevive
     alinhado a validar_entrada), evitando desalinhamento com metadados_df.
     """
@@ -199,8 +199,8 @@ def parse_title(title: str) -> Optional[Dict[str, Any]]:
     GroupKFold/GroupShuffleSplit to prevent replica leakage.
 
     mae_id format:
-        Pure:        'CAP-04-11-2020'
-        Adulterated: 'CAP-04-11-2020-A1.03'  (content always 2 decimal places)
+        Pure:        'CAP-04-11-2099'
+        Adulterated: 'CAP-04-11-2099-A1.03'  (content always 2 decimal places)
 
     Correcoes conhecidas (achado A2-2, ver `_CORRECOES_TITLE_CONHECIDAS`):
     5 TITLEs com erro de digitacao verificado sao reconhecidos por
@@ -698,6 +698,58 @@ def _detectar_subpastas_classe(raiz: str) -> List[str]:
             if arqs:
                 subpastas.append(caminho)
     return subpastas
+
+
+#: Colunas de metadado que IDENTIFICAM a amostra de origem, e que nenhum
+#: artefato gravado em disco precisa. `title_original`/`arquivo` carregam o
+#: identificador inteiro (codigo de especie, data de coleta, adulterante e
+#: teor); `cod`/`data`/`mae_id` carregam as partes; `subpasta` carrega a
+#: organizacao do acervo de quem cedeu os dados.
+_COLUNAS_IDENTIFICADORAS = ("title_original", "arquivo", "cod", "data",
+                            "mae_id", "subpasta")
+
+
+def sanitizar_metadados(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Remove identificacao da amostra de origem, preservando o que a
+    analise usa.
+
+    POR QUE. O GUARACI le arquivos de um acervo que pode nao ser do usuario
+    do software -- e o cabecalho JCAMP carrega mais do que o espectro. O
+    parser ja' descarta `##AUDIT TRAIL` (operador e local) por nunca le-lo
+    (ver `parse_dx`), mas `##TITLE` ele PRECISA ler: e' de onde saem classe,
+    teor e o agrupamento de replicas. O identificador entao existe em
+    memoria de forma legitima -- o que nao pode e' ser GRAVADO em disco,
+    porque a partir dai ele viaja junto com resultados.
+
+    O que sai: `title_original`, `arquivo`, `cod`, `data`, `mae_id`,
+    `subpasta`.
+    O que fica: `especie`, `teor`, `puro`, `adulterante`, `triplicata` --
+    tudo que descreve a AMOSTRA sem dizer QUAL amostra do acervo ela e'.
+
+    `grupo_replica` substitui `mae_id`: um rotulo sequencial (`G000`,
+    `G001`, ...) que agrupa exatamente como o `mae_id` agrupava. Sem ele o
+    arquivo perderia a informacao que sustenta a validacao group-aware --
+    o diferencial do projeto -- e ninguem conseguiria auditar de fora se as
+    replicas foram mesmo mantidas juntas.
+
+    Idempotente: aplicar duas vezes da' o mesmo resultado.
+    """
+    limpo = df.copy()
+    if "mae_id" in limpo.columns and "grupo_replica" not in limpo.columns:
+        # Ordem de primeira aparicao (nao alfabetica): o rotulo nao deve
+        # permitir reordenar/reidentificar os grupos pelo nome original.
+        vistos: Dict[Any, str] = {}
+        rotulos: List[str] = []
+        for valor in limpo["mae_id"]:
+            if pd.isna(valor):
+                rotulos.append("")
+                continue
+            if valor not in vistos:
+                vistos[valor] = f"G{len(vistos):03d}"
+            rotulos.append(vistos[valor])
+        limpo["grupo_replica"] = rotulos
+    presentes = [c for c in _COLUNAS_IDENTIFICADORAS if c in limpo.columns]
+    return limpo.drop(columns=presentes)
 
 
 def prescan_dx(pasta: str) -> Dict[str, Any]:

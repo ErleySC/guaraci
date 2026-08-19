@@ -20,7 +20,8 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
 from guaraci.chemometric_stats import (hotelling_t2_limite, q_residuos_limite,
-                                       media_e_dof_momentos, distancia_combinada)
+                                       media_e_dof_momentos, distancia_combinada,
+                                       q_residuos_loo)
 
 log = logging.getLogger(__name__)
 
@@ -182,40 +183,15 @@ class DDSimca:
     def _q_residuals_loo(Xc: np.ndarray, n_comp: int) -> np.ndarray:
         """Q-residuo leave-one-out (jackknife) de cada amostra de treino.
 
-        PCA ajustada em TODAS as nc amostras reconstroi cada uma delas de
-        forma otimista: a propria amostra ajudou a definir o subespaco que
-        depois a reconstroi. Com nc pequeno frente a p (regime deste
-        projeto: poucos puros por especie, espectros de milhares de
-        variaveis), esse viés faz Q_train colapsar perto de zero -- e o UCL
-        derivado dele rejeita qualquer amostra genuinamente nova (achado de
-        auditoria adversarial, 2026-07-19).
-
-        Aqui, o Q de cada amostra i e' medido contra um modelo ajustado nas
-        OUTRAS nc-1 amostras (i excluida) -- a mesma logica de validacao
-        cruzada, aplicada dentro do proprio calculo do limite. Remove o
-        viés estruturalmente, sem depender de escolher um limiar de graus
-        de liberdade "grande o bastante" (nenhum limiar resolve o viés
-        in-sample; so' excluir a amostra do seu proprio ajuste resolve).
-
-        Custo: nc ajustes extras de PCA por classe -- aceitavel porque nc e'
-        pequeno justamente no regime em que isso importa.
+        Delega para `chemometric_stats.q_residuos_loo`. A implementacao
+        nasceu aqui (achado da auditoria adversarial de 2026-07-19) e foi
+        promovida a funcao pura em 2026-08-17, quando se descobriu que
+        `dominio_aplicabilidade_treino` precisava exatamente da mesma
+        correcao -- manter duas copias da mesma regra estatistica foi o que
+        permitiu que uma delas ficasse para tras (mesmo padrao do achado A3).
+        Mantido como metodo para nao quebrar chamadores/testes existentes.
         """
-        nc = Xc.shape[0]
-        Q = np.empty(nc)
-        idx = np.arange(nc)
-        for i in range(nc):
-            Xtr = Xc[idx != i]
-            n_comp_i = min(n_comp, Xtr.shape[0] - 1, Xtr.shape[1])
-            if n_comp_i < 1:
-                Q[i] = 0.0
-                continue
-            pca_i = PCA(n_components=n_comp_i)
-            pca_i.fit(Xtr)
-            xi = Xc[i:i + 1]
-            t_i = pca_i.transform(xi)
-            x_rec = pca_i.inverse_transform(t_i)
-            Q[i] = float(np.sum((xi - x_rec) ** 2))
-        return Q
+        return q_residuos_loo(Xc, n_comp)
 
     @staticmethod
     def _media_por_grupo(valores: np.ndarray,
@@ -249,8 +225,8 @@ class DDSimca:
         sem fundamento quando `mae_id` esta ausente; com `mae_id`, nao.
 
         CONSEQUENCIA HONESTA quando ha' so' 1 mae_id de treino por classe
-        (regime medido no dataset real, achado A2-3: 12 das 13 especies
-        tem exatamente 1 ponto de amostragem fisico puro): Nh=Nq=1.0 (o
+        (regime comum em autenticacao one-class, em que so' se dispoe de
+        um ponto de amostragem fisico genuino por classe): Nh=Nq=1.0 (o
         minimo que `media_e_dof_momentos` retorna para entrada degenerada
         de tamanho 1) -- NAO e' um bug desta funcao, e' a calibracao mais
         honesta possivel dado que so' existe 1 amostra fisica independente

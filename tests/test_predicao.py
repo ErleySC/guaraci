@@ -245,3 +245,46 @@ def test_carregar_modelo_sem_manifesto_carrega_normalmente(tmp_path, modelo_e_da
     assert not os.path.isfile(str(cam) + ".manifest.json")
     carregado = pr.carregar_modelo(str(cam), confiar=True)
     assert "pls_final" in carregado
+
+
+# ── Regra de decisao e limite de Q (auditoria mestre de 2026-08-17) ───────────
+
+def test_pacote_real_exporta_parametros_da_distancia_combinada(modelo_e_dados):
+    """O pacote precisa levar h0/q0/Nh/Nq/f_crit DO ESPACO PLS.
+
+    Sem eles, `predizer_amostras` decide "aceito" pela regra retangular
+    (T2<=lim E Q<=lim), com alpha independente por eixo -- alpha conjunto
+    efetivo ~0,0975 em vez dos 0,05 declarados. E' a mesma regra ja
+    corrigida no DD-SIMCA (2026-08-08) e no dominio de aplicabilidade
+    (achado A3); esta era a quarta copia da decisao, no caminho de producao.
+    """
+    pkg, _, _ = modelo_e_dados
+    for chave in ("pls_h0", "pls_q0", "pls_Nh", "pls_Nq", "pls_f_crit"):
+        assert chave in pkg, f"pacote de modelo sem '{chave}'"
+        assert np.isfinite(float(pkg[chave]))
+
+
+def test_predizer_amostras_usa_distancia_combinada_e_declara_o_criterio(
+        modelo_e_dados):
+    """`aceito` vem da distancia combinada, e a coluna `criterio` diz qual
+    regra foi aplicada -- um pacote antigo cai na regra por eixo, mas nunca
+    em silencio."""
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predizer_amostras(pkg, X_novos, wn)
+    assert "criterio" in df.columns
+    assert "combinada" in str(df["criterio"].iloc[0])
+    assert np.array_equal(df["aceito"].values,
+                          (df["f"].values <= df["f_crit"].values))
+    # T2_ok/Q_ok continuam existindo como diagnostico por eixo
+    assert "T2_ok" in df.columns and "Q_ok" in df.columns
+
+
+def test_predizer_amostras_recusa_pacote_sem_q_ucl(modelo_e_dados):
+    """Sem `q_ucl` vindo do TREINO, a versao anterior derivava o limite das
+    PROPRIAS amostras julgadas (`percentile(Q_new, 99) * 1.5`): um lote
+    inteiro fora do dominio elevava o limite junto e era aceito. Agora
+    recusa com mensagem clara em vez de aplicar um criterio circular."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg_sem = {k: v for k, v in pkg.items() if k != "q_ucl"}
+    with pytest.raises(ValueError, match="q_ucl"):
+        pr.predizer_amostras(pkg_sem, X_novos, wn)
