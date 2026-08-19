@@ -7,6 +7,11 @@ on:
       - .github/workflows/draft-pdf.yml
   workflow_dispatch: {}
 
+# Escopo minimo explicito: sem isto o workflow herda o padrao do
+# repositorio, que pode conceder write ao GITHUB_TOKEN sem necessidade.
+permissions:
+  contents: read
+
 jobs:
   paper:
     runs-on: ubuntu-latest

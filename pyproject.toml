@@ -84,6 +84,13 @@ Changelog     = "https://github.com/ErleySC/guaraci/blob/master/docs/CHANGELOG.m
 package-dir = { "" = "src" }
 packages = ["guaraci", "guaraci.app_tabs"]
 
+# Os perfis de matriz sao DADOS do pacote, nao codigo: sem esta linha eles
+# ficam de fora da wheel e `guaraci perfis` lista zero perfis num ambiente
+# instalado por pip -- exatamente o cenario de quem nunca viu o projeto.
+# Achado testando instalacao limpa em 2026-08-18.
+[tool.setuptools.package-data]
+guaraci = ["perfis_matriz/*.yaml"]
+
 # Type-checking APENAS nos módulos de cálculo puro (CLAUDE.md, item 17 do
 # roadmap). Escopo deliberadamente estreito: são os módulos sem I/O, sem UI e
 # sem estado global, onde a anotação de tipo tem valor real e o custo de manter
