@@ -176,15 +176,15 @@ nova é reverificá-los.** Se divergirem, o código vence, e você me avisa da d
 | Item | Valor alegado | Comando para verificar |
 |---|---|---|
 | Versão | 31.9.0 | `grep -r version pyproject.toml` |
-| Testes | 701 pass, 2 skip (reverificado 2026-08-07, fim de sessão) | `pytest -q` |
-| Cobertura | 70% (reverificado 2026-08-07) | `pytest --cov=src/guaraci --cov-report=term-missing` |
+| Testes | 769 pass, 2 skip (reverificado 2026-08-18, fim do desacoplamento) | `pytest -q` |
+| Cobertura | 70% (reverificado 2026-08-18) | `pytest --cov=src/guaraci --cov-report=term-missing` |
 | Lint | ruff limpo (repo inteiro, incl. `docs/auditoria/`) | `ruff check .` |
 | Typecheck | mypy limpo nos 7 módulos puros do gate de CI | `mypy src/guaraci/{preprocessamento,chemometric_stats,classificadores,validacao_estatistica,modos_analise,design_tokens,resumo_parse}.py` |
 | Dependências | sem CVE conhecida (via OSV; API do PyPI instável na rede local) | `pip-audit -r requirements.txt --vulnerability-service osv` |
 | `executar()` | 1445 linhas (contagem AST, não a linha do `def`) | `grep -n "def executar" src/guaraci/pipeline.py` |
 | `print()` em pipeline | 0 (migração do P6 completa) | `grep -c "print(" src/guaraci/pipeline.py` |
-| `except` amplos | 53 (100% com `noqa: BLE001` justificado, reverificado) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
-| `guaraci.py` | 3906 linhas (+93 desde a sessão anterior — migração de estado, correções de segurança) | `wc -l src/guaraci/guaraci.py` |
+| `except` amplos | 54 (100% com `noqa: BLE001` justificado; +1 na auditoria mestre de 2026-08-17 — export opcional dos parametros da distancia combinada) | `grep -rn "except Exception\|except:" src/guaraci/ \| wc -l` |
+| `guaraci.py` | 3978 linhas (reverificado 2026-08-17) | `wc -l src/guaraci/guaraci.py` |
 | TODO/FIXME reais | 6 (todos em `reports.py`, placeholders de template LaTeX — não são dívida de código) | `grep -rn "TODO\|FIXME\|HACK" src/guaraci/ \| grep -v NOTAS_METODOLOGICAS` |
 
 > Atualizado em 2026-08-16 — reverificado após o repositório se tornar
@@ -873,6 +873,188 @@ como exemplo de que reverificar a própria auditoria também é obrigatório.
 (9 líquidos: novos que travam as propriedades que falhavam antes de cada
 correção). Cobertura/lint/contagens da tabela ESTADO ALEGADO reverificadas
 antes e depois — sem divergência além do esperado.
+
+---
+
+### 🔴 P12 (ABERTO — 2 dos 3 achados NÃO são corrigíveis por código) — Auditoria mestre de 2026-08-17
+
+Relatório completo: `docs/auditoria/AUDITORIA_MESTRE_2026-08-17.md`;
+scorecard: `docs/auditoria/SCORECARD_2026-08-17.md`. Scripts novos e
+reexecutáveis: `medir_ordem_leitura.py`, `medir_deriva_vs_quimica.py`,
+`medir_ad_vies_insample.py`, `medir_truncagem_nh_nq.py`,
+`datasets_publicos.py`.
+
+**A lição desta rodada é diferente das anteriores.** P10 ensinou que teste
+de figura tem que checar conteúdo; P11, que teste tem que checar a
+equação. Esta ensina que **teste tem que rodar no REGIME REAL dos dados** —
+e que auditoria de código não alcança defeito de delineamento.
+
+1. **P0 — a ordem de leitura é o teor.** Os `.dx` têm `##AUDIT TRAIL` com
+   data/hora da LEITURA (nenhuma auditoria anterior leu esse campo — todas
+   usaram a data do `##TITLE`, que é a data da AMOSTRA). Medido: dentro de
+   cada bloco espécie×adulterante×sessão, as amostras foram lidas da menor
+   para a maior concentração, **ρ de Spearman +0,997, em 47 de 47 blocos**
+   (esperado sob H0: ~5% significativos; deu 100%). Logo "tempo decorrido
+   na sessão" e "teor" são a mesma variável, e qualquer deriva instrumental
+   entra no modelo como se fosse sinal de adulteração. **Nenhuma alteração
+   de software separa os dois.** Não há brancos nem releituras que
+   permitam estimar a deriva (4 de 652 `mae_id` lidos em mais de um dia).
+   O fato declarado pelo autor — puro e adulterado na mesma sessão — está
+   CONFIRMADO (13/14 espécies), e é o que cria esta exposição.
+2. **P0 — a quantificação não sobrevive à troca de sessão.** Mesma receita
+   do pipeline, mudando só a partição: R² intra-sessão 0,66–0,95 nas 7
+   sessões grandes → **mediana −1,39 entre sessões**, 12 de 14 abaixo de
+   zero, RMSE 3,3×. Confundidores declarados (lote e faixa de teor também
+   mudam). Restringindo à faixa comum 0–5%, **o R² intra-sessão também
+   colapsa** (mediana −1,04, negativo em 14/14). Ou seja: o desempenho alto
+   só existe com faixa ampla, em sessão única, com ordem monotônica.
+3. **P0 — proveniência nos metadados dos brutos.** 100% dos 3.785 `.dx`
+   gravam o nome de uma instituição e o nome do operador; são 3 rótulos, ao menos 2 pessoas,
+   **nenhuma delas o autor**. Isso responde por MEDIÇÃO à pergunta "houve
+   técnico operando?". Um dos rótulos é um apelido informal e depreciativo
+   aplicado a pessoa nomeada, em 828 arquivos. **Sanitizar o AUDIT TRAIL é
+   pré-requisito de qualquer publicação dos dados brutos.** O código
+   continua sendo do autor; os dados não são inequivocamente dele.
+
+**✅ Corrigido nesta rodada (com teste que falha antes):**
+- **Domínio de aplicabilidade rejeitava a própria calibração.**
+  `dominio_aplicabilidade_treino` calculava o Q de treino IN-SAMPLE — a
+  MESMA classe de defeito corrigida no DD-SIMCA em 2026-07-19 (P1) e que
+  não tinha sido propagada, justamente para o caminho que roda em produção
+  em `predicao.py`. Medido: aceitava **0,14 a 0,57** das amostras da
+  própria distribuição de treino, contra 0,95 nominal; com Q por LOO, volta
+  a 0,94–0,98. Passou despercebido porque os testes de AD usavam n=80–200
+  com p=15–30 (n≫p), o único regime em que o viés é pequeno.
+  `q_residuos_loo` virou função pura compartilhada — `DDSimca` delega para
+  ela (a duplicação foi o que permitiu uma das cópias ficar para trás).
+- **4ª cópia da regra retangular**, em `predicao.py` (coluna `aceito`):
+  α conjunto ≈ 0,0975 em vez de 0,05. Agora usa a distância combinada, com
+  uma coluna `criterio` que diz qual regra foi aplicada.
+- **Fallback circular de `q_ucl`**: derivava o limite de aceitação das
+  PRÓPRIAS amostras julgadas. Agora recusa com mensagem clara.
+- **`Accuracy = 1.0000` com uma única classe**, sem marca (visto rodando
+  sobre dataset público de milho). Agora marca `degenerada_uma_classe`.
+- **Model card afirmava "óleo vegetal amazônico"** em qualquer matriz.
+- **2 DOIs errados** (Geladi & Kowalski 1986; Geladi et al. 1985) —
+  referências reais, identificadores errados; corrigidos e conferidos no
+  Crossref.
+- Seeds fixas `default_rng(42)` → `cfg.seed`; `permissions: contents: read`
+  nos 2 workflows que herdavam o padrão do repositório.
+
+**RETRATAÇÃO:** a pendência herdada "`Nh`/`Nq` sem truncagem para inteiro"
+foi medida (6 cenários × 200 repetições) e o efeito na cobertura é
+**≤ 0,0033**. É cosmético. Não tratar como achado.
+
+**DIVERGÊNCIA com o contexto herdado:** a alegação de que a faixa
+`[4000, 10000]` está inalterada "em 185 commits" **não é verificável** — o
+histórico atual tem 96 commits (reescrito em 2026-08-16, purga S4). Pelo
+mesmo motivo, a janela `2026-07-04 → 2026-08-17` não serve como prova
+temporal de autoria.
+
+**O que a validação externa provou (e é o achado positivo da rodada):** o
+GUARACI roda no Eigenvector *Corn* (matriz não-óleo) **sem alterar
+código-fonte** e entrega **RMSEP = 0,171 %m/m** para proteína — dentro da
+faixa da literatura (0,1–0,2). O motor está certo. O que falha no dataset
+próprio é o delineamento, não o algoritmo. Isso separa bug de limitação e
+deve constar em qualquer texto que apresente o software.
+
+---
+
+### 🟢 P13 (2026-08-18) — Desacoplamento do dataset institucional
+
+**Decisão do autor, executada:** os `.dx` do acervo cedido saem do escopo
+do software. O GUARACI passa a ser validado **exclusivamente em datasets
+públicos**; o TCC é entregável separado, com base de evidência própria.
+Relatórios: `docs/auditoria/DESACOPLAMENTO_2026-08-18.md`,
+`VALIDACAO_PUBLICA.md`, `SCORECARD_2026-08-18.md`.
+
+**Retratação da premissa de partida.** A hipótese era que operador e local
+(`##AUDIT TRAIL`) vazavam para a saída. **Medido: não vazam** — `parse_dx`
+lê 9 campos e `AUDIT TRAIL` não é um deles (`dados_io.py:546-556`). O que
+vazava era o `##TITLE`, que o parser *precisa* ler, gravado cru em
+`metadados.csv`. Corrigido com `sanitizar_metadados()` +
+`tests/test_sanitizacao_metadados.py` (8 testes que rodam o pipeline sobre
+`.dx` sintéticos com sentinelas e varrem todo artefato, inclusive os bytes
+do `.joblib`).
+
+**O que mudou de estrutura:**
+1. **Perfis de matriz** (`guaraci/perfis_matriz/*.yaml` +
+   `perfil_matriz.py`): faixa do eixo, pré-processamento, unidade e
+   **vocabulário** saíram do código. Trocar de matriz é trocar `cfg.
+   perfil_matriz`. Perfil desconhecido levanta erro com a lista do que
+   existe — nunca cai no padrão de outra matriz. Teste de aceitação roda
+   milho (nm) e óleo (cm⁻¹) mudando **um campo**, e verifica que nenhum
+   model card afirma a matriz do outro.
+2. **Modo cego é o padrão** (`cfg.modo_rotulo="cego"`, `--modo=controle`
+   explícito): a quantificação calibra pela classe **predita**, não pela
+   verdadeira. `tests/test_modo_cego.py` prova por **envenenamento** — com
+   os rótulos verdadeiros trocados por lixo, o resultado em modo cego não
+   muda; em controle, muda (contra-prova).
+3. **RPD/RER** com a faixa de uso ao lado (Williams 2014; AACC 39-00.01).
+   Nunca saem nus: `interpretar_rpd()` anexa a classificação.
+4. **CLI real**: `--help` completo, `--perfil=`, `--modo=`, `perfis`,
+   códigos de saída corretos (0 sucesso / 2 uso incorreto, verificados).
+   `main(argv=None)` — chamador programático passa a lista, em vez de
+   herdar o `sys.argv` de quem o hospeda.
+5. **Validação pública no CI**: job `validacao-publica` baixa o Eigenvector
+   Corn e falha se o RMSEP sair da faixa publicada. **RMSEP = 0,144 %m/m**
+   (proteína, m5), literatura 0,1–0,2.
+
+**Dois bugs achados por testar o que nunca era testado:**
+- **Instalação limpa**: os YAMLs de perfil **não iam para a wheel** —
+  `guaraci perfis` listava zero num ambiente instalado por pip. Corrigido
+  com `[tool.setuptools.package-data]` e travado por teste.
+- **`main()` sob pytest**: com "comando desconhecido" virando erro de uso,
+  `main()` herdava as flags do pytest e saía com código 2. Corrigido pela
+  assinatura, não por remendo no teste.
+
+**Identificadores reais**: 3 de 8 correspondiam a amostras do acervo;
+substituídos por sintéticos de ano 2099. **Os 3 estão em commits já
+publicados** (`2927b70`, `338c45f`, `e6384db`) — registrado, estratégia
+proposta, **nada reescrito**.
+
+**Pendente e dependente de você:** `ACKNOWLEDGMENTS` para quem operou o
+instrumento (3 rótulos, ≥2 pessoas, nenhuma o autor — medido nos
+metadados), e sanitizar o `AUDIT TRAIL` antes de qualquer publicação dos
+brutos: um dos rótulos é um apelido depreciativo aplicado a pessoa
+identificável, em 828 arquivos.
+
+**Não obtidos:** dataset de mel e Mendeley `10.17632/ctgg7k4m5g.2` (403/404
+na API; landing page é SPA). Licença do Mendeley confirmada CC BY 4.0.
+**Não substituídos por proxy** — ver `VALIDACAO_PUBLICA.md` §2.
+
+
+**Fechamento da rodada (segunda parte, mesmo dia).** Executado o que não
+dependia de decisão do autor:
+- **README (EN/PT) e MANUAL §4b** documentam perfis, modo cego e o que o
+  software nunca grava. Título passou de *"for Amazonian Matrices"* para
+  *"for Complex Matrices"* em README/CITATION — o título afirmava uma matriz
+  específica, contradizendo a posição multimatriz. **Reversível com um
+  `sed`** se você preferir manter a identidade de origem.
+- **`scripts/sanitizar_dx.py`**: remove `AUDIT TRAIL`, modelo/serial de
+  detector e espectrômetro de arquivos JCAMP, **em cópias** — recusa
+  sobrescrever os originais. `--anonimizar-titulo` preserva o agrupamento de
+  réplicas. Testado contra 45 `.dx` reais: operador, local e Instrument ID
+  removidos, ganho/resolução/scans preservados, espectro intacto (8192
+  pontos). 8 testes.
+- **`ACKNOWLEDGMENTS.md`** com estrutura e política, **sem nomes** — nomear
+  terceiro publicamente exige autorização dele.
+- **Paper JOSS** reposicionado: perfis de matriz, modo cego como default,
+  validação pública (Corn RMSEP 0,144), provenance-safe parsing. Removida a
+  menção a grupo de pesquisa nos acknowledgements.
+
+**RETRATAÇÃO (a segunda desta rodada).** Reportei "14 ciclos de import" como
+dívida. **Errado**: a contagem somava imports dentro de funções e sob
+`TYPE_CHECKING` — que existem justamente para quebrar ciclo. Entre imports de
+**nível de módulo** há **zero**, e os 31 módulos importam sozinhos num
+interpretador limpo (`tests/test_import_ciclos.py`, 32 testes). O scorecard
+foi corrigido.
+
+**Um alarme bom demais também é defeito.** A primeira versão do `--conferir`
+do sanitizador casava qualquer `##$Detector*` e disparava em **100 % dos
+arquivos reais**, por causa de `##$Detector Gain=1` — que é parâmetro da
+medida, não identificação. Um alarme que dispara sempre ensina quem o lê a
+ignorá-lo. Regex tornado preciso, com teste travando a distinção.
 
 ---
 

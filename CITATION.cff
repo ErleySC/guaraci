@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
+title: "GUARACI — Chemometric Intelligence for Complex Matrices"
 abstract: >
   GUARACI is an open, reproducible multi-technique chemometrics platform for
   classification, authentication and exploration of complex matrices. It supports
@@ -75,7 +75,7 @@ keywords:
   - Streamlit
 preferred-citation:
   type: software
-  title: "GUARACI — Chemometric Intelligence for Amazonian Matrices"
+  title: "GUARACI — Chemometric Intelligence for Complex Matrices"
   authors:
     - family-names: "Costa"
       given-names: "Erley S. da"

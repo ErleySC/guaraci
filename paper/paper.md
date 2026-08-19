@@ -40,9 +40,12 @@ application and a Streamlit web app — expose the full pipeline without
 requiring the user to write code, while a shared Python package
 (`src/guaraci`) keeps the scientific logic identical across both.
 
-`GUARACI` was originally developed for an undergraduate thesis on the FT-NIR
-authentication of Amazonian vegetable oils, and has since been generalised
-into a matrix- and technique-agnostic platform.
+Matrix-specific knowledge is externalised into **matrix profiles** (YAML):
+spectral range and unit, default preprocessing, expected working range, and
+the vocabulary used in reports. Switching from one matrix to another is a
+configuration change, not a code change, and a matrix with no registered
+profile raises an error before any data is loaded rather than predicting
+under another matrix's assumptions.
 
 # State of the field
 
@@ -68,6 +71,16 @@ packages document group-aware splitting as a default or a guided setting.
 protection, together with the accompanying chemometric diagnostics (VIP,
 Selectivity Ratio, Hotelling T²/Q-residuals, DD-SIMCA sensitivity), the
 default path for a user who does not write code.
+
+A second default follows the same logic. In the surveyed packages, per-class
+quantification calibrates on the analyst's known class labels, because that
+is the natural thing to write in a script. But an end user submitting an
+unknown sample does not know its class — so a figure of merit obtained with
+the true label describes a situation the user will never be in, and silently
+folds classification error out of the reported quantification error.
+`GUARACI` calibrates on the *predicted* class by default; the label-aware
+path exists, is reached only through an explicit `--modo=controle` flag, and
+is marked as such in every artifact it produces.
 
 # Statement of need
 
@@ -109,19 +122,41 @@ quality-control laboratories that need the same rigor with an auditable
 trail. Its input/output layer is deliberately generic (JCAMP-DX and tabular
 formats), so it applies to matrices and analytical techniques beyond the one
 that motivated it, without code changes. The codebase is covered by an
-automated test suite (550+ tests) and continuous integration (linting,
-coverage gate), and each implemented method is checked against a reference
+automated test suite (779 tests) and continuous integration (linting,
+type-checking, coverage gate) across Linux, Windows and macOS on Python
+3.10–3.13. Each implemented method is checked against a reference
 implementation or a closed-form analytical property (documented in
 `docs/VALIDATION.md`), so contributions and future chemometric methods can
-be added without regressing existing behaviour. Beyond internal validation,
-the preprocessing and PLS regression engine has been benchmarked against
-Tecator, a public NIR dataset unrelated to the authors' own data
-[@Thodberg1996], reproducing RMSEP/R² in the range reported in the
-chemometrics literature for this dataset (`docs/BENCHMARK_TECATOR.md`).
+be added without regressing existing behaviour.
+
+Performance claims rest exclusively on **public datasets**. On the
+Eigenvector *Corn* set (80 samples, 700 channels, 1100–2498 nm), `GUARACI`
+predicts protein content with RMSEP = 0.144 %w/w, within the 0.1–0.2 range
+reported in the literature for PLS on this benchmark; this runs as a
+continuous-integration job, so the build fails if the engine stops
+reproducing it. The preprocessing engine has additionally been benchmarked
+against Tecator [@Thodberg1996], reproducing RMSEP/R² in the published range
+(`docs/BENCHMARK_TECATOR.md`). Quantification output never reports a bare
+RMSEP: SEP, RPD and RER accompany it, with RPD carrying its published
+interpretation band, and LOD/LOQ return `N/A` rather than a number when
+physical replicates are insufficient to estimate instrumental noise.
+
+A related design decision concerns data provenance. Spectroscopic file
+formats routinely embed operator name, site and instrument serial numbers in
+their headers — information that is irrelevant to the analysis but travels
+with the file. `GUARACI`'s parser reads only the numeric and label fields it
+needs, never the audit-trail block, and strips sample identifiers from
+exported metadata, replacing them with anonymous replicate-group labels that
+preserve group-aware auditability. A test suite scans every generated
+artifact, including serialised model bytes, and fails if such a field
+leaks.
 
 # Acknowledgements
 
-The author thanks the research group that provided the FT-NIR data and
-infrastructure that motivated this work.
+The author thanks those who provided samples, instrument access and
+spectral acquisition during the development of this software; see
+`ACKNOWLEDGMENTS.md` in the repository. The author also thanks the
+maintainers of the public datasets used for validation, and the maintainers
+of the scientific Python stack on which `GUARACI` is built.
 
 # References

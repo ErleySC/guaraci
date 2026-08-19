@@ -5,8 +5,10 @@
 > instalação, citação e licença, ver `README.md`.
 
 O **GUARACI** é uma plataforma de quimiometria multitécnica para autenticação
-e caracterização de matrizes complexas — óleos amazônicos por FT-NIR e
-qualquer dado espectral ou tabular (Raman, UV-Vis, FTIR, cromatografia).
+e caracterização de matrizes complexas, a partir de qualquer dado espectral
+ou tabular (FT-NIR, NIR, MIR, Raman, UV-Vis, cromatografia). O que é
+específico de cada matriz vive num **perfil** (`guaraci/perfis_matriz/*.yaml`),
+nunca no código-fonte — ver a seção "Perfis de matriz".
 Cobre todo o fluxo científico — análise exploratória, classificação,
 autenticação, quantificação e relatórios de publicação — com validação
 estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
@@ -17,6 +19,7 @@ estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
 2. [Modos de análise e objetivo científico](#2-modos-de-análise-e-objetivo-científico)
 3. [Estrutura de saída dos resultados](#3-estrutura-de-saída-dos-resultados)
 4. [Fontes de dados de entrada](#4-fontes-de-dados-de-entrada)
+4b. [Perfis de matriz e modo cego](#4b-perfis-de-matriz-e-modo-cego)
 5. [Funcionalidades científicas](#5-funcionalidades-científicas)
 6. [Fluxo típico na interface web](#6-fluxo-típico-na-interface-web)
 7. [Mapa dos módulos (para desenvolvedores)](#7-mapa-dos-módulos-para-desenvolvedores)
@@ -92,8 +95,8 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 > versões anteriores gravavam `N1`/`N2`/`N3` cru no nome do diretório).
 
 - **N1 — Classificação (por espécie).**
-  Identifica a qual espécie/classe cada amostra pertence (por exemplo, 13 a
-  14 óleos amazônicos). Método: **PLS-DA** com `GroupKFold` anti-vazamento
+  Identifica a qual classe cada amostra pertence (espécie, variedade, tipo —
+  o nome vem do perfil de matriz). Método: **PLS-DA** com `GroupKFold` anti-vazamento
   de réplicas (as réplicas T1/T2/T3 do mesmo ponto amostral nunca são
   separadas entre treino e validação).
 
@@ -311,6 +314,84 @@ de onda.
 Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
 usuário definir a região de interesse via `imagem_recorte` (recorte
 retangular relativo, `config.yaml`) antes da extração.
+
+---
+
+## 4b Perfis de matriz e modo cego
+
+### 4b.1 Perfil de matriz — trocar de matriz sem tocar em código
+
+Tudo que é propriedade da **matriz**, e não do **método**, vive num arquivo
+de perfil (`src/guaraci/perfis_matriz/*.yaml`):
+
+| Campo | O que define |
+|---|---|
+| `unidade_eixo` | `cm-1` ou `nm` — aparece nos rótulos e no model card |
+| `eixo_min` / `eixo_max` | faixa espectral usada; só se aplica se você não definiu a sua |
+| `preprocessamento_padrao` | preset inicial adequado à matriz |
+| `vocabulario` | como a saída chama as coisas: `classe`, `matriz`, `alvo`, `conforme`, `nao_conforme` |
+| `faixa_trabalho` | faixa do analito coberta pela calibração; usada para marcar extrapolação |
+| `referencia` | de onde vieram esses valores (nunca inventar) |
+
+```bash
+guaraci perfis                 # lista os perfis embutidos
+guaraci --perfil=milho_nir     # ou o caminho de um YAML seu
+```
+
+**Por que o vocabulário importa.** Antes dos perfis, rodar o pipeline sobre
+milho em grão gerava um model card afirmando *"quantificação de adulterante
+em óleo vegetal amazônico"*. Nenhum número estava errado — a frase estava. O
+motor nunca lê esses termos para decidir nada; eles só aparecem em texto, e é
+essa separação que impede o vocabulário de uma matriz de contaminar os
+resultados de outra.
+
+**Matriz sem perfil não roda.** `PerfilDesconhecidoError` é levantado
+**antes de carregar qualquer dado**, com a lista de perfis existentes e a
+instrução de como escrever um novo. Rodar mel com a faixa e o vocabulário de
+óleo produziria números que parecem válidos e afirmações químicas que não são.
+
+**Escrevendo um perfil novo:** copie `generico.yaml`, preencha, e passe o
+caminho. Não precisa entrar no pacote nem fazer fork.
+
+### 4b.2 Modo cego — o padrão, e por quê
+
+Quem envia uma amostra desconhecida para um modelo de quantificação **não
+sabe a classe dela**. Se a calibração souber, o número medido descreve um
+cenário que o usuário final nunca terá em mãos.
+
+| Modo | O que a calibração por classe usa | Quando usar |
+|---|---|---|
+| `cego` (**padrão**) | a classe **predita** pelo classificador | sempre que o número for para fora |
+| `controle` | a classe **verdadeira** | só para isolar erro de quantificação de erro de classificação, no desenvolvimento |
+
+```bash
+guaraci                     # cego
+guaraci --modo=controle     # marcado como tal em toda a saída
+```
+
+No modo cego, um erro do classificador se propaga para a quantificação — e é
+**correto** que se propague: é o que aconteceria em produção. Quando não há
+classificador ajustado, o modo reportado é `controle-forcado`, nunca `cego`:
+um resultado de controle disfarçado de cego seria pior que um resultado de
+controle assumido.
+
+### 4b.3 O que o software nunca grava
+
+O parser JCAMP lê apenas os 9 campos de que precisa. **`##AUDIT TRAIL`
+(operador, local) e `##$Detector model` não são lidos em momento nenhum** —
+não é sorte, é contrato, e há um teste que falha se alguém os adicionar à
+lista "porque pode ser útil".
+
+O `##TITLE` **é** lido (dele saem classe, teor e o agrupamento de réplicas),
+mas não é gravado: `metadados.csv` passa por `sanitizar_metadados()`, que
+remove `title_original`, `arquivo`, `cod`, `data`, `mae_id` e `subpasta`, e
+os substitui por `grupo_replica` (`G000`, `G001`…) — anônimo, e preservando
+exatamente o agrupamento que sustenta a validação *group-aware*.
+
+Para sanitizar os **arquivos de origem** (útil antes de depositar espectros
+num repositório público), use
+`python scripts/sanitizar_dx.py <entrada> <saida>` — ele escreve cópias e
+**nunca** sobrescreve os originais.
 
 ---
 
@@ -626,10 +707,10 @@ re-executada nesta sessão).
   modelagem é agnóstico ao tipo de espectro (o parser JCAMP-DX aceita
   FT-NIR, NIR, MIR e Raman, e a interface oferece presets de
   pré-processamento para MIR), mas **nenhuma rodada com dado real de MIR
-  ou Raman foi validada neste projeto** — o caso de uso âncora e todos os
-  resultados reportados são FT-NIR de óleos amazônicos. Relatos de uso com
-  outras técnicas são bem-vindos, mas trate como não testado até prova em
-  contrário.
+  ou Raman foi validada neste projeto** — os resultados reportados vêm de
+  datasets públicos de NIR (Eigenvector Corn, Tecator; ver
+  `docs/auditoria/VALIDACAO_PUBLICA.md`). Relatos de uso com outras técnicas
+  são bem-vindos, mas trate como não testado até prova em contrário.
 
 - **Carregar um modelo `.joblib` executa código arbitrário.** É uma
   limitação do formato pickle, não do Guaraci — ver `SECURITY.md` na raiz
@@ -666,14 +747,13 @@ re-executada nesta sessão).
 - **Classes com poucas amostras ou espectralmente próximas têm recall mais
   baixo** — reporte sempre a **matriz de confusão completa**, nunca só a
   acurácia agregada, que pode esconder uma classe minoritária mal
-  classificada. Duas espécies de palmácea com assinatura NIR muito
-  próxima (Babaçu e Palmiste) são um caso conhecido de limitação
-  **botânica/química**, não de código — ver `README.md`. *(Números
-  específicos de recall por classe e de espectros descartados por faixa
-  incompatível variam por dataset; a última rodada completa contra o
-  dataset real do TCC não foi re-executada nesta sessão de auditoria —
-  conferir o `resumo_modelo.txt`/matriz de confusão da rodada mais
-  recente para os valores atuais.)*
+  classificada. Classes quimicamente muito próximas — por exemplo, duas
+  espécies da mesma família botânica, ou duas variedades do mesmo grão —
+  podem se sobrepor no espectro: é limitação **química** da técnica, não do
+  código, e nenhum pré-processamento a remove. *(Recall por classe e número
+  de espectros descartados por faixa incompatível variam por dataset;
+  confira o `resumo_modelo.txt` e a matriz de confusão da sua própria
+  rodada.)*
 
 ---
 

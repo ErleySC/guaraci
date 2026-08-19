@@ -1036,14 +1036,17 @@ v12 — 2026-05-28 — M1: pure(*)/adulterated(o) markers in score plots;
                    M2: sens/spec in DD-SIMCA acceptance plot titles
 v13 — 2026-05-28 — M3: chemical annotation of VIP bands; M4: accuracy per
                    class in resumo_modelo.txt
-v14 — 2026-05-28 — FINDING: MSC->SG+MC = 0.923 bal.acc on full dataset
-                   (1807) vs autoscaling 0.472 (AUTO advantage was
+v14 — 2026-05-28 — FINDING: MSC->SG+MC foi o melhor preset no dataset
+             entao em uso (metrica retirada em 2026-08-18: derivada de
+             dataset institucional, fora do escopo publico do software)
+                   vs autoscaling (metrica retirada em 2026-08-18 --
+                   dataset institucional fora do escopo publico) (AUTO advantage was
                    artifact of 80% subset). Changes:
                    (1) preset "msc_sg_mc" in construir_preprocessador;
                    (2) preprocessamento_padrao default = "msc_sg_mc";
                    (3) frac_holdout default = 0.20;
                    (4) gerar_nome_saida case "msc_sg_mc" -> "MSC-SGd-MC";
-                   (5) M1: stars -> circle with black edge (avoids cluttering 1807pts);
+                   (5) M1: stars -> circle with black edge (avoids cluttering dense plots);
                    (6) DD-SIMCA reverts to training on ALL samples (3 pure/class
                        makes one-class infeasible; requires >=15 pure/class)
 v15 — 2026-05-28 — (1) holdout_preserva_puros=True: pure samples always in training
