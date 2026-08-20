@@ -1267,7 +1267,7 @@ def test_dominio_aplicabilidade_nao_rejeita_treino_no_regime_n_menor_que_p(pq):
     propagada para o dominio de aplicabilidade, o caminho que roda em
     producao em predicao.py (colunas AD_*).
 
-    Medido antes da correcao (medir_ad_vies_insample.py):
+    Medido antes da correcao (scripts/medicoes/medir_ad_vies_insample.py):
     aceitacao de 0.14 a 0.57 conforme n/p, contra 0.95 nominal.
     """
     import numpy as np

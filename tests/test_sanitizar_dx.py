@@ -214,12 +214,35 @@ def test_furo_continuacao_sem_parentese_nao_vaza():
 
 
 def test_furo_comments_nao_vaza():
-    """`##COMMENTS` e' prosa livre e nao estava em PREFIXOS_REMOVIDOS nem em
-    _RE_SUSPEITO -- vazava sem alarme."""
-    texto = _dx_furo(f"##COMMENTS=amostra lida por {SENT_OP} no {SENT_LOCAL}\n")
-    limpo = sanitizar_dx.sanitizar_texto(texto)
-    assert SENT_OP not in limpo
-    assert SENT_LOCAL not in limpo
+    """Rotulo de prosa livre com valor MULTILINHA.
+
+    A variante de uma linha era a facil, e era a unica que este teste
+    exercitava. A multilinha seguia vazando: o rastreio de continuacao so'
+    ligava para `##AUDIT TRAIL`, entao o cabecalho saia e a linha seguinte
+    -- com operador e local -- ficava. Escrevi o teste que passa, nao o que
+    prova. Achado na verificacao independente de 2026-08-20.
+    """
+    for corpo in (
+        f"##COMMENTS=amostra lida por {SENT_OP} no {SENT_LOCAL}\n",
+        f"##COMMENTS=descricao\nLida por {SENT_OP} no {SENT_LOCAL}\n",
+        f"##SAMPLE DESCRIPTION=lote 3\nColetado por {SENT_OP} em {SENT_LOCAL}\n",
+        f"##SOURCE REFERENCE=ref\n{SENT_OP} / {SENT_LOCAL}\n",
+    ):
+        limpo = sanitizar_dx.sanitizar_texto(_dx_furo(corpo))
+        assert SENT_OP not in limpo, corpo
+        assert SENT_LOCAL not in limpo, corpo
+        assert "##XYDATA" in limpo, f"dados perdidos: {corpo}"
+
+
+def test_furo_prefixo_cifrao_nao_vaza():
+    """`##$OWNER` escapava porque `"##$OWNER".startswith("##OWNER")` e'
+    False. A lista ja' trazia `##$OPERATOR` e `##$PATH` escritos a mao --
+    prova de que a variante existe e de que enumerar por rotulo nao escala.
+    """
+    for rotulo in ("##$OWNER", "##$ORIGIN", "##$SOURCE REFERENCE"):
+        limpo = sanitizar_dx.sanitizar_texto(
+            _dx_furo(f"{rotulo}={SENT_LOCAL}\n"))
+        assert SENT_LOCAL not in limpo, rotulo
 
 
 def test_furo_detector_model_sem_espaco_nao_vaza():
@@ -254,3 +277,55 @@ def test_conferir_nao_lista_parametro_de_aquisicao(tmp_path):
     problemas, inspecionar = sanitizar_dx.conferir(saida)
     assert problemas == 0
     assert inspecionar == [], f"falso positivo: {inspecionar}"
+
+def test_anonimizar_limpa_caminho_e_nome_de_arquivo(tmp_path):
+    """O CONTEUDO era anonimizado e o CAMINHO nao: a saida reproduzia
+    `<identificador_real>/<arquivo>.dx`. E um `.dx` sem `##TITLE` parseavel
+    mantinha o nome ORIGINAL, que e' identificador tanto quanto o TITLE.
+    `conferir()` nao via nenhum dos dois, porque so' lia conteudo.
+    """
+    corpo = ("##XUNITS=1/CM\n##FIRSTX=100\n##LASTX=102\n##NPOINTS=3\n"
+             "##XFACTOR=1\n##YFACTOR=1\n##XYDATA=(X++(Y..Y))\n100 A1 A2\n##END=\n")
+    ident_pasta = _id_sintetico("CAP", "04", "11")
+    ent = tmp_path / "in" / ident_pasta
+    ent.mkdir(parents=True)
+    (ent / "a.dx").write_text(
+        f"##TITLE={ident_pasta}-T1\n##JCAMP-DX=4.24\n" + corpo,
+        encoding="latin-1")
+    sem_titulo = _id_sintetico("AND", "10", "06") + "-T2.dx"
+    (ent / sem_titulo).write_text("##JCAMP-DX=4.24\n" + corpo,
+                                  encoding="latin-1")
+
+    saida = tmp_path / "out"
+    sanitizar_dx.sanitizar_pasta(tmp_path / "in", saida, anonimizar_titulo=True)
+
+    caminhos = [p.relative_to(saida).as_posix()
+                for p in saida.rglob("*.dx")]
+    assert caminhos, "nada foi escrito"
+    for rel in caminhos:
+        assert not sanitizar_dx._RE_ID_AMOSTRA.search(rel), rel
+    assert not any(p.name == sem_titulo for p in saida.rglob("*.dx")), (
+        "arquivo sem TITLE parseavel manteve o nome original")
+
+    problemas, inspecionar = sanitizar_dx.conferir(saida)
+    assert problemas == 0
+    assert inspecionar == [], inspecionar
+
+
+def test_conferir_lista_identificador_no_caminho(tmp_path):
+    """Contra-prova do teste acima: se um identificador ESTIVER no caminho,
+    `conferir()` tem de acusar -- senao o teste anterior passa por vacuidade.
+    """
+    saida = tmp_path / "out" / _id_sintetico("CAP", "04", "11")
+    saida.mkdir(parents=True)
+    (saida / "x.dx").write_text(_dx_furo(""), encoding="latin-1")
+    _problemas, inspecionar = sanitizar_dx.conferir(tmp_path / "out")
+    assert any("identificador de amostra" in linha for linha in inspecionar), (
+        f"caminho com identificador nao foi listado: {inspecionar}")
+
+
+def _id_sintetico(cod: str, dia: str, mes: str) -> str:
+    """Monta o identificador em runtime: escreve-lo literal aqui violaria
+    `tests/test_sem_identificador_real.py`. Ano sentinela: `_RE_ID_AMOSTRA`
+    nao isenta 2099, entao a contra-prova continua valendo."""
+    return f"{cod}-{dia}-{mes}-2099"

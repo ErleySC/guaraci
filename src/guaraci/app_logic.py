@@ -133,7 +133,7 @@ def progresso_do_log(txt: str,
     da etapa e o fim — sem eles, o progresso ficava CRAVADO em 6/7≈85,7%
     durante toda essa fase. Medido reproduzindo o mecanismo exato do painel
     (thread em background + `contextlib.redirect_stdout`, ver
-    `medir_bug_progresso_cli.py`) num run sintético pequeno:
+    `scripts/medicoes/medir_bug_progresso_cli.py`) num run sintético pequeno:
     96,1% das amostras de progresso ficaram cravadas em 0,857, mesmo com
     figuras sendo salvas visivelmente no log. Com a correção, essa mesma
     fração cai para 31,1% (e o que resta é o platô legítimo perto do fim

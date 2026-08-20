@@ -79,6 +79,15 @@ _RE_SUSPEITO = re.compile(
     r"##\$PATH|##\$FILENAME|Instrument ID|Detector ID",
     re.IGNORECASE)
 
+#: Formato de identificador de amostra do acervo de origem
+#: (`COD-DD-MM-AAAA`). Usado SO' por `conferir()`, sobre nomes de arquivo e
+#: de pasta -- nao para remover, e sim para LISTAR o que um humano precisa
+#: olhar. Mesmo padrao de `tests/test_sem_identificador_real.py`.
+_RE_ID_AMOSTRA = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z]{2,5}[-_]\d{2}-\d{2}-(?:19|20)\d{2}(?!\d)",
+    re.IGNORECASE,
+)
+
 _RE_TITULO = re.compile(r"^\s*##TITLE\s*=\s*(?P<valor>.*)$", re.IGNORECASE)
 #: Sufixo de replica no fim do TITLE (T1/T2/T3 ou T_1), preservado na
 #: anonimizacao: sem ele, `mae_id` nao consegue reagrupar as replicas e a
@@ -103,19 +112,39 @@ def _normalizar_rotulo(linha: str) -> str:
 
 #: Prefixos em forma normalizada, derivados de PREFIXOS_REMOVIDOS -- para nao
 #: existirem duas listas que possam divergir.
-_PREFIXOS_NORM = tuple(
-    _RE_NAO_SIGNIFICATIVO.sub("", p).upper() for p in PREFIXOS_REMOVIDOS
-)
+#:
+#: Cada entrada gera as DUAS formas, `##X` e `##$X`. O prefixo `##$` marca
+#: rotulo especifico do fabricante e aparece no dado real: `##$OWNER=`
+#: escapava porque `"##$OWNER".startswith("##OWNER")` e' False. A lista ja'
+#: trazia `##$OPERATOR` e `##$PATH` escritos a mao -- prova de que a variante
+#: existe e de que enumera-la manualmente por rotulo nao escala. Achado na
+#: verificacao independente de 2026-08-20.
+def _formas_normalizadas(prefixo: str) -> tuple[str, str]:
+    base = _RE_NAO_SIGNIFICATIVO.sub("", prefixo).upper()
+    sem = base.replace("$", "", 1) if base.startswith("##$") else base
+    com = sem.replace("##", "##$", 1)
+    return sem, com
+
+
+_PREFIXOS_NORM = tuple(sorted({
+    forma for p in PREFIXOS_REMOVIDOS for forma in _formas_normalizadas(p)
+}))
 
 #: Uma linha de continuacao do AUDIT TRAIL comeca com '(' na forma canonica.
 #: Assumir que SEMPRE comeca era o furo mais grave: se nao comecasse, o
 #: cabecalho `##AUDIT TRAIL` saia, a linha com operador e local FICAVA, e o
 #: --conferir reportava limpo porque o padrao que ele procurava tinha saido
 #: junto. Agora a continuacao e' tudo que nao abre um rotulo novo (`##`).
+#:
+#: E vale para TODO rotulo removido, nao so' o AUDIT TRAIL. A versao anterior
+#: ligava o rastreio apenas para `##AUDITTRAIL`, entao `##COMMENTS` e
+#: `##SAMPLE DESCRIPTION` multilinha perdiam o cabecalho e mantinham a linha
+#: seguinte -- com operador e local -- exatamente o bug que esta funcao
+#: declarava corrigido, cometido para outros rotulos.
 def _e_continuacao_de_audit(linha: str) -> bool:
-    """Continuacao do bloco AUDIT TRAIL: qualquer linha que nao inicie um
-    rotulo JCAMP novo. Inclui a forma canonica `( 1, <data>, <operador>, ...)`
-    e as variantes sem parentese."""
+    """Continuacao de um rotulo de valor longo: qualquer linha que nao inicie
+    um rotulo JCAMP novo. Inclui a forma canonica do AUDIT TRAIL
+    `( 1, <data>, <operador>, ...)` e as variantes sem parentese."""
     s = linha.lstrip()
     if not s:
         return False
@@ -138,7 +167,9 @@ def sanitizar_texto(texto: str, novo_titulo: str | None = None) -> str:
     for linha in texto.splitlines():
         rotulo = _normalizar_rotulo(linha)
         if any(rotulo.startswith(p) for p in _PREFIXOS_NORM):
-            dentro_de_audit = rotulo.startswith("##AUDITTRAIL")
+            # Todo rotulo removido pode ter valor multilinha, nao so' o
+            # AUDIT TRAIL -- ver `_e_continuacao_de_audit`.
+            dentro_de_audit = True
             continue
         if dentro_de_audit:
             if _e_continuacao_de_audit(linha):
@@ -163,8 +194,22 @@ def _ler_titulo(texto: str) -> str | None:
     return None
 
 
+def _pasta_anonima(nome: str, mapa: dict[str, str]) -> str:
+    """Nome de pasta anonimo e ESTAVEL para a mesma pasta de origem.
+
+    A arvore do acervo e' organizada por classe, e o nome da pasta costuma
+    repetir o identificador ou a especie. Preservar a estrutura importa (o
+    agrupamento por pasta e' informacao metodologica); preservar o NOME, nao.
+    """
+    if nome not in mapa:
+        mapa[nome] = f"GRUPO_{len(mapa) + 1:03d}"
+    return mapa[nome]
+
+
 def sanitizar_pasta(entrada: Path, saida: Path, *,
                     anonimizar_titulo: bool = False) -> dict:
+    pastas: dict[str, str] = {}
+    sem_titulo = 0
     if not entrada.is_dir():
         raise SystemExit(f"Erro: '{entrada}' nao e' um diretorio.")
     entrada = entrada.resolve()
@@ -200,9 +245,21 @@ def sanitizar_pasta(entrada: Path, saida: Path, *,
                     novo = f"AMOSTRA_{grupos[chave]:04d}_T{rep}"
                     mapa[titulo] = novo
 
-        destino = saida / arq.relative_to(entrada)
-        if anonimizar_titulo and novo:
-            destino = destino.with_name(novo + ".dx")
+        relativo = arq.relative_to(entrada)
+        if anonimizar_titulo:
+            # O CONTEUDO era anonimizado e o CAMINHO nao: a arvore de saida
+            # reproduzia `<identificador_real>/<arquivo>.dx`, e `conferir()`
+            # so' lia conteudo, entao nada acusava. Achado na verificacao
+            # independente de 2026-08-20.
+            partes = [_pasta_anonima(p, pastas) for p in relativo.parts[:-1]]
+            # Sem TITLE parseavel `novo` fica None -- antes disso mantinha o
+            # nome ORIGINAL, que e' identificador tanto quanto o TITLE.
+            if novo is None:
+                sem_titulo += 1
+                novo = f"AMOSTRA_SEM_TITULO_{sem_titulo:04d}"
+            destino = saida.joinpath(*partes, novo + ".dx")
+        else:
+            destino = saida / relativo
         destino.parent.mkdir(parents=True, exist_ok=True)
         destino.write_text(sanitizar_texto(texto, novo),
                            encoding="latin-1")
@@ -261,6 +318,18 @@ def conferir(saida: Path) -> tuple[int, list[str]]:
     problemas = 0
     inspecionar: list[str] = []
     for arq in sorted(saida.rglob("*.dx")):
+        # O CAMINHO tambem e' metadado. `--anonimizar-titulo` limpava o
+        # conteudo e deixava `<identificador_real>/<arquivo>.dx` de pe',
+        # porque esta funcao so' lia o conteudo.
+        rel = arq.relative_to(saida).as_posix()
+        achados_caminho = sorted({m.group(0) for m in _RE_SUSPEITO.finditer(rel)})
+        if achados_caminho:
+            problemas += 1
+            print(f"  [SUSPEITO NO CAMINHO] {rel}: {achados_caminho}")
+        for m in _RE_ID_AMOSTRA.finditer(rel):
+            inspecionar.append(
+                f"{rel}: nome/caminho parece identificador de amostra "
+                f"({m.group(0)})")
         texto = arq.read_text(encoding="latin-1", errors="replace")
         achados = sorted({m.group(0) for m in _RE_SUSPEITO.finditer(texto)})
         if achados:
@@ -321,7 +390,9 @@ def main(argv=None) -> int:
             print(f"FALHOU: {problemas} arquivo(s) ainda contem campo "
                   f"sensivel conhecido. NAO publique.", file=sys.stderr)
             return 1
-        print("  Nenhum campo de proveniencia CONHECIDO sobreviveu.")
+        print("  Os padroes conhecidos de proveniencia nao aparecem na "
+              "saida. Isso nao e' um atestado de limpeza: cobre o que este "
+              "script conhece, e nada mais.")
         if inspecionar:
             print(f"\n  {len(inspecionar)} linha(s) fora da lista de rotulos "
                   f"esperados. Isto NAO e' um veredito: e' material para voce")

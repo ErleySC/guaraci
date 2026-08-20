@@ -103,7 +103,7 @@ def _mask_melhor_intervalo(X_train: np.ndarray, Y_train: np.ndarray,
     porque "a particao em intervalos NAO usa rotulo": verdade, e irrelevante
     -- a ESCOLHA DO MELHOR intervalo usa. Vies medido: **+0,070 pontos de
     balanced accuracy, positivo em 12/12 seeds** (
-    medir_selecao_variaveis.py, funcao b1_1), contra um limiar de desempate
+    scripts/medicoes/medir_selecao_variaveis.py, funcao b1_1), contra um limiar de desempate
     de 1% usado por `etapa4_selecao_variaveis` para eleger o metodo mais
     parcimonioso -- ou seja, o vies era 7x maior que o criterio de decisao,
     e favorecia sistematicamente o iPLS numa tabela onde todos os OUTROS
@@ -355,7 +355,7 @@ def sparse_plsda_mask(X_proc, Y_bin, n_comp: int,
     "soft-selection" -- divergencia da referencia citada E contradicao
     interna, a mesma classe do achado A5 da auditoria de 2026-08-07.
     Divergencia medida entre as duas variantes (
-    medir_selecao_variaveis.py, funcao b1_2): Jaccard=1,000 com 1
+    scripts/medicoes/medir_selecao_variaveis.py, funcao b1_2): Jaccard=1,000 com 1
     componente (identicas por construcao) caindo a ~0,87 com 5.
 
     Referencia:

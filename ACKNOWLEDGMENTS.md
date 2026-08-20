@@ -55,13 +55,15 @@ métrica de desempenho do GUARACI é sustentada por eles**: a validação
 publicada vem exclusivamente de datasets públicos — ver
 [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md).
 
-> **Verificado em 2026-08-20.** Uma versão anterior desta seção afirmava
-> que esses dados não produziam métrica em nenhum artefato público, e a
-> medição contradizia: relatórios e scripts de auditoria versionados
-> registravam contagens do acervo. Esses documentos saíram do repositório;
-> as contagens que restavam em `docs/CHANGELOG.md` e no código foram
-> substituídas por descrição genérica. A afirmação acima foi remedida
-> depois disso, no escopo em que está escrita.
+> **Como isso é verificado.** Não há aqui nenhuma afirmação de que o
+> repositório esteja livre de identificador de amostra — duas vezes uma
+> frase desse tipo foi escrita e depois desmentida por medição. O que vale
+> é o que roda: [`tests/test_sem_identificador_real.py`](tests/test_sem_identificador_real.py)
+> reprova o build se o padrão de identificador aparecer em arquivo
+> versionado — no texto, no nome do arquivo, ou no valor que os testes
+> produzem em tempo de execução. Se ele passar, é isso que se sabe; se
+> alguém precisar de mais garantia, o caminho é acrescentar checagem ao
+> teste, não acrescentar adjetivo a este parágrafo.
 
 > **Antes de publicar qualquer espectro bruto**, sanitize o cabeçalho: os
 > arquivos JCAMP-DX gravam operador e local em `##AUDIT TRAIL`, e essa

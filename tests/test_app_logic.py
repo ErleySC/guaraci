@@ -59,7 +59,7 @@ def test_progresso_ignora_marcador_malformado():
 # parte do tempo real de execução, mas só tinha 2 marcadores de texto
 # opcionais entre início e fim -- sem eles, a fração ficava CRAVADA em
 # 6/7=0.857 durante toda essa fase (medido: 96,1% das amostras de progresso
-# num run real, ver medir_bug_progresso_cli.py). Estes testes
+# num run real, ver scripts/medicoes/medir_bug_progresso_cli.py). Estes testes
 # travam a correção: com `total_figuras_planejadas`, a fração AVANÇA
 # conforme cada figura é salva.
 

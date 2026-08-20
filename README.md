@@ -71,7 +71,7 @@ external hold-out. That is what separates an honest metric from an artifact.
 
 ## Features
 
-- **Analysis modes:** species classification (14 classes) · pure vs. adulterated discrimination · adulterant-content quantification (regression).
+- **Analysis modes:** class discrimination · pure vs. adulterated discrimination · adulterant-content quantification (regression).
 - **Preprocessing** (Rinnan et al. 2009 order): MSC/SNV → Savitzky-Golay → mean-centering. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
 - **Models:** PLS-DA, PLS regression, PCA, HCA (Ward), DD-SIMCA (one-class), OPLS-DA.
 - **Validation battery:** permutation test, Wold R²Y/Q²Y intercepts, CV-ANOVA, **BCa bootstrap CIs**, Hotelling T², Q-residuals.

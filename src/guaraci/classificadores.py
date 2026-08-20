@@ -377,7 +377,7 @@ class DDSimca:
         DIFERENTES. Medido no regime real do projeto (p=8192, nc=3-4
         puros/classe): o Q in-sample e' **10 a 15x menor** que o LOO --
         em eixo log, mais de uma decada de folga visual inventada.
-        Ver medir_ddsimca_loo_vs_insample.py.
+        Ver scripts/medicoes/medir_ddsimca_loo_vs_insample.py.
 
         Impacto na DECISAO: nenhum no regime de producao -- a fracao de
         pontos de treino que muda de lado da fronteira foi medida em 0,0%

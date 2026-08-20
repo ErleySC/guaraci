@@ -224,7 +224,8 @@ def test_limites_log_ddsimca_dados_bem_comportados_nao_alarga_demais():
 def test_ylim_permutacao_nunca_corta_ponto():
     """REGRESSAO (bug LATENTE): o piso do eixo Y era fixo em -0.5/-0.6.
     Q2Y de rotulos permutados fica mais negativo quanto MAIS componentes o
-    modelo usa. Medido com 13 classes: 23 LVs -> minimo -0.465 (cabe), mas
+    modelo usa. Medido num problema multiclasse tipico: 23 LVs -> minimo
+    -0.465 (cabe), mas
     40 LVs (o max_lvs em uso) -> 80% dos pontos abaixo de -0.6, sumindo do
     grafico enquanto a reta de regressao seguia calculada sobre eles."""
     from guaraci.figuras import _ylim_permutacao

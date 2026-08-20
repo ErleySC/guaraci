@@ -70,7 +70,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — DD-SIMCA: Q de treino sai da
              treino reconstroi a si mesma de forma otimista, porque ajudou
              a definir a PCA que depois a reconstroi. A figura de aceitacao
              plotava entao os pontos numa escala e a fronteira noutra.
-             Medido (medir_ddsimca_loo_vs_insample.py,
+             Medido (scripts/medicoes/medir_ddsimca_loo_vs_insample.py,
              p=8192, 40 seeds/celula): Q in-sample e' **10 a 15x menor** que
              o LOO no regime real (nc=3-4 puros/classe) -- em eixo log,
              mais de uma decada de folga visual inventada.
@@ -99,7 +99,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: unificacao de mae_id da
              ao menos ambas comecando em T1); a complementaridade exata e'
              assinatura de UMA amostra com leituras separadas. Unificado
              via `_ALIAS_MAE_ID`.
-             RESSALVA REGISTRADA NO CODIGO: as duas datas estao 4 MESES
+             RESSALVA REGISTRADA NO CODIGO: as duas datas estao muito
              apartadas, o que e' incomum para replicas tecnicas e enfraquece
              a hipotese. A unificacao foi aplicada mesmo assim porque e' a
              escolha CONSERVADORA nas duas hipoteses: se e' a mesma amostra,
@@ -181,7 +181,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Etapa 4: iPLS entra no nested-CV
              rotulo" -- verdade, e irrelevante: a ESCOLHA do melhor
              intervalo usa. Medido: **+0,070 pontos de balanced accuracy,
              positivo em 12/12 seeds** (
-             medir_selecao_variaveis.py). O agravante era a tabela: os
+             scripts/medicoes/medir_selecao_variaveis.py). O agravante era a tabela: os
              outros 6 metodos ja passavam por nested-CV, e
              `etapa4_selecao_variaveis` elege automaticamente o metodo
              "mais parcimonioso dentro de 1% do maximo" -- o vies era 7x
@@ -245,7 +245,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — RETRATACAO de achado de auditoria
              incluindo o regime do dataset de desenvolvimento, com BA
              variando de 0,86 a 1,00 entre celulas -- confirmando que o 0%
              nao e' artefato de problema facil demais. Script:
-             medir_monte_carlo_descarte.py. O guard e'
+             scripts/medicoes/medir_monte_carlo_descarte.py. O guard e'
              defensivo, nao fonte de vies. Registrado como exemplo de que
              reverificar a propria auditoria e' obrigatorio (mesma licao
              da retratacao do q_residuos_limite no P11).
@@ -270,16 +270,14 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: amostras adulteradas
              adulteradas estavam contaminando o conjunto "puros" usado
              para treinar o DD-SIMCA one-class das classes afetadas.
              CORRIGIDO com `_CORRECOES_TITLE_CONHECIDAS`: tabela explicita
-             (nao regex generico, de proposito) reconhecendo os 6 TITLEs
+             (nao regex generico, de proposito) reconhecendo os TITLEs
              malformados por correspondencia EXATA, cada um verificado
-             lendo o proprio ##TITLE= (nao adivinhado) -- inclui as 3
-             replicas da Andiroba (mesmo mae_id, virgula extra "7,15,%"),
-             Castanha do Para (digito de triplicata ausente no TITLE, mas
-             presente no nome do arquivo), Maracuja ("T33" -> T3) e
-             Pracaxi (sem marcador de replica em lugar nenhum; teor/
-             adulterante recuperados, triplicata=1 documentado como
-             placeholder). O 7o arquivo (sem metadado recuperavel) NAO foi
-             corrigido de proposito -- convencao de nome totalmente
+             lendo o proprio ##TITLE= (nao adivinhado). Os erros eram de
+             digitacao no campo -- virgula extra no teor, digito de
+             replicata ausente ou duplicado, marcador de replica faltando.
+             A tabela vive fora da arvore versionada: especie, teor e
+             defeito de cada arquivo sao metadado de amostra. Um deles
+             NAO foi corrigido de proposito -- convencao de nome
              diferente, zero informacao recuperavel do TITLE; permanece
              marcado como pendencia de verificacao manual contra o
              caderno de coleta.

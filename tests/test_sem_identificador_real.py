@@ -5,7 +5,8 @@ POR QUE ESTE TESTE EXISTE. Duas varreduras manuais anteriores tentaram
 limpar identificadores de amostra do repositorio publico julgando **codigo
 a codigo**: para cada string encontrada, decidiam se aquela amostra existia
 ou nao no acervo. As duas falharam pelo mesmo motivo -- o julgamento so'
-alcanca os codigos que quem varre ja' conhece, e ninguem conhece os 652.
+alcanca os codigos que quem varre ja' conhece, e ninguem conhece o
+acervo inteiro.
 
 A varredura de 2026-08-17 converteu 2 codigos e deixou 15 linhas passarem,
 incluindo um identificador **real** no texto de ajuda do CLI, entregue ao
@@ -41,8 +42,16 @@ _RAIZ = Path(__file__).resolve().parents[1]
 #: de replicata (`AND-10-06-2099_T1.dx`), e `_` e' caractere de palavra --
 #: entre `0` e `_` nao ha fronteira, entao `\b` perdia justamente o caso
 #: real que motivou este teste. Guardas explicitas no lugar.
+#:
+#: IGNORECASE: sem ele o padrao cobria so' a metade MAIUSCULA do que a
+#: docstring diz proibir. Um titulo em caixa baixa passava livre -- e o
+#: proprio repositorio usa fixtures assim (`and_T1.dx`), enquanto
+#: `dados_io.py` chama `.upper()` justamente porque a caixa varia no
+#: dado real. Em NTFS, que ignora caixa, renomear para minuscula nem
+#: seria visivel. Achado na verificacao independente de 2026-08-20.
 _PADRAO = re.compile(
-    r"(?<![A-Za-z0-9])[A-Z]{2,5}[-_]\d{2}-\d{2}-(?:19|20)\d{2}(?!\d)"
+    r"(?<![A-Za-z0-9])[A-Za-z]{2,5}[-_]\d{2}-\d{2}-(?:19|20)\d{2}(?!\d)",
+    re.IGNORECASE,
 )
 
 #: Unica excecao. Ano que nao pode corresponder a leitura nenhuma, entao um
@@ -132,6 +141,19 @@ def test_padrao_reconhece_o_formato_que_pretende_barrar() -> None:
     assert _PADRAO.search(f"{_id('CAP', '04', '11', '2020')}-A1.03")
     assert _PADRAO.search(f"titulo {_id('BCB', '03', '03', '2020')}_AD-S-20_T1")
     assert _PADRAO.search(f"{_id('AND', '01', '01', '2022')}-S5.00")
+
+
+def test_padrao_cobre_qualquer_caixa() -> None:
+    """O guarda era case-sensitive e cobria so' a metade maiuscula do padrao
+    que a docstring declara proibir. Estas quatro variacoes passavam livres,
+    e o repositorio usa fixtures em caixa baixa."""
+    for variacao in (
+        f"dados/{_id('and', '04', '11', '2020', '_')}_T1.dx",
+        f"{_id('cap', '04', '11', '2020')}-A1.03",
+        _id("Cap", "04", "11", "2020"),
+        f"{_id('go', '04', '11', '2020', '_')}_T1",
+    ):
+        assert _PADRAO.search(variacao), variacao
 
 
 def test_padrao_cobre_o_separador_que_o_parser_aceita() -> None:

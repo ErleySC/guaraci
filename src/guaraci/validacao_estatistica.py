@@ -174,7 +174,7 @@ def _gerar_permutacoes_rotulo(y_int: np.ndarray, groups: Optional[np.ndarray],
     essa coerencia: gera conjuntos que nao podem existir sob H0 (um mesmo
     `mae_id` com rotulos diferentes) e por isso mais dificeis de classificar
     que o nulo verdadeiro, o que estreita a distribuicao nula
-    artificialmente. Medido (`medir_permutacao_grupos.py`,
+    artificialmente. Medido (`scripts/medicoes/medir_permutacao_grupos.py`,
     H0 verdadeiro, 12 grupos de 3 replicas, 3 classes): taxa de falso
     positivo de 15,0% com permutacao por amostra vs. 4,2% com permutacao
     por grupo (nominal: 5%).

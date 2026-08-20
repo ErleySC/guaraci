@@ -49,7 +49,7 @@ def calcular_selectivity_ratio(modelo: PLSRegression,
     corr(t_tp, y_hat) caia para ~0.92 com >=2 LVs (deveria ser 1.000 exato)
     e o ranking de variaveis selecionadas divergia (Jaccard@20 ~ 0.39 em
     cenario multi-interferente com 3+ LVs) — ver
-    medir_sr_ranking.py.
+    scripts/medicoes/medir_sr_ranking.py.
 
     Para cada variavel j, decompoe X_j em parte explicada pela projecao
     alvo e residuo:
@@ -230,7 +230,7 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
     (`dominio_aplicabilidade_treino`, `figuras.fig3_outliers`), o erro
     numerico medido (razao limite-F / limite-Beta) e' pequeno para os
     tamanhos de amostra tipicos do projeto (~1.01-1.03x com n~300; sobe a
-    ~2-3x so' com n<20) — ver medir_achados.py. Nao
+    ~2-3x so' com n<20) — ver scripts/medicoes/medir_achados.py. Nao
     corrigido nesta rodada (impacto real medido como baixo); se usada com
     n pequeno como limite de FASE I, considerar o limite Beta exato.
     """
@@ -267,7 +267,7 @@ def q_residuos_loo(X: np.ndarray, n_comp: int) -> np.ndarray:
     CLAUDE.md P1). Promovida a funcao pura em 2026-08-17 ao se descobrir
     que `dominio_aplicabilidade_treino` -- o caminho que roda em producao
     em predicao.py -- tinha o mesmo vies e nao havia recebido a correcao
-    (ver medir_ad_vies_insample.py). DDSimca delega para ca'
+    (ver scripts/medicoes/medir_ad_vies_insample.py). DDSimca delega para ca'
     em vez de manter a segunda copia.
 
     Custo: n ajustes extras de PCA. Aceitavel porque n e' pequeno
@@ -343,7 +343,7 @@ def distancia_combinada(T2: np.ndarray, Q: np.ndarray, h0: float, q0: float,
     para ~1-(1-alpha)^2 -- achado corrigido no DD-SIMCA em 2026-08-08 e no
     dominio de aplicabilidade PCA/PLS (achado A3 da auditoria de
     2026-08-07: medido 11.6% de rejeicao contra 5% nominal em amostras da
-    MESMA distribuicao do treino, ver medir_achados.py).
+    MESMA distribuicao do treino, ver scripts/medicoes/medir_achados.py).
     """
     return ((np.asarray(T2, dtype=float) / max(h0, 1e-12)) * Nh
             + (np.asarray(Q, dtype=float) / max(q0, 1e-12)) * Nq)
@@ -646,7 +646,7 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
     decidia dentro/fora por T2<=T2_limite E Q<=Q_limite independentemente
     (alpha=0.05 em cada eixo) -- a mesma regra retangular corrigida no
     DD-SIMCA em 2026-08-08, com o mesmo efeito: alpha CONJUNTO efetivo
-    inflado. Medido (medir_achados.py, 40 simulacoes,
+    inflado. Medido (scripts/medicoes/medir_achados.py, 40 simulacoes,
     amostras novas da MESMA distribuicao do treino): rejeicao de 11.6%
     contra 5% nominal.
 
@@ -707,7 +707,7 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
     # projeto -- espectros de milhares de canais) a PCA reconstroi o proprio
     # treino quase exatamente, q0/Nq saem otimistas e o dominio passa a
     # rejeitar amostras legitimas. Medido antes da correcao: 0,14 a 0,57 de
-    # aceitacao contra 0,95 nominal (medir_ad_vies_insample.py).
+    # aceitacao contra 0,95 nominal (scripts/medicoes/medir_ad_vies_insample.py).
     # Mesma correcao ja aplicada ao DD-SIMCA em 2026-07-19 (CLAUDE.md P1) --
     # aqui ela faltava, e este e' o caminho que predicao.py usa em producao.
     q_train = q_residuos_loo(X_train, k)

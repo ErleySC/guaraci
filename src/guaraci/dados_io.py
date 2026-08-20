@@ -771,8 +771,8 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
        Misturar e' invalido, entao `carregar_dx` mantem so' a faixa dominante
        e descarta o resto. Num acervo de referencia isso removeu dezenas
        de espectros
-       concentrados em 2 especies -- Graviola e Goiaba perdem N sem que isso
-       fosse visivel antes de rodar.
+       concentrados em poucas classes, que perdem N sem que isso fosse
+       visivel antes de rodar.
     2. **Amostras sem `mae_id`.** Sem grupo, a amostra entra na analise SEM
        protecao contra vazamento de replica -- exatamente o que a validacao
        group-aware existe para impedir.
@@ -850,8 +850,9 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     # no log da carga. Contar sobre o total daria um valor maior e sem
     # correspondencia com a analise (num acervo de referencia: dezenas
     # sobre o total vs poucas
-    # entre os que ficam -- os outros 45 sao Graviola, que tem padrao de titulo
-    # diferente E faixa espectral incompativel, logo ja' saem pelo descarte).
+    # entre os que ficam -- o resto se concentra numa classe cujo padrao de
+    # titulo e faixa espectral sao incompativeis, logo ja' sai pelo
+    # descarte).
     n_sem_mae_id = sum(1 for _c, _v, m in sobreviventes if m is None)
     grupos = {m for _c, _v, m in sobreviventes if m is not None}
     # `carregar_dx` transforma cada orfa num grupo de 1 (`orfao_<arquivo>`),
