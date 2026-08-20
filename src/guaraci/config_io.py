@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import glob
 import os
+from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Tuple
 
 from guaraci.config import Config
@@ -302,7 +303,19 @@ def salvar_config(cfg: Config, caminho: str) -> None:
 
 def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
     """Le config.yaml e devolve uma Config. Mantem os defaults para chaves
-    ausentes; ignora chaves desconhecidas; reune erros numa mensagem clara."""
+    ausentes; reune erros (valor invalido OU chave desconhecida) numa
+    mensagem clara.
+
+    CHAVE DESCONHECIDA E' ERRO, NAO E' IGNORADA EM SILENCIO. Ate
+    2026-08-20 este metodo pulava silenciosamente qualquer chave que nao
+    reconhecesse -- um campo digitado errado, ou de uma versao diferente
+    do software, fazia o pipeline rodar com o DEFAULT daquele campo sem
+    aviso nenhum. Para um pipeline cientifico isso e' pior que um crash:
+    produz resultado plausivel e errado. Achado na verificacao
+    independente do Passo 24c; corrigido aqui reaproveitando o mesmo
+    agregador de erros que ja' existia para valor invalido, em vez de
+    introduzir um mecanismo novo so' de aviso.
+    """
     try:
         import yaml
     except ImportError as _e_yaml:
@@ -320,10 +333,14 @@ def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
         dados = yaml.safe_load(f) or {}
     cfg = base if base is not None else Config()
     spec_por_key = {s["key"]: s for s in _CONFIG_SPEC}
+    chaves_conhecidas = sorted(spec_por_key)
     erros: List[str] = []
     for key, val in dados.items():
         s = spec_por_key.get(key)
         if s is None:
+            sugestao = get_close_matches(key, chaves_conhecidas, n=1)
+            dica = f" -- voce quis dizer '{sugestao[0]}'?" if sugestao else ""
+            erros.append(f"  - '{key}': chave desconhecida{dica}")
             continue
         try:
             setattr(cfg, s["attr"], _coagir_valor(s, val))

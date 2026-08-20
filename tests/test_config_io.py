@@ -189,11 +189,30 @@ def test_carregar_config_inexistente_levanta(tmp_path):
         cio.carregar_config(str(tmp_path / "nao_existe.yaml"))
 
 
-def test_carregar_config_ignora_chave_desconhecida(tmp_path):
+def test_carregar_config_falha_em_chave_desconhecida(tmp_path):
+    """Ate' 2026-08-20 esta chave era ignorada em SILENCIO -- um campo
+    digitado errado fazia o pipeline rodar com o default daquele campo,
+    sem aviso nenhum. Para um pipeline cientifico isso e' pior que crash:
+    produz resultado plausivel e errado. Achado na verificacao
+    independente do Passo 24c.
+
+    Contra-prova de que a correcao muda o comportamento de verdade (nao so'
+    que o novo codigo passa): o nome deste teste ate' 2026-08-20 era
+    `test_carregar_config_ignora_chave_desconhecida` e afirmava o oposto do
+    que ele afirma agora -- rodar essa versao antiga contra o codigo
+    corrigido reprova."""
     caminho = tmp_path / "c.yaml"
     caminho.write_text("chave_inexistente: 123\nnivel: N1\n", encoding="utf-8")
-    cfg = cio.carregar_config(str(caminho))
-    assert cfg.nivel == "N1"
+    with pytest.raises(ValueError, match="chave_inexistente.*chave desconhecida"):
+        cio.carregar_config(str(caminho))
+
+
+def test_carregar_config_sugere_chave_parecida_em_erro_de_digitacao(tmp_path):
+    caminho = tmp_path / "c.yaml"
+    # 'nivel' com 'l' trocado por 'I' maiusculo -- erro de digitacao plausivel
+    caminho.write_text("nivl: N1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"voce quis dizer 'nivel'"):
+        cio.carregar_config(str(caminho))
 
 
 def test_carregar_config_valor_invalido_reune_erro(tmp_path):

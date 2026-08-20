@@ -632,12 +632,12 @@ GUARACI_TIPS: Dict[str, Dict[str, str]] = {
         "EN": "Tag runs like 'paper_v2' or 'thesis_final'. Makes it easy to compare results across runs.",
     },
     "modo_entrada": {
-        "PT": "Para óleos amazônicos com arquivos do espectrômetro: use 'dx'. CSV é para dados tabelados de outras fontes.",
-        "EN": "For Amazonian oils from the spectrometer: use 'dx'. CSV is for tabular data from other sources.",
+        "PT": "Arquivos do espectrômetro: use 'dx'. CSV é para dados tabelados de outras fontes.",
+        "EN": "Spectrometer files: use 'dx'. CSV is for tabular data from other sources.",
     },
     "pre_processamento": {
-        "PT": "Para FT-NIR de óleos vegetais, MSC+SG+MC deu Bal.Acc=0.92 no benchmark. Autoscaling isolado caiu para 0.47.",
-        "EN": "For vegetable oil FT-NIR, MSC+SG+MC achieved Bal.Acc=0.92 in benchmark. Autoscaling alone dropped to 0.47.",
+        "PT": "MSC+SG+MC costuma ser um bom padrão para FT-NIR/NIR. Autoscaling isolado tende a perder desempenho em espectros com espalhamento — compare os dois no Auto-Benchmark.",
+        "EN": "MSC+SG+MC tends to be a strong default for FT-NIR/NIR. Autoscaling alone tends to lose performance on spectra with scattering — compare both in the Auto-Benchmark.",
     },
     "comparar_pre_processamentos": {
         "PT": "Ativa teste de todos os 6 pipelines. Use apenas uma vez para descobrir o melhor — depois fixe e desative.",
