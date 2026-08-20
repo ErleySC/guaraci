@@ -22,9 +22,9 @@ Estado marcado **✅** foi corrigido nesta rodada; a nota reflete o estado
 | 1.5 | Responde corretamente a amostra não adulterada / adulterante fora do treino | **0** | `predicao.py:245` — `argmax` sempre força uma classe |
 | 1.6 | Detecção de fora-de-domínio no caminho padrão | **1** ✅ | colunas `AD_*` em `predicao.py`; **antes** aceitava 0,14–0,57 da própria calibração (`medir_ad_vies_insample.py`) |
 | 1.7 | Arquitetura detectar→identificar→quantificar | **0** | não existe |
-| 1.8 | Ordem de leitura descorrelacionada do teor | **0** | ρ = +0,997 em **47/47** blocos (`medir_ordem_leitura.py`) |
+| 1.8 | Ordem de leitura descorrelacionada do teor | **0** | ρ de Spearman próximo de +1 em **todos** os blocos medidos (`medir_ordem_leitura.py`; valores em doc. local) |
 | 1.9 | Puro e adulterado na mesma sessão (declaração do autor) | **1** | confirmado em 13/14 espécies |
-| 1.10 | Brancos/releituras para estimar deriva | **0** | 4 de 652 `mae_id` lidos em >1 dia |
+| 1.10 | Brancos/releituras para estimar deriva | **0** | quase nenhum `mae_id` lido em mais de um dia (contagem em doc. local) |
 | 1.11 | Split por grupo físico, não por espectro | **1** | `GroupKFold`/`GroupShuffleSplit` por `mae_id` |
 | 1.12 | Sessão única declarada como limite de robustez | **0,5** | limitações documentadas no MANUAL, mas sem esta |
 | 1.13 | CV aninhada em todos os métodos comparados | **1** | `_avaliar_busca_nested_cv`, `selecao_variaveis.py` |
@@ -77,7 +77,7 @@ Estado marcado **✅** foi corrigido nesta rodada; a nota reflete o estado
 | 3.5 | Nenhum dado pessoal versionado | **1** | verificado |
 | 3.6 | Nenhum espectro no repo ou histórico | **1** | `git log --all --diff-filter=A --name-only` |
 | 3.6b | Nenhum **identificador de amostra** em arquivo versionado | **0** | **3 identificadores reais** versionados (ver §2 do relatório) — item que eu tinha dado como completo e **retratei** |
-| 3.7 | Metadados dos brutos sanitizados | **0** | o nome de uma instituição + nome de operador em 100 % dos 3.785 `.dx` |
+| 3.7 | Metadados dos brutos sanitizados | **0** | nome de instituição + nome de operador em **todos** os `.dx` do acervo |
 | 3.8 | Licença de cada dataset público citada | **1** | Corn: fonte e termos citados em `datasets_publicos.py` |
 | 3.9 | Validação externa executada | **1** | Corn, reproduzindo a literatura |
 | 3.10 | Comparação com resultados publicados | **1** | RMSEP 0,171 vs faixa 0,1–0,2 |

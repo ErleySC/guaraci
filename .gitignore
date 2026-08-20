@@ -98,3 +98,9 @@ docs/auditoria/GATE_ddsimca.md
 docs/auditoria/AUDITORIA_MESTRE_*.md
 docs/auditoria/inventario_onedrive.csv
 docs/auditoria/preparar_formatacao.ps1
+
+# Diario de trabalho da auditoria (Claude Code). Desversionado em 2026-08-20:
+# acumula, por natureza, contagem e metrica do acervo de terceiro, alem de
+# contexto pessoal. Continua em disco para uso local; a copia de seguranca
+# fica em ~/.guaraci_local/CLAUDE.md.
+CLAUDE.md

@@ -1,11 +1,12 @@
 """BLOCO C -- os dois numeros para a reuniao de escopo, nos DADOS REAIS.
 
-(A) PLS-DA discriminante nas 13 especies com GroupKFold real (por mae_id):
+(A) PLS-DA discriminante nas classes do acervo, com GroupKFold real (por
+    mae_id):
     bal.acc com IC95%. Validacao preliminar, NAO o pipeline de publicacao.
 
-(B) Conformal one-class AGRUPADO (as 13 especies como classe unica "oleo
-    puro"): confirma o alpha alcancavel com o n real de amostras fisicas
-    puras.
+(B) Conformal one-class AGRUPADO (todas as especies como classe unica
+    "oleo puro"): confirma o alpha alcancavel com o n real de amostras
+    fisicas puras.
 
 Uso:  python medir_desenhos_escopo.py "<pasta com .dx>"
 """
@@ -63,7 +64,7 @@ def desenho_a(X, rot, mae_id, n_lv=10, n_splits=5, seeds=range(10)):
 
 
 def desenho_b(mae_id, puros):
-    """Conformal AGRUPADO: as 13 especies como uma classe unica."""
+    """Conformal AGRUPADO: todas as especies como uma classe unica."""
     n_fis = int(len(np.unique(mae_id[puros])))
     out = {"n_amostras_fisicas": n_fis,
            "alpha_min": alpha_alcancavel(n_fis)}
@@ -80,7 +81,7 @@ if __name__ == "__main__":
     print("(B) CONFORMAL ONE-CLASS AGRUPADO -- dados reais")
     print("=" * 70)
     b = desenho_b(mae_id, puros)
-    print(f"  amostras fisicas puras (13 especies juntas) : "
+    print(f"  amostras fisicas puras (todas as especies juntas) : "
           f"{b['n_amostras_fisicas']}")
     print(f"  alpha minimo garantivel = 1/(n+1) ......... : {b['alpha_min']:.4f}")
     for a in (0.05, 0.10, 0.15, 0.20):

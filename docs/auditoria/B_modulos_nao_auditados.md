@@ -291,9 +291,9 @@ para que a BA não saturasse:
       14          4      0.0%      0.8589            -   [0.714,1.000]   [0.714,1.000]
 ```
 
-**Descarte de 0,0% em todos os regimes viáveis**, inclusive o real (o
-dataset tem 568 grupos `mae_id` para 13 espécies, ~44 por classe — a
-primeira linha). A BA varia de 0,86 a 1,00 entre as células, o que confirma
+**Descarte de 0,0% em todos os regimes viáveis**, inclusive o regime do
+dataset de desenvolvimento — a primeira linha da tabela, a de maior
+número de grupos por classe. A BA varia de 0,86 a 1,00 entre as células, o que confirma
 que o 0% não é artefato de um problema fácil demais. O guard é
 **defensivo**, não uma fonte de viés: nada é descartado na prática.
 

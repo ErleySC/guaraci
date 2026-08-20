@@ -63,7 +63,8 @@ identificador original.
 ## 2. Identificadores de amostra versionados
 
 Varredura no padrão `COD-DD-MM-AAAA[-Xteor]` sobre arquivos rastreados,
-cruzada com os **652 `mae_id` reais** do acervo:
+cruzada com os identificadores reais do acervo (a lista e a contagem
+ficam em documentação local, fora deste repositório):
 
 | | Distintos | Ocorrências |
 |---|---:|---:|
@@ -108,22 +109,23 @@ e o resultado seria redução de exposição, nunca eliminação.
 
 | Onde estava | O que dizia | Ação |
 |---|---|---|
-| `docs/BENCHMARK_TECATOR.md:85` | "dataset próprio do autor (óleos amazônicos FT-NIR, Bal.Acc = 0,923)" | trocado por descrição do preset |
-| `pipeline.py:15` (cabeçalho) | "balanced accuracy = 0.923" | removido |
-| `pipeline.py:1124` (comentário) | "PLS-DA 13 classes, bal.acc≈0.906" | removido |
-| `pipeline.py` (N2) | "funciona (sens≈90%, esp=100%)" | removido |
-| `config.py:126` | "best on full dataset (1807)" | removido |
-| `preprocessamento.py:144` | "best pipeline on the full dataset (0.923 bal.acc)" | removido |
-| `app_tabs/preprocessamento.py:16` | "Acc=0.923 on 1807 Amazonian oil samples" (UI web) | removido |
-| `guaraci.py:956` | "Para FT-NIR, msc+sg+mc = Bal.Acc 0.923" (CLI) | removido |
-| `classificadores.py:228` | "12 das 13 especies tem 1 ponto puro" | generalizado |
+| `docs/BENCHMARK_TECATOR.md:85` | métrica do dataset próprio | trocado por descrição do preset |
+| `pipeline.py:15` (cabeçalho) | métrica do dataset próprio | removido |
+| `pipeline.py:1124` (comentário) | métrica + nº de classes do dataset próprio | removido |
+| `pipeline.py` (N2) | figuras de mérito do dataset próprio | removido |
+| `config.py:126` | nº de amostras do dataset próprio | removido |
+| `preprocessamento.py:144` | métrica do dataset próprio | removido |
+| `app_tabs/preprocessamento.py:16` | métrica + nº de amostras, na UI web | removido |
+| `guaraci.py:956` | métrica do dataset próprio, no CLI | removido |
+| `classificadores.py:228` | nº de classes com uma única amostra pura | generalizado |
 | `docs/CHANGELOG.md` (2 entradas) | métricas em log histórico | marcadas como retiradas, entrada preservada |
 
 O CHANGELOG teve o número retirado mas a **entrada preservada com nota**:
 apagar a linha falsificaria o log de uma versão que de fato existiu.
 
-Varredura final por `0.923`, `0.906`, `1807`, `934 amostras` em `src/`,
-`docs/`, `README*`, `paper/`, `app_quimiometria.py`: **zero ocorrências**
+Varredura final pelas métricas e contagens obtidas sobre o acervo em
+`src/`, `docs/`, `README*`, `paper/`, `app_quimiometria.py`: **zero
+ocorrências**
 (fora de `docs/auditoria/`, que é o registro da própria auditoria).
 
 ---
@@ -159,9 +161,11 @@ produz o CSV sanitizado.
 
 ## 6. Créditos a terceiros — pendente de decisão do autor
 
-Os metadados dos `.dx` registram, em 100% dos 3.785 arquivos, o local
-institucional e o operador de cada leitura: **3 rótulos, ao menos 2
-pessoas, nenhuma delas o autor**. Isso é fato medido, não declaração.
+Os metadados dos `.dx` registram, em **todos** os arquivos do acervo, o
+local institucional e o operador de cada leitura: mais de um rótulo, ao
+menos duas pessoas, nenhuma delas o autor. Isso é fato medido, não
+declaração. As contagens exatas ficam em documentação local — publicá-las
+dimensionaria quanto material de terceiro identificável existe.
 
 Duas ações que dependem de você, e que a auditoria não pode tomar sozinha:
 

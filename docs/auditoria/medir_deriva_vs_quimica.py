@@ -3,7 +3,8 @@
 
 Contexto (medido em `medir_ordem_leitura.py`): dentro de cada bloco
 especie x adulterante x sessao, a ordem de leitura e' monotonica com o
-teor (rho medio +0,997 em 47/47 blocos). Logo, dentro de UMA sessao,
+teor (rho de Spearman proximo de +1 em todos os blocos medidos; os
+valores ficam em documentacao local). Logo, dentro de UMA sessao,
 "tempo desde o inicio da sessao" e "teor" sao a mesma variavel: qualquer
 deriva instrumental (aquecimento da fonte, purga de CO2/H2O, sujeira
 acumulando na janela) entra no modelo como se fosse sinal de adulteracao,

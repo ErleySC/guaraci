@@ -100,8 +100,8 @@ if __name__ == "__main__":
            f"{'IC95 sobrev.':>20} {'IC95 todas':>20}")
     print(cab)
     print("-" * len(cab))
-    # (14, 44) = regime REAL do dataset (568 grupos mae_id / 13 especies);
-    # os demais sao regimes progressivamente mais estressados.
+    # A primeira celula aproxima o regime do dataset de desenvolvimento;
+    # as demais sao regimes progressivamente mais estressados.
     for n_classes, gpc in ((14, 44), (14, 20), (14, 10), (14, 6), (14, 4),
                            (14, 3), (5, 3)):
         s, d = mede(n_classes, gpc)

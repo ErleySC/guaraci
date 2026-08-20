@@ -119,9 +119,11 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: unificacao de mae_id da
              nunca em silencio. Nao e' regra generica de "TITLE ilegivel ->
              descartar": um TITLE ilegivel cuja pureza seja recuperavel do
              nome do arquivo continua sendo carregado.
-             Verificado contra o dataset real: orfaos 1 -> **0**
-             (1672/1672 parseados, 562 grupos), Andiroba pura agora 1 unico
-             mae_id com triplicatas [1,2,3]. 1 teste novo.
+             Verificado contra o dataset de desenvolvimento: orfaos 1 ->
+             **0**, 100%% dos arquivos parseados, e a especie que aparentava
+             ter duas amostras puras passa a ter um unico mae_id com
+             triplicatas. Contagens em documentacao local, nao publicada.
+             1 teste novo.
 
 NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Etapa 4: sPLS-DA passa a usar o
              soft-thresholding da referencia (achado B1-2, correcao
@@ -282,10 +284,11 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: 5 amostras adulteradas
              diferente, zero informacao recuperavel do TITLE; permanece
              marcado como pendencia de verificacao manual contra o
              caderno de coleta.
-             Verificado contra o dataset real (nao so' sintetico): titles
-             nao-conformes 52->46, concentracoes extraidas 1627->1633,
-             mae_id parseados 1666->1672, orfaos isolados 7->1 (so' resta
-             Bacaba). 1 teste novo em test_pipeline_core.py.
+             Verificado contra o dataset de desenvolvimento (nao so'
+             sintetico): titles nao-conformes caem, concentracoes
+             extraidas sobem, mae_id parseados sobem e os orfaos isolados
+             caem para um unico caso. Contagens em documentacao local,
+             nao publicada. 1 teste novo em test_pipeline_core.py.
 
 NAO LANCADO (pos-v31.9.0) — 2026-08-16 — DD-SIMCA: limiar calibrado por
              AMOSTRA FISICA (mae_id), nao por espectro (achado F1/A2-3 da

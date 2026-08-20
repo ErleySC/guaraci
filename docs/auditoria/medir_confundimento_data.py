@@ -11,7 +11,9 @@ Tres medicoes, da mais barata para a mais cara:
   I.2  classificador TRIVIAL: preve especie so' a partir da data.
        Acuracia alta => o confundimento existe e e' explorAvel.
   I.3  PLS-DA com GroupKFold POR DATA (nenhuma data em treino e teste ao
-       mesmo tempo), comparado com o 0,9203 obtido agrupando por mae_id.
+       mesmo tempo), comparado com o valor obtido agrupando por mae_id
+       no mesmo dado -- o script imprime os dois; nenhum numero do
+       acervo fica gravado aqui.
 
 Uso: python medir_confundimento_data.py "<pasta .dx>"
 """
