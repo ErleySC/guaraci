@@ -53,12 +53,26 @@ from guaraci import model_registry
 #  contra-prova.
 # =========================================================================
 
-def _nenhum_grupo_vazado(splits, grupos: np.ndarray) -> bool:
-    """True se, em NENHUM fold de `splits`, um grupo aparecer nos indices
-    de treino E de teste ao mesmo tempo."""
-    grupos = np.asarray(grupos)
-    for tr, te in splits:
-        if set(grupos[tr]) & set(grupos[te]):
+def _nenhum_grupo_vazado(capturas) -> bool:
+    """True se, em NENHUM fold capturado, um grupo aparecer nos indices de
+    treino E de teste ao mesmo tempo.
+
+    `capturas` e' uma lista de `(tr, te, groups)` -- `groups` e' o array
+    efetivamente passado NAQUELA chamada de `.split(...)`, nao um array
+    global assumido de fora. Isto importa de verdade aqui: o caminho de
+    quantificacao faz split POR ESPECIE (`X_c = X_raw[idx]`), entao os
+    indices `tr`/`te` capturados sao relativos ao subconjunto da especie
+    (0..len(idx)-1), NAO ao array completo. Checar contra um `mae_id`
+    global com esses indices locais compara a especie errada para
+    qualquer especie que nao seja a primeira -- bug real, encontrado e
+    corrigido nesta verificacao (2026-08-20): o detector "funcionava" nos
+    testes anteriores so' porque a 1a especie do fixture comeca no indice
+    global 0, mascarando o erro."""
+    for tr, te, groups in capturas:
+        if groups is None:
+            continue  # split sem grupo -- nada a checar aqui
+        groups = np.asarray(groups)
+        if set(groups[tr]) & set(groups[te]):
             return False
     return True
 
@@ -100,7 +114,14 @@ def _dados_regressao_com_replicas(seed=0, n_especies=2, n_pontos=8,
         concs = np.linspace(0, 40, n_pontos)
         for p_idx, c in enumerate(concs):
             espectro_base = centro + w_true * (c / 40.0) * 3.0
-            grupo_id = f"{especie[:3].upper()}{p_idx:02d}"
+            # nome de grupo GLOBALMENTE unico -- inclui a especie inteira,
+            # nao so' as 3 primeiras letras (que colidem: "Esp_A" e "Esp_B"
+            # dao o mesmo prefixo "ESP"). Nao explorado como bug hoje
+            # porque cada split e' verificado com o `groups` local daquela
+            # chamada (ver `_nenhum_grupo_vazado`), mas evita qualquer
+            # colisao silenciosa se o codigo mudar para agrupar entre
+            # especies no futuro.
+            grupo_id = f"{especie}_{p_idx:02d}"
             for _r in range(n_replicas):
                 X_list.append(espectro_base + rng.normal(scale=0.10, size=p))
                 conc_list.append(c)
@@ -115,15 +136,21 @@ def _dados_regressao_com_replicas(seed=0, n_especies=2, n_pontos=8,
 
 
 # =========================================================================
-#  Espiao: subclasse que delega ao splitter real e grava cada (treino,
-#  teste) produzido, sem alterar o comportamento.
+#  Espiao: subclasse que delega ao splitter real e grava cada
+#  (treino, teste, groups) produzido, sem alterar o comportamento.
+#
+#  Grava `groups` JUNTO com os indices -- nao so' os indices -- porque o
+#  caminho de quantificacao chama `.split()` uma vez POR ESPECIE, cada vez
+#  com um array de grupos diferente (subconjunto local daquela especie).
+#  Guardar so' os indices e checar depois contra um array global daria
+#  falso resultado para qualquer especie que nao seja a primeira.
 # =========================================================================
 
 def _espiao(classe_real, destino: list):
     class _Espiao(classe_real):
         def split(self, X, y=None, groups=None):
             for tr, te in super().split(X, y, groups):
-                destino.append((np.asarray(tr), np.asarray(te)))
+                destino.append((np.asarray(tr), np.asarray(te), groups))
                 yield tr, te
     _Espiao.__name__ = f"Espiao{classe_real.__name__}"
     return _Espiao
@@ -172,7 +199,7 @@ def test_classificacao_cada_metodo_registrado_usa_cv_group_aware(
         f"{set(df['Classificador'])}")
 
     # (c) nenhum fold, de nenhum metodo, vazou grupo entre treino e teste.
-    assert _nenhum_grupo_vazado(capturados, grupos), (
+    assert _nenhum_grupo_vazado(capturados), (
         "um grupo (replica fisica) apareceu em treino E teste no mesmo "
         "fold -- e' o vazamento que o subtitulo declara nao existir por "
         "padrao.")
@@ -194,9 +221,10 @@ def test_deteccao_de_vazamento_pega_metodo_ficticio_sem_agrupamento():
 
     cv_ficticio = skms.StratifiedKFold(n_splits=3, shuffle=True,
                                        random_state=0)
-    splits_ficticios = list(cv_ficticio.split(X, y_int))
+    splits_ficticios = [(tr, te, grupos)
+                        for tr, te in cv_ficticio.split(X, y_int)]
 
-    assert not _nenhum_grupo_vazado(splits_ficticios, grupos), (
+    assert not _nenhum_grupo_vazado(splits_ficticios), (
         "o metodo ficticio (StratifiedKFold, sem agrupamento) deveria "
         "vazar grupo entre treino e teste; se nao vazou, os dados "
         "sinteticos nao tem replica suficiente para exercitar o caso, e "
@@ -214,27 +242,63 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
     """PLS-R + Ridge/Lasso/Elastic Net/SVR/Random Forest compartilham o
     MESMO split cal/val por especie (comentario da propria funcao: "MESMO
     split... usado em pls_regressao_por_especie"). Confirma que esse split
-    e' `GroupShuffleSplit` com `groups=mae_id`, capturando a chamada real,
-    e que nenhum grupo aparece dos dois lados de cal/val."""
+    e' `GroupShuffleSplit` com `groups=mae_id`, capturando a chamada real, e
+    que nenhum grupo aparece dos dois lados de cal/val -- nem no split
+    cal/val, nem na CV interna (`GroupKFold`) usada so' para escolher o
+    numero de LVs.
+
+    ARQUITETURA -- ao contrario da classificacao, a quantificacao NAO tem um
+    unico ponto orquestrador. Ha' TRES pontos de producao com split
+    group-aware independente, verificado por leitura de codigo em
+    2026-08-20:
+
+      1. `pls_regressao_por_especie` (pipeline.py) -- cal/val
+         (`GroupShuffleSplit`, import de MODULO) + CV interna de LV
+         (`GroupKFold`, import de MODULO).
+      2. `benchmark_regressao_por_especie` (avaliacao_modelos.py) -- MESMA
+         logica de split REIMPLEMENTADA (comentario no proprio codigo:
+         "para evitar acoplamento circular com pipeline.py"), com
+         `GroupShuffleSplit` importado LOCALMENTE dentro da funcao.
+      3. Dentro de `executar()` (pipeline.py, ~linha 2510-2545), um TERCEIRO
+         bloco de PLS-R pooled (nao por especie, o modo "[7/7] PLS
+         regressao") com seu proprio `GroupShuffleSplit` + `GroupKFold`,
+         inline no meio de uma funcao de ~1500 linhas, sem ser uma funcao
+         separada chamavel.
+
+    Este teste cobre (1) e (2) por completo -- inclusive a CV interna de
+    LV-selection de (1), fechada em 2026-08-20 depois que a verificacao
+    independente mostrou que o teste passava mesmo com essa CV interna
+    quebrada (o `GroupShuffleSplit` do cal/val continuava correto e
+    escondia o problema). NAO cobre (3): esse bloco vive dentro de
+    `executar()`, que le' arquivo, gera figuras e nao e' unitariamente
+    testavel sem rodar o pipeline inteiro. Enquanto (3) nao tiver teste
+    dedicado, a alegacao do subtitulo NAO esta' mecanicamente protegida
+    para o modo de quantificacao pooled -- so' para o modo por especie, que
+    e' o caminho de producao default (`pls_regressao_por_especie`).
+    """
     X, conc, rotulos, mae_id, classes_unicas = _dados_regressao_com_replicas()
     cfg = pq.Config(seed=0, max_lvs=5, frac_cal=0.7)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
 
-    capturados: list = []
+    capturados_split: list = []
+    capturados_cv: list = []
     # `pls_regressao_por_especie` importa GroupShuffleSplit/GroupKFold no
     # TOPO de pipeline.py (nome ja' vinculado no modulo); precisa de patch
     # direto no modulo, nao no atributo de sklearn.model_selection.
     monkeypatch.setattr(
         pq, "GroupShuffleSplit",
-        _espiao(skms.GroupShuffleSplit, capturados))
+        _espiao(skms.GroupShuffleSplit, capturados_split))
+    monkeypatch.setattr(
+        pq, "GroupKFold",
+        _espiao(skms.GroupKFold, capturados_cv))
     # `benchmark_regressao_por_especie` (avaliacao_modelos.py) importa
     # GroupShuffleSplit DENTRO da funcao -- o patch no atributo do modulo
     # sklearn.model_selection e' o que alcanca esse import local.
     monkeypatch.setattr(
         skms, "GroupShuffleSplit",
-        _espiao(skms.GroupShuffleSplit, capturados))
+        _espiao(skms.GroupShuffleSplit, capturados_split))
 
     reg_esp = pq.pls_regressao_por_especie(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
@@ -248,10 +312,21 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
     assert {"PLS-R", "Ridge", "Lasso", "Elastic Net", "SVR (RBF)",
             "Random Forest"}.issubset(nomes_rodados)
 
-    assert capturados, (
+    assert capturados_split, (
         "GroupShuffleSplit nunca foi chamado -- a quantificacao nao passou "
         "por um split group-aware, ou o import mudou de lugar.")
-    assert _nenhum_grupo_vazado(capturados, mae_id), (
+    assert _nenhum_grupo_vazado(capturados_split), (
         "um grupo (replica fisica) apareceu em calibracao E validacao no "
         "mesmo split -- e' o vazamento que o subtitulo declara nao existir "
         "por padrao, agora do lado de quantificacao.")
+
+    assert capturados_cv, (
+        "GroupKFold nunca foi chamado -- a CV interna de selecao de LV nao "
+        "passou por um splitter group-aware, ou o import mudou de lugar. "
+        "Achado real em 2026-08-20: com essa CV quebrada, o cal/val "
+        "continuava correto e a checagem acima nao via nada de errado.")
+    assert _nenhum_grupo_vazado(capturados_cv), (
+        "um grupo apareceu nos dois lados de um fold da CV INTERNA de "
+        "selecao de numero de LVs -- vaza informacao da mesma replica "
+        "fisica entre treino e teste ao escolher o hiperparametro, mesmo "
+        "que o split cal/val esteja correto.")

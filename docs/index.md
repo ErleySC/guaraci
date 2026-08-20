@@ -1,4 +1,4 @@
-# GUARACI
+# GUARACI — Plataforma quimiométrica com validação anti-vazamento por padrão
 
 Plataforma Python de quimiometria multitécnica, aberta e reprodutível, para
 classificação, autenticação, exploração e quantificação de matrizes complexas

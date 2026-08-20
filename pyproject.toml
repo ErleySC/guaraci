@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "guaraci-chemometrics"
 version = "31.9.0"
-description = "GUARACI — multi-technique chemometrics platform for Amazonian matrices (group-aware validation)"
+description = "GUARACI — chemometrics platform with leakage-safe validation by default"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Erley S. Costa", email = "erleysdacosta@gmail.com" }]

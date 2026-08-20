@@ -22,8 +22,8 @@ def _bibtex(versao: str) -> str:
     return (
         f"@software{{guaraci_{_ANO},\n"
         f"  author      = {{Costa, Erley S. da}},\n"
-        f"  title       = {{{{GUARACI: Inteligencia Quimiometrica"
-        f" para Matrizes Amazonicas}}}},\n"
+        f"  title       = {{{{GUARACI: Plataforma quimiométrica com"
+        f" validação anti-vazamento por padrão}}}},\n"
         f"  version     = {{{versao}}},\n"
         f"  year        = {{{_ANO}}},\n"
         f"  url         = {{{_REPO}}},\n"
@@ -39,9 +39,9 @@ def render(pq, T: Callable[[str], str]) -> None:
 
     st.markdown("### GUARACI")
     st.caption(
-        "Inteligência Quimiométrica para Matrizes Amazônicas"
+        "Plataforma quimiométrica com validação anti-vazamento por padrão"
         if pt else
-        "Chemometric Intelligence for Amazonian Matrices")
+        "Chemometrics platform with leakage-safe validation by default")
     c_b1, c_b2 = st.columns(2)
     c_b1.metric("Versão" if pt else "Version", versao)
     c_b2.metric("Licença" if pt else "License", _LICENCA)
@@ -144,14 +144,16 @@ def render(pq, T: Callable[[str], str]) -> None:
     st.divider()
 
     st.markdown("#### " + ("Como Citar" if pt else "How to Cite"))
-    tit_full = ("GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas"
+    tit_full = ("GUARACI: Plataforma quimiométrica com validação"
+                " anti-vazamento por padrão"
                 if pt else
-                "GUARACI: Chemometric Intelligence for Amazonian Matrices")
+                "GUARACI: Chemometrics platform with leakage-safe"
+                " validation by default")
     apa = (f"Costa, E. S. da. ({_ANO}). {tit_full} (v{versao})"
            f" [Software]. {_REPO}")
-    abnt = (f"COSTA, E. S. da. GUARACI: Inteligência Quimiométrica para "
-            f"Matrizes Amazônicas. Versão {versao}. {_ANO}. "
-            f"Disponível em: <{_REPO}>.")
+    abnt = (f"COSTA, E. S. da. GUARACI: Plataforma quimiométrica com "
+            f"validação anti-vazamento por padrão. Versão {versao}. "
+            f"{_ANO}. Disponível em: <{_REPO}>.")
     with st.expander("APA", expanded=True):
         st.code(apa, language=None)
     with st.expander("ABNT (NBR 6023:2018)"):

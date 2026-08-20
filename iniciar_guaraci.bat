@@ -1,5 +1,5 @@
 @echo off
-title GUARACI - Inteligencia Quimiometrica
+title GUARACI - Validacao Anti-Vazamento por Padrao
 cd /d "%~dp0"
 
 rem Pacote em ./src (nao exige `pip install -e .`): PYTHONPATH torna `guaraci`

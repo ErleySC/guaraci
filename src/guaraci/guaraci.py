@@ -1,6 +1,6 @@
 """
 guaraci.py v31.9.0 — Interface profissional GUARACI para o pipeline quimiometrico
-☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
+☀  GUARACI — Plataforma quimiometrica com validacao anti-vazamento por padrao
 Quimiometria • Machine Learning • Espectroscopia multitecnica
 
 Uso:
@@ -1066,9 +1066,9 @@ def _print_header() -> None:
     tec_str  = f"Tecnica: {tec_nome}" if _lang() == "PT" else f"Technique: {tec_nome}"
 
     sub = Text(
-        "Inteligencia Quimiometrica para Matrizes Amazonicas"
+        "Plataforma quimiometrica com validacao anti-vazamento por padrao"
         if _lang() == "PT" else
-        "Chemometric Intelligence for Amazonian Matrices",
+        "Chemometrics platform with leakage-safe validation by default",
         style=PS, justify="center"
     )
     rod_txt = f"Quimiometria  |  Machine Learning  |  {tec_str}"
@@ -2778,9 +2778,9 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     _LIC           = "GPL-3.0-or-later"
 
     def _titulo(lang: str) -> str:
-        return ("Inteligencia Quimiometrica para Matrizes Amazonicas"
+        return ("Plataforma quimiometrica com validacao anti-vazamento por padrao"
                 if lang == "PT" else
-                "Chemometric Intelligence for Amazonian Matrices")
+                "Chemometrics platform with leakage-safe validation by default")
 
     def _painel_identidade(lang: str) -> None:
         """Painel principal: nome, proposito e links rapidos."""
