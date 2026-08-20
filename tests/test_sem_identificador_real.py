@@ -29,12 +29,19 @@ _RAIZ = Path(__file__).resolve().parents[1]
 
 #: `COD-DD-MM-AAAA` -- especie + data de coleta, o formato de `mae_id` do
 #: acervo de origem. `(19|20)` cobre qualquer ano plausivel de aquisicao.
-#: `\b` no fim NAO serve: o identificador aparece colado ao sufixo de
-#: replicata (`AND-10-06-2099_T1.dx`), e `_` e' caractere de palavra --
+#: O separador entre codigo e data e' `-` OU `_`: e' o que `_RE_TITLE`
+#: (`src/guaraci/dados_io.py`) aceita, porque as duas formas existem no
+#: dado real. A primeira versao deste guarda exigia `-`, entao um titulo
+#: inteiro como `GOI_04-11-2099_T1` -- que o parser aceita e converte em
+#: `mae_id` -- passava sem alarme. Achado na verificacao independente de
+#: 2026-08-19.
+#:
+#: `\b` no fim tambem NAO serve: o identificador aparece colado ao sufixo
+#: de replicata (`AND-10-06-2099_T1.dx`), e `_` e' caractere de palavra --
 #: entre `0` e `_` nao ha fronteira, entao `\b` perdia justamente o caso
 #: real que motivou este teste. Guardas explicitas no lugar.
 _PADRAO = re.compile(
-    r"(?<![A-Za-z0-9])[A-Z]{2,5}-\d{2}-\d{2}-(?:19|20)\d{2}(?!\d)"
+    r"(?<![A-Za-z0-9])[A-Z]{2,5}[-_]\d{2}-\d{2}-(?:19|20)\d{2}(?!\d)"
 )
 
 #: Unica excecao. Ano que nao pode corresponder a leitura nenhuma, entao um
@@ -59,14 +66,24 @@ def _arquivos_versionados() -> list[Path]:
 def _ocorrencias() -> list[tuple[str, int, str]]:
     achados: list[tuple[str, int, str]] = []
     for caminho in _arquivos_versionados():
+        rel = str(caminho.relative_to(_RAIZ)).replace("\\", "/")
+        # O NOME do arquivo tambem e' identificador -- varrer so' o conteudo
+        # deixaria passar um arquivo chamado `ACA-04-11-2099_T1.md`.
+        for m in _PADRAO.finditer(rel):
+            if not m.group(0).endswith(_ANO_SENTINELA):
+                achados.append((rel, 0, m.group(0)))
         if caminho.suffix.lower() in _BINARIO or not caminho.is_file():
             continue
         try:
             texto = caminho.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            continue  # binario nao declarado ou ilegivel: fora de escopo
-        # O proprio teste cita o padrao na docstring e no regex.
-        if caminho.name == Path(__file__).name:
+        except UnicodeDecodeError:
+            # Antes isto era `continue` silencioso -- um arquivo nao-UTF-8
+            # saia da varredura sem deixar rastro. Agora vira achado: o
+            # teste nao pode declarar limpo o que nao conseguiu ler.
+            achados.append((rel, 0, "<ILEGIVEL: nao e' UTF-8 nem binario declarado>"))
+            continue
+        except OSError:
+            achados.append((rel, 0, "<ILEGIVEL: erro de leitura>"))
             continue
         for n, linha in enumerate(texto.splitlines(), start=1):
             for m in _PADRAO.finditer(linha):
@@ -93,18 +110,44 @@ def test_nenhum_identificador_real_em_arquivo_versionado() -> None:
         )
 
 
+def _id(especie: str, dia: str, mes: str, ano: str, sep: str = "-") -> str:
+    """Monta um identificador em tempo de execucao, em vez de escrever um
+    literal aqui.
+
+    A primeira versao deste arquivo continha 5 identificadores literais de
+    ano real -- dois deles confirmados como amostra do acervo -- e se
+    auto-isentava da varredura (`if caminho.name == __file__: continue`)
+    para poder conte-los. Isso e' a mesma falha que o teste existe para
+    barrar, cometida pelo proprio teste. Achado na verificacao independente
+    de 2026-08-19; a auto-isencao foi removida e as contra-provas passaram
+    a montar as strings, que e' o que faz a varredura valer tambem aqui.
+    """
+    return f"{especie}{sep}{dia}-{mes}-{ano}"
+
+
 def test_padrao_reconhece_o_formato_que_pretende_barrar() -> None:
     """Contra-prova: sem isto, um regex quebrado passaria como 'limpo'."""
-    assert _PADRAO.search("dados/ACA-04-11-2020_T1.dx")
-    assert _PADRAO.search("CAP-04-11-2020-A1.03")
-    assert _PADRAO.search("titulo BCB-03-03-2020_AD-S-20_T1")
-    assert _PADRAO.search("AND-01-01-2022-S5.00")
+    assert _PADRAO.search(f"dados/{_id('ACA', '04', '11', '2020')}_T1.dx")
+    assert _PADRAO.search(f"{_id('CAP', '04', '11', '2020')}-A1.03")
+    assert _PADRAO.search(f"titulo {_id('BCB', '03', '03', '2020')}_AD-S-20_T1")
+    assert _PADRAO.search(f"{_id('AND', '01', '01', '2022')}-S5.00")
+
+
+def test_padrao_cobre_o_separador_que_o_parser_aceita() -> None:
+    """`_RE_TITLE` (dados_io.py) aceita `-` OU `_` depois do codigo. Um
+    guarda que so' conhecesse `-` deixaria passar metade dos titulos reais
+    -- foi assim que a primeira versao deste teste furou."""
+    for sep in ("-", "_"):
+        titulo = f"{_id('GOI', '04', '11', '2020', sep)}_T1"
+        assert _PADRAO.search(titulo), titulo
 
 
 def test_sentinela_2099_e_a_unica_excecao() -> None:
-    assert _PADRAO.search("CAP-04-11-2099-A1.03").group(0).endswith("2099")
+    achado = _PADRAO.search(f"{_id('CAP', '04', '11', '2099')}-A1.03")
+    assert achado.group(0).endswith(_ANO_SENTINELA)
     # Ano vizinho nao e' excecao -- a folga tem que ser exatamente uma.
-    assert not _PADRAO.search("CAP-04-11-2098").group(0).endswith("2099")
+    vizinho = _PADRAO.search(_id("CAP", "04", "11", "2098"))
+    assert not vizinho.group(0).endswith(_ANO_SENTINELA)
 
 
 def test_padrao_nao_barra_texto_legitimo() -> None:
