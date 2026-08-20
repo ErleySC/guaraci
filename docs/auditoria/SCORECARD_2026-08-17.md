@@ -2,7 +2,9 @@
 
 Pontuação por item: **0** ausente · **0,5** parcial · **1** completo ·
 **N/V** não verificável (fora do denominador). Cada linha tem a evidência
-que a sustenta. Relatório completo: [`AUDITORIA_MESTRE_2026-08-17.md`](AUDITORIA_MESTRE_2026-08-17.md).
+que a sustenta. O relatório completo **não é versionado**: descrevia o
+acervo de terceiro (inventário de espécies, janela de aquisição, métricas
+do dataset não publicado) e foi retirado do repositório em 2026-08-19.
 
 Estado marcado **✅** foi corrigido nesta rodada; a nota reflete o estado
 **depois** da correção, e a coluna de evidência diz qual era antes.

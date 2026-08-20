@@ -878,8 +878,10 @@ antes e depois — sem divergência além do esperado.
 
 ### 🔴 P12 (ABERTO — 2 dos 3 achados NÃO são corrigíveis por código) — Auditoria mestre de 2026-08-17
 
-Relatório completo: `docs/auditoria/AUDITORIA_MESTRE_2026-08-17.md`;
-scorecard: `docs/auditoria/SCORECARD_2026-08-17.md`. Scripts novos e
+Relatório completo **fora da árvore versionada** (descrevia o acervo:
+inventário de espécies, janela de aquisição e métricas do dataset não
+publicado — retirado em 2026-08-19); scorecard versionado:
+`docs/auditoria/SCORECARD_2026-08-17.md`. Scripts novos e
 reexecutáveis: `medir_ordem_leitura.py`, `medir_deriva_vs_quimica.py`,
 `medir_ad_vies_insample.py`, `medir_truncagem_nh_nq.py`,
 `datasets_publicos.py`.

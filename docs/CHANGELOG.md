@@ -814,6 +814,14 @@ v31.9.0 — 2026-08-04 — CORRECAO CIENTIFICA no DD-SIMCA + itens de comunidade
              sincronizado); READMEs e CITATION passam a usar o CONCEPT DOI
              do Zenodo (10.5281/zenodo.21311867), que sempre resolve para a
              ultima versao, em vez do DOI versionado da v31.1.1.
+             [NOTA de 2026-08-19 -- a entrada acima fica como registro
+             historico, mas nao descreve mais o estado atual: os dois
+             depositos no Zenodo foram retirados PELA CONTA DONA em
+             2026-08-04, motivo 'duplicate' (21311868 = v31.1.0;
+             21313436 = v31.1.1). O concept DOI devolve HTTP 410 e
+             /versions devolve total: 0 -- nao resolve mais para versao
+             nenhuma. Badge e link foram removidos dos READMEs e do
+             CITATION.cff; ver PR #16 para o estado atual da citacao.]
 v31.8.0 — 2026-07-13 — MkDocs + GitHub Pages (item #12) e secao State of the
              field no paper JOSS (item #14):
              (1) mkdocs.yml novo: tema Material, plugin mkdocstrings (API

@@ -87,3 +87,14 @@ val_out.txt
 # (citam numeros de estado que mudam a cada commit) e poluem o git status.
 council-*
 docs/_*.md
+
+# Documentos de auditoria que descrevem o ACERVO ou a MAQUINA do autor, nao o
+# software. Removidos do versionamento em 2026-08-19 (Bloco Q): publicavam
+# resultados do dataset nao publicado, o inventario de especies, a janela de
+# aquisicao, e o caminho/tamanho do bundle com os espectros purgados. Copias
+# vivem em ~/.guaraci_local/auditoria_privada/.
+docs/auditoria/decisao_escopo_orientadora.md
+docs/auditoria/GATE_ddsimca.md
+docs/auditoria/AUDITORIA_MESTRE_*.md
+docs/auditoria/inventario_onedrive.csv
+docs/auditoria/preparar_formatacao.ps1

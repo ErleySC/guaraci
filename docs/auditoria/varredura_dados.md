@@ -62,11 +62,18 @@ identificador introduzido.
 
 ## M.2 — Caminhos absolutos ou institucionais
 
-**Duas ocorrências, ambas benignas:** `iniciar_guaraci.bat` linhas 9 e 11
-mencionam "OneDrive" em **comentário explicativo** (por que o venv fica
-fora dele). Não são caminhos, são prosa técnica. Nenhuma referência a
-`dados oleos/`, nenhum `C:\Users\...`, nenhum caminho de rede
-institucional em arquivo rastreado.
+`iniciar_guaraci.bat` linhas 9 e 11 mencionam "OneDrive" em **comentário
+explicativo** (por que o venv fica fora dele). Não são caminhos, são prosa
+técnica. Nenhum caminho de rede institucional em arquivo rastreado.
+
+**CORRIGIDO em 2026-08-19.** A versão original desta seção afirmava não
+haver caminho pessoal em arquivo rastreado — e o próprio arquivo continha
+um, na saída de execução colada mais abaixo; havia outro em
+`tests/test_config_io.py`. O defeito é o mesmo das duas varreduras de
+identificador: **afirmar ausência sem varrer o texto que se está
+escrevendo.** Ambos substituídos por `<HOME>` — a saída colada continua
+legível e deixa de publicar o nome de usuário e a árvore de diretórios da
+máquina do autor.
 
 ## M.3 — Arquivos `.dx`/`.jdx` versionados
 
@@ -102,7 +109,7 @@ Verificado por execução, não por leitura:
 
 ```
 1) fonte unica dos rotulos corrigidos:
-   correcoes_titulo   -> 6 entradas, de C:\Users\erley\.guaraci_local
+   correcoes_titulo   -> 6 entradas, de <HOME>/.guaraci_local
    pureza_indeterm.   -> 1
    alias_mae_id       -> 1
 2) ausencia e SILENCIOSA: True

@@ -102,7 +102,7 @@ _RE_ADULT = re.compile(r"[-_]AD-([AMS])-(\d+(?:[.,]\d+)?)%%?")
 #  funcionando, so' sem os casos particulares deste dataset.
 #
 #  Formato (CSV, ';' como separador, UTF-8) -- ver
-#  docs/auditoria/GATE_ddsimca.md para o registro da decisao:
+#  o cabecalho de cada CSV para o registro da decisao:
 #
 #    correcoes_titulo.csv    title;cod;data;adulterante;teor;trip
 #    pureza_indeterminada.csv title;motivo
@@ -180,7 +180,7 @@ def _carregar_alias_mae_id() -> Dict[str, str]:
     trata como independentes, que e' o vazamento que o projeto existe
     para impedir (achado A2-1). Cada alias e' decisao metodologica
     DOCUMENTADA, nao fato verificado: ver o motivo registrado no proprio
-    CSV e em docs/auditoria/decisao_escopo_orientadora.md.
+    CSV, que fica fora da arvore versionada.
     """
     return {o: d for o, d in _ler_csv_local("alias_mae_id.csv", 2)}
 

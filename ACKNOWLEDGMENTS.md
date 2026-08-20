@@ -15,8 +15,9 @@
 
 ## Por que este arquivo existe
 
-O GUARACI é um software de autoria individual (ver `AUTHORS` e o histórico
-do repositório: 100 % dos commits de código vêm de um único autor). Mas o
+O GUARACI é um software de autoria individual (ver `CITATION.cff` e o
+histórico do repositório: 100 % dos commits de código vêm de um único
+autor). Mas o
 software foi **desenvolvido e depurado contra dados reais**, e esses dados
 não se produzem sozinhos.
 
@@ -24,7 +25,7 @@ A distinção que este arquivo mantém:
 
 | | Vai para |
 |---|---|
-| Quem escreveu o software | `AUTHORS`, `CITATION.cff` |
+| Quem escreveu o software | `CITATION.cff` |
 | Quem forneceu amostras, preparou material ou operou instrumento | **este arquivo** |
 | Quem cedeu acesso a equipamento ou infraestrutura | **este arquivo** |
 
@@ -38,9 +39,10 @@ limpeza, é misatribuição.
 ## Aquisição de dados
 
 Os dados espectrais usados durante o desenvolvimento e a depuração do
-GUARACI (FT-NIR de óleos vegetais fixos, 2020–2021) foram adquiridos em
-instrumento **institucional**, operado por **terceiros** — não pelo autor
-do software.
+GUARACI (FT-NIR de óleos vegetais fixos) foram adquiridos em instrumento
+**institucional**, operado por **terceiros** — não pelo autor do software.
+A janela de aquisição não é publicada aqui: é metadado do acervo, e este
+arquivo não existe para descrever o acervo.
 
 - **Operação do instrumento:** `[A PREENCHER — requer autorização]`
 - **Preparo de amostras e fortificação:** `[A PREENCHER — requer autorização]`
@@ -48,11 +50,22 @@ do software.
 - **Instituição detentora do equipamento:** `[A PREENCHER — decisão do autor,
   ver `docs/auditoria/DESACOPLAMENTO_2026-08-18.md`]`
 
-Esses dados **não são distribuídos** com este software e **não produzem
-nenhuma métrica** em nenhum artefato público deste repositório (decisão de
-2026-08-18). As métricas de desempenho publicadas vêm exclusivamente de
-datasets públicos — ver
+Esses dados **não são distribuídos** com este software, e **nenhuma
+métrica de desempenho do GUARACI é sustentada por eles**: a validação
+publicada vem exclusivamente de datasets públicos — ver
 [`docs/auditoria/VALIDACAO_PUBLICA.md`](docs/auditoria/VALIDACAO_PUBLICA.md).
+
+> **Ressalva medida em 2026-08-19.** A versão anterior deste parágrafo
+> afirmava que esses dados *"não produzem nenhuma métrica em nenhum
+> artefato público deste repositório"*. Isso era **falso**: documentos
+> históricos ainda versionados — `docs/CHANGELOG.md`, `CLAUDE.md`,
+> `docs/auditoria/SCORECARD_2026-08-17.md`,
+> `docs/auditoria/DESACOPLAMENTO_2026-08-18.md` e
+> `docs/auditoria/medir_confundimento_data.py` — registram contagens e
+> medições obtidas sobre o acervo durante o desenvolvimento. São registro
+> de auditoria, não alegação de desempenho do software, mas a frase
+> original as negava e por isso foi retirada. A limpeza desses resíduos é
+> decisão em aberto.
 
 > **Antes de publicar qualquer espectro bruto**, sanitize o cabeçalho: os
 > arquivos JCAMP-DX gravam operador e local em `##AUDIT TRAIL`, e essa
