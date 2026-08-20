@@ -1,4 +1,4 @@
-# GUARACI — Chemometric Intelligence for Complex Matrices
+# GUARACI — Chemometrics platform with leakage-safe validation by default
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
@@ -277,14 +277,14 @@ Bug reports, feature requests and pull requests are welcome — see
 
 **APA**
 
-> Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Complex
-> Matrices* (v31.9.0) [Software].
+> Costa, E. S. da. (2026). *GUARACI: Chemometrics platform with leakage-safe validation by default*
+> (v31.9.0) [Software].
 > https://github.com/ErleySC/guaraci
 
 **ABNT (NBR 6023:2018)**
 
-> COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Complexas**. Versão 31.9.0. 2026. Disponível em:
+> COSTA, E. S. da. **GUARACI: Plataforma quimiométrica com validação anti-vazamento por padrão**.
+> Versão 31.9.0. 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **BibTeX**
@@ -292,7 +292,7 @@ Bug reports, feature requests and pull requests are welcome — see
 ```bibtex
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
-  title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Complexas}},
+  title       = {{GUARACI: Plataforma quimiométrica com validação anti-vazamento por padrão}},
   version     = {31.9.0},
   year        = {2026},
   url         = {https://github.com/ErleySC/guaraci},

@@ -1,5 +1,5 @@
 ---
-title: 'GUARACI: An open, reproducible multi-technique chemometrics platform with leakage-safe validation'
+title: 'GUARACI: Chemometrics platform with leakage-safe validation by default'
 tags:
   - Python
   - chemometrics

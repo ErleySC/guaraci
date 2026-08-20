@@ -45,6 +45,13 @@ ruff check .          # lint
 - The project maintains parity between the CLI and the web app for every
   configurable field (`tests/test_interfaces_configuraveis.py`) — if you add
   a config option, wire it into both interfaces.
+- If you add a classification or quantification method — a new entry in
+  `guaraci.model_registry`, or a new model in `benchmark_regressao_por_especie`
+  — it must pass `tests/test_contrato_validacao_agrupada.py` before merge.
+  That test is what keeps "leakage-safe validation by default" (the
+  project's subtitle) true: it runs your method through the real benchmark
+  path and fails if any physical-replicate group ends up split across
+  train/test. There is no flag to opt a method out of this.
 
 ## License
 
