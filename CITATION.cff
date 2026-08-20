@@ -22,13 +22,6 @@ url: "https://github.com/ErleySC/guaraci"
 license: GPL-3.0-or-later
 version: "31.9.0"
 date-released: "2026-08-04"
-identifiers:
-  - type: doi
-    value: "10.5281/zenodo.21311867"
-    description: >
-      Concept DOI on Zenodo — always resolves to the latest release. Cite this
-      unless you need to pin a specific version, in which case use the
-      versioned DOI shown on the Zenodo page for that release.
 keywords:
   - chemometrics
   - spectroscopy
@@ -84,4 +77,3 @@ preferred-citation:
   version: "31.9.0"
   year: 2026
   url: "https://github.com/ErleySC/guaraci"
-  doi: "10.5281/zenodo.21311867"
