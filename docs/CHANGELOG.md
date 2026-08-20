@@ -6,6 +6,28 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-08-20 — pipeline: terceiro caminho de
+             quantificacao (regressao PLS pooled, sem separar por especie)
+             extraido de dentro de executar() para pls_regressao_pooled().
+             Decisao registrada (Passo 27 do plano de preparacao p/ v1.0):
+             a alegacao "validacao agrupada por padrao" (subtitulo do
+             projeto) tinha cobertura de teste parcial -- classificacao e
+             quantificacao por especie protegidas por
+             tests/test_contrato_validacao_agrupada.py, mas o terceiro
+             ponto de split (o caminho que roda quando ha' 1 unica
+             especie, nivel N1, ou nenhuma especie com amostra adulterada
+             suficiente) vivia inline em executar(), sem funcao propria e
+             sem teste. Extracao cirurgica avaliada como viavel (bloco
+             autocontido, ~150 linhas, sem dependencia oculta de outras
+             variaveis locais de executar()) e executada: mesmo corpo,
+             mesma assinatura de retorno de pls_regressao_por_especie.
+             Verificado bit-a-bit (rtol=1e-12) que a extracao nao mudou
+             nenhum valor numerico -- nao so' que a suite passa, que o
+             VALOR e' identico antes/depois (P9 do plano de divida tecnica
+             de executar() alerta especificamente para esse risco: PNG
+             gerado, valor mudando em silencio). NAO e' inicio da quebra
+             do monolito de executar() -- resto do arquivo continua como
+             estava, decisao de nao refatorar mantida.
 NAO LANCADO (pos-v31.9.0) — 2026-08-17 — CLI: persistencia de estado volta a
              funcionar -- 3 wrappers eram no-op SILENCIOSO (varredura de
              bugs). `_carregar_visual_cfg`, `_salvar_visual_cfg` e

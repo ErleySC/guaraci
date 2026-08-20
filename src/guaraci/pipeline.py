@@ -1115,6 +1115,169 @@ def pls_regressao_por_especie(
     }
 
 
+def pls_regressao_pooled(
+        X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
+        mae_id: Optional[np.ndarray], cfg: "Config", pasta: str,
+        pasta_logs: str, n_splits: int) -> Dict[str, Any]:
+    """Regressão PLS do teor de adulteração, UM UNICO MODELO sobre todas as
+    amostras (sem separar por especie).
+
+    Extraída de `executar()` em 2026-08-20 (Passo 27 do plano de dívida de
+    `executar()`/`guaraci.py`): antes vivia inline, sem função própria e
+    sem teste de contrato dedicado. É o caminho que roda sempre que
+    `pls_regressao_por_especie` devolve `None` -- dataset de espécie
+    única, nível N1, ou nenhuma espécie com amostras adulteradas
+    suficientes -- não é caso raro, é o caminho normal para dataset
+    pequeno ou de espécie única.
+
+    Split cal/val e CV interna de seleção de LVs são group-aware por
+    `mae_id`, no mesmo padrão de `pls_regressao_por_especie` -- ver
+    `tests/test_contrato_validacao_agrupada.py`.
+    """
+    log.info(f"\n[7/7] PLS regressao "
+          f"(target=teor%, {int(np.sum(conc > 0))} adulterados + "
+          f"{int(np.sum(conc == 0))} puros)")
+    Y_reg = np.asarray(conc, dtype=float).reshape(-1, 1)
+
+    # Calibration/validation split — group-aware if mae_id available
+    # (T1/T2/T3 replicates of the same sample point never split between cal/val).
+    if cfg.divisao_cal_val == "kennard_stone":
+        ic, iv = kennard_stone_split_group_aware(
+            X_raw, mae_id, cfg.frac_cal)
+        log.info(f"  Split cal/val: Kennard-Stone "
+              f"({len(ic)} cal / {len(iv)} val)")
+    elif mae_id is not None:
+        gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
+                                     random_state=cfg.seed)
+        ic, iv = next(gss_reg.split(X_raw, Y_reg, groups=mae_id))
+        log.info(f"  Split cal/val: GroupShuffleSplit por mae_id "
+              f"({len(ic)} cal / {len(iv)} val)")
+    else:
+        rng   = np.random.default_rng(cfg.seed)
+        idx_p = rng.permutation(len(conc))
+        n_cal = int(cfg.frac_cal * len(conc))
+        ic, iv = idx_p[:n_cal], idx_p[n_cal:]
+    Xc_raw, Yc = X_raw[ic], Y_reg[ic]
+    Xv_raw, Yv = X_raw[iv], Y_reg[iv]
+
+    lv_max = min(cfg.max_lvs, max(2, Xc_raw.shape[0] // 5))
+
+    # CV interna — GroupKFold por mae_id (C5: nao vaza replicas)
+    if mae_id is not None:
+        grupos_cal   = mae_id[ic]
+        n_grupos_cal = int(len(np.unique(grupos_cal)))
+        n_splits_reg = max(2, min(n_splits, n_grupos_cal))
+        cv_reg = GroupKFold(n_splits=n_splits_reg)
+        grupos_cv_reg: Optional[np.ndarray] = grupos_cal
+        log.info(f"  CV interna: GroupKFold n_splits={n_splits_reg} "
+              f"({n_grupos_cal} grupos na calibracao)")
+    else:
+        n_splits_reg = max(2, min(n_splits, Xc_raw.shape[0] // 2))
+        cv_reg = KFold(n_splits=n_splits_reg, shuffle=True,
+                        random_state=cfg.seed)
+        grupos_cv_reg = None
+
+    erros_reg = []
+    preds_reg = []
+    for n in range(1, lv_max + 1):
+        pipe = Pipeline([
+            ("preproc", construir_preprocessador(cfg)),
+            ("pls", PLSRegression(n_components=n, scale=False)),
+        ])
+        Y_hat = cross_val_predict(pipe, Xc_raw, Yc, cv=cv_reg,
+                                   groups=grupos_cv_reg)
+        erros_reg.append(rmse_flat(Yc, Y_hat))
+        preds_reg.append(Y_hat)
+
+    n_opt_reg = int(np.argmin(erros_reg)) + 1
+    pipe_final = Pipeline([
+        ("preproc", construir_preprocessador(cfg)),
+        ("pls", PLSRegression(n_components=n_opt_reg, scale=False)),
+    ]).fit(Xc_raw, Yc)
+    Yc_hat = pipe_final.predict(Xc_raw)
+    Yv_hat = pipe_final.predict(Xv_raw)
+    Yc_cv  = preds_reg[n_opt_reg - 1]
+
+    rmsec  = rmse_flat(Yc, Yc_hat)
+    rmsecv = rmse_flat(Yc, Yc_cv)
+    rmsep  = rmse_flat(Yv, Yv_hat)
+    bias_v = float(np.mean(np.asarray(Yv_hat).flatten()
+                            - np.asarray(Yv).flatten()))
+    r2c    = float(r2_score(Yc, Yc_hat))
+    r2v    = float(r2_score(Yv, Yv_hat))
+
+    fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
+                        r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta)
+
+    # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
+    # validacao ja usado no RMSEP/bias acima.
+    _dmody_res_pooled = dmody(
+        np.asarray(Yv_hat).flatten() - np.asarray(Yv).flatten(),
+        n_componentes=n_opt_reg, n_amostras=len(Yv))
+
+    log.info(f"  LVs    : {n_opt_reg}")
+    log.info(f"  RMSEC  : {rmsec:.3f}  |  RMSECV: {rmsecv:.3f}  "
+          f"|  RMSEP: {rmsep:.3f}")
+    log.info(f"  R2cal  : {r2c:.4f}  |  R2val : {r2v:.4f}  "
+          f"|  Bias: {bias_v:.4f}")
+    # RPD/RER da regressao pooled: um RMSEP sozinho nao diz se o modelo
+    # serve para alguma coisa -- as razoes normalizam o erro pela
+    # variacao do proprio conjunto de referencia, e a faixa de uso vem
+    # junto para o numero nao sair nu (Williams 2014; AACC 39-00.01).
+    _razoes_pooled = rpd_rer(Yv, Yv_hat)
+    _faixa_pooled = interpretar_rpd(_razoes_pooled["rpd"])
+    log.info(f"  SEP    : {_razoes_pooled['sep']:.3f}  "
+             f"|  RPD: {_razoes_pooled['rpd']:.2f}  "
+             f"|  RER: {_razoes_pooled['rer']:.1f}  ->  {_faixa_pooled}")
+
+    # Figuras de merito analiticas (Valderrama, Braga & Poppi, 2009):
+    # ruido instrumental estimado a partir de replicas fisicas (T1/T2/T3
+    # via mae_id) SOMENTE do lado de calibracao.
+    _preproc_ajustado_reg = pipe_final.named_steps["preproc"]
+    _X_cal_proc_reg = np.asarray(_preproc_ajustado_reg.transform(Xc_raw))
+    _grupos_rep_reg = _agrupar_replicas_processadas(
+        Xc_raw, mae_id[ic] if mae_id is not None else None,
+        _preproc_ajustado_reg)
+    _fom_reg = figuras_merito_regressao(
+        pipe_final.named_steps["pls"], _X_cal_proc_reg, _grupos_rep_reg)
+    # Figura de merito dedicada (auditoria jul/2026, item 5): caminho
+    # single-especie so' tem 1 modelo pooled, entao a "tabela" tem 1 linha.
+    _especies_unicas_reg = np.unique(rotulos)
+    _nome_esp_pooled = (str(_especies_unicas_reg[0])
+                         if len(_especies_unicas_reg) == 1 else "Pooled")
+    fig_merito_regressao([{
+        "especie": _nome_esp_pooled,
+        "lod": _fom_reg["lod"], "loq": _fom_reg["loq"],
+        "seletividade_media": _fom_reg["seletividade_media"],
+    }], cfg, pasta)
+    if np.isfinite(_fom_reg["lod"]):
+        log.info(f"  LOD    : {_fom_reg['lod']:.2f}%  |  "
+              f"LOQ: {_fom_reg['loq']:.2f}%")
+        log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
+              f"gamma: {_fom_reg['sensibilidade_analitica']:.2f}  |  "
+              f"SEL: {_fom_reg['seletividade_media']:.3f}")
+    else:
+        log.info("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
+              "estimar ruido instrumental)")
+    log.info(f"  DModY critico (SIMCA): {_dmody_res_pooled['dmody_crit']:.3f}"
+          f"  |  amostras fora: {_dmody_res_pooled['n_fora_do_modelo']}")
+    resultado_pooled = {
+        "r2c": r2c, "r2v": r2v, "rmsec": rmsec,
+        "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
+        "sep": _razoes_pooled["sep"],
+        "rpd": _razoes_pooled["rpd"],
+        "rer": _razoes_pooled["rer"],
+        "rpd_faixa": _faixa_pooled,
+        "dmody_crit": _dmody_res_pooled["dmody_crit"],
+        "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"],
+    }
+    anexar_regressao_resumo(pasta_logs, pooled=resultado_pooled,
+                            fom_pooled=_fom_reg)
+    anexar_regressao_model_card(pasta_logs, pooled=resultado_pooled,
+                                fom_pooled=_fom_reg)
+    return resultado_pooled
+
+
 def executar(cfg: Config):
     from guaraci.log import configurar as _configurar_log
     # Chamado aqui (nao em nivel de modulo) para rodar DENTRO de qualquer
@@ -2507,155 +2670,8 @@ def executar(cfg: Config):
                 _pls_reg_ok = True
 
     if _pls_reg_ok and conc is not None:
-        log.info(f"\n[7/7] PLS regressao "
-              f"(target=teor%, {int(np.sum(conc > 0))} adulterados + "
-              f"{int(np.sum(conc == 0))} puros)")
-        Y_reg = np.asarray(conc, dtype=float).reshape(-1, 1)
-
-        # Calibration/validation split — group-aware if mae_id available
-        # (T1/T2/T3 replicates of the same sample point never split between cal/val).
-        if cfg.divisao_cal_val == "kennard_stone":
-            ic, iv = kennard_stone_split_group_aware(
-                X_raw, mae_id, cfg.frac_cal)
-            log.info(f"  Split cal/val: Kennard-Stone "
-                  f"({len(ic)} cal / {len(iv)} val)")
-        elif mae_id is not None:
-            gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
-                                         random_state=cfg.seed)
-            ic, iv = next(gss_reg.split(X_raw, Y_reg, groups=mae_id))
-            log.info(f"  Split cal/val: GroupShuffleSplit por mae_id "
-                  f"({len(ic)} cal / {len(iv)} val)")
-        else:
-            rng   = np.random.default_rng(cfg.seed)
-            idx_p = rng.permutation(len(conc))
-            n_cal = int(cfg.frac_cal * len(conc))
-            ic, iv = idx_p[:n_cal], idx_p[n_cal:]
-        Xc_raw, Yc = X_raw[ic], Y_reg[ic]
-        Xv_raw, Yv = X_raw[iv], Y_reg[iv]
-
-        lv_max = min(cfg.max_lvs, max(2, Xc_raw.shape[0] // 5))
-
-        # CV interna — GroupKFold por mae_id (C5: nao vaza replicas)
-        if mae_id is not None:
-            grupos_cal   = mae_id[ic]
-            n_grupos_cal = int(len(np.unique(grupos_cal)))
-            n_splits_reg = max(2, min(n_splits, n_grupos_cal))
-            cv_reg = GroupKFold(n_splits=n_splits_reg)
-            grupos_cv_reg: Optional[np.ndarray] = grupos_cal
-            log.info(f"  CV interna: GroupKFold n_splits={n_splits_reg} "
-                  f"({n_grupos_cal} grupos na calibracao)")
-        else:
-            n_splits_reg = max(2, min(n_splits, Xc_raw.shape[0] // 2))
-            cv_reg = KFold(n_splits=n_splits_reg, shuffle=True,
-                            random_state=cfg.seed)
-            grupos_cv_reg = None
-
-        erros_reg = []
-        preds_reg = []
-        for n in range(1, lv_max + 1):
-            pipe = Pipeline([
-                ("preproc", construir_preprocessador(cfg)),
-                ("pls", PLSRegression(n_components=n, scale=False)),
-            ])
-            Y_hat = cross_val_predict(pipe, Xc_raw, Yc, cv=cv_reg,
-                                       groups=grupos_cv_reg)
-            erros_reg.append(rmse_flat(Yc, Y_hat))
-            preds_reg.append(Y_hat)
-
-        n_opt_reg = int(np.argmin(erros_reg)) + 1
-        pipe_final = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
-            ("pls", PLSRegression(n_components=n_opt_reg, scale=False)),
-        ]).fit(Xc_raw, Yc)
-        Yc_hat = pipe_final.predict(Xc_raw)
-        Yv_hat = pipe_final.predict(Xv_raw)
-        Yc_cv  = preds_reg[n_opt_reg - 1]
-
-        rmsec  = rmse_flat(Yc, Yc_hat)
-        rmsecv = rmse_flat(Yc, Yc_cv)
-        rmsep  = rmse_flat(Yv, Yv_hat)
-        bias_v = float(np.mean(np.asarray(Yv_hat).flatten()
-                                - np.asarray(Yv).flatten()))
-        r2c    = float(r2_score(Yc, Yc_hat))
-        r2v    = float(r2_score(Yv, Yv_hat))
-
-        fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
-                            r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta)
-
-        # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
-        # validacao ja usado no RMSEP/bias acima.
-        _dmody_res_pooled = dmody(
-            np.asarray(Yv_hat).flatten() - np.asarray(Yv).flatten(),
-            n_componentes=n_opt_reg, n_amostras=len(Yv))
-
-        log.info(f"  LVs    : {n_opt_reg}")
-        log.info(f"  RMSEC  : {rmsec:.3f}  |  RMSECV: {rmsecv:.3f}  "
-              f"|  RMSEP: {rmsep:.3f}")
-        log.info(f"  R2cal  : {r2c:.4f}  |  R2val : {r2v:.4f}  "
-              f"|  Bias: {bias_v:.4f}")
-        # RPD/RER da regressao pooled: um RMSEP sozinho nao diz se o modelo
-        # serve para alguma coisa -- as razoes normalizam o erro pela
-        # variacao do proprio conjunto de referencia, e a faixa de uso vem
-        # junto para o numero nao sair nu (Williams 2014; AACC 39-00.01).
-        _razoes_pooled = rpd_rer(Yv, Yv_hat)
-        _faixa_pooled = interpretar_rpd(_razoes_pooled["rpd"])
-        log.info(f"  SEP    : {_razoes_pooled['sep']:.3f}  "
-                 f"|  RPD: {_razoes_pooled['rpd']:.2f}  "
-                 f"|  RER: {_razoes_pooled['rer']:.1f}  ->  {_faixa_pooled}")
-
-        # Figuras de merito analiticas (Valderrama, Braga & Poppi, 2009):
-        # ruido instrumental estimado a partir de replicas fisicas (T1/T2/T3
-        # via mae_id) SOMENTE do lado de calibracao.
-        _preproc_ajustado_reg = pipe_final.named_steps["preproc"]
-        _X_cal_proc_reg = np.asarray(_preproc_ajustado_reg.transform(Xc_raw))
-        _grupos_rep_reg = _agrupar_replicas_processadas(
-            Xc_raw, mae_id[ic] if mae_id is not None else None,
-            _preproc_ajustado_reg)
-        _fom_reg = figuras_merito_regressao(
-            pipe_final.named_steps["pls"], _X_cal_proc_reg, _grupos_rep_reg)
-        # Figura de merito dedicada (auditoria jul/2026, item 5): caminho
-        # single-especie so' tem 1 modelo pooled, entao a "tabela" tem 1 linha.
-        _especies_unicas_reg = np.unique(rotulos)
-        _nome_esp_pooled = (str(_especies_unicas_reg[0])
-                             if len(_especies_unicas_reg) == 1 else "Pooled")
-        fig_merito_regressao([{
-            "especie": _nome_esp_pooled,
-            "lod": _fom_reg["lod"], "loq": _fom_reg["loq"],
-            "seletividade_media": _fom_reg["seletividade_media"],
-        }], cfg, pasta)
-        if np.isfinite(_fom_reg["lod"]):
-            log.info(f"  LOD    : {_fom_reg['lod']:.2f}%  |  "
-                  f"LOQ: {_fom_reg['loq']:.2f}%")
-            log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
-                  f"gamma: {_fom_reg['sensibilidade_analitica']:.2f}  |  "
-                  f"SEL: {_fom_reg['seletividade_media']:.3f}")
-        else:
-            log.info("  LOD/LOQ: N/A (sem replicas fisicas suficientes para "
-                  "estimar ruido instrumental)")
-        log.info(f"  DModY critico (SIMCA): {_dmody_res_pooled['dmody_crit']:.3f}"
-              f"  |  amostras fora: {_dmody_res_pooled['n_fora_do_modelo']}")
-        anexar_regressao_resumo(
-            pasta_logs,
-            pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
-                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
-                    "sep": _razoes_pooled["sep"],
-                    "rpd": _razoes_pooled["rpd"],
-                    "rer": _razoes_pooled["rer"],
-                    "rpd_faixa": _faixa_pooled,
-                    "dmody_crit": _dmody_res_pooled["dmody_crit"],
-                    "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
-            fom_pooled=_fom_reg)
-        anexar_regressao_model_card(
-            pasta_logs,
-            pooled={"r2c": r2c, "r2v": r2v, "rmsec": rmsec,
-                    "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
-                    "sep": _razoes_pooled["sep"],
-                    "rpd": _razoes_pooled["rpd"],
-                    "rer": _razoes_pooled["rer"],
-                    "rpd_faixa": _faixa_pooled,
-                    "dmody_crit": _dmody_res_pooled["dmody_crit"],
-                    "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"]},
-            fom_pooled=_fom_reg)
+        pls_regressao_pooled(X_raw, conc, rotulos, mae_id, cfg, pasta,
+                             pasta_logs, n_splits)
     elif conc is None:
         log.info("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
 

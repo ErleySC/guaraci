@@ -259,22 +259,21 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
          logica de split REIMPLEMENTADA (comentario no proprio codigo:
          "para evitar acoplamento circular com pipeline.py"), com
          `GroupShuffleSplit` importado LOCALMENTE dentro da funcao.
-      3. Dentro de `executar()` (pipeline.py, ~linha 2510-2545), um TERCEIRO
-         bloco de PLS-R pooled (nao por especie, o modo "[7/7] PLS
-         regressao") com seu proprio `GroupShuffleSplit` + `GroupKFold`,
-         inline no meio de uma funcao de ~1500 linhas, sem ser uma funcao
-         separada chamavel.
+      3. `pls_regressao_pooled` (pipeline.py) -- PLS-R sobre TODAS as
+         amostras de uma vez (sem separar por especie); e' o caminho que
+         roda quando (1) devolve `None` -- dataset de especie unica, nivel
+         N1, ou nenhuma especie com amostras adulteradas suficientes. Ate'
+         2026-08-20 vivia inline dentro de `executar()` (~150 linhas, sem
+         funcao propria, sem teste). Extraida nesta data (Passo 27): mesmo
+         corpo, mesmo comportamento -- so' ganhou nome e assinatura. Ver
+         `test_quantificacao_pooled_usa_split_group_aware` abaixo.
 
     Este teste cobre (1) e (2) por completo -- inclusive a CV interna de
     LV-selection de (1), fechada em 2026-08-20 depois que a verificacao
     independente mostrou que o teste passava mesmo com essa CV interna
     quebrada (o `GroupShuffleSplit` do cal/val continuava correto e
-    escondia o problema). NAO cobre (3): esse bloco vive dentro de
-    `executar()`, que le' arquivo, gera figuras e nao e' unitariamente
-    testavel sem rodar o pipeline inteiro. Enquanto (3) nao tiver teste
-    dedicado, a alegacao do subtitulo NAO esta' mecanicamente protegida
-    para o modo de quantificacao pooled -- so' para o modo por especie, que
-    e' o caminho de producao default (`pls_regressao_por_especie`).
+    escondia o problema). (3) tem teste dedicado separado, abaixo -- os
+    tres caminhos de quantificacao estao cobertos.
     """
     X, conc, rotulos, mae_id, classes_unicas = _dados_regressao_com_replicas()
     cfg = pq.Config(seed=0, max_lvs=5, frac_cal=0.7)
@@ -330,3 +329,79 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
         "selecao de numero de LVs -- vaza informacao da mesma replica "
         "fisica entre treino e teste ao escolher o hiperparametro, mesmo "
         "que o split cal/val esteja correto.")
+
+
+# =========================================================================
+#  3. QUANTIFICACAO POOLED -- terceiro ponto de split, extraido de
+#  executar() em 2026-08-20 (Passo 27) especificamente para ganhar este
+#  teste. Mesmo padrao dos dois anteriores: split cal/val (GroupShuffleSplit)
+#  + CV interna de LV (GroupKFold), ambos capturados e checados.
+# =========================================================================
+
+def _dados_regressao_uma_especie_com_replicas(seed=0, n_pontos=8,
+                                              n_replicas=3, p=30):
+    """Uma UNICA especie -- e' o gatilho real do caminho pooled:
+    `pls_regressao_por_especie` so' roda por especie quando ha' mais de
+    uma; com uma so', a orquestracao em executar() cai para
+    `pls_regressao_pooled`."""
+    rng = np.random.default_rng(seed)
+    X_list, conc_list, mae_list = [], [], []
+    w_true = rng.normal(size=p)
+    concs = np.linspace(0, 40, n_pontos)
+    for p_idx, c in enumerate(concs):
+        espectro_base = w_true * (c / 40.0) * 3.0
+        grupo_id = f"Especie_Unica_{p_idx:02d}"
+        for _r in range(n_replicas):
+            X_list.append(espectro_base + rng.normal(scale=0.10, size=p))
+            conc_list.append(c)
+            mae_list.append(grupo_id)
+    X = np.array(X_list)
+    conc = np.array(conc_list)
+    mae_id = np.array(mae_list)
+    rotulos = np.array(["Especie_Unica"] * len(X))
+    return X, conc, rotulos, mae_id
+
+
+@pytest.mark.slow
+def test_quantificacao_pooled_usa_split_group_aware(pq, tmp_path,
+                                                     monkeypatch):
+    """`pls_regressao_pooled` -- terceiro ponto de split da quantificacao,
+    extraido de dentro de `executar()` especificamente para ganhar este
+    teste (Passo 27, 2026-08-20). Mesma verificacao dos dois primeiros:
+    split cal/val (`GroupShuffleSplit`) e CV interna de selecao de LV
+    (`GroupKFold`) capturados e checados quanto a vazamento de grupo."""
+    X, conc, rotulos, mae_id = _dados_regressao_uma_especie_com_replicas()
+    cfg = pq.Config(seed=0, max_lvs=5, frac_cal=0.7)
+    pasta = str(tmp_path)
+    for d in (pq.NOME_TABELAS, pq.NOME_GRAFICOS, pq.NOME_RELATORIOS):
+        os.makedirs(os.path.join(pasta, d), exist_ok=True)
+    pasta_logs = os.path.join(pasta, pq.NOME_RELATORIOS)
+
+    capturados_split: list = []
+    capturados_cv: list = []
+    monkeypatch.setattr(
+        pq, "GroupShuffleSplit",
+        _espiao(skms.GroupShuffleSplit, capturados_split))
+    monkeypatch.setattr(
+        pq, "GroupKFold",
+        _espiao(skms.GroupKFold, capturados_cv))
+
+    resultado = pq.pls_regressao_pooled(
+        X, conc, rotulos, mae_id, cfg, pasta, pasta_logs, n_splits=3)
+
+    assert resultado is not None
+    assert "rmsep" in resultado and "r2v" in resultado
+
+    assert capturados_split, (
+        "GroupShuffleSplit nunca foi chamado no caminho pooled -- ou nao "
+        "passou por split group-aware, ou o import mudou de lugar.")
+    assert _nenhum_grupo_vazado(capturados_split), (
+        "um grupo (replica fisica) apareceu em calibracao E validacao no "
+        "split cal/val do caminho pooled.")
+
+    assert capturados_cv, (
+        "GroupKFold nunca foi chamado no caminho pooled -- a CV interna de "
+        "selecao de LV nao passou por splitter group-aware.")
+    assert _nenhum_grupo_vazado(capturados_cv), (
+        "um grupo apareceu nos dois lados de um fold da CV interna de "
+        "selecao de LV, no caminho pooled.")
