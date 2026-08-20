@@ -8,7 +8,6 @@
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Idiomas" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-ativo-55B06A">
-  <a href="https://doi.org/10.5281/zenodo.21311867"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21311867.svg"></a>
 </p>
 
 > 🇧🇷 Versão em português (de trabalho). • 🇬🇧 [English version](README.md)
@@ -247,8 +246,11 @@ comerciais exige uma **licença comercial** separada — veja
 [`COMMERCIAL.md`](docs/COMMERCIAL.md) (contato: erleysdacosta@gmail.com). O autor
 retém integralmente o copyright (licenciamento duplo).
 
-Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff). DOI Zenodo
-permanente: [10.5281/zenodo.21311867](https://doi.org/10.5281/zenodo.21311867).
+Metadados legíveis por máquina em [`CITATION.cff`](CITATION.cff). **Não há
+DOI de arquivamento no momento:** os depósitos anteriores no Zenodo foram
+retirados pelo autor em 2026-08-04 e seus DOIs não resolvem mais para um
+registro. Cite o repositório e uma versão com tag até que um novo depósito
+seja feito.
 
 ## Como citar
 
@@ -273,7 +275,6 @@ permanente: [10.5281/zenodo.21311867](https://doi.org/10.5281/zenodo.21311867).
   version     = {31.9.0},
   year        = {2026},
   url         = {https://github.com/ErleySC/guaraci},
-  license     = {GPL-3.0-or-later},
-  doi         = {10.5281/zenodo.21311867}
+  license     = {GPL-3.0-or-later}
 }
 ```

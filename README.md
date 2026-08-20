@@ -8,7 +8,6 @@
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Languages" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-active-55B06A">
-  <a href="https://doi.org/10.5281/zenodo.21311867"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21311867.svg"></a>
 </p>
 
 > 🇬🇧 English (lean). • 🇧🇷 [Versão completa em português](README.pt-br.md)
@@ -178,8 +177,10 @@ products requires a separate **commercial license** — see
 [`COMMERCIAL.md`](docs/COMMERCIAL.md) (contact: erleysdacosta@gmail.com). The author
 retains full copyright (dual licensing).
 
-Machine-readable metadata in [`CITATION.cff`](CITATION.cff). Permanent Zenodo
-DOI: [10.5281/zenodo.21311867](https://doi.org/10.5281/zenodo.21311867).
+Machine-readable metadata in [`CITATION.cff`](CITATION.cff). There is no
+archival DOI at present: the earlier Zenodo deposits were withdrawn by the
+author on 2026-08-04 and their DOIs no longer resolve to a record. Cite the
+repository and a tagged version until a new deposit is made.
 
 ## Contributing
 
@@ -207,7 +208,6 @@ Bug reports, feature requests and pull requests are welcome — see
   version     = {31.9.0},
   year        = {2026},
   url         = {https://github.com/ErleySC/guaraci},
-  license     = {GPL-3.0-or-later},
-  doi         = {10.5281/zenodo.21311867}
+  license     = {GPL-3.0-or-later}
 }
 ```
