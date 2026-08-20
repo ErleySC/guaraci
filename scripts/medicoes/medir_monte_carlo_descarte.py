@@ -13,8 +13,9 @@ ausente do treino -> balanced accuracy baixa). Descarta-las remove a cauda
 inferior, entao Media BA e sobretudo o IC95% ficam mais altos e mais
 estreitos que a distribuicao real do procedimento.
 
-MEDE, no regime real do dataset (14 classes, ~3 grupos mae_id por classe
-entre os puros, muitos mais entre os adulterados):
+MEDE, num regime tipico de classificacao multiclasse com poucos grupos
+por classe entre os puros -- o caso em que o descarte de iteracao morde
+mais:
   (1) fracao de iteracoes descartadas;
   (2) BA das descartadas vs BA das sobreviventes -- se as descartadas
       forem sistematicamente piores, o vies e' confirmado e quantificado;

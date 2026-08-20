@@ -31,7 +31,8 @@ agrupamento de replicas, sem os quais os arquivos deixam de ser
 analisaveis. Se o proprio identificador de amostra for sensivel no seu
 caso, use `--anonimizar-titulo`, que o substitui por um rotulo sequencial
 (`AMOSTRA_0001_T1`) preservando a estrutura de replicas -- e grava o mapa
-de correspondencia em `mapa_titulos.csv`, na saida, para que voce possa
+de correspondencia num CSV **irmao** da saida
+(`<saida>_mapa_titulos.csv`, fora da pasta que se publica), para que voce possa
 reverter localmente. NUNCA publique esse mapa junto com os espectros.
 """
 from __future__ import annotations
@@ -266,14 +267,20 @@ def sanitizar_pasta(entrada: Path, saida: Path, *,
         escritos += 1
 
     if anonimizar_titulo and mapa:
-        caminho_mapa = saida / "mapa_titulos.csv"
+        # FORA de `saida`, de proposito: `saida` e' a pasta que se
+        # publica. Grava-lo dentro dela era um vazamento estrutural que
+        # nenhuma lista de rotulos protegidos cobria -- `conferir()` so'
+        # varre *.dx dentro de `saida`. Um sibling de `saida` nao pode
+        # ser incluido por acidente quando alguem publica o CONTEUDO de
+        # `saida`. Achado na verificacao independente de 2026-08-20.
+        caminho_mapa = saida.parent / f"{saida.name}_mapa_titulos.csv"
         with open(caminho_mapa, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f, delimiter=";")
             w.writerow(["titulo_original", "titulo_anonimo"])
             w.writerows(sorted(mapa.items()))
         print(f"  mapa de correspondencia: {caminho_mapa}")
-        print("  ATENCAO: NUNCA publique mapa_titulos.csv junto com os "
-              "espectros -- ele desfaz a anonimizacao.")
+        print("  ATENCAO: NUNCA copie esse arquivo para dentro da pasta "
+              "que sera publicada -- ele desfaz a anonimizacao.")
     return {"lidos": len(arquivos), "escritos": escritos,
             "grupos": len(grupos)}
 

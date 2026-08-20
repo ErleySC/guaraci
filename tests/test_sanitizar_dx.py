@@ -116,16 +116,24 @@ def test_anonimizar_titulo_preserva_o_agrupamento_de_replicas(acervo, tmp_path):
         assert sum(1 for t in titulos if t.startswith(g + "_T")) == 3
 
 
-def test_mapa_de_titulos_e_escrito_e_avisado(acervo, tmp_path, capsys):
+def test_mapa_de_titulos_fica_fora_da_pasta_publicavel(acervo, tmp_path, capsys):
+    """O mapa nao pode viver DENTRO de `saida` -- e' a unica pasta que se
+    espera que o usuario publique, e `conferir()` so' varre ela. Achado na
+    verificacao independente de 2026-08-20: gravar o mapa la' dentro era um
+    vazamento que nenhuma lista de rotulos protegidos cobria."""
     saida = tmp_path / "anon"
     sanitizar_dx.sanitizar_pasta(acervo, saida, anonimizar_titulo=True)
-    mapa = saida / "mapa_titulos.csv"
-    assert mapa.is_file()
+    assert not (saida / "mapa_titulos.csv").exists()
+    assert not any(p.name == "mapa_titulos.csv" for p in saida.rglob("*")), (
+        "o mapa nao pode estar em lugar nenhum dentro da pasta publicavel")
+
+    mapa = tmp_path / "anon_mapa_titulos.csv"
+    assert mapa.is_file(), "o mapa tem que existir, so' que FORA de saida"
     conteudo = mapa.read_text(encoding="utf-8")
     assert "titulo_original;titulo_anonimo" in conteudo
     assert "ACA-01-01-2099-T1" in conteudo      # permite reverter localmente
-    # e o script tem que AVISAR que esse arquivo nao pode ser publicado
-    assert "NUNCA publique" in capsys.readouterr().out
+    # e o script tem que AVISAR que esse arquivo nao pode ir para a pasta publicavel
+    assert "NUNCA copie" in capsys.readouterr().out
 
 
 def test_conferir_nao_alarma_em_parametro_de_aquisicao(tmp_path):
