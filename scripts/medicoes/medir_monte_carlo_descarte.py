@@ -101,10 +101,12 @@ if __name__ == "__main__":
            f"{'IC95 sobrev.':>20} {'IC95 todas':>20}")
     print(cab)
     print("-" * len(cab))
-    # A primeira celula aproxima o regime do dataset de desenvolvimento;
-    # as demais sao regimes progressivamente mais estressados.
-    for n_classes, gpc in ((14, 44), (14, 20), (14, 10), (14, 6), (14, 4),
-                           (14, 3), (5, 3)):
+    # Varredura de regimes, do mais folgado (muitos grupos por classe) ao
+    # mais estressado (poucos grupos por classe) -- nao ha' uma celula unica
+    # "real": o ponto e' mostrar o descarte de 0% em toda a faixa
+    # plausivel, nao amarrar o numero de grupos do acervo a uma celula.
+    for n_classes, gpc in ((10, 50), (10, 20), (10, 10), (10, 6), (10, 4),
+                           (10, 3), (5, 3)):
         s, d = mede(n_classes, gpc)
         if s is None:
             print(f"{n_classes:>8} {gpc:>10}   splitter falhou: {d[:52]}")
