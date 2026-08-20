@@ -343,7 +343,7 @@ cumprida.
 | Cláusula "somente acadêmico/não comercial" | **ausente** — o item marcado como P0 no prompt **não se aplica** |
 | Duplo licenciamento | já documentado (`docs/COMMERCIAL.md`) e coerente com `LICENSE`, `CITATION.cff`, `pyproject.toml` |
 | Licenças das dependências | todas permissivas (BSD/MIT/Apache/PSF) — nenhuma GPL/AGPL/não comercial que contamine |
-| DOI do Zenodo | `10.5281/zenodo.21311867` **resolve** |
+| DOI do Zenodo | ~~`10.5281/zenodo.21311867` **resolve**~~ — **RETRATADO em 2026-08-19**: devolve **HTTP 410**. Os dois depósitos (v31.1.0 e v31.1.1) foram retirados pelo autor em 2026-08-04; o concept não tem versão viva (`/versions` → `total: 0`). A auditoria de 2026-08-17 marcou "resolve" sem medir o código de status. |
 
 **Ressalva a levar ao NIT:** `COMMERCIAL.md` afirma que *"o autor detém o
 copyright integral e o direito de licenciar sob outros termos"*. Essa
