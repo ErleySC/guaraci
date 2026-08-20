@@ -133,7 +133,7 @@ def test_fmt_yaml_lista():
 
 def test_fmt_yaml_caminho_windows_usa_aspas_simples():
     # backslash literal exige aspas SIMPLES em YAML (senão \\U vira escape)
-    out = cio._fmt_yaml(r"C:\Users\erley\dados")
+    out = cio._fmt_yaml(r"C:\dados\exemplo")
     assert out.startswith("'") and out.endswith("'")
     assert "\\U" not in out.replace("'", "") or "C:\\Users" in out
 

@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [master, main]
 
+# Escopo minimo explicito: sem isto o workflow herda o padrao do
+# repositorio, que pode conceder write ao GITHUB_TOKEN sem necessidade.
+permissions:
+  contents: read
+
 jobs:
   # ── Lint estático (rápido, falha cedo antes de rodar a suíte pesada) ───────
   lint:
@@ -140,3 +145,40 @@ jobs:
         with:
           name: coverage-xml-${{ matrix.os }}-py${{ matrix.python-version }}
           path: coverage.xml
+
+  # ── Validacao contra dataset PUBLICO ──────────────────────────────────────
+  # Separado da suite principal de proposito: depende de rede e de um
+  # arquivo que NAO e' versionado (licenca de terceiro). Falha aqui = o
+  # motor deixou de reproduzir a literatura, o que e' bug, nao flakiness.
+  # `continue-on-error: false` -- se a fonte cair, o job falha e alguem olha,
+  # em vez de virar verde silencioso.
+  validacao-publica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest scipy
+      - name: Baixar dataset publico (Eigenvector Corn)
+        env:
+          # Fixado em 2026-08-20. Sem isto, o gate de validacao publica
+          # aceitaria silenciosamente qualquer conteudo que a origem servisse
+          # -- e o .mat vai direto para scipy.io.loadmat.
+          CORN_SHA256: e28fd4be274a54ca57b1f2c67ef5a8bf4981f8314bcc73e4c64836fe658c46b5
+          CORN_BYTES: "1445616"
+        run: |
+          mkdir -p "$HOME/datasets_publicos"
+          destino="$HOME/datasets_publicos/corn.mat"
+          curl -fsSL --retry 3 -o "$destino" https://eigenvector.com/data/Corn/corn.mat
+          echo "$CORN_SHA256  $destino" | sha256sum -c -
+          tamanho=$(wc -c < "$destino")
+          if [ "$tamanho" != "$CORN_BYTES" ]; then
+            echo "corn.mat com $tamanho bytes, esperado $CORN_BYTES" >&2
+            exit 1
+          fi
+      - name: Rodar validacao externa
+        run: |
+          export GUARACI_DATASETS_DIR="$HOME/datasets_publicos"
+          pytest tests/test_validacao_publica.py -v

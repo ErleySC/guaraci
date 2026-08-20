@@ -11,7 +11,7 @@ etapa4_selecao_variaveis).
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Dict, List, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
 from guaraci.chemometric_stats import vip_scores, calcular_selectivity_ratio
-from guaraci.validacao_estatistica import _cv_predict_manual
+from guaraci.validacao_estatistica import (_cv_predict_manual,
+                                           StratifiedGroupKFoldEstavel)
 from guaraci.figuras import salvar, cor, _ticks_x_inteiros
 
 if TYPE_CHECKING:
@@ -86,6 +87,43 @@ def _mask_vip_threshold(X_train: np.ndarray, Y_train: np.ndarray,
     pls.fit(X_train, Y_train)
     vip = vip_scores(pls)
     return np.asarray(vip) >= threshold
+
+
+def _mask_melhor_intervalo(X_train: np.ndarray, Y_train: np.ndarray,
+                            n_lv: int, n_intervalos: int,
+                            seed: int) -> np.ndarray:
+    """Mascara do melhor intervalo iPLS escolhido usando SO' dados de treino
+    do fold (CV interna propria), nunca a particao que reporta o resultado.
+
+    Achado B1-1 da auditoria de 2026-08-16: `selecao_ipls` escolhia o melhor
+    intervalo por balanced_accuracy calculado sobre `cv_indices`, e
+    `etapa4_selecao_variaveis` reavaliava o vencedor NA MESMA `cv_indices`
+    para a tabela final -- vies de maximo-de-N sobre a particao que reporta.
+    O comentario antigo do modulo justificava excluir o iPLS do nested-CV
+    porque "a particao em intervalos NAO usa rotulo": verdade, e irrelevante
+    -- a ESCOLHA DO MELHOR intervalo usa. Vies medido: **+0,070 pontos de
+    balanced accuracy, positivo em 12/12 seeds** (
+    scripts/medicoes/medir_selecao_variaveis.py, funcao b1_1), contra um limiar de desempate
+    de 1% usado por `etapa4_selecao_variaveis` para eleger o metodo mais
+    parcimonioso -- ou seja, o vies era 7x maior que o criterio de decisao,
+    e favorecia sistematicamente o iPLS numa tabela onde todos os OUTROS
+    metodos ja passavam por nested-CV."""
+    p = X_train.shape[1]
+    bordas = np.linspace(0, p, n_intervalos + 1).astype(int)
+    y_train_int = np.argmax(Y_train, axis=1)
+    cv_interna = _cv_local(y_train_int, seed)
+    melhor_bal, melhor_ab = -1.0, (0, p)
+    for i in range(n_intervalos):
+        a, b = bordas[i], bordas[i + 1]
+        if b - a < 2:
+            continue
+        m = _avaliar_subset_cv(X_train[:, a:b], Y_train, y_train_int,
+                                cv_interna, n_lv)
+        if m["balanced_accuracy"] > melhor_bal:
+            melhor_bal, melhor_ab = m["balanced_accuracy"], (a, b)
+    mask = np.zeros(p, dtype=bool)
+    mask[melhor_ab[0]:melhor_ab[1]] = True
+    return mask
 
 
 def _mask_sr_top_frac(X_train: np.ndarray, Y_train: np.ndarray,
@@ -175,14 +213,37 @@ def _avaliar_subset_nested_cv(X_proc: np.ndarray, Y_bin: np.ndarray,
 #  -- AG/SPA ja sao opt-in e documentados como mais lentos).
 # =========================================================================
 
-def _cv_local(y_local: np.ndarray, seed: int, n_splits: int = 3) -> list:
+def _cv_local(y_local: np.ndarray, seed: int,
+              grupos_local: Optional[np.ndarray] = None,
+              n_splits: int = 3) -> list:
     """K-fold local (indices 0..len(y_local)-1) p/ guiar a busca DENTRO de
-    um fold externo. Nao e' group-aware (mae_id nao chega ate aqui) -- so'
-    orienta a otimizacao; o numero CIENTIFICO reportado usa sempre o fold
-    de teste do cv_indices EXTERNO (esse sim group-aware), nunca visto
-    pela busca."""
-    from sklearn.model_selection import StratifiedKFold
+    um fold externo.
+
+    GROUP-AWARE quando `grupos_local` (mae_id do fold externo) e' fornecido
+    -- correcao do achado B1-3 da auditoria de 2026-08-16. A versao anterior
+    usava sempre `StratifiedKFold`, com a justificativa de que "so' orienta a
+    otimizacao; o numero reportado usa o fold externo group-aware". O
+    argumento esta' metade certo: o NUMERO reportado e' de fato honesto, mas
+    o produto cientifico da Etapa 4 nao e' o bal.acc -- sao as VARIAVEIS
+    SELECIONADAS, e uma busca guiada por uma particao onde replicas vazam
+    prefere justamente as variaveis que exploram similaridade entre
+    replicas. Isto e', o software aplicava a si mesmo, no passo de selecao,
+    o erro que existe para combater.
+
+    Sem `grupos_local` (None): cai para `StratifiedKFold` como antes --
+    necessario quando nao ha' identificador de replica disponivel."""
     y_local = np.asarray(y_local)
+    if grupos_local is not None:
+        grupos_local = np.asarray(grupos_local)
+        n_grupos = int(len(np.unique(grupos_local)))
+        # Cada fold interno precisa de >=1 grupo; com poucos grupos o
+        # splitter group-aware nao tem material e cai para o estratificado.
+        if n_grupos >= 2:
+            n_splits_eff = max(2, min(n_splits, n_grupos))
+            gkf = StratifiedGroupKFoldEstavel(n_splits=n_splits_eff, seed=seed)
+            return list(gkf.split(np.zeros(len(y_local)), y_local,
+                                  groups=grupos_local))
+    from sklearn.model_selection import StratifiedKFold
     _classes, contagens = np.unique(y_local, return_counts=True)
     n_splits_eff = max(2, min(n_splits, int(contagens.min())))
     skf = StratifiedKFold(n_splits=n_splits_eff, shuffle=True, random_state=seed)
@@ -191,19 +252,25 @@ def _cv_local(y_local: np.ndarray, seed: int, n_splits: int = 3) -> list:
 
 def _avaliar_busca_nested_cv(X_proc: np.ndarray, Y_bin: np.ndarray,
                               y_int: np.ndarray, cv_indices: list,
-                              n_lv: int, buscar_fn, seed: int) -> Dict[str, float]:
+                              n_lv: int, buscar_fn, seed: int,
+                              mae_id: Optional[np.ndarray] = None
+                              ) -> Dict[str, float]:
     """Nested-CV p/ AG/SPA: `buscar_fn(X_treino, Y_treino, y_treino,
     cv_interna) -> mascara` roda a busca completa usando so' o subconjunto
     de TREINO do fold externo (reindexado localmente) + uma CV interna
     propria; a mascara e' avaliada no fold de TESTE externo (nunca visto
-    pela busca). Mesma estrutura de retorno de `_avaliar_subset_nested_cv`."""
+    pela busca). Mesma estrutura de retorno de `_avaliar_subset_nested_cv`.
+
+    `mae_id` (opcional): quando fornecido, a CV INTERNA que guia a busca
+    tambem e' group-aware (achado B1-3) -- ver docstring de `_cv_local`."""
     p = X_proc.shape[1]
     y_hat = np.zeros_like(Y_bin, dtype=float)
     contador = np.zeros(len(Y_bin), dtype=int)
     n_vars_por_fold: List[int] = []
     for tr, va in cv_indices:
         X_tr, Y_tr, y_tr = X_proc[tr], Y_bin[tr], y_int[tr]
-        cv_interna = _cv_local(y_tr, seed)
+        grupos_tr = mae_id[tr] if mae_id is not None else None
+        cv_interna = _cv_local(y_tr, seed, grupos_local=grupos_tr)
         mask = buscar_fn(X_tr, Y_tr, y_tr, cv_interna)
         if mask is None or mask.sum() < 2:
             mask = np.ones(p, dtype=bool)
@@ -265,9 +332,37 @@ def selecao_ipls(X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv,
 
 def sparse_plsda_mask(X_proc, Y_bin, n_comp: int,
                       keep_por_comp: int) -> np.ndarray:
-    """sPLS-DA (estilo Le Cao et al. 2008): NIPALS com soft-selection —
-    mantem apenas as `keep_por_comp` variaveis de maior |peso| por
-    componente. Retorna mascara da uniao das variaveis selecionadas."""
+    """sPLS-DA (Le Cao et al. 2008): NIPALS com penalizacao por
+    SOFT-THRESHOLDING no vetor de loading, mantendo `keep_por_comp`
+    variaveis nao-nulas por componente. Retorna mascara da uniao das
+    variaveis selecionadas por componente.
+
+    O operador e' o da referencia:
+
+        w_j <- sign(w_j) * max(|w_j| - lambda, 0)
+
+    com `lambda` = o (keep_por_comp+1)-esimo maior |w_j|, o que faz o
+    numero de sobreviventes ser exatamente `keep_por_comp` (a mesma
+    parametrizacao por contagem que o mixOmics expoe como `keepX`) --
+    mas, ao contrario do truncamento duro, as sobreviventes sao
+    ENCOLHIDAS por lambda, e e' esse encolhimento que muda a direcao
+    normalizada de w, logo o escore t, logo a deflacao, logo o conjunto
+    escolhido pelos componentes seguintes.
+
+    CORRIGIDO em 2026-08-16 (achado B1-2): a versao anterior fazia
+    truncamento DURO (`argsort(|w|)[:keep]`, zerando o resto sem encolher
+    as sobreviventes) enquanto a docstring a descrevia como
+    "soft-selection" -- divergencia da referencia citada E contradicao
+    interna, a mesma classe do achado A5 da auditoria de 2026-08-07.
+    Divergencia medida entre as duas variantes (
+    scripts/medicoes/medir_selecao_variaveis.py, funcao b1_2): Jaccard=1,000 com 1
+    componente (identicas por construcao) caindo a ~0,87 com 5.
+
+    Referencia:
+        Le Cao K.-A., Rossouw D., Robert-Granie C. & Besse P. (2008).
+        A Sparse PLS for Variable Selection when Integrating Omics Data.
+        Stat. Appl. Genet. Mol. Biol. 7(1):35.
+    """
     X = np.asarray(X_proc, dtype=float)
     Y = np.asarray(Y_bin, dtype=float)
     Xr = X - X.mean(axis=0)
@@ -275,6 +370,7 @@ def sparse_plsda_mask(X_proc, Y_bin, n_comp: int,
     p = X.shape[1]
     selecionadas: set = set()
     n_comp = int(max(1, min(n_comp, p)))
+    keep = int(max(1, min(keep_por_comp, p)))
     for _ in range(n_comp):
         M = Xr.T @ Yc                      # (p, m)
         try:
@@ -282,8 +378,11 @@ def sparse_plsda_mask(X_proc, Y_bin, n_comp: int,
             w = U[:, 0]
         except np.linalg.LinAlgError:
             break
-        idx = np.argsort(np.abs(w))[::-1][:keep_por_comp]
-        w_sp = np.zeros_like(w); w_sp[idx] = w[idx]
+        # Soft-threshold com lambda = (keep+1)-esimo maior |w|: zera todas
+        # menos `keep` e encolhe as que sobram por esse mesmo lambda.
+        aw = np.abs(w)
+        lam = float(np.sort(aw)[::-1][keep]) if keep < p else 0.0
+        w_sp = np.sign(w) * np.maximum(aw - lam, 0.0)
         nw = float(np.linalg.norm(w_sp))
         if nw < 1e-12:
             break
@@ -296,7 +395,7 @@ def sparse_plsda_mask(X_proc, Y_bin, n_comp: int,
         Xr = Xr - np.outer(t, pld)
         c = Yc.T @ t / tt
         Yc = Yc - np.outer(t, c)
-        selecionadas.update(int(i) for i in idx)
+        selecionadas.update(int(i) for i in np.flatnonzero(w_sp))
     mask = np.zeros(p, dtype=bool)
     if selecionadas:
         mask[list(selecionadas)] = True
@@ -531,17 +630,25 @@ def fig_etapa4_comparacao(tabela, cfg, pasta):
 
 
 def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
-                              cv_indices, n_lv, cfg, pasta, pasta_dados):
+                              cv_indices, n_lv, cfg, pasta, pasta_dados,
+                              mae_id=None):
     """Orquestra a Etapa 4: avalia Full vs iPLS vs VIP vs SR vs sPLS-DA (sempre)
     e, se ligados em cfg, SPA/APS e AG (opt-in, mais lentos) — sob o MESMO
     esquema de CV group-aware. Salva tabela (dados/) e figuras (figuras/).
     Retorna dict-resumo para o resumo_modelo.txt.
 
-    VIP/SR/sPLS-DA usam selecao ANINHADA (nested-CV, `_avaliar_subset_nested_cv`):
-    a mascara de variaveis e' recalculada a cada fold usando so as amostras de
-    treino daquele fold, nao um vip/sr pre-calculado no dataset inteiro (ver
-    correcao da auditoria de 2026-07-12, CLAUDE.md secao 13, item 03). Por isso
-    esta funcao nao recebe mais `vip`/`sr` pre-calculados como parametro.
+    iPLS/VIP/SR/sPLS-DA usam selecao ANINHADA (nested-CV,
+    `_avaliar_subset_nested_cv`): a mascara de variaveis e' recalculada a cada
+    fold usando so as amostras de treino daquele fold, nao um vip/sr
+    pre-calculado no dataset inteiro (ver correcao da auditoria de 2026-07-12,
+    CLAUDE.md secao 13, item 03). Por isso esta funcao nao recebe mais
+    `vip`/`sr` pre-calculados como parametro. O iPLS entrou nesse mesmo
+    esquema em 2026-08-16 (achado B1-1: era o unico metodo da tabela cujo
+    numero vinha de selecao feita na propria particao que o reportava, vies
+    medido de +0,070 bal.acc).
+
+    `mae_id` (opcional): identificador de replica fisica, usado para tornar
+    group-aware tambem a CV INTERNA que guia as buscas SPA/AG (achado B1-3).
 
     SPA/AG (quando ligados) usam nested-CV equivalente (`_avaliar_busca_nested_cv`,
     achado colateral de 2026-07-13): a fitness/pontuacao usada pela BUSCA nunca
@@ -561,18 +668,26 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     base_bal = full["balanced_accuracy"]
     print(f"  Full: bal.acc={base_bal:.3f} ({p} vars)")
 
-    # 1) iPLS
-    ipls_res, mask_ipls = selecao_ipls(X_proc, Y_bin, y_int, wavenumbers,
-                                        cv_indices, n_lv, cfg.ipls_n_intervalos)
-    m_ipls = _avaliar_subset_cv(X_proc[:, mask_ipls], Y_bin, y_int,
-                                 cv_indices, n_lv)
+    # 1) iPLS (nested-CV: o melhor intervalo e' reescolhido a cada fold com
+    #    dados de treino apenas -- achado B1-1, ver _mask_melhor_intervalo).
+    #    A busca no dataset inteiro continua rodando 1x para a figura/CSV de
+    #    diagnostico por intervalo, MESMO padrao ja usado por SPA/AG; o
+    #    numero REPORTADO na tabela vem do nested-CV.
+    ipls_res, _mask_ipls_diagnostico = selecao_ipls(
+        X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv,
+        cfg.ipls_n_intervalos)
+    m_ipls = _avaliar_subset_nested_cv(
+        X_proc, Y_bin, y_int, cv_indices, n_lv,
+        lambda Xtr, Ytr, nlv: _mask_melhor_intervalo(
+            Xtr, Ytr, nlv, cfg.ipls_n_intervalos, cfg.seed))
     tabela.append({"metodo": "iPLS (melhor intervalo)", **m_ipls})
     fig_etapa4_ipls(ipls_res, wavenumbers, base_bal, cfg, pasta)
     pd.DataFrame(ipls_res).to_csv(
         os.path.join(pasta_dados, "etapa4_ipls_intervalos.csv"),
         sep=";", decimal=",", index=False)
     print(f"  iPLS: bal.acc={m_ipls['balanced_accuracy']:.3f} "
-          f"({m_ipls['n_vars']} vars)")
+          f"({m_ipls['n_vars']:.0f} vars, media/fold; "
+          f"faixa {m_ipls['n_vars_min']}-{m_ipls['n_vars_max']})")
 
     # 2) Selection by VIP >= threshold (nested-CV: mascara refeita por fold,
     #    so' com dados de treino -- ver docstring da funcao)
@@ -623,7 +738,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
             lambda Xtr, Ytr, ytr, cvin: selecao_spa(
                 Xtr, Ytr, ytr, cvin, n_lv, cfg.spa_n_vars_max,
                 cfg.spa_n_starts, cfg.seed)[1],
-            cfg.seed)
+            cfg.seed, mae_id=mae_id)
         if m_spa["n_vars_max"] >= 2:
             tabela.append({"metodo": "SPA (APS)", **m_spa})
             print(f"  SPA: bal.acc={m_spa['balanced_accuracy']:.3f} "
@@ -651,7 +766,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
                 Xtr, Ytr, ytr, cvin, n_lv, cfg.ag_tam_populacao,
                 cfg.ag_n_geracoes, cfg.ag_prob_mutacao, cfg.ag_frac_inicial,
                 cfg.seed)[1],
-            cfg.seed)
+            cfg.seed, mae_id=mae_id)
         if m_ag["n_vars_max"] >= 2:
             tabela.append({"metodo": "AG (Genetico)", **m_ag})
             print(f"  AG: bal.acc={m_ag['balanced_accuracy']:.3f} "

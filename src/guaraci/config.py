@@ -108,21 +108,43 @@ class Config:
     # so that T1/T2/T3 of the same physical point stay in the same fold/holdout.
     agrupar_por_mae_id: bool = True
 
-    # ---- Spectral truncation (useful FT-NIR range: 4000-10000 cm-1) -------
-    # Removes FFT edge noise (0/8/16/24 cm-1 appear as false top
-    # VIP when the SG derivative amplifies that region). Applied BEFORE
-    # any preprocessing.
+    # ---- Perfil da matriz ------------------------------------------------
+    # Junta num so' lugar tudo que e' propriedade da MATRIZ (faixa do eixo,
+    # pre-processamento padrao, unidade, vocabulario da saida) -- ver
+    # `guaraci/perfis_matriz/*.yaml` e `perfil_matriz.py`. Trocar de matriz
+    # e' trocar este nome, nunca editar codigo-fonte. Aceita tambem o
+    # caminho de um YAML proprio. Nome desconhecido levanta erro com a
+    # lista do que existe, em vez de cair num padrao errado em silencio.
+    perfil_matriz: str = "generico"
+
+    # ---- Modo de rotulo na QUANTIFICACAO ---------------------------------
+    # "cego" (PADRAO): a calibracao por classe usa a classe PREDITA pelo
+    #     classificador, nao a verdadeira. E' o unico modo que corresponde
+    #     ao uso real -- quem manda uma amostra desconhecida nao sabe a
+    #     classe dela, entao um R2 obtido com a classe verdadeira mede algo
+    #     que o usuario nunca tera' em maos.
+    # "controle": usa a classe verdadeira. Valido apenas para diagnostico
+    #     interno (isolar erro de quantificacao do erro de classificacao).
+    #     Numeros obtidos assim NAO representam o desempenho de uso.
+    modo_rotulo: str = "cego"
+
+    # ---- Spectral truncation ---------------------------------------------
+    # Padrao herdado do caso de uso de origem (FT-NIR difuso, 4000-10000
+    # cm-1: remove ruido de borda de FFT, onde a derivada SG cria VIP
+    # falso). Um perfil de matriz sobrescreve estes valores quando eles
+    # estao no default. Aplicado ANTES de qualquer pre-processamento.
     wn_min: float = 4000.0
     wn_max: float = 10000.0
 
     # ---- Preprocessing ---------------------------------------------------
     # Quick preset. When != 'custom', overrides individual flags.
-    #   'msc_sg_mc'   : MSC -> SG -> mean-centering (BEST: 0.923 bal.acc full)
+    #   'msc_sg_mc'   : MSC -> SG -> mean-centering (padrao: FT-NIR difuso
+    #                   com espalhamento forte; ver comparar_pre_processamentos)
     #   'snv_sg_mc'   : SNV -> SG -> mean-centering (Rinnan et al.)
     #   'autoscaling' : StandardScaler only (good on subset, poor on full: 0.472)
     #   'mc'          : mean-centering only
     #   'custom'      : honors aplicar_snv / aplicar_sg / aplicar_mc below
-    preprocessamento_padrao: str = "msc_sg_mc"   # v14: best on full dataset (1807)
+    preprocessamento_padrao: str = "msc_sg_mc"   # FT-NIR difuso c/ espalhamento
 
     aplicar_snv: bool = True
     aplicar_sg: bool = True

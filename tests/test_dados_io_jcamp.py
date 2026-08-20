@@ -44,7 +44,7 @@ def test_parse_dx_reconstroi_grade_e_valores(pq, tmp_path):
     Y decodificados batem com os inteiros gravados (YFACTOR=1)."""
     y_ints = [1, 2, 3, 4, 5, -1, -2, 0, 3, 9]
     caminho = str(tmp_path / "amostra.dx")
-    _escrever_dx(caminho, "AND-04-11-2020-T1", firstx=100, lastx=109,
+    _escrever_dx(caminho, "AND-04-11-2099-T1", firstx=100, lastx=109,
                  y_ints=y_ints)
 
     x, y = pq.parse_dx(caminho)
@@ -56,10 +56,10 @@ def test_parse_dx_reconstroi_grade_e_valores(pq, tmp_path):
 def test_extrair_title_do_dx_le_sem_carregar_espectro(pq, tmp_path):
     """extrair_title_do_dx: le só a linha ##TITLE=, sem decodificar os dados."""
     caminho = str(tmp_path / "amostra.dx")
-    _escrever_dx(caminho, "CAP-04-11-2020-AD-S-4.13%-T2", firstx=100,
+    _escrever_dx(caminho, "CAP-04-11-2099-AD-S-4.13%-T2", firstx=100,
                  lastx=105, y_ints=[1, 2, 3, 4, 5, 6])
     title = pq.extrair_title_do_dx(caminho)
-    assert title == "CAP-04-11-2020-AD-S-4.13%-T2"
+    assert title == "CAP-04-11-2099-AD-S-4.13%-T2"
 
 
 def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
@@ -75,12 +75,12 @@ def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
     # Andiroba: 1 ponto puro com 3 replicas (T1/T2/T3, mesmo mae_id)
     for t in (1, 2, 3):
         _escrever_dx(str(raiz / "Andiroba" / f"and_puro_T{t}.dx"),
-                     f"AND-04-11-2020-T{t}", 100, 109, y_base)
+                     f"AND-04-11-2099-T{t}", 100, 109, y_base)
 
     # Castanha do Para: 1 ponto adulterado (teor 4.13%), 2 replicas
     for t in (1, 2):
         _escrever_dx(str(raiz / "CastanhaDoPara" / f"cap_adult_T{t}.dx"),
-                     f"CAP-05-11-2020-AD-S-4.13%-T{t}", 100, 109, y_base)
+                     f"CAP-05-11-2099-AD-S-4.13%-T{t}", 100, 109, y_base)
 
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dx(str(raiz))
 
@@ -102,7 +102,7 @@ def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
     (mesmo caminho que o pipeline real usa a partir de Config)."""
     raiz = tmp_path / "dados"
     (raiz / "Andiroba").mkdir(parents=True)
-    _escrever_dx(str(raiz / "Andiroba" / "and_T1.dx"), "AND-04-11-2020-T1",
+    _escrever_dx(str(raiz / "Andiroba" / "and_T1.dx"), "AND-04-11-2099-T1",
                  100, 105, [1, 2, 3, 4, 5, 6])
 
     cfg = pq.Config(modo="dx", pasta_entrada=str(raiz))
@@ -126,12 +126,12 @@ def _montar_dataset(base, especie_a=("CAP", 6), especie_b=("BAB", 3),
         os.makedirs(pasta, exist_ok=True)
         for i in range(n):
             # 2 replicas por ponto de coleta -> mae_id compartilhado.
-            title = f"{cod}-0{i // 2 + 1}-11-2020_T{i % 2 + 1}"
+            title = f"{cod}-0{i // 2 + 1}-11-2099_T{i % 2 + 1}"
             _escrever_dx(os.path.join(pasta, f"{title}.dx"), title, 0.0, 4000.0, y)
     pasta_a = os.path.join(str(base), especie_a[0])
     for i in range(fora_da_faixa):
         # LASTX bem diferente -> cai fora da faixa dominante.
-        title = f"{especie_a[0]}-09-09-2020_T{i + 1}"
+        title = f"{especie_a[0]}-09-09-2099_T{i + 1}"
         _escrever_dx(os.path.join(pasta_a, f"forafaixa{i}.dx"), title,
                      0.0, 15797.0, y)
     for i in range(sem_titulo_valido):

@@ -167,7 +167,7 @@ def test_parse_spectrum_arquivo_vazio_retorna_arrays_vazios(tmp_path):
 
 # ── _extrair_conc_filename ───────────────────────────────────────────────────
 @pytest.mark.parametrize("nome,esperado", [
-    ("CAP-04-11-2020-AD-S-4.13%-T2.dx", 4.13),
+    ("CAP-04-11-2099-AD-S-4.13%-T2.dx", 4.13),
     ("amostra_10%_teste.dx", 10.0),
     ("valor_com_virgula_3,5%.dx", 3.5),
     ("sem_percentual.dx", None),

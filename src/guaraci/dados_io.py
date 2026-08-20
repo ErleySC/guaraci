@@ -14,6 +14,7 @@ import glob
 import logging
 import os
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -46,9 +47,9 @@ def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
     """Nome do adulterante (algodão/milho/soja) a partir do mae_id, ou None.
 
     O mae_id de uma amostra ADULTERADA termina no token '{letra}{teor}':
-        real       'CAP-04-11-2020-A1.03' -> 'A' -> 'algodão'
+        real       'CAP-04-11-2099-A1.03' -> 'A' -> 'algodão'
         sintetico  'ESA-S05.00'           -> 'S' -> 'soja'
-    Amostras PURAS ('CAP-04-11-2020') e orfaos ('orfao_...') nao tem esse
+    Amostras PURAS ('CAP-04-11-2099') e orfaos ('orfao_...') nao tem esse
     token e retornam None. Deriva o adulterante do mae_id (que sobrevive
     alinhado a validar_entrada), evitando desalinhamento com metadados_df.
     """
@@ -67,7 +68,7 @@ def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
 
 # Regex robust to deviations found in the real reference dataset:
 #   - surrounding whitespace                   "## TITLE= GOI-..."
-#   - separator after COD/DATE: "-" or "_"     "AND_10-06-2020_AD-S-..."
+#   - separator after COD/DATE: "-" or "_"     "XXX_DD-MM-YYYY_AD-S-..."
 #   - optional separator before T              "...%T_3"  (no '-' or '_')
 #   - Triplicate: "T1" or "T_1"
 #   - optional decimal content                 "11%"  /  "1,1%"  /  "10,52%"
@@ -83,6 +84,112 @@ _RE_TITLE = re.compile(
 # Accepts decimal with comma OR period (11,11% and 11.11% coexist in the dataset)
 _RE_ADULT = re.compile(r"[-_]AD-([AMS])-(\d+(?:[.,]\d+)?)%%?")
 
+# =========================================================================
+#  Correcoes de metadado especificas do dataset -- CARREGADAS DE ARQUIVO
+#  EXTERNO, fora da arvore versionada.
+#
+#  POR QUE FORA DO REPOSITORIO (decisao de 2026-08-17): as tabelas abaixo
+#  sao METADADO DE AMOSTRA de um dataset de terceiro nao publicado --
+#  codigo de especie, data de coleta, adulterante e teor de amostras
+#  especificas. Este repositorio e' PUBLICO, e a titularidade/distribuicao
+#  desses dados e' assunto em aberto com a detentora do dataset. Publicar
+#  identificadores de amostra seria distribuir metadado do dataset pela
+#  porta dos fundos, mesmo sem nenhum espectro junto.
+#
+#  O CODIGO (a logica de correcao) fica versionado; os DADOS (quais
+#  amostras, com que rotulo) vivem em `~/.guaraci_local/`. Quem nao tiver
+#  o arquivo simplesmente nao aplica correcao nenhuma -- o parser continua
+#  funcionando, so' sem os casos particulares deste dataset.
+#
+#  Formato (CSV, ';' como separador, UTF-8) -- ver
+#  o cabecalho de cada CSV para o registro da decisao:
+#
+#    correcoes_titulo.csv    title;cod;data;adulterante;teor;trip
+#    pureza_indeterminada.csv title;motivo
+#    alias_mae_id.csv        mae_id_origem;mae_id_destino
+# =========================================================================
+
+_DIR_LOCAL = Path(os.path.expanduser("~")) / ".guaraci_local"
+
+
+def _ler_csv_local(nome: str, colunas: int) -> List[List[str]]:
+    """Le um CSV de correcao de `~/.guaraci_local/`, ou devolve [].
+
+    Arquivo AUSENTE e' silencioso e legitimo (outra maquina, outro
+    dataset). Arquivo PRESENTE mas malformado levanta erro claro -- nunca
+    aplica correcao pela metade nem ignora em silencio, porque o efeito
+    seria um rotulo de pureza errado entrando na analise.
+    """
+    caminho = _DIR_LOCAL / nome
+    if not caminho.is_file():
+        return []
+    linhas: List[List[str]] = []
+    try:
+        texto = caminho.read_text(encoding="utf-8")
+    except OSError as e:
+        raise RuntimeError(
+            f"Correcoes de metadado ilegiveis em {caminho}: {e}. "
+            f"Corrija o arquivo ou remova-o para rodar sem correcoes."
+        ) from e
+    for i, linha in enumerate(texto.splitlines(), 1):
+        linha = linha.strip()
+        if not linha or linha.startswith("#"):
+            continue
+        partes = linha.split(";")
+        if len(partes) != colunas:
+            raise RuntimeError(
+                f"{caminho}, linha {i}: esperadas {colunas} colunas "
+                f"separadas por ';', encontradas {len(partes)}. "
+                f"Uma correcao de rotulo aplicada pela metade produz "
+                f"amostra com pureza errada -- abortando em vez de "
+                f"adivinhar.")
+        linhas.append([p.strip() for p in partes])
+    return linhas
+
+
+def _carregar_correcoes_titulo() -> Dict[str, Dict[str, Any]]:
+    """title -> dict(cod, data, adulterante, teor, trip).
+
+    TITLEs com erro de digitacao que fazem `_RE_TITLE` nao casar. Sem a
+    correcao o parser cai no fallback por nome de arquivo, que tambem
+    falha em extrair o teor, e o espectro entra como PURO (conc=0.0)
+    quando e' ADULTERADO -- contaminando o treino one-class do DD-SIMCA
+    daquela especie (achado A2-2).
+    """
+    out: Dict[str, Dict[str, Any]] = {}
+    for t, cod, data, adult, teor, trip in _ler_csv_local(
+            "correcoes_titulo.csv", 6):
+        out[t] = dict(cod=cod, data=data, adulterante=adult,
+                      teor=float(teor), trip=int(trip))
+    return out
+
+
+def _carregar_pureza_indeterminada() -> Dict[str, str]:
+    """title -> motivo. Espectros cuja PUREZA nao e' determinavel por
+    nenhum caminho; excluidos do carregamento com aviso nominal, para nao
+    entrarem como falso 'puro' (achado A2-2, 2a parte)."""
+    return {t: motivo for t, motivo in _ler_csv_local(
+        "pureza_indeterminada.csv", 2)}
+
+
+def _carregar_alias_mae_id() -> Dict[str, str]:
+    """mae_id_origem -> mae_id_destino.
+
+    `mae_id = cod + data` separa em grupos distintos replicas da mesma
+    amostra fisica lidas em datas diferentes -- o GroupKFold entao as
+    trata como independentes, que e' o vazamento que o projeto existe
+    para impedir (achado A2-1). Cada alias e' decisao metodologica
+    DOCUMENTADA, nao fato verificado: ver o motivo registrado no proprio
+    CSV, que fica fora da arvore versionada.
+    """
+    return {o: d for o, d in _ler_csv_local("alias_mae_id.csv", 2)}
+
+
+_CORRECOES_TITLE_CONHECIDAS: Dict[str, Dict[str, Any]] = \
+    _carregar_correcoes_titulo()
+_TITLES_PUREZA_INDETERMINADA: Dict[str, str] = _carregar_pureza_indeterminada()
+_ALIAS_MAE_ID: Dict[str, str] = _carregar_alias_mae_id()
+
 
 def parse_title(title: str) -> Optional[Dict[str, Any]]:
     """JCAMP-DX TITLE parser. Returns complete dict or None if invalid.
@@ -92,10 +199,37 @@ def parse_title(title: str) -> Optional[Dict[str, Any]]:
     GroupKFold/GroupShuffleSplit to prevent replica leakage.
 
     mae_id format:
-        Pure:        'CAP-04-11-2020'
-        Adulterated: 'CAP-04-11-2020-A1.03'  (content always 2 decimal places)
+        Pure:        'CAP-04-11-2099'
+        Adulterated: 'CAP-04-11-2099-A1.03'  (content always 2 decimal places)
+
+    Correcoes conhecidas (achado A2-2, ver `_CORRECOES_TITLE_CONHECIDAS`):
+    5 TITLEs com erro de digitacao verificado sao reconhecidos por
+    correspondencia EXATA antes do regex geral, para nao entrarem no
+    dataset como amostra pura por engano.
     """
-    m = _RE_TITLE.match(title.strip())
+    titulo_limpo = title.strip()
+    if titulo_limpo in _CORRECOES_TITLE_CONHECIDAS:
+        c = _CORRECOES_TITLE_CONHECIDAS[titulo_limpo]
+        cod, data, trip = c["cod"], c["data"], c["trip"]
+        adulterante, teor = c["adulterante"], c["teor"]
+        adulterante_nome = ADULTERANTE_NOME.get(adulterante, adulterante)
+        mae_id = f"{cod}-{data}-{adulterante}{teor:.2f}"
+        mae_id = _ALIAS_MAE_ID.get(mae_id, mae_id)
+        return {
+            "title_original":   titulo_limpo,
+            "cod":              cod,
+            "especie":          CODIGO_ESPECIE.get(cod, cod),
+            "cod_conhecido":    cod in CODIGO_ESPECIE,
+            "data":             data,
+            "puro":             False,
+            "adulterante":      adulterante,
+            "adulterante_nome": adulterante_nome,
+            "teor":             teor,
+            "triplicata":       trip,
+            "mae_id":           mae_id,
+        }
+
+    m = _RE_TITLE.match(titulo_limpo)
     if not m:
         return None
     cod  = m.group("cod").upper()
@@ -114,6 +248,9 @@ def parse_title(title: str) -> Optional[Dict[str, Any]]:
     mae_id = (f"{cod}-{data}-{adulterante}{teor:.2f}"
               if adulterante is not None and teor is not None
               else f"{cod}-{data}")
+    # Unificacao verificada de replicas separadas por data (achado A2-1) --
+    # ver `_ALIAS_MAE_ID` para o caso e a ressalva.
+    mae_id = _ALIAS_MAE_ID.get(mae_id, mae_id)
     return {
         "title_original":   title.strip(),
         "cod":              cod,
@@ -253,7 +390,7 @@ def gerar_dados_sinteticos(cfg: "Config"):
     sintetico (so 1 amostra "pura" por especie, sem nocao de replica).
 
     mae_id usa um codigo de 3 letras POR ESPECIE (ESA/ESB/ESC) como prefixo —
-    o mesmo formato de 3 letras maiusculas do dataset real (AND/ACA/CAP/...),
+    o mesmo formato de 3 letras maiusculas do dataset de referencia,
     do qual `executar()` deriva o numero de especies via prefixo."""
     print("[INFO] Synthetic MODE — generating test spectra.")
     rng = np.random.default_rng(cfg.seed)
@@ -563,12 +700,65 @@ def _detectar_subpastas_classe(raiz: str) -> List[str]:
     return subpastas
 
 
+#: Colunas de metadado que IDENTIFICAM a amostra de origem, e que nenhum
+#: artefato gravado em disco precisa. `title_original`/`arquivo` carregam o
+#: identificador inteiro (codigo de especie, data de coleta, adulterante e
+#: teor); `cod`/`data`/`mae_id` carregam as partes; `subpasta` carrega a
+#: organizacao do acervo de quem cedeu os dados.
+_COLUNAS_IDENTIFICADORAS = ("title_original", "arquivo", "cod", "data",
+                            "mae_id", "subpasta")
+
+
+def sanitizar_metadados(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Remove identificacao da amostra de origem, preservando o que a
+    analise usa.
+
+    POR QUE. O GUARACI le arquivos de um acervo que pode nao ser do usuario
+    do software -- e o cabecalho JCAMP carrega mais do que o espectro. O
+    parser ja' descarta `##AUDIT TRAIL` (operador e local) por nunca le-lo
+    (ver `parse_dx`), mas `##TITLE` ele PRECISA ler: e' de onde saem classe,
+    teor e o agrupamento de replicas. O identificador entao existe em
+    memoria de forma legitima -- o que nao pode e' ser GRAVADO em disco,
+    porque a partir dai ele viaja junto com resultados.
+
+    O que sai: `title_original`, `arquivo`, `cod`, `data`, `mae_id`,
+    `subpasta`.
+    O que fica: `especie`, `teor`, `puro`, `adulterante`, `triplicata` --
+    tudo que descreve a AMOSTRA sem dizer QUAL amostra do acervo ela e'.
+
+    `grupo_replica` substitui `mae_id`: um rotulo sequencial (`G000`,
+    `G001`, ...) que agrupa exatamente como o `mae_id` agrupava. Sem ele o
+    arquivo perderia a informacao que sustenta a validacao group-aware --
+    o diferencial do projeto -- e ninguem conseguiria auditar de fora se as
+    replicas foram mesmo mantidas juntas.
+
+    Idempotente: aplicar duas vezes da' o mesmo resultado.
+    """
+    limpo = df.copy()
+    if "mae_id" in limpo.columns and "grupo_replica" not in limpo.columns:
+        # Ordem de primeira aparicao (nao alfabetica): o rotulo nao deve
+        # permitir reordenar/reidentificar os grupos pelo nome original.
+        vistos: Dict[Any, str] = {}
+        rotulos: List[str] = []
+        for valor in limpo["mae_id"]:
+            if pd.isna(valor):
+                rotulos.append("")
+                continue
+            if valor not in vistos:
+                vistos[valor] = f"G{len(vistos):03d}"
+            rotulos.append(vistos[valor])
+        limpo["grupo_replica"] = rotulos
+    presentes = [c for c in _COLUNAS_IDENTIFICADORAS if c in limpo.columns]
+    return limpo.drop(columns=presentes)
+
+
 def prescan_dx(pasta: str) -> Dict[str, Any]:
     """Varredura BARATA dos cabecalhos .dx, para avisar ANTES de executar.
 
     Le apenas o cabecalho JCAMP-DX (`##TITLE=` e `##LASTX=`), parando no
     inicio dos dados espectrais -- nao carrega os 8192 pontos de cada
-    arquivo. Medido no dataset real do TCC: **0,26 s para 1741 arquivos**,
+    arquivo. Medido num acervo de referencia de alguns milhares de
+    arquivos: **decimos de segundo**,
     contra ~21 s da carga completa (80x mais rapido), o que a torna viavel
     num checklist interativo.
 
@@ -579,9 +769,10 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     1. **Descarte por faixa espectral.** Datasets reais misturam janelas de
        aquisicao (ex.: NIR completo [0, 15797] vs faixa estreita [300, 4000]).
        Misturar e' invalido, entao `carregar_dx` mantem so' a faixa dominante
-       e descarta o resto. No dataset do TCC isso remove 68 espectros
-       concentrados em 2 especies -- Graviola e Goiaba perdem N sem que isso
-       fosse visivel antes de rodar.
+       e descarta o resto. Num acervo de referencia isso removeu dezenas
+       de espectros
+       concentrados em poucas classes, que perdem N sem que isso fosse
+       visivel antes de rodar.
     2. **Amostras sem `mae_id`.** Sem grupo, a amostra entra na analise SEM
        protecao contra vazamento de replica -- exatamente o que a validacao
        group-aware existe para impedir.
@@ -657,16 +848,18 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
 
     # mae_id contado SO' entre os sobreviventes: e' o numero que o usuario vera'
     # no log da carga. Contar sobre o total daria um valor maior e sem
-    # correspondencia com a analise (no dataset do TCC: 52 sobre o total vs 7
-    # entre os que ficam -- os outros 45 sao Graviola, que tem padrao de titulo
-    # diferente E faixa espectral incompativel, logo ja' saem pelo descarte).
+    # correspondencia com a analise (num acervo de referencia: dezenas
+    # sobre o total vs poucas
+    # entre os que ficam -- o resto se concentra numa classe cujo padrao de
+    # titulo e faixa espectral sao incompativeis, logo ja' sai pelo
+    # descarte).
     n_sem_mae_id = sum(1 for _c, _v, m in sobreviventes if m is None)
     grupos = {m for _c, _v, m in sobreviventes if m is not None}
     # `carregar_dx` transforma cada orfa num grupo de 1 (`orfao_<arquivo>`),
     # para isolar a amostra sem desligar o GroupKFold do dataset inteiro.
     # Somamos aqui pela MESMA razao de sempre nesta funcao: o numero exibido
-    # tem de ser o que o usuario vera' no log da carga (dataset do TCC:
-    # 561 grupos reais + 7 orfas = 568).
+    # tem de ser o que o usuario vera' no log da carga (grupos reais mais
+    # os orfaos).
     n_grupos_efetivos = len(grupos) + n_sem_mae_id
 
     return {
@@ -738,6 +931,7 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
     meta_rows: List[Dict[str, Any]] = []
     n_falhos = 0
     n_title_falhos = 0
+    n_pureza_indeterminada = 0
     cods_desconhecidos: set = set()
 
     for arq, subpasta_nome in arquivos:
@@ -759,6 +953,15 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
         title_parsed: Optional[Dict[str, Any]] = None
         if pode_parse_title:
             title = extrair_title_do_dx(arq)
+            # Pureza indeterminada (achado A2-2): sem TITLE parseavel E sem
+            # teor recuperavel do nome, a amostra entraria como "pura" e
+            # contaminaria o treino one-class. Excluida com aviso nominal,
+            # nunca em silencio. Ver `_TITLES_PUREZA_INDETERMINADA`.
+            if title and title.strip() in _TITLES_PUREZA_INDETERMINADA:
+                n_pureza_indeterminada += 1
+                print(f"  [WARNING] {os.path.basename(arq)} EXCLUIDO — "
+                      f"{_TITLES_PUREZA_INDETERMINADA[title.strip()]}")
+                continue
             if title:
                 title_parsed = parse_title(title)
             if title_parsed is None:
@@ -890,7 +1093,14 @@ def carregar_dx(pasta: str, parte_classe: int = 0,
     else:
         n_orfaos = 0
         mae_final: List[str] = []
-        for m, row in zip(mae_ids, meta_rows):
+        # strict=True: `mae_ids` e `meta_rows` sao preenchidos em lockstep no
+        # laco de carregamento, entao ter comprimentos diferentes e' um bug
+        # de programacao -- e um `zip()` normal o esconderia TRUNCANDO em
+        # silencio, gerando um `mae_arr` mais curto que X. Como mae_id e' o
+        # que impede vazamento de replica entre treino e teste, um
+        # desalinhamento aqui deslocaria os grupos de todas as amostras
+        # seguintes sem nenhum sinal. Melhor estourar do que mentir.
+        for m, row in zip(mae_ids, meta_rows, strict=True):
             if m is not None:
                 mae_final.append(m)
             else:

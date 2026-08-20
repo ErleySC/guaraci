@@ -89,6 +89,17 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
     destino = os.path.join(base, subpasta) if subpasta else base
     os.makedirs(destino, exist_ok=True)
     caminho = os.path.join(destino, f"{nome}.{cfg.formato_saida}")
+    # Marca de PROTOTIPO (achado B4-1): o modo imagem (colorimetria digital)
+    # nao e validado e nao produz mae_id, entao roda SEM validacao
+    # group-aware. Os relatorios PDF/Word/LaTeX ja saem carimbados, mas uma
+    # figura .png exportada solta da pasta Graficos/ circula sem contexto --
+    # e' justamente o arquivo que acaba colado num slide ou num texto.
+    # `salvar()` e' o ponto unico por onde TODA figura passa.
+    if getattr(cfg, "modo", "") == "imagem":
+        fig.text(0.5, 0.5, "PROTOTIPO\nNAO VALIDADO",
+                 fontsize=34, color="0.5", alpha=0.16,
+                 ha="center", va="center", rotation=30,
+                 zorder=1000, transform=fig.transFigure)
     try:
         fig.savefig(caminho)
         print(f"  -> {caminho}")
@@ -871,7 +882,8 @@ def _ylim_permutacao(valores: np.ndarray, obs: float,
 
     Bug latente (achado 2026-08-07): o piso era fixo em -0.5/-0.6. Q2Y de
     rotulos permutados fica tanto mais negativo quanto MAIS componentes o
-    modelo usa. Medido com 13 classes: com 23 LVs o minimo e' -0.465 (cabe
+    modelo usa. Medido num problema multiclasse tipico: com 23 LVs o
+    minimo e' -0.465 (cabe
     no piso antigo), mas com 40 LVs -- valor de `max_lvs` em uso neste
     projeto -- 80% dos pontos caem abaixo de -0.6 e SUMIRIAM do grafico,
     enquanto a reta de regressao continuaria sendo calculada sobre eles.
@@ -1564,9 +1576,16 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
             titulo_painel = (f"Model: {cls}  sens.={s_txt}{g_txt} "
                              f"| spec.={e_txt}")
         else:
+            # Fallback (sens_esp nao informado): usa a MESMA regra de
+            # decisao de predict() (f<=f_crit, distancia combinada) --
+            # nao mais a regiao retangular T2_norm<=1 e Q_norm<=1
+            # independentes, abandonada em 2026-08-08 (achado A1-bis da
+            # auditoria de 2026-08-16: unica ocorrencia remanescente da
+            # regra antiga em src/guaraci/).
             idx_cls   = rotulos == cls
             n_cls_tot = int(idx_cls.sum())
-            n_aceitos = int(np.sum((t2n[idx_cls] <= 1.0) & (qn[idx_cls] <= 1.0)))
+            f_cls     = np.asarray(m["f"])[idx_cls]
+            n_aceitos = int(np.sum(f_cls <= float(m["f_crit"])))
             titulo_painel = f"Model: {cls}  sens.={n_aceitos/max(n_cls_tot,1):.0%}"
 
         ax.set_xlim(piso_t2 * 0.8, teto_t2)
@@ -1582,9 +1601,18 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         # parece defeito de renderizacao em vez de propriedade do modelo.
         n_comp_txt = (f"\nn_comp={int(m['n_comp'])} (treino n={int(m['n_train'])})"
                       if "n_comp" in m else "")
+        # n_grupos_calibracao (achado F1/A2-3): o limiar f_crit e' calibrado
+        # a partir deste n de AMOSTRAS FISICAS independentes (mae_id), nao
+        # do n de espectros -- ver DDSimca.fit(). Nunca mostrar o limiar sem
+        # essa informacao ao lado (mesmo criterio de aceite do P1).
+        n_grp_txt = (f"\nlimiar calib. c/ n={int(m['n_grupos_calibracao'])} "
+                     f"amostra(s) fisica(s)"
+                     if m.get("calibrado_por_amostra") else
+                     "\nlimiar calib. por ESPECTRO (mae_id indisponivel)"
+                     if "calibrado_por_amostra" in m else "")
         ax.text(0.98, 0.98,
                 f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
-                f"UCL($Q$)={float(m['Q_ucl']):.2g}{n_comp_txt}",
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{n_comp_txt}{n_grp_txt}",
                 transform=ax.transAxes, ha="right", va="top",
                 fontsize=7.5, color="0.35",
                 bbox=dict(boxstyle="round,pad=0.3", fc="white",
@@ -1657,8 +1685,13 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
         ax.set_title(tt, loc="left", fontsize=9.5, fontweight="bold")
         _nc = (f"\nn_comp={int(m['n_comp'])} (treino n={int(m['n_train'])})"
                if "n_comp" in m else "")
+        _ng = (f"\nlimiar calib. c/ n={int(m['n_grupos_calibracao'])} "
+               f"amostra(s) fisica(s)"
+               if m.get("calibrado_por_amostra") else
+               "\nlimiar calib. por ESPECTRO (mae_id indisponivel)"
+               if "calibrado_por_amostra" in m else "")
         ax.text(0.98, 0.98, f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
-                f"UCL($Q$)={float(m['Q_ucl']):.2g}{_nc}",
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{_nc}{_ng}",
                 transform=ax.transAxes, ha="right", va="top", fontsize=8,
                 color="0.35", bbox=dict(boxstyle="round,pad=0.3", fc="white",
                                          ec="0.82", lw=0.5))

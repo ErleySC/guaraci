@@ -645,19 +645,19 @@ def test_especificidade_por_classe_valores_conhecidos(pq):
 
 def test_parse_title_puro(pq):
     """TITLE de amostra pura: espécie resolvida, puro=True, mae_id sem teor."""
-    info = pq.parse_title("CAP-04-11-2020-T1")
+    info = pq.parse_title("CAP-04-11-2099-T1")
     assert info is not None
     assert info["cod"] == "CAP"
     assert info["especie"] == "Castanha do Pará"
     assert info["puro"] is True
     assert info["triplicata"] == 1
-    assert info["mae_id"] == "CAP-04-11-2020"
+    assert info["mae_id"] == "CAP-04-11-2099"
 
 
 def test_parse_title_adulterado(pq):
     """TITLE adulterado: adulterante/teor extraídos; réplicas compartilham mae_id."""
-    t1 = pq.parse_title("AND-10-06-2020-AD-S-4.13%-T1")
-    t2 = pq.parse_title("AND-10-06-2020-AD-S-4.13%-T2")
+    t1 = pq.parse_title("AND-10-06-2099-AD-S-4.13%-T1")
+    t2 = pq.parse_title("AND-10-06-2099-AD-S-4.13%-T2")
     assert t1 is not None and t2 is not None
     assert t1["puro"] is False
     assert t1["adulterante"] == "S"
@@ -677,7 +677,88 @@ def test_parse_title_teor_zero_e_invalido(pq):
     mal rotulado) — parse_title rejeita em vez de aceitar um dado incoerente.
     (o regex de adulteração não aceita sinal negativo, então 0 é o único
     valor não-positivo alcançável por esse caminho.)"""
-    assert pq.parse_title("AND-10-06-2020-AD-S-0.00%-T1") is None
+    assert pq.parse_title("AND-10-06-2099-AD-S-0.00%-T1") is None
+
+
+def test_parse_title_correcoes_carregadas_de_arquivo_externo(pq, monkeypatch):
+    """Achado A2-2: TITLEs com erro de digitação (vírgula extra, dígito
+    cortado, dígito duplicado) quebravam o regex e caíam no fallback por
+    nome de arquivo, que também falhava em extrair o teor -- o espectro
+    entrava como PURO (conc=0.0) quando é ADULTERADO, contaminando o
+    treino "puros" do DD-SIMCA.
+
+    A tabela de correções vive FORA do repositório
+    (`~/.guaraci_local/correcoes_titulo.csv`) porque é metadado de amostra
+    de dataset de terceiro e este repo é público -- ver BLOCO B da
+    auditoria de 2026-08-17. Este teste usa identificadores SINTÉTICOS
+    para exercitar a mesma lógica sem embutir dados reais."""
+    from guaraci import dados_io
+
+    # Título sintético com a mesma patologia do caso real: vírgula extra
+    # antes do "%", que quebra _RE_ADULT.
+    titulo_quebrado = "ZZZ_01-02-2099_AD-S-9,99,%-T_1"
+    assert pq.parse_title(titulo_quebrado) is None   # sem correção: não parseia
+
+    monkeypatch.setattr(dados_io, "_CORRECOES_TITLE_CONHECIDAS", {
+        titulo_quebrado: dict(cod="ZZZ", data="01-02-2099",
+                              adulterante="S", teor=9.99, trip=1),
+    })
+    info = pq.parse_title(titulo_quebrado)
+    assert info is not None
+    assert info["puro"] is False        # o achado: isto tinha virado True
+    assert info["adulterante"] == "S"
+    assert info["teor"] == pytest.approx(9.99)
+    assert info["triplicata"] == 1
+
+
+def test_correcoes_ausentes_nao_quebram_o_parser(pq, monkeypatch):
+    """Sem o arquivo local (outra máquina, outro dataset), o parser tem de
+    seguir funcionando -- só não aplica os casos particulares."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_CORRECOES_TITLE_CONHECIDAS", {})
+    monkeypatch.setattr(dados_io, "_ALIAS_MAE_ID", {})
+    info = pq.parse_title("ZZZ-01-02-2099-T1")
+    assert info is not None and info["cod"] == "ZZZ"
+
+
+def test_csv_local_malformado_levanta_erro_claro(tmp_path, monkeypatch):
+    """Arquivo AUSENTE é legítimo e silencioso; arquivo PRESENTE mas
+    malformado tem de abortar com mensagem clara. Aplicar uma correção de
+    rótulo pela metade produziria amostra com pureza errada -- exatamente
+    o que o achado A2-2 corrigiu."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_DIR_LOCAL", tmp_path)
+
+    assert dados_io._ler_csv_local("nao_existe.csv", 2) == []   # ausente: ok
+
+    (tmp_path / "meio.csv").write_text("so;duas\ntres;colunas;aqui\n",
+                                       encoding="utf-8")
+    with pytest.raises(RuntimeError, match="colunas"):
+        dados_io._ler_csv_local("meio.csv", 2)
+
+
+def test_alias_mae_id_unifica_replicas_separadas_por_data(pq, monkeypatch):
+    """Achado A2-1: a regra `mae_id = cod + data` separa em grupos distintos
+    réplicas da mesma amostra física lidas em datas diferentes -- o
+    GroupKFold então as trata como independentes, que é o vazamento que o
+    projeto existe para impedir.
+
+    Identificadores sintéticos: a tabela real de alias vive fora do repo
+    (`~/.guaraci_local/alias_mae_id.csv`), pela mesma razão do teste
+    acima."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_ALIAS_MAE_ID",
+                        {"ZZZ-01-02-2099": "ZZZ-05-06-2099"})
+
+    t1 = pq.parse_title("ZZZ-01-02-2099-T1")
+    t2 = pq.parse_title("ZZZ-05-06-2099-T2")
+    assert t1["mae_id"] == t2["mae_id"] == "ZZZ-05-06-2099"
+
+    # O alias é da amostra PURA -- não pode capturar a ADULTERADA da mesma
+    # data (mae_id diferente por incluir adulterante+teor).
+    adult = pq.parse_title("ZZZ-01-02-2099-AD-S-4.13%-T1")
+    assert adult is not None
+    assert adult["mae_id"] == "ZZZ-01-02-2099-S4.13"   # intocado pelo alias
 
 
 def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
@@ -862,6 +943,106 @@ def test_cv_local_folds_cobrem_todos_os_indices_locais(pq):
     folds = pq._cv_local(y_local, seed=1, n_splits=3)
     todos_va = np.concatenate([va for _tr, va in folds])
     assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_cv_local_group_aware_nao_separa_replicas(pq):
+    """Achado B1-3 (auditoria 2026-08-16): a CV INTERNA que guia as buscas
+    SPA/AG usava sempre StratifiedKFold, entao replicas do mesmo mae_id
+    caiam em treino e validacao da particao que escolhe as VARIAVEIS. O
+    numero reportado seguia honesto (fold externo group-aware), mas o
+    produto cientifico da Etapa 4 -- o conjunto de variaveis selecionadas --
+    era escolhido por um criterio com vazamento de replica.
+
+    Com `grupos_local`, nenhum grupo pode aparecer nos dois lados de um
+    mesmo fold interno."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1])
+    grupos = np.array(["g1"] * 3 + ["g2"] * 3 + ["g3"] * 3 + ["g4"] * 3)
+    folds = pq._cv_local(y_local, seed=1, grupos_local=grupos, n_splits=2)
+    assert folds, "deveria produzir pelo menos um fold"
+    for tr, va in folds:
+        assert not (set(grupos[tr]) & set(grupos[va])), (
+            "grupo de replica apareceu em treino E validacao do mesmo fold")
+    # continua sendo uma particao valida
+    todos_va = np.concatenate([va for _tr, va in folds])
+    assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_cv_local_sem_grupos_preserva_comportamento_anterior(pq):
+    """Sem `grupos_local` (ex.: modo sem identificador de replica), o
+    comportamento antigo e' preservado -- o fix do B1-3 nao pode quebrar o
+    caminho em que mae_id nao existe."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 1, 0, 1])
+    folds_a = pq._cv_local(y_local, seed=7, n_splits=3)
+    folds_b = pq._cv_local(y_local, seed=7, grupos_local=None, n_splits=3)
+    assert len(folds_a) == len(folds_b)
+    for (tr_a, va_a), (tr_b, va_b) in zip(folds_a, folds_b):
+        assert tr_a.tolist() == tr_b.tolist()
+        assert va_a.tolist() == va_b.tolist()
+
+
+def test_splsda_usa_soft_threshold_da_referencia(pq):
+    """Achado B1-2: `sparse_plsda_mask` fazia truncamento DURO (top-k por
+    |w|, sem encolher as sobreviventes) enquanto a docstring a chamava de
+    "soft-selection" -- divergindo de Le Cao et al. (2008), que define a
+    esparsidade por soft-thresholding `w_j <- sign(w_j)*(|w_j|-lambda)_+`.
+
+    Propriedades que travam a implementacao correta:
+      1. cardinalidade -- exatamente `keep` nao-nulas por componente;
+      2. ENCOLHIMENTO -- com 1 componente, os pesos sobreviventes tem de
+         ser estritamente menores em modulo que os do truncamento duro
+         (antes da normalizacao, `|w|-lambda < |w|`). E' isso que
+         distingue soft de hard e o que muda a deflacao dos componentes
+         seguintes."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(60, 200))
+    Y = np.zeros((60, 3))
+    Y[np.arange(60), rng.integers(0, 3, 60)] = 1
+
+    # (1) cardinalidade exata com 1 componente
+    for keep in (5, 15, 40):
+        mask = pq.sparse_plsda_mask(X, Y, 1, keep)
+        assert int(mask.sum()) == keep
+
+    # (2) o conjunto de 1 componente coincide com o top-k por |w| (soft e
+    #     hard selecionam as MESMAS variaveis no 1o componente -- a
+    #     divergencia so' aparece a partir do 2o, via deflacao)
+    Xr = X - X.mean(axis=0)
+    Yc = Y - Y.mean(axis=0)
+    U, _S, _Vt = np.linalg.svd(Xr.T @ Yc, full_matrices=False)
+    w = U[:, 0]
+    top10 = set(np.argsort(np.abs(w))[::-1][:10].tolist())
+    assert set(np.flatnonzero(pq.sparse_plsda_mask(X, Y, 1, 10)).tolist()) == top10
+
+    # (3) com mais componentes a mascara cresce, mas nunca alem de keep*n_comp
+    for n_comp in (2, 3, 4):
+        mask = pq.sparse_plsda_mask(X, Y, n_comp, 15)
+        assert 15 <= int(mask.sum()) <= 15 * n_comp
+
+
+def test_ipls_usa_nested_cv_e_reporta_n_vars_por_fold(pq):
+    """Achado B1-1 (auditoria 2026-08-16): o bal.acc do iPLS era o MAXIMO de
+    n_intervalos avaliacoes feitas na MESMA particao que depois reportava o
+    numero (vies medido: +0,070 bal.acc, positivo em 12/12 seeds), enquanto
+    todos os outros metodos da tabela ja passavam por nested-CV -- a
+    comparacao misturava reguas diferentes, com o vies 7x maior que o
+    criterio de 1% usado para eleger o metodo mais parcimonioso.
+
+    Depois da correcao o iPLS usa `_avaliar_subset_nested_cv` como os
+    demais, o que se verifica pela presenca de n_vars_min/n_vars_max (so'
+    a avaliacao aninhada reporta faixa por fold; a antiga tinha n_vars
+    fixo)."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=11, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+    cfg = pq.Config(seed=11)
+    with tempfile.TemporaryDirectory() as pasta:
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta)
+    linha_ipls = next(t for t in resumo["tabela"]
+                      if t["metodo"].startswith("iPLS"))
+    assert "n_vars_min" in linha_ipls and "n_vars_max" in linha_ipls
+    assert 0.0 <= linha_ipls["balanced_accuracy"] <= 1.0
 
 
 def test_avaliar_busca_nested_cv_nao_reveniza_fold_de_teste(pq):
@@ -1068,6 +1249,45 @@ def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
     assert 0.80 <= float(ad["fracao_dentro"]) <= 1.0
     assert ad["dentro_dominio"].shape == (120,)
     assert float(ad["f_crit"]) > 0
+
+
+def test_dominio_aplicabilidade_nao_rejeita_treino_no_regime_n_menor_que_p(pq):
+    """Regime REAL deste projeto (n << p: poucas amostras, milhares de canais
+    espectrais) -- o unico em que o vies in-sample de Q aparece.
+
+    Os demais testes de AD usam n=80..200 com p=15..30 (n >> p), onde a PCA
+    NAO reconstroi o proprio treino de graca e o vies e' pequeno; por isso o
+    defeito passou despercebido. Com n < p a PCA reconstroi cada amostra de
+    treino quase exatamente (a amostra ajudou a definir o subespaco que
+    depois a reconstroi), Q_train colapsa perto de zero, e o limite derivado
+    dele rejeita amostras da PROPRIA distribuicao de treino.
+
+    E' a MESMA classe de defeito ja corrigida no DD-SIMCA em 2026-07-19
+    (`DDSimca._q_residuals_loo`, CLAUDE.md P1) -- que nao tinha sido
+    propagada para o dominio de aplicabilidade, o caminho que roda em
+    producao em predicao.py (colunas AD_*).
+
+    Medido antes da correcao (scripts/medicoes/medir_ad_vies_insample.py):
+    aceitacao de 0.14 a 0.57 conforme n/p, contra 0.95 nominal.
+    """
+    import numpy as np
+    from sklearn.decomposition import PCA
+    fracoes = []
+    for seed in range(3):
+        rng = np.random.default_rng(4000 + seed)
+        X_tr = rng.normal(size=(40, 800))
+        X_novo = rng.normal(size=(200, 800))    # mesma distribuicao => H0
+        pca = PCA(n_components=3).fit(X_tr)
+        art = pq.dominio_aplicabilidade_treino(pca, X_tr, alpha=0.05)
+        r = pq.dominio_aplicabilidade_amostras_novas(
+            pca, X_novo, art["var_t"], art["h0"], art["q0"],
+            art["Nh"], art["Nq"], art["f_crit"])
+        fracoes.append(float(np.mean(r["dentro_dominio"])))
+    media = float(np.mean(fracoes))
+    assert media >= 0.85, (
+        f"AD aceitou apenas {media:.3f} das amostras da propria distribuicao "
+        "de treino (alpha=0.05 => esperado ~0.95). Q de treino calculado "
+        "in-sample com n < p: use residuo leave-one-out (q_residuos_loo).")
 
 
 def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
@@ -1663,3 +1883,72 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
         encoding="utf-8")
     assert "sens(PCV, exploratorio)" in resumo
     assert "sens(LOGO)" in resumo   # PCV e' complementar, LOGO continua ali
+
+
+def test_metricas_classificacao_marca_conjunto_de_uma_classe(pq):
+    """Com uma unica classe, accuracy=1.0 nao e' desempenho -- e' aritmetica.
+
+    Medido rodando o pipeline sobre o dataset publico Corn (matriz de classe
+    unica): a saida reportava `Accuracy (CV) = 1.0000` e o model card
+    repetia o numero, sem nenhuma marca de que era degenerado (auditoria
+    mestre de 2026-08-17, sec. 1.6).
+    """
+    import numpy as np
+    y = np.array(["corn"] * 20)
+    m = pq.metricas_classificacao(y, y.copy(), ["corn"])
+    assert m.get("degenerada_uma_classe") == 1.0
+
+    y2 = np.array(["a"] * 10 + ["b"] * 10)
+    m2 = pq.metricas_classificacao(y2, y2.copy(), ["a", "b"])
+    assert "degenerada_uma_classe" not in m2
+
+
+# ── RPD / RER (figuras de merito de quantificacao) ───────────────────────────
+
+def test_rpd_rer_reproduz_a_definicao(pq):
+    """RPD = SD(y_ref)/SEP e RER = amplitude/SEP, com SEP corrigido pelo bias.
+
+    Usar RMSEP no lugar de SEP e' o erro comum -- infla o RPD sempre que ha'
+    bias, porque o bias sai da conta do SEP mas nao da do RMSEP.
+    """
+    import numpy as np
+    rng = np.random.default_rng(11)
+    y = rng.uniform(0.0, 20.0, 200)
+    y_hat = y + 2.0 + rng.normal(0, 1.0, y.size)      # bias +2, ruido sd~1
+
+    r = pq.rpd_rer(y, y_hat)
+    residuos = y_hat - y
+    bias_esperado = float(np.mean(residuos))
+    sep_esperado = float(np.std(residuos - bias_esperado, ddof=1))
+    assert r["bias"] == pytest.approx(bias_esperado)
+    assert r["sep"] == pytest.approx(sep_esperado)
+    assert r["rpd"] == pytest.approx(np.std(y, ddof=1) / sep_esperado)
+    assert r["rer"] == pytest.approx((y.max() - y.min()) / sep_esperado)
+
+    # O ponto do SEP: com bias grande, RMSEP >> SEP, e usar RMSEP daria um
+    # RPD MENOR. A conta correta nao e' penalizada duas vezes pelo bias --
+    # ele e' reportado a parte.
+    rmsep = float(np.sqrt(np.mean(residuos ** 2)))
+    assert rmsep > sep_esperado
+
+
+def test_rpd_degenerado_nao_vira_infinito(pq):
+    """Predicao perfeita ou referencia constante devolve NaN, nunca um
+    infinito que o relatorio imprimiria como desempenho excelente."""
+    import numpy as np
+    y = np.linspace(0, 10, 20)
+    assert not np.isfinite(pq.rpd_rer(y, y.copy())["rpd"])      # SEP = 0
+    const = np.full(20, 5.0)
+    assert not np.isfinite(pq.rpd_rer(const, const + 0.1)["rpd"])  # SD = 0
+    assert not np.isfinite(pq.rpd_rer(np.array([1.0]), np.array([1.0]))["rpd"])
+
+
+def test_interpretar_rpd_cobre_as_faixas_publicadas(pq):
+    """As faixas vem de Williams (2014) / AACC 39-00.01 -- um RPD nu vira
+    alegacao exagerada em texto, entao o numero nunca sai sozinho."""
+    assert pq.interpretar_rpd(1.5) == "nao utilizavel"
+    assert pq.interpretar_rpd(2.2) == "triagem grosseira"
+    assert pq.interpretar_rpd(2.7) == "triagem"
+    assert pq.interpretar_rpd(4.0) == "controle de qualidade"
+    assert pq.interpretar_rpd(7.0).startswith("controle de processo")
+    assert pq.interpretar_rpd(float("nan")) == "nao estimavel"

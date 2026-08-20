@@ -1,0 +1,18 @@
+# FT-NIR difuso de oleos vegetais fixos (caso de uso de origem do GUARACI).
+# A faixa [4000, 10000] cm-1 exclui as bordas de FFT do interferograma, onde
+# a razao sinal/ruido do instrumento cai.
+descricao: "Oleos vegetais fixos por FT-NIR difuso"
+unidade_eixo: "cm-1"
+eixo_min: 4000.0
+eixo_max: 10000.0
+preprocessamento_padrao: "msc_sg_mc"
+vocabulario:
+  classe: "especie"
+  classe_plural: "especies"
+  matriz: "oleo vegetal"
+  alvo: "o teor de adulterante"
+  conforme: "puro"
+  nao_conforme: "adulterado"
+codigos_classe: {}
+faixa_trabalho: [0.0, 100.0]
+referencia: ""

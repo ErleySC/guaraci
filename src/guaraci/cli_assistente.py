@@ -922,16 +922,16 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "desc": "Formato de nomenclatura dos arquivos DX para leitura pelo pipeline.",
             "impacto": "ANALITICO — arquivos com nomenclatura incorreta serao ignorados.",
             "exemplos": {
-                "AND-10-06-2020_T1.dx": "Andiroba pura, triplicata 1",
-                "BCB-03-03-2020_AD-S-20_T1.dx": "Bacaba adulterada com 20% de soja",
+                "AND-10-06-2099_T1.dx": "Andiroba pura, triplicata 1",
+                "BCB-03-03-2099_AD-S-20_T1.dx": "Bacaba adulterada com 20% de soja",
             },
         },
         "EN": {
             "desc": "DX file naming format for pipeline reading.",
             "impacto": "ANALYTICAL — files with incorrect naming will be ignored.",
             "exemplos": {
-                "AND-10-06-2020_T1.dx": "Pure Andiroba, replicate 1",
-                "BCB-03-03-2020_AD-S-20_T1.dx": "Bacaba adulterated with 20% soy",
+                "AND-10-06-2099_T1.dx": "Pure Andiroba, replicate 1",
+                "BCB-03-03-2099_AD-S-20_T1.dx": "Bacaba adulterated with 20% soy",
             },
         },
         "default": "COD-DD-MM-AAAA_Tn.dx", "range": "Ver menu Codificacao",
@@ -1267,7 +1267,7 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
     "pls_geladi_1986": {
         "cit": ("Geladi, P.; Kowalski, B. R. (1986). Partial least-squares regression: "
                 "a tutorial. Analytica Chimica Acta, 185, 1-17. "
-                "doi:10.1016/0003-2670(85)85121-2"),
+                "doi:10.1016/0003-2670(86)80028-9"),
         "contexto": "PLS — referencia fundamental",
     },
     "opls_da_trygg_2002": {
@@ -1283,7 +1283,7 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
     "msc_geladi_1985": {
         "cit": ("Geladi, P. et al. (1985). Linearization and scatter-correction for "
                 "near-infrared reflectance spectra of meat. Applied Spectroscopy, 39(3), 491-500. "
-                "doi:10.1366/0003702854248684"),
+                "doi:10.1366/0003702854248656"),
         "contexto": "MSC — artigo original",
     },
     "snv_barnes_1989": {

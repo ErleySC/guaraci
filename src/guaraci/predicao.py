@@ -227,11 +227,24 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     X_rec  = T_new @ P_T                                  # (n_new, p)
     Q_new  = np.sum((X_proc - X_rec) ** 2, axis=1)
 
-    # UCL do pacote (gerado pelo pipeline v25+) ou fallback conservador
+    # UCL do pacote (gerado pelo pipeline v25+). O T2 tem fallback legitimo
+    # -- e' derivavel dos scores de TREINO, que viajam dentro do modelo.
     t2_ucl = float(pkg.get("t2_ucl", np.percentile(
         np.sum((T_train ** 2) / var_t, axis=1), 95)))
-    q_ucl  = float(pkg.get("q_ucl", np.percentile(Q_new, 99) * 1.5
-                            if len(Q_new) > 0 else 1e6))
+    # O Q, nao: o fallback anterior era `percentile(Q_new, 99) * 1.5`, isto
+    # e', o limite de aceitacao calculado a partir das PROPRIAS amostras que
+    # estavam sendo julgadas. Um lote inteiro fora do dominio elevava o
+    # limite junto e era aceito -- circular, e sem nenhum aviso. Nao ha'
+    # substituto honesto para um limite que precisa vir do treino: se o
+    # pacote nao traz `q_ucl`, o certo e' recusar, nao inventar.
+    if "q_ucl" not in pkg:
+        raise ValueError(
+            "Pacote de modelo sem 'q_ucl' (limite de Q-residuos derivado do "
+            "conjunto de TREINO). Modelos exportados por versoes anteriores "
+            "a v25 nao o incluem. Retreine o modelo com a versao atual do "
+            "pipeline -- estimar esse limite a partir das amostras que estao "
+            "sendo julgadas daria um criterio circular.")
+    q_ucl = float(pkg["q_ucl"])
 
     # Classe predita via scores PLS softmax-normalizados
     Y_soft  = np.asarray(pls.predict(X_proc), dtype=float)
@@ -256,8 +269,38 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
         "Q_ucl":       round(q_ucl, 6),
         "T2_ok":       T2_new <= t2_ucl,
         "Q_ok":        Q_new  <= q_ucl,
-        "aceito":      (T2_new <= t2_ucl) & (Q_new <= q_ucl),
     })
+
+    # Decisao de aceitacao: distancia combinada f=(T2/h0)*Nh+(Q/q0)*Nq <=
+    # chi2(1-alpha, Nh+Nq) -- Eq. 3-4 de Kucheryavskiy, Rodionova &
+    # Pomerantsev (2024), J. Chemometrics 38(7):e3556.
+    #
+    # A versao anterior usava a regra RETANGULAR (T2_ok E Q_ok), com alpha
+    # independente em cada eixo: alpha conjunto efetivo ~0,0975 em vez de
+    # 0,05. E' a mesma regra ja corrigida no DD-SIMCA (2026-08-08) e no
+    # dominio de aplicabilidade (achado A3, 2026-08-07) -- ficou aqui porque
+    # esta e' uma quarta copia da mesma decisao, em outro modulo. As colunas
+    # T2_ok/Q_ok seguem expostas como DIAGNOSTICO por eixo (util para saber
+    # QUAL das duas distancias disparou), nunca como criterio.
+    #
+    # Pacotes salvos antes de 2026-08-17 nao trazem pls_h0/q0/Nh/Nq: nesse
+    # caso cai na regra por eixo e diz isso na coluna `criterio`, em vez de
+    # aplicar em silencio um alpha diferente do declarado.
+    _chaves_comb = {"pls_h0", "pls_q0", "pls_Nh", "pls_Nq", "pls_f_crit"}
+    if _chaves_comb.issubset(pkg.keys()):
+        from guaraci.chemometric_stats import distancia_combinada
+        f_new = distancia_combinada(T2_new, Q_new, float(pkg["pls_h0"]),
+                                    float(pkg["pls_q0"]), float(pkg["pls_Nh"]),
+                                    float(pkg["pls_Nq"]))
+        f_crit = float(pkg["pls_f_crit"])
+        resultado["f"] = np.round(f_new, 3)
+        resultado["f_crit"] = round(f_crit, 3)
+        resultado["aceito"] = f_new <= f_crit
+        resultado["criterio"] = "distancia combinada (alpha=0.05)"
+    else:
+        resultado["aceito"] = (T2_new <= t2_ucl) & (Q_new <= q_ucl)
+        resultado["criterio"] = (
+            "regra por eixo (pacote antigo; alpha conjunto ~0.0975)")
 
     # Dominio de Aplicabilidade (opcional -- so' se o pacote tiver os
     # artefatos leves do PCA exploratorio; retrocompativel com pacotes

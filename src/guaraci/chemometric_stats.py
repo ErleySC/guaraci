@@ -40,7 +40,7 @@ def calcular_selectivity_ratio(modelo: PLSRegression,
     J. Chemometrics 34:e3211.
 
     CORRIGIDO em 2026-08-07 (achado A2 da auditoria metodologica — ver
-    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a projecao-alvo
+    AUDITORIA_METODOLOGICA_2026-08-07.md): a projecao-alvo
     (target projection) usa o VETOR DE REGRESSAO NORMALIZADO b/||b||, NAO o
     primeiro peso PLS w1 -- os dois so' coincidem quando o modelo tem 1
     variavel latente. A propriedade que define o metodo (Rajalahti et al.
@@ -49,7 +49,7 @@ def calcular_selectivity_ratio(modelo: PLSRegression,
     corr(t_tp, y_hat) caia para ~0.92 com >=2 LVs (deveria ser 1.000 exato)
     e o ranking de variaveis selecionadas divergia (Jaccard@20 ~ 0.39 em
     cenario multi-interferente com 3+ LVs) — ver
-    docs/auditoria/medir_sr_ranking.py.
+    scripts/medicoes/medir_sr_ranking.py.
 
     Para cada variavel j, decompoe X_j em parte explicada pela projecao
     alvo e residuo:
@@ -217,7 +217,7 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
     by ~5-10% for n<30 (causing false outliers in small datasets).
 
     CORRIGIDO em 2026-08-07 (achado A5 da auditoria metodologica — ver
-    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a docstring
+    AUDITORIA_METODOLOGICA_2026-08-07.md): a docstring
     anterior afirmava que a formula valia "for both observations within
     the calibration set and new observations". Isso contradiz o proprio
     artigo citado: TYM (1992) e' precisamente o trabalho que estabelece
@@ -230,7 +230,7 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
     (`dominio_aplicabilidade_treino`, `figuras.fig3_outliers`), o erro
     numerico medido (razao limite-F / limite-Beta) e' pequeno para os
     tamanhos de amostra tipicos do projeto (~1.01-1.03x com n~300; sobe a
-    ~2-3x so' com n<20) — ver docs/auditoria/medir_achados.py. Nao
+    ~2-3x so' com n<20) — ver scripts/medicoes/medir_achados.py. Nao
     corrigido nesta rodada (impacto real medido como baixo); se usada com
     n pequeno como limite de FASE I, considerar o limite Beta exato.
     """
@@ -246,6 +246,50 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
 
 def q_residuos(X: np.ndarray, T: np.ndarray, P: np.ndarray) -> np.ndarray:
     return np.sum((X - T @ P) ** 2, axis=1)
+
+
+def q_residuos_loo(X: np.ndarray, n_comp: int) -> np.ndarray:
+    """Q-residuo leave-one-out (jackknife) de cada amostra de treino.
+
+    Uma PCA ajustada em TODAS as n amostras reconstroi cada uma delas de
+    forma otimista: a propria amostra ajudou a definir o subespaco que
+    depois a reconstroi. Com n pequeno frente a p (regime deste projeto:
+    espectros de milhares de variaveis), esse vies faz Q_train colapsar
+    perto de zero -- e qualquer limite derivado dele rejeita amostras
+    genuinamente novas, mesmo vindas da mesma distribuicao do treino.
+
+    Aqui o Q de cada amostra i e' medido contra um modelo ajustado nas
+    OUTRAS n-1 amostras. Remove o vies estruturalmente; nenhum ajuste de
+    graus de liberdade resolve, porque o problema esta na estimativa, nao
+    no limiar.
+
+    Origem: `DDSimca._q_residuals_loo` (auditoria adversarial 2026-07-19,
+    CLAUDE.md P1). Promovida a funcao pura em 2026-08-17 ao se descobrir
+    que `dominio_aplicabilidade_treino` -- o caminho que roda em producao
+    em predicao.py -- tinha o mesmo vies e nao havia recebido a correcao
+    (ver scripts/medicoes/medir_ad_vies_insample.py). DDSimca delega para ca'
+    em vez de manter a segunda copia.
+
+    Custo: n ajustes extras de PCA. Aceitavel porque n e' pequeno
+    justamente no regime em que este vies importa.
+    """
+    from sklearn.decomposition import PCA   # local: evita import pesado no topo
+
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    Q = np.empty(n, dtype=float)
+    idx = np.arange(n)
+    for i in range(n):
+        X_tr = X[idx != i]
+        n_comp_i = min(n_comp, X_tr.shape[0] - 1, X_tr.shape[1])
+        if n_comp_i < 1:
+            Q[i] = 0.0
+            continue
+        pca_i = PCA(n_components=n_comp_i).fit(X_tr)
+        xi = X[i:i + 1]
+        Q[i] = float(np.sum((xi - pca_i.inverse_transform(
+            pca_i.transform(xi))) ** 2))
+    return Q
 
 
 def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
@@ -299,7 +343,7 @@ def distancia_combinada(T2: np.ndarray, Q: np.ndarray, h0: float, q0: float,
     para ~1-(1-alpha)^2 -- achado corrigido no DD-SIMCA em 2026-08-08 e no
     dominio de aplicabilidade PCA/PLS (achado A3 da auditoria de
     2026-08-07: medido 11.6% de rejeicao contra 5% nominal em amostras da
-    MESMA distribuicao do treino, ver docs/auditoria/medir_achados.py).
+    MESMA distribuicao do treino, ver scripts/medicoes/medir_achados.py).
     """
     return ((np.asarray(T2, dtype=float) / max(h0, 1e-12)) * Nh
             + (np.asarray(Q, dtype=float) / max(q0, 1e-12)) * Nq)
@@ -395,6 +439,83 @@ def rmse_flat(a, b) -> float:
 # =========================================================================
 #  Figuras de merito analiticas (calibracao multivariada, UM analito)
 # =========================================================================
+
+def rpd_rer(y_ref: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    """RPD e RER -- as duas razoes que dizem se um RMSEP e' bom ou ruim.
+
+    Um RMSEP sozinho nao e' interpretavel: 0,17 %m/m e' excelente para
+    proteina em milho (faixa ~6-10 %) e inutil para um analito que varia
+    entre 0 e 0,5 %. As duas razoes normalizam o erro pela variacao do
+    proprio conjunto de referencia:
+
+        RPD = SD(y_ref) / SEP     (Residual Prediction Deviation)
+        RER = amplitude(y_ref) / SEP   (Range Error Ratio)
+
+    SEP e' o erro-padrao de predicao CORRIGIDO PELO BIAS -- a definicao
+    usada nas faixas de interpretacao publicadas. Usar RMSEP no lugar de
+    SEP (erro comum) infla RPD quando ha' bias, porque o bias sai da conta.
+
+    Faixas de interpretacao (Williams 2014, em Williams, Dardenne & Flinn,
+    *J. Near Infrared Spectrosc.* 22(2):85-93; e AACC 39-00.01):
+        RPD < 2,0        nao utilizavel
+        2,0 <= RPD < 2,5 triagem grosseira
+        2,5 <= RPD < 3,0 triagem
+        3,0 <= RPD < 5,0 controle de qualidade
+        RPD >= 5,0       controle de processo / quantificacao
+    RER < 4 nao utilizavel; RER >= 10 costuma acompanhar RPD >= 3.
+
+    A classificacao textual vem junto de proposito: um numero cru convida a
+    comparacoes indevidas entre estudos, enquanto a faixa carrega a
+    referencia que a define.
+
+    Devolve NaN nos campos dependentes quando `y_ref` tem desvio zero (nao
+    ha' variacao a explicar) ou quando SEP = 0 -- nunca infinito disfarcado
+    de desempenho perfeito.
+    """
+    y_ref = np.asarray(y_ref, dtype=float).ravel()
+    y_pred = np.asarray(y_pred, dtype=float).ravel()
+    n = y_ref.size
+    saida: Dict[str, float] = {
+        "sep": float("nan"), "bias": float("nan"),
+        "rpd": float("nan"), "rer": float("nan"),
+    }
+    if n < 2 or y_pred.size != n:
+        return saida
+
+    residuos = y_pred - y_ref
+    bias = float(np.mean(residuos))
+    # SEP: desvio-padrao dos residuos apos remover o bias (ddof=1).
+    sep = float(np.sqrt(np.sum((residuos - bias) ** 2) / (n - 1)))
+    sd_ref = float(np.std(y_ref, ddof=1))
+    amplitude = float(np.max(y_ref) - np.min(y_ref))
+
+    saida["bias"] = bias
+    saida["sep"] = sep
+    if sep > 0 and sd_ref > 0:
+        saida["rpd"] = sd_ref / sep
+    if sep > 0 and amplitude > 0:
+        saida["rer"] = amplitude / sep
+    return saida
+
+
+def interpretar_rpd(rpd: float) -> str:
+    """Faixa de uso correspondente ao RPD (Williams 2014; AACC 39-00.01).
+
+    Existe para que nenhum relatorio imprima um RPD nu: o numero sem a
+    faixa e' o tipo de metrica que vira alegacao exagerada em texto.
+    """
+    if not np.isfinite(rpd):
+        return "nao estimavel"
+    if rpd < 2.0:
+        return "nao utilizavel"
+    if rpd < 2.5:
+        return "triagem grosseira"
+    if rpd < 3.0:
+        return "triagem"
+    if rpd < 5.0:
+        return "controle de qualidade"
+    return "controle de processo / quantificacao"
+
 
 def figuras_merito_regressao(modelo: PLSRegression, X_cal: np.ndarray,
                               grupos_replicas: List[np.ndarray]
@@ -521,11 +642,11 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
     seus limites por eixo sao mantidos so' para diagnostico/plotagem.
 
     CORRIGIDO em 2026-08-07 (achado A3 da auditoria metodologica — ver
-    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md): a versao anterior
+    AUDITORIA_METODOLOGICA_2026-08-07.md): a versao anterior
     decidia dentro/fora por T2<=T2_limite E Q<=Q_limite independentemente
     (alpha=0.05 em cada eixo) -- a mesma regra retangular corrigida no
     DD-SIMCA em 2026-08-08, com o mesmo efeito: alpha CONJUNTO efetivo
-    inflado. Medido (docs/auditoria/medir_achados.py, 40 simulacoes,
+    inflado. Medido (scripts/medicoes/medir_achados.py, 40 simulacoes,
     amostras novas da MESMA distribuicao do treino): rejeicao de 11.6%
     contra 5% nominal.
 
@@ -576,15 +697,20 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
     """
     X_train = np.asarray(X_train, dtype=float)
     T_train = np.asarray(pca.transform(X_train), dtype=float)
-    P = np.asarray(pca.components_, dtype=float)          # (k, p)
-    mean = np.asarray(pca.mean_, dtype=float)             # (p,)
     n, k = T_train.shape
 
     var_t = T_train.var(axis=0, ddof=1)
     var_t[var_t == 0] = 1.0
     T2_train = np.sum((T_train ** 2) / var_t, axis=1)
 
-    q_train = q_residuos(X_train - mean, T_train, P)
+    # Q de treino por leave-one-out, NAO in-sample: com n < p (o regime deste
+    # projeto -- espectros de milhares de canais) a PCA reconstroi o proprio
+    # treino quase exatamente, q0/Nq saem otimistas e o dominio passa a
+    # rejeitar amostras legitimas. Medido antes da correcao: 0,14 a 0,57 de
+    # aceitacao contra 0,95 nominal (scripts/medicoes/medir_ad_vies_insample.py).
+    # Mesma correcao ja aplicada ao DD-SIMCA em 2026-07-19 (CLAUDE.md P1) --
+    # aqui ela faltava, e este e' o caminho que predicao.py usa em producao.
+    q_train = q_residuos_loo(X_train, k)
 
     h0, Nh = media_e_dof_momentos(T2_train)
     q0, Nq = media_e_dof_momentos(q_train)

@@ -224,7 +224,8 @@ def test_limites_log_ddsimca_dados_bem_comportados_nao_alarga_demais():
 def test_ylim_permutacao_nunca_corta_ponto():
     """REGRESSAO (bug LATENTE): o piso do eixo Y era fixo em -0.5/-0.6.
     Q2Y de rotulos permutados fica mais negativo quanto MAIS componentes o
-    modelo usa. Medido com 13 classes: 23 LVs -> minimo -0.465 (cabe), mas
+    modelo usa. Medido num problema multiclasse tipico: 23 LVs -> minimo
+    -0.465 (cabe), mas
     40 LVs (o max_lvs em uso) -> 80% dos pontos abaixo de -0.6, sumindo do
     grafico enquanto a reta de regressao seguia calculada sobre eles."""
     from guaraci.figuras import _ylim_permutacao
@@ -301,3 +302,42 @@ def test_fronteira_ddsimca_campos_ausentes_nao_quebra():
     out = _fronteira_ddsimca({}, grid)
     assert out.shape == grid.shape
     assert np.all(np.isnan(out))
+
+
+def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
+    """Achado B4-1 (residual): os relatorios PDF/Word/LaTeX ja saem
+    carimbados no modo imagem, mas uma figura .png exportada solta da pasta
+    Graficos/ circulava sem nenhum contexto -- e' justamente o arquivo que
+    acaba colado num slide. `salvar()` e' o ponto unico por onde toda figura
+    passa, entao a marca entra la'.
+
+    Verifica a PROPRIEDADE (um texto de aviso foi adicionado a figura), nao
+    pixels: o teste falha se a marca sumir ou vazar para o modo normal."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from guaraci.figuras import salvar
+    from guaraci.config import Config, NOME_GRAFICOS
+
+    def _texts_da_figura(modo):
+        fig, ax = plt.subplots()
+        ax.plot([0, 1], [0, 1])
+        cfg = Config(modo=modo, formato_saida="png")
+        # captura os textos ANTES de salvar fechar a figura
+        registrados = {}
+        orig_savefig = fig.savefig
+
+        def _spy(caminho, *a, **kw):
+            registrados["textos"] = [t.get_text() for t in fig.texts]
+            return orig_savefig(caminho, *a, **kw)
+
+        fig.savefig = _spy   # type: ignore[method-assign]
+        salvar(fig, "fig_teste", str(tmp_path / modo), cfg)
+        assert (tmp_path / modo / NOME_GRAFICOS / "fig_teste.png").exists()
+        return registrados.get("textos", [])
+
+    textos_img = " ".join(_texts_da_figura("imagem"))
+    textos_dx = " ".join(_texts_da_figura("dx"))
+
+    assert "PROTOTIPO" in textos_img and "NAO VALIDADO" in textos_img
+    assert "PROTOTIPO" not in textos_dx
