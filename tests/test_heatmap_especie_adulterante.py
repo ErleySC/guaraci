@@ -15,7 +15,7 @@ from guaraci.dados_io import adulterante_de_mae_id
 # ── Parser de adulterante a partir do mae_id ─────────────────────────────────
 def test_adulterante_de_mae_id_real_e_sintetico():
     assert adulterante_de_mae_id("CAP-04-11-2099-A1.03") == "algodão"
-    assert adulterante_de_mae_id("AND-01-01-2022-S5.00") == "soja"
+    assert adulterante_de_mae_id("AND-01-01-2099-S5.00") == "soja"
     assert adulterante_de_mae_id("ESA-M08.00") == "milho"
 
 

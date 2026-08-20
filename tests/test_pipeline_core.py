@@ -656,8 +656,8 @@ def test_parse_title_puro(pq):
 
 def test_parse_title_adulterado(pq):
     """TITLE adulterado: adulterante/teor extraídos; réplicas compartilham mae_id."""
-    t1 = pq.parse_title("AND-10-06-2020-AD-S-4.13%-T1")
-    t2 = pq.parse_title("AND-10-06-2020-AD-S-4.13%-T2")
+    t1 = pq.parse_title("AND-10-06-2099-AD-S-4.13%-T1")
+    t2 = pq.parse_title("AND-10-06-2099-AD-S-4.13%-T2")
     assert t1 is not None and t2 is not None
     assert t1["puro"] is False
     assert t1["adulterante"] == "S"
@@ -677,7 +677,7 @@ def test_parse_title_teor_zero_e_invalido(pq):
     mal rotulado) — parse_title rejeita em vez de aceitar um dado incoerente.
     (o regex de adulteração não aceita sinal negativo, então 0 é o único
     valor não-positivo alcançável por esse caminho.)"""
-    assert pq.parse_title("AND-10-06-2020-AD-S-0.00%-T1") is None
+    assert pq.parse_title("AND-10-06-2099-AD-S-0.00%-T1") is None
 
 
 def test_parse_title_correcoes_carregadas_de_arquivo_externo(pq, monkeypatch):

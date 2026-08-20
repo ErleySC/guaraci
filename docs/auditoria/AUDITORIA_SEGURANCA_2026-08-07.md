@@ -181,7 +181,7 @@ repositório privado).
 | **`refs/heads/master` (branch LOCAL)** | **48** |
 
 Ou seja: **tudo que está no GitHub hoje está limpo.** O que carrega os 48
-espectros reais (`dados/ACA-04-11-2020_T1.dx` etc. — o dataset FT-NIR não
+espectros reais (`dados/ACA-04-11-2099_T1.dx` etc. — o dataset FT-NIR não
 publicado do TCC) é a branch `master` **local**, que nunca foi atualizada
 após a reescrita de histórico (`26a8f5b` local vs `88caa27` no remoto).
 

@@ -922,7 +922,7 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "desc": "Formato de nomenclatura dos arquivos DX para leitura pelo pipeline.",
             "impacto": "ANALITICO — arquivos com nomenclatura incorreta serao ignorados.",
             "exemplos": {
-                "AND-10-06-2020_T1.dx": "Andiroba pura, triplicata 1",
+                "AND-10-06-2099_T1.dx": "Andiroba pura, triplicata 1",
                 "BCB-03-03-2099_AD-S-20_T1.dx": "Bacaba adulterada com 20% de soja",
             },
         },
@@ -930,7 +930,7 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "desc": "DX file naming format for pipeline reading.",
             "impacto": "ANALYTICAL — files with incorrect naming will be ignored.",
             "exemplos": {
-                "AND-10-06-2020_T1.dx": "Pure Andiroba, replicate 1",
+                "AND-10-06-2099_T1.dx": "Pure Andiroba, replicate 1",
                 "BCB-03-03-2099_AD-S-20_T1.dx": "Bacaba adulterated with 20% soy",
             },
         },

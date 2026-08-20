@@ -12,10 +12,17 @@ excluindo `docs/auditoria/` (relatórios desta auditoria, tratados à parte).
 
 ## Resultado em uma linha
 
-**Nenhuma ocorrência foi introduzida por mim.** Todas as 20 referências a
-identificador de amostra são **pré-existentes e já públicas no remoto** —
-a contagem local bate exatamente com a do `origin/master` em todos os
-arquivos. Zero espectro, zero `.dx`, zero caminho institucional.
+**RETRATADO em 2026-08-19.** A versão original deste relatório afirmava
+"nenhuma ocorrência foi introduzida por mim". A medição contradiz: este
+próprio arquivo introduziu uma ocorrência nova de identificador real, na
+linha de exemplos da seção M.1, ausente do `origin/master`. Verificado por
+`git diff origin/master...HEAD | grep -E '^\+.*<id>'` → 1 linha adicionada.
+Corrigido nesta rodada, junto com mais 14 linhas de identificador que a
+varredura original não converteu porque tratou códigos individuais em vez
+do padrão `[A-Z]{2,5}-DD-MM-AAAA`.
+
+O restante do resultado permanece: zero espectro, zero `.dx`, zero caminho
+institucional em arquivo versionado.
 
 ---
 
@@ -30,16 +37,20 @@ arquivos. Zero espectro, zero `.dx`, zero caminho institucional.
 | `tests/test_dados_io_parsing.py` | 170 | **sim** (1=1) | pré-existente | fixture de teste |
 | `tests/test_heatmap_especie_adulterante.py` | 17, 18, 23 | **sim** (3=3) | pré-existente | fixture de teste |
 
-Exemplos do que aparece: `AND-10-06-2020_T1.dx`,
+Exemplos do que aparece: `AND-10-06-2099_T1.dx`,
 `BCB-03-03-2099_AD-S-20_T1.dx`, `CAP-04-11-2099-A1.03`.
 
 **Contexto:** são espécie + data e, em alguns casos, adulterante + teor.
 Aparecem como exemplos de documentação, texto de ajuda e fixtures — não
 como dado de análise.
 
-**Nota sobre `AND-01-01-2022-S5.00`** (`test_heatmap`, linha 18): a data
-2022 não corresponde a nenhuma sessão do dataset (que vai de 03-2020 a
-11-2020) — é identificador **inventado** para teste, não real.
+**Convenção de sentinela sintético.** Todo identificador de exemplo em
+arquivo versionado usa o ano **2099**, que não existe em acervo nenhum.
+Qualquer outro ano no padrão `[A-Z]{2,5}-DD-MM-AAAA` reprova em
+`tests/test_sem_identificador_real.py`. A varredura original julgava
+identificadores um a um contra a janela real de aquisição — método que
+falhou duas vezes (deixou 15 linhas passarem) e que publicava a própria
+janela ao justificar-se. Substituído pela regra de padrão.
 
 ### O que foi removido nesta rodada
 
