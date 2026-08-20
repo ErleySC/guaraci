@@ -133,7 +133,7 @@ def progresso_do_log(txt: str,
     da etapa e o fim — sem eles, o progresso ficava CRAVADO em 6/7≈85,7%
     durante toda essa fase. Medido reproduzindo o mecanismo exato do painel
     (thread em background + `contextlib.redirect_stdout`, ver
-    `docs/auditoria/medir_bug_progresso_cli.py`) num run sintético pequeno:
+    `medir_bug_progresso_cli.py`) num run sintético pequeno:
     96,1% das amostras de progresso ficaram cravadas em 0,857, mesmo com
     figuras sendo salvas visivelmente no log. Com a correção, essa mesma
     fração cai para 31,1% (e o que resta é o platô legítimo perto do fim
@@ -227,7 +227,7 @@ def caminho_upload_temp(nome_original: str, session_id: str, *,
        (`{tempdir}/pq_uploads/<nome do arquivo>`), o que (a) e' uma
        condicao de corrida real entre sessoes concorrentes e (b)
        participava do bypass de RCE via pickle registrado como achado S1
-       da auditoria de 2026-08-07 (ver docs/auditoria/
+       da auditoria de 2026-08-07 (ver
        AUDITORIA_SEGURANCA_2026-08-07.md). `session_id` deve ser um valor
        aleatorio gerado uma vez por sessao (nunca exposto ao cliente,
        ex.: `uuid.uuid4().hex` guardado em `st.session_state`), nunca

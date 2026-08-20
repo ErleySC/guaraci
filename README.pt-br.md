@@ -1,4 +1,4 @@
-# GUARACI — Inteligência Quimiométrica para Matrizes Amazônicas
+# GUARACI — Inteligência Quimiométrica para Matrizes Complexas
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
@@ -32,9 +32,15 @@ Suporta dados vibracionais (**FT-NIR, NIR, MIR, Raman, UV-Vis**), de luminescên
 IMS**), por uma interface de terminal bilíngue (**GUARACI**) e um app Streamlit —
 sem precisar programar.
 
-Originalmente desenvolvido como Trabalho de Conclusão de Curso em Química
-sobre óleos amazônicos medidos por FT-NIR em **ABB MB3600** (arquivos **JCAMP-DX
-`.dx`**), agora generalizado para outras técnicas e matrizes.
+**Agnóstico de matriz por construção.** O que é específico de uma matriz —
+faixa espectral, pré-processamento padrão, unidade do eixo e o *vocabulário*
+da saída — vive num **perfil de matriz** (um YAML), nunca no código-fonte.
+Trocar de óleo vegetal para milho em grão é um campo de configuração, não
+uma edição de código; uma matriz sem perfil cadastrado **falha com mensagem
+acionável em vez de predizer**.
+
+**Validado exclusivamente em datasets públicos.** Ver [Validação](#validação)
+— é a única base de evidência sobre a qual este repositório faz afirmações.
 
 ---
 
@@ -69,7 +75,7 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 ## O que o pipeline faz
 
 - **Modos de análise**
-  - **Classificação por espécie** (14 classes; código interno N1)
+  - **Classificação por classe** (multiclasse; código interno N1)
   - **Discriminação puro × adulterado** (autenticação; código interno N2)
   - **Quantificação de teor** (% de adulterante, regressão; código interno N3)
 - **Pré-processamento** (ordem de Rinnan et al., 2009): MSC ou SNV → Savitzky-Golay → *mean-centering*. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
@@ -145,9 +151,49 @@ no path sozinho, então funciona mesmo sem `pip install -e .`.
 
 ---
 
+## Perfis de matriz — como se troca de matriz
+
+Tudo que é específico de matriz vive num perfil
+(`src/guaraci/perfis_matriz/*.yaml`): faixa e unidade do eixo,
+pré-processamento padrão, faixa de trabalho esperada e o **vocabulário** da
+saída. O motor nunca lê esses termos para decidir nada — é exatamente isso
+que impede o vocabulário de uma matriz de contaminar os resultados de outra.
+
+```bash
+guaraci perfis                    # generico · oleo_nir · milho_nir · mel_vis_nir
+guaraci --perfil=milho_nir        # ou o caminho do seu próprio YAML
+```
+
+Escrever um perfil para uma matriz nova é copiar o `generico.yaml` e
+preencher — sem mudar código, sem fork. Uma matriz não cadastrada levanta
+`PerfilDesconhecidoError` **antes de carregar qualquer dado**, listando o que
+existe e como adicionar.
+
+> O `mel_vis_nir` está **declarado, mas não validado com dado real** — o
+> dataset público de mel não foi obtido (ver
+> [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md)).
+> O próprio YAML diz isso.
+
+## Modo cego é o padrão
+
+Quem manda uma amostra para um modelo de quantificação **não sabe** a classe
+dela. Então a calibração também não pode saber: por padrão, a regressão por
+classe usa a classe **predita**, não a verdadeira.
+
+```bash
+guaraci                       # cego (padrão)
+guaraci --modo=controle       # usa a classe VERDADEIRA — só diagnóstico interno
+```
+
+O `--modo=controle` existe para exatamente uma coisa: separar erro de
+quantificação de erro de classificação durante o desenvolvimento. Números
+obtidos assim não representam desempenho de uso, e a saída marca isso. Um
+teste prova a separação envenenando os rótulos verdadeiros: em modo cego, o
+resultado não pode mudar.
+
 ## Estrutura dos dados de entrada
 
-Pasta-raiz com **uma subpasta por espécie**, cada uma com os `.dx` da espécie
+Pasta-raiz com **uma subpasta por classe**, cada uma com os `.dx` da classe
 (auto-detectado). A classe e os metadados também são lidos do campo `##TITLE=`
 do JCAMP-DX:
 
@@ -158,11 +204,18 @@ ADULTERADO: {COD}-{DD-MM-YYYY}-AD-{A|M|S}-{NN}%_T{N}
 Adulterantes: **A** = algodão, **M** = milho, **S** = soja. **T{N}** = réplica
 (triplicata) → vira o `mae_id` que protege contra vazamento.
 
-**14 espécies:** Açaí, Andiroba, Babaçu, Bacaba, Buriti, Castanha do Pará, Coco,
-Copaíba, Goiaba, Graviola, Maracujá, Palmiste, Patauá, Pracaxi.
+A faixa espectral vem do **perfil de matriz ativo** — 4000–10000 cm⁻¹ no
+`oleo_nir` (o truncamento remove ruído de borda da FFT que, com SG
+derivativo, vira falso top-VIP), 1100–2498 nm no `milho_nir`, e o que você
+declarar no seu próprio YAML.
 
-Faixa espectral útil: **4000–10000 cm⁻¹** (truncamento remove ruído de borda da
-FFT que, com SG derivativo, vira falso top-VIP).
+**A proveniência nunca viaja junto com os resultados.** O parser lê apenas os
+9 campos numéricos/de rótulo de que precisa — `##AUDIT TRAIL` (operador,
+local) não é lido em momento nenhum — e os identificadores de amostra são
+retirados do `metadados.csv` antes da gravação, substituídos por rótulos
+anônimos de grupo de réplica que preservam a auditabilidade *group-aware*.
+Uma suíte de testes varre todo artefato gerado, inclusive os bytes do
+`.joblib`, e falha se algo escapar.
 
 ---
 
@@ -204,12 +257,22 @@ depois de exportado.
 
 ## Limitações conhecidas (honestidade científica)
 
-- **Babaçu × Palmiste**: classe mais fraca — ambas são palmáceas e têm assinatura
-  NIR muito próxima. É uma limitação **botânica/química** do FT-NIR, não do código.
-- **DD-SIMCA one-class**: o modo `puros` exige ≥15 amostras puras por classe; o
-  dataset atual tem ~3/classe, então o modo padrão (`todos`) é exploratório — as
-  métricas de sensibilidade/especificidade **não** equivalem a autenticação one-class.
-- **n pequeno**: por isso todas as métricas vêm com **intervalo de confiança** (BCa).
+- **Validado em dois datasets públicos até agora** (milho NIR, Tecator NIT).
+  O motor é agnóstico de matriz, mas "agnóstico" é propriedade de arquitetura,
+  não resultado de validação — um perfil que você escreve para uma matriz nova
+  está por testar até que você o teste.
+- **`mel_vis_nir` está declarado, não validado** — o dataset de mel não foi
+  obtido. O perfil carrega e funciona; nenhuma afirmação é feita sobre seus
+  números.
+- **DD-SIMCA one-class depende de amostras FÍSICAS suficientes por classe**,
+  não de espectros. Com um único ponto de amostragem físico por classe, os
+  limites são calibrados contra uma só observação independente — e o software
+  diz isso, em vez de reportar um número confiante.
+- **n pequeno**: todas as métricas vêm com **intervalo de confiança** (BCa), e
+  a predição conformal recusa devolver intervalo quando o *n* é insuficiente,
+  em vez de extrapolar.
+- **Modo imagem (colorimetria digital) é protótipo** — não validado com
+  dataset real, não usar para resultado publicável.
 
 ---
 
@@ -257,12 +320,12 @@ seja feito.
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.9.0. 2026. Disponível em:
+> Complexas**. Versão 31.9.0. 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **APA**
 
-> Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
+> Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Complex
 > Matrices* (v31.9.0) [Software].
 > https://github.com/ErleySC/guaraci
 
@@ -271,7 +334,7 @@ seja feito.
 ```bibtex
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
-  title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
+  title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Complexas}},
   version     = {31.9.0},
   year        = {2026},
   url         = {https://github.com/ErleySC/guaraci},

@@ -103,6 +103,103 @@ def test_gerar_latex_template_ok(pasta_resultados, projeto):
     assert isinstance(tex, bytes) and len(tex) > 0
 
 
+def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
+        tmp_path, projeto):
+    """Regressao do achado B3-1 (auditoria 2026-08): o template LaTeX
+    tinha a frase "group-aware cross-validation (GroupKFold...)" CRAVADA,
+    mesmo quando o pipeline caiu para StratifiedKFold (mae_id indisponivel
+    -- ex.: modo_entrada="imagem"). Um manuscrito gerado nesse caso
+    afirmava metodologia que nao foi aplicada naquela execucao.
+
+    Este teste roda o gerador duas vezes com resumos que diferem SO no
+    campo "Group-aware (mae_id)" e confirma que o texto do LaTeX muda de
+    acordo -- nao so' que compila."""
+    def _pasta(group_aware: str, cv_label: str) -> str:
+        p = tmp_path / group_aware
+        logs = p / "logs"
+        logs.mkdir(parents=True)
+        (logs / "resumo_modelo.txt").write_text(
+            "Balanced Accuracy (CV): 0.912\nR2Y: 0.87\nQ2Y: 0.81\n"
+            "Preprocessamento: msc_sg_mc\nN treino: 120\nN. Classes: 5\n"
+            "LVs otimas: 6\n"
+            f"Validacao: {cv_label}\n"
+            f"Group-aware (mae_id): {group_aware}\n"
+            "Faixa espectral (cm-1): [4000, 10000]\n"
+            "Permutation n_validos: 200\n",
+            encoding="utf-8",
+        )
+        return str(p)
+
+    tex_sim = reports.gerar_latex_template(
+        _pasta("sim", "StratifiedGroupKFoldEstavel n_splits=5"), projeto
+    ).decode("utf-8")
+    tex_nao = reports.gerar_latex_template(
+        _pasta("nao", "RepeatedStratifiedKFold n_splits=5 repeats=3"), projeto
+    ).decode("utf-8")
+
+    # Caso "sim": afirma group-aware, cita o cv_label real.
+    assert "group-aware cross-validation" in tex_sim
+    assert "StratifiedGroupKFoldEstavel" in tex_sim
+    assert "NOT applied" not in tex_sim
+
+    # Caso "nao": NAO afirma group-aware, avisa explicitamente, cita o
+    # cv_label real (nao GroupKFold, que nunca rodou nesse caso).
+    assert "group-aware cross-validation" not in tex_nao
+    assert "NOT applied" in tex_nao
+    assert "RepeatedStratifiedKFold" in tex_nao
+
+    # Os dois textos devem divergir de fato (nao so' passar por acidente).
+    assert tex_sim != tex_nao
+
+
+def _pasta_com_modo(tmp_path, modo: str) -> str:
+    """Pasta de resultados minima cujo resumo declara `Modo de entrada`."""
+    p = tmp_path / f"modo_{modo}"
+    logs = p / "logs"
+    logs.mkdir(parents=True)
+    (logs / "resumo_modelo.txt").write_text(
+        "Balanced Accuracy (CV): 0.912\nR2Y: 0.87\nQ2Y: 0.81\n"
+        "Preprocessamento: msc_sg_mc\nN treino: 120\nN. Classes: 5\n"
+        "LVs otimas: 6\nValidacao: RepeatedStratifiedKFold n_splits=5\n"
+        "Group-aware (mae_id): nao\n"
+        "Faixa espectral (cm-1): [4000, 10000]\n"
+        "Permutation n_validos: 200\n"
+        f"Modo de entrada: {modo}\n",
+        encoding="utf-8",
+    )
+    return str(p)
+
+
+def test_relatorios_carimbam_prototipo_no_modo_imagem(tmp_path, projeto):
+    """Regressao do achado B4-1 (auditoria 2026-08): o modo `imagem`
+    (colorimetria digital) é protótipo NÃO validado e devolve `mae_id=None`
+    sempre, o que desliga a validação group-aware -- mas o PDF/Word/LaTeX
+    gerado saía tipograficamente idêntico ao de uma análise FT-NIR
+    validada. A única menção a "protótipo" vivia em docstrings e no texto
+    de ajuda do CLI, nunca na saída.
+
+    Agora os geradores leem `Modo de entrada` do resumo e carimbam. Este
+    teste confirma que o carimbo aparece SÓ no modo imagem."""
+    pasta_img = _pasta_com_modo(tmp_path, "imagem")
+    pasta_dx  = _pasta_com_modo(tmp_path, "dx")
+
+    tex_img = reports.gerar_latex_template(pasta_img, projeto).decode("utf-8")
+    tex_dx  = reports.gerar_latex_template(pasta_dx, projeto).decode("utf-8")
+    assert "PROTOTYPE OUTPUT" in tex_img
+    assert "PROTOTYPE OUTPUT" not in tex_dx
+
+    # PDF e Word: nao da' p/ inspecionar o texto renderizado facilmente,
+    # entao verifica-se que o carimbo muda o TAMANHO da saida (conteudo a
+    # mais) e que os dois geradores rodam sem erro nos dois modos.
+    pdf_img = reports.gerar_pdf_relatorio(pasta_img, projeto, max_figuras=0)
+    pdf_dx  = reports.gerar_pdf_relatorio(pasta_dx, projeto, max_figuras=0)
+    assert len(pdf_img.getvalue()) > len(pdf_dx.getvalue())
+
+    doc_img = reports.gerar_word_relatorio(pasta_img, projeto, max_figuras=0)
+    doc_dx  = reports.gerar_word_relatorio(pasta_dx, projeto, max_figuras=0)
+    assert len(doc_img.getvalue()) > len(doc_dx.getvalue())
+
+
 def test_gerar_pptx_relatorio_ok(pasta_resultados, projeto):
     buf = reports.gerar_pptx_relatorio(pasta_resultados, projeto, max_figuras=0)
     assert len(buf.getvalue()) > 0

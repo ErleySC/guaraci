@@ -103,8 +103,12 @@ def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    # Pontos individuais (um por fold) com jitter reprodutivel
-    rng = np.random.default_rng(42)
+    # Pontos individuais (um por fold) com jitter reprodutivel. Usa
+    # cfg.seed (nao um 42 fixo): duas execucoes com seeds diferentes devem
+    # diferir em TUDO que e' aleatorio, inclusive no jitter da figura --
+    # caso contrario a figura sugere uma reprodutibilidade que o resto da
+    # execucao nao tem.
+    rng = np.random.default_rng(cfg.seed)
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         jitter = rng.uniform(-0.14, 0.14, len(dado))
         ax.scatter(np.full(len(dado), i) + jitter, dado,
@@ -379,6 +383,23 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 
     # Gerar splits estratificados por grupo (risco 3 resolvido)
     if grupos_cv is not None:
+        # `StratifiedShuffleSplit` (usado por grupo dentro do helper) exige
+        # n_grupos_teste >= n_classes. Com poucos grupos de replica por
+        # classe a condicao falha e o helper levanta ValueError -- achado
+        # B2-1b da auditoria de 2026-08-16. Sem esta guarda, o Monte Carlo
+        # CV inteiro morre e o usuario so' ve a mensagem generica do except
+        # amplo do pipeline, sem saber que a causa e' "poucos grupos".
+        n_grupos_tot = int(len(np.unique(grupos_cv)))
+        n_classes_tot = int(len(lb.classes_))
+        n_grupos_teste = int(round(test_sz * n_grupos_tot))
+        if n_grupos_teste < n_classes_tot:
+            print(f"  [AVISO] Monte Carlo CV PULADO: {n_grupos_tot} grupos "
+                  f"de replica geram apenas {n_grupos_teste} grupos de teste "
+                  f"(test_size={test_sz:.0%}), menos que as {n_classes_tot} "
+                  f"classes — split estratificado por grupo impossivel. "
+                  f"Reduza n_classes, aumente test_size, ou colete mais "
+                  f"amostras fisicas independentes.")
+            return pd.DataFrame()
         splits = _stratified_group_shuffle_splits(
             y_int, grupos_cv, n_iter, test_sz, cfg.seed)
     else:
@@ -765,7 +786,7 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(cfg.seed)   # ver nota em fig_benchmark_classificadores
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         if len(dado) == 0:
             continue

@@ -305,8 +305,13 @@ def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
     ausentes; ignora chaves desconhecidas; reune erros numa mensagem clara."""
     try:
         import yaml
-    except ImportError:
-        raise RuntimeError("PyYAML nao instalado. Rode: pip install pyyaml")
+    except ImportError as _e_yaml:
+        # `from _e_yaml`: preserva a cadeia de excecoes. Sem isso o traceback
+        # mostra "During handling of the above exception, another exception
+        # occurred", que sugere falha DENTRO do tratamento de erro em vez de
+        # dependencia ausente -- confunde o diagnostico do usuario.
+        raise RuntimeError(
+            "PyYAML nao instalado. Rode: pip install pyyaml") from _e_yaml
     if not os.path.exists(caminho):
         raise FileNotFoundError(
             f"Config nao encontrado: {caminho}. Gere um pelo assistente "

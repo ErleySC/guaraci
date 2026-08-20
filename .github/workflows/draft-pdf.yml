@@ -7,6 +7,11 @@ on:
       - .github/workflows/draft-pdf.yml
   workflow_dispatch: {}
 
+# Escopo minimo explicito: sem isto o workflow herda o padrao do
+# repositorio, que pode conceder write ao GITHUB_TOKEN sem necessidade.
+permissions:
+  contents: read
+
 jobs:
   paper:
     runs-on: ubuntu-latest
@@ -14,7 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Build draft PDF
-        uses: openjournals/openjournals-draft-action@master
+        # Pinado por SHA:  e' branch mutavel -- o conteudo da acao
+        # pode mudar entre dois builds sem nenhum sinal.
+        uses: openjournals/openjournals-draft-action@85a18372e48f551d8af9ddb7a747de685fbbb01c  # master em 2026-08-20
         with:
           journal: joss
           paper-path: paper/paper.md

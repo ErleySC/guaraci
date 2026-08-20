@@ -34,7 +34,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
         st.markdown("**1. Trained model (.joblib)**")
         if upload_bloqueado:
             # CORRIGIDO em 2026-08-07 (achado S1 da auditoria de
-            # seguranca -- ver docs/auditoria/AUDITORIA_SEGURANCA_
+            # seguranca -- ver AUDITORIA_SEGURANCA_
             # 2026-08-07.md): o campo "local path" ficava disponivel MESMO
             # com o upload bloqueado, e um visitante remoto podia digitar
             # QUALQUER caminho do servidor ali. Um campo de texto num app

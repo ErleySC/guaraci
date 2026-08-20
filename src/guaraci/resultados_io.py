@@ -171,6 +171,13 @@ def anexar_regressao_resumo(
         linhas.append(f"    RMSEP .....: {_fmt(pooled.get('rmsep'))}")
         if pooled.get('bias') is not None:
             linhas.append(f"    Bias ......: {_fmt(pooled.get('bias'), 4)}")
+        # RPD/RER com a faixa de uso ao lado: um RPD nu vira alegacao
+        # exagerada em texto (Williams 2014; AACC 39-00.01).
+        if pooled.get('rpd') is not None:
+            linhas.append(f"    SEP .......: {_fmt(pooled.get('sep'), 3)}")
+            linhas.append(f"    RPD .......: {_fmt(pooled.get('rpd'), 2)}"
+                          f"  ({pooled.get('rpd_faixa', '-')})")
+            linhas.append(f"    RER .......: {_fmt(pooled.get('rer'), 1)}")
         if pooled.get('dmody_crit') is not None:
             linhas.append(f"    DModY critico (SIMCA): "
                           f"{_fmt(pooled.get('dmody_crit'), 3)}")
@@ -287,14 +294,22 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     nivel_nome = _NIVEL_NOME.get(nivel, nivel)
     agora = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    # A matriz e o vocabulario vem do PERFIL (guaraci/perfis_matriz/*.yaml),
+    # nunca do codigo: o texto anterior afirmava "oleo vegetal amazonico" em
+    # qualquer execucao -- inclusive rodando sobre milho em grao (medido na
+    # auditoria mestre de 2026-08-17). Um model card que declara a matriz
+    # errada e' pior que um sem matriz nenhuma.
+    from guaraci.perfil_matriz import perfil_de_cfg
+    perfil = perfil_de_cfg(cfg)
+    voc = perfil.vocabulario
     uso_pretendido = {
-        "N1": ("Identificacao de especie de oleo vegetal amazonico a partir "
-               "de espectro FT-NIR (classificacao multiclasse via PLS-DA)."),
-        "N2": ("Autenticacao de pureza POR ESPECIE (puro vs. adulterado) via "
-               "DD-SIMCA one-class, a partir de espectro FT-NIR."),
-        "N3": ("Quantificacao do teor (%) de adulterante em oleo vegetal "
-               "amazonico, calibrada separadamente por especie (PLS-R)."),
-    }.get(nivel, "Analise quimiometrica de espectros FT-NIR.")
+        "N1": (f"Identificacao de {voc.classe} em {voc.matriz} a partir do "
+               "espectro (classificacao multiclasse via PLS-DA)."),
+        "N2": (f"Autenticacao POR {voc.classe.upper()} ({voc.conforme} vs. "
+               f"{voc.nao_conforme}) via DD-SIMCA one-class, em {voc.matriz}."),
+        "N3": (f"Quantificacao de {voc.alvo} em {voc.matriz}, calibrada "
+               f"separadamente por {voc.classe} (PLS-R)."),
+    }.get(nivel, "Analise quimiometrica de dados espectrais.")
 
     linhas: List[str] = [
         f"# Model Card -- GUARACI v{__version__}",
@@ -313,7 +328,14 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
              "Discriminant Analysis)" if nivel != "N3" else
              "PLS-DA + PLS-R por especie"),
             ("Pre-processamento", str(resumo.get("Pre-processamento", "-"))),
-            ("Faixa espectral", str(resumo.get("Faixa espectral (cm-1)", "-"))),
+            ("Perfil de matriz", f"{perfil.nome} ({perfil.descricao})"
+             if perfil.descricao else perfil.nome),
+            ("Matriz", voc.matriz),
+            (f"Faixa espectral ({perfil.unidade_eixo})",
+             str(resumo.get("Faixa espectral (cm-1)", "-"))),
+            ("Faixa de trabalho declarada",
+             (f"{perfil.faixa_trabalho[0]} a {perfil.faixa_trabalho[1]}"
+              if perfil.faixa_trabalho else "nao declarada no perfil")),
             ("Tag de execucao", str(resumo.get("Tag", "-"))),
             ("Licenca", "GPL-3.0-or-later (dual-licensed -- ver docs/COMMERCIAL.md)"),
             ("Repositorio", "github.com/ErleySC/guaraci"),
@@ -324,7 +346,7 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         f"**Uso primario:** {uso_pretendido}",
         "",
         "**Usuarios primarios:** pesquisadores em quimiometria, laboratorios "
-        "de controle de qualidade de oleos vegetais, projetos academicos "
+        "de controle de qualidade, projetos academicos "
         "(graduacao/pos-graduacao).",
         "",
         "**Fora do escopo:** nao substitui metodos analiticos de referencia "

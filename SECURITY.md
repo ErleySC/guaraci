@@ -39,7 +39,7 @@ rodar um programa desconhecido** no seu computador.
    público nunca é "só o operador digita", qualquer visitante alcança;
    antes só o uploader era desligado, e o campo de caminho local sozinho
    já bastava para contornar a proteção — ver
-   `docs/auditoria/AUDITORIA_SEGURANCA_2026-08-07.md`, achado S1). Com a
+   `AUDITORIA_SEGURANCA_2026-08-07.md`, achado S1). Com a
    flag ativa, a aba de Predição não carrega nenhum modelo pela web —
    rode a CLI localmente para prever amostras nesse modo.
 4. **Uploads isolados por sessão**: quando o carregamento de modelo está

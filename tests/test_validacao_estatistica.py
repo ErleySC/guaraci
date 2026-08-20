@@ -190,7 +190,7 @@ def test_permutacao_todas_as_iteracoes_falham_da_p_1_nao_informativo():
 # O teste de permutacao/Wold permutava ROTULOS POR AMOSTRA, ignorando
 # `groups` (mae_id) -- quebra a coerencia de replica fisica e estreita o
 # nulo artificialmente (medido: falso positivo sobe de 5% nominal p/ 15%,
-# ver docs/auditoria/medir_permutacao_grupos.py). Estes testes travam a
+# ver medir_permutacao_grupos.py). Estes testes travam a
 # propriedade que corrige isso: FALHAM com permutacao por amostra.
 
 def test_permutacoes_por_grupo_preservam_coerencia_dentro_do_grupo():

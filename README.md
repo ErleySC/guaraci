@@ -1,4 +1,4 @@
-# GUARACI — Chemometric Intelligence for Amazonian Matrices
+# GUARACI — Chemometric Intelligence for Complex Matrices
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
@@ -31,9 +31,16 @@ It supports vibrational (**FT-NIR, NIR, MIR, Raman, UV-Vis**), luminescence
 IMS**) data, through a guided bilingual terminal interface (**GUARACI**) and a
 Streamlit web app — no coding required.
 
-Originally built for an undergraduate thesis in Chemistry on Amazonian
-vegetable oils measured by FT-NIR on an **ABB MB3600** (JCAMP-DX `.dx` files),
-now generalized to other analytical techniques and matrices.
+**Matrix-agnostic by construction.** What is specific to a matrix — spectral
+range, default preprocessing, axis unit, and the *vocabulary* of the output —
+lives in a **matrix profile** (a YAML file), never in the source. Switching
+from vegetable oil to ground corn is one config field, not a code edit; a
+matrix with no registered profile **fails with an actionable message instead
+of predicting**.
+
+**Validated exclusively on public datasets.** See
+[Validation](#validation) — that is the only evidence base this repository
+makes claims from.
 
 ---
 
@@ -87,6 +94,8 @@ pip install -e .        # installs the `guaraci` package + core deps (adds the `
 ```bash
 guaraci doctor    # checks Python/RAM/CPU/deps, writes guaraci_doctor.txt
 guaraci demo      # runs the full pipeline on synthetic spectra, opens the results folder
+guaraci perfis    # lists the available matrix profiles
+guaraci --help    # full option list and exit codes
 guaraci --version
 ```
 
@@ -115,11 +124,61 @@ Raman, UV-Vis, fluorescence, HPLC, GC-MS, NMR, IMS), apply ready-made profiles,
 and launch the pipeline — all without editing code. Press **G** in any menu to
 open the built-in scientific assistant.
 
+## Matrix profiles — how you switch matrices
+
+Everything matrix-specific lives in a profile
+(`src/guaraci/perfis_matriz/*.yaml`): axis range and unit, default
+preprocessing, expected working range, and the **vocabulary** used in the
+output. The engine never reads those terms to decide anything — which is
+exactly what stops one matrix's vocabulary from contaminating another's
+results.
+
+```bash
+guaraci perfis                    # generico · oleo_nir · milho_nir · mel_vis_nir
+guaraci --perfil=milho_nir        # or the path to your own YAML
+```
+
+Writing a profile for a new matrix is copying `generico.yaml` and filling it
+in — no source change, no fork. An unregistered matrix raises
+`PerfilDesconhecidoError` **before any data is loaded**, listing what exists
+and how to add one.
+
+> `mel_vis_nir` is **declared but not validated against real data** — the
+> public honey dataset was not obtained (see
+> [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md)).
+> The YAML says so itself.
+
+## Blind mode is the default
+
+Whoever sends a sample to a quantification model does **not** know its class.
+So the calibration must not know it either: by default the per-class
+regression uses the **predicted** class, not the true one.
+
+```bash
+guaraci                       # blind (default)
+guaraci --modo=controle       # uses the TRUE class — internal diagnosis only
+```
+
+`--modo=controle` exists for exactly one purpose: separating quantification
+error from classification error while developing. Numbers obtained that way
+do not represent real-world performance, and the output labels them as such.
+A test proves the separation by poisoning the true labels: in blind mode the
+result must not change.
+
 ## Input
 
-Root folder with **one subfolder per species** of `.dx` files. Class and
-metadata are also parsed from the JCAMP-DX `##TITLE=` field. Triplicate tag
-`T{N}` becomes the `mae_id` leakage guard. Useful range: **4000–10000 cm⁻¹**.
+Root folder with **one subfolder per class** of `.dx` files. Class and
+metadata are also parsed from the JCAMP-DX `##TITLE=` field; the replicate
+tag `T{N}` becomes the `mae_id` leakage guard. The spectral range comes from
+the active matrix profile (e.g. 4000–10000 cm⁻¹ for `oleo_nir`,
+1100–2498 nm for `milho_nir`).
+
+**Provenance never travels with your results.** The parser reads only the 9
+numeric/label fields it needs — `##AUDIT TRAIL` (operator, site) is never
+read at all — and sample identifiers are stripped from `metadados.csv`
+before it is written, replaced by anonymous replicate-group labels that
+preserve group-aware auditability. A test suite scans every generated
+artifact, including the `.joblib` bytes, and fails if any of it leaks.
 
 ## Output
 
@@ -135,13 +194,32 @@ Inside: `Graficos/` (figures), `Tabelas/` (CSV data), `Relatorios/`
 
 ## Validation
 
-Every number in the table below comes from an automated test that runs on
-every commit — see [`docs/VALIDATION.md`](docs/VALIDATION.md) for the full
-table, tolerances, and how to reproduce: PLS-DA matches
-`sklearn.PLSRegression` + argmax exactly (max|Δcoef| = 0.0), SNV/VIP/MSC/
-CV-ANOVA match their defining formulas to numerical tolerance, DD-SIMCA's
-UCL matches the Tracy-Young-Mason/χ² closed forms, OPLS-DA's orthogonal
-component is orthogonal to <1e-6.
+Two independent layers, both automated.
+
+**1. Against the defining formulas.** PLS-DA matches `sklearn.PLSRegression`
++ argmax exactly (max|Δcoef| = 0.0); SNV/VIP/MSC/CV-ANOVA match their
+definitions to numerical tolerance; DD-SIMCA's UCL matches the
+Tracy-Young-Mason/χ² closed forms; OPLS-DA's orthogonal component is
+orthogonal to <1e-6. Full table and tolerances in
+[`docs/VALIDATION.md`](docs/VALIDATION.md).
+
+**2. Against published results on public data** — the only evidence base for
+performance claims:
+
+| Dataset | Matrix | Target | GUARACI | Literature |
+|---|---|---|---|---|
+| [Eigenvector Corn](https://eigenvector.com/data/Corn/) (m5) | ground corn | protein | **RMSEP 0.144 %w/w** | 0.1–0.2 |
+| Tecator | minced meat | fat | RMSEP 2.001 | see [`docs/BENCHMARK_TECATOR.md`](docs/BENCHMARK_TECATOR.md) |
+
+The corn figure is a **CI job** (`validacao-publica`): if the engine stops
+reproducing the literature, the build fails. Reproduce locally with
+`GUARACI_DATASETS_DIR=<folder> pytest tests/test_validacao_publica.py`.
+
+Quantification never reports a bare RMSEP: **SEP, RPD and RER** ship
+alongside it, with RPD carrying its published interpretation band
+(Williams 2014; AACC 39-00.01). LOD/LOQ are computed when physical
+replicates allow estimating instrumental noise, and return `N/A` when they
+do not — a LOD without a repeatability basis would be a made-up number.
 
 ## Security
 
@@ -153,11 +231,21 @@ after export.
 
 ## Known limitations
 
-- **Babaçu vs. Palmiste** overlap — both are palms with near-identical NIR
-  signatures (a botanical/chemical limit of FT-NIR, not a code bug).
-- **DD-SIMCA** one-class `puros` mode needs ≥15 pure samples/class; current data
-  has ~3, so the default `todos` mode is exploratory.
-- Small *n* → all metrics ship with **confidence intervals** (BCa).
+- **Validated on two public datasets so far** (corn NIR, Tecator NIT). The
+  engine is matrix-agnostic, but "agnostic" is an architectural property, not
+  a validation result — a profile you write for a new matrix is untested
+  until you test it.
+- **`mel_vis_nir` is declared, not validated** — the honey dataset was not
+  obtained. The profile loads and works; no claim is made about its numbers.
+- **One-class DD-SIMCA needs enough *physical* samples per class**, not
+  spectra. With one physical sampling point per class the limits are
+  calibrated against a single independent observation, and the software says
+  so rather than reporting a confident number.
+- **Small *n*** → every metric ships with **confidence intervals** (BCa), and
+  conformal prediction refuses to produce an interval when *n* is
+  insufficient instead of extrapolating.
+- **Image mode (digital colorimetry) is a prototype** — not validated against
+  a real dataset, not for publishable results.
 
 ## Author
 
@@ -189,14 +277,14 @@ Bug reports, feature requests and pull requests are welcome — see
 
 **APA**
 
-> Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Amazonian
+> Costa, E. S. da. (2026). *GUARACI: Chemometric Intelligence for Complex
 > Matrices* (v31.9.0) [Software].
 > https://github.com/ErleySC/guaraci
 
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Inteligência Quimiométrica para Matrizes
-> Amazônicas**. Versão 31.9.0. 2026. Disponível em:
+> Complexas**. Versão 31.9.0. 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **BibTeX**
@@ -204,7 +292,7 @@ Bug reports, feature requests and pull requests are welcome — see
 ```bibtex
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
-  title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Amazônicas}},
+  title       = {{GUARACI: Inteligência Quimiométrica para Matrizes Complexas}},
   version     = {31.9.0},
   year        = {2026},
   url         = {https://github.com/ErleySC/guaraci},

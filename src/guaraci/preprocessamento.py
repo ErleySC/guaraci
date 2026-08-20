@@ -62,7 +62,7 @@ class MSC(BaseEstimator, TransformerMixin):
     returns (X_i - a) / b. Stateful: must remain inside Pipeline+CV.
 
     VETORIZADO em 2026-08-07 (achado da auditoria metodologica -- ver
-    docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md, secao "Dívida de
+    AUDITORIA_METODOLOGICA_2026-08-07.md, secao "Dívida de
     engenharia observada"): a regressao de 2 parametros (a, b) por amostra
     e' uma regressao linear simples (1 preditor + intercepto), que tem
     forma fechada:
@@ -70,7 +70,8 @@ class MSC(BaseEstimator, TransformerMixin):
         a = mean(X_i) - b * mean(ref)
     resolvida para TODAS as amostras de uma vez via operacoes matriciais,
     em vez de um `np.linalg.lstsq` por amostra num loop Python (o mesmo
-    resultado, so' mais lento -- desperdicio notavel com 934x8192 pontos
+    resultado, so' mais lento -- desperdicio notavel com matrizes
+    espectrais grandes
     espectrais reais). Verificado numericamente contra a versao anterior
     em 20 casos aleatorios + casos estruturados (b=0/1/2): diff < 1e-8.
 
@@ -141,7 +142,7 @@ def construir_preprocessador(cfg: "Config") -> Pipeline:
             ("mc",  StandardScaler(with_std=False)),
         ])
     if preset == "msc_sg_mc":
-        # MSC->SG+MC: best pipeline on the full dataset (0.923 bal.acc).
+        # MSC->SG+MC: default preset for diffuse FT-NIR with strong scatter.
         # MSC is stateful (reference = training mean) -> kept inside
         # Pipeline to avoid leakage between CV folds.
         return Pipeline([

@@ -1,5 +1,5 @@
 """Testes de spectra_preview.py (0% de cobertura, achado da auditoria
-metodologica de 2026-08-07 — ver docs/auditoria/AUDITORIA_METODOLOGICA_2026-08-07.md,
+metodologica de 2026-08-07 — ver AUDITORIA_METODOLOGICA_2026-08-07.md,
 secao "Dívida de engenharia observada"). Usado pelas abas Data/Preprocessing
 do app web para a prévia de espectros; funções puras de leitura/parsing (o
 único acoplamento a Streamlit é o decorator `st.cache_data`, que funciona

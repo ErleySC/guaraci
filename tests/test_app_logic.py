@@ -59,7 +59,7 @@ def test_progresso_ignora_marcador_malformado():
 # parte do tempo real de execução, mas só tinha 2 marcadores de texto
 # opcionais entre início e fim -- sem eles, a fração ficava CRAVADA em
 # 6/7=0.857 durante toda essa fase (medido: 96,1% das amostras de progresso
-# num run real, ver docs/auditoria/medir_bug_progresso_cli.py). Estes testes
+# num run real, ver medir_bug_progresso_cli.py). Estes testes
 # travam a correção: com `total_figuras_planejadas`, a fração AVANÇA
 # conforme cada figura é salva.
 
@@ -220,7 +220,7 @@ def test_ler_model_card_ausente_retorna_none(tmp_path):
 # ── caminho_upload_temp (achado S1 da auditoria de seguranca, 2026-08-07) ───
 # Um caminho de upload PREVISIVEL (nome fixo, pasta compartilhada entre
 # sessoes/visitantes) era uma das pecas de um bypass de RCE via pickle num
-# deploy publico (ver docs/auditoria/AUDITORIA_SEGURANCA_2026-08-07.md).
+# deploy publico (ver AUDITORIA_SEGURANCA_2026-08-07.md).
 # Estes testes travam as DUAS propriedades que fecham essa peca.
 
 def test_caminho_upload_temp_bloqueia_path_traversal():

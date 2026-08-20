@@ -87,3 +87,7 @@ val_out.txt
 # (citam numeros de estado que mudam a cada commit) e poluem o git status.
 council-*
 docs/_*.md
+
+# Notas de trabalho e material de auditoria: local, nao versionado.
+docs/auditoria/
+CLAUDE.md

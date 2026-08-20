@@ -36,7 +36,10 @@ if sys.platform == "win32":
             pass   # stdout/stderr redirecionado p/ algo sem reconfigure util
     try:
         import subprocess
-        subprocess.run(["chcp", "65001"], capture_output=True, shell=True)
+        # shell=True e' necessario aqui: `chcp` e' builtin do cmd.exe, nao um
+        # executavel. Os argumentos sao constantes -- nada vindo do usuario
+        # chega nesta linha, entao nao ha superficie de injecao.
+        subprocess.run("chcp 65001", capture_output=True, shell=True)  # noqa: S602
     except OSError:
         pass   # chcp indisponivel neste shell
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
@@ -100,18 +103,70 @@ _fmt_yaml            = _try("_fmt_yaml", str)
 salvar_config        = _try("salvar_config", pq.salvar_config)
 carregar_config      = _try("carregar_config", pq.carregar_config)
 
+# Persistencia de estado do CLI.
+#
+# CORRIGIDO em 2026-08-16 (varredura de bugs): estas tres funcoes eram
+# wrappers que procuravam implementacoes em `cli_assistente` -- que NUNCA
+# existiram la'. `getattr(..., None)` devolvia None, entao `_carregar_*`
+# retornava sempre {} e `_salvar_visual_cfg` era um no-op SILENCIOSO. O
+# comentario do proprio codigo (secao do Modo Iniciante/Avancado) ja
+# registrava "esse esta quebrado ... fora do escopo desta feature
+# consertar isso" desde 2026-07-13.
+#
+# Consequencias reais, ambas do tipo que o projeto mais combate (o software
+# mente sem travar):
+#   1. As 4 opcoes do menu Visualizacao (Paleta/Fonte/Grid/Alpha) gravavam
+#      no dicionario, chamavam _salvar_visual_cfg(), imprimiam "OK Paleta:
+#      X" e NAO persistiam nada -- a confirmacao era falsa. Na proxima
+#      abertura o valor voltava ao default. O mesmo valia para o DPI
+#      (`_sincronizar_dpi`) e para toda a aplicacao de estilo em
+#      `_rodar_pipeline` (paleta/fonte/grid/alpha nos rcParams do
+#      matplotlib), que le de `_carregar_visual_cfg()`.
+#   2. Codigos de especie cadastrados pelo usuario eram gravados
+#      corretamente pelo menu (`_salvar_cod`, que tem implementacao propria
+#      e funciona), apareciam listados no proprio menu (`_cod_usr`, idem),
+#      mas NAO eram aplicados a analise: a unica linha que injeta os
+#      codigos no pipeline (`pq.CODIGO_ESPECIE.update(cod_u)`) usava o
+#      wrapper quebrado e recebia {} sempre.
+#
+# Agora as tres leem/gravam direto em _USER_DIR, no mesmo padrao ja usado
+# por `_cod_usr`/`_salvar_cod` (que sempre funcionaram) e pelos demais
+# arquivos de estado (_CFG_PATH, _LANG_FLAG, _MODO_FLAG).
 def _carregar_visual_cfg() -> dict:
-    fn = getattr(_cli, "_carregar_visual_cfg", None)
-    return fn() if callable(fn) else {}
+    """Config visual (paleta/fonte/grid/alpha/dpi) de _VISUAL_PATH.
+
+    Arquivo ausente ou corrompido -> {} (defaults do matplotlib), nunca
+    excecao: configuracao cosmetica nao pode impedir uma analise de rodar.
+    """
+    try:
+        p = _VISUAL_PATH
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 def _salvar_visual_cfg(d: dict) -> None:
-    fn = getattr(_cli, "_salvar_visual_cfg", None)
-    if callable(fn):
-        fn(d)
+    """Grava a config visual. Falha de escrita AVISA em vez de sumir em
+    silencio -- mesma licao de `_salvar_cod`: o usuario nao pode ver um
+    'salvo' que nao aconteceu."""
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+        _VISUAL_PATH.write_text(
+            json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as e:
+        console.print(f"[err]✗ Falha ao salvar config visual: {e}[/err]")
 
 def _carregar_codigos_usuario() -> dict:
-    fn = getattr(_cli, "_carregar_codigos_usuario", None)
-    return fn() if callable(fn) else {}
+    """Codigos de especie cadastrados pelo usuario, de _CODIGOS_PATH.
+
+    Mesma leitura de `_cod_usr()` (menu de codificacao) -- e' de proposito
+    que as duas leiam o MESMO arquivo: o que o menu lista tem de ser o que
+    a analise aplica.
+    """
+    try:
+        p = _CODIGOS_PATH
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 # ---------------------------------------------------------------------------
 # Caminhos
@@ -122,7 +177,7 @@ def _carregar_codigos_usuario() -> dict:
 # _USER_DIR: onde o CLI grava ESTADO do usuario (config.yaml, perfis
 # salvos, flags de idioma/modo, codigos customizados). CORRIGIDO em
 # 2026-08-07 (achado do "checkup geral" de interface -- ver
-# docs/auditoria/): ate' entao esses arquivos eram gravados dentro de
+# ): ate' entao esses arquivos eram gravados dentro de
 # _BASE_DIR, ou seja, DENTRO do diretorio de instalacao do pacote. Isso
 # quebra em qualquer instalacao read-only (pip de sistema, imagem Docker,
 # alguns `pip install --user`) -- `salvar_config()` logo antes de rodar o
@@ -135,6 +190,7 @@ _CFG_PATH    = _USER_DIR / "config.yaml"
 _PERFIS_DIR  = _USER_DIR / "perfis"
 _LANG_FLAG   = _USER_DIR / ".cli_wizard_done"
 _CODIGOS_PATH= _USER_DIR / "codigos_usuario.json"
+_VISUAL_PATH = _USER_DIR / "visual_config.json"
 
 
 def _migrar_estado_legado() -> None:
@@ -155,6 +211,7 @@ def _migrar_estado_legado() -> None:
         (".cli_wizard_done", _LANG_FLAG),
         ("codigos_usuario.json", _CODIGOS_PATH),
         (".cli_modo_usuario", _MODO_FLAG),
+        ("visual_config.json", _VISUAL_PATH),
     ):
         origem = _BASE_DIR / nome
         if origem.exists() and not alvo.exists():
@@ -162,6 +219,18 @@ def _migrar_estado_legado() -> None:
                 shutil.copy2(origem, alvo)
             except OSError:
                 pass
+    # `visual_config.json` tinha uma origem legada A MAIS: a versao antiga
+    # gravava por caminho RELATIVO, entao o arquivo ficava no diretorio de
+    # onde o CLI foi chamado (tipicamente a raiz do repositorio), nao em
+    # _BASE_DIR. Recuperado aqui para nao perder a paleta que o usuario ja
+    # tinha escolhido -- so' se _USER_DIR ainda nao tiver a sua.
+    if not _VISUAL_PATH.exists():
+        try:
+            origem_cwd = Path.cwd() / "visual_config.json"
+            if origem_cwd.is_file():
+                shutil.copy2(origem_cwd, _VISUAL_PATH)
+        except OSError:
+            pass
     origem_perfis = _BASE_DIR / "perfis"
     if origem_perfis.is_dir() and not _PERFIS_DIR.exists():
         try:
@@ -191,12 +260,15 @@ def _toggle_idioma() -> str:
     return novo
 
 # Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12): alterna
-# GLOBALMENTE se os submenus escondem campos avancados por padrao. Mesmo
-# padrao de persistencia do idioma (arquivo-flag lido no proximo start);
-# NAO usa o mecanismo de visual_config.json -- esse esta quebrado (achado
-# 2026-07-13: _cli nao define _carregar_visual_cfg/_salvar_visual_cfg, os
-# wrappers em guaraci.py sempre retornam {} / viram no-op silenciosamente;
-# fora do escopo desta feature consertar isso).
+# GLOBALMENTE se os submenus escondem campos avancados por padrao. Usa
+# arquivo-flag proprio (mesmo padrao de persistencia do idioma), nao o
+# visual_config.json -- que guarda aparencia de FIGURA (paleta/fonte/grid),
+# nao estado de navegacao do menu; sao coisas diferentes.
+# (Este comentario dizia, ate 2026-08-16, que o mecanismo de
+# visual_config.json estava quebrado e que consertar estava "fora do
+# escopo". Estava mesmo quebrado desde 2026-07-13 e foi CORRIGIDO na
+# varredura de bugs de 2026-08-16 -- ver as funcoes de persistencia no topo
+# do modulo.)
 _MODO_FLAG = _USER_DIR / ".cli_modo_usuario"
 
 def _modo_usuario() -> str:
@@ -881,7 +953,7 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     inf = f"[{PS}]ℹ[/{PS}]"
 
     linhas.append(f"  {ok if preproc != 'raw' else av} Pre-proc: {preproc}" +
-                  (f"  [{PM}](Para FT-NIR, msc+sg+mc = Bal.Acc 0.923)[/{PM}]" if preproc == "raw" else ""))
+                  (f"  [{PM}](Para FT-NIR difuso, comece por msc+sg+mc)[/{PM}]" if preproc == "raw" else ""))
     linhas.append(f"  {ok if max_lvs <= 40 else av} max_lvs = {max_lvs}" +
                   (f"  [{PM}](>40 aumenta risco de overfitting)[/{PM}]" if max_lvs > 40 else ""))
     linhas.append(f"  {ok if 100 <= n_perm else av} n_permutacoes = {n_perm}" +
@@ -2186,7 +2258,7 @@ def menu_codificacao(cfg: Config) -> None:
                 "[a]Padrao de nome dos arquivos:[/a]\n"
                 "  COD-DD-MM-AAAA_Tn.dx            (especie pura)\n"
                 "  COD-DD-MM-AAAA_AD-X-PP_Tn.dx    (adulterada)\n"
-                "  Ex.: AND-10-06-2020_T1.dx  ->  Andiroba pura, triplicata 1\n\n"
+                "  Ex.: AND-10-06-2099_T1.dx  ->  Andiroba pura, triplicata 1\n\n"
                 "[a]Como cadastrar:[/a]\n"
                 "  [A] um codigo por vez, ou [M] importar um CSV pronto\n"
                 "  (CSV com 2 colunas: codigo,especie — separador , ou ;)."
@@ -2199,7 +2271,7 @@ def menu_codificacao(cfg: Config) -> None:
                 "[a]File name pattern:[/a]\n"
                 "  COD-DD-MM-YYYY_Tn.dx            (pure species)\n"
                 "  COD-DD-MM-YYYY_AD-X-PP_Tn.dx    (adulterated)\n"
-                "  E.g.: AND-10-06-2020_T1.dx  ->  Andiroba pure, replicate 1\n\n"
+                "  E.g.: AND-10-06-2099_T1.dx  ->  Andiroba pure, replicate 1\n\n"
                 "[a]How to register:[/a]\n"
                 "  [A] one code at a time, or [M] import a ready CSV\n"
                 "  (CSV with 2 columns: code,species — separator , or ;)."
@@ -3039,10 +3111,10 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     comprometendo 5 minutos ou 3 horas -- e a diferenca entre esses dois
     casos e' so' um campo de configuracao (n_jobs_permutacao).
 
-    Calibracao (medida em 2026-08-05 no dataset real do TCC: 1673 amostras
+    Calibracao (medida em 2026-08-05 num acervo de referencia interno
     x 2000 variaveis, CPython 3.12, 8 nucleos fisicos):
         - 1 ajuste PLS com 40 LVs .......... 3,5 s
-        - carga de 1741 arquivos .dx ....... 21 s
+        - carga de alguns milhares de .dx ... ~20 s
     O custo de um ajuste escala aproximadamente com (n_amostras x n_LVs),
     o que da a constante `_S_POR_AMOSTRA_LV` abaixo.
 
@@ -3054,8 +3126,8 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     if not n_amostras or n_amostras <= 0:
         return None
 
-    # 3,5 s / (1673 amostras * 40 LVs) — segundos por amostra por LV.
-    _S_POR_AMOSTRA_LV = 3.5 / (1673 * 40)
+    # Segundos por amostra por LV, da calibracao acima.
+    _S_POR_AMOSTRA_LV = 5.2e-5
 
     max_lvs = int(_cfgv(cfg, "max_lvs", 40) or 40)
     n_splits = int(_cfgv(cfg, "n_splits_cv", 5) or 5)
@@ -3109,7 +3181,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
     n_para_estimar = n_dx
     if pasta_ok and n_dx > 0:
         checks.append((True,  _t("chk_dados") + f" ({n_dx} .dx)"))
-        # Varredura barata dos cabecalhos (~0,3 s p/ 1741 arquivos): antecipa
+        # Varredura barata dos cabecalhos (decimos de segundo): antecipa
         # os dois efeitos que MUDAM O N da analise e que antes so' apareciam
         # no meio do log, depois de o usuario ja' ter iniciado a rodada.
         if _cfgv(cfg, "modo_entrada", "dx") == "dx":
@@ -3776,23 +3848,126 @@ def _comando_demo() -> None:
 # ===========================================================================
 # MAIN LOOP
 # ===========================================================================
-def main() -> None:
-    """Ponto de entrada GUARACI (versao unica em _VERSAO)."""
-    if len(sys.argv) > 1:
-        comando = sys.argv[1].strip().lower().lstrip("-")
+#: Texto de `--help`. Fonte unica: `--help`, `help` e a mensagem de
+#: argumento desconhecido leem daqui, para nunca divergirem entre si.
+_TEXTO_AJUDA = """Uso: guaraci [COMANDO] [OPCOES]
+
+Comandos:
+  (sem argumentos)  abre o assistente interativo
+  demo              roda o pipeline com dados sinteticos (nao precisa de dado)
+  doctor            diagnostica o ambiente (dependencias, RAM, CPU)
+  perfis            lista os perfis de matriz disponiveis
+  --version         mostra a versao instalada
+  --help            mostra esta ajuda
+
+Opcoes:
+  --perfil=NOME     perfil da matriz analisada (padrao: generico). Define
+                    faixa espectral, pre-processamento e o vocabulario da
+                    saida. `guaraci perfis` lista os nomes; tambem aceita o
+                    caminho de um YAML proprio.
+  --modo=MODO       'cego' (PADRAO) ou 'controle'.
+                    cego     : a quantificacao usa a classe PREDITA pelo
+                               classificador -- o unico modo que corresponde
+                               ao uso real, em que a classe da amostra e'
+                               desconhecida.
+                    controle : usa a classe VERDADEIRA. So' para diagnostico
+                               interno (separar erro de quantificacao de erro
+                               de classificacao). Os numeros obtidos assim
+                               NAO representam desempenho de uso, e a saida
+                               marca isso explicitamente.
+
+Codigos de saida: 0 sucesso | 1 erro de execucao | 2 uso incorreto."""
+
+#: Opcoes de linha de comando aplicadas ao Config depois de carrega-lo.
+_OPCOES_CLI: Dict[str, str] = {}
+
+
+def _extrair_opcoes(argv: List[str]) -> Tuple[Dict[str, str], List[str]]:
+    """Separa `--chave=valor` dos argumentos posicionais.
+
+    Aceita as opcoes em qualquer posicao (`guaraci --modo=controle demo` e
+    `guaraci demo --modo=controle` sao equivalentes) -- comportamento
+    previsivel importa mais aqui do que economizar codigo.
+    """
+    opcoes: Dict[str, str] = {}
+    restantes: List[str] = []
+    for arg in argv:
+        if arg.startswith("--") and "=" in arg:
+            chave, valor = arg[2:].split("=", 1)
+            opcoes[chave.strip().lower()] = valor.strip()
+        else:
+            restantes.append(arg)
+    return opcoes, restantes
+
+
+def _validar_opcoes(opcoes: Dict[str, str]) -> None:
+    """Valida ANTES de processar qualquer dado. Sai com codigo 2 (uso
+    incorreto), nunca 1 (erro de execucao) -- sao coisas diferentes para
+    quem chama o programa de um script."""
+    for chave in ("perfil", "modo"):
+        if chave in opcoes and not opcoes[chave]:
+            print(f"Erro: --{chave} exige um valor (ex.: --modo=cego).",
+                  file=sys.stderr)
+            raise SystemExit(2)
+    modo = opcoes.get("modo")
+    if modo is not None and modo not in ("cego", "controle"):
+        print(f"Erro: --modo={modo} invalido. Use 'cego' (padrao, usa a "
+              f"classe predita) ou 'controle' (usa a classe verdadeira, "
+              f"so' para diagnostico interno).", file=sys.stderr)
+        raise SystemExit(2)
+    if "perfil" in opcoes:
+        from guaraci.perfil_matriz import (PerfilDesconhecidoError,
+                                           carregar_perfil)
+        try:
+            carregar_perfil(opcoes["perfil"])
+        except PerfilDesconhecidoError as e:
+            print(f"Erro: {e}", file=sys.stderr)
+            raise SystemExit(2) from None
+
+
+def _listar_perfis() -> None:
+    from guaraci.perfil_matriz import DIR_PERFIS, carregar_perfil
+    print("Perfis de matriz disponiveis:")
+    for arquivo in sorted(DIR_PERFIS.glob("*.yaml")):
+        perfil = carregar_perfil(arquivo.stem)
+        print(f"  {perfil.nome:<14} {perfil.descricao}")
+    print("\nUse: guaraci --perfil=NOME  (ou o caminho de um YAML proprio)")
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    """Ponto de entrada GUARACI (versao unica em _VERSAO).
+
+    `argv` sao os argumentos SEM o nome do programa. O default lê de
+    `sys.argv`, que e' o caminho do entry point instalado. Chamadores
+    programaticos (testes, embutimento em outro app) devem passar a lista
+    explicitamente -- caso contrario herdam o `sys.argv` de quem os
+    hospeda, e desde que argumento desconhecido virou erro de uso isso
+    significaria sair com codigo 2 por causa das flags do pytest.
+    """
+    opcoes, restantes = _extrair_opcoes(
+        list(sys.argv[1:]) if argv is None else list(argv))
+    _validar_opcoes(opcoes)
+    _OPCOES_CLI.clear()
+    _OPCOES_CLI.update(opcoes)
+    sys.argv = [sys.argv[0]] + restantes
+
+    if restantes:
+        comando = restantes[0].strip().lower().lstrip("-")
         if comando in ("version", "v"):
             _comando_versao(); return
         if comando == "demo":
             _comando_demo(); return
         if comando == "doctor":
             _comando_doctor(); return
+        if comando == "perfis":
+            _listar_perfis(); return
         if comando in ("help", "h"):
-            print("Uso: guaraci [demo|doctor|--version]\n"
-                  "  (sem argumentos)  abre o assistente interativo\n"
-                  "  demo              roda o pipeline com dados sinteticos\n"
-                  "  doctor            diagnostica o ambiente (deps, RAM, CPU)\n"
-                  "  --version         mostra a versao instalada")
+            print(_TEXTO_AJUDA)
             return
+        print(f"Erro: comando desconhecido '{sys.argv[1]}'.\n",
+              file=sys.stderr)
+        print(_TEXTO_AJUDA, file=sys.stderr)
+        raise SystemExit(2)
 
     # Migra estado gravado pela versao anterior (dentro do pacote instalado)
     # para _USER_DIR, se aplicavel -- ver docstring de _migrar_estado_legado.
@@ -3806,6 +3981,13 @@ def main() -> None:
         except (RuntimeError, FileNotFoundError, ValueError) as _e_cfg:
             logging.getLogger(__name__).debug(
                 "config.yaml nao carregado no boot, usando defaults: %s", _e_cfg)
+
+    # Opcoes de linha de comando vencem o config.yaml: quem digitou a flag
+    # agora quer ela agora. Ja' validadas em _validar_opcoes (saida 2).
+    if "perfil" in _OPCOES_CLI:
+        cfg.perfil_matriz = _OPCOES_CLI["perfil"]
+    if "modo" in _OPCOES_CLI:
+        cfg.modo_rotulo = _OPCOES_CLI["modo"]
 
     # Recuperar idioma salvo
     try:
