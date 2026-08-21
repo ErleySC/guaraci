@@ -8,7 +8,7 @@ hardcoded DUAS VEZES — em `benchmark_classifiers()` e `monte_carlo_cv()`
 Boosting do Monte Carlo CV não tinha `subsample=0.8` (o do benchmark tinha),
 apesar da docstring de `monte_carlo_cv` afirmar "mesmos hiperparâmetros do
 benchmark". Este módulo é a fonte ÚNICA de verdade; as duas funções agora
-chamam `construir_lista_benchmark()` — a divergência foi corrigida
+chamam `build_benchmark_list()` — a divergência foi corrigida
 alinhando ao benchmark (fonte mais completa/documentada).
 
 Adicionar, remover ou re-parametrizar um modelo do Auto-Benchmark e do
@@ -71,7 +71,7 @@ _REGISTRO: List[Tuple[str, Construtor, bool]] = [
 ]
 
 
-def construir_lista_benchmark(n_opt: int, cfg: "Config",
+def build_benchmark_list(n_opt: int, cfg: "Config",
                                incluir_opcionais: bool = True
                                ) -> List[Tuple[str, Any]]:
     """Monta a lista (nome, instância) de classificadores para comparação.
@@ -98,4 +98,4 @@ def nomes_modelos_benchmark(incluir_opcionais: bool = True) -> Tuple[str, ...]:
                  if obrig or incluir_opcionais)
 
 
-__all__ = ["construir_lista_benchmark", "nomes_modelos_benchmark", "Construtor"]
+__all__ = ["build_benchmark_list", "nomes_modelos_benchmark", "Construtor"]

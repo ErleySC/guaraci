@@ -30,7 +30,7 @@ from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
 from guaraci.config import NOME_TABELAS
 from guaraci.chemometric_stats import rmse_flat
-from guaraci.model_registry import construir_lista_benchmark
+from guaraci.model_registry import build_benchmark_list
 
 log = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
     preproc   = construir_preprocessador(cfg)
 
     # ── Classifiers (fonte unica: guaraci.model_registry, item 20) ────────
-    clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+    clfs: List[Tuple[str, Any]] = build_benchmark_list(
         n_opt, cfg, incluir_opcionais=True)
 
     cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True,
@@ -378,7 +378,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     preproc = construir_preprocessador(cfg)
 
     # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
-    mc_clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+    mc_clfs: List[Tuple[str, Any]] = build_benchmark_list(
         n_opt, cfg, incluir_opcionais=cfg.monte_carlo_incluir_todos)
 
     # Gerar splits estratificados por grupo (risco 3 resolvido)
