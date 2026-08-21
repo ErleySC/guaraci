@@ -232,7 +232,7 @@ class Config:
     # (Kucheryavskiy/Rodionova/Pomerantsev) -- exige o extra opcional
     # [robusto] (pacote 'prcv'). NUNCA substitui o aviso "nao validado" do
     # LOGO quando ha' so' 1 grupo de replica -- ver
-    # classificadores.sensibilidade_ddsimca_pcv().
+    # classificadores.ddsimca_pcv_sensitivity().
     ddsimca_pcv: bool = False
     # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
     executar_opls: bool = False

@@ -763,7 +763,7 @@ def sensibilidade_ddsimca_logo(
     return resultado
 
 
-def sensibilidade_ddsimca_pcv(
+def ddsimca_pcv_sensitivity(
     X_puros: np.ndarray,
     grupos_puros: np.ndarray,
     *,

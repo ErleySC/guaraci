@@ -12,7 +12,7 @@ from guaraci.classificadores import (
     DDSimca,
     OPLSDAWrapper,
     sensibilidade_ddsimca_logo,
-    sensibilidade_ddsimca_pcv,
+    ddsimca_pcv_sensitivity,
 )
 
 
@@ -468,7 +468,7 @@ def test_pcv_indisponivel_sem_pacote_nao_lanca_excecao(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", _import_bloqueado)
     rng = np.random.default_rng(0)
     X = _classe_compacta(rng, centro=0.0, n=3)
-    r = sensibilidade_ddsimca_pcv(X, np.array(["G1"] * 3), n_components=3)
+    r = ddsimca_pcv_sensitivity(X, np.array(["G1"] * 3), n_components=3)
     assert r["disponivel"] is False
     assert r["aviso"] is not None
     assert np.isnan(r["sensibilidade"])
@@ -484,7 +484,7 @@ def test_pcv_um_grupo_nao_quebra_e_avisa_limitacao():
     pytest.importorskip("prcv")
     rng = np.random.default_rng(1)
     X = _classe_compacta(rng, centro=0.0, n=3, k=30, escala=0.05)
-    r = sensibilidade_ddsimca_pcv(X, np.array(["G1", "G1", "G1"]),
+    r = ddsimca_pcv_sensitivity(X, np.array(["G1", "G1", "G1"]),
                                   n_components=3)
     assert r["n_grupos"] == 1
     assert r["disponivel"] is True
@@ -501,7 +501,7 @@ def test_pcv_multiplos_grupos_usa_split_por_grupo():
     X = np.vstack([_classe_compacta(rng, centro=i * 0.3, n=3, k=30,
                                     escala=0.05) for i in range(4)])
     grupos = np.array([f"G{i}" for i in range(4) for _ in range(3)])
-    r = sensibilidade_ddsimca_pcv(X, grupos, n_components=3)
+    r = ddsimca_pcv_sensitivity(X, grupos, n_components=3)
     assert r["n_grupos"] == 4
     assert not np.isnan(r["sensibilidade"])
     assert "ruido de MEDICAO" not in (r["aviso"] or "")
@@ -510,7 +510,7 @@ def test_pcv_multiplos_grupos_usa_split_por_grupo():
 def test_pcv_amostras_insuficientes_nao_quebra():
     pytest.importorskip("prcv")
     X = np.zeros((1, 10))
-    r = sensibilidade_ddsimca_pcv(X, np.array(["G1"]), n_components=3)
+    r = ddsimca_pcv_sensitivity(X, np.array(["G1"]), n_components=3)
     assert np.isnan(r["sensibilidade"])
     assert r["aviso"] is not None
 
