@@ -305,7 +305,7 @@ from guaraci.guaraci_theme import (  # noqa: E402
 # Lógica pura extraída da CLI (item 19): testável sem Rich/console. Ver cli_logic.py.
 from guaraci.cli_logic import (  # noqa: E402
     trunc as _trunc,
-    truncar_desc_por_frase as _truncar_desc_por_frase,
+    truncate_desc_by_sentence as _truncar_desc_por_frase,
     fmt_bool as _fmt_bool_puro,
     validate_ranges as _validar_faixas_puro,
     count_dx as _count_dx,
@@ -1300,7 +1300,7 @@ def _desc_curta(key: str, max_c: int = 42) -> str:
     """Retorna descricao resumida do campo (max_c chars) para exibicao inline.
 
     Resolve idioma/HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
-    truncamento a `guaraci.cli_logic.truncar_desc_por_frase` (funcao pura,
+    truncamento a `guaraci.cli_logic.truncate_desc_by_sentence` (funcao pura,
     testada).
     """
     lang = _lang()

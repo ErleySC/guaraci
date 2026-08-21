@@ -24,7 +24,7 @@ def trunc(s: str, n: int) -> str:
     return corte.rstrip() + "…"
 
 
-def truncar_desc_por_frase(desc: str, max_c: int) -> str:
+def truncate_desc_by_sentence(desc: str, max_c: int) -> str:
     """Núcleo de truncamento de descrições curtas: prefere cortar na primeira
     frase (se couber em max_c); senão, corta em borda de palavra (nunca no
     meio) com reticências. Usado por `_desc_curta` (guaraci.py) e por
@@ -84,4 +84,4 @@ def count_dx(pasta: str) -> int:
         return 0
 
 
-__all__ = ["trunc", "truncar_desc_por_frase", "fmt_bool", "validate_ranges", "count_dx"]
+__all__ = ["trunc", "truncate_desc_by_sentence", "fmt_bool", "validate_ranges", "count_dx"]

@@ -5,7 +5,7 @@ isolamento — mesmo objetivo do test_app_logic.py para a UI web.
 """
 
 from guaraci.cli_logic import (
-    trunc, truncar_desc_por_frase, fmt_bool, validate_ranges, count_dx,
+    trunc, truncate_desc_by_sentence, fmt_bool, validate_ranges, count_dx,
 )
 
 
@@ -26,23 +26,23 @@ def test_trunc_limite_exato_nao_corta():
     assert trunc("exato", 5) == "exato"
 
 
-# ── truncar_desc_por_frase ───────────────────────────────────────────────────
+# ── truncate_desc_by_sentence ───────────────────────────────────────────────────
 def test_truncar_desc_vazia():
-    assert truncar_desc_por_frase("", 42) == ""
-    assert truncar_desc_por_frase(None, 42) == ""
+    assert truncate_desc_by_sentence("", 42) == ""
+    assert truncate_desc_by_sentence(None, 42) == ""
 
 
 def test_truncar_desc_usa_primeira_frase_se_couber():
-    assert truncar_desc_por_frase("Primeira frase. Segunda frase mais longa.", 42) == "Primeira frase."
+    assert truncate_desc_by_sentence("Primeira frase. Segunda frase mais longa.", 42) == "Primeira frase."
 
 
 def test_truncar_desc_cabe_inteira():
-    assert truncar_desc_por_frase("curta", 42) == "curta"
+    assert truncate_desc_by_sentence("curta", 42) == "curta"
 
 
 def test_truncar_desc_corta_em_palavra_sem_ponto_proximo():
     desc = "uma descricao razoavelmente longa sem pontuacao no comeco dela"
-    out = truncar_desc_por_frase(desc, 20)
+    out = truncate_desc_by_sentence(desc, 20)
     assert out.endswith("…")
     assert len(out) <= 21  # 20 + reticencias
     assert not out[:-1].endswith(" ")  # sem espaco colado nas reticencias
