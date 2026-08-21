@@ -35,7 +35,7 @@ de teste durante a seleção de LVs (CV só no treino, `KFold` de 5 folds).
 
 Script reprodutível: [`scripts/benchmark_tecator.py`](../scripts/benchmark_tecator.py)
 (baixa o dataset da fonte original a cada execução — não redistribuído no
-repositório). Roda literalmente `guaraci.preprocessamento.construir_preprocessador()`
+repositório). Roda literalmente `guaraci.preprocessamento.build_preprocessor()`
 e `sklearn.cross_decomposition.PLSRegression` — os mesmos componentes que
 `pipeline.pls_regression_by_species()` usa internamente — com seleção do
 número de variáveis latentes por validação cruzada no conjunto de treino

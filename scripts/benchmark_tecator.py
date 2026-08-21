@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from guaraci.chemometric_stats import rmse_flat  # noqa: E402
 from guaraci.config import Config  # noqa: E402
-from guaraci.preprocessamento import construir_preprocessador  # noqa: E402
+from guaraci.preprocessamento import build_preprocessor  # noqa: E402
 
 TECATOR_URL = "http://lib.stat.cmu.edu/datasets/tecator"
 N_SAMPLES = 240
@@ -102,7 +102,7 @@ def _rmsecv_por_lv(X: np.ndarray, y: np.ndarray, cfg: Config,
     erros = []
     for n in range(1, lv_max + 1):
         pipe = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n, scale=False)),
         ])
         try:
@@ -140,7 +140,7 @@ def rodar_benchmark(presets=("msc_sg_mc", "snv_sg_mc", "mc", "autoscaling"),
         n_opt = int(np.argmin(erros_cv)) + 1
 
         pipe_final = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n_opt, scale=False)),
         ]).fit(X_tr, y_tr.reshape(-1, 1))
         y_pred = np.asarray(pipe_final.predict(X_te)).flatten()

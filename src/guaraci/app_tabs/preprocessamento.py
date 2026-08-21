@@ -67,7 +67,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
 
         if wn_raw is not None and X_raw is not None:
             try:
-                preproc_pp = pq.construir_preprocessador(cfg_pp)
+                preproc_pp = pq.build_preprocessor(cfg_pp)
                 preproc_pp.fit(X_raw)
                 X_proc_pp = preproc_pp.transform(X_raw)
                 labs_raw_arr = np.asarray(labs_raw)

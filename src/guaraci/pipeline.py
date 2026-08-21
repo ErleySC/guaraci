@@ -238,14 +238,14 @@ from guaraci.modos_analise import (   # noqa: E402
 )
 
 
-# Transformers de pre-processamento (SNV/SavGol/MSC) + construir_preprocessador
+# Transformers de pre-processamento (SNV/SavGol/MSC) + build_preprocessor
 # extraidos p/ preprocessamento.py (Fase H). Reexportados aqui para nao quebrar
-# pipeline.SNV / pipeline.construir_preprocessador(...) nem o restante do modulo.
+# pipeline.SNV / pipeline.build_preprocessor(...) nem o restante do modulo.
 from guaraci.preprocessamento import (   # noqa: E402
     SNV,
     SavGol,
     MSC,
-    construir_preprocessador,
+    build_preprocessor,
 )
 
 
@@ -904,7 +904,7 @@ def r2cv_species_by_adulterant(
             n_sp = max(2, min(cfg.n_splits_cv, n_grp))
             lv = max(1, min(cfg.max_lvs, X_c.shape[0] // 5, n_niveis - 1))
             pipe = Pipeline([
-                ("preproc", construir_preprocessador(cfg)),
+                ("preproc", build_preprocessor(cfg)),
                 ("pls", PLSRegression(n_components=lv, scale=False)),
             ])
             try:
@@ -1018,7 +1018,7 @@ def pls_regression_by_species(
         try:
             for n in range(1, lv_max + 1):
                 pipe = Pipeline([
-                    ("preproc", construir_preprocessador(cfg)),
+                    ("preproc", build_preprocessor(cfg)),
                     ("pls", PLSRegression(n_components=n, scale=False)),
                 ])
                 Y_hat = cross_val_predict(pipe, Xc, Yc, cv=cv_reg, groups=grp)
@@ -1030,7 +1030,7 @@ def pls_regression_by_species(
 
         n_opt_reg = int(np.argmin(erros_reg)) + 1
         pipe_final = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n_opt_reg, scale=False)),
         ]).fit(Xc, Yc)
         Yc_hat = np.asarray(pipe_final.predict(Xc)).flatten()
@@ -1181,7 +1181,7 @@ def pls_regressao_pooled(
     preds_reg = []
     for n in range(1, lv_max + 1):
         pipe = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n, scale=False)),
         ])
         Y_hat = cross_val_predict(pipe, Xc_raw, Yc, cv=cv_reg,
@@ -1191,7 +1191,7 @@ def pls_regressao_pooled(
 
     n_opt_reg = int(np.argmin(erros_reg)) + 1
     pipe_final = Pipeline([
-        ("preproc", construir_preprocessador(cfg)),
+        ("preproc", build_preprocessor(cfg)),
         ("pls", PLSRegression(n_components=n_opt_reg, scale=False)),
     ]).fit(Xc_raw, Yc)
     Yc_hat = pipe_final.predict(Xc_raw)
@@ -1513,7 +1513,7 @@ def executar(cfg: Config):
             X_holdout = None
 
     # SG so entra no preprocessador ativo dependendo do PRESET (ver
-    # construir_preprocessador em preprocessamento.py) — "autoscaling"/"mc"
+    # build_preprocessor em preprocessamento.py) — "autoscaling"/"mc"
     # NUNCA usam SG (a flag cfg.aplicar_sg so vale p/ o preset "custom"),
     # enquanto "snv_sg_mc"/"msc_sg_mc" SEMPRE usam SG independente da flag.
     # Checar so `cfg.aplicar_sg` aqui gerava falso-positivo com presets sem
@@ -1591,7 +1591,7 @@ def executar(cfg: Config):
 
     # --- 2. Pre-processamento (uma vez, para visualizacao e PCA) -----------
     log.info(f"\n[1/7] Pre-processamento (preset='{cfg.preprocessamento_padrao}')")
-    preproc_full = construir_preprocessador(cfg).fit(X_raw)
+    preproc_full = build_preprocessor(cfg).fit(X_raw)
     X_processed  = np.asarray(preproc_full.transform(X_raw), dtype=float)
 
     # Diagnostico de faixa espectral (2026-08-07): avisa quando a faixa
@@ -1618,7 +1618,7 @@ def executar(cfg: Config):
 
     def fabrica_pipeline(n_lv: int):
         return Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n_lv, scale=False)),
         ])
 
@@ -2439,7 +2439,7 @@ def executar(cfg: Config):
     # --- 9b. Exportar modelo final (modelos/) — joblib opcional -----------
     try:
         import joblib
-        preproc_export = construir_preprocessador(cfg).fit(X_raw)
+        preproc_export = build_preprocessor(cfg).fit(X_raw)
         pacote_modelo = {
             "preprocessador": preproc_export,
             "pls_final":      pls_final,

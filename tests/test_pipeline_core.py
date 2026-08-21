@@ -130,16 +130,16 @@ def test_savgol_preserva_shape(pq):
 
 
 def test_construir_preprocessador_presets(pq):
-    """construir_preprocessador: cada preset monta as etapas esperadas."""
+    """build_preprocessor: cada preset monta as etapas esperadas."""
     cfg = pq.Config()
     cfg.preprocessamento_padrao = "snv_sg_mc"
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "sg", "mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
     cfg.preprocessamento_padrao = "msc_sg_mc"
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["msc", "sg", "mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["msc", "sg", "mc"]
     cfg.preprocessamento_padrao = "mc"
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
     cfg.preprocessamento_padrao = "autoscaling"
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["auto"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["auto"]
 
 
 def test_construir_preprocessador_custom_combina_flags_individuais(pq):
@@ -149,16 +149,16 @@ def test_construir_preprocessador_custom_combina_flags_individuais(pq):
     cfg.preprocessamento_padrao = "custom"
 
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, True, True
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "sg", "mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
 
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, False
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv"]
 
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, True, False
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["sg"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["sg"]
 
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, False, True
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
 
 
 def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
@@ -167,7 +167,7 @@ def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
     cfg = pq.Config()
     cfg.preprocessamento_padrao = "custom"
     cfg.aplicar_snv = cfg.aplicar_sg = cfg.aplicar_mc = False
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
 
 
 def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
@@ -176,7 +176,7 @@ def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
     cfg = pq.Config()
     cfg.preprocessamento_padrao = "isto_nao_existe"
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, True
-    assert list(pq.construir_preprocessador(cfg).named_steps) == ["snv", "mc"]
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "mc"]
 
 
 # ── Estatística quimiométrica (futuro: guaraci/diagnostics.py) ────────────────

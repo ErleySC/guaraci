@@ -601,7 +601,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
 | `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.modo` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
 | `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
-| `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `construir_preprocessador` |
+| `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `build_preprocessor` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
 | `figuras.py` | Camada de plotagem (todas as figuras do pipeline, incluindo `fig_merito_regressao`) |
 | `validacao_estatistica.py` | BCa, CV-ANOVA, permutação, teste de Wold, validação cruzada manual |

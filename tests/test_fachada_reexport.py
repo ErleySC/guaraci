@@ -44,7 +44,7 @@ CONTRATO = {
         "extract_color_features", "extract_texture_features",
     ],
     "preprocessamento": [
-        "SNV", "SavGol", "MSC", "construir_preprocessador",
+        "SNV", "SavGol", "MSC", "build_preprocessor",
     ],
     "classificadores": [
         "DDSimca", "OPLSDAWrapper",

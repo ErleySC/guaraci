@@ -4,10 +4,10 @@ espectral (SNV, Savitzky-Golay, MSC) e o construtor de pipeline de
 pré-processamento.
 
 Extraído de pipeline.py como parte da modularização (Fase H). Depende de
-Config só para type hint de `construir_preprocessador` (import guardado por
+Config só para type hint de `build_preprocessor` (import guardado por
 TYPE_CHECKING, para não criar import circular com pipeline.py, que importa
 este módulo). pipeline.py reexporta estes nomes, então `pipeline.SNV`,
-`pipeline.construir_preprocessador(...)` etc. continuam funcionando sem
+`pipeline.build_preprocessor(...)` etc. continuam funcionando sem
 alteração.
 """
 from __future__ import annotations
@@ -114,7 +114,7 @@ class MSC(BaseEstimator, TransformerMixin):
         return out
 
 
-def construir_preprocessador(cfg: "Config") -> Pipeline:
+def build_preprocessor(cfg: "Config") -> Pipeline:
     """Builds preprocessor according to cfg.preprocessamento_padrao.
 
     Presets:

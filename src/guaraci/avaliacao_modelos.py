@@ -24,7 +24,7 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import balanced_accuracy_score
 
-from guaraci.preprocessamento import construir_preprocessador
+from guaraci.preprocessamento import build_preprocessor
 from guaraci.figuras import salvar, cor
 from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
@@ -158,7 +158,7 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
                    int(pd.Series(y_int).value_counts().min()))
     n_splits  = max(n_splits, 2)
     n_classes = len(lb.classes_)
-    preproc   = construir_preprocessador(cfg)
+    preproc   = build_preprocessor(cfg)
 
     # ── Classifiers (fonte unica: guaraci.model_registry, item 20) ────────
     clfs: List[Tuple[str, Any]] = build_benchmark_list(
@@ -375,7 +375,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 
     n_iter  = cfg.n_monte_carlo
     test_sz = cfg.monte_carlo_test_size
-    preproc = construir_preprocessador(cfg)
+    preproc = build_preprocessor(cfg)
 
     # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
     mc_clfs: List[Tuple[str, Any]] = build_benchmark_list(
@@ -622,7 +622,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
     from sklearn.base import clone
     from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
-    preproc   = construir_preprocessador(cfg)
+    preproc   = build_preprocessor(cfg)
     X_proc    = clone(preproc).fit(X_raw).transform(X_raw)
     feat_names = ([f"{w:.0f}" for w in wavenumbers]
                   if wavenumbers is not None
@@ -906,7 +906,7 @@ def benchmark_regression_by_species(
         for nome, modelo in modelos:
             try:
                 pipe = _SKPipeline([
-                    ("preproc", clone(construir_preprocessador(cfg))),
+                    ("preproc", clone(build_preprocessor(cfg))),
                     ("reg", clone(modelo)),
                 ])
                 with warnings.catch_warnings():
