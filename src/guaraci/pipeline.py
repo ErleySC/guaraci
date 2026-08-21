@@ -94,7 +94,7 @@ from guaraci.dados_io import (   # noqa: E402
     extrair_title_do_dx,
     sanitizar_metadados,
 )
-from guaraci.perfil_matriz import aplicar_perfil, perfil_de_cfg  # noqa: E402
+from guaraci.perfil_matriz import apply_profile, perfil_de_cfg  # noqa: E402
 
 
 log = logging.getLogger(__name__)
@@ -1328,7 +1328,7 @@ def executar(cfg: Config):
     # de perfis existentes -- nunca cai num padrao de outra matriz, porque
     # isso produziria faixa e vocabulario errados sem nenhum sinal.
     perfil = perfil_de_cfg(cfg)
-    cfg = aplicar_perfil(cfg, perfil)
+    cfg = apply_profile(cfg, perfil)
 
     # --- 1. Carregamento (6-tupla com mae_id + metadados) ------------------
     wavenumbers, X_raw, rotulos, conc, mae_id, metadados_df = carregar_dados(cfg)

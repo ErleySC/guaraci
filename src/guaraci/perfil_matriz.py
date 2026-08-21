@@ -16,9 +16,9 @@ perfil -- nunca editar codigo-fonte.
 Perfis embutidos vivem em `perfis_matriz/*.yaml`, dentro do pacote. Um
 perfil de usuario e' um YAML com o mesmo formato, passado por caminho.
 
-    from guaraci.perfil_matriz import carregar_perfil, aplicar_perfil
-    perfil = carregar_perfil("milho_nir")
-    cfg = aplicar_perfil(cfg, perfil)
+    from guaraci.perfil_matriz import load_profile, apply_profile
+    perfil = load_profile("milho_nir")
+    cfg = apply_profile(cfg, perfil)
 """
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def _perfis_disponiveis() -> List[str]:
     return sorted(p.stem for p in DIR_PERFIS.glob("*.yaml"))
 
 
-def carregar_perfil(nome_ou_caminho: str) -> PerfilMatriz:
+def load_profile(nome_ou_caminho: str) -> PerfilMatriz:
     """Carrega um perfil embutido pelo nome, ou um YAML de usuario pelo caminho.
 
     Matriz sem perfil cadastrado levanta `PerfilDesconhecidoError` com a
@@ -135,7 +135,7 @@ def carregar_perfil(nome_ou_caminho: str) -> PerfilMatriz:
     return PerfilMatriz(nome=caminho.stem, vocabulario=voc, **bruto)
 
 
-def aplicar_perfil(cfg: "Config", perfil: PerfilMatriz) -> "Config":
+def apply_profile(cfg: "Config", perfil: PerfilMatriz) -> "Config":
     """Escreve no `cfg` o que o perfil define, sem tocar no que ja' foi
     escolhido explicitamente pelo usuario.
 
@@ -163,4 +163,4 @@ def aplicar_perfil(cfg: "Config", perfil: PerfilMatriz) -> "Config":
 
 def perfil_de_cfg(cfg: "Config") -> PerfilMatriz:
     """Perfil declarado em `cfg.perfil_matriz`. Erro claro se nao existir."""
-    return carregar_perfil(getattr(cfg, "perfil_matriz", "generico"))
+    return load_profile(getattr(cfg, "perfil_matriz", "generico"))

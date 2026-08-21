@@ -3917,19 +3917,19 @@ def _validar_opcoes(opcoes: Dict[str, str]) -> None:
         raise SystemExit(2)
     if "perfil" in opcoes:
         from guaraci.perfil_matriz import (PerfilDesconhecidoError,
-                                           carregar_perfil)
+                                           load_profile)
         try:
-            carregar_perfil(opcoes["perfil"])
+            load_profile(opcoes["perfil"])
         except PerfilDesconhecidoError as e:
             print(f"Erro: {e}", file=sys.stderr)
             raise SystemExit(2) from None
 
 
 def _listar_perfis() -> None:
-    from guaraci.perfil_matriz import DIR_PERFIS, carregar_perfil
+    from guaraci.perfil_matriz import DIR_PERFIS, load_profile
     print("Perfis de matriz disponiveis:")
     for arquivo in sorted(DIR_PERFIS.glob("*.yaml")):
-        perfil = carregar_perfil(arquivo.stem)
+        perfil = load_profile(arquivo.stem)
         print(f"  {perfil.nome:<14} {perfil.descricao}")
     print("\nUse: guaraci --perfil=NOME  (ou o caminho de um YAML proprio)")
 

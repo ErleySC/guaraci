@@ -18,8 +18,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from guaraci.perfil_matriz import (PerfilDesconhecidoError, aplicar_perfil,
-                                   carregar_perfil)
+from guaraci.perfil_matriz import (PerfilDesconhecidoError, apply_profile,
+                                   load_profile)
 
 
 # ── Contrato do carregador ───────────────────────────────────────────────────
@@ -28,7 +28,7 @@ from guaraci.perfil_matriz import (PerfilDesconhecidoError, aplicar_perfil,
                                    "mel_vis_nir"])
 def test_perfis_embutidos_carregam(nome):
     """Todo perfil distribuido no pacote precisa carregar e ter vocabulario."""
-    p = carregar_perfil(nome)
+    p = load_profile(nome)
     assert p.nome == nome
     assert p.vocabulario.matriz
     assert p.unidade_eixo in ("cm-1", "nm")
@@ -39,7 +39,7 @@ def test_matriz_sem_perfil_falha_com_mensagem_acionavel():
     rodar mel com a faixa e o vocabulario de oleo produz numeros que
     parecem validos e afirmacoes quimicas que nao sao."""
     with pytest.raises(PerfilDesconhecidoError) as exc:
-        carregar_perfil("cafe_raman")
+        load_profile("cafe_raman")
     msg = str(exc.value)
     assert "cafe_raman" in msg
     assert "disponiveis" in msg.lower()
@@ -61,7 +61,7 @@ def test_perfil_de_usuario_por_caminho(tmp_path):
     )
     caminho = tmp_path / "cafe_raman.yaml"
     caminho.write_text(yaml_txt, encoding="utf-8")
-    p = carregar_perfil(str(caminho))
+    p = load_profile(str(caminho))
     assert p.vocabulario.matriz == "cafe torrado"
     assert (p.eixo_min, p.eixo_max) == (200.0, 3200.0)
 
@@ -71,21 +71,21 @@ def test_perfil_nao_sobrescreve_escolha_explicita_do_usuario(pq):
     faixa na configuracao mandou nela."""
     cfg = pq.Config()
     cfg.wn_min, cfg.wn_max = 1234.0, 5678.0          # escolha explicita
-    aplicar_perfil(cfg, carregar_perfil("milho_nir"))
+    apply_profile(cfg, load_profile("milho_nir"))
     assert (cfg.wn_min, cfg.wn_max) == (1234.0, 5678.0)
 
     cfg2 = pq.Config()                                # tudo no default
-    aplicar_perfil(cfg2, carregar_perfil("milho_nir"))
+    apply_profile(cfg2, load_profile("milho_nir"))
     assert (cfg2.wn_min, cfg2.wn_max) == (1100.0, 2498.0)
 
 
 def test_faixa_de_trabalho_declarada_marca_extrapolacao():
     """Predicao fora da faixa calibrada precisa ser detectavel; sem faixa
     declarada, o perfil nao inventa um limite."""
-    milho = carregar_perfil("milho_nir")             # faixa [6, 10] de proteina
+    milho = load_profile("milho_nir")             # faixa [6, 10] de proteina
     assert not milho.fora_da_faixa_de_trabalho(8.0)
     assert milho.fora_da_faixa_de_trabalho(25.0)
-    generico = carregar_perfil("generico")           # sem faixa declarada
+    generico = load_profile("generico")           # sem faixa declarada
     assert not generico.fora_da_faixa_de_trabalho(1e9)
     assert generico.faixa_trabalho is None, (
         "quem consome precisa distinguir 'dentro da faixa' de 'faixa nao "
