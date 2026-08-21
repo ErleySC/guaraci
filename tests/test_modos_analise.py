@@ -71,35 +71,35 @@ def test_deve_gerar_fail_open_para_chave_desconhecida():
         assert m.deve_gerar(cfg, "chave_inexistente_qualquer") is True
 
 
-# ---- figuras_exploratorias_ligadas -------------------------------------
+# ---- exploratory_figures_enabled -------------------------------------
 def test_exploratorias_ligadas_no_modo_exploratorio():
     cfg = Config(objetivo=m.EXPLORATORIO, figuras_detalhadas=False)
-    assert m.figuras_exploratorias_ligadas(cfg) is True
+    assert m.exploratory_figures_enabled(cfg) is True
 
 
 def test_exploratorias_escotilha_em_classificacao_com_detalhadas():
     cfg = Config(objetivo=m.CLASSIFICACAO, figuras_detalhadas=True)
-    assert m.figuras_exploratorias_ligadas(cfg) is True
+    assert m.exploratory_figures_enabled(cfg) is True
     cfg = Config(objetivo=m.CLASSIFICACAO, figuras_detalhadas=False)
-    assert m.figuras_exploratorias_ligadas(cfg) is False
+    assert m.exploratory_figures_enabled(cfg) is False
 
 
 def test_exploratorias_desligadas_em_quantificacao():
     cfg = Config(objetivo=m.QUANTIFICACAO, figuras_detalhadas=True)
-    assert m.figuras_exploratorias_ligadas(cfg) is False
+    assert m.exploratory_figures_enabled(cfg) is False
 
 
-# ---- plano_de_figuras / describe_plan --------------------------------
+# ---- figure_plan / describe_plan --------------------------------
 def test_plano_de_figuras_por_objetivo():
     cfg = Config(objetivo=m.QUANTIFICACAO)
-    assert m.plano_de_figuras(cfg) == ["regressao"]
+    assert m.figure_plan(cfg) == ["regressao"]
 
     cfg = Config(objetivo=m.EXPLORATORIO)
-    assert set(m.plano_de_figuras(cfg)) == {
+    assert set(m.figure_plan(cfg)) == {
         "hca", "loadings", "biplot", "preprocessamento"}
 
     cfg = Config(objetivo=m.CLASSIFICACAO)
-    plano = set(m.plano_de_figuras(cfg))
+    plano = set(m.figure_plan(cfg))
     assert {"plsda_scores", "confusao", "roc"} <= plano
     assert "regressao" not in plano
     # nivel=N1 (default) + toggle desligado (default): ddsimca nao entra.
@@ -108,9 +108,9 @@ def test_plano_de_figuras_por_objetivo():
     # DD-SIMCA no preview segue a mesma regra de pipeline.executar(): N2
     # forca ligado (mesmo sem tocar no toggle); N1 sempre ignora, mesmo com
     # o toggle ligado manualmente.
-    assert "ddsimca" in set(m.plano_de_figuras(Config(nivel="N2")))
+    assert "ddsimca" in set(m.figure_plan(Config(nivel="N2")))
     assert "ddsimca" not in set(
-        m.plano_de_figuras(Config(nivel="N1", executar_ddsimca=True)))
+        m.figure_plan(Config(nivel="N1", executar_ddsimca=True)))
 
 
 def test_descrever_plano_retorna_texto_legivel():

@@ -107,7 +107,7 @@ def _ddsimca_efetivo(cfg: "Config") -> bool:
 # ser gerada: o toggle correspondente em Config precisa estar ligado. Chaves
 # ausentes daqui sao incondicionais dentro do seu objetivo (sempre geradas).
 # Espelha as condicoes reais checadas em pipeline.executar() -- mantido aqui
-# para que o PREVIEW (plano_de_figuras/describe_plan) nunca prometa uma
+# para que o PREVIEW (figure_plan/describe_plan) nunca prometa uma
 # figura que o motor vai pular por causa de um toggle desligado.
 _FIG_REQUISITO: Dict[str, Callable[["Config"], bool]] = {
     "vip":                lambda cfg: getattr(cfg, "n_bootstrap_vip", 0) > 0,
@@ -184,7 +184,7 @@ def deve_gerar(cfg: "Config", chave: str) -> bool:
     return resolve_objective(cfg) in objetivos
 
 
-def figuras_exploratorias_ligadas(cfg: "Config") -> bool:
+def exploratory_figures_enabled(cfg: "Config") -> bool:
     """Regra unica p/ as exploratorias opcionais (HCA/loadings/pre-proc).
 
     Ligadas quando o objetivo e' Exploratorio (nucleo do modo) OU quando o
@@ -200,7 +200,7 @@ def figuras_exploratorias_ligadas(cfg: "Config") -> bool:
     return False
 
 
-def plano_de_figuras(cfg: "Config") -> List[str]:
+def figure_plan(cfg: "Config") -> List[str]:
     """Lista ordenada das chaves de figura que este run VAI de fato produzir.
 
     Filtra por dois criterios, ambos necessarios: (1) a figura pertence ao
@@ -219,4 +219,4 @@ def plano_de_figuras(cfg: "Config") -> List[str]:
 
 def describe_plan(cfg: "Config") -> List[str]:
     """Descricoes legiveis das figuras pertinentes (para exibir ao usuario)."""
-    return [_FIG_DESCRICAO.get(k, k) for k in plano_de_figuras(cfg)]
+    return [_FIG_DESCRICAO.get(k, k) for k in figure_plan(cfg)]

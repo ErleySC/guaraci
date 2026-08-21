@@ -228,8 +228,8 @@ from guaraci.figuras import (   # noqa: E402
 from guaraci.modos_analise import (   # noqa: E402
     resolve_objective,
     deve_gerar,
-    figuras_exploratorias_ligadas,
-    plano_de_figuras,
+    exploratory_figures_enabled,
+    figure_plan,
     describe_plan,
     OBJETIVO_ROTULO,
     EXPLORATORIO,
@@ -1291,7 +1291,7 @@ def executar(cfg: Config):
     # que cada modo produza EXCLUSIVAMENTE o que e' pertinente ao seu
     # objetivo (ver modos_analise.py). Preserva N1/N2/N3 quando objetivo=auto.
     objetivo = resolve_objective(cfg)
-    _fig_explor_on = figuras_exploratorias_ligadas(cfg)
+    _fig_explor_on = exploratory_figures_enabled(cfg)
     log.info(f"\n[MODO] Objetivo cientifico: "
              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}  "
              f"(nivel={cfg.nivel}, objetivo_cfg={cfg.objetivo})")
