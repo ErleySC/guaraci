@@ -68,14 +68,14 @@ def test_luminancia_preto_e_branco(pc):
 
 
 def test_edge_para_cor_escolhe_contraste_correto(pc):
-    assert pc.edge_para_cor("#FFFFFF") == "0.25"
-    assert pc.edge_para_cor("#000000") == "white"
+    assert pc.get_edge_color("#FFFFFF") == "0.25"
+    assert pc.get_edge_color("#000000") == "white"
 
 
 def test_mapear_cores_classes_e_deterministico_e_ordenado(pc):
     classes = ["Zebra", "Abelha", "Mono"]
-    mapa1 = pc.mapear_cores_classes(classes)
-    mapa2 = pc.mapear_cores_classes(list(reversed(classes)))
+    mapa1 = pc.map_class_colors(classes)
+    mapa2 = pc.map_class_colors(list(reversed(classes)))
     assert mapa1 == mapa2
     ordenadas = sorted(classes)
     assert mapa1[ordenadas[0]] == pc.PALETA[0]
@@ -84,7 +84,7 @@ def test_mapear_cores_classes_e_deterministico_e_ordenado(pc):
 
 def test_mapear_marcadores_classes_ciclo(pc):
     classes = [f"c{i}" for i in range(len(pc.MARCADORES) + 2)]
-    mapa = pc.mapear_marcadores_classes(classes)
+    mapa = pc.map_class_markers(classes)
     ordenadas = sorted(classes)
     assert mapa[ordenadas[0]] == pc.MARCADORES[0]
     assert mapa[ordenadas[len(pc.MARCADORES)]] == pc.MARCADORES[0]

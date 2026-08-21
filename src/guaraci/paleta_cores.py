@@ -72,7 +72,7 @@ def _luminancia(hex_cor: str) -> float:
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def edge_para_cor(hex_cor: str) -> str:
+def get_edge_color(hex_cor: str) -> str:
     """Smart edge color: dark gray for light fills (visible on white
     background), white for dark fills."""
     return "0.25" if _luminancia(hex_cor) > 0.65 else "white"
@@ -91,7 +91,7 @@ def cor(i: int) -> str:
     return mcolors.to_hex(cmap(((i - len(PALETA)) % 20) / 20))
 
 
-def mapear_cores_classes(classes) -> Dict[str, str]:
+def map_class_colors(classes) -> Dict[str, str]:
     """Assigns color in alphabetical order from the maximum-distinctiveness
     palette. SEQUENTIAL (non-hash) assignment ensures adjacent classes
     receive well-separated colors — the palette is already ordered to
@@ -108,7 +108,7 @@ def mapear_cores_classes(classes) -> Dict[str, str]:
     return mapa
 
 
-def mapear_marcadores_classes(classes) -> Dict[str, str]:
+def map_class_markers(classes) -> Dict[str, str]:
     """Assigns marker shape per class (secondary channel). Combined
     with color, ensures distinctiveness even in B&W/colorblindness and high density."""
     classes_sorted = sorted({str(c) for c in classes})

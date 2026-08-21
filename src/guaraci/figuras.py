@@ -32,7 +32,7 @@ from sklearn.metrics import (
 )
 
 from guaraci.paleta_cores import (
-    cor, edge_para_cor,
+    cor, get_edge_color,
 )
 from guaraci.chemometric_stats import (
     hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
@@ -235,7 +235,7 @@ def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
         idx = rotulos == cls
         c = mapa_cores[cls]
         mk = mapa_marcadores.get(cls, "o") if mapa_marcadores else "o"
-        edge = edge_para_cor(c)
+        edge = get_edge_color(c)
         n_cls = int(idx.sum())
         if pmask is not None:
             idx_puro  = idx & pmask

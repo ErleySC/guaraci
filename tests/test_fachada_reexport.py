@@ -30,8 +30,8 @@ CONTRATO = {
         "applicability_domain_new_samples", "rmse_flat",
     ],
     "paleta_cores": [
-        "PALETA", "MARCADORES", "cor", "mapear_cores_classes",
-        "mapear_marcadores_classes", "edge_para_cor",
+        "PALETA", "MARCADORES", "cor", "map_class_colors",
+        "map_class_markers", "get_edge_color",
     ],
     "dados_io": [
         "parse_title", "extract_dx_title", "load_data", "load_dx",

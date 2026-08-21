@@ -173,10 +173,10 @@ from guaraci.paleta_cores import (   # noqa: E402
     MARCADORES,
     _paleta_externa,
     _luminancia,
-    edge_para_cor,
+    get_edge_color,
     cor,
-    mapear_cores_classes,
-    mapear_marcadores_classes,
+    map_class_colors,
+    map_class_markers,
 )
 
 
@@ -1531,8 +1531,8 @@ def executar(cfg: Config):
             f"pontos espectrais ({X_raw.shape[1]}).")
 
     classes_unicas = np.unique(rotulos)
-    mapa_cores     = mapear_cores_classes(classes_unicas)
-    mapa_marcadores = mapear_marcadores_classes(classes_unicas)
+    mapa_cores     = map_class_colors(classes_unicas)
+    mapa_marcadores = map_class_markers(classes_unicas)
 
     log.info(f"\n[INFO] Amostras : {X_raw.shape[0]}")
     log.info(f"[INFO] Variaveis: {X_raw.shape[1]}")

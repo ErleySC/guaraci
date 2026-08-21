@@ -1161,10 +1161,10 @@ def test_cor_alem_da_paleta_base_usa_fallback_sem_crash(pq):
 
 
 def test_mapear_cores_classes_mais_de_20_classes(pq):
-    """mapear_cores_classes com > 20 classes exercita o mesmo fallback e
+    """map_class_colors com > 20 classes exercita o mesmo fallback e
     ainda assim devolve uma cor distinta por classe."""
     classes = [f"Classe_{i:02d}" for i in range(25)]
-    mapa = pq.mapear_cores_classes(classes)
+    mapa = pq.map_class_colors(classes)
     assert len(mapa) == 25
     assert all(v.startswith("#") for v in mapa.values())
 
