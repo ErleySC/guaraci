@@ -57,16 +57,16 @@ def get_reader(modo: str) -> LeitorDados:
     try:
         return _LEITORES[modo]
     except KeyError:
-        disponiveis = ", ".join(modos_registrados()) or "(nenhum registrado)"
+        disponiveis = ", ".join(registered_modes()) or "(nenhum registrado)"
         raise ValueError(
             f"Modo de entrada desconhecido: '{modo}'. "
             f"Modos disponiveis: {disponiveis}.") from None
 
 
-def modos_registrados() -> Tuple[str, ...]:
+def registered_modes() -> Tuple[str, ...]:
     """Lista (ordenada) dos modos atualmente registrados."""
     return tuple(sorted(_LEITORES))
 
 
 __all__ = ["DadosCarregados", "LeitorDados", "register_reader",
-           "get_reader", "modos_registrados"]
+           "get_reader", "registered_modes"]
