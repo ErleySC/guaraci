@@ -1177,15 +1177,15 @@ def test_paleta_externa_sem_libs_opcionais_retorna_none(pq):
     assert resultado is None or isinstance(resultado, list)
 
 
-# ── FOM no resumo: anexar_regressao_resumo (unidade, rapido) ─────────────────
+# ── FOM no resumo: append_regression_summary (unidade, rapido) ─────────────────
 
 def test_anexar_regressao_resumo_escreve_bloco(pq, tmp_path):
-    """anexar_regressao_resumo grava o bloco de figuras de merito no
+    """append_regression_summary grava o bloco de figuras de merito no
     resumo_modelo.txt (append), com valores formatados e NaN -> 'n/a'."""
     pasta = str(tmp_path)
     with open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8") as f:
         f.write("HEADER PREEXISTENTE\n")
-    pq.anexar_regressao_resumo(
+    pq.append_regression_summary(
         pasta,
         pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
                 "rmsep": 1.8, "bias": -0.1},
@@ -1211,7 +1211,7 @@ def test_anexar_regressao_resumo_valor_nao_numerico_vira_na(pq, tmp_path):
     no fallback 'n/a', sem lancar TypeError/ValueError pro chamador."""
     pasta = str(tmp_path)
     open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
-    pq.anexar_regressao_resumo(
+    pq.append_regression_summary(
         pasta,
         pooled={"r2c": "indisponivel", "r2v": 0.9, "rmsec": 1.0,
                 "rmsecv": 1.1, "rmsep": 1.3, "bias": 0.0})
@@ -1223,7 +1223,7 @@ def test_anexar_regressao_resumo_fom_pooled(pq, tmp_path):
     """Caminho de modelo pooled unico (fom_pooled) tambem grava LOD/LOQ/SEN."""
     pasta = str(tmp_path)
     open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
-    pq.anexar_regressao_resumo(
+    pq.append_regression_summary(
         pasta,
         pooled={"r2c": 0.9, "r2v": 0.8, "rmsec": 1.0, "rmsecv": 1.1,
                 "rmsep": 1.3, "bias": 0.0},
@@ -1683,7 +1683,7 @@ def test_ddsimca_permitido_em_n2_com_toggle_ligado(pq):
 # ── Model Card (Mitchell et al. 2019) -- teste unitario, sem rodar executar() ─
 
 def _resumo_minimo() -> dict:
-    """Dict `resumo` minimo, so' com as chaves que gerar_model_card le --
+    """Dict `resumo` minimo, so' com as chaves que generate_model_card le --
     testa a MONTAGEM do card isoladamente, sem depender de um pipeline
     completo (esse caminho ja e' coberto por
     test_figuras_regressao.test_model_card_gerado_com_addendum_de_regressao)."""
@@ -1709,7 +1709,7 @@ def test_gerar_model_card_cria_arquivo_com_secoes_esperadas(pq, tmp_path):
     hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
     classes = ["Esp_A", "Esp_B"]
 
-    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, classes)
+    pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, classes)
 
     card = tmp_path / "model_card.md"
     assert card.is_file()
@@ -1724,9 +1724,9 @@ def test_gerar_model_card_cria_arquivo_com_secoes_esperadas(pq, tmp_path):
 def test_anexar_regressao_model_card_adiciona_secao_9(pq, tmp_path):
     cfg = pq.Config(nivel="N3")
     hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
-    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+    pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
 
-    pq.anexar_regressao_model_card(
+    pq.append_regression_model_card(
         str(tmp_path),
         pooled={"rmsep": 3.21, "r2v": 0.88},
         tabela_especie=[{"especie": "Esp_A", "rmsep": 3.21,
@@ -1739,9 +1739,9 @@ def test_anexar_regressao_model_card_adiciona_secao_9(pq, tmp_path):
 
 
 def test_anexar_regressao_model_card_sem_arquivo_previo_nao_quebra(pq, tmp_path):
-    """Se model_card.md nao existe (ex.: gerar_model_card falhou antes),
-    anexar_regressao_model_card nao deve lancar excecao -- so' nao faz nada."""
-    pq.anexar_regressao_model_card(str(tmp_path), pooled={"rmsep": 1.0})
+    """Se model_card.md nao existe (ex.: generate_model_card falhou antes),
+    append_regression_model_card nao deve lancar excecao -- so' nao faz nada."""
+    pq.append_regression_model_card(str(tmp_path), pooled={"rmsep": 1.0})
     assert not (tmp_path / "model_card.md").exists()
 
 
@@ -1751,9 +1751,9 @@ def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
     e' escrito."""
     cfg = pq.Config(nivel="N3")
     hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
-    pq.gerar_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+    pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
 
-    pq.anexar_regressao_model_card(
+    pq.append_regression_model_card(
         str(tmp_path),
         pooled={"rmsep": 3.21, "r2v": 0.88},
         tabela_especie=[{"especie": "Esp_A", "rmsep": float("nan"),

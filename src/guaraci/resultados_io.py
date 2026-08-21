@@ -6,8 +6,8 @@ Extraído de pipeline.py (dívida técnica pós-auditoria): estas funções são
 CHAMADAS por executar() para persistir os resultados de uma corrida, mas não
 dependem do orquestrador — só de config (__version__, _NIVEL_NOME), numpy,
 pandas e sklearn. pipeline.py reexporta todos os nomes, então
-`pipeline.salvar_resumo_modelo(...)`, `pq.gerar_model_card(...)`,
-`pq.anexar_regressao_resumo(...)` etc. seguem funcionando (executar e os
+`pipeline.salvar_resumo_modelo(...)`, `pq.generate_model_card(...)`,
+`pq.append_regression_summary(...)` etc. seguem funcionando (executar e os
 testes consomem via fachada).
 """
 from __future__ import annotations
@@ -47,7 +47,7 @@ def metricas_modelo_pls(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
     return r2x, r2y, q2
 
 
-def salvar_identificadores(rotulos: np.ndarray, pred_lab: np.ndarray,
+def save_identifiers(rotulos: np.ndarray, pred_lab: np.ndarray,
                             scores_pls: np.ndarray, T2: np.ndarray,
                             Q: np.ndarray, t2_lim: float, q_lim: float,
                             pasta: str) -> None:
@@ -73,7 +73,7 @@ def salvar_identificadores(rotulos: np.ndarray, pred_lab: np.ndarray,
 
 
 #: Notas metodologicas de transparencia (Methods section de artigo) --
-#: compartilhadas por salvar_resumo_modelo (.txt) e gerar_model_card (.md),
+#: compartilhadas por salvar_resumo_modelo (.txt) e generate_model_card (.md),
 #: fonte unica para nao divergirem com o tempo.
 _NOTAS_METODOLOGICAS: List[Tuple[str, str]] = [
     ("LV selection", "Wold parsimony criterion (2% RMSECV tolerance above "
@@ -133,7 +133,7 @@ def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
                 f.write(line + "\n")
 
 
-def anexar_regressao_resumo(
+def append_regression_summary(
         pasta: str,
         pooled: Optional[Dict[str, object]] = None,
         tabela_especie: Optional[List[Dict[str, object]]] = None,
@@ -218,12 +218,12 @@ def anexar_regressao_resumo(
         print(f"  [AVISO] Nao foi possivel anexar regressao ao resumo: {e}")
 
 
-def anexar_heatmap_resumo(pasta: str, resultado: Dict[str, object]) -> None:
+def append_heatmap_summary(pasta: str, resultado: Dict[str, object]) -> None:
     """Anexa ao resumo_modelo.txt o balanco do heatmap especie x adulterante
     (R2cv por combinacao). Deixa EXPLICITO quantas combinacoes NAO atingem o
     limiar de aceite -- uma quantificacao que so funciona em parte das
     combinacoes nao deve ser lida como sucesso geral. Append-only pelo mesmo
-    motivo de anexar_regressao_resumo (roda depois do 1o flush do resumo).
+    motivo de append_regression_summary (roda depois do 1o flush do resumo).
     """
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     limiar   = float(resultado.get("limiar_r2", 0.70))   # type: ignore[arg-type]
@@ -278,7 +278,7 @@ def _md_tabela(linhas: List[Tuple[str, str]]) -> str:
     return "\n".join(out)
 
 
-def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
+def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                       hw: Dict[str, Any], classes_unicas: np.ndarray) -> None:
     """Gera `model_card.md` (secoes de Mitchell et al. 2019, adaptado a um
     pipeline quimiometrico de autenticacao/quantificacao). Escrito no MESMO
@@ -287,8 +287,8 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     em vez de recalcular ou receber duzias de parametros separados.
 
     Regressao (N2/N3) e' um addendum ANEXADO depois (mesmo padrao de
-    `anexar_regressao_resumo`), pois so' fica disponivel mais tarde em
-    executar() -- ver `anexar_regressao_model_card`.
+    `append_regression_summary`), pois so' fica disponivel mais tarde em
+    executar() -- ver `append_regression_model_card`.
     """
     nivel = cfg.nivel
     nivel_nome = _NIVEL_NOME.get(nivel, nivel)
@@ -440,19 +440,19 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         print(f"  [AVISO] Nao foi possivel gerar model_card.md: {e}")
 
 
-def anexar_regressao_model_card(
+def append_regression_model_card(
         pasta: str,
         pooled: Optional[Dict[str, object]] = None,
         tabela_especie: Optional[List[Dict[str, object]]] = None,
         fom_pooled: Optional[Dict[str, float]] = None) -> None:
     """Anexa o addendum de regressao (N2/N3) ao model_card.md -- mesmos
-    parametros de `anexar_regressao_resumo` (chamar as duas juntas nos
+    parametros de `append_regression_summary` (chamar as duas juntas nos
     mesmos pontos de executar()), append-only pelo mesmo motivo: a
-    regressao roda DEPOIS de `gerar_model_card` no fluxo de executar().
+    regressao roda DEPOIS de `generate_model_card` no fluxo de executar().
     """
     caminho = os.path.join(pasta, "model_card.md")
     if not os.path.isfile(caminho):
-        return   # model_card.md nao foi gerado (ex.: gerar_model_card falhou)
+        return   # model_card.md nao foi gerado (ex.: generate_model_card falhou)
 
     def _fmt(v: object, nd: int = 3) -> str:
         try:

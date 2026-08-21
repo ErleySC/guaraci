@@ -292,9 +292,9 @@ from guaraci.classificadores import (   # noqa: E402
 # resultados_io.py (dividida tecnica). Reexportados: executar() os chama e os
 # testes/consumidores usam via `pipeline.X`.
 from guaraci.resultados_io import (   # noqa: F401
-    metricas_modelo_pls, salvar_identificadores, _NOTAS_METODOLOGICAS,
-    salvar_resumo_modelo, anexar_regressao_resumo, _md_tabela,
-    gerar_model_card, anexar_regressao_model_card, anexar_heatmap_resumo,
+    metricas_modelo_pls, save_identifiers, _NOTAS_METODOLOGICAS,
+    salvar_resumo_modelo, append_regression_summary, _md_tabela,
+    generate_model_card, append_regression_model_card, append_heatmap_summary,
 )
 def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
@@ -1271,9 +1271,9 @@ def pls_regressao_pooled(
         "dmody_crit": _dmody_res_pooled["dmody_crit"],
         "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"],
     }
-    anexar_regressao_resumo(pasta_logs, pooled=resultado_pooled,
+    append_regression_summary(pasta_logs, pooled=resultado_pooled,
                             fom_pooled=_fom_reg)
-    anexar_regressao_model_card(pasta_logs, pooled=resultado_pooled,
+    append_regression_model_card(pasta_logs, pooled=resultado_pooled,
                                 fom_pooled=_fom_reg)
     return resultado_pooled
 
@@ -2194,7 +2194,7 @@ def executar(cfg: Config):
             metricas_holdout = None
 
     # --- 9. Identificadores e resumo (separados dos graficos) --------------
-    salvar_identificadores(rotulos, pred_lab, T_pls, T2, Q,
+    save_identifiers(rotulos, pred_lab, T_pls, T2, Q,
                             t2_lim, q_lim, pasta_dados)
     log.info(f"  -> {os.path.join(pasta_dados, 'amostras_identificadores.csv')}")
 
@@ -2400,7 +2400,7 @@ def executar(cfg: Config):
     log.info(f"  -> {os.path.join(pasta_logs, 'resumo_modelo.txt')}")
 
     # Model Card (Mitchell et al. 2019) -- mesmo ponto/dados do resumo acima.
-    gerar_model_card(pasta_logs, cfg, resumo, _hw, classes_unicas)
+    generate_model_card(pasta_logs, cfg, resumo, _hw, classes_unicas)
     log.info(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
@@ -2597,14 +2597,14 @@ def executar(cfg: Config):
                             else:
                                 log.info("      LOD/LOQ: N/A (sem replicas fisicas "
                                       "suficientes para estimar ruido instrumental)")
-                        anexar_regressao_resumo(
+                        append_regression_summary(
                             pasta_logs,
                             pooled={k: reg_esp.get(k) for k in
                                     ("r2c", "r2v", "rmsec", "rmsecv",
                                      "rmsep", "bias", "dmody_crit",
                                      "n_fora_do_dmody")},
                             tabela_especie=reg_esp["tabela_especie"])
-                        anexar_regressao_model_card(
+                        append_regression_model_card(
                             pasta_logs,
                             pooled={k: reg_esp.get(k) for k in
                                     ("r2c", "r2v", "rmsec", "rmsecv",
@@ -2659,7 +2659,7 @@ def executar(cfg: Config):
                               f"combinacoes abaixo de R2cv="
                               f"{_r2cv['limiar_r2']:.2f}  (n/a: {_r2cv['n_na']})")
                         fig_heatmap_especie_adulterante(_r2cv, cfg, pasta)
-                        anexar_heatmap_resumo(pasta_logs, _r2cv)
+                        append_heatmap_summary(pasta_logs, _r2cv)
                 except Exception as _e_hm:  # noqa: BLE001 -- figura/relatorio
                     # opcional (o calculo R2cv em si ja tem tratamento
                     # granular por combinacao); erro impresso, resto da
