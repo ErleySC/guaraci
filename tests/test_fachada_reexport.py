@@ -40,7 +40,7 @@ CONTRATO = {
         "kennard_stone", "kennard_stone_split", "kennard_stone_split_group_aware",
     ],
     "dados_imagem": [
-        "carregar_imagens", "carregar_imagem_arquivo", "recortar_relativo",
+        "carregar_imagens", "load_image_file", "recortar_relativo",
         "extrair_features_cor", "extrair_features_textura",
     ],
     "preprocessamento": [

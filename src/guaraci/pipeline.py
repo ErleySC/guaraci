@@ -681,7 +681,7 @@ from guaraci.dados_io import (   # noqa: E402
 # (Fase de expansao pos-H). Reexportada p/ pipeline.carregar_imagens(...) etc.
 from guaraci.dados_imagem import (   # noqa: E402
     carregar_imagens,
-    carregar_imagem_arquivo,
+    load_image_file,
     recortar_relativo,
     extrair_features_cor,
     extrair_features_textura,

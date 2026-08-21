@@ -66,7 +66,7 @@ NOMES_FEATURES_TEXTURA: Tuple[str, ...] = (
 )
 
 
-def carregar_imagem_arquivo(caminho: str) -> np.ndarray:
+def load_image_file(caminho: str) -> np.ndarray:
     """Le uma imagem do disco como array RGB uint8 (H, W, 3), via Pillow."""
     from PIL import Image
     with Image.open(caminho) as im:
@@ -254,7 +254,7 @@ def carregar_imagens(
 
     for arq, subpasta_nome in arquivos:
         try:
-            img = carregar_imagem_arquivo(arq)
+            img = load_image_file(arq)
             img = recortar_relativo(img, caixa_recorte)
             feats = extrair_features_cor(img)
             if incluir_textura:
