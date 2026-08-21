@@ -126,7 +126,7 @@ def _dataset_id(cfg: Config) -> str:
     return _slug(base) or "dataset"
 
 
-def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
+def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
     """Default output path (auditoria jul/2026, item 4): reestrutura a saida
     em Amostra/Modo/Execucao para nao misturar resultados de objetivos
     diferentes na mesma pasta.
@@ -427,7 +427,7 @@ def check_balance(rotulos: np.ndarray, ratio_alvo: float = 5.0
     return rel
 
 
-def metricas_classificacao(y_true, y_pred, classes) -> Dict[str, float]:
+def classification_metrics(y_true, y_pred, classes) -> Dict[str, float]:
     """Metricas globais de classificacao.
 
     Com UMA unica classe no conjunto, toda metrica aqui e' degenerada por
@@ -756,7 +756,7 @@ from guaraci.hardware import (   # noqa: E402
     auto_ajustar_config_hardware,
     _verificar_ram,
 )
-def limpar_resultados_antigos(pasta_base: str,
+def clear_old_results(pasta_base: str,
                                manter_n: int = 3) -> Dict[str, Any]:
     """
     Remove as pastas de resultados mais antigas dentro de pasta_base,
@@ -1408,7 +1408,7 @@ def executar(cfg: Config):
     # Execucao/{Graficos,Tabelas,Relatorios,Modelos} — separa fisicamente os
     # resultados por objetivo cientifico, alem do gating de conteudo (ver
     # modos_analise.py) que ja impede a figura errada de ser GERADA.
-    cfg.pasta_saida = gerar_nome_saida(cfg, len(np.unique(rotulos)),
+    cfg.pasta_saida = generate_output_name(cfg, len(np.unique(rotulos)),
                                          X_raw.shape[0])
     pasta = cfg.pasta_saida
     pasta_dados   = os.path.join(pasta, NOME_TABELAS)
@@ -1642,7 +1642,7 @@ def executar(cfg: Config):
 
         erros_rmsecv.append(rmse_flat(Y_bin, y_hat))
         y_hat_int = np.argmax(y_hat, axis=1)
-        m = metricas_classificacao(y_int, y_hat_int, np.arange(len(classes_unicas)))
+        m = classification_metrics(y_int, y_hat_int, np.arange(len(classes_unicas)))
         metricas_por_lv.append(m)
         preds_por_lv[n] = y_hat
 
@@ -1785,7 +1785,7 @@ def executar(cfg: Config):
 
     # --- 7. Metricas e relatorio -------------------------------------------
     cm_mat = confusion_matrix(rotulos, pred_lab, labels=lb.classes_)
-    metricas_finais = metricas_classificacao(rotulos, pred_lab, lb.classes_)
+    metricas_finais = classification_metrics(rotulos, pred_lab, lb.classes_)
     log.info("\n[5/7] Metricas finais (CV):")
     for k, v in metricas_finais.items():
         log.info(f"  {k:>22s}: {v:.4f}")
@@ -2172,7 +2172,7 @@ def executar(cfg: Config):
             pred_holdout = lb.classes_[np.argmax(Y_holdout_hat, axis=1)]
             cm_holdout = confusion_matrix(rot_ho, pred_holdout,
                                             labels=lb.classes_)
-            metricas_holdout = metricas_classificacao(
+            metricas_holdout = classification_metrics(
                 rot_ho, pred_holdout, lb.classes_)
             for k, v in metricas_holdout.items():
                 log.info(f"  {k:>22s}: {v:.4f}")

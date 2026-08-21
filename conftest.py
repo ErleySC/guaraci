@@ -25,7 +25,7 @@ def pq():
 def achar_pastas_run(pasta_saida_raiz):
     """Localiza as pastas de EXECUCAO (folha) sob pasta_saida_raiz.
 
-    Desde a auditoria jul/2026 (item 4), gerar_nome_saida aninha a saida em
+    Desde a auditoria jul/2026 (item 4), generate_output_name aninha a saida em
     pasta_saida_raiz/<Amostra>/<Modo>/<execucao>/ em vez de uma pasta direta
     em pasta_saida_raiz/<execucao>/. Esta funcao encontra as pastas-folha
     (identificadas pelo prefixo "PLSDA_OE_") em qualquer profundidade, para

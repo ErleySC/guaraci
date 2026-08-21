@@ -203,7 +203,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
             if st.button("🗑️ Confirm cleanup",
                          key="btn_limpar_resultados",
                          type="secondary"):
-                _res = pq.limpar_resultados_antigos(
+                _res = pq.clear_old_results(
                     _pasta_base_lim, _manter)
                 if _res["removidas"]:
                     st.success(

@@ -627,7 +627,7 @@ def test_ddsimca_aceita_maioria_do_proprio_treino(pq):
 def test_metricas_classificacao_perfeita(pq):
     """Predição perfeita → todas as métricas = 1.0."""
     y = np.array([0, 0, 1, 1, 2, 2])
-    m = pq.metricas_classificacao(y, y, [0, 1, 2])
+    m = pq.classification_metrics(y, y, [0, 1, 2])
     for k in ("accuracy", "balanced_accuracy", "cohen_kappa",
               "f1_macro", "precision_macro", "recall_macro"):
         assert m[k] == pytest.approx(1.0)
@@ -767,7 +767,7 @@ def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
     cfg = pq.Config()
     cfg.nivel = "N1"
     cfg.preprocessamento_padrao = "msc_sg_mc"
-    nome = pq.gerar_nome_saida(cfg, n_classes=13, n_amostras=100)
+    nome = pq.generate_output_name(cfg, n_classes=13, n_amostras=100)
     base = nome.replace("\\", "/").split("/")[-1]
     assert base.startswith("PLSDA_OE_" + pq._NIVEL_SLUG_PASTA["N1"])
     assert "N1" not in base
@@ -1895,11 +1895,11 @@ def test_metricas_classificacao_marca_conjunto_de_uma_classe(pq):
     """
     import numpy as np
     y = np.array(["corn"] * 20)
-    m = pq.metricas_classificacao(y, y.copy(), ["corn"])
+    m = pq.classification_metrics(y, y.copy(), ["corn"])
     assert m.get("degenerada_uma_classe") == 1.0
 
     y2 = np.array(["a"] * 10 + ["b"] * 10)
-    m2 = pq.metricas_classificacao(y2, y2.copy(), ["a", "b"])
+    m2 = pq.classification_metrics(y2, y2.copy(), ["a", "b"])
     assert "degenerada_uma_classe" not in m2
 
 
