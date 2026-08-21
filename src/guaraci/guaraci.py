@@ -307,8 +307,8 @@ from guaraci.cli_logic import (  # noqa: E402
     trunc as _trunc,
     truncar_desc_por_frase as _truncar_desc_por_frase,
     fmt_bool as _fmt_bool_puro,
-    validar_faixas as _validar_faixas_puro,
-    contar_dx as _contar_dx,
+    validate_ranges as _validar_faixas_puro,
+    count_dx as _count_dx,
 )
 
 # Estado global da tecnica selecionada (persiste entre menus)
@@ -822,7 +822,7 @@ def _cfgv(cfg: Config, key: str, default: Any = None) -> Any:
     return getattr(cfg, attr, default)
 
 
-# _contar_dx importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
+# _count_dx importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
 
 def _fmt_bool(v: Any, lang: str = "") -> str:
     """Wrapper fino: resolve o idioma ativo (ou usa o passado) e delega o
@@ -913,9 +913,9 @@ def _sugerir_cafe() -> None:
 # ---------------------------------------------------------------------------
 # VALIDACAO DE INTEGRIDADE — faixas e paleta antes de rodar
 # ---------------------------------------------------------------------------
-def _validar_faixas(cfg: Config) -> list:
+def _validate_ranges(cfg: Config) -> list:
     """Wrapper fino: le faixa_min/max do Config e delega a validacao pura
-    a `guaraci.cli_logic.validar_faixas` (testada)."""
+    a `guaraci.cli_logic.validate_ranges` (testada)."""
     f_min = _cfgv(cfg, "faixa_min_cm", 400)
     f_max = _cfgv(cfg, "faixa_max_cm", 4000)
     return _validar_faixas_puro(f_min, f_max)
@@ -973,7 +973,7 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     if not dds:
         linhas.append(f"  [{PM}]ℹ DD-SIMCA desativado.[/{PM}]")
 
-    avisos_faixa = _validar_faixas(cfg)
+    avisos_faixa = _validate_ranges(cfg)
     for av_msg in avisos_faixa:
         linhas.append(f"  [{PR}]✖ {av_msg}[/{PR}]")
 
@@ -1085,7 +1085,7 @@ def _print_status(cfg: Config) -> None:
     lang = _lang()
     pasta = _cfgv(cfg, "pasta_dados", "dados")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if pasta_ok else 0
 
     if pasta_ok and n_dx > 0:
         dados_str = f"[g]{_t('dados_ok', n=n_dx)}[/g]"
@@ -1225,7 +1225,7 @@ def _print_run_box(cfg: Config) -> None:
 
     pasta = _cfgv(cfg, "pasta_dados", "dados")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if pasta_ok else 0
     pronto = pasta_ok and n_dx > 0
 
     # RAM livre — indicador visual de 3 niveis
@@ -3176,7 +3176,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
 
     pasta = _cfgv(cfg, "pasta_dados", "dados")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if pasta_ok else 0
 
     n_para_estimar = n_dx
     if pasta_ok and n_dx > 0:

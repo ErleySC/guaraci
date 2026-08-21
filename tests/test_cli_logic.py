@@ -5,7 +5,7 @@ isolamento — mesmo objetivo do test_app_logic.py para a UI web.
 """
 
 from guaraci.cli_logic import (
-    trunc, truncar_desc_por_frase, fmt_bool, validar_faixas, contar_dx,
+    trunc, truncar_desc_por_frase, fmt_bool, validate_ranges, count_dx,
 )
 
 
@@ -64,32 +64,32 @@ def test_fmt_bool_nao_booleano_retorna_str():
     assert fmt_bool(42, "EN") == "42"
 
 
-# ── validar_faixas ───────────────────────────────────────────────────────────
+# ── validate_ranges ───────────────────────────────────────────────────────────
 def test_validar_faixas_valida_sem_avisos():
-    assert validar_faixas(4000, 10000) == []
+    assert validate_ranges(4000, 10000) == []
 
 
 def test_validar_faixas_min_maior_que_max():
-    avisos = validar_faixas(10000, 4000)
+    avisos = validate_ranges(10000, 4000)
     assert len(avisos) == 1
     assert "invalido" in avisos[0]
 
 
 def test_validar_faixas_iguais_e_invalido():
-    avisos = validar_faixas(5000, 5000)
+    avisos = validate_ranges(5000, 5000)
     assert len(avisos) == 1
 
 
-# ── contar_dx ────────────────────────────────────────────────────────────────
+# ── count_dx ────────────────────────────────────────────────────────────────
 def test_contar_dx_pasta_inexistente():
-    assert contar_dx("/caminho/que/nao/existe/nunca") == 0
+    assert count_dx("/caminho/que/nao/existe/nunca") == 0
 
 
 def test_contar_dx_arquivos_na_raiz(tmp_path):
     (tmp_path / "a.dx").write_text("x")
     (tmp_path / "b.dx").write_text("x")
     (tmp_path / "c.txt").write_text("x")
-    assert contar_dx(str(tmp_path)) == 2
+    assert count_dx(str(tmp_path)) == 2
 
 
 def test_contar_dx_um_nivel_abaixo(tmp_path):
@@ -99,7 +99,7 @@ def test_contar_dx_um_nivel_abaixo(tmp_path):
     (sub1 / "a.dx").write_text("x")
     (sub2 / "b.dx").write_text("x")
     (sub2 / "c.dx").write_text("x")
-    assert contar_dx(str(tmp_path)) == 3
+    assert count_dx(str(tmp_path)) == 3
 
 
 def test_contar_dx_prioriza_raiz_sobre_subpastas(tmp_path):
@@ -108,4 +108,4 @@ def test_contar_dx_prioriza_raiz_sobre_subpastas(tmp_path):
     sub.mkdir()
     (sub / "outro.dx").write_text("x")
     # se ha .dx na raiz, subpastas nao sao somadas (layout "flat")
-    assert contar_dx(str(tmp_path)) == 1
+    assert count_dx(str(tmp_path)) == 1
