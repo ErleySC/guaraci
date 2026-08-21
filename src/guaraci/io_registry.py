@@ -6,7 +6,7 @@ registrado sob uma chave `modo` (ex.: "dx", "csv", "imagem", "sintetico").
 
 Adicionar um novo formato de entrada (uma nova tecnica analitica, um novo
 layout de arquivo) passa a ser: escrever a funcao de leitura e chamar
-`registrar_leitor("meu_modo", minha_funcao)` — de qualquer modulo, inclusive
+`register_reader("meu_modo", minha_funcao)` — de qualquer modulo, inclusive
 fora do pacote guaraci — sem editar o dispatch de `carregar_dados()` nem
 tocar em if/elif espalhados pelo nucleo cientifico.
 
@@ -39,7 +39,7 @@ LeitorDados = Callable[["Config"], DadosCarregados]
 _LEITORES: Dict[str, LeitorDados] = {}
 
 
-def registrar_leitor(modo: str, leitor: LeitorDados) -> None:
+def register_reader(modo: str, leitor: LeitorDados) -> None:
     """Registra (ou substitui) o leitor de dados para `cfg.modo == modo`.
 
     Chamar de novo com o mesmo `modo` SUBSTITUI o leitor anterior (util para
@@ -48,7 +48,7 @@ def registrar_leitor(modo: str, leitor: LeitorDados) -> None:
     _LEITORES[modo] = leitor
 
 
-def obter_leitor(modo: str) -> LeitorDados:
+def get_reader(modo: str) -> LeitorDados:
     """Devolve o leitor registrado para `modo`.
 
     Levanta ValueError com a lista de modos disponiveis se `modo` nao foi
@@ -68,5 +68,5 @@ def modos_registrados() -> Tuple[str, ...]:
     return tuple(sorted(_LEITORES))
 
 
-__all__ = ["DadosCarregados", "LeitorDados", "registrar_leitor",
-           "obter_leitor", "modos_registrados"]
+__all__ = ["DadosCarregados", "LeitorDados", "register_reader",
+           "get_reader", "modos_registrados"]

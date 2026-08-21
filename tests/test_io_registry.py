@@ -6,7 +6,7 @@ sem regressão no comportamento de carregar_dados().
 """
 import pytest
 
-from guaraci.io_registry import registrar_leitor, obter_leitor, modos_registrados
+from guaraci.io_registry import register_reader, get_reader, modos_registrados
 
 
 def test_leitores_builtin_registrados():
@@ -16,12 +16,12 @@ def test_leitores_builtin_registrados():
 
 def test_obter_leitor_modo_desconhecido_da_erro_com_lista():
     with pytest.raises(ValueError, match="Modo de entrada desconhecido"):
-        obter_leitor("formato_que_nao_existe")
+        get_reader("formato_que_nao_existe")
 
 
 def test_obter_leitor_retorna_callable_para_cada_modo():
     for modo in modos_registrados():
-        leitor = obter_leitor(modo)
+        leitor = get_reader(modo)
         assert callable(leitor)
 
 
@@ -38,10 +38,10 @@ def test_registrar_novo_leitor_fica_disponivel():
         rot = np.array(["a", "b"])
         return wn, X, rot, None, None, None
 
-    registrar_leitor("meu_formato_de_teste", _leitor_customizado)
+    register_reader("meu_formato_de_teste", _leitor_customizado)
     try:
         assert "meu_formato_de_teste" in modos_registrados()
-        leitor = obter_leitor("meu_formato_de_teste")
+        leitor = get_reader("meu_formato_de_teste")
         resultado = leitor(cfg="config_falso")
         assert len(resultado) == 6
         assert chamadas == ["config_falso"]

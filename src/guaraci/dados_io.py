@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from guaraci.io_registry import registrar_leitor, obter_leitor
+from guaraci.io_registry import register_reader, get_reader
 
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
@@ -1144,10 +1144,10 @@ def _leitor_imagem(cfg: "Config"):
 
 # Leitores built-in (item 20 da auditoria: registry em vez de if/elif fixo —
 # ver io_registry.py para o contrato e como registrar um novo modo).
-registrar_leitor("sintetico", _leitor_sintetico)
-registrar_leitor("csv", _leitor_csv)
-registrar_leitor("dx", _leitor_dx)
-registrar_leitor("imagem", _leitor_imagem)
+register_reader("sintetico", _leitor_sintetico)
+register_reader("csv", _leitor_csv)
+register_reader("dx", _leitor_dx)
+register_reader("imagem", _leitor_imagem)
 
 
 def carregar_dados(cfg: "Config"
@@ -1159,4 +1159,4 @@ def carregar_dados(cfg: "Config"
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     metadados_df is always None in 'sintetico'/'csv' mode; mae_id is None
     only in 'csv'/'imagem' mode (sem replicas fisicas conhecidas)."""
-    return obter_leitor(cfg.modo)(cfg)
+    return get_reader(cfg.modo)(cfg)
