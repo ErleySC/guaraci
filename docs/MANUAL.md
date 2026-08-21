@@ -449,7 +449,7 @@ significativo) e um resumo (número de variáveis significativas) no
 **DModX / DModY** (nomenclatura padrão SIMCA-P/Unscrambler, Eriksson et al.,
 2006) — sempre calculados, sem *toggle*: são o **mesmo** T²/Q-resíduo e
 resíduo de predição já usados nas figuras (`fig3_outliers`/
-`fig7_pls_regressao`), apenas **normalizados e nomeados** na escala/convenção
+`fig7_pls_regression`), apenas **normalizados e nomeados** na escala/convenção
 que usuários vindos dessas ferramentas comerciais já reconhecem (DModX ≈ 1 =
 resíduo típico; acima do limite crítico = fora do modelo). Não geram figura
 nova (seria redundante com as já existentes) — aparecem como resumo (limite

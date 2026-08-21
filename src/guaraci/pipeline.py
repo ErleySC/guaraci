@@ -200,12 +200,12 @@ from guaraci.figuras import (   # noqa: E402
     fig2_plsda_scores,
     fig3_outliers,
     fig4_confusao,
-    fig6_preprocessamento,
+    fig6_preprocessing,
     fig_extra_wold,
     fig_extra_holdout,
     fig_extra_comparacao_pipelines,
-    fig5b_vip_estabilidade,
-    fig7_pls_regressao,
+    fig5b_vip_stability,
+    fig7_pls_regression,
     fig_sprint3_sr_vip,
     fig_sprint3_score_contribution,
     fig_sprint3_ddsimca_acceptance,
@@ -1085,7 +1085,7 @@ def pls_regression_by_species(
     bias_v = float(np.mean(Yvh_p - Yv_p))
 
     # pooled diagonal figure (proper diagonal: within-species calibration)
-    fig7_pls_regressao(Yc_p, Ych_p, Yv_p, Yvh_p, erros_reg_repr or [rmsec],
+    fig7_pls_regression(Yc_p, Ych_p, Yv_p, Yvh_p, erros_reg_repr or [rmsec],
                        n_opt_repr, r2c, r2v, rmsec, rmsecv, rmsep, bias_v,
                        cfg, pasta)
     # Figura de merito analitica dedicada (auditoria jul/2026, item 5):
@@ -1206,7 +1206,7 @@ def pls_regressao_pooled(
     r2c    = float(r2_score(Yc, Yc_hat))
     r2v    = float(r2_score(Yv, Yv_hat))
 
-    fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
+    fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
                         r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta)
 
     # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
@@ -1890,13 +1890,13 @@ def executar(cfg: Config):
         log.info(f"  Iteracoes validas: {boot_validos}/"
               f"{cfg.n_bootstrap_vip}  (falhos: {cast(int, boot['n_falhos'])})")
         if boot_validos > 0:
-            fig5b_vip_estabilidade(boot, wavenumbers, top_n=20,
+            fig5b_vip_stability(boot, wavenumbers, top_n=20,
                                      cfg=cfg, pasta=pasta)
         else:
             log.info("  [AVISO] Bootstrap VIP: 0 iteracoes validas — fig5b pulada.")
 
     if _fig_explor_on:
-        fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
+        fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
                                mapa_cores, cfg, pasta)
     if deve_gerar(cfg, "selecao_lvs"):
         fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta)

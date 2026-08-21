@@ -33,7 +33,7 @@ FIGURAS_CLASSIFICACAO = {
     "fig4_confusao_e_metricas_por_classe",
     "figS1_selecao_lvs",
     "fig_sprint3_sr_vip",
-    "fig6_preprocessamento",              # exploratória via escotilha figuras_detalhadas
+    "fig6_preprocessing",              # exploratória via escotilha figuras_detalhadas
     "fig_hca_dendrogram",
     "fig_loadings_pca",
     "fig_biplot_pca",                     # exploratória via escotilha figuras_detalhadas
@@ -46,7 +46,7 @@ FIGURAS_QUANTIFICACAO = {
     "fig0_espectros_medios_classe",  # overview
     "fig1_pca_scores",       # overview
     "fig3_outliers_T2_Q",    # overview
-    "figS2_pls_regressao",   # nome de arquivo de fig7_pls_regressao (só em Quantificação)
+    "figS2_pls_regressao",   # nome de arquivo de fig7_pls_regression (só em Quantificação)
     "figS3_merito_regressao",  # LOD/LOQ/Seletividade dedicada (auditoria item 5)
 }
 

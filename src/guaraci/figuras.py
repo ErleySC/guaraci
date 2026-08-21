@@ -799,7 +799,7 @@ def fig_class_mean_spectra(wavenumbers, X_raw, rotulos, mapa_cores,
     """Espectros medios por classe (banda = +-1 desvio-padrao) do dado
     BRUTO -- contexto quimico antes de qualquer modelagem (item 3 da
     lista de figuras que faltavam, CLAUDE.md secao 5). Ao contrario de
-    fig6_preprocessamento (comparacao antes/depois do pre-processamento,
+    fig6_preprocessing (comparacao antes/depois do pre-processamento,
     restrita ao objetivo Exploratorio), esta e' CONTEXTO valido em
     qualquer objetivo -- mesma logica de fig1_pca_scores/fig3_outliers,
     por isso e' chamada incondicionalmente pelo executar()."""
@@ -829,7 +829,7 @@ def fig_class_mean_spectra(wavenumbers, X_raw, rotulos, mapa_cores,
     salvar(fig, "fig0_espectros_medios_classe", pasta, cfg)
 
 
-def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
+def fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
                            mapa_cores, cfg, pasta):
     rotulos = np.asarray(rotulos, dtype=str)
     fig = plt.figure(figsize=(11.5, 6.2), constrained_layout=True)
@@ -871,7 +871,7 @@ def fig6_preprocessamento(wavenumbers, X_raw, X_processed, rotulos,
 
     _legenda_lateral(ax_leg, ax_a)
 
-    salvar(fig, "fig6_preprocessamento", pasta, cfg)
+    salvar(fig, "fig6_preprocessing", pasta, cfg)
 
 
 def _ylim_permutacao(valores: np.ndarray, obs: float,
@@ -1075,7 +1075,7 @@ def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
     salvar(fig, "fig_extra_comparacao_pipelines", pasta, cfg)
 
 
-def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
+def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
                             top_n, cfg, pasta):
     """Stratified VIP bootstrap: mean, CI95 and selection frequency."""
     vip_mean = np.asarray(cast(Any, boot["mean"]))
@@ -1141,7 +1141,7 @@ def fig5b_vip_estabilidade(boot: Dict[str, object], wavenumbers,
     salvar(fig, "fig5b_vip_bootstrap", pasta, cfg)
 
 
-def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
+def fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
                         r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta):
     fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.2),
                               constrained_layout=True)
