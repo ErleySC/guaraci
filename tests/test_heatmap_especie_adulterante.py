@@ -38,7 +38,7 @@ def dados_adulterados():
 
 def test_r2cv_conta_combinacoes(dados_adulterados):
     cfg, X, rot, conc, mae = dados_adulterados
-    res = pq.r2cv_especie_adulterante(X, conc, rot, mae, cfg)
+    res = pq.r2cv_species_by_adulterant(X, conc, rot, mae, cfg)
     assert res is not None
     assert set(res["adulterantes"]) == {"soja", "milho"}
     # 3 especies x 2 adulterantes = 6 combinacoes potenciais (avaliadas + n/a)
@@ -50,7 +50,7 @@ def test_r2cv_contador_bate_com_a_matriz(dados_adulterados):
     abaixo do limiar. Corolario do criterio de aceite: se todas passassem, o
     contador seria 0/N."""
     cfg, X, rot, conc, mae = dados_adulterados
-    res = pq.r2cv_especie_adulterante(X, conc, rot, mae, cfg)
+    res = pq.r2cv_species_by_adulterant(X, conc, rot, mae, cfg)
     finitos = [float(v) for v in res["matriz"].values() if np.isfinite(v)]
     abaixo = sum(1 for v in finitos if v < res["limiar_r2"])
     acima = sum(1 for v in finitos if v >= res["limiar_r2"])
@@ -64,13 +64,13 @@ def test_r2cv_sem_adulterante_retorna_none():
     adulterante -> None (nao inventa heatmap vazio)."""
     cfg = pq.Config(modo="sintetico", n_por_classe=10, n_replicas_sint=3)
     _wn, X, rot, conc, mae = pq.generate_synthetic_data(cfg)
-    assert pq.r2cv_especie_adulterante(X, conc, rot, mae, cfg) is None
+    assert pq.r2cv_species_by_adulterant(X, conc, rot, mae, cfg) is None
 
 
 # ── Figura ───────────────────────────────────────────────────────────────────
 def test_heatmap_gera_png_valido(tmp_path, dados_adulterados):
     cfg, X, rot, conc, mae = dados_adulterados
-    res = pq.r2cv_especie_adulterante(X, conc, rot, mae, cfg)
+    res = pq.r2cv_species_by_adulterant(X, conc, rot, mae, cfg)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
     pq.fig_heatmap_species_by_adulterant(res, cfg, pasta)

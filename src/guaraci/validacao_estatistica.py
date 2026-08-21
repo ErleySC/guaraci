@@ -6,7 +6,7 @@ teste de permutacao e teste de Wold (com paralelismo opcional via joblib).
 Extraido de pipeline.py como parte da modularizacao (Fase H). Sem acoplamento a
 Config — funcoes puras sobre X/Y/cv/pipeline_factory. pipeline.py reexporta os
 nomes, entao pipeline.teste_permutacao(...), pipeline._cv_predict_manual(...)
-etc. seguem inalterados (usados por comparar_pipelines, etapa4 e executar).
+etc. seguem inalterados (usados por compare_pipelines, etapa4 e executar).
 Coberto por tests/test_pipeline_smoke.py e tests/test_pipeline_core.py.
 """
 from __future__ import annotations

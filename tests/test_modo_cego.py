@@ -32,7 +32,7 @@ def test_padrao_e_cego(pq):
 def test_modo_cego_devolve_os_preditos(pq):
     verdadeiros = np.array(["A", "A", "B", "B"])
     preditos = np.array(["A", "B", "B", "A"])
-    rot, modo = pq.rotulos_para_quantificacao(
+    rot, modo = pq.labels_for_quantification(
         pq.Config(modo_rotulo="cego"), verdadeiros, preditos)
     assert modo == "cego"
     assert np.array_equal(rot, preditos)
@@ -42,7 +42,7 @@ def test_modo_controle_devolve_os_verdadeiros_e_se_identifica(pq):
     """Controle e' legitimo -- desde que a saida diga que e' controle."""
     verdadeiros = np.array(["A", "A", "B", "B"])
     preditos = np.array(["A", "B", "B", "A"])
-    rot, modo = pq.rotulos_para_quantificacao(
+    rot, modo = pq.labels_for_quantification(
         pq.Config(modo_rotulo="controle"), verdadeiros, preditos)
     assert modo == "controle"
     assert np.array_equal(rot, verdadeiros)
@@ -53,7 +53,7 @@ def test_sem_preditos_o_modo_cego_nao_finge_ser_cego(pq):
     para os verdadeiros e' aceitavel; cair para os verdadeiros DIZENDO que
     e' cego, nao -- seria um resultado de controle disfarcado."""
     verdadeiros = np.array(["A", "B"])
-    rot, modo = pq.rotulos_para_quantificacao(
+    rot, modo = pq.labels_for_quantification(
         pq.Config(modo_rotulo="cego"), verdadeiros, None)
     assert modo == "controle-forcado"
     assert np.array_equal(rot, verdadeiros)
@@ -61,7 +61,7 @@ def test_sem_preditos_o_modo_cego_nao_finge_ser_cego(pq):
 
 def test_modo_invalido_falha_alto(pq):
     with pytest.raises(ValueError, match="modo_rotulo"):
-        pq.rotulos_para_quantificacao(
+        pq.labels_for_quantification(
             pq.Config(modo_rotulo="talvez"), np.array(["A"]), np.array(["A"]))
 
 
@@ -96,18 +96,18 @@ def test_quantificacao_cega_ignora_rotulo_verdadeiro_envenenado(pq):
 
     cfg = pq.Config(modo_rotulo="cego", n_splits_cv=2, max_lvs=3)
 
-    rot_ok, modo_ok = pq.rotulos_para_quantificacao(cfg, y_true, preditos)
+    rot_ok, modo_ok = pq.labels_for_quantification(cfg, y_true, preditos)
     # Envenena a VERDADE (nao a predicao): rotulos embaralhados de proposito.
     y_lixo = np.array(["Z"] * len(y_true))
-    rot_env, modo_env = pq.rotulos_para_quantificacao(cfg, y_lixo, preditos)
+    rot_env, modo_env = pq.labels_for_quantification(cfg, y_lixo, preditos)
 
     assert modo_ok == modo_env == "cego"
     assert np.array_equal(rot_ok, rot_env), (
         "o rotulo verdadeiro influenciou a selecao usada na quantificacao")
 
-    r_ok = pq.r2cv_especie_adulterante(X, conc, rot_ok, mae, cfg,
+    r_ok = pq.r2cv_species_by_adulterant(X, conc, rot_ok, mae, cfg,
                                         min_niveis=3, min_grupos=3)
-    r_env = pq.r2cv_especie_adulterante(X, conc, rot_env, mae, cfg,
+    r_env = pq.r2cv_species_by_adulterant(X, conc, rot_env, mae, cfg,
                                          min_niveis=3, min_grupos=3)
     if r_ok is None and r_env is None:
         pytest.skip("dataset sintetico sem adulterante nomeado no mae_id")
@@ -126,8 +126,8 @@ def test_modo_controle_de_fato_ve_a_verdade(pq):
     _eixo, _X, y_true, _conc, _mae = _dados_com_teor(pq)
     cfg = pq.Config(modo_rotulo="controle")
     y_lixo = np.array(["Z"] * len(y_true))
-    rot_ok, _ = pq.rotulos_para_quantificacao(cfg, y_true, y_true.copy())
-    rot_env, _ = pq.rotulos_para_quantificacao(cfg, y_lixo, y_true.copy())
+    rot_ok, _ = pq.labels_for_quantification(cfg, y_true, y_true.copy())
+    rot_env, _ = pq.labels_for_quantification(cfg, y_lixo, y_true.copy())
     assert not np.array_equal(rot_ok, rot_env), (
         "em modo controle a verdade TEM que ser usada -- se envenena-la nao "
         "muda nada, os dois modos sao o mesmo e o teste cego nao prova nada")
@@ -139,7 +139,7 @@ def test_erro_de_classificacao_se_propaga_no_modo_cego(pq):
     aconteceria em producao, e o numero precisa refleti-lo."""
     y_true = np.array(["A", "A", "A", "B", "B", "B"])
     preditos = np.array(["A", "A", "B", "B", "B", "A"])   # 2 erros
-    rot, modo = pq.rotulos_para_quantificacao(
+    rot, modo = pq.labels_for_quantification(
         pq.Config(modo_rotulo="cego"), y_true, preditos)
     assert modo == "cego"
     assert int(np.sum(rot != y_true)) == 2, (

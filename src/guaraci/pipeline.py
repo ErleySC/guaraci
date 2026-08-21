@@ -463,7 +463,7 @@ def classification_metrics(y_true, y_pred, classes) -> Dict[str, float]:
     }
 
 
-def comparar_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
+def compare_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
                         y_int: np.ndarray, cv_indices: list,
                         max_lv: int = 8) -> Dict[str, Dict[str, float]]:
     """Evaluates several preprocessing pipelines via CV. For each
@@ -642,7 +642,7 @@ def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
 # Validacao estatistica (cross_val_predict manual, BCa, CV-ANOVA, teste de
 # permutacao e de Wold) extraida p/ validacao_estatistica.py (Fase H).
 # Reexportada para nao quebrar pipeline.teste_permutacao(...),
-# pipeline._cv_predict_manual(...) nem as chamadas em comparar_pipelines/
+# pipeline._cv_predict_manual(...) nem as chamadas em compare_pipelines/
 # etapa4/executar.
 from guaraci.validacao_estatistica import (   # noqa: E402
     _cv_predict_manual,
@@ -812,7 +812,7 @@ def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
     return grupos
 
 
-def rotulos_para_quantificacao(cfg: "Config", rotulos_verdadeiros: np.ndarray,
+def labels_for_quantification(cfg: "Config", rotulos_verdadeiros: np.ndarray,
                                 rotulos_preditos: Optional[np.ndarray]
                                 ) -> Tuple[np.ndarray, str]:
     """Quais rotulos a calibracao por classe pode ver. Devolve (rotulos, modo).
@@ -851,7 +851,7 @@ def rotulos_para_quantificacao(cfg: "Config", rotulos_verdadeiros: np.ndarray,
     return np.asarray(rotulos_preditos, dtype=str), "cego"
 
 
-def r2cv_especie_adulterante(
+def r2cv_species_by_adulterant(
         X: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], cfg: "Config", *,
         limiar_r2: float = 0.70, min_niveis: int = 3,
@@ -2148,7 +2148,7 @@ def executar(cfg: Config):
 
     if cfg.comparar_pipelines and should_generate(cfg, "comparar_pipelines"):
         log.info("\n[6b/7] Comparacao de pipelines de pre-processamento...")
-        comp = comparar_pipelines(cfg, X_raw, Y_bin, y_int, cv_indices,
+        comp = compare_pipelines(cfg, X_raw, Y_bin, y_int, cv_indices,
                                     max_lv=cfg.max_lvs)
         fig_extra_comparacao_pipelines(comp, cfg, pasta)
         pd.DataFrame(comp).T.to_csv(
@@ -2563,10 +2563,10 @@ def executar(cfg: Config):
                       f"evitar confusao inter-especies)")
                 # Rotulos da calibracao por classe: PREDITOS no modo cego
                 # (padrao), verdadeiros so' em modo controle. Ver
-                # rotulos_para_quantificacao -- e' a diferenca entre medir o
+                # labels_for_quantification -- e' a diferenca entre medir o
                 # que o usuario vai obter e medir um cenario que ele nunca
                 # tera'.
-                _rot_quant, _modo_quant = rotulos_para_quantificacao(
+                _rot_quant, _modo_quant = labels_for_quantification(
                     cfg, rotulos, pred_lab)
                 log.info(f"  Modo de rotulo na quantificacao: {_modo_quant}"
                          + ("  [os numeros abaixo NAO representam uso real]"
@@ -2649,9 +2649,9 @@ def executar(cfg: Config):
                 # heatmap expoe cada combinacao e MARCA as que falham (so roda
                 # em Quantificacao, ja garantido pelo guard objetivo acima).
                 try:
-                    _rot_hm, _ = rotulos_para_quantificacao(
+                    _rot_hm, _ = labels_for_quantification(
                         cfg, rotulos, pred_lab)
-                    _r2cv = r2cv_especie_adulterante(
+                    _r2cv = r2cv_species_by_adulterant(
                         X_raw, conc_arr, _rot_hm, mae_id, cfg)
                     if _r2cv is not None:
                         log.info(f"\n[7c/7] R2cv por especie x adulterante — "
