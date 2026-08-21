@@ -2697,7 +2697,7 @@ def executar(cfg: Config):
 from guaraci.config_io import (   # noqa: F401
     _PRE_PROC_FRIENDLY, _PRE_PROC_INV, _CONFIG_SPEC,
     _attr_para_yaml, _checar_faixa, _coagir_valor, _validar_semantico,
-    _fmt_yaml, salvar_config, carregar_config, _validar_pasta_dados,
+    _fmt_yaml, save_config, load_config, _validar_pasta_dados,
 )
 
 def _editar_campo(cfg: Config, s: Dict[str, Any]) -> None:
@@ -2740,10 +2740,10 @@ def menu_interativo(cfg: Optional[Config] = None,
     cfg = cfg if cfg is not None else Config()
     if os.path.exists(caminho_cfg):
         try:
-            cfg = carregar_config(caminho_cfg, base=cfg)
+            cfg = load_config(caminho_cfg, base=cfg)
             log.info(f"[config] carregado de {caminho_cfg}")
         except (RuntimeError, FileNotFoundError, ValueError) as e:
-            # carregar_config so' lanca esses 3 tipos (PyYAML ausente,
+            # load_config so' lanca esses 3 tipos (PyYAML ausente,
             # arquivo ausente, chaves invalidas) -- ver config_io.py.
             log.info(f"[config] nao foi possivel carregar ({e}). Usando padroes.")
 
@@ -2765,11 +2765,11 @@ def menu_interativo(cfg: Optional[Config] = None,
         if escolha in ("q", "sair", "quit"):
             log.info("  encerrado."); return
         if escolha in ("s", "salvar"):
-            salvar_config(cfg, caminho_cfg)
+            save_config(cfg, caminho_cfg)
             log.info(f"  salvo em {caminho_cfg}"); continue
         if escolha in ("l", "carregar"):
             try:
-                cfg = carregar_config(caminho_cfg, base=cfg)
+                cfg = load_config(caminho_cfg, base=cfg)
                 log.info("  recarregado.")
             except (RuntimeError, FileNotFoundError, ValueError) as e:
                 log.info(f"  erro: {e}")
@@ -2783,7 +2783,7 @@ def menu_interativo(cfg: Optional[Config] = None,
                 for _e in _erros_sem:
                     log.info(f"  [!] {_e}")
                 log.info("  Corrija antes de rodar."); continue
-            salvar_config(cfg, caminho_cfg)
+            save_config(cfg, caminho_cfg)
             log.info("  iniciando pipeline...\n")
             executar(cfg); return
         if escolha.isdigit() and 1 <= int(escolha) <= len(_CONFIG_SPEC):
@@ -2799,7 +2799,7 @@ if __name__ == "__main__":
     _CFG_PATH = os.path.join(os.getcwd(), "config.yaml")
     if "--rodar" in sys.argv:
         # Modo direto: usa config.yaml se existir, senao a Config do codigo.
-        _cfg = carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
+        _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
         executar(_cfg)
     elif "--codigo" in sys.argv:
         executar(CFG)                       # modo legado (Config embutida)
@@ -2812,5 +2812,5 @@ if __name__ == "__main__":
         except ImportError:
             menu_interativo(CFG, _CFG_PATH)  # fallback para o menu antigo
     else:
-        _cfg = carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
+        _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
         executar(_cfg)

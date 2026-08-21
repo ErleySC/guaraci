@@ -15,7 +15,7 @@ que resolve simbolos deste modulo por nome):
     (TECNICAS), layout de menu (MENU_FIELDS), rotulos de DD-SIMCA
     (_DDSIMCA_DISPLAY/_DDSIMCA_INPUT), e os re-exports de pipeline.py
     (_CONFIG_SPEC, _SPEC_BY_KEY, _attr_para_yaml, _coagir_valor, _fmt_yaml,
-    carregar_config, salvar_config) que guaraci.py tambem resolve por aqui.
+    load_config, save_config) que guaraci.py tambem resolve por aqui.
 
 Uso:
     python -m guaraci.guaraci   (unico ponto de entrada da CLI interativa)
@@ -32,9 +32,9 @@ import guaraci.pipeline as pq
 
 _CONFIG_SPEC = pq._CONFIG_SPEC
 
-salvar_config = pq.salvar_config
+save_config = pq.save_config
 
-carregar_config = pq.carregar_config
+load_config = pq.load_config
 
 _attr_para_yaml = pq._attr_para_yaml
 

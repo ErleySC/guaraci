@@ -4,7 +4,7 @@ Config é user-facing e crítica: uma regressão em coerção/validação corrom
 SILENCIOSAMENTE os parâmetros de toda corrida (ou faz o pipeline quebrar tarde,
 depois de minutos processando). Estes testes travam o comportamento de
 _coagir_valor / _checar_faixa / _validar_semantico / _fmt_yaml e o roundtrip
-salvar_config↔carregar_config.
+save_config↔load_config.
 """
 import pytest
 
@@ -166,7 +166,7 @@ def test_validar_semantico_holdout_fora_de_faixa():
     assert any("holdout" in e.lower() for e in erros)
 
 
-# ── roundtrip salvar_config ↔ carregar_config ────────────────────────────────
+# ── roundtrip save_config ↔ load_config ────────────────────────────────
 def test_roundtrip_preserva_valores(tmp_path):
     cfg = Config()
     cfg.nivel = "N2"
@@ -175,8 +175,8 @@ def test_roundtrip_preserva_valores(tmp_path):
     cfg.preprocessamento_padrao = "snv_sg_mc"
     caminho = str(tmp_path / "config.yaml")
 
-    cio.salvar_config(cfg, caminho)
-    lido = cio.carregar_config(caminho)
+    cio.save_config(cfg, caminho)
+    lido = cio.load_config(caminho)
 
     assert lido.nivel == "N2"
     assert lido.max_lvs == 25
@@ -186,7 +186,7 @@ def test_roundtrip_preserva_valores(tmp_path):
 
 def test_carregar_config_inexistente_levanta(tmp_path):
     with pytest.raises(FileNotFoundError):
-        cio.carregar_config(str(tmp_path / "nao_existe.yaml"))
+        cio.load_config(str(tmp_path / "nao_existe.yaml"))
 
 
 def test_carregar_config_falha_em_chave_desconhecida(tmp_path):
@@ -204,7 +204,7 @@ def test_carregar_config_falha_em_chave_desconhecida(tmp_path):
     caminho = tmp_path / "c.yaml"
     caminho.write_text("chave_inexistente: 123\nnivel: N1\n", encoding="utf-8")
     with pytest.raises(ValueError, match="chave_inexistente.*chave desconhecida"):
-        cio.carregar_config(str(caminho))
+        cio.load_config(str(caminho))
 
 
 def test_carregar_config_sugere_chave_parecida_em_erro_de_digitacao(tmp_path):
@@ -212,7 +212,7 @@ def test_carregar_config_sugere_chave_parecida_em_erro_de_digitacao(tmp_path):
     # 'nivel' com 'l' trocado por 'I' maiusculo -- erro de digitacao plausivel
     caminho.write_text("nivl: N1\n", encoding="utf-8")
     with pytest.raises(ValueError, match=r"voce quis dizer 'nivel'"):
-        cio.carregar_config(str(caminho))
+        cio.load_config(str(caminho))
 
 
 def test_carregar_config_valor_invalido_reune_erro(tmp_path):
@@ -220,7 +220,7 @@ def test_carregar_config_valor_invalido_reune_erro(tmp_path):
     # holdout_fracao tem faixa 0..0.5; 2.0 deve ser rejeitado na coerção
     caminho.write_text("holdout_fracao: 2.0\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Problemas no config"):
-        cio.carregar_config(str(caminho))
+        cio.load_config(str(caminho))
 
 
 # ── _validar_pasta_dados ─────────────────────────────────────────────────────

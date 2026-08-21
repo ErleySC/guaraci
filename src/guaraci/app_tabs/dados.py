@@ -174,14 +174,14 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
             if erros_dados:
                 st.error("Fix the fields before saving.")
             else:
-                pq.salvar_config(cfg_dados, cfg_path)
+                pq.save_config(cfg_dados, cfg_path)
                 st.session_state.cfg_base = cfg_dados
                 st.success(f"Saved to {cfg_path}")
     with c_s2:
         if st.button("↺ Reload config.yaml", key="btn_reload_cfg_dados",
                      use_container_width=True):
             try:
-                cfg_recarregado = pq.carregar_config(cfg_path)
+                cfg_recarregado = pq.load_config(cfg_path)
                 st.session_state.cfg_base = cfg_recarregado
                 # Sem isso, widgets ja' renderizados (ex.: "Modo de
                 # analise") continuam mostrando o valor ANTIGO mesmo com

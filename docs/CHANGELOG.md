@@ -422,7 +422,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-07 — CLI: estado do usuario sai do
              idioma/modo e codigos_usuario.json eram gravados DENTRO do
              diretorio onde guaraci.py esta instalado -- quebra em
              qualquer instalacao read-only (pip de sistema, Docker,
-             `pip install --user` em alguns casos). salvar_config() logo
+             `pip install --user` em alguns casos). save_config() logo
              antes de rodar o pipeline nao tinha NENHUMA guarda contra
              isso, derrubando o CLI com PermissionError no pior momento
              possivel. Movido para Path.home()/".guaraci". Migracao
@@ -1155,7 +1155,7 @@ v23 — 2026-05-29 — ACCESSIBLE LAYER (no code editing):
                    (1) _CONFIG_SPEC: single source mapping friendly names
                        <-> Config attributes, with type,
                        description and options for validation;
-                   (2) salvar_config/carregar_config: commented YAML in
+                   (2) save_config/load_config: commented YAML in
                        plain language; defaults preserved for missing keys;
                        unknown keys ignored;
                    (3) menu_interativo: terminal assistant (CMD-style)

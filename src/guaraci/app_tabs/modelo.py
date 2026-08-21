@@ -230,7 +230,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 "novamente.")
             st.stop()
         try:
-            pq.salvar_config(cfg_run, cfg_path)
+            pq.save_config(cfg_run, cfg_path)
         except OSError as _e_cfg:
             # Não impede a execução (a config vai em memória para o worker),
             # mas avisa: sem isso, um filesystem só-leitura (comum no Cloud)

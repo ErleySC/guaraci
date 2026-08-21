@@ -593,7 +593,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 |---|---|
 | `pipeline.py` | Orquestrador `executar()`, menu de terminal legado e **fachada de reexport** de todos os módulos |
 | `modos_analise.py` | **Objetivo científico** (Exploratório/Classificação/Quantificação, seção 2.2): fonte única que decide quais figuras/relatórios cada execução gera (`resolver_objetivo`, `deve_gerar`, `descrever_plano`). `descrever_plano` filtra tanto pelo objetivo quanto pelos módulos opt-in ligados (DD-SIMCA, OPLS-DA, Benchmark...) — alimenta o painel ao vivo do terminal **e** a prévia "O que será gerado" da aba Model do app web, que atualiza em tempo real conforme os toggles mudam |
-| `config_io.py` | **Fonte única da configuração**: `_CONFIG_SPEC` (campo amigável ↔ atributo), ler/gravar/validar/coagir (`carregar_config`, `salvar_config`, `_coagir_valor`, `_validar_semantico`) |
+| `config_io.py` | **Fonte única da configuração**: `_CONFIG_SPEC` (campo amigável ↔ atributo), ler/gravar/validar/coagir (`load_config`, `save_config`, `_coagir_valor`, `_validar_semantico`) |
 | `resultados_io.py` | Escrita dos artefatos de uma corrida: `resumo_modelo.txt`, `model_card.md`, identificadores CSV, notas metodológicas, métricas PLS |
 | `config.py` | *dataclass* `Config`, fonte única de `__version__`/`_NIVEL_NOME` e das constantes de nome de pasta (`NOME_GRAFICOS`/`NOME_TABELAS`/`NOME_RELATORIOS`/`NOME_MODELOS`, seção 3) |
 | `chemometric_stats.py` | VIP, Selectivity Ratio, teste de incerteza de Martens, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), domínio de aplicabilidade |

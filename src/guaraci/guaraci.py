@@ -71,8 +71,8 @@ from guaraci.app_logic import (
 
 Config        = pq.Config
 executar      = pq.executar
-salvar_config = pq.salvar_config
-carregar_config = pq.carregar_config
+save_config = pq.save_config
+load_config = pq.load_config
 
 # Dicionarios de i18n/perfis do cli_assistente. Import de pacote normal (mesmo
 # pacote): importar o modulo NAO dispara main() (guardado por __main__), entao
@@ -100,8 +100,8 @@ _DDSIMCA_INPUT       = _try("_DDSIMCA_INPUT")
 _coagir_valor        = _try("_coagir_valor", lambda s, r: r)
 _attr_para_yaml      = _try("_attr_para_yaml", lambda s, c: "")
 _fmt_yaml            = _try("_fmt_yaml", str)
-salvar_config        = _try("salvar_config", pq.salvar_config)
-carregar_config      = _try("carregar_config", pq.carregar_config)
+save_config        = _try("save_config", pq.save_config)
+load_config      = _try("load_config", pq.load_config)
 
 # Persistencia de estado do CLI.
 #
@@ -180,7 +180,7 @@ def _carregar_codigos_usuario() -> dict:
 # ): ate' entao esses arquivos eram gravados dentro de
 # _BASE_DIR, ou seja, DENTRO do diretorio de instalacao do pacote. Isso
 # quebra em qualquer instalacao read-only (pip de sistema, imagem Docker,
-# alguns `pip install --user`) -- `salvar_config()` logo antes de rodar o
+# alguns `pip install --user`) -- `save_config()` logo antes de rodar o
 # pipeline (ver `_rodar_pipeline`) nao tinha nenhuma guarda contra isso e
 # derrubava o CLI com um PermissionError bem na hora de rodar a analise.
 # Home do usuario e' gravavel em praticamente qualquer instalacao.
@@ -3464,7 +3464,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     _sincronizar_dpi(cfg)
     try:
         _USER_DIR.mkdir(parents=True, exist_ok=True)
-        salvar_config(cfg, str(_CFG_PATH))
+        save_config(cfg, str(_CFG_PATH))
     except OSError as _e_cfg_save:
         # Achado do "checkup geral" de interface (2026-08-07): esta chamada
         # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
@@ -3604,7 +3604,7 @@ def _salvar_yaml(cfg: Config) -> None:
     _PERFIS_DIR.mkdir(parents=True, exist_ok=True)
     path = _PERFIS_DIR / f"{san}.yaml"
     try:
-        salvar_config(cfg, str(path))
+        save_config(cfg, str(path))
         _lbl = "Salvo" if _lang() == "PT" else "Saved"
         console.print(f"  [g]✓ {_lbl}: {escape(str(path))}[/g]")
     except OSError as e:
@@ -3631,7 +3631,7 @@ def _carregar_yaml(cfg: Config) -> None:
     if raw.isdigit() and 1 <= int(raw) <= len(arquivos):
         path = arquivos[int(raw) - 1]
         try:
-            cfg2 = carregar_config(str(path))
+            cfg2 = load_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
                 except (AttributeError, TypeError) as _e_attr:
@@ -3977,7 +3977,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     cfg = Config()
     if _CFG_PATH.exists():
         try:
-            cfg = carregar_config(str(_CFG_PATH))
+            cfg = load_config(str(_CFG_PATH))
         except (RuntimeError, FileNotFoundError, ValueError) as _e_cfg:
             logging.getLogger(__name__).debug(
                 "config.yaml nao carregado no boot, usando defaults: %s", _e_cfg)

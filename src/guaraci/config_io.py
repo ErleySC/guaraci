@@ -8,7 +8,7 @@ ler/gravar/validar/coagir. Depende só de config.Config; nenhuma dependência
 do motor (executar) — por isso não há import circular.
 
 pipeline.py reexporta todos estes nomes, então `pipeline._CONFIG_SPEC`,
-`pipeline.carregar_config(...)`, `pq._coagir_valor(...)` etc. seguem
+`pipeline.load_config(...)`, `pq._coagir_valor(...)` etc. seguem
 funcionando sem alteração (o menu de terminal legado em pipeline.py e o app
 web consomem daqui via a fachada).
 """
@@ -278,7 +278,7 @@ def _fmt_yaml(v: Any) -> str:
     return str(v)
 
 
-def salvar_config(cfg: Config, caminho: str) -> None:
+def save_config(cfg: Config, caminho: str) -> None:
     """Escreve config.yaml em linguagem simples, com um comentario explicativo
     acima de cada campo. Regenera os comentarios a cada salvamento."""
     linhas = [
@@ -301,7 +301,7 @@ def salvar_config(cfg: Config, caminho: str) -> None:
         f.write("\n".join(linhas))
 
 
-def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
+def load_config(caminho: str, base: Optional[Config] = None) -> Config:
     """Le config.yaml e devolve uma Config. Mantem os defaults para chaves
     ausentes; reune erros (valor invalido OU chave desconhecida) numa
     mensagem clara.

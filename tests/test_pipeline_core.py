@@ -777,7 +777,7 @@ def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
 # ── IO de configuração (futuro: guaraci/config.py) ────────────────────────────
 
 def test_config_roundtrip_preserva_valores(pq, tmp_path):
-    """salvar_config → carregar_config preserva os valores editados."""
+    """save_config → load_config preserva os valores editados."""
     cfg = pq.Config()
     cfg.nivel = "N2"
     cfg.max_lvs = 17
@@ -785,8 +785,8 @@ def test_config_roundtrip_preserva_valores(pq, tmp_path):
     cfg.wn_min = 900.0
     cfg.wn_max = 1800.0
     caminho = str(tmp_path / "config.yaml")
-    pq.salvar_config(cfg, caminho)
-    lido = pq.carregar_config(caminho)
+    pq.save_config(cfg, caminho)
+    lido = pq.load_config(caminho)
     assert lido.nivel == "N2"
     assert lido.max_lvs == 17
     assert lido.frac_holdout == pytest.approx(0.3)
