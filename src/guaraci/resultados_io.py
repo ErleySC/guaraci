@@ -299,8 +299,8 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     # qualquer execucao -- inclusive rodando sobre milho em grao (medido na
     # auditoria mestre de 2026-08-17). Um model card que declara a matriz
     # errada e' pior que um sem matriz nenhuma.
-    from guaraci.perfil_matriz import perfil_de_cfg
-    perfil = perfil_de_cfg(cfg)
+    from guaraci.perfil_matriz import cfg_profile
+    perfil = cfg_profile(cfg)
     voc = perfil.vocabulario
     uso_pretendido = {
         "N1": (f"Identificacao de {voc.classe} em {voc.matriz} a partir do "

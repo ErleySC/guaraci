@@ -161,6 +161,6 @@ def apply_profile(cfg: "Config", perfil: PerfilMatriz) -> "Config":
     return cfg
 
 
-def perfil_de_cfg(cfg: "Config") -> PerfilMatriz:
+def cfg_profile(cfg: "Config") -> PerfilMatriz:
     """Perfil declarado em `cfg.perfil_matriz`. Erro claro se nao existir."""
     return load_profile(getattr(cfg, "perfil_matriz", "generico"))
