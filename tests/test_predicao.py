@@ -49,12 +49,12 @@ def modelo_e_dados(pq, tmp_path_factory):
 
 def test_validar_pacote_modelo_aceita_pacote_real(modelo_e_dados):
     pkg, _X, _wn = modelo_e_dados
-    pr.validar_pacote_modelo(pkg)  # nao deve levantar
+    pr.validate_model_package(pkg)  # nao deve levantar
 
 
 def test_validar_pacote_modelo_rejeita_pacote_incompleto():
     with pytest.raises(ValueError, match="Modelo invalido"):
-        pr.validar_pacote_modelo({"preprocessador": None})
+        pr.validate_model_package({"preprocessador": None})
 
 
 def test_predizer_amostras_retorna_colunas_esperadas(modelo_e_dados):
@@ -133,7 +133,7 @@ def test_carregar_csv_predicao_detecta_colunas_numericas(tmp_path, modelo_e_dado
     caminho = tmp_path / "espectros_novos.csv"
     df_in.to_csv(caminho, index=False, sep=";")
 
-    X_out, wn_out, meta = pr.carregar_csv_predicao(str(caminho))
+    X_out, wn_out, meta = pr.load_prediction_csv(str(caminho))
     assert X_out.shape == X_novos.shape
     assert len(wn_out) == len(wn)
     assert list(meta.columns) == ["amostra_id"]
@@ -144,7 +144,7 @@ def test_carregar_csv_predicao_sem_colunas_numericas_leva_erro_claro(tmp_path):
     pd.DataFrame({"nome": ["a", "b"], "classe": ["X", "Y"]}).to_csv(
         caminho, index=False, sep=";")
     with pytest.raises(ValueError, match="numero de onda"):
-        pr.carregar_csv_predicao(str(caminho))
+        pr.load_prediction_csv(str(caminho))
 
 
 # ── Integracao end-to-end via CLI (guaraci.py, menu_prediction) ──────────────

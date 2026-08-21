@@ -11,8 +11,8 @@ import streamlit as st
 
 from guaraci.predicao import (
     predizer_amostras as _predizer,
-    validar_pacote_modelo as _validar_pacote_modelo,
-    carregar_csv_predicao as _carregar_csv_predicao,
+    validate_model_package as _validar_pacote_modelo,
+    load_prediction_csv as _carregar_csv_predicao,
 )
 from guaraci.app_logic import temp_upload_path
 

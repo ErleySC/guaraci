@@ -2535,8 +2535,8 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
             # confiar=True: o operador ja confirmou explicitamente acima.
             pkg = _pred.load_model(cam_modelo, confiar=True)
-            _pred.validar_pacote_modelo(pkg)
-            X_new, wn_new, meta_df = _pred.carregar_csv_predicao(cam_csv)
+            _pred.validate_model_package(pkg)
+            X_new, wn_new, meta_df = _pred.load_prediction_csv(cam_csv)
             df_res = _pred.predizer_amostras(pkg, X_new, wn_new)
             if len(meta_df.columns) > 0 and len(meta_df) == len(df_res):
                 df_res = pd.concat([meta_df.reset_index(drop=True), df_res], axis=1)

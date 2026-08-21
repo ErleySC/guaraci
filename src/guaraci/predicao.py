@@ -75,7 +75,7 @@ def load_model(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
 
     AVISO DE SEGURANCA: `.joblib` usa pickle, que EXECUTA CODIGO ARBITRARIO
     contido no arquivo NO MOMENTO DO CARREGAMENTO -- antes de qualquer
-    validacao de conteudo ser sequer possivel (`validar_pacote_modelo` so'
+    validacao de conteudo ser sequer possivel (`validate_model_package` so'
     roda DEPOIS, tarde demais para impedir a execucao). Carregue apenas
     modelos que voce mesmo treinou ou de origem CONHECIDA e CONFIAVEL.
     Ver `docs/SECURITY.md`.
@@ -119,7 +119,7 @@ def load_model(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
     return joblib.load(caminho)
 
 
-def validar_pacote_modelo(pkg: Dict) -> None:
+def validate_model_package(pkg: Dict) -> None:
     """Validacao minima de estrutura do pacote .joblib carregado.
 
     Nao valida CONTEUDO (nao ha como, com pickle) -- so' confirma que as
@@ -133,7 +133,7 @@ def validar_pacote_modelo(pkg: Dict) -> None:
             f"encontrado {set(pkg.keys())}")
 
 
-def carregar_csv_predicao(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+def load_prediction_csv(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """Le um CSV de espectros novos (colunas=numeros de onda, sem coluna de
     classe) e separa as colunas numericas (espectro) das colunas de
     metadados (ex.: nome da amostra), se houver.
