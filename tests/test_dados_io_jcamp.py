@@ -54,11 +54,11 @@ def test_parse_dx_reconstroi_grade_e_valores(pq, tmp_path):
 
 
 def test_extrair_title_do_dx_le_sem_carregar_espectro(pq, tmp_path):
-    """extrair_title_do_dx: le só a linha ##TITLE=, sem decodificar os dados."""
+    """extract_dx_title: le só a linha ##TITLE=, sem decodificar os dados."""
     caminho = str(tmp_path / "amostra.dx")
     _escrever_dx(caminho, "CAP-04-11-2099-AD-S-4.13%-T2", firstx=100,
                  lastx=105, y_ints=[1, 2, 3, 4, 5, 6])
-    title = pq.extrair_title_do_dx(caminho)
+    title = pq.extract_dx_title(caminho)
     assert title == "CAP-04-11-2099-AD-S-4.13%-T2"
 
 

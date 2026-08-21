@@ -120,7 +120,7 @@ def _dados_regressao_multi_especie(seed=0, n_por_especie=24, p=30,
                                    n_especies=3, n_replicas=3):
     """Dados sinteticos multi-especie com replicas fisicas (mae_id) e teor
     de adulterante correlacionado ao espectro (mesmo estilo de
-    gerar_dados_sinteticos, mas construido diretamente p/ o teste)."""
+    generate_synthetic_data, mas construido diretamente p/ o teste)."""
     rng = np.random.default_rng(seed)
     X_list, conc_list, rot_list, mae_list = [], [], [], []
     especies = [f"Esp_{chr(65+i)}" for i in range(n_especies)]

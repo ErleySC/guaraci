@@ -266,7 +266,7 @@ def parse_title(title: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def extrair_title_do_dx(caminho: str) -> Optional[str]:
+def extract_dx_title(caminho: str) -> Optional[str]:
     """Extracts the ##TITLE= line without loading all 8192 spectral points."""
     try:
         with open(caminho, "r", encoding="latin-1", errors="replace") as f:
@@ -278,7 +278,7 @@ def extrair_title_do_dx(caminho: str) -> Optional[str]:
                     break
     except OSError as _e_title:   # arquivo ilegivel/ausente/permissao
         logging.getLogger(__name__).debug(
-            "extrair_title_do_dx('%s'): %s", caminho, _e_title)
+            "extract_dx_title('%s'): %s", caminho, _e_title)
     return None
 
 
@@ -382,7 +382,7 @@ def kennard_stone_split_group_aware(
     return kennard_stone_split(X, frac_treino=frac_cal)
 
 
-def gerar_dados_sinteticos(cfg: "Config"):
+def generate_synthetic_data(cfg: "Config"):
     """Gera espectros sinteticos de teste, incluindo REPLICAS FISICAS
     (n_replicas_sint por ponto amostral, como T1/T2/T3 do mesmo ponto real) e
     mae_id — sem isso, DD-SIMCA (N2) e as figuras de merito de regressao (N3)
@@ -952,7 +952,7 @@ def load_dx(pasta: str, parte_classe: int = 0,
         nome_arq = os.path.splitext(os.path.basename(arq))[0]
         title_parsed: Optional[Dict[str, Any]] = None
         if pode_parse_title:
-            title = extrair_title_do_dx(arq)
+            title = extract_dx_title(arq)
             # Pureza indeterminada (achado A2-2): sem TITLE parseavel E sem
             # teor recuperavel do nome, a amostra entraria como "pura" e
             # contaminaria o treino one-class. Excluida com aviso nominal,
@@ -1121,7 +1121,7 @@ def load_dx(pasta: str, parte_classe: int = 0,
 
 
 def _leitor_sintetico(cfg: "Config"):
-    wn, X, rot, conc, mae = gerar_dados_sinteticos(cfg)
+    wn, X, rot, conc, mae = generate_synthetic_data(cfg)
     return wn, X, rot, conc, mae, None
 
 

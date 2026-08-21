@@ -84,14 +84,14 @@ CFG = Config()
 
 
 # parse_title/JCAMP-DX (CODIGO_ESPECIE, ADULTERANTE_NOME, parse_title,
-# extrair_title_do_dx) extraidos p/ dados_io.py (Fase H). Reexportados aqui
+# extract_dx_title) extraidos p/ dados_io.py (Fase H). Reexportados aqui
 # para nao quebrar `pipeline.parse_title(...)` nem o restante do modulo.
 from guaraci.dados_io import (   # noqa: E402
     CODIGO_ESPECIE,
     ADULTERANTE_NOME,
     adulterante_de_mae_id,
     parse_title,
-    extrair_title_do_dx,
+    extract_dx_title,
     sanitizar_metadados,
 )
 from guaraci.perfil_matriz import apply_profile, perfil_de_cfg  # noqa: E402
@@ -660,7 +660,7 @@ from guaraci.validacao_estatistica import (   # noqa: E402
 # dados_io.py (Fase H). Reexportado aqui para nao quebrar as chamadas de
 # `executar()` (`pipeline.load_data(cfg)` etc.).
 from guaraci.dados_io import (   # noqa: E402
-    gerar_dados_sinteticos,
+    generate_synthetic_data,
     kennard_stone,
     kennard_stone_split,
     kennard_stone_split_group_aware,

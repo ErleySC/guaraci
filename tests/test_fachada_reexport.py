@@ -34,8 +34,8 @@ CONTRATO = {
         "mapear_marcadores_classes", "edge_para_cor",
     ],
     "dados_io": [
-        "parse_title", "extrair_title_do_dx", "load_data", "load_dx",
-        "load_csv", "gerar_dados_sinteticos", "parse_dx", "parse_spectrum",
+        "parse_title", "extract_dx_title", "load_data", "load_dx",
+        "load_csv", "generate_synthetic_data", "parse_dx", "parse_spectrum",
         "CODIGO_ESPECIE", "ADULTERANTE_NOME",
         "kennard_stone", "kennard_stone_split", "kennard_stone_split_group_aware",
     ],

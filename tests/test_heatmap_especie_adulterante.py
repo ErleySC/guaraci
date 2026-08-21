@@ -32,7 +32,7 @@ def dados_adulterados():
     cfg = pq.Config(modo="sintetico", n_por_classe=12, n_pontos_sint=60,
                     n_replicas_sint=3, sint_adulterantes=("S", "M"),
                     max_lvs=5, n_splits_cv=3, seed=1)
-    _wn, X, rot, conc, mae = pq.gerar_dados_sinteticos(cfg)
+    _wn, X, rot, conc, mae = pq.generate_synthetic_data(cfg)
     return cfg, X, rot, conc, mae
 
 
@@ -63,7 +63,7 @@ def test_r2cv_sem_adulterante_retorna_none():
     """Modo sintetico legado (sem adulterantes) nao tem combinacao especie x
     adulterante -> None (nao inventa heatmap vazio)."""
     cfg = pq.Config(modo="sintetico", n_por_classe=10, n_replicas_sint=3)
-    _wn, X, rot, conc, mae = pq.gerar_dados_sinteticos(cfg)
+    _wn, X, rot, conc, mae = pq.generate_synthetic_data(cfg)
     assert pq.r2cv_especie_adulterante(X, conc, rot, mae, cfg) is None
 
 
