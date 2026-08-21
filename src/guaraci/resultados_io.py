@@ -6,7 +6,7 @@ Extraído de pipeline.py (dívida técnica pós-auditoria): estas funções são
 CHAMADAS por executar() para persistir os resultados de uma corrida, mas não
 dependem do orquestrador — só de config (__version__, _NIVEL_NOME), numpy,
 pandas e sklearn. pipeline.py reexporta todos os nomes, então
-`pipeline.salvar_resumo_modelo(...)`, `pq.generate_model_card(...)`,
+`pipeline.save_model_summary(...)`, `pq.generate_model_card(...)`,
 `pq.append_regression_summary(...)` etc. seguem funcionando (executar e os
 testes consomem via fachada).
 """
@@ -23,7 +23,7 @@ from sklearn.cross_decomposition import PLSRegression
 from guaraci.config import Config, __version__, _NIVEL_NOME
 
 
-def metricas_modelo_pls(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
+def pls_model_metrics(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
                          Y_cv: np.ndarray) -> Tuple[float, float, float]:
     """R2X via 1 - SS(X - T @ P^T) / SS(X_centered); R2Y via 1 - SS(res)/SS(Y);
     Q2 likewise using CV predictions. Rigorous reconstruction formula."""
@@ -73,7 +73,7 @@ def save_identifiers(rotulos: np.ndarray, pred_lab: np.ndarray,
 
 
 #: Notas metodologicas de transparencia (Methods section de artigo) --
-#: compartilhadas por salvar_resumo_modelo (.txt) e generate_model_card (.md),
+#: compartilhadas por save_model_summary (.txt) e generate_model_card (.md),
 #: fonte unica para nao divergirem com o tempo.
 _NOTAS_METODOLOGICAS: List[Tuple[str, str]] = [
     ("LV selection", "Wold parsimony criterion (2% RMSECV tolerance above "
@@ -101,7 +101,7 @@ _NOTAS_METODOLOGICAS: List[Tuple[str, str]] = [
 ]
 
 
-def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
+def save_model_summary(pasta: str, info: Dict[str, object]) -> None:
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     with open(caminho, "w", encoding="utf-8") as f:
         f.write("=" * 60 + "\n")
@@ -282,7 +282,7 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                       hw: Dict[str, Any], classes_unicas: np.ndarray) -> None:
     """Gera `model_card.md` (secoes de Mitchell et al. 2019, adaptado a um
     pipeline quimiometrico de autenticacao/quantificacao). Escrito no MESMO
-    ponto de `salvar_resumo_modelo` -- reaproveita o dict `resumo` inteiro,
+    ponto de `save_model_summary` -- reaproveita o dict `resumo` inteiro,
     ja com todas as metricas/diagnosticos/integridade de dados calculados,
     em vez de recalcular ou receber duzias de parametros separados.
 

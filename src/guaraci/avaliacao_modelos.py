@@ -828,7 +828,7 @@ def benchmark_regression_by_species(
 
     Hiperparametros por heuristica de literatura (sem tuning por CV interna,
     mesmo padrao de benchmark_classifiers/PLS-DA -- ver nota
-    metodologica em pipeline.salvar_resumo_modelo). Ref: Hastie, Tibshirani
+    metodologica em pipeline.save_model_summary). Ref: Hastie, Tibshirani
     & Friedman (2009), The Elements of Statistical Learning, 2nd ed.
 
     Retorna None se nenhuma especie tiver dados suficientes (mesmo criterio

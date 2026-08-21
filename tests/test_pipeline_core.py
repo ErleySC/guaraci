@@ -503,7 +503,7 @@ def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
     assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
 
 
-# ── metricas_modelo_pls: R2X/R2Y/Q2 (sem teste dedicado ate' agora) ─────────
+# ── pls_model_metrics: R2X/R2Y/Q2 (sem teste dedicado ate' agora) ─────────
 
 def test_metricas_modelo_pls_bom_ajuste_da_r2_alto(pq):
     """Y fortemente correlacionado com X: R2X/R2Y/Q2 devem ficar altos
@@ -514,7 +514,7 @@ def test_metricas_modelo_pls_bom_ajuste_da_r2_alto(pq):
     y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=50)
     modelo = PLSRegression(n_components=2, scale=False).fit(X, y.reshape(-1, 1))
     Y_cv = modelo.predict(X)  # CV "perfeita" simulada p/ o teste
-    r2x, r2y, q2 = pq.metricas_modelo_pls(modelo, X, y.reshape(-1, 1), Y_cv)
+    r2x, r2y, q2 = pq.pls_model_metrics(modelo, X, y.reshape(-1, 1), Y_cv)
     assert 0.0 < r2x <= 1.0
     assert 0.9 < r2y <= 1.0
     assert 0.9 < q2 <= 1.0
@@ -527,7 +527,7 @@ def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
     X = rng.normal(size=(20, 5))
     y = np.full((20, 1), 3.0)  # Y constante
     modelo = PLSRegression(n_components=1, scale=False).fit(X, y)
-    r2x, r2y, q2 = pq.metricas_modelo_pls(modelo, X, y, y.copy())
+    r2x, r2y, q2 = pq.pls_model_metrics(modelo, X, y, y.copy())
     assert r2y == 0.0 and q2 == 0.0
 
 
@@ -1556,7 +1556,7 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
     resumo_txt = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
         encoding="utf-8")
     # Ancorado no ":" do formato de linha de dado (`f"  {k:<N}: {v}"`, ver
-    # resultados_io.salvar_resumo_modelo) -- NAO usar so' "CV-ANOVA F" como
+    # resultados_io.save_model_summary) -- NAO usar so' "CV-ANOVA F" como
     # substring: a secao de notas metodologicas do resumo tem o cabecalho
     # estatico "[CV-ANOVA F-test]" (documentacao do metodo, sempre presente),
     # que contem "CV-ANOVA F" como prefixo e daria falso-negativo no teste.

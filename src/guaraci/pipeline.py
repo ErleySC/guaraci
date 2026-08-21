@@ -292,8 +292,8 @@ from guaraci.classificadores import (   # noqa: E402
 # resultados_io.py (dividida tecnica). Reexportados: executar() os chama e os
 # testes/consumidores usam via `pipeline.X`.
 from guaraci.resultados_io import (   # noqa: F401
-    metricas_modelo_pls, save_identifiers, _NOTAS_METODOLOGICAS,
-    salvar_resumo_modelo, append_regression_summary, _md_tabela,
+    pls_model_metrics, save_identifiers, _NOTAS_METODOLOGICAS,
+    save_model_summary, append_regression_summary, _md_tabela,
     generate_model_card, append_regression_model_card, append_heatmap_summary,
 )
 def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
@@ -1824,7 +1824,7 @@ def executar(cfg: Config):
                                              zero_division=0)))
 
     # --- 7b. R²X, R²Y, Q² ---------------------------------------------------
-    r2x, r2y, q2 = metricas_modelo_pls(pls_final, X_processed, Y_bin, Y_cv)
+    r2x, r2y, q2 = pls_model_metrics(pls_final, X_processed, Y_bin, Y_cv)
     log.info(f"\n[5b/7] R2X = {r2x:.4f}  |  R2Y = {r2y:.4f}  |  Q2 = {q2:.4f}")
 
     # --- 8. Figuras --------------------------------------------------------
@@ -2396,7 +2396,7 @@ def executar(cfg: Config):
     for cls, rec_c in zip(lb.classes_, np.asarray(rec_por_classe)):
         resumo[f"  Acc {cls}"] = float(rec_c)
 
-    salvar_resumo_modelo(pasta_logs, resumo)
+    save_model_summary(pasta_logs, resumo)
     log.info(f"  -> {os.path.join(pasta_logs, 'resumo_modelo.txt')}")
 
     # Model Card (Mitchell et al. 2019) -- mesmo ponto/dados do resumo acima.
