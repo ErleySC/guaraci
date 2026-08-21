@@ -9,7 +9,7 @@ from typing import Callable, Dict
 import pandas as pd
 import streamlit as st
 
-from guaraci.resumo_parse import parse_acuracia_por_classe
+from guaraci.resumo_parse import parse_accuracy_by_class
 from guaraci.config import NOME_TABELAS
 
 _CATS = {
@@ -66,7 +66,7 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
 
     # ── Per-Class Accuracy table (extracted from summary) ───────────────
     if resumo_txt:
-        acc_map = parse_acuracia_por_classe(resumo_txt)
+        acc_map = parse_accuracy_by_class(resumo_txt)
         if acc_map:
             with st.expander("📊 Accuracy by Class", expanded=True):
                 _df_acc = pd.DataFrame(

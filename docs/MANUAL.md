@@ -613,7 +613,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `reports.py` | Geração de relatórios do aplicativo web (PDF/Word/Excel/LaTeX/PowerPoint) |
 | `app_logic.py` | Lógica pura da interface web (progresso, formatação, coleta de configuração, leitura de artefatos, captura de log — `LogThreadSafe`), testável sem *Streamlit* |
 | `cli_logic.py` | Lógica pura da CLI de terminal (truncamento, validação de faixas, contagem de arquivos), testável sem *Rich* |
-| `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_metricas_modelo` e `parse_acuracia_por_classe` |
+| `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_model_metrics` e `parse_accuracy_by_class` |
 | `spectra_preview.py` | Carregamento/plotagem de amostra de espectros para prévia (abas Data e Preprocessing) |
 | `app_tabs/` | Um módulo por aba do aplicativo web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `relatorios`, `sobre`) |
 

@@ -25,7 +25,7 @@ from guaraci.app_logic import (
 from guaraci.config import NOME_TABELAS
 # Parsing do resumo_modelo.txt centralizado (item 19): _ex e o dicionario de
 # metricas eram duplicados nos 5 geradores; agora vem de resumo_parse.
-from guaraci.resumo_parse import extrair_metrica, parse_metricas_modelo
+from guaraci.resumo_parse import extract_metric, parse_model_metrics
 
 # Fonte unica de versao (mesmo padrao de app_quimiometria.py: pipeline.__version__).
 _APP_VERSION = f"v{getattr(_pq, '__version__', '?')}"
@@ -55,7 +55,7 @@ def _e_modo_prototipo(resumo_raw: str) -> bool:
     resumo_modelo.txt -- mesma fonte unica usada pelo B3-1 para nao
     afirmar group-aware quando ele nao rodou.
     """
-    return extrair_metrica(
+    return extract_metric(
         resumo_raw, r"Modo de entrada\s*[:=]\s*(\w+)", ""
     ).strip().lower() == "imagem"
 
@@ -77,7 +77,7 @@ def generate_pdf_report(pasta: str, projeto: Dict,
     # ── Parse resumo_modelo.txt ───────────────────────────────────────
     resumo_raw = _ler_resumo(pasta) or ""
 
-    metricas = parse_metricas_modelo(resumo_raw)
+    metricas = parse_model_metrics(resumo_raw)
     # B4-1: carimbo de prototipo quando a execucao veio do modo imagem
     # (colorimetria digital) -- nao validado e sem mae_id, logo sem
     # validacao group-aware. Ver `_e_modo_prototipo`.
@@ -342,7 +342,7 @@ def generate_word_report(pasta: str, projeto: Dict,
 
     resumo_raw = _ler_resumo(pasta) or ""
 
-    metricas = parse_metricas_modelo(resumo_raw)
+    metricas = parse_model_metrics(resumo_raw)
     imgs = _list_figures(pasta)[:max_figuras]
 
     doc = Document()
@@ -491,7 +491,7 @@ def generate_excel_report(pasta: str) -> io.BytesIO:
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "-") -> str:
-        return extrair_metrica(resumo_raw, padrao, default)
+        return extract_metric(resumo_raw, padrao, default)
 
     metricas_dict = {
         "Balanced Accuracy (CV)":  _ex(r"[Bb]alanced[_ ]?[Aa]ccuracy.*?[:=]\s*([\d.]+)"),
@@ -647,7 +647,7 @@ def generate_latex_template(pasta: str, projeto: Dict) -> bytes:
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "-") -> str:
-        return extrair_metrica(resumo_raw, padrao, default)
+        return extract_metric(resumo_raw, padrao, default)
 
     def _esc(txt: str) -> str:
         """Escapes LaTeX special characters."""
@@ -959,7 +959,7 @@ def generate_pptx_report(pasta: str, projeto: Dict,
     resumo_raw = _ler_resumo(pasta) or ""
 
     def _ex(padrao: str, default: str = "—") -> str:
-        return extrair_metrica(resumo_raw, padrao, default)
+        return extract_metric(resumo_raw, padrao, default)
 
     metricas = {
         "Balanced Accuracy (CV)": _ex(r"[Bb]alanced[_ ]?[Aa]cc.*?[:=]\s*([\d.]+)"),

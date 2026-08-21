@@ -31,7 +31,7 @@ _PADROES_METRICAS = {
 }
 
 
-def extrair_metrica(resumo: str, padrao: str, default: str = "-") -> str:
+def extract_metric(resumo: str, padrao: str, default: str = "-") -> str:
     """Extrai group(1) do primeiro casamento de `padrao` no resumo.
 
     IGNORECASE|MULTILINE, `.strip()` no valor; devolve `default` se nada casar.
@@ -41,14 +41,14 @@ def extrair_metrica(resumo: str, padrao: str, default: str = "-") -> str:
     return m.group(1).strip() if m else default
 
 
-def parse_metricas_modelo(resumo: str, default: str = "-") -> Dict[str, str]:
+def parse_model_metrics(resumo: str, default: str = "-") -> Dict[str, str]:
     """Dicionário padrão de 12 métricas (Balanced Accuracy, R2Y/Q2Y, LVs,
     p-valor, etc.) para o cabeçalho dos relatórios PDF/Word."""
-    return {nome: extrair_metrica(resumo, padrao, default)
+    return {nome: extract_metric(resumo, padrao, default)
             for nome, padrao in _PADROES_METRICAS.items()}
 
 
-def parse_acuracia_por_classe(resumo: str) -> Dict[str, float]:
+def parse_accuracy_by_class(resumo: str) -> Dict[str, float]:
     """Extrai a acurácia (recall) por classe das linhas 'Acc <classe>: <val>'
     do resumo. Usado pela aba Validation para a tabela colorida por classe.
     Retorna {classe: valor_float}; dict vazio se não houver nenhuma linha."""
@@ -60,4 +60,4 @@ def parse_acuracia_por_classe(resumo: str) -> Dict[str, float]:
     return acc
 
 
-__all__ = ["extrair_metrica", "parse_metricas_modelo", "parse_acuracia_por_classe"]
+__all__ = ["extract_metric", "parse_model_metrics", "parse_accuracy_by_class"]
