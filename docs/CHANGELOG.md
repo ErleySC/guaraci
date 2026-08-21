@@ -616,7 +616,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: diagnostico complementar
              n_grupos<2, para o numero nao ser lido como equivalente ao
              LOGO.
              Wiring completo: campo em Config/_CONFIG_SPEC, menu CLI
-             (menu_modelagem) E aba do app web (modelo.py) -- os testes de
+             (menu_modeling) E aba do app web (modelo.py) -- os testes de
              alcancabilidade de campo (test_interfaces_configuraveis.py,
              AST-based reachability em test_guaraci_cli.py) pegaram os 2
              pontos que faltavam antes do commit.
@@ -876,20 +876,20 @@ v31.7.0 — 2026-07-13 — Modo Iniciante/Avancado nos submenus da CLI (CLAUDE.m
                  precisam usar essa lista, nao o `fields` original, senao
                  o numero digitado pelo usuario aponta pro campo errado
                  quando ha' campos escondidos). Compatibilidade: chamadores
-                 que nao passam `campos_avancados` (menu_preproc,
-                 menu_avancado, menu_visualizacao) continuam vendo todos os
+                 que nao passam `campos_avancados` (menu_preprocessing,
+                 menu_advanced, menu_visualization) continuam vendo todos os
                  campos, sem mudanca de comportamento;
-             (3) revelacao LOCAL [V] por submenu (menu_modelagem via
-                 `_loop_menu`, menu_validacao com loop proprio): expande
+             (3) revelacao LOCAL [V] por submenu (menu_modeling via
+                 `_loop_menu`, menu_validation com loop proprio): expande
                  so' aquela visita ao menu, sem mudar o modo da sessao
                  inteira -- design pedido explicitamente pelo autor;
-             (4) Campos escondidos por padrao: menu_modelagem ->
+             (4) Campos escondidos por padrao: menu_modeling ->
                  opls_da/ddsimca/modo_ddsimca/selecao_variaveis_etapa4
-                 (nivel N2 ja forca DD-SIMCA automaticamente); menu_validacao
+                 (nivel N2 ja forca DD-SIMCA automaticamente); menu_validation
                  -> n_permutacoes/teste_wold/teste_cv_anova (testes extras,
-                 tuning fino). menu_preproc (so' 2 campos), menu_avancado
+                 tuning fino). menu_preprocessing (so' 2 campos), menu_advanced
                  (ja e' uma secao separada de modulos pesados) e
-                 menu_tecnica/menu_codificacao (nao sao listas de
+                 menu_technique/menu_encoding (nao sao listas de
                  hiperparametro) foram deixados de fora, de proposito;
              (5) Verificado interativamente via CLI real (stdin scriptado):
                  modo Iniciante esconde 4/6 campos em Modelagem com o aviso
@@ -1017,7 +1017,7 @@ v31.3.0 — 2026-07-13 — Correções da auditoria multidisciplinar de 15 etapa
                  em disco mudou (P8 residual, decisão aprovada explicitamente
                  por ser mudança de formato de saída);
              (7) 3 presets por objetivo científico — "Explorar Dados" /
-                 "Autenticar Pureza" / "Quantificar Teor" (CLI: `menu_perfis`;
+                 "Autenticar Pureza" / "Quantificar Teor" (CLI: `menu_profiles`;
                  app web: aba Dados) — reaproveitam `PROFILES`
                  (`cli_assistente.py`), mesma fonte usada pelos perfis de
                  rigor já existentes. CLI: aplicar um perfil agora pergunta

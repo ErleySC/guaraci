@@ -278,7 +278,7 @@ def test_presets_objetivo_existem_e_tem_descricao_bilingue(
 ])
 def test_preset_objetivo_aplica_no_config_via_spec(
         guaraci_mod, pname, attr, valor_esperado):
-    """Mesma resolucao de chave->attr usada por menu_perfis._aplicar
+    """Mesma resolucao de chave->attr usada por menu_profiles._aplicar
     (_SPEC_BY_KEY): confirma que aplicar o preset grava o ATRIBUTO REAL
     do Config, nao so' a chave amigavel do dict PROFILES."""
     cfg = guaraci_mod.Config()

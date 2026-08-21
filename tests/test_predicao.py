@@ -1,5 +1,5 @@
 """Testes de predicao.py (predicao em lote) — usados tanto pelo app quanto
-pelo CLI (guaraci.py, menu_predicao). Roda executar() sintetico UMA vez
+pelo CLI (guaraci.py, menu_prediction). Roda executar() sintetico UMA vez
 (fixture de sessao) para gerar um pacote de modelo .joblib REAL (mesma
 estrutura que o pipeline grava em producao), depois exercita a predicao
 sobre espectros novos sem mock nenhum do lado cientifico.
@@ -147,7 +147,7 @@ def test_carregar_csv_predicao_sem_colunas_numericas_leva_erro_claro(tmp_path):
         pr.carregar_csv_predicao(str(caminho))
 
 
-# ── Integracao end-to-end via CLI (guaraci.py, menu_predicao) ──────────────
+# ── Integracao end-to-end via CLI (guaraci.py, menu_prediction) ──────────────
 
 @pytest.mark.slow
 def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
@@ -171,7 +171,7 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     respostas = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
 
-    guaraci_mod.menu_predicao(guaraci_mod.Config())
+    guaraci_mod.menu_prediction(guaraci_mod.Config())
 
     cam_saida_esperada = cam_csv.with_name(cam_csv.stem + "_predicao.csv")
     assert cam_saida_esperada.is_file(), "CSV de resultados nao foi gravado"

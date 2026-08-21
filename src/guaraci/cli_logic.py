@@ -28,7 +28,7 @@ def truncar_desc_por_frase(desc: str, max_c: int) -> str:
     """Núcleo de truncamento de descrições curtas: prefere cortar na primeira
     frase (se couber em max_c); senão, corta em borda de palavra (nunca no
     meio) com reticências. Usado por `_desc_curta` (guaraci.py) e por
-    `menu_avancado`/`_print_submenu_compact` indiretamente.
+    `menu_advanced`/`_print_submenu_compact` indiretamente.
     """
     desc = (desc or "").strip()
     if not desc:

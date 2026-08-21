@@ -1707,11 +1707,11 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
             _pause()
 
 
-def menu_projeto(cfg: Config) -> None:
+def menu_project(cfg: Config) -> None:
     _loop_menu(_t("t_projeto"), _t("d_projeto"), ["pasta_dados", "pasta_saida", "tag"], cfg)
 
 
-def menu_dados(cfg: Config) -> None:
+def menu_data(cfg: Config) -> None:
     # imagem_incluir_textura adicionado 2026-08-06: mesma classe de bug de
     # n_jobs_permutacao. So' relevante quando modo_entrada="imagem"
     # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
@@ -1723,7 +1723,7 @@ def menu_dados(cfg: Config) -> None:
                campos_avancados={"imagem_incluir_textura"})
 
 
-def menu_preproc(cfg: Config) -> None:
+def menu_preprocessing(cfg: Config) -> None:
     def _show_pipeline():
         preproc = str(_cfgv(cfg, "pre_processamento", "msc_sg_mc"))
         comps = {
@@ -1760,7 +1760,7 @@ def menu_preproc(cfg: Config) -> None:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
-def menu_modelagem(cfg: Config) -> None:
+def menu_modeling(cfg: Config) -> None:
     # Essenciais p/ Iniciante: nivel (o que estou fazendo) + max_lvs (unico
     # numero que costuma precisar ajustar). Avancados: DD-SIMCA/OPLS-DA/
     # selecao de variaveis sao metodos extras, nao o caminho basico.
@@ -1778,7 +1778,7 @@ def menu_modelagem(cfg: Config) -> None:
                                   "selecao_spa", "selecao_ag"})
 
 
-def menu_validacao(cfg: Config) -> None:
+def menu_validation(cfg: Config) -> None:
     # n_jobs_permutacao/teste_martens adicionados 2026-08-06: mesma classe de
     # bug -- existiam no Config/_CONFIG_SPEC/HELP_DB, mas nunca tinham sido
     # colocados em NENHUM menu (so' editaveis a mao no YAML).
@@ -1825,7 +1825,7 @@ def menu_validacao(cfg: Config) -> None:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
-def menu_avancado(cfg: Config) -> None:
+def menu_advanced(cfg: Config) -> None:
     # benchmark_regressao adicionado 2026-08-06: existia no Config/
     # _CONFIG_SPEC/HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
     fields = ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
@@ -1853,7 +1853,7 @@ def menu_avancado(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # VISUALIZACAO — submenu especial com sub-handlers
 # ---------------------------------------------------------------------------
-def menu_visualizacao(cfg: Config) -> None:
+def menu_visualization(cfg: Config) -> None:
     # figuras_detalhadas adicionado 2026-08-06: mesma classe de bug de
     # n_jobs_permutacao -- existia no Config/_CONFIG_SPEC/HELP_DB, mas nunca
     # tinha sido colocado em NENHUM menu.
@@ -2037,7 +2037,7 @@ def _tecnica_detalhe(tk: str, lang: str) -> None:
     _pause()
 
 
-def menu_tecnica(cfg: Config) -> None:
+def menu_technique(cfg: Config) -> None:
     """Tecnica analitica — agrupada por categoria (modelo GUARACI)."""
     lang = _lang()
 
@@ -2127,7 +2127,7 @@ def menu_tecnica(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # CODIFICACAO DX
 # ---------------------------------------------------------------------------
-def menu_codificacao(cfg: Config) -> None:
+def menu_encoding(cfg: Config) -> None:
     """Codificacao DX — explica o conceito e so lista os codigos sob demanda."""
     lang = _lang()
     CODIGOS_BASE = getattr(pq, "CODIGO_ESPECIE", {
@@ -2460,7 +2460,7 @@ def menu_hardware(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # PREDICAO EM LOTE — aplica modelo salvo (.joblib) a espectros novos (CSV)
 # ---------------------------------------------------------------------------
-def menu_predicao(cfg: Optional[Config] = None) -> None:
+def menu_prediction(cfg: Optional[Config] = None) -> None:
     """Predicao em lote via terminal: aplica um modelo .joblib salvo a um
     CSV de espectros novos (colunas=numero de onda, sem coluna de classe).
 
@@ -2597,7 +2597,7 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # PERFIS — cartoes compactos (2 por linha)
 # ---------------------------------------------------------------------------
-def menu_perfis(cfg: Config) -> None:
+def menu_profiles(cfg: Config) -> None:
     """Perfis prontos — lista enxuta de 1 linha; detalhes so com [?]."""
     lang = _lang()
     # (nome_chave, tempo, cor, foco_curto). Foco curto = 1 linha, sem cortar.
@@ -2763,7 +2763,7 @@ def _ler_citation() -> dict:
     return info
 
 
-def menu_sobre(cfg: Optional[Config] = None) -> None:
+def menu_about(cfg: Optional[Config] = None) -> None:
     """Secao Sobre — proposito, autor, citacao em multiplos formatos e referencias."""
     # Dados fixos do projeto e do autor
     _AUTOR_NOME    = "Erley S. da Costa"
@@ -3033,7 +3033,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # AJUDA INTERATIVA
 # ---------------------------------------------------------------------------
-def menu_ajuda(cfg: Optional[Config] = None) -> None:
+def menu_help(cfg: Optional[Config] = None) -> None:
     """Ajuda navegavel — lista todos os campos de cara; numero abre a ajuda."""
     lang = _lang()
     # Lista unificada a partir do _CONFIG_SPEC (todos os campos editaveis).
@@ -4029,21 +4029,21 @@ def main(argv: Optional[List[str]] = None) -> None:
             _exibir_despedida()
             break
 
-        if escolha == "1": menu_projeto(cfg)
-        elif escolha == "2": menu_dados(cfg)
-        elif escolha == "3": menu_preproc(cfg)
-        elif escolha == "4": menu_modelagem(cfg)
-        elif escolha == "5": menu_validacao(cfg)
-        elif escolha == "6": menu_avancado(cfg)
-        elif escolha == "7": menu_visualizacao(cfg)
-        elif escolha == "8": menu_tecnica(cfg)
-        elif escolha == "9": menu_codificacao(cfg)
+        if escolha == "1": menu_project(cfg)
+        elif escolha == "2": menu_data(cfg)
+        elif escolha == "3": menu_preprocessing(cfg)
+        elif escolha == "4": menu_modeling(cfg)
+        elif escolha == "5": menu_validation(cfg)
+        elif escolha == "6": menu_advanced(cfg)
+        elif escolha == "7": menu_visualization(cfg)
+        elif escolha == "8": menu_technique(cfg)
+        elif escolha == "9": menu_encoding(cfg)
         elif escolha == "H":
             cls(); _print_header(); menu_hardware(cfg)
         elif escolha == "B":
-            menu_predicao(cfg)
+            menu_prediction(cfg)
         elif escolha == "P":
-            menu_perfis(cfg)
+            menu_profiles(cfg)
         elif escolha == "G":
             _abrir_assistente("menu principal", cfg)
         elif escolha == "M":
@@ -4074,9 +4074,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                 cfg.tag = san; console.print(f"  [g]✓ ID: {escape(san)}[/g]")
             _pause()
         elif escolha == "A":
-            menu_sobre(cfg)
+            menu_about(cfg)
         elif escolha == "?":
-            menu_ajuda(cfg)
+            menu_help(cfg)
         elif escolha == "Q":
             _exibir_despedida()
             break

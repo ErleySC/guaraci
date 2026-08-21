@@ -3,7 +3,7 @@
 ATENCAO: este modulo NAO e mais um ponto de entrada executavel. A CLI
 interativa completa (menus, wizard, execucao do pipeline) foi UNIFICADA em
 guaraci.py (item 16 da auditoria: existiam DUAS implementacoes paralelas do
-mesmo fluxo -- menu_projeto/menu_dados/.../wizard_inicial/main aqui E em
+mesmo fluxo -- menu_project/menu_data/.../wizard_inicial/main aqui E em
 guaraci.py). guaraci.py absorveu a interface; este arquivo agora contem
 apenas os DADOS que guaraci.py consome (via a funcao `_try()` em guaraci.py,
 que resolve simbolos deste modulo por nome):
