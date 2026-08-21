@@ -11,7 +11,7 @@ import pytest
 from guaraci.classificadores import (
     DDSimca,
     OPLSDAWrapper,
-    sensibilidade_ddsimca_logo,
+    ddsimca_logo_sensitivity,
     ddsimca_pcv_sensitivity,
 )
 
@@ -284,7 +284,7 @@ def test_logo_nao_colapsa_para_zero_quando_grupos_sao_identicos_com_n_menor_que_
     sensibilidade proxima de 1.0 -- nao 0.0."""
     rng = np.random.default_rng(7)
     X, g = _puros_agrupados(rng, [0.0, 0.0, 0.0, 0.0], reps=3, k=200, escala=0.02)
-    r = sensibilidade_ddsimca_logo(X, g, n_components=7)
+    r = ddsimca_logo_sensitivity(X, g, n_components=7)
     assert r["n_grupos_validos"] == 4
     assert r["sensibilidade"] > 0.7
 
@@ -295,7 +295,7 @@ def test_logo_sempre_retorna_n_grupos():
     re-substituicao. Este teste falha se alguem remover a chave."""
     rng = np.random.default_rng(0)
     X, g = _puros_agrupados(rng, [0.0, 0.5, 1.0])
-    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    r = ddsimca_logo_sensitivity(X, g, n_components=2)
     assert "n_grupos" in r
     assert r["n_grupos"] == 3
 
@@ -305,7 +305,7 @@ def test_logo_cai_abaixo_de_100pct_com_grupo_outlier():
     nos demais — exatamente o que a re-substituicao mascarava dando ~100%."""
     rng = np.random.default_rng(1)
     X, g = _puros_agrupados(rng, [0.0, 0.0, 0.0, 0.0, 20.0])  # 1 grupo distante
-    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    r = ddsimca_logo_sensitivity(X, g, n_components=2)
     assert r["n_grupos"] == 5
     assert r["sensibilidade"] < 1.0            # < 100%: o objetivo do P1
 
@@ -323,7 +323,7 @@ def test_logo_um_unico_grupo_nao_e_estimavel():
     nan + aviso, nunca um numero falsamente confiante."""
     rng = np.random.default_rng(2)
     X, g = _puros_agrupados(rng, [0.0])        # 1 grupo apenas
-    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    r = ddsimca_logo_sensitivity(X, g, n_components=2)
     assert r["n_grupos"] == 1
     assert np.isnan(r["sensibilidade"])
     assert r["aviso"] is not None
@@ -333,7 +333,7 @@ def test_logo_avisa_com_poucos_grupos():
     """n_grupos < 10 dispara aviso de incerteza (interpretacao exploratoria)."""
     rng = np.random.default_rng(3)
     X, g = _puros_agrupados(rng, [0.0, 0.3, 0.6, 0.9])
-    r = sensibilidade_ddsimca_logo(X, g, n_components=2)
+    r = ddsimca_logo_sensitivity(X, g, n_components=2)
     assert r["n_grupos"] == 4
     assert r["aviso"] is not None and "LOGO" in r["aviso"]
 
@@ -349,7 +349,7 @@ def test_logo_grupo_com_treino_insuficiente_e_pulado_nao_quebra():
     # 2 grupos de 1 replica cada: treino de cada fold tem so' 1 amostra
     # (o outro grupo) -- abaixo do minimo de 2 exigido pelo guard interno.
     X, g = _puros_agrupados(rng, [0.0, 5.0], reps=1)
-    r = sensibilidade_ddsimca_logo(X, g, n_components=1)
+    r = ddsimca_logo_sensitivity(X, g, n_components=1)
     assert r["n_grupos"] == 2
     # nao lancou excecao; ou fica inconclusivo (validos<2) ou reporta normal
     assert r["n_grupos_validos"] <= r["n_grupos"]
@@ -361,7 +361,7 @@ def test_logo_inconclusivo_quando_nenhum_fold_valido():
     calculado sobre uma lista vazia (o que estouraria ou mentiria)."""
     rng = np.random.default_rng(5)
     X, g = _puros_agrupados(rng, [0.0, 1.0], reps=1)  # mesmo caso do teste acima
-    r = sensibilidade_ddsimca_logo(X, g, n_components=1)
+    r = ddsimca_logo_sensitivity(X, g, n_components=1)
     if r["n_grupos_validos"] < 2:
         assert np.isnan(r["sensibilidade"])
         assert r["aviso"] is not None and "inconclusiva" in r["aviso"]
@@ -750,7 +750,7 @@ def test_score_matrix_expoe_n_grupos_calibracao():
 
 
 def test_logo_e_pcv_propagam_mae_id_para_o_limiar_interno():
-    """sensibilidade_ddsimca_logo/pcv fitam um DDSimca temporario por dobra
+    """ddsimca_logo_sensitivity/pcv fitam um DDSimca temporario por dobra
     -- esse fit interno tambem precisa ser calibrado por amostra fisica
     (mae_id=grupos[treino]/grupos), senao a "estimativa honesta" mede
     aceitacao contra um limiar com o MESMO vies que ela existe para
@@ -765,6 +765,6 @@ def test_logo_e_pcv_propagam_mae_id_para_o_limiar_interno():
     X = np.vstack([g1, g2, g3])
     grupos = np.array(["g1"] * 3 + ["g2"] * 3 + ["g3"] * 3)
 
-    r = sensibilidade_ddsimca_logo(X, grupos, n_components=2)
+    r = ddsimca_logo_sensitivity(X, grupos, n_components=2)
     assert r["n_grupos"] == 3
     assert not np.isnan(r["sensibilidade"])

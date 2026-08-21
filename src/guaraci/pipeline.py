@@ -283,7 +283,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
 from guaraci.classificadores import (   # noqa: E402
     DDSimca,
     OPLSDAWrapper,
-    sensibilidade_ddsimca_logo,
+    ddsimca_logo_sensitivity,
     ddsimca_pcv_sensitivity,
 )
 
@@ -2035,12 +2035,12 @@ def executar(cfg: Config):
             #     Re-substituicao (media sobre os proprios puros de treino) infla
             #     para ~100% e NAO e evidencia de autenticacao -- mede o modelo
             #     reconhecendo dados que ja viu. LOGO retreina sem um grupo de
-            #     replica e testa os puros retidos (ver sensibilidade_ddsimca_logo).
+            #     replica e testa os puros retidos (ver ddsimca_logo_sensitivity).
             #   'todos': fracao in-sample da classe inteira aceita (ja rotulada
             #     como nao-autenticacao no resumo/figuras).
             if modo_dd == "puros" and n_puro_c > 0:
                 if mae_id is not None:
-                    _logo = sensibilidade_ddsimca_logo(
+                    _logo = ddsimca_logo_sensitivity(
                         X_processed[idx_puro_c], mae_id[idx_puro_c],
                         n_components=cfg.ddsimca_n_components,
                         alpha=0.05, ucl_method=cfg.ddsimca_ucl_method)

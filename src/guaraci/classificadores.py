@@ -163,7 +163,7 @@ class DDSimca:
         forma independente; unificado numa so' fonte de verdade). Mantida
         como metodo (em vez de chamar `combined_distance` direto nos usos
         externos) para preservar a MESMA chamada em predict(), score_matrix()
-        e nos usos externos (sensibilidade_ddsimca_logo, resumo do
+        e nos usos externos (ddsimca_logo_sensitivity, resumo do
         pipeline)."""
         return combined_distance(T2, Q, m["h0"], m["q0"], m["Nh"], m["Nq"])
 
@@ -661,7 +661,7 @@ class OPLSDAWrapper(BaseEstimator):
         return t_pred, t_orth
 
 
-def sensibilidade_ddsimca_logo(
+def ddsimca_logo_sensitivity(
     X_puros: np.ndarray,
     grupos_puros: np.ndarray,
     *,
@@ -772,7 +772,7 @@ def ddsimca_pcv_sensitivity(
     ucl_method: str = "empirical",
 ) -> Dict[str, Any]:
     """Sensibilidade DD-SIMCA por Procrustes Cross-Validation (PCV) --
-    diagnostico COMPLEMENTAR ao LOGO (`sensibilidade_ddsimca_logo`), NUNCA
+    diagnostico COMPLEMENTAR ao LOGO (`ddsimca_logo_sensitivity`), NUNCA
     um substituto.
 
     PCV (Kucheryavskiy, Zhilin, Rodionova & Pomerantsev -- ver referencias)
