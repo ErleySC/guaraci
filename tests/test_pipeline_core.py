@@ -1946,9 +1946,9 @@ def test_rpd_degenerado_nao_vira_infinito(pq):
 def test_interpretar_rpd_cobre_as_faixas_publicadas(pq):
     """As faixas vem de Williams (2014) / AACC 39-00.01 -- um RPD nu vira
     alegacao exagerada em texto, entao o numero nunca sai sozinho."""
-    assert pq.interpretar_rpd(1.5) == "nao utilizavel"
-    assert pq.interpretar_rpd(2.2) == "triagem grosseira"
-    assert pq.interpretar_rpd(2.7) == "triagem"
-    assert pq.interpretar_rpd(4.0) == "controle de qualidade"
-    assert pq.interpretar_rpd(7.0).startswith("controle de processo")
-    assert pq.interpretar_rpd(float("nan")) == "nao estimavel"
+    assert pq.interpret_rpd(1.5) == "nao utilizavel"
+    assert pq.interpret_rpd(2.2) == "triagem grosseira"
+    assert pq.interpret_rpd(2.7) == "triagem"
+    assert pq.interpret_rpd(4.0) == "controle de qualidade"
+    assert pq.interpret_rpd(7.0).startswith("controle de processo")
+    assert pq.interpret_rpd(float("nan")) == "nao estimavel"

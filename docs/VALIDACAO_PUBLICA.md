@@ -106,7 +106,7 @@ esta rodada o pipeline reporta, para toda regressão:
 | **RER** | idem | `amplitude(y_ref) / SEP` |
 | LOD / LOQ / SEN / seletividade | `figS3_merito_regressao` | Valderrama, Braga & Poppi (2009); exige réplicas físicas |
 
-RPD e RER nunca saem nus: `interpretar_rpd()` anexa a faixa publicada
+RPD e RER nunca saem nus: `interpret_rpd()` anexa a faixa publicada
 (Williams 2014, em Williams, Dardenne & Flinn, *J. Near Infrared
 Spectrosc.* 22(2):85-93; AACC 39-00.01). Um número cru convida a
 comparações indevidas entre estudos; a faixa carrega a referência que a

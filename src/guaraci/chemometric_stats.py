@@ -498,7 +498,7 @@ def rpd_rer(y_ref: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     return saida
 
 
-def interpretar_rpd(rpd: float) -> str:
+def interpret_rpd(rpd: float) -> str:
     """Faixa de uso correspondente ao RPD (Williams 2014; AACC 39-00.01).
 
     Existe para que nenhum relatorio imprima um RPD nu: o numero sem a

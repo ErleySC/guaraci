@@ -267,7 +267,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     variancia_explicada,
     figuras_merito_regressao,
     rpd_rer,
-    interpretar_rpd,
+    interpret_rpd,
     dominio_aplicabilidade,
     dominio_aplicabilidade_treino,
     dominio_aplicabilidade_amostras_novas,
@@ -1109,7 +1109,7 @@ def pls_regressao_por_especie(
         "r2c": r2c, "r2v": r2v, "rmsec": rmsec, "rmsecv": rmsecv,
         "rmsep": rmsep, "bias": bias_v, "n_especies": len(tabela_esp),
         "sep": _razoes["sep"], "rpd": _razoes["rpd"], "rer": _razoes["rer"],
-        "rpd_faixa": interpretar_rpd(_razoes["rpd"]),
+        "rpd_faixa": interpret_rpd(_razoes["rpd"]),
         "dmody_crit": _dmody_res["dmody_crit"],
         "n_fora_do_dmody": _dmody_res["n_fora_do_modelo"],
     }
@@ -1225,7 +1225,7 @@ def pls_regressao_pooled(
     # variacao do proprio conjunto de referencia, e a faixa de uso vem
     # junto para o numero nao sair nu (Williams 2014; AACC 39-00.01).
     _razoes_pooled = rpd_rer(Yv, Yv_hat)
-    _faixa_pooled = interpretar_rpd(_razoes_pooled["rpd"])
+    _faixa_pooled = interpret_rpd(_razoes_pooled["rpd"])
     log.info(f"  SEP    : {_razoes_pooled['sep']:.3f}  "
              f"|  RPD: {_razoes_pooled['rpd']:.2f}  "
              f"|  RER: {_razoes_pooled['rer']:.1f}  ->  {_faixa_pooled}")
