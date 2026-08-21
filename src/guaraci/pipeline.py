@@ -728,15 +728,15 @@ from guaraci.selecao_variaveis import (   # noqa: E402
 # executar() e o uso de PLSDAClassifier.
 from guaraci.avaliacao_modelos import (   # noqa: E402
     PLSDAClassifier,
-    fig_benchmark_classificadores,
-    benchmark_classificadores,
-    fig_monte_carlo_distribuicao,
+    fig_benchmark_classifiers,
+    benchmark_classifiers,
+    fig_monte_carlo_distribution,
     _stratified_group_shuffle_splits,
     monte_carlo_cv,
     fig_det_curvas,
     fig_shap_benchmark,
-    benchmark_regressao_por_especie,
-    fig_benchmark_regressores,
+    benchmark_regression_by_species,
+    fig_benchmark_regressors,
 )
 
 
@@ -2409,7 +2409,7 @@ def executar(cfg: Config):
         # Guarda: ~1.2 GB pico (SVM kernel matrix + OOF proba)
         if _verificar_ram(1.2, "Auto-Benchmark"):
             try:
-                bench_df = benchmark_classificadores(
+                bench_df = benchmark_classifiers(
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta,
                     wavenumbers=wavenumbers)
                 log.info(bench_df.to_string(index=False))
@@ -2618,7 +2618,7 @@ def executar(cfg: Config):
                                   "(Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R)...")
                             if _verificar_ram(0.6, "Auto-Benchmark de regressao"):
                                 try:
-                                    bench_reg_df = benchmark_regressao_por_especie(
+                                    bench_reg_df = benchmark_regression_by_species(
                                         X_raw, conc_arr, rotulos, mae_id,
                                         classes_unicas, cfg, pasta, reg_esp)
                                     if bench_reg_df is not None:

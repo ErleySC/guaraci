@@ -366,7 +366,7 @@ def kennard_stone_split_group_aware(
     suficiente, roda KS diretamente por amostra.
 
     Usada por `pipeline.pls_regression_by_species`/bloco de regressao
-    pooled E por `avaliacao_modelos.benchmark_regressao_por_especie` (mesmo
+    pooled E por `avaliacao_modelos.benchmark_regression_by_species` (mesmo
     split reproduzido deterministicamente nos dois lugares -- comparacao
     apples-to-apples entre PLS-R e os modelos de benchmark).
     """

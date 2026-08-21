@@ -1,7 +1,7 @@
 """Testes de guaraci.model_registry (item 20: registry de modelos do
 Auto-Benchmark / Monte Carlo CV).
 
-Regressão-chave: antes da extração, benchmark_classificadores() e
+Regressão-chave: antes da extração, benchmark_classifiers() e
 monte_carlo_cv() tinham a MESMA lista de classificadores hardcoded duas
 vezes, e haviam divergido — o Gradient Boosting do Monte Carlo CV não tinha
 subsample=0.8 (o do benchmark tinha), apesar da docstring afirmar hiper-

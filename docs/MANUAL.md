@@ -472,7 +472,7 @@ mesma semente/`divisao_cal_val` do PLS-R) e o mesmo pré-processamento, para
 uma comparação honesta ponto a ponto. *Opt-in* via `benchmark_regressao`
 (aplicativo e CLI, categoria Avançado — mesmo padrão do Auto-Benchmark de
 classificação): gera `benchmark_regressao.csv` (RMSEP/R² agregado e por
-espécie) e `fig_benchmark_regressores.png` (*boxplot* de RMSEP por espécie,
+espécie) e `fig_benchmark_regressors.png` (*boxplot* de RMSEP por espécie,
 menor é melhor).
 
 **Predição em amostras novas (aplicativo e CLI):** aplica um modelo já

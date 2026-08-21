@@ -1165,7 +1165,7 @@ v23 — 2026-05-29 — ACCESSIBLE LAYER (no code editing):
                        (legacy CFG), or interactive menu when in terminal;
                    (5) config.yaml template generated (excludes Copaiba
                        anomalous batch, max_lvs=40). Pipeline logic INTACT.
-v27  benchmark_classificadores integrated into executar()
+v27  benchmark_classifiers integrated into executar()
 v28  Monte Carlo CV (IC95%); SHAP TreeExplainer; DET curves (linear+log)
 v29  hardware_probe; auto RAM tiers (4 levels); RAM guards; cleanup util
 v30  PowerPoint export; .streamlit/config.toml; CLAUDE.md; English i18n

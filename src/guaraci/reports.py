@@ -602,7 +602,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
     ws4.column_dimensions["A"].width = 80
 
     # ── SHEET 5: Benchmark (if it exists) ─────────────────────────────────
-    bench_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
+    bench_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classifiers.csv")
     mc_csv    = os.path.join(pasta, NOME_TABELAS, "monte_carlo_cv.csv")
     if os.path.exists(bench_csv) or os.path.exists(mc_csv):
         ws5 = wb.create_sheet("Benchmark")
@@ -617,7 +617,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
                 row_cursor += len(df_bench) + 3
                 _auto_width(ws5)
             except (pd.errors.ParserError, OSError, UnicodeDecodeError):
-                ws5.cell(row_cursor, 1, "Error reading benchmark_classificadores.csv")
+                ws5.cell(row_cursor, 1, "Error reading benchmark_classifiers.csv")
                 row_cursor += 2
         if os.path.exists(mc_csv):
             try:
@@ -1133,7 +1133,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
                  size=9, color=_MUTED, align=PP_ALIGN.CENTER)
 
     # ── SLIDE Benchmark (if CSV exists) ──────────────────────────────────
-    bench_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
+    bench_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classifiers.csv")
     if os.path.exists(bench_csv):
         try:
             df_b = pd.read_csv(bench_csv, sep=";", decimal=",")

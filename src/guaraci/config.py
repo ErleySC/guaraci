@@ -240,7 +240,7 @@ class Config:
     executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
     # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/SVR/RF vs
     # PLS-R, por especie, mesmo split cal/val e pre-processamento (ver
-    # avaliacao_modelos.benchmark_regressao_por_especie). So' roda quando
+    # avaliacao_modelos.benchmark_regression_by_species). So' roda quando
     # ha regressao multi-especie (mesma condicao de pls_regression_by_species).
     executar_benchmark_regressao: bool = False
     executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI

@@ -96,7 +96,7 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
 
     # ── Benchmark and MC CV tables (if they exist) ───────────────────
     _bench_csv_v = os.path.join(pasta_v, NOME_TABELAS,
-                                "benchmark_classificadores.csv")
+                                "benchmark_classifiers.csv")
     _mc_csv_v    = os.path.join(pasta_v, NOME_TABELAS, "monte_carlo_cv.csv")
     if os.path.exists(_bench_csv_v) or os.path.exists(_mc_csv_v):
         with st.expander("🏅 Classifier Benchmark", expanded=False):

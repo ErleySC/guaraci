@@ -3,7 +3,7 @@
 
 Antes desta extração, a MESMA lista de classificadores de comparação
 (PLS-DA, SVM RBF, Random Forest, Gradient Boosting, XGBoost opcional) estava
-hardcoded DUAS VEZES — em `benchmark_classificadores()` e `monte_carlo_cv()`
+hardcoded DUAS VEZES — em `benchmark_classifiers()` e `monte_carlo_cv()`
 (avaliacao_modelos.py) — e havia divergido silenciosamente: o Gradient
 Boosting do Monte Carlo CV não tinha `subsample=0.8` (o do benchmark tinha),
 apesar da docstring de `monte_carlo_cv` afirmar "mesmos hiperparâmetros do

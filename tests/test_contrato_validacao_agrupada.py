@@ -24,8 +24,8 @@ quantificacao, troque a leitura da coluna pela introspeccao do registry.
 
 ARQUITETURA QUE ISTO ASSUME (verificada por leitura de codigo em
 2026-08-20): o agrupamento nao e' propriedade de CADA metodo -- e' aplicado
-UMA VEZ pela funcao que orquestra a comparacao (`benchmark_classificadores`
-para classificacao; o split cal/val de `benchmark_regressao_por_especie`
+UMA VEZ pela funcao que orquestra a comparacao (`benchmark_classifiers`
+para classificacao; o split cal/val de `benchmark_regression_by_species`
 para quantificacao), que constroi o splitter group-aware e o REUTILIZA para
 todos os metodos registrados. Por isso a contra-prova abaixo nao injeta um
 "classificador ficticio" no registry -- isso nao provaria nada, porque
@@ -164,7 +164,7 @@ def _espiao(classe_real, destino: list):
 def test_classificacao_cada_metodo_registrado_usa_cv_group_aware(
         pq, tmp_path, monkeypatch):
     """Para cada metodo em `model_registry` (descoberto por introspeccao,
-    nao listado a mao): roda de verdade atraves de `benchmark_classificadores`
+    nao listado a mao): roda de verdade atraves de `benchmark_classifiers`
     e confirma que o splitter usado foi `StratifiedGroupKFold`, com grupos
     nao-vazios, e que nenhum grupo cruzou treino/teste em fold nenhum."""
     nomes_esperados = set(model_registry.nomes_modelos_benchmark(
@@ -183,13 +183,13 @@ def test_classificacao_cada_metodo_registrado_usa_cv_group_aware(
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
 
-    df = pq.benchmark_classificadores(X, y_int, grupos, lb, n_opt=2,
+    df = pq.benchmark_classifiers(X, y_int, grupos, lb, n_opt=2,
                                       cfg=cfg, pasta=pasta)
 
     # (a) o splitter group-aware foi de fato instanciado e usado --
     #     nao um caminho alternativo silenciosamente diferente.
     assert capturados, (
-        "StratifiedGroupKFold nunca foi chamado -- benchmark_classificadores "
+        "StratifiedGroupKFold nunca foi chamado -- benchmark_classifiers "
         "nao passou por este splitter, ou o import mudou de lugar e este "
         "teste precisa ser atualizado.")
 
@@ -213,7 +213,7 @@ def test_deteccao_de_vazamento_pega_metodo_ficticio_sem_agrupamento():
 
     O "metodo ficticio" e' um `StratifiedKFold` comum: exatamente o que um
     metodo de classificacao adicionado sem passar por
-    `benchmark_classificadores` produziria se ignorasse agrupamento --
+    `benchmark_classifiers` produziria se ignorasse agrupamento --
     plausivel, porque e' a chamada mais obvia de se fazer por engano no
     lugar de `StratifiedGroupKFold`.
     """
@@ -232,7 +232,7 @@ def test_deteccao_de_vazamento_pega_metodo_ficticio_sem_agrupamento():
 
 
 # =========================================================================
-#  2. QUANTIFICACAO -- benchmark_regressao_por_especie nao tem registry
+#  2. QUANTIFICACAO -- benchmark_regression_by_species nao tem registry
 #  dedicado; a lista de metodos e' lida do proprio resultado.
 # =========================================================================
 
@@ -255,7 +255,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
       1. `pls_regression_by_species` (pipeline.py) -- cal/val
          (`GroupShuffleSplit`, import de MODULO) + CV interna de LV
          (`GroupKFold`, import de MODULO).
-      2. `benchmark_regressao_por_especie` (avaliacao_modelos.py) -- MESMA
+      2. `benchmark_regression_by_species` (avaliacao_modelos.py) -- MESMA
          logica de split REIMPLEMENTADA (comentario no proprio codigo:
          "para evitar acoplamento circular com pipeline.py"), com
          `GroupShuffleSplit` importado LOCALMENTE dentro da funcao.
@@ -292,7 +292,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
     monkeypatch.setattr(
         pq, "GroupKFold",
         _espiao(skms.GroupKFold, capturados_cv))
-    # `benchmark_regressao_por_especie` (avaliacao_modelos.py) importa
+    # `benchmark_regression_by_species` (avaliacao_modelos.py) importa
     # GroupShuffleSplit DENTRO da funcao -- o patch no atributo do modulo
     # sklearn.model_selection e' o que alcanca esse import local.
     monkeypatch.setattr(
@@ -303,7 +303,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
     assert reg_esp is not None, "fixture nao gerou dados suficientes p/ PLS-R"
 
-    df = pq.benchmark_regressao_por_especie(
+    df = pq.benchmark_regression_by_species(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, reg_esp)
     assert df is not None
 

@@ -5,7 +5,7 @@ Monte Carlo CV (IC95%), curvas DET e SHAP (TreeExplainer).
 
 Extraido de pipeline.py (Fase H). Usa modulos ja extraidos (preprocessamento,
 figuras, paleta_cores, hardware); Config so em type hint (TYPE_CHECKING).
-pipeline.py reexporta (executar() chama benchmark_classificadores/
+pipeline.py reexporta (executar() chama benchmark_classifiers/
 monte_carlo_cv/fig_det_curvas/fig_shap_benchmark).
 """
 from __future__ import annotations
@@ -82,7 +82,7 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         return E / E.sum(axis=1, keepdims=True)
 
 
-def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
+def fig_benchmark_classifiers(scores_por_clf: Dict[str, np.ndarray],
                                    n_splits: int,
                                    n_classes: int,
                                    cfg: "Config", pasta: str) -> None:
@@ -129,11 +129,11 @@ def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
     ax.legend(fontsize=8); ax.set_ylim(0, 1.05)
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_benchmark_classificadores", pasta, cfg)
+    salvar(fig, "fig_benchmark_classifiers", pasta, cfg)
     plt.close(fig)
 
 
-def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
+def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
                                grupos_cv: Optional[np.ndarray],
                                lb: "LabelBinarizer",
                                n_opt: int, cfg: "Config", pasta: str,
@@ -248,13 +248,13 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     df_bench = pd.DataFrame(resultados)
 
     # ── Salvar CSV ────────────────────────────────────────────────────────
-    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classifiers.csv")
     df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 
     # ── Figura boxplot ────────────────────────────────────────────────────
     if scores_por_clf:
-        fig_benchmark_classificadores(scores_por_clf, n_splits, n_classes, cfg, pasta)
+        fig_benchmark_classifiers(scores_por_clf, n_splits, n_classes, cfg, pasta)
 
     # ── Curvas DET (OOF coletados no loop principal — sem re-execucao) ───
     if len(oof_probas) >= 2:
@@ -278,7 +278,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
 #  v28: Monte Carlo CV — IC95% por percentil
 # =========================================================================
 
-def fig_monte_carlo_distribuicao(scores_mc: Dict[str, List[float]],
+def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
                                   cfg: "Config", pasta: str) -> None:
     """Violin + IC95% percentil das distribuicoes Monte Carlo CV."""
     nomes = list(scores_mc.keys())
@@ -476,7 +476,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     # Figura violin — apenas modelos com >= 5 iteracoes validas
     scores_plot = {n: v for n, v in scores_mc.items() if len(v) >= 5}
     if scores_plot:
-        fig_monte_carlo_distribuicao(scores_plot, cfg, pasta)
+        fig_monte_carlo_distribution(scores_plot, cfg, pasta)
 
     return df_mc
 
@@ -765,7 +765,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
 #  Auto-Benchmark de REGRESSAO (N2/N3) -- PLS-R vs Ridge/Lasso/EN/SVR/RF
 # =========================================================================
 
-def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
+def fig_benchmark_regressors(rmsep_por_modelo: Dict[str, np.ndarray],
                                n_especies: int,
                                cfg: "Config", pasta: str) -> None:
     """Boxplot de RMSEP por especie para cada modelo de regressao -- ao
@@ -786,7 +786,7 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    rng = np.random.default_rng(cfg.seed)   # ver nota em fig_benchmark_classificadores
+    rng = np.random.default_rng(cfg.seed)   # ver nota em fig_benchmark_classifiers
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         if len(dado) == 0:
             continue
@@ -804,11 +804,11 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
         fontsize=8.5, loc="left")
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_benchmark_regressores", pasta, cfg)
+    salvar(fig, "fig_benchmark_regressors", pasta, cfg)
     plt.close(fig)
 
 
-def benchmark_regressao_por_especie(
+def benchmark_regression_by_species(
         X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
         cfg: "Config", pasta: str,
@@ -827,7 +827,7 @@ def benchmark_regressao_por_especie(
     (sem vazamento entre cal/val) -- comparacao honesta apples-to-apples.
 
     Hiperparametros por heuristica de literatura (sem tuning por CV interna,
-    mesmo padrao de benchmark_classificadores/PLS-DA -- ver nota
+    mesmo padrao de benchmark_classifiers/PLS-DA -- ver nota
     metodologica em pipeline.salvar_resumo_modelo). Ref: Hastie, Tibshirani
     & Friedman (2009), The Elements of Statistical Learning, 2nd ed.
 
@@ -970,6 +970,6 @@ def benchmark_regressao_por_especie(
     print(f"  -> {cam_csv}")
 
     if rmsep_boxplot:
-        fig_benchmark_regressores(rmsep_boxplot, n_especies_ok, cfg, pasta)
+        fig_benchmark_regressors(rmsep_boxplot, n_especies_ok, cfg, pasta)
 
     return df_bench

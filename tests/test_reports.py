@@ -63,7 +63,7 @@ def pasta_resultados_completa(tmp_path):
         tabelas / "etapa4_selecao_variaveis.csv", sep=";", decimal=",", index=False)
     pd.DataFrame({"Classificador": ["PLS-DA", "SVM"],
                   "Bal.Acc media": [0.90, 0.88]}).to_csv(
-        tabelas / "benchmark_classificadores.csv", sep=";", decimal=",", index=False)
+        tabelas / "benchmark_classifiers.csv", sep=";", decimal=",", index=False)
     pd.DataFrame({"Classificador": ["PLS-DA"], "IC95% inf": [0.85],
                   "IC95% sup": [0.93]}).to_csv(
         tabelas / "monte_carlo_cv.csv", sep=";", decimal=",", index=False)

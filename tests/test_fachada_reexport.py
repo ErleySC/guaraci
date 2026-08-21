@@ -68,9 +68,9 @@ CONTRATO = {
         "_avaliar_busca_nested_cv", "_cv_local",
     ],
     "avaliacao_modelos": [
-        "PLSDAClassifier", "benchmark_classificadores", "monte_carlo_cv",
+        "PLSDAClassifier", "benchmark_classifiers", "monte_carlo_cv",
         "fig_det_curvas", "fig_shap_benchmark",
-        "benchmark_regressao_por_especie", "fig_benchmark_regressores",
+        "benchmark_regression_by_species", "fig_benchmark_regressors",
     ],
 }
 

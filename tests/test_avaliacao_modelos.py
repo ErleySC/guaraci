@@ -46,16 +46,16 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
-    df = pq.benchmark_classificadores(X, y_int, grupos, lb, n_opt=2,
+    df = pq.benchmark_classifiers(X, y_int, grupos, lb, n_opt=2,
                                        cfg=cfg, pasta=pasta)
 
     nomes = set(df["Classificador"].values)
     assert "PLS-DA" in nomes
     assert "XGBoost" in nomes  # confirma que o import opcional funcionou de verdade
     assert os.path.exists(
-        os.path.join(pasta, pq.NOME_TABELAS, "benchmark_classificadores.csv"))
+        os.path.join(pasta, pq.NOME_TABELAS, "benchmark_classifiers.csv"))
     assert os.path.exists(
-        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_classificadores.png"))
+        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_classifiers.png"))
     assert glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_det_curvas*.png"))
     for v in df["Bal.Acc media"]:
         assert 0.0 <= v <= 1.0
@@ -160,7 +160,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
     assert reg_esp is not None, "fixture nao gerou dados suficientes p/ PLS-R"
 
-    df = pq.benchmark_regressao_por_especie(
+    df = pq.benchmark_regression_by_species(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, reg_esp)
 
     assert df is not None
@@ -171,7 +171,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     assert os.path.exists(
         os.path.join(pasta, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
-        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
+        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_regressors.png"))
 
     # PLS-R do benchmark bate com o ja calculado por pls_regression_by_species
     # (reaproveitado, nao deve ser refeito com numeros diferentes)
@@ -192,7 +192,7 @@ def test_benchmark_regressao_sem_especies_suficientes_retorna_none(pq, tmp_path)
     reg_esp_fake = {"rmsep": 0.0, "r2v": 0.0, "n_especies": 0,
                     "tabela_especie": []}
 
-    df = pq.benchmark_regressao_por_especie(
+    df = pq.benchmark_regression_by_species(
         X, conc, rotulos, None, classes_unicas, cfg, str(tmp_path),
         reg_esp_fake)
     assert df is None
@@ -223,7 +223,7 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
     assert os.path.exists(
         os.path.join(pasta_run, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
-        os.path.join(pasta_run, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
+        os.path.join(pasta_run, pq.NOME_GRAFICOS, "fig_benchmark_regressors.png"))
 
 
 # ---------------------------------------------------------------------------
