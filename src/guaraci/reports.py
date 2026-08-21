@@ -60,7 +60,7 @@ def _e_modo_prototipo(resumo_raw: str) -> bool:
     ).strip().lower() == "imagem"
 
 
-def gerar_pdf_relatorio(pasta: str, projeto: Dict,
+def generate_pdf_report(pasta: str, projeto: Dict,
                           max_figuras: int = 14) -> io.BytesIO:
     """
     Generates a complete PDF report with fpdf2.
@@ -330,7 +330,7 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
     return buf
 
 
-def gerar_word_relatorio(pasta: str, projeto: Dict,
+def generate_word_report(pasta: str, projeto: Dict,
                            max_figuras: int = 14) -> io.BytesIO:
     """
     Generates an editable Word report (.docx) with python-docx.
@@ -477,7 +477,7 @@ def gerar_word_relatorio(pasta: str, projeto: Dict,
     return buf
 
 
-def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
+def generate_excel_report(pasta: str) -> io.BytesIO:
     """
     Generates an Excel report with 4 sheets via openpyxl:
       - Metrics: metrics extracted from the summary
@@ -636,7 +636,7 @@ def gerar_excel_relatorio(pasta: str) -> io.BytesIO:
     return buf
 
 
-def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
+def generate_latex_template(pasta: str, projeto: Dict) -> bytes:
     """
     Generates a LaTeX template ready for journals (Talanta, Food Chemistry,
     Journal of Chemometrics). Includes auto-filled metrics, \\includegraphics
@@ -936,7 +936,7 @@ Cross-validatory estimation of the number of components.
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def gerar_pptx_relatorio(pasta: str, projeto: Dict,
+def generate_pptx_report(pasta: str, projeto: Dict,
                            max_figuras: int = 12) -> io.BytesIO:
     """
     Generates a PowerPoint presentation with professional scientific design.

@@ -1,7 +1,7 @@
 """Testes de guaraci.reports (item 18: geradores de relatório extraídos de
 app_quimiometria.py para módulo de serviço).
 
-Regressão: gerar_pdf_relatorio usava um literal Unicode (em-dash "—") em duas
+Regressão: generate_pdf_report usava um literal Unicode (em-dash "—") em duas
 strings passadas direto ao fpdf2 sem passar pelo normalizador `_a()` (que
 remove acentos/Unicode para a fonte Helvetica, latin-1-only). Isso derrubava
 a geração de PDF em QUALQUER projeto (achado ao exercitar o gerador contra
@@ -84,22 +84,22 @@ def projeto():
 
 def test_gerar_pdf_relatorio_nao_lanca_erro_de_encoding(pasta_resultados, projeto):
     """Regressão: em-dash fora de _a() derrubava fpdf2 com FPDFUnicodeEncodingException."""
-    buf = reports.gerar_pdf_relatorio(pasta_resultados, projeto, max_figuras=0)
+    buf = reports.generate_pdf_report(pasta_resultados, projeto, max_figuras=0)
     assert len(buf.getvalue()) > 0
 
 
 def test_gerar_word_relatorio_ok(pasta_resultados, projeto):
-    buf = reports.gerar_word_relatorio(pasta_resultados, projeto, max_figuras=0)
+    buf = reports.generate_word_report(pasta_resultados, projeto, max_figuras=0)
     assert len(buf.getvalue()) > 0
 
 
 def test_gerar_excel_relatorio_ok(pasta_resultados):
-    buf = reports.gerar_excel_relatorio(pasta_resultados)
+    buf = reports.generate_excel_report(pasta_resultados)
     assert len(buf.getvalue()) > 0
 
 
 def test_gerar_latex_template_ok(pasta_resultados, projeto):
-    tex = reports.gerar_latex_template(pasta_resultados, projeto)
+    tex = reports.generate_latex_template(pasta_resultados, projeto)
     assert isinstance(tex, bytes) and len(tex) > 0
 
 
@@ -130,10 +130,10 @@ def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
         )
         return str(p)
 
-    tex_sim = reports.gerar_latex_template(
+    tex_sim = reports.generate_latex_template(
         _pasta("sim", "StratifiedGroupKFoldEstavel n_splits=5"), projeto
     ).decode("utf-8")
-    tex_nao = reports.gerar_latex_template(
+    tex_nao = reports.generate_latex_template(
         _pasta("nao", "RepeatedStratifiedKFold n_splits=5 repeats=3"), projeto
     ).decode("utf-8")
 
@@ -183,25 +183,25 @@ def test_relatorios_carimbam_prototipo_no_modo_imagem(tmp_path, projeto):
     pasta_img = _pasta_com_modo(tmp_path, "imagem")
     pasta_dx  = _pasta_com_modo(tmp_path, "dx")
 
-    tex_img = reports.gerar_latex_template(pasta_img, projeto).decode("utf-8")
-    tex_dx  = reports.gerar_latex_template(pasta_dx, projeto).decode("utf-8")
+    tex_img = reports.generate_latex_template(pasta_img, projeto).decode("utf-8")
+    tex_dx  = reports.generate_latex_template(pasta_dx, projeto).decode("utf-8")
     assert "PROTOTYPE OUTPUT" in tex_img
     assert "PROTOTYPE OUTPUT" not in tex_dx
 
     # PDF e Word: nao da' p/ inspecionar o texto renderizado facilmente,
     # entao verifica-se que o carimbo muda o TAMANHO da saida (conteudo a
     # mais) e que os dois geradores rodam sem erro nos dois modos.
-    pdf_img = reports.gerar_pdf_relatorio(pasta_img, projeto, max_figuras=0)
-    pdf_dx  = reports.gerar_pdf_relatorio(pasta_dx, projeto, max_figuras=0)
+    pdf_img = reports.generate_pdf_report(pasta_img, projeto, max_figuras=0)
+    pdf_dx  = reports.generate_pdf_report(pasta_dx, projeto, max_figuras=0)
     assert len(pdf_img.getvalue()) > len(pdf_dx.getvalue())
 
-    doc_img = reports.gerar_word_relatorio(pasta_img, projeto, max_figuras=0)
-    doc_dx  = reports.gerar_word_relatorio(pasta_dx, projeto, max_figuras=0)
+    doc_img = reports.generate_word_report(pasta_img, projeto, max_figuras=0)
+    doc_dx  = reports.generate_word_report(pasta_dx, projeto, max_figuras=0)
     assert len(doc_img.getvalue()) > len(doc_dx.getvalue())
 
 
 def test_gerar_pptx_relatorio_ok(pasta_resultados, projeto):
-    buf = reports.gerar_pptx_relatorio(pasta_resultados, projeto, max_figuras=0)
+    buf = reports.generate_pptx_report(pasta_resultados, projeto, max_figuras=0)
     assert len(buf.getvalue()) > 0
 
 
@@ -216,24 +216,24 @@ def test_versao_no_relatorio_pdf_usa_pipeline_version(pasta_resultados, projeto)
 # (secao de figuras do PDF/Word/PPTX, abas Identifiers/VIP/Benchmark do Excel).
 
 def test_gerar_pdf_relatorio_com_figuras_reais(pasta_resultados_completa, projeto):
-    buf = reports.gerar_pdf_relatorio(pasta_resultados_completa, projeto,
+    buf = reports.generate_pdf_report(pasta_resultados_completa, projeto,
                                         max_figuras=2)
     assert len(buf.getvalue()) > 0
 
 
 def test_gerar_word_relatorio_com_figuras_reais(pasta_resultados_completa, projeto):
-    buf = reports.gerar_word_relatorio(pasta_resultados_completa, projeto,
+    buf = reports.generate_word_report(pasta_resultados_completa, projeto,
                                          max_figuras=2)
     assert len(buf.getvalue()) > 0
 
 
 def test_gerar_excel_relatorio_com_tabelas_reais(pasta_resultados_completa):
-    buf = reports.gerar_excel_relatorio(pasta_resultados_completa)
+    buf = reports.generate_excel_report(pasta_resultados_completa)
     assert len(buf.getvalue()) > 0
 
 
 def test_gerar_pptx_relatorio_com_figuras_e_benchmark(pasta_resultados_completa, projeto):
-    buf = reports.gerar_pptx_relatorio(pasta_resultados_completa, projeto,
+    buf = reports.generate_pptx_report(pasta_resultados_completa, projeto,
                                          max_figuras=2)
     assert len(buf.getvalue()) > 0
 
@@ -248,5 +248,5 @@ def test_gerar_excel_relatorio_csv_corrompido_nao_quebra(tmp_path):
     tabelas = tmp_path / NOME_TABELAS
     tabelas.mkdir()
     (tabelas / "amostras_identificadores.csv").write_bytes(b"\xff\xfe\x00\x01lixo binario")
-    buf = reports.gerar_excel_relatorio(str(tmp_path))
+    buf = reports.generate_excel_report(str(tmp_path))
     assert len(buf.getvalue()) > 0

@@ -367,7 +367,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Relatorios: template LaTeX nao
              mae_id esta indisponivel (mesmo caso do achado acima, ex.:
              modo_entrada="imagem") -- nesse caso o manuscrito gerado
              continuava alegando validacao group-aware que nao rodou
-             naquela execucao. `gerar_latex_template` agora le
+             naquela execucao. `generate_latex_template` agora le
              `Group-aware (mae_id)` e `Validacao` do resumo_modelo.txt real
              (mesmos campos gravados por pipeline.py) e condiciona o texto:
              afirma GroupKFold so' quando de fato usado, com o `cv_label`
