@@ -87,14 +87,14 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 __all__ = [
-    "alpha_alcancavel",
+    "achievable_alpha",
     "n_minimo_para_alpha",
-    "limiar_conformal",
+    "conformal_threshold",
     "ConformalOneClass",
 ]
 
 
-def alpha_alcancavel(n: int) -> float:
+def achievable_alpha(n: int) -> float:
     """Menor nivel de erro garantivel com `n` observacoes de calibracao.
 
     `alpha_min = 1/(n+1)`. Nenhum procedimento conformal garante um alpha
@@ -114,7 +114,7 @@ def n_minimo_para_alpha(alpha: float) -> int:
     return int(math.ceil((1.0 - alpha) / alpha))
 
 
-def limiar_conformal(scores_calib: np.ndarray, alpha: float = 0.05
+def conformal_threshold(scores_calib: np.ndarray, alpha: float = 0.05
                      ) -> Dict[str, Any]:
     """Limiar conformal split/inductive a partir de escores de calibracao.
 
@@ -135,18 +135,18 @@ def limiar_conformal(scores_calib: np.ndarray, alpha: float = 0.05
     Returns
     -------
     dict com: limiar (float|nan), alcancavel (bool), n_calibracao (int),
-    alpha_nominal (float), alpha_alcancavel (float), k (int), aviso (str|None)
+    alpha_nominal (float), achievable_alpha (float), k (int), aviso (str|None)
     """
     s = np.asarray(scores_calib, dtype=float)
     s = s[np.isfinite(s)]
     n = int(s.size)
-    a_min = alpha_alcancavel(n)
+    a_min = achievable_alpha(n)
     res: Dict[str, Any] = {
         "limiar": float("nan"),
         "alcancavel": False,
         "n_calibracao": n,
         "alpha_nominal": float(alpha),
-        "alpha_alcancavel": a_min,
+        "achievable_alpha": a_min,
         "k": 0,
         "aviso": None,
     }
@@ -172,7 +172,7 @@ def limiar_conformal(scores_calib: np.ndarray, alpha: float = 0.05
         res["aviso"] = (
             f"Limiar valido, mas com {n} amostras de calibracao a garantia "
             f"e' fragil: qualquer amostra a menos derruba o alpha "
-            f"alcancavel para {alpha_alcancavel(n - 1):.3g}.")
+            f"alcancavel para {achievable_alpha(n - 1):.3g}.")
     return res
 
 
@@ -221,7 +221,7 @@ class ConformalOneClass:
             s_grupo = s
         else:
             s_grupo = self._colapsar_por_grupo(s, mae_id)
-        self.info_ = limiar_conformal(s_grupo, self.alpha)
+        self.info_ = conformal_threshold(s_grupo, self.alpha)
         self.limiar_ = self.info_["limiar"]
         if not self.info_["alcancavel"]:
             log.warning("[Conformal] %s", self.info_["aviso"])

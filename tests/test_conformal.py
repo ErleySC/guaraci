@@ -11,18 +11,18 @@ import pytest
 
 from guaraci.conformal import (
     ConformalOneClass,
-    alpha_alcancavel,
-    limiar_conformal,
+    achievable_alpha,
+    conformal_threshold,
     n_minimo_para_alpha,
 )
 
 
 # ── O limite duro 1/(n+1) ───────────────────────────────────────────────
 def test_alpha_alcancavel_e_um_sobre_n_mais_um():
-    assert alpha_alcancavel(1) == pytest.approx(0.5)
-    assert alpha_alcancavel(9) == pytest.approx(0.1)
-    assert alpha_alcancavel(19) == pytest.approx(0.05)
-    assert alpha_alcancavel(0) == pytest.approx(1.0)   # degenerado
+    assert achievable_alpha(1) == pytest.approx(0.5)
+    assert achievable_alpha(9) == pytest.approx(0.1)
+    assert achievable_alpha(19) == pytest.approx(0.05)
+    assert achievable_alpha(0) == pytest.approx(1.0)   # degenerado
 
 
 def test_n_minimo_para_alpha_e_o_inverso():
@@ -39,10 +39,10 @@ def test_limiar_recusa_quando_n_nao_sustenta_o_alpha():
     """REGRESSAO do modo de falha do DD-SIMCA: com n insuficiente NAO se
     devolve numero. `limiar` fica NaN, `alcancavel` False, e o aviso diz
     qual alpha seria alcancavel."""
-    r = limiar_conformal(np.array([1.0]), alpha=0.05)     # n=1
+    r = conformal_threshold(np.array([1.0]), alpha=0.05)     # n=1
     assert r["alcancavel"] is False
     assert np.isnan(r["limiar"])
-    assert r["alpha_alcancavel"] == pytest.approx(0.5)
+    assert r["achievable_alpha"] == pytest.approx(0.5)
     assert "NAO e' alcancavel" in r["aviso"]
     assert "n>=19" in r["aviso"]
 
@@ -50,7 +50,7 @@ def test_limiar_recusa_quando_n_nao_sustenta_o_alpha():
 def test_limiar_definido_assim_que_o_n_permite():
     rng = np.random.default_rng(0)
     s = rng.normal(size=19)
-    r = limiar_conformal(s, alpha=0.05)
+    r = conformal_threshold(s, alpha=0.05)
     assert r["alcancavel"] is True
     assert np.isfinite(r["limiar"])
     # k = ceil((n+1)(1-alpha)) = ceil(20*0.95) = 19 -> o maior escore
@@ -61,7 +61,7 @@ def test_limiar_definido_assim_que_o_n_permite():
 def test_limiar_e_o_k_esimo_menor_escore():
     """Propriedade exata da correcao de amostra finita, nao aproximada."""
     s = np.arange(1.0, 101.0)          # n=100, escores 1..100
-    r = limiar_conformal(s, alpha=0.10)
+    r = conformal_threshold(s, alpha=0.10)
     assert r["k"] == int(np.ceil(101 * 0.90))   # 91
     assert r["limiar"] == pytest.approx(91.0)
 
@@ -76,7 +76,7 @@ def test_cobertura_empirica_atinge_o_nominal():
     for _ in range(200):
         calib = rng.normal(size=50)
         teste = rng.normal(size=200)
-        r = limiar_conformal(calib, alpha=0.10)
+        r = conformal_threshold(calib, alpha=0.10)
         coberturas.append(float(np.mean(teste <= r["limiar"])))
     media = float(np.mean(coberturas))
     assert media >= 0.88, f"cobertura {media:.3f} abaixo do nominal 0.90"
@@ -94,7 +94,7 @@ def test_replicas_nao_inflam_o_n_de_calibracao():
 
     cc = ConformalOneClass(alpha=0.10).fit(scores, mae_id=grupos)
     assert cc.info_["n_calibracao"] == 2            # nao 6
-    assert cc.info_["alpha_alcancavel"] == pytest.approx(1 / 3)
+    assert cc.info_["achievable_alpha"] == pytest.approx(1 / 3)
     assert cc.info_["alcancavel"] is False          # 0.10 exige n>=9
 
     # Sem mae_id o n seria 6 -- a diferenca e' justamente o achado
