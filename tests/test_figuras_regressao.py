@@ -34,7 +34,7 @@ FIGURAS_CLASSIFICACAO = {
     "figS1_selecao_lvs",
     "fig_sprint3_sr_vip",
     "fig6_preprocessamento",              # exploratória via escotilha figuras_detalhadas
-    "fig_hca_dendrograma",
+    "fig_hca_dendrogram",
     "fig_loadings_pca",
     "fig_biplot_pca",                     # exploratória via escotilha figuras_detalhadas
     "fig_roc_auc_multiclasse",

@@ -50,7 +50,7 @@ CONTRATO = {
         "DDSimca", "OPLSDAWrapper",
     ],
     "figuras": [
-        "salvar", "setup_matplotlib", "especificidade_por_classe",
+        "salvar", "setup_matplotlib", "specificity_by_class",
         "fig1_pca_scores", "fig4_confusao",
     ],
     "validacao_estatistica": [

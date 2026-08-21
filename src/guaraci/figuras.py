@@ -118,7 +118,7 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
     plt.close(fig)
 
 
-def especificidade_por_classe(cm: np.ndarray) -> np.ndarray:
+def specificity_by_class(cm: np.ndarray) -> np.ndarray:
     """Specificity = TN / (TN + FP), por classe (one-vs-rest)."""
     n = cm.shape[0]
     total = cm.sum()
@@ -347,7 +347,7 @@ def _centroides_pca(X, rotulos, n_pcs):
     return M, classes
 
 
-def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
+def fig_hca_dendrogram(X_processed, rotulos, mapa_cores, cfg, pasta,
                          metodo="ward"):
     """HCA dendrogram (Ward, Euclidean) on CENTROIDS per species in
     the PCA(hca_n_pcs components) space — N1 required.
@@ -386,7 +386,7 @@ def fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta,
                   loc="left")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    salvar(fig, "fig_hca_dendrograma", pasta, cfg)
+    salvar(fig, "fig_hca_dendrogram", pasta, cfg)
 
     # Automatic interpretation of main clusters (k=2)
     try:
@@ -643,7 +643,7 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
     ax = fig.add_subplot(gs[0, 1])
     prec = precision_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
     rec  = recall_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
-    spec = especificidade_por_classe(cm_mat)
+    spec = specificity_by_class(cm_mat)
     f1   = f1_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
 
     nomes_m   = ["Precision", "Sensitivity", "Specificity", "F1-score"]
@@ -1866,7 +1866,7 @@ def selecionar_loadings_distintos(mag: np.ndarray, wavenumbers: np.ndarray,
     return np.array(escolhidos, dtype=int)
 
 
-def afastar_rotulos(pos: np.ndarray, sep_x: float,
+def spread_labels(pos: np.ndarray, sep_x: float,
                      sep_y: float) -> np.ndarray:
     """Afasta rotulos sobrepostos: nenhum par fica a menos de `sep_x` E
     `sep_y` ao mesmo tempo (criterio de CAIXA -- e' assim que um rotulo de
@@ -1966,7 +1966,7 @@ def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
     # figura funcione em qualquer escala de score.
     ext_x = float(np.abs(scores2[:, 0]).max()) if scores2.size else 1.0
     ext_y = float(np.abs(scores2[:, 1]).max()) if scores2.size else 1.0
-    alvo = afastar_rotulos(alvo, sep_x=ext_x * 0.13, sep_y=ext_y * 0.075)
+    alvo = spread_labels(alvo, sep_x=ext_x * 0.13, sep_y=ext_y * 0.075)
 
     for (vx, vy), (lx, ly), i in zip(pontas, alvo, idx_top):
         ax.annotate("", xy=(vx, vy), xytext=(0, 0),

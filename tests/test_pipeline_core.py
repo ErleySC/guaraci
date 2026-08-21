@@ -636,7 +636,7 @@ def test_metricas_classificacao_perfeita(pq):
 def test_especificidade_por_classe_valores_conhecidos(pq):
     """Especificidade one-vs-rest a partir de uma matriz de confusão conhecida."""
     cm = np.array([[5, 0], [1, 4]])
-    spec = pq.especificidade_por_classe(cm)
+    spec = pq.specificity_by_class(cm)
     # classe 0: TN=4, FP=1 → 0.8 ; classe 1: TN=5, FP=0 → 1.0
     np.testing.assert_allclose(spec, [0.8, 1.0], atol=1e-12)
 

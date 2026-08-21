@@ -180,21 +180,21 @@ from guaraci.paleta_cores import (   # noqa: E402
 )
 
 
-# Camada de plotagem (setup_matplotlib, salvar, especificidade_por_classe,
+# Camada de plotagem (setup_matplotlib, salvar, specificity_by_class,
 # helpers de plot e ~30 funcoes fig_*) extraida p/ figuras.py (Fase H).
 # Reexportada aqui para nao quebrar pipeline.fig1_pca_scores(...),
 # pipeline.salvar(...) nem as chamadas de executar()/figuras remanescentes.
 from guaraci.figuras import (   # noqa: E402
     setup_matplotlib,
     salvar,
-    especificidade_por_classe,
+    specificity_by_class,
     elipse_t2,
     convex_hull_contorno,
     parametros_scatter_adaptativos,
     _ticks_x_inteiros,
     plot_scores_panel,
     fig1_selecao_lvs,
-    fig_hca_dendrograma,
+    fig_hca_dendrogram,
     fig_hca_comparacao_pipelines,
     fig1_pca_scores,
     fig2_plsda_scores,
@@ -1849,7 +1849,7 @@ def executar(cfg: Config):
     # ---- EXPLORATORIAS: nucleo do Modo Exploratorio; escotilha detalhada
     # dentro de Classificacao; FILTRADAS em Quantificacao. ----
     if _fig_explor_on:
-        fig_hca_dendrograma(X_processed, rotulos, mapa_cores, cfg, pasta)
+        fig_hca_dendrogram(X_processed, rotulos, mapa_cores, cfg, pasta)
         fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
         fig_biplot_pca(pca, scores_pca, wavenumbers, rotulos, mapa_cores,
                        cfg, pasta)

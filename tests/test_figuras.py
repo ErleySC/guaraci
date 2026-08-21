@@ -63,7 +63,7 @@ def test_afastar_rotulos_elimina_toda_sobreposicao():
     impressos uns por cima dos outros (ilegiveis). A funcao tem que
     garantir separacao para QUALQUER entrada, inclusive o pior caso de
     rotulos exatamente coincidentes."""
-    from guaraci.figuras import afastar_rotulos
+    from guaraci.figuras import spread_labels
     rng = np.random.default_rng(0)
     sep_x, sep_y = 0.05, 0.02
     casos = {
@@ -74,7 +74,7 @@ def test_afastar_rotulos_elimina_toda_sobreposicao():
         "espalhado":     rng.normal(size=(50, 2)) * 0.1,
     }
     for nome, pos in casos.items():
-        out = afastar_rotulos(pos, sep_x, sep_y)
+        out = spread_labels(pos, sep_x, sep_y)
         assert _n_sobreposicoes(out, sep_x, sep_y) == 0, (
             f"caso '{nome}': ainda ha rotulos sobrepostos")
         assert out.shape == pos.shape
@@ -84,18 +84,18 @@ def test_afastar_rotulos_elimina_toda_sobreposicao():
 def test_afastar_rotulos_e_deterministico_e_preserva_x():
     """A figura precisa ser reproduzivel (sem RNG), e o passo vertical nao
     pode mexer em x -- e' o que garante a separacao entre colunas."""
-    from guaraci.figuras import afastar_rotulos
+    from guaraci.figuras import spread_labels
     pos = np.column_stack([np.tile([0.0, 0.5], 6), np.zeros(12)])
-    a = afastar_rotulos(pos, 0.05, 0.02)
-    b = afastar_rotulos(pos, 0.05, 0.02)
+    a = spread_labels(pos, 0.05, 0.02)
+    b = spread_labels(pos, 0.05, 0.02)
     np.testing.assert_array_equal(a, b)
     np.testing.assert_allclose(a[:, 0], pos[:, 0])
 
 
 def test_afastar_rotulos_casos_degenerados():
-    from guaraci.figuras import afastar_rotulos
+    from guaraci.figuras import spread_labels
     for pos in (np.zeros((0, 2)), np.zeros((1, 2))):
-        out = afastar_rotulos(pos, 0.05, 0.02)
+        out = spread_labels(pos, 0.05, 0.02)
         assert out.shape == pos.shape
 
 

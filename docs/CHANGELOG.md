@@ -688,7 +688,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Figuras: curva DET era uma reta sem
              `selecionar_loadings_distintos()` (separacao espectral minima +
              piso relativo de magnitude, para nao completar a cota com ruido:
              o titulo passa a mostrar "top-5" quando so' ha' 5 bandas reais) e
-             `afastar_rotulos()` (agrupa em colunas por x e empilha em y,
+             `spread_labels()` (agrupa em colunas por x e empilha em y,
              convergencia garantida em uma passada + linha-guia ate a seta).
              Uma primeira versao por repulsao par-a-par iterativa OSCILAVA e
              deixava 7 pares sobrepostos mesmo apos 120 iteracoes -- medido,
