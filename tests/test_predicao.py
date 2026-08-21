@@ -59,7 +59,7 @@ def test_validar_pacote_modelo_rejeita_pacote_incompleto():
 
 def test_predizer_amostras_retorna_colunas_esperadas(modelo_e_dados):
     pkg, X_novos, wn = modelo_e_dados
-    df = pr.predizer_amostras(pkg, X_novos, wn)
+    df = pr.predict_samples(pkg, X_novos, wn)
     esperado = {"amostra", "classe_pred", "confianca_%", "T2", "T2_ucl",
                 "Q", "Q_ucl", "T2_ok", "Q_ok", "aceito"}
     assert esperado.issubset(df.columns)
@@ -80,7 +80,7 @@ def test_pacote_real_exporta_artefatos_de_ad(modelo_e_dados):
 
 def test_predizer_amostras_inclui_colunas_ad(modelo_e_dados):
     pkg, X_novos, wn = modelo_e_dados
-    df = pr.predizer_amostras(pkg, X_novos, wn)
+    df = pr.predict_samples(pkg, X_novos, wn)
     esperado_ad = {"AD_T2", "AD_Q", "AD_f", "AD_f_crit", "AD_dentro_dominio"}
     assert esperado_ad.issubset(df.columns)
     assert df["AD_dentro_dominio"].dtype == bool
@@ -94,21 +94,21 @@ def test_predizer_amostras_sem_artefatos_ad_nao_gera_colunas_ad(modelo_e_dados):
     pkg_antigo = {k: v for k, v in pkg.items()
                   if k not in ("pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh",
                               "ad_Nq", "ad_f_crit")}
-    df = pr.predizer_amostras(pkg_antigo, X_novos, wn)
+    df = pr.predict_samples(pkg_antigo, X_novos, wn)
     assert not any(c.startswith("AD_") for c in df.columns)
     assert "classe_pred" in df.columns  # predicao principal nao foi afetada
 
 
 def test_predizer_amostras_classe_pred_pertence_ao_treino(modelo_e_dados):
     pkg, X_novos, wn = modelo_e_dados
-    df = pr.predizer_amostras(pkg, X_novos, wn)
+    df = pr.predict_samples(pkg, X_novos, wn)
     classes_treino = set(pkg["label_binarizer"].classes_)
     assert set(df["classe_pred"]).issubset(classes_treino)
 
 
 def test_predizer_amostras_confianca_entre_0_e_100(modelo_e_dados):
     pkg, X_novos, wn = modelo_e_dados
-    df = pr.predizer_amostras(pkg, X_novos, wn)
+    df = pr.predict_samples(pkg, X_novos, wn)
     assert (df["confianca_%"] >= 0).all() and (df["confianca_%"] <= 100).all()
 
 
@@ -121,7 +121,7 @@ def test_predizer_amostras_espectro_de_treino_e_aceito(modelo_e_dados):
     # treinado (usa a media interna, sempre dentro do dominio de treino).
     n = len(wn)
     X_medio = np.tile(np.linspace(0.4, 0.6, n), (1, 1))
-    df = pr.predizer_amostras(pkg, X_medio, wn)
+    df = pr.predict_samples(pkg, X_medio, wn)
     assert len(df) == 1
     assert isinstance(bool(df["aceito"].iloc[0]), bool)  # nao lanca, e' bool valido
 
@@ -252,7 +252,7 @@ def test_carregar_modelo_sem_manifesto_carrega_normalmente(tmp_path, modelo_e_da
 def test_pacote_real_exporta_parametros_da_distancia_combinada(modelo_e_dados):
     """O pacote precisa levar h0/q0/Nh/Nq/f_crit DO ESPACO PLS.
 
-    Sem eles, `predizer_amostras` decide "aceito" pela regra retangular
+    Sem eles, `predict_samples` decide "aceito" pela regra retangular
     (T2<=lim E Q<=lim), com alpha independente por eixo -- alpha conjunto
     efetivo ~0,0975 em vez dos 0,05 declarados. E' a mesma regra ja
     corrigida no DD-SIMCA (2026-08-08) e no dominio de aplicabilidade
@@ -270,7 +270,7 @@ def test_predizer_amostras_usa_distancia_combinada_e_declara_o_criterio(
     regra foi aplicada -- um pacote antigo cai na regra por eixo, mas nunca
     em silencio."""
     pkg, X_novos, wn = modelo_e_dados
-    df = pr.predizer_amostras(pkg, X_novos, wn)
+    df = pr.predict_samples(pkg, X_novos, wn)
     assert "criterio" in df.columns
     assert "combinada" in str(df["criterio"].iloc[0])
     assert np.array_equal(df["aceito"].values,
@@ -287,4 +287,4 @@ def test_predizer_amostras_recusa_pacote_sem_q_ucl(modelo_e_dados):
     pkg, X_novos, wn = modelo_e_dados
     pkg_sem = {k: v for k, v in pkg.items() if k != "q_ucl"}
     with pytest.raises(ValueError, match="q_ucl"):
-        pr.predizer_amostras(pkg_sem, X_novos, wn)
+        pr.predict_samples(pkg_sem, X_novos, wn)

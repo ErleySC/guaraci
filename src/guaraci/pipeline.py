@@ -2454,7 +2454,7 @@ def executar(cfg: Config):
             "q_ucl":          float(q_lim),
         }
         # Parametros da distancia combinada NO ESPACO PLS. Sem eles,
-        # predizer_amostras() decidia "aceito" pela regra RETANGULAR
+        # predict_samples() decidia "aceito" pela regra RETANGULAR
         # (T2<=lim E Q<=lim, alpha independente por eixo) -- a mesma ja
         # corrigida no DD-SIMCA (2026-08-08) e no dominio de aplicabilidade
         # (achado A3), com alpha conjunto efetivo ~0,0975 em vez de 0,05.

@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from guaraci.predicao import (
-    predizer_amostras as _predizer,
+    predict_samples as _predizer,
     validate_model_package as _validar_pacote_modelo,
     load_prediction_csv as _carregar_csv_predicao,
 )

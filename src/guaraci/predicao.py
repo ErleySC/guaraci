@@ -160,7 +160,7 @@ def load_prediction_csv(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.D
     return X, wn, meta_df
 
 
-def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
+def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
                        wn_new: Optional[np.ndarray]) -> pd.DataFrame:
     """Aplica o pacote de modelo salvo a espectros novos.
 
