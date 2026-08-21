@@ -58,7 +58,7 @@ CONTRATO = {
         "teste_wold", "teste_permutacao",
     ],
     "hardware": [
-        "hardware_probe", "auto_ajustar_config_hardware", "_verificar_ram",
+        "hardware_probe", "auto_adjust_hardware_config", "_verificar_ram",
     ],
     "selecao_variaveis": [
         "selecao_ipls", "sparse_plsda_mask", "etapa4_selecao_variaveis",

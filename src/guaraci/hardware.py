@@ -128,7 +128,7 @@ def hardware_probe() -> Dict[str, Any]:
     return info
 
 
-def auto_ajustar_config_hardware(cfg: "Config",
+def auto_adjust_hardware_config(cfg: "Config",
                                   hw: Dict[str, Any]) -> List[str]:
     """
     Ajusta automaticamente limites do cfg com base na RAM livre detectada.

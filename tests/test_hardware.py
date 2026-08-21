@@ -1,6 +1,6 @@
 """Rede de segurança do auto-ajuste por hardware (guaraci.hardware).
 
-auto_ajustar_config_hardware decide, por faixa de RAM livre, o que DESLIGAR
+auto_adjust_hardware_config decide, por faixa de RAM livre, o que DESLIGAR
 (SHAP/benchmark/Monte Carlo) para não travar máquinas modestas nem o demo
 hospedado. Uma regressão de limiar aqui = freeze silencioso em produção.
 Testável por completo passando um `hw` dict sintético (sem depender da RAM
@@ -45,7 +45,7 @@ def _hw(ram_gb):
 # ── faixa crítica (< 2 GB): desliga tudo pesado ──────────────────────────────
 def test_ram_critica_desliga_tudo():
     c = _cfg_pesado()
-    avisos = hardware.auto_ajustar_config_hardware(c, _hw(1.5))
+    avisos = hardware.auto_adjust_hardware_config(c, _hw(1.5))
     assert c.executar_shap is False
     assert c.executar_benchmark is False
     assert c.executar_monte_carlo is False
@@ -56,7 +56,7 @@ def test_ram_critica_desliga_tudo():
 # ── faixa baixa (2–4 GB): SHAP e benchmark off, MC limitado ──────────────────
 def test_ram_baixa_desliga_shap_benchmark_limita_mc():
     c = _cfg_pesado()
-    hardware.auto_ajustar_config_hardware(c, _hw(3.0))
+    hardware.auto_adjust_hardware_config(c, _hw(3.0))
     assert c.executar_shap is False
     assert c.executar_benchmark is False
     assert c.executar_monte_carlo is True     # MC segue ligado, só limitado
@@ -66,7 +66,7 @@ def test_ram_baixa_desliga_shap_benchmark_limita_mc():
 # ── faixa média (4–6 GB): reduz amostragem, MC multi-modelo off ──────────────
 def test_ram_media_reduz_shap_e_mc():
     c = _cfg_pesado()
-    hardware.auto_ajustar_config_hardware(c, _hw(5.0))
+    hardware.auto_adjust_hardware_config(c, _hw(5.0))
     assert c.executar_shap is True            # SHAP fica, com amostragem menor
     assert c.shap_max_amostras == 150
     assert c.n_monte_carlo == 60
@@ -76,7 +76,7 @@ def test_ram_media_reduz_shap_e_mc():
 # ── faixa moderada (6–8 GB): reduções brandas ────────────────────────────────
 def test_ram_moderada_reducoes_brandas():
     c = _cfg_pesado()
-    hardware.auto_ajustar_config_hardware(c, _hw(7.0))
+    hardware.auto_adjust_hardware_config(c, _hw(7.0))
     assert c.shap_max_amostras == 300
     assert c.n_monte_carlo == 80
     assert c.executar_benchmark is True       # benchmark permitido nesta faixa
@@ -85,7 +85,7 @@ def test_ram_moderada_reducoes_brandas():
 # ── RAM suficiente (>= 8 GB): nada muda ──────────────────────────────────────
 def test_ram_suficiente_nao_altera_nada():
     c = _cfg_pesado()
-    avisos = hardware.auto_ajustar_config_hardware(c, _hw(16.0))
+    avisos = hardware.auto_adjust_hardware_config(c, _hw(16.0))
     assert avisos == []
     assert c.executar_shap is True
     assert c.executar_benchmark is True
@@ -97,7 +97,7 @@ def test_ram_suficiente_nao_altera_nada():
 def test_hw_sem_chave_ram_usa_default_seguro():
     # hw dict vazio -> assume 16 GB (default) -> não corta nada
     c = _cfg_pesado()
-    avisos = hardware.auto_ajustar_config_hardware(c, {})
+    avisos = hardware.auto_adjust_hardware_config(c, {})
     assert avisos == []
 
 
@@ -108,7 +108,7 @@ def test_config_leve_nao_gera_avisos_em_ram_baixa():
     c.executar_benchmark = False
     c.executar_monte_carlo = False
     c.n_splits_cv = 3
-    avisos = hardware.auto_ajustar_config_hardware(c, _hw(1.0))
+    avisos = hardware.auto_adjust_hardware_config(c, _hw(1.0))
     assert avisos == []
 
 

@@ -1119,7 +1119,7 @@ def test_auto_ajustar_config_hardware_ram_critica_desliga_tudo(pq):
     mais crítico de proteção contra travamento."""
     cfg = pq.Config(executar_shap=True, executar_benchmark=True,
                      executar_monte_carlo=True, n_splits_cv=10)
-    avisos = pq.auto_ajustar_config_hardware(cfg, {"ram_livre_gb": 1.5})
+    avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 1.5})
     assert cfg.executar_shap is False
     assert cfg.executar_benchmark is False
     assert cfg.executar_monte_carlo is False
@@ -1132,7 +1132,7 @@ def test_auto_ajustar_config_hardware_ram_farta_nao_mexe(pq):
     desnecessariamente quando há recurso de sobra."""
     cfg = pq.Config(executar_shap=True, shap_max_amostras=500,
                      executar_benchmark=True, n_monte_carlo=200)
-    avisos = pq.auto_ajustar_config_hardware(cfg, {"ram_livre_gb": 16.0})
+    avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 16.0})
     assert avisos == []
     assert cfg.executar_shap is True
     assert cfg.shap_max_amostras == 500

@@ -750,10 +750,10 @@ from guaraci.avaliacao_modelos import (   # noqa: E402
 
 # Compatibilidade de hardware (probe, auto-ajuste, guarda de RAM) extraida p/
 # hardware.py (Fase H). Reexportada p/ nao quebrar pipeline.hardware_probe(),
-# pipeline.auto_ajustar_config_hardware(...) nem o uso em app_quimiometria.py.
+# pipeline.auto_adjust_hardware_config(...) nem o uso em app_quimiometria.py.
 from guaraci.hardware import (   # noqa: E402
     hardware_probe,
-    auto_ajustar_config_hardware,
+    auto_adjust_hardware_config,
     _verificar_ram,
 )
 def clear_old_results(pasta_base: str,
@@ -1315,7 +1315,7 @@ def executar(cfg: Config):
 
     # --- 0. Hardware probe + auto-ajuste preventivo -------------------------
     _hw = hardware_probe()
-    _avisos_hw = auto_ajustar_config_hardware(cfg, _hw)
+    _avisos_hw = auto_adjust_hardware_config(cfg, _hw)
     log.info(f"[HARDWARE] RAM total: {_hw['ram_total_gb']:.1f} GB  "
           f"livre: {_hw['ram_livre_gb']:.1f} GB  "
           f"CPU: {_hw['cpu_fisicos']}f/{_hw['cpu_logicos']}l")
