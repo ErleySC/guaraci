@@ -148,7 +148,7 @@ def _dados_regressao_multi_especie(seed=0, n_por_especie=24, p=30,
 @pytest.mark.slow
 def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     """Auto-Benchmark de regressao: PLS-R (reaproveitado de
-    pls_regressao_por_especie, sem refit) + Ridge/Lasso/EN/SVR/RF, mesmo
+    pls_regression_by_species, sem refit) + Ridge/Lasso/EN/SVR/RF, mesmo
     split por especie. Verifica DataFrame + CSV + figura."""
     X, conc, rotulos, mae_id, classes_unicas = _dados_regressao_multi_especie()
     cfg = pq.Config(seed=0, max_lvs=5, frac_cal=0.7)
@@ -156,7 +156,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
 
-    reg_esp = pq.pls_regressao_por_especie(
+    reg_esp = pq.pls_regression_by_species(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
     assert reg_esp is not None, "fixture nao gerou dados suficientes p/ PLS-R"
 
@@ -173,7 +173,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     assert os.path.exists(
         os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
 
-    # PLS-R do benchmark bate com o ja calculado por pls_regressao_por_especie
+    # PLS-R do benchmark bate com o ja calculado por pls_regression_by_species
     # (reaproveitado, nao deve ser refeito com numeros diferentes)
     linha_pls = df[df["Modelo"] == "PLS-R"].iloc[0]
     assert linha_pls["RMSEP (pooled)"] == pytest.approx(
@@ -182,7 +182,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
 
 def test_benchmark_regressao_sem_especies_suficientes_retorna_none(pq, tmp_path):
     """Sem nenhuma especie com amostras adulteradas suficientes, retorna
-    None (mesmo criterio de pls_regressao_por_especie) em vez de crashar."""
+    None (mesmo criterio de pls_regression_by_species) em vez de crashar."""
     rng = np.random.default_rng(9)
     X = rng.normal(size=(10, 15))
     conc = np.zeros(10)          # nenhuma amostra adulterada

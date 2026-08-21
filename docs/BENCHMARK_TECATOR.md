@@ -37,7 +37,7 @@ Script reprodutível: [`scripts/benchmark_tecator.py`](../scripts/benchmark_teca
 (baixa o dataset da fonte original a cada execução — não redistribuído no
 repositório). Roda literalmente `guaraci.preprocessamento.construir_preprocessador()`
 e `sklearn.cross_decomposition.PLSRegression` — os mesmos componentes que
-`pipeline.pls_regressao_por_especie()` usa internamente — com seleção do
+`pipeline.pls_regression_by_species()` usa internamente — com seleção do
 número de variáveis latentes por validação cruzada no conjunto de treino
 (mesma metodologia usada em produção), para 4 dos presets de
 pré-processamento do GUARACI.

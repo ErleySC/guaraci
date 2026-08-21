@@ -241,7 +241,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
                                                           monkeypatch):
     """PLS-R + Ridge/Lasso/Elastic Net/SVR/Random Forest compartilham o
     MESMO split cal/val por especie (comentario da propria funcao: "MESMO
-    split... usado em pls_regressao_por_especie"). Confirma que esse split
+    split... usado em pls_regression_by_species"). Confirma que esse split
     e' `GroupShuffleSplit` com `groups=mae_id`, capturando a chamada real, e
     que nenhum grupo aparece dos dois lados de cal/val -- nem no split
     cal/val, nem na CV interna (`GroupKFold`) usada so' para escolher o
@@ -252,7 +252,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
     group-aware independente, verificado por leitura de codigo em
     2026-08-20:
 
-      1. `pls_regressao_por_especie` (pipeline.py) -- cal/val
+      1. `pls_regression_by_species` (pipeline.py) -- cal/val
          (`GroupShuffleSplit`, import de MODULO) + CV interna de LV
          (`GroupKFold`, import de MODULO).
       2. `benchmark_regressao_por_especie` (avaliacao_modelos.py) -- MESMA
@@ -283,7 +283,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
 
     capturados_split: list = []
     capturados_cv: list = []
-    # `pls_regressao_por_especie` importa GroupShuffleSplit/GroupKFold no
+    # `pls_regression_by_species` importa GroupShuffleSplit/GroupKFold no
     # TOPO de pipeline.py (nome ja' vinculado no modulo); precisa de patch
     # direto no modulo, nao no atributo de sklearn.model_selection.
     monkeypatch.setattr(
@@ -299,7 +299,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
         skms, "GroupShuffleSplit",
         _espiao(skms.GroupShuffleSplit, capturados_split))
 
-    reg_esp = pq.pls_regressao_por_especie(
+    reg_esp = pq.pls_regression_by_species(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
     assert reg_esp is not None, "fixture nao gerou dados suficientes p/ PLS-R"
 
@@ -341,7 +341,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
 def _dados_regressao_uma_especie_com_replicas(seed=0, n_pontos=8,
                                               n_replicas=3, p=30):
     """Uma UNICA especie -- e' o gatilho real do caminho pooled:
-    `pls_regressao_por_especie` so' roda por especie quando ha' mais de
+    `pls_regression_by_species` so' roda por especie quando ha' mais de
     uma; com uma so', a orquestracao em executar() cai para
     `pls_regressao_pooled`."""
     rng = np.random.default_rng(seed)

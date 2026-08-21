@@ -815,7 +815,7 @@ def benchmark_regressao_por_especie(
         reg_esp_pls: Dict[str, Any],
         min_amostras_adult: int = 6) -> Optional[pd.DataFrame]:
     """
-    Compara PLS-R (baseline, ja calibrado por `pls_regressao_por_especie` --
+    Compara PLS-R (baseline, ja calibrado por `pls_regression_by_species` --
     reaproveitado SEM refit) vs Ridge / Lasso / Elastic Net / SVR (RBF) /
     Random Forest Regressor, calibrando UM MODELO POR ESPECIE (mesma
     arquitetura da quantificacao do pipeline: calibracao separada evita que
@@ -832,7 +832,7 @@ def benchmark_regressao_por_especie(
     & Friedman (2009), The Elements of Statistical Learning, 2nd ed.
 
     Retorna None se nenhuma especie tiver dados suficientes (mesmo criterio
-    de `pls_regressao_por_especie`: min_amostras_adult adulteradas e
+    de `pls_regression_by_species`: min_amostras_adult adulteradas e
     variancia de teor > 0).
     """
     from sklearn.linear_model import Ridge, Lasso, ElasticNet
@@ -878,7 +878,7 @@ def benchmark_regressao_por_especie(
         mae_c = mae_id[idx] if mae_id is not None else None
         Y_c = conc_c.reshape(-1, 1)
 
-        # MESMO split (deterministico) usado em pls_regressao_por_especie --
+        # MESMO split (deterministico) usado em pls_regression_by_species --
         # mesma logica de decisao, reproduzida aqui p/ evitar acoplamento
         # circular com pipeline.py (que importaria de volta este modulo).
         try:

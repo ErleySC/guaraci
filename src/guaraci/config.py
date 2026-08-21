@@ -241,7 +241,7 @@ class Config:
     # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/SVR/RF vs
     # PLS-R, por especie, mesmo split cal/val e pre-processamento (ver
     # avaliacao_modelos.benchmark_regressao_por_especie). So' roda quando
-    # ha regressao multi-especie (mesma condicao de pls_regressao_por_especie).
+    # ha regressao multi-especie (mesma condicao de pls_regression_by_species).
     executar_benchmark_regressao: bool = False
     executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
     n_monte_carlo: int = 100               # number of MC repetitions

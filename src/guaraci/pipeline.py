@@ -296,7 +296,7 @@ from guaraci.resultados_io import (   # noqa: F401
     salvar_resumo_modelo, anexar_regressao_resumo, _md_tabela,
     gerar_model_card, anexar_regressao_model_card, anexar_heatmap_resumo,
 )
-def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
+def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
                      mae_id: Optional[np.ndarray] = None,
                      tol_const: float = 1e-12,
@@ -405,7 +405,7 @@ def validar_entrada(X: np.ndarray, wavenumbers: np.ndarray,
     return X, wavenumbers, rotulos, conc, mae_id, relatorio
 
 
-def verificar_balanceamento(rotulos: np.ndarray, ratio_alvo: float = 5.0
+def check_balance(rotulos: np.ndarray, ratio_alvo: float = 5.0
                               ) -> Dict[str, object]:
     """Detects severe class imbalance."""
     cls_unicas, counts = np.unique(rotulos, return_counts=True)
@@ -868,7 +868,7 @@ def r2cv_especie_adulterante(
     suficientes viram 'n/a' (nunca inventam numero).
 
     O adulterante de cada amostra vem do mae_id (que sobrevive alinhado a
-    validar_entrada) via adulterante_de_mae_id -- evita desalinhar com o
+    validate_input) via adulterante_de_mae_id -- evita desalinhar com o
     metadados_df, que NAO passa pela remocao de NaN/Inf.
 
     Returns dict {especies, adulterantes, matriz{(esp,adult): r2|nan}, n_ok,
@@ -934,7 +934,7 @@ def r2cv_especie_adulterante(
             "n_na": n_na, "n_total": n_total, "limiar_r2": limiar_r2}
 
 
-def pls_regressao_por_especie(
+def pls_regression_by_species(
         X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
         cfg: "Config", pasta: str, n_splits: int,
@@ -1125,13 +1125,13 @@ def pls_regressao_pooled(
     Extraída de `executar()` em 2026-08-20 (Passo 27 do plano de dívida de
     `executar()`/`guaraci.py`): antes vivia inline, sem função própria e
     sem teste de contrato dedicado. É o caminho que roda sempre que
-    `pls_regressao_por_especie` devolve `None` -- dataset de espécie
+    `pls_regression_by_species` devolve `None` -- dataset de espécie
     única, nível N1, ou nenhuma espécie com amostras adulteradas
     suficientes -- não é caso raro, é o caminho normal para dataset
     pequeno ou de espécie única.
 
     Split cal/val e CV interna de seleção de LVs são group-aware por
-    `mae_id`, no mesmo padrão de `pls_regressao_por_especie` -- ver
+    `mae_id`, no mesmo padrão de `pls_regression_by_species` -- ver
     `tests/test_contrato_validacao_agrupada.py`.
     """
     log.info(f"\n[7/7] PLS regressao "
@@ -1433,11 +1433,11 @@ def executar(cfg: Config):
 
     # --- 1c. Input integrity validation -----------------------------------
     log.info("\n[0/7] Input integrity validation...")
-    X_raw, wavenumbers, rotulos, conc, mae_id, relatorio_entrada = validar_entrada(
+    X_raw, wavenumbers, rotulos, conc, mae_id, relatorio_entrada = validate_input(
         X_raw, wavenumbers, rotulos, conc, mae_id)
-    relatorio_balanco = verificar_balanceamento(rotulos)
+    relatorio_balanco = check_balance(rotulos)
 
-    # B1: mae_id is now synchronized INSIDE validar_entrada (same NaN/Inf
+    # B1: mae_id is now synchronized INSIDE validate_input (same NaN/Inf
     # removal mask). Group-aware validation survives removals —
     # no more silent GroupKFold disabling due to a single NaN.
     if mae_id is not None:
@@ -2572,7 +2572,7 @@ def executar(cfg: Config):
                          + ("  [os numeros abaixo NAO representam uso real]"
                             if _modo_quant != "cego" else ""))
                 try:
-                    reg_esp = pls_regressao_por_especie(
+                    reg_esp = pls_regression_by_species(
                         X_raw, conc_arr, _rot_quant, mae_id,
                         np.unique(_rot_quant), cfg, pasta, n_splits)
                     if reg_esp is not None:

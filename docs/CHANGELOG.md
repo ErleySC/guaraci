@@ -20,7 +20,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-20 — pipeline: terceiro caminho de
              sem teste. Extracao cirurgica avaliada como viavel (bloco
              autocontido, ~150 linhas, sem dependencia oculta de outras
              variaveis locais de executar()) e executada: mesmo corpo,
-             mesma assinatura de retorno de pls_regressao_por_especie.
+             mesma assinatura de retorno de pls_regression_by_species.
              Verificado bit-a-bit (rtol=1e-12) que a extracao nao mudou
              nenhum valor numerico -- nao so' que a suite passa, que o
              VALOR e' identico antes/depois (P9 do plano de divida tecnica
@@ -1121,7 +1121,7 @@ v20 — 2026-05-28 — Organization Q1: folder PLSDA_OE_{level}_{preproc}_
                    ->modelos/. Sprint1 audit (A1,A2,A3,A5,A6,A11):
                    confirmed ALREADY implemented in previous versions.
 v22 — 2026-05-29 — Phase 0 (rigor fixes):
-                   B1: validar_entrada synchronizes mae_id with the SAME mask
+                   B1: validate_input synchronizes mae_id with the SAME mask
                        for NaN/Inf removal (before, 1 NaN silently disabled
                        GroupKFold = replica leakage);
                    B4: DD-SIMCA 'todos' mode no longer reports misleading

@@ -51,7 +51,7 @@ def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
         sintetico  'ESA-S05.00'           -> 'S' -> 'soja'
     Amostras PURAS ('CAP-04-11-2099') e orfaos ('orfao_...') nao tem esse
     token e retornam None. Deriva o adulterante do mae_id (que sobrevive
-    alinhado a validar_entrada), evitando desalinhamento com metadados_df.
+    alinhado a validate_input), evitando desalinhamento com metadados_df.
     """
     if mae_id is None:
         return None
@@ -365,7 +365,7 @@ def kennard_stone_split_group_aware(
     separar replicas fisicas entre calibracao e validacao. Sem mae_id
     suficiente, roda KS diretamente por amostra.
 
-    Usada por `pipeline.pls_regressao_por_especie`/bloco de regressao
+    Usada por `pipeline.pls_regression_by_species`/bloco de regressao
     pooled E por `avaliacao_modelos.benchmark_regressao_por_especie` (mesmo
     split reproduzido deterministicamente nos dois lugares -- comparacao
     apples-to-apples entre PLS-R e os modelos de benchmark).

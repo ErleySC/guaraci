@@ -115,7 +115,7 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 - **N3 — Quantificação (% de adulterante).**
   Estima o teor de adulterante por **regressão PLS calibrada por espécie**
-  (`pls_regressao_por_especie`). Reporta também as **figuras de mérito
+  (`pls_regression_by_species`). Reporta também as **figuras de mérito
   analíticas** — LOD, LOQ, sensibilidade, sensibilidade analítica (γ) e
   seletividade, segundo Valderrama, Braga e Poppi (2009) — calculadas
   automaticamente a partir das réplicas físicas (T1/T2/T3) de cada espécie.
@@ -463,7 +463,7 @@ Forest* vs. *Gradient Boosting* vs. XGBoost, sob a mesma validação cruzada
 (*TreeExplainer*).
 
 **Auto-Benchmark de regressão (Quantificação):** PLS-R (o modelo já
-calibrado por `pls_regressao_por_especie`, reaproveitado sem reajuste) vs.
+calibrado por `pls_regression_by_species`, reaproveitado sem reajuste) vs.
 Ridge, Lasso, *Elastic Net*, SVR (RBF) e *Random Forest Regressor* — um
 modelo **por espécie** (mesma arquitetura da quantificação, calibração
 separada evita que a variação entre espécies confunda o sinal de
@@ -691,7 +691,7 @@ re-executada nesta sessão).
   espectral entre espécies (~90% da variância total) domina completamente
   o sinal de adulteração — o modelo "aprende a prever a média" em vez de
   quantificar. A granularidade correta é **por espécie** (padrão do
-  Guaraci, `pls_regressao_por_especie`) ou, mais fino ainda, **por espécie
+  Guaraci, `pls_regression_by_species`) ou, mais fino ainda, **por espécie
   × adulterante** (o mapa de calor da seção 2.1) — nem todo par
   espécie/adulterante é quantificável, e o heatmap marca explicitamente
   quais falham em vez de escondê-los numa média.
