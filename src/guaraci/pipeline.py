@@ -678,13 +678,13 @@ from guaraci.dados_io import (   # noqa: E402
 )
 
 # Colorimetria digital (modo="imagem", prototipo) extraida p/ dados_imagem.py
-# (Fase de expansao pos-H). Reexportada p/ pipeline.carregar_imagens(...) etc.
+# (Fase de expansao pos-H). Reexportada p/ pipeline.load_images(...) etc.
 from guaraci.dados_imagem import (   # noqa: E402
-    carregar_imagens,
+    load_images,
     load_image_file,
     recortar_relativo,
-    extrair_features_cor,
-    extrair_features_textura,
+    extract_color_features,
+    extract_texture_features,
 )
 
 # Manifesto de proveniencia/integridade do modelo exportado (P5). Reexportado

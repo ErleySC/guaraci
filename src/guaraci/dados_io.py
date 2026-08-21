@@ -1137,8 +1137,8 @@ def _leitor_dx(cfg: "Config"):
 
 
 def _leitor_imagem(cfg: "Config"):
-    from guaraci.dados_imagem import carregar_imagens
-    return carregar_imagens(cfg.pasta_entrada, cfg.imagem_recorte,
+    from guaraci.dados_imagem import load_images
+    return load_images(cfg.pasta_entrada, cfg.imagem_recorte,
                              cfg.imagem_incluir_textura)
 
 

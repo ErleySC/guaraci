@@ -60,7 +60,7 @@ def test_recortar_relativo_caixa_degenerada_devolve_imagem_inteira(pq):
 def test_extrair_features_cor_retorna_18_features_finitas(pq):
     rng = np.random.default_rng(1)
     img = rng.integers(0, 256, size=(30, 30, 3), dtype=np.uint8)
-    feats = pq.extrair_features_cor(img)
+    feats = pq.extract_color_features(img)
     assert len(feats) == 18
     assert all(np.isfinite(v) for v in feats.values())
 
@@ -73,8 +73,8 @@ def test_extrair_features_cor_distingue_cores_diferentes(pq):
     azul = np.zeros((20, 20, 3), dtype=np.uint8)
     azul[..., 0] = 30; azul[..., 1] = 40; azul[..., 2] = 200
 
-    f_amarelo = pq.extrair_features_cor(amarelo)
-    f_azul = pq.extrair_features_cor(azul)
+    f_amarelo = pq.extract_color_features(amarelo)
+    f_azul = pq.extract_color_features(azul)
     assert f_amarelo["R_media"] > f_azul["R_media"]
     assert f_azul["B_media"] > f_amarelo["B_media"]
 
@@ -83,7 +83,7 @@ def test_extrair_features_cor_aceita_imagem_2d_tons_de_cinza(pq):
     """Imagem 2D (H, W) sem canal de cor -- e' replicada em 3 canais R=G=B
     automaticamente (linha de compatibilidade pouco exercitada)."""
     cinza = np.full((20, 20), 128, dtype=np.uint8)
-    feats = pq.extrair_features_cor(cinza)
+    feats = pq.extract_color_features(cinza)
     assert len(feats) == 18
     assert feats["R_media"] == pytest.approx(feats["G_media"])
     assert feats["G_media"] == pytest.approx(feats["B_media"])
@@ -91,7 +91,7 @@ def test_extrair_features_cor_aceita_imagem_2d_tons_de_cinza(pq):
 
 def test_extrair_features_textura_sem_scikit_image_devolve_vazio(pq, monkeypatch, capsys):
     """scikit-image e' dependencia OPCIONAL (extra [imagem]) -- sem ela,
-    extrair_features_textura devolve dict vazio com aviso, nunca lanca
+    extract_texture_features devolve dict vazio com aviso, nunca lanca
     ImportError pro chamador. Forca o ImportError via monkeypatch (nao
     depende de scikit-image estar ou nao instalado no ambiente de teste)."""
     import builtins
@@ -104,7 +104,7 @@ def test_extrair_features_textura_sem_scikit_image_devolve_vazio(pq, monkeypatch
 
     monkeypatch.setattr(builtins, "__import__", _import_bloqueado)
     img = np.zeros((10, 10, 3), dtype=np.uint8)
-    feats = pq.extrair_features_textura(img)
+    feats = pq.extract_texture_features(img)
     assert feats == {}
     assert "scikit-image" in capsys.readouterr().out
 
@@ -127,7 +127,7 @@ def test_detectar_subpastas_imagem_raiz_inexistente(pq):
 
 
 def test_carregar_imagens_estrutura_multi_pasta(pq, tmp_path):
-    """carregar_imagens: 1 subpasta por classe, sem duplicar arquivos (guarda
+    """load_images: 1 subpasta por classe, sem duplicar arquivos (guarda
     contra o bug de busca case-insensitive de extensão em Windows/macOS)."""
     raiz = tmp_path / "dados_img"
     (raiz / "Puro").mkdir(parents=True)
@@ -140,7 +140,7 @@ def test_carregar_imagens_estrutura_multi_pasta(pq, tmp_path):
         _salvar_imagem_solida(str(raiz / "Adulterado" / f"a{i}.png"),
                                (150, 60, 40), seed=i + 10)
 
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_imagens(str(raiz))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_images(str(raiz))
 
     assert X.shape == (7, 18)  # 4 + 3 imagens, NUNCA duplicadas
     assert set(rotulos) == {"Puro", "Adulterado"}
@@ -152,13 +152,13 @@ def test_carregar_imagens_estrutura_multi_pasta(pq, tmp_path):
 
 def test_carregar_imagens_pasta_inexistente_levanta_filenotfound(pq, tmp_path):
     with pytest.raises(FileNotFoundError, match="Pasta nao existe"):
-        pq.carregar_imagens(str(tmp_path / "nao_existe"))
+        pq.load_images(str(tmp_path / "nao_existe"))
 
 
 def test_carregar_imagens_pasta_vazia_levanta_filenotfound(pq, tmp_path):
     (tmp_path / "vazia").mkdir()
     with pytest.raises(FileNotFoundError, match="nao contem imagens"):
-        pq.carregar_imagens(str(tmp_path / "vazia"))
+        pq.load_images(str(tmp_path / "vazia"))
 
 
 def test_carregar_imagens_modo_flat_usa_nome_do_arquivo_como_classe(pq, tmp_path):
@@ -167,7 +167,7 @@ def test_carregar_imagens_modo_flat_usa_nome_do_arquivo_como_classe(pq, tmp_path
     raiz = tmp_path / "flat"
     raiz.mkdir()
     _salvar_imagem_solida(str(raiz / "amostra1.png"), (100, 150, 200))
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_imagens(str(raiz))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_images(str(raiz))
     assert X.shape[0] == 1
     assert rotulos[0] == "amostra1"
 
@@ -180,7 +180,7 @@ def test_carregar_imagens_arquivo_corrompido_e_pulado_com_aviso(pq, tmp_path, ca
     _salvar_imagem_solida(str(raiz / "Classe" / "boa1.png"), (100, 150, 200))
     (raiz / "Classe" / "corrompida.png").write_bytes(b"nao e uma imagem valida")
 
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_imagens(str(raiz))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_images(str(raiz))
     assert X.shape[0] == 1   # so' a imagem boa foi carregada
     assert "ERROR" in capsys.readouterr().out
 
@@ -192,11 +192,11 @@ def test_carregar_imagens_todas_corrompidas_levanta_valueerror(pq, tmp_path):
     (raiz / "Classe").mkdir(parents=True)
     (raiz / "Classe" / "ruim.png").write_bytes(b"lixo binario, nao e imagem")
     with pytest.raises(ValueError, match="Nenhuma imagem valida"):
-        pq.carregar_imagens(str(raiz))
+        pq.load_images(str(raiz))
 
 
 def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
-    """load_data(cfg) com modo='imagem' delega para carregar_imagens."""
+    """load_data(cfg) com modo='imagem' delega para load_images."""
     raiz = tmp_path / "dados_img"
     (raiz / "ClasseA").mkdir(parents=True)
     _salvar_imagem_solida(str(raiz / "ClasseA" / "img1.png"), (100, 150, 200))
@@ -228,7 +228,7 @@ def test_validar_pasta_dados_modo_imagem(pq, tmp_path):
 def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
     """Integração completa: executar() com modo='imagem' de ponta a ponta.
 
-    Cuidado necessário: `carregar_imagens` devolve um eixo de variaveis
+    Cuidado necessário: `load_images` devolve um eixo de variaveis
     simbolico (np.arange(n_features), NÃO um numero de onda real) — por isso
     wn_min/wn_max (que por padrao truncam a faixa espectral em cm-1) precisam
     ser ajustados pra cobrir esse intervalo pequeno, senao TODAS as variaveis

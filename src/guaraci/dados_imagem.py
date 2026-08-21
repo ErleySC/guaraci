@@ -54,7 +54,7 @@ import pandas as pd
 
 _EXTENSOES_IMAGEM = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
-# Nomes das features de cor, na ordem em que `extrair_features_cor` as monta —
+# Nomes das features de cor, na ordem em que `extract_color_features` as monta —
 # usado tambem como "wavenumbers" simbolicos (ver limitacao no docstring do modulo).
 NOMES_FEATURES_COR: Tuple[str, ...] = (
     "R_media", "G_media", "B_media", "R_dp", "G_dp", "B_dp",
@@ -137,7 +137,7 @@ def _rgb_para_lab(img_rgb01: np.ndarray) -> np.ndarray:
     return np.stack([L, a, b_], axis=-1)
 
 
-def extrair_features_cor(img: np.ndarray) -> Dict[str, float]:
+def extract_color_features(img: np.ndarray) -> Dict[str, float]:
     """Media e desvio-padrao por canal em RGB, HSV e Lab — 18 features no
     total, na mesma ordem de `NOMES_FEATURES_COR`. Entrada: array uint8
     (H, W, 3) ou (H, W) RGB/tons de cinza."""
@@ -162,7 +162,7 @@ def extrair_features_cor(img: np.ndarray) -> Dict[str, float]:
     return {k: feats[k] for k in NOMES_FEATURES_COR}
 
 
-def extrair_features_textura(img: np.ndarray) -> Dict[str, float]:
+def extract_texture_features(img: np.ndarray) -> Dict[str, float]:
     """Features de textura via GLCM (contraste/homogeneidade/energia/
     correlacao) usando scikit-image — OPCIONAL, retorna dict vazio (com
     aviso) se scikit-image nao estiver instalado. Nao e dependencia
@@ -212,7 +212,7 @@ def _detectar_subpastas_imagem(raiz: str) -> List[str]:
     return subpastas
 
 
-def carregar_imagens(
+def load_images(
         pasta: str,
         caixa_recorte: Tuple[float, float, float, float] = (0.0, 0.0, 1.0, 1.0),
         incluir_textura: bool = False,
@@ -256,9 +256,9 @@ def carregar_imagens(
         try:
             img = load_image_file(arq)
             img = recortar_relativo(img, caixa_recorte)
-            feats = extrair_features_cor(img)
+            feats = extract_color_features(img)
             if incluir_textura:
-                feats.update(extrair_features_textura(img))
+                feats.update(extract_texture_features(img))
         except Exception as e:  # noqa: BLE001 -- parsing defensivo de imagem
             # externa (formato/tamanho variavel); erro impresso COM NOME DO
             # ARQUIVO e contabilizado em n_falhos, nunca silencioso.
