@@ -288,8 +288,8 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     # aplicar em silencio um alpha diferente do declarado.
     _chaves_comb = {"pls_h0", "pls_q0", "pls_Nh", "pls_Nq", "pls_f_crit"}
     if _chaves_comb.issubset(pkg.keys()):
-        from guaraci.chemometric_stats import distancia_combinada
-        f_new = distancia_combinada(T2_new, Q_new, float(pkg["pls_h0"]),
+        from guaraci.chemometric_stats import combined_distance
+        f_new = combined_distance(T2_new, Q_new, float(pkg["pls_h0"]),
                                     float(pkg["pls_q0"]), float(pkg["pls_Nh"]),
                                     float(pkg["pls_Nq"]))
         f_crit = float(pkg["pls_f_crit"])

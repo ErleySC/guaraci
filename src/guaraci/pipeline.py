@@ -256,7 +256,7 @@ from guaraci.preprocessamento import (   # noqa: E402
 # =========================================================================
 from guaraci.chemometric_stats import (   # noqa: E402
     vip_scores,
-    calcular_selectivity_ratio,
+    compute_selectivity_ratio,
     teste_incerteza_martens,
     hotelling_t2,
     hotelling_t2_limite,
@@ -273,7 +273,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     applicability_domain_new_samples,
     mean_and_dof_moments,
     rmse_flat,
-    diagnosticar_faixa_espectral,
+    diagnose_spectral_range,
 )
 
 
@@ -1600,7 +1600,7 @@ def executar(cfg: Config):
     # encarece a CV e da' ao modelo espaco para ajustar ruido. E' um AVISO,
     # nunca um corte automatico: mudar a faixa muda o resultado, e essa
     # decisao e' do usuario.
-    diag_faixa = diagnosticar_faixa_espectral(X_processed, wavenumbers)
+    diag_faixa = diagnose_spectral_range(X_processed, wavenumbers)
     if diag_faixa.get("faixa_sugerida") and diag_faixa["frac_util"] < 0.95:
         _fu = float(diag_faixa["frac_util"])
         _sug = diag_faixa["faixa_sugerida"]
@@ -1905,7 +1905,7 @@ def executar(cfg: Config):
     # sr e' computado SEMPRE (consumido tambem pela Etapa 4); apenas as
     # FIGURAS de SR/VIP sao filtradas por objetivo (classificacao).
     log.info("\n[Sprint3] Selectivity Ratio + Score Contribution...")
-    sr = calcular_selectivity_ratio(pls_final, X_processed)
+    sr = compute_selectivity_ratio(pls_final, X_processed)
     if deve_gerar(cfg, "sr_vip"):
         fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
     if cfg.figuras_detalhadas and deve_gerar(cfg, "score_contribution"):

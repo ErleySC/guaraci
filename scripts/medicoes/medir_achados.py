@@ -6,7 +6,7 @@ from sklearn.cross_decomposition import PLSRegression
 
 import sys
 sys.path.insert(0, "src")
-from guaraci.chemometric_stats import (calcular_selectivity_ratio,
+from guaraci.chemometric_stats import (compute_selectivity_ratio,
                                        hotelling_t2_limite)
 
 rng_global = np.random.default_rng(0)
@@ -49,7 +49,7 @@ def gera_espectros(n, p, seed):
 for n_lv in (1, 2, 3, 5):
     X, y = gera_espectros(60, 200, seed=1)
     m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
-    sr_impl = calcular_selectivity_ratio(m, X)
+    sr_impl = compute_selectivity_ratio(m, X)
     sr_ref = sr_referencia(m, X)
     # propriedade definidora: t_tp deve ser proporcional a y_hat
     b = np.asarray(m.coef_).reshape(-1)

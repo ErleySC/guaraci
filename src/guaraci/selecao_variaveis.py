@@ -21,7 +21,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
-from guaraci.chemometric_stats import vip_scores, calcular_selectivity_ratio
+from guaraci.chemometric_stats import vip_scores, compute_selectivity_ratio
 from guaraci.validacao_estatistica import (_cv_predict_manual,
                                            StratifiedGroupKFoldEstavel)
 from guaraci.figuras import salvar, cor, _ticks_x_inteiros
@@ -132,7 +132,7 @@ def _mask_sr_top_frac(X_train: np.ndarray, Y_train: np.ndarray,
     n_lv_eff = int(max(1, min(n_lv, X_train.shape[1], X_train.shape[0] - 1)))
     pls = PLSRegression(n_components=n_lv_eff, scale=False)
     pls.fit(X_train, Y_train)
-    sr = calcular_selectivity_ratio(pls, X_train)
+    sr = compute_selectivity_ratio(pls, X_train)
     p = X_train.shape[1]
     n_top = max(2, int(round(top_frac * p)))
     idx = np.argsort(np.asarray(sr))[::-1][:n_top]

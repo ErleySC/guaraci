@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.cross_decomposition import PLSRegression
 import sys
 sys.path.insert(0, "src")
-from guaraci.chemometric_stats import calcular_selectivity_ratio
+from guaraci.chemometric_stats import compute_selectivity_ratio
 
 
 def sr_referencia(modelo, X):
@@ -45,7 +45,7 @@ for n_lv in (1, 2, 3, 4, 6, 8):
     for seed in range(15):
         X, y = gera(80, 300, seed)
         m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
-        si, sr = calcular_selectivity_ratio(m, X), sr_referencia(m, X)
+        si, sr = compute_selectivity_ratio(m, X), sr_referencia(m, X)
         for k, acc in ((20, jac20), (50, jac50)):
             A, B = set(np.argsort(si)[-k:]), set(np.argsort(sr)[-k:])
             acc.append(len(A & B) / len(A | B))

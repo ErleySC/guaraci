@@ -20,7 +20,7 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
 from guaraci.chemometric_stats import (hotelling_t2_limite, q_residuos_limite,
-                                       mean_and_dof_moments, distancia_combinada,
+                                       mean_and_dof_moments, combined_distance,
                                        q_residuos_loo)
 
 log = logging.getLogger(__name__)
@@ -158,14 +158,14 @@ class DDSimca:
         Kucheryavskiy/Rodionova/Pomerantsev 2024) -- a estatistica que de
         fato decide aceitar/rejeitar, substituindo o teste retangular
         independente T2<=UCL e Q<=UCL. Delega para
-        `chemometric_stats.distancia_combinada` (achado A3 da auditoria de
+        `chemometric_stats.combined_distance` (achado A3 da auditoria de
         2026-08-07: `applicability_domain` reimplementava a mesma regra de
         forma independente; unificado numa so' fonte de verdade). Mantida
-        como metodo (em vez de chamar `distancia_combinada` direto nos usos
+        como metodo (em vez de chamar `combined_distance` direto nos usos
         externos) para preservar a MESMA chamada em predict(), score_matrix()
         e nos usos externos (sensibilidade_ddsimca_logo, resumo do
         pipeline)."""
-        return distancia_combinada(T2, Q, m["h0"], m["q0"], m["Nh"], m["Nq"])
+        return combined_distance(T2, Q, m["h0"], m["q0"], m["Nh"], m["Nq"])
 
     def _compute_t2_ucl(self, T2_train: np.ndarray, n: int, k: int) -> float:
         method = (self.ucl_method or "empirical").lower()

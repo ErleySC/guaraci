@@ -33,7 +33,7 @@ def vip_scores(modelo: PLSRegression) -> np.ndarray:
     return np.sqrt(p * np.sum(ss * W_norm ** 2, axis=1) / (np.sum(ss) + 1e-12))
 
 
-def calcular_selectivity_ratio(modelo: PLSRegression,
+def compute_selectivity_ratio(modelo: PLSRegression,
                                 X: np.ndarray) -> np.ndarray:
     """Selectivity Ratio (SR) per Rajalahti et al. (2009),
     Chemom. Intell. Lab. Syst. 95:20-28; Kvalheim (2020),
@@ -333,7 +333,7 @@ def mean_and_dof_moments(valores: np.ndarray) -> Tuple[float, float]:
     return media, 2.0 * (media / desvio) ** 2
 
 
-def distancia_combinada(T2: np.ndarray, Q: np.ndarray, h0: float, q0: float,
+def combined_distance(T2: np.ndarray, Q: np.ndarray, h0: float, q0: float,
                         Nh: float, Nq: float) -> np.ndarray:
     """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
     Kucheryavskiy, Rodionova & Pomerantsev 2024, J. Chemometrics 38(7):
@@ -686,7 +686,7 @@ def training_applicability_domain(pca, X_train: np.ndarray,
     re-exportar X_train inteiro (que pode ser um artefato pesado -- MB a
     dezenas de MB para datasets espectrais reais): a variancia dos scores
     PCA (var_t) e os parametros da distancia combinada (h0/q0/Nh/Nq/f_crit,
-    ver `distancia_combinada`). Usado ao SALVAR um modelo (ver pipeline.py,
+    ver `combined_distance`). Usado ao SALVAR um modelo (ver pipeline.py,
     pacote_modelo); `applicability_domain_new_samples` consome o
     resultado na hora de PREDIZER, sem X_train.
 
@@ -746,7 +746,7 @@ def applicability_domain_new_samples(
     # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
     q_new = q_residuos(X_new - mean, T_new, P)
 
-    f = distancia_combinada(t2_new, q_new, h0, q0, Nh, Nq)
+    f = combined_distance(t2_new, q_new, h0, q0, Nh, Nq)
     dentro = f <= f_crit
     return {
         "t2": t2_new,
@@ -760,7 +760,7 @@ def applicability_domain_new_samples(
     }
 
 
-def diagnosticar_faixa_espectral(X: np.ndarray, wavenumbers: np.ndarray,
+def diagnose_spectral_range(X: np.ndarray, wavenumbers: np.ndarray,
                                   limiar_snr: float = 3.0,
                                   largura_min_cm: float = 150.0,
                                   janela_suave: int = 11

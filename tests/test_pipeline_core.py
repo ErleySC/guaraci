@@ -200,7 +200,7 @@ def test_vip_propriedade_soma_igual_p(pq):
 def test_selectivity_ratio_nao_negativo(pq):
     """SR: razão de variâncias — sempre >= 0, um valor por variável."""
     modelo, X = _pls_ajustado()
-    sr = pq.calcular_selectivity_ratio(modelo, X)
+    sr = pq.compute_selectivity_ratio(modelo, X)
     assert sr.shape == (X.shape[1],)
     assert np.all(sr >= 0)
 
@@ -231,7 +231,7 @@ def test_selectivity_ratio_bate_com_formula_de_referencia_qualquer_lv(pq):
     y = X[:, :3] @ rng.normal(size=3) + rng.normal(scale=0.1, size=50)
     for n_lv in (1, 2, 4):
         m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
-        sr = pq.calcular_selectivity_ratio(m, X)
+        sr = pq.compute_selectivity_ratio(m, X)
         sr_ref = _sr_referencia_univariado(m, X)
         np.testing.assert_allclose(sr, sr_ref, rtol=1e-9)
 
@@ -261,7 +261,7 @@ def test_selectivity_ratio_multiclasse_agrega_por_maximo(pq):
     y_int = rng.integers(0, 4, size=60)
     Y_bin = np.eye(4)[y_int]
     m = PLSRegression(n_components=3, scale=False).fit(X, Y_bin)
-    sr = pq.calcular_selectivity_ratio(m, X)
+    sr = pq.compute_selectivity_ratio(m, X)
     assert sr.shape == (10,)
     assert np.all(sr >= 0)
     assert np.all(np.isfinite(sr))
@@ -535,11 +535,11 @@ def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
 
 def test_selectivity_ratio_vetor_regressao_nulo_retorna_zeros(pq):
     """Se o vetor de regressao b e' todo zero (modelo degenerado/patológico),
-    calcular_selectivity_ratio não deve dividir por zero — retorna vetor de
+    compute_selectivity_ratio não deve dividir por zero — retorna vetor de
     zeros (SR indefinido = sem seletividade nenhuma), nunca NaN/inf silencioso."""
     class _ModeloCoefZero:
         coef_ = np.zeros((1, 10))
-    sr = pq.calcular_selectivity_ratio(_ModeloCoefZero(),
+    sr = pq.compute_selectivity_ratio(_ModeloCoefZero(),
                                         np.random.default_rng(0).normal(size=(15, 10)))
     assert np.array_equal(sr, np.zeros(10))
 
@@ -552,7 +552,7 @@ def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
     # X com a 1a coluna sempre zero -> t_tp = X @ b_unit = 0 para todas as amostras
     X = np.zeros((10, 2))
     X[:, 1] = np.random.default_rng(1).normal(size=10)
-    sr = pq.calcular_selectivity_ratio(_ModeloCoefOrtogonal(), X)
+    sr = pq.compute_selectivity_ratio(_ModeloCoefOrtogonal(), X)
     assert np.array_equal(sr, np.zeros(2))
 
 
@@ -1778,13 +1778,13 @@ def _espectros(wn, gen, n=200, seed=0):
 def test_diagnostico_detecta_regiao_morta_e_sugere_faixa():
     """Faixa larga demais (o caso real: 4000-10000 cm-1 com sinal so' abaixo
     de ~6200) tem que ser detectada e reportada com faixa sugerida."""
-    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    from guaraci.chemometric_stats import diagnose_spectral_range
     wn = np.linspace(4000, 10000, 759)
     X = _espectros(wn, lambda r: (
         (1 + 0.3 * r.normal()) * np.exp(-((wn - 5900) / 70) ** 2)
         + (0.8 + 0.3 * r.normal()) * np.exp(-((wn - 4450) / 55) ** 2)
         + r.normal(scale=0.01, size=wn.size)))
-    d = diagnosticar_faixa_espectral(X, wn)
+    d = diagnose_spectral_range(X, wn)
 
     assert d["frac_util"] < 0.5
     assert d["faixa_sugerida"] is not None
@@ -1797,12 +1797,12 @@ def test_diagnostico_detecta_regiao_morta_e_sugere_faixa():
 def test_diagnostico_nao_da_falso_positivo_em_espectro_todo_util():
     """Se a faixa inteira carrega sinal, nao pode sugerir corte — um
     diagnostico que sempre acusa problema e' ruido, nao informacao."""
-    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    from guaraci.chemometric_stats import diagnose_spectral_range
     wn = np.linspace(4000, 10000, 759)
     X = _espectros(wn, lambda r: (
         (1 + 0.3 * r.normal()) * np.exp(-((wn - 7000) / 2500) ** 2)
         + r.normal(scale=0.005, size=wn.size)))
-    d = diagnosticar_faixa_espectral(X, wn)
+    d = diagnose_spectral_range(X, wn)
     assert d["frac_util"] > 0.95
     assert d["faixa_sugerida"] is None
     assert d["regioes_ruins"] == []
@@ -1811,20 +1811,20 @@ def test_diagnostico_nao_da_falso_positivo_em_espectro_todo_util():
 def test_diagnostico_separa_ruidosa_de_morta():
     """Regiao com MUITA variacao de alta frequencia e' 'ruidosa', nao
     'morta' — sao defeitos diferentes e pedem acoes diferentes."""
-    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
+    from guaraci.chemometric_stats import diagnose_spectral_range
     wn = np.linspace(4000, 10000, 759)
     X = _espectros(wn, lambda r: (
         (1 + 0.3 * r.normal()) * np.exp(-((wn - 5000) / 700) ** 2)
         + r.normal(scale=0.005, size=wn.size)
         + np.where(wn > 8000, r.normal(scale=0.3, size=wn.size), 0.0)))
-    d = diagnosticar_faixa_espectral(X, wn)
+    d = diagnose_spectral_range(X, wn)
     tipos = {t for _a, _b, t in d["regioes_ruins"]}
     assert "ruidosa" in tipos, f"regiao de ruido alto classificada como {tipos}"
 
 
 def test_diagnostico_entrada_degenerada_nao_quebra():
-    from guaraci.chemometric_stats import diagnosticar_faixa_espectral
-    d = diagnosticar_faixa_espectral(np.zeros((2, 3)), np.array([1., 2., 3.]))
+    from guaraci.chemometric_stats import diagnose_spectral_range
+    d = diagnose_spectral_range(np.zeros((2, 3)), np.array([1., 2., 3.]))
     assert d["faixa_sugerida"] is None
     assert bool(np.all(d["mascara_util"]))
 
