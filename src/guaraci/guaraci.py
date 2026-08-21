@@ -63,10 +63,10 @@ from rich import box as rbox
 import guaraci.pipeline as pq
 from guaraci.app_logic import (
     LogThreadSafe as _LogThreadSafe,
-    figuras_concluidas as _figuras_concluidas,
+    figures_completed as _figures_completed,
     avisos_do_log as _avisos_do_log,
     progresso_do_log as _progresso_do_log,
-    fmt_tempo as _fmt_tempo,
+    fmt_time as _fmt_time,
 )
 
 Config        = pq.Config
@@ -3335,13 +3335,13 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     """Monta o painel de acompanhamento ao vivo (auditoria jul/2026, item 5):
     objetivo cientifico, barra de progresso + rotulo da analise em
     andamento (via app_logic.progresso_do_log), figuras ja concluidas
-    (app_logic.figuras_concluidas) contra o plano do modo (modos_analise.
+    (app_logic.figures_completed) contra o plano do modo (modos_analise.
     describe_plan), tempo decorrido/estimado restante e avisos nao-fatais
     (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
     precisar rodar o pipeline de verdade nem simular entrada interativa."""
     frac, label = _progresso_do_log(texto_log, len(plano_figuras) or None)
-    figs = _figuras_concluidas(texto_log)
+    figs = _figures_completed(texto_log)
     avisos = _avisos_do_log(texto_log)
 
     # LIMITE DE ALTURA (bug real, 2026-08-07: "tela preta").
@@ -3363,14 +3363,14 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     barra = "█" * preenchido + "░" * (bar_w - preenchido)
     eta_txt = "…"
     if frac > 0.05:
-        eta_txt = _fmt_tempo(max(0.0, elapsed / frac - elapsed))
+        eta_txt = _fmt_time(max(0.0, elapsed / frac - elapsed))
 
     partes = [
         Text.assemble(
             (f"{_t('exec_objetivo')}: ", PM), (objetivo_rotulo, f"bold {PA}")),
         Text(f"[{barra}] {frac * 100:5.1f}%  {label}", style=PA),
         Text(f"{_t('exec_eta')}: {eta_txt}   |   "
-             f"{_fmt_tempo(elapsed)}", style=PW),
+             f"{_fmt_time(elapsed)}", style=PW),
         Rule(style=PD),
         Text(f"{_t('exec_figuras')} ({len(figs)}/{len(plano_figuras)} "
              "planejadas):", style=f"bold {PM}"),

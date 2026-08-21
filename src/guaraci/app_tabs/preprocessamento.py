@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
-from guaraci.app_logic import coletar_config
+from guaraci.app_logic import collect_config
 
 _PRESET_INFO = {
     "MSC+SG+MC":      "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Compare presets on your own data with `comparar_pre_processamentos`.",
@@ -44,7 +44,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     # ---- Before/after preview ---------------------------------------------
     st.divider()
     st.markdown("**Before / after preprocessing visualization**")
-    cfg_pp, _ = coletar_config(cfg_base, valores)
+    cfg_pp, _ = collect_config(cfg_base, valores)
     ok_pp, _ = pq._validar_pasta_dados(cfg_pp)
 
     if not ok_pp:

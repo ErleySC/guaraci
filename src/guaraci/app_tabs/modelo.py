@@ -13,7 +13,7 @@ from typing import Callable, Dict, Optional
 
 import streamlit as st
 
-from guaraci.app_logic import coletar_config, fmt_tempo, progresso_do_log
+from guaraci.app_logic import collect_config, fmt_time, progresso_do_log
 from guaraci.app_logic import LogThreadSafe as _LogThreadSafe
 
 
@@ -59,7 +59,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
         for k in specs
         if f"w_{k}" in st.session_state
     }
-    _cfg_top, _erros_top = coletar_config(cfg_base, _valores_top)
+    _cfg_top, _erros_top = collect_config(cfg_base, _valores_top)
     _erros_top = _erros_top + pq._validar_semantico(_cfg_top)
     _ok_top = (not _erros_top) and pq._validar_pasta_dados(_cfg_top)[0]
     _rodar_top = st.button(
@@ -179,7 +179,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     st.divider()
 
     # ---- Final Config assembly and execution ----------------------------
-    cfg_run, erros_run = coletar_config(cfg_base, valores)
+    cfg_run, erros_run = collect_config(cfg_base, valores)
 
     # If user uploaded a CSV, override the path
     if st.session_state.get("_csv_upload_path"):
@@ -275,8 +275,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 # Single atomic DOM update per iteration
                 ph.markdown(
                     f"**[{int(frac * 100)}%] {nome}**\n\n"
-                    f"⏱️ `{fmt_tempo(elapsed)}` elapsed  |  "
-                    f"⏳ `{fmt_tempo(eta_best) if eta_best else 'calculating…'}` remaining  |  "
+                    f"⏱️ `{fmt_time(elapsed)}` elapsed  |  "
+                    f"⏳ `{fmt_time(eta_best) if eta_best else 'calculating…'}` remaining  |  "
                     f"💾 `{f'{ram:.0f} MB' if ram else 'n/a'}`\n\n"
                     f"```text\n{log_tail}\n```"
                 )
@@ -288,11 +288,11 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
             ph.empty()
             if estado["erro"]:
                 _run_status.update(
-                    label=f"❌ Pipeline failed after {fmt_tempo(elapsed)}.",
+                    label=f"❌ Pipeline failed after {fmt_time(elapsed)}.",
                     state="error", expanded=True)
             else:
                 _run_status.update(
-                    label=f"✅ Completed in {fmt_tempo(elapsed)}!",
+                    label=f"✅ Completed in {fmt_time(elapsed)}!",
                     state="complete", expanded=False)
 
         # Libera a trava só se o worker de fato terminou; se ficou órfão por
@@ -304,7 +304,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
         if estado["erro"]:
             st.session_state.erro_run  = estado["erro"]
             st.session_state.ultima_pasta = None
-            st.error(f"Pipeline failed after {fmt_tempo(elapsed)}.")
+            st.error(f"Pipeline failed after {fmt_time(elapsed)}.")
         else:
             st.session_state.erro_run  = None
             st.session_state.ultima_pasta = estado["pasta"]

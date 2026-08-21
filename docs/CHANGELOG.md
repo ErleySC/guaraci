@@ -693,7 +693,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Figuras: curva DET era uma reta sem
              Uma primeira versao por repulsao par-a-par iterativa OSCILAVA e
              deixava 7 pares sobrepostos mesmo apos 120 iteracoes -- medido,
              descartado e substituido.
-             [TELA PRETA] `figuras_concluidas`/`avisos_do_log` cresciam sem
+             [TELA PRETA] `figures_completed`/`avisos_do_log` cresciam sem
              teto; numa corrida completa (26 figuras + varios avisos) o painel
              passava de 35 linhas num terminal de 24. O `Live` do Rich perde o
              controle do cursor quando o bloco nao cabe na janela: a tela fica

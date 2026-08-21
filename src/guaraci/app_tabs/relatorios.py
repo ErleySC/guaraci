@@ -51,8 +51,8 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
            zip_da_pasta: Callable, pdf_bytes: Callable, word_bytes: Callable,
            excel_bytes: Callable, latex_bytes: Callable, pptx_bytes: Callable,
            ler_resumo: Callable, ler_model_card: Callable,
-           listar_figuras: Callable) -> None:
-    """Renderiza a aba Reports. Os `*_bytes`/`ler_*`/`listar_figuras` são as
+           list_figures: Callable) -> None:
+    """Renderiza a aba Reports. Os `*_bytes`/`ler_*`/`list_figures` são as
     versões cacheadas (@st.cache_data) definidas em app_quimiometria.py."""
     st.subheader("Reports and Downloads")
     pasta_r = st.session_state.get("ultima_pasta")
@@ -250,7 +250,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
 
     # Full gallery with filter
     st.markdown("### 🖼️ Figure gallery")
-    imgs_r = listar_figuras(pasta_r)
+    imgs_r = list_figures(pasta_r)
     if imgs_r:
         filtro_r = st.selectbox("Filter figures",
                                 list(_CATS_R.keys()), key="filtro_rel")

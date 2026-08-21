@@ -69,7 +69,7 @@ _RE_ARQUIVO_SALVO = re.compile(
 _RE_AVISO = re.compile(r"^\s*\[AVISO\]\s*(.+)$", re.MULTILINE)
 
 
-def figuras_concluidas(txt: str) -> List[str]:
+def figures_completed(txt: str) -> List[str]:
     """Nomes (sem extensao) das figuras já salvas em disco, na ordem em que
     apareceram no log, sem duplicatas."""
     vistos: List[str] = []
@@ -142,7 +142,7 @@ def progresso_do_log(txt: str,
     `total_figuras_planejadas` (opcional, retrocompatível — sem ele o
     comportamento é IDÊNTICO ao anterior): quando fornecido e a etapa atual
     é a 6, soma um bônus fracionário proporcional a
-    `len(figuras_concluidas(txt)) / total_figuras_planejadas` — o progresso
+    `len(figures_completed(txt)) / total_figuras_planejadas` — o progresso
     passa a avançar suavemente conforme cada figura é salva, em vez de só
     saltar nos 2 marcadores de texto esparsos. Nunca regride e nunca atinge
     o próximo número inteiro de etapa (capado abaixo de 7/7).
@@ -159,14 +159,14 @@ def progresso_do_log(txt: str,
 
     n_efetivo = float(n)
     if n == 6 and total_figuras_planejadas:
-        n_feitas = len(figuras_concluidas(txt))
+        n_feitas = len(figures_completed(txt))
         bonus = min(0.99, n_feitas / total_figuras_planejadas)
         n_efetivo = n + bonus
 
     return min(0.99, n_efetivo / 7.0), nome
 
 
-def fmt_tempo(seg) -> str:
+def fmt_time(seg) -> str:
     """Formata uma duração em segundos como string compacta (d/h/min/s).
 
     Robusto a None, não-numérico, NaN e negativo (retorna "—"/"0s").
@@ -189,7 +189,7 @@ def fmt_tempo(seg) -> str:
     return f"{s}s"
 
 
-def coletar_config(cfg_base, valores: Dict):
+def collect_config(cfg_base, valores: Dict):
     """Aplica os valores dos widgets a uma cópia profunda de Config.
 
     Percorre o _CONFIG_SPEC do pipeline (fonte única), coagindo cada valor com
@@ -244,7 +244,7 @@ def caminho_upload_temp(nome_original: str, session_id: str, *,
 # ── Leitura de artefatos de uma pasta de resultados ──────────────────────────
 # Puro I/O de arquivo; a UI envolve com @st.cache_data (ver app_quimiometria.py)
 # e guaraci.reports as usa diretamente (sem cache — geração é one-shot).
-def listar_figuras(pasta: str) -> List[str]:
+def list_figures(pasta: str) -> List[str]:
     """Lista os caminhos de figuras (.png/.jpg/.jpeg) em `pasta`, recursivo."""
     imgs: List[str] = []
     for raiz, _dirs, arqs in os.walk(pasta):
@@ -282,8 +282,8 @@ def ler_model_card(pasta: str) -> Optional[str]:
     return None
 
 
-__all__ = ["progresso_do_log", "fmt_tempo", "coletar_config",
-           "listar_figuras", "ler_resumo", "ler_model_card",
+__all__ = ["progresso_do_log", "fmt_time", "collect_config",
+           "list_figures", "ler_resumo", "ler_model_card",
            "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP",
-           "LogThreadSafe", "figuras_concluidas", "avisos_do_log",
+           "LogThreadSafe", "figures_completed", "avisos_do_log",
            "caminho_upload_temp"]

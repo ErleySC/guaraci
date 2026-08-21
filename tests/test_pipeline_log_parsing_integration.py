@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from guaraci.app_logic import progresso_do_log, figuras_concluidas
+from guaraci.app_logic import progresso_do_log, figures_completed
 
 
 @pytest.mark.slow
@@ -62,7 +62,7 @@ def test_stdout_real_do_executar_ainda_casa_com_regex_do_painel(pq, tmp_path):
         "sempre. Verificar se print()->logging preservou o texto exato.")
 
     # 2) linha "-> <arquivo>.png" apos salvar figura -- sempre ha' >=1 figura
-    figs = figuras_concluidas(texto)
+    figs = figures_completed(texto)
     assert len(figs) > 0, (
         "Nenhuma figura detectada no stdout real via '-> arquivo.png' -- "
         "o painel de figuras concluidas ficaria sempre vazio.")

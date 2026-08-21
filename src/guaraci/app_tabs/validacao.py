@@ -36,8 +36,8 @@ _CATS = {
 
 
 def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
-           ler_resumo: Callable[[str], str], listar_figuras: Callable[[str], list]) -> None:
-    """Renderiza a aba Validation. `ler_resumo`/`listar_figuras` são as
+           ler_resumo: Callable[[str], str], list_figures: Callable[[str], list]) -> None:
+    """Renderiza a aba Validation. `ler_resumo`/`list_figures` são as
     versões cacheadas (@st.cache_data) definidas em app_quimiometria.py."""
     st.subheader(T("Validation Results"))
     pasta_v = st.session_state.get("ultima_pasta")
@@ -116,7 +116,7 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
                     st.warning(f"Error reading MC CV CSV: {_e_mc}")
 
     # Gallery filtered by figure category
-    imgs_v = listar_figuras(pasta_v)
+    imgs_v = list_figures(pasta_v)
     if imgs_v:
         st.markdown(f"**{len(imgs_v)} figures generated**")
         filtro_v = st.selectbox("Filter by category",

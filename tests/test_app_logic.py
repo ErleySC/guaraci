@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from guaraci.app_logic import (
-    progresso_do_log, fmt_tempo, coletar_config,
-    listar_figuras, ler_resumo, ler_model_card,
+    progresso_do_log, fmt_time, collect_config,
+    list_figures, ler_resumo, ler_model_card,
     caminho_upload_temp,
 )
 
@@ -121,7 +121,7 @@ def test_progresso_substep_holdout_e_comparacao_pipelines():
     assert "preprocessing" in nome_comp.lower() or "pipelines" in nome_comp.lower()
 
 
-# ── fmt_tempo ────────────────────────────────────────────────────────────────
+# ── fmt_time ────────────────────────────────────────────────────────────────
 @pytest.mark.parametrize("entrada,esperado", [
     (0, "0s"),
     (5, "5s"),
@@ -134,23 +134,23 @@ def test_progresso_substep_holdout_e_comparacao_pipelines():
     (90000, "1d 1h"),
 ])
 def test_fmt_tempo_faixas(entrada, esperado):
-    assert fmt_tempo(entrada) == esperado
+    assert fmt_time(entrada) == esperado
 
 
 @pytest.mark.parametrize("ruim", [None, "abc", float("nan"), -5])
 def test_fmt_tempo_robusto_a_entrada_ruim(ruim):
-    out = fmt_tempo(ruim)
+    out = fmt_time(ruim)
     assert out in ("—", "0s")
 
 
 def test_fmt_tempo_arredonda():
-    assert fmt_tempo(59.6) == "1min 00s"
+    assert fmt_time(59.6) == "1min 00s"
 
 
-# ── coletar_config ───────────────────────────────────────────────────────────
+# ── collect_config ───────────────────────────────────────────────────────────
 def test_coletar_config_aplica_valores(pq):
     base = pq.Config()
-    cfg, erros = coletar_config(base, {"max_lvs": 12})
+    cfg, erros = collect_config(base, {"max_lvs": 12})
     assert erros == []
     assert cfg.max_lvs == 12
 
@@ -158,36 +158,36 @@ def test_coletar_config_aplica_valores(pq):
 def test_coletar_config_nao_muta_base(pq):
     base = pq.Config()
     orig = base.max_lvs
-    coletar_config(base, {"max_lvs": orig + 7})
+    collect_config(base, {"max_lvs": orig + 7})
     assert base.max_lvs == orig  # deepcopy: original intacto
 
 
 def test_coletar_config_ignora_chave_desconhecida(pq):
     base = pq.Config()
-    cfg, erros = coletar_config(base, {"chave_que_nao_existe": 1})
+    cfg, erros = collect_config(base, {"chave_que_nao_existe": 1})
     assert erros == []  # chave fora do _CONFIG_SPEC é ignorada
 
 
 def test_coletar_config_reporta_erro_de_coercao(pq):
     base = pq.Config()
     # max_lvs espera int; um valor não-coercível deve ir para `erros`, sem lançar.
-    cfg, erros = coletar_config(base, {"max_lvs": "não-é-número"})
+    cfg, erros = collect_config(base, {"max_lvs": "não-é-número"})
     assert any("max_lvs" in e for e in erros)
 
 
-# ── listar_figuras / ler_resumo / ler_model_card ─────────────────────────────
+# ── list_figures / ler_resumo / ler_model_card ─────────────────────────────
 def test_listar_figuras_encontra_png_jpg_recursivo(tmp_path):
     (tmp_path / "sub").mkdir()
     (tmp_path / "a.png").write_text("x")
     (tmp_path / "sub" / "b.jpg").write_text("x")
     (tmp_path / "nota.txt").write_text("x")  # ignorado (nao e figura)
-    imgs = listar_figuras(str(tmp_path))
+    imgs = list_figures(str(tmp_path))
     assert len(imgs) == 2
     assert all(im.lower().endswith((".png", ".jpg")) for im in imgs)
 
 
 def test_listar_figuras_pasta_sem_imagens_retorna_vazio(tmp_path):
-    assert listar_figuras(str(tmp_path)) == []
+    assert list_figures(str(tmp_path)) == []
 
 
 def test_ler_resumo_prioriza_logs_subpasta(tmp_path):

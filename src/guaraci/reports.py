@@ -20,7 +20,7 @@ import pandas as pd
 import guaraci.pipeline as _pq
 from guaraci.app_logic import (
     ler_resumo as _ler_resumo,
-    listar_figuras as _listar_figuras,
+    list_figures as _list_figures,
 )
 from guaraci.config import NOME_TABELAS
 # Parsing do resumo_modelo.txt centralizado (item 19): _ex e o dicionario de
@@ -83,7 +83,7 @@ def gerar_pdf_relatorio(pasta: str, projeto: Dict,
     # validacao group-aware. Ver `_e_modo_prototipo`.
     prototipo = _e_modo_prototipo(resumo_raw)
 
-    imgs = _listar_figuras(pasta)[:max_figuras]
+    imgs = _list_figures(pasta)[:max_figuras]
 
     # ── PDF class ──────────────────────────────────────────────────────
     class RelatorioPDF(FPDF):
@@ -343,7 +343,7 @@ def gerar_word_relatorio(pasta: str, projeto: Dict,
     resumo_raw = _ler_resumo(pasta) or ""
 
     metricas = parse_metricas_modelo(resumo_raw)
-    imgs = _listar_figuras(pasta)[:max_figuras]
+    imgs = _list_figures(pasta)[:max_figuras]
 
     doc = Document()
 
@@ -719,7 +719,7 @@ def gerar_latex_template(pasta: str, projeto: Dict) -> bytes:
             f"(group-aware status could not be determined from the run "
             f"summary -- verify before submission)")
 
-    imgs = _listar_figuras(pasta)[:8]
+    imgs = _list_figures(pasta)[:8]
     nome_proj = _esc(projeto.get("nome", "Chemometric Analysis by FT-NIR"))
     autor     = _esc(projeto.get("autor", "Surname, N."))
     inst      = _esc(projeto.get("inst", ""))
@@ -1100,7 +1100,7 @@ def gerar_pptx_relatorio(pasta: str, projeto: Dict,
              size=11, color=_LIGHT, align=PP_ALIGN.CENTER)
 
     # ── SLIDES 4+: Figures ────────────────────────────────────────────────
-    imgs = _listar_figuras(pasta)
+    imgs = _list_figures(pasta)
     # Prioritize relevant figures
     prioridade = ["scores","confus","vip","pca","outlier","splot","cooman",
                   "roc","hca","opls","ddsimca","benchmark","shap","monte_carlo"]

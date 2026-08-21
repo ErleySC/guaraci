@@ -11,7 +11,7 @@ o texto exato capturado por `contextlib.redirect_stdout` no CLI
 (`guaraci.py:_rodar_pipeline`) e no worker do app web
 (`app_tabs/modelo.py`), que hoje fazem parsing por REGEX desse texto para
 alimentar o painel de progresso ao vivo (`app_logic.progresso_do_log` /
-`figuras_concluidas` / `avisos_do_log`).
+`figures_completed` / `avisos_do_log`).
 
 NAO faz (escopo maior, fica para depois): reescrever o painel para
 consumir logging.Handler/registros estruturados em vez de regex sobre

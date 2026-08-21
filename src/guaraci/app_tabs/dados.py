@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
-from guaraci.app_logic import coletar_config, caminho_upload_temp
+from guaraci.app_logic import collect_config, caminho_upload_temp
 from guaraci.cli_assistente import PROFILES
 
 
@@ -130,7 +130,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     # ---- Data statistics preview -------------------------------------------
     st.divider()
     st.markdown("**Data preview**")
-    cfg_prev, _ = coletar_config(cfg_base, valores)
+    cfg_prev, _ = collect_config(cfg_base, valores)
     ok_dados, msg_dados = pq._validar_pasta_dados(cfg_prev)
     (st.success if ok_dados else st.warning)(f"Status: {msg_dados}")
 
@@ -164,7 +164,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
 
     # ---- Save / Reload config.yaml ---------------------------------
     st.divider()
-    cfg_dados, erros_dados = coletar_config(cfg_base, valores)
+    cfg_dados, erros_dados = collect_config(cfg_base, valores)
     if erros_dados:
         st.warning("Fields with errors:\n- " + "\n- ".join(erros_dados))
     c_s1, c_s2 = st.columns(2)
