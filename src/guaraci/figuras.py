@@ -182,7 +182,7 @@ def convex_hull_contorno(ax, x, y, color, lw=1.4, alpha=0.85):
         return False   # pontos colineares/degenerados -- sem contorno a tracar
 
 
-def parametros_scatter_adaptativos(n_total: int, n_classes: int
+def adaptive_scatter_parameters(n_total: int, n_classes: int
                                     ) -> Tuple[float, float, float]:
     """Marker size, alpha and edge width as a function of point density."""
     n_pc = n_total / max(n_classes, 1)
@@ -221,7 +221,7 @@ def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
     scores  = np.asarray(scores,  dtype=float)
 
     classes_unicas = np.unique(rotulos)
-    s, alpha, lw_e = parametros_scatter_adaptativos(len(rotulos),
+    s, alpha, lw_e = adaptive_scatter_parameters(len(rotulos),
                                                       len(classes_unicas))
 
     xrange = float(scores[:, 0].max() - scores[:, 0].min())
@@ -546,7 +546,7 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
 
     rotulos = np.asarray(rotulos, dtype=str)
     classes_unicas = np.unique(rotulos)
-    s_pt, alpha_pt, lw_pt = parametros_scatter_adaptativos(
+    s_pt, alpha_pt, lw_pt = adaptive_scatter_parameters(
         len(rotulos), len(classes_unicas))
 
     fig = plt.figure(figsize=(13.5, 4.6), constrained_layout=True)
@@ -794,7 +794,7 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0, janela=120.0,
         )
 
 
-def fig_espectros_medios_classe(wavenumbers, X_raw, rotulos, mapa_cores,
+def fig_class_mean_spectra(wavenumbers, X_raw, rotulos, mapa_cores,
                                  cfg, pasta):
     """Espectros medios por classe (banda = +-1 desvio-padrao) do dado
     BRUTO -- contexto quimico antes de qualquer modelagem (item 3 da
@@ -1195,7 +1195,7 @@ def fig7_pls_regressao(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     salvar(fig, "figS2_pls_regressao", pasta, cfg)
 
 
-def fig_merito_regressao(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> None:
+def fig_regression_merit(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> None:
     """Figura de merito analitica dedicada (auditoria jul/2026, item 5):
     LOD/LOQ e Seletividade media por especie, lado a lado — Valderrama,
     Braga & Poppi (2009), Quim. Nova 32(5):1278-1287. Ate aqui, LOD/LOQ/SEN/
@@ -1524,7 +1524,7 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
 
     rotulos = np.asarray(rotulos, dtype=str)
     all_classes = np.unique(rotulos)
-    s_pt, alpha_pt, lw_pt = parametros_scatter_adaptativos(
+    s_pt, alpha_pt, lw_pt = adaptive_scatter_parameters(
         len(rotulos), len(all_classes))
 
     ax_leg_ref = None
@@ -1639,7 +1639,7 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
     version (the 5x3 grid is too small for detailed inspection)."""
     rotulos = np.asarray(rotulos, dtype=str)
     all_classes = np.unique(rotulos)
-    s_pt, alpha_pt, lw_pt = parametros_scatter_adaptativos(
+    s_pt, alpha_pt, lw_pt = adaptive_scatter_parameters(
         len(rotulos), len(all_classes))
     for cls in scores.keys():
         m = scores[cls]
@@ -1813,7 +1813,7 @@ def _escala_vetores_biplot(scores2: np.ndarray, loadings: np.ndarray,
     return min(escala_x, escala_y)
 
 
-def selecionar_loadings_distintos(mag: np.ndarray, wavenumbers: np.ndarray,
+def select_distinct_loadings(mag: np.ndarray, wavenumbers: np.ndarray,
                                    n_alvo: int,
                                    sep_min_cm: Optional[float] = None,
                                    frac_min_mag: float = 0.15) -> np.ndarray:
@@ -1955,7 +1955,7 @@ def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
     escala = _escala_vetores_biplot(scores2, loadings)
     mag = np.sqrt((loadings ** 2).sum(axis=1))
     # Bandas ESPECTRALMENTE DISTINTAS, nao canais vizinhos da mesma banda
-    idx_top = selecionar_loadings_distintos(mag, wavenumbers, n_vars_destacadas)
+    idx_top = select_distinct_loadings(mag, wavenumbers, n_vars_destacadas)
 
     pontas = np.column_stack([loadings[idx_top, 0] * escala,
                               loadings[idx_top, 1] * escala])
@@ -2111,7 +2111,7 @@ def fig_splot_opls(X_proc: np.ndarray, t_pred: np.ndarray,
     salvar(fig, "fig_splot_opls", pasta, cfg)
 
 
-def fig_heatmap_especie_adulterante(resultado: Dict[str, Any], cfg,
+def fig_heatmap_species_by_adulterant(resultado: Dict[str, Any], cfg,
                                      pasta: str) -> None:
     """Heatmap R2cv por especie (linhas) x adulterante (colunas).
 
@@ -2171,7 +2171,7 @@ def fig_heatmap_especie_adulterante(resultado: Dict[str, Any], cfg,
     # Nome de arquivo sem "N3" cru (P8 residual, corrigido 2026-07-13) --
     # ja e' gerada so' no objetivo Quantificacao (deve_gerar), entao o nome
     # nao perde informacao ao deixar de repetir o codigo interno do nivel.
-    salvar(fig, "fig_heatmap_especie_adulterante", pasta, cfg)
+    salvar(fig, "fig_heatmap_species_by_adulterant", pasta, cfg)
 
 
 def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
@@ -2194,7 +2194,7 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
     """
     rotulos = np.asarray(rotulos, dtype=str)
     classes_todas = np.unique(rotulos)
-    s_pt, alpha_pt, _lw_pt = parametros_scatter_adaptativos(
+    s_pt, alpha_pt, _lw_pt = adaptive_scatter_parameters(
         len(rotulos), len(classes_todas))
 
     classes_dd = sorted(ddsimca_res.keys())

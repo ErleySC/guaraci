@@ -104,7 +104,7 @@ def test_selecionar_loadings_distintos_evita_canais_vizinhos():
     mesma banda (no espectro real: 5875/5883/5891/5899... = 2 bandas
     contadas 12 vezes). Cada seta do biplot tem que representar uma banda
     espectral distinta."""
-    from guaraci.figuras import selecionar_loadings_distintos
+    from guaraci.figuras import select_distinct_loadings
     wn = np.linspace(4000, 10000, 759)
     # duas bandas estreitas fortes + uma larga fraca
     mag = (np.exp(-((wn - 5900) / 60) ** 2)
@@ -115,7 +115,7 @@ def test_selecionar_loadings_distintos_evita_canais_vizinhos():
     assert len(np.unique(np.round(wn[ingenuo] / 200))) <= 3, (
         "premissa do teste: o top-N ingenuo concentra em poucas bandas")
 
-    idx = selecionar_loadings_distintos(mag, wn, 12)
+    idx = select_distinct_loadings(mag, wn, 12)
     assert 1 <= len(idx) <= 12
     assert len(np.unique(idx)) == len(idx), "indices repetidos"
     escolhidos = np.sort(wn[idx])
@@ -133,11 +133,11 @@ def test_selecionar_loadings_nao_completa_cota_com_ruido():
     funcao completar a cota com canais de magnitude ~0 -- o biplot ganhava
     setas de comprimento nulo empilhadas na origem ("linhas que nao dizem
     nada"). Com so' 2 bandas reais, tem que devolver ~2 indices, nao 12."""
-    from guaraci.figuras import selecionar_loadings_distintos
+    from guaraci.figuras import select_distinct_loadings
     wn = np.linspace(4000, 10000, 759)
     mag = (np.exp(-((wn - 5900) / 60) ** 2)
            + 0.9 * np.exp(-((wn - 4450) / 50) ** 2))   # so' 2 bandas
-    idx = selecionar_loadings_distintos(mag, wn, 12)
+    idx = select_distinct_loadings(mag, wn, 12)
     assert len(idx) <= 4, (
         f"devolveu {len(idx)} vetores para um espectro com 2 bandas — "
         "a cota esta sendo completada com ruido")
@@ -147,19 +147,19 @@ def test_selecionar_loadings_nao_completa_cota_com_ruido():
 def test_selecionar_loadings_espectro_plano_devolve_ao_menos_um():
     """Espectro sem banda alguma nao pode devolver lista vazia (quebraria a
     figura); devolve o maior, e a figura fica honestamente pobre."""
-    from guaraci.figuras import selecionar_loadings_distintos
+    from guaraci.figuras import select_distinct_loadings
     wn = np.linspace(4000, 10000, 100)
-    idx = selecionar_loadings_distintos(np.ones(100), wn, 12)
+    idx = select_distinct_loadings(np.ones(100), wn, 12)
     assert len(idx) >= 1
 
 
 def test_selecionar_loadings_distintos_respeita_n_disponivel():
-    from guaraci.figuras import selecionar_loadings_distintos
+    from guaraci.figuras import select_distinct_loadings
     wn = np.linspace(4000, 4100, 5)
     mag = np.array([1.0, 0.9, 0.8, 0.7, 0.6])
-    idx = selecionar_loadings_distintos(mag, wn, 12)
+    idx = select_distinct_loadings(mag, wn, 12)
     assert 1 <= len(idx) <= 5
-    assert selecionar_loadings_distintos(np.array([]), np.array([]), 5).size == 0
+    assert select_distinct_loadings(np.array([]), np.array([]), 5).size == 0
 
 
 # ---------------------------------------------------------------------------

@@ -190,7 +190,7 @@ from guaraci.figuras import (   # noqa: E402
     specificity_by_class,
     elipse_t2,
     convex_hull_contorno,
-    parametros_scatter_adaptativos,
+    adaptive_scatter_parameters,
     _ticks_x_inteiros,
     plot_scores_panel,
     fig1_selecao_lvs,
@@ -215,9 +215,9 @@ from guaraci.figuras import (   # noqa: E402
     fig_roc_auc,
     fig_splot_opls,
     fig_cooman_ddsimca,
-    fig_merito_regressao,
-    fig_heatmap_especie_adulterante,
-    fig_espectros_medios_classe,
+    fig_regression_merit,
+    fig_heatmap_species_by_adulterant,
+    fig_class_mean_spectra,
     fig_biplot_pca,
 )
 
@@ -1090,7 +1090,7 @@ def pls_regression_by_species(
                        cfg, pasta)
     # Figura de merito analitica dedicada (auditoria jul/2026, item 5):
     # LOD/LOQ/Seletividade por especie, ate aqui so' em texto no resumo.
-    fig_merito_regressao(tabela_esp, cfg, pasta)
+    fig_regression_merit(tabela_esp, cfg, pasta)
 
     # DModY (Eriksson et al. 2006) -- mesma reapresentacao do residuo de
     # validacao ja usado no RMSEP/bias acima, na nomenclatura SIMCA-P/
@@ -1245,7 +1245,7 @@ def pls_regressao_pooled(
     _especies_unicas_reg = np.unique(rotulos)
     _nome_esp_pooled = (str(_especies_unicas_reg[0])
                          if len(_especies_unicas_reg) == 1 else "Pooled")
-    fig_merito_regressao([{
+    fig_regression_merit([{
         "especie": _nome_esp_pooled,
         "lod": _fom_reg["lod"], "loq": _fom_reg["loq"],
         "seletividade_media": _fom_reg["seletividade_media"],
@@ -1842,7 +1842,7 @@ def executar(cfg: Config):
     # Espectros medios por classe: dado BRUTO, antes de qualquer modelagem
     # -- mesma logica de "sempre" do PCA/T2-Q abaixo (nao e' uma analise
     # exploratoria opcional, e' contexto quimico minimo para ler o resto).
-    fig_espectros_medios_classe(wavenumbers, X_raw, rotulos, mapa_cores,
+    fig_class_mean_spectra(wavenumbers, X_raw, rotulos, mapa_cores,
                                  cfg, pasta)
     fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                      puros_mask=puros_mask_fig, mapa_marcadores=marcadores_fig)
@@ -2658,7 +2658,7 @@ def executar(cfg: Config):
                               f"{_r2cv['n_falhas']}/{_r2cv['n_total']} "
                               f"combinacoes abaixo de R2cv="
                               f"{_r2cv['limiar_r2']:.2f}  (n/a: {_r2cv['n_na']})")
-                        fig_heatmap_especie_adulterante(_r2cv, cfg, pasta)
+                        fig_heatmap_species_by_adulterant(_r2cv, cfg, pasta)
                         append_heatmap_summary(pasta_logs, _r2cv)
                 except Exception as _e_hm:  # noqa: BLE001 -- figura/relatorio
                     # opcional (o calculo R2cv em si ja tem tratamento
