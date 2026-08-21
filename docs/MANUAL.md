@@ -505,7 +505,7 @@ Disponível em dois lugares, com a **mesma lógica científica**
 > é um *pickle*: carregá-lo **executa qualquer código contido nele**, antes
 > de qualquer validação de conteúdo ser possível. Por isso, todo
 > carregamento de modelo (CLI e aplicativo) passa por
-> `guaraci.predicao.carregar_modelo(caminho, confiar=True)` — um portão
+> `guaraci.predicao.load_model(caminho, confiar=True)` — um portão
 > único que **recusa carregar sem confirmação explícita**: na CLI, uma
 > pergunta (s/n); no aplicativo, uma caixa de seleção obrigatória. Além
 > disso, todo `modelo_plsda.joblib` exportado pelo pipeline vem com um
@@ -813,7 +813,7 @@ espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N
 passa a aparecer como referência técnica secundária, nunca como o rótulo
 principal — a tabela de equivalência nível↔objetivo (seção 2.2) já estava
 correta e não mudou. Antes disso: `SECURITY.md` novo (raiz) — carregamento
-de modelo `.joblib` agora passa por `carregar_modelo(confiar=True)`
+de modelo `.joblib` agora passa por `load_model(confiar=True)`
 obrigatório (CLI: confirmação s/n; app: caixa de seleção) + manifesto
 SHA-256 gerado junto de todo modelo exportado, que bloqueia o carregamento
 se o arquivo for trocado depois. Antes disso: nova seção 9 "Limitações

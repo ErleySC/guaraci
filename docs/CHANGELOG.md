@@ -1041,7 +1041,7 @@ v31.2.0 — 2026-07-12 — Mudanças de COMPORTAMENTO CIENTÍFICO (CLAUDE.md P1/
              (2) heatmap espécie×adulterante (R²cv) passa a ser figura nativa
                  de `executar()` no objetivo Quantificação, com contagem de
                  combinações abaixo de R²cv=0.70 no título;
-             (3) `predicao.carregar_modelo` passa a exigir `confiar=True`
+             (3) `predicao.load_model` passa a exigir `confiar=True`
                  explícito (joblib/pickle executa código arbitrário) e cada
                  modelo salvo passa a vir com manifesto SHA-256
                  (docs/SECURITY.md);

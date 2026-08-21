@@ -688,10 +688,10 @@ from guaraci.dados_imagem import (   # noqa: E402
 )
 
 # Manifesto de proveniencia/integridade do modelo exportado (P5). Reexportado
-# para nao quebrar pipeline.salvar_manifesto(...) nem pipeline.carregar_modelo(...).
+# para nao quebrar pipeline.save_manifest(...) nem pipeline.load_model(...).
 from guaraci.predicao import (   # noqa: E402
-    salvar_manifesto,
-    carregar_modelo,
+    save_manifest,
+    load_model,
     SecurityError,
 )
 
@@ -2500,9 +2500,9 @@ def executar(cfg: Config):
         joblib.dump(pacote_modelo, cam_modelo)
         log.info(f"  -> {cam_modelo}")
         # Manifesto de proveniencia/integridade (P5 -- CLAUDE.md): sha256 do
-        # arquivo + versoes de biblioteca, usado por predicao.carregar_modelo
+        # arquivo + versoes de biblioteca, usado por predicao.load_model
         # para detectar arquivo trocado/corrompido ANTES de executar o pickle.
-        cam_manifesto = salvar_manifesto(cam_modelo, pacote_modelo)
+        cam_manifesto = save_manifest(cam_modelo, pacote_modelo)
         log.info(f"  -> {cam_manifesto}")
     except Exception as _e_mod:  # noqa: BLE001 -- exportacao opcional
         # (predicao em amostra nova); erro impresso, nao afeta as figuras/

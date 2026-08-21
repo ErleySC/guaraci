@@ -39,7 +39,7 @@ class SecurityError(Exception):
 # =========================================================================
 #  Manifesto de proveniencia/integridade (P5 -- CLAUDE.md)
 # =========================================================================
-def gerar_manifesto(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any]:
+def generate_manifest(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any]:
     """Monta o manifesto de proveniencia de um pacote de modelo ja salvo em
     disco. Resolve seguranca (hash p/ detectar arquivo trocado/corrompido)
     E reprodutibilidade (versoes exatas de biblioteca) na mesma estrutura.
@@ -59,18 +59,18 @@ def gerar_manifesto(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def salvar_manifesto(caminho_joblib: str, pkg: Dict[str, Any]) -> str:
+def save_manifest(caminho_joblib: str, pkg: Dict[str, Any]) -> str:
     """Gera e grava `<caminho_joblib>.manifest.json` ao lado do modelo.
     Chamado por pipeline.executar() logo apos joblib.dump(). Retorna o
     caminho do manifesto escrito."""
-    manifesto = gerar_manifesto(caminho_joblib, pkg)
+    manifesto = generate_manifest(caminho_joblib, pkg)
     caminho_manifesto = caminho_joblib + ".manifest.json"
     with open(caminho_manifesto, "w", encoding="utf-8") as f:
         json.dump(manifesto, f, ensure_ascii=False, indent=2)
     return caminho_manifesto
 
 
-def carregar_modelo(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
+def load_model(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
     """Carrega um pacote de modelo `.joblib` treinado pelo Guaraci.
 
     AVISO DE SEGURANCA: `.joblib` usa pickle, que EXECUTA CODIGO ARBITRARIO
@@ -83,7 +83,7 @@ def carregar_modelo(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
     `confiar=True` e' uma confirmacao EXPLICITA da origem -- nao existe
     verificacao automatica de "isto e' seguro" para pickle (nao e'
     sandboxed). Se um manifesto (`<caminho>.manifest.json`, gerado por
-    `salvar_manifesto` no momento do treino) existir ao lado do arquivo, o
+    `save_manifest` no momento do treino) existir ao lado do arquivo, o
     hash SHA-256 e' conferido ANTES de chamar joblib.load -- isso E' uma
     protecao real (deteccao de arquivo trocado/corrompido acontece antes da
     execucao do pickle, nao depois). Sem manifesto, nao ha' nada a conferir;

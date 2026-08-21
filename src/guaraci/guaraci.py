@@ -2534,7 +2534,7 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
                        else "Loading model and applying...")
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
             # confiar=True: o operador ja confirmou explicitamente acima.
-            pkg = _pred.carregar_modelo(cam_modelo, confiar=True)
+            pkg = _pred.load_model(cam_modelo, confiar=True)
             _pred.validar_pacote_modelo(pkg)
             X_new, wn_new, meta_df = _pred.carregar_csv_predicao(cam_csv)
             df_res = _pred.predizer_amostras(pkg, X_new, wn_new)

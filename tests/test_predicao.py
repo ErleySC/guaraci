@@ -182,21 +182,21 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
 
 # ── Seguranca do carregamento de modelo (P5 -- CLAUDE.md) ──────────────────
 def test_carregar_modelo_sem_confiar_lanca_security_error(tmp_path, modelo_e_dados):
-    """carregar_modelo() NUNCA le o arquivo sem confiar=True explicito --
+    """load_model() NUNCA le o arquivo sem confiar=True explicito --
     e' a unica protecao real contra RCE via pickle (nao ha' sandboxing
     possivel para joblib.load)."""
     pkg, _X, _wn = modelo_e_dados
     cam = tmp_path / "modelo.joblib"
     joblib.dump(pkg, cam)
     with pytest.raises(pr.SecurityError, match="confiar=True"):
-        pr.carregar_modelo(str(cam))
+        pr.load_model(str(cam))
 
 
 def test_carregar_modelo_com_confiar_funciona(tmp_path, modelo_e_dados):
     pkg, _X, _wn = modelo_e_dados
     cam = tmp_path / "modelo.joblib"
     joblib.dump(pkg, cam)
-    carregado = pr.carregar_modelo(str(cam), confiar=True)
+    carregado = pr.load_model(str(cam), confiar=True)
     assert set(carregado.keys()) == set(pkg.keys())
 
 
@@ -204,7 +204,7 @@ def test_salvar_manifesto_grava_json_com_sha256_correto(tmp_path, modelo_e_dados
     pkg, _X, _wn = modelo_e_dados
     cam = tmp_path / "modelo.joblib"
     joblib.dump(pkg, cam)
-    cam_manifesto = pr.salvar_manifesto(str(cam), pkg)
+    cam_manifesto = pr.save_manifest(str(cam), pkg)
 
     assert os.path.isfile(cam_manifesto)
     with open(cam_manifesto, encoding="utf-8") as f:
@@ -219,31 +219,31 @@ def test_salvar_manifesto_grava_json_com_sha256_correto(tmp_path, modelo_e_dados
 
 def test_carregar_modelo_bloqueia_arquivo_alterado_apos_manifesto(tmp_path, modelo_e_dados):
     """VALIDACAO DE SEGURANCA: se o arquivo .joblib for trocado/corrompido
-    DEPOIS do manifesto ter sido gerado, carregar_modelo deve recusar --
+    DEPOIS do manifesto ter sido gerado, load_model deve recusar --
     ANTES de chamar joblib.load (a verificacao de hash nao executa pickle,
     entao bloqueia antes do RCE poder acontecer, nao so' avisa depois)."""
     pkg, _X, _wn = modelo_e_dados
     cam = tmp_path / "modelo.joblib"
     joblib.dump(pkg, cam)
-    pr.salvar_manifesto(str(cam), pkg)
+    pr.save_manifest(str(cam), pkg)
 
     # Simula adulteracao: sobrescreve o .joblib com outro conteudo qualquer
     # DEPOIS do manifesto existir -- o hash registrado fica desatualizado.
     joblib.dump({"outra_coisa": 123}, cam)
 
     with pytest.raises(pr.SecurityError, match="Integridade falhou"):
-        pr.carregar_modelo(str(cam), confiar=True)
+        pr.load_model(str(cam), confiar=True)
 
 
 def test_carregar_modelo_sem_manifesto_carrega_normalmente(tmp_path, modelo_e_dados):
     """Sem manifesto ao lado (modelo de origem externa, ou salvo por versao
-    antiga), carregar_modelo() nao tem o que conferir -- carrega normalmente
+    antiga), load_model() nao tem o que conferir -- carrega normalmente
     se confiar=True (a decisao humana continua sendo a unica protecao)."""
     pkg, _X, _wn = modelo_e_dados
     cam = tmp_path / "modelo_sem_manifesto.joblib"
     joblib.dump(pkg, cam)
     assert not os.path.isfile(str(cam) + ".manifest.json")
-    carregado = pr.carregar_modelo(str(cam), confiar=True)
+    carregado = pr.load_model(str(cam), confiar=True)
     assert "pls_final" in carregado
 
 

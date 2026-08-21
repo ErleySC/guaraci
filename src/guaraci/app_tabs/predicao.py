@@ -89,7 +89,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
 
         # Load model
         try:
-            from guaraci.predicao import carregar_modelo as _carregar_modelo
+            from guaraci.predicao import load_model as _load_model
             if not confia_modelo:
                 erros_pred.append(
                     "Check 'I trust the source of this model file' above "
@@ -110,14 +110,14 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                 tmp_jbl.parent.mkdir(parents=True, exist_ok=True)
                 with open(tmp_jbl, "wb") as f:
                     f.write(upld_jbl.getvalue())
-                pkg_pred = _carregar_modelo(str(tmp_jbl), confiar=True)
+                pkg_pred = _load_model(str(tmp_jbl), confiar=True)
             elif cam_jbl and os.path.exists(cam_jbl):
-                pkg_pred = _carregar_modelo(cam_jbl, confiar=True)
+                pkg_pred = _load_model(cam_jbl, confiar=True)
             # NOTE: this is STRUCTURE validation only — it runs AFTER the model
             # is loaded, so it does NOT prevent RCE from a malicious pickle
             # (the code already ran during load). The real mitigation is the
             # confia_modelo checkbox above (explicit human confirmation) plus
-            # the sha256 manifest check inside carregar_modelo, which DOES
+            # the sha256 manifest check inside load_model, which DOES
             # run before joblib.load when a manifest is present.
             if pkg_pred is not None:
                 _validar_pacote_modelo(pkg_pred)
