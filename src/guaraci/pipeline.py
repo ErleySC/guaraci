@@ -658,13 +658,13 @@ from guaraci.validacao_estatistica import (   # noqa: E402
 
 # Carregamento de dados (.dx JCAMP-DX/ASDF, CSV, sintetico) extraido p/
 # dados_io.py (Fase H). Reexportado aqui para nao quebrar as chamadas de
-# `executar()` (`pipeline.carregar_dados(cfg)` etc.).
+# `executar()` (`pipeline.load_data(cfg)` etc.).
 from guaraci.dados_io import (   # noqa: E402
     gerar_dados_sinteticos,
     kennard_stone,
     kennard_stone_split,
     kennard_stone_split_group_aware,
-    carregar_csv,
+    load_csv,
     _flush_asdf,
     _decodificar_linha_asdf,
     parse_dx,
@@ -673,8 +673,8 @@ from guaraci.dados_io import (   # noqa: E402
     _listar_arquivos_espectro,
     _detectar_subpastas_classe,
     prescan_dx,
-    carregar_dx,
-    carregar_dados,
+    load_dx,
+    load_data,
 )
 
 # Colorimetria digital (modo="imagem", prototipo) extraida p/ dados_imagem.py
@@ -1331,7 +1331,7 @@ def executar(cfg: Config):
     cfg = apply_profile(cfg, perfil)
 
     # --- 1. Carregamento (6-tupla com mae_id + metadados) ------------------
-    wavenumbers, X_raw, rotulos, conc, mae_id, metadados_df = carregar_dados(cfg)
+    wavenumbers, X_raw, rotulos, conc, mae_id, metadados_df = load_data(cfg)
     X_raw   = np.asarray(X_raw,   dtype=float)
     rotulos = np.asarray(rotulos, dtype=str)
     if conc is not None:

@@ -282,7 +282,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-16 — RETRATACAO de achado de auditoria
 NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: amostras adulteradas
              deixam de entrar no dataset como PURAS (achado A2-2 da
              auditoria de gate 0). Inspecao manual dos arquivos que
-             `carregar_dx` reportava como "isolated orphans" (TITLE nao
+             `load_dx` reportava como "isolated orphans" (TITLE nao
              casou com `_RE_TITLE`) achou algo mais serio que agrupamento
              perdido: parte deles tinha erro de digitacao no ##TITLE=
              (virgula extra antes do "%", digito de triplicata cortado ou

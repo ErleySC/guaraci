@@ -13,7 +13,7 @@ import pytest
 from guaraci.dados_io import (
     _decodificar_linha_asdf, _flush_asdf, parse_spectrum,
     _extrair_conc_filename, _listar_arquivos_espectro, _detectar_subpastas_classe,
-    carregar_csv,
+    load_csv,
 )
 
 
@@ -219,13 +219,13 @@ def test_detectar_subpastas_raiz_inexistente():
     assert _detectar_subpastas_classe("/caminho/que/nao/existe") == []
 
 
-# ── carregar_csv ─────────────────────────────────────────────────────────────
+# ── load_csv ─────────────────────────────────────────────────────────────
 def test_carregar_csv_sem_coluna_concentracao(tmp_path):
     p = tmp_path / "dados.csv"
     p.write_text("classe,4000.0,4001.0,4002.0\n"
                  "Andiroba,0.1,0.2,0.3\n"
                  "Copaiba,0.4,0.5,0.6\n")
-    wn, X, rot, conc = carregar_csv(str(p), "classe", None)
+    wn, X, rot, conc = load_csv(str(p), "classe", None)
     np.testing.assert_allclose(wn, [4000.0, 4001.0, 4002.0])
     assert X.shape == (2, 3)
     assert list(rot) == ["Andiroba", "Copaiba"]
@@ -237,7 +237,7 @@ def test_carregar_csv_com_coluna_concentracao(tmp_path):
     p.write_text("classe,teor,4000.0,4001.0\n"
                  "Andiroba,0.0,0.1,0.2\n"
                  "Andiroba,5.5,0.15,0.25\n")
-    wn, X, rot, conc = carregar_csv(str(p), "classe", "teor")
+    wn, X, rot, conc = load_csv(str(p), "classe", "teor")
     assert X.shape == (2, 2)  # colunas classe+teor excluidas do espectro
     np.testing.assert_allclose(conc, [0.0, 5.5])
     np.testing.assert_allclose(wn, [4000.0, 4001.0])

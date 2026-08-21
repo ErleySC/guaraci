@@ -96,7 +96,7 @@ def test_faixa_de_trabalho_declarada_marca_extrapolacao():
 
 def _csv_espectral(caminho: Path, eixo: np.ndarray, n_por_classe: int = 12,
                    semente: int = 7) -> None:
-    """Escreve um CSV no formato que `dados_io.carregar_csv` le (uma coluna
+    """Escreve um CSV no formato que `dados_io.load_csv` le (uma coluna
     por canal, cabecalho = eixo espectral) + colunas classe/conc."""
     import pandas as pd
 

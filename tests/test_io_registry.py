@@ -2,7 +2,7 @@
 
 Verifica o registry em si (registrar/obter/listar) e que dados_io.py
 registrou corretamente os 4 leitores built-in (dx, csv, imagem, sintetico),
-sem regressão no comportamento de carregar_dados().
+sem regressão no comportamento de load_data().
 """
 import pytest
 
@@ -52,10 +52,10 @@ def test_registrar_novo_leitor_fica_disponivel():
 
 
 def test_carregar_dados_sintetico_usa_o_registry(pq):
-    """carregar_dados(cfg) com modo='sintetico' deve funcionar via registry,
+    """load_data(cfg) com modo='sintetico' deve funcionar via registry,
     devolvendo a tupla de 6 elementos com os tipos esperados."""
     cfg = pq.Config(modo="sintetico")
-    wn, X, rot, conc, mae, meta = pq.carregar_dados(cfg)
+    wn, X, rot, conc, mae, meta = pq.load_data(cfg)
     assert wn.ndim == 1
     assert X.ndim == 2
     assert len(rot) == X.shape[0]

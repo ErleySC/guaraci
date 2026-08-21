@@ -196,13 +196,13 @@ def test_carregar_imagens_todas_corrompidas_levanta_valueerror(pq, tmp_path):
 
 
 def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
-    """carregar_dados(cfg) com modo='imagem' delega para carregar_imagens."""
+    """load_data(cfg) com modo='imagem' delega para carregar_imagens."""
     raiz = tmp_path / "dados_img"
     (raiz / "ClasseA").mkdir(parents=True)
     _salvar_imagem_solida(str(raiz / "ClasseA" / "img1.png"), (100, 150, 200))
 
     cfg = pq.Config(modo="imagem", pasta_entrada=str(raiz))
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dados(cfg)
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "ClasseA"
 

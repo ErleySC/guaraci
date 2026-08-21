@@ -37,7 +37,7 @@ cientifico p/ um vetor curto de estatisticas de cor discretas e heterogeneas
 EXIGE janela <= numero de variaveis (18 por padrao — sem textura), o que
 pode nem ser satisfeito.
 
-IMPORTANTE — faixa espectral: `carregar_dados()` aplica o mesmo filtro
+IMPORTANTE — faixa espectral: `load_data()` aplica o mesmo filtro
 wn_min/wn_max do modo .dx sobre o eixo simbolico (indices 0..n_features-1).
 Os defaults de Config (wn_min=4000, wn_max=10000) NAO cobrem esse intervalo
 pequeno e descartariam TODAS as variaveis — ajuste wn_min/wn_max (ex.:
@@ -221,7 +221,7 @@ def carregar_imagens(
                      Optional[pd.DataFrame]]:
     """Carrega uma pasta de imagens (uma subpasta por classe, ou pasta unica
     com arquivos soltos como fallback) e extrai features de cor (+ textura,
-    se pedido) — mesmo contrato de retorno de `dados_io.carregar_dados`:
+    se pedido) — mesmo contrato de retorno de `dados_io.load_data`:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     `wavenumbers` aqui e um indice simbolico (ver limitacao no docstring do
     modulo); `conc` e `mae_id` sao sempre None neste prototipo generico

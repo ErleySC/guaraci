@@ -5,7 +5,7 @@ sintético) para o pipeline quimiométrico.
 Extraído de pipeline.py como parte da modularização (Fase H). Depende de
 Config só para type hints (import guardado por TYPE_CHECKING, para não criar
 import circular com pipeline.py, que importa este módulo). pipeline.py
-reexporta estes nomes, então `pipeline.carregar_dados(...)`,
+reexporta estes nomes, então `pipeline.load_data(...)`,
 `pipeline.parse_title(...)` etc. continuam funcionando sem alteração.
 """
 from __future__ import annotations
@@ -454,7 +454,7 @@ def gerar_dados_sinteticos(cfg: "Config"):
             np.array(mae_list, dtype=str))
 
 
-def carregar_csv(caminho, col_classe, col_conc):
+def load_csv(caminho, col_classe, col_conc):
     print(f"[INFO] Loading CSV: {caminho}")
     df          = pd.read_csv(caminho)
     rotulos     = np.asarray(df[col_classe].values, dtype=str)
@@ -768,7 +768,7 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
 
     1. **Descarte por faixa espectral.** Datasets reais misturam janelas de
        aquisicao (ex.: NIR completo [0, 15797] vs faixa estreita [300, 4000]).
-       Misturar e' invalido, entao `carregar_dx` mantem so' a faixa dominante
+       Misturar e' invalido, entao `load_dx` mantem so' a faixa dominante
        e descarta o resto. Num acervo de referencia isso removeu dezenas
        de espectros
        concentrados em poucas classes, que perdem N sem que isso fosse
@@ -829,7 +829,7 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     fora_por_especie: Dict[str, int] = {}
     sobreviventes = lidos
     if lidos:
-        # Mesma regra de `carregar_dx`: moda do xmax arredondado a 100 cm-1,
+        # Mesma regra de `load_dx`: moda do xmax arredondado a 100 cm-1,
         # tolerancia de 50 cm-1. Manter identico e' o que faz o aviso PREVER
         # o descarte real em vez de dar um numero proximo porem diferente.
         maxes = np.array([v for _c, v, _m in lidos])
@@ -855,7 +855,7 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     # descarte).
     n_sem_mae_id = sum(1 for _c, _v, m in sobreviventes if m is None)
     grupos = {m for _c, _v, m in sobreviventes if m is not None}
-    # `carregar_dx` transforma cada orfa num grupo de 1 (`orfao_<arquivo>`),
+    # `load_dx` transforma cada orfa num grupo de 1 (`orfao_<arquivo>`),
     # para isolar a amostra sem desligar o GroupKFold do dataset inteiro.
     # Somamos aqui pela MESMA razao de sempre nesta funcao: o numero exibido
     # tem de ser o que o usuario vera' no log da carga (grupos reais mais
@@ -875,7 +875,7 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     }
 
 
-def carregar_dx(pasta: str, parte_classe: int = 0,
+def load_dx(pasta: str, parte_classe: int = 0,
                  extrair_conc: bool = False,
                  usar_parse_title: bool = True
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
@@ -1126,13 +1126,13 @@ def _leitor_sintetico(cfg: "Config"):
 
 
 def _leitor_csv(cfg: "Config"):
-    wn, X, rot, conc = carregar_csv(
+    wn, X, rot, conc = load_csv(
         cfg.arquivo_csv, cfg.coluna_classe, cfg.coluna_conc)
     return wn, X, rot, conc, None, None
 
 
 def _leitor_dx(cfg: "Config"):
-    return carregar_dx(cfg.pasta_entrada, cfg.parte_classe,
+    return load_dx(cfg.pasta_entrada, cfg.parte_classe,
                         cfg.extrair_conc_filename, cfg.usar_parse_title)
 
 
@@ -1150,7 +1150,7 @@ register_reader("dx", _leitor_dx)
 register_reader("imagem", _leitor_imagem)
 
 
-def carregar_dados(cfg: "Config"
+def load_data(cfg: "Config"
                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                                 Optional[np.ndarray], Optional[np.ndarray],
                                 Optional[pd.DataFrame]]:

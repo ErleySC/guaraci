@@ -1,16 +1,16 @@
 """io_registry.py — Registry de leitores de dados (item 20 da auditoria).
 
 Formaliza o despacho por `cfg.modo` que antes era um if/elif fixo dentro de
-`dados_io.carregar_dados()`. Cada leitor e' um `Callable[[Config], DadosCarregados]`
+`dados_io.load_data()`. Cada leitor e' um `Callable[[Config], DadosCarregados]`
 registrado sob uma chave `modo` (ex.: "dx", "csv", "imagem", "sintetico").
 
 Adicionar um novo formato de entrada (uma nova tecnica analitica, um novo
 layout de arquivo) passa a ser: escrever a funcao de leitura e chamar
 `register_reader("meu_modo", minha_funcao)` — de qualquer modulo, inclusive
-fora do pacote guaraci — sem editar o dispatch de `carregar_dados()` nem
+fora do pacote guaraci — sem editar o dispatch de `load_data()` nem
 tocar em if/elif espalhados pelo nucleo cientifico.
 
-Contrato do leitor (o mesmo que `carregar_dados()` sempre devolveu):
+Contrato do leitor (o mesmo que `load_data()` sempre devolveu):
     (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     - wavenumbers: eixo espectral/variavel (1D)
     - X:           matriz de amostras x variaveis (2D)

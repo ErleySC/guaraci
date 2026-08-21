@@ -1,6 +1,6 @@
 """Testes de dados_io.py com arquivos JCAMP-DX (.dx) REAIS gravados em disco
 (não só parse_title isolado, já coberto em test_pipeline_core.py) — exercita
-parse_dx (decodificação ASDF) e carregar_dx (estrutura de pastas, mae_id, CSV
+parse_dx (decodificação ASDF) e load_dx (estrutura de pastas, mae_id, CSV
 de metadados), que respondiam por boa parte dos 81% não cobertos do módulo.
 """
 import numpy as np
@@ -63,7 +63,7 @@ def test_extrair_title_do_dx_le_sem_carregar_espectro(pq, tmp_path):
 
 
 def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
-    """carregar_dx: estrutura real (1 subpasta por espécie), TITLE com
+    """load_dx: estrutura real (1 subpasta por espécie), TITLE com
     réplicas T1/T2/T3 do mesmo ponto — confirma classe, mae_id compartilhado
     entre réplicas, e teor de adulteração extraído do TITLE."""
     raiz = tmp_path / "dados"
@@ -82,7 +82,7 @@ def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
         _escrever_dx(str(raiz / "CastanhaDoPara" / f"cap_adult_T{t}.dx"),
                      f"CAP-05-11-2099-AD-S-4.13%-T{t}", 100, 109, y_base)
 
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dx(str(raiz))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_dx(str(raiz))
 
     assert X.shape[0] == 5  # 3 replicas Andiroba + 2 replicas Castanha
     assert set(rotulos) == {"Andiroba", "Castanha do Pará"}
@@ -98,7 +98,7 @@ def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
 
 
 def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
-    """carregar_dados(cfg) com modo='dx' delega corretamente para carregar_dx
+    """load_data(cfg) com modo='dx' delega corretamente para load_dx
     (mesmo caminho que o pipeline real usa a partir de Config)."""
     raiz = tmp_path / "dados"
     (raiz / "Andiroba").mkdir(parents=True)
@@ -106,7 +106,7 @@ def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
                  100, 105, [1, 2, 3, 4, 5, 6])
 
     cfg = pq.Config(modo="dx", pasta_entrada=str(raiz))
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dados(cfg)
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "Andiroba"
 
@@ -154,7 +154,7 @@ def test_prescan_conta_arquivos_e_grupos(pq, tmp_path):
 
 
 def test_prescan_preve_o_descarte_por_faixa_espectral(pq, tmp_path):
-    """O numero previsto tem de ser o MESMO que carregar_dx vai descartar --
+    """O numero previsto tem de ser o MESMO que load_dx vai descartar --
     e' o que torna o aviso confiavel em vez de so' indicativo."""
     pasta = _montar_dataset(tmp_path / "ds2", fora_da_faixa=2)
     r = pq.prescan_dx(pasta)
@@ -165,7 +165,7 @@ def test_prescan_preve_o_descarte_por_faixa_espectral(pq, tmp_path):
         "o descarte tem de ser atribuido a especie (pasta) certa"
 
     # A previsao tem de bater com a carga REAL do mesmo dataset.
-    _wn, X, _rot, _conc, _mae, _meta = pq.carregar_dx(pasta, extrair_conc=False)
+    _wn, X, _rot, _conc, _mae, _meta = pq.load_dx(pasta, extrair_conc=False)
     assert X.shape[0] == r["n_apos_descarte"]
 
 
@@ -176,7 +176,7 @@ def test_prescan_conta_orfas_apos_o_descarte(pq, tmp_path):
     pasta = _montar_dataset(tmp_path / "ds3", sem_titulo_valido=2)
     r = pq.prescan_dx(pasta)
     assert r["n_sem_mae_id"] == 2
-    # Cada orfa vira um grupo de 1 em carregar_dx -> 5 reais + 2 orfas.
+    # Cada orfa vira um grupo de 1 em load_dx -> 5 reais + 2 orfas.
     assert r["n_grupos_reais"] == 5
     assert r["n_grupos"] == 7
 
