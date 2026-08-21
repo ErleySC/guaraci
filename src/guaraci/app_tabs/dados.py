@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
-from guaraci.app_logic import collect_config, caminho_upload_temp
+from guaraci.app_logic import collect_config, temp_upload_path
 from guaraci.cli_assistente import PROFILES
 
 
@@ -90,7 +90,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     )
     if upld is not None:
         # Subpasta por SESSAO (achado S1 da auditoria de seguranca,
-        # 2026-08-07 -- ver docstring de app_logic.caminho_upload_temp):
+        # 2026-08-07 -- ver docstring de app_logic.temp_upload_path):
         # antes, todos os uploads (de todas as sessoes/visitantes) caiam
         # na MESMA pasta compartilhada com o nome original do arquivo --
         # um caminho PREVISIVEL, que era uma das pecas do bypass de RCE
@@ -99,7 +99,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         import uuid
         if "_upload_session_id" not in st.session_state:
             st.session_state["_upload_session_id"] = uuid.uuid4().hex
-        tmp_path_obj = caminho_upload_temp(upld.name,
+        tmp_path_obj = temp_upload_path(upld.name,
                                            st.session_state["_upload_session_id"])
         tmp_path_obj.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = str(tmp_path_obj)

@@ -36,8 +36,8 @@ _CATS = {
 
 
 def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
-           ler_resumo: Callable[[str], str], list_figures: Callable[[str], list]) -> None:
-    """Renderiza a aba Validation. `ler_resumo`/`list_figures` são as
+           load_summary: Callable[[str], str], list_figures: Callable[[str], list]) -> None:
+    """Renderiza a aba Validation. `load_summary`/`list_figures` são as
     versões cacheadas (@st.cache_data) definidas em app_quimiometria.py."""
     st.subheader(T("Validation Results"))
     pasta_v = st.session_state.get("ultima_pasta")
@@ -49,7 +49,7 @@ def render(T: Callable[[str], str], tok: Callable[[], Dict[str, str]],
     st.caption(f"Folder: `{os.path.abspath(pasta_v)}`")
 
     # Numeric summary
-    resumo_txt = ler_resumo(pasta_v)
+    resumo_txt = load_summary(pasta_v)
     if resumo_txt:
         with st.expander("📋 Model summary (resumo_modelo.txt)", expanded=True):
             # Split into main section and notes section for cleaner display

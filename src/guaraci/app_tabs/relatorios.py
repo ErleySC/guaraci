@@ -50,7 +50,7 @@ def _tamanho_pasta_mb(pasta_p: str) -> float:
 def render(pq, modo_analise_rotulo: Dict[str, str],
            zip_da_pasta: Callable, pdf_bytes: Callable, word_bytes: Callable,
            excel_bytes: Callable, latex_bytes: Callable, pptx_bytes: Callable,
-           ler_resumo: Callable, ler_model_card: Callable,
+           load_summary: Callable, load_model_card: Callable,
            list_figures: Callable) -> None:
     """Renderiza a aba Reports. Os `*_bytes`/`ler_*`/`list_figures` são as
     versões cacheadas (@st.cache_data) definidas em app_quimiometria.py."""
@@ -222,7 +222,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
     # caveats in one shareable document. Rendered as Markdown (tables
     # display nicely), with its own download button.
     st.markdown("### 🪪 Model Card")
-    model_card_r = ler_model_card(pasta_r)
+    model_card_r = load_model_card(pasta_r)
     if model_card_r:
         with st.expander("View Model Card", expanded=False):
             st.markdown(model_card_r)
@@ -240,7 +240,7 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
 
     # Model summary
     st.markdown("### 📋 Model summary")
-    resumo_r = ler_resumo(pasta_r)
+    resumo_r = load_summary(pasta_r)
     if resumo_r:
         st.text_area("resumo_modelo.txt", resumo_r, height=400)
     else:

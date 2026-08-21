@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from guaraci.app_logic import progresso_do_log, figures_completed
+from guaraci.app_logic import log_progress, figures_completed
 
 
 @pytest.mark.slow
@@ -55,7 +55,7 @@ def test_stdout_real_do_executar_ainda_casa_com_regex_do_painel(pq, tmp_path):
     texto = buf.getvalue()
 
     # 1) marcadores de etapa "[N/7]" -- sempre presentes em qualquer run
-    frac, _nome = progresso_do_log(texto)
+    frac, _nome = log_progress(texto)
     assert frac > 0.0, (
         "Nenhum marcador '[N/7]' encontrado no stdout real -- o painel de "
         "progresso (CLI e app web) ficaria travado em 'Starting...' para "

@@ -14,7 +14,7 @@ from guaraci.predicao import (
     validar_pacote_modelo as _validar_pacote_modelo,
     carregar_csv_predicao as _carregar_csv_predicao,
 )
-from guaraci.app_logic import caminho_upload_temp
+from guaraci.app_logic import temp_upload_path
 
 
 def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
@@ -96,7 +96,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                     "before loading — required (see docs/SECURITY.md).")
             elif upld_jbl is not None and not upload_bloqueado:
                 # Isolado por sessao (achado de auditoria de seguranca,
-                # 2026-08-07 -- ver docstring de app_logic.caminho_upload_temp):
+                # 2026-08-07 -- ver docstring de app_logic.temp_upload_path):
                 # um caminho fixo/previsivel numa pasta temp compartilhada
                 # permite que 2 sessoes concorrentes (deploy multi-usuario)
                 # se pisem -- a sessao B sobrescreve o arquivo entre a
@@ -105,7 +105,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                 import uuid
                 if "_upload_session_id" not in st.session_state:
                     st.session_state["_upload_session_id"] = uuid.uuid4().hex
-                tmp_jbl = caminho_upload_temp(
+                tmp_jbl = temp_upload_path(
                     "pq_pred_model.joblib", st.session_state["_upload_session_id"])
                 tmp_jbl.parent.mkdir(parents=True, exist_ok=True)
                 with open(tmp_jbl, "wb") as f:

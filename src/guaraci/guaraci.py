@@ -64,8 +64,8 @@ import guaraci.pipeline as pq
 from guaraci.app_logic import (
     LogThreadSafe as _LogThreadSafe,
     figures_completed as _figures_completed,
-    avisos_do_log as _avisos_do_log,
-    progresso_do_log as _progresso_do_log,
+    log_warnings as _avisos_do_log,
+    log_progress as _progresso_do_log,
     fmt_time as _fmt_time,
 )
 
@@ -3334,10 +3334,10 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
                              plano_figuras: List[str]) -> Panel:
     """Monta o painel de acompanhamento ao vivo (auditoria jul/2026, item 5):
     objetivo cientifico, barra de progresso + rotulo da analise em
-    andamento (via app_logic.progresso_do_log), figuras ja concluidas
+    andamento (via app_logic.log_progress), figuras ja concluidas
     (app_logic.figures_completed) contra o plano do modo (modos_analise.
     describe_plan), tempo decorrido/estimado restante e avisos nao-fatais
-    (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
+    (app_logic.log_warnings). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
     precisar rodar o pipeline de verdade nem simular entrada interativa."""
     frac, label = _progresso_do_log(texto_log, len(plano_figuras) or None)

@@ -9,21 +9,21 @@ from pathlib import Path
 import pytest
 
 from guaraci.app_logic import (
-    progresso_do_log, fmt_time, collect_config,
-    list_figures, ler_resumo, ler_model_card,
-    caminho_upload_temp,
+    log_progress, fmt_time, collect_config,
+    list_figures, load_summary, load_model_card,
+    temp_upload_path,
 )
 
 
-# ── progresso_do_log ─────────────────────────────────────────────────────────
+# ── log_progress ─────────────────────────────────────────────────────────
 def test_progresso_vazio_retorna_inicio():
-    frac, nome = progresso_do_log("")
+    frac, nome = log_progress("")
     assert frac == 0.0
     assert nome == "Starting..."
 
 
 def test_progresso_sem_marcador_retorna_inicio():
-    frac, nome = progresso_do_log("linha qualquer sem marcador de etapa")
+    frac, nome = log_progress("linha qualquer sem marcador de etapa")
     assert frac == 0.0 and nome == "Starting..."
 
 
@@ -31,30 +31,30 @@ def test_progresso_sem_marcador_retorna_inicio():
 def test_progresso_usa_maior_etapa(n):
     # Mesmo com etapas antigas no log, usa a MAIOR vista (nunca regride).
     txt = "\n".join(f"[{i}/7] passo" for i in range(n + 1))
-    frac, nome = progresso_do_log(txt)
+    frac, nome = log_progress(txt)
     assert frac == pytest.approx(min(0.99, n / 7.0))
     assert nome  # rótulo não-vazio
 
 
 def test_progresso_nunca_passa_de_099():
-    frac, _ = progresso_do_log("[7/7] done")
+    frac, _ = log_progress("[7/7] done")
     assert frac == 0.99
 
 
 def test_progresso_substep_benchmark_e_mc():
-    frac_b, nome_b = progresso_do_log("[7/7] fim\n[7b/7] rodando")
+    frac_b, nome_b = log_progress("[7/7] fim\n[7b/7] rodando")
     assert "Benchmark" in nome_b and frac_b == 0.99
-    _, nome_c = progresso_do_log("[7c/7] mc")
+    _, nome_c = log_progress("[7c/7] mc")
     assert "Monte Carlo" in nome_c
 
 
 def test_progresso_ignora_marcador_malformado():
     # "[9/8]" não casa o padrão /7 → tratado como sem-marcador.
-    frac, nome = progresso_do_log("[9/8] invalido")
+    frac, nome = log_progress("[9/8] invalido")
     assert frac == 0.0 and nome == "Starting..."
 
 
-# ── progresso_do_log: "bug do progresso" (achado 2026-08-07) ────────────────
+# ── log_progress: "bug do progresso" (achado 2026-08-07) ────────────────
 # A etapa "[6/7]" (figuras + DD-SIMCA + OPLS-DA + holdout) concentra a maior
 # parte do tempo real de execução, mas só tinha 2 marcadores de texto
 # opcionais entre início e fim -- sem eles, a fração ficava CRAVADA em
@@ -66,11 +66,11 @@ def test_progresso_ignora_marcador_malformado():
 def test_progresso_etapa6_sem_total_planejado_comportamento_antigo():
     """Retrocompatibilidade: sem o parâmetro novo, a fração da etapa 6 é
     EXATAMENTE a mesma de antes da correção (6/7), mesmo com figuras já
-    salvas no log -- ninguém que já chama `progresso_do_log(txt)` (1
+    salvas no log -- ninguém que já chama `log_progress(txt)` (1
     argumento) é afetado."""
     txt = "[6/7] Gerando figuras...\n" + "\n".join(
         f"  -> saida/fig{i}.png" for i in range(5))
-    frac, _ = progresso_do_log(txt)
+    frac, _ = log_progress(txt)
     assert frac == pytest.approx(6 / 7.0)
 
 
@@ -79,11 +79,11 @@ def test_progresso_etapa6_avanca_com_figuras_concluidas():
     aparecem no log -- não fica mais cravada num único número durante toda
     a etapa mais demorada."""
     base = "[6/7] Gerando figuras...\n"
-    frac_0fig, _ = progresso_do_log(base, total_figuras_planejadas=10)
-    frac_5fig, _ = progresso_do_log(
+    frac_0fig, _ = log_progress(base, total_figuras_planejadas=10)
+    frac_5fig, _ = log_progress(
         base + "\n".join(f"  -> saida/fig{i}.png" for i in range(5)),
         total_figuras_planejadas=10)
-    frac_10fig, _ = progresso_do_log(
+    frac_10fig, _ = log_progress(
         base + "\n".join(f"  -> saida/fig{i}.png" for i in range(10)),
         total_figuras_planejadas=10)
     # Nunca regride, sempre avança com mais figuras.
@@ -99,15 +99,15 @@ def test_progresso_etapa6_nao_afeta_outras_etapas():
     outra etapa, `total_figuras_planejadas` não muda o resultado."""
     for n in (0, 1, 2, 3, 4, 5, 7):
         txt = f"[{n}/7] etapa\n  -> saida/fig0.png\n  -> saida/fig1.png"
-        frac_sem, _ = progresso_do_log(txt)
-        frac_com, _ = progresso_do_log(txt, total_figuras_planejadas=10)
+        frac_sem, _ = log_progress(txt)
+        frac_com, _ = log_progress(txt, total_figuras_planejadas=10)
         assert frac_sem == frac_com == pytest.approx(min(0.99, n / 7.0))
 
 
 def test_progresso_etapa6_total_zero_nao_quebra():
     """total_figuras_planejadas=0 (plano vazio, caso degenerado) não deve
     causar ZeroDivisionError -- cai no comportamento sem bônus."""
-    frac, _ = progresso_do_log("[6/7] etapa", total_figuras_planejadas=0)
+    frac, _ = log_progress("[6/7] etapa", total_figuras_planejadas=0)
     assert frac == pytest.approx(6 / 7.0)
 
 
@@ -115,9 +115,9 @@ def test_progresso_substep_holdout_e_comparacao_pipelines():
     """Sub-passos da etapa 6 (achado 2026-08-07: não eram reconhecidos --
     só a etapa 7 tinha rótulo específico para sub-passos) mostram rótulo
     específico em vez do genérico da etapa."""
-    _, nome_holdout = progresso_do_log("[6/7] fig\n[6c/7] holdout rodando")
+    _, nome_holdout = log_progress("[6/7] fig\n[6c/7] holdout rodando")
     assert "holdout" in nome_holdout.lower()
-    _, nome_comp = progresso_do_log("[6/7] fig\n[6b/7] comparando")
+    _, nome_comp = log_progress("[6/7] fig\n[6b/7] comparando")
     assert "preprocessing" in nome_comp.lower() or "pipelines" in nome_comp.lower()
 
 
@@ -175,7 +175,7 @@ def test_coletar_config_reporta_erro_de_coercao(pq):
     assert any("max_lvs" in e for e in erros)
 
 
-# ── list_figures / ler_resumo / ler_model_card ─────────────────────────────
+# ── list_figures / load_summary / load_model_card ─────────────────────────────
 def test_listar_figuras_encontra_png_jpg_recursivo(tmp_path):
     (tmp_path / "sub").mkdir()
     (tmp_path / "a.png").write_text("x")
@@ -194,30 +194,30 @@ def test_ler_resumo_prioriza_logs_subpasta(tmp_path):
     (tmp_path / "logs").mkdir()
     (tmp_path / "logs" / "resumo_modelo.txt").write_text("conteudo em logs/")
     (tmp_path / "resumo_modelo.txt").write_text("conteudo na raiz")
-    assert ler_resumo(str(tmp_path)) == "conteudo em logs/"
+    assert load_summary(str(tmp_path)) == "conteudo em logs/"
 
 
 def test_ler_resumo_cai_para_raiz_sem_logs(tmp_path):
     (tmp_path / "resumo_modelo.txt").write_text("so' na raiz")
-    assert ler_resumo(str(tmp_path)) == "so' na raiz"
+    assert load_summary(str(tmp_path)) == "so' na raiz"
 
 
 def test_ler_resumo_arquivo_ausente_retorna_none(tmp_path):
-    assert ler_resumo(str(tmp_path)) is None
+    assert load_summary(str(tmp_path)) is None
 
 
 def test_ler_model_card_prioriza_logs_subpasta(tmp_path):
     (tmp_path / "logs").mkdir()
     (tmp_path / "logs" / "model_card.md").write_text("card em logs/")
     (tmp_path / "model_card.md").write_text("card na raiz")
-    assert ler_model_card(str(tmp_path)) == "card em logs/"
+    assert load_model_card(str(tmp_path)) == "card em logs/"
 
 
 def test_ler_model_card_ausente_retorna_none(tmp_path):
-    assert ler_model_card(str(tmp_path)) is None
+    assert load_model_card(str(tmp_path)) is None
 
 
-# ── caminho_upload_temp (achado S1 da auditoria de seguranca, 2026-08-07) ───
+# ── temp_upload_path (achado S1 da auditoria de seguranca, 2026-08-07) ───
 # Um caminho de upload PREVISIVEL (nome fixo, pasta compartilhada entre
 # sessoes/visitantes) era uma das pecas de um bypass de RCE via pickle num
 # deploy publico (ver AUDITORIA_SEGURANCA_2026-08-07.md).
@@ -227,7 +227,7 @@ def test_caminho_upload_temp_bloqueia_path_traversal():
     """So' o BASENAME do nome original e' usado -- um nome de arquivo
     malicioso como '../../etc/passwd' nao pode escapar do diretorio de
     destino."""
-    p = caminho_upload_temp("../../etc/passwd", "sessao123",
+    p = temp_upload_path("../../etc/passwd", "sessao123",
                             base=Path("/base"))
     assert p == Path("/base/pq_uploads/sessao123/passwd")
     assert ".." not in p.parts
@@ -237,8 +237,8 @@ def test_caminho_upload_temp_isola_por_sessao():
     """Sessoes/visitantes DIFERENTES com o MESMO nome de arquivo devem cair
     em caminhos DIFERENTES -- e' a propriedade que fecha o bypass de RCE
     (visitante nao pode mais prever/reusar o caminho de outra sessao)."""
-    p_a = caminho_upload_temp("modelo.csv", "sessao-A", base=Path("/base"))
-    p_b = caminho_upload_temp("modelo.csv", "sessao-B", base=Path("/base"))
+    p_a = temp_upload_path("modelo.csv", "sessao-A", base=Path("/base"))
+    p_b = temp_upload_path("modelo.csv", "sessao-B", base=Path("/base"))
     assert p_a != p_b
     assert "sessao-A" in p_a.parts
     assert "sessao-B" in p_b.parts
@@ -248,15 +248,15 @@ def test_caminho_upload_temp_mesma_sessao_mesmo_nome_da_mesmo_caminho():
     """Propriedade complementar: DENTRO da mesma sessao, o mesmo nome de
     arquivo sempre resolve para o mesmo caminho -- preserva a otimizacao de
     'reusar copia ja salva' que dados.py usa entre reruns do Streamlit."""
-    p1 = caminho_upload_temp("dados.csv", "sessao-X", base=Path("/base"))
-    p2 = caminho_upload_temp("dados.csv", "sessao-X", base=Path("/base"))
+    p1 = temp_upload_path("dados.csv", "sessao-X", base=Path("/base"))
+    p2 = temp_upload_path("dados.csv", "sessao-X", base=Path("/base"))
     assert p1 == p2
 
 
 def test_caminho_upload_temp_usa_gettempdir_por_padrao():
     """Sem `base` explicito, usa o diretorio temporario real do SO (nao
     lanca, nao exige o parametro)."""
-    p = caminho_upload_temp("x.csv", "sessao1")
+    p = temp_upload_path("x.csv", "sessao1")
     assert "pq_uploads" in p.parts
     assert "sessao1" in p.parts
     assert p.name == "x.csv"

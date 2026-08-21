@@ -10,8 +10,8 @@ stdout -- de proposito identico ao `print()` que substitui. Isso preserva
 o texto exato capturado por `contextlib.redirect_stdout` no CLI
 (`guaraci.py:_rodar_pipeline`) e no worker do app web
 (`app_tabs/modelo.py`), que hoje fazem parsing por REGEX desse texto para
-alimentar o painel de progresso ao vivo (`app_logic.progresso_do_log` /
-`figures_completed` / `avisos_do_log`).
+alimentar o painel de progresso ao vivo (`app_logic.log_progress` /
+`figures_completed` / `log_warnings`).
 
 NAO faz (escopo maior, fica para depois): reescrever o painel para
 consumir logging.Handler/registros estruturados em vez de regex sobre

@@ -109,7 +109,7 @@ def test_montar_painel_execucao_sem_avisos_nao_mostra_secao(guaraci_mod):
 def test_painel_nao_estoura_altura_do_terminal(guaraci_mod):
     """Regressao do bug da "tela preta" (2026-08-07).
 
-    `figures_completed` e `avisos_do_log` cresciam sem teto; numa corrida
+    `figures_completed` e `log_warnings` cresciam sem teto; numa corrida
     completa o painel passava de 35 linhas num terminal de 24. O Live do
     Rich perde o controle do cursor quando o bloco nao cabe na janela e a
     tela fica preta com so' o cursor piscando -- o calculo continua, mas o

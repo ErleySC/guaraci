@@ -13,7 +13,7 @@ from typing import Callable, Dict, Optional
 
 import streamlit as st
 
-from guaraci.app_logic import collect_config, fmt_time, progresso_do_log
+from guaraci.app_logic import collect_config, fmt_time, log_progress
 from guaraci.app_logic import LogThreadSafe as _LogThreadSafe
 
 
@@ -264,7 +264,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                     estado["erro"] = "Pipeline exceeded maximum runtime (2 h)."
                     break
                 txt = logger.text()
-                frac, nome = progresso_do_log(txt, len(_plano_run) or None)
+                frac, nome = log_progress(txt, len(_plano_run) or None)
                 elapsed = time.monotonic() - t0
                 if frac >= 0.10:
                     eta = elapsed / frac - elapsed

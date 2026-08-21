@@ -19,7 +19,7 @@ import pandas as pd
 
 import guaraci.pipeline as _pq
 from guaraci.app_logic import (
-    ler_resumo as _ler_resumo,
+    load_summary as _ler_resumo,
     list_figures as _list_figures,
 )
 from guaraci.config import NOME_TABELAS

@@ -79,7 +79,7 @@ def figures_completed(txt: str) -> List[str]:
     return vistos
 
 
-def avisos_do_log(txt: str) -> List[str]:
+def log_warnings(txt: str) -> List[str]:
     """Textos de aviso ([AVISO] ...) já emitidos, na ordem, sem duplicatas."""
     vistos: List[str] = []
     for aviso in _RE_AVISO.findall(txt or ""):
@@ -108,7 +108,7 @@ _ETAPA_NOMES: Dict[int, str] = {
 # legivel). "[6b/7]"/"[6c/7]" adicionados em 2026-08-07 -- ja existiam no
 # log do pipeline (pipeline.py:1866,1884) mas nao eram reconhecidos aqui
 # (so' o `if n >= 7` cobria sub-passos), entao o rotulo ficava generico
-# durante eles. Ver `progresso_do_log` para o bug de fundo que isso ajuda
+# durante eles. Ver `log_progress` para o bug de fundo que isso ajuda
 # a mitigar.
 _ETAPA_SUBSTEP: Dict[str, Tuple[int, str]] = {
     "[6b/7]": (6, "Comparing preprocessing pipelines..."),
@@ -118,7 +118,7 @@ _ETAPA_SUBSTEP: Dict[str, Tuple[int, str]] = {
 }
 
 
-def progresso_do_log(txt: str,
+def log_progress(txt: str,
                       total_figuras_planejadas: Optional[int] = None
                       ) -> Tuple[float, str]:
     """Deriva (fração 0..0.99, rótulo) do log acumulado do pipeline.
@@ -211,7 +211,7 @@ def collect_config(cfg_base, valores: Dict):
 
 # ── Caminho seguro p/ arquivo temporario de upload (achado de auditoria de
 #    seguranca, 2026-08-07) ──────────────────────────────────────────────────
-def caminho_upload_temp(nome_original: str, session_id: str, *,
+def temp_upload_path(nome_original: str, session_id: str, *,
                         base: Optional[Path] = None,
                         subpasta: str = "pq_uploads") -> Path:
     """Caminho seguro para salvar um arquivo temporario recebido via upload
@@ -254,7 +254,7 @@ def list_figures(pasta: str) -> List[str]:
     return sorted(imgs)
 
 
-def ler_resumo(pasta: str) -> Optional[str]:
+def load_summary(pasta: str) -> Optional[str]:
     """Lê Relatorios/resumo_modelo.txt (ou variantes antigas: logs/ da
     estrutura pre-jul/2026, ou resumo_modelo.txt na raiz), se existir."""
     for candidato in [
@@ -268,7 +268,7 @@ def ler_resumo(pasta: str) -> Optional[str]:
     return None
 
 
-def ler_model_card(pasta: str) -> Optional[str]:
+def load_model_card(pasta: str) -> Optional[str]:
     """Lê Relatorios/model_card.md (ou variantes antigas: logs/ da estrutura
     pre-jul/2026, ou model_card.md na raiz), se existir."""
     for candidato in [
@@ -282,8 +282,8 @@ def ler_model_card(pasta: str) -> Optional[str]:
     return None
 
 
-__all__ = ["progresso_do_log", "fmt_time", "collect_config",
-           "list_figures", "ler_resumo", "ler_model_card",
+__all__ = ["log_progress", "fmt_time", "collect_config",
+           "list_figures", "load_summary", "load_model_card",
            "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP",
-           "LogThreadSafe", "figures_completed", "avisos_do_log",
-           "caminho_upload_temp"]
+           "LogThreadSafe", "figures_completed", "log_warnings",
+           "temp_upload_path"]
