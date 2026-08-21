@@ -438,15 +438,15 @@ def test_predict_e_score_matrix_f_concordam():
 
 
 def test_media_e_dof_casos_degenerados():
-    # media_e_dof_momentos() foi movida p/ chemometric_stats.py (achado A3 da
+    # mean_and_dof_moments() foi movida p/ chemometric_stats.py (achado A3 da
     # auditoria 2026-08-07): compartilhada entre DDSimca e
-    # dominio_aplicabilidade_treino, em vez de reimplementada em cada um.
-    from guaraci.chemometric_stats import media_e_dof_momentos
-    media, N = media_e_dof_momentos(np.array([]))
+    # training_applicability_domain, em vez de reimplementada em cada um.
+    from guaraci.chemometric_stats import mean_and_dof_moments
+    media, N = mean_and_dof_moments(np.array([]))
     assert media == 0.0 and N == 1.0
-    media, N = media_e_dof_momentos(np.full(10, 3.0))   # desvio=0
+    media, N = mean_and_dof_moments(np.full(10, 3.0))   # desvio=0
     assert N == 1.0
-    media, N = media_e_dof_momentos(np.array([5.0]))    # n=1, sem desvio
+    media, N = mean_and_dof_moments(np.array([5.0]))    # n=1, sem desvio
     assert N == 1.0
 
 

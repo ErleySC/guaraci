@@ -415,7 +415,7 @@ def test_variancia_explicada_range(pq):
     rng = np.random.default_rng(3)
     X = rng.normal(size=(50, 20))
     T = X[:, :3]  # 3 "componentes" quaisquer
-    ve = pq.variancia_explicada(X, T)
+    ve = pq.explained_variance(X, T)
     assert ve.shape == (3,)
     assert np.all(ve >= 0)
 
@@ -443,7 +443,7 @@ def test_figuras_merito_recupera_ruido_injetado(pq):
     """delta_x estimado (via variância pooled das réplicas) deve bater com o
     ruído REALMENTE injetado nas réplicas sintéticas (não é chute)."""
     modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos()
-    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
     assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
     assert fom["n_grupos_replicas"] == 8
 
@@ -451,14 +451,14 @@ def test_figuras_merito_recupera_ruido_injetado(pq):
 def test_figuras_merito_razao_loq_lod_e_exata(pq):
     """LOQ/LOD = 10/3.3 por definição (mesmo delta_x e SEN cancelam)."""
     modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=7)
-    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
     assert fom["loq"] / fom["lod"] == pytest.approx(10.0 / 3.3, rel=1e-9)
 
 
 def test_figuras_merito_sensibilidade_e_inverso_da_norma_de_b(pq):
     """SEN = 1/||b|| — checagem direta contra o vetor de regressão do modelo."""
     modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=1)
-    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
     norm_b = np.linalg.norm(np.asarray(modelo.coef_).reshape(-1))
     assert fom["sensibilidade"] == pytest.approx(1.0 / norm_b, rel=1e-9)
 
@@ -466,14 +466,14 @@ def test_figuras_merito_sensibilidade_e_inverso_da_norma_de_b(pq):
 def test_figuras_merito_seletividade_entre_0_e_1(pq):
     """SEL_i é um cosseno (|.|) — sempre em [0, 1]; a média reportada também."""
     modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=2)
-    fom = pq.figuras_merito_regressao(modelo, X, grupos)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
     assert 0.0 <= fom["seletividade_media"] <= 1.0
 
 
 def test_figuras_merito_sem_replicas_nao_quebra(pq):
     """Sem réplicas físicas não há como estimar ruído — NaN, não crash nem 0."""
     modelo, X, _grupos, _ = _modelo_e_replicas_conhecidos(seed=3)
-    fom = pq.figuras_merito_regressao(modelo, X, [])
+    fom = pq.regression_figures_of_merit(modelo, X, [])
     assert fom["n_grupos_replicas"] == 0
     assert np.isnan(fom["lod"]) and np.isnan(fom["loq"])
     assert np.isnan(fom["sensibilidade_analitica"])
@@ -486,7 +486,7 @@ def test_figuras_merito_modelo_degenerado_b_zero(pq):
     nunca ZeroDivisionError/inf silencioso."""
     class _ModeloNulo:
         coef_ = np.zeros((1, 10))
-    fom = pq.figuras_merito_regressao(
+    fom = pq.regression_figures_of_merit(
         _ModeloNulo(), np.random.default_rng(0).normal(size=(20, 10)), [])
     assert all(np.isnan(v) for k, v in fom.items() if k != "n_grupos_replicas")
 
@@ -497,7 +497,7 @@ def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
     delta_x, não contar como grupo válido nem quebrar a soma pooled."""
     modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos(seed=9)
     grupos_com_singleton = grupos + [np.array([X[0]])]  # grupo de 1 amostra so'
-    fom = pq.figuras_merito_regressao(modelo, X, grupos_com_singleton)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos_com_singleton)
     # o singleton nao conta: mesmo numero de grupos validos que sem ele
     assert fom["n_grupos_replicas"] == len(grupos)
     assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
@@ -587,14 +587,14 @@ def test_q_residuos_limite_bate_com_formula_jackson_mudholkar(pq):
     assert obtido == pytest.approx(esperado, rel=1e-12)
 
 
-# ── variancia_explicada: X com variância total zero ─────────────────────────
+# ── explained_variance: X com variância total zero ─────────────────────────
 
 def test_variancia_explicada_x_constante_retorna_zeros(pq):
     """X sem variância nenhuma (todas as amostras idênticas) não tem % de
     variância explicada calculável -- retorna zeros, não divide por zero."""
     X = np.ones((10, 5))          # variancia total = 0
     T = np.random.default_rng(0).normal(size=(10, 3))
-    ve = pq.variancia_explicada(X, T)
+    ve = pq.explained_variance(X, T)
     assert np.array_equal(ve, np.zeros(3))
 
 
@@ -1245,7 +1245,7 @@ def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
     rng = np.random.default_rng(0)
     X = rng.normal(size=(120, 30))
     pca = PCA(n_components=5).fit(X)
-    ad = pq.dominio_aplicabilidade(pca, X, X, alpha=0.05)
+    ad = pq.applicability_domain(pca, X, X, alpha=0.05)
     assert 0.80 <= float(ad["fracao_dentro"]) <= 1.0
     assert ad["dentro_dominio"].shape == (120,)
     assert float(ad["f_crit"]) > 0
@@ -1278,8 +1278,8 @@ def test_dominio_aplicabilidade_nao_rejeita_treino_no_regime_n_menor_que_p(pq):
         X_tr = rng.normal(size=(40, 800))
         X_novo = rng.normal(size=(200, 800))    # mesma distribuicao => H0
         pca = PCA(n_components=3).fit(X_tr)
-        art = pq.dominio_aplicabilidade_treino(pca, X_tr, alpha=0.05)
-        r = pq.dominio_aplicabilidade_amostras_novas(
+        art = pq.training_applicability_domain(pca, X_tr, alpha=0.05)
+        r = pq.applicability_domain_new_samples(
             pca, X_novo, art["var_t"], art["h0"], art["q0"],
             art["Nh"], art["Nq"], art["f_crit"])
         fracoes.append(float(np.mean(r["dentro_dominio"])))
@@ -1299,7 +1299,7 @@ def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
     X = rng.normal(size=(100, 20))
     pca = PCA(n_components=4).fit(X)
     X_out = X[:5] + 50.0            # empurra 5 amostras para longe do plano
-    ad = pq.dominio_aplicabilidade(pca, X, X_out, alpha=0.05)
+    ad = pq.applicability_domain(pca, X, X_out, alpha=0.05)
     # Todas as 5 deslocadas devem estar fora (T2 e/ou Q estourados).
     assert not ad["dentro_dominio"].any()
 
@@ -1314,7 +1314,7 @@ def test_dominio_aplicabilidade_retorno_consistente(pq):
     X = rng.normal(size=(80, 15))
     Xn = rng.normal(size=(12, 15))
     pca = PCA(n_components=3).fit(X)
-    ad = pq.dominio_aplicabilidade(pca, X, Xn)
+    ad = pq.applicability_domain(pca, X, Xn)
     assert ad["t2"].shape == (12,) and ad["q"].shape == (12,)
     assert ad["f"].shape == (12,)
     assert np.array_equal(ad["dentro_dominio"], ad["f"] <= ad["f_crit"])
@@ -1335,7 +1335,7 @@ def test_dominio_aplicabilidade_calibrada_melhor_que_regra_retangular(pq):
         Xtr = rng.normal(0, 1, (200, 30))
         Xnew = rng.normal(0, 1, (500, 30))   # mesma distribuicao => H0
         pca = PCA(n_components=3).fit(Xtr)
-        ad = pq.dominio_aplicabilidade(pca, Xtr, Xnew, alpha=0.05)
+        ad = pq.applicability_domain(pca, Xtr, Xnew, alpha=0.05)
         rejeicoes.append(1.0 - float(ad["fracao_dentro"]))
     taxa_media = float(np.mean(rejeicoes))
     assert taxa_media < 0.09, (
@@ -1345,10 +1345,10 @@ def test_dominio_aplicabilidade_calibrada_melhor_que_regra_retangular(pq):
 
 
 def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinado(pq):
-    """dominio_aplicabilidade_treino + dominio_aplicabilidade_amostras_novas
+    """training_applicability_domain + applicability_domain_new_samples
     (usadas por predicao.py para nao precisar reexportar X_train inteiro no
     pacote .joblib) devem produzir EXATAMENTE o mesmo resultado que a funcao
-    combinada dominio_aplicabilidade -- e' a mesma matematica, so' partida
+    combinada applicability_domain -- e' a mesma matematica, so' partida
     em 2 etapas (treino gera artefatos leves; predicao os consome)."""
     import numpy as np
     from sklearn.decomposition import PCA
@@ -1357,9 +1357,9 @@ def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinad
     Xn = rng.normal(size=(10, 12)) + 0.5
     pca = PCA(n_components=4).fit(X)
 
-    combinado = pq.dominio_aplicabilidade(pca, X, Xn, alpha=0.05)
-    treino = pq.dominio_aplicabilidade_treino(pca, X, alpha=0.05)
-    split = pq.dominio_aplicabilidade_amostras_novas(
+    combinado = pq.applicability_domain(pca, X, Xn, alpha=0.05)
+    treino = pq.training_applicability_domain(pca, X, alpha=0.05)
+    split = pq.applicability_domain_new_samples(
         pca, Xn, treino["var_t"], treino["h0"], treino["q0"],
         treino["Nh"], treino["Nq"], treino["f_crit"])
 
@@ -1378,7 +1378,7 @@ def test_dominio_aplicabilidade_treino_var_t_tem_tamanho_n_componentes(pq):
     rng = np.random.default_rng(4)
     X = rng.normal(size=(60, 10))
     pca = PCA(n_components=3).fit(X)
-    treino = pq.dominio_aplicabilidade_treino(pca, X)
+    treino = pq.training_applicability_domain(pca, X)
     assert treino["var_t"].shape == (3,)
     assert treino["t2_limite"] > 0 and treino["q_limite"] > 0
 

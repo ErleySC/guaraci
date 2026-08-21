@@ -227,7 +227,7 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
     a formula acima) usa **F**. Esta funcao implementa SO' a de Fase II.
 
     Onde e' aplicada em contexto de Fase I neste codebase
-    (`dominio_aplicabilidade_treino`, `figuras.fig3_outliers`), o erro
+    (`training_applicability_domain`, `figuras.fig3_outliers`), o erro
     numerico medido (razao limite-F / limite-Beta) e' pequeno para os
     tamanhos de amostra tipicos do projeto (~1.01-1.03x com n~300; sobe a
     ~2-3x so' com n<20) — ver scripts/medicoes/medir_achados.py. Nao
@@ -265,7 +265,7 @@ def q_residuos_loo(X: np.ndarray, n_comp: int) -> np.ndarray:
 
     Origem: `DDSimca._q_residuals_loo` (auditoria adversarial 2026-07-19,
     CLAUDE.md P1). Promovida a funcao pura em 2026-08-17 ao se descobrir
-    que `dominio_aplicabilidade_treino` -- o caminho que roda em producao
+    que `training_applicability_domain` -- o caminho que roda em producao
     em predicao.py -- tinha o mesmo vies e nao havia recebido a correcao
     (ver scripts/medicoes/medir_ad_vies_insample.py). DDSimca delega para ca'
     em vez de manter a segunda copia.
@@ -306,7 +306,7 @@ def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
     return float(g * chi2.ppf(1 - alpha, h))
 
 
-def media_e_dof_momentos(valores: np.ndarray) -> Tuple[float, float]:
+def mean_and_dof_moments(valores: np.ndarray) -> Tuple[float, float]:
     """Media e graus de liberdade (N) por metodo dos momentos (Box 1954,
     aproximado por Jackson & Mudholkar 1979 para Q-residuos): N =
     2*(media/desvio)^2. E' o "data-driven" que da nome ao metodo DD-SIMCA
@@ -315,7 +315,7 @@ def media_e_dof_momentos(valores: np.ndarray) -> Tuple[float, float]:
     graus de liberdade estimados dos proprios dados.
 
     Compartilhada entre `classificadores.DDSimca` e
-    `dominio_aplicabilidade_treino` (achado A3 da auditoria de
+    `training_applicability_domain` (achado A3 da auditoria de
     2026-08-07: as duas reimplementavam a mesma regra de decisao de forma
     independente e divergente).
 
@@ -419,7 +419,7 @@ def dmody(residuo_y: np.ndarray, n_componentes: int, n_amostras: int,
     }
 
 
-def variancia_explicada(X: np.ndarray, T: np.ndarray) -> np.ndarray:
+def explained_variance(X: np.ndarray, T: np.ndarray) -> np.ndarray:
     """Explained variance (%) of X by each column of T."""
     var_X_total = float(np.var(X, axis=0).sum())
     if var_X_total <= 0:
@@ -517,7 +517,7 @@ def interpret_rpd(rpd: float) -> str:
     return "controle de processo / quantificacao"
 
 
-def figuras_merito_regressao(modelo: PLSRegression, X_cal: np.ndarray,
+def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
                               grupos_replicas: List[np.ndarray]
                               ) -> Dict[str, float]:
     """Figuras de merito analiticas para um modelo PLS de calibracao
@@ -613,13 +613,13 @@ def figuras_merito_regressao(modelo: PLSRegression, X_cal: np.ndarray,
 #  Dominio de Aplicabilidade (Applicability Domain, AD)
 # =========================================================================
 
-def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
+def applicability_domain(pca, X_train: np.ndarray, X_new: np.ndarray,
                            alpha: float = 0.05) -> Dict[str, np.ndarray]:
     """API de CONVENIENCIA (uma chamada so') p/ uso exploratorio/notebook,
     quando X_train e X_new estao ambos disponiveis em memoria ao mesmo
     tempo. Em PRODUCAO (salvar modelo -> prever amostra nova depois, sem
-    reexportar X_train inteiro), use `dominio_aplicabilidade_treino` +
-    `dominio_aplicabilidade_amostras_novas` diretamente -- e' o que
+    reexportar X_train inteiro), use `training_applicability_domain` +
+    `applicability_domain_new_samples` diretamente -- e' o que
     pipeline.py/predicao.py fazem internamente. Esta funcao so' chama as
     duas em sequencia; nao e' dead code, e' a forma simples da mesma API
     (auditoria de 2026-07-12 apontou como "semi-orfa" por nao ter chamador
@@ -668,10 +668,10 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
     Retorna dict com t2/q/f por amostra nova, os limites, e a mascara
     booleana dentro_dominio + a fracao dentro.
     """
-    treino = dominio_aplicabilidade_treino(pca, X_train, alpha)
+    treino = training_applicability_domain(pca, X_train, alpha)
     # cast: o dict é Dict[str, object] (chaves heterogêneas — arrays e
     # floats); os tipos concretos são garantidos na construção do dict.
-    return dominio_aplicabilidade_amostras_novas(
+    return applicability_domain_new_samples(
         pca, X_new,
         cast(np.ndarray, treino["var_t"]),
         cast(float, treino["h0"]), cast(float, treino["q0"]),
@@ -679,7 +679,7 @@ def dominio_aplicabilidade(pca, X_train: np.ndarray, X_new: np.ndarray,
         cast(float, treino["f_crit"]))
 
 
-def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
+def training_applicability_domain(pca, X_train: np.ndarray,
                                    alpha: float = 0.05) -> Dict[str, object]:
     """Deriva do TREINO os artefatos leves necessarios para avaliar o
     dominio de aplicabilidade em amostras novas depois, sem precisar
@@ -687,13 +687,13 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
     dezenas de MB para datasets espectrais reais): a variancia dos scores
     PCA (var_t) e os parametros da distancia combinada (h0/q0/Nh/Nq/f_crit,
     ver `distancia_combinada`). Usado ao SALVAR um modelo (ver pipeline.py,
-    pacote_modelo); `dominio_aplicabilidade_amostras_novas` consome o
+    pacote_modelo); `applicability_domain_new_samples` consome o
     resultado na hora de PREDIZER, sem X_train.
 
     t2_limite/q_limite (Tracy-Young-Mason / chi2-Jackson-Mudholkar) sao
     mantidos no retorno so' para diagnostico/plotagem por eixo -- a decisao
     dentro/fora usa h0/q0/Nh/Nq/f_crit (ver docstring de
-    `dominio_aplicabilidade`).
+    `applicability_domain`).
     """
     X_train = np.asarray(X_train, dtype=float)
     T_train = np.asarray(pca.transform(X_train), dtype=float)
@@ -712,8 +712,8 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
     # aqui ela faltava, e este e' o caminho que predicao.py usa em producao.
     q_train = q_residuos_loo(X_train, k)
 
-    h0, Nh = media_e_dof_momentos(T2_train)
-    q0, Nq = media_e_dof_momentos(q_train)
+    h0, Nh = mean_and_dof_moments(T2_train)
+    q0, Nq = mean_and_dof_moments(q_train)
     f_crit = float(chi2.ppf(1 - alpha, Nh + Nq))
 
     return {
@@ -724,12 +724,12 @@ def dominio_aplicabilidade_treino(pca, X_train: np.ndarray,
     }
 
 
-def dominio_aplicabilidade_amostras_novas(
+def applicability_domain_new_samples(
         pca, X_new: np.ndarray, var_t: np.ndarray,
         h0: float, q0: float, Nh: float, Nq: float, f_crit: float
         ) -> Dict[str, np.ndarray]:
     """Aplica a distancia combinada de dominio de aplicabilidade (ja
-    derivada do treino por `dominio_aplicabilidade_treino`) a amostras
+    derivada do treino por `training_applicability_domain`) a amostras
     novas -- nao precisa de X_train, so' dos artefatos leves, ideal para
     predicao em producao sem reexportar o dataset de calibracao.
     """

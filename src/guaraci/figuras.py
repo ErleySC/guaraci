@@ -1204,7 +1204,7 @@ def fig_merito_regressao(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> No
 
     `tabela_especie` e' a mesma lista de dicts usada no resumo (chaves
     'especie'/'lod'/'loq'/'seletividade_media'; ver
-    chemometric_stats.figuras_merito_regressao). Especies sem replicas
+    chemometric_stats.regression_figures_of_merit). Especies sem replicas
     fisicas suficientes tem lod/loq/seletividade = NaN — aparecem no eixo
     com rotulo 'n/a' em vez de quebrar o layout ou sumir silenciosamente.
     """

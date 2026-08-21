@@ -20,7 +20,7 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
 from guaraci.chemometric_stats import (hotelling_t2_limite, q_residuos_limite,
-                                       media_e_dof_momentos, distancia_combinada,
+                                       mean_and_dof_moments, distancia_combinada,
                                        q_residuos_loo)
 
 log = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ class DDSimca:
         fato decide aceitar/rejeitar, substituindo o teste retangular
         independente T2<=UCL e Q<=UCL. Delega para
         `chemometric_stats.distancia_combinada` (achado A3 da auditoria de
-        2026-08-07: `dominio_aplicabilidade` reimplementava a mesma regra de
+        2026-08-07: `applicability_domain` reimplementava a mesma regra de
         forma independente; unificado numa so' fonte de verdade). Mantida
         como metodo (em vez de chamar `distancia_combinada` direto nos usos
         externos) para preservar a MESMA chamada em predict(), score_matrix()
@@ -187,7 +187,7 @@ class DDSimca:
         Delega para `chemometric_stats.q_residuos_loo`. A implementacao
         nasceu aqui (achado da auditoria adversarial de 2026-07-19) e foi
         promovida a funcao pura em 2026-08-17, quando se descobriu que
-        `dominio_aplicabilidade_treino` precisava exatamente da mesma
+        `training_applicability_domain` precisava exatamente da mesma
         correcao -- manter duas copias da mesma regra estatistica foi o que
         permitiu que uma delas ficasse para tras (mesmo padrao do achado A3).
         Mantido como metodo para nao quebrar chamadores/testes existentes.
@@ -228,7 +228,7 @@ class DDSimca:
         CONSEQUENCIA HONESTA quando ha' so' 1 mae_id de treino por classe
         (regime comum em autenticacao one-class, em que so' se dispoe de
         um ponto de amostragem fisico genuino por classe): Nh=Nq=1.0 (o
-        minimo que `media_e_dof_momentos` retorna para entrada degenerada
+        minimo que `mean_and_dof_moments` retorna para entrada degenerada
         de tamanho 1) -- NAO e' um bug desta funcao, e' a calibracao mais
         honesta possivel dado que so' existe 1 amostra fisica independente
         para calibrar contra. E' o mesmo movimento do P1 (sensibilidade
@@ -297,8 +297,8 @@ class DDSimca:
                 n_grupos_calib = nc
                 T2_calib, Q_calib = T2_train, Q_train
                 calibrado_por_amostra = False
-            h0, Nh = media_e_dof_momentos(T2_calib)
-            q0, Nq = media_e_dof_momentos(Q_calib)
+            h0, Nh = mean_and_dof_moments(T2_calib)
+            q0, Nq = mean_and_dof_moments(Q_calib)
             f_crit = float(chi2.ppf(1 - self.alpha, Nh + Nq))
             if calibrado_por_amostra and n_grupos_calib < 3:
                 log.warning(

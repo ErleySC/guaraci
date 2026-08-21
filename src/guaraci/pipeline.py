@@ -264,14 +264,14 @@ from guaraci.chemometric_stats import (   # noqa: E402
     q_residuos_limite,
     dmodx,
     dmody,
-    variancia_explicada,
-    figuras_merito_regressao,
+    explained_variance,
+    regression_figures_of_merit,
     rpd_rer,
     interpret_rpd,
-    dominio_aplicabilidade,
-    dominio_aplicabilidade_treino,
-    dominio_aplicabilidade_amostras_novas,
-    media_e_dof_momentos,
+    applicability_domain,
+    training_applicability_domain,
+    applicability_domain_new_samples,
+    mean_and_dof_moments,
     rmse_flat,
     diagnosticar_faixa_espectral,
 )
@@ -1046,7 +1046,7 @@ def pls_regression_by_species(
         _X_cal_proc = np.asarray(_preproc_ajustado.transform(Xc))
         _grupos_rep = _agrupar_replicas_processadas(
             Xc, mae_c[ic] if mae_c is not None else None, _preproc_ajustado)
-        _fom = figuras_merito_regressao(
+        _fom = regression_figures_of_merit(
             pipe_final.named_steps["pls"], _X_cal_proc, _grupos_rep)
 
         Yc_all.append(np.asarray(Yc).flatten())
@@ -1238,7 +1238,7 @@ def pls_regressao_pooled(
     _grupos_rep_reg = _agrupar_replicas_processadas(
         Xc_raw, mae_id[ic] if mae_id is not None else None,
         _preproc_ajustado_reg)
-    _fom_reg = figuras_merito_regressao(
+    _fom_reg = regression_figures_of_merit(
         pipe_final.named_steps["pls"], _X_cal_proc_reg, _grupos_rep_reg)
     # Figura de merito dedicada (auditoria jul/2026, item 5): caminho
     # single-especie so' tem 1 modelo pooled, entao a "tabela" tem 1 linha.
@@ -1676,7 +1676,7 @@ def executar(cfg: Config):
     pls_final.fit(X_processed, Y_bin)
     T_pls = np.asarray(pls_final.x_scores_,  dtype=float)
     P_pls = np.asarray(pls_final.x_loadings_, dtype=float).T
-    var_lv_pls = variancia_explicada(X_processed, T_pls)
+    var_lv_pls = explained_variance(X_processed, T_pls)
     vip = vip_scores(pls_final)
 
     # --- 5. PCA exploratoria -----------------------------------------------
@@ -2460,8 +2460,8 @@ def executar(cfg: Config):
         # (achado A3), com alpha conjunto efetivo ~0,0975 em vez de 0,05.
         # As colunas AD_* ja usavam a regra certa; a coluna `aceito`, nao.
         try:
-            _h0, _Nh = media_e_dof_momentos(T2)
-            _q0, _Nq = media_e_dof_momentos(Q)
+            _h0, _Nh = mean_and_dof_moments(T2)
+            _q0, _Nq = mean_and_dof_moments(Q)
             pacote_modelo["pls_h0"] = float(_h0)
             pacote_modelo["pls_q0"] = float(_q0)
             pacote_modelo["pls_Nh"] = float(_Nh)
@@ -2483,7 +2483,7 @@ def executar(cfg: Config):
         # 2026-08-07): a decisao dentro/fora usa a distancia combinada do
         # DD-SIMCA, nao mais o teste retangular por eixo.
         try:
-            _ad_treino = dominio_aplicabilidade_treino(pca, X_processed, alpha=0.05)
+            _ad_treino = training_applicability_domain(pca, X_processed, alpha=0.05)
             pacote_modelo["pca"] = pca
             pacote_modelo["ad_var_t"] = _ad_treino["var_t"]
             pacote_modelo["ad_h0"] = _ad_treino["h0"]

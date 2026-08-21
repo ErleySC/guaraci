@@ -11,7 +11,7 @@ mais de uma observacao independente.
 Num dataset de referencia interno havia **1 unica amostra fisica pura
 por classe**, medido -- e esse e' o regime que este modulo precisa
 tratar sem mentir.
-Com uma observacao, `media_e_dof_momentos` nao consegue estimar desvio e
+Com uma observacao, `mean_and_dof_moments` nao consegue estimar desvio e
 cai num PISO (`N=1.0`) que nao e' um grau de liberdade medido: e' um
 default. O `f_crit` resultante vira uma constante
 (`chi2.ppf(0.95, 2) = 5.99`) que nao depende de nenhuma propriedade

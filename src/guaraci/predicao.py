@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from guaraci.chemometric_stats import dominio_aplicabilidade_amostras_novas
+from guaraci.chemometric_stats import applicability_domain_new_samples
 from guaraci.config import __version__ as _guaraci_version
 
 _CHAVES_PACOTE_REQUERIDAS = {
@@ -173,7 +173,7 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     - Dominio de Aplicabilidade no espaco PCA (colunas AD_*, Jaworska et
       al. 2005): mede o quanto a amostra e' um espectro atipico frente ao
       dataset de calibracao em geral, INDEPENDENTE da classe -- reaproveita
-      `chemometric_stats.dominio_aplicabilidade_amostras_novas` com os
+      `chemometric_stats.applicability_domain_new_samples` com os
       artefatos leves salvos no pacote (`pca`, `ad_var_t`, `ad_h0`, `ad_q0`,
       `ad_Nh`, `ad_Nq`, `ad_f_crit` -- distancia combinada do DD-SIMCA desde
       a correcao do achado A3, auditoria 2026-08-07). So' aparece se o
@@ -306,7 +306,7 @@ def predizer_amostras(pkg: Dict, X_new_raw: np.ndarray,
     # artefatos leves do PCA exploratorio; retrocompativel com pacotes
     # antigos, que simplesmente nao ganham essas colunas).
     if _CHAVES_AD.issubset(pkg.keys()):
-        ad = dominio_aplicabilidade_amostras_novas(
+        ad = applicability_domain_new_samples(
             pkg["pca"], X_proc, pkg["ad_var_t"],
             pkg["ad_h0"], pkg["ad_q0"], pkg["ad_Nh"], pkg["ad_Nq"],
             pkg["ad_f_crit"])
