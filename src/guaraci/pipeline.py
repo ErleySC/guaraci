@@ -227,7 +227,7 @@ from guaraci.figuras import (   # noqa: E402
 # modos_analise.py). Reexportado para pipeline.resolve_objective(...) etc.
 from guaraci.modos_analise import (   # noqa: E402
     resolve_objective,
-    deve_gerar,
+    should_generate,
     exploratory_figures_enabled,
     figure_plan,
     describe_plan,
@@ -1703,7 +1703,7 @@ def executar(cfg: Config):
     # Otimizacao de desempenho (auditoria jul/2026, item 8): o teste de
     # permutacao (200 refits de CV por padrao) so' alimenta o p-valor de
     # SIGNIFICANCIA DE CLASSIFICACAO no resumo — sem sentido cientifico fora
-    # do objetivo Classificacao (ver deve_gerar/_FIG_OBJETIVOS). Pular a
+    # do objetivo Classificacao (ver should_generate/_FIG_OBJETIVOS). Pular a
     # computacao (nao so' a figura/linha do resumo) evita o refit mais caro
     # do pipeline quando o run e' Exploratorio/Quantificacao.
     if objetivo == CLASSIFICACAO:
@@ -1792,7 +1792,7 @@ def executar(cfg: Config):
 
     # --- 5b. BCa CI 95% para metricas via bootstrap estratificado ----------
     # metricas_funcoes tambem e' reaproveitado pelo bloco de holdout (8b),
-    # que ja e' filtrado por deve_gerar(cfg,"holdout") = so' Classificacao —
+    # que ja e' filtrado por should_generate(cfg,"holdout") = so' Classificacao —
     # entao o dict de lambdas (barato: so' fecha funcoes, nao executa nada)
     # pode ficar definido sempre; o CUSTO real esta no LOOP de bootstrap
     # abaixo, que e' o que a otimizacao de desempenho pula fora do objetivo
@@ -1856,7 +1856,7 @@ def executar(cfg: Config):
     if cfg.comparar_hca_pipelines and _fig_explor_on:
         fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta)
     # ---- CLASSIFICACAO (supervisionada) — filtrada fora de N1/N2 ----
-    if deve_gerar(cfg, "plsda_scores"):
+    if should_generate(cfg, "plsda_scores"):
         fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
                            puros_mask=puros_mask_fig,
                            mapa_marcadores=marcadores_fig)
@@ -1868,9 +1868,9 @@ def executar(cfg: Config):
     # acima); reportado no resumo/console/model card.
     _dmodx_res = dmodx(Q, n_variaveis=X_processed.shape[1],
                         n_componentes=n_opt, n_amostras=X_processed.shape[0])
-    if deve_gerar(cfg, "confusao"):
+    if should_generate(cfg, "confusao"):
         fig4_confusao(cm_mat, lb.classes_, rotulos, pred_lab, cfg, pasta)
-    if deve_gerar(cfg, "roc"):
+    if should_generate(cfg, "roc"):
         try:
             aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
         except Exception as _e_roc:  # noqa: BLE001 -- figura opcional (curva
@@ -1880,7 +1880,7 @@ def executar(cfg: Config):
     # resumo_modelo.txt; a segunda (VIP puro) esta contida em fig_sprint3_sr_vip,
     # que mostra VIP + Selectivity Ratio lado a lado (ver abaixo).
 
-    if cfg.n_bootstrap_vip > 0 and deve_gerar(cfg, "vip"):
+    if cfg.n_bootstrap_vip > 0 and should_generate(cfg, "vip"):
         log.info(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
         boot = bootstrap_vip_estratificado(
             X_processed, Y_bin, y_int, n_opt,
@@ -1898,7 +1898,7 @@ def executar(cfg: Config):
     if _fig_explor_on:
         fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
                                mapa_cores, cfg, pasta)
-    if deve_gerar(cfg, "selecao_lvs"):
+    if should_generate(cfg, "selecao_lvs"):
         fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta)
 
     # ---- Sprint 3 — SR (essencial) + Score Contribution (detalhada) -----
@@ -1906,9 +1906,9 @@ def executar(cfg: Config):
     # FIGURAS de SR/VIP sao filtradas por objetivo (classificacao).
     log.info("\n[Sprint3] Selectivity Ratio + Score Contribution...")
     sr = compute_selectivity_ratio(pls_final, X_processed)
-    if deve_gerar(cfg, "sr_vip"):
+    if should_generate(cfg, "sr_vip"):
         fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
-    if cfg.figuras_detalhadas and deve_gerar(cfg, "score_contribution"):
+    if cfg.figuras_detalhadas and should_generate(cfg, "score_contribution"):
         fig_sprint3_score_contribution(pls_final, X_processed, rotulos,
                                         wavenumbers, mapa_cores, top_n=20,
                                         cfg=cfg, pasta=pasta)
@@ -1918,7 +1918,7 @@ def executar(cfg: Config):
     # formal (p-valor) de significancia por variavel.
     _martens_n_sig: Optional[int] = None
     _martens_n_folds: Optional[int] = None
-    if cfg.executar_martens and deve_gerar(cfg, "martens"):
+    if cfg.executar_martens and should_generate(cfg, "martens"):
         log.info("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
         martens = teste_incerteza_martens(
             X_processed, Y_bin, n_opt, cv_indices, pls_final.coef_)
@@ -1969,7 +1969,7 @@ def executar(cfg: Config):
               "especie). DD-SIMCA e um diagnostico de autenticacao de pureza "
               "(conceito de N2); nao agrega a este tipo de analise. Troque "
               "para nivel=N2 se quiser autenticar pureza por especie.")
-    elif cfg.executar_ddsimca and deve_gerar(cfg, "ddsimca"):
+    elif cfg.executar_ddsimca and should_generate(cfg, "ddsimca"):
         modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
         if conc is not None:
             # Pure samples: conc loaded as None -> NaN after asarray(float), OR 0.0.
@@ -2106,7 +2106,7 @@ def executar(cfg: Config):
 
     # OPLS-DA
     _opls_n_ortho: Optional[int] = None
-    if cfg.executar_opls and deve_gerar(cfg, "opls"):
+    if cfg.executar_opls and should_generate(cfg, "opls"):
         n_cls_opls = len(classes_unicas)
         log.info(f"\n[Sprint3] OPLS-DA "
               f"(n_ortho={cfg.n_ortho_opls}, {n_cls_opls} classes)...")
@@ -2131,7 +2131,7 @@ def executar(cfg: Config):
 
     # --- STAGE 4: Variable Selection ------------------------------------
     etapa4_res: Optional[Dict[str, Any]] = None
-    if cfg.executar_etapa4 and deve_gerar(cfg, "etapa4"):
+    if cfg.executar_etapa4 and should_generate(cfg, "etapa4"):
         try:
             etapa4_res = etapa4_selecao_variaveis(
                 X_processed, Y_bin, y_int, wavenumbers,
@@ -2146,7 +2146,7 @@ def executar(cfg: Config):
             # resumo; PLS-DA (resultado central) ja calculado antes.
             log.info(f"  [ERRO] Etapa 4: {_e_e4}")
 
-    if cfg.comparar_pipelines and deve_gerar(cfg, "comparar_pipelines"):
+    if cfg.comparar_pipelines and should_generate(cfg, "comparar_pipelines"):
         log.info("\n[6b/7] Comparacao de pipelines de pre-processamento...")
         comp = comparar_pipelines(cfg, X_raw, Y_bin, y_int, cv_indices,
                                     max_lv=cfg.max_lvs)
@@ -2156,14 +2156,14 @@ def executar(cfg: Config):
             sep=";", decimal=",")
 
     if (wold_res is not None and cast(int, wold_res["n_validos"]) > 2
-            and deve_gerar(cfg, "wold")):
+            and should_generate(cfg, "wold")):
         fig_extra_wold(wold_res, cfg, pasta)
 
     # --- 8b. Avaliacao em holdout independente ----------------------------
     metricas_holdout: Optional[Dict[str, float]] = None
     bca_holdout:      Optional[Dict[str, Tuple[float, float, float]]] = None
     if (X_holdout is not None and rotulos_holdout is not None
-            and deve_gerar(cfg, "holdout")):
+            and should_generate(cfg, "holdout")):
         rot_ho: np.ndarray = rotulos_holdout
         log.info(f"\n[6c/7] Avaliacao em holdout ({n_holdout} amostras)...")
         try:
@@ -2404,7 +2404,7 @@ def executar(cfg: Config):
     log.info(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
-    if cfg.executar_benchmark and deve_gerar(cfg, "benchmark"):
+    if cfg.executar_benchmark and should_generate(cfg, "benchmark"):
         log.info("\n[7b/7] Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...")
         # Guarda: ~1.2 GB pico (SVM kernel matrix + OOF proba)
         if _verificar_ram(1.2, "Auto-Benchmark"):
@@ -2420,7 +2420,7 @@ def executar(cfg: Config):
                 log.info(f"  [AVISO] Benchmark falhou: {_e_bench}")
 
     # --- 9a2. Monte Carlo CV (opcional) ────────────────────────────────────
-    if cfg.executar_monte_carlo and deve_gerar(cfg, "monte_carlo"):
+    if cfg.executar_monte_carlo and should_generate(cfg, "monte_carlo"):
         log.info("\n[7c/7] Monte Carlo CV (IC95% por percentil)...")
         # Guarda: ~400 MB (PLS-DA x N splits em serie)
         if _verificar_ram(0.5, "Monte Carlo CV"):

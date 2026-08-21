@@ -2,7 +2,7 @@
 
 Fonte UNICA de verdade sobre QUAIS figuras/relatorios pertencem a cada
 objetivo cientifico (Exploratorio / Classificacao / Quantificacao). O motor
-(`pipeline.executar`) consulta `deve_gerar(cfg, chave)` em cada ponto de
+(`pipeline.executar`) consulta `should_generate(cfg, chave)` em cada ponto de
 geracao de figura, de modo que cada modo produza EXCLUSIVAMENTE os
 resultados pertinentes ao seu objetivo — sem duplicacoes nem graficos de
 outros modos (o defeito auditado: N2 e N3 geravam o mesmo conjunto de
@@ -59,7 +59,7 @@ _OBJETIVO_POR_NIVEL: Dict[str, str] = {
 # figura so' e' salva se o objetivo resolvido pertencer a este conjunto.
 # Figuras de OVERVIEW (fig1_pca_scores, fig3_outliers T2/Q) NAO aparecem aqui
 # de proposito: sao contexto valido em qualquer modo e alimentam o resumo,
-# entao `deve_gerar` retorna True para elas (fail-open p/ chave desconhecida).
+# entao `should_generate` retorna True para elas (fail-open p/ chave desconhecida).
 _FIG_OBJETIVOS: Dict[str, Set[str]] = {
     # --- Exploratorias (nao-supervisionadas) ---
     "hca":                {EXPLORATORIO},
@@ -171,7 +171,7 @@ def resolve_objective(cfg: "Config") -> str:
     return _OBJETIVO_POR_NIVEL.get(getattr(cfg, "nivel", "N1"), CLASSIFICACAO)
 
 
-def deve_gerar(cfg: "Config", chave: str) -> bool:
+def should_generate(cfg: "Config", chave: str) -> bool:
     """True se a figura `chave` pertence ao objetivo resolvido de `cfg`.
 
     Chaves nao mapeadas (overview PCA/outliers, ou futuras) retornam True

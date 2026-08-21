@@ -1412,7 +1412,7 @@ def _print_submenu_compact(
 
 # Toggles cuja utilidade depende do OBJETIVO cientifico resolvido (nao do
 # nivel em si) -- espelha 1:1 modos_analise._FIG_OBJETIVOS: fora do objetivo
-# listado, o motor nem computa (gated por deve_gerar() em pipeline.executar(),
+# listado, o motor nem computa (gated por should_generate() em pipeline.executar(),
 # ou, no caso de teste_wold/teste_cv_anova, pelo guard adicionado no achado
 # de 2026-08-06 -- antes rodavam incondicionalmente e escreviam metrica de
 # CLASSIFICACAO sem sentido no resumo de um run de Quantificacao).
@@ -1438,7 +1438,7 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
     decidem em runtime -- nao e' uma aproximacao da UI, e' a mesma regra:
       - DD-SIMCA: N1 sempre ignora (forca False); N2 sempre forca ligado
         internamente (forca True, refletindo o que vai acontecer de
-        qualquer forma); demais niveis respeitam deve_gerar (objetivo).
+        qualquer forma); demais niveis respeitam should_generate (objetivo).
       - Demais toggles (ver `_TOGGLES_SO_CLASSIFICACAO`): forcados False
         fora de objetivo=Classificacao; `benchmark_regressao` fora de
         Quantificacao.
@@ -1463,7 +1463,7 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
     elif cfg.nivel == "N2":
         _forcar("ddsimca", True)
     else:
-        _forcar("ddsimca", pq.deve_gerar(cfg, "ddsimca"))
+        _forcar("ddsimca", pq.should_generate(cfg, "ddsimca"))
 
     objetivo = pq.resolve_objective(cfg)
     if objetivo != pq.CLASSIFICACAO:

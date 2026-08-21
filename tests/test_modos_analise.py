@@ -2,7 +2,7 @@
 
 Cobre a nova função que decide QUAIS figuras cada modo gera: resolução do
 objetivo (auto <- nível, override explícito, entradas inválidas), o gate
-`deve_gerar` (pertinência + fail-open para chaves de overview/desconhecidas),
+`should_generate` (pertinência + fail-open para chaves de overview/desconhecidas),
 a regra das exploratórias e o plano de figuras exibido ao usuário.
 """
 import pytest
@@ -44,22 +44,22 @@ def test_nivel_desconhecido_default_classificacao():
     assert m.resolve_objective(cfg) == m.CLASSIFICACAO
 
 
-# ---- deve_gerar ---------------------------------------------------------
+# ---- should_generate ---------------------------------------------------------
 def test_deve_gerar_pertinencia_por_objetivo():
     cfg = Config(objetivo=m.QUANTIFICACAO)
-    assert m.deve_gerar(cfg, "regressao") is True
-    assert m.deve_gerar(cfg, "confusao") is False
-    assert m.deve_gerar(cfg, "ddsimca") is False
+    assert m.should_generate(cfg, "regressao") is True
+    assert m.should_generate(cfg, "confusao") is False
+    assert m.should_generate(cfg, "ddsimca") is False
 
     cfg = Config(objetivo=m.CLASSIFICACAO)
-    assert m.deve_gerar(cfg, "confusao") is True
-    assert m.deve_gerar(cfg, "roc") is True
-    assert m.deve_gerar(cfg, "regressao") is False
+    assert m.should_generate(cfg, "confusao") is True
+    assert m.should_generate(cfg, "roc") is True
+    assert m.should_generate(cfg, "regressao") is False
 
     cfg = Config(objetivo=m.EXPLORATORIO)
-    assert m.deve_gerar(cfg, "hca") is True
-    assert m.deve_gerar(cfg, "plsda_scores") is False
-    assert m.deve_gerar(cfg, "regressao") is False
+    assert m.should_generate(cfg, "hca") is True
+    assert m.should_generate(cfg, "plsda_scores") is False
+    assert m.should_generate(cfg, "regressao") is False
 
 
 def test_deve_gerar_fail_open_para_chave_desconhecida():
@@ -67,8 +67,8 @@ def test_deve_gerar_fail_open_para_chave_desconhecida():
     silenciosamente suprimidas."""
     for obj in (m.EXPLORATORIO, m.CLASSIFICACAO, m.QUANTIFICACAO):
         cfg = Config(objetivo=obj)
-        assert m.deve_gerar(cfg, "fig1_pca_scores_overview") is True
-        assert m.deve_gerar(cfg, "chave_inexistente_qualquer") is True
+        assert m.should_generate(cfg, "fig1_pca_scores_overview") is True
+        assert m.should_generate(cfg, "chave_inexistente_qualquer") is True
 
 
 # ---- exploratory_figures_enabled -------------------------------------

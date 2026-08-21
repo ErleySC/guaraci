@@ -2169,7 +2169,7 @@ def fig_heatmap_species_by_adulterant(resultado: Dict[str, Any], cfg,
         fontsize=10, fontweight="bold", loc="left")
     fig.tight_layout()
     # Nome de arquivo sem "N3" cru (P8 residual, corrigido 2026-07-13) --
-    # ja e' gerada so' no objetivo Quantificacao (deve_gerar), entao o nome
+    # ja e' gerada so' no objetivo Quantificacao (should_generate), entao o nome
     # nao perde informacao ao deixar de repetir o codigo interno do nivel.
     salvar(fig, "fig_heatmap_species_by_adulterant", pasta, cfg)
 

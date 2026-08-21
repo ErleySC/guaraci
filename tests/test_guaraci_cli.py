@@ -658,7 +658,7 @@ def test_ajustar_toggles_ddsimca_liga_em_n2(guaraci_mod):
 
 
 def test_ajustar_toggles_ddsimca_desliga_em_n3(guaraci_mod):
-    """N3 (Quantificacao): deve_gerar(cfg,'ddsimca') e' False (figura so'
+    """N3 (Quantificacao): should_generate(cfg,'ddsimca') e' False (figura so'
     pertence a Classificacao) -- toggle inerte, igual N1, mas SEM aviso no
     pipeline (achado: N1 tem log explicito, N3 nao tinha nenhum)."""
     cfg = guaraci_mod.Config(nivel="N3", executar_ddsimca=True)
