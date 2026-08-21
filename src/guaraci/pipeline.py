@@ -134,7 +134,7 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
     Example: resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_Autenticacao_MSC-SG1-MC_20260528_191500
     'dataset' vem de cfg.tag (se preenchido) ou e' derivado do modo de
     entrada (ver _dataset_id). 'Modo' e' o rotulo amigavel do objetivo
-    cientifico resolvido (ver modos_analise.resolver_objetivo) — Exploratorio
+    cientifico resolvido (ver modos_analise.resolve_objective) — Exploratorio
     | Classificacao | Quantificacao. '{slug}' e' o nome amigavel de cfg.nivel
     (_NIVEL_SLUG_PASTA) -- necessario porque N1 e N2 caem no MESMO 'Modo'
     (Classificacao) mas sao analises distintas (por-especie vs autenticacao);
@@ -160,7 +160,7 @@ def gerar_nome_saida(cfg: Config, n_classes: int, n_amostras: int) -> str:
     partes.append("-".join(preproc))
     partes.append(datetime.now().strftime("%Y%m%d_%H%M%S"))
     dataset_id = _dataset_id(cfg)
-    modo_pasta = OBJETIVO_ROTULO.get(resolver_objetivo(cfg), "Analise")
+    modo_pasta = OBJETIVO_ROTULO.get(resolve_objective(cfg), "Analise")
     return os.path.join(cfg.pasta_saida_raiz, dataset_id, modo_pasta,
                          "_".join(partes))
 
@@ -224,13 +224,13 @@ from guaraci.figuras import (   # noqa: E402
 # Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
 # fonte unica que decide QUAIS figuras/relatorios cada modo gera, para que
 # um run so' produza os resultados pertinentes ao seu objetivo (ver
-# modos_analise.py). Reexportado para pipeline.resolver_objetivo(...) etc.
+# modos_analise.py). Reexportado para pipeline.resolve_objective(...) etc.
 from guaraci.modos_analise import (   # noqa: E402
-    resolver_objetivo,
+    resolve_objective,
     deve_gerar,
     figuras_exploratorias_ligadas,
     plano_de_figuras,
-    descrever_plano,
+    describe_plan,
     OBJETIVO_ROTULO,
     EXPLORATORIO,
     CLASSIFICACAO,
@@ -1290,12 +1290,12 @@ def executar(cfg: Config):
     # Quantificacao). Decide quais figuras/relatorios serao gerados, para
     # que cada modo produza EXCLUSIVAMENTE o que e' pertinente ao seu
     # objetivo (ver modos_analise.py). Preserva N1/N2/N3 quando objetivo=auto.
-    objetivo = resolver_objetivo(cfg)
+    objetivo = resolve_objective(cfg)
     _fig_explor_on = figuras_exploratorias_ligadas(cfg)
     log.info(f"\n[MODO] Objetivo cientifico: "
              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}  "
              f"(nivel={cfg.nivel}, objetivo_cfg={cfg.objetivo})")
-    _plano = descrever_plano(cfg)
+    _plano = describe_plan(cfg)
     if _plano:
         log.info(f"[MODO] Figuras pertinentes a este objetivo ({len(_plano)}): "
               + "; ".join(_plano))

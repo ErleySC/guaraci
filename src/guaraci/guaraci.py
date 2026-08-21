@@ -1465,7 +1465,7 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
     else:
         _forcar("ddsimca", pq.deve_gerar(cfg, "ddsimca"))
 
-    objetivo = pq.resolver_objetivo(cfg)
+    objetivo = pq.resolve_objective(cfg)
     if objetivo != pq.CLASSIFICACAO:
         for key in _TOGGLES_SO_CLASSIFICACAO:
             _forcar(key, False)
@@ -3336,7 +3336,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     objetivo cientifico, barra de progresso + rotulo da analise em
     andamento (via app_logic.progresso_do_log), figuras ja concluidas
     (app_logic.figuras_concluidas) contra o plano do modo (modos_analise.
-    descrever_plano), tempo decorrido/estimado restante e avisos nao-fatais
+    describe_plan), tempo decorrido/estimado restante e avisos nao-fatais
     (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
     precisar rodar o pipeline de verdade nem simular entrada interativa."""
@@ -3492,8 +3492,8 @@ def _rodar_pipeline(cfg: Config) -> None:
     # da simulacao por tempo decorrido usada antes (etapas fixas avancando a
     # cada 15s, sem relacao real com o que o pipeline estava fazendo).
     objetivo_rotulo = pq.OBJETIVO_ROTULO.get(
-        pq.resolver_objetivo(cfg), cfg.nivel)
-    plano_figuras = pq.descrever_plano(cfg)
+        pq.resolve_objective(cfg), cfg.nivel)
+    plano_figuras = pq.describe_plan(cfg)
 
     _done: Dict[str, object] = {"ok": False, "error": None}
     _logger = _LogThreadSafe()

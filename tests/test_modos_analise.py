@@ -11,7 +11,7 @@ from guaraci import modos_analise as m
 from guaraci.config import Config
 
 
-# ---- resolver_objetivo --------------------------------------------------
+# ---- resolve_objective --------------------------------------------------
 @pytest.mark.parametrize("nivel,esperado", [
     ("N1", m.CLASSIFICACAO),
     ("N2", m.CLASSIFICACAO),
@@ -19,29 +19,29 @@ from guaraci.config import Config
 ])
 def test_auto_deriva_do_nivel(nivel, esperado):
     cfg = Config(nivel=nivel, objetivo="auto")
-    assert m.resolver_objetivo(cfg) == esperado
+    assert m.resolve_objective(cfg) == esperado
 
 
 @pytest.mark.parametrize("obj", [m.EXPLORATORIO, m.CLASSIFICACAO, m.QUANTIFICACAO])
 def test_objetivo_explicito_sobrepoe_nivel(obj):
     # Mesmo com nivel=N1 (que derivaria classificacao), o explícito vence.
     cfg = Config(nivel="N1", objetivo=obj)
-    assert m.resolver_objetivo(cfg) == obj
+    assert m.resolve_objective(cfg) == obj
 
 
 def test_objetivo_invalido_cai_para_derivacao_do_nivel():
     cfg = Config(nivel="N3", objetivo="banana")
-    assert m.resolver_objetivo(cfg) == m.QUANTIFICACAO
+    assert m.resolve_objective(cfg) == m.QUANTIFICACAO
 
 
 def test_objetivo_normaliza_caixa_e_espaco():
     cfg = Config(nivel="N1", objetivo="  ExPlOrAtOrIo  ")
-    assert m.resolver_objetivo(cfg) == m.EXPLORATORIO
+    assert m.resolve_objective(cfg) == m.EXPLORATORIO
 
 
 def test_nivel_desconhecido_default_classificacao():
     cfg = Config(nivel="ZZ", objetivo="auto")
-    assert m.resolver_objetivo(cfg) == m.CLASSIFICACAO
+    assert m.resolve_objective(cfg) == m.CLASSIFICACAO
 
 
 # ---- deve_gerar ---------------------------------------------------------
@@ -89,7 +89,7 @@ def test_exploratorias_desligadas_em_quantificacao():
     assert m.figuras_exploratorias_ligadas(cfg) is False
 
 
-# ---- plano_de_figuras / descrever_plano --------------------------------
+# ---- plano_de_figuras / describe_plan --------------------------------
 def test_plano_de_figuras_por_objetivo():
     cfg = Config(objetivo=m.QUANTIFICACAO)
     assert m.plano_de_figuras(cfg) == ["regressao"]
@@ -115,7 +115,7 @@ def test_plano_de_figuras_por_objetivo():
 
 def test_descrever_plano_retorna_texto_legivel():
     cfg = Config(objetivo=m.QUANTIFICACAO)
-    desc = m.descrever_plano(cfg)
+    desc = m.describe_plan(cfg)
     assert desc and all(isinstance(s, str) and s for s in desc)
     # Não devolve a chave crua quando há descrição cadastrada.
     assert "regressao" not in desc

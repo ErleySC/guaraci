@@ -723,7 +723,7 @@ def test_ajustar_toggles_benchmark_regressao_preservado_em_n3(guaraci_mod):
 def test_ajustar_toggles_respeita_objetivo_explicito_sobre_nivel(guaraci_mod):
     """Se o usuario sobrepoe cfg.objetivo explicitamente (avancado), a regra
     segue o OBJETIVO resolvido, nao uma leitura ingenua do nivel -- mesma
-    precedencia de modos_analise.resolver_objetivo()."""
+    precedencia de modos_analise.resolve_objective()."""
     cfg = guaraci_mod.Config(nivel="N3", objetivo="classificacao",
                              executar_opls=True)
     guaraci_mod._ajustar_toggles_por_nivel(cfg)

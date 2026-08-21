@@ -194,8 +194,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     if erros_run:
         st.error("Invalid fields in configuration:\n- " + "\n- ".join(erros_run))
 
-    _objetivo_run = pq.resolver_objetivo(cfg_run)
-    _plano_run = pq.descrever_plano(cfg_run)
+    _objetivo_run = pq.resolve_objective(cfg_run)
+    _plano_run = pq.describe_plan(cfg_run)
     with st.expander(
         f"📋 {T('What will be generated')} — "
         f"{pq.OBJETIVO_ROTULO.get(_objetivo_run, _objetivo_run.capitalize())}",

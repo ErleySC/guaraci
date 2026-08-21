@@ -107,7 +107,7 @@ def _ddsimca_efetivo(cfg: "Config") -> bool:
 # ser gerada: o toggle correspondente em Config precisa estar ligado. Chaves
 # ausentes daqui sao incondicionais dentro do seu objetivo (sempre geradas).
 # Espelha as condicoes reais checadas em pipeline.executar() -- mantido aqui
-# para que o PREVIEW (plano_de_figuras/descrever_plano) nunca prometa uma
+# para que o PREVIEW (plano_de_figuras/describe_plan) nunca prometa uma
 # figura que o motor vai pular por causa de um toggle desligado.
 _FIG_REQUISITO: Dict[str, Callable[["Config"], bool]] = {
     "vip":                lambda cfg: getattr(cfg, "n_bootstrap_vip", 0) > 0,
@@ -158,7 +158,7 @@ _FIG_DESCRICAO: Dict[str, str] = {
 }
 
 
-def resolver_objetivo(cfg: "Config") -> str:
+def resolve_objective(cfg: "Config") -> str:
     """Retorna o objetivo cientifico efetivo do run.
 
     Prioridade: `cfg.objetivo` explicito (exploratorio/classificacao/
@@ -181,7 +181,7 @@ def deve_gerar(cfg: "Config", chave: str) -> bool:
     objetivos = _FIG_OBJETIVOS.get(chave)
     if objetivos is None:
         return True
-    return resolver_objetivo(cfg) in objetivos
+    return resolve_objective(cfg) in objetivos
 
 
 def figuras_exploratorias_ligadas(cfg: "Config") -> bool:
@@ -192,7 +192,7 @@ def figuras_exploratorias_ligadas(cfg: "Config") -> bool:
     compatibilidade: `figuras_detalhadas=True` nunca perde funcionalidade).
     Em Quantificacao ficam desligadas (filtradas).
     """
-    obj = resolver_objetivo(cfg)
+    obj = resolve_objective(cfg)
     if obj == EXPLORATORIO:
         return True
     if obj == CLASSIFICACAO and getattr(cfg, "figuras_detalhadas", False):
@@ -212,11 +212,11 @@ def plano_de_figuras(cfg: "Config") -> List[str]:
     Base para o painel de terminal (secao 5 da auditoria) e para a UI
     informar 'quais graficos serao produzidos' antes de executar.
     """
-    obj = resolver_objetivo(cfg)
+    obj = resolve_objective(cfg)
     return [chave for chave, objs in _FIG_OBJETIVOS.items()
             if obj in objs and _FIG_REQUISITO.get(chave, lambda _cfg: True)(cfg)]
 
 
-def descrever_plano(cfg: "Config") -> List[str]:
+def describe_plan(cfg: "Config") -> List[str]:
     """Descricoes legiveis das figuras pertinentes (para exibir ao usuario)."""
     return [_FIG_DESCRICAO.get(k, k) for k in plano_de_figuras(cfg)]
