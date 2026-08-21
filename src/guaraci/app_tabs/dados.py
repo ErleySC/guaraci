@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
+from guaraci.spectra_preview import preview_spectra_dx, preview_spectra_csv, plot_mean_spectra
 from guaraci.app_logic import collect_config, temp_upload_path
 from guaraci.cli_assistente import PROFILES
 
@@ -140,12 +140,12 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         wn_mx = float(cfg_prev.wn_max)
         with st.spinner("Loading spectra sample..."):
             if modo == "dx":
-                wn_p, X_p, labs_p = preview_espectros_dx(
+                wn_p, X_p, labs_p = preview_spectra_dx(
                     cfg_prev.pasta_entrada, wn_mn, wn_mx)
             elif modo == "csv":
                 csv_cam = st.session_state.get("_csv_upload_path",
                                                cfg_prev.arquivo_csv)
-                wn_p, X_p, labs_p = preview_espectros_csv(
+                wn_p, X_p, labs_p = preview_spectra_csv(
                     csv_cam, cfg_prev.coluna_classe, wn_mn, wn_mx)
             else:
                 wn_p, X_p, labs_p = None, None, None
@@ -155,7 +155,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
             st.markdown(f"**{len(X_p)} spectra** · {len(cls_u)} classes: "
                         f"`{'`, `'.join(cls_u[:8])}`"
                         + (" ..." if len(cls_u) > 8 else ""))
-            fig_p = plot_espectros_media(wn_p, X_p, np.asarray(labs_p), titulo="Raw spectra (sample)")
+            fig_p = plot_mean_spectra(wn_p, X_p, np.asarray(labs_p), titulo="Raw spectra (sample)")
             st.pyplot(fig_p, use_container_width=True)
             plt.close(fig_p)
         else:

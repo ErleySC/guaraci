@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from guaraci.spectra_preview import (
-    preview_espectros_dx, preview_espectros_csv, plot_espectros_media,
+    preview_spectra_dx, preview_spectra_csv, plot_mean_spectra,
 )
 
 
@@ -48,7 +48,7 @@ def _escrever_dx(caminho: str, title: str, firstx: float, lastx: float,
         f.write("\n".join(linhas) + "\n")
 
 
-# ── preview_espectros_dx ─────────────────────────────────────────────────
+# ── preview_spectra_dx ─────────────────────────────────────────────────
 
 def test_preview_dx_estrutura_multi_pasta(tmp_path):
     """Pasta com subpastas (uma por classe), cada uma com .dx -- retorna
@@ -61,7 +61,7 @@ def test_preview_dx_estrutura_multi_pasta(tmp_path):
             _escrever_dx(str(d / f"amostra_{i}.dx"), f"{classe}-T{i}",
                         firstx=100, lastx=109, y_ints=[1, 2, 3, 4, 5, 6, 7, 8, 9, 1])
 
-    wn, specs, labs = preview_espectros_dx(str(base), wn_min=0, wn_max=1000)
+    wn, specs, labs = preview_spectra_dx(str(base), wn_min=0, wn_max=1000)
     assert wn is not None
     assert specs.shape == (5, 10)   # 2 + 3 arquivos, 10 pontos
     assert sorted(np.unique(labs).tolist()) == ["Andiroba", "Copaiba"]
@@ -78,7 +78,7 @@ def test_preview_dx_respeita_max_por_classe(tmp_path):
         _escrever_dx(str(d / f"a_{i}.dx"), f"T{i}", firstx=100, lastx=104,
                     y_ints=[1, 2, 3, 4, 5])
 
-    _wn, specs, labs = preview_espectros_dx(str(base), wn_min=0, wn_max=1000,
+    _wn, specs, labs = preview_spectra_dx(str(base), wn_min=0, wn_max=1000,
                                             max_por_classe=2)
     assert specs.shape[0] == 2
     assert len(labs) == 2
@@ -89,18 +89,18 @@ def test_preview_dx_pasta_sem_dx_retorna_none(tmp_path):
     documentado (None, None, None), nao excecao."""
     base = tmp_path / "vazia"
     base.mkdir()
-    wn, specs, labs = preview_espectros_dx(str(base), wn_min=0, wn_max=1000)
+    wn, specs, labs = preview_spectra_dx(str(base), wn_min=0, wn_max=1000)
     assert wn is None and specs is None and labs is None
 
 
 def test_preview_dx_pasta_plana_usa_o_proprio_nome_como_rotulo(tmp_path):
     """Sem subpastas, mas com .dx direto na raiz -- usa a propria pasta como
-    'classe' unica (fallback documentado em preview_espectros_dx)."""
+    'classe' unica (fallback documentado em preview_spectra_dx)."""
     base = tmp_path / "MinhaAmostra"
     base.mkdir()
     _escrever_dx(str(base / "a.dx"), "T1", firstx=100, lastx=104,
                 y_ints=[1, 2, 3, 4, 5])
-    wn, specs, labs = preview_espectros_dx(str(base), wn_min=0, wn_max=1000)
+    wn, specs, labs = preview_spectra_dx(str(base), wn_min=0, wn_max=1000)
     assert wn is not None
     assert specs.shape == (1, 5)
     assert labs[0] == "MinhaAmostra"
@@ -116,7 +116,7 @@ def test_preview_dx_arquivo_corrompido_e_excluido_sem_derrubar_os_outros(tmp_pat
     with open(base / "corrompido.dx", "w", encoding="utf-8") as f:
         f.write("isso nao e' um JCAMP-DX valido\n")
 
-    wn, specs, labs = preview_espectros_dx(str(base), wn_min=0, wn_max=1000)
+    wn, specs, labs = preview_spectra_dx(str(base), wn_min=0, wn_max=1000)
     assert wn is not None
     assert specs.shape[0] == 1   # so' o arquivo bom entrou
     assert labs[0] == "Andiroba"
@@ -139,13 +139,13 @@ def test_preview_dx_reamostra_arquivo_com_grade_diferente_da_referencia(tmp_path
     _escrever_dx(str(base / "b_fino.dx"), "T2", firstx=100, lastx=109,
                 y_ints=[round(i) for i in np.linspace(0, 9, 20)])
 
-    wn, specs, _labs = preview_espectros_dx(str(base), wn_min=0, wn_max=1000)
+    wn, specs, _labs = preview_spectra_dx(str(base), wn_min=0, wn_max=1000)
     assert specs.shape == (2, 10)
     # a rampa original E a reamostrada devem concordar (mesma funcao linear)
     np.testing.assert_allclose(specs[0], specs[1], atol=1.0)
 
 
-# ── preview_espectros_csv ────────────────────────────────────────────────
+# ── preview_spectra_csv ────────────────────────────────────────────────
 
 def test_preview_csv_le_colunas_numericas_e_classe(tmp_path):
     caminho = tmp_path / "espectros.csv"
@@ -157,7 +157,7 @@ def test_preview_csv_le_colunas_numericas_e_classe(tmp_path):
     })
     df.to_csv(caminho, index=False, sep=";")
 
-    wn, X, labs = preview_espectros_csv(str(caminho), col_cls="classe",
+    wn, X, labs = preview_spectra_csv(str(caminho), col_cls="classe",
                                         wn_min=0, wn_max=1000)
     assert wn is not None
     assert X.shape == (3, 3)
@@ -174,7 +174,7 @@ def test_preview_csv_filtra_por_faixa_wn(tmp_path):
     })
     df.to_csv(caminho, index=False, sep=";")
 
-    wn, X, _labs = preview_espectros_csv(str(caminho), col_cls="classe",
+    wn, X, _labs = preview_spectra_csv(str(caminho), col_cls="classe",
                                          wn_min=150, wn_max=250)
     assert list(wn) == [200.0]
     assert X.shape == (2, 1)
@@ -186,7 +186,7 @@ def test_preview_csv_colunas_nao_numericas_retorna_none(tmp_path):
     caminho = tmp_path / "espectros_ruim.csv"
     pd.DataFrame({"classe": ["A"], "nome_amostra": ["x1"]}).to_csv(
         caminho, index=False, sep=";")
-    wn, X, labs = preview_espectros_csv(str(caminho), col_cls="classe",
+    wn, X, labs = preview_spectra_csv(str(caminho), col_cls="classe",
                                         wn_min=0, wn_max=1000)
     assert wn is None and X is None and labs is None
 
@@ -197,12 +197,12 @@ def test_preview_csv_sem_coluna_classe_usa_rotulo_curinga(tmp_path):
     caminho = tmp_path / "sem_classe.csv"
     pd.DataFrame({"100.0": [1.0, 2.0], "200.0": [3.0, 4.0]}).to_csv(
         caminho, index=False, sep=";")
-    _wn, _X, labs = preview_espectros_csv(str(caminho), col_cls="classe_ausente",
+    _wn, _X, labs = preview_spectra_csv(str(caminho), col_cls="classe_ausente",
                                           wn_min=0, wn_max=1000)
     assert list(labs) == ["?", "?"]
 
 
-# ── plot_espectros_media ─────────────────────────────────────────────────
+# ── plot_mean_spectra ─────────────────────────────────────────────────
 
 def test_plot_espectros_media_uma_linha_por_classe():
     rng = np.random.default_rng(0)
@@ -210,7 +210,7 @@ def test_plot_espectros_media_uma_linha_por_classe():
     X = rng.normal(size=(12, 50))
     rotulos = np.array(["A"] * 4 + ["B"] * 5 + ["C"] * 3)
 
-    fig = plot_espectros_media(wn, X, rotulos, titulo="teste")
+    fig = plot_mean_spectra(wn, X, rotulos, titulo="teste")
     ax = fig.axes[0]
     assert len(ax.lines) == 3   # 1 linha (media) por classe
 
@@ -223,6 +223,6 @@ def test_plot_espectros_media_inverte_eixo_com_wn_decrescente():
     X = rng.normal(size=(6, 30))
     rotulos = np.array(["A"] * 3 + ["B"] * 3)
 
-    fig = plot_espectros_media(wn, X, rotulos)
+    fig = plot_mean_spectra(wn, X, rotulos)
     ax = fig.axes[0]
     assert ax.xaxis_inverted()

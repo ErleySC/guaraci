@@ -3,7 +3,7 @@ prévia na UI web (abas Data e Preprocessing).
 
 Extraído de app_quimiometria.py (item 18 da auditoria): usado por duas abas,
 então vira módulo de serviço próprio em vez de duplicado ou passado por
-parâmetro entre elas. `preview_espectros_dx`/`preview_espectros_csv` mantêm
+parâmetro entre elas. `preview_spectra_dx`/`preview_spectra_csv` mantêm
 o cache do Streamlit (`st.cache_data`) — não são puras no sentido de
 app_logic.py, mas não fazem I/O de widget algum, só leitura/parsing.
 """
@@ -20,7 +20,7 @@ import guaraci.pipeline as pq
 
 
 @st.cache_data(show_spinner=False, ttl=120)
-def preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
+def preview_spectra_dx(pasta: str, wn_min: float, wn_max: float,
                           max_por_classe: int = 5):
     """Loads up to max_por_classe samples per subfolder for visualization."""
     try:
@@ -64,7 +64,7 @@ def preview_espectros_dx(pasta: str, wn_min: float, wn_max: float,
 
 
 @st.cache_data(show_spinner=False, ttl=120)
-def preview_espectros_csv(caminho: str, col_cls: str,
+def preview_spectra_csv(caminho: str, col_cls: str,
                           wn_min: float, wn_max: float,
                           max_n: int = 50):
     """Loads up to max_n CSV rows for visualization."""
@@ -81,12 +81,12 @@ def preview_espectros_csv(caminho: str, col_cls: str,
         labs = df[col_cls].astype(str).values if col_cls in df.columns else \
                np.array(["?"] * len(df))
         return wn[mask], X, labs
-    except Exception:  # noqa: BLE001 -- mesmo contrato de preview_espectros_dx
+    except Exception:  # noqa: BLE001 -- mesmo contrato de preview_spectra_dx
         # acima: (None, None, None) = "sem previa", nunca afeta o pipeline real.
         return None, None, None
 
 
-def plot_espectros_media(wn: np.ndarray, X: np.ndarray,
+def plot_mean_spectra(wn: np.ndarray, X: np.ndarray,
                           rotulos: np.ndarray, titulo: str = ""):
     """Plots mean ± std per class."""
     classes = np.unique(np.asarray(rotulos))
@@ -110,4 +110,4 @@ def plot_espectros_media(wn: np.ndarray, X: np.ndarray,
     return fig
 
 
-__all__ = ["preview_espectros_dx", "preview_espectros_csv", "plot_espectros_media"]
+__all__ = ["preview_spectra_dx", "preview_spectra_csv", "plot_mean_spectra"]

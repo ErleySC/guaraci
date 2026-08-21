@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from guaraci.spectra_preview import preview_espectros_dx, preview_espectros_csv, plot_espectros_media
+from guaraci.spectra_preview import preview_spectra_dx, preview_spectra_csv, plot_mean_spectra
 from guaraci.app_logic import collect_config
 
 _PRESET_INFO = {
@@ -55,12 +55,12 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
             wn_mn_pp = float(cfg_pp.wn_min)
             wn_mx_pp = float(cfg_pp.wn_max)
             if modo_pp == "dx":
-                wn_raw, X_raw, labs_raw = preview_espectros_dx(
+                wn_raw, X_raw, labs_raw = preview_spectra_dx(
                     cfg_pp.pasta_entrada, wn_mn_pp, wn_mx_pp)
             elif modo_pp == "csv":
                 csv_cam_pp = st.session_state.get("_csv_upload_path",
                                                    cfg_pp.arquivo_csv)
-                wn_raw, X_raw, labs_raw = preview_espectros_csv(
+                wn_raw, X_raw, labs_raw = preview_spectra_csv(
                     csv_cam_pp, cfg_pp.coluna_classe, wn_mn_pp, wn_mx_pp)
             else:
                 wn_raw, X_raw, labs_raw = None, None, None
@@ -71,9 +71,9 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                 preproc_pp.fit(X_raw)
                 X_proc_pp = preproc_pp.transform(X_raw)
                 labs_raw_arr = np.asarray(labs_raw)
-                fig_antes = plot_espectros_media(
+                fig_antes = plot_mean_spectra(
                     wn_raw, X_raw, labs_raw_arr, "Before preprocessing")
-                fig_depois = plot_espectros_media(
+                fig_depois = plot_mean_spectra(
                     wn_raw, X_proc_pp, labs_raw_arr,
                     f"After: {preset_selecionado}")
                 col_ant, col_dep = st.columns(2)
