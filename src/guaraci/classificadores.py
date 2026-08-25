@@ -4,7 +4,7 @@ classificadores.py — Classificadores quimiométricos avançados: DD-SIMCA
 
 Extraído de pipeline.py como parte da modularização (Fase H). Sem
 acoplamento a Config — dependem só de numpy/scipy/sklearn e de
-chemometric_stats.py (hotelling_t2_limite, q_residuos_limite). pipeline.py
+chemometric_stats.py (hotelling_t2_limit, q_residuals_limit). pipeline.py
 reexporta estes nomes, então `pipeline.DDSimca(...)`,
 `pipeline.OPLSDAWrapper(...)` etc. continuam funcionando sem alteração.
 """
@@ -19,9 +19,9 @@ from sklearn.base import BaseEstimator
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
-from guaraci.chemometric_stats import (hotelling_t2_limite, q_residuos_limite,
+from guaraci.chemometric_stats import (hotelling_t2_limit, q_residuals_limit,
                                        mean_and_dof_moments, combined_distance,
-                                       q_residuos_loo)
+                                       q_residuals_loo)
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 # o treino EXATAMENTE (Q_train ~= 0 para toda amostra, pois todos os graus
 # de liberdade entre as nc amostras centradas foram consumidos). Isso nao
 # e' ruido numerico: e' uma propriedade exata de PCA quando n_comp se
-# aproxima de nc-1. q_residuos_limite() estima o UCL a partir de
+# aproxima de nc-1. q_residuals_limit() estima o UCL a partir de
 # media/variancia de Q_train (Jackson & Mudholkar) -- com Q_train ~= 0
 # para todas as amostras, a variancia colapsa e o UCL colapsa junto,
 # rejeitando qualquer amostra nova/retida por um fator de ordens de
@@ -174,7 +174,7 @@ class DDSimca:
                 return float("inf")
             return float(np.percentile(T2_train, 100 * (1 - self.alpha)))
         if method == "theoretical":
-            return hotelling_t2_limite(n, k, self.alpha)
+            return hotelling_t2_limit(n, k, self.alpha)
         if method == "chi2":
             return float(chi2.ppf(1 - self.alpha, k))
         # fallback
@@ -184,7 +184,7 @@ class DDSimca:
     def _q_residuals_loo(Xc: np.ndarray, n_comp: int) -> np.ndarray:
         """Q-residuo leave-one-out (jackknife) de cada amostra de treino.
 
-        Delega para `chemometric_stats.q_residuos_loo`. A implementacao
+        Delega para `chemometric_stats.q_residuals_loo`. A implementacao
         nasceu aqui (achado da auditoria adversarial de 2026-07-19) e foi
         promovida a funcao pura em 2026-08-17, quando se descobriu que
         `training_applicability_domain` precisava exatamente da mesma
@@ -192,7 +192,7 @@ class DDSimca:
         permitiu que uma delas ficasse para tras (mesmo padrao do achado A3).
         Mantido como metodo para nao quebrar chamadores/testes existentes.
         """
-        return q_residuos_loo(Xc, n_comp)
+        return q_residuals_loo(Xc, n_comp)
 
     @staticmethod
     def _media_por_grupo(valores: np.ndarray,
@@ -276,7 +276,7 @@ class DDSimca:
             Q_train = self._q_residuals_loo(Xc, n_comp)
 
             t2_ucl = self._compute_t2_ucl(T2_train, nc, n_comp)
-            q_ucl  = q_residuos_limite(Q_train, self.alpha)
+            q_ucl  = q_residuals_limit(Q_train, self.alpha)
 
             # Estatistica combinada (ver docstring da classe): h0/q0/Nh/Nq
             # data-driven a partir de T2_train/Q_train, f_crit por chi2 com

@@ -286,7 +286,7 @@ def test_martens_identifica_variavel_preditiva_como_significativa(pq):
     modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
     cv = list(KFold(n_splits=8, shuffle=True, random_state=0).split(X))
 
-    res = pq.teste_incerteza_martens(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
 
     assert res["n_folds_validos"] == 8
     assert res["p_valores"][0] < 0.05
@@ -302,7 +302,7 @@ def test_martens_maioria_das_variaveis_de_ruido_nao_significativa(pq):
     modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
     cv = list(KFold(n_splits=8, shuffle=True, random_state=1).split(X))
 
-    res = pq.teste_incerteza_martens(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
 
     n_sig_ruido = int(np.sum(res["significativo"][1:]))
     assert n_sig_ruido <= 4, (
@@ -323,7 +323,7 @@ def test_martens_multiclasse_agrega_por_maximo_entre_classes(pq):
     cv = list(StratifiedKFold(n_splits=5, shuffle=True,
                               random_state=2).split(X, y_int))
 
-    res = pq.teste_incerteza_martens(X, Y_bin, 2, cv, modelo.coef_)
+    res = pq.martens_uncertainty_test(X, Y_bin, 2, cv, modelo.coef_)
 
     assert res["t_valores"].shape == (15,)
     assert res["p_valores"].shape == (15,)
@@ -339,7 +339,7 @@ def test_martens_poucos_folds_validos_retorna_nan_sem_quebrar(pq):
     modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
     cv = [(np.arange(8), np.arange(8, 10))]   # so' 1 fold
 
-    res = pq.teste_incerteza_martens(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
 
     assert int(res["n_folds_validos"]) == 1
     assert np.all(np.isnan(res["p_valores"]))
@@ -348,11 +348,11 @@ def test_martens_poucos_folds_validos_retorna_nan_sem_quebrar(pq):
 
 def test_hotelling_limite_positivo_e_monotonico(pq):
     """T2 UCL: positivo e MAIOR quando alpha é menor (limite mais rígido)."""
-    l05 = pq.hotelling_t2_limite(50, 3, 0.05)
-    l01 = pq.hotelling_t2_limite(50, 3, 0.01)
+    l05 = pq.hotelling_t2_limit(50, 3, 0.05)
+    l01 = pq.hotelling_t2_limit(50, 3, 0.01)
     assert l05 > 0 and l01 > l05
     # n <= k é degenerado → infinito (sem falso outlier silencioso)
-    assert pq.hotelling_t2_limite(3, 3, 0.05) == float("inf")
+    assert pq.hotelling_t2_limit(3, 3, 0.05) == float("inf")
 
 
 # ── DModX / DModY (nomenclatura SIMCA-P/Unscrambler, mesmo Q-resíduo) ────────
@@ -405,7 +405,7 @@ def test_q_residuos_zero_quando_reconstrucao_exata(pq):
     rng = np.random.default_rng(2)
     T = rng.normal(size=(25, 3)); P = rng.normal(size=(3, 40))
     X = T @ P
-    q = pq.q_residuos(X, T, P)
+    q = pq.q_residuals(X, T, P)
     assert q.shape == (25,)
     np.testing.assert_allclose(q, 0.0, atol=1e-18)
 
@@ -556,19 +556,19 @@ def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
     assert np.array_equal(sr, np.zeros(2))
 
 
-# ── q_residuos_limite: fallback quando variância/média não-positivas ────────
+# ── q_residuals_limit: fallback quando variância/média não-positivas ────────
 
 def test_q_residuos_limite_variancia_zero_cai_no_percentil(pq):
     """Q-residuals todos iguais (variância = 0) inviabiliza a aproximação
     chi2 de Jackson & Mudholkar (g=var/2*media seria 0) -- cai no percentil
     empírico em vez de gerar limite 0/NaN."""
     q = np.full(20, 5.0)
-    limite = pq.q_residuos_limite(q, alpha=0.05)
+    limite = pq.q_residuals_limit(q, alpha=0.05)
     assert limite == pytest.approx(5.0)
 
 
 def test_q_residuos_limite_array_vazio_retorna_zero(pq):
-    limite = pq.q_residuos_limite(np.array([]), alpha=0.05)
+    limite = pq.q_residuals_limit(np.array([]), alpha=0.05)
     assert limite == 0.0
 
 
@@ -583,7 +583,7 @@ def test_q_residuos_limite_bate_com_formula_jackson_mudholkar(pq):
     media = float(q.mean()); var = float(q.var())
     g = var / (2.0 * media); h = 2.0 * media ** 2 / var
     esperado = g * chi2.ppf(0.95, h)
-    obtido = pq.q_residuos_limite(q, alpha=0.05)
+    obtido = pq.q_residuals_limit(q, alpha=0.05)
     assert obtido == pytest.approx(esperado, rel=1e-12)
 
 
@@ -1287,7 +1287,7 @@ def test_dominio_aplicabilidade_nao_rejeita_treino_no_regime_n_menor_que_p(pq):
     assert media >= 0.85, (
         f"AD aceitou apenas {media:.3f} das amostras da propria distribuicao "
         "de treino (alpha=0.05 => esperado ~0.95). Q de treino calculado "
-        "in-sample com n < p: use residuo leave-one-out (q_residuos_loo).")
+        "in-sample com n < p: use residuo leave-one-out (q_residuals_loo).")
 
 
 def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):

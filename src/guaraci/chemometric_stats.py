@@ -63,7 +63,7 @@ def compute_selectivity_ratio(modelo: PLSRegression,
     coluna (problema one-vs-rest) independentemente e agrega por MAXIMO
     entre classes -- uma variavel e' reportada como seletiva se discrimina
     PELO MENOS uma classe (mesmo espirito da agregacao multi-saida ja usada
-    em `teste_incerteza_martens`, nesta mesma secao do modulo).
+    em `martens_uncertainty_test`, nesta mesma secao do modulo).
 
     Complementa o VIP: SR e mais sensivel a variaveis com correlacao
     direcional com Y no componente preditivo; VIP integra todos os LVs.
@@ -105,7 +105,7 @@ def compute_selectivity_ratio(modelo: PLSRegression,
     return sr_por_saida.max(axis=0) if n_saidas > 1 else sr_por_saida[0]
 
 
-def teste_incerteza_martens(
+def martens_uncertainty_test(
         X: np.ndarray, Y: np.ndarray, n_components: int,
         cv_indices: List[Tuple[np.ndarray, np.ndarray]],
         coef_completo: np.ndarray,
@@ -206,7 +206,7 @@ def hotelling_t2(T: np.ndarray) -> np.ndarray:
     return np.sum((T ** 2) / var_t, axis=1)
 
 
-def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
+def hotelling_t2_limit(n: int, k: int, alpha: float = 0.05) -> float:
     """Hotelling T2 upper control limit — Tracy, Young & Mason (1992),
     Technometrics 34(1):46-53, **Phase II** (new/future observations,
     F-distribution).
@@ -244,11 +244,11 @@ def hotelling_t2_limite(n: int, k: int, alpha: float = 0.05) -> float:
                   * f_dist.ppf(1 - alpha, k, n - k))
 
 
-def q_residuos(X: np.ndarray, T: np.ndarray, P: np.ndarray) -> np.ndarray:
+def q_residuals(X: np.ndarray, T: np.ndarray, P: np.ndarray) -> np.ndarray:
     return np.sum((X - T @ P) ** 2, axis=1)
 
 
-def q_residuos_loo(X: np.ndarray, n_comp: int) -> np.ndarray:
+def q_residuals_loo(X: np.ndarray, n_comp: int) -> np.ndarray:
     """Q-residuo leave-one-out (jackknife) de cada amostra de treino.
 
     Uma PCA ajustada em TODAS as n amostras reconstroi cada uma delas de
@@ -292,7 +292,7 @@ def q_residuos_loo(X: np.ndarray, n_comp: int) -> np.ndarray:
     return Q
 
 
-def q_residuos_limite(q: np.ndarray, alpha: float = 0.05) -> float:
+def q_residuals_limit(q: np.ndarray, alpha: float = 0.05) -> float:
     # Guarda explicita p/ array vazio ANTES de mean()/var(): numpy retorna
     # NaN com RuntimeWarning nesse caso, e NaN <= 0 e' sempre False em Python
     # (nunca aciona o fallback abaixo) -- sem isso, q vazio silenciosamente
@@ -354,7 +354,7 @@ def dmodx(Q: np.ndarray, n_variaveis: int, n_componentes: int,
     """DModX (Distance to Model X) -- nomenclatura e normalizacao padrao do
     SIMCA-P/Unscrambler (Eriksson et al. 2006, "Multi- and Megavariate Data
     Analysis", cap. 9) para o MESMO Q-residuo ja calculado por
-    `q_residuos()`. NAO e' um diagnostico novo -- e' a mesma distancia
+    `q_residuals()`. NAO e' um diagnostico novo -- e' a mesma distancia
     residual X, normalizada pela variancia residual media do modelo (assim
     DModX ~= 1 significa "residuo tipico"; DModX >> DModX_crit sinaliza
     amostra fora do modelo), na escala que usuarios vindos do SIMCA-P/
@@ -710,7 +710,7 @@ def training_applicability_domain(pca, X_train: np.ndarray,
     # aceitacao contra 0,95 nominal (scripts/medicoes/medir_ad_vies_insample.py).
     # Mesma correcao ja aplicada ao DD-SIMCA em 2026-07-19 (CLAUDE.md P1) --
     # aqui ela faltava, e este e' o caminho que predicao.py usa em producao.
-    q_train = q_residuos_loo(X_train, k)
+    q_train = q_residuals_loo(X_train, k)
 
     h0, Nh = mean_and_dof_moments(T2_train)
     q0, Nq = mean_and_dof_moments(q_train)
@@ -719,8 +719,8 @@ def training_applicability_domain(pca, X_train: np.ndarray,
     return {
         "var_t": var_t,
         "h0": h0, "q0": q0, "Nh": Nh, "Nq": Nq, "f_crit": f_crit,
-        "t2_limite": float(hotelling_t2_limite(n, k, alpha)),
-        "q_limite": float(q_residuos_limite(q_train, alpha)),
+        "t2_limite": float(hotelling_t2_limit(n, k, alpha)),
+        "q_limite": float(q_residuals_limit(q_train, alpha)),
     }
 
 
@@ -744,7 +744,7 @@ def applicability_domain_new_samples(
     t2_new = np.sum((T_new ** 2) / var_t, axis=1)
 
     # Q-residuos: reconstrucao no espaco CENTRADO pela media do treino.
-    q_new = q_residuos(X_new - mean, T_new, P)
+    q_new = q_residuals(X_new - mean, T_new, P)
 
     f = combined_distance(t2_new, q_new, h0, q0, Nh, Nq)
     dentro = f <= f_crit

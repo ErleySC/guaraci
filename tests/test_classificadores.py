@@ -159,9 +159,9 @@ def test_compute_t2_ucl_empirical_vazio_retorna_infinito():
 
 def test_compute_t2_ucl_theoretical_usa_formula_tracy_young():
     dd = DDSimca(alpha=0.05, ucl_method="theoretical")
-    from guaraci.chemometric_stats import hotelling_t2_limite
+    from guaraci.chemometric_stats import hotelling_t2_limit
     ucl = dd._compute_t2_ucl(np.array([1.0, 2.0]), n=10, k=2)
-    assert ucl == pytest.approx(hotelling_t2_limite(10, 2, 0.05))
+    assert ucl == pytest.approx(hotelling_t2_limit(10, 2, 0.05))
 
 
 def test_compute_t2_ucl_chi2():

@@ -7,7 +7,7 @@ from sklearn.cross_decomposition import PLSRegression
 import sys
 sys.path.insert(0, "src")
 from guaraci.chemometric_stats import (compute_selectivity_ratio,
-                                       hotelling_t2_limite)
+                                       hotelling_t2_limit)
 
 rng_global = np.random.default_rng(0)
 
@@ -76,7 +76,7 @@ for n in (10, 20, 30, 50, 100, 300):
     for k in (2, 3):
         if n - k <= 1:
             continue
-        lim_f = hotelling_t2_limite(n, k, 0.05)
+        lim_f = hotelling_t2_limit(n, k, 0.05)
         # Fase I exato (Tracy, Young & Mason 1992): T2 ~ ((n-1)^2/n) Beta(k/2,(n-k-1)/2)
         lim_beta = ((n - 1) ** 2 / n) * beta_dist.ppf(0.95, k / 2, (n - k - 1) / 2)
         print(f"  n={n:4d} k={k}: FaseII(F)={lim_f:8.3f}  FaseI(Beta)={lim_beta:8.3f}  "

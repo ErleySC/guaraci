@@ -35,7 +35,7 @@ from guaraci.paleta_cores import (
     color, get_edge_color,
 )
 from guaraci.chemometric_stats import (
-    hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
+    hotelling_t2, hotelling_t2_limit, q_residuals, q_residuals_limit,
 )
 from guaraci.config import NOME_GRAFICOS
 
@@ -540,9 +540,9 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
                    n_lv, cfg, pasta):
     n = X_processed.shape[0]
     T2 = hotelling_t2(T_scores[:, :n_lv])
-    Q  = q_residuos(X_processed, T_scores[:, :n_lv], P_loadings[:n_lv])
-    t2_lim = hotelling_t2_limite(n, n_lv)
-    q_lim  = q_residuos_limite(Q)
+    Q  = q_residuals(X_processed, T_scores[:, :n_lv], P_loadings[:n_lv])
+    t2_lim = hotelling_t2_limit(n, n_lv)
+    q_lim  = q_residuals_limit(Q)
 
     rotulos = np.asarray(rotulos, dtype=str)
     classes_unicas = np.unique(rotulos)

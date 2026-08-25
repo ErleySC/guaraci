@@ -257,11 +257,11 @@ from guaraci.preprocessamento import (   # noqa: E402
 from guaraci.chemometric_stats import (   # noqa: E402
     vip_scores,
     compute_selectivity_ratio,
-    teste_incerteza_martens,
+    martens_uncertainty_test,
     hotelling_t2,
-    hotelling_t2_limite,
-    q_residuos,
-    q_residuos_limite,
+    hotelling_t2_limit,
+    q_residuals,
+    q_residuals_limit,
     dmodx,
     dmody,
     explained_variance,
@@ -1920,7 +1920,7 @@ def executar(cfg: Config):
     _martens_n_folds: Optional[int] = None
     if cfg.executar_martens and should_generate(cfg, "martens"):
         log.info("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
-        martens = teste_incerteza_martens(
+        martens = martens_uncertainty_test(
             X_processed, Y_bin, n_opt, cv_indices, pls_final.coef_)
         _martens_n_folds = int(martens["n_folds_validos"])
         if _martens_n_folds >= 3:

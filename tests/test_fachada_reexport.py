@@ -22,9 +22,9 @@ import pytest
 # módulo de origem -> símbolos que pipeline.py deve reexportar (contrato público)
 CONTRATO = {
     "chemometric_stats": [
-        "vip_scores", "compute_selectivity_ratio", "teste_incerteza_martens",
+        "vip_scores", "compute_selectivity_ratio", "martens_uncertainty_test",
         "dmodx", "dmody", "hotelling_t2",
-        "hotelling_t2_limite", "q_residuos", "q_residuos_limite",
+        "hotelling_t2_limit", "q_residuals", "q_residuals_limit",
         "explained_variance", "regression_figures_of_merit",
         "applicability_domain", "training_applicability_domain",
         "applicability_domain_new_samples", "rmse_flat",
