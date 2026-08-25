@@ -345,7 +345,7 @@ motor nunca lê esses termos para decidir nada; eles só aparecem em texto, e é
 essa separação que impede o vocabulário de uma matriz de contaminar os
 resultados de outra.
 
-**Matriz sem perfil não roda.** `PerfilDesconhecidoError` é levantado
+**Matriz sem perfil não roda.** `UnknownProfileError` é levantado
 **antes de carregar qualquer dado**, com a lista de perfis existentes e a
 instrução de como escrever um novo. Rodar mel com a faixa e o vocabulário de
 óleo produziria números que parecem válidos e afirmações químicas que não são.

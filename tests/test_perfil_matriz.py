@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from guaraci.perfil_matriz import (PerfilDesconhecidoError, apply_profile,
+from guaraci.perfil_matriz import (UnknownProfileError, apply_profile,
                                    load_profile)
 
 
@@ -38,7 +38,7 @@ def test_matriz_sem_perfil_falha_com_mensagem_acionavel():
     """Matriz sem perfil cadastrado NAO pode cair num padrao em silencio:
     rodar mel com a faixa e o vocabulario de oleo produz numeros que
     parecem validos e afirmacoes quimicas que nao sao."""
-    with pytest.raises(PerfilDesconhecidoError) as exc:
+    with pytest.raises(UnknownProfileError) as exc:
         load_profile("cafe_raman")
     msg = str(exc.value)
     assert "cafe_raman" in msg
@@ -194,7 +194,7 @@ def test_perfil_inexistente_aborta_o_pipeline_antes_de_predizer(pq, tmp_path):
         pasta_saida_raiz=str(tmp_path / "saida"),
         perfil_matriz="matriz_que_nao_existe",
     )
-    with pytest.raises(PerfilDesconhecidoError):
+    with pytest.raises(UnknownProfileError):
         pq.executar(cfg)
 
 

@@ -38,7 +38,7 @@ log = logging.getLogger(__name__)
 DIR_PERFIS = Path(__file__).parent / "perfis_matriz"
 
 
-class PerfilDesconhecidoError(ValueError):
+class UnknownProfileError(ValueError):
     """Matriz sem perfil cadastrado.
 
     Levantado em vez de rodar com o perfil de outra matriz: um espectro de
@@ -48,7 +48,7 @@ class PerfilDesconhecidoError(ValueError):
 
 
 @dataclass(frozen=True)
-class Vocabulario:
+class Vocabulary:
     """Como esta matriz chama as coisas, na saida voltada ao usuario.
 
     O motor nunca usa estes termos para decidir nada -- eles so' aparecem
@@ -68,7 +68,7 @@ class Vocabulario:
 
 
 @dataclass(frozen=True)
-class PerfilMatriz:
+class MatrixProfile:
     """Tudo que depende da MATRIZ, e nada que dependa do METODO."""
     nome: str
     descricao: str = ""
@@ -77,7 +77,7 @@ class PerfilMatriz:
     eixo_min: Optional[float] = None
     eixo_max: Optional[float] = None
     preprocessamento_padrao: Optional[str] = None
-    vocabulario: Vocabulario = field(default_factory=Vocabulario)
+    vocabulario: Vocabulary = field(default_factory=Vocabulary)
     #: Codigo -> nome legivel da classe (o que `CODIGO_ESPECIE` era para
     #: oleos). Vazio quando a matriz nao usa codificacao no nome do arquivo.
     codigos_classe: Dict[str, str] = field(default_factory=dict)
@@ -107,10 +107,10 @@ def _perfis_disponiveis() -> List[str]:
     return sorted(p.stem for p in DIR_PERFIS.glob("*.yaml"))
 
 
-def load_profile(nome_ou_caminho: str) -> PerfilMatriz:
+def load_profile(nome_ou_caminho: str) -> MatrixProfile:
     """Carrega um perfil embutido pelo nome, ou um YAML de usuario pelo caminho.
 
-    Matriz sem perfil cadastrado levanta `PerfilDesconhecidoError` com a
+    Matriz sem perfil cadastrado levanta `UnknownProfileError` com a
     lista do que existe -- nunca cai num perfil padrao em silencio.
     """
     alvo = Path(nome_ou_caminho)
@@ -119,7 +119,7 @@ def load_profile(nome_ou_caminho: str) -> PerfilMatriz:
     else:
         caminho = DIR_PERFIS / f"{nome_ou_caminho}.yaml"
         if not caminho.is_file():
-            raise PerfilDesconhecidoError(
+            raise UnknownProfileError(
                 f"Nenhum perfil de matriz chamado '{nome_ou_caminho}'. "
                 f"Perfis disponiveis: {', '.join(_perfis_disponiveis()) or '(nenhum)'}. "
                 f"Para uma matriz nova, escreva um YAML com o mesmo formato "
@@ -130,12 +130,12 @@ def load_profile(nome_ou_caminho: str) -> PerfilMatriz:
     with open(caminho, encoding="utf-8") as f:
         bruto: Dict[str, Any] = yaml.safe_load(f) or {}
 
-    voc = Vocabulario(**(bruto.pop("vocabulario", None) or {}))
+    voc = Vocabulary(**(bruto.pop("vocabulario", None) or {}))
     bruto.pop("nome", None)
-    return PerfilMatriz(nome=caminho.stem, vocabulario=voc, **bruto)
+    return MatrixProfile(nome=caminho.stem, vocabulario=voc, **bruto)
 
 
-def apply_profile(cfg: "Config", perfil: PerfilMatriz) -> "Config":
+def apply_profile(cfg: "Config", perfil: MatrixProfile) -> "Config":
     """Escreve no `cfg` o que o perfil define, sem tocar no que ja' foi
     escolhido explicitamente pelo usuario.
 
@@ -161,6 +161,6 @@ def apply_profile(cfg: "Config", perfil: PerfilMatriz) -> "Config":
     return cfg
 
 
-def cfg_profile(cfg: "Config") -> PerfilMatriz:
+def cfg_profile(cfg: "Config") -> MatrixProfile:
     """Perfil declarado em `cfg.perfil_matriz`. Erro claro se nao existir."""
     return load_profile(getattr(cfg, "perfil_matriz", "generico"))

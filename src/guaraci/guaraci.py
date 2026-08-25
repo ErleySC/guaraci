@@ -3916,11 +3916,11 @@ def _validar_opcoes(opcoes: Dict[str, str]) -> None:
               f"so' para diagnostico interno).", file=sys.stderr)
         raise SystemExit(2)
     if "perfil" in opcoes:
-        from guaraci.perfil_matriz import (PerfilDesconhecidoError,
+        from guaraci.perfil_matriz import (UnknownProfileError,
                                            load_profile)
         try:
             load_profile(opcoes["perfil"])
-        except PerfilDesconhecidoError as e:
+        except UnknownProfileError as e:
             print(f"Erro: {e}", file=sys.stderr)
             raise SystemExit(2) from None
 

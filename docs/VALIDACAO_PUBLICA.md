@@ -74,7 +74,7 @@ campo de configuração** (`cfg.perfil_matriz`). Verifica que:
 - o perfil usado fica registrado no card, para quem o lê depois.
 
 E `test_perfil_inexistente_aborta_o_pipeline_antes_de_predizer`: matriz sem
-perfil cadastrado levanta `PerfilDesconhecidoError` **antes** de qualquer
+perfil cadastrado levanta `UnknownProfileError` **antes** de qualquer
 predição, com a lista de perfis disponíveis e a instrução de como escrever
 um novo. Nunca cai num padrão de outra matriz em silêncio.
 
