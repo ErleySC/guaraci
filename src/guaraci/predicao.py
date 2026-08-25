@@ -12,15 +12,22 @@ import hashlib
 import json
 import os
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from guaraci.chemometric_stats import applicability_domain_new_samples
 from guaraci.config import __version__ as _guaraci_version
+from guaraci.identificacao import (
+    CoverageStatus,
+    IdentificationResult,
+    combine_alpha_bonferroni,
+    identify_sample,
+)
 
 _CHAVES_PACOTE_REQUERIDAS = {
     "preprocessador", "pls_final", "label_binarizer", "wavenumbers"}
@@ -61,6 +68,31 @@ def generate_manifest(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any
         # sobre um modelo antigo, entao o default aqui e' explicitamente
         # "unknown", nao "high".
         "grouping_guarantee": pkg.get("grouping_guarantee", "unknown"),
+        # Bloco 9b: resumo de cobertura do ensemble de Identificacao (D5 --
+        # a ressalva de nao-validacao tem que aparecer AQUI tambem, nao so'
+        # no log/model card). Ausente (None) em pacotes sem o ensemble
+        # (versoes anteriores ao Bloco 9b, ou dataset sem adulterante).
+        "identification_coverage": _summarize_identification_coverage(pkg),
+    }
+
+
+def _summarize_identification_coverage(pkg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Resumo, por status de cobertura, do ensemble de Identificacao
+    (Bloco 9b) -- usado pelo manifesto e pelo model card. `None` se o
+    pacote nao tem ensemble (versoes anteriores, ou dataset sem
+    adulterante nomeavel)."""
+    ensemble = pkg.get("identification_ensemble")
+    if not ensemble:
+        return None
+    contagem = {s.value: 0 for s in CoverageStatus}
+    for info in ensemble.values():
+        status = info.get("cobertura_status")
+        chave = status.value if hasattr(status, "value") else str(status)
+        contagem[chave] = contagem.get(chave, 0) + 1
+    return {
+        "n_combinacoes": len(ensemble),
+        "por_status": contagem,
+        "quantificacao_disponivel": bool(pkg.get("regressao_por_especie")),
     }
 
 
@@ -165,6 +197,36 @@ def load_prediction_csv(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.D
     return X, wn, meta_df
 
 
+def interpolate_to_reference(pkg: Dict, X_new_raw: np.ndarray,
+                              wn_new: np.ndarray) -> np.ndarray:
+    """Interpola espectros novos para o eixo de numero de onda do TREINO
+    (faixa `wn_min`/`wn_max` usada na calibracao). Extraida de
+    `predict_samples` (Bloco 9b) para ser reaproveitada tambem por
+    `predict_blind` -- a quantificacao por especie precisa do espectro
+    interpolado em RAW (antes do preprocessador de classificacao), nao do
+    `X_proc` que `predict_samples` calcula para o modelo PLS-DA.
+    """
+    wn_train = np.asarray(pkg["wavenumbers"], dtype=float)
+    wn_min   = float(pkg.get("wn_min", wn_train.min()))
+    wn_max   = float(pkg.get("wn_max", wn_train.max()))
+    mask_ref = (wn_train >= wn_min) & (wn_train <= wn_max)
+    wn_ref   = wn_train[mask_ref]
+
+    X_interp = np.zeros((X_new_raw.shape[0], len(wn_ref)))
+    wn_new_f = np.asarray(wn_new, dtype=float)
+    # np.interp exige eixo CRESCENTE e nao ordena sozinho. Um .dx de terceiro
+    # gravado em ordem decrescente (convencao comum em FTIR) produziria aqui
+    # um espectro reamostrado errado -- e, como nada estoura, a PREDICAO sairia
+    # errada em silencio. Este e' o caminho "aplicar modelo a amostra nova":
+    # e' exatamente onde um resultado errado sem aviso e' mais grave.
+    ordem = np.argsort(wn_new_f)
+    wn_new_f = wn_new_f[ordem]
+    for i in range(X_new_raw.shape[0]):
+        X_interp[i] = np.interp(wn_ref, wn_new_f,
+                                X_new_raw[i].astype(float)[ordem])
+    return X_interp
+
+
 def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
                        wn_new: Optional[np.ndarray]) -> pd.DataFrame:
     """Aplica o pacote de modelo salvo a espectros novos.
@@ -190,29 +252,10 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
     preproc = pkg["preprocessador"]
     pls     = pkg["pls_final"]
     lb      = pkg["label_binarizer"]
-    wn_train = np.asarray(pkg["wavenumbers"], dtype=float)
     if wn_new is None:
         raise ValueError("wn_new nao pode ser None")
-    wn_min   = float(pkg.get("wn_min", wn_train.min()))
-    wn_max   = float(pkg.get("wn_max", wn_train.max()))
 
-    # Eixo de referencia do treino (faixa usada durante o treinamento)
-    mask_ref = (wn_train >= wn_min) & (wn_train <= wn_max)
-    wn_ref   = wn_train[mask_ref]
-
-    # Interpola espectros novos para o eixo de treino
-    X_interp = np.zeros((X_new_raw.shape[0], len(wn_ref)))
-    wn_new_f = wn_new.astype(float)
-    # np.interp exige eixo CRESCENTE e nao ordena sozinho. Um .dx de terceiro
-    # gravado em ordem decrescente (convencao comum em FTIR) produziria aqui
-    # um espectro reamostrado errado -- e, como nada estoura, a PREDICAO sairia
-    # errada em silencio. Este e' o caminho "aplicar modelo a amostra nova":
-    # e' exatamente onde um resultado errado sem aviso e' mais grave.
-    ordem = np.argsort(wn_new_f)
-    wn_new_f = wn_new_f[ordem]
-    for i in range(X_new_raw.shape[0]):
-        X_interp[i] = np.interp(wn_ref, wn_new_f,
-                                X_new_raw[i].astype(float)[ordem])
+    X_interp = interpolate_to_reference(pkg, X_new_raw, wn_new)
 
     # Aplica o pre-processamento do treino
     X_proc = preproc.transform(X_interp)
@@ -322,3 +365,122 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
         resultado["AD_dentro_dominio"] = ad["dentro_dominio"]
 
     return resultado
+
+
+# =========================================================================
+#  Bloco 9b -- fluxo completo do mode cego: Detectar -> Identificar ->
+#  Quantificar (D6: estende a predicao existente em vez de um comando novo).
+# =========================================================================
+
+@dataclass
+class QuantificationResult:
+    """Resultado estruturado de `quantify_sample` (D4, Bloco 9b). Nunca
+    lanca excecao quando bloqueado -- `teor_estimado` fica `None` e
+    `motivo_bloqueio` diz por que."""
+
+    teor_estimado: Optional[float] = None
+    especie_usada: Optional[str] = None
+    motivo_bloqueio: Optional[str] = None
+
+
+@dataclass
+class BlindPredictionResult:
+    """Resultado de UMA amostra no fluxo completo Detectar -> Identificar
+    -> Quantificar (D6)."""
+
+    detectado_no_dominio: Optional[bool]
+    identificacao: IdentificationResult
+    quantificacao: QuantificationResult
+    alpha_total: Optional[float]
+
+
+def quantify_sample(pkg: Dict[str, Any], X_interp_amostra: np.ndarray,
+                     identificacao: IdentificationResult
+                     ) -> QuantificationResult:
+    """Quantifica o teor de adulterante de UMA amostra -- gated pelo
+    resultado de Identificar (D4). `X_interp_amostra` e' o espectro
+    interpolado para o eixo de referencia (RAW, ANTES do preprocessador de
+    classificacao -- os pipelines de regressao por especie tem o proprio
+    preprocessador interno, ajustado separadamente em
+    `pipeline.pls_regression_by_species`).
+
+    NUNCA lanca excecao e NUNCA forca uma especie: sem identificacao com
+    cobertura validada, devolve um resultado estruturado com o motivo
+    (`identificacao_desconhecida` ou `identificacao_ambigua`), nunca um
+    numero (D4).
+    """
+    if identificacao.classe_identificada is None:
+        if (identificacao.cobertura_status == CoverageStatus.VALIDATED
+                and len(identificacao.candidatos_ambiguos) >= 2):
+            motivo = "identificacao_ambigua"
+        else:
+            motivo = "identificacao_desconhecida"
+        return QuantificationResult(motivo_bloqueio=motivo)
+
+    especie, _adulterante = identificacao.classe_identificada.split("|", 1)
+    modelos = pkg.get("regressao_por_especie") or {}
+    info = modelos.get(especie)
+    if info is None:
+        return QuantificationResult(
+            especie_usada=especie,
+            motivo_bloqueio="sem_modelo_de_regressao_para_especie")
+
+    X = np.asarray(X_interp_amostra, dtype=float).reshape(1, -1)
+    pred = np.asarray(info["pipeline"].predict(X)).flatten()
+    return QuantificationResult(
+        teor_estimado=float(pred[0]), especie_usada=especie)
+
+
+def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
+                   wn_new: np.ndarray) -> Tuple[pd.DataFrame,
+                                                 List[BlindPredictionResult]]:
+    """Fluxo completo do mode cego (D6): Detectar -> Identificar ->
+    Quantificar, para um lote de espectros novos.
+
+    - Detectar: reaproveita `predict_samples` (Dominio de Aplicabilidade,
+      coluna `AD_dentro_dominio`) -- NAO alterado (D do Bloco 9a).
+    - Identificar: `identificacao.identify_sample` contra
+      `pkg["identification_ensemble"]` (Bloco 9b) -- so' preenche uma
+      classe quando a cobertura e' VALIDADA.
+    - Quantificar: `quantify_sample`, gated pelo resultado de Identificar
+      (D4) -- nunca forca especie/numero.
+    - `alpha_total`: limite de uniao (Bonferroni) sobre o alpha nominal do
+      Detectar (0,05, quando AD disponivel) e o `alpha_alcancavel` do
+      Identificar. A Quantificacao (regressao PLS) nao tem um alpha de
+      cobertura proprio neste design -- nao entra na soma.
+
+    Retorna (DataFrame de `predict_samples` com as colunas ja existentes,
+    lista de `BlindPredictionResult` -- uma por amostra, na mesma ordem).
+    """
+    df = predict_samples(pkg, X_new_raw, wn_new)
+    X_interp = interpolate_to_reference(pkg, X_new_raw, wn_new)
+
+    ensemble = pkg.get("identification_ensemble") or {}
+    tem_ad = _CHAVES_AD.issubset(pkg.keys())
+    tem_pca_identificacao = "pca" in pkg and "ad_var_t" in pkg
+
+    resultados: List[BlindPredictionResult] = []
+    for i in range(X_interp.shape[0]):
+        detectado = (bool(df.loc[i, "AD_dentro_dominio"])
+                     if tem_ad else None)
+        alpha_detectar = 0.05 if tem_ad else None
+
+        if ensemble and tem_pca_identificacao:
+            X_proc_i = pkg["preprocessador"].transform(
+                X_interp[i:i + 1])
+            ident = identify_sample(
+                ensemble, pkg["pca"], pkg["ad_var_t"], X_proc_i[0])
+        else:
+            ident = IdentificationResult(
+                classe_identificada=None, candidatos_ambiguos=[],
+                cobertura_status=None, alpha_alcancavel=None, escores={})
+
+        quant = quantify_sample(pkg, X_interp[i], ident)
+        alpha_total = combine_alpha_bonferroni(
+            alpha_detectar, ident.alpha_alcancavel)
+
+        resultados.append(BlindPredictionResult(
+            detectado_no_dominio=detectado, identificacao=ident,
+            quantificacao=quant, alpha_total=alpha_total))
+
+    return df, resultados

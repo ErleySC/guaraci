@@ -1,0 +1,200 @@
+# -*- coding: utf-8 -*-
+"""Teste de integracao do fluxo completo do mode cego (Bloco 9b):
+Detectar -> Identificar -> Quantificar, contra um pacote de modelo REAL
+exportado por `executar()` (nao um pkg montado a mao) -- mesmo padrao de
+`test_predicao.py` (roda `executar()` sintetico UMA vez, sessao inteira).
+
+Verificado tambem contra o dataset real (2026-08-25, fora da suite): 36
+combinacoes especie x adulterante com n_grupos=1 (sessao unica) e 2 com
+n_grupos=2 (Andiroba x soja, Maracuja x algodao) -- exatamente o numero
+documentado em docs/MANUAL.md. O mode sintetico usado aqui NAO tem token de
+data no mae_id (`ESA-S05.00`, sem sessao real codificada), entao toda
+combinacao cai em NOT_VALIDATED_N1 -- o que e' o comportamento ESPERADO e
+util para testar o gate (D4/D7-b), nao um bug deste teste.
+"""
+from __future__ import annotations
+
+import json
+import os
+
+import joblib
+import numpy as np
+import pandas as pd
+import pytest
+
+from conftest import achar_pastas_run
+from guaraci.identificacao import CoverageStatus
+from guaraci.predicao import predict_blind
+
+
+@pytest.fixture(scope="module")
+def pkg_bloco9b(pq, tmp_path_factory):
+    base = tmp_path_factory.mktemp("bloco9b")
+    cfg = pq.Config(
+        input_folder=str(base / "dados"),
+        output_root_folder=str(base / "saida"),
+        mode="sintetico", level="N3",
+        n_per_class=12, n_synthetic_points=60, n_synthetic_replicates=3,
+        synthetic_adulterants=("S", "M"),
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(cfg.output_root_folder)
+    assert runs, "executar() nao criou pasta de saida"
+    cam_modelo = os.path.join(runs[0], pq.NOME_MODELOS, "modelo_plsda.joblib")
+    assert os.path.isfile(cam_modelo)
+    pkg = joblib.load(cam_modelo)
+    return pkg, runs[0], cam_modelo
+
+
+# =========================================================================
+#  Persistencia (D1/D6): o ensemble e a regressao por especie tem que
+#  estar no pacote exportado por executar(), nao so' calculaveis a parte.
+# =========================================================================
+
+def test_ensemble_de_identificacao_foi_persistido(pkg_bloco9b):
+    pkg, _pasta, _cam = pkg_bloco9b
+    assert "identification_ensemble" in pkg
+    ensemble = pkg["identification_ensemble"]
+    assert ensemble, "nenhuma combinacao especie x adulterante calibrada"
+    assert {"Esp_A", "Esp_B", "Esp_C"} == {esp for esp, _ in ensemble}
+    assert {"soja", "milho"} == {ad for _, ad in ensemble}
+
+
+def test_regressao_por_especie_foi_persistida(pkg_bloco9b):
+    """Quantificar (Bloco 9b) so' tem o que aplicar em amostra nova se os
+    pipelines de PLS-R por especie (ajustados em `pls_regression_by_species`,
+    D4) forem persistidos no pacote -- ate' aqui, `executar()` so' calculava
+    metricas de CV, nunca o modelo pronto para produzir."""
+    pkg, _pasta, _cam = pkg_bloco9b
+    assert "regressao_por_especie" in pkg
+    modelos = pkg["regressao_por_especie"]
+    assert modelos, "nenhum modelo de regressao por especie foi persistido"
+    for especie, info in modelos.items():
+        assert hasattr(info["pipeline"], "predict")
+        assert isinstance(info["n_lv"], int) and info["n_lv"] >= 1
+
+
+def test_mae_id_sintetico_sem_data_cai_em_nao_validado_n1(pkg_bloco9b):
+    """mae_id sintetico ('ESA-S05.00') nao tem token de sessao/data --
+    session_from_mae_id colapsa toda combinacao numa unica sessao. Isso e'
+    honesto (nao ha' replica de sessao real nos dados sinteticos), nao um
+    defeito: serve para provar que o gate bloqueia mesmo com dezenas de
+    ESPECTROS por combinacao, porque o que importa e' `n_grupos`."""
+    pkg, _pasta, _cam = pkg_bloco9b
+    for (_esp, _adult), info in pkg["identification_ensemble"].items():
+        assert info["n_grupos"] == 1
+        assert info["cobertura_status"] == CoverageStatus.NOT_VALIDATED_N1
+        assert info["alpha_alcancavel"] is None
+
+
+# =========================================================================
+#  D4/D7-b: Quantificar nunca forca classe/numero quando Identificar nao
+#  valida -- contra-prova ao nivel de INTEGRACAO (test_identificacao.py ja
+#  cobre isso isolado; aqui e' contra um pacote real, fim a fim).
+# =========================================================================
+
+def test_predict_blind_nunca_forca_classe_nem_numero(pkg_bloco9b):
+    pkg, _pasta, _cam = pkg_bloco9b
+    wn = np.asarray(pkg["wavenumbers"], dtype=float)
+    rng = np.random.default_rng(7)
+    X_novos = rng.normal(loc=0.5, scale=0.05, size=(4, len(wn)))
+
+    df, resultados = predict_blind(pkg, X_novos, wn)
+    assert len(df) == len(resultados) == 4
+    for r in resultados:
+        assert r.identificacao.classe_identificada is None
+        assert r.quantificacao.teor_estimado is None
+        assert r.quantificacao.motivo_bloqueio in (
+            "identificacao_desconhecida", "identificacao_ambigua")
+        # alpha_total = Bonferroni(alpha do Detectar, alpha do Identificar);
+        # Identificar nao tem alpha_alcancavel aqui (NOT_VALIDATED_N1) ->
+        # a soma fica indefinida (None), nao um numero inventado.
+        assert r.alpha_total is None
+
+
+def test_predict_blind_detectar_preenchido_quando_ad_disponivel(pkg_bloco9b):
+    """Detectar (dominio de aplicabilidade) e' independente do Identificar
+    -- continua funcionando (D do Bloco 9a, inalterado) mesmo quando toda
+    combinacao de Identificar esta' bloqueada."""
+    pkg, _pasta, _cam = pkg_bloco9b
+    wn = np.asarray(pkg["wavenumbers"], dtype=float)
+    rng = np.random.default_rng(8)
+    X_novos = rng.normal(loc=0.5, scale=0.05, size=(3, len(wn)))
+    _df, resultados = predict_blind(pkg, X_novos, wn)
+    for r in resultados:
+        assert r.detectado_no_dominio in (True, False)
+
+
+# =========================================================================
+#  D5: a ressalva de nao-validacao propaga para os 3 lugares.
+# =========================================================================
+
+def test_ressalva_aparece_no_model_card(pkg_bloco9b):
+    _pkg, pasta, _cam = pkg_bloco9b
+    caminho = os.path.join(pasta, pq_nome_relatorios(pasta), "model_card.md")
+    assert os.path.isfile(caminho)
+    texto = open(caminho, encoding="utf-8").read()
+    assert "Identificacao especie x adulterante" in texto
+    assert "nao_validado_n1" in texto
+
+
+def test_ressalva_aparece_no_manifesto(pkg_bloco9b):
+    _pkg, _pasta, cam_modelo = pkg_bloco9b
+    cam_manifesto = cam_modelo + ".manifest.json"
+    assert os.path.isfile(cam_manifesto)
+    manifesto = json.loads(open(cam_manifesto, encoding="utf-8").read())
+    assert "identification_coverage" in manifesto
+    cobertura = manifesto["identification_coverage"]
+    assert cobertura is not None
+    assert cobertura["n_combinacoes"] == len(_pkg["identification_ensemble"])
+    assert cobertura["por_status"]["validado"] == 0
+
+
+# =========================================================================
+#  D6: CLI (menu_prediction) estende a predicao existente com as colunas
+#  do fluxo cego, sem quebrar o caminho antigo (ver test_predicao.py para
+#  o caminho sem ensemble).
+# =========================================================================
+
+def test_menu_predicao_cli_inclui_colunas_do_fluxo_cego(
+        monkeypatch, tmp_path, pkg_bloco9b):
+    import guaraci.guaraci as guaraci_mod
+
+    pkg, _pasta, _cam = pkg_bloco9b
+    wn = np.asarray(pkg["wavenumbers"], dtype=float)
+    rng = np.random.default_rng(9)
+    X_novos = rng.normal(loc=0.5, scale=0.05, size=(3, len(wn)))
+
+    cam_modelo = tmp_path / "modelo_bloco9b.joblib"
+    joblib.dump(pkg, cam_modelo)
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    cam_csv = tmp_path / "novos.csv"
+    df_in.to_csv(cam_csv, index=False, sep=";")
+
+    respostas = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod.menu_prediction(guaraci_mod.Config())
+
+    cam_saida = cam_csv.with_name(cam_csv.stem + "_predicao.csv")
+    assert cam_saida.is_file()
+    df_res = pd.read_csv(cam_saida, sep=";", decimal=",")
+    for col in ("classe_identificada", "identificacao_cobertura",
+                "identificacao_alpha_alcancavel", "teor_estimado",
+                "quantificacao_motivo_bloqueio", "alpha_total"):
+        assert col in df_res.columns
+    # nunca forca classe/numero (D7-b), tambem visivel na saida do CLI.
+    assert df_res["classe_identificada"].isna().all()
+    assert df_res["teor_estimado"].isna().all()
+
+
+def pq_nome_relatorios(_pasta):
+    # NOME_RELATORIOS e' uma constante do pacote (Relatorios); import local
+    # para nao acoplar o topo do arquivo a um simbolo so' usado aqui.
+    from guaraci.pipeline import NOME_RELATORIOS
+    return NOME_RELATORIOS

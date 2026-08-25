@@ -2537,7 +2537,32 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
             pkg = _pred.load_model(cam_modelo, confiar=True)
             _pred.validate_model_package(pkg)
             X_new, wn_new, meta_df = _pred.load_prediction_csv(cam_csv)
-            df_res = _pred.predict_samples(pkg, X_new, wn_new)
+            # Bloco 9b (D6): estende a predicao existente com o fluxo
+            # completo Detectar -> Identificar -> Quantificar quando o
+            # pacote traz o ensemble de identificacao (modelos exportados
+            # antes do Bloco 9b nao tem essa chave -- cai no caminho
+            # anterior, sem quebrar).
+            if pkg.get("identification_ensemble"):
+                df_res, resultados_cego = _pred.predict_blind(pkg, X_new, wn_new)
+                df_res["classe_identificada"] = [
+                    r.identificacao.classe_identificada for r in resultados_cego]
+                df_res["identificacao_cobertura"] = [
+                    (r.identificacao.cobertura_status.value
+                     if r.identificacao.cobertura_status else None)
+                    for r in resultados_cego]
+                df_res["identificacao_alpha_alcancavel"] = [
+                    r.identificacao.alpha_alcancavel for r in resultados_cego]
+                df_res["identificacao_candidatos"] = [
+                    ", ".join(r.identificacao.candidatos_ambiguos)
+                    for r in resultados_cego]
+                df_res["teor_estimado"] = [
+                    r.quantificacao.teor_estimado for r in resultados_cego]
+                df_res["quantificacao_motivo_bloqueio"] = [
+                    r.quantificacao.motivo_bloqueio for r in resultados_cego]
+                df_res["alpha_total"] = [
+                    r.alpha_total for r in resultados_cego]
+            else:
+                df_res = _pred.predict_samples(pkg, X_new, wn_new)
             if len(meta_df.columns) > 0 and len(meta_df) == len(df_res):
                 df_res = pd.concat([meta_df.reset_index(drop=True), df_res], axis=1)
             df_res.to_csv(cam_saida, index=False, sep=";", decimal=",")
