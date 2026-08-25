@@ -6,7 +6,7 @@ descricao: "Milho em grao por NIR (1100-2498 nm)"
 unidade_eixo: "nm"
 eixo_min: 1100.0
 eixo_max: 2498.0
-preprocessamento_padrao: "msc_sg_mc"
+default_preprocessing: "msc_sg_mc"
 vocabulario:
   classe: "variedade"
   classe_plural: "variedades"

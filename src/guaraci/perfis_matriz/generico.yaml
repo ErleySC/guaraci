@@ -1,9 +1,9 @@
 # Perfil neutro -- ponto de partida para escrever o perfil de uma matriz nova.
-# Copie este arquivo, preencha, e passe o caminho em cfg.perfil_matriz.
+# Copie este arquivo, preencha, e passe o caminho em cfg.matrix_profile.
 descricao: "Matriz nao especificada -- nenhum padrao de matriz aplicado"
 unidade_eixo: "cm-1"
 # eixo_min/eixo_max ausentes: o pipeline usa a faixa que estiver em cfg.
-preprocessamento_padrao: null
+default_preprocessing: null
 vocabulario:
   classe: "classe"
   classe_plural: "classes"

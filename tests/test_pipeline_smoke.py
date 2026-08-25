@@ -15,10 +15,10 @@ from conftest import achar_pastas_run
 
 def test_config_defaults(pq):
     cfg = pq.Config()
-    assert cfg.preprocessamento_padrao == "msc_sg_mc"
+    assert cfg.default_preprocessing == "msc_sg_mc"
     assert cfg.max_lvs == 40
-    assert cfg.agrupar_por_mae_id is True
-    assert cfg.n_permutacoes_wold == 200   # raised from 50 for publication
+    assert cfg.group_by_mae_id is True
+    assert cfg.n_permutations_wold == 200   # raised from 50 for publication
 
 
 def test_config_spec_keys(pq):
@@ -310,8 +310,8 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),  # synthetic mode ignores this
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico",
-        n_por_classe=8,
-        n_pontos_sint=50,
+        n_per_class=8,
+        n_synthetic_points=50,
         # Synthetic data uses linspace(4000, 400) — match the range so
         # spectral truncation keeps all 50 points (sg_window=25 requires n>25)
         wn_min=400.0,
@@ -319,7 +319,7 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
         n_splits_cv=2,
         n_repeats_cv=1,
         n_permutacoes=5,
-        n_permutacoes_wold=5,
+        n_permutations_wold=5,
         n_bootstrap_vip=3,
         n_bootstrap_bca=20,
         n_monte_carlo=3,
@@ -331,7 +331,7 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
         run_opls=False,
         executar_etapa4=False,
         comparar_pipelines=False,
-        comparar_hca_pipelines=False,
+        compare_hca_pipelines=False,
         max_lvs=5,
     )
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)

@@ -83,11 +83,11 @@ def test_guaraci_reproduz_a_literatura_no_corn(pq, tmp_path):
 
     cfg = pq.Config(
         modo="csv", arquivo_csv=str(csv),
-        coluna_classe="classe", coluna_conc="conc",
-        perfil_matriz="milho_nir",          # perfil, nao edicao de codigo
+        coluna_classe="classe", conc_column="conc",
+        matrix_profile="milho_nir",          # perfil, nao edicao de codigo
         objetivo="quantificacao", nivel="N3",
         output_root_folder=str(tmp_path / "saida"),
-        agrupar_por_mae_id=False, mostrar_graficos=False,
+        group_by_mae_id=False, mostrar_graficos=False,
         n_permutacoes=10, frac_holdout=0.25,
     )
     pq.executar(cfg)
@@ -142,10 +142,10 @@ def test_execucao_no_corn_e_deterministica(pq, tmp_path):
         df.to_csv(csv, index=False)
         cfg = pq.Config(
             modo="csv", arquivo_csv=str(csv),
-            coluna_classe="classe", coluna_conc="conc",
-            perfil_matriz="milho_nir", objetivo="quantificacao", nivel="N3",
+            coluna_classe="classe", conc_column="conc",
+            matrix_profile="milho_nir", objetivo="quantificacao", nivel="N3",
             output_root_folder=str(destino / "saida"),
-            agrupar_por_mae_id=False, mostrar_graficos=False,
+            group_by_mae_id=False, mostrar_graficos=False,
             n_permutacoes=10, frac_holdout=0.25, seed=1234,
         )
         pq.executar(cfg)

@@ -3143,7 +3143,7 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     t_perm = 0.0
     n_perm = int(_cfgv(cfg, "n_permutacoes", 0) or 0)
     if _cfgv(cfg, "teste_wold", False):
-        n_perm += int(_cfgv(cfg, "n_permutacoes_wold", 0) or 0)
+        n_perm += int(_cfgv(cfg, "n_permutations_wold", 0) or 0)
     if n_perm:
         n_jobs = max(1, int(_cfgv(cfg, "n_jobs_permutacao", 1) or 1))
         t_1perm = (max_lvs / 2.0) * n_splits * n_amostras * frac_treino * _S_POR_AMOSTRA_LV
@@ -3776,16 +3776,16 @@ def _comando_demo() -> None:
         tag="demo",
         nivel="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
         objetivo="auto",
-        n_por_classe=15,
-        n_pontos_sint=300,
+        n_per_class=15,
+        n_synthetic_points=300,
         wn_min=400.0,
         wn_max=4001.0,
-        sint_adulterantes=("S", "M", "A"),
+        synthetic_adulterants=("S", "M", "A"),
         max_lvs=15,
         n_splits_cv=3,
         n_repeats_cv=1,
         n_permutacoes=50,
-        n_permutacoes_wold=50,
+        n_permutations_wold=50,
         n_bootstrap_vip=10,
         n_bootstrap_bca=100,
         n_monte_carlo=20,
@@ -3797,7 +3797,7 @@ def _comando_demo() -> None:
         run_opls=False,
         executar_etapa4=False,
         comparar_pipelines=False,
-        comparar_hca_pipelines=False,
+        compare_hca_pipelines=False,
     )
     os.makedirs(cfg.input_folder, exist_ok=True)
 
@@ -3985,9 +3985,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     # Opcoes de linha de comando vencem o config.yaml: quem digitou a flag
     # agora quer ela agora. Ja' validadas em _validar_opcoes (saida 2).
     if "perfil" in _OPCOES_CLI:
-        cfg.perfil_matriz = _OPCOES_CLI["perfil"]
+        cfg.matrix_profile = _OPCOES_CLI["perfil"]
     if "modo" in _OPCOES_CLI:
-        cfg.modo_rotulo = _OPCOES_CLI["modo"]
+        cfg.label_mode = _OPCOES_CLI["modo"]
 
     # Recuperar idioma salvo
     try:

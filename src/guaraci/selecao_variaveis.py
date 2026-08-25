@@ -713,7 +713,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     #    precisa ser chamada dentro do fold em vez de 1x no dataset inteiro)
     m_sp = _avaliar_subset_nested_cv(
         X_proc, Y_bin, y_int, cv_indices, n_lv,
-        lambda Xtr, Ytr, nlv: sparse_plsda_mask(Xtr, Ytr, nlv, cfg.splsda_keep_por_comp))
+        lambda Xtr, Ytr, nlv: sparse_plsda_mask(Xtr, Ytr, nlv, cfg.splsda_keep_by_comp))
     if m_sp["n_vars_max"] >= 2:
         tabela.append({"metodo": "sPLS-DA", **m_sp})
         print(f"  sPLS-DA: bal.acc={m_sp['balanced_accuracy']:.3f} "

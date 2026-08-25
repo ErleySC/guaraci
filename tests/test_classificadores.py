@@ -32,17 +32,17 @@ def test_ddsimca_treino_e_majoritariamente_mas_nao_100pct_aceito():
     achado de auditoria adversarial, 2026-07-19). Um modelo correto ainda
     reconhece a MAIORIA da propria classe, so' nao 100%."""
     rng = np.random.default_rng(0)
-    n_por_classe = 40
-    Xa = _classe_compacta(rng, centro=0.0, n=n_por_classe)
-    Xb = _classe_compacta(rng, centro=5.0, n=n_por_classe)
+    n_per_class = 40
+    Xa = _classe_compacta(rng, centro=0.0, n=n_per_class)
+    Xb = _classe_compacta(rng, centro=5.0, n=n_per_class)
     X = np.vstack([Xa, Xb])
-    y = np.array(["A"] * n_por_classe + ["B"] * n_por_classe)
+    y = np.array(["A"] * n_per_class + ["B"] * n_per_class)
 
     dd = DDSimca(n_components=3, alpha=0.05, ucl_method="empirical").fit(X, y)
     preds = dd.predict(X)
 
-    taxa_a = float(np.mean(preds[:n_por_classe] == "A"))
-    taxa_b = float(np.mean(preds[n_por_classe:] == "B"))
+    taxa_a = float(np.mean(preds[:n_per_class] == "A"))
+    taxa_b = float(np.mean(preds[n_per_class:] == "B"))
 
     # Reconhece a propria classe na maioria dos casos...
     assert taxa_a > 0.70

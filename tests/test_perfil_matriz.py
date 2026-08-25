@@ -94,7 +94,7 @@ def test_faixa_de_trabalho_declarada_marca_extrapolacao():
 
 # ── Aceitacao: mesmo dado, duas matrizes, zero linha de codigo alterada ──────
 
-def _csv_espectral(caminho: Path, eixo: np.ndarray, n_por_classe: int = 12,
+def _csv_espectral(caminho: Path, eixo: np.ndarray, n_per_class: int = 12,
                    semente: int = 7) -> None:
     """Escreve um CSV no formato que `dados_io.load_csv` le (uma coluna
     por canal, cabecalho = eixo espectral) + colunas classe/conc."""
@@ -103,8 +103,8 @@ def _csv_espectral(caminho: Path, eixo: np.ndarray, n_por_classe: int = 12,
     rng = np.random.default_rng(semente)
     linhas, classes, concs = [], [], []
     for k, cls in enumerate(("A", "B")):
-        for i in range(n_por_classe):
-            teor = float(i) / n_por_classe * 10.0
+        for i in range(n_per_class):
+            teor = float(i) / n_per_class * 10.0
             base = 0.4 + 0.1 * k + 0.02 * np.sin(eixo / (eixo.max() / 6.0))
             linhas.append(base + 0.004 * teor + rng.normal(0, 0.002,
                                                            eixo.size))
@@ -118,7 +118,7 @@ def _csv_espectral(caminho: Path, eixo: np.ndarray, n_por_classe: int = 12,
 
 
 def _rodar_com_perfil(pq, base: Path, perfil: str, eixo: np.ndarray):
-    """Roda executar() mudando SO' cfg.perfil_matriz. Devolve a pasta de saida."""
+    """Roda executar() mudando SO' cfg.matrix_profile. Devolve a pasta de saida."""
     from conftest import achar_pastas_run
 
     pasta = base / perfil
@@ -128,12 +128,12 @@ def _rodar_com_perfil(pq, base: Path, perfil: str, eixo: np.ndarray):
 
     cfg = pq.Config(
         modo="csv", arquivo_csv=str(csv),
-        coluna_classe="classe", coluna_conc="conc",
+        coluna_classe="classe", conc_column="conc",
         output_root_folder=str(pasta / "saida"),
-        perfil_matriz=perfil,                     # <<< a UNICA diferenca
-        agrupar_por_mae_id=False,
+        matrix_profile=perfil,                     # <<< a UNICA diferenca
+        group_by_mae_id=False,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=3, frac_holdout=0.0,
     )
     pq.executar(cfg)
@@ -190,9 +190,9 @@ def test_perfil_inexistente_aborta_o_pipeline_antes_de_predizer(pq, tmp_path):
     _csv_espectral(csv, np.linspace(4000.0, 10000.0, 120))
     cfg = pq.Config(
         modo="csv", arquivo_csv=str(csv),
-        coluna_classe="classe", coluna_conc="conc",
+        coluna_classe="classe", conc_column="conc",
         output_root_folder=str(tmp_path / "saida"),
-        perfil_matriz="matriz_que_nao_existe",
+        matrix_profile="matriz_que_nao_existe",
     )
     with pytest.raises(UnknownProfileError):
         pq.executar(cfg)

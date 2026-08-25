@@ -65,7 +65,7 @@ O requisito multimatriz foi provado com outro par de matrizes (§3).
 
 Roda o pipeline completo em duas matrizes de naturezas diferentes — uma em
 **nm**, outra em **cm⁻¹**, com vocabulários distintos — alterando **um único
-campo de configuração** (`cfg.perfil_matriz`). Verifica que:
+campo de configuração** (`cfg.matrix_profile`). Verifica que:
 
 - cada model card declara a sua matriz (`milho em grao` / `oleo vegetal`);
 - **nenhum declara a da outra** — este era exatamente o defeito medido em

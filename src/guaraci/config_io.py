@@ -47,7 +47,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Caminho do CSV (modo csv): colunas espectrais/variaveis + 1 coluna de classe", "opcoes": None},
     {"key": "coluna_classe", "attr": "coluna_classe", "tipo": "str",
      "desc": "Nome da coluna de classe/rotulo no CSV (modo csv)", "opcoes": None},
-    {"key": "coluna_concentracao", "attr": "coluna_conc", "tipo": "str_opcional",
+    {"key": "coluna_concentracao", "attr": "conc_column", "tipo": "str_opcional",
      "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; modo csv)", "opcoes": None},
     {"key": "pasta_saida", "attr": "output_root_folder", "tipo": "str",
      "desc": "Pasta onde os resultados serao gravados", "opcoes": None},
@@ -62,7 +62,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "sem PLS-DA) | classificacao (PLS-DA e derivados) | "
              "quantificacao (regressao PLS + figuras de merito)",
      "opcoes": ["auto", "exploratorio", "classificacao", "quantificacao"]},
-    {"key": "pre_processamento", "attr": "preprocessamento_padrao", "tipo": "preproc",
+    {"key": "pre_processamento", "attr": "default_preprocessing", "tipo": "preproc",
      "desc": "Pre-processamento espectral", "opcoes": list(_PRE_PROC_FRIENDLY)},
     {"key": "faixa_min_cm", "attr": "wn_min", "tipo": "float",
      "desc": "Inicio da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
@@ -76,7 +76,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "holdout_fracao", "attr": "frac_holdout", "tipo": "float",
      "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None,
      "min": 0.0, "max": 0.5},
-    {"key": "validacao_group_aware", "attr": "agrupar_por_mae_id", "tipo": "bool",
+    {"key": "validacao_group_aware", "attr": "group_by_mae_id", "tipo": "bool",
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
     {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
      "desc": "Iteracoes do teste de permutacao", "opcoes": None, "min": 1, "max": 100000},
@@ -107,7 +107,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "opcoes": None},
     {"key": "ddsimca", "attr": "run_ddsimca", "tipo": "bool",
      "desc": "Rodar DD-SIMCA (classificacao one-class)", "opcoes": None},
-    {"key": "modo_ddsimca", "attr": "ddsimca_treinar_em", "tipo": "choice",
+    {"key": "modo_ddsimca", "attr": "ddsimca_train_on", "tipo": "choice",
      "desc": "Modo de treino do DD-SIMCA: 'puros' treina SO com amostras puras "
              "(o resto conta como contaminante/adulterado -- autenticacao de "
              "verdade); 'todos' treina com toda a classe (exploratorio, mais "
@@ -144,13 +144,13 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman). "
              "Desligado = so o conjunto essencial (mais rapido, menos arquivos)",
      "opcoes": None},
-    {"key": "figuras_mostrar_marcadores", "attr": "mostrar_marcadores_classe", "tipo": "bool",
+    {"key": "figuras_mostrar_marcadores", "attr": "show_class_markers", "tipo": "bool",
      "desc": "Usar formas diferentes por classe nos graficos de score", "opcoes": None},
-    {"key": "figuras_mostrar_elipses", "attr": "mostrar_elipses_grupo", "tipo": "bool",
+    {"key": "figuras_mostrar_elipses", "attr": "show_group_ellipses", "tipo": "bool",
      "desc": "Desenhar elipses de confianca por grupo", "opcoes": None},
-    {"key": "formato_figura", "attr": "formato_saida", "tipo": "choice",
+    {"key": "formato_figura", "attr": "output_format", "tipo": "choice",
      "desc": "Formato das figuras", "opcoes": ["png", "pdf", "svg"]},
-    {"key": "dpi", "attr": "dpi_salvar", "tipo": "int",
+    {"key": "dpi", "attr": "save_dpi", "tipo": "int",
      "desc": "Resolucao das figuras (DPI)", "opcoes": None, "min": 50, "max": 1200},
     {"key": "abrir_figuras_na_tela", "attr": "mostrar_graficos", "tipo": "bool",
      "desc": "[Nao disponivel: o backend grafico e sempre headless/Agg, por "

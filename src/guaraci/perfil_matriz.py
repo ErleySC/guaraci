@@ -76,7 +76,7 @@ class MatrixProfile:
     unidade_eixo: str = "cm-1"
     eixo_min: Optional[float] = None
     eixo_max: Optional[float] = None
-    preprocessamento_padrao: Optional[str] = None
+    default_preprocessing: Optional[str] = None
     vocabulario: Vocabulary = field(default_factory=Vocabulary)
     #: Codigo -> nome legivel da classe (o que `CODIGO_ESPECIE` era para
     #: oleos). Vazio quando a matriz nao usa codificacao no nome do arquivo.
@@ -151,16 +151,16 @@ def apply_profile(cfg: "Config", perfil: MatrixProfile) -> "Config":
         cfg.wn_min = float(perfil.eixo_min)
     if perfil.eixo_max is not None and cfg.wn_max == padrao.wn_max:
         cfg.wn_max = float(perfil.eixo_max)
-    if (perfil.preprocessamento_padrao
-            and cfg.preprocessamento_padrao == padrao.preprocessamento_padrao):
-        cfg.preprocessamento_padrao = perfil.preprocessamento_padrao
+    if (perfil.default_preprocessing
+            and cfg.default_preprocessing == padrao.default_preprocessing):
+        cfg.default_preprocessing = perfil.default_preprocessing
     log.info("[INFO] Perfil de matriz: %s (%s) | eixo [%.4g, %.4g] %s | "
              "pre-proc %s", perfil.nome, perfil.descricao or "-",
              cfg.wn_min, cfg.wn_max, perfil.unidade_eixo,
-             cfg.preprocessamento_padrao)
+             cfg.default_preprocessing)
     return cfg
 
 
 def cfg_profile(cfg: "Config") -> MatrixProfile:
-    """Perfil declarado em `cfg.perfil_matriz`. Erro claro se nao existir."""
-    return load_profile(getattr(cfg, "perfil_matriz", "generico"))
+    """Perfil declarado em `cfg.matrix_profile`. Erro claro se nao existir."""
+    return load_profile(getattr(cfg, "matrix_profile", "generico"))

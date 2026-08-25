@@ -141,7 +141,7 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
     corrigido em 2026-07-13 (P8 residual: pasta ainda expunha N1/N2/N3 cru).
     Subfolders (created in executar): Graficos/ Tabelas/ Relatorios/ Modelos/
     """
-    preset = (cfg.preprocessamento_padrao or "custom").lower()
+    preset = (cfg.default_preprocessing or "custom").lower()
     if preset == "autoscaling":
         preproc = ["AUTO"]
     elif preset == "mc":
@@ -838,10 +838,10 @@ def labels_for_quantification(cfg: "Config", rotulos_verdadeiros: np.ndarray,
     saida -- silenciar isso transformaria um resultado de controle num
     resultado aparentemente cego.
     """
-    modo = str(getattr(cfg, "modo_rotulo", "cego") or "cego").lower()
+    modo = str(getattr(cfg, "label_mode", "cego") or "cego").lower()
     if modo not in ("cego", "controle"):
         raise ValueError(
-            f"cfg.modo_rotulo='{modo}' invalido. Use 'cego' (padrao, usa a "
+            f"cfg.label_mode='{modo}' invalido. Use 'cego' (padrao, usa a "
             f"classe predita) ou 'controle' (usa a classe verdadeira, so' "
             f"para diagnostico interno).")
     if modo == "controle":
@@ -981,7 +981,7 @@ def pls_regression_by_species(
 
         # group-aware cal/val split (replicates never split)
         try:
-            if cfg.divisao_cal_val == "kennard_stone":
+            if cfg.cal_val_split == "kennard_stone":
                 ic, iv = kennard_stone_split_group_aware(
                     X_c, mae_c, cfg.frac_cal)
             elif mae_c is not None and len(np.unique(mae_c)) >= 4:
@@ -1141,7 +1141,7 @@ def pls_regressao_pooled(
 
     # Calibration/validation split — group-aware if mae_id available
     # (T1/T2/T3 replicates of the same sample point never split between cal/val).
-    if cfg.divisao_cal_val == "kennard_stone":
+    if cfg.cal_val_split == "kennard_stone":
         ic, iv = kennard_stone_split_group_aware(
             X_raw, mae_id, cfg.frac_cal)
         log.info(f"  Split cal/val: Kennard-Stone "
@@ -1363,7 +1363,7 @@ def executar(cfg: Config):
                   f"(puros={n_puro} | adulterados={n_adul}). "
                   f"DD-SIMCA forçado para modo 'puros'.")
             # Force per-species one-class authentication for N2
-            cfg.ddsimca_treinar_em = "puros"
+            cfg.ddsimca_train_on = "puros"
             cfg.run_ddsimca = True
         else:
             log.info("[AVISO] nivel=N2 sem dados de concentração (##TITLE= sem "
@@ -1444,9 +1444,9 @@ def executar(cfg: Config):
         mae_id = np.asarray(mae_id, dtype=str)
 
     # --- Validation strategy: group-aware if mae_id available -------------
-    usar_grupos = (cfg.agrupar_por_mae_id and mae_id is not None
+    usar_grupos = (cfg.group_by_mae_id and mae_id is not None
                    and len(np.unique(mae_id)) >= 3)
-    if cfg.agrupar_por_mae_id and not usar_grupos:
+    if cfg.group_by_mae_id and not usar_grupos:
         log.info("[INFO] GroupKFold desabilitado: mae_id indisponivel ou "
               "grupos insuficientes — usando StratifiedKFold (estratificada).")
     if usar_grupos and mae_id is not None:
@@ -1463,7 +1463,7 @@ def executar(cfg: Config):
             # v15: optionally excludes pure samples from the draw — they always
             # stay in training. Split runs only on the eligible subset (adulterated).
             n_all = len(rotulos)
-            if (cfg.holdout_preserva_puros and conc is not None):
+            if (cfg.holdout_preserves_pure and conc is not None):
                 elegiveis = np.where(np.asarray(conc, dtype=float) > 0)[0]
                 n_puros_reserv = n_all - len(elegiveis)
             else:
@@ -1518,7 +1518,7 @@ def executar(cfg: Config):
     # enquanto "snv_sg_mc"/"msc_sg_mc" SEMPRE usam SG independente da flag.
     # Checar so `cfg.aplicar_sg` aqui gerava falso-positivo com presets sem
     # SG (ex.: autoscaling com poucas variaveis, como no modo="imagem").
-    _preset_ativo = (cfg.preprocessamento_padrao or "custom").lower()
+    _preset_ativo = (cfg.default_preprocessing or "custom").lower()
     if _preset_ativo in ("autoscaling", "mc"):
         _sg_ativo = False
     elif _preset_ativo in ("snv_sg_mc", "msc_sg_mc"):
@@ -1590,7 +1590,7 @@ def executar(cfg: Config):
     y_int = np.argmax(Y_bin, axis=1)
 
     # --- 2. Pre-processamento (uma vez, para visualizacao e PCA) -----------
-    log.info(f"\n[1/7] Pre-processamento (preset='{cfg.preprocessamento_padrao}')")
+    log.info(f"\n[1/7] Pre-processamento (preset='{cfg.default_preprocessing}')")
     preproc_full = build_preprocessor(cfg).fit(X_raw)
     X_processed  = np.asarray(preproc_full.transform(X_raw), dtype=float)
 
@@ -1737,7 +1737,7 @@ def executar(cfg: Config):
     # Gated por objetivo == CLASSIFICACAO, no MESMO padrao do teste de
     # permutacao acima (bloco 6/6a). Achado em 2026-08-06: faltava esse
     # guard aqui -- o bloco rodava incondicionalmente mesmo em objetivo=
-    # Quantificacao/Exploratorio, refazendo n_permutacoes_wold refits de CV
+    # Quantificacao/Exploratorio, refazendo n_permutations_wold refits de CV
     # usando Y_bin (rotulos de CLASSE, one-hot) para um run que nao classifica
     # nada, e escrevendo "Wold R2Y/Q2Y intercept" no resumo sem nenhum
     # sentido nesse contexto -- nem gasto de tempo silencioso, nem numero
@@ -1745,10 +1745,10 @@ def executar(cfg: Config):
     wold_res: Optional[Dict[str, object]] = None
     if cfg.run_wold and objetivo == CLASSIFICACAO:
         log.info(f"\n[4b/7] Teste de Wold (R2Y/Q2Y intercept, "
-              f"n={cfg.n_permutacoes_wold})")
+              f"n={cfg.n_permutations_wold})")
         wold_res = wold_test(
             lambda: fabrica_pipeline(n_opt),
-            X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes_wold, cfg.seed,
+            X_raw, Y_bin, y_int, cv_perm, cfg.n_permutations_wold, cfg.seed,
             groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
         _wr2 = cast(float, wold_res['intercept_r2'])
         _wq2 = cast(float, wold_res['intercept_q2'])
@@ -1765,7 +1765,7 @@ def executar(cfg: Config):
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intercepto R2Y/Q2Y "
               f"e' diagnostico de CLASSIFICACAO (usa rotulos de especie/classe "
               f"one-hot); nao pertinente fora desse modo "
-              f"(economiza {cfg.n_permutacoes_wold} refits de CV).")
+              f"(economiza {cfg.n_permutations_wold} refits de CV).")
 
     # --- 6c. CV-ANOVA Eriksson --------------------------------------------
     # Mesmo motivo e mesmo achado do bloco 6b acima: sem o guard de objetivo,
@@ -1836,7 +1836,7 @@ def executar(cfg: Config):
     _conc_f = np.asarray(conc, dtype=float) if conc is not None else None
     puros_mask_fig = (np.isnan(_conc_f) | (_conc_f == 0.0)) if _conc_f is not None else None
     # Flag de simbolos por classe (None -> todos circulo 'o')
-    marcadores_fig = (mapa_marcadores if cfg.mostrar_marcadores_classe
+    marcadores_fig = (mapa_marcadores if cfg.show_class_markers
                       else None)
     # ---- OVERVIEW (sempre — contexto valido em qualquer objetivo) ----
     # Espectros medios por classe: dado BRUTO, antes de qualquer modelagem
@@ -1853,7 +1853,7 @@ def executar(cfg: Config):
         fig_loadings_pca(pca, wavenumbers, cfg, pasta, n_pcs=2)
         fig_biplot_pca(pca, scores_pca, wavenumbers, rotulos, mapa_cores,
                        cfg, pasta)
-    if cfg.comparar_hca_pipelines and _fig_explor_on:
+    if cfg.compare_hca_pipelines and _fig_explor_on:
         fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta)
     # ---- CLASSIFICACAO (supervisionada) — filtrada fora de N1/N2 ----
     if should_generate(cfg, "plsda_scores"):
@@ -1970,7 +1970,7 @@ def executar(cfg: Config):
               "(conceito de N2); nao agrega a este tipo de analise. Troque "
               "para nivel=N2 se quiser autenticar pureza por especie.")
     elif cfg.run_ddsimca and should_generate(cfg, "ddsimca"):
-        modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
+        modo_dd = (cfg.ddsimca_train_on or "todos").lower()
         if conc is not None:
             # Pure samples: conc loaded as None -> NaN after asarray(float), OR 0.0.
             # Use both conditions — NaN == 0.0 is False, causing pure samples to be
@@ -2205,7 +2205,7 @@ def executar(cfg: Config):
         if not np.isfinite(lo): return f"{obs:.4f} [CI indisponivel]"
         return f"{obs:.4f} [{lo:.4f}, {hi:.4f}]"
 
-    _preset_str = (cfg.preprocessamento_padrao or "custom").lower()
+    _preset_str = (cfg.default_preprocessing or "custom").lower()
     if _preset_str in ("snv_sg_mc", "msc_sg_mc"):
         _scat = "SNV" if _preset_str == "snv_sg_mc" else "MSC"
         _pp_descr = (f"{_scat} -> SG(w={cfg.sg_window},p={cfg.sg_polyorder},"
@@ -2447,7 +2447,7 @@ def executar(cfg: Config):
             "classes":        list(lb.classes_),
             "wavenumbers":    wavenumbers,
             "n_opt":          int(n_opt),
-            "preset":         cfg.preprocessamento_padrao,
+            "preset":         cfg.default_preprocessing,
             "wn_min":         cfg.wn_min, "wn_max": cfg.wn_max,
             # v25: limites para diagnosticos em novos dados (Aba Predicao)
             "t2_ucl":         float(t2_lim),

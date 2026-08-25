@@ -384,7 +384,7 @@ def kennard_stone_split_group_aware(
 
 def generate_synthetic_data(cfg: "Config"):
     """Gera espectros sinteticos de teste, incluindo REPLICAS FISICAS
-    (n_replicas_sint por ponto amostral, como T1/T2/T3 do mesmo ponto real) e
+    (n_synthetic_replicates por ponto amostral, como T1/T2/T3 do mesmo ponto real) e
     mae_id — sem isso, DD-SIMCA (N2) e as figuras de merito de regressao (N3)
     nunca tinham dados suficientes para treinar/estimar ruido em modo
     sintetico (so 1 amostra "pura" por especie, sem nocao de replica).
@@ -394,22 +394,22 @@ def generate_synthetic_data(cfg: "Config"):
     do qual `executar()` deriva o numero de especies via prefixo."""
     print("[INFO] Synthetic MODE — generating test spectra.")
     rng = np.random.default_rng(cfg.seed)
-    wavenumbers = np.linspace(4000, 400, cfg.n_pontos_sint)
-    conc_base = np.linspace(0, 40, cfg.n_por_classe)
-    n_replicas = max(1, int(cfg.n_replicas_sint))
+    wavenumbers = np.linspace(4000, 400, cfg.n_synthetic_points)
+    conc_base = np.linspace(0, 40, cfg.n_per_class)
+    n_replicas = max(1, int(cfg.n_synthetic_replicates))
 
     def esp(c, p1, p2, ruido=0.015):
         frac = c / 100
         return ((1 - frac) * np.exp(-((wavenumbers - p1) ** 2) / (2 * 50 ** 2))
                 + frac     * np.exp(-((wavenumbers - (p1 + 20)) ** 2) / (2 * 45 ** 2))
                 + 0.6      * np.exp(-((wavenumbers - p2) ** 2) / (2 * 30 ** 2))
-                + rng.normal(0, ruido, cfg.n_pontos_sint))
+                + rng.normal(0, ruido, cfg.n_synthetic_points))
 
     params  = [(2900, 1740), (2850, 1650), (2960, 1710)]
     classes = ["Esp_A", "Esp_B", "Esp_C"]
     codigos = {"Esp_A": "ESA", "Esp_B": "ESB", "Esp_C": "ESC"}
     X_list, rot_list, conc_list, mae_list = [], [], [], []
-    adults = [a.upper() for a in (getattr(cfg, "sint_adulterantes", None) or ())]
+    adults = [a.upper() for a in (getattr(cfg, "synthetic_adulterants", None) or ())]
     for (p1, p2), cls in zip(params, classes):
         cod = codigos[cls]
         if adults:
@@ -427,7 +427,7 @@ def generate_synthetic_data(cfg: "Config"):
             # gerando um heatmap com a mistura realista de aprovados/reprovados.
             desloc_por_adult = {"A": 0.0, "M": 8.0, "S": -8.0}
             forca_marcador   = {"S": 0.055, "M": 0.030, "A": 0.008}
-            n_niveis = max(3, cfg.n_por_classe // 2)
+            n_niveis = max(3, cfg.n_per_class // 2)
             for a in adults:
                 dp = desloc_por_adult.get(a, 4.0)
                 fm = forca_marcador.get(a, 0.02)
@@ -875,9 +875,9 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     }
 
 
-def load_dx(pasta: str, parte_classe: int = 0,
+def load_dx(pasta: str, class_part: int = 0,
                  extrair_conc: bool = False,
-                 usar_parse_title: bool = True
+                 use_parse_title: bool = True
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                               Optional[np.ndarray], Optional[np.ndarray],
                               Optional[pd.DataFrame]]:
@@ -886,9 +886,9 @@ def load_dx(pasta: str, parte_classe: int = 0,
         (A) root folder with subfolders (each subfolder = 1 species/class)
             -> recursive via _detectar_subpastas_classe
         (B) single folder with .dx/.spectrum/.txt/.csv files
-            -> legacy mode (parte_classe)
+            -> legacy mode (class_part)
 
-    When usar_parse_title=True and the file is .dx, extracts ##TITLE= and
+    When use_parse_title=True and the file is .dx, extracts ##TITLE= and
     uses parse_title() for rich metadata (species, adulterant, content,
     replicate, mae_id). Otherwise, uses the filename (fallback).
 
@@ -922,7 +922,7 @@ def load_dx(pasta: str, parte_classe: int = 0,
     print(f"[INFO] {len(arquivos)} {ext_usada} files found "
           f"(parser={parser.__name__})")
 
-    pode_parse_title = usar_parse_title and ext_usada == ".dx"
+    pode_parse_title = use_parse_title and ext_usada == ".dx"
 
     espectros: List[Tuple[np.ndarray, np.ndarray]] = []
     rotulos: List[str] = []
@@ -988,7 +988,7 @@ def load_dx(pasta: str, parte_classe: int = 0,
                 classe = subpasta_nome
             else:
                 partes = nome_arq.replace("_", "-").split("-")
-                classe = partes[parte_classe] if abs(parte_classe) < len(partes) \
+                classe = partes[class_part] if abs(class_part) < len(partes) \
                           else nome_arq
             conc_i = _extrair_conc_filename(nome_arq) if extrair_conc else None
             mae_i  = None
@@ -1127,13 +1127,13 @@ def _leitor_sintetico(cfg: "Config"):
 
 def _leitor_csv(cfg: "Config"):
     wn, X, rot, conc = load_csv(
-        cfg.arquivo_csv, cfg.coluna_classe, cfg.coluna_conc)
+        cfg.arquivo_csv, cfg.coluna_classe, cfg.conc_column)
     return wn, X, rot, conc, None, None
 
 
 def _leitor_dx(cfg: "Config"):
-    return load_dx(cfg.input_folder, cfg.parte_classe,
-                        cfg.extrair_conc_filename, cfg.usar_parse_title)
+    return load_dx(cfg.input_folder, cfg.class_part,
+                        cfg.extract_conc_from_filename, cfg.use_parse_title)
 
 
 def _leitor_imagem(cfg: "Config"):

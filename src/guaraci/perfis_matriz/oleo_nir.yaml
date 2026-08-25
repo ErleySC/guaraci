@@ -5,7 +5,7 @@ descricao: "Oleos vegetais fixos por FT-NIR difuso"
 unidade_eixo: "cm-1"
 eixo_min: 4000.0
 eixo_max: 10000.0
-preprocessamento_padrao: "msc_sg_mc"
+default_preprocessing: "msc_sg_mc"
 vocabulario:
   classe: "especie"
   classe_plural: "especies"

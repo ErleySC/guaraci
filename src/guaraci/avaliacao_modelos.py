@@ -124,7 +124,7 @@ def fig_benchmark_classifiers(scores_por_clf: Dict[str, np.ndarray],
     ax.set_ylabel("Balanced Accuracy (CV fold)")
     ax.set_title(
         f"Auto-Benchmark — {n_splits}-fold GroupKFold (anti-leakage de replicas)\n"
-        f"Preprocessamento: {cfg.preprocessamento_padrao}",
+        f"Preprocessamento: {cfg.default_preprocessing}",
         fontsize=8.5, loc="left")
     ax.legend(fontsize=8); ax.set_ylim(0, 1.05)
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
@@ -310,7 +310,7 @@ def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
     ax.set_ylabel("Balanced Accuracy")
     ax.set_title(
         f"Monte Carlo CV ({n_iter} iteracoes, test={cfg.monte_carlo_test_size:.0%})\n"
-        f"IC95% percentil — pre-processamento: {cfg.preprocessamento_padrao}",
+        f"IC95% percentil — pre-processamento: {cfg.default_preprocessing}",
         fontsize=8.5, loc="left")
     ax.set_ylim(0, 1.08)
     ax.grid(axis="y", color="0.93", lw=0.5)
@@ -708,7 +708,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 ax.set_xlabel("Mean |SHAP value|")
                 ax.set_title(
                     f"SHAP — {nome} (top-{top_n} bandas espectrais)\n"
-                    f"Unidade: cm⁻¹  |  pre-proc: {cfg.preprocessamento_padrao}"
+                    f"Unidade: cm⁻¹  |  pre-proc: {cfg.default_preprocessing}"
                     f"  |  n={len(X_shap)}",
                     fontsize=8.5, loc="left")
                 ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
@@ -800,7 +800,7 @@ def fig_benchmark_regressors(rmsep_por_modelo: Dict[str, np.ndarray],
     ax.set_ylabel("RMSEP por especie (menor = melhor)")
     ax.set_title(
         f"Auto-Benchmark de regressao -- {n_especies} especies\n"
-        f"Pre-processamento: {cfg.preprocessamento_padrao}",
+        f"Pre-processamento: {cfg.default_preprocessing}",
         fontsize=8.5, loc="left")
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
@@ -822,7 +822,7 @@ def benchmark_regression_by_species(
     a variacao inter-especies confunda o sinal de adulteracao).
 
     Cada modelo usa O MESMO split cal/val por especie (reproduzido
-    deterministicamente com o mesmo cfg.seed/cfg.divisao_cal_val do PLS-R
+    deterministicamente com o mesmo cfg.seed/cfg.cal_val_split do PLS-R
     ja calculado) e o mesmo pre-processamento dentro de um sklearn Pipeline
     (sem vazamento entre cal/val) -- comparacao honesta apples-to-apples.
 
@@ -882,7 +882,7 @@ def benchmark_regression_by_species(
         # mesma logica de decisao, reproduzida aqui p/ evitar acoplamento
         # circular com pipeline.py (que importaria de volta este modulo).
         try:
-            if cfg.divisao_cal_val == "kennard_stone":
+            if cfg.cal_val_split == "kennard_stone":
                 ic, iv = kennard_stone_split_group_aware(
                     X_c, mae_c, cfg.frac_cal)
             elif mae_c is not None and len(np.unique(mae_c)) >= 4:

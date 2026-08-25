@@ -322,7 +322,7 @@ def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
     def _texts_da_figura(modo):
         fig, ax = plt.subplots()
         ax.plot([0, 1], [0, 1])
-        cfg = Config(modo=modo, formato_saida="png")
+        cfg = Config(modo=modo, output_format="png")
         # captura os textos ANTES de salvar fechar a figura
         registrados = {}
         orig_savefig = fig.savefig

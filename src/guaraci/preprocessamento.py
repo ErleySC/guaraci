@@ -115,7 +115,7 @@ class MSC(BaseEstimator, TransformerMixin):
 
 
 def build_preprocessor(cfg: "Config") -> Pipeline:
-    """Builds preprocessor according to cfg.preprocessamento_padrao.
+    """Builds preprocessor according to cfg.default_preprocessing.
 
     Presets:
         'snv_sg_mc'   : SNV -> SG -> mean-centering (Rinnan et al. 2009,
@@ -129,7 +129,7 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
     Mean-centering / autoscaling are kept INSIDE the Pipeline so that
     cross_val_predict does not leak statistics between folds.
     """
-    preset = (cfg.preprocessamento_padrao or "custom").lower()
+    preset = (cfg.default_preprocessing or "custom").lower()
 
     if preset == "autoscaling":
         return Pipeline([("auto", StandardScaler(with_mean=True, with_std=True))])

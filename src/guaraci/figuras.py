@@ -68,7 +68,7 @@ def setup_matplotlib(cfg: Config) -> None:
         "xtick.major.size": 3.5,
         "ytick.major.size": 3.5,
         "figure.dpi": 110,
-        "savefig.dpi": cfg.dpi_salvar,
+        "savefig.dpi": cfg.save_dpi,
         "savefig.bbox": "tight",
         "figure.facecolor": "white",
         "axes.facecolor": "white",
@@ -88,7 +88,7 @@ def save(fig, nome: str, pasta: str, cfg: Config,
     base = os.path.join(pasta, NOME_GRAFICOS)
     destino = os.path.join(base, subpasta) if subpasta else base
     os.makedirs(destino, exist_ok=True)
-    caminho = os.path.join(destino, f"{nome}.{cfg.formato_saida}")
+    caminho = os.path.join(destino, f"{nome}.{cfg.output_format}")
     # Marca de PROTOTIPO (achado B4-1): o modo imagem (colorimetria digital)
     # nao e validado e nao produz mae_id, entao roda SEM validacao
     # group-aware. Os relatorios PDF/Word/LaTeX ja saem carimbados, mas uma
@@ -488,7 +488,7 @@ def fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                        titulo="PCA — exploratory (unsupervised)",
                        xlabel="PC1", ylabel="PC2", puros_mask=puros_mask,
                        mapa_marcadores=mapa_marcadores,
-                       desenhar_elipses=cfg.mostrar_elipses_grupo)
+                       desenhar_elipses=cfg.show_group_ellipses)
     _legenda_lateral(ax_leg, ax)
     save(fig, "fig1_pca_scores", pasta, cfg)
 
@@ -513,13 +513,13 @@ def fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
                            titulo="(a) PLS-DA — LV1 × LV2",
                            xlabel="LV1", ylabel="LV2", puros_mask=puros_mask,
                            mapa_marcadores=mapa_marcadores,
-                           desenhar_elipses=cfg.mostrar_elipses_grupo)
+                           desenhar_elipses=cfg.show_group_ellipses)
         plot_scores_panel(ax2, T_pls[:, [1, 2]], rotulos, mapa_cores,
                            [var_lv_pls[1], var_lv_pls[2]],
                            titulo="(b) PLS-DA — LV2 × LV3",
                            xlabel="LV2", ylabel="LV3", puros_mask=puros_mask,
                            mapa_marcadores=mapa_marcadores,
-                           desenhar_elipses=cfg.mostrar_elipses_grupo)
+                           desenhar_elipses=cfg.show_group_ellipses)
         _legenda_lateral(ax_leg, ax1)
     else:
         fig = plt.figure(figsize=(8.5, 5.8), constrained_layout=True)
@@ -531,7 +531,7 @@ def fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
                            titulo="PLS-DA — LV1 × LV2",
                            xlabel="LV1", ylabel="LV2", puros_mask=puros_mask,
                            mapa_marcadores=mapa_marcadores,
-                           desenhar_elipses=cfg.mostrar_elipses_grupo)
+                           desenhar_elipses=cfg.show_group_ellipses)
         _legenda_lateral(ax_leg, ax)
     save(fig, "fig2_plsda_scores", pasta, cfg)
 
@@ -1739,7 +1739,7 @@ def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
         titulo=f"OPLS-DA — predictive × orthogonal ({n_ortho} orth. comp.)",
         xlabel="$t_p$ (predictive)",
         ylabel="$t_o$ (orthogonal 1)",
-        desenhar_elipses=cfg.mostrar_elipses_grupo,
+        desenhar_elipses=cfg.show_group_ellipses,
     )
     _legenda_lateral(ax_leg, ax)
     save(fig, "fig_sprint3_opls_scores", pasta, cfg)

@@ -17,7 +17,7 @@ from sklearn.preprocessing import LabelBinarizer
 from conftest import achar_pastas_run
 
 
-def _dados_benchmark(seed=0, n_por_classe=15, p=25, n_classes=3):
+def _dados_benchmark(seed=0, n_per_class=15, p=25, n_classes=3):
     """Dados sintéticos com grupos (estilo mae_id) para exercitar CV
     group-aware — classes bem separadas para os classificadores convergirem
     rápido (o objetivo é cobertura de código, não desempenho)."""
@@ -25,7 +25,7 @@ def _dados_benchmark(seed=0, n_por_classe=15, p=25, n_classes=3):
     X_list, y_list, grp_list = [], [], []
     for c in range(n_classes):
         centro = rng.normal(loc=c * 4.0, size=p)
-        for i in range(n_por_classe):
+        for i in range(n_per_class):
             X_list.append(centro + rng.normal(scale=1.0, size=p))
             y_list.append(c)
             grp_list.append(f"grupo_{c}_{i}")
@@ -84,7 +84,7 @@ def test_monte_carlo_cv_todos_os_modelos(pq, tmp_path):
     """Monte Carlo CV com monte_carlo_incluir_todos=True: roda PLS-DA + SVM +
     RF + GBM + XGBoost, com >= 5 iterações válidas cada (gate para a figura
     violino, que exige exatamente esse mínimo)."""
-    X, y_int, grupos, lb = _dados_benchmark(seed=2, n_por_classe=20)
+    X, y_int, grupos, lb = _dados_benchmark(seed=2, n_per_class=20)
     cfg = pq.Config(n_monte_carlo=6, monte_carlo_test_size=0.3,
                      monte_carlo_incluir_todos=True, seed=2)
     pasta = str(tmp_path)
@@ -207,10 +207,10 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
-        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
         run_benchmark_regression=True,
     )

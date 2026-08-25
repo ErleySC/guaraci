@@ -172,7 +172,7 @@ def test_roundtrip_preserva_valores(tmp_path):
     cfg.nivel = "N2"
     cfg.max_lvs = 25
     cfg.frac_holdout = 0.15
-    cfg.preprocessamento_padrao = "snv_sg_mc"
+    cfg.default_preprocessing = "snv_sg_mc"
     caminho = str(tmp_path / "config.yaml")
 
     cio.save_config(cfg, caminho)
@@ -181,7 +181,7 @@ def test_roundtrip_preserva_valores(tmp_path):
     assert lido.nivel == "N2"
     assert lido.max_lvs == 25
     assert lido.frac_holdout == 0.15
-    assert lido.preprocessamento_padrao == "snv_sg_mc"
+    assert lido.default_preprocessing == "snv_sg_mc"
 
 
 def test_carregar_config_inexistente_levanta(tmp_path):

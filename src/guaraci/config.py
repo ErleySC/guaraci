@@ -58,12 +58,12 @@ class Config:
     # DO NOT version personal paths: the real path goes in config.yaml
     # (gitignored). This default is just a portable example.
     input_folder: str = r"dados"
-    parte_classe: int = 0                     # fallback if no subfolders
-    extrair_conc_filename: bool = True        # only used in old fallback
+    class_part: int = 0                     # fallback if no subfolders
+    extract_conc_from_filename: bool = True        # only used in old fallback
     arquivo_csv: str = "seus_espectros.csv"
     coluna_classe: str = "classe"
-    coluna_conc: Optional[str] = None
-    usar_parse_title: bool = True             # uses ##TITLE= from JCAMP-DX
+    conc_column: Optional[str] = None
+    use_parse_title: bool = True             # uses ##TITLE= from JCAMP-DX
     # modo="imagem" (colorimetria digital, prototipo): extrai estatisticas de
     # cor (RGB/HSV/Lab) de cada imagem, reaproveitando input_folder (mesma
     # convencao de 1 subpasta por classe do modo dx). Use preprocessamento_
@@ -86,14 +86,14 @@ class Config:
     objetivo: str = "auto"                    # "auto" | "exploratorio" | "classificacao" | "quantificacao"
     tag:   str = ""                            # free label e.g. "pure", "soybean"
     output_folder: str = ""                     # DO NOT edit manually
-    formato_saida: str = "png"                # png | pdf | svg
-    dpi_salvar: int = 600
+    output_format: str = "png"                # png | pdf | svg
+    save_dpi: int = 600
     mostrar_graficos: bool = False
 
     # ---- Score plot style (PCA / PLS-DA / OPLS) ----
     # Disable for "clean" scatter (color by class only, no shapes/contours).
-    mostrar_marcadores_classe: bool = False   # False -> all circles 'o'
-    mostrar_elipses_grupo:     bool = False   # False -> no T2/convex hull ellipse
+    show_class_markers: bool = False   # False -> all circles 'o'
+    show_group_ellipses:     bool = False   # False -> no T2/convex hull ellipse
 
     # ---- Figure detail level ----
     # False (default): gera apenas o conjunto ESSENCIAL de figuras (scores PCA/
@@ -106,7 +106,7 @@ class Config:
     # ---- Group-aware validation (Q1 differentiator) ----
     # When True and mae_id is available, uses GroupKFold/GroupShuffleSplit
     # so that T1/T2/T3 of the same physical point stay in the same fold/holdout.
-    agrupar_por_mae_id: bool = True
+    group_by_mae_id: bool = True
 
     # ---- Perfil da matriz ------------------------------------------------
     # Junta num so' lugar tudo que e' propriedade da MATRIZ (faixa do eixo,
@@ -115,7 +115,7 @@ class Config:
     # e' trocar este nome, nunca editar codigo-fonte. Aceita tambem o
     # caminho de um YAML proprio. Nome desconhecido levanta erro com a
     # lista do que existe, em vez de cair num padrao errado em silencio.
-    perfil_matriz: str = "generico"
+    matrix_profile: str = "generico"
 
     # ---- Modo de rotulo na QUANTIFICACAO ---------------------------------
     # "cego" (PADRAO): a calibracao por classe usa a classe PREDITA pelo
@@ -126,7 +126,7 @@ class Config:
     # "controle": usa a classe verdadeira. Valido apenas para diagnostico
     #     interno (isolar erro de quantificacao do erro de classificacao).
     #     Numeros obtidos assim NAO representam o desempenho de uso.
-    modo_rotulo: str = "cego"
+    label_mode: str = "cego"
 
     # ---- Spectral truncation ---------------------------------------------
     # Padrao herdado do caso de uso de origem (FT-NIR difuso, 4000-10000
@@ -144,7 +144,7 @@ class Config:
     #   'autoscaling' : StandardScaler only (good on subset, poor on full: 0.472)
     #   'mc'          : mean-centering only
     #   'custom'      : honors aplicar_snv / aplicar_sg / aplicar_mc below
-    preprocessamento_padrao: str = "msc_sg_mc"   # FT-NIR difuso c/ espalhamento
+    default_preprocessing: str = "msc_sg_mc"   # FT-NIR difuso c/ espalhamento
 
     aplicar_snv: bool = True
     aplicar_sg: bool = True
@@ -156,11 +156,11 @@ class Config:
     max_lvs: int = 40
     n_pcs_pca: int = 10
     # HCA: dendrogram uses PCA scores with hca_n_pcs components
-    # (reduces spectral noise before clustering). comparar_hca_pipelines
+    # (reduces spectral noise before clustering). compare_hca_pipelines
     # generates a dendrogram panel per preprocessing method.
     hca_n_pcs: int = 65
     # Extra opt-in (fora do conjunto padrao de ~7 figuras "core"; ligar na mao).
-    comparar_hca_pipelines: bool = False
+    compare_hca_pipelines: bool = False
     n_splits_cv: int = 5
     n_repeats_cv: int = 3
 
@@ -173,10 +173,10 @@ class Config:
     # colapsa replicas fisicas num espectro medio por grupo antes de
     # selecionar). Hiperparametro avancado, config-only (mesmo precedente
     # de ipls_n_intervalos/vip_threshold_sel/etc -- nao exposto no app/CLI).
-    divisao_cal_val: str = "aleatoria"   # 'aleatoria' | 'kennard_stone'
+    cal_val_split: str = "aleatoria"   # 'aleatoria' | 'kennard_stone'
 
     n_permutacoes: int = 200
-    n_permutacoes_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic
+    n_permutations_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic
     n_bootstrap_vip: int = 30
     n_bootstrap_bca: int = 500
     # Os 3 abaixo sao "extra" opt-in (fora do conjunto padrao de ~7 figuras
@@ -203,17 +203,17 @@ class Config:
     frac_holdout: float = 0.20         # v14: external holdout by default
     # v15: pure samples (conc==0) ALWAYS stay in training — they are scarce (3/class)
     # and precious for DD-SIMCA/interpretation. Only adulterated go to holdout.
-    holdout_preserva_puros: bool = True
+    holdout_preserves_pure: bool = True
     seed_holdout: int = 42
 
-    n_por_classe: int = 20
-    n_pontos_sint: int = 1000
-    n_replicas_sint: int = 3   # replicas fisicas/ponto (estilo T1/T2/T3) no modo sintetico
+    n_per_class: int = 20
+    n_synthetic_points: int = 1000
+    n_synthetic_replicates: int = 3   # replicas fisicas/ponto (estilo T1/T2/T3) no modo sintetico
     # Modo sintetico: adulterantes a gerar por especie (letras A/M/S). Vazio =
     # so o gradiente puro legado (nao muda dados de teste existentes). Quando
     # preenchido, cada especie ganha puros + esses adulterantes em varios teores
     # -> permite exercitar o heatmap especie x adulterante (N3) sinteticamente.
-    sint_adulterantes: Tuple[str, ...] = ()
+    synthetic_adulterants: Tuple[str, ...] = ()
 
     seed: int = 42
 
@@ -227,7 +227,7 @@ class Config:
     # v14: 'todos' trains each model with ALL samples of the class
     # (exploratory; works with few pure samples). 'puros' = true one-class N2
     # but requires >=15 pure/class (current data: 3/class).
-    ddsimca_treinar_em: str = "puros"   # 'todos' | 'puros'
+    ddsimca_train_on: str = "puros"   # 'todos' | 'puros'
     # Diagnostico complementar ao LOGO via Procrustes Cross-Validation
     # (Kucheryavskiy/Rodionova/Pomerantsev) -- exige o extra opcional
     # [robusto] (pacote 'prcv'). NUNCA substitui o aviso "nao validado" do
@@ -259,7 +259,7 @@ class Config:
     ipls_n_intervalos: int = 20         # iPLS: number of intervals
     vip_threshold_sel: float = 1.0      # selection by VIP >= threshold
     sr_top_frac: float = 0.20           # selection by SR: top fraction
-    splsda_keep_por_comp: int = 50      # sPLS-DA: non-zero variables/component
+    splsda_keep_by_comp: int = 50      # sPLS-DA: non-zero variables/component
     # SPA/APS (Successive Projections Algorithm, Araujo et al. 2001) and
     # AG (Genetic Algorithm, GA-PLS) — opt-in (default False) because they
     # run many more CV evaluations than iPLS/VIP/SR/sPLS-DA (heavier, like

@@ -28,7 +28,7 @@ do JCAMP-DX para imagens genericas — mae_id fica None (sem agrupamento de
 replicas) e conc fica None (sem quantificacao) neste prototipo. Rotulos vem
 do nome da subpasta (mesma convencao do modo .dx).
 
-IMPORTANTE — pre-processamento: use `preprocessamento_padrao="autoscaling"`
+IMPORTANTE — pre-processamento: use `default_preprocessing="autoscaling"`
 (ou "mc") no modo="imagem", NUNCA os presets com Savitzky-Golay
 ("msc_sg_mc"/"snv_sg_mc"). MSC e SG pressupoem um sinal espectral CONTINUO
 ao longo do eixo de variaveis (comprimento de onda) — nao fazem sentido

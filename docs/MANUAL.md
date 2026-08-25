@@ -125,7 +125,7 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   seletividade por espécie lado a lado, com indicação explícita ("n/a") para
   espécies sem réplicas físicas suficientes para estimar o ruído
   instrumental. O *split* calibração/validação dessa regressão aceita dois
-  métodos via `divisao_cal_val` no `config.yaml` (hiperparâmetro avançado,
+  métodos via `cal_val_split` no `config.yaml` (hiperparâmetro avançado,
   **não** exposto no aplicativo/CLI — mesmo padrão de
   `ipls_n_intervalos`/`vip_threshold_sel`): `"aleatoria"` (padrão,
   `GroupShuffleSplit` *group-aware*) ou `"kennard_stone"` (Kennard e Stone,
@@ -145,7 +145,7 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   combinações abaixo de R²cv = 0,70") — para que uma quantificação que só
   funciona em parte das combinações não seja lida como sucesso geral. O
   adulterante de cada amostra é derivado do `mae_id`. *(No modo sintético, ative
-  com `sint_adulterantes` no `config.yaml`, ex.: `["S","M","A"]`.)*
+  com `synthetic_adulterants` no `config.yaml`, ex.: `["S","M","A"]`.)*
 
 ### 2.2 Objetivo científico: Exploratório, Classificação, Quantificação
 
@@ -254,7 +254,7 @@ conteúdo por categoria:
   `Quantificacao` — corrigido em 2026-07-13; versões anteriores usavam
   `N1`/`N2`/`N3` cru aqui).
 - **`Graficos/`** — todas as figuras (`.png`/`.pdf`/`.svg`, conforme
-  `formato_saida`), incluindo subpastas de figuras detalhadas (por exemplo,
+  `output_format`), incluindo subpastas de figuras detalhadas (por exemplo,
   `ddsimca/`).
 - **`Tabelas/`** — dados tabulares em CSV (identificadores de amostra,
   metadados, teste de Martens, comparação de *pipelines*, benchmarks).
@@ -328,7 +328,7 @@ de perfil (`src/guaraci/perfis_matriz/*.yaml`):
 |---|---|
 | `unidade_eixo` | `cm-1` ou `nm` — aparece nos rótulos e no model card |
 | `eixo_min` / `eixo_max` | faixa espectral usada; só se aplica se você não definiu a sua |
-| `preprocessamento_padrao` | preset inicial adequado à matriz |
+| `default_preprocessing` | preset inicial adequado à matriz |
 | `vocabulario` | como a saída chama as coisas: `classe`, `matriz`, `alvo`, `conforme`, `nao_conforme` |
 | `faixa_trabalho` | faixa do analito coberta pela calibração; usada para marcar extrapolação |
 | `referencia` | de onde vieram esses valores (nunca inventar) |
@@ -468,7 +468,7 @@ Ridge, Lasso, *Elastic Net*, SVR (RBF) e *Random Forest Regressor* — um
 modelo **por espécie** (mesma arquitetura da quantificação, calibração
 separada evita que a variação entre espécies confunda o sinal de
 adulteração), com o **mesmo *split* calibração/validação** (determinístico,
-mesma semente/`divisao_cal_val` do PLS-R) e o mesmo pré-processamento, para
+mesma semente/`cal_val_split` do PLS-R) e o mesmo pré-processamento, para
 uma comparação honesta ponto a ponto. *Opt-in* via `benchmark_regressao`
 (aplicativo e CLI, categoria Avançado — mesmo padrão do Auto-Benchmark de
 classificação): gera `benchmark_regressao.csv` (RMSEP/R² agregado e por

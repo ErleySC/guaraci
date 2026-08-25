@@ -6,7 +6,7 @@ descricao: "Mel por Vis-NIR (perfil declarado, nao validado com dado real)"
 unidade_eixo: "nm"
 eixo_min: 400.0
 eixo_max: 1100.0
-preprocessamento_padrao: "snv_sg_mc"
+default_preprocessing: "snv_sg_mc"
 vocabulario:
   classe: "tipo"
   classe_plural: "tipos"

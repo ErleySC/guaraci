@@ -249,9 +249,9 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
         # sinal espectral continuo (eixo de comprimento de onda) — nao fazem
         # sentido cientifico p/ um vetor curto de estatisticas de cor
         # discretas e heterogeneas (H em [0,1], Lab em dezenas/centenas).
-        preprocessamento_padrao="autoscaling",
+        default_preprocessing="autoscaling",
         n_splits_cv=2, n_repeats_cv=1, max_lvs=3,
-        n_permutacoes=3, n_permutacoes_wold=3,
+        n_permutacoes=3, n_permutations_wold=3,
         n_bootstrap_vip=2, n_bootstrap_bca=10, n_monte_carlo=2,
         run_ddsimca=False, run_opls=False, executar_etapa4=False,
         run_wold=False, comparar_pipelines=False,

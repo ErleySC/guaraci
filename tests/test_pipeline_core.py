@@ -132,13 +132,13 @@ def test_savgol_preserva_shape(pq):
 def test_construir_preprocessador_presets(pq):
     """build_preprocessor: cada preset monta as etapas esperadas."""
     cfg = pq.Config()
-    cfg.preprocessamento_padrao = "snv_sg_mc"
+    cfg.default_preprocessing = "snv_sg_mc"
     assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
-    cfg.preprocessamento_padrao = "msc_sg_mc"
+    cfg.default_preprocessing = "msc_sg_mc"
     assert list(pq.build_preprocessor(cfg).named_steps) == ["msc", "sg", "mc"]
-    cfg.preprocessamento_padrao = "mc"
+    cfg.default_preprocessing = "mc"
     assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
-    cfg.preprocessamento_padrao = "autoscaling"
+    cfg.default_preprocessing = "autoscaling"
     assert list(pq.build_preprocessor(cfg).named_steps) == ["auto"]
 
 
@@ -146,7 +146,7 @@ def test_construir_preprocessador_custom_combina_flags_individuais(pq):
     """preset='custom' honra aplicar_snv/aplicar_sg/aplicar_mc individualmente
     -- nunca testado antes (só os 4 presets nomeados tinham teste)."""
     cfg = pq.Config()
-    cfg.preprocessamento_padrao = "custom"
+    cfg.default_preprocessing = "custom"
 
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, True, True
     assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
@@ -165,7 +165,7 @@ def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
     """Nenhuma flag marcada seria um Pipeline VAZIO (quebraria .fit()) --
     fallback de seguranca: usa mean-centering sozinho."""
     cfg = pq.Config()
-    cfg.preprocessamento_padrao = "custom"
+    cfg.default_preprocessing = "custom"
     cfg.aplicar_snv = cfg.aplicar_sg = cfg.aplicar_mc = False
     assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
 
@@ -174,7 +174,7 @@ def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
     """Qualquer preset nao reconhecido cai no ramo custom (mesmo
     comportamento de 'custom', usando as flags individuais)."""
     cfg = pq.Config()
-    cfg.preprocessamento_padrao = "isto_nao_existe"
+    cfg.default_preprocessing = "isto_nao_existe"
     cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, True
     assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "mc"]
 
@@ -766,7 +766,7 @@ def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
     correção de 2026-07-13 — P8 residual) e o pré-processamento (rastreável)."""
     cfg = pq.Config()
     cfg.nivel = "N1"
-    cfg.preprocessamento_padrao = "msc_sg_mc"
+    cfg.default_preprocessing = "msc_sg_mc"
     nome = pq.generate_output_name(cfg, n_classes=13, n_amostras=100)
     base = nome.replace("\\", "/").split("/")[-1]
     assert base.startswith("PLSDA_OE_" + pq._NIVEL_SLUG_PASTA["N1"])
@@ -1453,7 +1453,7 @@ def test_ks_group_aware_poucos_grupos_cai_no_split_por_amostra(pq):
 @pytest.mark.slow
 def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
     """Integracao real: executar() em N3 sintetico com
-    divisao_cal_val='kennard_stone' completa sem erro e gera o resumo com
+    cal_val_split='kennard_stone' completa sem erro e gera o resumo com
     o bloco de figuras de merito (mesmo caminho da regressao, so' o metodo
     de split cal/val muda)."""
     import os
@@ -1461,12 +1461,12 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
-        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
-        divisao_cal_val="kennard_stone",
+        cal_val_split="kennard_stone",
     )
     os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
@@ -1489,10 +1489,10 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
+        modo="sintetico", n_per_class=10, n_synthetic_points=60,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=3, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
         run_martens=True,
     )
@@ -1519,7 +1519,7 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
 def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
     """Achado em 2026-08-06: teste_wold/teste_cv_anova rodavam SEM checar o
     objetivo (diferente do teste de permutacao, que ja tinha esse guard) --
-    em N3 (Quantificacao), refaziam n_permutacoes_wold refits de CV usando
+    em N3 (Quantificacao), refaziam n_permutations_wold refits de CV usando
     rotulos de CLASSE (Y_bin one-hot) para um run que nao classifica nada, e
     escreviam "Wold R2Y/Q2Y intercept"/"CV-ANOVA F" no resumo sem sentido
     nenhum nesse contexto. Trava que, com os dois toggles LIGADOS num run
@@ -1539,10 +1539,10 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
-        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
         run_wold=True, run_cv_anova=True,
     )
@@ -1579,10 +1579,10 @@ def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N1",
-        n_por_classe=10, n_pontos_sint=60,
+        n_per_class=10, n_synthetic_points=60,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
         run_wold=True, run_cv_anova=True,
     )
@@ -1608,10 +1608,10 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
-        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
     )
     os.makedirs(cfg.input_folder, exist_ok=True)
@@ -1643,15 +1643,15 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N1",
-        n_por_classe=8, n_pontos_sint=50,
+        n_per_class=8, n_synthetic_points=50,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
-        n_permutacoes=5, n_permutacoes_wold=5,
+        n_permutacoes=5, n_permutations_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
         run_benchmark=False, run_monte_carlo=False,
         run_shap=False, run_wold=False, run_cv_anova=False,
         run_opls=False, executar_etapa4=False, comparar_pipelines=False,
-        comparar_hca_pipelines=False, max_lvs=5,
+        compare_hca_pipelines=False, max_lvs=5,
         run_ddsimca=True,          # ligado manualmente, propositalmente
     )
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)
@@ -1839,10 +1839,10 @@ def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
     import os
     cfg = pq.Config(
         input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
-        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
         run_ddsimca=True, run_opls=False, executar_etapa4=False,
         run_wold=False, comparar_pipelines=False,
@@ -1865,10 +1865,10 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
     import os
     cfg = pq.Config(
         input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
-        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
         run_ddsimca=True, run_opls=False, executar_etapa4=False,
         run_wold=False, comparar_pipelines=False,

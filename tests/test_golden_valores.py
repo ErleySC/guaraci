@@ -151,16 +151,16 @@ def _cfg_golden(pq, base: Path):
     """Config FIXA do run golden. Não mudar sem regravar o golden.
 
     Valores pequenos de propósito (o teste roda na CI em 10 combinações de
-    SO/versão), mas com `n_replicas_sint=3` para que a validação group-aware
+    SO/versão), mas com `n_synthetic_replicates=3` para que a validação group-aware
     por `mae_id` e o DD-SIMCA tenham o que exercitar de verdade.
     """
     cfg = pq.Config(
         input_folder=str(base / "in"),
         output_root_folder=str(base / "saida"),
-        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
-        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
-        n_permutacoes=5, n_permutacoes_wold=5,
+        n_permutacoes=5, n_permutations_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
         max_lvs=5, nivel="N2", figuras_detalhadas=False,
     )

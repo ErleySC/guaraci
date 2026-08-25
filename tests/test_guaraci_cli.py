@@ -19,15 +19,15 @@ def test_modo_ddsimca_get_val_e_autoexplicativo(guaraci_mod):
     """O valor exibido (nao o gravado) deixa claro o MECANISMO de treino --
     'somente puras' (nao so' 'autenticacao') e 'todas as amostras' (nao so'
     'exploratorio'), evitando a confusao de linguagem reportada pelo usuario."""
-    cfg_puros = guaraci_mod.Config(ddsimca_treinar_em="puros")
-    cfg_todos = guaraci_mod.Config(ddsimca_treinar_em="todos")
+    cfg_puros = guaraci_mod.Config(ddsimca_train_on="puros")
+    cfg_todos = guaraci_mod.Config(ddsimca_train_on="todos")
     val_puros = guaraci_mod._get_val(cfg_puros, "modo_ddsimca")
     val_todos = guaraci_mod._get_val(cfg_todos, "modo_ddsimca")
     assert "puras" in val_puros.lower()
     assert "todas" in val_todos.lower() or "todos" in val_todos.lower()
     # valor interno gravado no config NAO muda (so' a exibicao)
-    assert cfg_puros.ddsimca_treinar_em == "puros"
-    assert cfg_todos.ddsimca_treinar_em == "todos"
+    assert cfg_puros.ddsimca_train_on == "puros"
+    assert cfg_todos.ddsimca_train_on == "todos"
 
 
 def test_modo_ddsimca_rotulo_opcao_consistente_com_get_val(guaraci_mod):
@@ -36,7 +36,7 @@ def test_modo_ddsimca_rotulo_opcao_consistente_com_get_val(guaraci_mod):
     ('puros'/'todos'), inconsistente com _get_val (que ja mostrava o rotulo
     amigavel) -- o usuario via textos diferentes pro mesmo campo dependendo
     de onde olhava no CLI. Ambos devem concordar agora."""
-    cfg = guaraci_mod.Config(ddsimca_treinar_em="puros")
+    cfg = guaraci_mod.Config(ddsimca_train_on="puros")
     rotulo_valor_atual = guaraci_mod._get_val(cfg, "modo_ddsimca")
     rotulo_no_menu = guaraci_mod._rotulo_opcao("modo_ddsimca", "puros")
     assert rotulo_valor_atual == rotulo_no_menu
@@ -47,13 +47,13 @@ def test_modo_ddsimca_set_val_aceita_rotulo_novo_e_valor_cru(guaraci_mod):
     interno cru (compatibilidade) -- grava sempre o codigo interno correto."""
     cfg = guaraci_mod.Config()
     guaraci_mod._set_val(cfg, "modo_ddsimca", "todas as amostras (exploratorio)")
-    assert cfg.ddsimca_treinar_em == "todos"
+    assert cfg.ddsimca_train_on == "todos"
 
     guaraci_mod._set_val(cfg, "modo_ddsimca", "puros")
-    assert cfg.ddsimca_treinar_em == "puros"
+    assert cfg.ddsimca_train_on == "puros"
 
     guaraci_mod._set_val(cfg, "modo_ddsimca", "somente puras (autenticacao)")
-    assert cfg.ddsimca_treinar_em == "puros"
+    assert cfg.ddsimca_train_on == "puros"
 
 
 def test_modo_ddsimca_set_val_rejeita_valor_invalido(guaraci_mod):
@@ -272,7 +272,7 @@ def test_presets_objetivo_existem_e_tem_descricao_bilingue(
     ("Explorar Dados",    "run_ddsimca", False),
     ("Autenticar Pureza", "nivel", "N2"),
     ("Autenticar Pureza", "run_ddsimca", True),
-    ("Autenticar Pureza", "ddsimca_treinar_em", "puros"),
+    ("Autenticar Pureza", "ddsimca_train_on", "puros"),
     ("Quantificar Teor",  "nivel", "N3"),
     ("Quantificar Teor",  "run_ddsimca", False),
 ])
@@ -550,30 +550,30 @@ def test_todo_rotulo_de_nivel_tem_traducao(guaraci_mod):
 # pedido pelo usuario.
 
 def test_editar_campo_bool_escolha_1_liga(guaraci_mod, monkeypatch):
-    cfg = guaraci_mod.Config(mostrar_elipses_grupo=False)
+    cfg = guaraci_mod.Config(show_group_ellipses=False)
     respostas = iter(["1"])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
     assert ok is True
-    assert cfg.mostrar_elipses_grupo is True
+    assert cfg.show_group_ellipses is True
 
 
 def test_editar_campo_bool_escolha_2_desliga(guaraci_mod, monkeypatch):
-    cfg = guaraci_mod.Config(mostrar_elipses_grupo=True)
+    cfg = guaraci_mod.Config(show_group_ellipses=True)
     respostas = iter(["2"])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
     assert ok is True
-    assert cfg.mostrar_elipses_grupo is False
+    assert cfg.show_group_ellipses is False
 
 
 def test_editar_campo_bool_enter_mantem_valor(guaraci_mod, monkeypatch):
-    cfg = guaraci_mod.Config(mostrar_elipses_grupo=True)
+    cfg = guaraci_mod.Config(show_group_ellipses=True)
     respostas = iter([""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
     assert ok is False
-    assert cfg.mostrar_elipses_grupo is True
+    assert cfg.show_group_ellipses is True
 
 
 @pytest.mark.parametrize("entrada", ["9", "abc", "y", "true", "sim"])
@@ -583,12 +583,12 @@ def test_editar_campo_bool_entrada_fora_de_1_2_e_rejeitada(guaraci_mod, monkeypa
     ou "2" e' rejeitada explicitamente e o valor NAO muda -- nem "y", nem
     palavras que faziam parte do vocabulario antigo ("true"/"sim"), porque
     a escolha agora e' estritamente numerada."""
-    cfg = guaraci_mod.Config(mostrar_elipses_grupo=False)
+    cfg = guaraci_mod.Config(show_group_ellipses=False)
     respostas = iter([entrada])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
     assert ok is False
-    assert cfg.mostrar_elipses_grupo is False, (
+    assert cfg.show_group_ellipses is False, (
         f"entrada {entrada!r} nao devia ter alterado o campo")
 
 
@@ -621,11 +621,11 @@ def test_editar_campo_bool_grava_valor_canonico_independente_do_idioma(
     lang_antes = guaraci_mod._STATE["lang"]
     try:
         guaraci_mod._STATE["lang"] = lang
-        cfg = guaraci_mod.Config(mostrar_elipses_grupo=False)
+        cfg = guaraci_mod.Config(show_group_ellipses=False)
         respostas = iter(["1"])
         monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
         guaraci_mod._editar_campo(cfg, "figuras_mostrar_elipses")
-        assert cfg.mostrar_elipses_grupo is True
+        assert cfg.show_group_ellipses is True
     finally:
         guaraci_mod._STATE["lang"] = lang_antes
 
