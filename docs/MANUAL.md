@@ -809,8 +809,9 @@ re-executada nesta sessão).
   validada (nenhuma, no dataset atual). `Quantificar` é bloqueado por
   `Identificar` (nunca lança exceção — devolve motivo estruturado:
   `identificacao_desconhecida` ou `identificacao_ambigua`). A ressalva
-  aparece nos 3 lugares combinados (log da execução, `model_card.md`
-  seção 10, e `<modelo>.joblib.manifest.json` → `identification_coverage`)
+  aparece nos 3 lugares combinados (log da execução, addendum "Identificação
+  espécie×adulterante" no `model_card.md`, e `<modelo>.joblib.manifest.json`
+  → `identification_coverage`)
   — mesmo padrão já usado para `grouping_guarantee` (Bloco 8). A predição
   em lote (CLI, menu "Predição em Lote") ganha as colunas
   `classe_identificada`, `identificacao_cobertura`,

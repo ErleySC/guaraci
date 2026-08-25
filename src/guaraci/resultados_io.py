@@ -527,13 +527,22 @@ def append_identification_model_card(pasta: str,
     chave `identification_coverage`). Lista TODA combinacao, nunca so' as
     validadas -- omitir as nao-validadas seria esconder exatamente a
     ressalva que esta secao existe para tornar visivel.
+
+    SEM NUMERO de secao fixo (ao contrario de `append_regression_model_card`,
+    que sempre escreve "## 9."): esta funcao e' chamada logo apos o dominio
+    de aplicabilidade, ANTES da regressao (secao 9, condicional, so' roda
+    quando ha' adulterante+especies suficientes) -- numerar como "## 10."
+    produziria "10." aparecendo ANTES de "9." no arquivo sempre que a
+    regressao rodasse depois (achado real, verificado lendo o model_card.md
+    gerado por uma execucao de teste). Titulo sem numero e' correto em
+    qualquer ordem de chamada.
     """
     caminho = os.path.join(pasta, "model_card.md")
     if not os.path.isfile(caminho):
         return
 
     linhas: List[str] = [
-        "", "## 10. Addendum -- Identificacao especie x adulterante "
+        "", "## Addendum -- Identificacao especie x adulterante "
         "(Bloco 9b, mode cego)", "",
         "Ensemble conformal calibrado por combinacao especie x adulterante "
         "-- ver `identificacao.py` para o metodo. `alpha_alcancavel` e' o "

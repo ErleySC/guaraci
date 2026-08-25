@@ -144,6 +144,21 @@ def test_ressalva_aparece_no_model_card(pkg_bloco9b):
     assert "nao_validado_n1" in texto
 
 
+def test_addendum_identificacao_nao_forca_numero_de_secao(pkg_bloco9b):
+    """Regressao de achado real (revisao 2026-08-25): o addendum de
+    Identificacao e' anexado ANTES da regressao (secao 9, condicional) no
+    fluxo de executar() -- numera-lo como '## 10.' fixo produzia '10.'
+    aparecendo ANTES de '9.' no arquivo (append-only, ordem de escrita
+    determina ordem no arquivo). O titulo tem que ficar sem numero."""
+    _pkg, pasta, _cam = pkg_bloco9b
+    caminho = os.path.join(pasta, pq_nome_relatorios(pasta), "model_card.md")
+    texto = open(caminho, encoding="utf-8").read()
+    assert "## 10." not in texto
+    if "## 9. Addendum" in texto:
+        assert (texto.index("Identificacao especie x adulterante")
+                < texto.index("## 9. Addendum"))
+
+
 def test_ressalva_aparece_no_manifesto(pkg_bloco9b):
     _pkg, _pasta, cam_modelo = pkg_bloco9b
     cam_manifesto = cam_modelo + ".manifest.json"
