@@ -136,7 +136,7 @@ def specificity_by_class(cm: np.ndarray) -> np.ndarray:
 #  Plot helpers
 # =========================================================================
 
-def elipse_t2(ax, x, y, color, lw=1.4, alpha=0.85,
+def ellipse_t2(ax, x, y, color, lw=1.4, alpha=0.85,
               max_excentricidade: float = 50.0,
               limite_dispersao: Optional[Tuple[float, float]] = None):
     """Hotelling T2 95% ellipse (chi2_{2,0.95}). No fill. Returns False
@@ -258,7 +258,7 @@ def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
                        linewidths=lw_e, zorder=3, alpha=alpha,
                        label=f"{cls} (n={n_cls})")
         if desenhar_elipses:
-            ok = elipse_t2(ax, scores[idx, 0], scores[idx, 1], c,
+            ok = ellipse_t2(ax, scores[idx, 0], scores[idx, 1], c,
                             lw=1.4, limite_dispersao=limite)
             if not ok:
                 convex_hull_contorno(ax, scores[idx, 0], scores[idx, 1],

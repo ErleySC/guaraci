@@ -188,7 +188,7 @@ from guaraci.figuras import (   # noqa: E402
     setup_matplotlib,
     save,
     specificity_by_class,
-    elipse_t2,
+    ellipse_t2,
     convex_hull_contorno,
     adaptive_scatter_parameters,
     _ticks_x_inteiros,
