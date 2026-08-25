@@ -755,6 +755,72 @@ re-executada nesta sessão).
   espécie/adulterante é quantificável, e o heatmap marca explicitamente
   quais falham em vez de escondê-los numa média.
 
+- **A identificação de adulterante não pode ser agregada entre espécies —
+  a matriz-hospedeira domina o sinal de adulteração mais que o próprio
+  adulterante (medido em 2026-08-25, design do Bloco 9).** Antes de
+  calibrar um identificador de adulterante (conjunto aberto, um por
+  soja/algodão/milho, agregando as 13 espécies), testou-se se a
+  assinatura espectral de cada adulterante é consistente entre matrizes
+  — pré-requisito para que uma classe agregada seja estatisticamente
+  válida (exchangeability). Calculou-se, para cada amostra adulterada, o
+  desvio em relação à média da própria espécie pura (delta), e mediu-se
+  quanto dessa direção é explicada por ESPÉCIE vs. por ADULTERANTE
+  (R² tipo ANOVA/PERMANOVA):
+
+  | Corte de teor | R² por adulterante (3 classes) | R² por espécie (13 classes) |
+  |---|---|---|
+  | ≥0% (n=1.633) | 0,0034 | 0,1866 (bruto) / 0,1034 (direção normalizada) |
+  | ≥10% (n=641)  | 0,0140 | 0,2182 (bruto) / 0,1147 (direção normalizada) |
+
+  Espécie explica 6 a 13× mais variância do delta que o tipo de
+  adulterante — e essa relação **se fortalece**, não enfraquece, em
+  concentrações mais altas (onde o sinal químico de adulteração deveria
+  estar mais evidente, não mais confundido por ruído). Isso indica que o
+  efeito de matriz-hospedeira é real e sistemático, não um artefato de
+  baixa razão sinal-ruído: "soja em Andiroba" e "soja em Castanha do
+  Pará" não compartilham uma direção espectral comum o suficiente para
+  serem tratadas como a mesma população estatística. **Decisão de
+  design:** o identificador de adulterante (Bloco 9) é calibrado por
+  combinação espécie×adulterante — a granularidade que os dados de fato
+  sustentam conceitualmente —, com cobertura reportada como **não
+  validável** no dataset atual (mesmo padrão e mesma linguagem do gate
+  DD-SIMCA, Seção 4.6 do relatório PIBIC): 36 das 38 combinações
+  espécie×adulterante têm exatamente 1 sessão de coleta independente
+  (`grupos_mae_id` inflado pela variação de teor dentro da mesma sessão
+  não conta como independência real). A ressalva "não validado" se
+  propaga para o resultado final de qualquer predição em amostra nova,
+  não fica só no relatório de auditoria interno.
+
+- **Bloco 9b (implementado e verificado em 2026-08-25): fluxo completo
+  Detectar → Identificar → Quantificar em amostra nova, no mode cego.**
+  `identificacao.py` calibra um ensemble conformal (`ConformalOneClass`,
+  ver `conformal.py`) por combinação espécie×adulterante, reaproveitando o
+  mesmo espaço PCA do domínio de aplicabilidade — sem ajustar um espaço
+  novo por combinação, a maioria tem poucos espectros de 1-2 sessões. A
+  contagem de sessão independente usa `dados_io.session_from_mae_id`
+  (**não** o `mae_id` bruto: uma amostra adulterada tem um `mae_id` por
+  NÍVEL DE TEOR, não por sessão de coleta — contar bruto infla o `n` de 1
+  sessão real para até 15). Reexecutado contra o dataset real após essa
+  correção: **confirma exatamente** os números já citados acima (36
+  combinações com 1 sessão, 2 com 2 — Andiroba×soja e Maracujá×algodão,
+  as únicas com `alpha_alcançável` real de 0,333 em vez de `n/a`).
+  `Identificar` nunca força uma classe: só preenche resultado quando
+  exatamente UMA combinação é aceita sob cobertura estatisticamente
+  validada (nenhuma, no dataset atual). `Quantificar` é bloqueado por
+  `Identificar` (nunca lança exceção — devolve motivo estruturado:
+  `identificacao_desconhecida` ou `identificacao_ambigua`). A ressalva
+  aparece nos 3 lugares combinados (log da execução, `model_card.md`
+  seção 10, e `<modelo>.joblib.manifest.json` → `identification_coverage`)
+  — mesmo padrão já usado para `grouping_guarantee` (Bloco 8). A predição
+  em lote (CLI, menu "Predição em Lote") ganha as colunas
+  `classe_identificada`, `identificacao_cobertura`,
+  `identificacao_alpha_alcancavel`, `identificacao_candidatos`,
+  `teor_estimado`, `quantificacao_motivo_bloqueio` e `alpha_total`
+  (limite de união/Bonferroni sobre os alpha de Detectar+Identificar —
+  Vovk, Gammerman & Shafer 2005; Angelopoulos & Bates 2022) sempre que o
+  modelo carregado tiver o ensemble; modelos exportados antes do
+  Bloco 9b continuam funcionando sem essas colunas (retrocompatível).
+
 - **Modo imagem (colorimetria digital): protótipo só quando não há fonte
   de agrupamento por amostra física.** Desde o Bloco 8 (2026-08-25), o
   carregador (`dados_imagem.py`) detecta automaticamente 3 níveis de
@@ -863,9 +929,28 @@ WOLD, S. Cross-validatory estimation of the number of components in factor
 and principal components models. **Technometrics**, v. 20, n. 4,
 p. 397-405, 1978.
 
+ANGELOPOULOS, A. N.; BATES, S. A gentle introduction to conformal
+prediction and distribution-free uncertainty quantification. **arXiv**,
+2107.07511, 2022.
+
+VOVK, V.; GAMMERMAN, A.; SHAFER, G. **Algorithmic learning in a random
+world**. New York: Springer, 2005.
+
 ---
 
-*Última revisão do manual: novo `docs/VALIDATION.md` (cartão de visita
+*Última revisão do manual: Bloco 9b (2026-08-25) — fluxo completo Detectar
+→ Identificar → Quantificar em amostra nova (mode cego), implementado e
+verificado contra o dataset real: `identificacao.py` novo (ensemble
+conformal por combinação espécie×adulterante), `pipeline.
+pls_regression_by_species` agora persiste os modelos de regressão POR
+ESPÉCIE ajustados (antes só calculava métricas de CV, não guardava o
+modelo pronto para uso), `predicao.predict_blind`/`quantify_sample` novos,
+CLI (menu Predição em Lote) ganha as colunas do fluxo cego. Achado
+corrigido durante a implementação: a contagem de "sessão de coleta
+independente" não pode usar `mae_id` bruto (infla até 15× por diluição de
+teor dentro da mesma sessão) — `dados_io.session_from_mae_id` novo,
+reexecução contra o dataset real confirma os números já citados acima (36
+combinações com 1 sessão, 2 com 2). Antes: novo `docs/VALIDATION.md` (cartão de visita
 técnico) — tabela com 11 linhas de validação contra sklearn/fórmulas
 fechadas (PLS-DA, SNV normalização+invariância de espalhamento, VIP, MSC,
 DD-SIMCA T²/Q-resíduos, CV-ANOVA, BCa, teste de permutação, OPLS-DA),

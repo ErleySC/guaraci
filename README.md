@@ -244,6 +244,16 @@ after export.
 - **Small *n*** → every metric ships with **confidence intervals** (BCa), and
   conformal prediction refuses to produce an interval when *n* is
   insufficient instead of extrapolating.
+- **Adulterant identification cannot be pooled across species** — the host
+  matrix dominates the adulteration signal more than the adulterant itself
+  (species explains 6-13x more delta-spectrum variance than adulterant type,
+  measured; see `docs/MANUAL.md`). Calibrated per species×adulterant, with
+  coverage reported as unvalidated on the current dataset (same pattern as
+  the DD-SIMCA gate: 36 of 38 combinations have exactly 1 independent
+  collection session). Implemented as a full Detect → Identify → Quantify
+  blind-prediction flow (`identificacao.py`, `predicao.predict_blind`) that
+  never forces a class or a number when coverage isn't validated — see
+  `docs/MANUAL.md`.
 - **Image mode (digital colorimetry) is a prototype only without a grouping
   guarantee** — with a per-sample subfolder or an association CSV, it has
   the same leakage protection as the other input modes; without either, it

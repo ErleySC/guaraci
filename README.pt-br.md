@@ -271,6 +271,16 @@ depois de exportado.
 - **n pequeno**: todas as métricas vêm com **intervalo de confiança** (BCa), e
   a predição conformal recusa devolver intervalo quando o *n* é insuficiente,
   em vez de extrapolar.
+- **Identificação de adulterante não pode ser agregada entre espécies** — a
+  matriz-hospedeira domina o sinal de adulteração mais que o próprio
+  adulterante (espécie explica 6-13× mais variância do delta espectral que o
+  tipo de adulterante, medido; ver `docs/MANUAL.md`). Calibrado por
+  espécie×adulterante, com cobertura não validada no dataset atual (mesmo
+  padrão do gate DD-SIMCA: 36 de 38 combinações têm 1 só sessão de coleta
+  independente). Implementado como fluxo completo Detectar → Identificar →
+  Quantificar em amostra nova (`identificacao.py`,
+  `predicao.predict_blind`), que nunca força uma classe/número quando a
+  cobertura não é validada — ver `docs/MANUAL.md`.
 - **Modo imagem (colorimetria digital) é protótipo só sem garantia de
   agrupamento** — com subpasta por amostra física ou CSV de associação, tem
   a mesma proteção anti-vazamento dos demais mode; sem nenhum dos dois,
