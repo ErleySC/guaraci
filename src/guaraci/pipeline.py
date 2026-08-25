@@ -715,7 +715,7 @@ from guaraci.selecao_variaveis import (   # noqa: E402
     sparse_plsda_mask,
     _spa_cadeia,
     selecao_spa,
-    selecao_ag,
+    ga_selection,
     fig_etapa4_ipls,
     fig_etapa4_ag_convergencia,
     fig_etapa4_comparacao,

@@ -493,7 +493,7 @@ def _torneio_ag(populacao: np.ndarray, fitnesses: np.ndarray,
     return populacao[melhor_idx].copy()
 
 
-def selecao_ag(X_proc: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
+def ga_selection(X_proc: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                 cv_indices: list, n_lv: int, tam_populacao: int,
                 n_geracoes: int, prob_mutacao: float, frac_inicial: float,
                 seed: int) -> Tuple[List[Dict], np.ndarray]:
@@ -751,7 +751,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     #    (diagnostico de comportamento da busca, nao um numero cientifico);
     #    o bal.acc REPORTADO na tabela vem do nested-CV.
     if cfg.executar_ag:
-        historico_ag, _mask_ag_diagnostico = selecao_ag(
+        historico_ag, _mask_ag_diagnostico = ga_selection(
             X_proc, Y_bin, y_int, cv_indices, n_lv,
             cfg.ag_tam_populacao, cfg.ag_n_geracoes, cfg.ag_prob_mutacao,
             cfg.ag_frac_inicial, cfg.seed)
@@ -762,7 +762,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
             fig_etapa4_ag_convergencia(historico_ag, cfg, pasta)
         m_ag = _avaliar_busca_nested_cv(
             X_proc, Y_bin, y_int, cv_indices, n_lv,
-            lambda Xtr, Ytr, ytr, cvin: selecao_ag(
+            lambda Xtr, Ytr, ytr, cvin: ga_selection(
                 Xtr, Ytr, ytr, cvin, n_lv, cfg.ag_tam_populacao,
                 cfg.ag_n_geracoes, cfg.ag_prob_mutacao, cfg.ag_frac_inicial,
                 cfg.seed)[1],

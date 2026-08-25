@@ -857,12 +857,12 @@ def test_selecao_spa_retorna_mascara_valida(pq):
     assert all("balanced_accuracy" in r for r in resultados)
 
 
-def test_selecao_ag_fitness_nao_decresce_por_elitismo(pq):
+def test_ga_selection_fitness_nao_decresce_por_elitismo(pq):
     """AG: com elitismo, o melhor fitness da geração NUNCA piora ao longo das
     gerações (o melhor cromossomo sempre sobrevive) — propriedade de design,
     não coincidência estatística."""
     X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=2)
-    historico, mask = pq.selecao_ag(X, Y_bin, y_int, cv_indices, n_lv=2,
+    historico, mask = pq.ga_selection(X, Y_bin, y_int, cv_indices, n_lv=2,
                                      tam_populacao=10, n_geracoes=6,
                                      prob_mutacao=0.05, frac_inicial=0.15, seed=2)
     assert len(historico) == 6
@@ -871,13 +871,13 @@ def test_selecao_ag_fitness_nao_decresce_por_elitismo(pq):
     assert mask.sum() >= 2
 
 
-def test_selecao_ag_recupera_variaveis_informativas(pq):
+def test_ga_selection_recupera_variaveis_informativas(pq):
     """AG: com sinal forte e claro, a máscara final deve conter pelo menos
     parte das variáveis genuinamente informativas (não é seleção ao acaso)."""
     informativas = (5, 6, 7, 20, 21)
     X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(
         seed=3, vars_informativas=informativas)
-    _historico, mask = pq.selecao_ag(X, Y_bin, y_int, cv_indices, n_lv=2,
+    _historico, mask = pq.ga_selection(X, Y_bin, y_int, cv_indices, n_lv=2,
                                       tam_populacao=12, n_geracoes=8,
                                       prob_mutacao=0.05, frac_inicial=0.15, seed=3)
     selecionadas = set(np.where(mask)[0].tolist())

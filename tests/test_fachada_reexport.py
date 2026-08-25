@@ -63,7 +63,7 @@ CONTRATO = {
     "selecao_variaveis": [
         "selecao_ipls", "sparse_plsda_mask", "etapa4_selecao_variaveis",
         "fig_etapa4_ipls", "fig_etapa4_comparacao",
-        "selecao_spa", "selecao_ag", "fig_etapa4_ag_convergencia",
+        "selecao_spa", "ga_selection", "fig_etapa4_ag_convergencia",
         "_avaliar_subset_nested_cv", "_mask_vip_threshold", "_mask_sr_top_frac",
         "_avaliar_busca_nested_cv", "_cv_local",
     ],
