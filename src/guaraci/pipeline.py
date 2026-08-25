@@ -641,7 +641,7 @@ def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
 
 # Validacao estatistica (cross_val_predict manual, BCa, CV-ANOVA, teste de
 # permutacao e de Wold) extraida p/ validacao_estatistica.py (Fase H).
-# Reexportada para nao quebrar pipeline.teste_permutacao(...),
+# Reexportada para nao quebrar pipeline.permutation_test(...),
 # pipeline._cv_predict_manual(...) nem as chamadas em compare_pipelines/
 # etapa4/executar.
 from guaraci.validacao_estatistica import (   # noqa: E402
@@ -649,9 +649,9 @@ from guaraci.validacao_estatistica import (   # noqa: E402
     bootstrap_bca_ci,
     cv_anova_eriksson,
     _iter_wold,
-    teste_wold,
+    wold_test,
     _iter_permutacao,
-    teste_permutacao,
+    permutation_test,
     StratifiedGroupKFoldEstavel,
 )
 
@@ -1709,7 +1709,7 @@ def executar(cfg: Config):
     if objetivo == CLASSIFICACAO:
         log.info(f"\n[4/7] Teste de permutacao (Y-randomization, "
               f"n={cfg.n_permutacoes})")
-        perm_res = teste_permutacao(
+        perm_res = permutation_test(
             lambda: fabrica_pipeline(n_opt),
             X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes, cfg.seed,
             groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
@@ -1746,7 +1746,7 @@ def executar(cfg: Config):
     if cfg.executar_wold and objetivo == CLASSIFICACAO:
         log.info(f"\n[4b/7] Teste de Wold (R2Y/Q2Y intercept, "
               f"n={cfg.n_permutacoes_wold})")
-        wold_res = teste_wold(
+        wold_res = wold_test(
             lambda: fabrica_pipeline(n_opt),
             X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes_wold, cfg.seed,
             groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)

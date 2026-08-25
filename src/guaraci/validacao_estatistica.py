@@ -5,7 +5,7 @@ teste de permutacao e teste de Wold (com paralelismo opcional via joblib).
 
 Extraido de pipeline.py como parte da modularizacao (Fase H). Sem acoplamento a
 Config — funcoes puras sobre X/Y/cv/pipeline_factory. pipeline.py reexporta os
-nomes, entao pipeline.teste_permutacao(...), pipeline._cv_predict_manual(...)
+nomes, entao pipeline.permutation_test(...), pipeline._cv_predict_manual(...)
 etc. seguem inalterados (usados por compare_pipelines, etapa4 e executar).
 Coberto por tests/test_pipeline_smoke.py e tests/test_pipeline_core.py.
 """
@@ -165,7 +165,7 @@ def _gerar_permutacoes_rotulo(y_int: np.ndarray, groups: Optional[np.ndarray],
                                n_perm: int, rng: np.random.Generator
                                ) -> List[np.ndarray]:
     """Gera `n_perm` vetores de rotulos permutados para os testes de
-    Y-randomization (`teste_permutacao`, `teste_wold`).
+    Y-randomization (`permutation_test`, `wold_test`).
 
     Com `groups` (ex.: `mae_id`), permuta a ATRIBUICAO de rotulo por GRUPO,
     nao por amostra — preserva a coerencia de cada grupo (todas as replicas
@@ -336,7 +336,7 @@ def _iter_wold(pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups):
     sequencialmente quanto via joblib.Parallel — o resultado depende so dos
     argumentos, entao rodar em paralelo nao muda o valor calculado, so a
     ordem de execucao (a ordem dos resultados e sempre preservada pelo
-    chamador). Replica exatamente a logica de teste_wold pre-paralelizacao.
+    chamador). Replica exatamente a logica de wold_test pre-paralelizacao.
     Retorna ("ok", sim, r2, q2) | ("skip", ...) | ("fail", ...).
     """
     try:
@@ -357,12 +357,12 @@ def _iter_wold(pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups):
         return ("ok", sim, r2, q2)
     except (ValueError, np.linalg.LinAlgError):
         # Y permutado degenerado p/ este fold (ex.: classe some do treino
-        # apos a permutacao) -- contado como falha em teste_wold (n_falhos),
+        # apos a permutacao) -- contado como falha em wold_test (n_falhos),
         # nao mascarado. Excecoes de outro tipo (bug real) propagam.
         return ("fail", None, None, None)
 
 
-def teste_wold(pipeline_factory: Callable[[], Pipeline],
+def wold_test(pipeline_factory: Callable[[], Pipeline],
                 X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                 cv, n_perm: int, seed: int,
                 groups: Optional[np.ndarray] = None,
@@ -491,7 +491,7 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
 
 def _iter_permutacao(pipeline_factory, X, Y_perm, y_perm_int, cv, groups):
     """Uma iteracao (pura, sem estado global) do teste de permutacao. Mesma
-    logica de teste_permutacao pre-paralelizacao — usada sequencialmente ou
+    logica de permutation_test pre-paralelizacao — usada sequencialmente ou
     via joblib.Parallel. Retorna ("ok", acc) | ("fail", None)."""
     try:
         cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
@@ -499,12 +499,12 @@ def _iter_permutacao(pipeline_factory, X, Y_perm, y_perm_int, cv, groups):
         acc = float(balanced_accuracy_score(y_perm_int, np.argmax(y_hat, axis=1)))
         return ("ok", acc)
     except (ValueError, np.linalg.LinAlgError):
-        # Mesma logica de _iter_wold: falha contada em teste_permutacao
+        # Mesma logica de _iter_wold: falha contada em permutation_test
         # (n_falhos), nao mascarada.
         return ("fail", None)
 
 
-def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
+def permutation_test(pipeline_factory: Callable[[], Pipeline],
                       X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                       cv, n_perm: int, seed: int,
                       groups: Optional[np.ndarray] = None,
@@ -566,7 +566,7 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
         import threadpoolctl
         log.info("    Perm: %d permutacoes em paralelo (n_jobs=%d)...",
                  n_perm, n_jobs)
-        # Ver comentario equivalente em teste_wold: threading nao acelera
+        # Ver comentario equivalente em wold_test: threading nao acelera
         # (overhead Python do sklearn segura o GIL) — loky (processos) sim;
         # threadpool_limits(1) evita oversubscription do BLAS interno.
         with threadpoolctl.threadpool_limits(1):

@@ -3,7 +3,7 @@
 BCa (IC de confiança) e CV-ANOVA (significância do modelo) são o que torna os
 resultados "publication-grade" — uma regressão silenciosa aqui corromperia
 intervalos de confiança e p-valores reportados em monografia/artigo. Testes
-das duas funções numéricas PURAS (as demais — teste_wold/permutação — exigem
+das duas funções numéricas PURAS (as demais — wold_test/permutação — exigem
 pipeline+CV e são cobertas pelos testes end-to-end 'slow').
 """
 import numpy as np
@@ -16,16 +16,16 @@ from sklearn.model_selection import StratifiedKFold
 from guaraci.validacao_estatistica import (bootstrap_bca_ci, cv_anova_eriksson,
                                           StratifiedGroupKFoldEstavel)
 # Alias com prefixo _ para o pytest NAO coletar a funcao importada como teste
-# (o nome 'teste_permutacao' casa com o padrao de coleta 'test*').
-from guaraci.validacao_estatistica import teste_permutacao as _teste_permutacao
-from guaraci.validacao_estatistica import teste_wold as _teste_wold
+# (o nome 'permutation_test' casa com o padrao de coleta 'test*').
+from guaraci.validacao_estatistica import permutation_test as _permutation_test
+from guaraci.validacao_estatistica import wold_test as _teste_wold
 from guaraci.validacao_estatistica import _gerar_permutacoes_rotulo
 
 
 class _CVFalhaApartirDaSegundaChamada:
     """cv fake que delega para um StratifiedKFold real na 1a chamada (a
-    observada, computada ANTES do loop de permutacao em teste_permutacao/
-    teste_wold) e levanta ValueError em TODAS as chamadas seguintes (as do
+    observada, computada ANTES do loop de permutacao em permutation_test/
+    wold_test) e levanta ValueError em TODAS as chamadas seguintes (as do
     loop de permutacao) -- simula "fold impossivel apos embaralhar
     rotulos" de forma deterministica, sem depender de uma coincidencia
     estatistica fragil para acionar o caminho de erro/falha de
@@ -126,7 +126,7 @@ def test_cv_anova_q2_formula():
     assert abs(r["Q2"] - (1.0 - 2.0 / 20.0)) < 1e-9
 
 
-# ── teste_permutacao (Y-randomization) ──────────────────────────────────────
+# ── permutation_test (Y-randomization) ──────────────────────────────────────
 def _dados_perm(separavel: bool, seed: int):
     """Dataset binario de 2x20 amostras, 10 variaveis. `separavel=True` cria
     duas nuvens bem afastadas (sinal real); False = ruido puro (rotulos sem
@@ -153,7 +153,7 @@ def test_permutacao_da_p_baixo_com_sinal_real():
     estaria mascarando sinal real como se fosse acaso."""
     X, Y_bin, y_int = _dados_perm(separavel=True, seed=1)
     cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=0)
-    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+    res = _permutation_test(_factory_pls, X, Y_bin, y_int, cv,
                            n_perm=40, seed=1)
     assert res["p_value"] < 0.05
     assert res["acc_observada"] > 0.9
@@ -166,7 +166,7 @@ def test_permutacao_da_p_alto_com_rotulos_aleatorios():
     onde so ha ruido)."""
     X, Y_bin, y_int = _dados_perm(separavel=False, seed=2)
     cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=0)
-    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+    res = _permutation_test(_factory_pls, X, Y_bin, y_int, cv,
                            n_perm=40, seed=2)
     assert res["p_value"] > 0.10
 
@@ -178,7 +178,7 @@ def test_permutacao_todas_as_iteracoes_falham_da_p_1_nao_informativo():
     uma lista vazia de acertos. n_falhos deve contar TODAS as permutacoes."""
     X, Y_bin, y_int = _dados_perm(separavel=True, seed=3)
     cv = _CVFalhaApartirDaSegundaChamada(n_splits=4)
-    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+    res = _permutation_test(_factory_pls, X, Y_bin, y_int, cv,
                            n_perm=10, seed=3)
     assert res["n_validos"] == 0
     assert res["n_falhos"] == 10
@@ -239,7 +239,7 @@ def test_gerar_permutacoes_sem_groups_cai_para_permutacao_por_amostra():
 
 
 def test_permutacao_end_to_end_respeita_grupos():
-    """teste_permutacao com `groups` fornecido deve, de ponta a ponta, gerar
+    """permutation_test com `groups` fornecido deve, de ponta a ponta, gerar
     apenas permutacoes coerentes por grupo (nao so' o helper isolado)."""
     rng_dados = np.random.default_rng(9)
     n_grupos, n_rep = 20, 2
@@ -249,13 +249,13 @@ def test_permutacao_end_to_end_respeita_grupos():
     X = rng_dados.normal(0, 1, size=(n_grupos * n_rep, 10))
     Y_bin = np.zeros((len(y_int), 2)); Y_bin[np.arange(len(y_int)), y_int] = 1.0
     cv = StratifiedGroupKFoldEstavel(n_splits=4, seed=0)
-    res = _teste_permutacao(_factory_pls, X, Y_bin, y_int, cv,
+    res = _permutation_test(_factory_pls, X, Y_bin, y_int, cv,
                            n_perm=15, seed=9, groups=groups)
     assert 0.0 <= res["p_value"] <= 1.0
 
 
 def test_wold_todas_as_iteracoes_falham_nao_quebra():
-    """Mesma propriedade de teste_permutacao, para teste_wold: se toda
+    """Mesma propriedade de permutation_test, para wold_test: se toda
     iteracao falhar, n_falhos conta todas, n_validos fica 0, e o ajuste
     linear (slope/intercept) vira NaN em vez de tentar np.polyfit com
     menos de 2 pontos validos."""

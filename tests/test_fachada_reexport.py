@@ -55,7 +55,7 @@ CONTRATO = {
     ],
     "validacao_estatistica": [
         "_cv_predict_manual", "bootstrap_bca_ci", "cv_anova_eriksson",
-        "teste_wold", "teste_permutacao",
+        "wold_test", "permutation_test",
     ],
     "hardware": [
         "hardware_probe", "auto_adjust_hardware_config", "_verificar_ram",
