@@ -88,7 +88,7 @@ log = logging.getLogger(__name__)
 
 __all__ = [
     "achievable_alpha",
-    "n_minimo_para_alpha",
+    "n_minimum_for_alpha",
     "conformal_threshold",
     "ConformalOneClass",
 ]
@@ -107,7 +107,7 @@ def achievable_alpha(n: int) -> float:
     return 1.0 / (n + 1)
 
 
-def n_minimo_para_alpha(alpha: float) -> int:
+def n_minimum_for_alpha(alpha: float) -> int:
     """Menor `n` de calibracao que sustenta o `alpha` pedido: (1-alpha)/alpha."""
     if not (0.0 < alpha < 1.0):
         raise ValueError(f"alpha deve estar em (0,1), recebido {alpha}")
@@ -161,14 +161,14 @@ def conformal_threshold(scores_calib: np.ndarray, alpha: float = 0.05
             f"alpha={alpha:.3g} NAO e' alcancavel com {n} amostra(s) de "
             f"calibracao independentes: exigiria k={k} escores ordenados, "
             f"mas so' ha' {n}. Menor alpha garantivel: {a_min:.3g} "
-            f"(precisa de n>={n_minimo_para_alpha(alpha)} para alpha="
+            f"(precisa de n>={n_minimum_for_alpha(alpha)} para alpha="
             f"{alpha:.3g}). Limiar NAO definido -- reportar como "
             f"nao-estimavel, nunca como 'aceita tudo'.")
         return res
 
     res["limiar"] = float(np.sort(s)[k - 1])
     res["alcancavel"] = True
-    if n < n_minimo_para_alpha(alpha) * 2:
+    if n < n_minimum_for_alpha(alpha) * 2:
         res["aviso"] = (
             f"Limiar valido, mas com {n} amostras de calibracao a garantia "
             f"e' fragil: qualquer amostra a menos derruba o alpha "

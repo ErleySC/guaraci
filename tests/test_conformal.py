@@ -13,7 +13,7 @@ from guaraci.conformal import (
     ConformalOneClass,
     achievable_alpha,
     conformal_threshold,
-    n_minimo_para_alpha,
+    n_minimum_for_alpha,
 )
 
 
@@ -25,13 +25,13 @@ def test_alpha_alcancavel_e_um_sobre_n_mais_um():
     assert achievable_alpha(0) == pytest.approx(1.0)   # degenerado
 
 
-def test_n_minimo_para_alpha_e_o_inverso():
-    assert n_minimo_para_alpha(0.05) == 19
-    assert n_minimo_para_alpha(0.10) == 9
-    assert n_minimo_para_alpha(0.25) == 3
+def test_n_minimum_for_alpha_e_o_inverso():
+    assert n_minimum_for_alpha(0.05) == 19
+    assert n_minimum_for_alpha(0.10) == 9
+    assert n_minimum_for_alpha(0.25) == 3
     for a in (0.0, 1.0, -0.1):
         with pytest.raises(ValueError):
-            n_minimo_para_alpha(a)
+            n_minimum_for_alpha(a)
 
 
 # ── A propriedade central: recusar em vez de inventar ───────────────────
