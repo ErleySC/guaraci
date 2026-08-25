@@ -253,10 +253,10 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1, max_lvs=3,
         n_permutacoes=3, n_permutacoes_wold=3,
         n_bootstrap_vip=2, n_bootstrap_bca=10, n_monte_carlo=2,
-        executar_ddsimca=False, executar_opls=False, executar_etapa4=False,
-        executar_wold=False, comparar_pipelines=False,
-        executar_cv_anova=False, executar_benchmark=False,
-        executar_monte_carlo=False, executar_shap=False,
+        run_ddsimca=False, run_opls=False, executar_etapa4=False,
+        run_wold=False, comparar_pipelines=False,
+        run_cv_anova=False, run_benchmark=False,
+        run_monte_carlo=False, run_shap=False,
     )
     pq.executar(cfg)
 

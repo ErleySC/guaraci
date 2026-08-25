@@ -28,9 +28,9 @@ def _bloquear_psutil(monkeypatch):
 def _cfg_pesado():
     """Config com TODAS as operações pesadas ligadas, para ver o que é cortado."""
     c = Config()
-    c.executar_shap = True
-    c.executar_benchmark = True
-    c.executar_monte_carlo = True
+    c.run_shap = True
+    c.run_benchmark = True
+    c.run_monte_carlo = True
     c.monte_carlo_incluir_todos = True
     c.n_splits_cv = 5
     c.n_monte_carlo = 200
@@ -46,9 +46,9 @@ def _hw(ram_gb):
 def test_ram_critica_desliga_tudo():
     c = _cfg_pesado()
     avisos = hardware.auto_adjust_hardware_config(c, _hw(1.5))
-    assert c.executar_shap is False
-    assert c.executar_benchmark is False
-    assert c.executar_monte_carlo is False
+    assert c.run_shap is False
+    assert c.run_benchmark is False
+    assert c.run_monte_carlo is False
     assert c.n_splits_cv == 3
     assert len(avisos) >= 4
 
@@ -57,9 +57,9 @@ def test_ram_critica_desliga_tudo():
 def test_ram_baixa_desliga_shap_benchmark_limita_mc():
     c = _cfg_pesado()
     hardware.auto_adjust_hardware_config(c, _hw(3.0))
-    assert c.executar_shap is False
-    assert c.executar_benchmark is False
-    assert c.executar_monte_carlo is True     # MC segue ligado, só limitado
+    assert c.run_shap is False
+    assert c.run_benchmark is False
+    assert c.run_monte_carlo is True     # MC segue ligado, só limitado
     assert c.n_monte_carlo == 30
 
 
@@ -67,7 +67,7 @@ def test_ram_baixa_desliga_shap_benchmark_limita_mc():
 def test_ram_media_reduz_shap_e_mc():
     c = _cfg_pesado()
     hardware.auto_adjust_hardware_config(c, _hw(5.0))
-    assert c.executar_shap is True            # SHAP fica, com amostragem menor
+    assert c.run_shap is True            # SHAP fica, com amostragem menor
     assert c.shap_max_amostras == 150
     assert c.n_monte_carlo == 60
     assert c.monte_carlo_incluir_todos is False
@@ -79,7 +79,7 @@ def test_ram_moderada_reducoes_brandas():
     hardware.auto_adjust_hardware_config(c, _hw(7.0))
     assert c.shap_max_amostras == 300
     assert c.n_monte_carlo == 80
-    assert c.executar_benchmark is True       # benchmark permitido nesta faixa
+    assert c.run_benchmark is True       # benchmark permitido nesta faixa
 
 
 # ── RAM suficiente (>= 8 GB): nada muda ──────────────────────────────────────
@@ -87,9 +87,9 @@ def test_ram_suficiente_nao_altera_nada():
     c = _cfg_pesado()
     avisos = hardware.auto_adjust_hardware_config(c, _hw(16.0))
     assert avisos == []
-    assert c.executar_shap is True
-    assert c.executar_benchmark is True
-    assert c.executar_monte_carlo is True
+    assert c.run_shap is True
+    assert c.run_benchmark is True
+    assert c.run_monte_carlo is True
     assert c.n_monte_carlo == 200
     assert c.shap_max_amostras == 500
 
@@ -104,9 +104,9 @@ def test_hw_sem_chave_ram_usa_default_seguro():
 def test_config_leve_nao_gera_avisos_em_ram_baixa():
     # Se nada pesado está ligado, mesmo em RAM crítica não há o que cortar.
     c = Config()
-    c.executar_shap = False
-    c.executar_benchmark = False
-    c.executar_monte_carlo = False
+    c.run_shap = False
+    c.run_benchmark = False
+    c.run_monte_carlo = False
     c.n_splits_cv = 3
     avisos = hardware.auto_adjust_hardware_config(c, _hw(1.0))
     assert avisos == []

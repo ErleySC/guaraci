@@ -140,14 +140,14 @@ def auto_adjust_hardware_config(cfg: "Config",
 
     if ram < 2.0:
         # Modo minimo absoluto: desabilitar tudo pesado
-        if cfg.executar_shap:
-            cfg.executar_shap = False
+        if cfg.run_shap:
+            cfg.run_shap = False
             avisos.append("SHAP desabilitado (RAM livre < 2 GB)")
-        if cfg.executar_benchmark:
-            cfg.executar_benchmark = False
+        if cfg.run_benchmark:
+            cfg.run_benchmark = False
             avisos.append("Benchmark desabilitado (RAM livre < 2 GB)")
-        if cfg.executar_monte_carlo:
-            cfg.executar_monte_carlo = False
+        if cfg.run_monte_carlo:
+            cfg.run_monte_carlo = False
             avisos.append("Monte Carlo CV desabilitado (RAM livre < 2 GB)")
         if cfg.n_splits_cv > 3:
             cfg.n_splits_cv = 3
@@ -155,11 +155,11 @@ def auto_adjust_hardware_config(cfg: "Config",
 
     elif ram < 4.0:
         # RAM 2-4 GB: desabilitar SHAP e benchmark, limitar MC CV
-        if cfg.executar_shap:
-            cfg.executar_shap = False
+        if cfg.run_shap:
+            cfg.run_shap = False
             avisos.append("SHAP desabilitado (RAM livre < 4 GB)")
-        if cfg.executar_benchmark:
-            cfg.executar_benchmark = False
+        if cfg.run_benchmark:
+            cfg.run_benchmark = False
             avisos.append("Benchmark desabilitado (RAM livre < 4 GB). "
                           "Habilite manualmente se necessario.")
         if cfg.n_monte_carlo > 30:
@@ -168,7 +168,7 @@ def auto_adjust_hardware_config(cfg: "Config",
 
     elif ram < 6.0:
         # RAM 4-6 GB: SHAP com amostragem reduzida, benchmark sem XGBoost via flag
-        if cfg.executar_shap and cfg.shap_max_amostras > 150:
+        if cfg.run_shap and cfg.shap_max_amostras > 150:
             cfg.shap_max_amostras = 150
             avisos.append("SHAP max_amostras reduzido para 150 (RAM livre < 6 GB)")
         if cfg.n_monte_carlo > 60:
@@ -180,7 +180,7 @@ def auto_adjust_hardware_config(cfg: "Config",
 
     elif ram < 8.0:
         # RAM 6-8 GB: reducoes moderadas
-        if cfg.executar_shap and cfg.shap_max_amostras > 300:
+        if cfg.run_shap and cfg.shap_max_amostras > 300:
             cfg.shap_max_amostras = 300
             avisos.append("SHAP max_amostras reduzido para 300 (RAM livre < 8 GB)")
         if cfg.n_monte_carlo > 80:

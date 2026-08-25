@@ -110,7 +110,7 @@ def test_plano_de_figuras_por_objetivo():
     # o toggle ligado manualmente.
     assert "ddsimca" in set(m.figure_plan(Config(nivel="N2")))
     assert "ddsimca" not in set(
-        m.figure_plan(Config(nivel="N1", executar_ddsimca=True)))
+        m.figure_plan(Config(nivel="N1", run_ddsimca=True)))
 
 
 def test_descrever_plano_retorna_texto_legivel():

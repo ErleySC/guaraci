@@ -42,7 +42,7 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     Verifica DataFrame + CSV + figura de boxplot + curvas DET (>=2
     classificadores válidos)."""
     X, y_int, grupos, lb = _dados_benchmark()
-    cfg = pq.Config(n_splits_cv=3, seed=0, executar_shap=False)
+    cfg = pq.Config(n_splits_cv=3, seed=0, run_shap=False)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
@@ -201,7 +201,7 @@ def test_benchmark_regressao_sem_especies_suficientes_retorna_none(pq, tmp_path)
 @pytest.mark.slow
 def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
     """Integracao real: executar() em N3 sintetico com
-    executar_benchmark_regressao=True gera o CSV/figura do benchmark de
+    run_benchmark_regression=True gera o CSV/figura do benchmark de
     regressao junto com o restante do pipeline, sem quebrar nada."""
     cfg = pq.Config(
         pasta_entrada=str(tmp_path / "dados"),
@@ -212,7 +212,7 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
-        executar_benchmark_regressao=True,
+        run_benchmark_regression=True,
     )
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)

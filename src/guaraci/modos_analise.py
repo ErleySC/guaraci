@@ -100,7 +100,7 @@ def _ddsimca_efetivo(cfg: "Config") -> bool:
         return False
     if nivel == "N2":
         return True
-    return bool(getattr(cfg, "executar_ddsimca", False))
+    return bool(getattr(cfg, "run_ddsimca", False))
 
 
 # Requisito ADICIONAL (alem do objetivo) para uma figura opt-in realmente
@@ -112,22 +112,22 @@ def _ddsimca_efetivo(cfg: "Config") -> bool:
 _FIG_REQUISITO: Dict[str, Callable[["Config"], bool]] = {
     "vip":                lambda cfg: getattr(cfg, "n_bootstrap_vip", 0) > 0,
     "score_contribution": lambda cfg: bool(getattr(cfg, "figuras_detalhadas", False)),
-    "martens":            lambda cfg: bool(getattr(cfg, "executar_martens", False)),
+    "martens":            lambda cfg: bool(getattr(cfg, "run_martens", False)),
     # DD-SIMCA depende do NIVEL, nao so' do toggle (ver pipeline.executar()):
     # N1 sempre IGNORA (mesmo com toggle ligado -- diagnostico de pureza nao
     # agrega a identificacao de especie); N2 FORCA ligado internamente
     # (quando ha dados de concentracao); demais niveis respeitam o toggle.
     "ddsimca":            lambda cfg: _ddsimca_efetivo(cfg),
-    "opls":               lambda cfg: bool(getattr(cfg, "executar_opls", False)),
+    "opls":               lambda cfg: bool(getattr(cfg, "run_opls", False)),
     "etapa4":             lambda cfg: bool(getattr(cfg, "executar_etapa4", False)),
     "comparar_pipelines": lambda cfg: bool(getattr(cfg, "comparar_pipelines", False)),
-    "wold":               lambda cfg: bool(getattr(cfg, "executar_wold", False)),
+    "wold":               lambda cfg: bool(getattr(cfg, "run_wold", False)),
     "holdout":            lambda cfg: getattr(cfg, "frac_holdout", 0.0) > 0.0,
-    "benchmark":          lambda cfg: bool(getattr(cfg, "executar_benchmark", False)),
-    "monte_carlo":        lambda cfg: bool(getattr(cfg, "executar_monte_carlo", False)),
-    "shap":               lambda cfg: (bool(getattr(cfg, "executar_benchmark", False))
-                                        and bool(getattr(cfg, "executar_shap", False))),
-    "benchmark_regressao": lambda cfg: bool(getattr(cfg, "executar_benchmark_regressao", False)),
+    "benchmark":          lambda cfg: bool(getattr(cfg, "run_benchmark", False)),
+    "monte_carlo":        lambda cfg: bool(getattr(cfg, "run_monte_carlo", False)),
+    "shap":               lambda cfg: (bool(getattr(cfg, "run_benchmark", False))
+                                        and bool(getattr(cfg, "run_shap", False))),
+    "benchmark_regressao": lambda cfg: bool(getattr(cfg, "run_benchmark_regression", False)),
 }
 
 # Descricao curta de cada chave (para o painel de terminal / UI).

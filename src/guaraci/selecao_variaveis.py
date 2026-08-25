@@ -657,7 +657,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     do AG, cadeias do SPA) — nao para o bal.acc reportado na tabela."""
     print("\n[Etapa4] Selecao de variaveis "
           f"(iPLS, VIP, SR, sPLS-DA"
-          f"{', SPA' if cfg.executar_spa else ''}"
+          f"{', SPA' if cfg.run_spa else ''}"
           f"{', AG' if cfg.executar_ag else ''})...")
     p = X_proc.shape[1]
     tabela = []
@@ -725,7 +725,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     #    A chamada no dataset inteiro fica so' p/ diagnostico (CSV de cadeias
     #    avaliadas); o numero REPORTADO na tabela vem do nested-CV, que nunca
     #    deixa a busca ver o fold de teste que mede o resultado final.
-    if cfg.executar_spa:
+    if cfg.run_spa:
         spa_res, _mask_spa_diagnostico = selecao_spa(
             X_proc, Y_bin, y_int, cv_indices, n_lv,
             cfg.spa_n_vars_max, cfg.spa_n_starts, cfg.seed)

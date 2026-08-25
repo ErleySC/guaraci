@@ -269,12 +269,12 @@ def test_presets_objetivo_existem_e_tem_descricao_bilingue(
 @pytest.mark.parametrize("pname,attr,valor_esperado", [
     ("Explorar Dados",    "nivel", "N1"),
     ("Explorar Dados",    "objetivo", "exploratorio"),
-    ("Explorar Dados",    "executar_ddsimca", False),
+    ("Explorar Dados",    "run_ddsimca", False),
     ("Autenticar Pureza", "nivel", "N2"),
-    ("Autenticar Pureza", "executar_ddsimca", True),
+    ("Autenticar Pureza", "run_ddsimca", True),
     ("Autenticar Pureza", "ddsimca_treinar_em", "puros"),
     ("Quantificar Teor",  "nivel", "N3"),
-    ("Quantificar Teor",  "executar_ddsimca", False),
+    ("Quantificar Teor",  "run_ddsimca", False),
 ])
 def test_preset_objetivo_aplica_no_config_via_spec(
         guaraci_mod, pname, attr, valor_esperado):
@@ -422,7 +422,7 @@ def test_modulos_pesados_aumentam_a_estimativa(guaraci_mod):
     base = guaraci_mod.Config()
     base.n_permutacoes = 200
     t_base = _min_inferior(guaraci_mod._estimar_tempo(base, 1673))
-    for attr in ("executar_benchmark", "executar_shap", "executar_ag"):
+    for attr in ("run_benchmark", "run_shap", "executar_ag"):
         cfg = guaraci_mod.Config()
         cfg.n_permutacoes = 200
         setattr(cfg, attr, True)
@@ -488,8 +488,8 @@ def test_paineis_nao_imprimem_markup_cru(guaraci_mod, lang, ligado):
     """
     import re as _re
     cfg = guaraci_mod.Config()
-    for attr in ("executar_opls", "executar_ddsimca", "executar_benchmark",
-                 "executar_monte_carlo", "executar_shap"):
+    for attr in ("run_opls", "run_ddsimca", "run_benchmark",
+                 "run_monte_carlo", "run_shap"):
         setattr(cfg, attr, ligado)
     for fn in (guaraci_mod._print_resumo, guaraci_mod._print_checklist):
         txt = _render(guaraci_mod, fn, cfg, lang)
@@ -595,22 +595,22 @@ def test_editar_campo_bool_entrada_fora_de_1_2_e_rejeitada(guaraci_mod, monkeypa
 def test_editar_campo_bool_com_confirmacao_analitica_aceita(guaraci_mod, monkeypatch):
     """Campo ANALITICO (ddsimca) pede confirmacao extra -- fluxo completo:
     escolhe [1] e confirma com 's'."""
-    cfg = guaraci_mod.Config(executar_ddsimca=False)
+    cfg = guaraci_mod.Config(run_ddsimca=False)
     respostas = iter(["1", "s"])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "ddsimca")
     assert ok is True
-    assert cfg.executar_ddsimca is True
+    assert cfg.run_ddsimca is True
 
 
 def test_editar_campo_bool_com_confirmacao_analitica_recusada(guaraci_mod, monkeypatch):
     """Mesmo fluxo, mas recusando a confirmacao -- o valor NAO muda."""
-    cfg = guaraci_mod.Config(executar_ddsimca=False)
+    cfg = guaraci_mod.Config(run_ddsimca=False)
     respostas = iter(["1", "n"])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "ddsimca")
     assert ok is False
-    assert cfg.executar_ddsimca is False
+    assert cfg.run_ddsimca is False
 
 
 @pytest.mark.parametrize("lang", ["PT", "EN"])
@@ -640,9 +640,9 @@ def test_editar_campo_bool_grava_valor_canonico_independente_do_idioma(
 def test_ajustar_toggles_ddsimca_desliga_em_n1(guaraci_mod):
     """DD-SIMCA em N1 e' sempre ignorado por pipeline.executar() (aviso, nao
     bloqueio no Config) -- a UI passa a refletir isso desligando o toggle."""
-    cfg = guaraci_mod.Config(nivel="N1", executar_ddsimca=True)
+    cfg = guaraci_mod.Config(nivel="N1", run_ddsimca=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_ddsimca is False
+    assert cfg.run_ddsimca is False
     assert "ddsimca" in mudou
 
 
@@ -651,9 +651,9 @@ def test_ajustar_toggles_ddsimca_liga_em_n2(guaraci_mod):
     independente do toggle -- a UI passa a mostrar True de antemao, refletindo
     o que vai acontecer de qualquer forma, em vez de mostrar 'desligado' e
     surpreender o usuario com o log dizendo o contrario."""
-    cfg = guaraci_mod.Config(nivel="N2", executar_ddsimca=False)
+    cfg = guaraci_mod.Config(nivel="N2", run_ddsimca=False)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_ddsimca is True
+    assert cfg.run_ddsimca is True
     assert "ddsimca" in mudou
 
 
@@ -661,9 +661,9 @@ def test_ajustar_toggles_ddsimca_desliga_em_n3(guaraci_mod):
     """N3 (Quantificacao): should_generate(cfg,'ddsimca') e' False (figura so'
     pertence a Classificacao) -- toggle inerte, igual N1, mas SEM aviso no
     pipeline (achado: N1 tem log explicito, N3 nao tinha nenhum)."""
-    cfg = guaraci_mod.Config(nivel="N3", executar_ddsimca=True)
+    cfg = guaraci_mod.Config(nivel="N3", run_ddsimca=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_ddsimca is False
+    assert cfg.run_ddsimca is False
     assert "ddsimca" in mudou
 
 
@@ -673,21 +673,21 @@ def test_ajustar_toggles_classificacao_only_desligam_fora_de_classificacao(guara
     todos pertencem exclusivamente a objetivo=Classificacao (ver
     modos_analise._FIG_OBJETIVOS) -- inertes em N3."""
     cfg = guaraci_mod.Config(
-        nivel="N3", executar_opls=True, executar_etapa4=True,
-        comparar_pipelines=True, executar_wold=True, executar_cv_anova=True,
-        executar_martens=True, executar_benchmark=True,
-        executar_monte_carlo=True, executar_shap=True,
+        nivel="N3", run_opls=True, executar_etapa4=True,
+        comparar_pipelines=True, run_wold=True, run_cv_anova=True,
+        run_martens=True, run_benchmark=True,
+        run_monte_carlo=True, run_shap=True,
     )
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_opls is False
+    assert cfg.run_opls is False
     assert cfg.executar_etapa4 is False
     assert cfg.comparar_pipelines is False
-    assert cfg.executar_wold is False
-    assert cfg.executar_cv_anova is False
-    assert cfg.executar_martens is False
-    assert cfg.executar_benchmark is False
-    assert cfg.executar_monte_carlo is False
-    assert cfg.executar_shap is False
+    assert cfg.run_wold is False
+    assert cfg.run_cv_anova is False
+    assert cfg.run_martens is False
+    assert cfg.run_benchmark is False
+    assert cfg.run_monte_carlo is False
+    assert cfg.run_shap is False
     assert set(mudou) >= {
         "opls_da", "selecao_variaveis_etapa4", "comparar_pre_processamentos",
         "teste_wold", "teste_cv_anova", "teste_martens", "benchmark",
@@ -699,24 +699,24 @@ def test_ajustar_toggles_classificacao_only_preservados_em_n1_e_n2(guaraci_mod):
     """Contraparte positiva: os mesmos toggles NAO podem ser mexidos em N1/N2
     -- la' eles SAO pertinentes (objetivo=Classificacao)."""
     for nivel in ("N1", "N2"):
-        cfg = guaraci_mod.Config(nivel=nivel, executar_opls=True,
-                                 executar_benchmark=True)
+        cfg = guaraci_mod.Config(nivel=nivel, run_opls=True,
+                                 run_benchmark=True)
         guaraci_mod._ajustar_toggles_por_nivel(cfg)
-        assert cfg.executar_opls is True, f"opls_da nao devia mudar em {nivel}"
-        assert cfg.executar_benchmark is True, f"benchmark nao devia mudar em {nivel}"
+        assert cfg.run_opls is True, f"opls_da nao devia mudar em {nivel}"
+        assert cfg.run_benchmark is True, f"benchmark nao devia mudar em {nivel}"
 
 
 def test_ajustar_toggles_benchmark_regressao_desliga_fora_de_quantificacao(guaraci_mod):
-    cfg = guaraci_mod.Config(nivel="N1", executar_benchmark_regressao=True)
+    cfg = guaraci_mod.Config(nivel="N1", run_benchmark_regression=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_benchmark_regressao is False
+    assert cfg.run_benchmark_regression is False
     assert "benchmark_regressao" in mudou
 
 
 def test_ajustar_toggles_benchmark_regressao_preservado_em_n3(guaraci_mod):
-    cfg = guaraci_mod.Config(nivel="N3", executar_benchmark_regressao=True)
+    cfg = guaraci_mod.Config(nivel="N3", run_benchmark_regression=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_benchmark_regressao is True
+    assert cfg.run_benchmark_regression is True
     assert "benchmark_regressao" not in mudou
 
 
@@ -725,9 +725,9 @@ def test_ajustar_toggles_respeita_objetivo_explicito_sobre_nivel(guaraci_mod):
     segue o OBJETIVO resolvido, nao uma leitura ingenua do nivel -- mesma
     precedencia de modos_analise.resolve_objective()."""
     cfg = guaraci_mod.Config(nivel="N3", objetivo="classificacao",
-                             executar_opls=True)
+                             run_opls=True)
     guaraci_mod._ajustar_toggles_por_nivel(cfg)
-    assert cfg.executar_opls is True, (
+    assert cfg.run_opls is True, (
         "objetivo=classificacao explicito deveria preservar toggle "
         "de classificacao mesmo em nivel=N3")
 
@@ -735,8 +735,8 @@ def test_ajustar_toggles_respeita_objetivo_explicito_sobre_nivel(guaraci_mod):
 def test_ajustar_toggles_nao_mexe_quando_ja_esta_correto(guaraci_mod):
     """Idempotencia: se os toggles ja estao no estado certo para o nivel,
     a lista de 'mudou' fica vazia -- nao reporta ajuste que nao aconteceu."""
-    cfg = guaraci_mod.Config(nivel="N1", executar_ddsimca=False,
-                             executar_opls=False)
+    cfg = guaraci_mod.Config(nivel="N1", run_ddsimca=False,
+                             run_opls=False)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert mudou == []
 
@@ -745,7 +745,7 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
     """Fluxo completo via _editar_campo: trocar nivel N2->N1 (que tem
     confirmacao ANALITICA) desliga ddsimca automaticamente e a mensagem de
     aviso e' impressa."""
-    cfg = guaraci_mod.Config(nivel="N2", executar_ddsimca=True)
+    cfg = guaraci_mod.Config(nivel="N2", run_ddsimca=True)
     respostas = iter(["1", "s"])   # [1]=N1 no menu de opcoes; 's'=confirma
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     from rich.console import Console
@@ -755,7 +755,7 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
     ok = guaraci_mod._editar_campo(cfg, "nivel")
     assert ok is True
     assert cfg.nivel == "N1"
-    assert cfg.executar_ddsimca is False
+    assert cfg.run_ddsimca is False
     saida = buf_console.file.getvalue()
     assert "DD-SIMCA" in saida or "ddsimca" in saida.lower()
 
@@ -763,13 +763,13 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
 def test_editar_campo_nivel_sem_mudanca_nao_mexe_em_nada(guaraci_mod, monkeypatch):
     """Reescolher o MESMO nivel (Enter=manter, ou escolher o numero atual)
     nao deve reportar nenhum ajuste."""
-    cfg = guaraci_mod.Config(nivel="N1", executar_ddsimca=False)
+    cfg = guaraci_mod.Config(nivel="N1", run_ddsimca=False)
     respostas = iter([""])   # Enter = mantem
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "nivel")
     assert ok is False
     assert cfg.nivel == "N1"
-    assert cfg.executar_ddsimca is False
+    assert cfg.run_ddsimca is False
 
 
 # ── Alcancabilidade de campos do _CONFIG_SPEC (achado 2026-08-06) ────────────

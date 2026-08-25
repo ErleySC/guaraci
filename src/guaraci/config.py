@@ -183,12 +183,12 @@ class Config:
     # "core"): validacoes/comparacoes adicionais, uteis mas nao essenciais
     # para o resultado principal. Ligar na mao quando quiser mais rigor.
     comparar_pipelines: bool = False
-    executar_wold: bool = False
-    executar_cv_anova: bool = False
+    run_wold: bool = False
+    run_cv_anova: bool = False
     # Teste de incerteza de Martens (Martens & Martens 2000): jackknifing
     # group-aware dos coeficientes PLS -- teste de hipotese formal (p-valor)
     # de significancia por variavel, mais rigoroso que VIP/SR (magnitude).
-    executar_martens: bool = False
+    run_martens: bool = False
     # Paralelismo (processos, via joblib/loky) para os testes de permutacao/
     # Wold — cada iteracao e independente (mesma X, so o rotulo e
     # reembaralhado), entao rodar em paralelo NAO altera nenhum resultado
@@ -221,7 +221,7 @@ class Config:
     # DD-SIMCA e' o "core" automatico de N2 (executar() forca True quando
     # nivel=="N2", e ignora o toggle quando nivel=="N1" -- ver executar()).
     # Default False aqui so' afeta N3, onde vira extra opt-in de verdade.
-    executar_ddsimca: bool = False
+    run_ddsimca: bool = False
     ddsimca_n_components: int = 7       # PCA LVs per DD-SIMCA model (3 was insufficient — UCL poorly calibrated)
     ddsimca_ucl_method: str = "empirical"  # 'empirical' | 'theoretical' | 'chi2'
     # v14: 'todos' trains each model with ALL samples of the class
@@ -235,19 +235,19 @@ class Config:
     # classificadores.ddsimca_pcv_sensitivity().
     ddsimca_pcv: bool = False
     # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
-    executar_opls: bool = False
+    run_opls: bool = False
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components
-    executar_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
+    run_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
     # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/SVR/RF vs
     # PLS-R, por especie, mesmo split cal/val e pre-processamento (ver
     # avaliacao_modelos.benchmark_regression_by_species). So' roda quando
     # ha regressao multi-especie (mesma condicao de pls_regression_by_species).
-    executar_benchmark_regressao: bool = False
-    executar_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
+    run_benchmark_regression: bool = False
+    run_monte_carlo: bool = False      # v28: MC CV (N × GroupShuffleSplit) for 95% CI
     n_monte_carlo: int = 100               # number of MC repetitions
     monte_carlo_test_size: float = 0.25    # test fraction per MC repetition
     monte_carlo_incluir_todos: bool = False # v28: run all benchmark models in MC CV
-    executar_shap: bool = False            # v28: SHAP values (TreeExplainer) for ensemble
+    run_shap: bool = False            # v28: SHAP values (TreeExplainer) for ensemble
     shap_max_amostras: int = 500        # sample limit for SHAP (memory control)
 
     # ---- Class exclusion (e.g. Copaiba with anomalous batch) ----
@@ -263,8 +263,8 @@ class Config:
     # SPA/APS (Successive Projections Algorithm, Araujo et al. 2001) and
     # AG (Genetic Algorithm, GA-PLS) — opt-in (default False) because they
     # run many more CV evaluations than iPLS/VIP/SR/sPLS-DA (heavier, like
-    # executar_benchmark/executar_shap).
-    executar_spa: bool = False
+    # run_benchmark/run_shap).
+    run_spa: bool = False
     spa_n_vars_max: int = 20            # SPA: max chain length (variables)
     spa_n_starts: int = 25              # SPA: starting variables sampled (evenly across spectrum)
     executar_ag: bool = False

@@ -168,11 +168,11 @@ def _cfg_golden(pq, base: Path):
     # sensível); módulos pesados/opcionais desligados para manter o teste
     # rápido e sem depender de xgboost/shap.
     for attr, val in [
-        ("executar_ddsimca", True), ("executar_opls", False),
-        ("executar_etapa4", False), ("executar_wold", False),
-        ("comparar_pipelines", False), ("executar_cv_anova", False),
-        ("executar_benchmark", False), ("executar_monte_carlo", False),
-        ("executar_shap", False),
+        ("run_ddsimca", True), ("run_opls", False),
+        ("executar_etapa4", False), ("run_wold", False),
+        ("comparar_pipelines", False), ("run_cv_anova", False),
+        ("run_benchmark", False), ("run_monte_carlo", False),
+        ("run_shap", False),
     ]:
         if hasattr(cfg, attr):
             setattr(cfg, attr, val)

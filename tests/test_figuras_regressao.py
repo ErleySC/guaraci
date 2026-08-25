@@ -104,11 +104,11 @@ def _cfg_base(pq, base, **overrides):
     # Liga os módulos científicos que produzem figura (guardado por hasattr).
     # Benchmark/MC/SHAP ficam DESLIGADOS: são lentos e exigem xgboost/shap.
     for attr, val in [
-        ("executar_ddsimca", True), ("executar_opls", True),
-        ("executar_etapa4", True), ("executar_wold", True),
-        ("comparar_pipelines", True), ("executar_cv_anova", True),
-        ("executar_benchmark", False), ("executar_monte_carlo", False),
-        ("executar_shap", False),
+        ("run_ddsimca", True), ("run_opls", True),
+        ("executar_etapa4", True), ("run_wold", True),
+        ("comparar_pipelines", True), ("run_cv_anova", True),
+        ("run_benchmark", False), ("run_monte_carlo", False),
+        ("run_shap", False),
     ]:
         if hasattr(cfg, attr):
             setattr(cfg, attr, val)

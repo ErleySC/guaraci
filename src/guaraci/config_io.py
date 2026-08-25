@@ -80,7 +80,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
     {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
      "desc": "Iteracoes do teste de permutacao", "opcoes": None, "min": 1, "max": 100000},
-    {"key": "teste_wold", "attr": "executar_wold", "tipo": "bool",
+    {"key": "teste_wold", "attr": "run_wold", "tipo": "bool",
      "desc": "Rodar teste de Wold (intercepts R2Y/Q2Y)", "opcoes": None},
     {"key": "n_jobs_permutacao", "attr": "n_jobs_permutacao", "tipo": "int",
      "desc": "Processos paralelos para os testes de permutacao/Wold "
@@ -89,14 +89,14 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "acima disso o ganho cai (overhead de criar processos). "
              "Use 1 em ambientes com pouca RAM/CPU (ex.: Streamlit Cloud gratuito)",
      "opcoes": None, "min": 1, "max": 64},
-    {"key": "teste_cv_anova", "attr": "executar_cv_anova", "tipo": "bool",
+    {"key": "teste_cv_anova", "attr": "run_cv_anova", "tipo": "bool",
      "desc": "Rodar CV-ANOVA (Eriksson)", "opcoes": None},
-    {"key": "teste_martens", "attr": "executar_martens", "tipo": "bool",
+    {"key": "teste_martens", "attr": "run_martens", "tipo": "bool",
      "desc": "Teste de incerteza de Martens: jackknifing dos coeficientes "
              "PLS, p-valor de significancia por variavel", "opcoes": None},
     {"key": "selecao_variaveis_etapa4", "attr": "executar_etapa4", "tipo": "bool",
      "desc": "Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)", "opcoes": None},
-    {"key": "selecao_spa", "attr": "executar_spa", "tipo": "bool",
+    {"key": "selecao_spa", "attr": "run_spa", "tipo": "bool",
      "desc": "Etapa 4: rodar tambem SPA/APS (Algoritmo das Projecoes "
              "Sucessivas, Araujo et al. 2001) — mais lento que iPLS/VIP/SR",
      "opcoes": None},
@@ -105,7 +105,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "lento dos metodos de selecao de variaveis (populacao x geracoes "
              "avaliacoes de CV)",
      "opcoes": None},
-    {"key": "ddsimca", "attr": "executar_ddsimca", "tipo": "bool",
+    {"key": "ddsimca", "attr": "run_ddsimca", "tipo": "bool",
      "desc": "Rodar DD-SIMCA (classificacao one-class)", "opcoes": None},
     {"key": "modo_ddsimca", "attr": "ddsimca_treinar_em", "tipo": "choice",
      "desc": "Modo de treino do DD-SIMCA: 'puros' treina SO com amostras puras "
@@ -119,22 +119,22 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "NAO substitui o LOGO -- so' ajuda quando LOGO fica "
              "inconclusivo por falta de dobras validas",
      "opcoes": None},
-    {"key": "opls_da", "attr": "executar_opls", "tipo": "bool",
+    {"key": "opls_da", "attr": "run_opls", "tipo": "bool",
      "desc": "Rodar OPLS-DA", "opcoes": None},
     {"key": "comparar_pre_processamentos", "attr": "comparar_pipelines", "tipo": "bool",
      "desc": "Comparar varios pre-processamentos", "opcoes": None},
-    {"key": "benchmark", "attr": "executar_benchmark", "tipo": "bool",
+    {"key": "benchmark", "attr": "run_benchmark", "tipo": "bool",
      "desc": "Auto-Benchmark: SVM RBF / RF / XGBoost vs PLS-DA (mesma CV group-aware)", "opcoes": None},
-    {"key": "benchmark_regressao", "attr": "executar_benchmark_regressao", "tipo": "bool",
+    {"key": "benchmark_regressao", "attr": "run_benchmark_regression", "tipo": "bool",
      "desc": "Auto-Benchmark de regressao: Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R "
              "(N2/N3, por especie, mesmo split cal/val)", "opcoes": None},
-    {"key": "monte_carlo", "attr": "executar_monte_carlo", "tipo": "bool",
+    {"key": "monte_carlo", "attr": "run_monte_carlo", "tipo": "bool",
      "desc": "Monte Carlo CV: IC95% por percentil (N repeticoes estratificadas por grupo)", "opcoes": None},
     {"key": "n_monte_carlo", "attr": "n_monte_carlo", "tipo": "int",
      "desc": "Numero de repeticoes do Monte Carlo CV", "opcoes": None, "min": 1, "max": 100000},
     {"key": "monte_carlo_incluir_todos", "attr": "monte_carlo_incluir_todos", "tipo": "bool",
      "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento)", "opcoes": None},
-    {"key": "shap_benchmark", "attr": "executar_shap", "tipo": "bool",
+    {"key": "shap_benchmark", "attr": "run_shap", "tipo": "bool",
      "desc": "SHAP values (TreeExplainer) para RF/XGBoost/GBM — interpretabilidade espectral", "opcoes": None},
     {"key": "shap_max_amostras", "attr": "shap_max_amostras", "tipo": "int",
      "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None,

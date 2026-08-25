@@ -266,7 +266,7 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
             print(f"\n  [AVISO] DET curves falhou: {_e_det}")
 
     # ── SHAP values (opcional) ────────────────────────────────────────────
-    if cfg.executar_shap:
+    if cfg.run_shap:
         # Guard: RF multiclass (14 classes × 500 samples × n_feat) ~600 MB
         if _verificar_ram(3.0, "SHAP TreeExplainer (RF multiclasse 14 classes)"):
             fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers)

@@ -815,7 +815,7 @@ def _cfgv(cfg: Config, key: str, default: Any = None) -> Any:
     """Le um valor do Config pela KEY do _CONFIG_SPEC, resolvendo o atributo real.
 
     Evita o erro comum de usar `getattr(cfg, "benchmark")` quando o atributo
-    real e `executar_benchmark`. Sempre use esta funcao para ler config por key.
+    real e `run_benchmark`. Sempre use esta funcao para ler config por key.
     """
     spec = _SPEC_BY_KEY.get(key)
     attr = spec["attr"] if spec else key
@@ -3789,12 +3789,12 @@ def _comando_demo() -> None:
         n_bootstrap_vip=10,
         n_bootstrap_bca=100,
         n_monte_carlo=20,
-        executar_benchmark=False,
-        executar_monte_carlo=False,
-        executar_shap=False,
-        executar_wold=False,
-        executar_cv_anova=False,
-        executar_opls=False,
+        run_benchmark=False,
+        run_monte_carlo=False,
+        run_shap=False,
+        run_wold=False,
+        run_cv_anova=False,
+        run_opls=False,
         executar_etapa4=False,
         comparar_pipelines=False,
         comparar_hca_pipelines=False,

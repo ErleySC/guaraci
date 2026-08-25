@@ -1364,7 +1364,7 @@ def executar(cfg: Config):
                   f"DD-SIMCA forçado para modo 'puros'.")
             # Force per-species one-class authentication for N2
             cfg.ddsimca_treinar_em = "puros"
-            cfg.executar_ddsimca = True
+            cfg.run_ddsimca = True
         else:
             log.info("[AVISO] nivel=N2 sem dados de concentração (##TITLE= sem "
                   "adulterante). Não é possível separar puro/adulterado — "
@@ -1743,7 +1743,7 @@ def executar(cfg: Config):
     # sentido nesse contexto -- nem gasto de tempo silencioso, nem numero
     # espurio no relatorio sao aceitaveis em software cientifico.
     wold_res: Optional[Dict[str, object]] = None
-    if cfg.executar_wold and objetivo == CLASSIFICACAO:
+    if cfg.run_wold and objetivo == CLASSIFICACAO:
         log.info(f"\n[4b/7] Teste de Wold (R2Y/Q2Y intercept, "
               f"n={cfg.n_permutacoes_wold})")
         wold_res = wold_test(
@@ -1760,7 +1760,7 @@ def executar(cfg: Config):
         log.info(f"  Q2Y obs = {cast(float, wold_res['q2_obs']):.4f}  |  "
               f"intercepto = {_wq2_s}  "
               f"{'VALIDO' if wold_res['valid_q2'] else 'FALHA'} (limiar < 0.05)")
-    elif cfg.executar_wold:
+    elif cfg.run_wold:
         log.info(f"\n[4b/7] Teste de Wold — PULADO: objetivo="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intercepto R2Y/Q2Y "
               f"e' diagnostico de CLASSIFICACAO (usa rotulos de especie/classe "
@@ -1772,12 +1772,12 @@ def executar(cfg: Config):
     # rodava (barato, mas gerava numero sem sentido no resumo) mesmo fora de
     # Classificacao -- Y_bin/Y_cv sao rotulos de classe.
     cv_anova_res: Optional[Dict[str, float]] = None
-    if cfg.executar_cv_anova and objetivo == CLASSIFICACAO:
+    if cfg.run_cv_anova and objetivo == CLASSIFICACAO:
         cv_anova_res = cv_anova_eriksson(Y_bin, Y_cv, n_opt)
         log.info(f"\n[4c/7] CV-ANOVA (Eriksson): F = {cv_anova_res['F']:.3f}  "
               f"p = {cv_anova_res['p_value']:.4g}  "
               f"(df = {cv_anova_res['df_model']}, {cv_anova_res['df_resid']})")
-    elif cfg.executar_cv_anova:
+    elif cfg.run_cv_anova:
         log.info(f"\n[4c/7] CV-ANOVA — PULADO: objetivo="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Teste de "
               f"significancia de CLASSIFICACAO (Eriksson et al. 2008); "
@@ -1918,7 +1918,7 @@ def executar(cfg: Config):
     # formal (p-valor) de significancia por variavel.
     _martens_n_sig: Optional[int] = None
     _martens_n_folds: Optional[int] = None
-    if cfg.executar_martens and should_generate(cfg, "martens"):
+    if cfg.run_martens and should_generate(cfg, "martens"):
         log.info("  [Martens] Jackknifing group-aware dos coeficientes PLS...")
         martens = martens_uncertainty_test(
             X_processed, Y_bin, n_opt, cv_indices, pls_final.coef_)
@@ -1956,7 +1956,7 @@ def executar(cfg: Config):
     # ddsimca_pcv_sensitivity). (sens_PCV, aviso)
     ddsimca_pcv_esp: Dict[str, Tuple[float, Optional[str]]] = {}
     _pcv_indisponivel_avisado = False
-    modo_dd: str = "todos"  # default; overwritten if executar_ddsimca=True
+    modo_dd: str = "todos"  # default; overwritten if run_ddsimca=True
     # DD-SIMCA e' um diagnostico de AUTENTICACAO DE PUREZA (N2): pergunta se
     # a amostra pertence a regiao de aceitacao da sua propria especie/classe.
     # Em N1 (identificacao de especie), essa pergunta nao agrega -- o pipeline
@@ -1964,12 +1964,12 @@ def executar(cfg: Config):
     # sem eixo de pureza confunde mais do que esclarece num estudo de N1. Por
     # isso o toggle e' ignorado (nao bloqueado no Config, so' na execucao) com
     # aviso explicito, mesmo que o usuario tenha ligado manualmente.
-    if cfg.executar_ddsimca and cfg.nivel == "N1":
+    if cfg.run_ddsimca and cfg.nivel == "N1":
         log.info("\n[Sprint3] DD-SIMCA — IGNORADO: nivel=N1 (identificacao de "
               "especie). DD-SIMCA e um diagnostico de autenticacao de pureza "
               "(conceito de N2); nao agrega a este tipo de analise. Troque "
               "para nivel=N2 se quiser autenticar pureza por especie.")
-    elif cfg.executar_ddsimca and should_generate(cfg, "ddsimca"):
+    elif cfg.run_ddsimca and should_generate(cfg, "ddsimca"):
         modo_dd = (cfg.ddsimca_treinar_em or "todos").lower()
         if conc is not None:
             # Pure samples: conc loaded as None -> NaN after asarray(float), OR 0.0.
@@ -2106,7 +2106,7 @@ def executar(cfg: Config):
 
     # OPLS-DA
     _opls_n_ortho: Optional[int] = None
-    if cfg.executar_opls and should_generate(cfg, "opls"):
+    if cfg.run_opls and should_generate(cfg, "opls"):
         n_cls_opls = len(classes_unicas)
         log.info(f"\n[Sprint3] OPLS-DA "
               f"(n_ortho={cfg.n_ortho_opls}, {n_cls_opls} classes)...")
@@ -2313,7 +2313,7 @@ def executar(cfg: Config):
             resumo["BCa Holdout Accuracy"] = _ci_str(bca_holdout.get("accuracy"))
             resumo["BCa Holdout Bal.acc"]  = _ci_str(bca_holdout.get("balanced_accuracy"))
     # Sprint 3 — append to summary after dict already exists
-    if cfg.executar_ddsimca and ddsimca_res is not None:
+    if cfg.run_ddsimca and ddsimca_res is not None:
         resumo["DD-SIMCA n_components"]    = int(cfg.ddsimca_n_components)
         resumo["DD-SIMCA n_desconhecidos"] = int(np.sum(simca_pred == "Desconhecido"))
         resumo["DD-SIMCA n_ambiguos"]      = int(np.sum(simca_pred == "Ambiguo"))
@@ -2404,7 +2404,7 @@ def executar(cfg: Config):
     log.info(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
-    if cfg.executar_benchmark and should_generate(cfg, "benchmark"):
+    if cfg.run_benchmark and should_generate(cfg, "benchmark"):
         log.info("\n[7b/7] Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)...")
         # Guarda: ~1.2 GB pico (SVM kernel matrix + OOF proba)
         if _verificar_ram(1.2, "Auto-Benchmark"):
@@ -2420,7 +2420,7 @@ def executar(cfg: Config):
                 log.info(f"  [AVISO] Benchmark falhou: {_e_bench}")
 
     # --- 9a2. Monte Carlo CV (opcional) ────────────────────────────────────
-    if cfg.executar_monte_carlo and should_generate(cfg, "monte_carlo"):
+    if cfg.run_monte_carlo and should_generate(cfg, "monte_carlo"):
         log.info("\n[7c/7] Monte Carlo CV (IC95% por percentil)...")
         # Guarda: ~400 MB (PLS-DA x N splits em serie)
         if _verificar_ram(0.5, "Monte Carlo CV"):
@@ -2613,7 +2613,7 @@ def executar(cfg: Config):
                             tabela_especie=reg_esp["tabela_especie"])
 
                         # --- Auto-Benchmark de regressao (opcional) ------
-                        if cfg.executar_benchmark_regressao:
+                        if cfg.run_benchmark_regression:
                             log.info("\n[7b/7] Auto-Benchmark de regressao "
                                   "(Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R)...")
                             if _verificar_ram(0.6, "Auto-Benchmark de regressao"):

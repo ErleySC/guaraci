@@ -203,7 +203,7 @@ aparecerem como valores não computados.
 
 **Curadoria de figuras por tipo de análise (regras adicionais):**
 - **DD-SIMCA** (autenticação de pureza) é um conceito de **N2**. Em **N1**
-  (classificação por espécie), o toggle `ddsimca`/`executar_ddsimca` é
+  (classificação por espécie), o toggle `ddsimca`/`run_ddsimca` é
   **ignorado com aviso** — não agrega a um estudo de identificação de
   espécie. Em N2 ele é sempre ligado automaticamente (não precisa
   configurar).

@@ -178,7 +178,7 @@ def test_classificacao_cada_metodo_registrado_usa_cv_group_aware(
         skms, "StratifiedGroupKFold",
         _espiao(skms.StratifiedGroupKFold, capturados))
 
-    cfg = pq.Config(n_splits_cv=3, seed=0, executar_shap=False)
+    cfg = pq.Config(n_splits_cv=3, seed=0, run_shap=False)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)

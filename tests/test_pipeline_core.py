@@ -1073,21 +1073,21 @@ def test_config_spec_spa_ag_opt_in_por_padrao(pq):
     """SPA/AG são opt-in (default False) — mais lentos que os métodos
     sempre-ligados; não devem rodar sem o usuário pedir explicitamente."""
     cfg = pq.Config()
-    assert cfg.executar_spa is False
+    assert cfg.run_spa is False
     assert cfg.executar_ag is False
     chaves = {s["key"] for s in pq._CONFIG_SPEC}
     assert "selecao_spa" in chaves and "selecao_ag" in chaves
 
 
 def test_etapa4_integra_spa_e_ag_quando_ligados(pq):
-    """Integração: com executar_spa/executar_ag=True, a tabela final da
+    """Integração: com run_spa/executar_ag=True, a tabela final da
     Etapa 4 inclui as linhas 'SPA (APS)' e 'AG (Genetico)' ao lado dos
     métodos sempre-ligados (Full/iPLS/VIP/SR/sPLS-DA)."""
     import tempfile
     X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=4, p=30)
     wavenumbers = np.linspace(4000, 400, X.shape[1])
 
-    cfg = pq.Config(executar_spa=True, executar_ag=True,
+    cfg = pq.Config(run_spa=True, executar_ag=True,
                      spa_n_vars_max=6, spa_n_starts=6,
                      ag_tam_populacao=8, ag_n_geracoes=3, seed=4)
     with tempfile.TemporaryDirectory() as pasta:
@@ -1117,12 +1117,12 @@ def test_hardware_probe_retorna_campos_esperados(pq):
 def test_auto_ajustar_config_hardware_ram_critica_desliga_tudo(pq):
     """RAM < 2 GB: desliga SHAP/benchmark/monte_carlo e reduz CV — o cenário
     mais crítico de proteção contra travamento."""
-    cfg = pq.Config(executar_shap=True, executar_benchmark=True,
-                     executar_monte_carlo=True, n_splits_cv=10)
+    cfg = pq.Config(run_shap=True, run_benchmark=True,
+                     run_monte_carlo=True, n_splits_cv=10)
     avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 1.5})
-    assert cfg.executar_shap is False
-    assert cfg.executar_benchmark is False
-    assert cfg.executar_monte_carlo is False
+    assert cfg.run_shap is False
+    assert cfg.run_benchmark is False
+    assert cfg.run_monte_carlo is False
     assert cfg.n_splits_cv == 3
     assert len(avisos) == 4
 
@@ -1130,11 +1130,11 @@ def test_auto_ajustar_config_hardware_ram_critica_desliga_tudo(pq):
 def test_auto_ajustar_config_hardware_ram_farta_nao_mexe(pq):
     """RAM >= 8 GB: nenhum ajuste, nenhum aviso — não deve mexer em nada
     desnecessariamente quando há recurso de sobra."""
-    cfg = pq.Config(executar_shap=True, shap_max_amostras=500,
-                     executar_benchmark=True, n_monte_carlo=200)
+    cfg = pq.Config(run_shap=True, shap_max_amostras=500,
+                     run_benchmark=True, n_monte_carlo=200)
     avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 16.0})
     assert avisos == []
-    assert cfg.executar_shap is True
+    assert cfg.run_shap is True
     assert cfg.shap_max_amostras == 500
 
 
@@ -1481,7 +1481,7 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
 
 @pytest.mark.slow
 def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
-    """Integracao real: executar() com executar_martens=True gera
+    """Integracao real: executar() com run_martens=True gera
     dados/teste_martens.csv e as chaves 'Martens n_*' aparecem no
     resumo_modelo.txt e no model_card.md (via _NOTAS_METODOLOGICAS/filtro
     de metricas ja existentes)."""
@@ -1494,7 +1494,7 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
         n_splits_cv=3, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
-        executar_martens=True,
+        run_martens=True,
     )
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
@@ -1544,7 +1544,7 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
-        executar_wold=True, executar_cv_anova=True,
+        run_wold=True, run_cv_anova=True,
     )
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     buf = io.StringIO()
@@ -1584,7 +1584,7 @@ def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
-        executar_wold=True, executar_cv_anova=True,
+        run_wold=True, run_cv_anova=True,
     )
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
     pq.executar(cfg)
@@ -1648,11 +1648,11 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1,
         n_permutacoes=5, n_permutacoes_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
-        executar_benchmark=False, executar_monte_carlo=False,
-        executar_shap=False, executar_wold=False, executar_cv_anova=False,
-        executar_opls=False, executar_etapa4=False, comparar_pipelines=False,
+        run_benchmark=False, run_monte_carlo=False,
+        run_shap=False, run_wold=False, run_cv_anova=False,
+        run_opls=False, executar_etapa4=False, comparar_pipelines=False,
         comparar_hca_pipelines=False, max_lvs=5,
-        executar_ddsimca=True,          # ligado manualmente, propositalmente
+        run_ddsimca=True,          # ligado manualmente, propositalmente
     )
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)
     pq.executar(cfg)
@@ -1670,13 +1670,13 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
 
 def test_ddsimca_permitido_em_n2_com_toggle_ligado(pq):
     """Confirma que o bloqueio e' especifico de N1 -- em N2 (onde
-    executar() ja forca executar_ddsimca=True), o toggle continua
+    executar() ja forca run_ddsimca=True), o toggle continua
     funcionando normalmente (regressao no bloqueio, nao remocao da feature)."""
-    cfg = pq.Config(nivel="N2", executar_ddsimca=False)
+    cfg = pq.Config(nivel="N2", run_ddsimca=False)
     # Simula so' o trecho de decisao (sem rodar o pipeline inteiro): a
-    # condicao de bloqueio e' `cfg.executar_ddsimca and cfg.nivel == "N1"`,
+    # condicao de bloqueio e' `cfg.run_ddsimca and cfg.nivel == "N1"`,
     # entao em N2 ela nunca dispara, independente do toggle.
-    bloqueado = cfg.executar_ddsimca and cfg.nivel == "N1"
+    bloqueado = cfg.run_ddsimca and cfg.nivel == "N1"
     assert not bloqueado
 
 
@@ -1844,10 +1844,10 @@ def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
-        executar_ddsimca=True, executar_opls=False, executar_etapa4=False,
-        executar_wold=False, comparar_pipelines=False,
-        executar_cv_anova=False, executar_benchmark=False,
-        executar_monte_carlo=False, executar_shap=False,
+        run_ddsimca=True, run_opls=False, executar_etapa4=False,
+        run_wold=False, comparar_pipelines=False,
+        run_cv_anova=False, run_benchmark=False,
+        run_monte_carlo=False, run_shap=False,
         ddsimca_pcv=False,
     )
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
@@ -1870,10 +1870,10 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5, nivel="N2", figuras_detalhadas=False,
-        executar_ddsimca=True, executar_opls=False, executar_etapa4=False,
-        executar_wold=False, comparar_pipelines=False,
-        executar_cv_anova=False, executar_benchmark=False,
-        executar_monte_carlo=False, executar_shap=False,
+        run_ddsimca=True, run_opls=False, executar_etapa4=False,
+        run_wold=False, comparar_pipelines=False,
+        run_cv_anova=False, run_benchmark=False,
+        run_monte_carlo=False, run_shap=False,
         ddsimca_pcv=True,
     )
     os.makedirs(cfg.pasta_entrada, exist_ok=True)
