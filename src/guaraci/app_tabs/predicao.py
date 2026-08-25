@@ -40,7 +40,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
             # QUALQUER caminho do servidor ali. Um campo de texto num app
             # web publico NUNCA e' "so' o operador digita" -- qualquer
             # visitante alcanca. Por isso o campo de caminho local tambem
-            # fica oculto neste modo, nao so' o uploader.
+            # fica oculto neste mode, nao so' o uploader.
             upld_jbl = None
             cam_jbl = ""
             confia_modelo = False

@@ -290,7 +290,7 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     `append_regression_summary`), pois so' fica disponivel mais tarde em
     executar() -- ver `append_regression_model_card`.
     """
-    nivel = cfg.nivel
+    nivel = cfg.level
     nivel_nome = _NIVEL_NOME.get(nivel, nivel)
     agora = datetime.now().strftime("%Y-%m-%d %H:%M")
 

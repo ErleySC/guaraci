@@ -6,13 +6,13 @@ Protótipo GENERICO (2026-07): converte cada imagem numa matriz de "sinal"
 usando estatisticas de cor (RGB/HSV/Lab) — e opcionalmente textura (GLCM,
 requer scikit-image) — analogo a um espectro: cada imagem vira UMA LINHA da
 matriz X, cada estatistica de canal vira UMA VARIAVEL (coluna), exatamente
-como cada comprimento de onda e uma variavel no modo .dx. A partir dai, TODA
+como cada comprimento de onda e uma variavel no mode .dx. A partir dai, TODA
 a maquinaria quimiometrica existente (PCA, PLS-DA, DD-SIMCA, OPLS-DA, selecao
 de variaveis, figuras de merito) funciona SEM alteracao — essas funcoes so
 enxergam uma matriz numerica, nao sabem se a coluna 47 e um comprimento de
 onda ou o canal G medio de uma foto.
 
-Convencao de pastas: MESMA do modo .dx — uma subpasta por classe (ou pasta
+Convencao de pastas: MESMA do mode .dx — uma subpasta por classe (ou pasta
 unica com arquivos soltos, fallback). Extensoes aceitas: .jpg/.jpeg/.png/
 .bmp/.tif/.tiff.
 
@@ -26,10 +26,10 @@ funcoes de figura em figuras.py, fora do escopo deste prototipo).
 mae_id/concentracao: nao ha convencao de metadado equivalente ao ##TITLE=
 do JCAMP-DX para imagens genericas — mae_id fica None (sem agrupamento de
 replicas) e conc fica None (sem quantificacao) neste prototipo. Rotulos vem
-do nome da subpasta (mesma convencao do modo .dx).
+do nome da subpasta (mesma convencao do mode .dx).
 
 IMPORTANTE — pre-processamento: use `default_preprocessing="autoscaling"`
-(ou "mc") no modo="imagem", NUNCA os presets com Savitzky-Golay
+(ou "mc") no mode="imagem", NUNCA os presets com Savitzky-Golay
 ("msc_sg_mc"/"snv_sg_mc"). MSC e SG pressupoem um sinal espectral CONTINUO
 ao longo do eixo de variaveis (comprimento de onda) — nao fazem sentido
 cientifico p/ um vetor curto de estatisticas de cor discretas e heterogeneas
@@ -38,10 +38,10 @@ EXIGE janela <= numero de variaveis (18 por padrao — sem textura), o que
 pode nem ser satisfeito.
 
 IMPORTANTE — faixa espectral: `load_data()` aplica o mesmo filtro
-wn_min/wn_max do modo .dx sobre o eixo simbolico (indices 0..n_features-1).
+wn_min/wn_max do mode .dx sobre o eixo simbolico (indices 0..n_features-1).
 Os defaults de Config (wn_min=4000, wn_max=10000) NAO cobrem esse intervalo
 pequeno e descartariam TODAS as variaveis — ajuste wn_min/wn_max (ex.:
-wn_min=-1, wn_max=100) ao usar modo="imagem".
+wn_min=-1, wn_max=100) ao usar mode="imagem".
 """
 from __future__ import annotations
 
@@ -201,7 +201,7 @@ def _listar_arquivos_imagem(pasta: str) -> List[str]:
 
 def _detectar_subpastas_imagem(raiz: str) -> List[str]:
     """Subpastas (1 por classe) que contem >=1 arquivo de imagem — mesma
-    convencao do modo .dx (`_detectar_subpastas_classe` em dados_io.py)."""
+    convencao do mode .dx (`_detectar_subpastas_classe` em dados_io.py)."""
     if not os.path.isdir(raiz):
         return []
     subpastas = []
@@ -236,7 +236,7 @@ def load_images(
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
                 f"Pasta nao existe: {pasta}\n"
-                f"  -> confira cfg.input_folder (modo='imagem').")
+                f"  -> confira cfg.input_folder (mode='imagem').")
         arqs = _listar_arquivos_imagem(pasta)
         if not arqs:
             raise FileNotFoundError(

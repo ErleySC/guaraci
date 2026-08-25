@@ -29,7 +29,7 @@ def test_adulterant_from_mae_id_puro_e_orfao_sao_none():
 # ── R2cv por especie x adulterante ───────────────────────────────────────────
 @pytest.fixture(scope="module")
 def dados_adulterados():
-    cfg = pq.Config(modo="sintetico", n_per_class=12, n_synthetic_points=60,
+    cfg = pq.Config(mode="sintetico", n_per_class=12, n_synthetic_points=60,
                     n_synthetic_replicates=3, synthetic_adulterants=("S", "M"),
                     max_lvs=5, n_splits_cv=3, seed=1)
     _wn, X, rot, conc, mae = pq.generate_synthetic_data(cfg)
@@ -62,7 +62,7 @@ def test_r2cv_contador_bate_com_a_matriz(dados_adulterados):
 def test_r2cv_sem_adulterante_retorna_none():
     """Modo sintetico legado (sem adulterantes) nao tem combinacao especie x
     adulterante -> None (nao inventa heatmap vazio)."""
-    cfg = pq.Config(modo="sintetico", n_per_class=10, n_synthetic_replicates=3)
+    cfg = pq.Config(mode="sintetico", n_per_class=10, n_synthetic_replicates=3)
     _wn, X, rot, conc, mae = pq.generate_synthetic_data(cfg)
     assert pq.r2cv_species_by_adulterant(X, conc, rot, mae, cfg) is None
 

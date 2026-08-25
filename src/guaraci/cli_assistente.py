@@ -334,8 +334,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     "objetivo": {
         "PT": {
             "desc": "Objetivo cientifico do run — FILTRA quais figuras e "
-                    "relatorios sao gerados, para que cada modo produza apenas "
-                    "o pertinente. 'auto' deriva do modo de analise "
+                    "relatorios sao gerados, para que cada mode produza apenas "
+                    "o pertinente. 'auto' deriva do mode de analise "
                     "(Classificacao/Discriminacao -> Classificacao, "
                     "Quantificacao -> Quantificacao) e preserva o "
                     "comportamento historico.",
@@ -800,8 +800,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "arquivo_csv": {
         "PT": {
-            "desc": "Caminho do arquivo CSV (no modo csv): deve conter colunas espectrais + 1 coluna de classe.",
-            "impacto": "ANALITICO — define os dados de entrada no modo CSV.",
+            "desc": "Caminho do arquivo CSV (no mode csv): deve conter colunas espectrais + 1 coluna de classe.",
+            "impacto": "ANALITICO — define os dados de entrada no mode CSV.",
             "exemplos": {"dados.csv": "Arquivo na pasta atual", r"C:\dados\amostras.csv": "Caminho absoluto"},
         },
         "EN": {
@@ -1216,7 +1216,7 @@ PROFILE_DESC: Dict[str, Dict[str, str]] = {
 
 PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
     "Explorar Dados": {
-        "PT": "objetivo=exploratorio | LVs=15 | PCA/HCA | sem PLS-DA/DD-SIMCA",
+        "PT": "objective=exploratorio | LVs=15 | PCA/HCA | sem PLS-DA/DD-SIMCA",
         "EN": "objective=exploratory | LVs=15 | PCA/HCA | no PLS-DA/DD-SIMCA",
     },
     "Autenticar Pureza": {
@@ -1361,7 +1361,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "4000-10000 cm-1 (typical) or 4000-12000 cm-1",
         },
         "faixa_min": 4000.0, "faixa_max": 10000.0,
-        "preproc": "msc_sg_mc", "modo": "dx",
+        "preproc": "msc_sg_mc", "mode": "dx",
     },
     "nir": {
         "PT": {
@@ -1377,7 +1377,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "4000-14000 cm-1 (700-2500 nm)",
         },
         "faixa_min": 4000.0, "faixa_max": 14000.0,
-        "preproc": "snv_sg_mc", "modo": "dx",
+        "preproc": "snv_sg_mc", "mode": "dx",
     },
     "mir": {
         "PT": {
@@ -1393,7 +1393,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "400-4000 cm-1",
         },
         "faixa_min": 400.0, "faixa_max": 4000.0,
-        "preproc": "snv_sg_mc", "modo": "dx",
+        "preproc": "snv_sg_mc", "mode": "dx",
     },
     "raman": {
         "PT": {
@@ -1409,12 +1409,12 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
         "faixa_min": 50.0, "faixa_max": 4000.0,
-        "preproc": "sg_mc", "modo": "dx",
+        "preproc": "sg_mc", "mode": "dx",
     },
     "uv-vis": {
         "PT": {
             "nome": "UV-Vis (Ultravioleta-Visivel)",
-            "desc": "Espectroscopia de absorbancia UV-Vis. Use modo CSV com colunas de comprimento de onda.",
+            "desc": "Espectroscopia de absorbancia UV-Vis. Use mode CSV com colunas de comprimento de onda.",
             "preproc_rec": "SNV+MC ou Mean-centering (dados UV geralmente ja normalizados)",
             "faixa": "190-900 nm (use CSV — wavelength em nm como colunas)",
         },
@@ -1425,7 +1425,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "190-900 nm (use CSV — wavelength in nm as columns)",
         },
         "faixa_min": 190.0, "faixa_max": 900.0,
-        "preproc": "snv_mc", "modo": "csv",
+        "preproc": "snv_mc", "mode": "csv",
     },
     "fluorescencia": {
         "PT": {
@@ -1441,7 +1441,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "200-800 nm (use CSV)",
         },
         "faixa_min": 200.0, "faixa_max": 800.0,
-        "preproc": "snv_mc", "modo": "csv",
+        "preproc": "snv_mc", "mode": "csv",
     },
     "hplc": {
         "PT": {
@@ -1457,7 +1457,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "Not applicable — use CSV with compound columns",
         },
         "faixa_min": 0.0, "faixa_max": 60.0,
-        "preproc": "autoscaling", "modo": "csv",
+        "preproc": "autoscaling", "mode": "csv",
     },
     "gc-ms": {
         "PT": {
@@ -1473,7 +1473,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "Not applicable — use CSV (m/z or retention time)",
         },
         "faixa_min": 0.0, "faixa_max": 90.0,
-        "preproc": "autoscaling", "modo": "csv",
+        "preproc": "autoscaling", "mode": "csv",
     },
     "nmr": {
         "PT": {
@@ -1489,7 +1489,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "0-12 ppm (chemical shift)",
         },
         "faixa_min": 0.0, "faixa_max": 12.0,
-        "preproc": "snv_mc", "modo": "csv",
+        "preproc": "snv_mc", "mode": "csv",
     },
     "ims": {
         "PT": {
@@ -1505,7 +1505,7 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "5-50 ms (drift time)",
         },
         "faixa_min": 5.0, "faixa_max": 50.0,
-        "preproc": "snv_sg_mc", "modo": "csv",
+        "preproc": "snv_sg_mc", "mode": "csv",
     },
     "generico": {
         "PT": {
@@ -1521,6 +1521,6 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "Configure manually in Data menu",
         },
         "faixa_min": 0.0, "faixa_max": 999999.0,
-        "preproc": "msc_sg_mc", "modo": "dx",
+        "preproc": "msc_sg_mc", "mode": "dx",
     },
 }

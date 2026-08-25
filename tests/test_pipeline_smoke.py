@@ -309,7 +309,7 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),  # synthetic mode ignores this
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico",
+        mode="sintetico",
         n_per_class=8,
         n_synthetic_points=50,
         # Synthetic data uses linspace(4000, 400) — match the range so

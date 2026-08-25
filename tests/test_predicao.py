@@ -24,7 +24,7 @@ def modelo_e_dados(pq, tmp_path_factory):
     cfg = pq.Config(
         input_folder=str(base / "dados"),
         output_root_folder=str(base / "saida"),
-        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
         n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,

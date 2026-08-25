@@ -58,7 +58,7 @@ def test_rotulo_opcao_campo_sem_alias_especial_devolve_str(g):
 
 def test_get_val_nivel_usa_rotulo_opcao(g):
     cfg = g.Config()
-    cfg.nivel = "N2"
+    cfg.level = "N2"
     assert g._get_val(cfg, "nivel") == g._rotulo_opcao("nivel", "N2")
 
 

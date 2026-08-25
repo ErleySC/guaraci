@@ -63,7 +63,7 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
 
 @pytest.mark.slow
 def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
-    """Monte Carlo CV no modo padrão (só PLS-DA, monte_carlo_include_all=False):
+    """Monte Carlo CV no mode padrão (só PLS-DA, monte_carlo_include_all=False):
     roda rápido, gera CSV + DataFrame com IC95%."""
     X, y_int, grupos, lb = _dados_benchmark(seed=1)
     cfg = pq.Config(n_monte_carlo=8, monte_carlo_test_size=0.3,
@@ -104,7 +104,7 @@ def test_fig_shap_benchmark_gera_figura(pq, tmp_path):
     # p=30: preprocessamento padrão (msc_sg_mc) usa Savitzky-Golay com janela
     # default 25 — precisa n_variaveis > sg_window.
     X, y_int, _grupos, _lb = _dados_benchmark(seed=3, p=30)
-    cfg = pq.Config(shap_max_amostras=100, seed=3)
+    cfg = pq.Config(shap_max_samples=100, seed=3)
     pasta = str(tmp_path)
     wavenumbers = np.linspace(4000, 400, X.shape[1])
 
@@ -206,7 +206,7 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N3",
+        mode="sintetico", level="N3",
         n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,

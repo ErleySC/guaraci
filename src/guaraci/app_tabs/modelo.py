@@ -185,7 +185,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     if st.session_state.get("_csv_upload_path"):
         csv_upld_path = st.session_state["_csv_upload_path"]
         if os.path.exists(csv_upld_path):
-            cfg_run.modo = "csv"
+            cfg_run.mode = "csv"
             cfg_run.csv_file = csv_upld_path
 
     ok_run, msg_run = pq._validar_pasta_dados(cfg_run)

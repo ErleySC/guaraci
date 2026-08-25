@@ -32,30 +32,30 @@ _PRE_PROC_INV: Dict[str, str] = {v: k for k, v in _PRE_PROC_FRIENDLY.items()}
 # Cada campo: chave_yaml, atributo da Config, tipo, descricao, opcoes.
 #   tipo in {"str","int","float","bool","list","choice","preproc"}
 _CONFIG_SPEC: List[Dict[str, Any]] = [
-    {"key": "modo_entrada", "attr": "modo", "tipo": "choice",
+    {"key": "modo_entrada", "attr": "mode", "tipo": "choice",
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
              "imagem (colorimetria digital, prototipo) | sintetico (teste)",
      "opcoes": ["dx", "csv", "imagem", "sintetico"]},
     {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
-     "desc": "Pasta com os arquivos .dx OU imagens (modo dx/imagem; uma subpasta por classe)",
+     "desc": "Pasta com os arquivos .dx OU imagens (mode dx/imagem; uma subpasta por classe)",
      "opcoes": None},
     {"key": "imagem_incluir_textura", "attr": "include_image_texture", "tipo": "bool",
      "desc": "Modo imagem: incluir features de textura (GLCM) alem de cor "
              "(media/desvio RGB+HSV+Lab) — requer 'pip install scikit-image'",
      "opcoes": None},
     {"key": "arquivo_csv", "attr": "csv_file", "tipo": "str",
-     "desc": "Caminho do CSV (modo csv): colunas espectrais/variaveis + 1 coluna de classe", "opcoes": None},
+     "desc": "Caminho do CSV (mode csv): colunas espectrais/variaveis + 1 coluna de classe", "opcoes": None},
     {"key": "coluna_classe", "attr": "class_column", "tipo": "str",
-     "desc": "Nome da coluna de classe/rotulo no CSV (modo csv)", "opcoes": None},
+     "desc": "Nome da coluna de classe/rotulo no CSV (mode csv)", "opcoes": None},
     {"key": "coluna_concentracao", "attr": "conc_column", "tipo": "str_opcional",
-     "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; modo csv)", "opcoes": None},
+     "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; mode csv)", "opcoes": None},
     {"key": "pasta_saida", "attr": "output_root_folder", "tipo": "str",
      "desc": "Pasta onde os resultados serao gravados", "opcoes": None},
-    {"key": "nivel", "attr": "nivel", "tipo": "choice",
+    {"key": "nivel", "attr": "level", "tipo": "choice",
      "desc": "Modo de analise: Classificacao (especie) | Discriminacao "
              "(puro vs. adulterado) | Quantificacao (teor de adulterante)",
      "opcoes": ["N1", "N2", "N3"]},
-    {"key": "objetivo", "attr": "objetivo", "tipo": "choice",
+    {"key": "objetivo", "attr": "objective", "tipo": "choice",
      "desc": "Objetivo cientifico que filtra QUAIS figuras/relatorios sao "
              "gerados: auto (deriva do nivel — N1/N2=Classificacao, "
              "N3=Quantificacao) | exploratorio (so PCA/HCA/loadings/pre-proc, "
@@ -136,7 +136,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento)", "opcoes": None},
     {"key": "shap_benchmark", "attr": "run_shap", "tipo": "bool",
      "desc": "SHAP values (TreeExplainer) para RF/XGBoost/GBM — interpretabilidade espectral", "opcoes": None},
-    {"key": "shap_max_amostras", "attr": "shap_max_amostras", "tipo": "int",
+    {"key": "shap_max_amostras", "attr": "shap_max_samples", "tipo": "int",
      "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None,
      "min": 1, "max": 1000000},
     {"key": "figuras_detalhadas", "attr": "detailed_figures", "tipo": "bool",
@@ -152,7 +152,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Formato das figuras", "opcoes": ["png", "pdf", "svg"]},
     {"key": "dpi", "attr": "save_dpi", "tipo": "int",
      "desc": "Resolucao das figuras (DPI)", "opcoes": None, "min": 50, "max": 1200},
-    {"key": "abrir_figuras_na_tela", "attr": "mostrar_graficos", "tipo": "bool",
+    {"key": "abrir_figuras_na_tela", "attr": "show_plots", "tipo": "bool",
      "desc": "[Nao disponivel: o backend grafico e sempre headless/Agg, por "
              "estabilidade em execucao paralela e no servidor web] Figuras "
              "continuam sendo sempre salvas em disco normalmente",
@@ -357,18 +357,18 @@ def load_config(caminho: str, base: Optional[Config] = None) -> Config:
 
 
 def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
-    """Checagem amigavel da fonte de dados, ciente do modo de entrada.
+    """Checagem amigavel da fonte de dados, ciente do mode de entrada.
     Generico: serve para .dx (FT-NIR), CSV (qualquer dado tabular) ou
     dados sinteticos de teste."""
-    modo = getattr(cfg, "modo", "dx")
-    if modo == "sintetico":
-        return True, "OK — modo sintetico (dados gerados em memoria, sem arquivo)"
-    if modo == "csv":
+    mode = getattr(cfg, "mode", "dx")
+    if mode == "sintetico":
+        return True, "OK — mode sintetico (dados gerados em memoria, sem arquivo)"
+    if mode == "csv":
         cam = cfg.csv_file
         if not cam or not os.path.isfile(cam):
             return False, f"CSV nao encontrado: '{cam}' (confira o caminho)"
         return True, f"OK — CSV: {os.path.basename(cam)}"
-    if modo == "imagem":
+    if mode == "imagem":
         p_img = cfg.input_folder
         if not p_img or not os.path.isdir(p_img):
             return False, f"pasta nao encontrada: '{p_img}' (confira o caminho)"
@@ -378,7 +378,7 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
         if n_img == 0:
             return False, f"nenhuma imagem em '{p_img}' (nem nas subpastas)"
         return True, f"OK — {n_img} imagens encontradas"
-    # modo dx (padrao)
+    # mode dx (padrao)
     p = cfg.input_folder
     if not p or not os.path.isdir(p):
         return False, f"pasta nao encontrada: '{p}' (confira o caminho)"

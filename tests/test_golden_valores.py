@@ -157,12 +157,12 @@ def _cfg_golden(pq, base: Path):
     cfg = pq.Config(
         input_folder=str(base / "in"),
         output_root_folder=str(base / "saida"),
-        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
         n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
         n_permutations=5, n_permutations_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
-        max_lvs=5, nivel="N2", detailed_figures=False,
+        max_lvs=5, level="N2", detailed_figures=False,
     )
     # DD-SIMCA ligado (é o diferencial científico do projeto e o cálculo mais
     # sensível); módulos pesados/opcionais desligados para manter o teste

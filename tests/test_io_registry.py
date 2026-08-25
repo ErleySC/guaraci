@@ -20,8 +20,8 @@ def test_obter_leitor_modo_desconhecido_da_erro_com_lista():
 
 
 def test_obter_leitor_retorna_callable_para_cada_modo():
-    for modo in registered_modes():
-        leitor = get_reader(modo)
+    for mode in registered_modes():
+        leitor = get_reader(mode)
         assert callable(leitor)
 
 
@@ -46,15 +46,15 @@ def test_registrar_novo_leitor_fica_disponivel():
         assert len(resultado) == 6
         assert chamadas == ["config_falso"]
     finally:
-        # limpeza: nao deixar o modo de teste vazando para outros testes
+        # limpeza: nao deixar o mode de teste vazando para outros testes
         from guaraci.io_registry import _LEITORES
         _LEITORES.pop("meu_formato_de_teste", None)
 
 
 def test_carregar_dados_sintetico_usa_o_registry(pq):
-    """load_data(cfg) com modo='sintetico' deve funcionar via registry,
+    """load_data(cfg) com mode='sintetico' deve funcionar via registry,
     devolvendo a tupla de 6 elementos com os tipos esperados."""
-    cfg = pq.Config(modo="sintetico")
+    cfg = pq.Config(mode="sintetico")
     wn, X, rot, conc, mae, meta = pq.load_data(cfg)
     assert wn.ndim == 1
     assert X.ndim == 2

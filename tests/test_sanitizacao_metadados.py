@@ -100,7 +100,7 @@ def saida_pipeline_com_sentinelas(pq, tmp_path_factory):
                              semente=hash((cod, ponto, trip)) % 10_000)
 
     cfg = pq.Config(
-        modo="dx", input_folder=str(entrada),
+        mode="dx", input_folder=str(entrada),
         output_root_folder=str(base / "saida"),
         wn_min=4000.0, wn_max=10000.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,

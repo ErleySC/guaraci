@@ -124,7 +124,7 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
                         — recommended when SG derivative destroys signal
                         or for NIR without pronounced scatter
         'mc'          : mean-centering only
-        'custom'      : honors aplicar_snv / aplicar_sg / aplicar_mc
+        'custom'      : honors apply_snv / apply_sg / apply_mc
 
     Mean-centering / autoscaling are kept INSIDE the Pipeline so that
     cross_val_predict does not leak statistics between folds.
@@ -152,11 +152,11 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
         ])
     # custom — uses individual flags
     etapas: List[Tuple[str, BaseEstimator]] = []
-    if cfg.aplicar_snv:
+    if cfg.apply_snv:
         etapas.append(("snv", SNV()))
-    if cfg.aplicar_sg:
+    if cfg.apply_sg:
         etapas.append(("sg", SavGol(cfg.sg_window, cfg.sg_polyorder, cfg.sg_deriv)))
-    if cfg.aplicar_mc:
+    if cfg.apply_mc:
         etapas.append(("mc", StandardScaler(with_std=False)))
     if not etapas:
         etapas.append(("mc", StandardScaler(with_std=False)))

@@ -19,7 +19,7 @@ estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
 2. [Modos de análise e objetivo científico](#2-modos-de-análise-e-objetivo-científico)
 3. [Estrutura de saída dos resultados](#3-estrutura-de-saída-dos-resultados)
 4. [Fontes de dados de entrada](#4-fontes-de-dados-de-entrada)
-4b. [Perfis de matriz e modo cego](#4b-perfis-de-matriz-e-modo-cego)
+4b. [Perfis de matriz e mode cego](#4b-perfis-de-matriz-e-mode-cego)
 5. [Funcionalidades científicas](#5-funcionalidades-científicas)
 6. [Fluxo típico na interface web](#6-fluxo-típico-na-interface-web)
 7. [Mapa dos módulos (para desenvolvedores)](#7-mapa-dos-módulos-para-desenvolvedores)
@@ -83,12 +83,12 @@ progresso do aplicativo web.
 
 ## 2 Modos de análise e objetivo científico
 
-O **modo de análise** define o que o pipeline faz. Na interface aparecem com
+O **mode de análise** define o que o pipeline faz. Na interface aparecem com
 nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 ### 2.1 Os três níveis (N1 / N2 / N3)
 
-> `N1`/`N2`/`N3` é o código interno de `cfg.nivel` (usado em `config.yaml`,
+> `N1`/`N2`/`N3` é o código interno de `cfg.level` (usado em `config.yaml`,
 > nunca exibido como termo primário na CLI/web). No nome da pasta de saída
 > (seção 3), cada nível vira um slug amigável: `N1`→`PorEspecie`,
 > `N2`→`Autenticacao`, `N3`→`Quantificacao` (corrigido em 2026-07-13 —
@@ -144,7 +144,7 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   o título + o `resumo_modelo.txt` trazem o **contador de falhas** (ex.: "3/9
   combinações abaixo de R²cv = 0,70") — para que uma quantificação que só
   funciona em parte das combinações não seja lida como sucesso geral. O
-  adulterante de cada amostra é derivado do `mae_id`. *(No modo sintético, ative
+  adulterante de cada amostra é derivado do `mae_id`. *(No mode sintético, ative
   com `synthetic_adulterants` no `config.yaml`, ex.: `["S","M","A"]`.)*
 
 ### 2.2 Objetivo científico: Exploratório, Classificação, Quantificação
@@ -244,7 +244,7 @@ conteúdo por categoria:
 
 - **`<Amostra>`** — identificador do conjunto de dados. Vem do rótulo livre
   `tag` (em `Config`/`config.yaml`) quando preenchido; senão é derivado
-  automaticamente do modo de entrada (nome do arquivo CSV, nome da pasta de
+  automaticamente do mode de entrada (nome do arquivo CSV, nome da pasta de
   espectros, ou `"sintetico"` para dados de teste).
 - **`<Modo>`** — rótulo amigável do objetivo científico resolvido:
   `Exploratorio`, `Classificacao` ou `Quantificacao`.
@@ -295,13 +295,13 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 **Modo `imagem` (colorimetria digital, protótipo):** extrai estatísticas de
 cor (média/desvio-padrão por canal em RGB, HSV e Lab — 18 variáveis) de cada
 fotografia e, opcionalmente, textura (GLCM, requer `pip install
-scikit-image`). Mesma convenção de pastas do modo `dx` (uma subpasta por
+scikit-image`). Mesma convenção de pastas do mode `dx` (uma subpasta por
 classe). A partir da extração, toda a maquinaria quimiométrica (PCA, PLS-DA,
 DD-SIMCA, seleção de variáveis, figuras de mérito) funciona sem alteração —
 cada estatística de cor vira uma "variável", exatamente como um comprimento
 de onda.
 
-**Duas configurações obrigatórias ao usar `modo="imagem"`:**
+**Duas configurações obrigatórias ao usar `mode="imagem"`:**
 1. `pre_processamento` deve ser `autoscaling` ou `mc` — **nunca** um preset
    com Savitzky-Golay (`msc_sg_mc`/`snv_sg_mc`), que pressupõe um sinal
    espectral contínuo, sem sentido para um vetor curto de estatísticas de
@@ -312,12 +312,12 @@ de onda.
    (4000–10000) descartariam todas as variáveis.
 
 Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
-usuário definir a região de interesse via `imagem_recorte` (recorte
+usuário definir a região de interesse via `image_crop` (recorte
 retangular relativo, `config.yaml`) antes da extração.
 
 ---
 
-## 4b Perfis de matriz e modo cego
+## 4b Perfis de matriz e mode cego
 
 ### 4b.1 Perfil de matriz — trocar de matriz sem tocar em código
 
@@ -366,12 +366,12 @@ cenário que o usuário final nunca terá em mãos.
 
 ```bash
 guaraci                     # cego
-guaraci --modo=controle     # marcado como tal em toda a saída
+guaraci --mode=controle     # marcado como tal em toda a saída
 ```
 
-No modo cego, um erro do classificador se propaga para a quantificação — e é
+No mode cego, um erro do classificador se propaga para a quantificação — e é
 **correto** que se propague: é o que aconteceria em produção. Quando não há
-classificador ajustado, o modo reportado é `controle-forcado`, nunca `cego`:
+classificador ajustado, o mode reportado é `controle-forcado`, nunca `cego`:
 um resultado de controle disfarçado de cego seria pior que um resultado de
 controle assumido.
 
@@ -577,7 +577,7 @@ sistema operacional por padrão).
 Cabeçalho: logo, versão e badges (licença/instituição) ficam sempre
 visíveis no topo, antes das abas. Quando o app roda **sem** `config.yaml`
 local (caso do deploy público em `guaraci.streamlit.app`, que não tem
-acesso aos dados reais de pesquisa), aparece um aviso de **modo
+acesso aos dados reais de pesquisa), aparece um aviso de **mode
 demonstração** explicando que os espectros são sintéticos.
 
 ---
@@ -598,9 +598,9 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `config.py` | *dataclass* `Config`, fonte única de `__version__`/`_NIVEL_NOME` e das constantes de nome de pasta (`NOME_GRAFICOS`/`NOME_TABELAS`/`NOME_RELATORIOS`/`NOME_MODELOS`, seção 3) |
 | `chemometric_stats.py` | VIP, Selectivity Ratio, teste de incerteza de Martens, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), domínio de aplicabilidade |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
-| `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
-| `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.modo` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
-| `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
+| `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e mode sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
+| `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.mode` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
+| `dados_imagem.py` | Colorimetria digital (`mode="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
 | `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `build_preprocessor` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
 | `figuras.py` | Camada de plotagem (todas as figuras do pipeline, incluindo `fig_merito_regressao`) |
@@ -699,7 +699,7 @@ re-executada nesta sessão).
 - **Modo imagem (colorimetria digital) é protótipo, não validado com
   dataset real.** O carregador (`dados_imagem.py`) está documentado no
   próprio código como protótipo: `conc` e `mae_id` são sempre `None`
-  (sem quantificação, sem proteção anti-vazamento de réplica nesse modo),
+  (sem quantificação, sem proteção anti-vazamento de réplica nesse mode),
   e o eixo de "variáveis" retornado não corresponde a comprimento de onda
   físico. Não usar para resultado publicável sem validação adicional.
 
@@ -808,7 +808,7 @@ valores obtidos rodando a suíte nesta sessão, com seção honesta do que
 ainda NÃO está validado (dataset público externo, cobertura empírica do
 BCa). Linkado em README.md/README.pt-br.md. Antes: terminologia da
 interface (CLI e README) revisada
-para liderar com o nome amigável do modo de análise ("Classificação por
+para liderar com o nome amigável do mode de análise ("Classificação por
 espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N3
 passa a aparecer como referência técnica secundária, nunca como o rótulo
 principal — a tabela de equivalência nível↔objetivo (seção 2.2) já estava
@@ -829,7 +829,7 @@ eixo de menor alcance fora da área visível — corrigido calibrando por eixo
 e usando o mais restritivo (`_escala_vetores_biplot`, com teste de
 regressão dedicado). Antes disso: nova seção 9 "Limitações
 conhecidas" (item do roadmap CLAUDE.md) — 9 itens verificados no código
-desta revisão (DD-SIMCA/LOGO, regressão por espécie, modo imagem
+desta revisão (DD-SIMCA/LOGO, regressão por espécie, mode imagem
 protótipo, FT-NIR vs. MIR/Raman não validado, `.joblib`/RCE, `mae_id`
 órfão, hiperparâmetros do benchmark sem tuning, sem dataset público
 externo, recall por classe) — números específicos de dataset real
@@ -841,5 +841,5 @@ leave-one-group-out honesto por réplica `mae_id` — sempre exibida com o núme
 de grupos e aviso de incerteza; `n/a (não validado)` quando há um só grupo de
 puros (substitui a re-substituição, que inflava até 100%). Antes: prévia "O que
 será gerado" em tempo real na aba Model (web), 8ª aba **Sobre** (identidade,
-licença, como citar), cabeçalho com logo/versão/badges e aviso de modo
+licença, como citar), cabeçalho com logo/versão/badges e aviso de mode
 demonstração no deploy público sem `config.yaml` local.*

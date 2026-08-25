@@ -3,20 +3,20 @@
 Fonte UNICA de verdade sobre QUAIS figuras/relatorios pertencem a cada
 objetivo cientifico (Exploratorio / Classificacao / Quantificacao). O motor
 (`pipeline.executar`) consulta `should_generate(cfg, chave)` em cada ponto de
-geracao de figura, de modo que cada modo produza EXCLUSIVAMENTE os
+geracao de figura, de mode que cada mode produza EXCLUSIVAMENTE os
 resultados pertinentes ao seu objetivo — sem duplicacoes nem graficos de
 outros modos (o defeito auditado: N2 e N3 geravam o mesmo conjunto de
 figuras, misturando classificacao e quantificacao).
 
 Preserva os termos N1/N2/N3 intactos (decisao do usuario): quando
-`cfg.objetivo == "auto"` (default) o objetivo e' DERIVADO do nivel,
+`cfg.objective == "auto"` (default) o objetivo e' DERIVADO do nivel,
 mantendo 100% do comportamento historico:
 
     N1 (Classificacao por especie)     -> classificacao
     N2 (Discriminacao puro/adulterado) -> classificacao
     N3 (Quantificacao de teor)         -> quantificacao
 
-`cfg.objetivo` pode ser fixado explicitamente em "exploratorio" |
+`cfg.objective` pode ser fixado explicitamente em "exploratorio" |
 "classificacao" | "quantificacao" para SOBREPOR essa derivacao. O Modo
 Exploratorio e' a funcao NOVA: um objetivo que gera apenas as analises
 nao-supervisionadas (PCA/HCA/loadings/pre-processamento), sem as figuras
@@ -46,7 +46,7 @@ OBJETIVO_ROTULO: Dict[str, str] = {
     QUANTIFICACAO: "Quantificacao",
 }
 
-# Derivacao objetivo <- nivel quando cfg.objetivo == "auto" (preserva
+# Derivacao objetivo <- nivel quando cfg.objective == "auto" (preserva
 # comportamento historico; NAO renomeia N1/N2/N3).
 _OBJETIVO_POR_NIVEL: Dict[str, str] = {
     "N1": CLASSIFICACAO,
@@ -58,7 +58,7 @@ _OBJETIVO_POR_NIVEL: Dict[str, str] = {
 # Chaves consultadas por pipeline.executar() em cada ponto de geracao. Uma
 # figura so' e' salva se o objetivo resolvido pertencer a este conjunto.
 # Figuras de OVERVIEW (fig1_pca_scores, fig3_outliers T2/Q) NAO aparecem aqui
-# de proposito: sao contexto valido em qualquer modo e alimentam o resumo,
+# de proposito: sao contexto valido em qualquer mode e alimentam o resumo,
 # entao `should_generate` retorna True para elas (fail-open p/ chave desconhecida).
 _FIG_OBJETIVOS: Dict[str, Set[str]] = {
     # --- Exploratorias (nao-supervisionadas) ---
@@ -95,7 +95,7 @@ def _ddsimca_efetivo(cfg: "Config") -> bool:
     N1 sempre ignora (mesmo com o toggle ligado); N2 forca ligado
     internamente; demais casos respeitam o toggle explicito do usuario.
     """
-    nivel = getattr(cfg, "nivel", "N1")
+    nivel = getattr(cfg, "level", "N1")
     if nivel == "N1":
         return False
     if nivel == "N2":
@@ -161,14 +161,14 @@ _FIG_DESCRICAO: Dict[str, str] = {
 def resolve_objective(cfg: "Config") -> str:
     """Retorna o objetivo cientifico efetivo do run.
 
-    Prioridade: `cfg.objetivo` explicito (exploratorio/classificacao/
+    Prioridade: `cfg.objective` explicito (exploratorio/classificacao/
     quantificacao) sobrepoe; caso contrario ('auto' ou ausente/invalido)
-    deriva do `cfg.nivel` preservando o comportamento historico.
+    deriva do `cfg.level` preservando o comportamento historico.
     """
-    obj = (getattr(cfg, "objetivo", "auto") or "auto").strip().lower()
+    obj = (getattr(cfg, "objective", "auto") or "auto").strip().lower()
     if obj in OBJETIVOS_VALIDOS:
         return obj
-    return _OBJETIVO_POR_NIVEL.get(getattr(cfg, "nivel", "N1"), CLASSIFICACAO)
+    return _OBJETIVO_POR_NIVEL.get(getattr(cfg, "level", "N1"), CLASSIFICACAO)
 
 
 def should_generate(cfg: "Config", chave: str) -> bool:
@@ -176,7 +176,7 @@ def should_generate(cfg: "Config", chave: str) -> bool:
 
     Chaves nao mapeadas (overview PCA/outliers, ou futuras) retornam True
     (fail-open): o gating so' SUPRIME o que sabidamente pertence a outro
-    modo; nunca esconde silenciosamente uma figura desconhecida.
+    mode; nunca esconde silenciosamente uma figura desconhecida.
     """
     objetivos = _FIG_OBJETIVOS.get(chave)
     if objetivos is None:
@@ -187,7 +187,7 @@ def should_generate(cfg: "Config", chave: str) -> bool:
 def exploratory_figures_enabled(cfg: "Config") -> bool:
     """Regra unica p/ as exploratorias opcionais (HCA/loadings/pre-proc).
 
-    Ligadas quando o objetivo e' Exploratorio (nucleo do modo) OU quando o
+    Ligadas quando o objetivo e' Exploratorio (nucleo do mode) OU quando o
     usuario pediu detalhe extra dentro da Classificacao (escotilha de
     compatibilidade: `detailed_figures=True` nunca perde funcionalidade).
     Em Quantificacao ficam desligadas (filtradas).

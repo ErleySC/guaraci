@@ -42,9 +42,9 @@ _AVISO_PROTOTIPO_CORPO = (
 
 
 def _e_modo_prototipo(resumo_raw: str) -> bool:
-    """True quando a execucao veio de um modo de entrada nao validado.
+    """True quando a execucao veio de um mode de entrada nao validado.
 
-    Hoje so' `modo="imagem"` (colorimetria digital, prototipo): o modulo
+    Hoje so' `mode="imagem"` (colorimetria digital, prototipo): o modulo
     `dados_imagem` devolve `mae_id=None` sempre, entao o pipeline cai no
     fallback `StratifiedKFold` e a validacao group-aware -- o diferencial
     central do projeto -- fica desligada. Sem este carimbo, o PDF/Word/
@@ -78,7 +78,7 @@ def generate_pdf_report(pasta: str, projeto: Dict,
     resumo_raw = _ler_resumo(pasta) or ""
 
     metricas = parse_model_metrics(resumo_raw)
-    # B4-1: carimbo de prototipo quando a execucao veio do modo imagem
+    # B4-1: carimbo de prototipo quando a execucao veio do mode imagem
     # (colorimetria digital) -- nao validado e sem mae_id, logo sem
     # validacao group-aware. Ver `_e_modo_prototipo`.
     prototipo = _e_modo_prototipo(resumo_raw)
@@ -678,7 +678,7 @@ def generate_latex_template(pasta: str, projeto: Dict) -> bytes:
         "n_perm":      _ex(r"Permutation n_validos\s*[:=]\s*(\d+)"),
     }
 
-    # B4-1: modo="imagem" (colorimetria digital) e' PROTOTIPO nao validado e
+    # B4-1: mode="imagem" (colorimetria digital) e' PROTOTIPO nao validado e
     # nao produz mae_id -- a validacao group-aware fica desligada. Sem este
     # carimbo, o .tex gerado e' tipograficamente identico ao de uma analise
     # FT-NIR validada.

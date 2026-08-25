@@ -629,7 +629,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                   else [f"X{i}" for i in range(X_proc.shape[1])])
 
     # Memory cap: random subsample of shap_max_amostras samples for TreeExplainer
-    n_max = cfg.shap_max_amostras
+    n_max = cfg.shap_max_samples
     if X_proc.shape[0] > n_max:
         rng_shap = np.random.default_rng(cfg.seed)
         idx_shap = rng_shap.choice(X_proc.shape[0], n_max, replace=False)

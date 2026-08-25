@@ -89,13 +89,13 @@ def save(fig, nome: str, pasta: str, cfg: Config,
     destino = os.path.join(base, subpasta) if subpasta else base
     os.makedirs(destino, exist_ok=True)
     caminho = os.path.join(destino, f"{nome}.{cfg.output_format}")
-    # Marca de PROTOTIPO (achado B4-1): o modo imagem (colorimetria digital)
+    # Marca de PROTOTIPO (achado B4-1): o mode imagem (colorimetria digital)
     # nao e validado e nao produz mae_id, entao roda SEM validacao
     # group-aware. Os relatorios PDF/Word/LaTeX ja saem carimbados, mas uma
     # figura .png exportada solta da pasta Graficos/ circula sem contexto --
     # e' justamente o arquivo que acaba colado num slide ou num texto.
     # `save()` e' o ponto unico por onde TODA figura passa.
-    if getattr(cfg, "modo", "") == "imagem":
+    if getattr(cfg, "mode", "") == "imagem":
         fig.text(0.5, 0.5, "PROTOTIPO\nNAO VALIDADO",
                  fontsize=34, color="0.5", alpha=0.16,
                  ha="center", va="center", rotation=30,
@@ -105,7 +105,7 @@ def save(fig, nome: str, pasta: str, cfg: Config,
         print(f"  -> {caminho}")
     except OSError as e:   # disco cheio, permissao negada, path invalido
         print(f"  [ERROR] {caminho}: {e}")
-    if cfg.mostrar_graficos:
+    if cfg.show_plots:
         global _AVISO_MOSTRAR_GRAFICOS_EMITIDO
         if not _AVISO_MOSTRAR_GRAFICOS_EMITIDO:
             print("  [AVISO] 'abrir_figuras_na_tela' esta ligado, mas o backend "
@@ -858,10 +858,10 @@ def fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
     ax_a.grid(axis="y", color="0.94", lw=0.5); ax_a.set_axisbelow(True)
 
     descricao = []
-    if cfg.aplicar_snv: descricao.append("SNV")
-    if cfg.aplicar_sg:
+    if cfg.apply_snv: descricao.append("SNV")
+    if cfg.apply_sg:
         descricao.append(f"SG(w={cfg.sg_window},p={cfg.sg_polyorder},d={cfg.sg_deriv})")
-    if cfg.aplicar_mc:  descricao.append("mean-centering")
+    if cfg.apply_mc:  descricao.append("mean-centering")
     ax_b.set_ylabel("Preprocessed signal")
     ax_b.set_xlabel("Wavenumber (cm$^{-1}$)")
     ax_b.set_title(f"(b) After {' → '.join(descricao)}", loc="left")

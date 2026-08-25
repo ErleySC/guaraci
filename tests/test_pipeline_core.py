@@ -143,21 +143,21 @@ def test_construir_preprocessador_presets(pq):
 
 
 def test_construir_preprocessador_custom_combina_flags_individuais(pq):
-    """preset='custom' honra aplicar_snv/aplicar_sg/aplicar_mc individualmente
+    """preset='custom' honra apply_snv/apply_sg/apply_mc individualmente
     -- nunca testado antes (só os 4 presets nomeados tinham teste)."""
     cfg = pq.Config()
     cfg.default_preprocessing = "custom"
 
-    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, True, True
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = True, True, True
     assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
 
-    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, False
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = True, False, False
     assert list(pq.build_preprocessor(cfg).named_steps) == ["snv"]
 
-    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, True, False
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = False, True, False
     assert list(pq.build_preprocessor(cfg).named_steps) == ["sg"]
 
-    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = False, False, True
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = False, False, True
     assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
 
 
@@ -166,7 +166,7 @@ def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
     fallback de seguranca: usa mean-centering sozinho."""
     cfg = pq.Config()
     cfg.default_preprocessing = "custom"
-    cfg.aplicar_snv = cfg.aplicar_sg = cfg.aplicar_mc = False
+    cfg.apply_snv = cfg.apply_sg = cfg.apply_mc = False
     assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
 
 
@@ -175,7 +175,7 @@ def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
     comportamento de 'custom', usando as flags individuais)."""
     cfg = pq.Config()
     cfg.default_preprocessing = "isto_nao_existe"
-    cfg.aplicar_snv, cfg.aplicar_sg, cfg.aplicar_mc = True, False, True
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = True, False, True
     assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "mc"]
 
 
@@ -765,7 +765,7 @@ def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
     """Caminho de saída embute o slug amigável do nível (não N1/N2/N3 cru,
     correção de 2026-07-13 — P8 residual) e o pré-processamento (rastreável)."""
     cfg = pq.Config()
-    cfg.nivel = "N1"
+    cfg.level = "N1"
     cfg.default_preprocessing = "msc_sg_mc"
     nome = pq.generate_output_name(cfg, n_classes=13, n_amostras=100)
     base = nome.replace("\\", "/").split("/")[-1]
@@ -779,7 +779,7 @@ def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
 def test_config_roundtrip_preserva_valores(pq, tmp_path):
     """save_config → load_config preserva os valores editados."""
     cfg = pq.Config()
-    cfg.nivel = "N2"
+    cfg.level = "N2"
     cfg.max_lvs = 17
     cfg.frac_holdout = 0.3
     cfg.wn_min = 900.0
@@ -787,7 +787,7 @@ def test_config_roundtrip_preserva_valores(pq, tmp_path):
     caminho = str(tmp_path / "config.yaml")
     pq.save_config(cfg, caminho)
     lido = pq.load_config(caminho)
-    assert lido.nivel == "N2"
+    assert lido.level == "N2"
     assert lido.max_lvs == 17
     assert lido.frac_holdout == pytest.approx(0.3)
     assert lido.wn_min == pytest.approx(900.0)
@@ -968,7 +968,7 @@ def test_cv_local_group_aware_nao_separa_replicas(pq):
 
 
 def test_cv_local_sem_grupos_preserva_comportamento_anterior(pq):
-    """Sem `grupos_local` (ex.: modo sem identificador de replica), o
+    """Sem `grupos_local` (ex.: mode sem identificador de replica), o
     comportamento antigo e' preservado -- o fix do B1-3 nao pode quebrar o
     caminho em que mae_id nao existe."""
     y_local = np.array([0, 0, 0, 1, 1, 1, 0, 1, 0, 1])
@@ -1130,12 +1130,12 @@ def test_auto_ajustar_config_hardware_ram_critica_desliga_tudo(pq):
 def test_auto_ajustar_config_hardware_ram_farta_nao_mexe(pq):
     """RAM >= 8 GB: nenhum ajuste, nenhum aviso — não deve mexer em nada
     desnecessariamente quando há recurso de sobra."""
-    cfg = pq.Config(run_shap=True, shap_max_amostras=500,
+    cfg = pq.Config(run_shap=True, shap_max_samples=500,
                      run_benchmark=True, n_monte_carlo=200)
     avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 16.0})
     assert avisos == []
     assert cfg.run_shap is True
-    assert cfg.shap_max_amostras == 500
+    assert cfg.shap_max_samples == 500
 
 
 def test_verificar_ram_limite_impossivel_retorna_false(pq):
@@ -1460,7 +1460,7 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N3",
+        mode="sintetico", level="N3",
         n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
@@ -1489,7 +1489,7 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=3, n_repeats_cv=1, n_permutations=5,
         n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
@@ -1538,7 +1538,7 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N3",
+        mode="sintetico", level="N3",
         n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
@@ -1571,14 +1571,14 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
 
 @pytest.mark.slow
 def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
-    """Contraparte positiva do teste acima: em objetivo=Classificacao (N1/N2),
+    """Contraparte positiva do teste acima: em objective=Classificacao (N1/N2),
     onde os dois testes SAO pertinentes, o guard novo (objetivo ==
     CLASSIFICACAO) nao pode bloquear o caminho que sempre funcionou."""
     import os
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N1",
+        mode="sintetico", level="N1",
         n_per_class=10, n_synthetic_points=60,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
@@ -1607,7 +1607,7 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N3",
+        mode="sintetico", level="N3",
         n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
@@ -1635,14 +1635,14 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
 @pytest.mark.slow
 def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
     """DD-SIMCA e' um diagnostico de autenticacao de PUREZA (conceito N2).
-    Ligar o toggle manualmente com nivel=N1 (identificacao de especie) nao
+    Ligar o toggle manualmente com level=N1 (identificacao de especie) nao
     deve gerar nenhuma figura de DD-SIMCA -- o pipeline ignora o toggle
     (com aviso), pois o grafico nao agrega aquele tipo de analise."""
     import os
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N1",
+        mode="sintetico", level="N1",
         n_per_class=8, n_synthetic_points=50,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
@@ -1664,7 +1664,7 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
     ddsimca_figs = {n for n in nomes_pngs if "ddsimca" in n.lower()
                     or "cooman" in n.lower()}
     assert not ddsimca_figs, (
-        f"Figuras de DD-SIMCA foram geradas em nivel=N1: {ddsimca_figs} "
+        f"Figuras de DD-SIMCA foram geradas em level=N1: {ddsimca_figs} "
         "(deveriam ser ignoradas)")
 
 
@@ -1672,11 +1672,11 @@ def test_ddsimca_permitido_em_n2_com_toggle_ligado(pq):
     """Confirma que o bloqueio e' especifico de N1 -- em N2 (onde
     executar() ja forca run_ddsimca=True), o toggle continua
     funcionando normalmente (regressao no bloqueio, nao remocao da feature)."""
-    cfg = pq.Config(nivel="N2", run_ddsimca=False)
+    cfg = pq.Config(level="N2", run_ddsimca=False)
     # Simula so' o trecho de decisao (sem rodar o pipeline inteiro): a
-    # condicao de bloqueio e' `cfg.run_ddsimca and cfg.nivel == "N1"`,
+    # condicao de bloqueio e' `cfg.run_ddsimca and cfg.level == "N1"`,
     # entao em N2 ela nunca dispara, independente do toggle.
-    bloqueado = cfg.run_ddsimca and cfg.nivel == "N1"
+    bloqueado = cfg.run_ddsimca and cfg.level == "N1"
     assert not bloqueado
 
 
@@ -1705,7 +1705,7 @@ def _resumo_minimo() -> dict:
 
 
 def test_gerar_model_card_cria_arquivo_com_secoes_esperadas(pq, tmp_path):
-    cfg = pq.Config(nivel="N1")
+    cfg = pq.Config(level="N1")
     hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
     classes = ["Esp_A", "Esp_B"]
 
@@ -1722,7 +1722,7 @@ def test_gerar_model_card_cria_arquivo_com_secoes_esperadas(pq, tmp_path):
 
 
 def test_anexar_regressao_model_card_adiciona_secao_9(pq, tmp_path):
-    cfg = pq.Config(nivel="N3")
+    cfg = pq.Config(level="N3")
     hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
     pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
 
@@ -1749,7 +1749,7 @@ def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
     """Valor NaN/nao-numerico em tabela_especie vira 'n/a' (nunca 'nan' cru
     no documento); fom_pooled (modelo unico, sem tabela por especie) tambem
     e' escrito."""
-    cfg = pq.Config(nivel="N3")
+    cfg = pq.Config(level="N3")
     hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
     pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
 
@@ -1839,11 +1839,11 @@ def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
     import os
     cfg = pq.Config(
         input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
         n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
         n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
-        n_monte_carlo=3, max_lvs=5, nivel="N2", detailed_figures=False,
+        n_monte_carlo=3, max_lvs=5, level="N2", detailed_figures=False,
         run_ddsimca=True, run_opls=False, executar_etapa4=False,
         run_wold=False, comparar_pipelines=False,
         run_cv_anova=False, run_benchmark=False,
@@ -1865,11 +1865,11 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
     import os
     cfg = pq.Config(
         input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico", n_per_class=10, n_synthetic_points=60,
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
         n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
         n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
-        n_monte_carlo=3, max_lvs=5, nivel="N2", detailed_figures=False,
+        n_monte_carlo=3, max_lvs=5, level="N2", detailed_figures=False,
         run_ddsimca=True, run_opls=False, executar_etapa4=False,
         run_wold=False, comparar_pipelines=False,
         run_cv_anova=False, run_benchmark=False,

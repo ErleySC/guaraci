@@ -58,7 +58,7 @@ _PADRAO = re.compile(
 #: identificador com ele e' inequivocamente inventado para exemplo/fixture.
 _ANO_SENTINELA = "2099"
 
-#: Extensoes que nao sao texto -- lidas em modo binario dariam ruido.
+#: Extensoes que nao sao texto -- lidas em mode binario dariam ruido.
 _BINARIO = {".png", ".ico", ".jpg", ".jpeg", ".gif", ".pdf", ".joblib",
             ".xlsx", ".docx", ".pptx", ".woff", ".woff2", ".zip", ".gz"}
 

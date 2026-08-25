@@ -386,7 +386,7 @@ def generate_synthetic_data(cfg: "Config"):
     """Gera espectros sinteticos de teste, incluindo REPLICAS FISICAS
     (n_synthetic_replicates por ponto amostral, como T1/T2/T3 do mesmo ponto real) e
     mae_id — sem isso, DD-SIMCA (N2) e as figuras de merito de regressao (N3)
-    nunca tinham dados suficientes para treinar/estimar ruido em modo
+    nunca tinham dados suficientes para treinar/estimar ruido em mode
     sintetico (so 1 amostra "pura" por especie, sem nocao de replica).
 
     mae_id usa um codigo de 3 letras POR ESPECIE (ESA/ESB/ESC) como prefixo —
@@ -909,7 +909,7 @@ def load_dx(pasta: str, class_part: int = 0,
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
                 f"Path does NOT exist: {pasta}\n"
-                f"  -> check cfg.input_folder or use cfg.modo='sintetico'.")
+                f"  -> check cfg.input_folder or use cfg.mode='sintetico'.")
         arqs, ext_usada = _listar_arquivos_espectro(pasta)
         if not arqs:
             raise FileNotFoundError(
@@ -1138,12 +1138,12 @@ def _leitor_dx(cfg: "Config"):
 
 def _leitor_imagem(cfg: "Config"):
     from guaraci.dados_imagem import load_images
-    return load_images(cfg.input_folder, cfg.imagem_recorte,
+    return load_images(cfg.input_folder, cfg.image_crop,
                              cfg.include_image_texture)
 
 
 # Leitores built-in (item 20 da auditoria: registry em vez de if/elif fixo —
-# ver io_registry.py para o contrato e como registrar um novo modo).
+# ver io_registry.py para o contrato e como registrar um novo mode).
 register_reader("sintetico", _leitor_sintetico)
 register_reader("csv", _leitor_csv)
 register_reader("dx", _leitor_dx)
@@ -1154,9 +1154,9 @@ def load_data(cfg: "Config"
                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                                 Optional[np.ndarray], Optional[np.ndarray],
                                 Optional[pd.DataFrame]]:
-    """Unified data loader. Despacha para o leitor registrado em `cfg.modo`
+    """Unified data loader. Despacha para o leitor registrado em `cfg.mode`
     (ver io_registry.py). Returns 6-tuple:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     metadados_df is always None in 'sintetico'/'csv' mode; mae_id is None
     only in 'csv'/'imagem' mode (sem replicas fisicas conhecidas)."""
-    return get_reader(cfg.modo)(cfg)
+    return get_reader(cfg.mode)(cfg)

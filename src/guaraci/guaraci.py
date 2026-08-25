@@ -175,7 +175,7 @@ def _carregar_codigos_usuario() -> dict:
 # somente-leitura que o pacote ja traz consigo (ex.: CITATION.cff).
 #
 # _USER_DIR: onde o CLI grava ESTADO do usuario (config.yaml, perfis
-# salvos, flags de idioma/modo, codigos customizados). CORRIGIDO em
+# salvos, flags de idioma/mode, codigos customizados). CORRIGIDO em
 # 2026-08-07 (achado do "checkup geral" de interface -- ver
 # ): ate' entao esses arquivos eram gravados dentro de
 # _BASE_DIR, ou seja, DENTRO do diretorio de instalacao do pacote. Isso
@@ -1095,7 +1095,7 @@ def _print_status(cfg: Config) -> None:
         dados_str = f"[err]{_t('dados_err')}[/err]"
 
     preproc  = escape(str(_cfgv(cfg, "pre_processamento", "msc_sg_mc")))
-    # Barra de status compacta: usa so a palavra-chave do modo (Classificacao/
+    # Barra de status compacta: usa so a palavra-chave do mode (Classificacao/
     # Discriminacao/Quantificacao) — o rotulo completo estouraria as colunas.
     _niv_raw  = str(_cfgv(cfg, "nivel", "N1"))
     _niv_nome = pq._NIVEL_NOME.get(_niv_raw, "")
@@ -1321,7 +1321,7 @@ def _print_submenu_compact(
     Submenu compacto: [N] ICON Nome  Valor  Descricao-breve
     Exibe o valor atual e uma descricao curta na mesma linha.
 
-    `campos_avancados`: subconjunto de `fields` a ESCONDER quando o modo do
+    `campos_avancados`: subconjunto de `fields` a ESCONDER quando o mode do
     usuario e' Iniciante e `mostrar_avancado=False` (CLAUDE.md secao 6 /
     auditoria 2026-07-12: reduzir a densidade de configuracao p/ quem so'
     quer usar os defaults). Quando `None`, nenhum campo e' escondido --
@@ -1428,7 +1428,7 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
     """Desliga toggles que ficam INERTES no nivel/objetivo atual de `cfg`.
 
     Chamado apos o campo "nivel" mudar de valor (pedido do usuario,
-    2026-08-06: "quando mudo de modo... continua ativado a dd simca e
+    2026-08-06: "quando mudo de mode... continua ativado a dd simca e
     semelhantes... gostaria que ao mudar o N, mudasse as opcoes de modos
     como esse que nao agrega a analise"). Antes disso, o toggle DD-SIMCA
     permanecia visualmente "ligado" no menu mesmo em N1 -- funcionalmente
@@ -1440,7 +1440,7 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
         internamente (forca True, refletindo o que vai acontecer de
         qualquer forma); demais niveis respeitam should_generate (objetivo).
       - Demais toggles (ver `_TOGGLES_SO_CLASSIFICACAO`): forcados False
-        fora de objetivo=Classificacao; `benchmark_regressao` fora de
+        fora de objective=Classificacao; `benchmark_regressao` fora de
         Quantificacao.
 
     Retorna a lista de CHAVES (_CONFIG_SPEC) efetivamente alteradas, para o
@@ -1458,9 +1458,9 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
             setattr(cfg, attr, valor)
             mudou.append(key)
 
-    if cfg.nivel == "N1":
+    if cfg.level == "N1":
         _forcar("ddsimca", False)
-    elif cfg.nivel == "N2":
+    elif cfg.level == "N2":
         _forcar("ddsimca", True)
     else:
         _forcar("ddsimca", pq.should_generate(cfg, "ddsimca"))
@@ -1669,8 +1669,8 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
 
     `campos_avancados`: ver `_print_submenu_compact`. O reveal ("V") e'
     local a esta visita ao menu -- sai e volta a entrar reseta p/ escondido
-    de novo quando o modo do usuario e' Iniciante (design: expandir um
-    submenu especifico nao muda o modo da sessao inteira)."""
+    de novo quando o mode do usuario e' Iniciante (design: expandir um
+    submenu especifico nao muda o mode da sessao inteira)."""
     mostrar_avancado = False
     while True:
         cls()
@@ -1794,7 +1794,7 @@ def menu_validation(cfg: Config) -> None:
     # n_jobs_permutacao FORA de campos_avancados de proposito: nao muda
     # nenhum resultado (so' o tempo), e o proprio checklist de pre-execucao
     # (_checklist) sugere subir esse valor quando ha' muitas permutacoes
-    # sequenciais -- esconder atras do modo Avancado criaria uma dica que o
+    # sequenciais -- esconder atras do mode Avancado criaria uma dica que o
     # usuario Iniciante nao consegue seguir.
     campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova", "teste_martens"}
     mostrar_avancado = False
@@ -2027,7 +2027,7 @@ def _tecnica_detalhe(tk: str, lang: str) -> None:
         f"[{PA}]{'Pre-proc. recomendado' if lang=='PT' else 'Recommended preproc'}:[/{PA}] "
         f"[{PW}]{escape(str(tdl.get('preproc_rec', td.get('preproc','—'))))}[/{PW}]",
         f"[{PA}]{'Modo de entrada' if lang=='PT' else 'Input mode'}:[/{PA}] "
-        f"[{PW}]{escape(str(td.get('modo','dx')))}[/{PW}]",
+        f"[{PW}]{escape(str(td.get('mode','dx')))}[/{PW}]",
     ]
     console.print(Panel(
         Text.from_markup("\n".join(linhas)),
@@ -2049,16 +2049,16 @@ def menu_technique(cfg: Config) -> None:
             _TECNICA_SELECIONADA["key"]  = tk_sel
             _TECNICA_SELECIONADA["nome"] = tk_sel.upper()
             fmin = td_sel.get("faixa_min"); fmax = td_sel.get("faixa_max")
-            prep = td_sel.get("preproc", ""); modo = td_sel.get("modo", "dx")
+            prep = td_sel.get("preproc", ""); mode = td_sel.get("mode", "dx")
             if fmin is not None: _set_val(cfg, "faixa_min_cm", str(fmin))
             if fmax is not None: _set_val(cfg, "faixa_max_cm", str(fmax))
             if prep: _set_val(cfg, "pre_processamento", prep)
-            if modo: _set_val(cfg, "modo_entrada", modo)
+            if mode: _set_val(cfg, "modo_entrada", mode)
             fa_str = tdl.get("faixa", f"{fmin}-{fmax}")
             console.print(f"  [g]✓ {escape(_trunc(nm_sel, 44))} {'selecionado' if lang=='PT' else 'selected'}.[/g]")
             console.print(f"  [info]  {'Faixa' if lang=='PT' else 'Range'}: {escape(_trunc(str(fa_str), 44))}[/info]")
-            console.print(f"  [info]  Preproc.: {escape(str(prep))}  |  {'Modo' if lang=='PT' else 'Mode'}: {modo}[/info]")
-        except ValueError as e:   # _set_val: faixa/preproc/modo invalido p/ a tecnica
+            console.print(f"  [info]  Preproc.: {escape(str(prep))}  |  {'Modo' if lang=='PT' else 'Mode'}: {mode}[/info]")
+        except ValueError as e:   # _set_val: faixa/preproc/mode invalido p/ a tecnica
             console.print(f"  [err]{escape(str(e))}[/err]")
 
     while True:
@@ -2376,7 +2376,7 @@ def menu_hardware(cfg: Optional[Config] = None) -> None:
         tier_perfil = ("Apenas Exploracao de Dados" if lang=="PT" else "Data Exploration Only")
         tier_mods = [
             ("Todos em [6]", "[err]Desativar tudo[/err]" if lang=="PT" else "[err]Disable all[/err]"),
-            ("Modo entrada",  "[warn]Usar modo sintetico[/warn]" if lang=="PT" else "[warn]Use synthetic mode[/warn]"),
+            ("Modo entrada",  "[warn]Usar mode sintetico[/warn]" if lang=="PT" else "[warn]Use synthetic mode[/warn]"),
             ("max_lvs",       "[warn]Reduzir para 15[/warn]" if lang=="PT" else "[warn]Reduce to 15[/warn]"),
         ]
 
@@ -3209,8 +3209,8 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
         checks.append((False, _t("chk_err_dados")))
         erros.append("pasta_dados")
 
-    modo = _cfgv(cfg, "modo_entrada", "dx")
-    if modo == "csv":
+    mode = _cfgv(cfg, "modo_entrada", "dx")
+    if mode == "csv":
         arq = _cfgv(cfg, "arquivo_csv", "")
         if arq and os.path.isfile(str(arq)):
             checks.append((True, _t("chk_csv")))
@@ -3218,7 +3218,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
             checks.append((False, _t("chk_err_csv")))
             erros.append("arquivo_csv")
     else:
-        checks.append((True, f"{_t('chk_modo')}: {modo}"))
+        checks.append((True, f"{_t('chk_modo')}: {mode}"))
 
     ga = _cfgv(cfg, "validacao_group_aware", True)
     if ga:
@@ -3335,7 +3335,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     """Monta o painel de acompanhamento ao vivo (auditoria jul/2026, item 5):
     objetivo cientifico, barra de progresso + rotulo da analise em
     andamento (via app_logic.log_progress), figuras ja concluidas
-    (app_logic.figures_completed) contra o plano do modo (modos_analise.
+    (app_logic.figures_completed) contra o plano do mode (modos_analise.
     describe_plan), tempo decorrido/estimado restante e avisos nao-fatais
     (app_logic.log_warnings). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
@@ -3492,7 +3492,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     # da simulacao por tempo decorrido usada antes (etapas fixas avancando a
     # cada 15s, sem relacao real com o que o pipeline estava fazendo).
     objetivo_rotulo = pq.OBJETIVO_ROTULO.get(
-        pq.resolve_objective(cfg), cfg.nivel)
+        pq.resolve_objective(cfg), cfg.level)
     plano_figuras = pq.describe_plan(cfg)
 
     _done: Dict[str, object] = {"ok": False, "error": None}
@@ -3770,12 +3770,12 @@ def _comando_demo() -> None:
 
     saida = Path.cwd() / "GUARACI_Demo"
     cfg = Config(
-        input_folder=str(saida / "dados_dummy"),  # modo sintetico ignora isto
+        input_folder=str(saida / "dados_dummy"),  # mode sintetico ignora isto
         output_root_folder=str(saida),
-        modo="sintetico",
+        mode="sintetico",
         tag="demo",
-        nivel="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
-        objetivo="auto",
+        level="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
+        objective="auto",
         n_per_class=15,
         n_synthetic_points=300,
         wn_min=400.0,
@@ -3865,9 +3865,9 @@ Opcoes:
                     faixa espectral, pre-processamento e o vocabulario da
                     saida. `guaraci perfis` lista os nomes; tambem aceita o
                     caminho de um YAML proprio.
-  --modo=MODO       'cego' (PADRAO) ou 'controle'.
+  --mode=MODO       'cego' (PADRAO) ou 'controle'.
                     cego     : a quantificacao usa a classe PREDITA pelo
-                               classificador -- o unico modo que corresponde
+                               classificador -- o unico mode que corresponde
                                ao uso real, em que a classe da amostra e'
                                desconhecida.
                     controle : usa a classe VERDADEIRA. So' para diagnostico
@@ -3885,8 +3885,8 @@ _OPCOES_CLI: Dict[str, str] = {}
 def _extrair_opcoes(argv: List[str]) -> Tuple[Dict[str, str], List[str]]:
     """Separa `--chave=valor` dos argumentos posicionais.
 
-    Aceita as opcoes em qualquer posicao (`guaraci --modo=controle demo` e
-    `guaraci demo --modo=controle` sao equivalentes) -- comportamento
+    Aceita as opcoes em qualquer posicao (`guaraci --mode=controle demo` e
+    `guaraci demo --mode=controle` sao equivalentes) -- comportamento
     previsivel importa mais aqui do que economizar codigo.
     """
     opcoes: Dict[str, str] = {}
@@ -3904,14 +3904,14 @@ def _validar_opcoes(opcoes: Dict[str, str]) -> None:
     """Valida ANTES de processar qualquer dado. Sai com codigo 2 (uso
     incorreto), nunca 1 (erro de execucao) -- sao coisas diferentes para
     quem chama o programa de um script."""
-    for chave in ("perfil", "modo"):
+    for chave in ("perfil", "mode"):
         if chave in opcoes and not opcoes[chave]:
-            print(f"Erro: --{chave} exige um valor (ex.: --modo=cego).",
+            print(f"Erro: --{chave} exige um valor (ex.: --mode=cego).",
                   file=sys.stderr)
             raise SystemExit(2)
-    modo = opcoes.get("modo")
-    if modo is not None and modo not in ("cego", "controle"):
-        print(f"Erro: --modo={modo} invalido. Use 'cego' (padrao, usa a "
+    mode = opcoes.get("mode")
+    if mode is not None and mode not in ("cego", "controle"):
+        print(f"Erro: --mode={mode} invalido. Use 'cego' (padrao, usa a "
               f"classe predita) ou 'controle' (usa a classe verdadeira, "
               f"so' para diagnostico interno).", file=sys.stderr)
         raise SystemExit(2)
@@ -3986,8 +3986,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     # agora quer ela agora. Ja' validadas em _validar_opcoes (saida 2).
     if "perfil" in _OPCOES_CLI:
         cfg.matrix_profile = _OPCOES_CLI["perfil"]
-    if "modo" in _OPCOES_CLI:
-        cfg.label_mode = _OPCOES_CLI["modo"]
+    if "mode" in _OPCOES_CLI:
+        cfg.label_mode = _OPCOES_CLI["mode"]
 
     # Recuperar idioma salvo
     try:

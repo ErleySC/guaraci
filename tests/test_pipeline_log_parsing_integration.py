@@ -24,7 +24,7 @@ def test_stdout_real_do_executar_ainda_casa_com_regex_do_painel(pq, tmp_path):
     cfg = pq.Config(
         input_folder=str(tmp_path / "dados"),
         output_root_folder=str(tmp_path / "saida"),
-        modo="sintetico",
+        mode="sintetico",
         n_per_class=8,
         n_synthetic_points=50,
         wn_min=400.0,

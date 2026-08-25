@@ -169,7 +169,7 @@ def test_validar_semantico_holdout_fora_de_faixa():
 # ── roundtrip save_config ↔ load_config ────────────────────────────────
 def test_roundtrip_preserva_valores(tmp_path):
     cfg = Config()
-    cfg.nivel = "N2"
+    cfg.level = "N2"
     cfg.max_lvs = 25
     cfg.frac_holdout = 0.15
     cfg.default_preprocessing = "snv_sg_mc"
@@ -178,7 +178,7 @@ def test_roundtrip_preserva_valores(tmp_path):
     cio.save_config(cfg, caminho)
     lido = cio.load_config(caminho)
 
-    assert lido.nivel == "N2"
+    assert lido.level == "N2"
     assert lido.max_lvs == 25
     assert lido.frac_holdout == 0.15
     assert lido.default_preprocessing == "snv_sg_mc"
@@ -225,19 +225,19 @@ def test_carregar_config_valor_invalido_reune_erro(tmp_path):
 
 # ── _validar_pasta_dados ─────────────────────────────────────────────────────
 def test_validar_pasta_sintetico_sempre_ok():
-    ok, msg = cio._validar_pasta_dados(Config(modo="sintetico"))
+    ok, msg = cio._validar_pasta_dados(Config(mode="sintetico"))
     assert ok and "sintetico" in msg
 
 
 def test_validar_pasta_csv_inexistente():
-    cfg = Config(modo="csv")
+    cfg = Config(mode="csv")
     cfg.csv_file = "/caminho/que/nao/existe.csv"
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
 
 def test_validar_pasta_dx_inexistente():
-    cfg = Config(modo="dx")
+    cfg = Config(mode="dx")
     cfg.input_folder = "/pasta/que/nao/existe"
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
@@ -246,14 +246,14 @@ def test_validar_pasta_dx_inexistente():
 def test_validar_pasta_dx_conta_arquivos(tmp_path):
     (tmp_path / "a.dx").write_text("x")
     (tmp_path / "b.dx").write_text("x")
-    cfg = Config(modo="dx")
+    cfg = Config(mode="dx")
     cfg.input_folder = str(tmp_path)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "2" in msg
 
 
 def test_validar_pasta_dx_pasta_vazia_falha(tmp_path):
-    cfg = Config(modo="dx")
+    cfg = Config(mode="dx")
     cfg.input_folder = str(tmp_path)  # existe mas sem .dx
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
@@ -262,7 +262,7 @@ def test_validar_pasta_dx_pasta_vazia_falha(tmp_path):
 def test_validar_pasta_csv_existente_ok(tmp_path):
     csv = tmp_path / "dados.csv"
     csv.write_text("a,b\n1,2\n")
-    cfg = Config(modo="csv")
+    cfg = Config(mode="csv")
     cfg.csv_file = str(csv)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "dados.csv" in msg
@@ -271,7 +271,7 @@ def test_validar_pasta_csv_existente_ok(tmp_path):
 def test_validar_pasta_imagem_conta_imagens(tmp_path):
     (tmp_path / "a.png").write_text("x")
     (tmp_path / "b.jpg").write_text("x")
-    cfg = Config(modo="imagem")
+    cfg = Config(mode="imagem")
     cfg.input_folder = str(tmp_path)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "2" in msg
@@ -279,7 +279,7 @@ def test_validar_pasta_imagem_conta_imagens(tmp_path):
 
 def test_validar_pasta_imagem_sem_imagens_falha(tmp_path):
     (tmp_path / "leiame.txt").write_text("x")
-    cfg = Config(modo="imagem")
+    cfg = Config(mode="imagem")
     cfg.input_folder = str(tmp_path)
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok

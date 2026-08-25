@@ -43,7 +43,7 @@ import matplotlib as mpl
 # coleta de lixo podem ser finalizados fora da thread principal e derrubar o
 # processo ("main thread is not in main loop"). Agg tambem e o backend correto
 # para servidor/Cloud (sem display). Efeito colateral: a opcao
-# 'abrir_figuras_na_tela'/mostrar_graficos nao abre mais janela — as figuras
+# 'abrir_figuras_na_tela'/show_plots nao abre mais janela — as figuras
 # continuam sendo sempre salvas em disco normalmente.
 mpl.use("Agg")
 from sklearn.pipeline import Pipeline
@@ -112,14 +112,14 @@ def _dataset_id(cfg: Config) -> str:
     jul/2026 item 4: Resultados/Amostra/Modo/...). Prioridade:
     1) cfg.tag (rotulo livre ja existente, ex.: 'oleos_essenciais') quando
        preenchido — o usuario esta nomeando o conjunto explicitamente;
-    2) senao, deriva do modo de entrada (nome do CSV, da pasta de dados, ou
+    2) senao, deriva do mode de entrada (nome do CSV, da pasta de dados, ou
        'sintetico' para dados de teste) — sempre disponivel, nunca vazio.
     """
     if cfg.tag.strip():
         return _slug(cfg.tag) or "dataset"
-    if cfg.modo == "csv":
+    if cfg.mode == "csv":
         base = os.path.splitext(os.path.basename(cfg.csv_file or ""))[0]
-    elif cfg.modo == "sintetico":
+    elif cfg.mode == "sintetico":
         base = "sintetico"
     else:  # "dx" | "imagem"
         base = os.path.basename(os.path.normpath(cfg.input_folder or ""))
@@ -132,10 +132,10 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
     diferentes na mesma pasta.
         {root}/{dataset}/{Modo}/PLSDA_OE_{slug}_{preproc}_{YYYYMMDD_HHMMSS}
     Example: resultados_tcc/oleos_essenciais/Classificacao/PLSDA_OE_Autenticacao_MSC-SG1-MC_20260528_191500
-    'dataset' vem de cfg.tag (se preenchido) ou e' derivado do modo de
+    'dataset' vem de cfg.tag (se preenchido) ou e' derivado do mode de
     entrada (ver _dataset_id). 'Modo' e' o rotulo amigavel do objetivo
     cientifico resolvido (ver modos_analise.resolve_objective) — Exploratorio
-    | Classificacao | Quantificacao. '{slug}' e' o nome amigavel de cfg.nivel
+    | Classificacao | Quantificacao. '{slug}' e' o nome amigavel de cfg.level
     (_NIVEL_SLUG_PASTA) -- necessario porque N1 e N2 caem no MESMO 'Modo'
     (Classificacao) mas sao analises distintas (por-especie vs autenticacao);
     corrigido em 2026-07-13 (P8 residual: pasta ainda expunha N1/N2/N3 cru).
@@ -152,11 +152,11 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
         preproc = ["MSC", f"SG{cfg.sg_deriv}", "MC"]
     else:  # custom
         preproc = []
-        if cfg.aplicar_snv: preproc.append("SNV")
-        if cfg.aplicar_sg:  preproc.append(f"SG{cfg.sg_deriv}")
-        if cfg.aplicar_mc:  preproc.append("MC")
+        if cfg.apply_snv: preproc.append("SNV")
+        if cfg.apply_sg:  preproc.append(f"SG{cfg.sg_deriv}")
+        if cfg.apply_mc:  preproc.append("MC")
         if not preproc:     preproc.append("raw")
-    partes = ["PLSDA_OE", _NIVEL_SLUG_PASTA.get(cfg.nivel, cfg.nivel)]
+    partes = ["PLSDA_OE", _NIVEL_SLUG_PASTA.get(cfg.level, cfg.level)]
     partes.append("-".join(preproc))
     partes.append(datetime.now().strftime("%Y%m%d_%H%M%S"))
     dataset_id = _dataset_id(cfg)
@@ -222,7 +222,7 @@ from guaraci.figuras import (   # noqa: E402
 )
 
 # Camada de objetivo cientifico (Exploratorio/Classificacao/Quantificacao):
-# fonte unica que decide QUAIS figuras/relatorios cada modo gera, para que
+# fonte unica que decide QUAIS figuras/relatorios cada mode gera, para que
 # um run so' produza os resultados pertinentes ao seu objetivo (ver
 # modos_analise.py). Reexportado para pipeline.resolve_objective(...) etc.
 from guaraci.modos_analise import (   # noqa: E402
@@ -677,7 +677,7 @@ from guaraci.dados_io import (   # noqa: E402
     load_data,
 )
 
-# Colorimetria digital (modo="imagem", prototipo) extraida p/ dados_imagem.py
+# Colorimetria digital (mode="imagem", prototipo) extraida p/ dados_imagem.py
 # (Fase de expansao pos-H). Reexportada p/ pipeline.load_images(...) etc.
 from guaraci.dados_imagem import (   # noqa: E402
     load_images,
@@ -815,14 +815,14 @@ def _agrupar_replicas_processadas(X_raw_subset: np.ndarray,
 def labels_for_quantification(cfg: "Config", rotulos_verdadeiros: np.ndarray,
                                 rotulos_preditos: Optional[np.ndarray]
                                 ) -> Tuple[np.ndarray, str]:
-    """Quais rotulos a calibracao por classe pode ver. Devolve (rotulos, modo).
+    """Quais rotulos a calibracao por classe pode ver. Devolve (rotulos, mode).
 
     O QUE ESTA EM JOGO. A quantificacao do GUARACI calibra SEPARADAMENTE por
     classe, porque um unico modelo multi-classe e' dominado pela variacao
     entre matrizes. Isso obriga a responder: de onde vem a classe de cada
     amostra na hora de calibrar?
 
-    - `cego` (PADRAO): da PREDICAO do classificador. E' o unico modo que
+    - `cego` (PADRAO): da PREDICAO do classificador. E' o unico mode que
       corresponde ao uso real -- quem envia uma amostra desconhecida nao
       sabe a classe dela. Se o classificador erra, o erro se propaga para a
       quantificacao, e e' correto que se propague: e' o que aconteceria em
@@ -830,21 +830,21 @@ def labels_for_quantification(cfg: "Config", rotulos_verdadeiros: np.ndarray,
     - `controle`: da verdade. Util para UMA coisa so' -- isolar o erro de
       quantificacao do erro de classificacao durante o desenvolvimento.
       Qualquer numero obtido assim descreve um cenario que o usuario final
-      nunca tera', e por isso a saida marca o modo explicitamente.
+      nunca tera', e por isso a saida marca o mode explicitamente.
 
     Sem rotulos preditos disponiveis (ex.: objetivo puramente exploratorio,
-    sem classificador ajustado), o modo cego nao tem como operar; a funcao
-    devolve o modo `controle-forcado`, que o chamador deve registrar na
+    sem classificador ajustado), o mode cego nao tem como operar; a funcao
+    devolve o mode `controle-forcado`, que o chamador deve registrar na
     saida -- silenciar isso transformaria um resultado de controle num
     resultado aparentemente cego.
     """
-    modo = str(getattr(cfg, "label_mode", "cego") or "cego").lower()
-    if modo not in ("cego", "controle"):
+    mode = str(getattr(cfg, "label_mode", "cego") or "cego").lower()
+    if mode not in ("cego", "controle"):
         raise ValueError(
-            f"cfg.label_mode='{modo}' invalido. Use 'cego' (padrao, usa a "
+            f"cfg.label_mode='{mode}' invalido. Use 'cego' (padrao, usa a "
             f"classe predita) ou 'controle' (usa a classe verdadeira, so' "
             f"para diagnostico interno).")
-    if modo == "controle":
+    if mode == "controle":
         return np.asarray(rotulos_verdadeiros, dtype=str), "controle"
     if rotulos_preditos is None:
         return np.asarray(rotulos_verdadeiros, dtype=str), "controle-forcado"
@@ -1288,27 +1288,27 @@ def executar(cfg: Config):
 
     # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
     # Quantificacao). Decide quais figuras/relatorios serao gerados, para
-    # que cada modo produza EXCLUSIVAMENTE o que e' pertinente ao seu
-    # objetivo (ver modos_analise.py). Preserva N1/N2/N3 quando objetivo=auto.
+    # que cada mode produza EXCLUSIVAMENTE o que e' pertinente ao seu
+    # objetivo (ver modos_analise.py). Preserva N1/N2/N3 quando objective=auto.
     objetivo = resolve_objective(cfg)
     _fig_explor_on = exploratory_figures_enabled(cfg)
     log.info(f"\n[MODO] Objetivo cientifico: "
              f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}  "
-             f"(nivel={cfg.nivel}, objetivo_cfg={cfg.objetivo})")
+             f"(level={cfg.level}, objetivo_cfg={cfg.objective})")
     _plano = describe_plan(cfg)
     if _plano:
         log.info(f"[MODO] Figuras pertinentes a este objetivo ({len(_plano)}): "
               + "; ".join(_plano))
 
-    # Aviso de PROTOTIPO (achado B4-1): o modo imagem (colorimetria digital)
+    # Aviso de PROTOTIPO (achado B4-1): o mode imagem (colorimetria digital)
     # nunca foi validado com dataset real, e -- pior -- `dados_imagem` devolve
     # mae_id=None sempre, o que desliga a validacao group-aware (o diferencial
     # central do projeto) sem que nada no relatorio dissesse isso. O aviso vai
-    # como WARNING (nao INFO), e o modo tambem entra no resumo_modelo.txt para
+    # como WARNING (nao INFO), e o mode tambem entra no resumo_modelo.txt para
     # que os geradores de relatorio possam carimbar a saida.
-    if cfg.modo == "imagem":
+    if cfg.mode == "imagem":
         log.warning(
-            "[PROTOTIPO] modo='imagem' (colorimetria digital) NAO e validado "
+            "[PROTOTIPO] mode='imagem' (colorimetria digital) NAO e validado "
             "com dataset real e NAO produz mae_id -- a validacao group-aware "
             "fica DESLIGADA nesta execucao. Nao use estes numeros como "
             "resultado publicavel; os relatorios gerados sairao carimbados.")
@@ -1354,19 +1354,19 @@ def executar(cfg: Config):
     # A distinção puro/adulterado vem de `conc` (0 = puro), usada dentro do
     # bloco DD-SIMCA. Não há undersampling: o DD-SIMCA precisa das amostras
     # adulteradas para medir a especificidade.
-    if cfg.nivel == "N2":
+    if cfg.level == "N2":
         if conc is not None:
             n_puro = int(np.sum(np.isnan(conc) | (conc == 0.0)))
             n_adul = int(np.sum(~(np.isnan(conc) | (conc == 0.0))))
             log.info(f"[INFO] N2 (autenticação por espécie): rótulos de espécie "
                   f"preservados para DD-SIMCA one-class "
                   f"(puros={n_puro} | adulterados={n_adul}). "
-                  f"DD-SIMCA forçado para modo 'puros'.")
+                  f"DD-SIMCA forçado para mode 'puros'.")
             # Force per-species one-class authentication for N2
             cfg.ddsimca_train_on = "puros"
             cfg.run_ddsimca = True
         else:
-            log.info("[AVISO] nivel=N2 sem dados de concentração (##TITLE= sem "
+            log.info("[AVISO] level=N2 sem dados de concentração (##TITLE= sem "
                   "adulterante). Não é possível separar puro/adulterado — "
                   "verifique os arquivos .dx.")
 
@@ -1514,17 +1514,17 @@ def executar(cfg: Config):
 
     # SG so entra no preprocessador ativo dependendo do PRESET (ver
     # build_preprocessor em preprocessamento.py) — "autoscaling"/"mc"
-    # NUNCA usam SG (a flag cfg.aplicar_sg so vale p/ o preset "custom"),
+    # NUNCA usam SG (a flag cfg.apply_sg so vale p/ o preset "custom"),
     # enquanto "snv_sg_mc"/"msc_sg_mc" SEMPRE usam SG independente da flag.
-    # Checar so `cfg.aplicar_sg` aqui gerava falso-positivo com presets sem
-    # SG (ex.: autoscaling com poucas variaveis, como no modo="imagem").
+    # Checar so `cfg.apply_sg` aqui gerava falso-positivo com presets sem
+    # SG (ex.: autoscaling com poucas variaveis, como no mode="imagem").
     _preset_ativo = (cfg.default_preprocessing or "custom").lower()
     if _preset_ativo in ("autoscaling", "mc"):
         _sg_ativo = False
     elif _preset_ativo in ("snv_sg_mc", "msc_sg_mc"):
         _sg_ativo = True
     else:  # "custom" ou preset desconhecido -> respeita a flag individual
-        _sg_ativo = cfg.aplicar_sg
+        _sg_ativo = cfg.apply_sg
     if _sg_ativo and cfg.sg_window >= X_raw.shape[1]:
         raise ValueError(
             f"sg_window ({cfg.sg_window}) deve ser menor que o numero de "
@@ -1723,9 +1723,9 @@ def executar(cfg: Config):
               f"{cfg.n_permutations}  "
               f"(failure_rate = {cast(float, perm_res['failure_rate']):.1%})")
     else:
-        log.info(f"\n[4/7] Teste de permutacao — PULADO: objetivo="
+        log.info(f"\n[4/7] Teste de permutacao — PULADO: objective="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Significancia de "
-              f"classificacao nao e' pertinente fora do modo Classificacao "
+              f"classificacao nao e' pertinente fora do mode Classificacao "
               f"(economiza {cfg.n_permutations} refits de CV).")
         perm_res = {"acc_observada": float("nan"),
                     "accs_permutadas": np.array([], dtype=float),
@@ -1736,7 +1736,7 @@ def executar(cfg: Config):
     # --- 6b. Teste de Wold (R2Y / Q2Y intercept) --------------------------
     # Gated por objetivo == CLASSIFICACAO, no MESMO padrao do teste de
     # permutacao acima (bloco 6/6a). Achado em 2026-08-06: faltava esse
-    # guard aqui -- o bloco rodava incondicionalmente mesmo em objetivo=
+    # guard aqui -- o bloco rodava incondicionalmente mesmo em objective=
     # Quantificacao/Exploratorio, refazendo n_permutations_wold refits de CV
     # usando Y_bin (rotulos de CLASSE, one-hot) para um run que nao classifica
     # nada, e escrevendo "Wold R2Y/Q2Y intercept" no resumo sem nenhum
@@ -1761,10 +1761,10 @@ def executar(cfg: Config):
               f"intercepto = {_wq2_s}  "
               f"{'VALIDO' if wold_res['valid_q2'] else 'FALHA'} (limiar < 0.05)")
     elif cfg.run_wold:
-        log.info(f"\n[4b/7] Teste de Wold — PULADO: objetivo="
+        log.info(f"\n[4b/7] Teste de Wold — PULADO: objective="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intercepto R2Y/Q2Y "
               f"e' diagnostico de CLASSIFICACAO (usa rotulos de especie/classe "
-              f"one-hot); nao pertinente fora desse modo "
+              f"one-hot); nao pertinente fora desse mode "
               f"(economiza {cfg.n_permutations_wold} refits de CV).")
 
     # --- 6c. CV-ANOVA Eriksson --------------------------------------------
@@ -1778,10 +1778,10 @@ def executar(cfg: Config):
               f"p = {cv_anova_res['p_value']:.4g}  "
               f"(df = {cv_anova_res['df_model']}, {cv_anova_res['df_resid']})")
     elif cfg.run_cv_anova:
-        log.info(f"\n[4c/7] CV-ANOVA — PULADO: objetivo="
+        log.info(f"\n[4c/7] CV-ANOVA — PULADO: objective="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Teste de "
               f"significancia de CLASSIFICACAO (Eriksson et al. 2008); "
-              f"nao pertinente fora desse modo.")
+              f"nao pertinente fora desse mode.")
 
     # --- 7. Metricas e relatorio -------------------------------------------
     cm_mat = confusion_matrix(rotulos, pred_lab, labels=lb.classes_)
@@ -1807,10 +1807,10 @@ def executar(cfg: Config):
         "cohen_kappa":       lambda yt, yp: cohen_kappa_score(yt, yp),
     }
     if objetivo != CLASSIFICACAO:
-        log.info(f"\n[5b/7] BCa CI 95% — PULADO: objetivo="
+        log.info(f"\n[5b/7] BCa CI 95% — PULADO: objective="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Intervalo de "
               f"confianca de metricas de classificacao nao e' pertinente "
-              f"fora do modo Classificacao.")
+              f"fora do mode Classificacao.")
     else:
         log.info(f"\n[5b/7] BCa CI 95% (n_boot={cfg.n_bootstrap_bca})")
         for nome, fn in metricas_funcoes.items():
@@ -1964,11 +1964,11 @@ def executar(cfg: Config):
     # sem eixo de pureza confunde mais do que esclarece num estudo de N1. Por
     # isso o toggle e' ignorado (nao bloqueado no Config, so' na execucao) com
     # aviso explicito, mesmo que o usuario tenha ligado manualmente.
-    if cfg.run_ddsimca and cfg.nivel == "N1":
-        log.info("\n[Sprint3] DD-SIMCA — IGNORADO: nivel=N1 (identificacao de "
+    if cfg.run_ddsimca and cfg.level == "N1":
+        log.info("\n[Sprint3] DD-SIMCA — IGNORADO: level=N1 (identificacao de "
               "especie). DD-SIMCA e um diagnostico de autenticacao de pureza "
               "(conceito de N2); nao agrega a este tipo de analise. Troque "
-              "para nivel=N2 se quiser autenticar pureza por especie.")
+              "para level=N2 se quiser autenticar pureza por especie.")
     elif cfg.run_ddsimca and should_generate(cfg, "ddsimca"):
         modo_dd = (cfg.ddsimca_train_on or "todos").lower()
         if conc is not None:
@@ -2216,16 +2216,16 @@ def executar(cfg: Config):
         _pp_descr = "Mean-centering"
     else:
         _pp_descr = " -> ".join(
-            (["SNV"] if cfg.aplicar_snv else []) +
+            (["SNV"] if cfg.apply_snv else []) +
             ([f"SG(w={cfg.sg_window},p={cfg.sg_polyorder},d={cfg.sg_deriv})"]
-             if cfg.aplicar_sg else []) +
-            (["mean-centering"] if cfg.aplicar_mc else []))
+             if cfg.apply_sg else []) +
+            (["mean-centering"] if cfg.apply_mc else []))
     resumo = {
         # Modo de entrada no resumo (achado B4-1): e' o que permite aos
         # geradores de relatorio carimbarem "PROTOTIPO -- NAO VALIDADO"
-        # quando modo="imagem", em vez de produzirem um PDF/LaTeX
+        # quando mode="imagem", em vez de produzirem um PDF/LaTeX
         # tipograficamente identico ao de uma analise FT-NIR validada.
-        "Modo de entrada":        str(cfg.modo),
+        "Modo de entrada":        str(cfg.mode),
         "Total de amostras":      int(X_raw.shape[0]),
         "Total de variaveis":     int(X_raw.shape[1]),
         "Total de classes":       int(len(classes_unicas)),
@@ -2249,7 +2249,7 @@ def executar(cfg: Config):
         "Group-aware (mae_id)":   "sim" if usar_grupos else "nao",
         "N grupos mae_id":        (int(len(np.unique(mae_id)))
                                     if mae_id is not None else 0),
-        "Nivel":                  f"{cfg.nivel} ({_NIVEL_NOME.get(cfg.nivel, cfg.nivel)})",
+        "Nivel":                  f"{cfg.level} ({_NIVEL_NOME.get(cfg.level, cfg.level)})",
         "Tag":                    cfg.tag if cfg.tag else "-",
         "Accuracy (CV)":          float(metricas_finais["accuracy"]),
         "Balanced accuracy":      float(metricas_finais["balanced_accuracy"]),
@@ -2319,7 +2319,7 @@ def executar(cfg: Config):
         resumo["DD-SIMCA n_ambiguos"]      = int(np.sum(simca_pred == "Ambiguo"))
         # B4 — honest training mode label. In 'todos' mode, sens/spec
         # are IN-SAMPLE acceptance, NOT one-class authentication metrics.
-        resumo["DD-SIMCA modo treino"] = (
+        resumo["DD-SIMCA mode treino"] = (
             modo_dd + (" (one-class)" if modo_dd == "puros"
                        else " (in-sample; sens/esp NAO sao autenticacao)"))
         # C4 — sensibilidade (LOGO honesto por mae_id) / especificidade one-class.
@@ -2529,9 +2529,9 @@ def executar(cfg: Config):
         n_nonzero = int(np.sum(conc_arr > 0))
 
         if objetivo != QUANTIFICACAO:
-            log.info(f"\n[7/7] PLS regressao — PULADA: objetivo="
+            log.info(f"\n[7/7] PLS regressao — PULADA: objective="
                   f"{OBJETIVO_ROTULO.get(objetivo, objetivo)} "
-                  f"(nivel={cfg.nivel}). A regressao de concentracao pertence "
+                  f"(level={cfg.level}). A regressao de concentracao pertence "
                   f"ao Modo Quantificacao (N3); nos modos Exploratorio/"
                   f"Classificacao ela seria um resultado fora de escopo (e "
                   f"em N1 as {len(classes_unicas)} especies dominam o sinal "
@@ -2561,8 +2561,8 @@ def executar(cfg: Config):
                 log.info(f"\n[7/7] PLS regressao POR ESPECIE "
                       f"({n_especies} especies — calibracao separada para "
                       f"evitar confusao inter-especies)")
-                # Rotulos da calibracao por classe: PREDITOS no modo cego
-                # (padrao), verdadeiros so' em modo controle. Ver
+                # Rotulos da calibracao por classe: PREDITOS no mode cego
+                # (padrao), verdadeiros so' em mode controle. Ver
                 # labels_for_quantification -- e' a diferenca entre medir o
                 # que o usuario vai obter e medir um cenario que ele nunca
                 # tera'.
@@ -2802,7 +2802,7 @@ if __name__ == "__main__":
         _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
         executar(_cfg)
     elif "--codigo" in sys.argv:
-        executar(CFG)                       # modo legado (Config embutida)
+        executar(CFG)                       # mode legado (Config embutida)
     elif sys.stdin is not None and sys.stdin.isatty():
         # CLI unica (item 16 da auditoria): guaraci.py e' o unico ponto de
         # entrada interativo (cli_assistente.py virou modulo de dados/i18n).

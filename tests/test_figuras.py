@@ -306,23 +306,23 @@ def test_fronteira_ddsimca_campos_ausentes_nao_quebra():
 
 def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
     """Achado B4-1 (residual): os relatorios PDF/Word/LaTeX ja saem
-    carimbados no modo imagem, mas uma figura .png exportada solta da pasta
+    carimbados no mode imagem, mas uma figura .png exportada solta da pasta
     Graficos/ circulava sem nenhum contexto -- e' justamente o arquivo que
     acaba colado num slide. `save()` e' o ponto unico por onde toda figura
     passa, entao a marca entra la'.
 
     Verifica a PROPRIEDADE (um texto de aviso foi adicionado a figura), nao
-    pixels: o teste falha se a marca sumir ou vazar para o modo normal."""
+    pixels: o teste falha se a marca sumir ou vazar para o mode normal."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from guaraci.figuras import save
     from guaraci.config import Config, NOME_GRAFICOS
 
-    def _texts_da_figura(modo):
+    def _texts_da_figura(mode):
         fig, ax = plt.subplots()
         ax.plot([0, 1], [0, 1])
-        cfg = Config(modo=modo, output_format="png")
+        cfg = Config(mode=mode, output_format="png")
         # captura os textos ANTES de salvar fechar a figura
         registrados = {}
         orig_savefig = fig.savefig
@@ -332,8 +332,8 @@ def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
             return orig_savefig(caminho, *a, **kw)
 
         fig.savefig = _spy   # type: ignore[method-assign]
-        save(fig, "fig_teste", str(tmp_path / modo), cfg)
-        assert (tmp_path / modo / NOME_GRAFICOS / "fig_teste.png").exists()
+        save(fig, "fig_teste", str(tmp_path / mode), cfg)
+        assert (tmp_path / mode / NOME_GRAFICOS / "fig_teste.png").exists()
         return registrados.get("textos", [])
 
     textos_img = " ".join(_texts_da_figura("imagem"))

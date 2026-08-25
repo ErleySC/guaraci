@@ -34,7 +34,7 @@ def _cfg_pesado():
     c.monte_carlo_include_all = True
     c.n_splits_cv = 5
     c.n_monte_carlo = 200
-    c.shap_max_amostras = 500
+    c.shap_max_samples = 500
     return c
 
 
@@ -68,7 +68,7 @@ def test_ram_media_reduz_shap_e_mc():
     c = _cfg_pesado()
     hardware.auto_adjust_hardware_config(c, _hw(5.0))
     assert c.run_shap is True            # SHAP fica, com amostragem menor
-    assert c.shap_max_amostras == 150
+    assert c.shap_max_samples == 150
     assert c.n_monte_carlo == 60
     assert c.monte_carlo_include_all is False
 
@@ -77,7 +77,7 @@ def test_ram_media_reduz_shap_e_mc():
 def test_ram_moderada_reducoes_brandas():
     c = _cfg_pesado()
     hardware.auto_adjust_hardware_config(c, _hw(7.0))
-    assert c.shap_max_amostras == 300
+    assert c.shap_max_samples == 300
     assert c.n_monte_carlo == 80
     assert c.run_benchmark is True       # benchmark permitido nesta faixa
 
@@ -91,7 +91,7 @@ def test_ram_suficiente_nao_altera_nada():
     assert c.run_benchmark is True
     assert c.run_monte_carlo is True
     assert c.n_monte_carlo == 200
-    assert c.shap_max_amostras == 500
+    assert c.shap_max_samples == 500
 
 
 def test_hw_sem_chave_ram_usa_default_seguro():

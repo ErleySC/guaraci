@@ -36,7 +36,7 @@ def test_n_minimum_for_alpha_e_o_inverso():
 
 # ── A propriedade central: recusar em vez de inventar ───────────────────
 def test_limiar_recusa_quando_n_nao_sustenta_o_alpha():
-    """REGRESSAO do modo de falha do DD-SIMCA: com n insuficiente NAO se
+    """REGRESSAO do mode de falha do DD-SIMCA: com n insuficiente NAO se
     devolve numero. `limiar` fica NaN, `alcancavel` False, e o aviso diz
     qual alpha seria alcancavel."""
     r = conformal_threshold(np.array([1.0]), alpha=0.05)     # n=1

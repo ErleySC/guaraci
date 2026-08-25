@@ -7,12 +7,12 @@ quantificacao obtido usando a classe VERDADEIRA descreve um cenario que o
 usuario final nunca tera' em maos -- e, pior, esconde o erro de
 classificacao dentro do numero de quantificacao.
 
-O modo cego (padrao) calibra usando a classe PREDITA. O modo controle usa a
+O mode cego (padrao) calibra usando a classe PREDITA. O mode controle usa a
 verdadeira, e existe para uma coisa so': isolar erro de quantificacao de
 erro de classificacao durante o desenvolvimento.
 
 A prova aqui e' por ENVENENAMENTO: os rotulos verdadeiros sao substituidos
-por lixo. Em modo cego o resultado nao pode mudar -- se mudar, e' porque
+por lixo. Em mode cego o resultado nao pode mudar -- se mudar, e' porque
 alguem os leu.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ import pytest
 # ── Contrato do seletor ──────────────────────────────────────────────────────
 
 def test_padrao_e_cego(pq):
-    """O padrao do software precisa ser o modo que corresponde ao uso real.
+    """O padrao do software precisa ser o mode que corresponde ao uso real.
     Se um dia alguem inverter o default, este teste falha."""
     assert pq.Config().label_mode == "cego"
 
@@ -32,9 +32,9 @@ def test_padrao_e_cego(pq):
 def test_modo_cego_devolve_os_preditos(pq):
     verdadeiros = np.array(["A", "A", "B", "B"])
     preditos = np.array(["A", "B", "B", "A"])
-    rot, modo = pq.labels_for_quantification(
+    rot, mode = pq.labels_for_quantification(
         pq.Config(label_mode="cego"), verdadeiros, preditos)
-    assert modo == "cego"
+    assert mode == "cego"
     assert np.array_equal(rot, preditos)
 
 
@@ -42,20 +42,20 @@ def test_modo_controle_devolve_os_verdadeiros_e_se_identifica(pq):
     """Controle e' legitimo -- desde que a saida diga que e' controle."""
     verdadeiros = np.array(["A", "A", "B", "B"])
     preditos = np.array(["A", "B", "B", "A"])
-    rot, modo = pq.labels_for_quantification(
+    rot, mode = pq.labels_for_quantification(
         pq.Config(label_mode="controle"), verdadeiros, preditos)
-    assert modo == "controle"
+    assert mode == "controle"
     assert np.array_equal(rot, verdadeiros)
 
 
 def test_sem_preditos_o_modo_cego_nao_finge_ser_cego(pq):
-    """Sem classificador ajustado, o modo cego nao tem como operar. Cair
+    """Sem classificador ajustado, o mode cego nao tem como operar. Cair
     para os verdadeiros e' aceitavel; cair para os verdadeiros DIZENDO que
     e' cego, nao -- seria um resultado de controle disfarcado."""
     verdadeiros = np.array(["A", "B"])
-    rot, modo = pq.labels_for_quantification(
+    rot, mode = pq.labels_for_quantification(
         pq.Config(label_mode="cego"), verdadeiros, None)
-    assert modo == "controle-forcado"
+    assert mode == "controle-forcado"
     assert np.array_equal(rot, verdadeiros)
 
 
@@ -85,7 +85,7 @@ def _dados_com_teor(pq, semente=3, n_per_class=14):
 
 def test_quantificacao_cega_ignora_rotulo_verdadeiro_envenenado(pq):
     """A prova: com os rotulos verdadeiros trocados por lixo, o resultado da
-    quantificacao em modo cego tem que ser IDENTICO.
+    quantificacao em mode cego tem que ser IDENTICO.
 
     Se este teste falhar, o rotulo verdadeiro esta entrando no caminho de
     quantificacao por alguma porta -- que e' exatamente o que o requisito
@@ -120,7 +120,7 @@ def test_quantificacao_cega_ignora_rotulo_verdadeiro_envenenado(pq):
 
 
 def test_modo_controle_de_fato_ve_a_verdade(pq):
-    """Contra-prova do teste acima: em modo controle, envenenar a verdade
+    """Contra-prova do teste acima: em mode controle, envenenar a verdade
     MUDA o resultado. Sem isso, o teste anterior poderia estar passando
     porque nenhum dos dois caminhos usa rotulo nenhum."""
     _eixo, _X, y_true, _conc, _mae = _dados_com_teor(pq)
@@ -129,19 +129,19 @@ def test_modo_controle_de_fato_ve_a_verdade(pq):
     rot_ok, _ = pq.labels_for_quantification(cfg, y_true, y_true.copy())
     rot_env, _ = pq.labels_for_quantification(cfg, y_lixo, y_true.copy())
     assert not np.array_equal(rot_ok, rot_env), (
-        "em modo controle a verdade TEM que ser usada -- se envenena-la nao "
+        "em mode controle a verdade TEM que ser usada -- se envenena-la nao "
         "muda nada, os dois modos sao o mesmo e o teste cego nao prova nada")
 
 
 def test_erro_de_classificacao_se_propaga_no_modo_cego(pq):
-    """No modo cego, um classificador que erra faz a calibracao agrupar
+    """No mode cego, um classificador que erra faz a calibracao agrupar
     amostras erradas. Isso NAO e' um defeito a esconder -- e' o que
     aconteceria em producao, e o numero precisa refleti-lo."""
     y_true = np.array(["A", "A", "A", "B", "B", "B"])
     preditos = np.array(["A", "A", "B", "B", "B", "A"])   # 2 erros
-    rot, modo = pq.labels_for_quantification(
+    rot, mode = pq.labels_for_quantification(
         pq.Config(label_mode="cego"), y_true, preditos)
-    assert modo == "cego"
+    assert mode == "cego"
     assert int(np.sum(rot != y_true)) == 2, (
-        "o modo cego deve carregar os erros do classificador para dentro da "
+        "o mode cego deve carregar os erros do classificador para dentro da "
         "quantificacao")

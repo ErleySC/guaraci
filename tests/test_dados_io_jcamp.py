@@ -98,14 +98,14 @@ def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
 
 
 def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
-    """load_data(cfg) com modo='dx' delega corretamente para load_dx
+    """load_data(cfg) com mode='dx' delega corretamente para load_dx
     (mesmo caminho que o pipeline real usa a partir de Config)."""
     raiz = tmp_path / "dados"
     (raiz / "Andiroba").mkdir(parents=True)
     _escrever_dx(str(raiz / "Andiroba" / "and_T1.dx"), "AND-04-11-2099-T1",
                  100, 105, [1, 2, 3, 4, 5, 6])
 
-    cfg = pq.Config(modo="dx", input_folder=str(raiz))
+    cfg = pq.Config(mode="dx", input_folder=str(raiz))
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "Andiroba"

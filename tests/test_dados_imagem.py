@@ -196,37 +196,37 @@ def test_carregar_imagens_todas_corrompidas_levanta_valueerror(pq, tmp_path):
 
 
 def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
-    """load_data(cfg) com modo='imagem' delega para load_images."""
+    """load_data(cfg) com mode='imagem' delega para load_images."""
     raiz = tmp_path / "dados_img"
     (raiz / "ClasseA").mkdir(parents=True)
     _salvar_imagem_solida(str(raiz / "ClasseA" / "img1.png"), (100, 150, 200))
 
-    cfg = pq.Config(modo="imagem", input_folder=str(raiz))
+    cfg = pq.Config(mode="imagem", input_folder=str(raiz))
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "ClasseA"
 
 
 def test_validar_pasta_dados_modo_imagem(pq, tmp_path):
-    """_validar_pasta_dados reconhece o modo 'imagem' (pasta vazia -> False,
+    """_validar_pasta_dados reconhece o mode 'imagem' (pasta vazia -> False,
     pasta com imagens -> True)."""
     vazio = tmp_path / "vazio"
     vazio.mkdir()
-    cfg_vazio = pq.Config(modo="imagem", input_folder=str(vazio))
+    cfg_vazio = pq.Config(mode="imagem", input_folder=str(vazio))
     ok, _msg = pq._validar_pasta_dados(cfg_vazio)
     assert ok is False
 
     com_imagem = tmp_path / "com_imagem"
     com_imagem.mkdir()
     _salvar_imagem_solida(str(com_imagem / "x.png"), (100, 100, 100))
-    cfg_ok = pq.Config(modo="imagem", input_folder=str(com_imagem))
+    cfg_ok = pq.Config(mode="imagem", input_folder=str(com_imagem))
     ok2, _msg2 = pq._validar_pasta_dados(cfg_ok)
     assert ok2 is True
 
 
 @pytest.mark.slow
 def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
-    """Integração completa: executar() com modo='imagem' de ponta a ponta.
+    """Integração completa: executar() com mode='imagem' de ponta a ponta.
 
     Cuidado necessário: `load_images` devolve um eixo de variaveis
     simbolico (np.arange(n_features), NÃO um numero de onda real) — por isso
@@ -242,7 +242,7 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
                                    seed=hash((cls, i)) % 1000)
 
     cfg = pq.Config(
-        modo="imagem", input_folder=str(raiz),
+        mode="imagem", input_folder=str(raiz),
         output_root_folder=str(tmp_path / "saida"),
         wn_min=-1.0, wn_max=100.0,  # cobre o eixo simbolico 0..17
         # "autoscaling" (nao "msc_sg_mc"): MSC/Savitzky-Golay pressupoem um
@@ -262,6 +262,6 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
 
     from pathlib import Path
     runs = achar_pastas_run(tmp_path / "saida")
-    assert runs, "executar() nao criou pasta de saida p/ modo imagem"
+    assert runs, "executar() nao criou pasta de saida p/ mode imagem"
     resumo = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
-    assert resumo.exists(), "resumo_modelo.txt nao gerado p/ modo imagem"
+    assert resumo.exists(), "resumo_modelo.txt nao gerado p/ mode imagem"

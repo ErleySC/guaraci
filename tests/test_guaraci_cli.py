@@ -267,13 +267,13 @@ def test_presets_objetivo_existem_e_tem_descricao_bilingue(
 
 
 @pytest.mark.parametrize("pname,attr,valor_esperado", [
-    ("Explorar Dados",    "nivel", "N1"),
-    ("Explorar Dados",    "objetivo", "exploratorio"),
+    ("Explorar Dados",    "level", "N1"),
+    ("Explorar Dados",    "objective", "exploratorio"),
     ("Explorar Dados",    "run_ddsimca", False),
-    ("Autenticar Pureza", "nivel", "N2"),
+    ("Autenticar Pureza", "level", "N2"),
     ("Autenticar Pureza", "run_ddsimca", True),
     ("Autenticar Pureza", "ddsimca_train_on", "puros"),
-    ("Quantificar Teor",  "nivel", "N3"),
+    ("Quantificar Teor",  "level", "N3"),
     ("Quantificar Teor",  "run_ddsimca", False),
 ])
 def test_preset_objetivo_aplica_no_config_via_spec(
@@ -295,7 +295,7 @@ def test_preset_objetivo_aplica_no_config_via_spec(
 # ── Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12) ───────
 @pytest.fixture(autouse=False)
 def _modo_iniciante_limpo(guaraci_mod, monkeypatch, tmp_path):
-    """Reseta o estado global de modo antes/depois de cada teste desta secao
+    """Reseta o estado global de mode antes/depois de cada teste desta secao
     -- _STATE e' um dict de modulo, persiste entre testes sem isolamento.
 
     _MODO_FLAG tambem e' redirecionado para tmp_path: _toggle_modo_usuario()
@@ -319,7 +319,7 @@ def test_toggle_modo_usuario_alterna_iniciante_avancado(guaraci_mod, _modo_inici
 
 def test_print_submenu_compact_esconde_avancados_no_modo_iniciante(
         guaraci_mod, _modo_iniciante_limpo):
-    """No modo Iniciante, sem 'mostrar_avancado', os campos em
+    """No mode Iniciante, sem 'mostrar_avancado', os campos em
     campos_avancados NAO aparecem na lista retornada (que e' a fonte da
     verdade p/ indexacao numerica do menu)."""
     cfg = guaraci_mod.Config()
@@ -333,7 +333,7 @@ def test_print_submenu_compact_esconde_avancados_no_modo_iniciante(
 def test_print_submenu_compact_revela_avancados_quando_pedido(
         guaraci_mod, _modo_iniciante_limpo):
     """Com mostrar_avancado=True (usuario apertou [V] naquela visita ao
-    menu), a lista completa volta a aparecer, mesmo em modo Iniciante."""
+    menu), a lista completa volta a aparecer, mesmo em mode Iniciante."""
     cfg = guaraci_mod.Config()
     fields = ["nivel", "max_lvs", "opls_da", "ddsimca"]
     visiveis = guaraci_mod._print_submenu_compact(
@@ -344,8 +344,8 @@ def test_print_submenu_compact_revela_avancados_quando_pedido(
 
 def test_print_submenu_compact_modo_avancado_ignora_ocultacao(
         guaraci_mod, _modo_iniciante_limpo):
-    """No modo Avancado (sessao inteira), campos_avancados nao esconde nada
-    -- so' faz sentido filtrar quando o usuario esta no modo Iniciante."""
+    """No mode Avancado (sessao inteira), campos_avancados nao esconde nada
+    -- so' faz sentido filtrar quando o usuario esta no mode Iniciante."""
     guaraci_mod._STATE["modo_usuario"] = "avancado"
     cfg = guaraci_mod.Config()
     fields = ["nivel", "max_lvs", "opls_da", "ddsimca"]
@@ -441,7 +441,7 @@ def test_estimativa_usa_faixa_nunca_valor_exato(guaraci_mod):
 
 
 # ── i18n: vazamento de idioma e markup cru ───────────────────────────────────
-# Achados em 2026-08-06 numa tela real do usuario em modo EN: "[g]Yes[/g]"
+# Achados em 2026-08-06 numa tela real do usuario em mode EN: "[g]Yes[/g]"
 # impresso LITERALMENTE (Text() em vez de Text.from_markup) e varios textos
 # ainda em portugues. Os testes abaixo travam os dois problemas de uma vez,
 # renderizando os paineis de verdade e inspecionando a saida.
@@ -499,7 +499,7 @@ def test_paineis_nao_imprimem_markup_cru(guaraci_mod, lang, ligado):
 
 
 def test_painel_em_ingles_nao_vaza_portugues(guaraci_mod):
-    """Em modo EN nenhuma palavra inequivocamente portuguesa pode aparecer.
+    """Em mode EN nenhuma palavra inequivocamente portuguesa pode aparecer.
 
     Lista curta e especifica de proposito: termos que so' existem em PT e que
     ja' vazaram de verdade (rotulo de nivel, "Modo", "(automatico)"), para o
@@ -514,7 +514,7 @@ def test_painel_em_ingles_nao_vaza_portugues(guaraci_mod):
     for fn in (guaraci_mod._print_resumo, guaraci_mod._print_checklist):
         txt = _render(guaraci_mod, fn, cfg, "EN")
         achados = sorted(set(proibidas.findall(txt)))
-        assert not achados, f"{fn.__name__} vazou portugues em modo EN: {achados}"
+        assert not achados, f"{fn.__name__} vazou portugues em mode EN: {achados}"
 
 
 def test_rotulo_de_nivel_traduz_mas_nao_muda_o_arquivo_de_saida(guaraci_mod):
@@ -631,7 +631,7 @@ def test_editar_campo_bool_grava_valor_canonico_independente_do_idioma(
 
 
 # ── Reset automatico de toggles inertes ao trocar "nivel" (2026-08-06) ───────
-# Pedido do usuario: "quando mudo de modo... continua ativado a dd simca e
+# Pedido do usuario: "quando mudo de mode... continua ativado a dd simca e
 # semelhantes... gostaria que ao mudar o N, mudasse as opcoes de modos como
 # esse que nao agrega a analise". A regra espelha EXATAMENTE o que
 # pipeline.executar()/modos_analise.py decidem (ver docstring de
@@ -640,7 +640,7 @@ def test_editar_campo_bool_grava_valor_canonico_independente_do_idioma(
 def test_ajustar_toggles_ddsimca_desliga_em_n1(guaraci_mod):
     """DD-SIMCA em N1 e' sempre ignorado por pipeline.executar() (aviso, nao
     bloqueio no Config) -- a UI passa a refletir isso desligando o toggle."""
-    cfg = guaraci_mod.Config(nivel="N1", run_ddsimca=True)
+    cfg = guaraci_mod.Config(level="N1", run_ddsimca=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert cfg.run_ddsimca is False
     assert "ddsimca" in mudou
@@ -651,7 +651,7 @@ def test_ajustar_toggles_ddsimca_liga_em_n2(guaraci_mod):
     independente do toggle -- a UI passa a mostrar True de antemao, refletindo
     o que vai acontecer de qualquer forma, em vez de mostrar 'desligado' e
     surpreender o usuario com o log dizendo o contrario."""
-    cfg = guaraci_mod.Config(nivel="N2", run_ddsimca=False)
+    cfg = guaraci_mod.Config(level="N2", run_ddsimca=False)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert cfg.run_ddsimca is True
     assert "ddsimca" in mudou
@@ -661,7 +661,7 @@ def test_ajustar_toggles_ddsimca_desliga_em_n3(guaraci_mod):
     """N3 (Quantificacao): should_generate(cfg,'ddsimca') e' False (figura so'
     pertence a Classificacao) -- toggle inerte, igual N1, mas SEM aviso no
     pipeline (achado: N1 tem log explicito, N3 nao tinha nenhum)."""
-    cfg = guaraci_mod.Config(nivel="N3", run_ddsimca=True)
+    cfg = guaraci_mod.Config(level="N3", run_ddsimca=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert cfg.run_ddsimca is False
     assert "ddsimca" in mudou
@@ -670,10 +670,10 @@ def test_ajustar_toggles_ddsimca_desliga_em_n3(guaraci_mod):
 def test_ajustar_toggles_classificacao_only_desligam_fora_de_classificacao(guaraci_mod):
     """opls_da, etapa4, comparar_pre_processamentos, teste_wold,
     teste_cv_anova, teste_martens, benchmark, monte_carlo, shap_benchmark:
-    todos pertencem exclusivamente a objetivo=Classificacao (ver
+    todos pertencem exclusivamente a objective=Classificacao (ver
     modos_analise._FIG_OBJETIVOS) -- inertes em N3."""
     cfg = guaraci_mod.Config(
-        nivel="N3", run_opls=True, executar_etapa4=True,
+        level="N3", run_opls=True, executar_etapa4=True,
         comparar_pipelines=True, run_wold=True, run_cv_anova=True,
         run_martens=True, run_benchmark=True,
         run_monte_carlo=True, run_shap=True,
@@ -697,9 +697,9 @@ def test_ajustar_toggles_classificacao_only_desligam_fora_de_classificacao(guara
 
 def test_ajustar_toggles_classificacao_only_preservados_em_n1_e_n2(guaraci_mod):
     """Contraparte positiva: os mesmos toggles NAO podem ser mexidos em N1/N2
-    -- la' eles SAO pertinentes (objetivo=Classificacao)."""
+    -- la' eles SAO pertinentes (objective=Classificacao)."""
     for nivel in ("N1", "N2"):
-        cfg = guaraci_mod.Config(nivel=nivel, run_opls=True,
+        cfg = guaraci_mod.Config(level=nivel, run_opls=True,
                                  run_benchmark=True)
         guaraci_mod._ajustar_toggles_por_nivel(cfg)
         assert cfg.run_opls is True, f"opls_da nao devia mudar em {nivel}"
@@ -707,35 +707,35 @@ def test_ajustar_toggles_classificacao_only_preservados_em_n1_e_n2(guaraci_mod):
 
 
 def test_ajustar_toggles_benchmark_regressao_desliga_fora_de_quantificacao(guaraci_mod):
-    cfg = guaraci_mod.Config(nivel="N1", run_benchmark_regression=True)
+    cfg = guaraci_mod.Config(level="N1", run_benchmark_regression=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert cfg.run_benchmark_regression is False
     assert "benchmark_regressao" in mudou
 
 
 def test_ajustar_toggles_benchmark_regressao_preservado_em_n3(guaraci_mod):
-    cfg = guaraci_mod.Config(nivel="N3", run_benchmark_regression=True)
+    cfg = guaraci_mod.Config(level="N3", run_benchmark_regression=True)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert cfg.run_benchmark_regression is True
     assert "benchmark_regressao" not in mudou
 
 
 def test_ajustar_toggles_respeita_objetivo_explicito_sobre_nivel(guaraci_mod):
-    """Se o usuario sobrepoe cfg.objetivo explicitamente (avancado), a regra
+    """Se o usuario sobrepoe cfg.objective explicitamente (avancado), a regra
     segue o OBJETIVO resolvido, nao uma leitura ingenua do nivel -- mesma
     precedencia de modos_analise.resolve_objective()."""
-    cfg = guaraci_mod.Config(nivel="N3", objetivo="classificacao",
+    cfg = guaraci_mod.Config(level="N3", objective="classificacao",
                              run_opls=True)
     guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert cfg.run_opls is True, (
-        "objetivo=classificacao explicito deveria preservar toggle "
-        "de classificacao mesmo em nivel=N3")
+        "objective=classificacao explicito deveria preservar toggle "
+        "de classificacao mesmo em level=N3")
 
 
 def test_ajustar_toggles_nao_mexe_quando_ja_esta_correto(guaraci_mod):
     """Idempotencia: se os toggles ja estao no estado certo para o nivel,
     a lista de 'mudou' fica vazia -- nao reporta ajuste que nao aconteceu."""
-    cfg = guaraci_mod.Config(nivel="N1", run_ddsimca=False,
+    cfg = guaraci_mod.Config(level="N1", run_ddsimca=False,
                              run_opls=False)
     mudou = guaraci_mod._ajustar_toggles_por_nivel(cfg)
     assert mudou == []
@@ -745,7 +745,7 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
     """Fluxo completo via _editar_campo: trocar nivel N2->N1 (que tem
     confirmacao ANALITICA) desliga ddsimca automaticamente e a mensagem de
     aviso e' impressa."""
-    cfg = guaraci_mod.Config(nivel="N2", run_ddsimca=True)
+    cfg = guaraci_mod.Config(level="N2", run_ddsimca=True)
     respostas = iter(["1", "s"])   # [1]=N1 no menu de opcoes; 's'=confirma
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     from rich.console import Console
@@ -754,7 +754,7 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
     monkeypatch.setattr(guaraci_mod, "console", buf_console)
     ok = guaraci_mod._editar_campo(cfg, "nivel")
     assert ok is True
-    assert cfg.nivel == "N1"
+    assert cfg.level == "N1"
     assert cfg.run_ddsimca is False
     saida = buf_console.file.getvalue()
     assert "DD-SIMCA" in saida or "ddsimca" in saida.lower()
@@ -763,12 +763,12 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
 def test_editar_campo_nivel_sem_mudanca_nao_mexe_em_nada(guaraci_mod, monkeypatch):
     """Reescolher o MESMO nivel (Enter=manter, ou escolher o numero atual)
     nao deve reportar nenhum ajuste."""
-    cfg = guaraci_mod.Config(nivel="N1", run_ddsimca=False)
+    cfg = guaraci_mod.Config(level="N1", run_ddsimca=False)
     respostas = iter([""])   # Enter = mantem
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     ok = guaraci_mod._editar_campo(cfg, "nivel")
     assert ok is False
-    assert cfg.nivel == "N1"
+    assert cfg.level == "N1"
     assert cfg.run_ddsimca is False
 
 
@@ -882,7 +882,7 @@ def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
 
 
 # ── _CFG_PATH/_LANG_FLAG fora do diretorio de instalacao (achado 2026-08-07) ─
-# config.yaml/perfis/flags de idioma-modo/codigos de usuario eram gravados
+# config.yaml/perfis/flags de idioma-mode/codigos de usuario eram gravados
 # dentro de _BASE_DIR (o diretorio de INSTALACAO do pacote) -- quebra em
 # qualquer instalacao read-only (pip de sistema, Docker, `pip install
 # --user` em alguns casos). Movido para _USER_DIR (~/.guaraci), com

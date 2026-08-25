@@ -135,14 +135,14 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     (st.success if ok_dados else st.warning)(f"Status: {msg_dados}")
 
     if ok_dados and st.button("🔍 Load spectra preview", key="btn_prev_dados"):
-        modo = cfg_prev.modo
+        mode = cfg_prev.mode
         wn_mn = float(cfg_prev.wn_min)
         wn_mx = float(cfg_prev.wn_max)
         with st.spinner("Loading spectra sample..."):
-            if modo == "dx":
+            if mode == "dx":
                 wn_p, X_p, labs_p = preview_spectra_dx(
                     cfg_prev.input_folder, wn_mn, wn_mx)
-            elif modo == "csv":
+            elif mode == "csv":
                 csv_cam = st.session_state.get("_csv_upload_path",
                                                cfg_prev.csv_file)
                 wn_p, X_p, labs_p = preview_spectra_csv(

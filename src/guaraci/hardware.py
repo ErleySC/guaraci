@@ -168,8 +168,8 @@ def auto_adjust_hardware_config(cfg: "Config",
 
     elif ram < 6.0:
         # RAM 4-6 GB: SHAP com amostragem reduzida, benchmark sem XGBoost via flag
-        if cfg.run_shap and cfg.shap_max_amostras > 150:
-            cfg.shap_max_amostras = 150
+        if cfg.run_shap and cfg.shap_max_samples > 150:
+            cfg.shap_max_samples = 150
             avisos.append("SHAP max_amostras reduzido para 150 (RAM livre < 6 GB)")
         if cfg.n_monte_carlo > 60:
             cfg.n_monte_carlo = 60
@@ -180,8 +180,8 @@ def auto_adjust_hardware_config(cfg: "Config",
 
     elif ram < 8.0:
         # RAM 6-8 GB: reducoes moderadas
-        if cfg.run_shap and cfg.shap_max_amostras > 300:
-            cfg.shap_max_amostras = 300
+        if cfg.run_shap and cfg.shap_max_samples > 300:
+            cfg.shap_max_samples = 300
             avisos.append("SHAP max_amostras reduzido para 300 (RAM livre < 8 GB)")
         if cfg.n_monte_carlo > 80:
             cfg.n_monte_carlo = 80

@@ -127,7 +127,7 @@ def _rodar_com_perfil(pq, base: Path, perfil: str, eixo: np.ndarray):
     _csv_espectral(csv, eixo)
 
     cfg = pq.Config(
-        modo="csv", csv_file=str(csv),
+        mode="csv", csv_file=str(csv),
         class_column="classe", conc_column="conc",
         output_root_folder=str(pasta / "saida"),
         matrix_profile=perfil,                     # <<< a UNICA diferenca
@@ -189,7 +189,7 @@ def test_perfil_inexistente_aborta_o_pipeline_antes_de_predizer(pq, tmp_path):
     csv = tmp_path / "e.csv"
     _csv_espectral(csv, np.linspace(4000.0, 10000.0, 120))
     cfg = pq.Config(
-        modo="csv", csv_file=str(csv),
+        mode="csv", csv_file=str(csv),
         class_column="classe", conc_column="conc",
         output_root_folder=str(tmp_path / "saida"),
         matrix_profile="matriz_que_nao_existe",

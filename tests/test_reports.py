@@ -152,9 +152,9 @@ def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
     assert tex_sim != tex_nao
 
 
-def _pasta_com_modo(tmp_path, modo: str) -> str:
+def _pasta_com_modo(tmp_path, mode: str) -> str:
     """Pasta de resultados minima cujo resumo declara `Modo de entrada`."""
-    p = tmp_path / f"modo_{modo}"
+    p = tmp_path / f"modo_{mode}"
     logs = p / "logs"
     logs.mkdir(parents=True)
     (logs / "resumo_modelo.txt").write_text(
@@ -164,14 +164,14 @@ def _pasta_com_modo(tmp_path, modo: str) -> str:
         "Group-aware (mae_id): nao\n"
         "Faixa espectral (cm-1): [4000, 10000]\n"
         "Permutation n_validos: 200\n"
-        f"Modo de entrada: {modo}\n",
+        f"Modo de entrada: {mode}\n",
         encoding="utf-8",
     )
     return str(p)
 
 
 def test_relatorios_carimbam_prototipo_no_modo_imagem(tmp_path, projeto):
-    """Regressao do achado B4-1 (auditoria 2026-08): o modo `imagem`
+    """Regressao do achado B4-1 (auditoria 2026-08): o mode `imagem`
     (colorimetria digital) é protótipo NÃO validado e devolve `mae_id=None`
     sempre, o que desliga a validação group-aware -- mas o PDF/Word/LaTeX
     gerado saía tipograficamente idêntico ao de uma análise FT-NIR
@@ -179,7 +179,7 @@ def test_relatorios_carimbam_prototipo_no_modo_imagem(tmp_path, projeto):
     de ajuda do CLI, nunca na saída.
 
     Agora os geradores leem `Modo de entrada` do resumo e carimbam. Este
-    teste confirma que o carimbo aparece SÓ no modo imagem."""
+    teste confirma que o carimbo aparece SÓ no mode imagem."""
     pasta_img = _pasta_com_modo(tmp_path, "imagem")
     pasta_dx  = _pasta_com_modo(tmp_path, "dx")
 

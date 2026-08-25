@@ -51,7 +51,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         st.info("Configure and validate data input (Data tab) to enable the preview.")
     elif st.button("⚗️ Generate before/after preview", key="btn_prev_preproc"):
         with st.spinner("Loading and processing spectra..."):
-            modo_pp = cfg_pp.modo
+            modo_pp = cfg_pp.mode
             wn_mn_pp = float(cfg_pp.wn_min)
             wn_mx_pp = float(cfg_pp.wn_max)
             if modo_pp == "dx":
