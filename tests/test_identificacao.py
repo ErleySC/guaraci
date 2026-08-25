@@ -134,6 +134,42 @@ def test_ensemble_sem_mae_id_retorna_vazio(caplog):
     assert "mae_id ausente" in caplog.text
 
 
+def test_diluicoes_da_mesma_sessao_nao_inflam_n_grupos():
+    """Regressao do achado real (2026-08-25, medido contra o dataset):
+    varias amostras com o MESMO prefixo de sessao (especie+data) mas teores
+    diferentes tem mae_id DIFERENTES (o token final inclui o teor) -- se
+    contadas por mae_id bruto, pareceriam N grupos independentes; sao
+    UMA SO sessao de coleta diluida em N niveis. `train_identification_
+    ensemble` tem que colapsar para n_grupos=1 usando `session_from_mae_id`,
+    nao o `mae_id` bruto (que produziria n_grupos=15 aqui)."""
+    rng = np.random.default_rng(42)
+    p = 8
+    centro = rng.normal(size=p)
+    X_list, rot_list, conc_list, mae_list = [], [], [], []
+    for nivel, teor in enumerate(np.linspace(1.0, 15.0, 15)):
+        X_list.append(centro + rng.normal(scale=0.05, size=p))
+        rot_list.append("Andiroba")
+        conc_list.append(teor)
+        mae_list.append(f"AND-10-06-2099-A{teor:.2f}")   # MESMA sessao (data)
+    X_list.append(rng.normal(scale=0.05, size=p))
+    rot_list.append("Andiroba"); conc_list.append(0.0)
+    mae_list.append("AND-PURO")
+
+    X = np.array(X_list)
+    rotulos = np.array(rot_list, dtype=str)
+    conc = np.array(conc_list, dtype=float)
+    mae_id = np.array(mae_list, dtype=str)
+    pca, var_t = _pca_e_var_t(X, n_components=2)
+
+    ensemble = train_identification_ensemble(pca, var_t, X, rotulos, conc, mae_id)
+    info = ensemble[("Andiroba", "algodão")]
+    assert info["n_amostras"] == 15
+    assert info["n_grupos"] == 1, (
+        "15 diluicoes da MESMA sessao foram contadas como grupos "
+        "independentes -- pseudo-replicacao na calibracao conformal")
+    assert info["cobertura_status"] == CoverageStatus.NOT_VALIDATED_N1
+
+
 def test_combinacao_ausente_dos_dados_nao_entra_no_ensemble():
     """So' combinacoes com pelo menos 1 amostra adulterada entram -- nunca
     inventa uma entrada vazia para uma combinacao nao observada."""

@@ -31,11 +31,20 @@ combinacao", na mesma escala/normalizacao ja usada no restante do projeto
 
 COBERTURA: POR QUE A MAIORIA NAO E' VALIDAVEL
 ------------------------------------------------
-A validade conformal (ver conformal.py) exige `n` GRUPOS (mae_id, amostras
-FISICAS independentes) de calibracao, nao espectros. No dataset de
-referencia, 36 das 38 combinacoes tem exatamente 1 sessao de coleta
-independente e 2 tem exatamente 2 -- nenhuma chega perto do minimo pratico
-(n>=19 para alpha=0.05). A distincao entre os dois grupos importa:
+A validade conformal (ver conformal.py) exige `n` GRUPOS independentes de
+calibracao, nao espectros -- e, medido contra o dataset real em 2026-08-25,
+NAO E' o `mae_id` bruto que representa essa independencia aqui: uma amostra
+adulterada tem UM `mae_id` POR NIVEL DE TEOR (ex.: 'AND-10-06-2099-A1.05',
+'AND-10-06-2099-A2.11', ... -- 15 diluicoes da MESMA sessao '10-06-2099').
+Contar `mae_id` bruto infla o `n` de 1 sessao real para ate' 15 -- a mesma
+pseudo-replicacao que o restante do projeto evita com GroupKFold, aqui no
+passo de calibracao conformal. Por isso o "grupo" usado abaixo e' a SESSAO
+DE COLETA (`dados_io.session_from_mae_id`, que remove o token de teor do
+final do `mae_id`), nao o `mae_id` em si. Com essa correcao, 36 das 38
+combinacoes tem exatamente 1 sessao de coleta independente e 2 tem
+exatamente 2 (Andiroba x soja, Maracuja x algodao) -- nenhuma chega perto
+do minimo pratico (n>=19 para alpha=0.05). A distincao entre os dois grupos
+importa:
 
     n_grupos == 1  -> NAO_VALIDADO_N1: nem um limiar conformal minimamente
                        informativo pode ser calculado (variabilidade zero
@@ -79,7 +88,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from guaraci.conformal import ConformalOneClass, achievable_alpha
-from guaraci.dados_io import adulterant_from_mae_id
+from guaraci.dados_io import adulterant_from_mae_id, session_from_mae_id
 
 log = logging.getLogger(__name__)
 
@@ -165,6 +174,8 @@ def train_identification_ensemble(
     `mae_id` e' OBRIGATORIO (sem ele nao ha' como contar grupos/sessoes
     independentes, e o resultado seria sempre NAO_VALIDADO_N1 por falta de
     informacao, nao por falta real de dados) -- retorna vazio se ausente.
+    O "grupo" de calibracao e' a SESSAO DE COLETA (`dados_io.
+    session_from_mae_id`), nao o `mae_id` bruto -- ver docstring do modulo.
 
     Retorna dict {(especie, adulterante): {"centroide", "conformal"
     (ConformalOneClass|None), "n_grupos", "n_amostras", "cobertura_status",
@@ -180,6 +191,8 @@ def train_identification_ensemble(
 
     rotulos = np.asarray(rotulos, dtype=str)
     mae_id = np.asarray(mae_id, dtype=str)
+    sessao_por_amostra = np.array(
+        [session_from_mae_id(m) for m in mae_id], dtype=str)
     conc_v = np.asarray(conc, dtype=float)
     conc_v = np.where(np.isnan(conc_v), 0.0, conc_v)
     adult_por_amostra = np.array(
@@ -200,7 +213,7 @@ def train_identification_ensemble(
                 continue
 
             T_combo = T_all[mask]
-            grupos = mae_id[mask]
+            grupos = sessao_por_amostra[mask]
             n_grupos = int(len(np.unique(grupos)))
             centroide = T_combo.mean(axis=0)
             scores = _score_to_centroid(T_combo, centroide, var_t)

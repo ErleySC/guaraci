@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 import guaraci.pipeline as pq
-from guaraci.dados_io import adulterant_from_mae_id
+from guaraci.dados_io import adulterant_from_mae_id, session_from_mae_id
 
 
 # ── Parser de adulterante a partir do mae_id ─────────────────────────────────
@@ -24,6 +24,24 @@ def test_adulterant_from_mae_id_puro_e_orfao_sao_none():
     assert adulterant_from_mae_id("ESA-P00") is None          # puro sintetico
     assert adulterant_from_mae_id("orfao_arquivo.dx") is None
     assert adulterant_from_mae_id(None) is None
+
+
+# ── Sessao de coleta a partir do mae_id (Bloco 9b) ───────────────────────────
+def test_session_from_mae_id_remove_o_token_de_teor():
+    """Achado real (2026-08-25): 15 niveis de teor da MESMA sessao tem 15
+    mae_id diferentes (o teor entra no token final) -- sem remove-lo, a
+    calibracao conformal de identificacao (Bloco 9b) contaria 15 'grupos'
+    onde ha' 1 sessao de coleta so'."""
+    assert (session_from_mae_id("AND-10-06-2099-A1.05")
+            == session_from_mae_id("AND-10-06-2099-A2.11")
+            == "AND-10-06-2099")
+    assert session_from_mae_id("ESA-S05.00") == "ESA"
+
+
+def test_session_from_mae_id_amostra_pura_e_sua_propria_sessao():
+    assert session_from_mae_id("CAP-04-11-2099") == "CAP-04-11-2099"
+    assert session_from_mae_id("orfao_arquivo.dx") == "orfao_arquivo.dx"
+    assert session_from_mae_id(None) is None
 
 
 # ── R2cv por especie x adulterante ───────────────────────────────────────────

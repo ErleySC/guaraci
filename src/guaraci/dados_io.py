@@ -66,6 +66,36 @@ def adulterant_from_mae_id(mae_id: Optional[str]) -> Optional[str]:
         return None
     return ADULTERANTE_NOME[letra]
 
+
+def session_from_mae_id(mae_id: Optional[str]) -> Optional[str]:
+    """Identificador de SESSAO DE COLETA (especie+data), removendo o token
+    de teor/adulterante do final do mae_id.
+
+    ACHADO (Bloco 9b, medido contra o dataset real em 2026-08-25): o
+    `mae_id` de uma amostra ADULTERADA e' UM POR NIVEL DE TEOR, nao um por
+    sessao de coleta -- ex., os 15 mae_id de 'Andiroba x algodao'
+    ('AND-10-06-2099-A1.05', 'AND-10-06-2099-A2.11', ...) sao 15 DILUICOES
+    de UMA UNICA sessao (mesma data '10-06-2099'), nao 15 preparos
+    independentes. Contar `mae_id` bruto como "grupo" para calibracao
+    conformal (ver `identificacao.py`) infla `n` de 1 sessao real para ate'
+    15 -- pseudo-replicacao que violaria a garantia de cobertura. Removendo
+    o token final (o mesmo que `adulterant_from_mae_id` identifica), sobra
+    a sessao real: reproduz exatamente os 36 casos de 1 sessao + 2 casos de
+    2 sessoes (Andiroba/soja, Maracuja/algodao) ja documentados em
+    docs/MANUAL.md.
+
+    Amostras PURAS (sem token de teor) devolvem o proprio `mae_id` --
+    nao ha' nada a remover, e cada amostra pura ja e' sua propria sessao
+    do ponto de vista deste agrupamento.
+    """
+    if mae_id is None:
+        return None
+    partes = str(mae_id).split("-")
+    ultimo = partes[-1]
+    if re.match(r"^[A-Za-z][0-9]", ultimo) and len(partes) > 1:
+        return "-".join(partes[:-1])
+    return str(mae_id)
+
 # Regex robust to deviations found in the real reference dataset:
 #   - surrounding whitespace                   "## TITLE= GOI-..."
 #   - separator after COD/DATE: "-" or "_"     "XXX_DD-MM-YYYY_AD-S-..."
