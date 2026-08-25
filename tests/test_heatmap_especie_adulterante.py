@@ -9,21 +9,21 @@ import numpy as np
 import pytest
 
 import guaraci.pipeline as pq
-from guaraci.dados_io import adulterante_de_mae_id
+from guaraci.dados_io import adulterant_from_mae_id
 
 
 # ── Parser de adulterante a partir do mae_id ─────────────────────────────────
-def test_adulterante_de_mae_id_real_e_sintetico():
-    assert adulterante_de_mae_id("CAP-04-11-2099-A1.03") == "algodão"
-    assert adulterante_de_mae_id("AND-01-01-2099-S5.00") == "soja"
-    assert adulterante_de_mae_id("ESA-M08.00") == "milho"
+def test_adulterant_from_mae_id_real_e_sintetico():
+    assert adulterant_from_mae_id("CAP-04-11-2099-A1.03") == "algodão"
+    assert adulterant_from_mae_id("AND-01-01-2099-S5.00") == "soja"
+    assert adulterant_from_mae_id("ESA-M08.00") == "milho"
 
 
-def test_adulterante_de_mae_id_puro_e_orfao_sao_none():
-    assert adulterante_de_mae_id("CAP-04-11-2099") is None   # puro real
-    assert adulterante_de_mae_id("ESA-P00") is None          # puro sintetico
-    assert adulterante_de_mae_id("orfao_arquivo.dx") is None
-    assert adulterante_de_mae_id(None) is None
+def test_adulterant_from_mae_id_puro_e_orfao_sao_none():
+    assert adulterant_from_mae_id("CAP-04-11-2099") is None   # puro real
+    assert adulterant_from_mae_id("ESA-P00") is None          # puro sintetico
+    assert adulterant_from_mae_id("orfao_arquivo.dx") is None
+    assert adulterant_from_mae_id(None) is None
 
 
 # ── R2cv por especie x adulterante ───────────────────────────────────────────

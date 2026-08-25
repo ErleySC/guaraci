@@ -43,7 +43,7 @@ CODIGO_ESPECIE: Dict[str, str] = {
 ADULTERANTE_NOME: Dict[str, str] = {"A": "algodão", "M": "milho", "S": "soja"}
 
 
-def adulterante_de_mae_id(mae_id: Optional[str]) -> Optional[str]:
+def adulterant_from_mae_id(mae_id: Optional[str]) -> Optional[str]:
     """Nome do adulterante (algodão/milho/soja) a partir do mae_id, ou None.
 
     O mae_id de uma amostra ADULTERADA termina no token '{letra}{teor}':

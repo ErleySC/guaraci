@@ -89,7 +89,7 @@ CFG = Config()
 from guaraci.dados_io import (   # noqa: E402
     CODIGO_ESPECIE,
     ADULTERANTE_NOME,
-    adulterante_de_mae_id,
+    adulterant_from_mae_id,
     parse_title,
     extract_dx_title,
     sanitizar_metadados,
@@ -868,7 +868,7 @@ def r2cv_species_by_adulterant(
     suficientes viram 'n/a' (nunca inventam numero).
 
     O adulterante de cada amostra vem do mae_id (que sobrevive alinhado a
-    validate_input) via adulterante_de_mae_id -- evita desalinhar com o
+    validate_input) via adulterant_from_mae_id -- evita desalinhar com o
     metadados_df, que NAO passa pela remocao de NaN/Inf.
 
     Returns dict {especies, adulterantes, matriz{(esp,adult): r2|nan}, n_ok,
@@ -879,7 +879,7 @@ def r2cv_species_by_adulterant(
     conc = np.asarray(conc, dtype=float)
     conc = np.where(np.isnan(conc), 0.0, conc)
     adult_por_amostra = np.array(
-        [adulterante_de_mae_id(m) for m in mae_id], dtype=object)
+        [adulterant_from_mae_id(m) for m in mae_id], dtype=object)
     especies = sorted({str(r) for r in rotulos})
     adulterantes = sorted({a for a in adult_por_amostra if a})
     if not adulterantes:
