@@ -57,7 +57,7 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     assert os.path.exists(
         os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_classifiers.png"))
     assert glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_det_curvas*.png"))
-    for v in df["Bal.Acc media"]:
+    for v in df["Bal.Acc mean"]:
         assert 0.0 <= v <= 1.0
 
 
@@ -74,8 +74,8 @@ def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
     assert list(df["Classificador"]) == ["PLS-DA"]
-    assert df["Iteracoes validas"].iloc[0] > 0
-    assert 0.0 <= df["IC95% inf"].iloc[0] <= df["IC95% sup"].iloc[0] <= 1.0
+    assert df["Valid iterations"].iloc[0] > 0
+    assert 0.0 <= df["CI95% inf"].iloc[0] <= df["CI95% sup"].iloc[0] <= 1.0
     assert os.path.exists(os.path.join(pasta, pq.NOME_TABELAS, "monte_carlo_cv.csv"))
 
 

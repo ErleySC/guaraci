@@ -13,13 +13,13 @@
     "DD-SIMCA especificidade Esp_C": 12.5,
     "DD-SIMCA n_components": 7.0,
     "DD-SIMCA n_desconhecidos": 8.0,
-    "DModX critico (SIMCA)": 1.1561,
+    "DModX critical (SIMCA)": 1.1561,
     "F1 (macro)": 1.0,
     "Holdout accuracy": 1.0,
     "Holdout balanced acc": 1.0,
     "Hotelling T2 (95%)": 12.6333,
-    "LVs otimas": 5.0,
-    "N amostras fora do DModX": 14.0,
+    "Optimal LVs": 5.0,
+    "N samples outside DModX": 14.0,
     "N grupos mae_id": 24.0,
     "N outliers Q": 4.0,
     "N outliers T2": 0.0,
@@ -28,8 +28,8 @@
     "R2X": 0.9907,
     "R2Y": 0.9864,
     "ROC AUC macro (OvR)": 1.0,
-    "Total de amostras": 72.0,
-    "Total de classes": 3.0,
-    "Total de variaveis": 60.0
+    "Total samples": 72.0,
+    "Total classes": 3.0,
+    "Total variables": 60.0
   }
 }

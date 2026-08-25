@@ -51,7 +51,7 @@ def _e_modo_prototipo(resumo_raw: str) -> bool:
     LaTeX gerado e' tipograficamente identico ao de uma analise FT-NIR
     validada (achado B4-1).
 
-    Le o campo "Modo de entrada" que `pipeline.executar()` grava no
+    Le o campo "Input mode" que `pipeline.executar()` grava no
     resumo_modelo.txt -- mesma fonte unica usada pelo B3-1 para nao
     afirmar group-aware quando ele nao rodou.
     """

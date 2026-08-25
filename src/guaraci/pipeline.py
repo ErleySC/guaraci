@@ -476,7 +476,7 @@ def compare_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
         return ("mc", StandardScaler(with_std=False))
 
     presets: Dict[str, Callable[[], List]] = {
-        "Apenas MC":              lambda: [_mc()],
+        "MC only":              lambda: [_mc()],
         "Autoscaling":            lambda: [("auto", StandardScaler())],
         "SNV + MC":               lambda: [("snv", SNV()), _mc()],
         "MSC + MC":               lambda: [("msc", MSC()), _mc()],
@@ -2225,11 +2225,11 @@ def executar(cfg: Config):
         # geradores de relatorio carimbarem "PROTOTIPO -- NAO VALIDADO"
         # quando mode="imagem", em vez de produzirem um PDF/LaTeX
         # tipograficamente identico ao de uma analise FT-NIR validada.
-        "Modo de entrada":        str(cfg.mode),
-        "Total de amostras":      int(X_raw.shape[0]),
-        "Total de variaveis":     int(X_raw.shape[1]),
-        "Total de classes":       int(len(classes_unicas)),
-        "Metodo":                 "PLS-DA",
+        "Input mode":        str(cfg.mode),
+        "Total samples":      int(X_raw.shape[0]),
+        "Total variables":     int(X_raw.shape[1]),
+        "Total classes":       int(len(classes_unicas)),
+        "Method":                 "PLS-DA",
         "Pre-processamento":      _pp_descr,
         "Faixa espectral (cm-1)": f"[{cfg.wn_min:.0f}, {cfg.wn_max:.0f}]",
         # Diagnostico de faixa: fica no relatorio (nao so' no terminal) para
@@ -2240,7 +2240,7 @@ def executar(cfg: Config):
             f"[{diag_faixa['faixa_sugerida'][0]:.0f}, "
             f"{diag_faixa['faixa_sugerida'][1]:.0f}]"
             if diag_faixa.get("faixa_sugerida") else "faixa toda util"),
-        "LVs otimas":             int(n_opt),
+        "Optimal LVs":             int(n_opt),
         "LVs no teto (max_lvs)":  ("SIM - aumente max_lvs" if lvs_no_teto
                                     else "nao"),
         "Validacao":              cv_label + (
@@ -2265,16 +2265,16 @@ def executar(cfg: Config):
                                     else f"{q_lim:.4f}"),
         "N outliers T2":          int(out_t2.size),
         "N outliers Q":           int(out_q.size),
-        "DModX critico (SIMCA)":  round(float(_dmodx_res["dmodx_crit"]), 4),
-        "N amostras fora do DModX": int(_dmodx_res["n_fora_do_modelo"]),
+        "DModX critical (SIMCA)":  round(float(_dmodx_res["dmodx_crit"]), 4),
+        "N samples outside DModX": int(_dmodx_res["n_fora_do_modelo"]),
         "Imbalance ratio":        cast(float, relatorio_balanco["imbalance_ratio"]),
-        "Classe maior":           cast(int, relatorio_balanco["n_max"]),
-        "Classe menor":           cast(int, relatorio_balanco["n_min"]),
-        "Integridade NaN":        cast(int, relatorio_entrada["n_nan_amostras"]),
+        "Largest class":           cast(int, relatorio_balanco["n_max"]),
+        "Smallest class":           cast(int, relatorio_balanco["n_min"]),
+        "NaN integrity":        cast(int, relatorio_entrada["n_nan_amostras"]),
         "Integridade Inf":        cast(int, relatorio_entrada["n_inf_amostras"]),
-        "Variaveis constantes":   cast(int, relatorio_entrada["n_constantes_removidas"]),
-        "Duplicatas exatas":      cast(int, relatorio_entrada["n_duplicatas_exatas"]),
-        "Duplicatas aproximadas": cast(int, relatorio_entrada["n_duplicatas_aproximadas"]),
+        "Constant variables":   cast(int, relatorio_entrada["n_constantes_removidas"]),
+        "Exact duplicates":      cast(int, relatorio_entrada["n_duplicatas_exatas"]),
+        "Approximate duplicates": cast(int, relatorio_entrada["n_duplicatas_aproximadas"]),
     }
     # Permutacao + BCa (v.jul/2026): computados so' em objetivo Classificacao
     # (ver otimizacao de desempenho acima) -- por isso so' aparecem no resumo

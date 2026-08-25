@@ -1622,11 +1622,11 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
     run_dir = Path(runs[0])
 
     resumo_txt = (run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(encoding="utf-8")
-    assert "DModX critico (SIMCA)" in resumo_txt
-    assert "N amostras fora do DModX" in resumo_txt
+    assert "DModX critical (SIMCA)" in resumo_txt
+    assert "N samples outside DModX" in resumo_txt
 
     card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
-    assert "DModX critico (SIMCA)" in card_txt
+    assert "DModX critical (SIMCA)" in card_txt
     assert "DModY critico (SIMCA)" in card_txt   # addendum de regressao, N3
 
 
@@ -1688,8 +1688,8 @@ def _resumo_minimo() -> dict:
     completo (esse caminho ja e' coberto por
     test_figuras_regressao.test_model_card_gerado_com_addendum_de_regressao)."""
     return {
-        "Total de amostras": 100, "Total de variaveis": 50,
-        "Total de classes": 2, "Pre-processamento": "MSC -> SG -> MC",
+        "Total samples": 100, "Total variables": 50,
+        "Total classes": 2, "Pre-processamento": "MSC -> SG -> MC",
         "Faixa espectral (cm-1)": "[4000, 10000]", "Tag": "-",
         "Group-aware (mae_id)": "sim", "N grupos mae_id": 30,
         "Imbalance ratio": 1.0,
@@ -1698,8 +1698,8 @@ def _resumo_minimo() -> dict:
         "R2X": 0.98, "R2Y": 0.97, "Q2": 0.95,
         "Permutation p-value": 0.02, "Hotelling T2 (95%)": 12.0,
         "Q-residual (95%)": 0.001,
-        "Integridade NaN": 0, "Integridade Inf": 0,
-        "Variaveis constantes": 0, "Duplicatas exatas": 0,
+        "NaN integrity": 0, "Integridade Inf": 0,
+        "Constant variables": 0, "Exact duplicates": 0,
         "  Acc Esp_A": 0.96, "  Acc Esp_B": 0.94,
     }
 

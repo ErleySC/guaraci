@@ -212,11 +212,11 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
             oof_probas[nome]     = proba_oof
             resultados.append({
                 "Classificador":      nome,
-                "Bal.Acc media":      round(float(ba.mean()), 4),
+                "Bal.Acc mean":      round(float(ba.mean()), 4),
                 "Bal.Acc std":        round(float(ba.std()),  4),
-                "F1 macro media":     round(float(f1.mean()), 4),
+                "F1 macro mean":     round(float(f1.mean()), 4),
                 "F1 macro std":       round(float(f1.std()),  4),
-                "Tempo total (s)":    round(elapsed, 2),
+                "Total time (s)":    round(elapsed, 2),
             })
             print(f"bal.acc={ba.mean():.4f} ± {ba.std():.4f}  [{elapsed:.1f}s]")
         except Exception as _e:  # noqa: BLE001 -- 1 classificador do
@@ -439,7 +439,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
                         float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
             except (ValueError, np.linalg.LinAlgError) as _e_mc:
                 # Iteracao Monte Carlo degenerada -- NAO silenciosa: a
-                # contagem de falhas aparece em "Iteracoes validas" no CSV.
+                # contagem de falhas aparece em "Valid iterations" no CSV.
                 log.debug("Monte Carlo CV: iteracao descartada p/ %s: %s",
                          nome, _e_mc)
 
@@ -454,16 +454,16 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
               f"  [{elapsed:.1f}s]")
         resultados_mc.append({
             "Classificador":    nome,
-            "Iteracoes validas": len(ba_list),
-            "Media BA":         round(float(np.nanmean(arr_ba)), 4),
-            "Mediana BA":       round(float(np.nanmedian(arr_ba)), 4),
+            "Valid iterations": len(ba_list),
+            "Mean BA":         round(float(np.nanmean(arr_ba)), 4),
+            "Median BA":       round(float(np.nanmedian(arr_ba)), 4),
             "Std BA":           round(float(np.nanstd(arr_ba)), 4),
-            "IC95% inf":        round(ci_lo, 4),
-            "IC95% sup":        round(ci_hi, 4),
-            "Media F1 macro":   round(float(np.nanmean(arr_f1)), 4),
-            "IC95% F1 inf":     round(float(np.nanpercentile(arr_f1, 2.5)), 4),
-            "IC95% F1 sup":     round(float(np.nanpercentile(arr_f1, 97.5)), 4),
-            "Fracao teste":     test_sz,
+            "CI95% inf":        round(ci_lo, 4),
+            "CI95% sup":        round(ci_hi, 4),
+            "Mean F1 macro":   round(float(np.nanmean(arr_f1)), 4),
+            "CI95% F1 inf":     round(float(np.nanpercentile(arr_f1, 2.5)), 4),
+            "CI95% F1 sup":     round(float(np.nanpercentile(arr_f1, 97.5)), 4),
+            "Test fraction":     test_sz,
         })
 
     print(f"  [MC CV total: {time.time()-t0_total:.1f}s]")
@@ -936,8 +936,8 @@ def benchmark_regression_by_species(
         "Modelo":         "PLS-R",
         "RMSEP (pooled)": round(float(reg_esp_pls["rmsep"]), 3),
         "R2val (pooled)": round(float(reg_esp_pls["r2v"]), 4),
-        "N especies":     int(reg_esp_pls["n_especies"]),
-        "RMSEP std (entre especies)": (
+        "N species":     int(reg_esp_pls["n_especies"]),
+        "RMSEP std (between species)": (
             round(float(np.std(rmsep_pls_por_especie)), 3)
             if rmsep_pls_por_especie else float("nan")),
     })
@@ -957,8 +957,8 @@ def benchmark_regression_by_species(
             "Modelo":         nome,
             "RMSEP (pooled)": round(rmsep_pooled, 3),
             "R2val (pooled)": round(r2_pooled, 4),
-            "N especies":     len(rmsep_por_especie[nome]),
-            "RMSEP std (entre especies)": round(
+            "N species":     len(rmsep_por_especie[nome]),
+            "RMSEP std (between species)": round(
                 float(np.std(rmsep_por_especie[nome])), 3),
         })
         rmsep_boxplot[nome] = np.array(rmsep_por_especie[nome])

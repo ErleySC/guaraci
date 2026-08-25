@@ -76,10 +76,10 @@ _GOLDEN = Path(__file__).parent / "golden" / "pipeline_n2_sintetico.json"
 # ajuste (R2X/R2Y/Q2), limites de diagnóstico (Hotelling/Q/DModX), e contagens
 # estruturais (LVs, grupos) que denunciam mudança na validação group-aware.
 _METRICAS_TRAVADAS = [
-    "Total de amostras",
-    "Total de variaveis",
-    "Total de classes",
-    "LVs otimas",
+    "Total samples",
+    "Total variables",
+    "Total classes",
+    "Optimal LVs",
     "N grupos mae_id",
     "Accuracy (CV)",
     "Balanced accuracy",
@@ -92,8 +92,8 @@ _METRICAS_TRAVADAS = [
     "Q-residual (95%)",
     "N outliers T2",
     "N outliers Q",
-    "DModX critico (SIMCA)",
-    "N amostras fora do DModX",
+    "DModX critical (SIMCA)",
+    "N samples outside DModX",
     "ROC AUC macro (OvR)",
     "Holdout accuracy",
     "Holdout balanced acc",
