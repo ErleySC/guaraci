@@ -166,7 +166,7 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
 
 
 # Paleta/marcadores de classes extraidos p/ paleta_cores.py (Fase H). Reexpor-
-# tados aqui para nao quebrar `pipeline.cor(...)`/`pipeline.PALETA` nem as
+# tados aqui para nao quebrar `pipeline.color(...)`/`pipeline.PALETA` nem as
 # ~52 chamadas internas nas funcoes de figura.
 from guaraci.paleta_cores import (   # noqa: E402
     PALETA,
@@ -174,19 +174,19 @@ from guaraci.paleta_cores import (   # noqa: E402
     _paleta_externa,
     _luminancia,
     get_edge_color,
-    cor,
+    color,
     map_class_colors,
     map_class_markers,
 )
 
 
-# Camada de plotagem (setup_matplotlib, salvar, specificity_by_class,
+# Camada de plotagem (setup_matplotlib, save, specificity_by_class,
 # helpers de plot e ~30 funcoes fig_*) extraida p/ figuras.py (Fase H).
 # Reexportada aqui para nao quebrar pipeline.fig1_pca_scores(...),
-# pipeline.salvar(...) nem as chamadas de executar()/figuras remanescentes.
+# pipeline.save(...) nem as chamadas de executar()/figuras remanescentes.
 from guaraci.figuras import (   # noqa: E402
     setup_matplotlib,
-    salvar,
+    save,
     specificity_by_class,
     elipse_t2,
     convex_hull_contorno,

@@ -1,12 +1,12 @@
 """
 figuras.py — Toda a camada de plotagem do pipeline: setup do matplotlib,
-salvar(), helpers de plot e as ~30 funcoes fig_* (scores, confusao, VIP/SR,
+save(), helpers de plot e as ~30 funcoes fig_* (scores, confusao, VIP/SR,
 HCA, ROC, S-Plot, DD-SIMCA, etc.).
 
 Extraido de pipeline.py como parte da modularizacao (Fase H). Depende so de
 matplotlib/scipy/sklearn + paleta_cores + chemometric_stats; nao importa
 pipeline (Config so em type hint, via TYPE_CHECKING). pipeline.py reexporta os
-nomes publicos, entao `pipeline.fig1_pca_scores(...)`, `pipeline.salvar(...)`
+nomes publicos, entao `pipeline.fig1_pca_scores(...)`, `pipeline.save(...)`
 etc. continuam funcionando sem alteracao. Coberto por
 tests/test_figuras_regressao.py.
 """
@@ -32,7 +32,7 @@ from sklearn.metrics import (
 )
 
 from guaraci.paleta_cores import (
-    cor, get_edge_color,
+    color, get_edge_color,
 )
 from guaraci.chemometric_stats import (
     hotelling_t2, hotelling_t2_limite, q_residuos, q_residuos_limite,
@@ -81,7 +81,7 @@ def setup_matplotlib(cfg: Config) -> None:
 _AVISO_MOSTRAR_GRAFICOS_EMITIDO = False
 
 
-def salvar(fig, nome: str, pasta: str, cfg: Config,
+def save(fig, nome: str, pasta: str, cfg: Config,
            subpasta: str = "") -> None:
     """Always saves figure under pasta/Graficos/[subpasta]/ (auditoria jul/2026
     item 4). subpasta groups detailed figures (e.g. 'ddsimca')."""
@@ -94,7 +94,7 @@ def salvar(fig, nome: str, pasta: str, cfg: Config,
     # group-aware. Os relatorios PDF/Word/LaTeX ja saem carimbados, mas uma
     # figura .png exportada solta da pasta Graficos/ circula sem contexto --
     # e' justamente o arquivo que acaba colado num slide ou num texto.
-    # `salvar()` e' o ponto unico por onde TODA figura passa.
+    # `save()` e' o ponto unico por onde TODA figura passa.
     if getattr(cfg, "modo", "") == "imagem":
         fig.text(0.5, 0.5, "PROTOTIPO\nNAO VALIDADO",
                  fontsize=34, color="0.5", alpha=0.16,
@@ -305,8 +305,8 @@ def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
                               constrained_layout=True)
 
     ax = axes[0]
-    ax.plot(lvs, erros_rmsecv, "o-", color=cor(0), ms=5.5, lw=1.6)
-    ax.axvline(n_opt, color=cor(3), ls="--", lw=1.3,
+    ax.plot(lvs, erros_rmsecv, "o-", color=color(0), ms=5.5, lw=1.6)
+    ax.axvline(n_opt, color=color(3), ls="--", lw=1.3,
                label=f"Optimal: {n_opt} LVs")
     ax.set_xlabel("Number of latent variables")
     ax.set_ylabel("RMSECV")
@@ -317,13 +317,13 @@ def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
 
     ax = axes[1]
     ax.plot(lvs, [m["accuracy"]          for m in metricas_por_lv],
-            "o-", color=cor(0), ms=4.5, lw=1.3, label="Accuracy")
+            "o-", color=color(0), ms=4.5, lw=1.3, label="Accuracy")
     ax.plot(lvs, [m["balanced_accuracy"] for m in metricas_por_lv],
-            "s-", color=cor(2), ms=4.5, lw=1.3, label="Balanced acc.")
+            "s-", color=color(2), ms=4.5, lw=1.3, label="Balanced acc.")
     ax.plot(lvs, [m["f1_macro"]          for m in metricas_por_lv],
-            "^-", color=cor(1), ms=4.5, lw=1.3, label="F1 (macro)")
+            "^-", color=color(1), ms=4.5, lw=1.3, label="F1 (macro)")
     ax.plot(lvs, [m["cohen_kappa"]       for m in metricas_por_lv],
-            "d-", color=cor(3), ms=4.5, lw=1.3, label="Cohen's $\\kappa$")
+            "d-", color=color(3), ms=4.5, lw=1.3, label="Cohen's $\\kappa$")
     ax.axvline(n_opt, color="0.55", ls=":", lw=1)
     ax.set_xlabel("Number of latent variables")
     ax.set_ylabel("Metric (CV)")
@@ -333,7 +333,7 @@ def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", ncol=2, frameon=False)
 
-    salvar(fig, "figS1_selecao_lvs", pasta, cfg)
+    save(fig, "figS1_selecao_lvs", pasta, cfg)
 
 
 def _centroides_pca(X, rotulos, n_pcs):
@@ -386,7 +386,7 @@ def fig_hca_dendrogram(X_processed, rotulos, mapa_cores, cfg, pasta,
                   loc="left")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    salvar(fig, "fig_hca_dendrogram", pasta, cfg)
+    save(fig, "fig_hca_dendrogram", pasta, cfg)
 
     # Automatic interpretation of main clusters (k=2)
     try:
@@ -472,7 +472,7 @@ def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
         axes[j].axis("off")
     fig.suptitle("HCA by preprocessing — cluster stability",
                   fontsize=11, fontweight="bold", x=0.01, ha="left")
-    salvar(fig, "fig_hca_comparacao_pipelines", pasta, cfg)
+    save(fig, "fig_hca_comparacao_pipelines", pasta, cfg)
 
 
 def fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
@@ -490,7 +490,7 @@ def fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
                        mapa_marcadores=mapa_marcadores,
                        desenhar_elipses=cfg.mostrar_elipses_grupo)
     _legenda_lateral(ax_leg, ax)
-    salvar(fig, "fig1_pca_scores", pasta, cfg)
+    save(fig, "fig1_pca_scores", pasta, cfg)
 
 
 def fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
@@ -533,7 +533,7 @@ def fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
                            mapa_marcadores=mapa_marcadores,
                            desenhar_elipses=cfg.mostrar_elipses_grupo)
         _legenda_lateral(ax_leg, ax)
-    salvar(fig, "fig2_plsda_scores", pasta, cfg)
+    save(fig, "fig2_plsda_scores", pasta, cfg)
 
 
 def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
@@ -589,7 +589,7 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
 
     _legenda_lateral(ax_leg, ax1)
 
-    salvar(fig, "fig3_outliers_T2_Q", pasta, cfg)
+    save(fig, "fig3_outliers_T2_Q", pasta, cfg)
 
     outliers_t2 = np.where(T2 > t2_lim)[0]
     outliers_q  = np.where(Q  > q_lim)[0]
@@ -648,7 +648,7 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
 
     nomes_m   = ["Precision", "Sensitivity", "Specificity", "F1-score"]
     valores_m = [prec, rec, spec, f1]
-    cores_m   = [cor(0), cor(2), cor(1), cor(3)]
+    cores_m   = [color(0), color(2), color(1), color(3)]
 
     x = np.arange(n_cls)
     width = 0.20
@@ -669,7 +669,7 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
               fontsize=7.5, frameon=False, columnspacing=1.0,
               handletextpad=0.4)
 
-    salvar(fig, "fig4_confusao_e_metricas_por_classe", pasta, cfg)
+    save(fig, "fig4_confusao_e_metricas_por_classe", pasta, cfg)
 
 
 # fig4b_metricas_globais: REMOVIDA — as metricas globais (accuracy, balanced,
@@ -826,7 +826,7 @@ def fig_class_mean_spectra(wavenumbers, X_raw, rotulos, mapa_cores,
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
     _legenda_lateral(ax_leg, ax)
 
-    salvar(fig, "fig0_espectros_medios_classe", pasta, cfg)
+    save(fig, "fig0_espectros_medios_classe", pasta, cfg)
 
 
 def fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
@@ -871,7 +871,7 @@ def fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
 
     _legenda_lateral(ax_leg, ax_a)
 
-    salvar(fig, "fig6_preprocessing", pasta, cfg)
+    save(fig, "fig6_preprocessing", pasta, cfg)
 
 
 def _ylim_permutacao(valores: np.ndarray, obs: float,
@@ -920,17 +920,17 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
     x_line = np.linspace(0, 1, 50)
 
     ax = axes[0]
-    ax.scatter(sims, r2s, color=cor(0), s=28, alpha=0.55,
+    ax.scatter(sims, r2s, color=color(0), s=28, alpha=0.55,
                 edgecolors="white", linewidths=0.4, label="Permutations")
-    ax.scatter([1.0], [r2_obs], color=cor(3), s=90, marker="D",
+    ax.scatter([1.0], [r2_obs], color=color(3), s=90, marker="D",
                 edgecolors="black", linewidths=0.8, zorder=5,
                 label="Observed")
     if np.isfinite(slope_r2):
         ax.plot(x_line, slope_r2 * x_line + int_r2, color="0.35", lw=1.2,
                  ls="--", label=f"Line (intercept = {int_r2:.3f})")
-    ax.axhline(0.40, color=cor(1), lw=0.9, ls=":",
+    ax.axhline(0.40, color=color(1), lw=0.9, ls=":",
                 label="Threshold R2Y = 0.40")
-    cor_status = cor(2) if (np.isfinite(int_r2) and int_r2 < 0.40) else cor(3)
+    cor_status = color(2) if (np.isfinite(int_r2) and int_r2 < 0.40) else color(3)
     status = "VALID" if (np.isfinite(int_r2) and int_r2 < 0.40) else ("N/A" if not np.isfinite(int_r2) else "FAILED")
     ax.text(0.02, 0.97, f"R2Y intercept: {status}",
              transform=ax.transAxes, ha="left", va="top",
@@ -946,17 +946,17 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
     ax.legend(loc="lower right", fontsize=8, frameon=False)
 
     ax = axes[1]
-    ax.scatter(sims, q2s, color=cor(2), s=28, alpha=0.55,
+    ax.scatter(sims, q2s, color=color(2), s=28, alpha=0.55,
                 edgecolors="white", linewidths=0.4, label="Permutations")
-    ax.scatter([1.0], [q2_obs], color=cor(3), s=90, marker="D",
+    ax.scatter([1.0], [q2_obs], color=color(3), s=90, marker="D",
                 edgecolors="black", linewidths=0.8, zorder=5,
                 label="Observed")
     if np.isfinite(slope_q2):
         ax.plot(x_line, slope_q2 * x_line + int_q2, color="0.35", lw=1.2,
                  ls="--", label=f"Line (intercept = {int_q2:.3f})")
-    ax.axhline(0.05, color=cor(1), lw=0.9, ls=":",
+    ax.axhline(0.05, color=color(1), lw=0.9, ls=":",
                 label="Threshold Q2Y = 0.05")
-    cor_status = cor(2) if (np.isfinite(int_q2) and int_q2 < 0.05) else cor(3)
+    cor_status = color(2) if (np.isfinite(int_q2) and int_q2 < 0.05) else color(3)
     status = "VALID" if (np.isfinite(int_q2) and int_q2 < 0.05) else ("N/A" if not np.isfinite(int_q2) else "FAILED")
     ax.text(0.02, 0.97, f"Q2Y intercept: {status}",
              transform=ax.transAxes, ha="left", va="top",
@@ -971,7 +971,7 @@ def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
 
-    salvar(fig, "fig_extra_wold_permutacao", pasta, cfg)
+    save(fig, "fig_extra_wold_permutacao", pasta, cfg)
 
 
 def fig_extra_holdout(metricas_cv: Dict[str, float],
@@ -1017,9 +1017,9 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
     cv_vals = [metricas_cv[k]      for k in chaves]
     ho_vals = [metricas_holdout[k] for k in chaves]
     x = np.arange(len(nomes)); w = 0.36
-    ax.bar(x - w/2, cv_vals, w, color=cor(0), label="CV (training)",
+    ax.bar(x - w/2, cv_vals, w, color=color(0), label="CV (training)",
             edgecolor="white", lw=0.5)
-    ax.bar(x + w/2, ho_vals, w, color=cor(1), label="Holdout (test)",
+    ax.bar(x + w/2, ho_vals, w, color=color(1), label="Holdout (test)",
             edgecolor="white", lw=0.5)
     for k, (cv_v, ho_v) in enumerate(zip(cv_vals, ho_vals)):
         ax.text(k - w/2, cv_v + 0.015, f"{cv_v:.3f}", ha="center",
@@ -1034,7 +1034,7 @@ def fig_extra_holdout(metricas_cv: Dict[str, float],
     ax.legend(loc="lower right", fontsize=9, frameon=False)
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_extra_holdout", pasta, cfg)
+    save(fig, "fig_extra_holdout", pasta, cfg)
 
 
 def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
@@ -1049,11 +1049,11 @@ def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
                             constrained_layout=True)
     pos = np.arange(len(nomes))
     h = 0.26
-    ax.barh(pos - h, accs, h, color=cor(0), label="Accuracy",
+    ax.barh(pos - h, accs, h, color=color(0), label="Accuracy",
              edgecolor="white", lw=0.5)
-    ax.barh(pos,     bals, h, color=cor(2), label="Balanced acc.",
+    ax.barh(pos,     bals, h, color=color(2), label="Balanced acc.",
              edgecolor="white", lw=0.5)
-    ax.barh(pos + h, q2s,  h, color=cor(1), label="Q$^2$",
+    ax.barh(pos + h, q2s,  h, color=color(1), label="Q$^2$",
              edgecolor="white", lw=0.5)
 
     for k, n_lv in enumerate(n_lvs):
@@ -1072,7 +1072,7 @@ def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", fontsize=8.5, frameon=False, ncol=3)
 
-    salvar(fig, "fig_extra_comparacao_pipelines", pasta, cfg)
+    save(fig, "fig_extra_comparacao_pipelines", pasta, cfg)
 
 
 def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
@@ -1089,10 +1089,10 @@ def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
 
     ax = axes[0]
     ax.fill_between(wavenumbers, ci_lo, ci_hi,
-                     color=cor(0), alpha=0.22, lw=0, zorder=2,
+                     color=color(0), alpha=0.22, lw=0, zorder=2,
                      label="95% CI (bootstrap)")
     ax.plot(wavenumbers, vip_mean, color="0.25", lw=1.0, alpha=0.95, zorder=3)
-    ax.axhline(1.0, color=cor(3), ls="--", lw=1.0, label="VIP = 1")
+    ax.axhline(1.0, color=color(3), ls="--", lw=1.0, label="VIP = 1")
     _anotar_bandas_vip(ax, wavenumbers, vip_mean, limiar=2.0)
     ax.set_xlabel("Wavenumber (cm$^{-1}$)")
     ax.set_ylabel("VIP (stratified bootstrap mean)")
@@ -1113,12 +1113,12 @@ def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
     erro_inf = valores - ci_lo[idx_top]
     erro_sup = ci_hi[idx_top] - valores
     pos = np.arange(top_n)
-    cores_b = [cor(1) if v >= 1.0 else "0.7" for v in valores]
+    cores_b = [color(1) if v >= 1.0 else "0.7" for v in valores]
     ax.barh(pos, valores, color=cores_b, edgecolor="white", lw=0.5,
              height=0.78,
              xerr=np.vstack([erro_inf, erro_sup]),
              error_kw=dict(ecolor="0.35", lw=0.8, capsize=2))
-    ax.axvline(1.0, color=cor(3), ls="--", lw=1.0)
+    ax.axvline(1.0, color=color(3), ls="--", lw=1.0)
     ax.set_yticks(pos)
     ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
     ax.set_xlabel("VIP score (with 95% CI)")
@@ -1128,7 +1128,7 @@ def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
 
     ax = axes[2]
     freq_top = sel_freq[idx_top]
-    ax.barh(pos, freq_top, color=cor(2), edgecolor="white", lw=0.5,
+    ax.barh(pos, freq_top, color=color(2), edgecolor="white", lw=0.5,
              height=0.78)
     ax.axvline(0.5, color="0.55", ls=":", lw=0.9)
     ax.set_yticks(pos)
@@ -1138,7 +1138,7 @@ def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
     ax.set_title("(c) Selection stability", loc="left")
     ax.grid(axis="x", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig5b_vip_bootstrap", pasta, cfg)
+    save(fig, "fig5b_vip_bootstrap", pasta, cfg)
 
 
 def fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
@@ -1149,8 +1149,8 @@ def fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     n_max = len(erros_reg)
     lvs = np.arange(1, n_max + 1)
     ax = axes[0]
-    ax.plot(lvs, erros_reg, "o-", color=cor(0), ms=5, lw=1.4)
-    ax.axvline(n_opt_reg, color=cor(1), ls="--", lw=1.2,
+    ax.plot(lvs, erros_reg, "o-", color=color(0), ms=5, lw=1.4)
+    ax.axvline(n_opt_reg, color=color(1), ls="--", lw=1.2,
                label=f"Optimal: {n_opt_reg} LVs")
     ax.set_xlabel("Number of latent variables")
     ax.set_ylabel("RMSECV")
@@ -1164,9 +1164,9 @@ def fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
     lim = [todos.min() - 1, todos.max() + 1]
 
     ax = axes[1]
-    ax.scatter(Yc_f, Yc_h, color=cor(0), s=36, edgecolors="white",
+    ax.scatter(Yc_f, Yc_h, color=color(0), s=36, edgecolors="white",
                linewidths=0.5, label="Calibration", zorder=3, alpha=0.9)
-    ax.scatter(Yv_f, Yv_h, color=cor(1), s=44, marker="^",
+    ax.scatter(Yv_f, Yv_h, color=color(1), s=44, marker="^",
                edgecolors="white", linewidths=0.5,
                label="Validation", zorder=3, alpha=0.9)
     ax.plot(lim, lim, "k--", lw=0.8, label="y = x")
@@ -1181,18 +1181,18 @@ def fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
 
     res = Yv_f - Yv_h
     ax = axes[2]
-    ax.scatter(Yv_h, res, color=cor(2), s=44, edgecolors="white",
+    ax.scatter(Yv_h, res, color=color(2), s=44, edgecolors="white",
                linewidths=0.5, zorder=3, alpha=0.9)
     ax.axhline(0, color="black", lw=0.8, ls="--")
-    ax.axhline( rmsep, color=cor(3), lw=0.8, ls=":",
+    ax.axhline( rmsep, color=color(3), lw=0.8, ls=":",
                 label=f"$\\pm$RMSEP ({rmsep:.2f})")
-    ax.axhline(-rmsep, color=cor(3), lw=0.8, ls=":")
+    ax.axhline(-rmsep, color=color(3), lw=0.8, ls=":")
     ax.set_xlabel("Predicted value")
     ax.set_ylabel("Residual")
     ax.set_title(f"(c) Residuals — Validation\nBias = {bias_v:.3f}", loc="left")
     ax.legend(loc="best")
 
-    salvar(fig, "figS2_pls_regressao", pasta, cfg)
+    save(fig, "figS2_pls_regressao", pasta, cfg)
 
 
 def fig_regression_merit(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> None:
@@ -1226,9 +1226,9 @@ def fig_regression_merit(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> No
     tem_lod = np.isfinite(lod)
     if tem_lod.any():
         ax.bar(x[tem_lod] - largura / 2, lod[tem_lod], largura,
-               label="LOD", color=cor(0))
+               label="LOD", color=color(0))
         ax.bar(x[tem_lod] + largura / 2, loq[tem_lod], largura,
-               label="LOQ", color=cor(1))
+               label="LOQ", color=color(1))
         ax.legend()
     for xi, ok in zip(x, tem_lod):
         if not ok:
@@ -1242,7 +1242,7 @@ def fig_regression_merit(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> No
     ax = axes[1]
     tem_sel = np.isfinite(sel)
     if tem_sel.any():
-        ax.bar(x[tem_sel], sel[tem_sel], color=cor(2))
+        ax.bar(x[tem_sel], sel[tem_sel], color=color(2))
     for xi, ok in zip(x, tem_sel):
         if not ok:
             ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
@@ -1252,7 +1252,7 @@ def fig_regression_merit(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> No
     ax.set_ylabel("Selectivity ratio (mean)")
     ax.set_title("(b) Analytical selectivity", loc="left")
 
-    salvar(fig, "figS3_merito_regressao", pasta, cfg)
+    save(fig, "figS3_merito_regressao", pasta, cfg)
 
 
 # =========================================================================
@@ -1276,7 +1276,7 @@ def fig_sprint3_sr_vip(vip: np.ndarray, sr: np.ndarray,
     # (a) Spectrum: VIP + SR on dual axes
     ax = axes[0]
     ax2 = ax.twinx()
-    c_vip, c_sr = cor(0), cor(1)
+    c_vip, c_sr = color(0), color(1)
 
     l1, = ax.plot(wavenumbers, vip, color=c_vip, lw=1.1,
                    alpha=0.9, label="VIP")
@@ -1326,7 +1326,7 @@ def fig_sprint3_sr_vip(vip: np.ndarray, sr: np.ndarray,
     ax.legend(loc="lower right", fontsize=8.5, frameon=False)
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_sprint3_sr_vip", pasta, cfg)
+    save(fig, "fig_sprint3_sr_vip", pasta, cfg)
 
 
 def fig_sprint3_score_contribution(pls_model: PLSRegression,
@@ -1391,7 +1391,7 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
     ax.set_title("Mean spectral contribution per class — LV1", loc="left")
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
     _legenda_lateral(ax_leg, ax)
-    salvar(fig, "fig_score_contribution_espectro", pasta, cfg)
+    save(fig, "fig_score_contribution_espectro", pasta, cfg)
 
     # ===== FIGURE 2: Top N discriminant power (separate, tall, readable) ===
     mean_stack = np.vstack([means[c] for c in classes])   # (n_cls, p)
@@ -1421,7 +1421,7 @@ def fig_sprint3_score_contribution(pls_model: PLSRegression,
                   loc="left")
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
     _legenda_lateral(ax_leg2, ax)
-    salvar(fig2, "fig_score_contribution_top_discriminante", pasta, cfg)
+    save(fig2, "fig_score_contribution_top_discriminante", pasta, cfg)
 
 
 def _limites_log_ddsimca(valores: np.ndarray, floor_min: float = 1e-6,
@@ -1625,7 +1625,7 @@ def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
         ax_leg = fig.add_subplot(gs[:, ncols])
         _legenda_lateral(ax_leg, ax_leg_ref)
 
-    salvar(fig, "fig_sprint3_ddsimca_acceptance", pasta, cfg)
+    save(fig, "fig_sprint3_ddsimca_acceptance", pasta, cfg)
 
 
 def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
@@ -1698,7 +1698,7 @@ def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
         ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
         _legenda_lateral(ax_leg, ax)
         nome_seguro = str(cls).replace(" ", "_").replace("/", "-")
-        salvar(fig, f"ddsimca_{nome_seguro}", pasta, cfg, subpasta="ddsimca")
+        save(fig, f"ddsimca_{nome_seguro}", pasta, cfg, subpasta="ddsimca")
 
 
 def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
@@ -1742,7 +1742,7 @@ def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
         desenhar_elipses=cfg.mostrar_elipses_grupo,
     )
     _legenda_lateral(ax_leg, ax)
-    salvar(fig, "fig_sprint3_opls_scores", pasta, cfg)
+    save(fig, "fig_sprint3_opls_scores", pasta, cfg)
 
 
 # =========================================================================
@@ -1771,7 +1771,7 @@ def fig_loadings_pca(pca, wavenumbers: np.ndarray, cfg: "Config",
     for i, ax in enumerate(axes):
         loadings = pca.components_[i]
         var_exp  = float(pca.explained_variance_ratio_[i]) * 100
-        cores_b  = [cor(0) if v >= 0 else cor(1) for v in loadings]
+        cores_b  = [color(0) if v >= 0 else color(1) for v in loadings]
         ax.bar(wavenumbers, loadings, width=dx * 0.9,
                color=cores_b, alpha=0.80, edgecolor="none")
         ax.axhline(0, color="0.45", lw=0.7, ls="--")
@@ -1786,7 +1786,7 @@ def fig_loadings_pca(pca, wavenumbers: np.ndarray, cfg: "Config",
 
     fig.suptitle("Loading Plot PCA — contribuição espectral por componente",
                   fontsize=10, fontweight="bold")
-    salvar(fig, "fig_loadings_pca", pasta, cfg)
+    save(fig, "fig_loadings_pca", pasta, cfg)
 
 
 def _escala_vetores_biplot(scores2: np.ndarray, loadings: np.ndarray,
@@ -1995,7 +1995,7 @@ def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
     _legenda_lateral(ax_leg, ax)
 
-    salvar(fig, "fig_biplot_pca", pasta, cfg)
+    save(fig, "fig_biplot_pca", pasta, cfg)
 
 
 def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
@@ -2028,7 +2028,7 @@ def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
         fpr, tpr, _ = roc_curve(y_true_i, y_score_i)
         auc_i        = float(sk_auc(fpr, tpr))
         aucs[str(cls)] = auc_i
-        ax.plot(fpr, tpr, color=cor(i), lw=1.4,
+        ax.plot(fpr, tpr, color=color(i), lw=1.4,
                 label=f"{cls}  (AUC = {auc_i:.3f})")
 
     ax.plot([0, 1], [0, 1], "k--", lw=0.8, label="Aleatório (AUC = 0.500)")
@@ -2051,7 +2051,7 @@ def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
 
     ax.legend(loc="lower right", fontsize=7.5, frameon=False)
     ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
-    salvar(fig, "fig_roc_auc_multiclasse", pasta, cfg)
+    save(fig, "fig_roc_auc_multiclasse", pasta, cfg)
     return aucs
 
 
@@ -2108,7 +2108,7 @@ def fig_splot_opls(X_proc: np.ndarray, t_pred: np.ndarray,
         "inf-esq: negativos; centro: ruído",
         loc="left", fontsize=9)
     ax.grid(color="0.95", lw=0.5); ax.set_axisbelow(True)
-    salvar(fig, "fig_splot_opls", pasta, cfg)
+    save(fig, "fig_splot_opls", pasta, cfg)
 
 
 def fig_heatmap_species_by_adulterant(resultado: Dict[str, Any], cfg,
@@ -2171,7 +2171,7 @@ def fig_heatmap_species_by_adulterant(resultado: Dict[str, Any], cfg,
     # Nome de arquivo sem "N3" cru (P8 residual, corrigido 2026-07-13) --
     # ja e' gerada so' no objetivo Quantificacao (should_generate), entao o nome
     # nao perde informacao ao deixar de repetir o codigo interno do nivel.
-    salvar(fig, "fig_heatmap_species_by_adulterant", pasta, cfg)
+    save(fig, "fig_heatmap_species_by_adulterant", pasta, cfg)
 
 
 def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
@@ -2251,4 +2251,4 @@ def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
 
     fig.suptitle("Cooman's Plot — DD-SIMCA (escala $\\sqrt{d_Q}$)",
                   fontsize=11, fontweight="bold")
-    salvar(fig, "fig_cooman_ddsimca", pasta, cfg, subpasta="ddsimca")
+    save(fig, "fig_cooman_ddsimca", pasta, cfg, subpasta="ddsimca")

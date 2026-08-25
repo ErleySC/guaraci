@@ -51,14 +51,14 @@ def test_paleta_externa_retorna_none_sem_nenhuma_lib(pc, monkeypatch):
 
 
 def test_cor_dentro_da_paleta_base(pc):
-    assert pc.cor(0) == pc.PALETA[0]
-    assert pc.cor(len(pc.PALETA) - 1) == pc.PALETA[-1]
+    assert pc.color(0) == pc.PALETA[0]
+    assert pc.color(len(pc.PALETA) - 1) == pc.PALETA[-1]
 
 
 def test_cor_alem_da_paleta_sem_lib_externa_usa_tab20(pc, monkeypatch):
     monkeypatch.setattr(builtins, "__import__",
                          _bloquear_imports({"glasbey", "colorcet"}))
-    resultado = pc.cor(len(pc.PALETA) + 2)
+    resultado = pc.color(len(pc.PALETA) + 2)
     assert resultado.startswith("#") and len(resultado) == 7
 
 

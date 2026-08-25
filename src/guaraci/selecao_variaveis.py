@@ -24,7 +24,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from guaraci.chemometric_stats import vip_scores, compute_selectivity_ratio
 from guaraci.validacao_estatistica import (_cv_predict_manual,
                                            StratifiedGroupKFoldEstavel)
-from guaraci.figuras import salvar, cor, _ticks_x_inteiros
+from guaraci.figuras import save, color, _ticks_x_inteiros
 
 if TYPE_CHECKING:
     pass
@@ -564,16 +564,16 @@ def fig_etapa4_ag_convergencia(historico: List[Dict], cfg, pasta):
     medias    = [h["media_fitness"] for h in historico]
 
     fig, ax = plt.subplots(figsize=(9.0, 4.0), constrained_layout=True)
-    ax.plot(geracoes, melhores, color=cor(2), lw=1.6, marker="o", ms=3.5,
+    ax.plot(geracoes, melhores, color=color(2), lw=1.6, marker="o", ms=3.5,
             label="Melhor da geracao")
-    ax.plot(geracoes, medias, color=cor(3), lw=1.2, ls="--",
+    ax.plot(geracoes, medias, color=color(3), lw=1.2, ls="--",
             label="Media da populacao")
     ax.set_xlabel("Geracao")
     ax.set_ylabel("Balanced accuracy (CV)")
     ax.set_title("Etapa 4 — AG: convergencia da busca genetica", loc="left")
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="lower right", frameon=False)
-    salvar(fig, "fig_etapa4_ag_convergencia", pasta, cfg)
+    save(fig, "fig_etapa4_ag_convergencia", pasta, cfg)
 
 
 def fig_etapa4_ipls(resultados, wavenumbers, baseline_bal, cfg, pasta):
@@ -583,9 +583,9 @@ def fig_etapa4_ipls(resultados, wavenumbers, baseline_bal, cfg, pasta):
     melhor_i   = int(np.argmax(bals))
 
     fig, ax = plt.subplots(figsize=(11.0, 4.2), constrained_layout=True)
-    cores_b = [cor(2) if k == melhor_i else "0.6" for k in range(len(bals))]
+    cores_b = [color(2) if k == melhor_i else "0.6" for k in range(len(bals))]
     ax.bar(intervalos, bals, color=cores_b, edgecolor="white", lw=0.5)
-    ax.axhline(baseline_bal, color=cor(3), ls="--", lw=1.2,
+    ax.axhline(baseline_bal, color=color(3), ls="--", lw=1.2,
                label=f"Modelo global ({baseline_bal:.3f})")
     ax.set_xlabel("Intervalo iPLS")
     ax.set_ylabel("Balanced accuracy (CV)")
@@ -603,7 +603,7 @@ def fig_etapa4_ipls(resultados, wavenumbers, baseline_bal, cfg, pasta):
     _ticks_x_inteiros(ax, np.array(intervalos))
     ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
     ax.legend(loc="upper right", frameon=False)
-    salvar(fig, "fig_etapa4_ipls_intervalos", pasta, cfg)
+    save(fig, "fig_etapa4_ipls_intervalos", pasta, cfg)
 
 
 def fig_etapa4_comparacao(tabela, cfg, pasta):
@@ -615,7 +615,7 @@ def fig_etapa4_comparacao(tabela, cfg, pasta):
 
     fig, ax = plt.subplots(figsize=(10.0, 0.6 * len(nomes) + 2.0),
                             constrained_layout=True)
-    cores_b = [cor(0) if n == "Full (todas)" else cor(2) for n in nomes]
+    cores_b = [color(0) if n == "Full (todas)" else color(2) for n in nomes]
     ax.barh(pos, bals, color=cores_b, edgecolor="white", lw=0.5, height=0.7)
     for k, (b, nv) in enumerate(zip(bals, nvars)):
         ax.text(min(b + 0.01, 1.0), k, f" {b:.3f} | {nv} vars",
@@ -626,7 +626,7 @@ def fig_etapa4_comparacao(tabela, cfg, pasta):
     ax.set_title("Etapa 4 — comparacao de metodos de selecao de variaveis",
                   loc="left")
     ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
-    salvar(fig, "fig_etapa4_comparacao_metodos", pasta, cfg)
+    save(fig, "fig_etapa4_comparacao_metodos", pasta, cfg)
 
 
 def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,

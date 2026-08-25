@@ -30,7 +30,7 @@ CONTRATO = {
         "applicability_domain_new_samples", "rmse_flat",
     ],
     "paleta_cores": [
-        "PALETA", "MARCADORES", "cor", "map_class_colors",
+        "PALETA", "MARCADORES", "color", "map_class_colors",
         "map_class_markers", "get_edge_color",
     ],
     "dados_io": [
@@ -50,7 +50,7 @@ CONTRATO = {
         "DDSimca", "OPLSDAWrapper",
     ],
     "figuras": [
-        "salvar", "setup_matplotlib", "specificity_by_class",
+        "save", "setup_matplotlib", "specificity_by_class",
         "fig1_pca_scores", "fig4_confusao",
     ],
     "validacao_estatistica": [

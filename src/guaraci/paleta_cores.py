@@ -4,7 +4,7 @@ perceptual para gráficos quimiométricos (classes/espécies).
 
 Extraído de pipeline.py como parte da modularização (Fase H). Funções PURAS:
 dependem só de matplotlib.colors/pyplot, sem acoplamento a Config. pipeline.py
-reexporta estes nomes, então `pipeline.cor(...)`, `pipeline.PALETA` etc.
+reexporta estes nomes, então `pipeline.color(...)`, `pipeline.PALETA` etc.
 continuam funcionando sem alteração.
 """
 from __future__ import annotations
@@ -78,7 +78,7 @@ def get_edge_color(hex_cor: str) -> str:
     return "0.25" if _luminancia(hex_cor) > 0.65 else "white"
 
 
-def cor(i: int) -> str:
+def color(i: int) -> str:
     """Color i from the maximum-distinctiveness palette. Beyond palette size,
     uses external lib (if available) or cycles with slight luminance variation via HSV."""
     if i < len(PALETA):
@@ -104,7 +104,7 @@ def map_class_colors(classes) -> Dict[str, str]:
         if externa is not None:
             mapa[cls] = mcolors.to_hex(externa[idx])
         else:
-            mapa[cls] = cor(idx)
+            mapa[cls] = color(idx)
     return mapa
 
 

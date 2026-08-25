@@ -25,7 +25,7 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import balanced_accuracy_score
 
 from guaraci.preprocessamento import build_preprocessor
-from guaraci.figuras import salvar, cor
+from guaraci.figuras import save, color
 from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
 from guaraci.config import NOME_TABELAS
@@ -90,7 +90,7 @@ def fig_benchmark_classifiers(scores_por_clf: Dict[str, np.ndarray],
     nomes  = list(scores_por_clf.keys())
     dados  = [scores_por_clf[n] for n in nomes]
     chance = 1.0 / max(n_classes, 1)
-    cores  = [cor(i) for i in range(len(nomes))]
+    cores  = [color(i) for i in range(len(nomes))]
 
     fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
                            constrained_layout=True)
@@ -129,7 +129,7 @@ def fig_benchmark_classifiers(scores_por_clf: Dict[str, np.ndarray],
     ax.legend(fontsize=8); ax.set_ylim(0, 1.05)
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_benchmark_classifiers", pasta, cfg)
+    save(fig, "fig_benchmark_classifiers", pasta, cfg)
     plt.close(fig)
 
 
@@ -283,7 +283,7 @@ def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
     """Violin + IC95% percentil das distribuicoes Monte Carlo CV."""
     nomes = list(scores_mc.keys())
     dados = [np.array(scores_mc[n]) for n in nomes]
-    cores = [cor(i) for i in range(len(nomes))]
+    cores = [color(i) for i in range(len(nomes))]
 
     fig, ax = plt.subplots(figsize=(max(5.5, len(nomes) * 1.9), 5.0),
                            constrained_layout=True)
@@ -316,7 +316,7 @@ def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
     ax.grid(axis="y", color="0.93", lw=0.5)
     ax.set_axisbelow(True)
 
-    salvar(fig, "fig_monte_carlo_cv", pasta, cfg)
+    save(fig, "fig_monte_carlo_cv", pasta, cfg)
     plt.close(fig)
 
 
@@ -527,7 +527,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
         return
 
     nomes = list(oof_probas.keys())
-    cores = [cor(i) for i in range(len(nomes))]
+    cores = [color(i) for i in range(len(nomes))]
 
     y_bin: np.ndarray = np.asarray(label_binarize(y_int, classes=range(n_classes)))
     if n_classes == 2:
@@ -596,7 +596,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
         ax.grid(color="0.93", lw=0.5, which="both"); ax.set_axisbelow(True)
 
         sufixo = "_log" if log_scale else ""
-        salvar(fig, f"fig_det_curvas{sufixo}", pasta, cfg)
+        save(fig, f"fig_det_curvas{sufixo}", pasta, cfg)
         plt.close(fig)
 
 
@@ -702,7 +702,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 # ── Barplot de importancia SHAP ───────────────────────────
                 fig, ax = plt.subplots(figsize=(7.0, 5.5), constrained_layout=True)
                 ax.barh(range(top_n), top_imp[::-1],
-                        color=cor(idx), alpha=0.76, edgecolor="white", lw=0.5)
+                        color=color(idx), alpha=0.76, edgecolor="white", lw=0.5)
                 ax.set_yticks(range(top_n))
                 ax.set_yticklabels(top_lbl[::-1], fontsize=8)
                 ax.set_xlabel("Mean |SHAP value|")
@@ -713,13 +713,13 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                     fontsize=8.5, loc="left")
                 ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
                 tag = nome.lower().replace(" ", "_").replace(".", "").replace("/", "_")
-                salvar(fig, f"fig_shap_{tag}", pasta, cfg)
+                save(fig, f"fig_shap_{tag}", pasta, cfg)
                 plt.close(fig)
 
                 # ── Dependence plots: top-3 features × classe ─────────────
                 n_dep = min(3, top_n)
                 unique_cls = np.unique(y_shap)
-                cores_dep  = [cor(c) for c in unique_cls]
+                cores_dep  = [color(c) for c in unique_cls]
                 for rank, feat_i in enumerate(top_idx[:n_dep]):
                     feat_vals = X_shap[:, feat_i]
                     # Para multiclass, usar shap medio sobre classes
@@ -751,7 +751,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                     if len(unique_cls) <= 10:
                         ax2.legend(fontsize=6.5, ncol=2, markerscale=1.2)
                     ax2.grid(color="0.93", lw=0.5); ax2.set_axisbelow(True)
-                    salvar(fig2, f"fig_shap_dep_{tag}_feat{rank+1}", pasta, cfg)
+                    save(fig2, f"fig_shap_dep_{tag}_feat{rank+1}", pasta, cfg)
                     plt.close(fig2)
 
                 print("salvo.")
@@ -773,7 +773,7 @@ def fig_benchmark_regressors(rmsep_por_modelo: Dict[str, np.ndarray],
     MENOR e melhor."""
     nomes = list(rmsep_por_modelo.keys())
     dados = [rmsep_por_modelo[n] for n in nomes]
-    cores = [cor(i) for i in range(len(nomes))]
+    cores = [color(i) for i in range(len(nomes))]
 
     fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
                            constrained_layout=True)
@@ -804,7 +804,7 @@ def fig_benchmark_regressors(rmsep_por_modelo: Dict[str, np.ndarray],
         fontsize=8.5, loc="left")
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_benchmark_regressors", pasta, cfg)
+    save(fig, "fig_benchmark_regressors", pasta, cfg)
     plt.close(fig)
 
 

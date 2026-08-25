@@ -308,7 +308,7 @@ def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
     """Achado B4-1 (residual): os relatorios PDF/Word/LaTeX ja saem
     carimbados no modo imagem, mas uma figura .png exportada solta da pasta
     Graficos/ circulava sem nenhum contexto -- e' justamente o arquivo que
-    acaba colado num slide. `salvar()` e' o ponto unico por onde toda figura
+    acaba colado num slide. `save()` e' o ponto unico por onde toda figura
     passa, entao a marca entra la'.
 
     Verifica a PROPRIEDADE (um texto de aviso foi adicionado a figura), nao
@@ -316,7 +316,7 @@ def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from guaraci.figuras import salvar
+    from guaraci.figuras import save
     from guaraci.config import Config, NOME_GRAFICOS
 
     def _texts_da_figura(modo):
@@ -332,7 +332,7 @@ def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
             return orig_savefig(caminho, *a, **kw)
 
         fig.savefig = _spy   # type: ignore[method-assign]
-        salvar(fig, "fig_teste", str(tmp_path / modo), cfg)
+        save(fig, "fig_teste", str(tmp_path / modo), cfg)
         assert (tmp_path / modo / NOME_GRAFICOS / "fig_teste.png").exists()
         return registrados.get("textos", [])
 

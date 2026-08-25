@@ -1153,10 +1153,10 @@ def test_verificar_ram_limite_trivial_retorna_true(pq):
 # ── Paleta de cores: fallback além da paleta base (>20 classes) ───────────────
 
 def test_cor_alem_da_paleta_base_usa_fallback_sem_crash(pq):
-    """cor(i) para i >= 20 (tamanho da paleta base): sem glasbey/colorcet
+    """color(i) para i >= 20 (tamanho da paleta base): sem glasbey/colorcet
     instalados, cai no fallback tab20 — nunca lança exceção, sempre um hex
     válido."""
-    c = pq.cor(25)
+    c = pq.color(25)
     assert isinstance(c, str) and c.startswith("#")
 
 
