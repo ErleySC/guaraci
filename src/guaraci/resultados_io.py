@@ -318,6 +318,22 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         "artefatos de UMA execucao do pipeline; regenere a cada novo "
         "conjunto de dados ou configuracao.*",
         "",
+    ]
+    if cfg.grouping_guarantee != "high":
+        linhas += [
+            f"> ## ⚠️ GROUPING GUARANTEE: {cfg.grouping_guarantee.upper()}",
+            ">",
+            "> Esta execucao nao tem um identificador de grupo confiavel "
+            "(mae_id equivalente) para TODA amostra -- a validacao caiu em "
+            "`StratifiedKFold` (sem protecao contra vazamento entre "
+            "replicas/fotos da mesma amostra fisica). Trate as metricas "
+            "abaixo como exploratorias, nao como evidencia de desempenho "
+            "de publicacao. Ver `dados_imagem.py` para como declarar um "
+            "nivel de garantia mais alto (subpasta por amostra ou CSV de "
+            "associacao).",
+            "",
+        ]
+    linhas += [
         "## 1. Detalhes do Modelo",
         "",
         _md_tabela([

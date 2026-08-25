@@ -244,8 +244,11 @@ after export.
 - **Small *n*** → every metric ships with **confidence intervals** (BCa), and
   conformal prediction refuses to produce an interval when *n* is
   insufficient instead of extrapolating.
-- **Image mode (digital colorimetry) is a prototype** — not validated against
-  a real dataset, not for publishable results.
+- **Image mode (digital colorimetry) is a prototype only without a grouping
+  guarantee** — with a per-sample subfolder or an association CSV, it has
+  the same leakage protection as the other input modes; without either, it
+  falls back to `StratifiedKFold` and the report explicitly stamps that.
+  Do not use the no-guarantee level for publishable results.
 
 ## Author
 

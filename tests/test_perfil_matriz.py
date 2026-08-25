@@ -34,6 +34,33 @@ def test_perfis_embutidos_carregam(nome):
     assert p.unidade_eixo in ("cm-1", "nm")
 
 
+@pytest.mark.parametrize("nome,nivel_esperado", [
+    ("bancada", "high"), ("celular", "medium"), ("scanner", "high"),
+])
+def test_perfis_tecnica_de_imagem_carregam(nome, nivel_esperado):
+    """Bloco 8a (2026-08-25): perfis de TECNICA DE AQUISICAO de imagem
+    (bancada/celular/scanner) usam os mesmos load_profile/MatrixProfile dos
+    perfis espectrais, com os 3 campos novos preenchidos. O nivel aqui e'
+    so' INFORMATIVO -- o nivel real e' sempre decidido pelos dados, nunca
+    pelo perfil (ver dados_imagem.py)."""
+    p = load_profile(nome)
+    assert p.nome == nome
+    assert p.unidade_eixo == "indice"  # nao cm-1/nm -- nao e' matriz espectral
+    assert p.resolucao_esperada
+    assert p.formatos_aceitos
+    assert p.nivel_agrupamento_tipico == nivel_esperado
+
+
+def test_perfis_espectrais_nao_declaram_campos_de_imagem():
+    """Os 3 campos novos (Bloco 8a) sao None em todo perfil espectral --
+    nunca fazem sentido fora de mode='imagem'."""
+    for nome in ("generico", "oleo_nir", "milho_nir", "mel_vis_nir"):
+        p = load_profile(nome)
+        assert p.resolucao_esperada is None
+        assert p.formatos_aceitos is None
+        assert p.nivel_agrupamento_tipico is None
+
+
 def test_matriz_sem_perfil_falha_com_mensagem_acionavel():
     """Matriz sem perfil cadastrado NAO pode cair num padrao em silencio:
     rodar mel com a faixa e o vocabulario de oleo produz numeros que

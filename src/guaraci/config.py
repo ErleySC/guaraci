@@ -86,6 +86,13 @@ class Config:
     objective: str = "auto"                    # "auto" | "exploratorio" | "classificacao" | "quantificacao"
     tag:   str = ""                            # free label e.g. "pure", "soybean"
     output_folder: str = ""                     # DO NOT edit manually
+    # Confianca do agrupamento group-aware desta execucao -- "high" (mae_id
+    # real, ex.: .dx/sintetico), "medium" (associacao manual via CSV, modo
+    # imagem), "none" (sem fonte de agrupamento, fallback StratifiedKFold).
+    # DO NOT edit manually -- escrito por dados_io._leitor_imagem apos
+    # detectar a estrutura de dados; default "high" cobre todo mode que
+    # nao sobrescreve isto (dx/sintetico ja' tem mae_id real por natureza).
+    grouping_guarantee: str = "high"
     output_format: str = "png"                # png | pdf | svg
     save_dpi: int = 600
     show_plots: bool = False

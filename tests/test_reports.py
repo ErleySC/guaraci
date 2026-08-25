@@ -152,9 +152,9 @@ def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
     assert tex_sim != tex_nao
 
 
-def _pasta_com_modo(tmp_path, mode: str) -> str:
-    """Pasta de resultados minima cujo resumo declara `Modo de entrada`."""
-    p = tmp_path / f"modo_{mode}"
+def _pasta_com_garantia(tmp_path, grouping_guarantee: str) -> str:
+    """Pasta de resultados minima cujo resumo declara `Grouping guarantee`."""
+    p = tmp_path / f"garantia_{grouping_guarantee}"
     logs = p / "logs"
     logs.mkdir(parents=True)
     (logs / "resumo_modelo.txt").write_text(
@@ -164,40 +164,46 @@ def _pasta_com_modo(tmp_path, mode: str) -> str:
         "Group-aware (mae_id): nao\n"
         "Faixa espectral (cm-1): [4000, 10000]\n"
         "Permutation n_validos: 200\n"
-        f"Input mode: {mode}\n",
+        "Input mode: imagem\n"
+        f"Grouping guarantee: {grouping_guarantee}\n",
         encoding="utf-8",
     )
     return str(p)
 
 
-def test_relatorios_carimbam_prototipo_no_modo_imagem(tmp_path, projeto):
-    """Regressao do achado B4-1 (auditoria 2026-08): o mode `imagem`
-    (colorimetria digital) é protótipo NÃO validado e devolve `mae_id=None`
-    sempre, o que desliga a validação group-aware -- mas o PDF/Word/LaTeX
-    gerado saía tipograficamente idêntico ao de uma análise FT-NIR
-    validada. A única menção a "protótipo" vivia em docstrings e no texto
-    de ajuda do CLI, nunca na saída.
+def test_relatorios_carimbam_prototipo_so_sem_garantia_de_agrupamento(
+        tmp_path, projeto):
+    """Regressao do achado B4-1 (auditoria 2026-08), redesenhada no Bloco 8
+    (2026-08-25): o carimbo NAO e' mais por `mode == "imagem"` -- e' por
+    `Grouping guarantee == "none"`. Ate' 2026-08-25 TODO mode="imagem"
+    carimbava, mesmo quando o usuario organizou a pasta por amostra fisica
+    (nivel "high") ou forneceu o CSV de associacao (nivel "medium"), os
+    dois com a MESMA garantia contra vazamento que dx/sintetico tem --
+    carimbar esses dois como "nao validado" seria informacao FALSA, nao
+    conservadora. Este teste confirma que so' "none" carimba; "high" e
+    "medium" (mesmo vindo de mode="imagem") nao."""
+    pasta_none   = _pasta_com_garantia(tmp_path, "none")
+    pasta_high   = _pasta_com_garantia(tmp_path, "high")
+    pasta_medium = _pasta_com_garantia(tmp_path, "medium")
 
-    Agora os geradores leem `Modo de entrada` do resumo e carimbam. Este
-    teste confirma que o carimbo aparece SÓ no mode imagem."""
-    pasta_img = _pasta_com_modo(tmp_path, "imagem")
-    pasta_dx  = _pasta_com_modo(tmp_path, "dx")
+    tex_none   = reports.generate_latex_template(pasta_none, projeto).decode("utf-8")
+    tex_high   = reports.generate_latex_template(pasta_high, projeto).decode("utf-8")
+    tex_medium = reports.generate_latex_template(pasta_medium, projeto).decode("utf-8")
 
-    tex_img = reports.generate_latex_template(pasta_img, projeto).decode("utf-8")
-    tex_dx  = reports.generate_latex_template(pasta_dx, projeto).decode("utf-8")
-    assert "PROTOTYPE OUTPUT" in tex_img
-    assert "PROTOTYPE OUTPUT" not in tex_dx
+    assert "PROTOTYPE OUTPUT" in tex_none
+    assert "PROTOTYPE OUTPUT" not in tex_high
+    assert "PROTOTYPE OUTPUT" not in tex_medium
 
     # PDF e Word: nao da' p/ inspecionar o texto renderizado facilmente,
     # entao verifica-se que o carimbo muda o TAMANHO da saida (conteudo a
-    # mais) e que os dois geradores rodam sem erro nos dois modos.
-    pdf_img = reports.generate_pdf_report(pasta_img, projeto, max_figuras=0)
-    pdf_dx  = reports.generate_pdf_report(pasta_dx, projeto, max_figuras=0)
-    assert len(pdf_img.getvalue()) > len(pdf_dx.getvalue())
+    # mais) e que os dois geradores rodam sem erro nos dois casos.
+    pdf_none = reports.generate_pdf_report(pasta_none, projeto, max_figuras=0)
+    pdf_high = reports.generate_pdf_report(pasta_high, projeto, max_figuras=0)
+    assert len(pdf_none.getvalue()) > len(pdf_high.getvalue())
 
-    doc_img = reports.generate_word_report(pasta_img, projeto, max_figuras=0)
-    doc_dx  = reports.generate_word_report(pasta_dx, projeto, max_figuras=0)
-    assert len(doc_img.getvalue()) > len(doc_dx.getvalue())
+    doc_none = reports.generate_word_report(pasta_none, projeto, max_figuras=0)
+    doc_high = reports.generate_word_report(pasta_high, projeto, max_figuras=0)
+    assert len(doc_none.getvalue()) > len(doc_high.getvalue())
 
 
 def test_gerar_pptx_relatorio_ok(pasta_resultados, projeto):

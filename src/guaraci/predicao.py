@@ -56,6 +56,11 @@ def generate_manifest(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any
         "classes":         [str(c) for c in pkg.get("classes", [])],
         "n_variaveis":     int(len(pkg["wavenumbers"]))
                            if "wavenumbers" in pkg else None,
+        # Bloco 8 (2026-08-25): ausente em pacotes de versoes anteriores --
+        # tratar ausencia como "high" seria uma afirmacao nao verificavel
+        # sobre um modelo antigo, entao o default aqui e' explicitamente
+        # "unknown", nao "high".
+        "grouping_guarantee": pkg.get("grouping_guarantee", "unknown"),
     }
 
 

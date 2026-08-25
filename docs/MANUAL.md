@@ -289,10 +289,10 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 |---|---|---|
 | `dx` | Espectros JCAMP-DX (FT-NIR/Raman/MIR) | Padrão; uma subpasta por classe |
 | `csv` | Tabela genérica (colunas espectrais + uma coluna de classe) | Qualquer dado tabular |
-| `imagem` | **Colorimetria digital (protótipo)** | Ver adiante |
+| `imagem` | Colorimetria digital (protótipo só sem garantia de agrupamento — ver adiante) | Ver adiante |
 | `sintetico` | Dados simulados | Para testes/demonstração |
 
-**Modo `imagem` (colorimetria digital, protótipo):** extrai estatísticas de
+**Modo `imagem` (colorimetria digital):** extrai estatísticas de
 cor (média/desvio-padrão por canal em RGB, HSV e Lab — 18 variáveis) de cada
 fotografia e, opcionalmente, textura (GLCM, requer `pip install
 scikit-image`). Mesma convenção de pastas do mode `dx` (uma subpasta por
@@ -300,6 +300,65 @@ classe). A partir da extração, toda a maquinaria quimiométrica (PCA, PLS-DA,
 DD-SIMCA, seleção de variáveis, figuras de mérito) funciona sem alteração —
 cada estatística de cor vira uma "variável", exatamente como um comprimento
 de onda.
+
+**Três níveis de garantia de agrupamento (Bloco 8, 2026-08-25).** Ao
+contrário do mode `dx` (que sempre tem `mae_id` real, extraído do
+metadado `##TITLE=`), o mode `imagem` detecta automaticamente qual fonte
+de agrupamento por amostra física está disponível, nesta ordem de
+prioridade:
+
+1. **`high`** — subpasta por amostra física: `Classe/Amostra/*.jpg`, um
+   nível extra opcional dentro da subpasta de classe. Cada subpasta de
+   amostra vira um grupo; as fotos dentro dela são réplicas do mesmo
+   grupo. Sem parsing de nome, sem ambiguidade. Detectado automaticamente
+   quando **toda** subpasta de classe contém só subpastas (nunca arquivo
+   solto).
+2. **`medium`** — CSV de associação manual (`amostras.csv` na raiz da
+   pasta de dados, colunas `arquivo,id_amostra`, caminho relativo à raiz).
+   Usado quando o nível `high` não está presente. **Toda** imagem
+   carregada precisa aparecer no CSV — cobertura parcial falha com
+   mensagem explícita listando os arquivos faltantes, nunca processa
+   parcialmente em silêncio.
+3. **`none`** — nem subpasta por amostra nem CSV presentes: o sistema
+   aceita processar mesmo assim (uso direto, "só jogar as fotos e
+   rodar"), mas cai em `StratifiedKFold` (sem proteção contra vazamento
+   entre fotos da mesma amostra) e declara isso explicitamente em três
+   lugares — log da execução, `model_card.md` e o manifesto do modelo
+   (`*.manifest.json`) — nunca só em comentário/docstring interno. Os
+   geradores de relatório (PDF/Word/LaTeX) carimbam **"PROTOTYPE OUTPUT —
+   NO GROUPING GUARANTEE"** só neste nível.
+
+EXIF **não** é usado como fonte de agrupamento — avaliado e descartado:
+recompressão/edição de apps de galeria/mensageria apaga o metadado na
+prática, e mesmo quando presente, fotos tiradas numa janela de tempo curta
+não garantem "mesma amostra física".
+
+Perfis de técnica de aquisição (`bancada`/`celular`/`scanner`, em
+`guaraci/perfis_matriz/`) declaram resolução esperada, formatos aceitos e
+o nível de garantia **tipicamente** alcançável por aquele fluxo de
+trabalho — informativo, nunca restritivo: o nível real de cada execução é
+sempre decidido pelos dados fornecidos.
+
+Exemplo mínimo dos três modos de uso:
+
+```
+# Nível "high" — pasta organizada por amostra física
+dados/Puro/amostra01/foto1.jpg
+dados/Puro/amostra01/foto2.jpg
+dados/Puro/amostra02/foto1.jpg
+dados/Adulterado/amostra01/foto1.jpg
+
+# Nível "medium" — pasta flat + CSV de associação na raiz
+dados/Puro/foto1.jpg
+dados/Puro/foto2.jpg
+dados/amostras.csv        # arquivo,id_amostra
+                           # Puro/foto1.jpg,S1
+                           # Puro/foto2.jpg,S1
+
+# Nível "none" — pasta flat, sem CSV (uso direto, sem garantia)
+dados/Puro/foto1.jpg
+dados/Puro/foto2.jpg
+```
 
 **Duas configurações obrigatórias ao usar `mode="imagem"`:**
 1. `pre_processamento` deve ser `autoscaling` ou `mc` — **nunca** um preset
@@ -696,12 +755,18 @@ re-executada nesta sessão).
   espécie/adulterante é quantificável, e o heatmap marca explicitamente
   quais falham em vez de escondê-los numa média.
 
-- **Modo imagem (colorimetria digital) é protótipo, não validado com
-  dataset real.** O carregador (`dados_imagem.py`) está documentado no
-  próprio código como protótipo: `conc` e `mae_id` são sempre `None`
-  (sem quantificação, sem proteção anti-vazamento de réplica nesse mode),
-  e o eixo de "variáveis" retornado não corresponde a comprimento de onda
-  físico. Não usar para resultado publicável sem validação adicional.
+- **Modo imagem (colorimetria digital): protótipo só quando não há fonte
+  de agrupamento por amostra física.** Desde o Bloco 8 (2026-08-25), o
+  carregador (`dados_imagem.py`) detecta automaticamente 3 níveis de
+  garantia de agrupamento — `high` (subpasta por amostra) e `medium` (CSV
+  de associação) têm a MESMA proteção anti-vazamento que dx/sintético;
+  só `none` (nem estrutura nem CSV) cai em `StratifiedKFold` sem proteção
+  e carimba "PROTOTYPE OUTPUT" nos relatórios. `conc` continua sempre
+  `None` (sem quantificação neste protótipo, em qualquer nível), e o eixo
+  de "variáveis" retornado não corresponde a comprimento de onda físico.
+  Não usar nível `none` para resultado publicável sem validação
+  adicional; `high`/`medium` têm a mesma garantia group-aware dos outros
+  mode de entrada.
 
 - **Validado majoritariamente em FT-NIR.** O motor de pré-processamento e
   modelagem é agnóstico ao tipo de espectro (o parser JCAMP-DX aceita

@@ -271,8 +271,11 @@ depois de exportado.
 - **n pequeno**: todas as métricas vêm com **intervalo de confiança** (BCa), e
   a predição conformal recusa devolver intervalo quando o *n* é insuficiente,
   em vez de extrapolar.
-- **Modo imagem (colorimetria digital) é protótipo** — não validado com
-  dataset real, não usar para resultado publicável.
+- **Modo imagem (colorimetria digital) é protótipo só sem garantia de
+  agrupamento** — com subpasta por amostra física ou CSV de associação, tem
+  a mesma proteção anti-vazamento dos demais mode; sem nenhum dos dois,
+  cai em `StratifiedKFold` e o relatório carimba isso explicitamente. Não
+  usar o nível sem garantia para resultado publicável.
 
 ---
 

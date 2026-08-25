@@ -86,6 +86,21 @@ class MatrixProfile:
     faixa_trabalho: Optional[List[float]] = None
     #: Referencia da literatura para esta matriz (nunca inventar).
     referencia: str = ""
+    # ---- Campos de TECNICA DE AQUISICAO (Bloco 8a, 2026-08-25) -----------
+    # So' fazem sentido p/ mode="imagem" -- None em todo perfil espectral
+    # (dx/csv/sintetico). Informativos, NUNCA restritivos: o nivel real de
+    # garantia de agrupamento e' decidido pelos DADOS fornecidos (estrutura
+    # de pasta/CSV), nunca pelo perfil -- ver dados_imagem.py.
+    #: Resolucao minima recomendada p/ esta tecnica (texto livre, ex. "1024x768").
+    resolucao_esperada: Optional[str] = None
+    #: Extensoes de arquivo tipicas desta tecnica. None = usa o default do
+    #: modulo (.jpg/.jpeg/.png/.bmp/.tif/.tiff).
+    formatos_aceitos: Optional[List[str]] = None
+    #: Nivel de garantia de agrupamento que este FLUXO DE TRABALHO
+    #: tipicamente sustenta na pratica ("high"/"medium"/"none") -- so'
+    #: informativo (aparece em texto/ajuda), nao restringe nem substitui a
+    #: deteccao automatica real feita sobre os dados.
+    nivel_agrupamento_tipico: Optional[str] = None
 
     def fora_da_faixa_de_trabalho(self, valor: float) -> bool:
         """True se `valor` cai fora da faixa calibrada declarada no perfil.

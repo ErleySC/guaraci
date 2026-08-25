@@ -1138,8 +1138,13 @@ def _leitor_dx(cfg: "Config"):
 
 def _leitor_imagem(cfg: "Config"):
     from guaraci.dados_imagem import load_images
-    return load_images(cfg.input_folder, cfg.image_crop,
+    resultado = load_images(cfg.input_folder, cfg.image_crop,
                              cfg.include_image_texture)
+    metadados_df = resultado[5]
+    if metadados_df is not None:
+        cfg.grouping_guarantee = metadados_df.attrs.get(
+            "grouping_guarantee", cfg.grouping_guarantee)
+    return resultado
 
 
 # Leitores built-in (item 20 da auditoria: registry em vez de if/elif fixo —

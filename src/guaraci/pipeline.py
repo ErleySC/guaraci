@@ -1339,6 +1339,11 @@ def executar(cfg: Config):
     if mae_id is not None:
         mae_id = np.asarray(mae_id, dtype=str)
 
+    if cfg.grouping_guarantee != "high":
+        log.info(f"[WARNING] Grouping guarantee: {cfg.grouping_guarantee.upper()} "
+              f"-- ver 'Grouping guarantee' no resumo/model card para o que "
+              f"isso significa para a validacao desta execucao.")
+
     # --- 1a0. nivel N2: autenticação por espécie (DD-SIMCA one-class) ------
     # DESIGN (escolha do usuário — opção A):
     #   N1 = identificar a classe (PLS-DA multiclasse).
@@ -2226,6 +2231,11 @@ def executar(cfg: Config):
         # quando mode="imagem", em vez de produzirem um PDF/LaTeX
         # tipograficamente identico ao de uma analise FT-NIR validada.
         "Input mode":        str(cfg.mode),
+        # Bloco 8 (2026-08-25): nivel de garantia do agrupamento group-aware
+        # desta execucao -- "high" (mae_id real) ate' "none" (sem fonte de
+        # agrupamento, fallback StratifiedKFold). So' difere de "high" hoje
+        # no mode="imagem". Ver dados_imagem.py para os 3 niveis.
+        "Grouping guarantee": str(cfg.grouping_guarantee),
         "Total samples":      int(X_raw.shape[0]),
         "Total variables":     int(X_raw.shape[1]),
         "Total classes":       int(len(classes_unicas)),
@@ -2452,6 +2462,7 @@ def executar(cfg: Config):
             # v25: limites para diagnosticos em novos dados (Aba Predicao)
             "t2_ucl":         float(t2_lim),
             "q_ucl":          float(q_lim),
+            "grouping_guarantee": str(cfg.grouping_guarantee),
         }
         # Parametros da distancia combinada NO ESPACO PLS. Sem eles,
         # predict_samples() decidia "aceito" pela regra RETANGULAR

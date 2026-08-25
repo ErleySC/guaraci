@@ -195,6 +195,117 @@ def test_carregar_imagens_todas_corrompidas_levanta_valueerror(pq, tmp_path):
         pq.load_images(str(raiz))
 
 
+# ── Bloco 8 (2026-08-25): 3 niveis de garantia de agrupamento ──────────────
+
+def test_carregar_imagens_nivel_none_sem_estrutura_nem_csv(pq, tmp_path):
+    """Sem subpasta por amostra nem CSV: nivel 'none', mae_id=None (mesmo
+    comportamento de antes do Bloco 8) -- mas agora com o nivel declarado
+    explicitamente em metadados_df.attrs, nao so' silenciosamente None."""
+    raiz = tmp_path / "sem_estrutura"
+    (raiz / "Classe").mkdir(parents=True)
+    for i in range(3):
+        _salvar_imagem_solida(str(raiz / "Classe" / f"f{i}.png"),
+                               (100, 150, 200), seed=i)
+    _, _, _, conc, mae_id, meta_df = pq.load_images(str(raiz))
+    assert conc is None and mae_id is None
+    assert meta_df.attrs["grouping_guarantee"] == "none"
+
+
+def test_carregar_imagens_nivel_high_subpasta_por_amostra(pq, tmp_path):
+    """Classe/Amostra/*.jpg (2 niveis): nivel 'high', mae_id real -- cada
+    amostra fisica (subpasta) vira 1 grupo, replicas dentro dela
+    compartilham o grupo."""
+    raiz = tmp_path / "por_amostra"
+    for classe, amostras in (("Puro", 2), ("Adulterado", 2)):
+        for a in range(amostras):
+            pasta_amostra = raiz / classe / f"amostra{a}"
+            pasta_amostra.mkdir(parents=True)
+            for r in range(3):  # 3 replicas (fotos) da mesma amostra
+                _salvar_imagem_solida(
+                    str(pasta_amostra / f"foto{r}.png"),
+                    (200, 180, 50) if classe == "Puro" else (150, 60, 40),
+                    seed=a * 10 + r)
+
+    _, X, rotulos, conc, mae_id, meta_df = pq.load_images(str(raiz))
+    assert X.shape[0] == 12  # 2 classes x 2 amostras x 3 replicas
+    assert conc is None
+    assert mae_id is not None
+    assert meta_df.attrs["grouping_guarantee"] == "high"
+    # 4 grupos no total (2 amostras x 2 classes), 3 replicas cada
+    grupos, contagens = np.unique(mae_id, return_counts=True)
+    assert len(grupos) == 4
+    assert set(contagens) == {3}
+    # grupos de classes diferentes nunca colidem (qualificados por classe)
+    assert len({g for g in grupos if g.startswith("Puro/")}) == 2
+    assert len({g for g in grupos if g.startswith("Adulterado/")}) == 2
+
+
+def test_carregar_imagens_nivel_medium_csv_associacao(pq, tmp_path):
+    """Estrutura flat (sem subpasta por amostra) + `amostras.csv` cobrindo
+    TODO arquivo: nivel 'medium', mae_id vem do CSV."""
+    raiz = tmp_path / "com_csv"
+    (raiz / "Classe").mkdir(parents=True)
+    for i in range(4):
+        _salvar_imagem_solida(str(raiz / "Classe" / f"f{i}.png"),
+                               (100, 150, 200), seed=i)
+    # f0,f1 sao a mesma amostra fisica (2 fotos); f2,f3 sao outra amostra.
+    (raiz / "amostras.csv").write_text(
+        "arquivo,id_amostra\n"
+        "Classe/f0.png,S1\nClasse/f1.png,S1\n"
+        "Classe/f2.png,S2\nClasse/f3.png,S2\n",
+        encoding="utf-8",
+    )
+    _, X, rotulos, conc, mae_id, meta_df = pq.load_images(str(raiz))
+    assert X.shape[0] == 4
+    assert meta_df.attrs["grouping_guarantee"] == "medium"
+    grupos, contagens = np.unique(mae_id, return_counts=True)
+    assert sorted(grupos) == ["S1", "S2"]
+    assert set(contagens) == {2}
+
+
+def test_carregar_imagens_nivel_medium_csv_incompleto_levanta_valueerror(
+        pq, tmp_path):
+    """CSV presente mas nao cobre TODA imagem do dataset: erro explicito
+    listando os arquivos faltantes -- nunca processamento parcial em
+    silencio."""
+    raiz = tmp_path / "csv_incompleto"
+    (raiz / "Classe").mkdir(parents=True)
+    for i in range(3):
+        _salvar_imagem_solida(str(raiz / "Classe" / f"f{i}.png"),
+                               (100, 150, 200), seed=i)
+    (raiz / "amostras.csv").write_text(
+        "arquivo,id_amostra\nClasse/f0.png,S1\nClasse/f1.png,S1\n",
+        encoding="utf-8",
+    )  # f2.png ausente do CSV de proposito
+    with pytest.raises(ValueError, match="f2.png"):
+        pq.load_images(str(raiz))
+
+
+def test_carregar_imagens_nivel_high_tem_prioridade_sobre_medium(pq, tmp_path):
+    """Quando subpasta-por-amostra E CSV estao presentes ao mesmo tempo,
+    'high' vence (mais confiavel) -- o CSV e' ignorado, mesmo declarando
+    grupos diferentes dos da estrutura de pastas."""
+    raiz = tmp_path / "ambos_niveis"
+    for a in range(2):
+        pasta_amostra = raiz / "Classe" / f"amostra{a}"
+        pasta_amostra.mkdir(parents=True)
+        for r in range(2):
+            _salvar_imagem_solida(str(pasta_amostra / f"foto{r}.png"),
+                                   (100, 150, 200), seed=a * 10 + r)
+    # CSV deliberadamente CONTRADIZ a estrutura de pastas (grupos por foto,
+    # nao por amostra) -- se 'high' nao tiver prioridade, o teste pega isso.
+    (raiz / "amostras.csv").write_text(
+        "arquivo,id_amostra\n"
+        "Classe/amostra0/foto0.png,X1\nClasse/amostra0/foto1.png,X2\n"
+        "Classe/amostra1/foto0.png,X3\nClasse/amostra1/foto1.png,X4\n",
+        encoding="utf-8",
+    )
+    _, _, _, _, mae_id, meta_df = pq.load_images(str(raiz))
+    assert meta_df.attrs["grouping_guarantee"] == "high"
+    grupos = set(mae_id)
+    assert grupos == {"Classe/amostra0", "Classe/amostra1"}  # nao {X1..X4}
+
+
 def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
     """load_data(cfg) com mode='imagem' delega para load_images."""
     raiz = tmp_path / "dados_img"
@@ -205,6 +316,57 @@ def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "ClasseA"
+    # Bloco 8: load_data (via _leitor_imagem) copia o nivel detectado para
+    # cfg.grouping_guarantee -- e' o que pipeline.executar() le depois p/
+    # declarar a limitacao no log/resumo/manifesto. Config() comeca em
+    # "high" (default cobre dx/sintetico); 1 classe sem estrutura/CSV deve
+    # ter rebaixado para "none".
+    assert cfg.grouping_guarantee == "none"
+
+
+def test_executar_pipeline_modo_imagem_nivel_high_ativa_group_aware(
+        pq, tmp_path):
+    """Bloco 8c: quando a pasta de imagens tem estrutura por amostra fisica
+    (nivel 'high'), o pipeline entra no MESMO caminho group-aware que
+    dx/sintetico usa (`if mae_id is not None`, pipeline.py) -- nao existe
+    um caminho de validacao separado p/ imagem. Confirma isso end-to-end,
+    lendo `Group-aware (mae_id)` do resumo real (nao so' checando
+    mae_id em memoria, que os testes de load_images ja cobrem)."""
+    raiz = tmp_path / "dados_img_agrupado"
+    for cls, rgb in [("Esp_A", (210, 190, 40)), ("Esp_B", (60, 130, 200))]:
+        for a in range(5):  # 5 amostras fisicas por classe
+            pasta_amostra = raiz / cls / f"amostra{a}"
+            pasta_amostra.mkdir(parents=True)
+            for r in range(3):  # 3 replicas (fotos) por amostra
+                _salvar_imagem_solida(str(pasta_amostra / f"foto{r}.png"),
+                                       rgb, seed=hash((cls, a, r)) % 1000)
+
+    cfg = pq.Config(
+        mode="imagem", input_folder=str(raiz),
+        output_root_folder=str(tmp_path / "saida"),
+        wn_min=-1.0, wn_max=100.0, default_preprocessing="autoscaling",
+        n_splits_cv=2, n_repeats_cv=1, max_lvs=3,
+        n_permutations=3, n_permutations_wold=3,
+        n_bootstrap_vip=2, n_bootstrap_bca=10, n_monte_carlo=2,
+        run_ddsimca=False, run_opls=False, executar_etapa4=False,
+        run_wold=False, comparar_pipelines=False,
+        run_cv_anova=False, run_benchmark=False,
+        run_monte_carlo=False, run_shap=False,
+    )
+    pq.executar(cfg)
+
+    from pathlib import Path
+    runs = achar_pastas_run(tmp_path / "saida")
+    resumo = (Path(runs[0]) / pq.NOME_RELATORIOS
+              / "resumo_modelo.txt").read_text(encoding="utf-8")
+    assert "Grouping guarantee" in resumo
+    assert "high" in resumo.lower()
+    assert "Group-aware (mae_id)" in resumo
+    assert "sim" in resumo.split("Group-aware (mae_id)")[1][:20].lower()
+
+    model_card = (Path(runs[0]) / pq.NOME_RELATORIOS
+                  / "model_card.md").read_text(encoding="utf-8")
+    assert "GROUPING GUARANTEE" not in model_card  # so' carimba p/ "none"
 
 
 def test_validar_pasta_dados_modo_imagem(pq, tmp_path):
@@ -265,3 +427,20 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
     assert runs, "executar() nao criou pasta de saida p/ mode imagem"
     resumo = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
     assert resumo.exists(), "resumo_modelo.txt nao gerado p/ mode imagem"
+
+    # Bloco 8c: esta pasta de dados e' flat (sem subpasta por amostra nem
+    # CSV) -- nivel "none" esperado. A limitacao precisa aparecer nas 3
+    # saidas (nao so' em docstring/comentario interno).
+    texto_resumo = resumo.read_text(encoding="utf-8")
+    assert "Grouping guarantee" in texto_resumo
+    assert "none" in texto_resumo.lower()
+
+    model_card = Path(runs[0]) / pq.NOME_RELATORIOS / "model_card.md"
+    texto_card = model_card.read_text(encoding="utf-8")
+    assert "GROUPING GUARANTEE" in texto_card
+    assert "NONE" in texto_card
+
+    import json
+    manifesto = next((Path(runs[0]) / pq.NOME_MODELOS).glob("*.manifest.json"))
+    dados_manifesto = json.loads(manifesto.read_text(encoding="utf-8"))
+    assert dados_manifesto.get("grouping_guarantee") == "none"

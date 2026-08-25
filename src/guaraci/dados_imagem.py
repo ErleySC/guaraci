@@ -24,9 +24,33 @@ esse eixo com os nomes reais das features e uma extensao futura (afeta varias
 funcoes de figura em figuras.py, fora do escopo deste prototipo).
 
 mae_id/concentracao: nao ha convencao de metadado equivalente ao ##TITLE=
-do JCAMP-DX para imagens genericas — mae_id fica None (sem agrupamento de
-replicas) e conc fica None (sem quantificacao) neste prototipo. Rotulos vem
-do nome da subpasta (mesma convencao do mode .dx).
+do JCAMP-DX para imagens genericas. `conc` fica None sempre (sem
+quantificacao neste protótipo) e `mae_id` depende do NIVEL DE GARANTIA DE
+AGRUPAMENTO detectado automaticamente na pasta de dados (Bloco 8,
+2026-08-25), nesta ordem de prioridade:
+
+  - "high"   — subpasta por amostra fisica: cada subpasta de classe
+    contem SO' subpastas (nunca arquivo solto), uma por amostra fisica;
+    cada foto dentro dela e' uma replica do mesmo grupo. Sem parsing de
+    nome, sem ambiguidade.
+  - "medium" — CSV de associacao manual (`amostras.csv` por padrao) na
+    RAIZ da pasta de dados, colunas `arquivo,id_amostra`. Usado quando o
+    nivel "high" nao esta presente. TODO arquivo de imagem carregado
+    precisa aparecer no CSV -- cobertura parcial e' erro, nunca
+    processamento parcial em silencio.
+  - "none"   — nem subpasta por amostra nem CSV presentes: aceita
+    processar mesmo assim (uso pratico, "so' jogar as fotos e rodar"),
+    mas `mae_id` fica None (fallback StratifiedKFold, sem protecao contra
+    vazamento) e a limitacao e' declarada explicitamente em 3 saidas:
+    log da execucao, model card, e manifesto do modelo -- nunca so' em
+    docstring/comentario interno (ver `dados_io._leitor_imagem` e
+    `pipeline.executar`).
+
+EXIF NAO e' usado como fonte de agrupamento -- avaliado e descartado:
+recompressao/edicao (WhatsApp, apps de galeria) apaga o metadado na
+pratica, e mesmo quando presente, "fotos tiradas numa janela de tempo
+curta" nao garante "mesma amostra fisica" (heuristica fragil demais para
+uma alegacao de seguranca contra vazamento).
 
 IMPORTANTE — pre-processamento: use `default_preprocessing="autoscaling"`
 (ou "mc") no mode="imagem", NUNCA os presets com Savitzky-Golay
@@ -199,17 +223,107 @@ def _listar_arquivos_imagem(pasta: str) -> List[str]:
     return sorted(encontrados)
 
 
+def _tem_imagem_direta_ou_em_subpasta(caminho: str) -> bool:
+    """True se `caminho` tem imagem solta OU (nivel "high") subpastas de
+    amostra que por sua vez tem imagem -- sem isso, uma classe organizada
+    em subpasta-por-amostra seria invisivel para `_detectar_subpastas_imagem`
+    (a classe pareceria vazia, ja que so' checava imagem DIRETA)."""
+    if _listar_arquivos_imagem(caminho):
+        return True
+    return any(os.path.isdir(os.path.join(caminho, n))
+               and _listar_arquivos_imagem(os.path.join(caminho, n))
+               for n in os.listdir(caminho))
+
+
 def _detectar_subpastas_imagem(raiz: str) -> List[str]:
-    """Subpastas (1 por classe) que contem >=1 arquivo de imagem — mesma
-    convencao do mode .dx (`_detectar_subpastas_classe` em dados_io.py)."""
+    """Subpastas (1 por classe) que contem >=1 arquivo de imagem, direto ou
+    dentro de subpasta de amostra (nivel "high") — mesma convencao do mode
+    .dx (`_detectar_subpastas_classe` em dados_io.py) generalizada para 1
+    nivel extra opcional."""
     if not os.path.isdir(raiz):
         return []
     subpastas = []
     for nome in sorted(os.listdir(raiz)):
         caminho = os.path.join(raiz, nome)
-        if os.path.isdir(caminho) and _listar_arquivos_imagem(caminho):
+        if os.path.isdir(caminho) and _tem_imagem_direta_ou_em_subpasta(caminho):
             subpastas.append(caminho)
     return subpastas
+
+
+#: Nome do CSV de associacao manual (nivel "medium"), procurado na raiz da
+#: pasta de dados. Nao configuravel neste prototipo -- ver docstring do modulo.
+NOME_CSV_AMOSTRAS = "amostras.csv"
+
+GROUPING_HIGH = "high"
+GROUPING_MEDIUM = "medium"
+GROUPING_NONE = "none"
+
+
+def _subpasta_e_grupo_de_amostras(caminho_classe: str) -> bool:
+    """True se `caminho_classe` contem SO' subpastas (cada uma = 1 amostra
+    fisica), nunca arquivo de imagem solto. False se tiver ao menos 1
+    arquivo solto (mistura de niveis nao e' suportada -- ambigua)."""
+    entradas = [os.path.join(caminho_classe, n)
+                for n in os.listdir(caminho_classe)]
+    arquivos_soltos = [e for e in entradas if os.path.isfile(e)
+                       and e.lower().endswith(_EXTENSOES_IMAGEM)]
+    subpastas_amostra = [e for e in entradas if os.path.isdir(e)
+                         and _listar_arquivos_imagem(e)]
+    return not arquivos_soltos and bool(subpastas_amostra)
+
+
+def _detectar_nivel_high(subpastas_classe: List[str]
+                          ) -> Optional[Dict[str, str]]:
+    """Nivel "high": cada subpasta de CLASSE contem so' subpastas de
+    AMOSTRA FISICA (nunca arquivo solto). Se TODA subpasta de classe
+    satisfizer isso, devolve {caminho_arquivo: grupo_id}; senao None (cai
+    p/ nivel "medium"). Grupo_id e' qualificado por classe
+    ("Classe/Amostra") p/ nunca colidir entre classes com o mesmo nome de
+    amostra."""
+    if not subpastas_classe:
+        return None
+    if not all(_subpasta_e_grupo_de_amostras(sp) for sp in subpastas_classe):
+        return None
+    grupos: Dict[str, str] = {}
+    for sp in subpastas_classe:
+        classe = os.path.basename(sp)
+        for nome_amostra in sorted(os.listdir(sp)):
+            caminho_amostra = os.path.join(sp, nome_amostra)
+            if not (os.path.isdir(caminho_amostra)
+                    and _listar_arquivos_imagem(caminho_amostra)):
+                continue
+            grupo_id = f"{classe}/{nome_amostra}"
+            for arq in _listar_arquivos_imagem(caminho_amostra):
+                grupos[arq] = grupo_id
+    return grupos
+
+
+def _detectar_nivel_medium(pasta_raiz: str, arquivos: List[str]
+                            ) -> Optional[Dict[str, str]]:
+    """Nivel "medium": CSV `amostras.csv` na raiz da pasta de dados,
+    colunas `arquivo,id_amostra`. `arquivo` e' o caminho RELATIVO a
+    `pasta_raiz` (separador "/", como grava `os.path.relpath` normalizado).
+    Cobertura parcial e' erro explicito -- nunca processamento parcial."""
+    caminho_csv = os.path.join(pasta_raiz, NOME_CSV_AMOSTRAS)
+    if not os.path.isfile(caminho_csv):
+        return None
+    df_csv = pd.read_csv(caminho_csv)
+    colunas_faltando = {"arquivo", "id_amostra"} - set(df_csv.columns)
+    if colunas_faltando:
+        raise ValueError(
+            f"{caminho_csv}: faltam as colunas {sorted(colunas_faltando)}. "
+            f"Esperado: 'arquivo,id_amostra' (uma linha por imagem).")
+    mapa_csv = {str(r["arquivo"]).replace("\\", "/"): str(r["id_amostra"])
+                for _, r in df_csv.iterrows()}
+    rel = {arq: os.path.relpath(arq, pasta_raiz).replace("\\", "/")
+           for arq in arquivos}
+    sem_cobertura = [rel[a] for a in arquivos if rel[a] not in mapa_csv]
+    if sem_cobertura:
+        raise ValueError(
+            f"{caminho_csv} existe mas nao cobre {len(sem_cobertura)} "
+            f"imagem(ns) do dataset -- nenhuma foi processada. Arquivos "
+            f"sem entrada no CSV: {', '.join(sorted(sem_cobertura))}")
+    return {arq: mapa_csv[rel[arq]] for arq in arquivos}
 
 
 def load_images(
@@ -224,14 +338,29 @@ def load_images(
     se pedido) — mesmo contrato de retorno de `dados_io.load_data`:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     `wavenumbers` aqui e um indice simbolico (ver limitacao no docstring do
-    modulo); `conc` e `mae_id` sao sempre None neste prototipo generico
-    (sem convencao de metadado equivalente ao ##TITLE= do JCAMP-DX)."""
+    modulo); `conc` e sempre None (sem quantificacao neste prototipo).
+    `mae_id` depende do nivel de garantia de agrupamento detectado (ver
+    docstring do modulo) -- real p/ "high"/"medium", None p/ "none". O
+    nivel detectado tambem vai em `metadados_df.attrs["grouping_guarantee"]`
+    (o contrato de retorno de 6 posicoes nao muda; o nivel viaja junto do
+    DataFrame de metadados que ja' faz parte do contrato)."""
     subpastas = _detectar_subpastas_imagem(pasta)
     if subpastas:
         arquivos: List[Tuple[str, str]] = []
         for sp in subpastas:
-            arquivos.extend((a, os.path.basename(sp))
-                             for a in _listar_arquivos_imagem(sp))
+            classe = os.path.basename(sp)
+            diretos = _listar_arquivos_imagem(sp)
+            if diretos:
+                arquivos.extend((a, classe) for a in diretos)
+            else:
+                # nivel "high" em potencial: sem imagem direta, mas com
+                # subpastas de amostra fisica dentro da subpasta de classe.
+                for n in sorted(os.listdir(sp)):
+                    caminho_amostra = os.path.join(sp, n)
+                    if os.path.isdir(caminho_amostra):
+                        arquivos.extend(
+                            (a, classe)
+                            for a in _listar_arquivos_imagem(caminho_amostra))
     else:
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
@@ -244,8 +373,34 @@ def load_images(
                 f"({', '.join(_EXTENSOES_IMAGEM)}).\n  Pasta: {pasta}")
         arquivos = [(a, "") for a in arqs]
 
+    todos_arquivos = [a for a, _ in arquivos]
+    grupos_high = _detectar_nivel_high(subpastas)
+    if grupos_high is not None:
+        nivel_agrupamento = GROUPING_HIGH
+        mapa_grupo = grupos_high
+    else:
+        grupos_medium = _detectar_nivel_medium(pasta, todos_arquivos)
+        if grupos_medium is not None:
+            nivel_agrupamento = GROUPING_MEDIUM
+            mapa_grupo = grupos_medium
+        else:
+            nivel_agrupamento = GROUPING_NONE
+            mapa_grupo = {}
+
+    if nivel_agrupamento == GROUPING_NONE:
+        print("[WARNING] Grouping guarantee: NONE -- nenhuma subpasta por "
+              "amostra fisica nem CSV de associacao (amostras.csv) foi "
+              "encontrado. Validacao cai em StratifiedKFold, SEM protecao "
+              "contra vazamento entre fotos da mesma amostra. Resultados "
+              "devem ser tratados como exploratorios. Ver docstring de "
+              "dados_imagem.py para os niveis 'high'/'medium'.")
+    else:
+        print(f"[INFO] Grouping guarantee: {nivel_agrupamento.upper()} "
+              f"({len(set(mapa_grupo.values()))} grupos de amostra fisica).")
+
     linhas: List[np.ndarray] = []
     rotulos: List[str] = []
+    grupos_arr: List[Optional[str]] = []
     meta_rows: List[Dict[str, object]] = []
     n_falhos = 0
 
@@ -270,8 +425,10 @@ def load_images(
         linhas.append(vetor)
         classe = subpasta_nome or os.path.splitext(os.path.basename(arq))[0]
         rotulos.append(classe)
+        grupos_arr.append(mapa_grupo.get(arq))
         meta_rows.append({"arquivo": os.path.basename(arq),
-                           "subpasta": subpasta_nome, "especie": classe})
+                           "subpasta": subpasta_nome, "especie": classe,
+                           "grupo_id": mapa_grupo.get(arq)})
 
     if not linhas:
         raise ValueError(f"Nenhuma imagem valida carregada ({n_falhos} com erro).")
@@ -280,9 +437,12 @@ def load_images(
 
     X = np.array(linhas, dtype=float)
     wavenumbers = np.arange(len(nomes_features), dtype=float)
+    mae_id = (np.array(grupos_arr, dtype=object)
+              if nivel_agrupamento != GROUPING_NONE else None)
     metadados_df = pd.DataFrame(meta_rows)
+    metadados_df.attrs["grouping_guarantee"] = nivel_agrupamento
     print(f"[INFO] {len(X)} imagens carregadas, {len(nomes_features)} "
           f"features ({'cor+textura' if incluir_textura else 'cor'}).")
 
-    return (wavenumbers, X, np.array(rotulos, dtype=str), None, None,
+    return (wavenumbers, X, np.array(rotulos, dtype=str), None, mae_id,
             metadados_df)

@@ -32,32 +32,30 @@ _APP_VERSION = f"v{getattr(_pq, '__version__', '?')}"
 
 # Texto unico do carimbo de prototipo (achado B4-1 da auditoria de
 # 2026-08-16). Fonte unica para os 4 geradores nao divergirem.
-_AVISO_PROTOTIPO_TITULO = "PROTOTYPE OUTPUT - NOT VALIDATED"
+_AVISO_PROTOTIPO_TITULO = "PROTOTYPE OUTPUT - NO GROUPING GUARANTEE"
 _AVISO_PROTOTIPO_CORPO = (
-    "Generated in digital-colorimetry (image) mode, which has not been "
-    "validated against a reference dataset and provides no replicate-group "
-    "identifier - group-aware validation was therefore DISABLED for this "
-    "run. Not suitable for publication."
+    "This run has no source of physical-sample grouping (no per-sample "
+    "subfolder structure, no association CSV) - group-aware validation was "
+    "therefore DISABLED and the pipeline fell back to plain StratifiedKFold. "
+    "Results should be treated as exploratory, not suitable for publication."
 )
 
 
 def _e_modo_prototipo(resumo_raw: str) -> bool:
-    """True quando a execucao veio de um mode de entrada nao validado.
+    """True quando a execucao nao tem nenhuma garantia de agrupamento
+    group-aware (achado B4-1, redesenhado no Bloco 8 de 2026-08-25).
 
-    Hoje so' `mode="imagem"` (colorimetria digital, prototipo): o modulo
-    `dados_imagem` devolve `mae_id=None` sempre, entao o pipeline cai no
-    fallback `StratifiedKFold` e a validacao group-aware -- o diferencial
-    central do projeto -- fica desligada. Sem este carimbo, o PDF/Word/
-    LaTeX gerado e' tipograficamente identico ao de uma analise FT-NIR
-    validada (achado B4-1).
-
-    Le o campo "Input mode" que `pipeline.executar()` grava no
-    resumo_modelo.txt -- mesma fonte unica usada pelo B3-1 para nao
-    afirmar group-aware quando ele nao rodou.
+    Ate' 2026-08-25 isto testava `mode == "imagem"` diretamente -- todo
+    modo imagem carimbava, mesmo quando o usuario organizou a pasta por
+    amostra fisica (nivel "high") ou forneceu o CSV de associacao (nivel
+    "medium"), os dois com a MESMA garantia que dx/sintetico tem. Agora le
+    o campo "Grouping guarantee" que `pipeline.executar()` grava no
+    resumo_modelo.txt -- carimba SO' quando o nivel e' "none", nao mais
+    todo o modo de entrada.
     """
     return extract_metric(
-        resumo_raw, r"Input mode\s*[:=]\s*(\w+)", ""
-    ).strip().lower() == "imagem"
+        resumo_raw, r"Grouping guarantee\s*[:=]\s*(\w+)", ""
+    ).strip().lower() == "none"
 
 
 def generate_pdf_report(pasta: str, projeto: Dict,
