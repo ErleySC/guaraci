@@ -49,7 +49,7 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     df = pq.benchmark_classifiers(X, y_int, grupos, lb, n_opt=2,
                                        cfg=cfg, pasta=pasta)
 
-    nomes = set(df["Classificador"].values)
+    nomes = set(df["Classifier"].values)
     assert "PLS-DA" in nomes
     assert "XGBoost" in nomes  # confirma que o import opcional funcionou de verdade
     assert os.path.exists(
@@ -73,7 +73,7 @@ def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
 
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
-    assert list(df["Classificador"]) == ["PLS-DA"]
+    assert list(df["Classifier"]) == ["PLS-DA"]
     assert df["Valid iterations"].iloc[0] > 0
     assert 0.0 <= df["CI95% inf"].iloc[0] <= df["CI95% sup"].iloc[0] <= 1.0
     assert os.path.exists(os.path.join(pasta, pq.NOME_TABELAS, "monte_carlo_cv.csv"))
@@ -92,7 +92,7 @@ def test_monte_carlo_cv_todos_os_modelos(pq, tmp_path):
 
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
-    nomes = set(df["Classificador"])
+    nomes = set(df["Classifier"])
     assert {"PLS-DA", "SVM RBF", "Random Forest", "Grad. Boost.", "XGBoost"} <= nomes
 
 
@@ -166,7 +166,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     assert df is not None
     modelos_esperados = {"PLS-R", "Ridge", "Lasso", "Elastic Net",
                          "SVR (RBF)", "Random Forest"}
-    assert modelos_esperados.issubset(set(df["Modelo"]))
+    assert modelos_esperados.issubset(set(df["Model"]))
     assert (df["RMSEP (pooled)"] >= 0).all()
     assert os.path.exists(
         os.path.join(pasta, pq.NOME_TABELAS, "benchmark_regressao.csv"))
@@ -175,7 +175,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
 
     # PLS-R do benchmark bate com o ja calculado por pls_regression_by_species
     # (reaproveitado, nao deve ser refeito com numeros diferentes)
-    linha_pls = df[df["Modelo"] == "PLS-R"].iloc[0]
+    linha_pls = df[df["Model"] == "PLS-R"].iloc[0]
     assert linha_pls["RMSEP (pooled)"] == pytest.approx(
         round(float(reg_esp["rmsep"]), 3))
 

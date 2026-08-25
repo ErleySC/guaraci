@@ -211,7 +211,7 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
             scores_por_clf[nome] = ba
             oof_probas[nome]     = proba_oof
             resultados.append({
-                "Classificador":      nome,
+                "Classifier":      nome,
                 "Bal.Acc mean":      round(float(ba.mean()), 4),
                 "Bal.Acc std":        round(float(ba.std()),  4),
                 "F1 macro mean":     round(float(f1.mean()), 4),
@@ -228,7 +228,7 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
     # ── Wilcoxon vs PLS-DA ────────────────────────────────────────────────
     ref = scores_por_clf.get("PLS-DA")
     for r in resultados:
-        nome_r = r["Classificador"]
+        nome_r = r["Classifier"]
         if nome_r == "PLS-DA" or ref is None:
             r["p Wilcoxon (vs PLS-DA)"] = "-"
         else:
@@ -453,7 +453,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
         print(f"media={np.nanmean(arr_ba):.4f}  IC95%=[{ci_lo:.4f},{ci_hi:.4f}]"
               f"  [{elapsed:.1f}s]")
         resultados_mc.append({
-            "Classificador":    nome,
+            "Classifier":    nome,
             "Valid iterations": len(ba_list),
             "Mean BA":         round(float(np.nanmean(arr_ba)), 4),
             "Median BA":       round(float(np.nanmedian(arr_ba)), 4),
@@ -933,7 +933,7 @@ def benchmark_regression_by_species(
         if np.isfinite(t.get("rmsep", np.nan))
     ]
     linhas.append({
-        "Modelo":         "PLS-R",
+        "Model":         "PLS-R",
         "RMSEP (pooled)": round(float(reg_esp_pls["rmsep"]), 3),
         "R2val (pooled)": round(float(reg_esp_pls["r2v"]), 4),
         "N species":     int(reg_esp_pls["n_especies"]),
@@ -954,7 +954,7 @@ def benchmark_regression_by_species(
         r2_pooled = (float(r2_score(Yv_p, Yvh_p))
                     if len(np.unique(Yv_p)) > 1 else float("nan"))
         linhas.append({
-            "Modelo":         nome,
+            "Model":         nome,
             "RMSEP (pooled)": round(rmsep_pooled, 3),
             "R2val (pooled)": round(r2_pooled, 4),
             "N species":     len(rmsep_por_especie[nome]),

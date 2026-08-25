@@ -18,7 +18,7 @@ QUANTIFICACAO nao tem um registry equivalente hoje: `benchmark_regressao_
 por_especie` mantem sua propria lista local (PLS-R + Ridge/Lasso/Elastic
 Net/SVR/Random Forest). Testado diretamente contra essa lista, lida do
 DataFrame que a funcao retorna (nao hardcoded aqui) -- se um metodo novo
-for adicionado la', ele aparece na coluna "Modelo" do resultado e entra na
+for adicionado la', ele aparece na coluna "Model" do resultado e entra na
 verificacao automaticamente. Se um dia existir um registry dedicado para
 quantificacao, troque a leitura da coluna pela introspeccao do registry.
 
@@ -194,9 +194,9 @@ def test_classificacao_cada_metodo_registrado_usa_cv_group_aware(
         "teste precisa ser atualizado.")
 
     # (b) TODO metodo introspectado de fato rodou (nenhum foi pulado).
-    assert nomes_esperados == set(df["Classificador"]), (
+    assert nomes_esperados == set(df["Classifier"]), (
         f"registry declara {nomes_esperados}, mas so' rodaram "
-        f"{set(df['Classificador'])}")
+        f"{set(df['Classifier'])}")
 
     # (c) nenhum fold, de nenhum metodo, vazou grupo entre treino e teste.
     assert _nenhum_grupo_vazado(capturados), (
@@ -307,7 +307,7 @@ def test_quantificacao_cada_metodo_usa_split_group_aware(pq, tmp_path,
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, reg_esp)
     assert df is not None
 
-    nomes_rodados = set(df["Modelo"])
+    nomes_rodados = set(df["Model"])
     assert {"PLS-R", "Ridge", "Lasso", "Elastic Net", "SVR (RBF)",
             "Random Forest"}.issubset(nomes_rodados)
 

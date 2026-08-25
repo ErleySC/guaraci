@@ -2243,7 +2243,7 @@ def executar(cfg: Config):
         "Optimal LVs":             int(n_opt),
         "LVs no teto (max_lvs)":  ("SIM - aumente max_lvs" if lvs_no_teto
                                     else "nao"),
-        "Validacao":              cv_label + (
+        "Validation":             cv_label + (
             f", repeats={cfg.n_repeats_cv}" if cfg.n_repeats_cv > 1 and
             not usar_grupos else ""),
         "Group-aware (mae_id)":   "sim" if usar_grupos else "nao",

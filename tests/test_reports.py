@@ -61,10 +61,10 @@ def pasta_resultados_completa(tmp_path):
         tabelas / "amostras_identificadores.csv", sep=";", decimal=",", index=False)
     pd.DataFrame({"wavenumber": [4000, 4010], "vip": [1.2, 0.8]}).to_csv(
         tabelas / "etapa4_selecao_variaveis.csv", sep=";", decimal=",", index=False)
-    pd.DataFrame({"Classificador": ["PLS-DA", "SVM"],
+    pd.DataFrame({"Classifier": ["PLS-DA", "SVM"],
                   "Bal.Acc mean": [0.90, 0.88]}).to_csv(
         tabelas / "benchmark_classifiers.csv", sep=";", decimal=",", index=False)
-    pd.DataFrame({"Classificador": ["PLS-DA"], "CI95% inf": [0.85],
+    pd.DataFrame({"Classifier": ["PLS-DA"], "CI95% inf": [0.85],
                   "CI95% sup": [0.93]}).to_csv(
         tabelas / "monte_carlo_cv.csv", sep=";", decimal=",", index=False)
 
