@@ -39,13 +39,13 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
      "desc": "Pasta com os arquivos .dx OU imagens (modo dx/imagem; uma subpasta por classe)",
      "opcoes": None},
-    {"key": "imagem_incluir_textura", "attr": "imagem_incluir_textura", "tipo": "bool",
+    {"key": "imagem_incluir_textura", "attr": "include_image_texture", "tipo": "bool",
      "desc": "Modo imagem: incluir features de textura (GLCM) alem de cor "
              "(media/desvio RGB+HSV+Lab) — requer 'pip install scikit-image'",
      "opcoes": None},
-    {"key": "arquivo_csv", "attr": "arquivo_csv", "tipo": "str",
+    {"key": "arquivo_csv", "attr": "csv_file", "tipo": "str",
      "desc": "Caminho do CSV (modo csv): colunas espectrais/variaveis + 1 coluna de classe", "opcoes": None},
-    {"key": "coluna_classe", "attr": "coluna_classe", "tipo": "str",
+    {"key": "coluna_classe", "attr": "class_column", "tipo": "str",
      "desc": "Nome da coluna de classe/rotulo no CSV (modo csv)", "opcoes": None},
     {"key": "coluna_concentracao", "attr": "conc_column", "tipo": "str_opcional",
      "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; modo csv)", "opcoes": None},
@@ -68,7 +68,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Inicio da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
     {"key": "faixa_max_cm", "attr": "wn_max", "tipo": "float",
      "desc": "Fim da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
-    {"key": "excluir_classes", "attr": "excluir_classes", "tipo": "list",
+    {"key": "excluir_classes", "attr": "exclude_classes", "tipo": "list",
      "desc": "Especies a remover da analise (ex: [Copaiba])", "opcoes": None},
     {"key": "max_lvs", "attr": "max_lvs", "tipo": "int",
      "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None,
@@ -78,11 +78,11 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "min": 0.0, "max": 0.5},
     {"key": "validacao_group_aware", "attr": "group_by_mae_id", "tipo": "bool",
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
-    {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
+    {"key": "n_permutacoes", "attr": "n_permutations", "tipo": "int",
      "desc": "Iteracoes do teste de permutacao", "opcoes": None, "min": 1, "max": 100000},
     {"key": "teste_wold", "attr": "run_wold", "tipo": "bool",
      "desc": "Rodar teste de Wold (intercepts R2Y/Q2Y)", "opcoes": None},
-    {"key": "n_jobs_permutacao", "attr": "n_jobs_permutacao", "tipo": "int",
+    {"key": "n_jobs_permutacao", "attr": "n_jobs_permutation", "tipo": "int",
      "desc": "Processos paralelos para os testes de permutacao/Wold "
              "(1 = sequencial, resultado identico; so muda o tempo). "
              "Medido: 4 processos = ~2x mais rapido no pipeline completo; "
@@ -132,14 +132,14 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Monte Carlo CV: IC95% por percentil (N repeticoes estratificadas por grupo)", "opcoes": None},
     {"key": "n_monte_carlo", "attr": "n_monte_carlo", "tipo": "int",
      "desc": "Numero de repeticoes do Monte Carlo CV", "opcoes": None, "min": 1, "max": 100000},
-    {"key": "monte_carlo_incluir_todos", "attr": "monte_carlo_incluir_todos", "tipo": "bool",
+    {"key": "monte_carlo_incluir_todos", "attr": "monte_carlo_include_all", "tipo": "bool",
      "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento)", "opcoes": None},
     {"key": "shap_benchmark", "attr": "run_shap", "tipo": "bool",
      "desc": "SHAP values (TreeExplainer) para RF/XGBoost/GBM — interpretabilidade espectral", "opcoes": None},
     {"key": "shap_max_amostras", "attr": "shap_max_amostras", "tipo": "int",
      "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None,
      "min": 1, "max": 1000000},
-    {"key": "figuras_detalhadas", "attr": "figuras_detalhadas", "tipo": "bool",
+    {"key": "figuras_detalhadas", "attr": "detailed_figures", "tipo": "bool",
      "desc": "Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA, "
              "pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman). "
              "Desligado = so o conjunto essencial (mais rapido, menos arquivos)",
@@ -364,7 +364,7 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
     if modo == "sintetico":
         return True, "OK — modo sintetico (dados gerados em memoria, sem arquivo)"
     if modo == "csv":
-        cam = cfg.arquivo_csv
+        cam = cfg.csv_file
         if not cam or not os.path.isfile(cam):
             return False, f"CSV nao encontrado: '{cam}' (confira o caminho)"
         return True, f"OK — CSV: {os.path.basename(cam)}"

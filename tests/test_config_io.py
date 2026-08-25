@@ -231,7 +231,7 @@ def test_validar_pasta_sintetico_sempre_ok():
 
 def test_validar_pasta_csv_inexistente():
     cfg = Config(modo="csv")
-    cfg.arquivo_csv = "/caminho/que/nao/existe.csv"
+    cfg.csv_file = "/caminho/que/nao/existe.csv"
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
@@ -263,7 +263,7 @@ def test_validar_pasta_csv_existente_ok(tmp_path):
     csv = tmp_path / "dados.csv"
     csv.write_text("a,b\n1,2\n")
     cfg = Config(modo="csv")
-    cfg.arquivo_csv = str(csv)
+    cfg.csv_file = str(csv)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "dados.csv" in msg
 

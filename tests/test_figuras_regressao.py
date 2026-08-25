@@ -97,9 +97,9 @@ def _cfg_base(pq, base, **overrides):
         n_synthetic_replicates=3,   # replicas fisicas -> DD-SIMCA/figuras de merito treinam de verdade
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
-        n_permutacoes=5, n_permutations_wold=5,
+        n_permutations=5, n_permutations_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
-        max_lvs=5, figuras_detalhadas=True,
+        max_lvs=5, detailed_figures=True,
     )
     # Liga os módulos científicos que produzem figura (guardado por hasattr).
     # Benchmark/MC/SHAP ficam DESLIGADOS: são lentos e exigem xgboost/shap.

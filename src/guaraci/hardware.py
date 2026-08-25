@@ -174,8 +174,8 @@ def auto_adjust_hardware_config(cfg: "Config",
         if cfg.n_monte_carlo > 60:
             cfg.n_monte_carlo = 60
             avisos.append("Monte Carlo CV limitado a 60 iteracoes (RAM livre < 6 GB)")
-        if cfg.monte_carlo_incluir_todos:
-            cfg.monte_carlo_incluir_todos = False
+        if cfg.monte_carlo_include_all:
+            cfg.monte_carlo_include_all = False
             avisos.append("MC CV multi-modelo desabilitado (RAM livre < 6 GB)")
 
     elif ram < 8.0:

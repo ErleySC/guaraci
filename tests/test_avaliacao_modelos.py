@@ -63,11 +63,11 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
 
 @pytest.mark.slow
 def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
-    """Monte Carlo CV no modo padrão (só PLS-DA, monte_carlo_incluir_todos=False):
+    """Monte Carlo CV no modo padrão (só PLS-DA, monte_carlo_include_all=False):
     roda rápido, gera CSV + DataFrame com IC95%."""
     X, y_int, grupos, lb = _dados_benchmark(seed=1)
     cfg = pq.Config(n_monte_carlo=8, monte_carlo_test_size=0.3,
-                     monte_carlo_incluir_todos=False, seed=1)
+                     monte_carlo_include_all=False, seed=1)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
@@ -81,12 +81,12 @@ def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
 
 @pytest.mark.slow
 def test_monte_carlo_cv_todos_os_modelos(pq, tmp_path):
-    """Monte Carlo CV com monte_carlo_incluir_todos=True: roda PLS-DA + SVM +
+    """Monte Carlo CV com monte_carlo_include_all=True: roda PLS-DA + SVM +
     RF + GBM + XGBoost, com >= 5 iterações válidas cada (gate para a figura
     violino, que exige exatamente esse mínimo)."""
     X, y_int, grupos, lb = _dados_benchmark(seed=2, n_per_class=20)
     cfg = pq.Config(n_monte_carlo=6, monte_carlo_test_size=0.3,
-                     monte_carlo_incluir_todos=True, seed=2)
+                     monte_carlo_include_all=True, seed=2)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
@@ -209,7 +209,7 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
         modo="sintetico", nivel="N3",
         n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
-        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
         n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
         run_benchmark_regression=True,

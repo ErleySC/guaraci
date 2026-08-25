@@ -111,7 +111,7 @@ def _ddsimca_efetivo(cfg: "Config") -> bool:
 # figura que o motor vai pular por causa de um toggle desligado.
 _FIG_REQUISITO: Dict[str, Callable[["Config"], bool]] = {
     "vip":                lambda cfg: getattr(cfg, "n_bootstrap_vip", 0) > 0,
-    "score_contribution": lambda cfg: bool(getattr(cfg, "figuras_detalhadas", False)),
+    "score_contribution": lambda cfg: bool(getattr(cfg, "detailed_figures", False)),
     "martens":            lambda cfg: bool(getattr(cfg, "run_martens", False)),
     # DD-SIMCA depende do NIVEL, nao so' do toggle (ver pipeline.executar()):
     # N1 sempre IGNORA (mesmo com toggle ligado -- diagnostico de pureza nao
@@ -189,13 +189,13 @@ def exploratory_figures_enabled(cfg: "Config") -> bool:
 
     Ligadas quando o objetivo e' Exploratorio (nucleo do modo) OU quando o
     usuario pediu detalhe extra dentro da Classificacao (escotilha de
-    compatibilidade: `figuras_detalhadas=True` nunca perde funcionalidade).
+    compatibilidade: `detailed_figures=True` nunca perde funcionalidade).
     Em Quantificacao ficam desligadas (filtradas).
     """
     obj = resolve_objective(cfg)
     if obj == EXPLORATORIO:
         return True
-    if obj == CLASSIFICACAO and getattr(cfg, "figuras_detalhadas", False):
+    if obj == CLASSIFICACAO and getattr(cfg, "detailed_figures", False):
         return True
     return False
 

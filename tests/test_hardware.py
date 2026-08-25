@@ -31,7 +31,7 @@ def _cfg_pesado():
     c.run_shap = True
     c.run_benchmark = True
     c.run_monte_carlo = True
-    c.monte_carlo_incluir_todos = True
+    c.monte_carlo_include_all = True
     c.n_splits_cv = 5
     c.n_monte_carlo = 200
     c.shap_max_amostras = 500
@@ -70,7 +70,7 @@ def test_ram_media_reduz_shap_e_mc():
     assert c.run_shap is True            # SHAP fica, com amostragem menor
     assert c.shap_max_amostras == 150
     assert c.n_monte_carlo == 60
-    assert c.monte_carlo_incluir_todos is False
+    assert c.monte_carlo_include_all is False
 
 
 # ── faixa moderada (6–8 GB): reduções brandas ────────────────────────────────

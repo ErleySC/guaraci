@@ -118,7 +118,7 @@ def _dataset_id(cfg: Config) -> str:
     if cfg.tag.strip():
         return _slug(cfg.tag) or "dataset"
     if cfg.modo == "csv":
-        base = os.path.splitext(os.path.basename(cfg.arquivo_csv or ""))[0]
+        base = os.path.splitext(os.path.basename(cfg.csv_file or ""))[0]
     elif cfg.modo == "sintetico":
         base = "sintetico"
     else:  # "dx" | "imagem"
@@ -1391,8 +1391,8 @@ def executar(cfg: Config):
           f"{wavenumbers.max():.1f}).")
 
     # --- 1a2. Exclusao de classes (ex: Copaiba com lote anomalo) ----------
-    if cfg.excluir_classes:
-        excl = set(str(c) for c in cfg.excluir_classes)
+    if cfg.exclude_classes:
+        excl = set(str(c) for c in cfg.exclude_classes)
         mask_keep = ~np.isin(rotulos, list(excl))
         n_rem = int((~mask_keep).sum())
         if n_rem > 0:
@@ -1708,11 +1708,11 @@ def executar(cfg: Config):
     # do pipeline quando o run e' Exploratorio/Quantificacao.
     if objetivo == CLASSIFICACAO:
         log.info(f"\n[4/7] Teste de permutacao (Y-randomization, "
-              f"n={cfg.n_permutacoes})")
+              f"n={cfg.n_permutations})")
         perm_res = permutation_test(
             lambda: fabrica_pipeline(n_opt),
-            X_raw, Y_bin, y_int, cv_perm, cfg.n_permutacoes, cfg.seed,
-            groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
+            X_raw, Y_bin, y_int, cv_perm, cfg.n_permutations, cfg.seed,
+            groups=grupos_cv, n_jobs=cfg.n_jobs_permutation)
         perm_obs : float      = cast(float, perm_res["acc_observada"])
         perm_dist: np.ndarray = cast(np.ndarray, perm_res["accs_permutadas"])
         perm_p   : float      = cast(float, perm_res["p_value"])
@@ -1720,13 +1720,13 @@ def executar(cfg: Config):
         log.info(f"  Bal.Acc observada = {perm_obs:.4f}  |  p = {perm_p:.4f}  "
               f"|  bal.acc media H0 = {media_h0:.4f}")
         log.info(f"  Iteracoes validas: {cast(int, perm_res['n_validos'])}/"
-              f"{cfg.n_permutacoes}  "
+              f"{cfg.n_permutations}  "
               f"(failure_rate = {cast(float, perm_res['failure_rate']):.1%})")
     else:
         log.info(f"\n[4/7] Teste de permutacao — PULADO: objetivo="
               f"{OBJETIVO_ROTULO.get(objetivo, objetivo)}. Significancia de "
               f"classificacao nao e' pertinente fora do modo Classificacao "
-              f"(economiza {cfg.n_permutacoes} refits de CV).")
+              f"(economiza {cfg.n_permutations} refits de CV).")
         perm_res = {"acc_observada": float("nan"),
                     "accs_permutadas": np.array([], dtype=float),
                     "p_value": float("nan"), "n_validos": 0, "n_falhos": 0,
@@ -1749,7 +1749,7 @@ def executar(cfg: Config):
         wold_res = wold_test(
             lambda: fabrica_pipeline(n_opt),
             X_raw, Y_bin, y_int, cv_perm, cfg.n_permutations_wold, cfg.seed,
-            groups=grupos_cv, n_jobs=cfg.n_jobs_permutacao)
+            groups=grupos_cv, n_jobs=cfg.n_jobs_permutation)
         _wr2 = cast(float, wold_res['intercept_r2'])
         _wq2 = cast(float, wold_res['intercept_q2'])
         _wr2_s = f"{_wr2:.4f}" if np.isfinite(_wr2) else "n/a (permutacoes insuficientes)"
@@ -1908,7 +1908,7 @@ def executar(cfg: Config):
     sr = compute_selectivity_ratio(pls_final, X_processed)
     if should_generate(cfg, "sr_vip"):
         fig_sprint3_sr_vip(vip, sr, wavenumbers, top_n=20, cfg=cfg, pasta=pasta)
-    if cfg.figuras_detalhadas and should_generate(cfg, "score_contribution"):
+    if cfg.detailed_figures and should_generate(cfg, "score_contribution"):
         fig_sprint3_score_contribution(pls_final, X_processed, rotulos,
                                         wavenumbers, mapa_cores, top_n=20,
                                         cfg=cfg, pasta=pasta)
@@ -2090,7 +2090,7 @@ def executar(cfg: Config):
             fig_sprint3_ddsimca_acceptance(
                 ddsimca_res, rotulos, mapa_cores, cfg, pasta,
                 sens_esp=ddsimca_sens_esp)
-            if cfg.figuras_detalhadas:
+            if cfg.detailed_figures:
                 # Detalhadas: um plot por classe (subpasta ddsimca/) + Cooman.
                 fig_ddsimca_individuais(
                     ddsimca_res, rotulos, mapa_cores, cfg, pasta,

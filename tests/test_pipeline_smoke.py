@@ -318,7 +318,7 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
         wn_max=4001.0,
         n_splits_cv=2,
         n_repeats_cv=1,
-        n_permutacoes=5,
+        n_permutations=5,
         n_permutations_wold=5,
         n_bootstrap_vip=3,
         n_bootstrap_bca=20,

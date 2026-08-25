@@ -103,7 +103,7 @@ def saida_pipeline_com_sentinelas(pq, tmp_path_factory):
         modo="dx", input_folder=str(entrada),
         output_root_folder=str(base / "saida"),
         wn_min=4000.0, wn_max=10000.0,
-        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
         n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=3, frac_holdout=0.0,
     )

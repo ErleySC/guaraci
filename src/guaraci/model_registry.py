@@ -61,7 +61,7 @@ def _construir_xgboost(n_opt: int, cfg: "Config"):
 # Fonte UNICA de verdade: (nome, construtor, obrigatorio).
 # obrigatorio=True (so' PLS-DA) -> sempre incluido, mesmo com
 # incluir_opcionais=False (caso de monte_carlo_cv quando
-# cfg.monte_carlo_incluir_todos=False: so' PLS-DA participa).
+# cfg.monte_carlo_include_all=False: so' PLS-DA participa).
 _REGISTRO: List[Tuple[str, Construtor, bool]] = [
     ("PLS-DA",        _construir_pls_da,        True),
     ("SVM RBF",       _construir_svm_rbf,       False),
@@ -77,7 +77,7 @@ def build_benchmark_list(n_opt: int, cfg: "Config",
     """Monta a lista (nome, instância) de classificadores para comparação.
 
     incluir_opcionais=False: só o modelo obrigatório (PLS-DA) — usado por
-    monte_carlo_cv quando cfg.monte_carlo_incluir_todos=False. Modelos cujo
+    monte_carlo_cv quando cfg.monte_carlo_include_all=False. Modelos cujo
     pacote opcional não está instalado (ex.: xgboost) são pulados
     silenciosamente (ImportError), preservando o comportamento histórico.
     """

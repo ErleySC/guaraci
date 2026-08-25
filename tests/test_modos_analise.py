@@ -73,19 +73,19 @@ def test_deve_gerar_fail_open_para_chave_desconhecida():
 
 # ---- exploratory_figures_enabled -------------------------------------
 def test_exploratorias_ligadas_no_modo_exploratorio():
-    cfg = Config(objetivo=m.EXPLORATORIO, figuras_detalhadas=False)
+    cfg = Config(objetivo=m.EXPLORATORIO, detailed_figures=False)
     assert m.exploratory_figures_enabled(cfg) is True
 
 
 def test_exploratorias_escotilha_em_classificacao_com_detalhadas():
-    cfg = Config(objetivo=m.CLASSIFICACAO, figuras_detalhadas=True)
+    cfg = Config(objetivo=m.CLASSIFICACAO, detailed_figures=True)
     assert m.exploratory_figures_enabled(cfg) is True
-    cfg = Config(objetivo=m.CLASSIFICACAO, figuras_detalhadas=False)
+    cfg = Config(objetivo=m.CLASSIFICACAO, detailed_figures=False)
     assert m.exploratory_figures_enabled(cfg) is False
 
 
 def test_exploratorias_desligadas_em_quantificacao():
-    cfg = Config(objetivo=m.QUANTIFICACAO, figuras_detalhadas=True)
+    cfg = Config(objetivo=m.QUANTIFICACAO, detailed_figures=True)
     assert m.exploratory_figures_enabled(cfg) is False
 
 

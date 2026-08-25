@@ -1127,7 +1127,7 @@ def _leitor_sintetico(cfg: "Config"):
 
 def _leitor_csv(cfg: "Config"):
     wn, X, rot, conc = load_csv(
-        cfg.arquivo_csv, cfg.coluna_classe, cfg.conc_column)
+        cfg.csv_file, cfg.class_column, cfg.conc_column)
     return wn, X, rot, conc, None, None
 
 
@@ -1139,7 +1139,7 @@ def _leitor_dx(cfg: "Config"):
 def _leitor_imagem(cfg: "Config"):
     from guaraci.dados_imagem import load_images
     return load_images(cfg.input_folder, cfg.imagem_recorte,
-                             cfg.imagem_incluir_textura)
+                             cfg.include_image_texture)
 
 
 # Leitores built-in (item 20 da auditoria: registry em vez de if/elif fixo —

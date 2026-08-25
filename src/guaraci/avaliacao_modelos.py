@@ -361,7 +361,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     Monte Carlo CV com split estratificado por grupo (N repeticoes).
     Gera distribuicao empirica de Balanced Accuracy com IC95% por percentil.
 
-    Se cfg.monte_carlo_incluir_todos=True, roda tambem SVM RBF, RF e XGBoost
+    Se cfg.monte_carlo_include_all=True, roda tambem SVM RBF, RF e XGBoost
     (mesmos hiperparametros do benchmark, via guaraci.model_registry — item
     20 da auditoria: fonte unica, antes duplicada e divergente aqui: este
     Grad. Boost. nao tinha subsample=0.8 como o do benchmark); caso
@@ -379,7 +379,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 
     # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
     mc_clfs: List[Tuple[str, Any]] = build_benchmark_list(
-        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_incluir_todos)
+        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_include_all)
 
     # Gerar splits estratificados por grupo (risco 3 resolvido)
     if grupos_cv is not None:

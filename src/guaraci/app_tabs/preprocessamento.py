@@ -59,9 +59,9 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                     cfg_pp.input_folder, wn_mn_pp, wn_mx_pp)
             elif modo_pp == "csv":
                 csv_cam_pp = st.session_state.get("_csv_upload_path",
-                                                   cfg_pp.arquivo_csv)
+                                                   cfg_pp.csv_file)
                 wn_raw, X_raw, labs_raw = preview_spectra_csv(
-                    csv_cam_pp, cfg_pp.coluna_classe, wn_mn_pp, wn_mx_pp)
+                    csv_cam_pp, cfg_pp.class_column, wn_mn_pp, wn_mx_pp)
             else:
                 wn_raw, X_raw, labs_raw = None, None, None
 

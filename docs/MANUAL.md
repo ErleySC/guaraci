@@ -64,7 +64,7 @@ no meio do log, depois de a execução já ter começado:
 
 Também mostra uma **estimativa de tempo** (faixa, não valor exato — ex.:
 `~6-15 min`), calibrada em medição real, não em regra de bolso. Quando
-`n_jobs_permutacao=1` e há muitas permutações, o checklist sugere
+`n_jobs_permutation=1` e há muitas permutações, o checklist sugere
 explicitamente subir esse valor: o resultado é idêntico (mesmo seed, mesma
 partição), só o tempo de execução muda.
 
@@ -525,7 +525,7 @@ Disponível em dois lugares, com a **mesma lógica científica**
 
 **Figuras:** conjunto essencial por padrão (cerca de 8 a 10 figuras, a
 depender do objetivo — seção 2.2) com opção de figuras detalhadas adicionais
-(`figuras_detalhadas=True`). Formatos PNG/PDF/SVG, DPI configurável.
+(`detailed_figures=True`). Formatos PNG/PDF/SVG, DPI configurável.
 
 **Figura de mérito analítica dedicada (Quantificação):**
 `figS3_merito_regressao.png` — dois painéis lado a lado: LOD/LOQ por espécie

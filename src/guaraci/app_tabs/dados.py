@@ -144,9 +144,9 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                     cfg_prev.input_folder, wn_mn, wn_mx)
             elif modo == "csv":
                 csv_cam = st.session_state.get("_csv_upload_path",
-                                               cfg_prev.arquivo_csv)
+                                               cfg_prev.csv_file)
                 wn_p, X_p, labs_p = preview_spectra_csv(
-                    csv_cam, cfg_prev.coluna_classe, wn_mn, wn_mx)
+                    csv_cam, cfg_prev.class_column, wn_mn, wn_mx)
             else:
                 wn_p, X_p, labs_p = None, None, None
 

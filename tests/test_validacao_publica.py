@@ -82,13 +82,13 @@ def test_guaraci_reproduz_a_literatura_no_corn(pq, tmp_path):
     df.to_csv(csv, index=False)
 
     cfg = pq.Config(
-        modo="csv", arquivo_csv=str(csv),
-        coluna_classe="classe", conc_column="conc",
+        modo="csv", csv_file=str(csv),
+        class_column="classe", conc_column="conc",
         matrix_profile="milho_nir",          # perfil, nao edicao de codigo
         objetivo="quantificacao", nivel="N3",
         output_root_folder=str(tmp_path / "saida"),
         group_by_mae_id=False, mostrar_graficos=False,
-        n_permutacoes=10, frac_holdout=0.25,
+        n_permutations=10, frac_holdout=0.25,
     )
     pq.executar(cfg)
 
@@ -141,12 +141,12 @@ def test_execucao_no_corn_e_deterministica(pq, tmp_path):
         df.insert(1, "conc", Y[:, 2])
         df.to_csv(csv, index=False)
         cfg = pq.Config(
-            modo="csv", arquivo_csv=str(csv),
-            coluna_classe="classe", conc_column="conc",
+            modo="csv", csv_file=str(csv),
+            class_column="classe", conc_column="conc",
             matrix_profile="milho_nir", objetivo="quantificacao", nivel="N3",
             output_root_folder=str(destino / "saida"),
             group_by_mae_id=False, mostrar_graficos=False,
-            n_permutacoes=10, frac_holdout=0.25, seed=1234,
+            n_permutations=10, frac_holdout=0.25, seed=1234,
         )
         pq.executar(cfg)
         runs = achar_pastas_run(cfg.output_root_folder)

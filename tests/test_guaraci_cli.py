@@ -395,7 +395,7 @@ def test_estimar_tempo_sem_amostras_retorna_none(guaraci_mod):
 def test_estimar_tempo_cresce_com_o_numero_de_amostras(guaraci_mod):
     """Propriedade basica: mais amostras nao pode estimar MENOS tempo."""
     cfg = guaraci_mod.Config()
-    cfg.n_permutacoes = 200
+    cfg.n_permutations = 200
     valores = [guaraci_mod._estimar_tempo(cfg, n) for n in (200, 1000, 5000)]
     assert all(v is not None for v in valores)
     # Compara pelo limite inferior numerico extraido do texto ("~16-40 min").
@@ -407,10 +407,10 @@ def test_paralelismo_reduz_a_estimativa(guaraci_mod):
     mudar nenhum resultado — a estimativa precisa refletir isso, senao a
     dica que o checklist exibe seria falsa."""
     cfg = guaraci_mod.Config()
-    cfg.n_permutacoes = 200
-    cfg.n_jobs_permutacao = 1
+    cfg.n_permutations = 200
+    cfg.n_jobs_permutation = 1
     seq = guaraci_mod._estimar_tempo(cfg, 1673)
-    cfg.n_jobs_permutacao = 4
+    cfg.n_jobs_permutation = 4
     par = guaraci_mod._estimar_tempo(cfg, 1673)
     assert _min_inferior(par) < _min_inferior(seq), \
         f"paralelo ({par}) deveria ser menor que sequencial ({seq})"
@@ -420,11 +420,11 @@ def test_modulos_pesados_aumentam_a_estimativa(guaraci_mod):
     """Ligar benchmark/SHAP/AG tem de aparecer no numero — sao justamente os
     que transformam minutos em horas."""
     base = guaraci_mod.Config()
-    base.n_permutacoes = 200
+    base.n_permutations = 200
     t_base = _min_inferior(guaraci_mod._estimar_tempo(base, 1673))
     for attr in ("run_benchmark", "run_shap", "executar_ag"):
         cfg = guaraci_mod.Config()
-        cfg.n_permutacoes = 200
+        cfg.n_permutations = 200
         setattr(cfg, attr, True)
         assert _min_inferior(guaraci_mod._estimar_tempo(cfg, 1673)) > t_base, \
             f"{attr}=True deveria aumentar a estimativa"
@@ -434,7 +434,7 @@ def test_estimativa_usa_faixa_nunca_valor_exato(guaraci_mod):
     """Formato: a incerteza precisa estar visivel. Um numero seco seria lido
     como promessa."""
     cfg = guaraci_mod.Config()
-    cfg.n_permutacoes = 200
+    cfg.n_permutations = 200
     txt = guaraci_mod._estimar_tempo(cfg, 1673)
     assert ("-" in txt and ("min" in txt or "h" in txt)) or txt.startswith("<"), \
         f"esperava faixa (ex.: '~16-40 min'), veio {txt!r}"
