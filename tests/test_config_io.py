@@ -238,7 +238,7 @@ def test_validar_pasta_csv_inexistente():
 
 def test_validar_pasta_dx_inexistente():
     cfg = Config(modo="dx")
-    cfg.pasta_entrada = "/pasta/que/nao/existe"
+    cfg.input_folder = "/pasta/que/nao/existe"
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
@@ -247,14 +247,14 @@ def test_validar_pasta_dx_conta_arquivos(tmp_path):
     (tmp_path / "a.dx").write_text("x")
     (tmp_path / "b.dx").write_text("x")
     cfg = Config(modo="dx")
-    cfg.pasta_entrada = str(tmp_path)
+    cfg.input_folder = str(tmp_path)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "2" in msg
 
 
 def test_validar_pasta_dx_pasta_vazia_falha(tmp_path):
     cfg = Config(modo="dx")
-    cfg.pasta_entrada = str(tmp_path)  # existe mas sem .dx
+    cfg.input_folder = str(tmp_path)  # existe mas sem .dx
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
@@ -272,7 +272,7 @@ def test_validar_pasta_imagem_conta_imagens(tmp_path):
     (tmp_path / "a.png").write_text("x")
     (tmp_path / "b.jpg").write_text("x")
     cfg = Config(modo="imagem")
-    cfg.pasta_entrada = str(tmp_path)
+    cfg.input_folder = str(tmp_path)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "2" in msg
 
@@ -280,7 +280,7 @@ def test_validar_pasta_imagem_conta_imagens(tmp_path):
 def test_validar_pasta_imagem_sem_imagens_falha(tmp_path):
     (tmp_path / "leiame.txt").write_text("x")
     cfg = Config(modo="imagem")
-    cfg.pasta_entrada = str(tmp_path)
+    cfg.input_folder = str(tmp_path)
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 

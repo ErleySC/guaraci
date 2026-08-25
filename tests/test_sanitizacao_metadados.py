@@ -100,15 +100,15 @@ def saida_pipeline_com_sentinelas(pq, tmp_path_factory):
                              semente=hash((cod, ponto, trip)) % 10_000)
 
     cfg = pq.Config(
-        modo="dx", pasta_entrada=str(entrada),
-        pasta_saida_raiz=str(base / "saida"),
+        modo="dx", input_folder=str(entrada),
+        output_root_folder=str(base / "saida"),
         wn_min=4000.0, wn_max=10000.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=3, frac_holdout=0.0,
     )
     pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou pasta de saida"
     return Path(runs[0])
 

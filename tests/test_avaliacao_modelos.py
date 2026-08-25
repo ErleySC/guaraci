@@ -204,8 +204,8 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
     run_benchmark_regression=True gera o CSV/figura do benchmark de
     regressao junto com o restante do pipeline, sem quebrar nada."""
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
         n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
         wn_min=400.0, wn_max=4001.0,
@@ -214,10 +214,10 @@ def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
         n_monte_carlo=3, max_lvs=5,
         run_benchmark_regression=True,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
 
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou pasta de saida"
     pasta_run = runs[0]
     assert os.path.exists(

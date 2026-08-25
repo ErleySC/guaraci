@@ -201,7 +201,7 @@ def test_carregar_dados_modo_imagem_delega_corretamente(pq, tmp_path):
     (raiz / "ClasseA").mkdir(parents=True)
     _salvar_imagem_solida(str(raiz / "ClasseA" / "img1.png"), (100, 150, 200))
 
-    cfg = pq.Config(modo="imagem", pasta_entrada=str(raiz))
+    cfg = pq.Config(modo="imagem", input_folder=str(raiz))
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "ClasseA"
@@ -212,14 +212,14 @@ def test_validar_pasta_dados_modo_imagem(pq, tmp_path):
     pasta com imagens -> True)."""
     vazio = tmp_path / "vazio"
     vazio.mkdir()
-    cfg_vazio = pq.Config(modo="imagem", pasta_entrada=str(vazio))
+    cfg_vazio = pq.Config(modo="imagem", input_folder=str(vazio))
     ok, _msg = pq._validar_pasta_dados(cfg_vazio)
     assert ok is False
 
     com_imagem = tmp_path / "com_imagem"
     com_imagem.mkdir()
     _salvar_imagem_solida(str(com_imagem / "x.png"), (100, 100, 100))
-    cfg_ok = pq.Config(modo="imagem", pasta_entrada=str(com_imagem))
+    cfg_ok = pq.Config(modo="imagem", input_folder=str(com_imagem))
     ok2, _msg2 = pq._validar_pasta_dados(cfg_ok)
     assert ok2 is True
 
@@ -242,8 +242,8 @@ def test_executar_pipeline_completo_modo_imagem(pq, tmp_path):
                                    seed=hash((cls, i)) % 1000)
 
     cfg = pq.Config(
-        modo="imagem", pasta_entrada=str(raiz),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        modo="imagem", input_folder=str(raiz),
+        output_root_folder=str(tmp_path / "saida"),
         wn_min=-1.0, wn_max=100.0,  # cobre o eixo simbolico 0..17
         # "autoscaling" (nao "msc_sg_mc"): MSC/Savitzky-Golay pressupoem um
         # sinal espectral continuo (eixo de comprimento de onda) — nao fazem

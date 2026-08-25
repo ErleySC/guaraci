@@ -32,7 +32,7 @@ def _rodar_worker(pq, cfg, logger: _LogThreadSafe, estado: Dict):
         with contextlib.redirect_stdout(logger), \
              contextlib.redirect_stderr(logger):
             pq.executar(cfg)
-        estado["pasta"] = getattr(cfg, "pasta_saida", None)
+        estado["pasta"] = getattr(cfg, "output_folder", None)
         estado["erro"] = None
     except Exception:  # noqa: BLE001 -- boundary de topo da thread de
         # execucao (mesmo padrao de guaraci.py): qualquer excecao do

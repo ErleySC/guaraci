@@ -232,7 +232,7 @@ Cada execução grava seus resultados em uma hierarquia de pastas que separa
 conteúdo por categoria:
 
 ```text
-<pasta_saida_raiz>/
+<output_root_folder>/
   <Amostra>/
     <Modo>/
       <Execução>/

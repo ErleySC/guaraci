@@ -630,7 +630,7 @@ def parse_spectrum(filepath):
                 f"  scientific integrity. To use with this pipeline:\n"
                 f"    1. Open the spectra in Bomem Horizon software\n"
                 f"    2. File -> Export -> JCAMP-DX (.dx) or ASCII (.txt)\n"
-                f"    3. Point cfg.pasta_entrada to the newly exported folder\n"
+                f"    3. Point cfg.input_folder to the newly exported folder\n"
                 f"  The parser already supports .dx and .txt automatically.")
     except UnicodeDecodeError:
         pass
@@ -909,7 +909,7 @@ def load_dx(pasta: str, parte_classe: int = 0,
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
                 f"Path does NOT exist: {pasta}\n"
-                f"  -> check cfg.pasta_entrada or use cfg.modo='sintetico'.")
+                f"  -> check cfg.input_folder or use cfg.modo='sintetico'.")
         arqs, ext_usada = _listar_arquivos_espectro(pasta)
         if not arqs:
             raise FileNotFoundError(
@@ -1132,13 +1132,13 @@ def _leitor_csv(cfg: "Config"):
 
 
 def _leitor_dx(cfg: "Config"):
-    return load_dx(cfg.pasta_entrada, cfg.parte_classe,
+    return load_dx(cfg.input_folder, cfg.parte_classe,
                         cfg.extrair_conc_filename, cfg.usar_parse_title)
 
 
 def _leitor_imagem(cfg: "Config"):
     from guaraci.dados_imagem import load_images
-    return load_images(cfg.pasta_entrada, cfg.imagem_recorte,
+    return load_images(cfg.input_folder, cfg.imagem_recorte,
                              cfg.imagem_incluir_textura)
 
 

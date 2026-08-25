@@ -3770,8 +3770,8 @@ def _comando_demo() -> None:
 
     saida = Path.cwd() / "GUARACI_Demo"
     cfg = Config(
-        pasta_entrada=str(saida / "dados_dummy"),  # modo sintetico ignora isto
-        pasta_saida_raiz=str(saida),
+        input_folder=str(saida / "dados_dummy"),  # modo sintetico ignora isto
+        output_root_folder=str(saida),
         modo="sintetico",
         tag="demo",
         nivel="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
@@ -3799,7 +3799,7 @@ def _comando_demo() -> None:
         comparar_pipelines=False,
         comparar_hca_pipelines=False,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
 
     try:
         pq.executar(cfg)

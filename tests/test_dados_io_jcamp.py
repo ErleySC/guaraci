@@ -105,7 +105,7 @@ def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
     _escrever_dx(str(raiz / "Andiroba" / "and_T1.dx"), "AND-04-11-2099-T1",
                  100, 105, [1, 2, 3, 4, 5, 6])
 
-    cfg = pq.Config(modo="dx", pasta_entrada=str(raiz))
+    cfg = pq.Config(modo="dx", input_folder=str(raiz))
     wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "Andiroba"

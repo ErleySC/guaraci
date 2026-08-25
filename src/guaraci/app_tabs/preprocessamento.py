@@ -56,7 +56,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
             wn_mx_pp = float(cfg_pp.wn_max)
             if modo_pp == "dx":
                 wn_raw, X_raw, labs_raw = preview_spectra_dx(
-                    cfg_pp.pasta_entrada, wn_mn_pp, wn_mx_pp)
+                    cfg_pp.input_folder, wn_mn_pp, wn_mx_pp)
             elif modo_pp == "csv":
                 csv_cam_pp = st.session_state.get("_csv_upload_path",
                                                    cfg_pp.arquivo_csv)

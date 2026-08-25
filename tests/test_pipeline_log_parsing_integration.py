@@ -22,8 +22,8 @@ from guaraci.app_logic import log_progress, figures_completed
 @pytest.mark.slow
 def test_stdout_real_do_executar_ainda_casa_com_regex_do_painel(pq, tmp_path):
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico",
         n_por_classe=8,
         n_pontos_sint=50,

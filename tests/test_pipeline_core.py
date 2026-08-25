@@ -1458,8 +1458,8 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
     de split cal/val muda)."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
         n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
         wn_min=400.0, wn_max=4001.0,
@@ -1468,7 +1468,7 @@ def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
         n_monte_carlo=3, max_lvs=5,
         divisao_cal_val="kennard_stone",
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
 
     runs = achar_pastas_run(tmp_path / "saida")
@@ -1487,8 +1487,8 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
     de metricas ja existentes)."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", n_por_classe=10, n_pontos_sint=60,
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=3, n_repeats_cv=1, n_permutacoes=5,
@@ -1496,7 +1496,7 @@ def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
         n_monte_carlo=3, max_lvs=5,
         run_martens=True,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
 
     runs = achar_pastas_run(tmp_path / "saida")
@@ -1536,8 +1536,8 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
     import io
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
         n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
         wn_min=400.0, wn_max=4001.0,
@@ -1546,7 +1546,7 @@ def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
         n_monte_carlo=3, max_lvs=5,
         run_wold=True, run_cv_anova=True,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         pq.executar(cfg)
@@ -1576,8 +1576,8 @@ def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
     CLASSIFICACAO) nao pode bloquear o caminho que sempre funcionou."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N1",
         n_por_classe=10, n_pontos_sint=60,
         wn_min=400.0, wn_max=4001.0,
@@ -1586,7 +1586,7 @@ def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
         n_monte_carlo=3, max_lvs=5,
         run_wold=True, run_cv_anova=True,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
 
     runs = achar_pastas_run(tmp_path / "saida")
@@ -1605,8 +1605,8 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
     (regressao) so' aparece quando ha regressao (N3)."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N3",
         n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
         wn_min=400.0, wn_max=4001.0,
@@ -1614,7 +1614,7 @@ def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
         n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
 
     runs = achar_pastas_run(tmp_path / "saida")
@@ -1640,8 +1640,8 @@ def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
     (com aviso), pois o grafico nao agrega aquele tipo de analise."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", nivel="N1",
         n_por_classe=8, n_pontos_sint=50,
         wn_min=400.0, wn_max=4001.0,
@@ -1838,7 +1838,7 @@ def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
     pytest.importorskip("prcv")
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "in"), pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", n_por_classe=10, n_pontos_sint=60,
         n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
@@ -1850,9 +1850,9 @@ def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
         run_monte_carlo=False, run_shap=False,
         ddsimca_pcv=False,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
         encoding="utf-8")
     assert "sens(PCV" not in resumo
@@ -1864,7 +1864,7 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
     pytest.importorskip("prcv")
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "in"), pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
         modo="sintetico", n_por_classe=10, n_pontos_sint=60,
         n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
@@ -1876,9 +1876,9 @@ def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
         run_monte_carlo=False, run_shap=False,
         ddsimca_pcv=True,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
         encoding="utf-8")
     assert "sens(PCV, exploratorio)" in resumo

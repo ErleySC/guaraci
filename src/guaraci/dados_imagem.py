@@ -236,7 +236,7 @@ def load_images(
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
                 f"Pasta nao existe: {pasta}\n"
-                f"  -> confira cfg.pasta_entrada (modo='imagem').")
+                f"  -> confira cfg.input_folder (modo='imagem').")
         arqs = _listar_arquivos_imagem(pasta)
         if not arqs:
             raise FileNotFoundError(

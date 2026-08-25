@@ -122,7 +122,7 @@ def _dataset_id(cfg: Config) -> str:
     elif cfg.modo == "sintetico":
         base = "sintetico"
     else:  # "dx" | "imagem"
-        base = os.path.basename(os.path.normpath(cfg.pasta_entrada or ""))
+        base = os.path.basename(os.path.normpath(cfg.input_folder or ""))
     return _slug(base) or "dataset"
 
 
@@ -161,7 +161,7 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
     partes.append(datetime.now().strftime("%Y%m%d_%H%M%S"))
     dataset_id = _dataset_id(cfg)
     modo_pasta = OBJETIVO_ROTULO.get(resolve_objective(cfg), "Analise")
-    return os.path.join(cfg.pasta_saida_raiz, dataset_id, modo_pasta,
+    return os.path.join(cfg.output_root_folder, dataset_id, modo_pasta,
                          "_".join(partes))
 
 
@@ -1404,13 +1404,13 @@ def executar(cfg: Config):
             mae_id  = mae_id[mask_keep] if mae_id is not None else None
 
     # --- 1b. Pasta de saida descritiva -------------------------------------
-    # Layout (auditoria jul/2026, item 4): pasta_saida_raiz/Amostra/Modo/
+    # Layout (auditoria jul/2026, item 4): output_root_folder/Amostra/Modo/
     # Execucao/{Graficos,Tabelas,Relatorios,Modelos} — separa fisicamente os
     # resultados por objetivo cientifico, alem do gating de conteudo (ver
     # modos_analise.py) que ja impede a figura errada de ser GERADA.
-    cfg.pasta_saida = generate_output_name(cfg, len(np.unique(rotulos)),
+    cfg.output_folder = generate_output_name(cfg, len(np.unique(rotulos)),
                                          X_raw.shape[0])
-    pasta = cfg.pasta_saida
+    pasta = cfg.output_folder
     pasta_dados   = os.path.join(pasta, NOME_TABELAS)
     pasta_modelos = os.path.join(pasta, NOME_MODELOS)
     pasta_logs    = os.path.join(pasta, NOME_RELATORIOS)

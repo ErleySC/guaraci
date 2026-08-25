@@ -141,7 +141,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
         with st.spinner("Loading spectra sample..."):
             if modo == "dx":
                 wn_p, X_p, labs_p = preview_spectra_dx(
-                    cfg_prev.pasta_entrada, wn_mn, wn_mx)
+                    cfg_prev.input_folder, wn_mn, wn_mx)
             elif modo == "csv":
                 csv_cam = st.session_state.get("_csv_upload_path",
                                                cfg_prev.arquivo_csv)

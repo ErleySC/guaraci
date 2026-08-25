@@ -155,8 +155,8 @@ def _cfg_golden(pq, base: Path):
     por `mae_id` e o DD-SIMCA tenham o que exercitar de verdade.
     """
     cfg = pq.Config(
-        pasta_entrada=str(base / "in"),
-        pasta_saida_raiz=str(base / "saida"),
+        input_folder=str(base / "in"),
+        output_root_folder=str(base / "saida"),
         modo="sintetico", n_por_classe=10, n_pontos_sint=60,
         n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
@@ -176,7 +176,7 @@ def _cfg_golden(pq, base: Path):
     ]:
         if hasattr(cfg, attr):
             setattr(cfg, attr, val)
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     return cfg
 
 
@@ -187,7 +187,7 @@ def valores_run(pq, tmp_path_factory) -> dict:
     cfg = _cfg_golden(pq, base)
     with contextlib.redirect_stdout(io.StringIO()):
         pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou pasta de saida"
     resumo_path = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
     assert resumo_path.is_file(), f"resumo_modelo.txt nao encontrado em {runs[0]}"

@@ -36,7 +36,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
              "imagem (colorimetria digital, prototipo) | sintetico (teste)",
      "opcoes": ["dx", "csv", "imagem", "sintetico"]},
-    {"key": "pasta_dados", "attr": "pasta_entrada", "tipo": "str",
+    {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
      "desc": "Pasta com os arquivos .dx OU imagens (modo dx/imagem; uma subpasta por classe)",
      "opcoes": None},
     {"key": "imagem_incluir_textura", "attr": "imagem_incluir_textura", "tipo": "bool",
@@ -49,7 +49,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Nome da coluna de classe/rotulo no CSV (modo csv)", "opcoes": None},
     {"key": "coluna_concentracao", "attr": "coluna_conc", "tipo": "str_opcional",
      "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; modo csv)", "opcoes": None},
-    {"key": "pasta_saida", "attr": "pasta_saida_raiz", "tipo": "str",
+    {"key": "pasta_saida", "attr": "output_root_folder", "tipo": "str",
      "desc": "Pasta onde os resultados serao gravados", "opcoes": None},
     {"key": "nivel", "attr": "nivel", "tipo": "choice",
      "desc": "Modo de analise: Classificacao (especie) | Discriminacao "
@@ -369,7 +369,7 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
             return False, f"CSV nao encontrado: '{cam}' (confira o caminho)"
         return True, f"OK — CSV: {os.path.basename(cam)}"
     if modo == "imagem":
-        p_img = cfg.pasta_entrada
+        p_img = cfg.input_folder
         if not p_img or not os.path.isdir(p_img):
             return False, f"pasta nao encontrada: '{p_img}' (confira o caminho)"
         exts = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
@@ -379,7 +379,7 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
             return False, f"nenhuma imagem em '{p_img}' (nem nas subpastas)"
         return True, f"OK — {n_img} imagens encontradas"
     # modo dx (padrao)
-    p = cfg.pasta_entrada
+    p = cfg.input_folder
     if not p or not os.path.isdir(p):
         return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
     n_dx = len(glob.glob(os.path.join(p, "**", "*.dx"), recursive=True))

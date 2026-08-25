@@ -307,8 +307,8 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
     """End-to-end: executar() with synthetic data must produce resumo_modelo.txt."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),  # synthetic mode ignores this
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        input_folder=str(tmp_path / "dados"),  # synthetic mode ignores this
+        output_root_folder=str(tmp_path / "saida"),
         modo="sintetico",
         n_por_classe=8,
         n_pontos_sint=50,

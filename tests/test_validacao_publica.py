@@ -86,13 +86,13 @@ def test_guaraci_reproduz_a_literatura_no_corn(pq, tmp_path):
         coluna_classe="classe", coluna_conc="conc",
         perfil_matriz="milho_nir",          # perfil, nao edicao de codigo
         objetivo="quantificacao", nivel="N3",
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        output_root_folder=str(tmp_path / "saida"),
         agrupar_por_mae_id=False, mostrar_graficos=False,
         n_permutacoes=10, frac_holdout=0.25,
     )
     pq.executar(cfg)
 
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou saida"
     resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt")
     assert resumo.is_file()
@@ -144,12 +144,12 @@ def test_execucao_no_corn_e_deterministica(pq, tmp_path):
             modo="csv", arquivo_csv=str(csv),
             coluna_classe="classe", coluna_conc="conc",
             perfil_matriz="milho_nir", objetivo="quantificacao", nivel="N3",
-            pasta_saida_raiz=str(destino / "saida"),
+            output_root_folder=str(destino / "saida"),
             agrupar_por_mae_id=False, mostrar_graficos=False,
             n_permutacoes=10, frac_holdout=0.25, seed=1234,
         )
         pq.executar(cfg)
-        runs = achar_pastas_run(cfg.pasta_saida_raiz)
+        runs = achar_pastas_run(cfg.output_root_folder)
         return (Path(runs[0]) / pq.NOME_RELATORIOS
                 / "resumo_modelo.txt").read_text(encoding="utf-8",
                                                   errors="replace")

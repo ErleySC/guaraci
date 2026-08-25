@@ -129,7 +129,7 @@ def _rodar_com_perfil(pq, base: Path, perfil: str, eixo: np.ndarray):
     cfg = pq.Config(
         modo="csv", arquivo_csv=str(csv),
         coluna_classe="classe", coluna_conc="conc",
-        pasta_saida_raiz=str(pasta / "saida"),
+        output_root_folder=str(pasta / "saida"),
         perfil_matriz=perfil,                     # <<< a UNICA diferenca
         agrupar_por_mae_id=False,
         n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
@@ -137,7 +137,7 @@ def _rodar_com_perfil(pq, base: Path, perfil: str, eixo: np.ndarray):
         n_monte_carlo=3, max_lvs=3, frac_holdout=0.0,
     )
     pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, f"executar() nao criou saida para o perfil '{perfil}'"
     return Path(runs[0])
 
@@ -191,7 +191,7 @@ def test_perfil_inexistente_aborta_o_pipeline_antes_de_predizer(pq, tmp_path):
     cfg = pq.Config(
         modo="csv", arquivo_csv=str(csv),
         coluna_classe="classe", coluna_conc="conc",
-        pasta_saida_raiz=str(tmp_path / "saida"),
+        output_root_folder=str(tmp_path / "saida"),
         perfil_matriz="matriz_que_nao_existe",
     )
     with pytest.raises(UnknownProfileError):

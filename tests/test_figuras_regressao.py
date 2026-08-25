@@ -91,8 +91,8 @@ def _coletar_pngs(figbase):
 
 def _cfg_base(pq, base, **overrides):
     cfg = pq.Config(
-        pasta_entrada=str(base / "dados"),
-        pasta_saida_raiz=str(base / "saida"),
+        input_folder=str(base / "dados"),
+        output_root_folder=str(base / "saida"),
         modo="sintetico", n_por_classe=10, n_pontos_sint=60,
         n_replicas_sint=3,   # replicas fisicas -> DD-SIMCA/figuras de merito treinam de verdade
         wn_min=400.0, wn_max=4001.0,
@@ -114,13 +114,13 @@ def _cfg_base(pq, base, **overrides):
             setattr(cfg, attr, val)
     for k, v in overrides.items():
         setattr(cfg, k, v)
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     return cfg
 
 
 def _rodar(pq, cfg):
     pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() não criou pasta de saída"
     figbase = os.path.join(runs[0], pq.NOME_GRAFICOS)
     assert os.path.isdir(figbase), f"pasta {pq.NOME_GRAFICOS}/ não foi criada"
