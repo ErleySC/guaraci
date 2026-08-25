@@ -677,7 +677,7 @@ re-executada nesta sessão).
   `RMSECV`, acurácia, F1, kappa e até o nº de LVs ótimas dependerem da
   versão instalada.
   *A correção:* o Guaraci passou a usar partição própria
-  (`StratifiedGroupKFoldEstavel`), com ordenação fixada por hash
+  (`StableStratifiedGroupKFold`), com ordenação fixada por hash
   determinístico — mesma partição em qualquer versão de scikit-learn,
   numpy ou Python, em qualquer sistema operacional (verificado: hash da
   partição idêntico em 1.7.2 e 1.9.0).

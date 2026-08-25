@@ -131,7 +131,7 @@ def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
         return str(p)
 
     tex_sim = reports.generate_latex_template(
-        _pasta("sim", "StratifiedGroupKFoldEstavel n_splits=5"), projeto
+        _pasta("sim", "StableStratifiedGroupKFold n_splits=5"), projeto
     ).decode("utf-8")
     tex_nao = reports.generate_latex_template(
         _pasta("nao", "RepeatedStratifiedKFold n_splits=5 repeats=3"), projeto
@@ -139,7 +139,7 @@ def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
 
     # Caso "sim": afirma group-aware, cita o cv_label real.
     assert "group-aware cross-validation" in tex_sim
-    assert "StratifiedGroupKFoldEstavel" in tex_sim
+    assert "StableStratifiedGroupKFold" in tex_sim
     assert "NOT applied" not in tex_sim
 
     # Caso "nao": NAO afirma group-aware, avisa explicitamente, cita o

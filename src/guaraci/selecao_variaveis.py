@@ -23,7 +23,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
 from guaraci.chemometric_stats import vip_scores, compute_selectivity_ratio
 from guaraci.validacao_estatistica import (_cv_predict_manual,
-                                           StratifiedGroupKFoldEstavel)
+                                           StableStratifiedGroupKFold)
 from guaraci.figuras import save, color, _ticks_x_inteiros
 
 if TYPE_CHECKING:
@@ -240,7 +240,7 @@ def _cv_local(y_local: np.ndarray, seed: int,
         # splitter group-aware nao tem material e cai para o estratificado.
         if n_grupos >= 2:
             n_splits_eff = max(2, min(n_splits, n_grupos))
-            gkf = StratifiedGroupKFoldEstavel(n_splits=n_splits_eff, seed=seed)
+            gkf = StableStratifiedGroupKFold(n_splits=n_splits_eff, seed=seed)
             return list(gkf.split(np.zeros(len(y_local)), y_local,
                                   groups=grupos_local))
     from sklearn.model_selection import StratifiedKFold

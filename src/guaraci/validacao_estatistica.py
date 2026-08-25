@@ -22,7 +22,7 @@ from sklearn.pipeline import Pipeline
 log = logging.getLogger(__name__)
 
 
-class StratifiedGroupKFoldEstavel:
+class StableStratifiedGroupKFold:
     """`StratifiedGroupKFold` com partição ESTÁVEL entre versões de biblioteca.
 
     Por que existe
@@ -99,7 +99,7 @@ class StratifiedGroupKFoldEstavel:
         """
         if groups is None:
             raise ValueError(
-                "StratifiedGroupKFoldEstavel exige `groups` (ex.: mae_id). "
+                "StableStratifiedGroupKFold exige `groups` (ex.: mae_id). "
                 "Sem grupos as replicas vazam entre treino e teste.")
         y = np.asarray(y)
         groups = np.asarray(groups)

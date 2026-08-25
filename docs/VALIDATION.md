@@ -90,7 +90,7 @@ em vez de re-substituição — ver a seção "Limitações" abaixo.
   amostras caíam em fold diferente** entre 1.7.2 e 1.9.0. Isso tornava `Q2`,
   `RMSECV`, acurácia, F1, kappa e o nº de LVs ótimas dependentes da versão
   instalada — incompatível com a alegação de reprodutibilidade que sustenta o
-  projeto. O Guaraci passou a usar `StratifiedGroupKFoldEstavel`
+  projeto. O Guaraci passou a usar `StableStratifiedGroupKFold`
   (`guaraci.validacao_estatistica`), que congela a ordenação por hash
   determinístico do id do grupo. **Verificação:** a partição tem hash
   idêntico em scikit-learn 1.7.2 e 1.9.0 (antes: dois hashes diferentes).

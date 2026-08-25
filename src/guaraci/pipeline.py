@@ -652,7 +652,7 @@ from guaraci.validacao_estatistica import (   # noqa: E402
     wold_test,
     _iter_permutacao,
     permutation_test,
-    StratifiedGroupKFoldEstavel,
+    StableStratifiedGroupKFold,
 )
 
 
@@ -1564,15 +1564,15 @@ def executar(cfg: Config):
 
     if usar_grupos:
         # Estratifica por classe E agrupa por mae_id. Implementacao PROPRIA
-        # (validacao_estatistica.StratifiedGroupKFoldEstavel) em vez da do
+        # (validacao_estatistica.StableStratifiedGroupKFold) em vez da do
         # scikit-learn: a do sklearn muda a particao entre versoes mesmo com
         # random_state fixo -- medido em 2026-08-05, 42% das amostras trocaram
         # de fold entre 1.7.2 e 1.9.0. Isso fazia Q2/RMSECV/acuracia/F1 e ate'
         # o numero de LVs otimas dependerem da versao instalada, contradizendo
         # a reprodutibilidade que e' o argumento central do projeto.
-        cv = StratifiedGroupKFoldEstavel(n_splits=max(n_splits, 2),
+        cv = StableStratifiedGroupKFold(n_splits=max(n_splits, 2),
                                          seed=cfg.seed)
-        cv_label = f"StratifiedGroupKFoldEstavel n_splits={n_splits}"
+        cv_label = f"StableStratifiedGroupKFold n_splits={n_splits}"
     elif cfg.n_repeats_cv > 1:
         cv = RepeatedStratifiedKFold(n_splits=n_splits,
                                       n_repeats=cfg.n_repeats_cv,
@@ -1695,7 +1695,7 @@ def executar(cfg: Config):
     if usar_grupos:
         # Mesmo motivo do bloco 5 (ver comentario la'): particao estavel entre
         # versoes, senao o p-valor de permutacao tambem mudaria com o sklearn.
-        cv_perm = StratifiedGroupKFoldEstavel(n_splits=max(n_splits, 2),
+        cv_perm = StableStratifiedGroupKFold(n_splits=max(n_splits, 2),
                                               seed=cfg.seed)
     else:
         cv_perm = StratifiedKFold(n_splits=n_splits, shuffle=True,

@@ -14,7 +14,7 @@ from sklearn.metrics import balanced_accuracy_score
 
 import sys
 sys.path.insert(0, "src")
-from guaraci.validacao_estatistica import StratifiedGroupKFoldEstavel
+from guaraci.validacao_estatistica import StableStratifiedGroupKFold
 
 G, R, K, P, NLV = 12, 3, 3, 40, 2
 N = G * R
@@ -43,7 +43,7 @@ def uma_replica(seed):
     lab_grupo = np.array([i % K for i in range(G)])
     rng.shuffle(lab_grupo)
     y_int = lab_grupo[gid]
-    cv = StratifiedGroupKFoldEstavel(n_splits=4, seed=42)
+    cv = StableStratifiedGroupKFold(n_splits=4, seed=42)
 
     obs = cv_bal_acc(X, y_int, gid, cv)
     if not np.isfinite(obs):
