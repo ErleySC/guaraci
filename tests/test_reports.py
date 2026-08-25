@@ -121,8 +121,8 @@ def test_gerar_latex_template_afirma_group_aware_so_quando_realmente_usado(
         (logs / "resumo_modelo.txt").write_text(
             "Balanced Accuracy (CV): 0.912\nR2Y: 0.87\nQ2Y: 0.81\n"
             "Preprocessamento: msc_sg_mc\nN treino: 120\nN. Classes: 5\n"
-            "LVs otimas: 6\n"
-            f"Validacao: {cv_label}\n"
+            "Optimal LVs: 6\n"
+            f"Validation: {cv_label}\n"
             f"Group-aware (mae_id): {group_aware}\n"
             "Faixa espectral (cm-1): [4000, 10000]\n"
             "Permutation n_validos: 200\n",
@@ -160,11 +160,11 @@ def _pasta_com_modo(tmp_path, mode: str) -> str:
     (logs / "resumo_modelo.txt").write_text(
         "Balanced Accuracy (CV): 0.912\nR2Y: 0.87\nQ2Y: 0.81\n"
         "Preprocessamento: msc_sg_mc\nN treino: 120\nN. Classes: 5\n"
-        "LVs otimas: 6\nValidacao: RepeatedStratifiedKFold n_splits=5\n"
+        "Optimal LVs: 6\nValidation: RepeatedStratifiedKFold n_splits=5\n"
         "Group-aware (mae_id): nao\n"
         "Faixa espectral (cm-1): [4000, 10000]\n"
         "Permutation n_validos: 200\n"
-        f"Modo de entrada: {mode}\n",
+        f"Input mode: {mode}\n",
         encoding="utf-8",
     )
     return str(p)

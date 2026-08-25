@@ -19,7 +19,7 @@ _RESUMO_EXEMPLO = textwrap.dedent("""\
     R2Y: 0.87
     Q2: 0.81
     R2X: 0.95
-    LVs otimo: 14
+    Optimal LVs: 14
     p-value: 0.004
     Hotelling T2 UCL: 21.3
     Q-residual UCL: 0.0123

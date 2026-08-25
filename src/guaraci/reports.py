@@ -56,7 +56,7 @@ def _e_modo_prototipo(resumo_raw: str) -> bool:
     afirmar group-aware quando ele nao rodou.
     """
     return extract_metric(
-        resumo_raw, r"Modo de entrada\s*[:=]\s*(\w+)", ""
+        resumo_raw, r"Input mode\s*[:=]\s*(\w+)", ""
     ).strip().lower() == "imagem"
 
 
@@ -499,7 +499,7 @@ def generate_excel_report(pasta: str) -> io.BytesIO:
         "R2Y":                     _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "Q2Y":                     _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
         "R2X":                     _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "Optimal LVs":             _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
+        "Optimal LVs":             _ex(r"Optimal LVs.*?[:=]\s*(\d+)"),
         "p-value (permutation)":   _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
         "Preprocessing":           _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "Hotelling T2 UCL (95%)":  _ex(r"[Hh]otelling.*?[:=]\s*([\d.]+)"),
@@ -666,12 +666,12 @@ def generate_latex_template(pasta: str, projeto: Dict) -> bytes:
         "r2y":       _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "q2y":       _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
         "r2x":       _ex(r"\bR2X\b.*?[:=]\s*([\d.]+)"),
-        "lvs":       _ex(r"LVs?\s+otim[ao].*?[:=]\s*(\d+)"),
+        "lvs":       _ex(r"Optimal LVs.*?[:=]\s*(\d+)"),
         "perm_p":    _ex(r"p.?value.*?[:=]\s*([\d.E+-]+)"),
         "preproc":   _ex(r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "n_train":   _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "n_classes": _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
-        "cv_label":    _ex(r"Validacao\s*[:=]\s*(.+)"),
+        "cv_label":    _ex(r"Validation\s*[:=]\s*(.+)"),
         "group_aware": _ex(r"Group-aware \(mae_id\)\s*[:=]\s*(\w+)"),
         "faixa_min":   _ex(r"Faixa espectral \(cm-1\)\s*[:=]\s*\[\s*([\d.]+)"),
         "faixa_max":   _ex(r"Faixa espectral \(cm-1\)\s*[:=]\s*\[\s*[\d.]+\s*,\s*([\d.]+)"),
@@ -966,7 +966,7 @@ def generate_pptx_report(pasta: str, projeto: Dict,
         "AUC macro OvR":          _ex(r"ROC AUC macro.*?[:=]\s*([\d.]+)"),
         "R2Y":                    _ex(r"\bR2Y\b.*?[:=]\s*([\d.]+)"),
         "Q2Y":                    _ex(r"\bQ2\b.*?[:=]\s*([\d.E+-]+)"),
-        "Optimal LVs":            _ex(r"LVs?\s+otim.*?[:=]\s*(\d+)"),
+        "Optimal LVs":            _ex(r"Optimal LVs.*?[:=]\s*(\d+)"),
         "Preprocessing":          _ex(r"[Pp]re.?[Pp]rocess.*?[:=]\s*([A-Za-z0-9_+]+)"),
         "N samples":              _ex(r"[Nn]\s+treino.*?[:=]\s*(\d+)"),
         "N classes":              _ex(r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)"),
