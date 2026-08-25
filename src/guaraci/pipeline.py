@@ -529,7 +529,7 @@ def compare_pipelines(cfg: Config, X_raw: np.ndarray, Y_bin: np.ndarray,
     return resultados
 
 
-def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
+def bootstrap_vip_stratified(X_processed: np.ndarray, Y_bin: np.ndarray,
                                   y_int: np.ndarray, n_opt: int, n_boot: int,
                                   seed: int, vip_threshold: float = 1.0,
                                   mae_id: Optional[np.ndarray] = None,
@@ -617,10 +617,10 @@ def bootstrap_vip_estratificado(X_processed: np.ndarray, Y_bin: np.ndarray,
 
 
 def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
-    """DEPRECATED: use bootstrap_vip_estratificado. Kept for
+    """DEPRECATED: use bootstrap_vip_stratified. Kept for
     backward compatibility. Does NOT use per-class stratification."""
     log.info("[WARNING] Non-stratified bootstrap_vip is DEPRECATED. "
-          "Use bootstrap_vip_estratificado.")
+          "Use bootstrap_vip_stratified.")
     rng = np.random.default_rng(seed)
     n = len(X_processed)
     vips = []
@@ -1882,7 +1882,7 @@ def executar(cfg: Config):
 
     if cfg.n_bootstrap_vip > 0 and should_generate(cfg, "vip"):
         log.info(f"  [bootstrap VIP estratificado, n={cfg.n_bootstrap_vip}]")
-        boot = bootstrap_vip_estratificado(
+        boot = bootstrap_vip_stratified(
             X_processed, Y_bin, y_int, n_opt,
             cfg.n_bootstrap_vip, cfg.seed,
             mae_id=grupos_cv)   # group-aware: respects mae_id replicates
