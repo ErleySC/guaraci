@@ -295,6 +295,15 @@ from guaraci.resultados_io import (   # noqa: F401
     pls_model_metrics, save_identifiers, _NOTAS_METODOLOGICAS,
     save_model_summary, append_regression_summary, _md_tabela,
     generate_model_card, append_regression_model_card, append_heatmap_summary,
+    append_identification_model_card,
+)
+
+# Identificacao especie x adulterante (Bloco 9b) -- ensemble conformal +
+# limite de uniao para o mode cego (Detectar -> Identificar -> Quantificar).
+from guaraci.identificacao import (   # noqa: E402
+    CoverageStatus,
+    combine_alpha_bonferroni,
+    train_identification_ensemble,
 )
 def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
@@ -958,6 +967,12 @@ def pls_regression_by_species(
     conc = np.asarray(conc, dtype=float)
     Yc_all, Ych_all, Yv_all, Yvh_all = [], [], [], []
     tabela_esp: List[Dict[str, Any]] = []
+    # Pipelines FINAIS (preproc+PLS ajustados na calibracao, mesma
+    # combinacao ja validada contra o split de teste abaixo) por especie --
+    # usadas para persistir Quantificar em amostra nova (Bloco 9b), nao so'
+    # para reportar metricas de CV. Deploy o que foi validado, nao um refit
+    # em cal+val pooled (que quebraria "isto e' exatamente o que foi testado").
+    pipelines_especie: Dict[str, Dict[str, Any]] = {}
     erros_reg_repr: List[float] = []   # RMSECV curve from the largest species
     n_opt_repr = 1
     n_max_amostras = -1
@@ -1062,6 +1077,10 @@ def pls_regression_by_species(
             "sensibilidade_analitica": _fom["sensibilidade_analitica"],
             "seletividade_media": _fom["seletividade_media"],
         })
+        pipelines_especie[str(cls)] = {
+            "pipeline": pipe_final, "n_lv": n_opt_reg,
+            "rmsep": rmsep_c, "r2val": r2v_c,
+        }
 
         # keep the RMSECV curve of the species with most samples (for panel a)
         if Xc.shape[0] > n_max_amostras:
@@ -1106,6 +1125,7 @@ def pls_regression_by_species(
 
     return {
         "tabela_especie": tabela_esp,
+        "pipelines_especie": pipelines_especie,
         "r2c": r2c, "r2v": r2v, "rmsec": rmsec, "rmsecv": rmsecv,
         "rmsep": rmsep, "bias": bias_v, "n_especies": len(tabela_esp),
         "sep": _razoes["sep"], "rpd": _razoes["rpd"], "rer": _razoes["rer"],
@@ -2507,6 +2527,44 @@ def executar(cfg: Config):
             # exportado normalmente logo abaixo mesmo sem o AD.
             log.info(f"  [AVISO] Dominio de aplicabilidade nao pode ser "
                   f"exportado: {_e_ad}")
+        # Ensemble de Identificacao especie x adulterante (Bloco 9b): reusa
+        # o MESMO PCA/var_t do dominio de aplicabilidade acima -- ver
+        # docstring de identificacao.py sobre por que nao ajusta um espaco
+        # novo por combinacao (a maioria tem poucos espectros de 1-2
+        # sessoes). Persistido mesmo quando toda combinacao sai
+        # nao-validada: e' o que permite ao Quantificar bloquear com motivo
+        # explicito, em vez de rodar sem checagem nenhuma.
+        try:
+            _ensemble_id = train_identification_ensemble(
+                pca, _ad_treino["var_t"], X_processed, rotulos, conc, mae_id)
+            pacote_modelo["identification_ensemble"] = _ensemble_id
+            resumo["Identificacao (Bloco 9b) n_combinacoes"] = len(_ensemble_id)
+            if _ensemble_id:
+                _n_validado = sum(
+                    1 for v in _ensemble_id.values()
+                    if v["cobertura_status"] == CoverageStatus.VALIDATED)
+                resumo["Identificacao (Bloco 9b) n_validado"] = _n_validado
+                log.info(
+                    f"  [Bloco9b] Identificacao: {len(_ensemble_id)} "
+                    f"combinacoes especie x adulterante calibradas, "
+                    f"{_n_validado} com cobertura VALIDADA. Ver model card "
+                    f"para o detalhe por combinacao.")
+                if _n_validado == 0:
+                    log.warning(
+                        "  [Bloco9b] NENHUMA combinacao especie x adulterante "
+                        "tem cobertura estatistica validada neste dataset -- "
+                        "Identificar/Quantificar em amostra nova ficam "
+                        "bloqueados por padrao (ver cobertura_status).")
+            # D5: a ressalva de (nao-)validacao vai para o model card TAMBEM
+            # (nao so' o log acima) -- mesmo padrao ja usado para
+            # grouping_guarantee (Bloco 8) e para a regressao por especie
+            # (append_regression_model_card).
+            append_identification_model_card(pasta_logs, _ensemble_id)
+        except Exception as _e_ident:  # noqa: BLE001 -- anexo opcional;
+            # sem ele, o mode cego (Identificar/Quantificar) simplesmente
+            # nao fica disponivel na predicao, sem afetar N1/N2 exportados.
+            log.info(f"  [AVISO] Ensemble de identificacao nao pode ser "
+                  f"exportado: {_e_ident}")
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
         log.info(f"  -> {cam_modelo}")
@@ -2594,6 +2652,34 @@ def executar(cfg: Config):
                         log.info(f"  DModY critico (SIMCA): "
                               f"{reg_esp['dmody_crit']:.3f}  |  "
                               f"amostras fora: {reg_esp['n_fora_do_dmody']}")
+                        # Bloco 9b: persiste os pipelines de regressao POR
+                        # ESPECIE (ja validados acima) no MESMO pacote de
+                        # modelo exportado em 9b -- sem isso, Quantificar em
+                        # amostra nova nao teria modelo nenhum para aplicar
+                        # (esta funcao ate' aqui so' calculava metricas de
+                        # CV/relatorio, nunca persistia o modelo ajustado).
+                        # `pacote_modelo`/`cam_modelo` seguem em escopo desde
+                        # a secao 9b (mesma funcao, sem escopo de bloco).
+                        if ("pacote_modelo" in locals()
+                                and "cam_modelo" in locals()
+                                and reg_esp.get("pipelines_especie")):
+                            try:
+                                pacote_modelo["regressao_por_especie"] = (
+                                    reg_esp["pipelines_especie"])
+                                joblib.dump(pacote_modelo, cam_modelo)
+                                save_manifest(cam_modelo, pacote_modelo)
+                                log.info(
+                                    f"  [Bloco9b] Modelo atualizado com "
+                                    f"regressao por especie "
+                                    f"({len(reg_esp['pipelines_especie'])} "
+                                    f"especies) -> {cam_modelo}")
+                            except Exception as _e_upd:  # noqa: BLE001 --
+                                # anexo opcional; N1/N2 exportados continuam
+                                # validos mesmo se esta atualizacao falhar.
+                                log.info(
+                                    f"  [AVISO] Nao foi possivel anexar "
+                                    f"regressao por especie ao pacote de "
+                                    f"modelo: {_e_upd}")
                         for t in reg_esp["tabela_especie"]:
                             log.info(f"    {t['especie']:18s} "
                                   f"LV={t['n_lv']:2d}  RMSEP={t['rmsep']:.2f}  "

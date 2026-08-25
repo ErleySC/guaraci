@@ -511,3 +511,63 @@ def append_regression_model_card(
             f.write("\n".join(linhas) + "\n")
     except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar regressao ao model card: {e}")
+
+
+def append_identification_model_card(pasta: str,
+                                      ensemble: Dict[Any, Dict[str, Any]]
+                                      ) -> None:
+    """Anexa o addendum de Identificacao especie x adulterante (Bloco 9b)
+    ao model_card.md -- mesmo padrao append-only de
+    `append_regression_model_card` (chamada depois de `generate_model_card`
+    no fluxo de `executar()`, sem re-escrever o arquivo).
+
+    Esta e' UM dos 3 lugares onde a ressalva de nao-validacao tem que
+    aparecer (D5, Bloco 9b) -- os outros dois sao o log da execucao
+    (`pipeline.executar()`) e o manifesto (`predicao.generate_manifest`,
+    chave `identification_coverage`). Lista TODA combinacao, nunca so' as
+    validadas -- omitir as nao-validadas seria esconder exatamente a
+    ressalva que esta secao existe para tornar visivel.
+    """
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+
+    linhas: List[str] = [
+        "", "## 10. Addendum -- Identificacao especie x adulterante "
+        "(Bloco 9b, mode cego)", "",
+        "Ensemble conformal calibrado por combinacao especie x adulterante "
+        "-- ver `identificacao.py` para o metodo. `alpha_alcancavel` e' o "
+        "MENOR erro que a calibracao atual pode garantir para aquela "
+        "combinacao (1/(n_grupos+1)); `n/a` quando `n_grupos<=1` (nem um "
+        "limiar minimamente informativo pode ser calculado).",
+        "",
+    ]
+    if not ensemble:
+        linhas.append("*Nenhuma combinacao especie x adulterante calibrada "
+                       "nesta execucao (sem `mae_id`, ou dataset sem "
+                       "adulterante nomeavel).*")
+    else:
+        n_validado = sum(1 for v in ensemble.values()
+                          if str(v["cobertura_status"].value) == "validado")
+        linhas.append(
+            f"**{len(ensemble)} combinacoes calibradas, {n_validado} com "
+            f"cobertura VALIDADA.** Combinacoes NAO validadas nao "
+            f"identificam amostra nenhuma com garantia estatistica -- "
+            f"aparecem so' como candidato informacional (ver "
+            f"`identificacao.identify_sample`).")
+        def _fmt_alpha(a: Optional[float]) -> str:
+            return "n/a" if a is None else f"{a:.3f}"
+
+        linhas.append("")
+        linhas.append(_md_tabela([
+            (f"{esp} x {adult}",
+             f"n_grupos={v['n_grupos']} | status={v['cobertura_status'].value} | "
+             f"alpha_alcancavel={_fmt_alpha(v['alpha_alcancavel'])}")
+            for (esp, adult), v in sorted(ensemble.items())
+        ]))
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar identificacao ao model card: {e}")
