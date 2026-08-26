@@ -27,7 +27,14 @@ disso. Concretamente:
 - **Esquema de `config.yaml`**: as chaves listadas em `_CONFIG_SPEC`
   (`config_io.py`) — nome da chave, tipo, opções válidas, min/max.
 - **Nomes de coluna de saída** (CSV/Excel/relatório) gerados pelas
-  funções de `resultados_io.py`/`predicao.py`/`reports.py`.
+  funções de `resultados_io.py`/`predicao.py`/`reports.py` -- cobertos
+  pela POLÍTICA (mudar um nome de coluna sem depreciação é incompatível,
+  mesma regra de tudo acima), mas **sem proteção automatizada hoje** --
+  ver "Dívida conhecida" abaixo. É a superfície mais provável de ser
+  consumida por scripts de usuário automatizando algo em cima do
+  GUARACI (ex.: um script que lê `resumo_modelo.txt`/CSV de saída por
+  nome de coluna), então a política vale igual mesmo sem o teste --
+  só não há alarme automático se alguém violar sem querer.
 - **Códigos de saída da CLI** (`guaraci` como comando): `0` sucesso,
   `1` erro de execução, `2` uso incorreto — contrato já documentado no
   próprio `--help` do programa (`guaraci.py:_TEXTO_AJUDA`).
@@ -99,8 +106,32 @@ por `tests/test_fachada_reexport.py`.
 4. Toda depreciação é registrada no `CHANGELOG.md` na versão em que
    começa E na versão em que a remoção de fato acontece.
 
+## Dívida conhecida (registrada, não implementada)
+
+**Nomes de coluna de CSV/Excel/relatório não têm proteção de contrato
+automatizada.** `tests/test_contrato_api_publica.py` introspecciona
+assinatura de função/campo de dataclass/schema de `_CONFIG_SPEC` -- mas
+não existe objeto Python introspectável que declare as colunas de um
+`DataFrame` retornado por `benchmark_classifiers`, `predict_samples`,
+`predict_blind`, ou as colunas dos CSVs escritos por
+`resultados_io.save_identifiers`, sem rodar a função e inspecionar o
+resultado de fato. Cobrir isso exigiria algo no espírito de
+`test_golden_valores.py` (rodar o pipeline sintético, capturar
+`df.columns`/cabeçalho do CSV, comparar contra um golden) -- trabalho de
+escopo comparável a um Passo próprio, registrado aqui em 2026-08-26
+(Passo 77) para não ser esquecido, não implementado por decisão
+explícita nesta sessão (candidato a instrução futura, depois de
+datasets públicos e Hypothesis estarem em andamento).
+
+Consequência prática enquanto isso não existe: um nome de coluna pode
+mudar silenciosamente sem nenhum teste falhar, mesmo violando a
+política acima. Quem depende de nomes de coluna específicos (scripts de
+usuário automatizando algo em cima do GUARACI) não tem hoje o mesmo
+nível de proteção que a assinatura de função/schema de config já têm.
+
 ## Aplicação mecânica
 
 Este documento não é a garantia — é a explicação da garantia. O que
 falha automaticamente se alguém violar o que está descrito aqui é o
-teste de contrato (`tests/test_contrato_api_publica.py`, Passo 73).
+teste de contrato (`tests/test_contrato_api_publica.py`, Passo 73) --
+**exceto** para nomes de coluna de saída, ver "Dívida conhecida" acima.
