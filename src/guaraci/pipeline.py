@@ -1462,6 +1462,31 @@ def executar(cfg: Config):
         X_raw, wavenumbers, rotulos, conc, mae_id)
     relatorio_balanco = check_balance(rotulos)
 
+    # --- 1c2. Auditoria de delineamento (Bloco 11) -- roda por padrao,
+    # nunca opt-in (mesmo espirito do grouping_guarantee do Bloco 8).
+    # Calculada aqui (dados ja validados/limpos) e anexada ao `resumo`
+    # mais abaixo, para o model card renderizar uma secao propria.
+    try:
+        from guaraci.auditoria_delineamento import rodar_auditoria as _rodar_auditoria
+        _achados_auditoria = _rodar_auditoria(
+            X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
+        _n_criticos_audit = sum(1 for a in _achados_auditoria
+                                 if a.severidade == "critico")
+        _n_avisos_audit = sum(1 for a in _achados_auditoria
+                               if a.severidade == "aviso")
+        log.info(f"[INFO] Auditoria de delineamento: {_n_criticos_audit} "
+              f"critico(s), {_n_avisos_audit} aviso(s) -- ver model card "
+              f"para o detalhe por checagem.")
+        for _a in _achados_auditoria:
+            if _a.severidade == "critico":
+                log.warning(f"  [AUDITORIA][CRITICO] {_a.nome}: {_a.mensagem}")
+            elif _a.severidade == "aviso":
+                log.info(f"  [AUDITORIA][AVISO] {_a.nome}: {_a.mensagem}")
+    except Exception as _e_audit:  # noqa: BLE001 -- auditoria e' diagnostico
+        # opcional; erro impresso, resto da execucao continua normalmente.
+        log.info(f"  [AVISO] Auditoria de delineamento falhou: {_e_audit}")
+        _achados_auditoria = []
+
     # B1: mae_id is now synchronized INSIDE validate_input (same NaN/Inf
     # removal mask). Group-aware validation survives removals —
     # no more silent GroupKFold disabling due to a single NaN.
@@ -2256,6 +2281,12 @@ def executar(cfg: Config):
         # agrupamento, fallback StratifiedKFold). So' difere de "high" hoje
         # no mode="imagem". Ver dados_imagem.py para os 3 niveis.
         "Grouping guarantee": str(cfg.grouping_guarantee),
+        # Bloco 11: lista de dicts simples (nao os dataclasses de
+        # auditoria_delineamento.py) -- resultados_io.py nao precisa
+        # importar aquele modulo so' para renderizar o model card.
+        "auditoria_delineamento": [
+            {"nome": a.nome, "severidade": a.severidade, "mensagem": a.mensagem}
+            for a in _achados_auditoria],
         "Total samples":      int(X_raw.shape[0]),
         "Total variables":     int(X_raw.shape[1]),
         "Total classes":       int(len(classes_unicas)),

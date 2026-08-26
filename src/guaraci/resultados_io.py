@@ -451,6 +451,28 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         linhas += ["", "**DD-SIMCA -- sensibilidade/especificidade por classe:**", "",
                    _md_tabela(ddsimca_linhas)]
 
+    # Auditoria de delineamento (Bloco 11) -- roda por padrao em toda
+    # execucao (pipeline.rodar_auditoria), nao opt-in. Icone por
+    # severidade para leitura rapida; "silenciado" ainda aparece, com a
+    # justificativa anexada na propria mensagem -- nunca some do
+    # relatorio so' por ter sido silenciado.
+    _achados_audit = resumo.get("auditoria_delineamento")
+    if _achados_audit:
+        _icone_sev = {"ok": "OK", "aviso": "AVISO", "critico": "CRITICO",
+                      "silenciado": "SILENCIADO"}
+        linhas += [
+            "", "## Auditoria de Delineamento (Bloco 11)", "",
+            "Roda por padrao em toda execucao -- checagens silenciaveis "
+            "individualmente, sempre com justificativa registrada (nunca "
+            "desaparecem do relatorio so' por terem sido silenciadas).",
+            "",
+            _md_tabela([
+                (a["nome"], f"[{_icone_sev.get(a['severidade'], a['severidade'].upper())}] "
+                 f"{a['mensagem']}")
+                for a in _achados_audit
+            ]),
+        ]
+
     linhas += [
         "",
         "## 7. Consideracoes Eticas",

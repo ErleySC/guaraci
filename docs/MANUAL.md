@@ -620,6 +620,35 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
   DD-SIMCA); gera os dois arquivos de saída e mostra o resumo + alertas
   na tela.
 
+### 2.4 Auditoria de delineamento (Bloco 11 — `auditoria_delineamento.py`)
+
+Roda **por padrão em toda execução** (não é opt-in), logo após a
+validação de integridade dos dados. Consolida checagens que antes viviam
+espalhadas — algumas já existiam em produção, outras só em scripts
+privados de auditoria, uma (`fora_da_faixa_de_trabalho`) existia sem
+nenhum chamador:
+
+| Checagem | O que verifica |
+|---|---|
+| `agrupamento` | `cfg.grouping_guarantee` (Bloco 8) — se a validação tem proteção real contra vazamento de réplica. |
+| `confundimento_classe_sessao` | Se alguma classe está confinada a **1 única sessão de coleta** (`session_from_mae_id`) enquanto o dataset tem múltiplas sessões — deriva instrumental daquela sessão fica indistinguível de efeito de classe. |
+| `duplicatas` | Reaproveita `pipeline.validate_input` — duplicatas exatas/aproximadas (risco de vazamento treino/teste). |
+| `n_insuficiente` | Quantas sessões independentes cada classe tem, frente ao mínimo do gate conformal (`conformal.n_minimum_for_alpha`). |
+| `faixa_validacao_uso` | Faixa de teor **observada** na calibração vs. faixa de trabalho **declarada** no perfil da matriz (`perfil_matriz.fora_da_faixa_de_trabalho`) — extrapolação silenciosa. |
+| `validacao_externa` | Informativo: PLS-R/pré-processamento têm benchmark público (Tecator); classificação/DD-SIMCA/OPLS-DA ainda não. |
+
+Cada checagem é **silenciável individualmente**, mas exige justificativa
+não-vazia — a checagem silenciada continua aparecendo no relatório
+(severidade `silenciado` + a justificativa anexada), nunca desaparece
+sem deixar rastro. Resultado integrado ao `model_card.md` (seção
+"Auditoria de Delineamento").
+
+**Fora do escopo desta versão (registrado, não implementado):** ordem de
+leitura correlacionada com o alvo (teor/classe). O método já existe,
+validado, num script privado que extrai o timestamp de aquisição do
+*audit trail* JCAMP-DX — mas o parser DX em produção não expõe esse
+timestamp hoje; portar isso exige mudança no parser, não só *wiring*.
+
 **Figura de mérito analítica dedicada (Quantificação):**
 `figS3_merito_regressao.png` — dois painéis lado a lado: LOD/LOQ por espécie
 e seletividade média por espécie, seguindo Valderrama, Braga e Poppi (2009).

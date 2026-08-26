@@ -1,0 +1,201 @@
+# -*- coding: utf-8 -*-
+"""Testes de guaraci.auditoria_delineamento (Bloco 11).
+
+O invariante central: SILENCIAR uma checagem nunca a faz desaparecer do
+relatorio -- so' muda a severidade para "silenciado" e anexa a
+justificativa. Sem justificativa, silenciar falha alto (nunca some sem
+motivo registrado).
+"""
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from guaraci.auditoria_delineamento import (
+    AchadoAuditoria,
+    checar_agrupamento,
+    checar_confundimento_classe_sessao,
+    checar_duplicatas,
+    checar_faixa_validacao_uso,
+    checar_n_insuficiente,
+    checar_validacao_externa,
+    rodar_auditoria,
+)
+
+
+class _CfgFake:
+    """Substituto minimo de Config -- so' os atributos que as checagens
+    realmente leem, para nao acoplar estes testes ao Config completo."""
+
+    def __init__(self, grouping_guarantee="high", matrix_profile="generico"):
+        self.grouping_guarantee = grouping_guarantee
+        self.matrix_profile = matrix_profile
+
+
+# ── AchadoAuditoria: contrato de severidade ──────────────────────────────
+
+def test_severidade_invalida_falha_alto():
+    with pytest.raises(ValueError, match="severidade"):
+        AchadoAuditoria("x", "nao_existe", "msg")
+
+
+def test_severidades_validas_aceitas():
+    for sev in ("ok", "aviso", "critico", "silenciado"):
+        AchadoAuditoria("x", sev, "msg")   # nao deve lancar
+
+
+# ── checar_agrupamento ────────────────────────────────────────────────
+
+def test_checar_agrupamento_high_e_ok():
+    a = checar_agrupamento(_CfgFake(grouping_guarantee="high"))
+    assert a.severidade == "ok"
+
+
+def test_checar_agrupamento_none_e_critico():
+    a = checar_agrupamento(_CfgFake(grouping_guarantee="none"))
+    assert a.severidade == "critico"
+
+
+def test_checar_agrupamento_medium_e_aviso():
+    a = checar_agrupamento(_CfgFake(grouping_guarantee="medium"))
+    assert a.severidade == "aviso"
+
+
+# ── checar_confundimento_classe_sessao ───────────────────────────────
+
+def test_classe_confinada_a_1_sessao_e_critico():
+    rotulos = np.array(["A"] * 6 + ["B"] * 6)
+    # todas as amostras de A vem da MESMA sessao (mesma data); B tem 2.
+    mae_id = np.array(
+        ["A-01-01-2099-S1.00"] * 6 +
+        ["B-01-01-2099-S1.00"] * 3 + ["B-02-01-2099-S1.00"] * 3)
+    a = checar_confundimento_classe_sessao(rotulos, mae_id)
+    assert a.severidade == "critico"
+    assert "A" in a.mensagem
+
+
+def test_sem_classe_confinada_e_ok():
+    rotulos = np.array(["A"] * 6 + ["B"] * 6)
+    mae_id = np.array(
+        ["A-01-01-2099-S1.00"] * 3 + ["A-02-01-2099-S1.00"] * 3 +
+        ["B-01-01-2099-S1.00"] * 3 + ["B-02-01-2099-S1.00"] * 3)
+    a = checar_confundimento_classe_sessao(rotulos, mae_id)
+    assert a.severidade == "ok"
+
+
+def test_dataset_inteiro_de_1_sessao_e_critico_estrutural():
+    rotulos = np.array(["A", "A", "B", "B"])
+    mae_id = np.array(["X-01-01-2099-S1.00"] * 4)
+    a = checar_confundimento_classe_sessao(rotulos, mae_id)
+    assert a.severidade == "critico"
+    assert "1 UNICA sessao" in a.mensagem
+
+
+def test_sem_mae_id_vira_aviso_nao_crash():
+    a = checar_confundimento_classe_sessao(np.array(["A", "B"]), None)
+    assert a.severidade == "aviso"
+
+
+# ── checar_duplicatas ─────────────────────────────────────────────────
+
+def test_checar_duplicatas_detecta_exata():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(10, 20))
+    X[5] = X[0]   # duplicata exata
+    wn = np.linspace(4000, 10000, 20)
+    rotulos = np.array(["A"] * 10)
+    a = checar_duplicatas(X, wn, rotulos)
+    assert a.severidade == "critico"
+
+
+def test_checar_duplicatas_sem_duplicata_e_ok():
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(10, 20))
+    wn = np.linspace(4000, 10000, 20)
+    rotulos = np.array(["A"] * 10)
+    a = checar_duplicatas(X, wn, rotulos)
+    assert a.severidade == "ok"
+
+
+# ── checar_n_insuficiente ────────────────────────────────────────────
+
+def test_checar_n_insuficiente_classe_fraca():
+    rotulos = np.array(["A"] * 3 + ["B"] * 3)
+    mae_id = np.array([f"A-0{i}-01-2099-S1.00" for i in range(3)] +
+                      [f"B-0{i}-01-2099-S1.00" for i in range(3)])
+    a = checar_n_insuficiente(rotulos, mae_id, alpha_conformal_referencia=0.10)
+    assert a.severidade == "aviso"
+    assert "A" in a.mensagem and "B" in a.mensagem
+
+
+def test_checar_n_insuficiente_ok_quando_ha_sessoes_suficientes():
+    from guaraci.conformal import n_minimum_for_alpha
+    n_min = n_minimum_for_alpha(0.25)   # pequeno, facil de satisfazer
+    rotulos = np.array(["A"] * n_min)
+    mae_id = np.array([f"A-{i:02d}-01-2099-S1.00" for i in range(n_min)])
+    a = checar_n_insuficiente(rotulos, mae_id, alpha_conformal_referencia=0.25)
+    assert a.severidade == "ok"
+
+
+# ── checar_faixa_validacao_uso ────────────────────────────────────────
+
+def test_checar_faixa_validacao_uso_sem_conc_e_aviso():
+    a = checar_faixa_validacao_uso(None, _CfgFake())
+    assert a.severidade == "aviso"
+
+
+# ── checar_validacao_externa ──────────────────────────────────────────
+
+def test_checar_validacao_externa_e_sempre_aviso_informativo():
+    a = checar_validacao_externa()
+    assert a.severidade == "aviso"
+
+
+# ── rodar_auditoria: agregacao + silenciamento ───────────────────────
+
+def _dados_minimos():
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(12, 15))
+    wn = np.linspace(4000, 10000, 15)
+    rotulos = np.array(["A"] * 6 + ["B"] * 6)
+    mae_id = np.array(
+        ["A-01-01-2099-S1.00"] * 3 + ["A-02-01-2099-S1.00"] * 3 +
+        ["B-01-01-2099-S1.00"] * 3 + ["B-02-01-2099-S1.00"] * 3)
+    conc = np.array([0.0] * 12)
+    return X, wn, rotulos, conc, mae_id
+
+
+def test_rodar_auditoria_retorna_todas_as_checagens():
+    X, wn, rotulos, conc, mae_id = _dados_minimos()
+    achados = rodar_auditoria(X, wn, rotulos, _CfgFake(), conc, mae_id)
+    nomes = {a.nome for a in achados}
+    assert nomes == {"agrupamento", "confundimento_classe_sessao",
+                      "duplicatas", "n_insuficiente",
+                      "faixa_validacao_uso", "validacao_externa"}
+
+
+def test_silenciar_sem_justificativa_falha_alto():
+    X, wn, rotulos, conc, mae_id = _dados_minimos()
+    with pytest.raises(ValueError, match="justificativa"):
+        rodar_auditoria(X, wn, rotulos, _CfgFake(), conc, mae_id,
+                        silenciar={"validacao_externa": ""})
+    with pytest.raises(ValueError, match="justificativa"):
+        rodar_auditoria(X, wn, rotulos, _CfgFake(), conc, mae_id,
+                        silenciar={"validacao_externa": None})
+
+
+def test_silenciar_com_justificativa_nao_remove_do_relatorio():
+    """Contra-prova central: a checagem SILENCIADA continua no relatorio,
+    so' muda de severidade -- nunca desaparece sem rastro."""
+    X, wn, rotulos, conc, mae_id = _dados_minimos()
+    justificativa = "Benchmark externo fora do escopo deste projeto -- decisao da orientadora."
+    achados = rodar_auditoria(
+        X, wn, rotulos, _CfgFake(), conc, mae_id,
+        silenciar={"validacao_externa": justificativa})
+
+    nomes = {a.nome for a in achados}
+    assert "validacao_externa" in nomes   # continua no relatorio
+
+    achado_silenciado = next(a for a in achados if a.nome == "validacao_externa")
+    assert achado_silenciado.severidade == "silenciado"
+    assert justificativa in achado_silenciado.mensagem
