@@ -93,9 +93,20 @@ def _descrever_classe(obj) -> dict:
             })
         return {"forma": "dataclass", "campos": campos}
 
-    try:
-        assinatura_init = str(inspect.signature(obj.__init__))
-    except (TypeError, ValueError):
+    # So' captura a assinatura de __init__ quando a PROPRIA classe o
+    # define (`"__init__" in vars(obj)`) -- __init__ HERDADO (Enum,
+    # Exception) e' implementacao da stdlib, cuja representacao textual
+    # muda entre versoes/interpretes do Python (achado real: CI com
+    # Python 3.10/3.11/3.13 em Linux/macOS reportava "(self, *args,
+    # **kwds)" ou "(self, /, *args, **kwargs)" diferente do que Python
+    # 3.12 no Windows produzia, para a MESMA classe sem nenhuma mudanca
+    # de codigo -- falso positivo de "contrato mudou").
+    if "__init__" in vars(obj):
+        try:
+            assinatura_init = str(inspect.signature(obj.__init__))
+        except (TypeError, ValueError):
+            assinatura_init = None
+    else:
         assinatura_init = None
     metodos_publicos = sorted(
         nome for nome, membro in vars(obj).items()
@@ -115,6 +126,12 @@ def _descrever_simbolo(obj) -> dict:
         return _descrever_classe(obj)
     if inspect.isfunction(obj) or inspect.isbuiltin(obj):
         return _descrever_callable(obj)
+    if isinstance(obj, pathlib.PurePath):
+        # `WindowsPath` vs `PosixPath` e' o mesmo tipo LOGICO em SOs
+        # diferentes -- achado real: DIR_PERFIS (perfil_matriz.py) e'
+        # WindowsPath no Windows e PosixPath no CI (Linux/macOS), falso
+        # positivo de "contrato mudou" sem nenhuma mudanca de codigo.
+        return {"forma": "constante", "tipo": "Path"}
     return {"forma": "constante", "tipo": type(obj).__name__}
 
 

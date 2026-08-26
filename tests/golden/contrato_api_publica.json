@@ -1950,7 +1950,7 @@
           "str"
         ],
         "forma": "classe",
-        "init": "(self, *args, **kwds)",
+        "init": null,
         "metodos_publicos": []
       },
       "IdentificationResult": {
@@ -2105,7 +2105,7 @@
     "perfil_matriz": {
       "DIR_PERFIS": {
         "forma": "constante",
-        "tipo": "WindowsPath"
+        "tipo": "Path"
       },
       "MatrixProfile": {
         "campos": [
@@ -2182,7 +2182,7 @@
           "ValueError"
         ],
         "forma": "classe",
-        "init": "(self, /, *args, **kwargs)",
+        "init": null,
         "metodos_publicos": []
       },
       "Vocabulary": {
@@ -2501,7 +2501,7 @@
           "Exception"
         ],
         "forma": "classe",
-        "init": "(self, /, *args, **kwargs)",
+        "init": null,
         "metodos_publicos": []
       },
       "detect_purity": {
@@ -2548,7 +2548,7 @@
           "TransformerMixin"
         ],
         "forma": "classe",
-        "init": "(self, /, *args, **kwargs)",
+        "init": null,
         "metodos_publicos": [
           "fit",
           "transform"
@@ -2560,7 +2560,7 @@
           "TransformerMixin"
         ],
         "forma": "classe",
-        "init": "(self, /, *args, **kwargs)",
+        "init": null,
         "metodos_publicos": [
           "fit",
           "transform"
