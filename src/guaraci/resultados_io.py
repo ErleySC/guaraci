@@ -580,3 +580,61 @@ def append_identification_model_card(pasta: str,
             f.write("\n".join(linhas) + "\n")
     except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar identificacao ao model card: {e}")
+
+
+def append_purity_model_card(pasta: str,
+                              modelos_por_especie: Dict[str, Dict[str, Any]]
+                              ) -> None:
+    """Anexa o addendum de DD-SIMCA de pureza por especie (Detectar,
+    Bloco 9b) ao model_card.md -- mesmo padrao append-only das duas
+    funcoes acima, mesmo motivo do titulo sem numero fixo.
+
+    Este e' o segundo sinal de Detectar (`predicao.detect_purity`),
+    complementar ao dominio de aplicabilidade -- ver docstring de
+    `predicao.PurityResult` para a diferenca entre os dois. `confiavel`
+    (`n_grupos_calibracao>=3`) e' o mesmo limiar ja usado no aviso de
+    `DDSimca.fit` para "regiao larga/conservadora por construcao" --
+    abaixo dele, o metodo AINDA decide aceitar/rejeitar, mas sem alpha
+    declarado com lastro (fica de fora da soma de Bonferroni).
+    """
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- DD-SIMCA de pureza por especie (Detectar, "
+        "Bloco 9b)", "",
+        "Segundo sinal de Detectar, complementar ao dominio de "
+        "aplicabilidade: o dominio de aplicabilidade e' ajustado em toda a "
+        "amostragem (pura + adulterada) e responde 'isto e' parecido com "
+        "algo que vimos'; este DD-SIMCA e' ajustado SO' nos puros de cada "
+        "especie e responde 'isto e' puro para a especie predita'. Uma "
+        "amostra adulterada pode passar no dominio de aplicabilidade (ela "
+        "FAZ parte do treino dele) e ainda assim ser rejeitada aqui.",
+        "",
+    ]
+    if not modelos_por_especie:
+        linhas.append("*Nenhum modelo DD-SIMCA de pureza calibrado nesta "
+                       "execucao.*")
+    else:
+        n_confiavel = sum(1 for m in modelos_por_especie.values()
+                           if int(m.get("n_grupos_calibracao", 0)) >= 3)
+        linhas.append(
+            f"**{len(modelos_por_especie)} especies calibradas, "
+            f"{n_confiavel} com calibracao confiavel "
+            f"(n_grupos_calibracao>=3).** Abaixo desse limiar, o alpha "
+            f"declarado (0,05) nao entra na soma de Bonferroni de "
+            f"`predict_blind` -- decide aceitar/rejeitar mesmo assim, mas "
+            f"sem garantia numerica com lastro.")
+        linhas.append("")
+        linhas.append(_md_tabela([
+            (esp, f"n_grupos_calibracao={m.get('n_grupos_calibracao', 'n/a')} | "
+             f"confiavel={'sim' if int(m.get('n_grupos_calibracao', 0)) >= 3 else 'nao'}")
+            for esp, m in sorted(modelos_por_especie.items())
+        ]))
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar pureza ao model card: {e}")

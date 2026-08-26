@@ -2544,6 +2544,10 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
             # anterior, sem quebrar).
             if pkg.get("identification_ensemble"):
                 df_res, resultados_cego = _pred.predict_blind(pkg, X_new, wn_new)
+                df_res["detectado_puro_especie"] = [
+                    r.pureza.aceito for r in resultados_cego]
+                df_res["pureza_confiavel"] = [
+                    r.pureza.confiavel for r in resultados_cego]
                 df_res["classe_identificada"] = [
                     r.identificacao.classe_identificada for r in resultados_cego]
                 df_res["identificacao_cobertura"] = [

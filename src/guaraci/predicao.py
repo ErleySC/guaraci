@@ -20,7 +20,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from guaraci.chemometric_stats import applicability_domain_new_samples
+from guaraci.chemometric_stats import (
+    applicability_domain_new_samples,
+    combined_distance,
+)
 from guaraci.config import __version__ as _guaraci_version
 from guaraci.identificacao import (
     CoverageStatus,
@@ -73,6 +76,28 @@ def generate_manifest(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any
         # no log/model card). Ausente (None) em pacotes sem o ensemble
         # (versoes anteriores ao Bloco 9b, ou dataset sem adulterante).
         "identification_coverage": _summarize_identification_coverage(pkg),
+        # Bloco 9b (fechamento do gap do Detectar): resumo do DD-SIMCA de
+        # pureza por especie -- terceiro lugar da MESMA ressalva (D5),
+        # agora tambem para o portao de pureza, nao so' o de identificacao.
+        "purity_coverage": _summarize_purity_coverage(pkg),
+    }
+
+
+def _summarize_purity_coverage(pkg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Resumo do DD-SIMCA de pureza por especie (`detect_purity`) -- `None`
+    se o pacote nao tem esses modelos persistidos (versoes anteriores a
+    este fechamento do gap do Detectar)."""
+    modelos = pkg.get("ddsimca_por_especie")
+    if not modelos:
+        return None
+    n_confiavel = sum(1 for m in modelos.values()
+                       if int(m.get("n_grupos_calibracao", 0)) >= 3)
+    return {
+        "n_especies": len(modelos),
+        "n_confiavel": n_confiavel,
+        "n_grupos_calibracao_por_especie": {
+            esp: int(m.get("n_grupos_calibracao", 0))
+            for esp, m in modelos.items()},
     }
 
 
@@ -336,7 +361,6 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
     # aplicar em silencio um alpha diferente do declarado.
     _chaves_comb = {"pls_h0", "pls_q0", "pls_Nh", "pls_Nq", "pls_f_crit"}
     if _chaves_comb.issubset(pkg.keys()):
-        from guaraci.chemometric_stats import combined_distance
         f_new = combined_distance(T2_new, Q_new, float(pkg["pls_h0"]),
                                     float(pkg["pls_q0"]), float(pkg["pls_Nh"]),
                                     float(pkg["pls_Nq"]))
@@ -384,11 +408,77 @@ class QuantificationResult:
 
 
 @dataclass
+class PurityResult:
+    """Resultado de `detect_purity` -- segundo sinal de Detectar (Bloco 9b),
+    complementar ao dominio de aplicabilidade (AD).
+
+    AD e' ajustado em TODA a amostragem (pura + adulterada): responde "isto
+    e' parecido com algo que vimos no treino", nao "isto e' puro". Uma
+    amostra adulterada passa tranquilamente pelo AD -- ela FAZ parte do
+    treino do AD. `detect_purity` usa o DD-SIMCA ajustado SO' nos puros da
+    especie predita, que e' quem responde a pergunta de pureza de fato.
+
+    `aceito=None` quando a especie predita nao tem modelo DD-SIMCA
+    persistido (pacote antigo, ou especie sem amostra pura suficiente) --
+    nunca um `True`/`False` fabricado. `alpha_nominal` so' vem preenchido
+    (0.05) quando `confiavel` (`n_grupos_calibracao>=3`, o MESMO limiar ja
+    usado no aviso de `DDSimca.fit` para "regiao larga/conservadora por
+    construcao") -- com calibracao mais fraca (o caso comum: 1 amostra pura
+    por especie), o metodo AINDA decide aceitar/rejeitar (chi2 parametrico,
+    nao conformal -- nao se recusa como `ConformalOneClass`), mas o alpha
+    declarado nao teria base solida, entao fica de fora da soma de
+    Bonferroni em vez de inflar `alpha_total` com um numero sem lastro.
+    """
+
+    aceito: Optional[bool]
+    f: Optional[float]
+    f_crit: Optional[float]
+    n_grupos_calibracao: Optional[int]
+    confiavel: bool
+    alpha_nominal: Optional[float]
+
+
+def detect_purity(pkg: Dict[str, Any], especie: Optional[str],
+                   X_proc_amostra: np.ndarray) -> PurityResult:
+    """Aplica o DD-SIMCA da `especie` (persistido em `pkg["ddsimca_por_
+    especie"]`, ver `pipeline.executar()`) a UMA amostra ja pre-processada
+    (mesmo preprocessador da classificacao). `especie` tipicamente vem de
+    `classe_pred` (predicao N1) -- e' a especie que o classificador disse
+    que a amostra e', e o que se testa aqui e' "essa amostra e' pura PARA
+    essa especie", nao uma alegacao de identidade nova.
+    """
+    modelos = pkg.get("ddsimca_por_especie") or {}
+    m = modelos.get(especie) if especie is not None else None
+    if m is None:
+        return PurityResult(aceito=None, f=None, f_crit=None,
+                             n_grupos_calibracao=None, confiavel=False,
+                             alpha_nominal=None)
+
+    X = np.asarray(X_proc_amostra, dtype=float).reshape(1, -1)
+    pca = m["pca"]
+    T = np.asarray(pca.transform(X), dtype=float)
+    X_rec = np.asarray(pca.inverse_transform(T), dtype=float)
+    Q = np.sum((X - X_rec) ** 2, axis=1)
+    var_t = np.asarray(m["var_t"], dtype=float)
+    T2 = np.sum((T ** 2) / var_t, axis=1)
+    f = float(combined_distance(T2, Q, m["h0"], m["q0"], m["Nh"], m["Nq"])[0])
+    f_crit = float(m["f_crit"])
+    n_grupos = int(m["n_grupos_calibracao"])
+    confiavel = n_grupos >= 3
+    return PurityResult(
+        aceito=bool(f <= f_crit), f=f, f_crit=f_crit,
+        n_grupos_calibracao=n_grupos, confiavel=confiavel,
+        alpha_nominal=(0.05 if confiavel else None))
+
+
+@dataclass
 class BlindPredictionResult:
     """Resultado de UMA amostra no fluxo completo Detectar -> Identificar
-    -> Quantificar (D6)."""
+    -> Quantificar (D6). Detectar tem DOIS sinais complementares (AD +
+    pureza DD-SIMCA por especie) -- ver docstring de `PurityResult`."""
 
     detectado_no_dominio: Optional[bool]
+    pureza: PurityResult
     identificacao: IdentificationResult
     quantificacao: QuantificationResult
     alpha_total: Optional[float]
@@ -437,17 +527,25 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
     """Fluxo completo do mode cego (D6): Detectar -> Identificar ->
     Quantificar, para um lote de espectros novos.
 
-    - Detectar: reaproveita `predict_samples` (Dominio de Aplicabilidade,
-      coluna `AD_dentro_dominio`) -- NAO alterado (D do Bloco 9a).
+    - Detectar: DOIS sinais complementares -- `predict_samples` (Dominio de
+      Aplicabilidade global, coluna `AD_dentro_dominio`, D do Bloco 9a, NAO
+      alterado) + `detect_purity` (DD-SIMCA da especie predita por N1, novo
+      -- ver docstring de `PurityResult` para por que os dois nao sao
+      redundantes: AD responde "parecido com o treino", DD-SIMCA responde
+      "puro para a especie predita").
     - Identificar: `identificacao.identify_sample` contra
       `pkg["identification_ensemble"]` (Bloco 9b) -- so' preenche uma
       classe quando a cobertura e' VALIDADA.
     - Quantificar: `quantify_sample`, gated pelo resultado de Identificar
       (D4) -- nunca forca especie/numero.
-    - `alpha_total`: limite de uniao (Bonferroni) sobre o alpha nominal do
-      Detectar (0,05, quando AD disponivel) e o `alpha_alcancavel` do
-      Identificar. A Quantificacao (regressao PLS) nao tem um alpha de
-      cobertura proprio neste design -- nao entra na soma.
+    - `alpha_total`: limite de uniao (Bonferroni) sobre os alpha NOMINAIS
+      declarados de cada portao com base solida -- AD (0,05, quando
+      disponivel), DD-SIMCA de pureza (0,05, so' quando `confiavel`) e
+      `alpha_alcancavel` do Identificar. Um portao sem alpha confiavel
+      (`None`) faz a soma inteira virar `None` (`combine_alpha_bonferroni`)
+      -- nunca um numero inflado por um portao sem lastro estatistico. A
+      Quantificacao (regressao PLS) nao tem um alpha de cobertura proprio
+      neste design -- nao entra na soma.
 
     Retorna (DataFrame de `predict_samples` com as colunas ja existentes,
     lista de `BlindPredictionResult` -- uma por amostra, na mesma ordem).
@@ -465,9 +563,14 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
                      if tem_ad else None)
         alpha_detectar = 0.05 if tem_ad else None
 
+        X_proc_i = pkg["preprocessador"].transform(X_interp[i:i + 1])
+
+        especie_pred = (str(df.loc[i, "classe_pred"])
+                         if "classe_pred" in df.columns else None)
+        pureza = detect_purity(pkg, especie_pred, X_proc_i[0])
+        alpha_pureza = pureza.alpha_nominal
+
         if ensemble and tem_pca_identificacao:
-            X_proc_i = pkg["preprocessador"].transform(
-                X_interp[i:i + 1])
             ident = identify_sample(
                 ensemble, pkg["pca"], pkg["ad_var_t"], X_proc_i[0])
         else:
@@ -477,10 +580,11 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
 
         quant = quantify_sample(pkg, X_interp[i], ident)
         alpha_total = combine_alpha_bonferroni(
-            alpha_detectar, ident.alpha_alcancavel)
+            alpha_detectar, alpha_pureza, ident.alpha_alcancavel)
 
         resultados.append(BlindPredictionResult(
-            detectado_no_dominio=detectado, identificacao=ident,
-            quantificacao=quant, alpha_total=alpha_total))
+            detectado_no_dominio=detectado, pureza=pureza,
+            identificacao=ident, quantificacao=quant,
+            alpha_total=alpha_total))
 
     return df, resultados

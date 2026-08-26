@@ -822,6 +822,27 @@ re-executada nesta sessão).
   modelo carregado tiver o ensemble; modelos exportados antes do
   Bloco 9b continuam funcionando sem essas colunas (retrocompatível).
 
+  **Detectar tem DOIS sinais complementares, não um só.** Revisão com o
+  usuário (mesmo dia): o domínio de aplicabilidade (AD) é ajustado em toda
+  a amostragem — puros **e** adulterados juntos — e responde "isto é
+  parecido com algo que vimos no treino"; uma amostra adulterada passa
+  tranquilamente pelo AD, porque ela faz parte do próprio treino do AD.
+  Isso não é o que "Detectar" deveria checar num fluxo de autenticação. O
+  DD-SIMCA por espécie (`predicao.detect_purity`, novo) é ajustado só nos
+  puros e responde "isto é puro para a espécie predita pela classificação
+  N1" — até esta correção, esse modelo só existia dentro de uma rodada N2
+  isolada e nunca era persistido no `.joblib` para aplicar depois a uma
+  amostra nova. Contra-prova dedicada (`test_ad_e_ddsimca_nao_sao_
+  redundantes`): uma amostra sintética adulterada passa no AD e é
+  corretamente rejeitada pelo DD-SIMCA de pureza — os dois sinais não
+  colapsam no mesmo resultado. Mesmo tratamento honesto de cobertura do
+  restante do Bloco 9b: `n_grupos_calibracao<3` (o caso comum é 1 amostra
+  pura por sessão) não impede o DD-SIMCA de decidir aceitar/rejeitar
+  (método paramétrico χ², não recusa como o conformal), mas o alpha
+  declarado fica de fora da soma de Bonferroni — sem lastro numérico não
+  entra na conta. Ressalva também nos 3 lugares (`purity_coverage` no
+  manifesto, addendum próprio no `model_card.md`, log da execução).
+
 - **Modo imagem (colorimetria digital): protótipo só quando não há fonte
   de agrupamento por amostra física.** Desde o Bloco 8 (2026-08-25), o
   carregador (`dados_imagem.py`) detecta automaticamente 3 níveis de
@@ -939,7 +960,18 @@ world**. New York: Springer, 2005.
 
 ---
 
-*Última revisão do manual: Bloco 9b (2026-08-25) — fluxo completo Detectar
+*Última revisão do manual: Bloco 9b, revisão com o usuário (2026-08-25) —
+Detectar fechado com um segundo sinal complementar (`predicao.
+detect_purity`, DD-SIMCA por espécie ajustado só nos puros, persistido no
+`.joblib` pela primeira vez — antes só existia dentro de uma rodada N2
+isolada); o domínio de aplicabilidade sozinho responde "parecido com o
+treino", não "puro", e uma amostra adulterada passa por ele sem problema
+(contra-prova dedicada confirma que os dois sinais não colapsam). Também
+corrigido: addendum de Identificação no `model_card.md` tinha número de
+seção fixo ("## 10.") que aparecia ANTES do addendum de Quantificação
+("## 9.") sempre que a regressão também rodava (append-only, ordem de
+escrita = ordem no arquivo) — título sem número agora. Antes, no mesmo
+Bloco 9b: fluxo completo Detectar
 → Identificar → Quantificar em amostra nova (mode cego), implementado e
 verificado contra o dataset real: `identificacao.py` novo (ensemble
 conformal por combinação espécie×adulterante), `pipeline.

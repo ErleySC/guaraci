@@ -295,7 +295,7 @@ from guaraci.resultados_io import (   # noqa: F401
     pls_model_metrics, save_identifiers, _NOTAS_METODOLOGICAS,
     save_model_summary, append_regression_summary, _md_tabela,
     generate_model_card, append_regression_model_card, append_heatmap_summary,
-    append_identification_model_card,
+    append_identification_model_card, append_purity_model_card,
 )
 
 # Identificacao especie x adulterante (Bloco 9b) -- ensemble conformal +
@@ -2565,6 +2565,53 @@ def executar(cfg: Config):
             # nao fica disponivel na predicao, sem afetar N1/N2 exportados.
             log.info(f"  [AVISO] Ensemble de identificacao nao pode ser "
                   f"exportado: {_e_ident}")
+        # DD-SIMCA POR ESPECIE (purity gate, Bloco 9b -- fechando o gap do
+        # Detectar): o dominio de aplicabilidade acima e' ajustado em TODA
+        # a amostragem (pura + adulterada) -- responde "isto e' parecido
+        # com algo que vimos", NAO "isto e' puro para a especie que o
+        # classificador disse". Uma amostra adulterada passa tranquilamente
+        # pelo AD (ela FAZ parte do treino do AD). O DD-SIMCA por especie,
+        # ajustado SO' nos puros, e' quem responde a pergunta de pureza --
+        # ate' aqui, so' existia para o relatorio de UMA rodada N2, nunca
+        # persistido para aplicar depois a amostra nova. Calculado aqui
+        # SEMPRE (independente de cfg.level/cfg.run_ddsimca), mesmo
+        # tratamento incondicional ja dado ao AD.
+        try:
+            _mask_puro = np.isnan(conc) | (conc == 0.0) if conc is not None \
+                else np.ones(len(rotulos), dtype=bool)
+            _ddsimca_export = DDSimca(
+                n_components=cfg.ddsimca_n_components, alpha=0.05,
+                ucl_method=cfg.ddsimca_ucl_method)
+            _ddsimca_export.fit(
+                X_processed[_mask_puro], rotulos[_mask_puro],
+                mae_id=mae_id[_mask_puro] if mae_id is not None else None)
+            _ddsimca_por_especie: Dict[str, Dict[str, Any]] = {}
+            for _esp, _m in _ddsimca_export._modelos.items():
+                _ddsimca_por_especie[str(_esp)] = {
+                    "pca": _m["pca"], "var_t": _m["var_t"],
+                    "h0": _m["h0"], "q0": _m["q0"],
+                    "Nh": _m["Nh"], "Nq": _m["Nq"], "f_crit": _m["f_crit"],
+                    "n_grupos_calibracao": _m["n_grupos_calibracao"],
+                    "calibrado_por_amostra": _m["calibrado_por_amostra"],
+                }
+            pacote_modelo["ddsimca_por_especie"] = _ddsimca_por_especie
+            resumo["Pureza (Bloco 9b) n_especies"] = len(_ddsimca_por_especie)
+            _n_confiavel_pureza = sum(
+                1 for v in _ddsimca_por_especie.values()
+                if v["n_grupos_calibracao"] >= 3)
+            resumo["Pureza (Bloco 9b) n_confiavel"] = _n_confiavel_pureza
+            log.info(
+                f"  [Bloco9b] DD-SIMCA por especie (Detectar/pureza): "
+                f"{len(_ddsimca_por_especie)} especies calibradas, "
+                f"{_n_confiavel_pureza} com calibracao confiavel "
+                f"(n_grupos_calibracao>=3).")
+            # D5: ressalva tambem no model card (log acima + manifesto em
+            # predicao.generate_manifest ja' cobrem os outros 2 lugares).
+            append_purity_model_card(pasta_logs, _ddsimca_por_especie)
+        except Exception as _e_dds:  # noqa: BLE001 -- anexo opcional; sem
+            # ele, Detectar cai so' no AD (comportamento anterior).
+            log.info(f"  [AVISO] DD-SIMCA por especie nao pode ser "
+                  f"exportado para predicao: {_e_dds}")
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
         log.info(f"  -> {cam_modelo}")
