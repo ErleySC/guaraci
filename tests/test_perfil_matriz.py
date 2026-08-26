@@ -110,10 +110,10 @@ def test_faixa_de_trabalho_declarada_marca_extrapolacao():
     """Predicao fora da faixa calibrada precisa ser detectavel; sem faixa
     declarada, o perfil nao inventa um limite."""
     milho = load_profile("milho_nir")             # faixa [6, 10] de proteina
-    assert not milho.fora_da_faixa_de_trabalho(8.0)
-    assert milho.fora_da_faixa_de_trabalho(25.0)
+    assert not milho.outside_working_range(8.0)
+    assert milho.outside_working_range(25.0)
     generico = load_profile("generico")           # sem faixa declarada
-    assert not generico.fora_da_faixa_de_trabalho(1e9)
+    assert not generico.outside_working_range(1e9)
     assert generico.faixa_trabalho is None, (
         "quem consome precisa distinguir 'dentro da faixa' de 'faixa nao "
         "declarada' -- sao coisas diferentes")

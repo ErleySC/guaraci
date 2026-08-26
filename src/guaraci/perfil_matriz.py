@@ -102,7 +102,7 @@ class MatrixProfile:
     #: deteccao automatica real feita sobre os dados.
     nivel_agrupamento_tipico: Optional[str] = None
 
-    def fora_da_faixa_de_trabalho(self, valor: float) -> bool:
+    def outside_working_range(self, valor: float) -> bool:
         """True se `valor` cai fora da faixa calibrada declarada no perfil.
 
         Sem faixa declarada, devolve False -- ausencia de declaracao nao e'

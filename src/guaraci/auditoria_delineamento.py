@@ -7,7 +7,7 @@ Consolida, num comando so', checagens que ate' aqui viviam espalhadas: em
 (agrupamento), em scripts de auditoria PRIVADOS fora do repositorio
 (confundimento classe x sessao -- `medir_confundimento_data.py`,
 `medir_deriva_vs_quimica.py`), e numa funcao que existia mas nunca tinha
-CHAMADOR nenhum (`perfil_matriz.MatrixProfile.fora_da_faixa_de_trabalho`
+CHAMADOR nenhum (`perfil_matriz.MatrixProfile.outside_working_range`
 -- achado desta revisao, registrado em `~/.guaraci_local/PROGRESSO.md`).
 
 Cada checagem devolve um `AuditFinding` (nome curto, severidade,
@@ -197,7 +197,7 @@ def check_insufficient_n(rotulos: np.ndarray,
 
 def check_validation_use_range(conc: Optional[np.ndarray], cfg: "Any"
                                 ) -> AuditFinding:
-    """`perfil_matriz.MatrixProfile.fora_da_faixa_de_trabalho` existia
+    """`perfil_matriz.MatrixProfile.outside_working_range` existia
     sem NENHUM chamador em producao (achado desta revisao) -- finalmente
     usado aqui: compara a faixa de teor OBSERVADA na calibracao contra a
     faixa de trabalho DECLARADA no perfil da matriz."""
@@ -224,8 +224,8 @@ def check_validation_use_range(conc: Optional[np.ndarray], cfg: "Any"
             "faixa calibrada cobre o uso pretendido).")
 
     lo_cal, hi_cal = float(conc_v.min()), float(conc_v.max())
-    fora_lo = perfil.fora_da_faixa_de_trabalho(lo_cal)
-    fora_hi = perfil.fora_da_faixa_de_trabalho(hi_cal)
+    fora_lo = perfil.outside_working_range(lo_cal)
+    fora_hi = perfil.outside_working_range(hi_cal)
     if not fora_lo and not fora_hi:
         return AuditFinding(
             "faixa_validacao_uso", "ok",

@@ -640,7 +640,7 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
 Roda **por padrão em toda execução** (não é opt-in), logo após a
 validação de integridade dos dados. Consolida checagens que antes viviam
 espalhadas — algumas já existiam em produção, outras só em scripts
-privados de auditoria, uma (`fora_da_faixa_de_trabalho`) existia sem
+privados de auditoria, uma (`outside_working_range`) existia sem
 nenhum chamador:
 
 | Checagem | O que verifica |
@@ -649,7 +649,7 @@ nenhum chamador:
 | `confundimento_classe_sessao` | Se alguma classe está confinada a **1 única sessão de coleta** (`session_from_mae_id`) enquanto o dataset tem múltiplas sessões — deriva instrumental daquela sessão fica indistinguível de efeito de classe. |
 | `duplicatas` | Reaproveita `pipeline.validate_input` — duplicatas exatas/aproximadas (risco de vazamento treino/teste). |
 | `n_insuficiente` | Quantas sessões independentes cada classe tem, frente ao mínimo do gate conformal (`conformal.n_minimum_for_alpha`). |
-| `faixa_validacao_uso` | Faixa de teor **observada** na calibração vs. faixa de trabalho **declarada** no perfil da matriz (`perfil_matriz.fora_da_faixa_de_trabalho`) — extrapolação silenciosa. |
+| `faixa_validacao_uso` | Faixa de teor **observada** na calibração vs. faixa de trabalho **declarada** no perfil da matriz (`perfil_matriz.outside_working_range`) — extrapolação silenciosa. |
 | `validacao_externa` | Informativo: PLS-R/pré-processamento têm benchmark público (Tecator); classificação/DD-SIMCA/OPLS-DA ainda não. |
 
 Cada checagem é **silenciável individualmente**, mas exige justificativa
