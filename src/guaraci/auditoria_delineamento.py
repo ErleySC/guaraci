@@ -169,26 +169,26 @@ def checar_n_insuficiente(rotulos: np.ndarray,
 
     rotulos = np.asarray(rotulos, dtype=str)
     sessao = np.array([session_from_mae_id(m) for m in mae_id], dtype=str)
-    n_minimo_conformal = n_minimum_for_alpha(alpha_conformal_referencia)
+    n_minimum_conformal = n_minimum_for_alpha(alpha_conformal_referencia)
 
     classes_fracas = []
     for classe in sorted(set(rotulos)):
         n_sessoes_classe = len({s for s, r in zip(sessao, rotulos)
                                  if r == classe})
-        if n_sessoes_classe < n_minimo_conformal:
+        if n_sessoes_classe < n_minimum_conformal:
             classes_fracas.append((classe, n_sessoes_classe))
 
     if not classes_fracas:
         return AchadoAuditoria(
             "n_insuficiente", "ok",
-            f"Toda classe tem >= {n_minimo_conformal} sessoes "
+            f"Toda classe tem >= {n_minimum_conformal} sessoes "
             f"independentes (minimo p/ alpha={alpha_conformal_referencia} "
             "conformal).")
     detalhe = ", ".join(f"{c} (n={n})" for c, n in classes_fracas)
     return AchadoAuditoria(
         "n_insuficiente", "aviso",
         f"{len(classes_fracas)} classe(s) com menos de "
-        f"{n_minimo_conformal} sessoes independentes (minimo p/ "
+        f"{n_minimum_conformal} sessoes independentes (minimo p/ "
         f"alpha={alpha_conformal_referencia} conformal): {detalhe}. Gates "
         "estatisticos para essas classes ficam nao-validados (ver "
         "identificacao.py/plano_amostral.py) -- nao e' erro, e' o regime "

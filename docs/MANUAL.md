@@ -608,9 +608,9 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
 
 - **`plano_amostral.py` — quanto coletar.** Duas fontes de garantia,
   nunca misturadas: (1) o gate **conformal** (Identificar/agrupado) —
-  `n_minimo_conformal(alpha)` reaproveita `conformal.n_minimum_for_alpha`
+  `n_minimum_conformal(alpha)` reaproveita `conformal.n_minimum_for_alpha`
   diretamente, garantia *distribution-free* real; (2) **DD-SIMCA por
-  espécie** — `orientacao_tamanho_amostral_ddsimca(cobertura_alvo)`
+  espécie** — `ddsimca_sample_size_guidance(cobertura_alvo)`
   **nunca promete** uma cobertura-alvo acima do platô medido (~0,94-0,945,
   ver seção 9) — acima disso, devolve `alcancavel=False` e recomenda o
   gate conformal em vez de sugerir um `n` que não resolveria o problema.

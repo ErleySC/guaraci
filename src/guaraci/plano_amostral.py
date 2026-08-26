@@ -25,16 +25,16 @@ from typing import List, Optional, Tuple
 from guaraci.conformal import n_minimum_for_alpha
 
 __all__ = [
-    "OrientacaoDDSimca",
-    "n_minimo_conformal",
-    "orientacao_tamanho_amostral_ddsimca",
+    "DDSimcaGuidance",
+    "n_minimum_conformal",
+    "ddsimca_sample_size_guidance",
 ]
 
 # Tabela medida (2026-08-26): DGP gaussiano AR(1) sintetico, DD-SIMCA REAL
 # do projeto, alpha=0.05, n_components=3, N_TEST=2000, ver script para o
 # desenho completo. NAO e' o dataset real do usuario -- ver `ressalva` em
-# `orientacao_tamanho_amostral_ddsimca`.
-TABELA_COBERTURA_DDSIMCA_MEDIDA: List[Tuple[int, float]] = [
+# `ddsimca_sample_size_guidance`.
+MEASURED_DDSIMCA_COVERAGE_TABLE: List[Tuple[int, float]] = [
     (5, 0.8450), (10, 0.8957), (20, 0.9038), (40, 0.9230),
     (80, 0.9306), (150, 0.9428), (300, 0.9425), (600, 0.9448),
     (1200, 0.9411),
@@ -47,12 +47,12 @@ TABELA_COBERTURA_DDSIMCA_MEDIDA: List[Tuple[int, float]] = [
 PLATO_COBERTURA_DDSIMCA = 0.94
 
 _FAIXA_MEDIDA_N = (
-    TABELA_COBERTURA_DDSIMCA_MEDIDA[0][0],
-    TABELA_COBERTURA_DDSIMCA_MEDIDA[-1][0],
+    MEASURED_DDSIMCA_COVERAGE_TABLE[0][0],
+    MEASURED_DDSIMCA_COVERAGE_TABLE[-1][0],
 )
 
 
-def n_minimo_conformal(alpha: float) -> int:
+def n_minimum_conformal(alpha: float) -> int:
     """`n_minimo` para o gate conformal (Identificar/agrupado) -- fina
     reexportacao de `conformal.n_minimum_for_alpha`, garantia
     distribution-free real (Vovk, Gammerman & Shafer 2005): nenhum `n`
@@ -62,8 +62,8 @@ def n_minimo_conformal(alpha: float) -> int:
 
 
 @dataclass
-class OrientacaoDDSimca:
-    """Resultado de `orientacao_tamanho_amostral_ddsimca` -- nunca promete
+class DDSimcaGuidance:
+    """Resultado de `ddsimca_sample_size_guidance` -- nunca promete
     uma cobertura-alvo que a medicao nao sustenta (ver docstring do
     modulo)."""
 
@@ -76,8 +76,8 @@ class OrientacaoDDSimca:
     ressalva: str
 
 
-def orientacao_tamanho_amostral_ddsimca(cobertura_alvo: float
-                                         ) -> OrientacaoDDSimca:
+def ddsimca_sample_size_guidance(cobertura_alvo: float
+                                  ) -> DDSimcaGuidance:
     """Orientacao de `n` para DD-SIMCA por especie, dada uma cobertura-
     alvo (ex.: 0.90 para 90% de cobertura). NUNCA devolve `alcancavel=True`
     com uma cobertura-alvo acima de `PLATO_COBERTURA_DDSIMCA` -- essa e' a
@@ -91,7 +91,7 @@ def orientacao_tamanho_amostral_ddsimca(cobertura_alvo: float
 
     Na faixa medida ou abaixo dela: devolve o MENOR `n` da tabela medida
     cuja cobertura observada ja' alcanca o alvo (nunca extrapola para um
-    `n` fora de `TABELA_COBERTURA_DDSIMCA_MEDIDA` sem dizer isso na
+    `n` fora de `MEASURED_DDSIMCA_COVERAGE_TABLE` sem dizer isso na
     ressalva).
     """
     if not (0.0 < cobertura_alvo < 1.0):
@@ -107,7 +107,7 @@ def orientacao_tamanho_amostral_ddsimca(cobertura_alvo: float
         "extrapolacao nao verificada.")
 
     if cobertura_alvo > PLATO_COBERTURA_DDSIMCA:
-        return OrientacaoDDSimca(
+        return DDSimcaGuidance(
             cobertura_alvo=cobertura_alvo, alcancavel=False,
             n_sugerido=None, cobertura_no_n_sugerido=None,
             plato_observado=PLATO_COBERTURA_DDSIMCA,
@@ -123,9 +123,9 @@ def orientacao_tamanho_amostral_ddsimca(cobertura_alvo: float
                 "ConformalOneClass) para uma garantia formal nesse nivel "
                 "de exigencia."))
 
-    for n, cov in TABELA_COBERTURA_DDSIMCA_MEDIDA:
+    for n, cov in MEASURED_DDSIMCA_COVERAGE_TABLE:
         if cov >= cobertura_alvo:
-            return OrientacaoDDSimca(
+            return DDSimcaGuidance(
                 cobertura_alvo=cobertura_alvo, alcancavel=True,
                 n_sugerido=n, cobertura_no_n_sugerido=cov,
                 plato_observado=PLATO_COBERTURA_DDSIMCA,
@@ -139,7 +139,7 @@ def orientacao_tamanho_amostral_ddsimca(cobertura_alvo: float
     # Nao deveria ser alcancavel aqui (o teto acima ja' cobriu o caso),
     # mas sem forcar: se a tabela mudar no futuro e nenhum ponto alcancar
     # o alvo, devolve nao-alcancavel em vez de estourar.
-    return OrientacaoDDSimca(
+    return DDSimcaGuidance(
         cobertura_alvo=cobertura_alvo, alcancavel=False, n_sugerido=None,
         cobertura_no_n_sugerido=None, plato_observado=PLATO_COBERTURA_DDSIMCA,
         recomendar_conformal=True,

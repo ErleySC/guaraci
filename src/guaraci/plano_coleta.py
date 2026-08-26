@@ -30,8 +30,8 @@ aleatoriedade nessa etapa) e ALEATORIZA a ordem de leitura DENTRO de
 cada sessao (aqui sim, aleatoriedade e' o ponto).
 
 Integra com `plano_amostral.py` (P1, Bloco 10): aquele modulo decide
-QUANTAS amostras sao necessarias (`n_minimo_conformal`/
-`orientacao_tamanho_amostral_ddsimca`); este decide COMO distribui-las
+QUANTAS amostras sao necessarias (`n_minimum_conformal`/
+`ddsimca_sample_size_guidance`); este decide COMO distribui-las
 entre sessoes e em que ordem le-las.
 """
 from __future__ import annotations
@@ -42,8 +42,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from guaraci.plano_amostral import (
-    n_minimo_conformal,
-    orientacao_tamanho_amostral_ddsimca,
+    n_minimum_conformal,
+    ddsimca_sample_size_guidance,
 )
 
 __all__ = [
@@ -159,11 +159,11 @@ def planejar_a_partir_de_alvo_estatistico(
     (como distribuir/ordenar). Passe exatamente UM alvo estatistico:
     `alpha_conformal` (gate conformal, Identificar/agrupado) OU
     `cobertura_ddsimca` (DD-SIMCA por especie, com o teto de plato ja
-    embutido em `orientacao_tamanho_amostral_ddsimca` -- ver esse modulo
+    embutido em `ddsimca_sample_size_guidance` -- ver esse modulo
     para o motivo de nao prometer cobertura inalcancavel).
 
     Retorna (plano, metadados) -- metadados inclui `n_por_classe`,
-    `origem` (qual alvo foi usado) e, se DD-SIMCA, a `OrientacaoDDSimca`
+    `origem` (qual alvo foi usado) e, se DD-SIMCA, a `DDSimcaGuidance`
     completa (para quem quiser inspecionar a ressalva original).
     """
     if (alpha_conformal is None) == (cobertura_ddsimca is None):
@@ -173,11 +173,11 @@ def planejar_a_partir_de_alvo_estatistico(
 
     metadados: Dict[str, Any] = {}
     if alpha_conformal is not None:
-        n = n_minimo_conformal(alpha_conformal)
+        n = n_minimum_conformal(alpha_conformal)
         metadados["origem"] = f"conformal (alpha={alpha_conformal})"
         metadados["n_por_classe"] = n
     else:
-        orientacao = orientacao_tamanho_amostral_ddsimca(cobertura_ddsimca)
+        orientacao = ddsimca_sample_size_guidance(cobertura_ddsimca)
         if not orientacao.alcancavel:
             raise ValueError(
                 f"cobertura-alvo {cobertura_ddsimca} NAO alcancavel via "
