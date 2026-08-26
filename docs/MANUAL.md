@@ -614,7 +614,7 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
   **nunca promete** uma cobertura-alvo acima do platô medido (~0,94-0,945,
   ver seção 9) — acima disso, devolve `alcancavel=False` e recomenda o
   gate conformal em vez de sugerir um `n` que não resolveria o problema.
-- **`plano_coleta.py` — como distribuir.** `planejar_coleta(classes,
+- **`plano_coleta.py` — como distribuir.** `plan_collection(classes,
   n_por_classe, n_sessoes)` distribui as amostras entre sessões de forma
   **balanceada** (nenhuma sessão fica dominada por uma única classe — o
   confundimento classe×sessão faria qualquer deriva instrumental
@@ -625,7 +625,7 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
   réplica técnica (T1/T2/T3) não conta como amostra independente extra;
   recomendação de brancos/controles intercalados; aviso forte se só 1
   sessão foi pedida (impossível separar classe de deriva temporal nesse
-  caso). `planejar_a_partir_de_alvo_estatistico` combina os dois módulos
+  caso). `plan_from_statistical_target` combina os dois módulos
   numa chamada só.
 - **Saída:** Markdown (formato primário) + planilha Excel (`openpyxl`,
   já dependência do projeto — sem biblioteca nova), com a ordem de

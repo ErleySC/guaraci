@@ -17,11 +17,11 @@ import openpyxl
 import pytest
 
 from guaraci.plano_coleta import (
-    ItemColeta,
-    exportar_excel,
-    exportar_markdown,
-    planejar_a_partir_de_alvo_estatistico,
-    planejar_coleta,
+    CollectionItem,
+    export_excel,
+    export_markdown,
+    plan_from_statistical_target,
+    plan_collection,
 )
 
 
@@ -29,17 +29,17 @@ from guaraci.plano_coleta import (
 
 def test_n_por_classe_invalido_falha_alto():
     with pytest.raises(ValueError, match="n_por_classe"):
-        planejar_coleta(["A", "B"], 0, 2)
+        plan_collection(["A", "B"], 0, 2)
 
 
 def test_n_sessoes_invalido_falha_alto():
     with pytest.raises(ValueError, match="n_sessoes"):
-        planejar_coleta(["A", "B"], 10, 0)
+        plan_collection(["A", "B"], 10, 0)
 
 
 def test_classes_vazio_falha_alto():
     with pytest.raises(ValueError, match="classes"):
-        planejar_coleta([], 10, 2)
+        plan_collection([], 10, 2)
 
 
 # ── Confundimento classe x sessao ────────────────────────────────────────
@@ -49,7 +49,7 @@ def test_toda_sessao_recebe_todas_as_classes():
     (isso seria o confundimento classe x sessao que o modulo existe para
     evitar)."""
     classes = ["Andiroba", "Bacaba", "Coco", "Buriti"]
-    plano = planejar_coleta(classes, n_por_classe=12, n_sessoes=4, seed=0)
+    plano = plan_collection(classes, n_por_classe=12, n_sessoes=4, seed=0)
     for sessao in range(plano.n_sessoes):
         classes_na_sessao = {i.classe for i in plano.itens_da_sessao(sessao)}
         assert classes_na_sessao == set(classes), (
@@ -59,7 +59,7 @@ def test_toda_sessao_recebe_todas_as_classes():
 
 def test_distribuicao_e_balanceada_quando_divisivel():
     classes = ["A", "B", "C"]
-    plano = planejar_coleta(classes, n_por_classe=12, n_sessoes=4, seed=0)
+    plano = plan_collection(classes, n_por_classe=12, n_sessoes=4, seed=0)
     for sessao in range(plano.n_sessoes):
         for classe in classes:
             n_classe_sessao = sum(
@@ -68,17 +68,17 @@ def test_distribuicao_e_balanceada_quando_divisivel():
 
 
 def test_total_de_amostras_bate():
-    plano = planejar_coleta(["A", "B"], n_por_classe=7, n_sessoes=3, seed=0)
+    plano = plan_collection(["A", "B"], n_por_classe=7, n_sessoes=3, seed=0)
     assert len(plano.itens) == 7 * 2
 
 
 def test_desbalanceamento_residual_gera_alerta():
-    plano = planejar_coleta(["A", "B"], n_por_classe=10, n_sessoes=3, seed=0)
+    plano = plan_collection(["A", "B"], n_por_classe=10, n_sessoes=3, seed=0)
     assert any("nao e' multiplo" in a for a in plano.alertas)
 
 
 def test_uma_sessao_so_gera_alerta_forte():
-    plano = planejar_coleta(["A", "B"], n_por_classe=10, n_sessoes=1, seed=0)
+    plano = plan_collection(["A", "B"], n_por_classe=10, n_sessoes=1, seed=0)
     assert any("APENAS 1 SESSAO" in a for a in plano.alertas)
 
 
@@ -91,7 +91,7 @@ def test_ordem_de_leitura_nao_e_a_ordem_de_alocacao():
     a proxima classe -- exatamente o padrao que confunde ordem com
     classe/teor)."""
     classes = [f"Especie_{i}" for i in range(10)]
-    plano = planejar_coleta(classes, n_por_classe=5, n_sessoes=1, seed=1)
+    plano = plan_collection(classes, n_por_classe=5, n_sessoes=1, seed=1)
     itens_sessao = plano.itens_da_sessao(0)
     sequencia_classes = [i.classe for i in itens_sessao]
     # se a ordem fosse a de alocacao, classes apareceriam em blocos
@@ -106,7 +106,7 @@ def test_ordem_de_leitura_nao_e_a_ordem_de_alocacao():
 
 
 def test_ordem_de_leitura_e_permutacao_completa_por_sessao():
-    plano = planejar_coleta(["A", "B", "C"], n_por_classe=4, n_sessoes=2, seed=2)
+    plano = plan_collection(["A", "B", "C"], n_por_classe=4, n_sessoes=2, seed=2)
     for sessao in range(plano.n_sessoes):
         ordens = sorted(i.ordem_na_sessao for i in plano.itens_da_sessao(sessao))
         assert ordens == list(range(len(ordens))), (
@@ -115,8 +115,8 @@ def test_ordem_de_leitura_e_permutacao_completa_por_sessao():
 
 
 def test_seed_fixa_e_reprodutivel_seed_none_nao_repete():
-    p1 = planejar_coleta(["A", "B"], 6, 2, seed=42)
-    p2 = planejar_coleta(["A", "B"], 6, 2, seed=42)
+    p1 = plan_collection(["A", "B"], 6, 2, seed=42)
+    p2 = plan_collection(["A", "B"], 6, 2, seed=42)
     ordem1 = [(i.classe, i.replica_idx, i.sessao, i.ordem_na_sessao)
               for i in p1.itens]
     ordem2 = [(i.classe, i.replica_idx, i.sessao, i.ordem_na_sessao)
@@ -127,12 +127,12 @@ def test_seed_fixa_e_reprodutivel_seed_none_nao_repete():
 # ── Alertas sempre presentes ──────────────────────────────────────────
 
 def test_alerta_replica_tecnica_sempre_presente():
-    plano = planejar_coleta(["A"], 5, 2, seed=0)
+    plano = plan_collection(["A"], 5, 2, seed=0)
     assert any("REPLICA TECNICA" in a for a in plano.alertas)
 
 
 def test_alerta_brancos_sempre_presente():
-    plano = planejar_coleta(["A"], 5, 2, seed=0)
+    plano = plan_collection(["A"], 5, 2, seed=0)
     assert any("BRANCOS" in a for a in plano.alertas)
 
 
@@ -140,14 +140,14 @@ def test_alerta_brancos_sempre_presente():
 
 def test_planejar_a_partir_de_alfa_conformal_usa_n_minimum_for_alpha():
     from guaraci.conformal import n_minimum_for_alpha
-    plano, meta = planejar_a_partir_de_alvo_estatistico(
+    plano, meta = plan_from_statistical_target(
         ["A", "B"], n_sessoes=2, alpha_conformal=0.10, seed=0)
     assert meta["n_por_classe"] == n_minimum_for_alpha(0.10)
     assert plano.n_por_classe == n_minimum_for_alpha(0.10)
 
 
 def test_planejar_a_partir_de_cobertura_ddsimca_alcancavel():
-    plano, meta = planejar_a_partir_de_alvo_estatistico(
+    plano, meta = plan_from_statistical_target(
         ["A", "B"], n_sessoes=2, cobertura_ddsimca=0.90, seed=0)
     assert meta["n_por_classe"] == 20   # ver tabela medida em plano_amostral
     assert "orientacao_ddsimca" in meta
@@ -158,32 +158,32 @@ def test_planejar_a_partir_de_cobertura_ddsimca_inalcancavel_falha_alto():
     cobertura-alvo que o DD-SIMCA nao sustenta (mesmo espirito do gate
     de Quantificar no Bloco 9b -- nunca fingir garantia que nao existe)."""
     with pytest.raises(ValueError, match="NAO alcancavel"):
-        planejar_a_partir_de_alvo_estatistico(
+        plan_from_statistical_target(
             ["A", "B"], n_sessoes=2, cobertura_ddsimca=0.99, seed=0)
 
 
 def test_planejar_a_partir_de_alvo_exige_exatamente_um():
     with pytest.raises(ValueError, match="exatamente um"):
-        planejar_a_partir_de_alvo_estatistico(["A"], n_sessoes=1)
+        plan_from_statistical_target(["A"], n_sessoes=1)
     with pytest.raises(ValueError, match="exatamente um"):
-        planejar_a_partir_de_alvo_estatistico(
+        plan_from_statistical_target(
             ["A"], n_sessoes=1, alpha_conformal=0.05, cobertura_ddsimca=0.9)
 
 
 # ── Exportacao ─────────────────────────────────────────────────────────
 
 def test_exportar_markdown_contem_todas_as_sessoes_e_alertas():
-    plano = planejar_coleta(["A", "B"], 6, 2, seed=0)
-    md = exportar_markdown(plano)
+    plano = plan_collection(["A", "B"], 6, 2, seed=0)
+    md = export_markdown(plano)
     assert "Sessao 1" in md and "Sessao 2" in md
     for a in plano.alertas:
         assert a in md
 
 
 def test_exportar_excel_gera_arquivo_com_2_abas(tmp_path):
-    plano = planejar_coleta(["A", "B", "C"], 4, 2, seed=0)
+    plano = plan_collection(["A", "B", "C"], 4, 2, seed=0)
     caminho = str(tmp_path / "plano.xlsx")
-    exportar_excel(plano, caminho)
+    export_excel(plano, caminho)
     assert os.path.isfile(caminho)
 
     wb = openpyxl.load_workbook(caminho)
@@ -196,9 +196,9 @@ def test_exportar_excel_gera_arquivo_com_2_abas(tmp_path):
 
 
 def test_itens_da_sessao_e_um_item_de_dataclass_completo():
-    plano = planejar_coleta(["A"], 3, 1, seed=0)
+    plano = plan_collection(["A"], 3, 1, seed=0)
     item = plano.itens_da_sessao(0)[0]
-    assert isinstance(item, ItemColeta)
+    assert isinstance(item, CollectionItem)
     assert item.classe == "A"
     assert 0 <= item.replica_idx < 3
 

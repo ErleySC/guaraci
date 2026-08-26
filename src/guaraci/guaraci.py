@@ -2717,10 +2717,10 @@ def menu_plan(cfg: Optional[Config] = None) -> None:
     try:
         import guaraci.plano_coleta as _plano
         if alvo == "C":
-            plano, meta = _plano.planejar_a_partir_de_alvo_estatistico(
+            plano, meta = _plano.plan_from_statistical_target(
                 classes, n_sessoes, alpha_conformal=valor)
         else:
-            plano, meta = _plano.planejar_a_partir_de_alvo_estatistico(
+            plano, meta = _plano.plan_from_statistical_target(
                 classes, n_sessoes, cobertura_ddsimca=valor)
     except ValueError as e:
         console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
@@ -2735,12 +2735,12 @@ def menu_plan(cfg: Optional[Config] = None) -> None:
         cam_saida = padrao_saida
 
     try:
-        md = _plano.exportar_markdown(plano)
+        md = _plano.export_markdown(plano)
         cam_md = cam_saida + ".md"
         with open(cam_md, "w", encoding="utf-8") as f:
             f.write(md)
         cam_xlsx = cam_saida + ".xlsx"
-        _plano.exportar_excel(plano, cam_xlsx)
+        _plano.export_excel(plano, cam_xlsx)
     except OSError as e:
         console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
         _pause(); return

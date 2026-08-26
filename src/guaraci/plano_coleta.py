@@ -47,19 +47,19 @@ from guaraci.plano_amostral import (
 )
 
 __all__ = [
-    "ItemColeta",
-    "PlanoColeta",
-    "planejar_coleta",
-    "planejar_a_partir_de_alvo_estatistico",
-    "exportar_markdown",
-    "exportar_excel",
+    "CollectionItem",
+    "CollectionPlan",
+    "plan_collection",
+    "plan_from_statistical_target",
+    "export_markdown",
+    "export_excel",
 ]
 
 
 @dataclass
-class ItemColeta:
+class CollectionItem:
     """Uma AMOSTRA FISICA no plano -- ver alerta sobre replica tecnica em
-    `planejar_coleta`. `ordem_na_sessao` ja' e' a ordem de leitura
+    `plan_collection`. `ordem_na_sessao` ja' e' a ordem de leitura
     ALEATORIZADA (0-based), nao a ordem de alocacao."""
 
     classe: str
@@ -69,21 +69,21 @@ class ItemColeta:
 
 
 @dataclass
-class PlanoColeta:
+class CollectionPlan:
     classes: List[str]
     n_por_classe: int
     n_sessoes: int
-    itens: List[ItemColeta]
+    itens: List[CollectionItem]
     alertas: List[str] = field(default_factory=list)
 
-    def itens_da_sessao(self, sessao: int) -> List[ItemColeta]:
+    def itens_da_sessao(self, sessao: int) -> List[CollectionItem]:
         return sorted((i for i in self.itens if i.sessao == sessao),
                        key=lambda i: i.ordem_na_sessao)
 
 
-def planejar_coleta(classes: Sequence[str], n_por_classe: int,
+def plan_collection(classes: Sequence[str], n_por_classe: int,
                      n_sessoes: int, *, n_brancos_por_sessao: int = 1,
-                     seed: Optional[int] = None) -> PlanoColeta:
+                     seed: Optional[int] = None) -> CollectionPlan:
     """Distribui `n_por_classe` amostras de cada classe entre `n_sessoes`
     sessoes, balanceado (round-robin), e aleatoriza a ordem de leitura
     DENTRO de cada sessao. Ver docstring do modulo para o motivo dos dois
@@ -101,13 +101,13 @@ def planejar_coleta(classes: Sequence[str], n_por_classe: int,
         raise ValueError("classes nao pode ser vazio")
 
     rng = np.random.default_rng(seed)
-    itens: List[ItemColeta] = []
+    itens: List[CollectionItem] = []
 
     for classe in classes:
         for replica_idx in range(n_por_classe):
             sessao = replica_idx % n_sessoes
-            itens.append(ItemColeta(classe=classe, replica_idx=replica_idx,
-                                     sessao=sessao, ordem_na_sessao=-1))
+            itens.append(CollectionItem(classe=classe, replica_idx=replica_idx,
+                                         sessao=sessao, ordem_na_sessao=-1))
 
     for sessao in range(n_sessoes):
         idx_sessao = [i for i, item in enumerate(itens)
@@ -145,17 +145,17 @@ def planejar_coleta(classes: Sequence[str], n_por_classe: int,
         "no inicio/fim) -- e' o que permite detectar deriva instrumental "
         "depois, sem precisar reler amostras.")
 
-    return PlanoColeta(classes=list(classes), n_por_classe=n_por_classe,
-                        n_sessoes=n_sessoes, itens=itens, alertas=alertas)
+    return CollectionPlan(classes=list(classes), n_por_classe=n_por_classe,
+                           n_sessoes=n_sessoes, itens=itens, alertas=alertas)
 
 
-def planejar_a_partir_de_alvo_estatistico(
+def plan_from_statistical_target(
         classes: Sequence[str], n_sessoes: int, *,
         alpha_conformal: Optional[float] = None,
         cobertura_ddsimca: Optional[float] = None,
         n_brancos_por_sessao: int = 1,
-        seed: Optional[int] = None) -> Tuple[PlanoColeta, Dict[str, Any]]:
-    """Combina `plano_amostral.py` (quanto coletar) com `planejar_coleta`
+        seed: Optional[int] = None) -> Tuple[CollectionPlan, Dict[str, Any]]:
+    """Combina `plano_amostral.py` (quanto coletar) com `plan_collection`
     (como distribuir/ordenar). Passe exatamente UM alvo estatistico:
     `alpha_conformal` (gate conformal, Identificar/agrupado) OU
     `cobertura_ddsimca` (DD-SIMCA por especie, com o teto de plato ja
@@ -187,7 +187,7 @@ def planejar_a_partir_de_alvo_estatistico(
         metadados["n_por_classe"] = n
         metadados["orientacao_ddsimca"] = orientacao
 
-    plano = planejar_coleta(classes, n, n_sessoes,
+    plano = plan_collection(classes, n, n_sessoes,
                              n_brancos_por_sessao=n_brancos_por_sessao,
                              seed=seed)
     plano.alertas.insert(
@@ -197,7 +197,7 @@ def planejar_a_partir_de_alvo_estatistico(
     return plano, metadados
 
 
-def exportar_markdown(plano: PlanoColeta) -> str:
+def export_markdown(plano: CollectionPlan) -> str:
     """Formato PRIMARIO de saida (P4, Bloco 10) -- simples de gerar e
     versionar, sem dependencia nova."""
     linhas = [
@@ -224,7 +224,7 @@ def exportar_markdown(plano: PlanoColeta) -> str:
     return "\n".join(linhas)
 
 
-def exportar_excel(plano: PlanoColeta, caminho: str) -> str:
+def export_excel(plano: CollectionPlan, caminho: str) -> str:
     """Planilha (P4, Bloco 10) -- reaproveita `openpyxl`, ja' dependencia
     do projeto (`reports.py`), nenhuma dependencia nova. 2 abas: ordem de
     leitura completa (para levar ao laboratorio) e alertas."""
