@@ -2614,6 +2614,31 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
             "(atypical spectrum vs. calibration)"
         )
         resumo_txt += "\n" + ad_txt
+
+        # Bloco 13b: sentinela de deriva -- persistida ao lado do MODELO
+        # (nao do CSV de saida), porque e' o modelo que fica fixo entre
+        # varias rodadas de predicao ao longo do tempo -- exatamente o
+        # uso continuo que a sentinela existe para acompanhar.
+        try:
+            import guaraci.sentinela_deriva as _sent
+            cam_sentinela = cam_modelo + ".sentinela.json"
+            estado_sent = (_sent.carregar_estado(cam_sentinela)
+                           if os.path.isfile(cam_sentinela)
+                           else _sent.EstadoSentinela(alpha_nominal=0.05))
+            _sent.atualizar_com_predicoes(estado_sent, df_res)
+            _sent.salvar_estado(estado_sent, cam_sentinela)
+            alerta_sent = _sent.checar_deriva(estado_sent)
+            cor_sent = PR if alerta_sent.alerta else PM
+            sent_txt = (
+                f"  [{cor_sent}]🛰 Sentinela de deriva (n={alerta_sent.n}):"
+                f"[/{cor_sent}] {escape(alerta_sent.mensagem)}"
+            )
+            resumo_txt += "\n" + sent_txt
+        except Exception as _e_sent:  # noqa: BLE001 -- diagnostico
+            # opcional; erro impresso, nao afeta a predicao ja gravada.
+            resumo_txt += (
+                f"\n  [{PM}]{'Sentinela de deriva indisponivel' if is_pt else 'Drift sentinel unavailable'}"
+                f": {escape(str(_e_sent))}[/{PM}]")
     console.print()
     console.print(Panel(
         Group(Text.from_markup(resumo_txt), Text(""), t_res),

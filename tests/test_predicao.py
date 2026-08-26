@@ -180,6 +180,43 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     assert len(df_res) == X_novos.shape[0]
 
 
+def test_menu_predicao_alimenta_a_sentinela_de_deriva_entre_chamadas(
+        monkeypatch, tmp_path, modelo_e_dados):
+    """Bloco 13b: cada rodada do menu B tem que alimentar a sentinela de
+    deriva persistida ao lado do modelo -- e ACUMULAR entre chamadas
+    (nao resetar), que e' o uso real (LIMS chamando o pipeline varias
+    vezes ao longo do tempo, nao um processo Python vivo o tempo todo)."""
+    import guaraci.guaraci as guaraci_mod
+    import guaraci.sentinela_deriva as sent
+
+    pkg, X_novos, wn = modelo_e_dados
+    cam_modelo = tmp_path / "modelo_teste.joblib"
+    joblib.dump(pkg, cam_modelo)
+    cam_sentinela = str(cam_modelo) + ".sentinela.json"
+
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    cam_csv = tmp_path / "novos.csv"
+    df_in.to_csv(cam_csv, index=False, sep=";")
+
+    assert not os.path.isfile(cam_sentinela)
+
+    respostas1 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas1))
+    guaraci_mod.menu_prediction(guaraci_mod.Config())
+
+    assert os.path.isfile(cam_sentinela), "sentinela nao foi persistida"
+    estado_apos_1 = sent.carregar_estado(cam_sentinela)
+    assert estado_apos_1.n == X_novos.shape[0]
+
+    respostas2 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas2))
+    guaraci_mod.menu_prediction(guaraci_mod.Config())
+
+    estado_apos_2 = sent.carregar_estado(cam_sentinela)
+    assert estado_apos_2.n == 2 * X_novos.shape[0], (
+        "sentinela nao acumulou entre as duas chamadas -- resetou")
+
+
 # ── Seguranca do carregamento de modelo (P5 -- CLAUDE.md) ──────────────────
 def test_carregar_modelo_sem_confiar_lanca_security_error(tmp_path, modelo_e_dados):
     """load_model() NUNCA le o arquivo sem confiar=True explicito --

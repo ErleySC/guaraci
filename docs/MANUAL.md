@@ -664,6 +664,47 @@ validado, num script privado que extrai o timestamp de aquisição do
 *audit trail* JCAMP-DX — mas o parser DX em produção não expõe esse
 timestamp hoje; portar isso exige mudança no parser, não só *wiring*.
 
+### 2.5 Sentinela de deriva do domínio de aplicabilidade (Bloco 13b — `sentinela_deriva.py`)
+
+Uma amostra isolada fora do domínio de aplicabilidade pode ser só ruído
+de amostragem — o próprio *alpha* nominal já prevê uma fração de
+rejeições legítimas. O que importa em produção contínua é outra
+pergunta: **a taxa de rejeição está subindo ao longo do tempo** — sinal
+de que o instrumento/matriz/processo derivou desde a calibração?
+
+`EstadoSentinela` acumula 1 booleano (`AD_dentro_dominio`) por amostra
+julgada, com `janela` opcional (`None` = cumulativo sem limite, nunca
+descarta dado silenciosamente; um inteiro ativa janela deslizante para
+detectar deriva **recente** especificamente — o *trade-off* fica
+explícito ao chamador, não escondido atrás de um default mágico).
+`checar_deriva` testa **H0: taxa de rejeição = alpha nominal** contra
+**H1: taxa > alpha nominal** via **teste binomial exato** unilateral
+(`scipy.stats.binomtest`) — não um limiar cru tipo "2× o nominal", que
+teria taxa de falso alarme dependente de `n` sem justificativa formal.
+
+**Defaults justificados, não escolhidos a dedo:**
+- `n_minimo` (abaixo disso, não testa — sem poder estatístico): por
+  padrão `conformal.n_minimum_for_alpha(alpha_nominal)` — o MESMO mínimo
+  prático já usado em todo o projeto para o gate conformal atingir aquele
+  *alpha* (ex.: 0,05 → 19). Reaproveitado por consistência, não recalculado.
+- `significancia` do teste de deriva: 0,05 por padrão — o mesmo *alpha*
+  nominal usado em todo o projeto para os próprios gates (DD-SIMCA, AD,
+  conformal).
+
+Verificado por simulação (não só "não quebra"): gerando exatamente na
+taxa nominal (H0 verdadeiro), a taxa de falso alarme observada em 300
+repetições Monte Carlo fica próxima do `significancia` declarado; uma
+deriva real (taxa de rejeição 6× o nominal) dispara o alerta com `n`
+suficiente.
+
+**Persistência e integração:** `salvar_estado`/`carregar_estado` (JSON)
+permitem que a sentinela sobreviva entre execuções — uso real (LIMS
+chamando o pipeline ao longo de dias/semanas) não mantém um processo
+Python vivo o tempo todo. CLI — menu `[B]` *Predição em Lote* atualiza
+automaticamente a sentinela persistida ao lado do modelo
+(`<modelo>.joblib.sentinela.json`) a cada rodada, quando o pacote tem
+artefatos de domínio de aplicabilidade, e mostra o status no resumo.
+
 **Figura de mérito analítica dedicada (Quantificação):**
 `figS3_merito_regressao.png` — dois painéis lado a lado: LOD/LOQ por espécie
 e seletividade média por espécie, seguindo Valderrama, Braga e Poppi (2009).
