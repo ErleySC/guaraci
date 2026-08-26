@@ -91,6 +91,22 @@ class DDSimca:
     classes, que so'
     tem 1 amostra pura independente).
 
+    COBERTURA NAO CONVERGE PARA O NOMINAL SO' COM MAIS `n` (medido
+    2026-08-26, ver `scripts/medicoes/medir_ddsimca_cobertura_vs_n.py`):
+    a aproximacao chi2-momentos (h0/q0/Nh/Nq via `mean_and_dof_moments`)
+    e' PARAMETRICA, nao distribution-free. Simulacao com DGP gaussiano
+    controlado (onde o modelo esta' bem especificado) mostrou cobertura
+    empirica subindo rapido ate' n~150 e depois ESTACANDO num plato de
+    ~0,94-0,945 -- mesmo em n=1200, sem sinal de aproximar o nominal 0,95.
+    Ou seja: NAO existe `n` finito, por maior que seja, que garanta
+    cobertura-alvo abaixo desse plato usando este metodo. Para cobertura-
+    alvo mais exigente que isso, use `identificacao.py`/`conformal.py`
+    (`ConformalOneClass`) -- garantia distribution-free real,
+    `alpha_min = 1/(n+1)`, sem piso assintotico. Este achado motivou a
+    revisao do Bloco 10 (`guaraci plan`): a orientacao de tamanho amostral
+    para DD-SIMCA nao pode prometer atingir qualquer cobertura aumentando
+    `n` (ver `docs/MANUAL.md`, Limitacoes conhecidas).
+
     Referencias:
         Rodionova O.Y. & Pomerantsev A.L. (2020). Popular decision rules in
         SIMCA: critical review. J. Chemometrics 200:103958.

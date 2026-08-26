@@ -727,6 +727,47 @@ re-executada nesta sessão).
   adulterados) não tem essa limitação — é medida em amostras que nunca
   entraram no treino.
 
+- **DD-SIMCA não converge para a cobertura nominal só com mais amostras
+  de calibração — há um platô assintótico (medido em 2026-08-26, ver
+  `scripts/medicoes/medir_ddsimca_cobertura_vs_n.py`).** Simulação com DGP
+  gaussiano controlado (modelo bem especificado, o cenário mais favorável
+  possível ao método): a cobertura empírica sobe rápido até n≈150 e depois
+  **estanca** num platô de ~0,94-0,945 — inclusive em n=1200, sem sinal de
+  aproximar o nominal 0,95 (α=0,05).
+
+  | n | cobertura | desvio | déficit (1−cobertura) |
+  |---|---|---|---|
+  | 5 | 0,8450 | 0,1510 | 0,1550 |
+  | 10 | 0,8957 | 0,0697 | 0,1043 |
+  | 20 | 0,9038 | 0,0666 | 0,0962 |
+  | 40 | 0,9230 | 0,0346 | 0,0770 |
+  | 80 | 0,9306 | 0,0218 | 0,0694 |
+  | 150 | 0,9428 | 0,0201 | 0,0572 |
+  | 300 | 0,9425 | 0,0122 | 0,0575 |
+  | 600 | 0,9448 | 0,0103 | 0,0552 |
+  | 1200 | 0,9411 | 0,0070 | 0,0589 |
+
+  Nenhuma forma funcional simples (C/n, C/√n, exponencial) ajusta essa
+  curva inteira — C/n teve R²=−1,49 (pior que uma reta horizontal),
+  porque a forma real é "convergência rápida + platô persistente", não
+  uma curva suave até zero. **Consequência prática:** não existe `n`
+  finito que garanta cobertura-alvo abaixo do platô (~0,94-0,945 nesta
+  configuração) via DD-SIMCA (método paramétrico χ²-momentos) — para
+  cobertura-alvo mais exigente, só o gate conformal (`identificacao.py`/
+  `conformal.py`, `ConformalOneClass`) tem garantia formal
+  *distribution-free*, sem esse piso assintótico. Este achado motivou a
+  reformulação do P1 do Bloco 10 (`guaraci plan`): a orientação de
+  tamanho amostral para DD-SIMCA não promete atingir qualquer cobertura
+  aumentando `n`.
+
+  **Retratação:** uma instrução anterior desta sessão citou 3 pontos
+  específicos (0,840@n=80 / 0,921@n=300 / 0,943@n=1200) como "já medidos
+  e validados" — busca no repositório inteiro (código, docs, scripts de
+  medição, arquivo de acompanhamento local) não encontrou nenhum artefato
+  que os sustentasse. A medição real acima não bate com nenhum dos três
+  (diferenças de +0,09, +0,02 e −0,002, sem padrão de erro consistente) —
+  os números citados não vieram de medição real.
+
 - **~~`Q2` muda com a versão do scikit-learn~~ — RESOLVIDO em 2026-08-05.**
   Registrado aqui porque afeta a comparação com resultados anteriores.
   *O problema:* o `StratifiedGroupKFold` do scikit-learn muda a partição
