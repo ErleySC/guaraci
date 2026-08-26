@@ -2483,6 +2483,12 @@ def executar(cfg: Config):
             "t2_ucl":         float(t2_lim),
             "q_ucl":          float(q_lim),
             "grouping_guarantee": str(cfg.grouping_guarantee),
+            # Passo 57 (achado na revisao com o usuario): sem esta marca,
+            # uma execucao com dado sintetico (metricas quase sempre
+            # perfeitas -- a banda marcadora de `generate_synthetic_data`
+            # e' limpa por construcao) vira template de referencia sem
+            # aviso, indistinguivel de dado real no manifesto/model card.
+            "dados_sinteticos": bool(cfg.mode == "sintetico"),
         }
         # Parametros da distancia combinada NO ESPACO PLS. Sem eles,
         # predict_samples() decidia "aceito" pela regra RETANGULAR

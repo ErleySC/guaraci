@@ -254,6 +254,56 @@ def test_predict_blind_detectar_preenchido_quando_ad_disponivel(pkg_bloco9b):
 
 
 # =========================================================================
+#  Passo 57: execucao com dado SINTETICO se autodeclara nos dois
+#  documentos -- metrica perfeita sem contexto (accuracy=1,0000 etc., o
+#  regime normal do gerador sintetico) nao pode virar template de
+#  referencia sem aviso.
+# =========================================================================
+
+def test_marca_sintetica_aparece_no_model_card_e_no_manifesto(pkg_bloco9b):
+    pkg, pasta, cam_modelo = pkg_bloco9b
+    assert pkg.get("dados_sinteticos") is True
+
+    caminho_card = os.path.join(pasta, pq_nome_relatorios(pasta), "model_card.md")
+    texto = open(caminho_card, encoding="utf-8").read()
+    assert "DADOS SINTETICOS DE DEMONSTRACAO" in texto
+    # tem que ser o PRIMEIRO aviso do documento (antes do grouping_guarantee,
+    # que so' aparece condicionalmente e depois na ordem de escrita).
+    assert texto.index("DADOS SINTETICOS") < texto.index("## 1. Detalhes do Modelo")
+
+    manifesto = json.loads(
+        open(cam_modelo + ".manifest.json", encoding="utf-8").read())
+    assert manifesto["dados_sinteticos"] is True
+
+
+def test_marca_sintetica_nao_aparece_em_execucao_nao_sintetica(pq, tmp_path):
+    """Contra-prova: rodando com `cfg.mode` diferente de 'sintetico', a
+    marca NAO pode aparecer -- senao ela nao estaria distinguindo nada,
+    so' aparecendo sempre."""
+    import joblib
+
+    from guaraci import resultados_io as rio
+    from guaraci.predicao import generate_manifest
+
+    cfg = pq.Config(mode="csv")   # qualquer mode != "sintetico"
+    assert cfg.mode != "sintetico"
+
+    pasta = str(tmp_path)
+    for d in (pq.NOME_TABELAS, pq.NOME_GRAFICOS, pq.NOME_RELATORIOS):
+        os.makedirs(os.path.join(pasta, d), exist_ok=True)
+    rio.generate_model_card(pasta, cfg, resumo={}, hw={},
+                             classes_unicas=np.array(["A", "B"]))
+    caminho_card = os.path.join(pasta, "model_card.md")
+    texto = open(caminho_card, encoding="utf-8").read()
+    assert "DADOS SINTETICOS" not in texto
+
+    cam_modelo = tmp_path / "modelo_falso.joblib"
+    joblib.dump({"dados_sinteticos": False}, cam_modelo)
+    manifesto = generate_manifest(str(cam_modelo), {"dados_sinteticos": False})
+    assert manifesto["dados_sinteticos"] is False
+
+
+# =========================================================================
 #  D5: a ressalva de nao-validacao propaga para os 3 lugares.
 # =========================================================================
 
@@ -291,6 +341,93 @@ def test_ressalva_aparece_no_manifesto(pkg_bloco9b):
     assert cobertura is not None
     assert cobertura["n_combinacoes"] == len(_pkg["identification_ensemble"])
     assert cobertura["por_status"]["validado"] == 0
+    # Passo 56 (achado na revisao com o usuario): com 0/6 combinacoes
+    # validadas, o manifesto NAO pode dizer "quantificacao disponivel" de
+    # forma incondicional -- o fluxo real (predict_blind) nunca conseguiria
+    # quantificar amostra nenhuma neste dataset.
+    assert cobertura["quantificacao_disponivel_com_garantia"] is False
+
+
+# =========================================================================
+#  Passo 56: quantificacao_disponivel_com_garantia/sem_garantia refletem a
+#  granularidade REAL por combinacao -- nao um unico booleano que esconde
+#  "0/N validado" atras de "existe algum pipeline de regressao".
+# =========================================================================
+
+def _ensemble_fake(status_por_combo):
+    """{(especie, adulterante): CoverageStatus} -> ensemble minimo, so' com
+    a chave que `_summarize_identification_coverage` le'."""
+    return {chave: {"cobertura_status": status}
+            for chave, status in status_por_combo.items()}
+
+
+def test_manifesto_com_1_de_n_validada_reflete_com_garantia_true():
+    from guaraci.predicao import _summarize_identification_coverage
+
+    pkg = {
+        "identification_ensemble": _ensemble_fake({
+            ("Esp_A", "soja"): CoverageStatus.VALIDATED,
+            ("Esp_A", "milho"): CoverageStatus.NOT_VALIDATED_N1,
+            ("Esp_B", "soja"): CoverageStatus.NOT_VALIDATED_N1,
+        }),
+        "regressao_por_especie": {"Esp_A": {}, "Esp_B": {}},
+    }
+    cobertura = _summarize_identification_coverage(pkg)
+    assert cobertura["n_combinacoes"] == 3
+    assert cobertura["por_status"]["validado"] == 1
+    assert cobertura["quantificacao_disponivel_com_garantia"] is True
+    assert cobertura["quantificacao_possivel_sem_garantia"] is True
+
+
+def test_manifesto_com_0_de_n_validada_reflete_com_garantia_false():
+    from guaraci.predicao import _summarize_identification_coverage
+
+    pkg = {
+        "identification_ensemble": _ensemble_fake({
+            ("Esp_A", "soja"): CoverageStatus.NOT_VALIDATED_N1,
+            ("Esp_A", "milho"): CoverageStatus.NOT_VALIDATED_N2_WEAK,
+        }),
+        "regressao_por_especie": {"Esp_A": {}},
+    }
+    cobertura = _summarize_identification_coverage(pkg)
+    assert cobertura["por_status"]["validado"] == 0
+    assert cobertura["quantificacao_disponivel_com_garantia"] is False
+    # a maquinaria existe (ha' pipeline de regressao) mesmo sem garantia --
+    # e' exatamente o caso "candidato informacional" do model card.
+    assert cobertura["quantificacao_possivel_sem_garantia"] is True
+
+
+def test_manifesto_validado_sem_modelo_de_regressao_correspondente_nao_promete():
+    """Combinacao validada para uma especie que NAO tem pipeline de
+    regressao persistido (ex.: quantificacao nunca rodou para ela) nao
+    pode contar como 'com garantia' -- e' exatamente o caso em que
+    `quantify_sample` bloquearia com 'sem_modelo_de_regressao_para_especie',
+    mesmo com Identificar validado."""
+    from guaraci.predicao import _summarize_identification_coverage
+
+    pkg = {
+        "identification_ensemble": _ensemble_fake({
+            ("Esp_C", "soja"): CoverageStatus.VALIDATED,
+        }),
+        "regressao_por_especie": {"Esp_A": {}},   # Esp_C ausente de proposito
+    }
+    cobertura = _summarize_identification_coverage(pkg)
+    assert cobertura["por_status"]["validado"] == 1
+    assert cobertura["quantificacao_disponivel_com_garantia"] is False
+
+
+def test_manifesto_sem_regressao_nenhuma_e_sem_garantia_nenhuma():
+    from guaraci.predicao import _summarize_identification_coverage
+
+    pkg = {
+        "identification_ensemble": _ensemble_fake({
+            ("Esp_A", "soja"): CoverageStatus.VALIDATED,
+        }),
+        "regressao_por_especie": {},
+    }
+    cobertura = _summarize_identification_coverage(pkg)
+    assert cobertura["quantificacao_disponivel_com_garantia"] is False
+    assert cobertura["quantificacao_possivel_sem_garantia"] is False
 
 
 # =========================================================================

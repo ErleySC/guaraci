@@ -71,6 +71,12 @@ def generate_manifest(caminho_joblib: str, pkg: Dict[str, Any]) -> Dict[str, Any
         # sobre um modelo antigo, entao o default aqui e' explicitamente
         # "unknown", nao "high".
         "grouping_guarantee": pkg.get("grouping_guarantee", "unknown"),
+        # Passo 57: sem esta marca, uma execucao sintetica (metricas quase
+        # sempre perfeitas por construcao) vira template de referencia
+        # indistinguivel de dado real. Ausente (False) em pacotes sem a
+        # chave -- pacotes anteriores a este passo eram, em sua maioria,
+        # de dado real (o proprio motivo de nao terem sido marcados antes).
+        "dados_sinteticos": bool(pkg.get("dados_sinteticos", False)),
         # Bloco 9b: resumo de cobertura do ensemble de Identificacao (D5 --
         # a ressalva de nao-validacao tem que aparecer AQUI tambem, nao so'
         # no log/model card). Ausente (None) em pacotes sem o ensemble
@@ -105,7 +111,30 @@ def _summarize_identification_coverage(pkg: Dict[str, Any]) -> Optional[Dict[str
     """Resumo, por status de cobertura, do ensemble de Identificacao
     (Bloco 9b) -- usado pelo manifesto e pelo model card. `None` se o
     pacote nao tem ensemble (versoes anteriores, ou dataset sem
-    adulterante nomeavel)."""
+    adulterante nomeavel).
+
+    CORRIGIDO (achado na revisao com o usuario): a versao anterior tinha
+    um UNICO booleano `quantificacao_disponivel` calculado so' de
+    `bool(pkg.get("regressao_por_especie"))` -- "existe ALGUM pipeline de
+    regressao no pacote", INDEPENDENTE de qualquer combinacao ter
+    cobertura validada. Com 0/N combinacoes validadas (o caso comum),
+    `quantify_sample` NUNCA roda de fato (gated por `identify_sample`,
+    D4) -- mas o manifesto dizia `true`, escondendo exatamente a
+    granularidade que o addendum do model card ja expõe por extenso. Quem
+    le' o manifesto programaticamente (esse e' o proposito dele) leria
+    `true` e trataria como garantido.
+
+    Dois campos agora, nunca um booleano ambiguo so':
+      quantificacao_disponivel_com_garantia -- True so' se PELO MENOS UMA
+        combinacao validada tiver, para a MESMA especie, um pipeline de
+        regressao persistido (a combinacao real que `predict_blind`
+        conseguiria de fato quantificar sem bloquear).
+      quantificacao_possivel_sem_garantia -- True se existe ALGUM
+        pipeline de regressao no pacote, mesmo sem nenhuma combinacao
+        validada (o caso "candidato informacional" que o model card ja
+        descreve -- a maquinaria existe, so' nao tem garantia estatistica
+        por tras da escolha de especie).
+    """
     ensemble = pkg.get("identification_ensemble")
     if not ensemble:
         return None
@@ -114,10 +143,17 @@ def _summarize_identification_coverage(pkg: Dict[str, Any]) -> Optional[Dict[str
         status = info.get("cobertura_status")
         chave = status.value if hasattr(status, "value") else str(status)
         contagem[chave] = contagem.get(chave, 0) + 1
+
+    regressao_especies = set(pkg.get("regressao_por_especie") or {})
+    especies_validadas = {
+        esp for (esp, _adult), info in ensemble.items()
+        if info.get("cobertura_status") == CoverageStatus.VALIDATED}
     return {
         "n_combinacoes": len(ensemble),
         "por_status": contagem,
-        "quantificacao_disponivel": bool(pkg.get("regressao_por_especie")),
+        "quantificacao_disponivel_com_garantia": bool(
+            especies_validadas & regressao_especies),
+        "quantificacao_possivel_sem_garantia": bool(regressao_especies),
     }
 
 

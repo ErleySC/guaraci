@@ -319,6 +319,30 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         "conjunto de dados ou configuracao.*",
         "",
     ]
+    # Passo 57 (achado na revisao com o usuario): dados sinteticos
+    # (`dados_io.generate_synthetic_data`) tem sinal construido com uma
+    # banda marcadora limpa por classe -- metricas quase perfeitas
+    # (accuracy/balanced accuracy/kappa = 1,0000) sao ESPERADAS nesse
+    # regime, nao evidencia de desempenho. Sem esta marca, um exemplo
+    # sintetico e' indistinguivel de um resultado real no documento --
+    # exatamente o tipo de "metrica perfeita sem contexto" que ja foi
+    # achado de auditoria grave quando apareceu em dataset real. Primeiro
+    # aviso do documento (antes ate' do grouping_guarantee).
+    if cfg.mode == "sintetico":
+        linhas += [
+            "> ## ⚠️ EXECUTADO COM DADOS SINTETICOS DE DEMONSTRACAO",
+            ">",
+            "> Esta execucao usou o gerador sintetico "
+            "(`dados_io.generate_synthetic_data`), nao espectros reais "
+            "medidos. O sinal de cada classe/adulterante e' construido com "
+            "uma banda marcadora limpa -- metricas perfeitas ou quase "
+            "perfeitas (accuracy, balanced accuracy, kappa = 1,0000) sao "
+            "ESPERADAS neste regime e NAO indicam desempenho real do "
+            "metodo. Use apenas para verificar que o pipeline roda de "
+            "ponta a ponta; nunca cite estes numeros como evidencia de "
+            "desempenho em dado real.",
+            "",
+        ]
     if cfg.grouping_guarantee != "high":
         linhas += [
             f"> ## ⚠️ GROUPING GUARANTEE: {cfg.grouping_guarantee.upper()}",

@@ -960,8 +960,20 @@ world**. New York: Springer, 2005.
 
 ---
 
-*Última revisão do manual: Bloco 9b, revisão com o usuário (2026-08-25) —
-Detectar fechado com um segundo sinal complementar (`predicao.
+*Última revisão do manual: Bloco 9b FECHADO (2026-08-25/26) — Passos 56-57
+da revisão final. (56) O manifesto tinha um ÚNICO booleano
+`quantificacao_disponivel` calculado só de "existe algum pipeline de
+regressão", `true` mesmo com 0/N combinações validadas (quando
+`predict_blind` nunca quantificaria de fato) — substituído por
+`quantificacao_disponivel_com_garantia` (exige combinação validada COM
+modelo de regressão da mesma espécie) + `quantificacao_possivel_sem_
+garantia` (maquinaria existe, sem garantia estatística). (57) Execução com
+dado sintético não se autodeclarava em lugar nenhum — métricas quase
+perfeitas (accuracy/kappa=1,0000, regime ESPERADO do gerador sintético)
+ficavam indistinguíveis de resultado real; `dados_sinteticos` agora no
+manifesto + aviso no topo do `model_card.md` sempre que
+`cfg.mode=="sintetico"`. Antes, mesmo Bloco 9b: Detectar fechado com um
+segundo sinal complementar (`predicao.
 detect_purity`, DD-SIMCA por espécie ajustado só nos puros, persistido no
 `.joblib` pela primeira vez — antes só existia dentro de uma rodada N2
 isolada); o domínio de aplicabilidade sozinho responde "parecido com o
