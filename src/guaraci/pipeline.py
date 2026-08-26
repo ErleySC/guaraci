@@ -1481,7 +1481,7 @@ def executar(cfg: Config):
     # Calculada aqui (dados ja validados/limpos) e anexada ao `resumo`
     # mais abaixo, para o model card renderizar uma secao propria.
     try:
-        from guaraci.auditoria_delineamento import rodar_auditoria as _rodar_auditoria
+        from guaraci.auditoria_delineamento import run_audit as _rodar_auditoria
         _achados_auditoria = _rodar_auditoria(
             X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
         _n_criticos_audit = sum(1 for a in _achados_auditoria

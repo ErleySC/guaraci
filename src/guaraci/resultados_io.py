@@ -468,7 +468,7 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                    _md_tabela(ddsimca_linhas)]
 
     # Auditoria de delineamento (Bloco 11) -- roda por padrao em toda
-    # execucao (pipeline.rodar_auditoria), nao opt-in. Icone por
+    # execucao (pipeline.run_audit), nao opt-in. Icone por
     # severidade para leitura rapida; "silenciado" ainda aparece, com a
     # justificativa anexada na propria mensagem -- nunca some do
     # relatorio so' por ter sido silenciado.
