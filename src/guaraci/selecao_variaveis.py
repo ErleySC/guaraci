@@ -29,6 +29,17 @@ from guaraci.figuras import save, color, _ticks_x_inteiros
 if TYPE_CHECKING:
     pass
 
+__all__ = [
+    "selecao_ipls",
+    "sparse_plsda_mask",
+    "selecao_spa",
+    "ga_selection",
+    "fig_etapa4_ag_convergencia",
+    "fig_etapa4_ipls",
+    "fig_etapa4_comparacao",
+    "etapa4_selecao_variaveis",
+]
+
 
 def _avaliar_subset_cv(X_sel: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                         cv_indices: list, n_lv: int) -> Dict[str, float]:

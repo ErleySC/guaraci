@@ -22,6 +22,18 @@ from sklearn.cross_decomposition import PLSRegression
 
 from guaraci.config import Config, __version__, _NIVEL_NOME
 
+__all__ = [
+    "pls_model_metrics",
+    "save_identifiers",
+    "save_model_summary",
+    "append_regression_summary",
+    "append_heatmap_summary",
+    "generate_model_card",
+    "append_regression_model_card",
+    "append_identification_model_card",
+    "append_purity_model_card",
+]
+
 
 def pls_model_metrics(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
                          Y_cv: np.ndarray) -> Tuple[float, float, float]:

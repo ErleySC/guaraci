@@ -34,6 +34,16 @@ if TYPE_CHECKING:                                          # pragma: no cover
 
 log = logging.getLogger(__name__)
 
+__all__ = [
+    "DIR_PERFIS",
+    "UnknownProfileError",
+    "Vocabulary",
+    "MatrixProfile",
+    "load_profile",
+    "apply_profile",
+    "cfg_profile",
+]
+
 #: Perfis embutidos, distribuidos junto com o pacote.
 DIR_PERFIS = Path(__file__).parent / "perfis_matriz"
 

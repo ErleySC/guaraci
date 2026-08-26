@@ -32,12 +32,24 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Set
 if TYPE_CHECKING:                      # evita import circular em runtime
     from guaraci.config import Config
 
+__all__ = [
+    "EXPLORATORIO",
+    "CLASSIFICACAO",
+    "QUANTIFICACAO",
+    "OBJETIVO_ROTULO",
+    "resolve_objective",
+    "should_generate",
+    "exploratory_figures_enabled",
+    "figure_plan",
+    "describe_plan",
+]
+
 # ---- Objetivos cientificos -------------------------------------------------
 EXPLORATORIO = "exploratorio"
 CLASSIFICACAO = "classificacao"
 QUANTIFICACAO = "quantificacao"
 
-OBJETIVOS_VALIDOS: Set[str] = {EXPLORATORIO, CLASSIFICACAO, QUANTIFICACAO}
+_OBJETIVOS_VALIDOS: Set[str] = {EXPLORATORIO, CLASSIFICACAO, QUANTIFICACAO}
 
 # Rotulo amigavel (UI/terminal). Valor interno inalterado.
 OBJETIVO_ROTULO: Dict[str, str] = {
@@ -166,7 +178,7 @@ def resolve_objective(cfg: "Config") -> str:
     deriva do `cfg.level` preservando o comportamento historico.
     """
     obj = (getattr(cfg, "objective", "auto") or "auto").strip().lower()
-    if obj in OBJETIVOS_VALIDOS:
+    if obj in _OBJETIVOS_VALIDOS:
         return obj
     return _OBJETIVO_POR_NIVEL.get(getattr(cfg, "level", "N1"), CLASSIFICACAO)
 

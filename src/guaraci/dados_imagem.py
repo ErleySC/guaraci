@@ -76,16 +76,24 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+__all__ = [
+    "load_image_file",
+    "recortar_relativo",
+    "extract_color_features",
+    "extract_texture_features",
+    "load_images",
+]
+
 _EXTENSOES_IMAGEM = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
 # Nomes das features de cor, na ordem em que `extract_color_features` as monta —
 # usado tambem como "wavenumbers" simbolicos (ver limitacao no docstring do modulo).
-NOMES_FEATURES_COR: Tuple[str, ...] = (
+_NOMES_FEATURES_COR: Tuple[str, ...] = (
     "R_media", "G_media", "B_media", "R_dp", "G_dp", "B_dp",
     "H_media", "S_media", "V_media", "H_dp", "S_dp", "V_dp",
     "L_media", "a_media", "b_media", "L_dp", "a_dp", "b_dp",
 )
-NOMES_FEATURES_TEXTURA: Tuple[str, ...] = (
+_NOMES_FEATURES_TEXTURA: Tuple[str, ...] = (
     "GLCM_contraste", "GLCM_homogeneidade", "GLCM_energia", "GLCM_correlacao",
 )
 
@@ -163,7 +171,7 @@ def _rgb_para_lab(img_rgb01: np.ndarray) -> np.ndarray:
 
 def extract_color_features(img: np.ndarray) -> Dict[str, float]:
     """Media e desvio-padrao por canal em RGB, HSV e Lab — 18 features no
-    total, na mesma ordem de `NOMES_FEATURES_COR`. Entrada: array uint8
+    total, na mesma ordem de `_NOMES_FEATURES_COR`. Entrada: array uint8
     (H, W, 3) ou (H, W) RGB/tons de cinza."""
     img = np.asarray(img)
     if img.ndim == 2:
@@ -183,7 +191,7 @@ def extract_color_features(img: np.ndarray) -> Dict[str, float]:
     for nome, canal in zip(("L", "a", "b"), range(3)):
         feats[f"{nome}_media"] = float(np.mean(lab[..., canal]))
         feats[f"{nome}_dp"] = float(np.std(lab[..., canal]))
-    return {k: feats[k] for k in NOMES_FEATURES_COR}
+    return {k: feats[k] for k in _NOMES_FEATURES_COR}
 
 
 def extract_texture_features(img: np.ndarray) -> Dict[str, float]:
@@ -252,11 +260,11 @@ def _detectar_subpastas_imagem(raiz: str) -> List[str]:
 
 #: Nome do CSV de associacao manual (nivel "medium"), procurado na raiz da
 #: pasta de dados. Nao configuravel neste prototipo -- ver docstring do modulo.
-NOME_CSV_AMOSTRAS = "amostras.csv"
+_NOME_CSV_AMOSTRAS = "amostras.csv"
 
-GROUPING_HIGH = "high"
-GROUPING_MEDIUM = "medium"
-GROUPING_NONE = "none"
+_GROUPING_HIGH = "high"
+_GROUPING_MEDIUM = "medium"
+_GROUPING_NONE = "none"
 
 
 def _subpasta_e_grupo_de_amostras(caminho_classe: str) -> bool:
@@ -304,7 +312,7 @@ def _detectar_nivel_medium(pasta_raiz: str, arquivos: List[str]
     colunas `arquivo,id_amostra`. `arquivo` e' o caminho RELATIVO a
     `pasta_raiz` (separador "/", como grava `os.path.relpath` normalizado).
     Cobertura parcial e' erro explicito -- nunca processamento parcial."""
-    caminho_csv = os.path.join(pasta_raiz, NOME_CSV_AMOSTRAS)
+    caminho_csv = os.path.join(pasta_raiz, _NOME_CSV_AMOSTRAS)
     if not os.path.isfile(caminho_csv):
         return None
     df_csv = pd.read_csv(caminho_csv)
@@ -376,18 +384,18 @@ def load_images(
     todos_arquivos = [a for a, _ in arquivos]
     grupos_high = _detectar_nivel_high(subpastas)
     if grupos_high is not None:
-        nivel_agrupamento = GROUPING_HIGH
+        nivel_agrupamento = _GROUPING_HIGH
         mapa_grupo = grupos_high
     else:
         grupos_medium = _detectar_nivel_medium(pasta, todos_arquivos)
         if grupos_medium is not None:
-            nivel_agrupamento = GROUPING_MEDIUM
+            nivel_agrupamento = _GROUPING_MEDIUM
             mapa_grupo = grupos_medium
         else:
-            nivel_agrupamento = GROUPING_NONE
+            nivel_agrupamento = _GROUPING_NONE
             mapa_grupo = {}
 
-    if nivel_agrupamento == GROUPING_NONE:
+    if nivel_agrupamento == _GROUPING_NONE:
         print("[WARNING] Grouping guarantee: NONE -- nenhuma subpasta por "
               "amostra fisica nem CSV de associacao (amostras.csv) foi "
               "encontrado. Validacao cai em StratifiedKFold, SEM protecao "
@@ -404,8 +412,8 @@ def load_images(
     meta_rows: List[Dict[str, object]] = []
     n_falhos = 0
 
-    nomes_features = list(NOMES_FEATURES_COR) + (
-        list(NOMES_FEATURES_TEXTURA) if incluir_textura else [])
+    nomes_features = list(_NOMES_FEATURES_COR) + (
+        list(_NOMES_FEATURES_TEXTURA) if incluir_textura else [])
 
     for arq, subpasta_nome in arquivos:
         try:
@@ -438,7 +446,7 @@ def load_images(
     X = np.array(linhas, dtype=float)
     wavenumbers = np.arange(len(nomes_features), dtype=float)
     mae_id = (np.array(grupos_arr, dtype=object)
-              if nivel_agrupamento != GROUPING_NONE else None)
+              if nivel_agrupamento != _GROUPING_NONE else None)
     metadados_df = pd.DataFrame(meta_rows)
     metadados_df.attrs["grouping_guarantee"] = nivel_agrupamento
     print(f"[INFO] {len(X)} imagens carregadas, {len(nomes_features)} "
