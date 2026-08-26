@@ -17,7 +17,7 @@ Reproduzir: `pytest tests/test_validacao_publica.py` com
 | Eigenvector **Corn** (m5) | milho em grão | 80 | 700 · 1100–2498 nm | proteína | **RMSEP 0,144 %m/m**; R²val 0,912; 8 LVs | RMSEP típico de PLS: **0,1–0,2** | ✅ dentro da faixa |
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
 | **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | — | ❌ **NÃO OBTIDO** |
-| Mendeley `10.17632/ctgg7k4m5g.2` | azeite | — | NIR + MIR + Raman | adulteração | — | — | ❌ **NÃO OBTIDO** |
+| Mendeley `10.17632/ctgg7k4m5g.2` | azeite | 100 | NIR + MIR + Raman | adulteração/PV | — | — | 🟡 **ACESSÍVEL, não integrado** (reconfirmado 2026-08-26) |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -26,25 +26,48 @@ de afirmação que este repositório pode fazer sobre desempenho.
 
 ---
 
-## 2. NÃO OBTIDO — motivo exato
+## 2. Estado exato dos datasets ainda não integrados
 
-### Mendeley `10.17632/ctgg7k4m5g.2` (azeite adulterado)
+### Mendeley `10.17632/ctgg7k4m5g.2` (azeite adulterado) — RETRATAÇÃO de 2026-08-18
 
-| Tentativa | Resultado |
+> **A entrada anterior desta seção afirmava "❌ NÃO OBTIDO" com a rota
+> `?version=2` retornando HTTP 403 e exigindo sessão de navegador.
+> Reconfirmado por comando direto em 2026-08-26 (Passo 78): o endpoint
+> SEM o parâmetro `?version=2` funciona e nunca exigiu sessão.** A
+> tentativa de 2026-08-18 usou a rota errada (`.../files?version=2`,
+> que de fato devolve erro) em vez do endpoint correto de metadados do
+> dataset. Não se sabe se o endpoint mudou de comportamento ou se a
+> investigação original simplesmente não tentou essa rota — o registro
+> anterior não detalha todas as variações testadas o suficiente para
+> distinguir os dois casos.
+
+| Tentativa (2026-08-18) | Resultado |
 |---|---|
-| `data.mendeley.com/public-api/datasets/ctgg7k4m5g/files?version=2` | **HTTP 403** |
-| `api.data.mendeley.com/datasets/ctgg7k4m5g/2` | **HTTP 404** |
-| `api.data.mendeley.com/datasets/ctgg7k4m5g/2/files` | **HTTP 404** |
+| `data.mendeley.com/public-api/datasets/ctgg7k4m5g/files?version=2` | **HTTP 403** (reconfirmado 2026-08-26: `{"error":400}`, ainda bloqueado) |
+| `api.data.mendeley.com/datasets/ctgg7k4m5g/2` | **HTTP 404** (reconfirmado 2026-08-26: ainda 404) |
+| `api.data.mendeley.com/datasets/ctgg7k4m5g/2/files` | **HTTP 404** (reconfirmado 2026-08-26: ainda 404) |
 | `doi.org/api/handles/10.17632/ctgg7k4m5g.2` | **200** — o DOI resolve, o dataset existe |
-| Página de destino (`data.mendeley.com/datasets/ctgg7k4m5g/2`) | **200**, 125 KB — mas é uma SPA: os links de arquivo são montados por JavaScript e não estão no HTML |
+| Página de destino (`data.mendeley.com/datasets/ctgg7k4m5g/2`) | **200**, 125 KB — SPA, links montados por JS |
 
-**Licença confirmada no HTML da página: CC BY 4.0** — compatível com uso e
-redistribuição mediante atribuição, caso venha a ser obtido.
+| Tentativa NOVA (2026-08-26) | Resultado |
+|---|---|
+| `data.mendeley.com/public-api/datasets/ctgg7k4m5g` (SEM `?version=2`) | **HTTP 200**, JSON completo: metadados + lista de 10 arquivos + `download_url` por arquivo (`ATRAdulteration3.csv`, `ATRPure3.csv`, `MIR1A.csv`, `NIR24mm1A.csv`, `NIR24mm1B.csv`, `NIR2mm1B.csv`, `NIR8mm1A.csv`, `OilClassKey.csv`, `Raman1A.csv`, `Raman2.csv`; ~129,5 MB total) |
+| `HEAD` no `download_url` do menor arquivo (`OilClassKey.csv`, 401 bytes) | **302** → redireciona para URL assinada S3 (`prod-dcd-datasets-public-files-eu-west-1.s3...`) — download real, sem autenticação, confirmado funcional |
 
-O download exige sessão de navegador. **Não foi substituído por nenhum
-proxy**: um dataset "parecido" de outra fonte não valida a mesma
-alegação. Para integrá-lo, baixe manualmente e aponte
-`GUARACI_DATASETS_DIR`; o carregador já aceita caminho de arquivo.
+**Licença confirmada no JSON da API (não só no HTML): CC BY 4.0**
+(`data_licence.short_name`) — compatível com uso e redistribuição
+mediante atribuição.
+
+**Estado real agora: ACESSÍVEL programaticamente, NADA baixado nem
+integrado ao pipeline ainda** — esta verificação foi só de
+acessibilidade (Passo 78 pede levantamento, não integração). Nome do
+alvo científico do dataset (peroxide value / classificação, não
+"adulteração" propriamente — ver descrição completa do dataset) precisa
+ser conferido contra o objetivo real do GUARACI antes de decidir como
+integrar. Para integrar de fato: baixar os 10 CSVs pelos `download_url`
+acima, decidir formato de carregamento (provavelmente novo leitor em
+`io_registry.py`, os arquivos não são `.dx`), e apontar
+`GUARACI_DATASETS_DIR` — trabalho de um Passo próprio, não feito aqui.
 
 ### Mel adulterado (478 amostras, 700 comprimentos de onda, 4 classes)
 
