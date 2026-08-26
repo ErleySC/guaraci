@@ -273,8 +273,9 @@ depois de exportado.
   em vez de extrapolar.
 - **Identificação de adulterante não pode ser agregada entre espécies** — a
   matriz-hospedeira domina o sinal de adulteração mais que o próprio
-  adulterante (espécie explica 6-13× mais variância do delta espectral que o
-  tipo de adulterante, medido; ver `docs/MANUAL.md`). Calibrado por
+  adulterante (espécie explica 21-175× mais variância do delta espectral
+  que o tipo de adulterante, medido com script reprodutível; ver
+  `docs/MANUAL.md`). Calibrado por
   espécie×adulterante, com cobertura não validada no dataset atual (mesmo
   padrão do gate DD-SIMCA: 36 de 38 combinações têm 1 só sessão de coleta
   independente). Implementado como fluxo completo Detectar → Identificar →

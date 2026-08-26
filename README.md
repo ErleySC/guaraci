@@ -246,8 +246,9 @@ after export.
   insufficient instead of extrapolating.
 - **Adulterant identification cannot be pooled across species** — the host
   matrix dominates the adulteration signal more than the adulterant itself
-  (species explains 6-13x more delta-spectrum variance than adulterant type,
-  measured; see `docs/MANUAL.md`). Calibrated per species×adulterant, with
+  (species explains 21-175x more delta-spectrum variance than adulterant
+  type, measured with a reproducible script; see `docs/MANUAL.md`).
+  Calibrated per species×adulterant, with
   coverage reported as unvalidated on the current dataset (same pattern as
   the DD-SIMCA gate: 36 of 38 combinations have exactly 1 independent
   collection session). Implemented as a full Detect → Identify → Quantify

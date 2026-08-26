@@ -798,39 +798,60 @@ re-executada nesta sessão).
 
 - **A identificação de adulterante não pode ser agregada entre espécies —
   a matriz-hospedeira domina o sinal de adulteração mais que o próprio
-  adulterante (medido em 2026-08-25, design do Bloco 9).** Antes de
-  calibrar um identificador de adulterante (conjunto aberto, um por
-  soja/algodão/milho, agregando as 13 espécies), testou-se se a
-  assinatura espectral de cada adulterante é consistente entre matrizes
-  — pré-requisito para que uma classe agregada seja estatisticamente
-  válida (exchangeability). Calculou-se, para cada amostra adulterada, o
-  desvio em relação à média da própria espécie pura (delta), e mediu-se
-  quanto dessa direção é explicada por ESPÉCIE vs. por ADULTERANTE
-  (R² tipo ANOVA/PERMANOVA):
+  adulterante (medido e RE-VERIFICADO com script reprodutível em
+  2026-08-26, design do Bloco 9).** Antes de calibrar um identificador de
+  adulterante (conjunto aberto, um por soja/algodão/milho, agregando as 13
+  espécies), testou-se se a assinatura espectral de cada adulterante é
+  consistente entre matrizes — pré-requisito para que uma classe agregada
+  seja estatisticamente válida (exchangeability). Calculou-se, para cada
+  amostra física adulterada (réplicas T1/T2/T3 colapsadas por `mae_id`,
+  espectro pré-processado), o desvio em relação à média da própria
+  espécie pura (delta), e mediu-se quanto dessa direção é explicada por
+  ESPÉCIE vs. por ADULTERANTE (R² tipo ANOVA/PERMANOVA one-way, Anderson
+  2001 — `scripts/medicoes/medir_especie_vs_adulterante_permanova.py`):
 
   | Corte de teor | R² por adulterante (3 classes) | R² por espécie (13 classes) |
   |---|---|---|
-  | ≥0% (n=1.633) | 0,0034 | 0,1866 (bruto) / 0,1034 (direção normalizada) |
-  | ≥10% (n=641)  | 0,0140 | 0,2182 (bruto) / 0,1147 (direção normalizada) |
+  | ≥0% (n=549 amostras físicas) | 0,0032 | 0,5566 (bruto) / 0,5105 (direção normalizada) |
+  | ≥10% (n=216 amostras físicas) | 0,0153 | 0,5873 (bruto) / 0,5160 (direção normalizada) |
 
-  Espécie explica 6 a 13× mais variância do delta que o tipo de
-  adulterante — e essa relação **se fortalece**, não enfraquece, em
-  concentrações mais altas (onde o sinal químico de adulteração deveria
-  estar mais evidente, não mais confundido por ruído). Isso indica que o
+  **Espécie explica de 21× a 175× mais variância do delta que o tipo de
+  adulterante** — bem mais forte que a estimativa anterior ("6 a 13×"),
+  não mais fraca. A relação **se fortalece** em concentrações mais altas
+  no lado do adulterante (R² sobe de 0,0032 para 0,0153), consistente com
+  sinal químico ficando mais evidente com mais teor. Isso reforça que o
   efeito de matriz-hospedeira é real e sistemático, não um artefato de
   baixa razão sinal-ruído: "soja em Andiroba" e "soja em Castanha do
   Pará" não compartilham uma direção espectral comum o suficiente para
-  serem tratadas como a mesma população estatística. **Decisão de
-  design:** o identificador de adulterante (Bloco 9) é calibrado por
-  combinação espécie×adulterante — a granularidade que os dados de fato
-  sustentam conceitualmente —, com cobertura reportada como **não
-  validável** no dataset atual (mesmo padrão e mesma linguagem do gate
-  DD-SIMCA, Seção 4.6 do relatório PIBIC): 36 das 38 combinações
-  espécie×adulterante têm exatamente 1 sessão de coleta independente
-  (`grupos_mae_id` inflado pela variação de teor dentro da mesma sessão
-  não conta como independência real). A ressalva "não validado" se
-  propaga para o resultado final de qualquer predição em amostra nova,
-  não fica só no relatório de auditoria interno.
+  serem tratadas como a mesma população estatística. **A decisão de
+  design permanece a mesma e fica mais bem sustentada, não reaberta:** o
+  identificador de adulterante (Bloco 9) é calibrado por combinação
+  espécie×adulterante, com cobertura reportada como **não validável** no
+  dataset atual (mesmo padrão e mesma linguagem do gate DD-SIMCA, Seção
+  4.6 do relatório PIBIC): 36 das 38 combinações espécie×adulterante têm
+  exatamente 1 sessão de coleta independente (`session_from_mae_id`,
+  Bloco 9b — `grupos_mae_id` inflado pela variação de teor dentro da
+  mesma sessão não conta como independência real). A ressalva "não
+  validado" se propaga para o resultado final de qualquer predição em
+  amostra nova, não fica só no relatório de auditoria interno.
+
+  **Retratação (2026-08-26):** a tabela e a frase "6 a 13×" publicadas
+  antes desta correção NUNCA tiveram um script reprodutível — varredura
+  de lastro (Passo 62, revisão desta sessão) não encontrou nenhum
+  artefato em `scripts/medicoes/` nem nos scripts privados de auditoria
+  que os produzisse. Pior: a aritmética do próprio texto publicado não
+  fechava — das 4 razões possíveis na tabela antiga (0,1866/0,0034=54,9×
+  · 0,1034/0,0034=30,4× · 0,2182/0,0140=15,6× · 0,1147/0,0140=8,2×),
+  nenhuma estava genuinamente entre 6 e 13×. Remedido do zero com a
+  metodologia acima: o R² por adulterante bateu quase exatamente com o
+  citado (0,0032 vs. 0,0034 e 0,0153 vs. 0,0140 — forte indício de que a
+  metodologia reconstruída está alinhada com a original), mas o R² por
+  espécie saiu ~3× maior que o citado (0,55-0,59 vs. 0,19-0,22) — a causa
+  exata dessa diferença específica não foi determinada (o método exato
+  usado para gerar os números antigos não está documentado em código em
+  lugar nenhum). A conclusão qualitativa (espécie domina, decisão de
+  design válida) não muda em nenhum dos dois casos — e fica mais forte
+  com os números corrigidos, não mais fraca.
 
 - **Bloco 9b (implementado e verificado em 2026-08-25): fluxo completo
   Detectar → Identificar → Quantificar em amostra nova, no mode cego.**

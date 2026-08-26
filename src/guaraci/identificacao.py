@@ -3,10 +3,15 @@
 
 POR QUE ESTE MODULO EXISTE
 ---------------------------
-Medido em 2026-08-25 (ver docs/MANUAL.md, secao "Limitacoes conhecidas"):
-especie explica 6 a 13x mais variancia do desvio espectral de uma amostra
-adulterada que o TIPO de adulterante (algodao/milho/soja), e essa relacao se
-FORTALECE em teor mais alto -- a matriz-hospedeira domina o sinal. Agregar
+Medido e RE-VERIFICADO com script reprodutivel em 2026-08-26 (ver
+docs/MANUAL.md, secao "Limitacoes conhecidas", e
+scripts/medicoes/medir_especie_vs_adulterante_permanova.py): especie
+explica de 21x a 175x mais variancia do desvio espectral de uma amostra
+adulterada que o TIPO de adulterante (algodao/milho/soja) -- retratacao de
+uma estimativa anterior ("6 a 13x") que nunca teve script reprodutivel e
+cuja aritmetica publicada nao fechava; a conclusao qualitativa (especie
+domina) nao muda, fica mais forte. Essa relacao se FORTALECE em teor mais
+alto -- a matriz-hospedeira domina o sinal. Agregar
 "soja em Andiroba" e "soja em Castanha do Para" na mesma classe "soja"
 violaria exchangeability (nao sao a mesma populacao estatistica). Por isso o
 identificador e' calibrado por COMBINACAO especie x adulterante (ate 38 no
