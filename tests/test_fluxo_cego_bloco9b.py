@@ -453,7 +453,7 @@ def test_menu_predicao_cli_inclui_colunas_do_fluxo_cego(
 
     respostas = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
-    guaraci_mod.menu_prediction(guaraci_mod.Config())
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
 
     cam_saida = cam_csv.with_name(cam_csv.stem + "_predicao.csv")
     assert cam_saida.is_file()

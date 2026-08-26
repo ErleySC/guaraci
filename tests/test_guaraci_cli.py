@@ -800,7 +800,7 @@ def test_todo_campo_do_spec_e_alcancavel_por_algum_menu(guaraci_mod):
     todas_chaves = set(guaraci_mod._SPEC_BY_KEY.keys())
     alcancaveis = set()
     for nome in dir(guaraci_mod):
-        if not nome.startswith("menu_"):
+        if not nome.startswith("_menu_"):
             continue
         fn = getattr(guaraci_mod, nome)
         try:
@@ -859,7 +859,7 @@ def test_main_sai_rapido_com_eof_no_stdin(guaraci_mod, monkeypatch, tmp_path):
     # cls() spawna um subprocesso via os.system a cada iteracao -- sem
     # mockar, o teste ficaria lento e poluiria a saida do pytest sem
     # testar nada a mais sobre a correcao.
-    monkeypatch.setattr(guaraci_mod, "cls", lambda: None)
+    monkeypatch.setattr(guaraci_mod, "_cls", lambda: None)
     # Evita escrever/migrar estado no HOME real de quem roda os testes
     # (_USER_DIR aponta por padrao para ~/.guaraci -- ver _migrar_estado_legado).
     monkeypatch.setattr(guaraci_mod, "_USER_DIR", tmp_path)

@@ -70,9 +70,9 @@ from guaraci.app_logic import (
 )
 
 Config        = pq.Config
-executar      = pq.executar
-save_config = pq.save_config
-load_config = pq.load_config
+_executar      = pq.executar
+_save_config = pq.save_config
+_load_config = pq.load_config
 
 # Dicionarios de i18n/perfis do cli_assistente. Import de pacote normal (mesmo
 # pacote): importar o modulo NAO dispara main() (guardado por __main__), entao
@@ -83,16 +83,16 @@ import guaraci.cli_assistente as _cli
 def _try(name, fallback=None):
     return getattr(_cli, name, fallback if fallback is not None else {})
 
-FIELD_NAMES          = _try("FIELD_NAMES")
-HELP_DB              = _try("HELP_DB")
-RISK_CLASS           = _try("RISK_CLASS")
+_FIELD_NAMES          = _try("FIELD_NAMES")
+_HELP_DB              = _try("HELP_DB")
+_RISK_CLASS           = _try("RISK_CLASS")
 PROFILES             = _try("PROFILES")
 PROFILE_DESC         = _try("PROFILE_DESC")
 PROFILE_KEY_SUMMARY  = _try("PROFILE_KEY_SUMMARY")
-PALETAS_COR          = _try("PALETAS_COR")
-FONT_PRESETS         = _try("FONT_PRESETS")
-TECNICAS             = _try("TECNICAS")
-REFERENCIAS_GUARACI  = _try("REFERENCIAS_GUARACI")
+_PALETAS_COR          = _try("PALETAS_COR")
+_FONT_PRESETS         = _try("FONT_PRESETS")
+_TECNICAS             = _try("TECNICAS")
+_REFERENCIAS_GUARACI  = _try("REFERENCIAS_GUARACI")
 _CONFIG_SPEC         = _try("_CONFIG_SPEC", [])
 _SPEC_BY_KEY         = _try("_SPEC_BY_KEY")
 _DDSIMCA_DISPLAY     = _try("_DDSIMCA_DISPLAY")
@@ -100,8 +100,27 @@ _DDSIMCA_INPUT       = _try("_DDSIMCA_INPUT")
 _coagir_valor        = _try("_coagir_valor", lambda s, r: r)
 _attr_para_yaml      = _try("_attr_para_yaml", lambda s, c: "")
 _fmt_yaml            = _try("_fmt_yaml", str)
-save_config        = _try("save_config", pq.save_config)
-load_config      = _try("load_config", pq.load_config)
+_save_config        = _try("save_config", pq.save_config)
+_load_config      = _try("load_config", pq.load_config)
+
+# __all__ so' cobre a superficie realmente consumida de fora deste arquivo
+# (confirmado por grep + suite de testes): `main` e' o ponto de entrada da
+# CLI; `Config` e' usado extensivamente pela suite via `guaraci_mod.Config`;
+# PROFILES/PROFILE_DESC/PROFILE_KEY_SUMMARY sao testados diretamente por
+# `test_guaraci_cli.py` via `guaraci_mod.X` (achado ao aplicar este __all__:
+# pareciam mirrors so'-internos de cli_assistente.py, mas ha um teste que os
+# consome por este caminho especifico -- mantidos publicos aqui por isso).
+# O resto (menu_*, cls, I18N, GUARACI_TIPS, FIELD_NAMES/HELP_DB/RISK_CLASS/
+# PALETAS_COR/FONT_PRESETS/TECNICAS/REFERENCIAS_GUARACI, os aliases locais
+# _executar/_save_config/_load_config) e' wiring interno da CLI -- nunca
+# consumido fora deste arquivo, renomeado para _privado nesta auditoria.
+__all__ = [
+    "main",
+    "Config",
+    "PROFILES",
+    "PROFILE_DESC",
+    "PROFILE_KEY_SUMMARY",
+]
 
 # Persistencia de estado do CLI.
 #
@@ -317,7 +336,7 @@ _TECNICA_SELECIONADA: Dict[str, str] = {"key": "ft-nir", "nome": "FT-NIR"}
 # ---------------------------------------------------------------------------
 # Internacionalizacao — sem repeticao entre idiomas
 # ---------------------------------------------------------------------------
-I18N: Dict[str, Dict[str, str]] = {
+_I18N: Dict[str, Dict[str, str]] = {
     "PT": {
         # Titulos de menu
         "t_projeto":    "Projeto",
@@ -609,7 +628,7 @@ I18N: Dict[str, Dict[str, str]] = {
 }
 
 def _t(key: str, **kw) -> str:
-    s = I18N[_lang()].get(key, key)
+    s = _I18N[_lang()].get(key, key)
     if kw:
         try:
             s = s.format(**kw)
@@ -618,9 +637,9 @@ def _t(key: str, **kw) -> str:
     return s
 
 # ---------------------------------------------------------------------------
-# GUARACI TIPS — dicas unicas, diferentes das descricoes do HELP_DB
+# GUARACI TIPS — dicas unicas, diferentes das descricoes do _HELP_DB
 # ---------------------------------------------------------------------------
-GUARACI_TIPS: Dict[str, Dict[str, str]] = {
+_GUARACI_TIPS: Dict[str, Dict[str, str]] = {
     "pasta_dados": {
         "PT": "Use caminho absoluto para evitar problemas. Verifique se os .dx estao na raiz da pasta, nao em subpastas.",
         "EN": "Use absolute paths to avoid issues. Check that .dx files are at the folder root, not in subfolders.",
@@ -724,15 +743,15 @@ _RISK_ICON = {"VISUAL": "●", "ANALITICO": "◆", "AVANCADO": "▲"}
 _RISK_MARK = {"VISUAL": "○", "ANALITICO": "◆", "AVANCADO": "▲"}  # icon inline
 
 def _risco_hex(key: str) -> str:
-    return _RISK_HEX.get(RISK_CLASS.get(key, "ANALITICO"), PA)
+    return _RISK_HEX.get(_RISK_CLASS.get(key, "ANALITICO"), PA)
 
 def _risco_icon(key: str) -> str:
-    return _RISK_ICON.get(RISK_CLASS.get(key, "ANALITICO"), "◆")
+    return _RISK_ICON.get(_RISK_CLASS.get(key, "ANALITICO"), "◆")
 
 # ---------------------------------------------------------------------------
 # Utilitarios
 # ---------------------------------------------------------------------------
-def cls() -> None:
+def _cls() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 def _input(msg: str = "", default: str = "") -> str:
@@ -763,7 +782,7 @@ def _pause(msg: str = "") -> None:
         pass
 
 def _nome_campo(key: str) -> str:
-    return FIELD_NAMES.get(key, {}).get(_lang(), key)
+    return _FIELD_NAMES.get(key, {}).get(_lang(), key)
 
 # Traducao dos nomes de nivel APENAS para exibicao. `pq._NIVEL_NOME` (em
 # config.py) segue sendo a fonte unica em portugues, porque tambem alimenta o
@@ -1022,7 +1041,7 @@ def _guaraci_navegar_secoes(cfg: Config) -> None:
 def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
     lang = _lang()
-    cls(); _print_header()
+    _cls(); _print_header()
     console.print()
 
     opcoes = [
@@ -1301,12 +1320,12 @@ def _print_run_box(cfg: Config) -> None:
 def _desc_curta(key: str, max_c: int = 42) -> str:
     """Retorna descricao resumida do campo (max_c chars) para exibicao inline.
 
-    Resolve idioma/HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
+    Resolve idioma/_HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
     truncamento a `guaraci.cli_logic.truncate_desc_by_sentence` (funcao pura,
     testada).
     """
     lang = _lang()
-    h = HELP_DB.get(key, {})
+    h = _HELP_DB.get(key, {})
     desc = h.get(lang, h.get("PT", {})).get("desc", "")
     if not desc:
         desc = _SPEC_BY_KEY.get(key, {}).get("desc", "")
@@ -1497,7 +1516,7 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     val_cru   = _attr_para_yaml(spec, cfg)
     tipo      = spec.get("tipo", "str")
     opcoes    = spec.get("opcoes")
-    risk      = RISK_CLASS.get(key, "ANALITICO")
+    risk      = _RISK_CLASS.get(key, "ANALITICO")
     r_hex     = _risco_hex(key)
 
     # Painel de edicao minimalista
@@ -1606,13 +1625,13 @@ def _editar_campo(cfg: Config, key: str) -> bool:
 # ---------------------------------------------------------------------------
 def _mostrar_ajuda(key: str) -> None:
     lang   = _lang()
-    h      = HELP_DB.get(key, {})
+    h      = _HELP_DB.get(key, {})
     h_lang = h.get(lang, h.get("PT", {}))
     nome   = _nome_campo(key)
     r_hex  = _risco_hex(key)
     spec   = _SPEC_BY_KEY.get(key, {})
 
-    # Fallback: se HELP_DB nao cobre o campo, usa a descricao do _CONFIG_SPEC
+    # Fallback: se _HELP_DB nao cobre o campo, usa a descricao do _CONFIG_SPEC
     desc    = h_lang.get("desc") or spec.get("desc") or (
         "Sem descricao detalhada para este campo." if lang == "PT"
         else "No detailed description for this field.")
@@ -1622,7 +1641,7 @@ def _mostrar_ajuda(key: str) -> None:
     opcoes   = spec.get("opcoes")
     faixa    = h.get("range") or (" | ".join(str(o) for o in opcoes) if opcoes else
                                   spec.get("tipo", "—"))
-    tip      = GUARACI_TIPS.get(key, {}).get(lang, "")
+    tip      = _GUARACI_TIPS.get(key, {}).get(lang, "")
 
     info = Table(box=None, show_header=False, padding=(0, 1))
     info.add_column("L", style=PM, width=12, no_wrap=True)
@@ -1675,7 +1694,7 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
     submenu especifico nao muda o mode da sessao inteira)."""
     mostrar_avancado = False
     while True:
-        cls()
+        _cls()
         _print_header()
         fields_visiveis = _print_submenu_compact(
             title, desc, fields, cfg, extras,
@@ -1694,10 +1713,10 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
             r2 = _input("  Campo (N ou nome): ").strip()
             if r2.isdigit() and 1 <= int(r2) <= len(fields_visiveis):
                 _mostrar_ajuda(fields_visiveis[int(r2) - 1])
-            elif r2 in HELP_DB:
+            elif r2 in _HELP_DB:
                 _mostrar_ajuda(r2)
             else:
-                found = [k for k in HELP_DB if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
+                found = [k for k in _HELP_DB if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
                 _mostrar_ajuda(found[0]) if found else console.print(f"  [{PM}]{_t('invalido')}[/{PM}]")
         elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
             _editar_campo(cfg, fields_visiveis[int(raw) - 1])
@@ -1709,11 +1728,11 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
             _pause()
 
 
-def menu_project(cfg: Config) -> None:
+def _menu_project(cfg: Config) -> None:
     _loop_menu(_t("t_projeto"), _t("d_projeto"), ["pasta_dados", "pasta_saida", "tag"], cfg)
 
 
-def menu_data(cfg: Config) -> None:
+def _menu_data(cfg: Config) -> None:
     # imagem_incluir_textura adicionado 2026-08-06: mesma classe de bug de
     # n_jobs_permutacao. So' relevante quando modo_entrada="imagem"
     # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
@@ -1725,7 +1744,7 @@ def menu_data(cfg: Config) -> None:
                campos_avancados={"imagem_incluir_textura"})
 
 
-def menu_preprocessing(cfg: Config) -> None:
+def _menu_preprocessing(cfg: Config) -> None:
     def _show_pipeline():
         preproc = str(_cfgv(cfg, "pre_processamento", "msc_sg_mc"))
         comps = {
@@ -1746,7 +1765,7 @@ def menu_preprocessing(cfg: Config) -> None:
 
     fields = ["pre_processamento", "comparar_pre_processamentos"]
     while True:
-        cls(); _print_header(); _show_pipeline()
+        _cls(); _print_header(); _show_pipeline()
         _print_submenu_compact(_t("t_preproc"), _t("d_preproc"), fields, cfg)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0", "Q"):
@@ -1762,7 +1781,7 @@ def menu_preprocessing(cfg: Config) -> None:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
-def menu_modeling(cfg: Config) -> None:
+def _menu_modeling(cfg: Config) -> None:
     # Essenciais p/ Iniciante: nivel (o que estou fazendo) + max_lvs (unico
     # numero que costuma precisar ajustar). Avancados: DD-SIMCA/OPLS-DA/
     # selecao de variaveis sao metodos extras, nao o caminho basico.
@@ -1780,9 +1799,9 @@ def menu_modeling(cfg: Config) -> None:
                                   "selecao_spa", "selecao_ag"})
 
 
-def menu_validation(cfg: Config) -> None:
+def _menu_validation(cfg: Config) -> None:
     # n_jobs_permutacao/teste_martens adicionados 2026-08-06: mesma classe de
-    # bug -- existiam no Config/_CONFIG_SPEC/HELP_DB, mas nunca tinham sido
+    # bug -- existiam no Config/_CONFIG_SPEC/_HELP_DB, mas nunca tinham sido
     # colocados em NENHUM menu (so' editaveis a mao no YAML).
     fields = ["holdout_fracao", "validacao_group_aware",
               "n_permutacoes", "n_jobs_permutacao", "teste_wold",
@@ -1801,7 +1820,7 @@ def menu_validation(cfg: Config) -> None:
     campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova", "teste_martens"}
     mostrar_avancado = False
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
         ga = _cfgv(cfg, "validacao_group_aware", True)
         if not ga:
             console.print(Panel(
@@ -1827,13 +1846,13 @@ def menu_validation(cfg: Config) -> None:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
-def menu_advanced(cfg: Config) -> None:
+def _menu_advanced(cfg: Config) -> None:
     # benchmark_regressao adicionado 2026-08-06: existia no Config/
-    # _CONFIG_SPEC/HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
+    # _CONFIG_SPEC/_HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
     fields = ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
               "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"]
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
         console.print(Panel(
             f"[{PR}]  ▲ Modulos pesados — verificar hardware em [H] antes de ativar.[/{PR}]",
             border_style=PR, box=rbox.SIMPLE, padding=(0, 1)
@@ -1855,9 +1874,9 @@ def menu_advanced(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # VISUALIZACAO — submenu especial com sub-handlers
 # ---------------------------------------------------------------------------
-def menu_visualization(cfg: Config) -> None:
+def _menu_visualization(cfg: Config) -> None:
     # figuras_detalhadas adicionado 2026-08-06: mesma classe de bug de
-    # n_jobs_permutacao -- existia no Config/_CONFIG_SPEC/HELP_DB, mas nunca
+    # n_jobs_permutacao -- existia no Config/_CONFIG_SPEC/_HELP_DB, mas nunca
     # tinha sido colocado em NENHUM menu.
     fields = ["figuras_detalhadas", "figuras_mostrar_marcadores",
               "figuras_mostrar_elipses", "formato_figura", "dpi",
@@ -1883,18 +1902,18 @@ def menu_visualization(cfg: Config) -> None:
         t.add_column("Nome", no_wrap=True, width=30)
         t.add_column("Desc", style=PM)
         atual = vcfg.get("paleta", "qualitativo")
-        for i, (pk, pd) in enumerate(PALETAS_COR.items(), 1):
+        for i, (pk, pd) in enumerate(_PALETAS_COR.items(), 1):
             nm = pd.get("nome", {}).get(_lang(), pk) if isinstance(pd.get("nome"), dict) else pk
             dsc = pd.get("desc", {}).get(_lang(), "") if isinstance(pd.get("desc"), dict) else ""
             mk = f"[{PA}]►[/{PA}]" if pk == atual else " "
             t.add_row(f"  [{PA}][{i}][/{PA}]", f"{mk} {escape(nm)}", escape(_trunc(dsc, 35)))
         console.print(Panel(t, title=f"[bold {PA}]{_t('viz_paleta')}[/bold {PA}]",
                             border_style=PA, box=rbox.ROUNDED, padding=(0, 1)))
-        r = _input(f"  [1-{len(PALETAS_COR)}] ou Enter: ")
+        r = _input(f"  [1-{len(_PALETAS_COR)}] ou Enter: ")
         if r.isdigit():
             idx = int(r) - 1
-            if 0 <= idx < len(PALETAS_COR):
-                vcfg["paleta"] = list(PALETAS_COR.keys())[idx]
+            if 0 <= idx < len(_PALETAS_COR):
+                vcfg["paleta"] = list(_PALETAS_COR.keys())[idx]
                 _salvar_visual_cfg(vcfg)
                 _lbl = "Paleta" if _lang() == "PT" else "Palette"
                 console.print(f"  [g]✓ {_lbl}: {vcfg['paleta']}[/g]")
@@ -1974,7 +1993,7 @@ def menu_visualization(cfg: Config) -> None:
             _salvar_visual_cfg(vcfg)
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
         _print_submenu_compact(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0","Q"): break
@@ -1994,7 +2013,7 @@ def menu_visualization(cfg: Config) -> None:
 # TECNICA ANALITICA
 # ---------------------------------------------------------------------------
 # Agrupamento das tecnicas por categoria (segue o modelo do prompt GUARACI).
-# So inclui chaves presentes em TECNICAS; chaves ausentes sao ignoradas.
+# So inclui chaves presentes em _TECNICAS; chaves ausentes sao ignoradas.
 _TECNICA_CATEGORIAS = [
     ("Vibracional",          "Vibrational",        ["ft-nir", "nir", "mir", "raman", "uv-vis"]),
     ("Luminescencia",        "Luminescence",       ["fluorescencia"]),
@@ -2009,10 +2028,10 @@ def _tecnica_ordem() -> list:
     vistos = set()
     for _pt, _en, keys in _TECNICA_CATEGORIAS:
         for k in keys:
-            if k in TECNICAS and k not in vistos:
+            if k in _TECNICAS and k not in vistos:
                 ordem.append(k); vistos.add(k)
     # Acrescenta quaisquer tecnicas nao categorizadas, ao final
-    for k in TECNICAS:
+    for k in _TECNICAS:
         if k not in vistos:
             ordem.append(k); vistos.add(k)
     return ordem
@@ -2020,7 +2039,7 @@ def _tecnica_ordem() -> list:
 
 def _tecnica_detalhe(tk: str, lang: str) -> None:
     """Painel com detalhes completos de uma tecnica."""
-    td = TECNICAS.get(tk, {})
+    td = _TECNICAS.get(tk, {})
     tdl = td.get(lang, td.get("PT", {}))
     linhas = [
         f"[{PW}]{escape(tdl.get('desc',''))}[/{PW}]", "",
@@ -2039,12 +2058,12 @@ def _tecnica_detalhe(tk: str, lang: str) -> None:
     _pause()
 
 
-def menu_technique(cfg: Config) -> None:
+def _menu_technique(cfg: Config) -> None:
     """Tecnica analitica — agrupada por categoria (modelo GUARACI)."""
     lang = _lang()
 
     def _aplicar(tk_sel: str) -> None:
-        td_sel = TECNICAS.get(tk_sel, {})
+        td_sel = _TECNICAS.get(tk_sel, {})
         tdl = td_sel.get(lang, td_sel.get("PT", {}))
         try:
             nm_sel = tdl.get("nome", tk_sel)
@@ -2064,7 +2083,7 @@ def menu_technique(cfg: Config) -> None:
             console.print(f"  [err]{escape(str(e))}[/err]")
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
         lang = _lang()
         ordem = _tecnica_ordem()
         num = {tk: i for i, tk in enumerate(ordem, 1)}  # chave -> numero
@@ -2077,13 +2096,13 @@ def menu_technique(cfg: Config) -> None:
         t.add_column("Preproc.", style=PM, no_wrap=True)
 
         for cat_pt, cat_en, keys in _TECNICA_CATEGORIAS:
-            keys_presentes = [k for k in keys if k in TECNICAS]
+            keys_presentes = [k for k in keys if k in _TECNICAS]
             if not keys_presentes:
                 continue
             cat = cat_pt if lang == "PT" else cat_en
             t.add_row("", Text.from_markup(f"[{PF}]── {escape(cat)} ──[/{PF}]"), "", "")
             for tk in keys_presentes:
-                td = TECNICAS.get(tk, {})
+                td = _TECNICAS.get(tk, {})
                 tdl = td.get(lang, td.get("PT", {}))
                 nm = tdl.get("nome", tk)
                 fa = tdl.get("faixa", "—")
@@ -2129,7 +2148,7 @@ def menu_technique(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # CODIFICACAO DX
 # ---------------------------------------------------------------------------
-def menu_encoding(cfg: Config) -> None:
+def _menu_encoding(cfg: Config) -> None:
     """Codificacao DX — explica o conceito e so lista os codigos sob demanda."""
     lang = _lang()
     CODIGOS_BASE = getattr(pq, "CODIGO_ESPECIE", {
@@ -2249,7 +2268,7 @@ def menu_encoding(cfg: Config) -> None:
         _pause()
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
 
         # Painel explicativo — o que e, padrao de nome, como cadastrar/importar
         if lang == "PT":
@@ -2323,7 +2342,7 @@ def menu_encoding(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # HARDWARE — dashboard compacto com barras
 # ---------------------------------------------------------------------------
-def menu_hardware(cfg: Optional[Config] = None) -> None:
+def _menu_hardware(cfg: Optional[Config] = None) -> None:
     """Dashboard de hardware com diagnostico e recomendacoes por tier."""
     lang = _lang()
     try:
@@ -2462,7 +2481,7 @@ def menu_hardware(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # PREDICAO EM LOTE — aplica modelo salvo (.joblib) a espectros novos (CSV)
 # ---------------------------------------------------------------------------
-def menu_prediction(cfg: Optional[Config] = None) -> None:
+def _menu_prediction(cfg: Optional[Config] = None) -> None:
     """Predicao em lote via terminal: aplica um modelo .joblib salvo a um
     CSV de espectros novos (colunas=numero de onda, sem coluna de classe).
 
@@ -2472,7 +2491,7 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
     """
     lang = _lang()
     is_pt = lang == "PT"
-    cls(); _print_header()
+    _cls(); _print_header()
 
     intro = (
         "Aplica um modelo treinado (.joblib) a espectros novos e reporta "
@@ -2650,7 +2669,7 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
     _pause()
 
 
-def menu_plan(cfg: Optional[Config] = None) -> None:
+def _menu_plan(cfg: Optional[Config] = None) -> None:
     """Planejamento de coleta (Bloco 10): quantas amostras por classe
     (`plano_amostral.py`) + como distribui-las entre sessoes e em que
     ordem le-las (`plano_coleta.py`), evitando os dois confundimentos ja
@@ -2658,7 +2677,7 @@ def menu_plan(cfg: Optional[Config] = None) -> None:
     """
     lang = _lang()
     is_pt = lang == "PT"
-    cls(); _print_header()
+    _cls(); _print_header()
 
     intro = (
         "Calcula quantas amostras coletar (gate conformal ou DD-SIMCA) e "
@@ -2768,7 +2787,7 @@ def menu_plan(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # PERFIS — cartoes compactos (2 por linha)
 # ---------------------------------------------------------------------------
-def menu_profiles(cfg: Config) -> None:
+def _menu_profiles(cfg: Config) -> None:
     """Perfis prontos — lista enxuta de 1 linha; detalhes so com [?]."""
     lang = _lang()
     # (nome_chave, tempo, cor, foco_curto). Foco curto = 1 linha, sem cortar.
@@ -2818,7 +2837,7 @@ def menu_profiles(cfg: Config) -> None:
                         "perfil '%s': campo '%s' nao aplicado: %s",
                         pname, k, _e_prof)
         paleta = pdata.get("_paleta")
-        if paleta and PALETAS_COR and paleta in PALETAS_COR:
+        if paleta and _PALETAS_COR and paleta in _PALETAS_COR:
             vcfg = _carregar_visual_cfg()
             vcfg["paleta"] = paleta
             _salvar_visual_cfg(vcfg); n += 1
@@ -2840,7 +2859,7 @@ def menu_profiles(cfg: Config) -> None:
         _pause()
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
 
         t = Table(box=None, show_header=True, header_style=PM, padding=(0, 1))
         t.add_column("N",      style=PA, width=4, no_wrap=True)
@@ -2934,7 +2953,7 @@ def _ler_citation() -> dict:
     return info
 
 
-def menu_about(cfg: Optional[Config] = None) -> None:
+def _menu_about(cfg: Optional[Config] = None) -> None:
     """Secao Sobre — proposito, autor, citacao em multiplos formatos e referencias."""
     # Dados fixos do projeto e do autor
     _AUTOR_NOME    = "Erley S. da Costa"
@@ -3144,7 +3163,7 @@ def menu_about(cfg: Optional[Config] = None) -> None:
         t.add_column("Ref", style=PW, overflow="fold")
         achou = False
         for rk in fundamentais:
-            ref = (REFERENCIAS_GUARACI or {}).get(rk, {})
+            ref = (_REFERENCIAS_GUARACI or {}).get(rk, {})
             cit_txt = ref.get("cit")
             ctx     = ref.get("contexto", "")
             if cit_txt:
@@ -3165,7 +3184,7 @@ def menu_about(cfg: Optional[Config] = None) -> None:
     # Loop principal da secao Sobre
     while True:
         lang = _lang()
-        cls(); _print_header()
+        _cls(); _print_header()
         _painel_identidade(lang)
 
         if lang == "PT":
@@ -3204,17 +3223,17 @@ def menu_about(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # AJUDA INTERATIVA
 # ---------------------------------------------------------------------------
-def menu_help(cfg: Optional[Config] = None) -> None:
+def _menu_help(cfg: Optional[Config] = None) -> None:
     """Ajuda navegavel — lista todos os campos de cara; numero abre a ajuda."""
     lang = _lang()
     # Lista unificada a partir do _CONFIG_SPEC (todos os campos editaveis).
-    keys = [s["key"] for s in _CONFIG_SPEC] if _CONFIG_SPEC else list(HELP_DB.keys())
+    keys = [s["key"] for s in _CONFIG_SPEC] if _CONFIG_SPEC else list(_HELP_DB.keys())
     # Remove duplicatas mantendo ordem
     seen: set = set()
     keys = [k for k in keys if not (k in seen or seen.add(k))]
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header()
 
         t = Table(show_header=True, header_style=PM, box=rbox.SIMPLE, padding=(0, 1))
         t.add_column("N", style=PA, width=4, no_wrap=True)
@@ -3226,7 +3245,7 @@ def menu_help(cfg: Optional[Config] = None) -> None:
             t.add_row(
                 str(i),
                 escape(_nome_campo(key)),
-                Text(_risco_icon(key) + " " + RISK_CLASS.get(key, "—"), style=r_hex),
+                Text(_risco_icon(key) + " " + _RISK_CLASS.get(key, "—"), style=r_hex),
                 escape(_desc_curta(key, 40)),
             )
 
@@ -3567,7 +3586,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
 
 def _rodar_pipeline(cfg: Config) -> None:
     lang = _lang()
-    cls(); _print_header()
+    _cls(); _print_header()
 
     pode = _print_checklist(cfg)
     if not pode:
@@ -3607,7 +3626,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         vcfg = _carregar_visual_cfg()
-        paleta = PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
+        paleta = _PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
         try: plt.style.use(paleta.get("style", "default"))
         except OSError:
             pass   # nome de estilo matplotlib desconhecido -- mantem o default
@@ -3615,7 +3634,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
         cmap = paleta.get("cmap")
         if cmap: plt.rcParams["image.cmap"] = cmap
-        fp = FONT_PRESETS.get(vcfg.get("tamanho_fonte","m"), {})
+        fp = _FONT_PRESETS.get(vcfg.get("tamanho_fonte","m"), {})
         for k, v in fp.items(): plt.rcParams[k] = v
         if vcfg.get("grid_major", True):
             plt.rcParams["axes.grid"] = True
@@ -3635,7 +3654,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     _sincronizar_dpi(cfg)
     try:
         _USER_DIR.mkdir(parents=True, exist_ok=True)
-        save_config(cfg, str(_CFG_PATH))
+        _save_config(cfg, str(_CFG_PATH))
     except OSError as _e_cfg_save:
         # Achado do "checkup geral" de interface (2026-08-07): esta chamada
         # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
@@ -3673,7 +3692,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         try:
             with contextlib.redirect_stdout(_logger), \
                  contextlib.redirect_stderr(_logger):
-                executar(cfg)
+                _executar(cfg)
         except KeyboardInterrupt:
             _done["error"] = _t("exec_interrompido")
         except Exception as e:  # noqa: BLE001 -- boundary de topo da thread de
@@ -3775,7 +3794,7 @@ def _salvar_yaml(cfg: Config) -> None:
     _PERFIS_DIR.mkdir(parents=True, exist_ok=True)
     path = _PERFIS_DIR / f"{san}.yaml"
     try:
-        save_config(cfg, str(path))
+        _save_config(cfg, str(path))
         _lbl = "Salvo" if _lang() == "PT" else "Saved"
         console.print(f"  [g]✓ {_lbl}: {escape(str(path))}[/g]")
     except OSError as e:
@@ -3802,7 +3821,7 @@ def _carregar_yaml(cfg: Config) -> None:
     if raw.isdigit() and 1 <= int(raw) <= len(arquivos):
         path = arquivos[int(raw) - 1]
         try:
-            cfg2 = load_config(str(path))
+            cfg2 = _load_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
                 except (AttributeError, TypeError) as _e_attr:
@@ -4148,7 +4167,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     cfg = Config()
     if _CFG_PATH.exists():
         try:
-            cfg = load_config(str(_CFG_PATH))
+            cfg = _load_config(str(_CFG_PATH))
         except (RuntimeError, FileNotFoundError, ValueError) as _e_cfg:
             logging.getLogger(__name__).debug(
                 "config.yaml nao carregado no boot, usando defaults: %s", _e_cfg)
@@ -4172,7 +4191,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     _exibir_boas_vindas()
 
     while True:
-        cls()
+        _cls()
         _print_header()
         _print_status(cfg)
         console.print()
@@ -4187,7 +4206,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             # except abaixo NUNCA disparava em EOF real (stdin fechado/
             # redirecionado de arquivo vazio/pipe encerrado). "" nao bate
             # com nenhuma opcao do menu, cai no ramo "invalida" + _pause()
-            # (tambem EOF-safe), e o loop volta a chamar cls() (spawna
+            # (tambem EOF-safe), e o loop volta a chamar _cls() (spawna
             # subprocesso via os.system) e ler de novo -- SEMPRE "" de novo
             # em EOF permanente -- girando para sempre, sem sair, gastando
             # CPU (achado 2026-08-07, "checkup geral" de interface:
@@ -4200,23 +4219,23 @@ def main(argv: Optional[List[str]] = None) -> None:
             _exibir_despedida()
             break
 
-        if escolha == "1": menu_project(cfg)
-        elif escolha == "2": menu_data(cfg)
-        elif escolha == "3": menu_preprocessing(cfg)
-        elif escolha == "4": menu_modeling(cfg)
-        elif escolha == "5": menu_validation(cfg)
-        elif escolha == "6": menu_advanced(cfg)
-        elif escolha == "7": menu_visualization(cfg)
-        elif escolha == "8": menu_technique(cfg)
-        elif escolha == "9": menu_encoding(cfg)
+        if escolha == "1": _menu_project(cfg)
+        elif escolha == "2": _menu_data(cfg)
+        elif escolha == "3": _menu_preprocessing(cfg)
+        elif escolha == "4": _menu_modeling(cfg)
+        elif escolha == "5": _menu_validation(cfg)
+        elif escolha == "6": _menu_advanced(cfg)
+        elif escolha == "7": _menu_visualization(cfg)
+        elif escolha == "8": _menu_technique(cfg)
+        elif escolha == "9": _menu_encoding(cfg)
         elif escolha == "H":
-            cls(); _print_header(); menu_hardware(cfg)
+            _cls(); _print_header(); _menu_hardware(cfg)
         elif escolha == "B":
-            menu_prediction(cfg)
+            _menu_prediction(cfg)
         elif escolha == "J":
-            menu_plan(cfg)
+            _menu_plan(cfg)
         elif escolha == "P":
-            menu_profiles(cfg)
+            _menu_profiles(cfg)
         elif escolha == "G":
             _abrir_assistente("menu principal", cfg)
         elif escolha == "M":
@@ -4247,9 +4266,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                 cfg.tag = san; console.print(f"  [g]✓ ID: {escape(san)}[/g]")
             _pause()
         elif escolha == "A":
-            menu_about(cfg)
+            _menu_about(cfg)
         elif escolha == "?":
-            menu_help(cfg)
+            _menu_help(cfg)
         elif escolha == "Q":
             _exibir_despedida()
             break

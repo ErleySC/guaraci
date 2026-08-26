@@ -222,7 +222,7 @@ def test_menu_plan_cli_end_to_end_conformal(monkeypatch, tmp_path):
     ])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
 
-    guaraci_mod.menu_plan(guaraci_mod.Config())
+    guaraci_mod._menu_plan(guaraci_mod.Config())
 
     assert os.path.isfile(prefixo + ".md")
     assert os.path.isfile(prefixo + ".xlsx")
@@ -248,7 +248,7 @@ def test_menu_plan_cli_cobertura_ddsimca_inalcancavel_nao_gera_arquivo(
     ])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
 
-    guaraci_mod.menu_plan(guaraci_mod.Config())
+    guaraci_mod._menu_plan(guaraci_mod.Config())
 
     assert not os.path.isfile(prefixo + ".md")
     assert not os.path.isfile(prefixo + ".xlsx")

@@ -32,15 +32,29 @@ import guaraci.pipeline as pq
 
 _CONFIG_SPEC = pq._CONFIG_SPEC
 
-save_config = pq.save_config
+_save_config = pq.save_config
 
-load_config = pq.load_config
+_load_config = pq.load_config
 
 _attr_para_yaml = pq._attr_para_yaml
 
 _fmt_yaml = pq._fmt_yaml
 
 _coagir_valor = pq._coagir_valor
+
+__all__ = [
+    "RISK_CLASS",
+    "FIELD_NAMES",
+    "PALETAS_COR",
+    "FONT_PRESETS",
+    "HELP_DB",
+    "PROFILES",
+    "PROFILE_DESC",
+    "PROFILE_KEY_SUMMARY",
+    "REFERENCIAS_GUARACI",
+    "MENU_FIELDS",
+    "TECNICAS",
+]
 
 
 RISK_CLASS: Dict[str, str] = {

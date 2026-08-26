@@ -171,7 +171,7 @@ def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
     respostas = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
 
-    guaraci_mod.menu_prediction(guaraci_mod.Config())
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
 
     cam_saida_esperada = cam_csv.with_name(cam_csv.stem + "_predicao.csv")
     assert cam_saida_esperada.is_file(), "CSV de resultados nao foi gravado"
@@ -202,7 +202,7 @@ def test_menu_predicao_alimenta_a_sentinela_de_deriva_entre_chamadas(
 
     respostas1 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas1))
-    guaraci_mod.menu_prediction(guaraci_mod.Config())
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
 
     assert os.path.isfile(cam_sentinela), "sentinela nao foi persistida"
     estado_apos_1 = sent.load_state(cam_sentinela)
@@ -210,7 +210,7 @@ def test_menu_predicao_alimenta_a_sentinela_de_deriva_entre_chamadas(
 
     respostas2 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas2))
-    guaraci_mod.menu_prediction(guaraci_mod.Config())
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
 
     estado_apos_2 = sent.load_state(cam_sentinela)
     assert estado_apos_2.n == 2 * X_novos.shape[0], (
