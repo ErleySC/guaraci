@@ -332,6 +332,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "t_hardware":   "Hardware",
         "t_perfis":     "Perfis Prontos",
         "t_predicao":   "Predicao em Lote",
+        "t_planejamento": "Planejamento de Coleta",
         "t_idioma":     "Idioma",
         "t_ajuda":      "Ajuda",
         # Descricoes de secao (curtas)
@@ -482,6 +483,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "t_hardware":   "Hardware",
         "t_perfis":     "Ready Profiles",
         "t_predicao":   "Batch Prediction",
+        "t_planejamento": "Collection Planning",
         "t_idioma":     "Language",
         "t_ajuda":      "Help",
         "d_projeto":    "Input and output folders.",
@@ -1187,7 +1189,7 @@ def _print_main_menu() -> None:
     t.add_row(Text.from_markup(_grp(_t("grp_analise"))), Text.from_markup(""))
     t.add_row(*row("7", _t("t_viz"),        "8", _t("t_tecnica")))
     t.add_row(*row("9", _t("t_codigos"),    "H", _t("t_hardware"), style2=S))
-    t.add_row(*row("B", _t("t_predicao"), style1=S))
+    t.add_row(*row("B", _t("t_predicao"), "J", _t("t_planejamento"), style1=S, style2=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
@@ -2620,6 +2622,121 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
     ))
     console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
                   f"{escape(cam_saida)}")
+    _pause()
+
+
+def menu_plan(cfg: Optional[Config] = None) -> None:
+    """Planejamento de coleta (Bloco 10): quantas amostras por classe
+    (`plano_amostral.py`) + como distribui-las entre sessoes e em que
+    ordem le-las (`plano_coleta.py`), evitando os dois confundimentos ja
+    documentados no projeto (classe x sessao, ordem de leitura x teor).
+    """
+    lang = _lang()
+    is_pt = lang == "PT"
+    cls(); _print_header()
+
+    intro = (
+        "Calcula quantas amostras coletar (gate conformal ou DD-SIMCA) e "
+        "gera um plano de sessoes + ordem de leitura aleatorizada, com "
+        "alertas de replica/branco."
+        if is_pt else
+        "Calculates how many samples to collect (conformal or DD-SIMCA "
+        "gate) and generates a session plan + randomized reading order, "
+        "with replicate/blank alerts."
+    )
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_planejamento')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print()
+
+    lbl_classes = "Classes (separadas por virgula)" if is_pt else "Classes (comma-separated)"
+    classes_raw = _ask(f"  [{PA}]{lbl_classes}:[/{PA}] ")
+    classes = [c.strip() for c in classes_raw.split(",") if c.strip()]
+    if not classes:
+        return
+
+    lbl_sessoes = "Numero de sessoes de coleta" if is_pt else "Number of collection sessions"
+    sessoes_raw = _ask(f"  [{PA}]{lbl_sessoes}:[/{PA}] [{PM}](Enter = 2)[/{PM}] ")
+    try:
+        n_sessoes = int(sessoes_raw) if sessoes_raw else 2
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]")
+        _pause(); return
+    if n_sessoes < 1:
+        console.print(f"  [{PR}]{'Precisa de pelo menos 1 sessao' if is_pt else 'Needs at least 1 session'}[/{PR}]")
+        _pause(); return
+
+    lbl_alvo = (
+        "Alvo: (C)onformal (Identificar/agrupado) ou (D)D-SIMCA (pureza por especie)?"
+        if is_pt else
+        "Target: (C)onformal (Identify/pooled) or (D)D-SIMCA (per-species purity)?"
+    )
+    alvo = _ask(f"  [{PA}]{lbl_alvo}[/{PA}] ").strip().upper()
+    if alvo not in ("C", "D"):
+        console.print(f"  [{PR}]{'Opcao invalida' if is_pt else 'Invalid option'}[/{PR}]")
+        _pause(); return
+
+    if alvo == "C":
+        lbl_valor = "Alpha desejado (ex.: 0.05)" if is_pt else "Desired alpha (e.g., 0.05)"
+    else:
+        lbl_valor = "Cobertura-alvo (ex.: 0.90)" if is_pt else "Target coverage (e.g., 0.90)"
+    valor_raw = _ask(f"  [{PA}]{lbl_valor}:[/{PA}] ")
+    try:
+        valor = float(valor_raw)
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]")
+        _pause(); return
+
+    try:
+        import guaraci.plano_coleta as _plano
+        if alvo == "C":
+            plano, meta = _plano.planejar_a_partir_de_alvo_estatistico(
+                classes, n_sessoes, alpha_conformal=valor)
+        else:
+            plano, meta = _plano.planejar_a_partir_de_alvo_estatistico(
+                classes, n_sessoes, cobertura_ddsimca=valor)
+    except ValueError as e:
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    padrao_saida = str(Path.cwd() / "plano_coleta")
+    lbl_saida = "Prefixo dos arquivos de saida" if is_pt else "Output file prefix"
+    cam_saida = _ask(
+        f"  [{PA}]{lbl_saida}[/{PA}] [{PM}](Enter = {escape(padrao_saida)})[/{PM}]: "
+    ).strip().strip('"')
+    if not cam_saida:
+        cam_saida = padrao_saida
+
+    try:
+        md = _plano.exportar_markdown(plano)
+        cam_md = cam_saida + ".md"
+        with open(cam_md, "w", encoding="utf-8") as f:
+            f.write(md)
+        cam_xlsx = cam_saida + ".xlsx"
+        _plano.exportar_excel(plano, cam_xlsx)
+    except OSError as e:
+        console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    resumo_txt = (
+        f"  [{PG}]✔ n por classe:[/{PG}] [{PG}]{meta['n_por_classe']}[/{PG}]  |  "
+        f"[{PG}]origem:[/{PG}] {escape(meta['origem'])}  |  "
+        f"[{PG}]total de amostras:[/{PG}] {len(plano.itens)}"
+    )
+    console.print()
+    console.print(Panel(
+        Text.from_markup(resumo_txt),
+        title=f"[bold {PG}]{'Plano gerado' if is_pt else 'Plan generated'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Alertas' if is_pt else 'Alerts'}:[/{PM}]")
+    for a in plano.alertas:
+        console.print(f"    [{PA}]•[/{PA}] {escape(a)}")
+    console.print()
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
+                  f"{escape(cam_md)}, {escape(cam_xlsx)}")
     _pause()
 
 
@@ -4071,6 +4188,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             cls(); _print_header(); menu_hardware(cfg)
         elif escolha == "B":
             menu_prediction(cfg)
+        elif escolha == "J":
+            menu_plan(cfg)
         elif escolha == "P":
             menu_profiles(cfg)
         elif escolha == "G":

@@ -586,6 +586,40 @@ Disponível em dois lugares, com a **mesma lógica científica**
 depender do objetivo — seção 2.2) com opção de figuras detalhadas adicionais
 (`detailed_figures=True`). Formatos PNG/PDF/SVG, DPI configurável.
 
+### 2.3 Planejamento de coleta (Bloco 10 — `plano_amostral.py`/`plano_coleta.py`)
+
+Antes de coletar dados, dois módulos ajudam a planejar **quanto** coletar
+e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
+
+- **`plano_amostral.py` — quanto coletar.** Duas fontes de garantia,
+  nunca misturadas: (1) o gate **conformal** (Identificar/agrupado) —
+  `n_minimo_conformal(alpha)` reaproveita `conformal.n_minimum_for_alpha`
+  diretamente, garantia *distribution-free* real; (2) **DD-SIMCA por
+  espécie** — `orientacao_tamanho_amostral_ddsimca(cobertura_alvo)`
+  **nunca promete** uma cobertura-alvo acima do platô medido (~0,94-0,945,
+  ver seção 9) — acima disso, devolve `alcancavel=False` e recomenda o
+  gate conformal em vez de sugerir um `n` que não resolveria o problema.
+- **`plano_coleta.py` — como distribuir.** `planejar_coleta(classes,
+  n_por_classe, n_sessoes)` distribui as amostras entre sessões de forma
+  **balanceada** (nenhuma sessão fica dominada por uma única classe — o
+  confundimento classe×sessão faria qualquer deriva instrumental
+  daquela sessão ficar indistinguível de efeito de classe) e
+  **aleatoriza a ordem de leitura dentro de cada sessão** (evita ler as
+  amostras em ordem correlacionada com teor/classe, que confundiria
+  deriva instrumental com sinal químico). Gera alertas automáticos:
+  réplica técnica (T1/T2/T3) não conta como amostra independente extra;
+  recomendação de brancos/controles intercalados; aviso forte se só 1
+  sessão foi pedida (impossível separar classe de deriva temporal nesse
+  caso). `planejar_a_partir_de_alvo_estatistico` combina os dois módulos
+  numa chamada só.
+- **Saída:** Markdown (formato primário) + planilha Excel (`openpyxl`,
+  já dependência do projeto — sem biblioteca nova), com a ordem de
+  leitura completa por sessão e a lista de alertas.
+- **CLI** — menu principal, tecla `[J]` *Planejamento de Coleta*: pede
+  classes, número de sessões, e o alvo estatístico (conformal ou
+  DD-SIMCA); gera os dois arquivos de saída e mostra o resumo + alertas
+  na tela.
+
 **Figura de mérito analítica dedicada (Quantificação):**
 `figS3_merito_regressao.png` — dois painéis lado a lado: LOD/LOQ por espécie
 e seletividade média por espécie, seguindo Valderrama, Braga e Poppi (2009).
