@@ -1,0 +1,2805 @@
+{
+  "config_yaml_schema": {
+    "abrir_figuras_na_tela": {
+      "attr": "show_plots",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "arquivo_csv": {
+      "attr": "csv_file",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
+    "benchmark": {
+      "attr": "run_benchmark",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "benchmark_regressao": {
+      "attr": "run_benchmark_regression",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "coluna_classe": {
+      "attr": "class_column",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
+    "coluna_concentracao": {
+      "attr": "conc_column",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str_opcional"
+    },
+    "comparar_pre_processamentos": {
+      "attr": "comparar_pipelines",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "ddsimca": {
+      "attr": "run_ddsimca",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "ddsimca_pcv": {
+      "attr": "ddsimca_pcv",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "dpi": {
+      "attr": "save_dpi",
+      "max": 1200,
+      "min": 50,
+      "opcoes": null,
+      "tipo": "int"
+    },
+    "excluir_classes": {
+      "attr": "exclude_classes",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "list"
+    },
+    "faixa_max_cm": {
+      "attr": "wn_max",
+      "max": null,
+      "min": 0.0,
+      "opcoes": null,
+      "tipo": "float"
+    },
+    "faixa_min_cm": {
+      "attr": "wn_min",
+      "max": null,
+      "min": 0.0,
+      "opcoes": null,
+      "tipo": "float"
+    },
+    "figuras_detalhadas": {
+      "attr": "detailed_figures",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "figuras_mostrar_elipses": {
+      "attr": "show_group_ellipses",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "figuras_mostrar_marcadores": {
+      "attr": "show_class_markers",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "formato_figura": {
+      "attr": "output_format",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "png",
+        "pdf",
+        "svg"
+      ],
+      "tipo": "choice"
+    },
+    "holdout_fracao": {
+      "attr": "frac_holdout",
+      "max": 0.5,
+      "min": 0.0,
+      "opcoes": null,
+      "tipo": "float"
+    },
+    "imagem_incluir_textura": {
+      "attr": "include_image_texture",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "max_lvs": {
+      "attr": "max_lvs",
+      "max": 200,
+      "min": 1,
+      "opcoes": null,
+      "tipo": "int"
+    },
+    "modo_ddsimca": {
+      "attr": "ddsimca_train_on",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "puros",
+        "todos"
+      ],
+      "tipo": "choice"
+    },
+    "modo_entrada": {
+      "attr": "mode",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "dx",
+        "csv",
+        "imagem",
+        "sintetico"
+      ],
+      "tipo": "choice"
+    },
+    "monte_carlo": {
+      "attr": "run_monte_carlo",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "monte_carlo_incluir_todos": {
+      "attr": "monte_carlo_include_all",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "n_jobs_permutacao": {
+      "attr": "n_jobs_permutation",
+      "max": 64,
+      "min": 1,
+      "opcoes": null,
+      "tipo": "int"
+    },
+    "n_monte_carlo": {
+      "attr": "n_monte_carlo",
+      "max": 100000,
+      "min": 1,
+      "opcoes": null,
+      "tipo": "int"
+    },
+    "n_permutacoes": {
+      "attr": "n_permutations",
+      "max": 100000,
+      "min": 1,
+      "opcoes": null,
+      "tipo": "int"
+    },
+    "nivel": {
+      "attr": "level",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "N1",
+        "N2",
+        "N3"
+      ],
+      "tipo": "choice"
+    },
+    "objetivo": {
+      "attr": "objective",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "auto",
+        "exploratorio",
+        "classificacao",
+        "quantificacao"
+      ],
+      "tipo": "choice"
+    },
+    "opls_da": {
+      "attr": "run_opls",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "pasta_dados": {
+      "attr": "input_folder",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
+    "pasta_saida": {
+      "attr": "output_root_folder",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
+    "pre_processamento": {
+      "attr": "default_preprocessing",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "MSC+SG+MC",
+        "SNV+SG+MC",
+        "Autoscaling",
+        "Mean-centering"
+      ],
+      "tipo": "preproc"
+    },
+    "selecao_ag": {
+      "attr": "executar_ag",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "selecao_spa": {
+      "attr": "run_spa",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "selecao_variaveis_etapa4": {
+      "attr": "executar_etapa4",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "shap_benchmark": {
+      "attr": "run_shap",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "shap_max_amostras": {
+      "attr": "shap_max_samples",
+      "max": 1000000,
+      "min": 1,
+      "opcoes": null,
+      "tipo": "int"
+    },
+    "teste_cv_anova": {
+      "attr": "run_cv_anova",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "teste_martens": {
+      "attr": "run_martens",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "teste_wold": {
+      "attr": "run_wold",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "validacao_group_aware": {
+      "attr": "group_by_mae_id",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    }
+  },
+  "modulos": {
+    "app_logic": {
+      "LogThreadSafe": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, tee=None)",
+        "metodos_publicos": [
+          "flush",
+          "text",
+          "write"
+        ]
+      },
+      "collect_config": {
+        "assinatura": "(cfg_base, valores: 'Dict')",
+        "forma": "funcao"
+      },
+      "figures_completed": {
+        "assinatura": "(txt: 'str') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "fmt_time": {
+        "assinatura": "(seg) -> 'str'",
+        "forma": "funcao"
+      },
+      "list_figures": {
+        "assinatura": "(pasta: 'str') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "load_model_card": {
+        "assinatura": "(pasta: 'str') -> 'Optional[str]'",
+        "forma": "funcao"
+      },
+      "load_summary": {
+        "assinatura": "(pasta: 'str') -> 'Optional[str]'",
+        "forma": "funcao"
+      },
+      "log_progress": {
+        "assinatura": "(txt: 'str', total_figuras_planejadas: 'Optional[int]' = None) -> 'Tuple[float, str]'",
+        "forma": "funcao"
+      },
+      "log_warnings": {
+        "assinatura": "(txt: 'str') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "temp_upload_path": {
+        "assinatura": "(nome_original: 'str', session_id: 'str', *, base: 'Optional[Path]' = None, subpasta: 'str' = 'pq_uploads') -> 'Path'",
+        "forma": "funcao"
+      }
+    },
+    "auditoria_delineamento": {
+      "AuditFinding": {
+        "campos": [
+          {
+            "nome": "nome",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "severidade",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "mensagem",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "check_class_session_confounding": {
+        "assinatura": "(rotulos: 'np.ndarray', mae_id: 'Optional[np.ndarray]') -> 'AuditFinding'",
+        "forma": "funcao"
+      },
+      "check_duplicates": {
+        "assinatura": "(X: 'np.ndarray', wavenumbers: 'np.ndarray', rotulos: 'np.ndarray', conc: 'Optional[np.ndarray]' = None, mae_id: 'Optional[np.ndarray]' = None) -> 'AuditFinding'",
+        "forma": "funcao"
+      },
+      "check_external_validation": {
+        "assinatura": "() -> 'AuditFinding'",
+        "forma": "funcao"
+      },
+      "check_grouping": {
+        "assinatura": "(cfg: \"'Any'\") -> 'AuditFinding'",
+        "forma": "funcao"
+      },
+      "check_insufficient_n": {
+        "assinatura": "(rotulos: 'np.ndarray', mae_id: 'Optional[np.ndarray]', alpha_conformal_referencia: 'float' = 0.05) -> 'AuditFinding'",
+        "forma": "funcao"
+      },
+      "check_validation_use_range": {
+        "assinatura": "(conc: 'Optional[np.ndarray]', cfg: \"'Any'\") -> 'AuditFinding'",
+        "forma": "funcao"
+      },
+      "run_audit": {
+        "assinatura": "(X: 'np.ndarray', wavenumbers: 'np.ndarray', rotulos: 'np.ndarray', cfg: \"'Any'\", conc: 'Optional[np.ndarray]' = None, mae_id: 'Optional[np.ndarray]' = None, *, silenciar: 'Optional[Dict[str, str]]' = None) -> 'List[AuditFinding]'",
+        "forma": "funcao"
+      }
+    },
+    "avaliacao_modelos": {
+      "PLSDAClassifier": {
+        "bases": [
+          "BaseEstimator",
+          "ClassifierMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, n_components: 'int' = 2)",
+        "metodos_publicos": [
+          "fit",
+          "predict",
+          "predict_proba"
+        ]
+      },
+      "benchmark_classifiers": {
+        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', grupos_cv: 'Optional[np.ndarray]', lb: \"'LabelBinarizer'\", n_opt: 'int', cfg: \"'Config'\", pasta: 'str', wavenumbers: 'Optional[np.ndarray]' = None) -> 'pd.DataFrame'",
+        "forma": "funcao"
+      },
+      "benchmark_regression_by_species": {
+        "assinatura": "(X_raw: 'np.ndarray', conc: 'np.ndarray', rotulos: 'np.ndarray', mae_id: 'Optional[np.ndarray]', classes_unicas: 'np.ndarray', cfg: \"'Config'\", pasta: 'str', reg_esp_pls: 'Dict[str, Any]', min_amostras_adult: 'int' = 6) -> 'Optional[pd.DataFrame]'",
+        "forma": "funcao"
+      },
+      "fig_benchmark_classifiers": {
+        "assinatura": "(scores_por_clf: 'Dict[str, np.ndarray]', n_splits: 'int', n_classes: 'int', cfg: \"'Config'\", pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_benchmark_regressors": {
+        "assinatura": "(rmsep_por_modelo: 'Dict[str, np.ndarray]', n_especies: 'int', cfg: \"'Config'\", pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_det_curvas": {
+        "assinatura": "(oof_probas: 'Dict[str, np.ndarray]', y_int: 'np.ndarray', n_classes: 'int', cfg: \"'Config'\", pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_monte_carlo_distribution": {
+        "assinatura": "(scores_mc: 'Dict[str, List[float]]', cfg: \"'Config'\", pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_shap_benchmark": {
+        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', n_opt: 'int', cfg: \"'Config'\", pasta: 'str', wavenumbers: 'Optional[np.ndarray]' = None) -> 'None'",
+        "forma": "funcao"
+      },
+      "interpolar_det": {
+        "assinatura": "(fmr: 'np.ndarray', fnmr: 'np.ndarray', fmr_grid: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "monte_carlo_cv": {
+        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', grupos_cv: 'Optional[np.ndarray]', lb: \"'LabelBinarizer'\", n_opt: 'int', cfg: \"'Config'\", pasta: 'str') -> 'pd.DataFrame'",
+        "forma": "funcao"
+      }
+    },
+    "chemometric_stats": {
+      "applicability_domain": {
+        "assinatura": "(pca, X_train: 'np.ndarray', X_new: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "applicability_domain_new_samples": {
+        "assinatura": "(pca, X_new: 'np.ndarray', var_t: 'np.ndarray', h0: 'float', q0: 'float', Nh: 'float', Nq: 'float', f_crit: 'float') -> 'Dict[str, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "combined_distance": {
+        "assinatura": "(T2: 'np.ndarray', Q: 'np.ndarray', h0: 'float', q0: 'float', Nh: 'float', Nq: 'float') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "compute_selectivity_ratio": {
+        "assinatura": "(modelo: 'PLSRegression', X: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "diagnose_spectral_range": {
+        "assinatura": "(X: 'np.ndarray', wavenumbers: 'np.ndarray', limiar_snr: 'float' = 3.0, largura_min_cm: 'float' = 150.0, janela_suave: 'int' = 11) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "dmodx": {
+        "assinatura": "(Q: 'np.ndarray', n_variaveis: 'int', n_componentes: 'int', n_amostras: 'int', alpha: 'float' = 0.05) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "dmody": {
+        "assinatura": "(residuo_y: 'np.ndarray', n_componentes: 'int', n_amostras: 'int', alpha: 'float' = 0.05) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "explained_variance": {
+        "assinatura": "(X: 'np.ndarray', T: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "hotelling_t2": {
+        "assinatura": "(T: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "hotelling_t2_limit": {
+        "assinatura": "(n: 'int', k: 'int', alpha: 'float' = 0.05) -> 'float'",
+        "forma": "funcao"
+      },
+      "interpret_rpd": {
+        "assinatura": "(rpd: 'float') -> 'str'",
+        "forma": "funcao"
+      },
+      "martens_uncertainty_test": {
+        "assinatura": "(X: 'np.ndarray', Y: 'np.ndarray', n_components: 'int', cv_indices: 'List[Tuple[np.ndarray, np.ndarray]]', coef_completo: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "mean_and_dof_moments": {
+        "assinatura": "(valores: 'np.ndarray') -> 'Tuple[float, float]'",
+        "forma": "funcao"
+      },
+      "q_residuals": {
+        "assinatura": "(X: 'np.ndarray', T: 'np.ndarray', P: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "q_residuals_limit": {
+        "assinatura": "(q: 'np.ndarray', alpha: 'float' = 0.05) -> 'float'",
+        "forma": "funcao"
+      },
+      "q_residuals_loo": {
+        "assinatura": "(X: 'np.ndarray', n_comp: 'int') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "regression_figures_of_merit": {
+        "assinatura": "(modelo: 'PLSRegression', X_cal: 'np.ndarray', grupos_replicas: 'List[np.ndarray]', alpha_ic: 'float' = 0.05) -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "rmse_flat": {
+        "assinatura": "(a, b) -> 'float'",
+        "forma": "funcao"
+      },
+      "rpd_rer": {
+        "assinatura": "(y_ref: 'np.ndarray', y_pred: 'np.ndarray') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "training_applicability_domain": {
+        "assinatura": "(pca, X_train: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "vip_scores": {
+        "assinatura": "(modelo: 'PLSRegression') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
+    "classificadores": {
+      "DDSimca": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, n_components: 'int' = 3, alpha: 'float' = 0.05, ucl_method: 'str' = 'empirical')",
+        "metodos_publicos": [
+          "fit",
+          "predict",
+          "score_matrix"
+        ]
+      },
+      "OPLSDAWrapper": {
+        "bases": [
+          "BaseEstimator"
+        ],
+        "forma": "classe",
+        "init": "(self, n_ortho: 'int' = 1)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "ddsimca_logo_sensitivity": {
+        "assinatura": "(X_puros: 'np.ndarray', grupos_puros: 'np.ndarray', *, n_components: 'int', alpha: 'float' = 0.05, ucl_method: 'str' = 'empirical') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "ddsimca_pcv_sensitivity": {
+        "assinatura": "(X_puros: 'np.ndarray', grupos_puros: 'np.ndarray', *, n_components: 'int', alpha: 'float' = 0.05, ucl_method: 'str' = 'empirical') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      }
+    },
+    "cli_assistente": {
+      "FIELD_NAMES": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "FONT_PRESETS": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "HELP_DB": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "MENU_FIELDS": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "PALETAS_COR": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "PROFILES": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "PROFILE_DESC": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "PROFILE_KEY_SUMMARY": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "REFERENCIAS_GUARACI": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "RISK_CLASS": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "TECNICAS": {
+        "forma": "constante",
+        "tipo": "dict"
+      }
+    },
+    "cli_logic": {
+      "count_dx": {
+        "assinatura": "(pasta: 'str') -> 'int'",
+        "forma": "funcao"
+      },
+      "fmt_bool": {
+        "assinatura": "(v, lang: 'str') -> 'str'",
+        "forma": "funcao"
+      },
+      "trunc": {
+        "assinatura": "(s: 'str', n: 'int') -> 'str'",
+        "forma": "funcao"
+      },
+      "truncate_desc_by_sentence": {
+        "assinatura": "(desc: 'str', max_c: 'int') -> 'str'",
+        "forma": "funcao"
+      },
+      "validate_ranges": {
+        "assinatura": "(faixa_min: 'float', faixa_max: 'float') -> 'list'",
+        "forma": "funcao"
+      }
+    },
+    "config": {
+      "Config": {
+        "campos": [
+          {
+            "nome": "mode",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "input_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "class_part",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "extract_conc_from_filename",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "csv_file",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "class_column",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "conc_column",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "use_parse_title",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "image_crop",
+            "tem_default": true,
+            "tipo": "Tuple[float, float, float, float]"
+          },
+          {
+            "nome": "include_image_texture",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "output_root_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "level",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "objective",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "tag",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "output_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "grouping_guarantee",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "output_format",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "save_dpi",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "show_plots",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "show_class_markers",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "show_group_ellipses",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "detailed_figures",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "group_by_mae_id",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "matrix_profile",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "label_mode",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "wn_min",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "wn_max",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "default_preprocessing",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "apply_snv",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "apply_sg",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "sg_window",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "sg_polyorder",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "sg_deriv",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "apply_mc",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "max_lvs",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_pcs_pca",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "hca_n_pcs",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "compare_hca_pipelines",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_splits_cv",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_repeats_cv",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "frac_cal",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "cal_val_split",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "n_permutations",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_permutations_wold",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_bootstrap_vip",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_bootstrap_bca",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "comparar_pipelines",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_wold",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_cv_anova",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_martens",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_jobs_permutation",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "frac_holdout",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "holdout_preserves_pure",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "seed_holdout",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_per_class",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_synthetic_points",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_synthetic_replicates",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "synthetic_adulterants",
+            "tem_default": true,
+            "tipo": "Tuple[str, ...]"
+          },
+          {
+            "nome": "seed",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "run_ddsimca",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ddsimca_n_components",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "ddsimca_ucl_method",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "ddsimca_train_on",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "ddsimca_pcv",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_opls",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_ortho_opls",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "run_benchmark",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_benchmark_regression",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_monte_carlo",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_monte_carlo",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "monte_carlo_test_size",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "monte_carlo_include_all",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_shap",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "shap_max_samples",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "exclude_classes",
+            "tem_default": true,
+            "tipo": "Tuple[str, ...]"
+          },
+          {
+            "nome": "executar_etapa4",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ipls_n_intervalos",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "vip_threshold_sel",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "sr_top_frac",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "splsda_keep_by_comp",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "run_spa",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "spa_n_vars_max",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "spa_n_starts",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "executar_ag",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ag_tam_populacao",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "ag_n_geracoes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "ag_prob_mutacao",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "ag_frac_inicial",
+            "tem_default": true,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "NOME_GRAFICOS": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "NOME_MODELOS": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "NOME_RELATORIOS": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "NOME_TABELAS": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "__version__": {
+        "forma": "constante",
+        "tipo": "str"
+      }
+    },
+    "config_io": {
+      "load_config": {
+        "assinatura": "(caminho: 'str', base: 'Optional[Config]' = None) -> 'Config'",
+        "forma": "funcao"
+      },
+      "save_config": {
+        "assinatura": "(cfg: 'Config', caminho: 'str') -> 'None'",
+        "forma": "funcao"
+      }
+    },
+    "conformal": {
+      "ConformalOneClass": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, alpha: 'float' = 0.05)",
+        "metodos_publicos": [
+          "fit",
+          "predict"
+        ]
+      },
+      "achievable_alpha": {
+        "assinatura": "(n: 'int') -> 'float'",
+        "forma": "funcao"
+      },
+      "conformal_threshold": {
+        "assinatura": "(scores_calib: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "n_minimum_for_alpha": {
+        "assinatura": "(alpha: 'float') -> 'int'",
+        "forma": "funcao"
+      }
+    },
+    "dados_imagem": {
+      "extract_color_features": {
+        "assinatura": "(img: 'np.ndarray') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "extract_texture_features": {
+        "assinatura": "(img: 'np.ndarray') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "load_image_file": {
+        "assinatura": "(caminho: 'str') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "load_images": {
+        "assinatura": "(pasta: 'str', caixa_recorte: 'Tuple[float, float, float, float]' = (0.0, 0.0, 1.0, 1.0), incluir_textura: 'bool' = False) -> 'Tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray], Optional[np.ndarray], Optional[pd.DataFrame]]'",
+        "forma": "funcao"
+      },
+      "recortar_relativo": {
+        "assinatura": "(img: 'np.ndarray', caixa: 'Tuple[float, float, float, float]') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
+    "dados_io": {
+      "ADULTERANTE_NOME": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "CODIGO_ESPECIE": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "adulterant_from_mae_id": {
+        "assinatura": "(mae_id: 'Optional[str]') -> 'Optional[str]'",
+        "forma": "funcao"
+      },
+      "extract_dx_title": {
+        "assinatura": "(caminho: 'str') -> 'Optional[str]'",
+        "forma": "funcao"
+      },
+      "generate_synthetic_data": {
+        "assinatura": "(cfg: \"'Config'\")",
+        "forma": "funcao"
+      },
+      "kennard_stone": {
+        "assinatura": "(X: 'np.ndarray', n_selecionar: 'int') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "kennard_stone_split": {
+        "assinatura": "(X: 'np.ndarray', frac_treino: 'float' = 0.7) -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "kennard_stone_split_group_aware": {
+        "assinatura": "(X: 'np.ndarray', mae_subset: 'Optional[np.ndarray]', frac_cal: 'float') -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "load_csv": {
+        "assinatura": "(caminho, col_classe, col_conc)",
+        "forma": "funcao"
+      },
+      "load_data": {
+        "assinatura": "(cfg: \"'Config'\") -> 'Tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray], Optional[np.ndarray], Optional[pd.DataFrame]]'",
+        "forma": "funcao"
+      },
+      "load_dx": {
+        "assinatura": "(pasta: 'str', class_part: 'int' = 0, extrair_conc: 'bool' = False, use_parse_title: 'bool' = True) -> 'Tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray], Optional[np.ndarray], Optional[pd.DataFrame]]'",
+        "forma": "funcao"
+      },
+      "parse_dx": {
+        "assinatura": "(filepath)",
+        "forma": "funcao"
+      },
+      "parse_spectrum": {
+        "assinatura": "(filepath)",
+        "forma": "funcao"
+      },
+      "parse_title": {
+        "assinatura": "(title: 'str') -> 'Optional[Dict[str, Any]]'",
+        "forma": "funcao"
+      },
+      "prescan_dx": {
+        "assinatura": "(pasta: 'str') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "sanitizar_metadados": {
+        "assinatura": "(df: \"'pd.DataFrame'\") -> \"'pd.DataFrame'\"",
+        "forma": "funcao"
+      },
+      "session_from_mae_id": {
+        "assinatura": "(mae_id: 'Optional[str]') -> 'Optional[str]'",
+        "forma": "funcao"
+      }
+    },
+    "design_tokens": {
+      "TOKENS": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "tokens": {
+        "assinatura": "(theme: 'str' = 'light') -> 'Dict[str, str]'",
+        "forma": "funcao"
+      }
+    },
+    "figuras": {
+      "adaptive_scatter_parameters": {
+        "assinatura": "(n_total: 'int', n_classes: 'int') -> 'Tuple[float, float, float]'",
+        "forma": "funcao"
+      },
+      "convex_hull_contorno": {
+        "assinatura": "(ax, x, y, color, lw=1.4, alpha=0.85)",
+        "forma": "funcao"
+      },
+      "ellipse_t2": {
+        "assinatura": "(ax, x, y, color, lw=1.4, alpha=0.85, max_excentricidade: 'float' = 50.0, limite_dispersao: 'Optional[Tuple[float, float]]' = None)",
+        "forma": "funcao"
+      },
+      "fig1_pca_scores": {
+        "assinatura": "(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta, puros_mask=None, mapa_marcadores=None)",
+        "forma": "funcao"
+      },
+      "fig1_selecao_lvs": {
+        "assinatura": "(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig2_plsda_scores": {
+        "assinatura": "(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta, puros_mask=None, mapa_marcadores=None)",
+        "forma": "funcao"
+      },
+      "fig3_outliers": {
+        "assinatura": "(T_scores, P_loadings, X_processed, rotulos, mapa_cores, n_lv, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig4_confusao": {
+        "assinatura": "(cm_mat, classes, y_true, y_pred, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig5b_vip_stability": {
+        "assinatura": "(boot: 'Dict[str, object]', wavenumbers, top_n, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig6_preprocessing": {
+        "assinatura": "(wavenumbers, X_raw, X_processed, rotulos, mapa_cores, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig7_pls_regression": {
+        "assinatura": "(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg, r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_biplot_pca": {
+        "assinatura": "(pca, scores_pca: 'np.ndarray', wavenumbers: 'np.ndarray', rotulos, mapa_cores, cfg: \"'Config'\", pasta: 'str', n_vars_destacadas: 'int' = 12) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_class_mean_spectra": {
+        "assinatura": "(wavenumbers, X_raw, rotulos, mapa_cores, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_cooman_ddsimca": {
+        "assinatura": "(ddsimca_res: 'Dict[str, Dict[str, Any]]', rotulos: 'np.ndarray', mapa_cores: 'Dict[str, str]', cfg: \"'Config'\", pasta: 'str', max_pares: 'int' = 6) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_ddsimca_individuais": {
+        "assinatura": "(scores: 'Dict[str, Dict[str, Any]]', rotulos: 'np.ndarray', mapa_cores: 'Dict[str, str]', cfg: 'Config', pasta: 'str', sens_esp: 'Optional[Dict[str, Any]]' = None) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_extra_comparacao_pipelines": {
+        "assinatura": "(resultados, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_extra_holdout": {
+        "assinatura": "(metricas_cv: 'Dict[str, float]', metricas_holdout: 'Dict[str, float]', cm_holdout: 'np.ndarray', classes: 'np.ndarray', n_holdout: 'int', cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_extra_wold": {
+        "assinatura": "(wold: 'Dict[str, object]', cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_hca_comparacao_pipelines": {
+        "assinatura": "(X_raw, rotulos, mapa_cores, cfg, pasta, metodo='ward')",
+        "forma": "funcao"
+      },
+      "fig_hca_dendrogram": {
+        "assinatura": "(X_processed, rotulos, mapa_cores, cfg, pasta, metodo='ward')",
+        "forma": "funcao"
+      },
+      "fig_heatmap_species_by_adulterant": {
+        "assinatura": "(resultado: 'Dict[str, Any]', cfg, pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_loadings_pca": {
+        "assinatura": "(pca, wavenumbers: 'np.ndarray', cfg: \"'Config'\", pasta: 'str', n_pcs: 'int' = 2) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_regression_merit": {
+        "assinatura": "(tabela_especie: 'List[Dict[str, Any]]', cfg, pasta) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_roc_auc": {
+        "assinatura": "(Y_bin: 'np.ndarray', Y_cv: 'np.ndarray', classes: 'np.ndarray', cfg: \"'Config'\", pasta: 'str') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "fig_splot_opls": {
+        "assinatura": "(X_proc: 'np.ndarray', t_pred: 'np.ndarray', wavenumbers: 'np.ndarray', cfg: \"'Config'\", pasta: 'str', top_n: 'int' = 15) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_sprint3_ddsimca_acceptance": {
+        "assinatura": "(scores: 'Dict[str, Dict[str, Any]]', rotulos: 'np.ndarray', mapa_cores: 'Dict[str, str]', cfg: 'Config', pasta: 'str', sens_esp: 'Optional[Dict[str, Any]]' = None) -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_sprint3_opls_scores": {
+        "assinatura": "(t_pred: 'np.ndarray', t_orth: 'np.ndarray', rotulos: 'np.ndarray', mapa_cores: 'Dict[str, str]', n_ortho: 'int', cfg: 'Config', pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_sprint3_score_contribution": {
+        "assinatura": "(pls_model: 'PLSRegression', X_processed: 'np.ndarray', rotulos: 'np.ndarray', wavenumbers: 'np.ndarray', mapa_cores: 'Dict[str, str]', top_n: 'int', cfg: 'Config', pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "fig_sprint3_sr_vip": {
+        "assinatura": "(vip: 'np.ndarray', sr: 'np.ndarray', wavenumbers: 'np.ndarray', top_n: 'int', cfg: 'Config', pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "plot_scores_panel": {
+        "assinatura": "(ax, scores, rotulos, mapa_cores, var_exp, titulo, xlabel, ylabel, puros_mask=None, mapa_marcadores=None, desenhar_elipses=True)",
+        "forma": "funcao"
+      },
+      "save": {
+        "assinatura": "(fig, nome: 'str', pasta: 'str', cfg: 'Config', subpasta: 'str' = '') -> 'None'",
+        "forma": "funcao"
+      },
+      "select_distinct_loadings": {
+        "assinatura": "(mag: 'np.ndarray', wavenumbers: 'np.ndarray', n_alvo: 'int', sep_min_cm: 'Optional[float]' = None, frac_min_mag: 'float' = 0.15) -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "setup_matplotlib": {
+        "assinatura": "(cfg: 'Config') -> 'None'",
+        "forma": "funcao"
+      },
+      "specificity_by_class": {
+        "assinatura": "(cm: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "spread_labels": {
+        "assinatura": "(pos: 'np.ndarray', sep_x: 'float', sep_y: 'float') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
+    "guaraci": {
+      "Config": {
+        "campos": [
+          {
+            "nome": "mode",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "input_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "class_part",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "extract_conc_from_filename",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "csv_file",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "class_column",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "conc_column",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "use_parse_title",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "image_crop",
+            "tem_default": true,
+            "tipo": "Tuple[float, float, float, float]"
+          },
+          {
+            "nome": "include_image_texture",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "output_root_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "level",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "objective",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "tag",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "output_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "grouping_guarantee",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "output_format",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "save_dpi",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "show_plots",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "show_class_markers",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "show_group_ellipses",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "detailed_figures",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "group_by_mae_id",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "matrix_profile",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "label_mode",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "wn_min",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "wn_max",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "default_preprocessing",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "apply_snv",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "apply_sg",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "sg_window",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "sg_polyorder",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "sg_deriv",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "apply_mc",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "max_lvs",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_pcs_pca",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "hca_n_pcs",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "compare_hca_pipelines",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_splits_cv",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_repeats_cv",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "frac_cal",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "cal_val_split",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "n_permutations",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_permutations_wold",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_bootstrap_vip",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_bootstrap_bca",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "comparar_pipelines",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_wold",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_cv_anova",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_martens",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_jobs_permutation",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "frac_holdout",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "holdout_preserves_pure",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "seed_holdout",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_per_class",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_synthetic_points",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_synthetic_replicates",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "synthetic_adulterants",
+            "tem_default": true,
+            "tipo": "Tuple[str, ...]"
+          },
+          {
+            "nome": "seed",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "run_ddsimca",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ddsimca_n_components",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "ddsimca_ucl_method",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "ddsimca_train_on",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "ddsimca_pcv",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_opls",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_ortho_opls",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "run_benchmark",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_benchmark_regression",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_monte_carlo",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_monte_carlo",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "monte_carlo_test_size",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "monte_carlo_include_all",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "run_shap",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "shap_max_samples",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "exclude_classes",
+            "tem_default": true,
+            "tipo": "Tuple[str, ...]"
+          },
+          {
+            "nome": "executar_etapa4",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ipls_n_intervalos",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "vip_threshold_sel",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "sr_top_frac",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "splsda_keep_by_comp",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "run_spa",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "spa_n_vars_max",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "spa_n_starts",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "executar_ag",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ag_tam_populacao",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "ag_n_geracoes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "ag_prob_mutacao",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "ag_frac_inicial",
+            "tem_default": true,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "PROFILES": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "PROFILE_DESC": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "PROFILE_KEY_SUMMARY": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "main": {
+        "assinatura": "(argv: 'Optional[List[str]]' = None) -> 'None'",
+        "forma": "funcao"
+      }
+    },
+    "guaraci_theme": {
+      "PA": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PD": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PF": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PG": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PM": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PR": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PS": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "PW": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "THEME": {
+        "forma": "constante",
+        "tipo": "Theme"
+      },
+      "TOKENS": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "ansi": {
+        "assinatura": "(tom: 'str') -> 'str'",
+        "forma": "funcao"
+      },
+      "console": {
+        "forma": "constante",
+        "tipo": "Console"
+      },
+      "err": {
+        "assinatura": "(msg: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "info": {
+        "assinatura": "(msg: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "ok": {
+        "assinatura": "(msg: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "tokens": {
+        "assinatura": "(theme: 'str' = 'light') -> 'Dict[str, str]'",
+        "forma": "funcao"
+      },
+      "warn": {
+        "assinatura": "(msg: 'str') -> 'None'",
+        "forma": "funcao"
+      }
+    },
+    "hardware": {
+      "auto_adjust_hardware_config": {
+        "assinatura": "(cfg: \"'Config'\", hw: 'Dict[str, Any]') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "hardware_probe": {
+        "assinatura": "() -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      }
+    },
+    "identificacao": {
+      "CoverageStatus": {
+        "bases": [
+          "Enum",
+          "str"
+        ],
+        "forma": "classe",
+        "init": "(self, *args, **kwds)",
+        "metodos_publicos": []
+      },
+      "IdentificationResult": {
+        "campos": [
+          {
+            "nome": "classe_identificada",
+            "tem_default": false,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "candidatos_ambiguos",
+            "tem_default": true,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "cobertura_status",
+            "tem_default": true,
+            "tipo": "Optional[CoverageStatus]"
+          },
+          {
+            "nome": "alpha_alcancavel",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "escores",
+            "tem_default": true,
+            "tipo": "Dict[str, float]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "combine_alpha_bonferroni": {
+        "assinatura": "(*alphas: 'Optional[float]') -> 'Optional[float]'",
+        "forma": "funcao"
+      },
+      "identify_sample": {
+        "assinatura": "(ensemble: 'Dict[Tuple[str, str], Dict[str, Any]]', pca, var_t: 'np.ndarray', X_proc_amostra: 'np.ndarray', n_candidatos: 'int' = 3) -> 'IdentificationResult'",
+        "forma": "funcao"
+      },
+      "train_identification_ensemble": {
+        "assinatura": "(pca, var_t: 'np.ndarray', X_proc: 'np.ndarray', rotulos: 'np.ndarray', conc: 'np.ndarray', mae_id: 'Optional[np.ndarray]', alpha_nominal: 'float' = 0.05) -> 'Dict[Tuple[str, str], Dict[str, Any]]'",
+        "forma": "funcao"
+      }
+    },
+    "io_registry": {
+      "DadosCarregados": {
+        "forma": "constante",
+        "tipo": "_GenericAlias"
+      },
+      "LeitorDados": {
+        "forma": "constante",
+        "tipo": "_CallableGenericAlias"
+      },
+      "get_reader": {
+        "assinatura": "(mode: 'str') -> 'LeitorDados'",
+        "forma": "funcao"
+      },
+      "register_reader": {
+        "assinatura": "(mode: 'str', leitor: 'LeitorDados') -> 'None'",
+        "forma": "funcao"
+      },
+      "registered_modes": {
+        "assinatura": "() -> 'Tuple[str, ...]'",
+        "forma": "funcao"
+      }
+    },
+    "log": {
+      "configurar": {
+        "assinatura": "(nivel: 'str' = 'INFO', arquivo: 'Optional[str]' = None) -> 'logging.Logger'",
+        "forma": "funcao"
+      }
+    },
+    "model_registry": {
+      "Construtor": {
+        "forma": "constante",
+        "tipo": "_CallableGenericAlias"
+      },
+      "build_benchmark_list": {
+        "assinatura": "(n_opt: 'int', cfg: \"'Config'\", incluir_opcionais: 'bool' = True) -> 'List[Tuple[str, Any]]'",
+        "forma": "funcao"
+      },
+      "nomes_modelos_benchmark": {
+        "assinatura": "(incluir_opcionais: 'bool' = True) -> 'Tuple[str, ...]'",
+        "forma": "funcao"
+      }
+    },
+    "modos_analise": {
+      "CLASSIFICACAO": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "EXPLORATORIO": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "OBJETIVO_ROTULO": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "QUANTIFICACAO": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "describe_plan": {
+        "assinatura": "(cfg: \"'Config'\") -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "exploratory_figures_enabled": {
+        "assinatura": "(cfg: \"'Config'\") -> 'bool'",
+        "forma": "funcao"
+      },
+      "figure_plan": {
+        "assinatura": "(cfg: \"'Config'\") -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "resolve_objective": {
+        "assinatura": "(cfg: \"'Config'\") -> 'str'",
+        "forma": "funcao"
+      },
+      "should_generate": {
+        "assinatura": "(cfg: \"'Config'\", chave: 'str') -> 'bool'",
+        "forma": "funcao"
+      }
+    },
+    "paleta_cores": {
+      "MARCADORES": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "PALETA": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "color": {
+        "assinatura": "(i: 'int') -> 'str'",
+        "forma": "funcao"
+      },
+      "get_edge_color": {
+        "assinatura": "(hex_cor: 'str') -> 'str'",
+        "forma": "funcao"
+      },
+      "map_class_colors": {
+        "assinatura": "(classes) -> 'Dict[str, str]'",
+        "forma": "funcao"
+      },
+      "map_class_markers": {
+        "assinatura": "(classes) -> 'Dict[str, str]'",
+        "forma": "funcao"
+      }
+    },
+    "perfil_matriz": {
+      "DIR_PERFIS": {
+        "forma": "constante",
+        "tipo": "WindowsPath"
+      },
+      "MatrixProfile": {
+        "campos": [
+          {
+            "nome": "nome",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "descricao",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "unidade_eixo",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "eixo_min",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "eixo_max",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "default_preprocessing",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "vocabulario",
+            "tem_default": true,
+            "tipo": "Vocabulary"
+          },
+          {
+            "nome": "codigos_classe",
+            "tem_default": true,
+            "tipo": "Dict[str, str]"
+          },
+          {
+            "nome": "faixa_trabalho",
+            "tem_default": true,
+            "tipo": "Optional[List[float]]"
+          },
+          {
+            "nome": "referencia",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "resolucao_esperada",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "formatos_aceitos",
+            "tem_default": true,
+            "tipo": "Optional[List[str]]"
+          },
+          {
+            "nome": "nivel_agrupamento_tipico",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "UnknownProfileError": {
+        "bases": [
+          "ValueError"
+        ],
+        "forma": "classe",
+        "init": "(self, /, *args, **kwargs)",
+        "metodos_publicos": []
+      },
+      "Vocabulary": {
+        "campos": [
+          {
+            "nome": "classe",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "classe_plural",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "matriz",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "alvo",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "conforme",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "nao_conforme",
+            "tem_default": true,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "apply_profile": {
+        "assinatura": "(cfg: \"'Config'\", perfil: 'MatrixProfile') -> \"'Config'\"",
+        "forma": "funcao"
+      },
+      "cfg_profile": {
+        "assinatura": "(cfg: \"'Config'\") -> 'MatrixProfile'",
+        "forma": "funcao"
+      },
+      "load_profile": {
+        "assinatura": "(nome_ou_caminho: 'str') -> 'MatrixProfile'",
+        "forma": "funcao"
+      }
+    },
+    "pipeline": {
+      "bootstrap_vip": {
+        "assinatura": "(X_processed, Y_bin, n_opt, n_boot, seed)",
+        "forma": "funcao"
+      },
+      "bootstrap_vip_stratified": {
+        "assinatura": "(X_processed: numpy.ndarray, Y_bin: numpy.ndarray, y_int: numpy.ndarray, n_opt: int, n_boot: int, seed: int, vip_threshold: float = 1.0, mae_id: Optional[numpy.ndarray] = None) -> Dict[str, object]",
+        "forma": "funcao"
+      },
+      "classification_metrics": {
+        "assinatura": "(y_true, y_pred, classes) -> Dict[str, float]",
+        "forma": "funcao"
+      },
+      "clear_old_results": {
+        "assinatura": "(pasta_base: str, manter_n: int = 3) -> Dict[str, Any]",
+        "forma": "funcao"
+      },
+      "compare_pipelines": {
+        "assinatura": "(cfg: guaraci.config.Config, X_raw: numpy.ndarray, Y_bin: numpy.ndarray, y_int: numpy.ndarray, cv_indices: list, max_lv: int = 8) -> Dict[str, Dict[str, float]]",
+        "forma": "funcao"
+      },
+      "executar": {
+        "assinatura": "(cfg: guaraci.config.Config)",
+        "forma": "funcao"
+      },
+      "generate_output_name": {
+        "assinatura": "(cfg: guaraci.config.Config, n_classes: int, n_amostras: int) -> str",
+        "forma": "funcao"
+      },
+      "labels_for_quantification": {
+        "assinatura": "(cfg: 'Config', rotulos_verdadeiros: numpy.ndarray, rotulos_preditos: Optional[numpy.ndarray]) -> Tuple[numpy.ndarray, str]",
+        "forma": "funcao"
+      },
+      "pls_regressao_pooled": {
+        "assinatura": "(X_raw: numpy.ndarray, conc: numpy.ndarray, rotulos: numpy.ndarray, mae_id: Optional[numpy.ndarray], cfg: 'Config', pasta: str, pasta_logs: str, n_splits: int) -> Dict[str, Any]",
+        "forma": "funcao"
+      },
+      "pls_regression_by_species": {
+        "assinatura": "(X_raw: numpy.ndarray, conc: numpy.ndarray, rotulos: numpy.ndarray, mae_id: Optional[numpy.ndarray], classes_unicas: numpy.ndarray, cfg: 'Config', pasta: str, n_splits: int, min_amostras_adult: int = 6) -> Optional[Dict[str, Any]]",
+        "forma": "funcao"
+      },
+      "r2cv_species_by_adulterant": {
+        "assinatura": "(X: numpy.ndarray, conc: numpy.ndarray, rotulos: numpy.ndarray, mae_id: Optional[numpy.ndarray], cfg: 'Config', *, limiar_r2: float = 0.7, min_niveis: int = 3, min_grupos: int = 3) -> Optional[Dict[str, Any]]",
+        "forma": "funcao"
+      },
+      "validate_input": {
+        "assinatura": "(X: numpy.ndarray, wavenumbers: numpy.ndarray, rotulos: numpy.ndarray, conc: Optional[numpy.ndarray] = None, mae_id: Optional[numpy.ndarray] = None, tol_const: float = 1e-12, limiar_correlacao: float = 0.99995, max_n_para_corr: int = 500) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, Optional[numpy.ndarray], Optional[numpy.ndarray], Dict[str, object]]",
+        "forma": "funcao"
+      }
+    },
+    "plano_amostral": {
+      "DDSimcaGuidance": {
+        "campos": [
+          {
+            "nome": "cobertura_alvo",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "alcancavel",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "n_sugerido",
+            "tem_default": false,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "cobertura_no_n_sugerido",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "plato_observado",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "recomendar_conformal",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ressalva",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "ddsimca_sample_size_guidance": {
+        "assinatura": "(cobertura_alvo: 'float') -> 'DDSimcaGuidance'",
+        "forma": "funcao"
+      },
+      "n_minimum_conformal": {
+        "assinatura": "(alpha: 'float') -> 'int'",
+        "forma": "funcao"
+      }
+    },
+    "plano_coleta": {
+      "CollectionItem": {
+        "campos": [
+          {
+            "nome": "classe",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "replica_idx",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "sessao",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "ordem_na_sessao",
+            "tem_default": false,
+            "tipo": "int"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "CollectionPlan": {
+        "campos": [
+          {
+            "nome": "classes",
+            "tem_default": false,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "n_por_classe",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_sessoes",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "itens",
+            "tem_default": false,
+            "tipo": "List[CollectionItem]"
+          },
+          {
+            "nome": "alertas",
+            "tem_default": true,
+            "tipo": "List[str]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "export_excel": {
+        "assinatura": "(plano: 'CollectionPlan', caminho: 'str') -> 'str'",
+        "forma": "funcao"
+      },
+      "export_markdown": {
+        "assinatura": "(plano: 'CollectionPlan') -> 'str'",
+        "forma": "funcao"
+      },
+      "plan_collection": {
+        "assinatura": "(classes: 'Sequence[str]', n_por_classe: 'int', n_sessoes: 'int', *, n_brancos_por_sessao: 'int' = 1, seed: 'Optional[int]' = None) -> 'CollectionPlan'",
+        "forma": "funcao"
+      },
+      "plan_from_statistical_target": {
+        "assinatura": "(classes: 'Sequence[str]', n_sessoes: 'int', *, alpha_conformal: 'Optional[float]' = None, cobertura_ddsimca: 'Optional[float]' = None, n_brancos_por_sessao: 'int' = 1, seed: 'Optional[int]' = None) -> 'Tuple[CollectionPlan, Dict[str, Any]]'",
+        "forma": "funcao"
+      }
+    },
+    "predicao": {
+      "BlindPredictionResult": {
+        "campos": [
+          {
+            "nome": "detectado_no_dominio",
+            "tem_default": false,
+            "tipo": "Optional[bool]"
+          },
+          {
+            "nome": "pureza",
+            "tem_default": false,
+            "tipo": "PurityResult"
+          },
+          {
+            "nome": "identificacao",
+            "tem_default": false,
+            "tipo": "IdentificationResult"
+          },
+          {
+            "nome": "quantificacao",
+            "tem_default": false,
+            "tipo": "QuantificationResult"
+          },
+          {
+            "nome": "alpha_total",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "PurityResult": {
+        "campos": [
+          {
+            "nome": "aceito",
+            "tem_default": false,
+            "tipo": "Optional[bool]"
+          },
+          {
+            "nome": "f",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "f_crit",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "n_grupos_calibracao",
+            "tem_default": false,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "confiavel",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "alpha_nominal",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "QuantificationResult": {
+        "campos": [
+          {
+            "nome": "teor_estimado",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "especie_usada",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "motivo_bloqueio",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "SecurityError": {
+        "bases": [
+          "Exception"
+        ],
+        "forma": "classe",
+        "init": "(self, /, *args, **kwargs)",
+        "metodos_publicos": []
+      },
+      "detect_purity": {
+        "assinatura": "(pkg: 'Dict[str, Any]', especie: 'Optional[str]', X_proc_amostra: 'np.ndarray') -> 'PurityResult'",
+        "forma": "funcao"
+      },
+      "generate_manifest": {
+        "assinatura": "(caminho_joblib: 'str', pkg: 'Dict[str, Any]') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "load_model": {
+        "assinatura": "(caminho: 'str', *, confiar: 'bool' = False) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "load_prediction_csv": {
+        "assinatura": "(caminho_ou_buffer) -> 'Tuple[np.ndarray, np.ndarray, pd.DataFrame]'",
+        "forma": "funcao"
+      },
+      "predict_blind": {
+        "assinatura": "(pkg: 'Dict[str, Any]', X_new_raw: 'np.ndarray', wn_new: 'np.ndarray') -> 'Tuple[pd.DataFrame, List[BlindPredictionResult]]'",
+        "forma": "funcao"
+      },
+      "predict_samples": {
+        "assinatura": "(pkg: 'Dict', X_new_raw: 'np.ndarray', wn_new: 'Optional[np.ndarray]') -> 'pd.DataFrame'",
+        "forma": "funcao"
+      },
+      "quantify_sample": {
+        "assinatura": "(pkg: 'Dict[str, Any]', X_interp_amostra: 'np.ndarray', identificacao: 'IdentificationResult') -> 'QuantificationResult'",
+        "forma": "funcao"
+      },
+      "save_manifest": {
+        "assinatura": "(caminho_joblib: 'str', pkg: 'Dict[str, Any]') -> 'str'",
+        "forma": "funcao"
+      },
+      "validate_model_package": {
+        "assinatura": "(pkg: 'Dict') -> 'None'",
+        "forma": "funcao"
+      }
+    },
+    "preprocessamento": {
+      "MSC": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, /, *args, **kwargs)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "SNV": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, /, *args, **kwargs)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "SavGol": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, window_length: 'int' = 25, polyorder: 'int' = 2, deriv: 'int' = 1)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "build_preprocessor": {
+        "assinatura": "(cfg: \"'Config'\") -> 'Pipeline'",
+        "forma": "funcao"
+      }
+    },
+    "reports": {
+      "generate_excel_report": {
+        "assinatura": "(pasta: 'str') -> 'io.BytesIO'",
+        "forma": "funcao"
+      },
+      "generate_latex_template": {
+        "assinatura": "(pasta: 'str', projeto: 'Dict') -> 'bytes'",
+        "forma": "funcao"
+      },
+      "generate_pdf_report": {
+        "assinatura": "(pasta: 'str', projeto: 'Dict', max_figuras: 'int' = 14) -> 'io.BytesIO'",
+        "forma": "funcao"
+      },
+      "generate_pptx_report": {
+        "assinatura": "(pasta: 'str', projeto: 'Dict', max_figuras: 'int' = 12) -> 'io.BytesIO'",
+        "forma": "funcao"
+      },
+      "generate_word_report": {
+        "assinatura": "(pasta: 'str', projeto: 'Dict', max_figuras: 'int' = 14) -> 'io.BytesIO'",
+        "forma": "funcao"
+      }
+    },
+    "resultados_io": {
+      "append_heatmap_summary": {
+        "assinatura": "(pasta: 'str', resultado: 'Dict[str, object]') -> 'None'",
+        "forma": "funcao"
+      },
+      "append_identification_model_card": {
+        "assinatura": "(pasta: 'str', ensemble: 'Dict[Any, Dict[str, Any]]') -> 'None'",
+        "forma": "funcao"
+      },
+      "append_purity_model_card": {
+        "assinatura": "(pasta: 'str', modelos_por_especie: 'Dict[str, Dict[str, Any]]') -> 'None'",
+        "forma": "funcao"
+      },
+      "append_regression_model_card": {
+        "assinatura": "(pasta: 'str', pooled: 'Optional[Dict[str, object]]' = None, tabela_especie: 'Optional[List[Dict[str, object]]]' = None, fom_pooled: 'Optional[Dict[str, float]]' = None) -> 'None'",
+        "forma": "funcao"
+      },
+      "append_regression_summary": {
+        "assinatura": "(pasta: 'str', pooled: 'Optional[Dict[str, object]]' = None, tabela_especie: 'Optional[List[Dict[str, object]]]' = None, fom_pooled: 'Optional[Dict[str, float]]' = None) -> 'None'",
+        "forma": "funcao"
+      },
+      "generate_model_card": {
+        "assinatura": "(pasta: 'str', cfg: \"'Config'\", resumo: 'Dict[str, object]', hw: 'Dict[str, Any]', classes_unicas: 'np.ndarray') -> 'None'",
+        "forma": "funcao"
+      },
+      "pls_model_metrics": {
+        "assinatura": "(modelo: 'PLSRegression', X: 'np.ndarray', Y: 'np.ndarray', Y_cv: 'np.ndarray') -> 'Tuple[float, float, float]'",
+        "forma": "funcao"
+      },
+      "save_identifiers": {
+        "assinatura": "(rotulos: 'np.ndarray', pred_lab: 'np.ndarray', scores_pls: 'np.ndarray', T2: 'np.ndarray', Q: 'np.ndarray', t2_lim: 'float', q_lim: 'float', pasta: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "save_model_summary": {
+        "assinatura": "(pasta: 'str', info: 'Dict[str, object]') -> 'None'",
+        "forma": "funcao"
+      }
+    },
+    "resumo_parse": {
+      "extract_metric": {
+        "assinatura": "(resumo: 'str', padrao: 'str', default: 'str' = '-') -> 'str'",
+        "forma": "funcao"
+      },
+      "parse_accuracy_by_class": {
+        "assinatura": "(resumo: 'str') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "parse_model_metrics": {
+        "assinatura": "(resumo: 'str', default: 'str' = '-') -> 'Dict[str, str]'",
+        "forma": "funcao"
+      }
+    },
+    "selecao_variaveis": {
+      "etapa4_selecao_variaveis": {
+        "assinatura": "(X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv, cfg, pasta, pasta_dados, mae_id=None)",
+        "forma": "funcao"
+      },
+      "fig_etapa4_ag_convergencia": {
+        "assinatura": "(historico: 'List[Dict]', cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_etapa4_comparacao": {
+        "assinatura": "(tabela, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "fig_etapa4_ipls": {
+        "assinatura": "(resultados, wavenumbers, baseline_bal, cfg, pasta)",
+        "forma": "funcao"
+      },
+      "ga_selection": {
+        "assinatura": "(X_proc: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv_indices: 'list', n_lv: 'int', tam_populacao: 'int', n_geracoes: 'int', prob_mutacao: 'float', frac_inicial: 'float', seed: 'int') -> 'Tuple[List[Dict], np.ndarray]'",
+        "forma": "funcao"
+      },
+      "selecao_ipls": {
+        "assinatura": "(X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv, n_intervalos: 'int') -> 'Tuple[list, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "selecao_spa": {
+        "assinatura": "(X_proc: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv_indices: 'list', n_lv: 'int', n_vars_max: 'int', n_starts: 'int', seed: 'int') -> 'Tuple[List[Dict], np.ndarray]'",
+        "forma": "funcao"
+      },
+      "sparse_plsda_mask": {
+        "assinatura": "(X_proc, Y_bin, n_comp: 'int', keep_por_comp: 'int') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
+    "sentinela_deriva": {
+      "DriftAlert": {
+        "campos": [
+          {
+            "nome": "alerta",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "taxa_rejeicao_observada",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "alpha_nominal",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "p_valor",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "mensagem",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "SentinelState": {
+        "campos": [
+          {
+            "nome": "alpha_nominal",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "janela",
+            "tem_default": true,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "historico",
+            "tem_default": true,
+            "tipo": "List[bool]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "check_drift": {
+        "assinatura": "(estado: 'SentinelState', significancia: 'float' = 0.05, n_minimo: 'Optional[int]' = None) -> 'DriftAlert'",
+        "forma": "funcao"
+      },
+      "load_state": {
+        "assinatura": "(caminho: 'str') -> 'SentinelState'",
+        "forma": "funcao"
+      },
+      "save_state": {
+        "assinatura": "(estado: 'SentinelState', caminho: 'str') -> 'str'",
+        "forma": "funcao"
+      },
+      "update_with_predictions": {
+        "assinatura": "(estado: 'SentinelState', df_predicoes: 'Any') -> 'int'",
+        "forma": "funcao"
+      }
+    },
+    "spectra_preview": {
+      "plot_mean_spectra": {
+        "assinatura": "(wn: 'np.ndarray', X: 'np.ndarray', rotulos: 'np.ndarray', titulo: 'str' = '')",
+        "forma": "funcao"
+      },
+      "preview_spectra_csv": {
+        "forma": "constante",
+        "tipo": "CachedFunc"
+      },
+      "preview_spectra_dx": {
+        "forma": "constante",
+        "tipo": "CachedFunc"
+      }
+    },
+    "validacao_estatistica": {
+      "StableStratifiedGroupKFold": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, n_splits: 'int' = 5, seed: 'int' = 42)",
+        "metodos_publicos": [
+          "get_n_splits",
+          "split"
+        ]
+      },
+      "bootstrap_bca_ci": {
+        "assinatura": "(y_true: 'np.ndarray', y_pred: 'np.ndarray', metric_fn: 'Callable', n_boot: 'int' = 500, alpha: 'float' = 0.05, seed: 'int' = 42) -> 'Tuple[float, float, float]'",
+        "forma": "funcao"
+      },
+      "cv_anova_eriksson": {
+        "assinatura": "(Y: 'np.ndarray', Y_cv: 'np.ndarray', n_components: 'int') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "permutation_test": {
+        "assinatura": "(pipeline_factory: 'Callable[[], Pipeline]', X: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv, n_perm: 'int', seed: 'int', groups: 'Optional[np.ndarray]' = None, n_jobs: 'int' = 1) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "wold_test": {
+        "assinatura": "(pipeline_factory: 'Callable[[], Pipeline]', X: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv, n_perm: 'int', seed: 'int', groups: 'Optional[np.ndarray]' = None, n_jobs: 'int' = 1) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      }
+    }
+  }
+}

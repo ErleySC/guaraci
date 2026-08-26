@@ -284,6 +284,5 @@ def load_model_card(pasta: str) -> Optional[str]:
 
 __all__ = ["log_progress", "fmt_time", "collect_config",
            "list_figures", "load_summary", "load_model_card",
-           "_RE_ETAPA", "_ETAPA_NOMES", "_ETAPA_SUBSTEP",
            "LogThreadSafe", "figures_completed", "log_warnings",
            "temp_upload_path"]
