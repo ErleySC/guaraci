@@ -518,7 +518,8 @@ def interpret_rpd(rpd: float) -> str:
 
 
 def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
-                              grupos_replicas: List[np.ndarray]
+                              grupos_replicas: List[np.ndarray],
+                              alpha_ic: float = 0.05
                               ) -> Dict[str, float]:
     """Figuras de merito analiticas para um modelo PLS de calibracao
     multivariada de um analito, seguindo Valderrama, Braga & Poppi (2009),
@@ -548,6 +549,25 @@ def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
     `X_cal` e cada array de `grupos_replicas` devem estar no MESMO espaco
     pre-processado usado para ajustar `modelo` (aplicar so `.transform()`,
     nunca reajustar o preprocessador, nas replicas).
+
+    LOD/LOQ COMO INTERVALO (Bloco 12): `delta_x_ruido` e' uma ESTIMATIVA com
+    `soma_df` graus de liberdade (soma de (n_replicas-1) por grupo), nao o
+    valor verdadeiro -- reportar so' o LOD/LOQ pontual esconde essa
+    incerteza de estimacao. O CONCEITO de nao reduzir o limite de deteccao a
+    um numero unico, tratando-o como um intervalo que reflete a incerteza da
+    propria calibracao, segue Allegrini & Olivieri (2014), Anal. Chem.
+    86(15):7858-7866 (abordagem consistente com IUPAC para LOD em PLS). A
+    CONSTRUCAO especifica do intervalo aqui e' nossa, nao necessariamente
+    identica ao algoritmo exato do artigo (que trata taxas de erro tipo
+    I/II explicitamente) -- [VERIFICAR contra o artigo original antes de
+    citar a formula exata deles]: intervalo de (1-`alpha_ic`) para a
+    VARIANCIA pooled via qui-quadrado (teoria ANOVA padrao,
+    `soma_df * var_pooled / sigma^2 ~ chi2(soma_df)`), propagado linearmente
+    para LOD/LOQ (ambos lineares em delta_x). APROXIMACAO: trata a
+    variancia agregada (RMS sobre variaveis espectrais correlacionadas)
+    como se fosse uma unica variancia pooled com `soma_df` graus de
+    liberdade -- ignora a correlacao entre variaveis espectrais vizinhas;
+    um intervalo multivariado exato exigiria propagacao mais completa.
     """
     X_cal = np.asarray(X_cal, dtype=float)
     # .coef_ varia de forma (n_features, 1) ou (1, n_features) conforme a
@@ -564,6 +584,16 @@ def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
         "lod": float("nan"),
         "loq": float("nan"),
         "n_grupos_replicas": 0.0,
+        # Bloco 12: LOD/LOQ como intervalo -- ver docstring. NaN ate' que
+        # `soma_df` seja calculavel (mesma condicao de delta_x_ruido).
+        "delta_x_ruido_ic_baixo": float("nan"),
+        "delta_x_ruido_ic_alto": float("nan"),
+        "lod_ic_baixo": float("nan"),
+        "lod_ic_alto": float("nan"),
+        "loq_ic_baixo": float("nan"),
+        "loq_ic_alto": float("nan"),
+        "lod_ic_confianca": float(1.0 - alpha_ic),
+        "lod_ic_graus_liberdade": 0.0,
     }
     if norm_b < 1e-12:
         return resultado
@@ -599,12 +629,30 @@ def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
     resultado["n_grupos_replicas"] = float(n_grupos_validos)
     if soma_ss is not None and soma_df > 0:
         var_pooled = soma_ss / soma_df
-        delta_x = float(np.sqrt(np.mean(var_pooled)))
+        var_media = float(np.mean(var_pooled))
+        delta_x = float(np.sqrt(var_media))
         resultado["delta_x_ruido"] = delta_x
+        resultado["lod_ic_graus_liberdade"] = float(soma_df)
         if delta_x > 1e-12:
             resultado["sensibilidade_analitica"] = sen / delta_x
             resultado["lod"] = 3.3 * delta_x * norm_b
             resultado["loq"] = 10.0 * delta_x * norm_b
+
+            # IC de (1-alpha_ic) para a variancia pooled via qui-quadrado
+            # (df*S^2/sigma^2 ~ chi2(df)) -- ver docstring para o
+            # significado e as limitacoes desta aproximacao.
+            chi2_baixo = float(chi2.ppf(alpha_ic / 2.0, soma_df))
+            chi2_alto = float(chi2.ppf(1.0 - alpha_ic / 2.0, soma_df))
+            if chi2_alto > 0:
+                sigma_baixo = float(np.sqrt(soma_df * var_media / chi2_alto))
+                resultado["delta_x_ruido_ic_baixo"] = sigma_baixo
+                resultado["lod_ic_baixo"] = 3.3 * sigma_baixo * norm_b
+                resultado["loq_ic_baixo"] = 10.0 * sigma_baixo * norm_b
+            if chi2_baixo > 0:
+                sigma_alto = float(np.sqrt(soma_df * var_media / chi2_baixo))
+                resultado["delta_x_ruido_ic_alto"] = sigma_alto
+                resultado["lod_ic_alto"] = 3.3 * sigma_alto * norm_b
+                resultado["loq_ic_alto"] = 10.0 * sigma_alto * norm_b
 
     return resultado
 

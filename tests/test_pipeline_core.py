@@ -483,12 +483,16 @@ def test_figuras_merito_sem_replicas_nao_quebra(pq):
 
 def test_figuras_merito_modelo_degenerado_b_zero(pq):
     """Vetor de regressão nulo (modelo sem poder preditivo) -> tudo NaN,
-    nunca ZeroDivisionError/inf silencioso."""
+    nunca ZeroDivisionError/inf silencioso. `n_grupos_replicas` e os
+    campos de METADADO do IC (Bloco 12: confiança pedida, graus de
+    liberdade) não são "estimados" -- ficam de fora do invariante NaN."""
     class _ModeloNulo:
         coef_ = np.zeros((1, 10))
     fom = pq.regression_figures_of_merit(
         _ModeloNulo(), np.random.default_rng(0).normal(size=(20, 10)), [])
-    assert all(np.isnan(v) for k, v in fom.items() if k != "n_grupos_replicas")
+    chaves_metadado = {"n_grupos_replicas", "lod_ic_confianca",
+                       "lod_ic_graus_liberdade"}
+    assert all(np.isnan(v) for k, v in fom.items() if k not in chaves_metadado)
 
 
 def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
@@ -501,6 +505,92 @@ def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
     # o singleton nao conta: mesmo numero de grupos validos que sem ele
     assert fom["n_grupos_replicas"] == len(grupos)
     assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
+
+
+# ── LOD/LOQ como intervalo (Bloco 12, Allegrini & Olivieri 2014) ─────────
+
+def test_ic_lod_loq_contem_o_ponto_estimado(pq):
+    """O ponto (lod/loq) tem que cair DENTRO do proprio intervalo -- e' o
+    minimo que um IC bem formado tem que satisfazer."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=11)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert fom["lod_ic_baixo"] <= fom["lod"] <= fom["lod_ic_alto"]
+    assert fom["loq_ic_baixo"] <= fom["loq"] <= fom["loq_ic_alto"]
+    assert fom["delta_x_ruido_ic_baixo"] <= fom["delta_x_ruido"] <= fom["delta_x_ruido_ic_alto"]
+
+
+def test_ic_lod_loq_mantem_a_razao_10_sobre_3_3(pq):
+    """LOD/LOQ sao ambos 3.3x/10x delta_x -- os limites do IC tem que
+    manter a mesma razao exata que o ponto (mesmo delta_x_ruido_ic_* em
+    ambos, so' o multiplicador muda)."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=12)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert fom["loq_ic_baixo"] / fom["lod_ic_baixo"] == pytest.approx(10.0 / 3.3, rel=1e-9)
+    assert fom["loq_ic_alto"] / fom["lod_ic_alto"] == pytest.approx(10.0 / 3.3, rel=1e-9)
+
+
+def test_ic_confianca_e_graus_de_liberdade_reportados(pq):
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=13)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos, alpha_ic=0.10)
+    assert fom["lod_ic_confianca"] == pytest.approx(0.90)
+    # 8 grupos de 3 replicas cada -> soma_df = 8*(3-1) = 16
+    assert fom["lod_ic_graus_liberdade"] == pytest.approx(16.0)
+
+
+def test_ic_mais_grupos_de_replicas_estreita_o_intervalo(pq):
+    """Mais graus de liberdade (mais sessoes de replica) -> IC mais
+    estreito -- a incerteza sobre delta_x_ruido tem que diminuir com mais
+    evidencia, nao ficar igual nem aumentar."""
+    rng = np.random.default_rng(20)
+    p = 25
+    w_true = rng.normal(size=p); w_true /= np.linalg.norm(w_true)
+    n = 80
+    X = rng.normal(size=(n, p))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=n)
+    modelo = PLSRegression(n_components=3, scale=False).fit(X, y.reshape(-1, 1))
+
+    def _grupos(n_grupos):
+        return [X[rng.integers(0, n)] + rng.normal(scale=0.02, size=(3, p))
+                for _ in range(n_grupos)]
+
+    fom_poucos = pq.regression_figures_of_merit(modelo, X, _grupos(3))
+    fom_muitos = pq.regression_figures_of_merit(modelo, X, _grupos(30))
+
+    largura_poucos = fom_poucos["lod_ic_alto"] - fom_poucos["lod_ic_baixo"]
+    largura_muitos = fom_muitos["lod_ic_alto"] - fom_muitos["lod_ic_baixo"]
+    # compara a largura RELATIVA ao ponto (nao a largura absoluta, que
+    # tambem depende do delta_x sorteado em cada chamada) -- com mais df
+    # a largura relativa do IC tem que cair.
+    largura_relativa_poucos = largura_poucos / fom_poucos["lod"]
+    largura_relativa_muitos = largura_muitos / fom_muitos["lod"]
+    assert largura_relativa_muitos < largura_relativa_poucos
+
+
+def test_ic_sem_replicas_fica_nan_como_o_ponto(pq):
+    modelo, X, _grupos, _ = _modelo_e_replicas_conhecidos(seed=14)
+    fom = pq.regression_figures_of_merit(modelo, X, [])
+    assert np.isnan(fom["lod_ic_baixo"]) and np.isnan(fom["lod_ic_alto"])
+    assert np.isnan(fom["loq_ic_baixo"]) and np.isnan(fom["loq_ic_alto"])
+    assert fom["lod_ic_graus_liberdade"] == 0.0
+
+
+def test_ic_bate_com_calculo_manual_qui_quadrado(pq):
+    """Contra-prova numerica direta: reproduz a formula do IC de
+    variancia (df*S^2/chi2) manualmente, com scipy.stats.chi2, e compara
+    com o que a funcao devolve -- nao so' 'parece razoavel'."""
+    from scipy.stats import chi2 as chi2_dist
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=15)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos, alpha_ic=0.05)
+
+    df = fom["lod_ic_graus_liberdade"]
+    var_media = fom["delta_x_ruido"] ** 2
+    chi2_baixo = chi2_dist.ppf(0.025, df)
+    chi2_alto = chi2_dist.ppf(0.975, df)
+    sigma_baixo_esperado = np.sqrt(df * var_media / chi2_alto)
+    sigma_alto_esperado = np.sqrt(df * var_media / chi2_baixo)
+
+    assert fom["delta_x_ruido_ic_baixo"] == pytest.approx(sigma_baixo_esperado, rel=1e-9)
+    assert fom["delta_x_ruido_ic_alto"] == pytest.approx(sigma_alto_esperado, rel=1e-9)
 
 
 # ── pls_model_metrics: R2X/R2Y/Q2 (sem teste dedicado ate' agora) ─────────
@@ -1217,6 +1307,57 @@ def test_anexar_regressao_resumo_valor_nao_numerico_vira_na(pq, tmp_path):
                 "rmsecv": 1.1, "rmsep": 1.3, "bias": 0.0})
     txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
     assert "n/a" in txt
+
+
+def test_anexar_regressao_resumo_inclui_ic_e_faixa_de_validacao(pq, tmp_path):
+    """Bloco 12: LOD/LOQ nunca isolado -- o IC (Allegrini & Olivieri 2014)
+    e a faixa/desvio-padrao do conjunto de VALIDACAO tem que aparecer no
+    resumo_modelo.txt junto do LOD/LOQ pontual, nao so' estar disponivel
+    na funcao que calcula."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
+                "rmsep": 1.8, "bias": -0.1},
+        tabela_especie=[{
+            "especie": "Coco", "n_lv": 4, "rmsep": 1.7, "r2val": 0.94,
+            "lod": 2.10, "loq": 6.40, "sensibilidade": 0.033,
+            "seletividade_media": 0.71,
+            "lod_ic_baixo": 1.80, "lod_ic_alto": 2.60,
+            "loq_ic_baixo": 5.45, "loq_ic_alto": 7.88,
+            "lod_ic_confianca": 0.95,
+            "validacao_teor_min": 0.0, "validacao_teor_max": 40.0,
+            "validacao_teor_dp": 11.5,
+        }])
+    txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
+    assert "1.80" in txt and "2.60" in txt          # IC do LOD
+    assert "5.45" in txt and "7.88" in txt          # IC do LOQ
+    assert "95%" in txt                             # confianca do IC
+    assert "11.5" in txt                            # DP da validacao
+    assert "40.0" in txt                            # teto da faixa de validacao
+
+
+def test_anexar_regressao_model_card_inclui_ic_e_faixa_de_validacao(pq, tmp_path):
+    pasta = str(tmp_path)
+    with open(pasta + "/model_card.md", "w", encoding="utf-8") as f:
+        f.write("# Model Card\n")
+    pq.append_regression_model_card(
+        pasta,
+        pooled={"rmsep": 1.8, "r2v": 0.90},
+        tabela_especie=[{
+            "especie": "Coco", "rmsep": 1.7,
+            "lod": 2.10, "loq": 6.40,
+            "lod_ic_baixo": 1.80, "lod_ic_alto": 2.60,
+            "loq_ic_baixo": 5.45, "loq_ic_alto": 7.88,
+            "lod_ic_confianca": 0.95,
+            "validacao_teor_min": 0.0, "validacao_teor_max": 40.0,
+            "validacao_teor_dp": 11.5,
+        }])
+    md = open(pasta + "/model_card.md", encoding="utf-8").read()
+    assert "Allegrini" in md
+    assert "1.80" in md and "2.60" in md
+    assert "11.5" in md
 
 
 def test_anexar_regressao_resumo_fom_pooled(pq, tmp_path):

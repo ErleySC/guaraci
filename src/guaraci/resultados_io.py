@@ -198,6 +198,22 @@ def append_regression_summary(
                 f"{_fmt(t.get('lod'), 2):>7s} {_fmt(t.get('loq'), 2):>7s} "
                 f"{_fmt(t.get('sensibilidade'), 3):>7s} "
                 f"{_fmt(t.get('seletividade_media'), 3):>6s}")
+            # Bloco 12: LOD/LOQ nunca isolado -- IC (Allegrini & Olivieri
+            # 2014, ver chemometric_stats.regression_figures_of_merit) +
+            # faixa/desvio-padrao do conjunto de VALIDACAO logo abaixo.
+            if t.get("lod_ic_baixo") is not None and t.get("lod") is not None \
+                    and np.isfinite(t.get("lod", float("nan"))):
+                _conf = t.get("lod_ic_confianca")
+                _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"
+                linhas.append(
+                    f"      IC({_conf_txt}): LOD "
+                    f"[{_fmt(t.get('lod_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('lod_ic_alto'), 2)}]  "
+                    f"LOQ [{_fmt(t.get('loq_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('loq_ic_alto'), 2)}]  |  "
+                    f"validacao: [{_fmt(t.get('validacao_teor_min'), 2)}, "
+                    f"{_fmt(t.get('validacao_teor_max'), 2)}]% "
+                    f"DP={_fmt(t.get('validacao_teor_dp'), 2)}%")
     if fom_pooled is not None:
         linhas.append("")
         linhas.append("  Figures of merit (single pooled model):")
@@ -536,13 +552,29 @@ def append_regression_model_card(
                 ("Amostras fora do DModY", str(pooled.get("n_fora_do_dmody", "n/a"))))
         linhas.append(_md_tabela(_linhas_pooled))
     if tabela_especie:
+        def _linha_especie(t: Dict[str, Any]) -> str:
+            base = (f"RMSEP={_fmt(t.get('rmsep'), 2)} | "
+                    f"LOD={_fmt(t.get('lod'), 2)}% | "
+                    f"LOQ={_fmt(t.get('loq'), 2)}%")
+            if t.get("lod_ic_baixo") is None:
+                return base
+            _conf = t.get("lod_ic_confianca")
+            _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"
+            # Bloco 12: LOD/LOQ nunca isolado -- IC (Allegrini & Olivieri
+            # 2014) + faixa/desvio-padrao do conjunto de VALIDACAO juntos.
+            return (f"{base} | IC({_conf_txt})=[{_fmt(t.get('lod_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('lod_ic_alto'), 2)}]%/"
+                    f"[{_fmt(t.get('loq_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('loq_ic_alto'), 2)}]% | "
+                    f"validacao=[{_fmt(t.get('validacao_teor_min'), 2)}, "
+                    f"{_fmt(t.get('validacao_teor_max'), 2)}]% "
+                    f"(DP={_fmt(t.get('validacao_teor_dp'), 2)}%)")
+
         linhas += ["", "**Figuras de merito por especie "
-                   "(Valderrama, Braga & Poppi, 2009):**", "",
+                   "(Valderrama, Braga & Poppi, 2009; IC do LOD/LOQ: "
+                   "Allegrini & Olivieri, 2014):**", "",
                    _md_tabela([
-                       (str(t.get("especie", "")),
-                        f"RMSEP={_fmt(t.get('rmsep'), 2)} | "
-                        f"LOD={_fmt(t.get('lod'), 2)}% | "
-                        f"LOQ={_fmt(t.get('loq'), 2)}%")
+                       (str(t.get("especie", "")), _linha_especie(t))
                        for t in tabela_especie
                    ])]
     if fom_pooled is not None:

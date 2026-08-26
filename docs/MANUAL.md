@@ -119,12 +119,27 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   analíticas** — LOD, LOQ, sensibilidade, sensibilidade analítica (γ) e
   seletividade, segundo Valderrama, Braga e Poppi (2009) — calculadas
   automaticamente a partir das réplicas físicas (T1/T2/T3) de cada espécie.
-  Além do bloco de texto no console e no `resumo_modelo.txt` ("*Analytical
-  Figures of Merit*"), essas figuras de mérito têm agora uma **representação
-  gráfica dedicada** (`figS3_merito_regressao.png`, ver seção 5) — LOD/LOQ e
-  seletividade por espécie lado a lado, com indicação explícita ("n/a") para
-  espécies sem réplicas físicas suficientes para estimar o ruído
-  instrumental. O *split* calibração/validação dessa regressão aceita dois
+  **LOD/LOQ como intervalo, não ponto (Bloco 12):** o ruído instrumental
+  (`delta_x`) usado no LOD/LOQ é ele próprio uma *estimativa* com graus de
+  liberdade limitados (poucas réplicas físicas por espécie) — reportar só o
+  valor pontual esconde essa incerteza. Cada LOD/LOQ vem acompanhado de um
+  **intervalo de confiança** (95% por padrão, via qui-quadrado sobre a
+  variância pooled — conceito de reportar o limite de detecção como
+  intervalo, não número único, segue Allegrini e Olivieri, 2014, *Anal.
+  Chem.* 86(15):7858-7866) **e** da **faixa e desvio-padrão do próprio
+  conjunto de validação** ao lado — um LOD pequeno não diz nada sozinho se
+  o teor de validação variou pouco. Aparece no console, no
+  `resumo_modelo.txt` e no `model_card.md` sempre junto do LOD/LOQ pontual,
+  nunca isolado. Além do bloco de texto, essas figuras de mérito têm uma
+  **representação gráfica dedicada** (`figS3_merito_regressao.png`, ver
+  seção 5) — LOD/LOQ e seletividade por espécie lado a lado, com indicação
+  explícita ("n/a") para espécies sem réplicas físicas suficientes para
+  estimar o ruído instrumental. **RPD/RER** (`chemometric_stats.rpd_rer`)
+  já estavam implementados antes deste bloco — reverificado por leitura
+  direta do código nesta revisão, não presumido da memória: razão SD/SEP e
+  amplitude/SEP, com as faixas de interpretação de Williams (2014), já
+  integrados ao pooled do `pls_regression_by_species`. O *split*
+  calibração/validação dessa regressão aceita dois
   métodos via `cal_val_split` no `config.yaml` (hiperparâmetro avançado,
   **não** exposto no aplicativo/CLI — mesmo padrão de
   `ipls_n_intervalos`/`vip_threshold_sel`): `"aleatoria"` (padrão,

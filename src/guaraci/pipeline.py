@@ -1068,14 +1068,28 @@ def pls_regression_by_species(
         Ych_all.append(Yc_hat)
         Yv_all.append(np.asarray(Yv).flatten())
         Yvh_all.append(Yv_hat)
+        # Bloco 12 (D-like: reportar LOD/LOQ nunca isolado): faixa E
+        # desvio-padrao do CONJUNTO DE VALIDACAO desta especie, para
+        # contextualizar se o LOD/LOQ e' pequeno/grande frente ao que a
+        # amostra real varia -- um LOD de 0,5% nao diz nada sozinho se
+        # o teor de validacao varia so' entre 0% e 1%.
+        _Yv_flat = np.asarray(Yv).flatten()
         tabela_esp.append({
             "especie": str(cls), "n_lv": n_opt_reg,
             "n_cal": int(len(ic)), "n_val": int(len(iv)),
             "rmsep": rmsep_c, "r2val": r2v_c,
             "lod": _fom["lod"], "loq": _fom["loq"],
+            "lod_ic_baixo": _fom["lod_ic_baixo"],
+            "lod_ic_alto": _fom["lod_ic_alto"],
+            "loq_ic_baixo": _fom["loq_ic_baixo"],
+            "loq_ic_alto": _fom["loq_ic_alto"],
+            "lod_ic_confianca": _fom["lod_ic_confianca"],
             "sensibilidade": _fom["sensibilidade"],
             "sensibilidade_analitica": _fom["sensibilidade_analitica"],
             "seletividade_media": _fom["seletividade_media"],
+            "validacao_teor_min": float(_Yv_flat.min()),
+            "validacao_teor_max": float(_Yv_flat.max()),
+            "validacao_teor_dp": float(_Yv_flat.std(ddof=1)) if len(_Yv_flat) > 1 else float("nan"),
         })
         pipelines_especie[str(cls)] = {
             "pipeline": pipe_final, "n_lv": n_opt_reg,
@@ -2771,10 +2785,27 @@ def executar(cfg: Config):
                                   f"(cal={t['n_cal']}, val={t['n_val']})")
                             _lod_t, _loq_t = t.get("lod"), t.get("loq")
                             if _lod_t is not None and np.isfinite(_lod_t):
-                                log.info(f"      LOD={_lod_t:.2f}%  LOQ={_loq_t:.2f}%  "
+                                _lod_lo, _lod_hi = t.get("lod_ic_baixo"), t.get("lod_ic_alto")
+                                _loq_lo, _loq_hi = t.get("loq_ic_baixo"), t.get("loq_ic_alto")
+                                _conf = t.get("lod_ic_confianca")
+                                log.info(f"      LOD={_lod_t:.2f}% "
+                                      f"[{_lod_lo:.2f}-{_lod_hi:.2f}%, "
+                                      f"{_conf*100:.0f}% IC]  "
+                                      f"LOQ={_loq_t:.2f}% "
+                                      f"[{_loq_lo:.2f}-{_loq_hi:.2f}%, "
+                                      f"{_conf*100:.0f}% IC]  "
                                       f"SEN={t['sensibilidade']:.3f}  "
                                       f"gamma={t['sensibilidade_analitica']:.2f}  "
                                       f"SEL={t['seletividade_media']:.3f}")
+                                # Bloco 12: LOD/LOQ nunca reportado isolado --
+                                # faixa e desvio-padrao do CONJUNTO DE
+                                # VALIDACAO ao lado, para contextualizar se
+                                # o LOD/LOQ e' pequeno/grande frente ao que
+                                # a amostra real varia.
+                                log.info(f"      Faixa de validacao: "
+                                      f"[{t['validacao_teor_min']:.2f}, "
+                                      f"{t['validacao_teor_max']:.2f}]%  "
+                                      f"DP={t['validacao_teor_dp']:.2f}%")
                             else:
                                 log.info("      LOD/LOQ: N/A (sem replicas fisicas "
                                       "suficientes para estimar ruido instrumental)")
