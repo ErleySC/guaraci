@@ -21,6 +21,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from guaraci.config import Config
 
+__all__ = [
+    "save_config",
+    "load_config",
+]
+
 _PRE_PROC_FRIENDLY: Dict[str, str] = {
     "MSC+SG+MC":      "msc_sg_mc",
     "SNV+SG+MC":      "snv_sg_mc",

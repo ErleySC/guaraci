@@ -23,6 +23,13 @@ from guaraci.chemometric_stats import (hotelling_t2_limit, q_residuals_limit,
                                        mean_and_dof_moments, combined_distance,
                                        q_residuals_loo)
 
+__all__ = [
+    "DDSimca",
+    "OPLSDAWrapper",
+    "ddsimca_logo_sensitivity",
+    "ddsimca_pcv_sensitivity",
+]
+
 log = logging.getLogger(__name__)
 
 # Graus de liberdade residuais minimos exigidos apos a PCA (nc - n_comp).

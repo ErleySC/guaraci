@@ -14,6 +14,11 @@ from typing import TYPE_CHECKING, Any, Dict, List
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
+__all__ = [
+    "hardware_probe",
+    "auto_adjust_hardware_config",
+]
+
 
 def _cgroup_ram_limit_gb() -> "float | None":
     """

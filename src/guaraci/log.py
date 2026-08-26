@@ -24,6 +24,10 @@ import logging
 import sys
 from typing import Optional
 
+__all__ = [
+    "configurar",
+]
+
 
 class _StdoutHandler(logging.Handler):
     """Escreve em `sys.stdout` NO MOMENTO do emit, nao numa referencia

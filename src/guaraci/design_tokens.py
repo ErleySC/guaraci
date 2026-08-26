@@ -15,6 +15,11 @@ from __future__ import annotations
 
 from typing import Dict
 
+__all__ = [
+    "TOKENS",
+    "tokens",
+]
+
 TOKENS: Dict[str, Dict[str, str]] = {
     "light": {
         "bg":         "#F7F9FB",   # fundo da pagina
