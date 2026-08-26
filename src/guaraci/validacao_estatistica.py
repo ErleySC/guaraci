@@ -21,6 +21,14 @@ from sklearn.pipeline import Pipeline
 
 log = logging.getLogger(__name__)
 
+__all__ = [
+    "StableStratifiedGroupKFold",
+    "bootstrap_bca_ci",
+    "cv_anova_eriksson",
+    "wold_test",
+    "permutation_test",
+]
+
 
 class StableStratifiedGroupKFold:
     """`StratifiedGroupKFold` com partição ESTÁVEL entre versões de biblioteca.

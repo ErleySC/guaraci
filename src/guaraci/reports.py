@@ -40,6 +40,14 @@ _AVISO_PROTOTIPO_CORPO = (
     "Results should be treated as exploratory, not suitable for publication."
 )
 
+__all__ = [
+    "generate_pdf_report",
+    "generate_word_report",
+    "generate_excel_report",
+    "generate_latex_template",
+    "generate_pptx_report",
+]
+
 
 def _e_modo_prototipo(resumo_raw: str) -> bool:
     """True quando a execucao nao tem nenhuma garantia de agrupamento

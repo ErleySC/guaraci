@@ -15,6 +15,15 @@ from typing import Dict, List, Optional
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
+__all__ = [
+    "PALETA",
+    "MARCADORES",
+    "get_edge_color",
+    "color",
+    "map_class_colors",
+    "map_class_markers",
+]
+
 # MAXIMUM PERCEPTUAL DISTINCTIVENESS palette (base: Trubetskoy "20 distinct
 # colors" + Glasbey). Ordered by contrast on white background: strong/
 # saturated colors first, light colors last. NO near-identical blues/greens.

@@ -13,6 +13,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
+__all__ = [
+    "__version__",
+    "NOME_GRAFICOS",
+    "NOME_TABELAS",
+    "NOME_RELATORIOS",
+    "NOME_MODELOS",
+    "Config",
+]
+
 # Versão canônica do pacote. Mora aqui (módulo sem dependências) para ser
 # importável por qualquer módulo — pipeline.py e guaraci/__init__.py a
 # reexportam, então `pipeline.__version__` e `from guaraci import __version__`

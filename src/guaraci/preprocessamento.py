@@ -23,6 +23,13 @@ from sklearn.preprocessing import StandardScaler
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
+__all__ = [
+    "SNV",
+    "SavGol",
+    "MSC",
+    "build_preprocessor",
+]
+
 
 class SNV(BaseEstimator, TransformerMixin):
     """Standard Normal Variate: per-sample z-score (scatter correction)."""
