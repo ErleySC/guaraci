@@ -2397,6 +2397,10 @@
         "assinatura": "(plano: 'CollectionPlan') -> 'str'",
         "forma": "funcao"
       },
+      "export_pdf": {
+        "assinatura": "(plano: 'CollectionPlan', caminho: 'str') -> 'str'",
+        "forma": "funcao"
+      },
       "plan_collection": {
         "assinatura": "(classes: 'Sequence[str]', n_por_classe: 'int', n_sessoes: 'int', *, n_brancos_por_sessao: 'int' = 1, seed: 'Optional[int]' = None) -> 'CollectionPlan'",
         "forma": "funcao"

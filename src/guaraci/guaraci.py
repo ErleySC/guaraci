@@ -2753,6 +2753,11 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
     if not cam_saida:
         cam_saida = padrao_saida
 
+    lbl_pdf = ("Gerar tambem PDF (opcional, alem de Markdown+Excel)? (s/N)"
+               if is_pt else
+               "Also generate PDF (optional, in addition to Markdown+Excel)? (y/N)")
+    quer_pdf = _ask(f"  [{PA}]{lbl_pdf}[/{PA}] ").strip().lower() in ("s", "y", "sim", "yes")
+
     try:
         md = _plano.export_markdown(plano)
         cam_md = cam_saida + ".md"
@@ -2760,6 +2765,10 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
             f.write(md)
         cam_xlsx = cam_saida + ".xlsx"
         _plano.export_excel(plano, cam_xlsx)
+        cam_pdf = None
+        if quer_pdf:
+            cam_pdf = cam_saida + ".pdf"
+            _plano.export_pdf(plano, cam_pdf)
     except OSError as e:
         console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
         _pause(); return
@@ -2779,8 +2788,9 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
     for a in plano.alertas:
         console.print(f"    [{PA}]•[/{PA}] {escape(a)}")
     console.print()
+    caminhos_salvos = [cam_md, cam_xlsx] + ([cam_pdf] if cam_pdf else [])
     console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
-                  f"{escape(cam_md)}, {escape(cam_xlsx)}")
+                  f"{', '.join(escape(c) for c in caminhos_salvos)}")
     _pause()
 
 

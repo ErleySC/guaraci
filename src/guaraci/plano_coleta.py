@@ -53,6 +53,7 @@ __all__ = [
     "plan_from_statistical_target",
     "export_markdown",
     "export_excel",
+    "export_pdf",
 ]
 
 
@@ -250,4 +251,70 @@ def export_excel(plano: CollectionPlan, caminho: str) -> str:
     ws.column_dimensions["C"].width = 20
 
     wb.save(caminho)
+    return caminho
+
+
+def export_pdf(plano: CollectionPlan, caminho: str) -> str:
+    """PDF opcional (P4, Bloco 10) -- reaproveita `fpdf2`, ja' dependencia
+    do projeto (`reports.generate_pdf_report`), nenhuma dependencia nova.
+    Mesmo conteudo de `export_markdown`/`export_excel` (tamanho amostral,
+    alertas, ordem de leitura por sessao), em layout imprimivel para levar
+    ao laboratorio. Usa `FPDF.table()` (fpdf2 >= 2.7, nativo -- sem
+    gambiarra de celula-a-celula)."""
+    import unicodedata
+
+    from fpdf import FPDF
+
+    def _a(txt: str) -> str:
+        """Remove acentos p/ as fontes Latin-1 padrao do fpdf2 -- mesmo
+        helper de `reports.generate_pdf_report` (_a), reimplementado aqui
+        para nao criar acoplamento entre os dois modulos por uma funcao
+        de 1 linha."""
+        return unicodedata.normalize("NFKD", str(txt)).encode(
+            "ascii", "ignore").decode("ascii")
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Plano de Coleta -- GUARACI", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, _a(f"Classes: {', '.join(plano.classes)}"),
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"Amostras por classe: {plano.n_por_classe}",
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"Sessoes: {plano.n_sessoes}",
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"Total de amostras fisicas: {len(plano.itens)}",
+             new_x="LMARGIN", new_y="NEXT")
+
+    if plano.alertas:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 8, "Alertas", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        for alerta in plano.alertas:
+            pdf.multi_cell(0, 5, _a(f"- {alerta}"),
+                           new_x="LMARGIN", new_y="NEXT")
+
+    for sessao in range(plano.n_sessoes):
+        itens_sessao = plano.itens_da_sessao(sessao)
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 8, f"Sessao {sessao + 1} ({len(itens_sessao)} amostras)",
+                 new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+
+        linhas = [["Ordem de leitura", "Classe", "Replica"]]
+        for item in itens_sessao:
+            linhas.append([str(item.ordem_na_sessao + 1),
+                            _a(item.classe), str(item.replica_idx + 1)])
+        with pdf.table(text_align="LEFT") as table:
+            for linha in linhas:
+                row = table.row()
+                for valor in linha:
+                    row.cell(valor)
+
+    pdf.output(caminho)
     return caminho

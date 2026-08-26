@@ -629,11 +629,14 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
   numa chamada só.
 - **Saída:** Markdown (formato primário) + planilha Excel (`openpyxl`,
   já dependência do projeto — sem biblioteca nova), com a ordem de
-  leitura completa por sessão e a lista de alertas.
+  leitura completa por sessão e a lista de alertas. PDF **opcional**
+  (`export_pdf`, `fpdf2` — já dependência do projeto via `reports.py`,
+  usa `FPDF.table()` nativo), mesmo conteúdo, layout imprimível para
+  levar ao laboratório.
 - **CLI** — menu principal, tecla `[J]` *Planejamento de Coleta*: pede
   classes, número de sessões, e o alvo estatístico (conformal ou
-  DD-SIMCA); gera os dois arquivos de saída e mostra o resumo + alertas
-  na tela.
+  DD-SIMCA); gera Markdown+Excel sempre, e pergunta se também quer PDF
+  (opcional, `(s/N)`); mostra o resumo + alertas na tela.
 
 ### 2.4 Auditoria de delineamento (Bloco 11 — `auditoria_delineamento.py`)
 

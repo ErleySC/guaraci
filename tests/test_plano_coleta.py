@@ -20,6 +20,7 @@ from guaraci.plano_coleta import (
     CollectionItem,
     export_excel,
     export_markdown,
+    export_pdf,
     plan_from_statistical_target,
     plan_collection,
 )
@@ -195,6 +196,30 @@ def test_exportar_excel_gera_arquivo_com_2_abas(tmp_path):
     assert ws_alertas.max_row == 1 + len(plano.alertas)
 
 
+def test_exportar_pdf_gera_arquivo_nao_vazio_e_bem_formado(tmp_path):
+    """Mesmo padrao de verificacao de test_reports.py (nao lanca excecao +
+    arquivo nao vazio) -- mais o cabecalho `%PDF` como checagem barata de
+    'nao corrompido' sem adicionar dependencia so' para o teste (pypdf/
+    PyPDF2 nao sao dependencias do projeto)."""
+    plano = plan_collection(["A", "B", "C"], 4, 2, seed=0)
+    caminho = str(tmp_path / "plano.pdf")
+    export_pdf(plano, caminho)
+    assert os.path.isfile(caminho)
+    conteudo = open(caminho, "rb").read()
+    assert len(conteudo) > 0
+    assert conteudo[:5] == b"%PDF-"
+
+
+def test_exportar_pdf_com_texto_acentuado_nao_lanca(tmp_path):
+    """Regressao analoga a test_reports.py::test_gerar_pdf_relatorio_nao_
+    lanca_erro_de_encoding -- classes/alertas com acento (fpdf2 usa fontes
+    Latin-1 por padrao) nao podem derrubar a exportacao."""
+    plano = plan_collection(["Açaí", "Copaíba"], 3, 2, seed=0)
+    caminho = str(tmp_path / "plano_acentos.pdf")
+    export_pdf(plano, caminho)
+    assert os.path.getsize(caminho) > 0
+
+
 def test_itens_da_sessao_e_um_item_de_dataclass_completo():
     plano = plan_collection(["A"], 3, 1, seed=0)
     item = plano.itens_da_sessao(0)[0]
@@ -218,6 +243,7 @@ def test_menu_plan_cli_end_to_end_conformal(monkeypatch, tmp_path):
         "C",                          # alvo: conformal
         "0.10",                       # alpha
         prefixo,                      # prefixo de saida
+        "s",                          # gerar tambem PDF? sim
         "",                           # Enter no _pause() final
     ])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
@@ -226,6 +252,8 @@ def test_menu_plan_cli_end_to_end_conformal(monkeypatch, tmp_path):
 
     assert os.path.isfile(prefixo + ".md")
     assert os.path.isfile(prefixo + ".xlsx")
+    assert os.path.isfile(prefixo + ".pdf")
+    assert os.path.getsize(prefixo + ".pdf") > 0
     texto_md = open(prefixo + ".md", encoding="utf-8").read()
     assert "Andiroba" in texto_md and "Bacaba" in texto_md and "Coco" in texto_md
     assert "Sessao 1" in texto_md and "Sessao 2" in texto_md
