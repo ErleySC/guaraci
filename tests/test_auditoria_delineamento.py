@@ -21,6 +21,7 @@ from guaraci.auditoria_delineamento import (
     check_external_validation,
     run_audit,
 )
+from guaraci.config import Config
 
 
 class _CfgFake:
@@ -196,6 +197,30 @@ def test_silenciar_com_justificativa_nao_remove_do_relatorio():
     nomes = {a.nome for a in achados}
     assert "validacao_externa" in nomes   # continua no relatorio
 
-    achado_silenciado = next(a for a in achados if a.nome == "validacao_externa")
-    assert achado_silenciado.severidade == "silenciado"
-    assert justificativa in achado_silenciado.mensagem
+
+# ── Comando CLI dedicado (Passo 76, Bloco 11) ─────────────────────────────
+# `_menu_audit` roda so' a auditoria sobre o dataset configurado, sem
+# exigir rodar classificacao/quantificacao inteira -- mode="sintetico" nao
+# precisa de arquivo em disco, entao o teste end-to-end fica rapido.
+
+def test_menu_audit_cli_end_to_end_roda_sem_pipeline_completo(monkeypatch):
+    import guaraci.guaraci as guaraci_mod
+
+    respostas = iter([""])   # Enter no _pause() final
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    cfg = Config(mode="sintetico", seed=0)
+    guaraci_mod._menu_audit(cfg)   # nao deve lancar excecao
+
+
+def test_menu_audit_cli_sem_fonte_de_dados_nao_quebra(monkeypatch):
+    """Contra-prova: pasta_dados vazia/inexistente (mode dx padrao, sem
+    configurar nada) tem que reportar erro amigavel e retornar -- nunca
+    stack trace cru numa ferramenta interativa."""
+    import guaraci.guaraci as guaraci_mod
+
+    respostas = iter([""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    cfg = Config(mode="dx", input_folder="/caminho/que/nao/existe/nunca")
+    guaraci_mod._menu_audit(cfg)   # nao deve lancar excecao

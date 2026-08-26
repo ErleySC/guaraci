@@ -352,6 +352,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_perfis":     "Perfis Prontos",
         "t_predicao":   "Predicao em Lote",
         "t_planejamento": "Planejamento de Coleta",
+        "t_auditoria":  "Auditoria de Delineamento",
         "t_idioma":     "Idioma",
         "t_ajuda":      "Ajuda",
         # Descricoes de secao (curtas)
@@ -503,6 +504,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_perfis":     "Ready Profiles",
         "t_predicao":   "Batch Prediction",
         "t_planejamento": "Collection Planning",
+        "t_auditoria":  "Design Audit",
         "t_idioma":     "Language",
         "t_ajuda":      "Help",
         "d_projeto":    "Input and output folders.",
@@ -1209,6 +1211,7 @@ def _print_main_menu() -> None:
     t.add_row(*row("7", _t("t_viz"),        "8", _t("t_tecnica")))
     t.add_row(*row("9", _t("t_codigos"),    "H", _t("t_hardware"), style2=S))
     t.add_row(*row("B", _t("t_predicao"), "J", _t("t_planejamento"), style1=S, style2=S))
+    t.add_row(*row("U", _t("t_auditoria"), style1=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
@@ -2795,6 +2798,84 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
 
 
 # ---------------------------------------------------------------------------
+# AUDITORIA DE DELINEAMENTO — comando dedicado (Bloco 11)
+# ---------------------------------------------------------------------------
+def _menu_audit(cfg: Optional[Config] = None) -> None:
+    """Auditoria de delineamento (Bloco 11) isolada -- roda
+    `auditoria_delineamento.run_audit` sobre o dataset configurado (as
+    MESMAS checagens que ja rodam automaticamente em toda execucao e
+    aparecem no model card), sem exigir rodar classificacao/quantificacao
+    inteira. Reaproveita `load_data`/`validate_input` -- mesmo caminho de
+    dados que `pipeline.executar()` usa antes de chamar `run_audit`, nao
+    duplica logica."""
+    cfg = cfg or Config()
+    lang = _lang()
+    is_pt = lang == "PT"
+    _cls(); _print_header()
+
+    intro = (
+        "Roda so' a auditoria de delineamento (agrupamento, confundimento "
+        "classe x sessao, duplicatas, N insuficiente, faixa de validacao) "
+        "sobre o dataset configurado em [2] Dados -- sem rodar o pipeline "
+        "de classificacao/quantificacao inteiro."
+        if is_pt else
+        "Runs only the design audit (grouping, class x session "
+        "confounding, duplicates, insufficient N, validation range) over "
+        "the dataset configured in [2] Data -- without running the full "
+        "classification/quantification pipeline."
+    )
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_auditoria')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print()
+
+    from guaraci.config_io import _validar_pasta_dados
+    ok, msg = _validar_pasta_dados(cfg)
+    if not ok:
+        console.print(f"  [{PR}]{escape(msg)}[/{PR}]")
+        console.print(f"  [{PM}]{'Configure a fonte de dados em' if is_pt else 'Configure the data source in'} "
+                      f"[{PA}][2] {_t('t_dados')}[/{PA}].[/{PM}]")
+        _pause(); return
+    console.print(f"  [{PM}]{msg}[/{PM}]")
+
+    try:
+        wavenumbers, X_raw, rotulos, conc, mae_id, _metadados = pq.load_data(cfg)
+        X_raw, wavenumbers, rotulos, conc, mae_id, _relatorio = pq.validate_input(
+            X_raw, wavenumbers, rotulos, conc, mae_id)
+    except Exception as e:  # noqa: BLE001 -- dado externo pode falhar de
+        # varias formas (parsing, faixa espectral vazia, etc.) -- reportar
+        # a mensagem, nunca stack trace cru numa ferramenta interativa.
+        console.print(f"  [{PR}]{'Erro ao carregar dados' if is_pt else 'Error loading data'}: "
+                      f"{escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    from guaraci.auditoria_delineamento import run_audit
+    achados = run_audit(X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
+
+    cores = {"ok": PG, "aviso": PA, "critico": PR, "silenciado": PM}
+    console.print()
+    for a in achados:
+        cor = cores.get(a.severidade, PW)
+        console.print(f"  [{cor}]{a.severidade.upper():>10}[/{cor}]  "
+                      f"[{PW}]{escape(a.nome)}[/{PW}]: {escape(a.mensagem)}")
+
+    n_criticos = sum(1 for a in achados if a.severidade == "critico")
+    n_avisos = sum(1 for a in achados if a.severidade == "aviso")
+    resumo_lbl = (f"{n_criticos} critico(s), {n_avisos} aviso(s) de {len(achados)} checagem(ns)."
+                  if is_pt else
+                  f"{n_criticos} critical, {n_avisos} warning(s) out of {len(achados)} check(s).")
+    cor_resumo = PR if n_criticos else (PA if n_avisos else PG)
+    console.print()
+    console.print(Panel(
+        Text.from_markup(f"  {resumo_lbl}"),
+        border_style=cor_resumo, box=rbox.ROUNDED, padding=(0, 2),
+    ))
+    _pause()
+
+
+# ---------------------------------------------------------------------------
 # PERFIS — cartoes compactos (2 por linha)
 # ---------------------------------------------------------------------------
 def _menu_profiles(cfg: Config) -> None:
@@ -4244,6 +4325,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             _menu_prediction(cfg)
         elif escolha == "J":
             _menu_plan(cfg)
+        elif escolha == "U":
+            _menu_audit(cfg)
         elif escolha == "P":
             _menu_profiles(cfg)
         elif escolha == "G":

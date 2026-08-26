@@ -661,6 +661,15 @@ não-vazia — a checagem silenciada continua aparecendo no relatório
 sem deixar rastro. Resultado integrado ao `model_card.md` (seção
 "Auditoria de Delineamento").
 
+**CLI** — menu principal, tecla `[U]` *Auditoria de Delineamento*: roda
+`run_audit` isoladamente sobre o dataset já configurado em `[2] Dados`,
+sem exigir rodar o pipeline de classificação/quantificação inteiro (ex.:
+auditar antes de decidir se vale a pena treinar). Reaproveita
+`load_data`/`validate_input` — mesmo caminho de dados que `executar()`
+usa antes de chamar `run_audit`, nenhuma lógica duplicada. Sem fonte de
+dados configurada, reporta o erro amigável e aponta para `[2] Dados` em
+vez de quebrar.
+
 **Fora do escopo desta versão (registrado, não implementado):** ordem de
 leitura correlacionada com o alvo (teor/classe). O método já existe,
 validado, num script privado que extrai o timestamp de aquisição do
