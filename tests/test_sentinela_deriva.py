@@ -18,18 +18,18 @@ import pytest
 
 from guaraci.conformal import n_minimum_for_alpha
 from guaraci.sentinela_deriva import (
-    EstadoSentinela,
-    atualizar_com_predicoes,
-    carregar_estado,
-    checar_deriva,
-    salvar_estado,
+    SentinelState,
+    update_with_predictions,
+    load_state,
+    check_drift,
+    save_state,
 )
 
 
-# ── EstadoSentinela: registro e janela ────────────────────────────────
+# ── SentinelState: registro e janela ────────────────────────────────
 
 def test_registrar_acumula_historico():
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     for d in [True, True, False, True]:
         estado.registrar(d)
     assert estado.n == 4
@@ -38,7 +38,7 @@ def test_registrar_acumula_historico():
 
 
 def test_janela_deslizante_descarta_o_mais_antigo():
-    estado = EstadoSentinela(alpha_nominal=0.05, janela=3)
+    estado = SentinelState(alpha_nominal=0.05, janela=3)
     for d in [True, True, True, False]:
         estado.registrar(d)
     assert estado.n == 3
@@ -47,43 +47,43 @@ def test_janela_deslizante_descarta_o_mais_antigo():
 
 
 def test_sem_janela_e_cumulativo_sem_limite():
-    estado = EstadoSentinela(alpha_nominal=0.05, janela=None)
+    estado = SentinelState(alpha_nominal=0.05, janela=None)
     for _ in range(500):
         estado.registrar(True)
     assert estado.n == 500
 
 
 def test_taxa_rejeicao_vazia_e_nan():
-    estado = EstadoSentinela()
+    estado = SentinelState()
     assert np.isnan(estado.taxa_rejeicao_observada)
 
 
-# ── atualizar_com_predicoes ────────────────────────────────────────────
+# ── update_with_predictions ────────────────────────────────────────────
 
 def test_atualizar_com_predicoes_le_coluna_ad_dentro_dominio():
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     df = pd.DataFrame({"AD_dentro_dominio": [True, True, False, True, True]})
-    n_registrado = atualizar_com_predicoes(estado, df)
+    n_registrado = update_with_predictions(estado, df)
     assert n_registrado == 5
     assert estado.n == 5
     assert estado.n_fora_do_dominio == 1
 
 
 def test_atualizar_com_predicoes_sem_coluna_nao_lanca_excecao():
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     df = pd.DataFrame({"classe_pred": ["A", "B"]})
-    n_registrado = atualizar_com_predicoes(estado, df)
+    n_registrado = update_with_predictions(estado, df)
     assert n_registrado == 0
     assert estado.n == 0
 
 
-# ── checar_deriva: poder estatistico e falso alarme ───────────────────
+# ── check_drift: poder estatistico e falso alarme ───────────────────
 
 def test_n_abaixo_do_minimo_nao_testa_e_nao_alerta():
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     for _ in range(5):
         estado.registrar(False)   # 100% rejeicao, mas n so' 5
-    alerta = checar_deriva(estado)
+    alerta = check_drift(estado)
     assert alerta.alerta is False
     assert np.isnan(alerta.p_valor)
     assert "minimo" in alerta.mensagem
@@ -93,11 +93,11 @@ def test_n_minimo_default_reaproveita_n_minimum_for_alpha():
     """O n_minimo usado por padrao TEM que ser exatamente
     conformal.n_minimum_for_alpha(alpha_nominal) -- reaproveitado, nao
     escolhido a dedo para este modulo."""
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     n_esperado = n_minimum_for_alpha(0.05)
     for _ in range(n_esperado - 1):
         estado.registrar(True)
-    assert str(n_esperado) in checar_deriva(estado).mensagem
+    assert str(n_esperado) in check_drift(estado).mensagem
 
 
 def test_taxa_nominal_verdadeira_raramente_dispara_falso_alarme():
@@ -112,11 +112,11 @@ def test_taxa_nominal_verdadeira_raramente_dispara_falso_alarme():
     n_repeticoes = 300
     alertas = 0
     for _ in range(n_repeticoes):
-        estado = EstadoSentinela(alpha_nominal=alpha_nominal)
+        estado = SentinelState(alpha_nominal=alpha_nominal)
         amostras = rng.random(n_janela) >= alpha_nominal   # True = dentro
         for d in amostras:
             estado.registrar(bool(d))
-        if checar_deriva(estado, significancia=0.05).alerta:
+        if check_drift(estado, significancia=0.05).alerta:
             alertas += 1
     taxa_falso_alarme = alertas / n_repeticoes
     # unilateral, alpha=0.05 -> esperado ~5%; tolerancia generosa para nao
@@ -130,37 +130,37 @@ def test_deriva_real_com_n_suficiente_dispara_alerta():
     """Populacao com taxa de rejeicao MUITO acima do nominal (deriva real
     e' forte, nao sutil) -- com n suficiente, o alerta TEM que disparar."""
     rng = np.random.default_rng(1)
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     taxa_real_com_deriva = 0.30   # 6x o nominal
     amostras = rng.random(200) >= taxa_real_com_deriva
     for d in amostras:
         estado.registrar(bool(d))
-    alerta = checar_deriva(estado)
+    alerta = check_drift(estado)
     assert alerta.alerta is True
     assert alerta.p_valor < 0.05
     assert "DERIVA PROVAVEL" in alerta.mensagem
 
 
 def test_alpha_nominal_customizado_e_respeitado():
-    estado = EstadoSentinela(alpha_nominal=0.20)
+    estado = SentinelState(alpha_nominal=0.20)
     rng = np.random.default_rng(2)
     amostras = rng.random(100) >= 0.20   # taxa == nominal, H0 verdadeiro
     for d in amostras:
         estado.registrar(bool(d))
-    alerta = checar_deriva(estado)
+    alerta = check_drift(estado)
     assert alerta.alpha_nominal == pytest.approx(0.20)
 
 
 # ── Persistencia ────────────────────────────────────────────────────────
 
 def test_salvar_e_carregar_estado_preserva_historico(tmp_path):
-    estado = EstadoSentinela(alpha_nominal=0.07, janela=50)
+    estado = SentinelState(alpha_nominal=0.07, janela=50)
     for d in [True, False, True, True, False]:
         estado.registrar(d)
     caminho = str(tmp_path / "sentinela.json")
-    salvar_estado(estado, caminho)
+    save_state(estado, caminho)
 
-    recarregado = carregar_estado(caminho)
+    recarregado = load_state(caminho)
     assert recarregado.alpha_nominal == pytest.approx(0.07)
     assert recarregado.janela == 50
     assert recarregado.historico == estado.historico
@@ -170,10 +170,10 @@ def test_salvar_e_carregar_estado_preserva_historico(tmp_path):
 
 
 def test_salvar_estado_grava_json_legivel(tmp_path):
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     estado.registrar(True)
     caminho = str(tmp_path / "sentinela.json")
-    salvar_estado(estado, caminho)
+    save_state(estado, caminho)
     with open(caminho, encoding="utf-8") as f:
         dados = json.load(f)
     assert dados["alpha_nominal"] == pytest.approx(0.05)
@@ -183,13 +183,13 @@ def test_salvar_estado_grava_json_legivel(tmp_path):
 def test_continuar_registrando_apos_carregar(tmp_path):
     """Simula o uso real: sentinela persistida entre execucoes do
     pipeline, continua acumulando -- nao reseta ao recarregar."""
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     for _ in range(10):
         estado.registrar(True)
     caminho = str(tmp_path / "sentinela.json")
-    salvar_estado(estado, caminho)
+    save_state(estado, caminho)
 
-    estado2 = carregar_estado(caminho)
+    estado2 = load_state(caminho)
     estado2.registrar(False)
     assert estado2.n == 11
     assert estado2.n_fora_do_dominio == 1

@@ -2622,12 +2622,12 @@ def menu_prediction(cfg: Optional[Config] = None) -> None:
         try:
             import guaraci.sentinela_deriva as _sent
             cam_sentinela = cam_modelo + ".sentinela.json"
-            estado_sent = (_sent.carregar_estado(cam_sentinela)
+            estado_sent = (_sent.load_state(cam_sentinela)
                            if os.path.isfile(cam_sentinela)
-                           else _sent.EstadoSentinela(alpha_nominal=0.05))
-            _sent.atualizar_com_predicoes(estado_sent, df_res)
-            _sent.salvar_estado(estado_sent, cam_sentinela)
-            alerta_sent = _sent.checar_deriva(estado_sent)
+                           else _sent.SentinelState(alpha_nominal=0.05))
+            _sent.update_with_predictions(estado_sent, df_res)
+            _sent.save_state(estado_sent, cam_sentinela)
+            alerta_sent = _sent.check_drift(estado_sent)
             cor_sent = PR if alerta_sent.alerta else PM
             sent_txt = (
                 f"  [{cor_sent}]🛰 Sentinela de deriva (n={alerta_sent.n}):"

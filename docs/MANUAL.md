@@ -672,12 +672,12 @@ rejeições legítimas. O que importa em produção contínua é outra
 pergunta: **a taxa de rejeição está subindo ao longo do tempo** — sinal
 de que o instrumento/matriz/processo derivou desde a calibração?
 
-`EstadoSentinela` acumula 1 booleano (`AD_dentro_dominio`) por amostra
+`SentinelState` acumula 1 booleano (`AD_dentro_dominio`) por amostra
 julgada, com `janela` opcional (`None` = cumulativo sem limite, nunca
 descarta dado silenciosamente; um inteiro ativa janela deslizante para
 detectar deriva **recente** especificamente — o *trade-off* fica
 explícito ao chamador, não escondido atrás de um default mágico).
-`checar_deriva` testa **H0: taxa de rejeição = alpha nominal** contra
+`check_drift` testa **H0: taxa de rejeição = alpha nominal** contra
 **H1: taxa > alpha nominal** via **teste binomial exato** unilateral
 (`scipy.stats.binomtest`) — não um limiar cru tipo "2× o nominal", que
 teria taxa de falso alarme dependente de `n` sem justificativa formal.
@@ -697,7 +697,7 @@ repetições Monte Carlo fica próxima do `significancia` declarado; uma
 deriva real (taxa de rejeição 6× o nominal) dispara o alerta com `n`
 suficiente.
 
-**Persistência e integração:** `salvar_estado`/`carregar_estado` (JSON)
+**Persistência e integração:** `save_state`/`load_state` (JSON)
 permitem que a sentinela sobreviva entre execuções — uso real (LIMS
 chamando o pipeline ao longo de dias/semanas) não mantém um processo
 Python vivo o tempo todo. CLI — menu `[B]` *Predição em Lote* atualiza

@@ -205,14 +205,14 @@ def test_menu_predicao_alimenta_a_sentinela_de_deriva_entre_chamadas(
     guaraci_mod.menu_prediction(guaraci_mod.Config())
 
     assert os.path.isfile(cam_sentinela), "sentinela nao foi persistida"
-    estado_apos_1 = sent.carregar_estado(cam_sentinela)
+    estado_apos_1 = sent.load_state(cam_sentinela)
     assert estado_apos_1.n == X_novos.shape[0]
 
     respostas2 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas2))
     guaraci_mod.menu_prediction(guaraci_mod.Config())
 
-    estado_apos_2 = sent.carregar_estado(cam_sentinela)
+    estado_apos_2 = sent.load_state(cam_sentinela)
     assert estado_apos_2.n == 2 * X_novos.shape[0], (
         "sentinela nao acumulou entre as duas chamadas -- resetou")
 

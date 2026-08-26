@@ -22,17 +22,17 @@ normal) quanto o alarme tardio (limiar frouxo demais).
 
 USO TIPICO
 -----------
-    estado = EstadoSentinela(alpha_nominal=0.05)
+    estado = SentinelState(alpha_nominal=0.05)
     # a cada lote de predicoes (predict_samples/predict_blind ja devolve
     # a coluna AD_dentro_dominio quando o pacote tem os artefatos de AD):
-    atualizar_com_predicoes(estado, df_predicoes)
-    alerta = checar_deriva(estado)
+    update_with_predictions(estado, df_predicoes)
+    alerta = check_drift(estado)
     if alerta.alerta:
         print(alerta.mensagem)  # recomenda recalibracao
 
     # persistencia entre execucoes (LIMS/producao real, nao 1 processo so'):
-    salvar_estado(estado, "sentinela.json")
-    estado = carregar_estado("sentinela.json")
+    save_state(estado, "sentinela.json")
+    estado = load_state("sentinela.json")
 """
 from __future__ import annotations
 
@@ -43,17 +43,17 @@ from typing import Any, Dict, List, Optional
 from guaraci.conformal import n_minimum_for_alpha
 
 __all__ = [
-    "EstadoSentinela",
-    "AlertaDeriva",
-    "atualizar_com_predicoes",
-    "checar_deriva",
-    "salvar_estado",
-    "carregar_estado",
+    "SentinelState",
+    "DriftAlert",
+    "update_with_predictions",
+    "check_drift",
+    "save_state",
+    "load_state",
 ]
 
 
 @dataclass
-class EstadoSentinela:
+class SentinelState:
     """Estado acumulado da sentinela -- 1 booleano por amostra julgada
     (`True` = dentro do dominio, `False` = rejeitada).
 
@@ -93,7 +93,7 @@ class EstadoSentinela:
 
 
 @dataclass
-class AlertaDeriva:
+class DriftAlert:
     alerta: bool
     taxa_rejeicao_observada: float
     alpha_nominal: float
@@ -102,7 +102,7 @@ class AlertaDeriva:
     mensagem: str
 
 
-def atualizar_com_predicoes(estado: EstadoSentinela, df_predicoes: Any
+def update_with_predictions(estado: SentinelState, df_predicoes: Any
                              ) -> int:
     """Registra na sentinela cada linha de um DataFrame de predicoes que
     tenha a coluna `AD_dentro_dominio` (`predicao.predict_samples`/
@@ -118,8 +118,8 @@ def atualizar_com_predicoes(estado: EstadoSentinela, df_predicoes: Any
     return estado.n - n_antes
 
 
-def checar_deriva(estado: EstadoSentinela, significancia: float = 0.05,
-                   n_minimo: Optional[int] = None) -> AlertaDeriva:
+def check_drift(estado: SentinelState, significancia: float = 0.05,
+                 n_minimo: Optional[int] = None) -> DriftAlert:
     """Testa H0: taxa de rejeicao verdadeira = `alpha_nominal` contra
     H1: taxa > `alpha_nominal` (deriva -- populacao rejeitando MAIS que o
     esperado), via teste binomial exato (`scipy.stats.binomtest`,
@@ -147,7 +147,7 @@ def checar_deriva(estado: EstadoSentinela, significancia: float = 0.05,
     n = estado.n
     taxa = estado.taxa_rejeicao_observada
     if n < n_minimo:
-        return AlertaDeriva(
+        return DriftAlert(
             alerta=False, taxa_rejeicao_observada=taxa,
             alpha_nominal=estado.alpha_nominal, n=n, p_valor=float("nan"),
             mensagem=f"n={n} amostra(s) registrada(s), abaixo do minimo "
@@ -173,13 +173,13 @@ def checar_deriva(estado: EstadoSentinela, significancia: float = 0.05,
             f"({taxa:.3f}, {estado.n_fora_do_dominio}/{n}) nao difere "
             f"significativamente do nominal ({estado.alpha_nominal:.3f}), "
             f"p={p_valor:.4g}.")
-    return AlertaDeriva(
+    return DriftAlert(
         alerta=alerta, taxa_rejeicao_observada=taxa,
         alpha_nominal=estado.alpha_nominal, n=n, p_valor=p_valor,
         mensagem=mensagem)
 
 
-def salvar_estado(estado: EstadoSentinela, caminho: str) -> str:
+def save_state(estado: SentinelState, caminho: str) -> str:
     """Persiste o estado em JSON -- monitoramento continuo so' faz
     sentido entre EXECUCOES (LIMS/producao real chama o pipeline muitas
     vezes ao longo de dias/semanas, nao mantem o processo Python vivo)."""
@@ -193,10 +193,10 @@ def salvar_estado(estado: EstadoSentinela, caminho: str) -> str:
     return caminho
 
 
-def carregar_estado(caminho: str) -> EstadoSentinela:
+def load_state(caminho: str) -> SentinelState:
     with open(caminho, encoding="utf-8") as f:
         dados = json.load(f)
-    return EstadoSentinela(
+    return SentinelState(
         alpha_nominal=float(dados["alpha_nominal"]),
         janela=dados.get("janela"),
         historico=[bool(v) for v in dados.get("historico", [])])
