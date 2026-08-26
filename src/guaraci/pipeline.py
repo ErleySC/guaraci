@@ -76,7 +76,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 from guaraci.config import Config  # noqa: F401
 
 
-CFG = Config()
+_CFG = Config()
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║                END OF SETTINGS                                           ║
@@ -98,6 +98,29 @@ from guaraci.perfil_matriz import apply_profile, cfg_profile  # noqa: E402
 
 
 log = logging.getLogger(__name__)
+
+# __all__ lista so' o que pipeline.py DEFINE. A fachada reexporta dezenas de
+# nomes de outros modulos (chemometric_stats, dados_io, preprocessamento,
+# classificadores, figuras, validacao_estatistica, hardware,
+# selecao_variaveis, avaliacao_modelos, paleta_cores, config, perfil_matriz)
+# -- esse contrato de reexport ja' e' protegido por
+# tests/test_fachada_reexport.py (CONTRATO), que verifica identidade de cada
+# simbolo; nao duplicado aqui para nao manter duas fontes de verdade da
+# mesma lista.
+__all__ = [
+    "generate_output_name",
+    "validate_input",
+    "classification_metrics",
+    "compare_pipelines",
+    "bootstrap_vip_stratified",
+    "bootstrap_vip",
+    "clear_old_results",
+    "labels_for_quantification",
+    "r2cv_species_by_adulterant",
+    "pls_regression_by_species",
+    "pls_regressao_pooled",
+    "executar",
+]
 
 
 def _slug(texto: str) -> str:
@@ -414,7 +437,7 @@ def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
     return X, wavenumbers, rotulos, conc, mae_id, relatorio
 
 
-def check_balance(rotulos: np.ndarray, ratio_alvo: float = 5.0
+def _check_balance(rotulos: np.ndarray, ratio_alvo: float = 5.0
                               ) -> Dict[str, object]:
     """Detects severe class imbalance."""
     cls_unicas, counts = np.unique(rotulos, return_counts=True)
@@ -1474,7 +1497,7 @@ def executar(cfg: Config):
     log.info("\n[0/7] Input integrity validation...")
     X_raw, wavenumbers, rotulos, conc, mae_id, relatorio_entrada = validate_input(
         X_raw, wavenumbers, rotulos, conc, mae_id)
-    relatorio_balanco = check_balance(rotulos)
+    relatorio_balanco = _check_balance(rotulos)
 
     # --- 1c2. Auditoria de delineamento (Bloco 11) -- roda por padrao,
     # nunca opt-in (mesmo espirito do grouping_guarantee do Bloco 8).
@@ -2897,13 +2920,13 @@ def executar(cfg: Config):
 #  CAMADA ACESSIVEL (v23) — configuracao em YAML + assistente de terminal
 #  Objetivo: usar o pipeline SEM editar o codigo. Toda a configuracao de
 #  usuario fica em config.yaml (linguagem simples). O assistente CMD
-#  (menu_interativo) le/edita/salva esse arquivo e dispara executar().
+#  (_menu_interativo) le/edita/salva esse arquivo e dispara executar().
 #  Fonte UNICA de verdade: _CONFIG_SPEC mapeia campo amigavel <-> Config,
 #  e alimenta tanto o YAML quanto o menu (e, depois, o app web).
 # =========================================================================
 
 # Config IO / _CONFIG_SPEC extraidos para config_io.py (dividida tecnica pos-
-# auditoria). Reexportados aqui: o menu de terminal legado (menu_interativo/
+# auditoria). Reexportados aqui: o menu de terminal legado (_menu_interativo/
 # _editar_campo, abaixo), executar() e os consumidores externos (guaraci.py,
 # app, testes) usam estes nomes via `pipeline.X`.
 from guaraci.config_io import (   # noqa: F401
@@ -2945,7 +2968,7 @@ def _editar_campo(cfg: Config, s: Dict[str, Any]) -> None:
         log.info(f"  erro: {e}")
 
 
-def menu_interativo(cfg: Optional[Config] = None,
+def _menu_interativo(cfg: Optional[Config] = None,
                     caminho_cfg: str = "config.yaml") -> None:
     """Assistente de terminal: visualiza/edita a configuracao, salva/carrega
     o config.yaml e dispara o pipeline — tudo sem editar o codigo."""
@@ -3011,10 +3034,10 @@ if __name__ == "__main__":
     _CFG_PATH = os.path.join(os.getcwd(), "config.yaml")
     if "--rodar" in sys.argv:
         # Modo direto: usa config.yaml se existir, senao a Config do codigo.
-        _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
+        _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else _CFG
         executar(_cfg)
     elif "--codigo" in sys.argv:
-        executar(CFG)                       # mode legado (Config embutida)
+        executar(_CFG)                       # mode legado (Config embutida)
     elif sys.stdin is not None and sys.stdin.isatty():
         # CLI unica (item 16 da auditoria): guaraci.py e' o unico ponto de
         # entrada interativo (cli_assistente.py virou modulo de dados/i18n).
@@ -3022,7 +3045,7 @@ if __name__ == "__main__":
             from guaraci.guaraci import main as _cli_main
             _cli_main()
         except ImportError:
-            menu_interativo(CFG, _CFG_PATH)  # fallback para o menu antigo
+            _menu_interativo(_CFG, _CFG_PATH)  # fallback para o menu antigo
     else:
-        _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else CFG
+        _cfg = load_config(_CFG_PATH) if os.path.exists(_CFG_PATH) else _CFG
         executar(_cfg)

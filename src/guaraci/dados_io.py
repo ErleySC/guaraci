@@ -25,6 +25,26 @@ from guaraci.io_registry import register_reader, get_reader
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
+__all__ = [
+    "adulterant_from_mae_id",
+    "session_from_mae_id",
+    "parse_title",
+    "extract_dx_title",
+    "kennard_stone",
+    "kennard_stone_split",
+    "kennard_stone_split_group_aware",
+    "generate_synthetic_data",
+    "load_csv",
+    "parse_dx",
+    "parse_spectrum",
+    "sanitizar_metadados",
+    "prescan_dx",
+    "load_dx",
+    "load_data",
+    "CODIGO_ESPECIE",
+    "ADULTERANTE_NOME",
+]
+
 # =========================================================================
 #  parse_title v3 — metadata extraction from ##TITLE= JCAMP-DX
 #  Expected format (Amazonian oils, ABB MB3600):

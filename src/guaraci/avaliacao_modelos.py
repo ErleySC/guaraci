@@ -37,8 +37,18 @@ log = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
-
-
+__all__ = [
+    "PLSDAClassifier",
+    "fig_benchmark_classifiers",
+    "benchmark_classifiers",
+    "fig_monte_carlo_distribution",
+    "monte_carlo_cv",
+    "interpolar_det",
+    "fig_det_curvas",
+    "fig_shap_benchmark",
+    "fig_benchmark_regressors",
+    "benchmark_regression_by_species",
+]
 
 # =========================================================================
 #  Auto-Benchmark — v27: PLS-DA vs SVM vs RF vs XGBoost

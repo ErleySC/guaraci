@@ -39,6 +39,22 @@ _CHAVES_PACOTE_REQUERIDAS = {
 # predicao continua funcionando normalmente (so' sem as colunas AD_*).
 _CHAVES_AD = {"pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh", "ad_Nq", "ad_f_crit"}
 
+__all__ = [
+    "SecurityError",
+    "generate_manifest",
+    "save_manifest",
+    "load_model",
+    "validate_model_package",
+    "load_prediction_csv",
+    "predict_samples",
+    "QuantificationResult",
+    "PurityResult",
+    "detect_purity",
+    "BlindPredictionResult",
+    "quantify_sample",
+    "predict_blind",
+]
+
 
 class SecurityError(Exception):
     """Operacao bloqueada por falta de confirmacao explicita de confianca,
@@ -258,7 +274,7 @@ def load_prediction_csv(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.D
     return X, wn, meta_df
 
 
-def interpolate_to_reference(pkg: Dict, X_new_raw: np.ndarray,
+def _interpolate_to_reference(pkg: Dict, X_new_raw: np.ndarray,
                               wn_new: np.ndarray) -> np.ndarray:
     """Interpola espectros novos para o eixo de numero de onda do TREINO
     (faixa `wn_min`/`wn_max` usada na calibracao). Extraida de
@@ -316,7 +332,7 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
     if wn_new is None:
         raise ValueError("wn_new nao pode ser None")
 
-    X_interp = interpolate_to_reference(pkg, X_new_raw, wn_new)
+    X_interp = _interpolate_to_reference(pkg, X_new_raw, wn_new)
 
     # Aplica o pre-processamento do treino
     X_proc = preproc.transform(X_interp)
@@ -587,7 +603,7 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
     lista de `BlindPredictionResult` -- uma por amostra, na mesma ordem).
     """
     df = predict_samples(pkg, X_new_raw, wn_new)
-    X_interp = interpolate_to_reference(pkg, X_new_raw, wn_new)
+    X_interp = _interpolate_to_reference(pkg, X_new_raw, wn_new)
 
     ensemble = pkg.get("identification_ensemble") or {}
     tem_ad = _CHAVES_AD.issubset(pkg.keys())
