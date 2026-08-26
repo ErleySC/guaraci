@@ -42,6 +42,44 @@ from guaraci.config import NOME_GRAFICOS
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
+__all__ = [
+    "setup_matplotlib",
+    "save",
+    "specificity_by_class",
+    "ellipse_t2",
+    "convex_hull_contorno",
+    "adaptive_scatter_parameters",
+    "plot_scores_panel",
+    "fig1_selecao_lvs",
+    "fig_hca_dendrogram",
+    "fig_hca_comparacao_pipelines",
+    "fig1_pca_scores",
+    "fig2_plsda_scores",
+    "fig3_outliers",
+    "fig4_confusao",
+    "fig_class_mean_spectra",
+    "fig6_preprocessing",
+    "fig_extra_wold",
+    "fig_extra_holdout",
+    "fig_extra_comparacao_pipelines",
+    "fig5b_vip_stability",
+    "fig7_pls_regression",
+    "fig_regression_merit",
+    "fig_sprint3_sr_vip",
+    "fig_sprint3_score_contribution",
+    "fig_sprint3_ddsimca_acceptance",
+    "fig_ddsimca_individuais",
+    "fig_sprint3_opls_scores",
+    "fig_loadings_pca",
+    "select_distinct_loadings",
+    "spread_labels",
+    "fig_biplot_pca",
+    "fig_roc_auc",
+    "fig_splot_opls",
+    "fig_heatmap_species_by_adulterant",
+    "fig_cooman_ddsimca",
+]
+
 
 def setup_matplotlib(cfg: Config) -> None:
     mpl.rcParams.update({
@@ -680,7 +718,7 @@ def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
 # Chemical band assignments for FT-NIR of vegetable oils (M3).
 # References: Workman & Weyer (2012) Practical Guide to Interpretive
 # Near-IR Spectroscopy; Cen & He (2007) Trends Food Sci Technol 18:72.
-BANDAS_NIR: List[Tuple[float, str]] = [
+_BANDAS_NIR: List[Tuple[float, str]] = [
     (4255, "C-H comb.\n(ac. graxos)"),
     (4325, "O-H comb."),
     (4665, "C-H/C=C"),
@@ -746,7 +784,7 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0, janela=120.0,
 
     # 1. Collect annotatable bands (local VIP peak above threshold).
     cand = []
-    for centro, rotulo in BANDAS_NIR:
+    for centro, rotulo in _BANDAS_NIR:
         viz = np.abs(wavenumbers - centro) <= janela
         if not viz.any():
             continue
