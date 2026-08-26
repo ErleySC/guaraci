@@ -20,6 +20,30 @@ from sklearn.cross_decomposition import PLSRegression
 
 log = logging.getLogger(__name__)
 
+__all__ = [
+    "vip_scores",
+    "compute_selectivity_ratio",
+    "martens_uncertainty_test",
+    "hotelling_t2",
+    "hotelling_t2_limit",
+    "q_residuals",
+    "q_residuals_loo",
+    "q_residuals_limit",
+    "mean_and_dof_moments",
+    "combined_distance",
+    "dmodx",
+    "dmody",
+    "explained_variance",
+    "rmse_flat",
+    "rpd_rer",
+    "interpret_rpd",
+    "regression_figures_of_merit",
+    "applicability_domain",
+    "training_applicability_domain",
+    "applicability_domain_new_samples",
+    "diagnose_spectral_range",
+]
+
 
 def vip_scores(modelo: PLSRegression) -> np.ndarray:
     """VIP scores per Chong & Jun (2005), Chemom. Intell. Lab. Syst. 78:103-112."""

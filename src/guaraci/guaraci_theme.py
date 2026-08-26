@@ -16,6 +16,15 @@ from typing import Dict
 from rich.console import Console
 from rich.theme import Theme
 
+__all__ = [
+    "PA", "PF", "PS", "PR", "PW", "PM", "PD", "PG",
+    "TOKENS", "tokens",
+    "ansi",
+    "THEME",
+    "console",
+    "ok", "warn", "err", "info",
+]
+
 # ---------------------------------------------------------------------------
 # PALETA PROFISSIONAL — tons discretos, aspecto cientifico
 # ---------------------------------------------------------------------------
@@ -53,9 +62,9 @@ def ansi(tom: str) -> str:
     return f"\033[38;2;{r};{g};{b}m"
 
 
-ANSI_RESET = "\033[0m"
-ANSI_BOLD = "\033[1m"
-ANSI_DIM = "\033[2m"
+_ANSI_RESET = "\033[0m"
+_ANSI_BOLD = "\033[1m"
+_ANSI_DIM = "\033[2m"
 
 THEME = Theme({
     "a":     PA,           # amber / titulo
