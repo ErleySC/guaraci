@@ -29,7 +29,7 @@ fechamento do Bloco 11 para nao inflar o escopo sem avisar.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 
@@ -141,8 +141,12 @@ def check_duplicates(X: np.ndarray, wavenumbers: np.ndarray,
 
     _X, _wn, _rot, _conc, _mae, relatorio = validate_input(
         X, wavenumbers, rotulos, conc, mae_id)
-    n_exatas = int(relatorio.get("n_duplicatas_exatas", 0))
-    n_aprox = int(relatorio.get("n_duplicatas_aproximadas", 0))
+    # relatorio: Dict[str, object] (pipeline.validate_input, fora do escopo
+    # do mypy) -- cast em vez de int() direto: object nao e' SupportsInt
+    # para o overload resolver do mypy, mesmo sendo sempre um int em tempo
+    # de execucao (chave sempre populada com contagem inteira).
+    n_exatas = int(cast(int, relatorio.get("n_duplicatas_exatas", 0)))
+    n_aprox = int(cast(int, relatorio.get("n_duplicatas_aproximadas", 0)))
     if n_exatas == 0 and n_aprox == 0:
         return AuditFinding("duplicatas", "ok",
                              "Nenhuma duplicata exata ou aproximada detectada.")

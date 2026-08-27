@@ -51,7 +51,7 @@ def _construir_grad_boost(n_opt: int, cfg: "Config"):
 
 
 def _construir_xgboost(n_opt: int, cfg: "Config"):
-    from xgboost import XGBClassifier  # type: ignore  -- ImportError se nao instalado
+    from xgboost import XGBClassifier  # ImportError se nao instalado (extra [benchmark])
     return XGBClassifier(n_estimators=300, learning_rate=0.05, max_depth=4,
                           subsample=0.8, colsample_bytree=0.8,
                           eval_metric="mlogloss", verbosity=0,

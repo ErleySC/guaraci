@@ -61,13 +61,13 @@ def _paleta_externa(n: int) -> Optional[List[str]]:
     """Tries to generate a max-distinctiveness palette via optional libs (glasbey,
     colorcet). Returns a list of hex colors or None if none available."""
     try:
-        import glasbey as _gb  # type: ignore
+        import glasbey as _gb
         return list(_gb.create_palette(palette_size=n))
     except Exception as _e_gb:  # noqa: BLE001 -- lib opcional (nao no
         # requirements.txt padrao); caller cai p/ a PALETA fixa abaixo.
         logging.getLogger(__name__).debug("glasbey indisponivel: %s", _e_gb)
     try:
-        import colorcet as _cc  # type: ignore
+        import colorcet as _cc
         base = _cc.glasbey_category10
         return [base[i % len(base)] for i in range(n)]
     except Exception as _e_cc:  # noqa: BLE001 -- mesma logica de fallback.

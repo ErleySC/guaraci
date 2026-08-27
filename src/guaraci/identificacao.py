@@ -307,8 +307,8 @@ def identify_sample(
             candidatos_ambiguos=sorted(aceitos),
             cobertura_status=CoverageStatus.VALIDATED,
             alpha_alcancavel=min(
-                ensemble[tuple(r.split("|", 1))]["alpha_alcancavel"]
-                for r in aceitos),
+                ensemble[(_esp_r, _adult_r)]["alpha_alcancavel"]
+                for _esp_r, _adult_r in (r.split("|", 1) for r in aceitos)),
             escores=escores)
 
     # Nenhuma combinacao aceita sob cobertura validada -- reporta a mais

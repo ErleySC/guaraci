@@ -59,7 +59,21 @@ jobs:
             src/guaraci/resumo_parse.py \
             src/guaraci/transferencia_calibracao.py \
             src/guaraci/linearity.py \
-            src/guaraci/robustness.py
+            src/guaraci/robustness.py \
+            src/guaraci/conformal.py \
+            src/guaraci/config.py \
+            src/guaraci/plano_amostral.py \
+            src/guaraci/selecao_variaveis.py \
+            src/guaraci/sentinela_deriva.py \
+            src/guaraci/predicao.py \
+            src/guaraci/io_registry.py \
+            src/guaraci/config_io.py \
+            src/guaraci/perfil_matriz.py \
+            src/guaraci/plano_coleta.py \
+            src/guaraci/paleta_cores.py \
+            src/guaraci/auditoria_delineamento.py \
+            src/guaraci/identificacao.py \
+            src/guaraci/model_registry.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console
