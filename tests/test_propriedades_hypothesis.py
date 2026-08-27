@@ -22,7 +22,7 @@ import tempfile
 
 import numpy as np
 import pytest
-from hypothesis import example, given, settings, strategies as st
+from hypothesis import example, given, strategies as st
 
 from guaraci.config_io import _CONFIG_SPEC as _SPEC_MODULO
 
@@ -112,7 +112,6 @@ def _estrategia_spec_e_bruto():
 @example((_SPEC_POR_KEY["coluna_classe"], "0x1A"))          # YAML hex implicito -> vira int 26
 @example((_SPEC_POR_KEY["excluir_classes"], ["?0"]))        # "?" em item de lista -> vira {0: None}
 @example((_SPEC_POR_KEY["excluir_classes"], ["0?"]))        # "?" em item de lista -> erro de parse
-@settings(max_examples=80, deadline=None)
 def test_config_roundtrip_preserva_todo_campo_do_spec(pq, spec_e_bruto):
     """Para QUALQUER campo de `_CONFIG_SPEC` e QUALQUER valor valido do seu
     tipo: `Config -> save_config -> load_config` devolve o mesmo valor
@@ -179,7 +178,13 @@ def test_contraprova_campo_fora_do_spec_nao_sobrevive_ao_roundtrip(
     preditos=st.lists(st.text(alphabet=_ALFABETO_TEXTO, min_size=1, max_size=8),
                       min_size=1, max_size=12),
 )
-@settings(max_examples=100, deadline=None)
+# Reproduz EXATAMENTE o cenario de envenenamento do teste manual original
+# (test_modo_cego.py::test_quantificacao_cega_ignora_rotulo_verdadeiro_
+# envenenado) como caso fixo -- garante que a busca aleatoria nunca deixa
+# de exercitar o cenario que motivou este arquivo, independente do
+# orcamento (`max_examples`) do profile ativo (Frente 2, Bloco 13d).
+@example(verdadeiros=["A", "A", "B", "B"], veneno=["Z", "Z", "Z", "Z"],
+         preditos=["A", "B", "B", "A"])
 def test_modo_cego_nunca_depende_do_rotulo_verdadeiro(
         pq, verdadeiros, veneno, preditos):
     n = min(len(verdadeiros), len(veneno), len(preditos))
@@ -203,7 +208,6 @@ def test_modo_cego_nunca_depende_do_rotulo_verdadeiro(
     veneno=st.lists(st.text(alphabet=_ALFABETO_TEXTO, min_size=1, max_size=8),
                     min_size=1, max_size=12),
 )
-@settings(max_examples=60, deadline=None)
 def test_contraprova_modo_controle_de_fato_muda_com_o_veneno(
         pq, verdadeiros, veneno):
     """Contra-prova: no mode `controle` (que LE o rotulo verdadeiro por
@@ -261,7 +265,22 @@ _SPLITTERS_GROUP_AWARE = {
     frac_cal=st.floats(min_value=0.2, max_value=0.8),
     seed=st.integers(min_value=0, max_value=10_000),
 )
-@settings(max_examples=90, deadline=None)
+# NAO existe (ate' onde verificado, 2026-08-27) um bug HISTORICO conhecido
+# especifico desta propriedade -- ao contrario do roundtrip de config
+# acima, que fixa @example para reproduzir bugs JA achados. Os 3 exemplos
+# abaixo sao cobertura DEFENSIVA de fronteira: `n_grupos=4` e' o limiar
+# EXATO onde `kennard_stone_split_group_aware`/`duplex_split_group_aware`/
+# `spxy_split_group_aware` ligam o colapso por grupo
+# (`len(np.unique(mae_subset)) >= 4`) -- o tipo de condicao onde um erro
+# de off-by-one classicamente se esconde. Garantem que os 3 splitters SAO
+# exercitados nesse limiar em toda rodada, independente de o `sampled_from`
+# aleatorio calhar de sortear cada um la' (Frente 2, Bloco 13d).
+@example(nome_splitter="kennard_stone", n_grupos=4, n_replicas=2,
+         n_features=3, frac_cal=0.5, seed=0)
+@example(nome_splitter="duplex", n_grupos=4, n_replicas=2,
+         n_features=3, frac_cal=0.5, seed=0)
+@example(nome_splitter="spxy", n_grupos=4, n_replicas=2,
+         n_features=3, frac_cal=0.5, seed=0)
 def test_split_group_aware_nunca_separa_grupo(
         pq, nome_splitter, n_grupos, n_replicas, n_features, frac_cal, seed):
     rng = np.random.default_rng(seed)

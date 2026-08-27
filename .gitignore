@@ -60,6 +60,11 @@ dist/
 coverage.xml
 htmlcov/
 .ruff_cache/
+.pytest_cache/
+# Banco de dados de exemplos falhos do Hypothesis: cache local, nao fonte
+# de verdade -- casos que importam ficam versionados como @example no
+# codigo (Bloco 13d, Frente 2), nao aqui.
+.hypothesis/
 
 # --- MkDocs build output (gerado pelo CI, nao versionado) ---
 site/
