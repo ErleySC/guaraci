@@ -210,10 +210,21 @@ performance claims:
 |---|---|---|---|---|
 | [Eigenvector Corn](https://eigenvector.com/data/Corn/) (m5) | ground corn | protein | **RMSEP 0.144 %w/w** | 0.1–0.2 |
 | Tecator | minced meat | fat | RMSEP 2.001 | see [`docs/BENCHMARK_TECATOR.md`](docs/BENCHMARK_TECATOR.md) |
+| [Mendeley `ctgg7k4m5g`](https://data.mendeley.com/datasets/ctgg7k4m5g/2) (CC BY 4.0) | 19 edible oils (NIR, 8mm) | species (8, n≥5) | **balanced accuracy 0.35 CV / 0.475 holdout** | no published figure in this form; multimatrix proof, not a benchmark reproduction |
 
-The corn figure is a **CI job** (`validacao-publica`): if the engine stops
-reproducing the literature, the build fails. Reproduce locally with
-`GUARACI_DATASETS_DIR=<folder> pytest tests/test_validacao_publica.py`.
+The corn figure and the Mendeley classification are **CI jobs**
+(`validacao-publica`, `validacao-publica-mendeley`, matrix of 3 OSes for
+the latter): if the engine stops reproducing the literature/floor, the
+build fails. Reproduce locally with `GUARACI_DATASETS_DIR=<folder>
+pytest tests/test_validacao_publica.py tests/test_validacao_publica_mendeley.py`
+(download the Mendeley files first with
+`python scripts/download_datasets/baixar_mendeley_oleos.py`). Neither
+dataset is versioned in this repository — see
+[`datasets/README.md`](datasets/README.md) for the policy. The
+Mendeley dataset's published peroxide-value RMSEP (4.9) did **not**
+reproduce with an independent holdout using GUARACI's default presets —
+documented as an honest limitation in
+[`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md), not hidden.
 
 Quantification never reports a bare RMSEP: **SEP, RPD and RER** ship
 alongside it, with RPD carrying its published interpretation band
@@ -231,12 +242,14 @@ after export.
 
 ## Known limitations
 
-- **Validated on two public datasets so far** (corn NIR, Tecator NIT). The
-  engine is matrix-agnostic, but "agnostic" is an architectural property, not
-  a validation result — a profile you write for a new matrix is untested
-  until you test it.
-- **`mel_vis_nir` is declared, not validated** — the honey dataset was not
-  obtained. The profile loads and works; no claim is made about its numbers.
+- **Validated on three public datasets so far** (corn NIR, Tecator NIT,
+  Mendeley `ctgg7k4m5g` edible oils NIR). The engine is matrix-agnostic,
+  but "agnostic" is an architectural property, not a validation result —
+  a profile you write for a new matrix is untested until you test it.
+- **`mel_vis_nir` is declared, not validated** — the honey dataset's
+  origin was identified (Downey, Fouratier & Kelly 2003) but no public
+  repository for it exists; actively re-searched 2026-08-27, still not
+  found. The profile loads and works; no claim is made about its numbers.
 - **One-class DD-SIMCA needs enough *physical* samples per class**, not
   spectra. With one physical sampling point per class the limits are
   calibrated against a single independent observation, and the software says
