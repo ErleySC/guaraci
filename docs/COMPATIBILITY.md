@@ -26,15 +26,21 @@ disso. Concretamente:
   `QuantificationResult`, `BlindPredictionResult`, `MatrixProfile` etc.).
 - **Esquema de `config.yaml`**: as chaves listadas em `_CONFIG_SPEC`
   (`config_io.py`) — nome da chave, tipo, opções válidas, min/max.
-- **Nomes de coluna de saída** (CSV/Excel/relatório) gerados pelas
-  funções de `resultados_io.py`/`predicao.py`/`reports.py` -- cobertos
-  pela POLÍTICA (mudar um nome de coluna sem depreciação é incompatível,
-  mesma regra de tudo acima), mas **sem proteção automatizada hoje** --
-  ver "Dívida conhecida" abaixo. É a superfície mais provável de ser
-  consumida por scripts de usuário automatizando algo em cima do
-  GUARACI (ex.: um script que lê `resumo_modelo.txt`/CSV de saída por
-  nome de coluna), então a política vale igual mesmo sem o teste --
-  só não há alarme automático se alguém violar sem querer.
+- **Nomes de coluna de saída** (CSV/Excel) gerados pelas funções de
+  `resultados_io.py`/`predicao.py`/`avaliacao_modelos.py`/
+  `selecao_variaveis.py`/`plano_coleta.py`/`guaraci.py` (menu de seleção
+  de amostras) -- cobertos pela POLÍTICA (mudar um nome de coluna sem
+  depreciação é incompatível, mesma regra de tudo acima) **e, desde
+  2026-08-27 (Passo 89), com proteção automatizada**:
+  `tests/test_contrato_saida_tabular.py` roda cada função contra dado
+  sintético e compara as colunas reais contra um snapshot golden
+  (`tests/golden/contrato_saida_tabular.json`) -- mesmo mecanismo de
+  `test_contrato_api_publica.py`, arquivo separado porque a captura
+  exige EXECUÇÃO real (não introspecção estática: não existe objeto
+  Python que declare as colunas de um `DataFrame` sem rodar a função).
+  `reports.py::generate_excel_report` não tem entrada própria: verificado
+  por leitura que ele copia `list(df.columns)` verbatim dos CSVs já
+  cobertos, então protegê-los já protege a reempacotação em Excel.
 - **Códigos de saída da CLI** (`guaraci` como comando): `0` sucesso,
   `1` erro de execução, `2` uso incorreto — contrato já documentado no
   próprio `--help` do programa (`guaraci.py:_TEXTO_AJUDA`).
@@ -106,32 +112,30 @@ por `tests/test_fachada_reexport.py`.
 4. Toda depreciação é registrada no `CHANGELOG.md` na versão em que
    começa E na versão em que a remoção de fato acontece.
 
-## Dívida conhecida (registrada, não implementada)
+## Dívida fechada (2026-08-27, Passo 89)
 
-**Nomes de coluna de CSV/Excel/relatório não têm proteção de contrato
-automatizada.** `tests/test_contrato_api_publica.py` introspecciona
-assinatura de função/campo de dataclass/schema de `_CONFIG_SPEC` -- mas
-não existe objeto Python introspectável que declare as colunas de um
-`DataFrame` retornado por `benchmark_classifiers`, `predict_samples`,
-`predict_blind`, ou as colunas dos CSVs escritos por
-`resultados_io.save_identifiers`, sem rodar a função e inspecionar o
-resultado de fato. Cobrir isso exigiria algo no espírito de
-`test_golden_valores.py` (rodar o pipeline sintético, capturar
-`df.columns`/cabeçalho do CSV, comparar contra um golden) -- trabalho de
-escopo comparável a um Passo próprio, registrado aqui em 2026-08-26
-(Passo 77) para não ser esquecido, não implementado por decisão
-explícita nesta sessão (candidato a instrução futura, depois de
-datasets públicos e Hypothesis estarem em andamento).
-
-Consequência prática enquanto isso não existe: um nome de coluna pode
-mudar silenciosamente sem nenhum teste falhar, mesmo violando a
-política acima. Quem depende de nomes de coluna específicos (scripts de
-usuário automatizando algo em cima do GUARACI) não tem hoje o mesmo
-nível de proteção que a assinatura de função/schema de config já têm.
+**Nomes de coluna de CSV/Excel agora têm proteção de contrato
+automatizada.** Registrada como dívida em 2026-08-26 (Passo 77):
+`tests/test_contrato_api_publica.py` introspecciona assinatura de
+função/campo de dataclass/schema de `_CONFIG_SPEC`, mas não existe
+objeto Python introspectável que declare as colunas de um `DataFrame`
+sem rodar a função e inspecionar o resultado de fato. Fechada com
+`tests/test_contrato_saida_tabular.py` (Passo 89): roda `save_identifiers`,
+`sanitizar_metadados`, `benchmark_classifiers`, `monte_carlo_cv`,
+`benchmark_regression_by_species`, `etapa4_selecao_variaveis` (4 CSVs),
+`plano_coleta.export_excel`, o menu `[K]` de seleção de amostras,
+`predict_samples`, e uma execução completa de `executar()` (para
+`teste_martens.csv`/`comparacao_pipelines.csv`, construídos inline no
+orquestrador) contra dado sintético, comparando as colunas reais contra
+um snapshot golden. Contra-prova: monkeypatch de `save_identifiers`
+renomeando `classe_predita` -> `classe_pred` de verdade (não só no dict
+do teste) confirma que o mesmo detector usado pelo teste principal
+acusa a mudança.
 
 ## Aplicação mecânica
 
 Este documento não é a garantia — é a explicação da garantia. O que
 falha automaticamente se alguém violar o que está descrito aqui é o
-teste de contrato (`tests/test_contrato_api_publica.py`, Passo 73) --
-**exceto** para nomes de coluna de saída, ver "Dívida conhecida" acima.
+teste de contrato (`tests/test_contrato_api_publica.py`, Passo 73, para
+assinatura/schema; `tests/test_contrato_saida_tabular.py`, Passo 89,
+para nomes de coluna de saída).
