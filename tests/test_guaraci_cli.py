@@ -760,6 +760,31 @@ def test_editar_campo_nivel_dispara_ajuste_e_avisa(guaraci_mod, monkeypatch):
     assert "DD-SIMCA" in saida or "ddsimca" in saida.lower()
 
 
+def test_editar_campo_perfil_matriz_e_editavel_via_cli(guaraci_mod, monkeypatch,
+                                                        tmp_path):
+    """Achado do Passo 83 (auditoria de acessibilidade CLI, 2026-08-27):
+    cfg.matrix_profile nao tinha entrada em _CONFIG_SPEC -- sem menu
+    interativo pra troca-lo, E resetava para "generico" em SILENCIO apos
+    salvar+carregar config.yaml (a mesma classe de bug que perfil_matriz.py
+    existe pra evitar). Este teste prova as duas partes da correcao:
+    editavel via [2] Dados, e sobrevive a um ciclo salvar/carregar."""
+    cfg = guaraci_mod.Config()
+    assert cfg.matrix_profile == "generico"
+
+    respostas = iter(["oleos_comestiveis_nir", "s"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    ok = guaraci_mod._editar_campo(cfg, "perfil_matriz")
+    assert ok is True
+    assert cfg.matrix_profile == "oleos_comestiveis_nir"
+
+    caminho = str(tmp_path / "config.yaml")
+    guaraci_mod._save_config(cfg, caminho)
+    cfg2 = guaraci_mod._load_config(caminho)
+    assert cfg2.matrix_profile == "oleos_comestiveis_nir", (
+        "matrix_profile nao sobreviveu ao ciclo salvar/carregar -- "
+        "regrediu para o bug original do Passo 83.")
+
+
 def test_editar_campo_nivel_sem_mudanca_nao_mexe_em_nada(guaraci_mod, monkeypatch):
     """Reescolher o MESMO nivel (Enter=manter, ou escolher o numero atual)
     nao deve reportar nenhum ajuste."""

@@ -245,6 +245,13 @@
       "opcoes": null,
       "tipo": "str"
     },
+    "perfil_matriz": {
+      "attr": "matrix_profile",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
     "pre_processamento": {
       "attr": "default_preprocessing",
       "max": null,

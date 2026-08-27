@@ -1741,7 +1741,7 @@ def _menu_data(cfg: Config) -> None:
     # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
     # campos_avancados por ser niche, nao por risco.
     _loop_menu(_t("t_dados"), _t("d_dados"),
-               ["modo_entrada", "arquivo_csv", "coluna_classe",
+               ["modo_entrada", "perfil_matriz", "arquivo_csv", "coluna_classe",
                 "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
                 "excluir_classes", "imagem_incluir_textura"], cfg,
                campos_avancados={"imagem_incluir_textura"})

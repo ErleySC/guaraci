@@ -41,6 +41,12 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
              "imagem (colorimetria digital, prototipo) | sintetico (teste)",
      "opcoes": ["dx", "csv", "imagem", "sintetico"]},
+    {"key": "perfil_matriz", "attr": "matrix_profile", "tipo": "str",
+     "desc": "Perfil da matriz analisada (faixa espectral, pre-processamento "
+             "padrao e vocabulario da saida vem daqui, nao do codigo). "
+             "`guaraci perfis` lista os nomes embutidos; tambem aceita o "
+             "caminho de um YAML proprio",
+     "opcoes": None},
     {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
      "desc": "Pasta com os arquivos .dx OU imagens (mode dx/imagem; uma subpasta por classe)",
      "opcoes": None},

@@ -77,6 +77,7 @@ RISK_CLASS: Dict[str, str] = {
     "teste_cv_anova": "ANALITICO", "teste_martens": "ANALITICO",
     "pasta_dados": "ANALITICO",
     "pasta_saida": "ANALITICO", "modo_entrada": "ANALITICO",
+    "perfil_matriz": "ANALITICO",
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
     "coluna_concentracao": "ANALITICO", "imagem_incluir_textura": "ANALITICO",
     # AVANCADO
@@ -91,6 +92,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "pasta_saida":                  {"PT": "Pasta de saida",          "EN": "Output folder"},
     "tag":                          {"PT": "Sufixo da pasta saida",   "EN": "Output folder tag"},
     "modo_entrada":                 {"PT": "Modo de entrada",         "EN": "Input mode"},
+    "perfil_matriz":                {"PT": "Perfil de matriz",        "EN": "Matrix profile"},
     "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
     "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
     "coluna_concentracao":          {"PT": "Coluna concentracao",     "EN": "Concentration column"},
@@ -658,6 +660,29 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                          "sintetico": "Simulated data for pipeline testing"},
         },
         "default": "dx", "range": "dx | csv | imagem | sintetico",
+    },
+    "perfil_matriz": {
+        "PT": {
+            "desc": "Perfil da matriz analisada: define faixa espectral, "
+                    "pre-processamento padrao e vocabulario da saida (nunca no "
+                    "codigo-fonte). 'guaraci perfis' lista os perfis embutidos; "
+                    "tambem aceita o caminho de um YAML proprio.",
+            "impacto": "ANALITICO — troca a faixa espectral e o vocabulario do model card; nao edita codigo.",
+            "exemplos": {"generico": "Sem faixa/vocabulario especifico (default)",
+                         "milho_nir": "Milho em grao, NIR 1100-2498nm",
+                         "oleo_nir": "Oleo vegetal amazonico, NIR 4000-10000 cm-1"},
+        },
+        "EN": {
+            "desc": "Profile of the analyzed matrix: sets spectral range, "
+                    "default preprocessing and output vocabulary (never in "
+                    "source code). 'guaraci perfis' lists the built-in "
+                    "profiles; also accepts the path to your own YAML.",
+            "impacto": "ANALYTICAL — changes spectral range and model card vocabulary; no code edit.",
+            "exemplos": {"generico": "No specific range/vocabulary (default)",
+                         "milho_nir": "Ground corn, NIR 1100-2498nm",
+                         "oleo_nir": "Amazonian vegetable oil, NIR 4000-10000 cm-1"},
+        },
+        "default": "generico", "range": "Nome de perfil embutido ou caminho de YAML",
     },
     "imagem_incluir_textura": {
         "PT": {
@@ -1334,9 +1359,9 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
 
 MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
-    "dados": ["modo_entrada", "arquivo_csv", "coluna_classe", "coluna_concentracao",
-              "faixa_min_cm", "faixa_max_cm", "excluir_classes",
-              "imagem_incluir_textura"],
+    "dados": ["modo_entrada", "perfil_matriz", "arquivo_csv", "coluna_classe",
+              "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
+              "excluir_classes", "imagem_incluir_textura"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "ddsimca_pcv",

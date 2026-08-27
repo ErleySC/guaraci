@@ -412,6 +412,15 @@ guaraci perfis                 # lista os perfis embutidos
 guaraci --perfil=milho_nir     # ou o caminho de um YAML seu
 ```
 
+Também editável **dentro** do assistente interativo, em `[2] Dados` →
+*Perfil de matriz* — não é só um flag de lançamento. Até 2026-08-27 esse
+campo não estava em `_CONFIG_SPEC`: não tinha entrada de menu e, mais
+grave, **`[S] Salvar Perfil` seguido de `[L] Carregar` resetava
+silenciosamente para `generico`**, mesmo se o usuário tivesse escolhido
+outro perfil na sessão que gerou o `--perfil=` original (achado da
+auditoria de acessibilidade do Passo 83). Corrigido: o campo agora
+persiste em `config.yaml` como qualquer outro.
+
 **Por que o vocabulário importa.** Antes dos perfis, rodar o pipeline sobre
 milho em grão gerava um model card afirmando *"quantificação de adulterante
 em óleo vegetal amazônico"*. Nenhum número estava errado — a frase estava. O
