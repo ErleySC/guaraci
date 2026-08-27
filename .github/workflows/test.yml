@@ -182,3 +182,29 @@ jobs:
         run: |
           export GUARACI_DATASETS_DIR="$HOME/datasets_publicos"
           pytest tests/test_validacao_publica.py -v
+
+  # ── Validacao contra dataset PUBLICO Mendeley (oleos comestiveis) ─────────
+  # Matriz de 3 SOs (Passo 82): download em Python (script versionado, nao
+  # bash inline) para ser identico nos 3 runners. Mesma filosofia do Corn --
+  # falha aqui e' bug real ou fonte fora do ar, nunca flakiness silenciada.
+  validacao-publica-mendeley:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (Mendeley ctgg7k4m5g)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_mendeley_oleos.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_mendeley.py -v

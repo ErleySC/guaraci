@@ -4,9 +4,12 @@ Desde 2026-08-18 o GUARACI é validado exclusivamente em datasets públicos.
 Nenhuma métrica desta página vem de dado privado: todas são reproduzíveis
 por qualquer pessoa a partir dos datasets citados.
 
-Reproduzir: `pytest tests/test_validacao_publica.py` com
-`GUARACI_DATASETS_DIR` apontando para a pasta que contém os arquivos
-(o CI faz o download no job `validacao-publica`).
+Reproduzir: `pytest tests/test_validacao_publica.py tests/test_validacao_publica_mendeley.py`
+com `GUARACI_DATASETS_DIR` apontando para a pasta que contém os arquivos
+(o CI faz o download nos jobs `validacao-publica`/`validacao-publica-mendeley`).
+Nenhum dos dois datasets é versionado neste repositório — ver
+`datasets/README.md` para a política completa e
+`scripts/download_datasets/` para os scripts de aquisição.
 
 ---
 
@@ -17,7 +20,7 @@ Reproduzir: `pytest tests/test_validacao_publica.py` com
 | Eigenvector **Corn** (m5) | milho em grão | 80 | 700 · 1100–2498 nm | proteína | **RMSEP 0,144 %m/m**; R²val 0,912; 8 LVs | RMSEP típico de PLS: **0,1–0,2** | ✅ dentro da faixa |
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
 | **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | — | ❌ **NÃO OBTIDO** |
-| Mendeley `10.17632/ctgg7k4m5g.2` | azeite | 100 | NIR + MIR + Raman | adulteração/PV | — | — | 🟡 **ACESSÍVEL, não integrado** (reconfirmado 2026-08-26) |
+| Mendeley `10.17632/ctgg7k4m5g.2` (NIR 8mm) | 19 óleos comestíveis diversos | 100 | 11512 · 3899–14999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,35 (CV) / 0,475 (holdout)**; R²cal 0,833 (log10 PV) | balanced accuracy: sem alvo publicado nesta forma (ver §2); RMSEP publicado 4,9 **não reproduzido** (ver §2) | 🟢 **INTEGRADO** (2026-08-27) — classificação valida requisito multimatriz; regressão é sanity check, não gate de literatura |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -26,9 +29,101 @@ de afirmação que este repositório pode fazer sobre desempenho.
 
 ---
 
-## 2. Estado exato dos datasets ainda não integrados
+## 2. Mendeley `10.17632/ctgg7k4m5g.2` — INTEGRADO (2026-08-27)
 
-### Mendeley `10.17632/ctgg7k4m5g.2` (azeite adulterado) — RETRATAÇÃO de 2026-08-18
+### O que o dataset realmente é (correção de premissa)
+
+A descrição original do projeto ("azeite adulterado com milho/canola/
+amêndoa") **não corresponde à estrutura real dos dados** — verificado
+por leitura direta dos arquivos e do artigo original (Ottaway et al.
+2021, *Applied Spectroscopy* 75(6):700-709,
+doi:10.1177/0003702821994500; ver também Gilbraith et al. 2025,
+*Journal of Spectral Imaging*). O dataset tem **19 tipos de óleo puro**
+como classes separadas (azeite extra-virgem/leve/puro, abacate,
+amendoim, milho, semente de uva, canola, girassol, vários *blends*,
+entre outros — ver `OilClassKey.csv`) — corn/canola/almond aparecem só
+como **seus próprios óleos puros**, nunca como "azeite adulterado com
+X%". Não existe coluna de percentual de adulteração em nenhum arquivo.
+
+O alvo de quantificação real é o **índice de peróxido** (mEq O2/kg —
+grau de oxidação/rancidez de óleos envelhecidos naturalmente 5-7 anos),
+não um percentual de mistura. É um alvo cientificamente legítimo e
+diretamente compatível com a maquinaria de regressão PLS do GUARACI,
+só que **não é a mesma alegação** de "detectar adulteração por mistura"
+que o dataset privado do autor testa.
+
+### Arquivos usados (dos 10 do dataset)
+
+Só `NIR8mm1A.csv` (caminho óptico 8mm) e `OilClassKey.csv` (legenda
+número→nome de classe) são baixados e usados. O artigo original testou
+4 técnicas (NIR 8mm, NIR 24mm, MIR 50µm, Raman) para o mesmo alvo
+(índice de peróxido); **NIR 8mm teve o RMSEP publicado mais baixo E
+mais confiável** (RMSEP=4,9 — o próprio artigo sinaliza o RMSEP do
+Raman, 6,9, como resultante de correlação por acaso). Os outros 8
+arquivos (MIR, Raman, NIR 24mm/2mm) não são baixados nem usados nesta
+integração — sem necessidade para o que está sendo validado.
+
+**NaN**: uma linha de `Raman1A.csv` (não usado aqui) tem NaN em todas
+as colunas espectrais — amostra sem aquela medição específica tomada.
+`NIR8mm1A.csv` (usado) tem **zero NaN**, confirmado por leitura direta;
+o teste (`tests/test_validacao_publica_mendeley.py::_carregar_bruto`)
+falha alto se isso mudar no futuro, em vez de descartar em silêncio.
+
+### Classificação (prova do requisito multimatriz)
+
+`test_multimatriz_declara_perfil_correto_e_classifica_acima_do_acaso`:
+classes com <5 amostras são excluídas (classificar sobre n=1 não é
+checagem honesta) — restam 8 espécies, 78 amostras. Perfil de matriz
+novo, `oleos_comestiveis_nir` (NIR, 8mm, cm⁻¹, vocabulário próprio),
+aplicado **sem nenhuma alteração de código-fonte** — só
+`cfg.matrix_profile`. Confirmado: model card declara "óleo comestível
+(NIR, 8mm)" e **não** declara vocabulário de nenhuma outra matriz
+(nem `milho em grão`, nem `óleo vegetal` do dataset privado).
+
+Balanced accuracy: **0,35 em CV** (permutação Y-randomization: p=0,167,
+**não significativo a p<0,05** — reportado honestamente, não escondido)
+e **0,475 no holdout externo** (16 amostras). Regime genuinamente
+difícil: n=62 amostras de treino / 8 classes desbalanceadas (5 a 27
+amostras/classe) / ~11500 variáveis colineares. O teste garante "acima
+do acaso" (piso 0,25, acaso teórico ~0,125 para 8 classes), não
+"desempenho de produção" — não é a mesma alegação que o dataset privado
+do autor sustenta com muito mais amostras por classe.
+
+### Quantificação (índice de peróxido) — RMSEP publicado NÃO reproduzido
+
+`test_regressao_peroxido_roda_sem_excecao_e_calibra_razoavel`: modelo
+PLS **global/pooled** (mesma escolha metodológica do artigo original,
+"a global peroxide value model", não estratificado por espécie), alvo
+`log10(índice de peróxido)` (assimetria 1,5–165, >100× de amplitude).
+
+**Medido em 2026-08-27, com os presets padrão do GUARACI e holdout
+independente de 25 amostras:**
+
+| Transformação | RMSEP | R²cal | R²val |
+|---|---|---|---|
+| Bruto | 25,9 | 0,71 | **−0,87** |
+| log10 | 0,49 (unid. log) | 0,83 | **−0,53** |
+
+Nenhuma das duas reproduz o RMSEP publicado (4,9) — R²val fica
+**negativo em ambos os casos** (pior que prever a média) no holdout de
+25 amostras. Com n=100 e ~11500 canais colineares, esse é um holdout de
+alta variância; o artigo não detalha protocolo suficiente (CV exata,
+remoção de outliers, se "RMSEP" ali é holdout independente ou RMSECV)
+para reproduzir o número com confiança. **Decisão registrada
+(2026-08-26): não perseguir o número publicado por tentativa-e-erro**
+— isso ajustaria o teste ao resultado em vez de reproduzi-lo de
+verdade. O teste ficou como *sanity check* (roda sem exceção, R²cal >
+0,3 — confirma que a calibração captura sinal real), não como gate
+contra a literatura. Isso é uma limitação registrada, não escondida.
+
+### Como reproduzir
+
+```
+python scripts/download_datasets/baixar_mendeley_oleos.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley.py -v
+```
+
+### Histórico — RETRATAÇÃO de 2026-08-18
 
 > **A entrada anterior desta seção afirmava "❌ NÃO OBTIDO" com a rota
 > `?version=2` retornando HTTP 403 e exigindo sessão de navegador.
@@ -58,16 +153,13 @@ de afirmação que este repositório pode fazer sobre desempenho.
 (`data_licence.short_name`) — compatível com uso e redistribuição
 mediante atribuição.
 
-**Estado real agora: ACESSÍVEL programaticamente, NADA baixado nem
-integrado ao pipeline ainda** — esta verificação foi só de
-acessibilidade (Passo 78 pede levantamento, não integração). Nome do
-alvo científico do dataset (peroxide value / classificação, não
-"adulteração" propriamente — ver descrição completa do dataset) precisa
-ser conferido contra o objetivo real do GUARACI antes de decidir como
-integrar. Para integrar de fato: baixar os 10 CSVs pelos `download_url`
-acima, decidir formato de carregamento (provavelmente novo leitor em
-`io_registry.py`, os arquivos não são `.dx`), e apontar
-`GUARACI_DATASETS_DIR` — trabalho de um Passo próprio, não feito aqui.
+Este era o estado em 2026-08-26 (Passo 78, só levantamento de
+acessibilidade). A integração completa (download automático,
+classificação, quantificação, perfil de matriz, CI multiplataforma)
+foi feita em 2026-08-27 (Passo 79) — ver o topo desta seção §2.
+Nenhum leitor novo em `io_registry.py` foi necessário: os CSVs do
+Mendeley já vêm no formato largo que o `mode="csv"` do GUARACI
+consome diretamente (`Class,PeroxideValue,<wavenumbers...>`).
 
 ### Mel adulterado (478 amostras, 700 comprimentos de onda, 4 classes)
 
@@ -96,6 +188,13 @@ campo de configuração** (`cfg.matrix_profile`). Verifica que:
 - o vocabulário de classe acompanha (`variedade` / `especie`);
 - o perfil usado fica registrado no card, para quem o lê depois.
 
+Prova adicional com dado público de terceiro (§2, Passo 79):
+`tests/test_validacao_publica_mendeley.py::test_multimatriz_declara_perfil_correto_e_classifica_acima_do_acaso`
+— perfil `oleos_comestiveis_nir` aplicado ao dataset Mendeley sem
+alteração de código, model card declara "óleo comestível (NIR, 8mm)" e
+não declara vocabulário de nenhuma outra matriz (nem `milho em grao`
+nem `oleo vegetal`).
+
 E `test_perfil_inexistente_aborta_o_pipeline_antes_de_predizer`: matriz sem
 perfil cadastrado levanta `UnknownProfileError` **antes** de qualquer
 predição, com a lista de perfis disponíveis e a instrução de como escrever
@@ -109,7 +208,7 @@ um novo. Nunca cai num padrão de outra matriz em silêncio.
 |---|---|---|
 | Eigenvector Corn | distribuído publicamente pela Eigenvector Research para benchmarking; ver a página da fonte para os termos | página da fonte, 2026-08-17 |
 | Tecator | domínio público (StatLib) | `docs/BENCHMARK_TECATOR.md` |
-| Mendeley `ctgg7k4m5g` | **CC BY 4.0** | HTML da página do dataset, 2026-08-18 |
+| Mendeley `ctgg7k4m5g` | **CC BY 4.0** | JSON da API oficial (`data_licence.short_name`), reconfirmado 2026-08-27 |
 
 Nenhum destes arquivos é versionado neste repositório.
 

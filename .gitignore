@@ -32,6 +32,14 @@ dados/
 *.dx
 dados_oleos/
 
+# --- Cache local de datasets PUBLICOS de terceiro (Corn, Mendeley) --
+# NUNCA versionar o dado em si (licenca de terceiro -- ver
+# docs/VALIDACAO_PUBLICA.md e datasets/README.md). Baixado sob demanda por
+# scripts/download_datasets/*.py ou pelo job validacao-publica* do CI;
+# aponte GUARACI_DATASETS_DIR para a pasta que os contem.
+datasets_publicos/
+*.mat
+
 # --- Local archive of old versions / scratch (kept out of the repo) ---
 _test*/
 "pineline_quimiometria_14 copy.py"
