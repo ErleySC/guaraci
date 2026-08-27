@@ -213,3 +213,105 @@ competitiva). Tabela comparativa do README mantida como estava.
 Frente 2. Frente 3 é só documentação (README/paper/CONTRIBUTING/
 VALIDACAO_PUBLICA) — suíte completa reconfirmada mesmo assim, mesma
 disciplina.
+
+---
+
+# Três pendências técnicas remanescentes (2026-08-27, mesma sessão)
+
+## Passo 89 — Contrato de colunas de saída: FECHADO (implementação)
+
+Dívida registrada em 2026-08-26 (Passo 77) e documentada em
+`docs/COMPATIBILITY.md` desde então. Levantamento por comando direto
+(`grep -rn "to_csv|to_excel|Workbook(" src/guaraci/`) de todos os pontos
+de geração tabular: `avaliacao_modelos.py` (3), `guaraci.py` (2, incl.
+o menu `[K]` do Passo 87), `pipeline.py` (3, inline dentro de
+`executar()`), `resultados_io.py` (1), `selecao_variaveis.py` (4),
+`plano_coleta.py` (Excel via openpyxl). `reports.py::generate_excel_report`
+e `auditoria_delineamento.py`/`sentinela_deriva.py`/`linearity.py`/
+`robustness.py` verificados como FORA de escopo (por leitura direta, não
+suposição) — o primeiro copia colunas verbatim de CSVs já cobertos; os
+demais não produzem saída tabular própria.
+
+`tests/test_contrato_saida_tabular.py` (novo): snapshot golden
+(`tests/golden/contrato_saida_tabular.json`) gerado por EXECUÇÃO REAL
+contra dado sintético (nunca lista digitada à mão) — mesmo mecanismo de
+`test_contrato_api_publica.py`. Cobre: `save_identifiers`,
+`sanitizar_metadados`, `benchmark_classifiers`, `monte_carlo_cv`,
+`benchmark_regression_by_species`, `etapa4_selecao_variaveis` (4 CSVs:
+ipls/spa/ag/tabela-final), `plano_coleta.export_excel` (2 abas), o menu
+`[K]` de seleção de amostras, `predict_samples`, e uma execução completa
+de `executar()` (para `teste_martens.csv`/`comparacao_pipelines.csv`,
+construídos INLINE no orquestrador, não atrás de função pública própria
+— só rodar de verdade protege esses dois).
+
+Contra-prova: monkeypatch de `save_identifiers` renomeando
+`classe_predita` → `classe_pred` NUM CSV REAL (não só num dict de
+teste) confirma que `_diferencas` (o mesmo detector do teste principal)
+acusa a mudança.
+
+`docs/COMPATIBILITY.md` atualizado: seção "Dívida conhecida" virou
+"Dívida fechada (2026-08-27, Passo 89)".
+
+## Passo 90 — Escopo do mypy: DECISÃO EXPLÍCITA = expandir (medido, implementado)
+
+Medido por comando direto (`mypy` por arquivo, os 38 módulos de
+`src/guaraci/`): **10 já no gate** (todos limpos), **17 fora do gate com
+0 erros**, **11 fora do gate com erros** (1 a 13 cada).
+
+Critério aplicado (o mesmo já documentado em `pyproject.toml`: sem
+I/O pesado, sem UI, sem estado global) — **não** "0 erros = incluir
+automaticamente": `figuras.py`, `app_logic.py`, `cli_assistente.py`,
+`cli_logic.py`, `guaraci_theme.py`, `log.py`, `spectra_preview.py`
+(importa `streamlit`, verificado por leitura) ficam FORA por serem
+UI/renderização/orquestração — mesmo com 0 erros hoje, incluí-los
+arriscaria ruído futuro conforme a integração de Streamlit/Rich
+aprofunda, sem pegar bug de cálculo (mesma razão já documentada para
+excluir `guaraci.py`/`pipeline.py`, que TÊM 11 e 10 erros
+respectivamente e continuam explicitamente fora, decisão pré-existente
+não reaberta aqui). `dados_imagem.py` fica fora por razão técnica real
+(não "nunca foi feito"): importa `tifffile` via scikit-image, que usa
+sintaxe Python 3.12 incompatível com `python_version=3.10` do mypy —
+erro de SINTAXE de terceiro que interrompe a checagem inteira, não
+corrigível no nosso código. `avaliacao_modelos.py`/`dados_io.py`/
+`resultados_io.py` ficam fora: I/O real (CSV) é parte central do que
+fazem, não incidental, e tinham 4-13 erros cada.
+
+**Decisão: EXPANDIR.** Adicionados 14 módulos (10 já limpos +
+4 corrigidos): `conformal.py`, `config.py`, `plano_amostral.py`,
+`selecao_variaveis.py`, `sentinela_deriva.py`, `predicao.py`,
+`io_registry.py`, `config_io.py`, `perfil_matriz.py`, `plano_coleta.py`,
+`paleta_cores.py` (2 `# type: ignore` não utilizados removidos),
+`auditoria_delineamento.py` (2 `int(object)` corrigidos com `cast`),
+`identificacao.py` (1 tipo de chave de dict corrigido — `tuple(list)`
+não prova comprimento 2 pro checador, trocado por desempacotamento
+explícito), `model_registry.py` (1 comentário `# type: ignore`
+malformado removido, era redundante com `ignore_missing_imports=true`
+já setado globalmente). Gate: 10 → 24 módulos. `.github/workflows/test.yml`
+atualizado com a lista completa.
+
+## Passo 91 — Comparativo do README: RECONFIRMADO + 1 linha nova
+
+Reconfirmado por nova busca (2026-08-27): Kennard-Stone **é** recurso
+padrão do Unscrambler (fonte: busca anterior desta sessão, sem mudança).
+Decisão de não reivindicar seleção de amostras/transferência de
+calibração como diferencial permanece válida.
+
+Avaliado o CONJUNTO completo (não só seleção de amostras isolada):
+planejamento experimental (`plano_amostral.py`+`plano_coleta.py`),
+auditoria de delineamento automática (`auditoria_delineamento.py`),
+modo cego com conjunto aberto calibrado por predição conforme
+(`identificacao.py`), sentinela de deriva (`sentinela_deriva.py`),
+dossiê de linearidade/robustez opcional. Busca dedicada (2026-08-27)
+por "sample size guidance + confounding audit + conformal open-set
+identification" em ferramentas comerciais: nenhuma evidência de suite
+comercial bundlando essa combinação — os resultados encontrados são
+literatura acadêmica/de fronteira (predição conforme auditada 2026,
+D-optimal design), não recurso de produto integrado.
+
+**Decisão: adicionar 1 linha ao comparativo** (README.md e
+README.pt-br.md), fraseada com o mesmo cuidado epistêmico de antes
+("não encontrado em documentação pública até 2026-08", não "nenhum
+concorrente tem") — mais uma nota explícita ao lado da tabela dizendo
+que Kennard-Stone/transferência de calibração NÃO são reivindicados
+como diferenciais, para que a mudança não pareça contradizer a decisão
+anterior sobre esses dois itens especificamente.

@@ -55,9 +55,14 @@ As ferramentas de quimiometria hoje se dividem em dois grupos:
 | Validação *group-aware* (réplicas T1/T2/T3 nunca vazam entre treino/teste) | ❌ (manual) | ⚠️ limitado | ✅ **por padrão** |
 | Reprodutível (sementes fixas, saída versionada) | ⚠️ | ❌ | ✅ |
 | Usável **sem programar** (YAML + menu + web) | ❌ | ✅ (GUI paga) | ✅ |
+| Planejamento de tamanho amostral + auditoria automática de confundimento classe×sessão + identificação de conjunto aberto calibrada por predição conforme, num único fluxo | ❌ | ❌ (não encontrado em documentação pública até 2026-08) | ✅ |
 
 **A lacuna preenchida:** rigor de publicação (Q1) + reprodutibilidade +
-acessibilidade, sem custo de licença.
+acessibilidade, sem custo de licença. (Seleção de amostras por Kennard-Stone
+e transferência de calibração, que o GUARACI também implementa, NÃO são
+reivindicadas como diferenciais aqui — o Unscrambler já traz Kennard-Stone,
+e transferência de calibração é técnica clássica de quimiometria,
+razoavelmente presumida presente em suites comerciais maduras.)
 
 ---
 

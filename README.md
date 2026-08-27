@@ -53,9 +53,14 @@ makes claims from.
 | Group-aware validation (T1/T2/T3 replicates never leak) | ❌ manual | ⚠️ limited | ✅ **by default** |
 | Reproducible (fixed seeds, versioned output) | ⚠️ | ❌ | ✅ |
 | Usable **without coding** (YAML + menu + web) | ❌ | ✅ (paid GUI) | ✅ |
+| Sample-size planning + automated class/session-confounding audit + conformal-calibrated open-set identification, integrated in one flow | ❌ | ❌ (not found in public docs as of 2026-08) | ✅ |
 
 It fills the gap between low-level libraries and paid closed GUIs: **Q1-grade
-rigor + reproducibility + accessibility, at no license cost.**
+rigor + reproducibility + accessibility, at no license cost.** (Kennard-Stone
+sample selection and calibration transfer, which `GUARACI` also implements,
+are *not* claimed as differentiators here — Unscrambler already ships
+Kennard-Stone, and calibration transfer is a standard chemometrics
+technique reasonably assumed present in mature commercial suites.)
 
 ---
 
