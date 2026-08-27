@@ -19,7 +19,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 |---|---|---:|---|---|---|---|---|
 | Eigenvector **Corn** (m5) | milho em grão | 80 | 700 · 1100–2498 nm | proteína | **RMSEP 0,144 %m/m**; R²val 0,912; 8 LVs | RMSEP típico de PLS: **0,1–0,2** | ✅ dentro da faixa |
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
-| **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | — | ❌ **NÃO OBTIDO** |
+| **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | Downey, Fouratier & Kelly (2003), *J. Near Infrared Spectrosc.* 11:447-456 | ❌ **NÃO OBTIDO** (origem identificada, sem repositório público, reconfirmado 2026-08-27) |
 | Mendeley `10.17632/ctgg7k4m5g.2` (NIR 8mm) | 19 óleos comestíveis diversos | 100 | 11512 · 3899–14999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,35 (CV) / 0,475 (holdout)**; R²cal 0,833 (log10 PV) | balanced accuracy: sem alvo publicado nesta forma (ver §2); RMSEP publicado 4,9 **não reproduzido** (ver §2) | 🟢 **INTEGRADO** (2026-08-27) — classificação valida requisito multimatriz; regressão é sanity check, não gate de literatura |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
@@ -161,16 +161,37 @@ Nenhum leitor novo em `io_registry.py` foi necessário: os CSVs do
 Mendeley já vêm no formato largo que o `mode="csv"` do GUARACI
 consome diretamente (`Class,PeroxideValue,<wavenumbers...>`).
 
-### Mel adulterado (478 amostras, 700 comprimentos de onda, 4 classes)
+### Mel adulterado (478 amostras, 700 comprimentos de onda, 4 classes) — NÃO OBTIDO, reconfirmado 2026-08-27
 
-Nenhuma fonte verificável foi localizada com essas características exatas.
+**Origem identificada (achado novo, Passo 80): Downey, G.; Fouratier, V.;
+Kelly, J.D. (2003). "Detection of honey adulteration by addition of
+fructose and glucose using near infrared transflectance spectroscopy."
+*Journal of Near Infrared Spectroscopy* 11:447-456.** — mel irlandês
+artesanal adulterado com frutose/glicose, transflectância NIR, reflector
+dourado, amostra de 0,1mm. As 4 classes (puro, xarope de beterraba
+invertido, mistura frutose:glicose, xarope de milho rico em frutose) e
+n=478/700 canais batem com a descrição usada neste projeto — citado em
+"Comparison of Machine Learning Models in Food Authentication Studies"
+(Singh & Domijan, arXiv:1905.07302) e em ao menos outro artigo de
+seleção robusta de variáveis (arXiv:2010.10415), nenhum dos dois com
+link de dado/código público.
+
+**Buscado ativamente em 2026-08-27** (arXiv, ResearchGate, GitHub,
+CRAN, página institucional dos autores) — **nenhum repositório público,
+pacote R/Python, ou arquivo suplementar foi localizado** com o dado em
+si, só citações do artigo de 2003 em trabalhos posteriores. Diferente
+do Mendeley (§2), aqui não há endpoint de API nem link de download a
+verificar — a busca chegou ao limite do que é razoável sem contatar os
+autores diretamente (fora do escopo desta auditoria automatizada).
+
 **Não foi substituído por um dataset de mel qualquer**: a alegação a
 validar é o requisito multimatriz com *n* adequado para classificação
 puro vs. adulterado, e um dataset diferente não a sustenta.
 
 Consequência assumida: o perfil `mel_vis_nir` existe e é carregável, mas
 está marcado no próprio YAML como **declarado, não validado com dado real**.
-O requisito multimatriz foi provado com outro par de matrizes (§3).
+O requisito multimatriz foi provado com outros dois pares de matrizes
+(milho/óleo privado — §3; óleos comestíveis Mendeley — §2).
 
 ---
 
