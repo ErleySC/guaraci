@@ -270,6 +270,25 @@ def _validar_semantico(cfg: "Config") -> List[str]:
     return erros
 
 
+def _yaml_reinterpretaria(v: str) -> bool:
+    """True se PyYAML leria `v` (sem aspas) como algo DIFERENTE da propria
+    string. Nao e' so' os 6 nomes reservados (true/false/null/yes/no/~) --
+    e' qualquer escalar YAML implicito: int (inclusive octal -- '010' virava
+    8 em silencio, achado por teste de propriedade do Hypothesis em
+    2026-08-27, Passo 85), float com zeros a direita ('1.50' virava 1.5,
+    perdendo digito), etc. Usa o PROPRIO parser como oraculo em vez de
+    reimplementar a regex do resolver -- garante que bate exatamente com o
+    que `load_config` de fato faz, sem risco de as duas regras divergirem."""
+    try:
+        import yaml
+    except ImportError:
+        return True   # sem PyYAML p/ conferir: aspeia por seguranca
+    try:
+        return yaml.safe_load(v) != v
+    except yaml.YAMLError:
+        return True   # nao parseia nem como escalar simples: aspeia por seguranca
+
+
 def _fmt_yaml(v: Any) -> str:
     """Formata um valor Python como YAML simples (para o arquivo comentado).
     Usa ASPAS SIMPLES quando precisa citar: em YAML, dentro de aspas simples a
@@ -280,9 +299,16 @@ def _fmt_yaml(v: Any) -> str:
     if isinstance(v, (list, tuple)):
         return "[" + ", ".join(_fmt_yaml(x) for x in v) + "]"
     if isinstance(v, str):
-        precisa = (v == "" or v != v.strip()
-                   or v.lower() in ("true", "false", "null", "yes", "no", "~")
-                   or any(c in v for c in ':#,[]{}&*!|>%@`"\''))
+        # O check de pontuacao cobre o caso em que v vira ITEM de uma lista
+        # flow "[a, b]" (um "?" ou virgula/colchete dentro do item quebraria
+        # a lista mesmo que v sozinho parseasse limpo como escalar -- "?" e'
+        # so' perigoso em CONTEXTO de fluxo, achado por Hypothesis testando
+        # o campo "list" `excluir_classes` no Passo 85: item "0?" nem
+        # parseava, item "?0" virava mapa {0: None} em silencio); o oraculo
+        # YAML cobre o caso em que v sozinho ja' parseia para outra coisa
+        # (int/float/bool/null/strip). Precisa dos dois.
+        precisa = (any(c in v for c in ':#,?[]{}&*!|>%@`"\'')
+                   or _yaml_reinterpretaria(v))
         if precisa:
             return "'" + v.replace("'", "''") + "'"
         return v

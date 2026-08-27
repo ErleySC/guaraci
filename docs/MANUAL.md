@@ -421,6 +421,35 @@ outro perfil na sessão que gerou o `--perfil=` original (achado da
 auditoria de acessibilidade do Passo 83). Corrigido: o campo agora
 persiste em `config.yaml` como qualquer outro.
 
+**Achado relacionado (Passo 85, 2026-08-27).** Verificando a extensão do
+bug acima com um teste de propriedade (Hypothesis), apareceu uma segunda
+via de perda silenciosa de valor no ciclo salvar/carregar: um campo de
+texto (`str`) cujo conteúdo *parece* outra coisa em YAML — `"010"`
+(octal implícito → inteiro `8`), `"1.50"` (float → perde o zero,
+vira `1.5`), `"0x1A"` (hex implícito → `26`) — era escrito **sem aspas**
+em `config.yaml` e, ao recarregar, vinha de volta como outro valor. Não
+era específico de `perfil_matriz`: qualquer campo `str`/`str_opcional`
+(ex.: nome de coluna, caminho) sofria o mesmo se o usuário digitasse algo
+que o YAML interpreta implicitamente. Corrigido em `_fmt_yaml`
+(`config_io.py`): a decisão de citar ou não uma string agora usa o
+próprio `yaml.safe_load` como oráculo (`yaml.safe_load(v) != v` → cita),
+em vez de uma lista fixa de palavras reservadas — cobre qualquer forma
+que o YAML reinterprete, não só as 6 que alguém lembrou de listar.
+
+Uma SEGUNDA via apareceu no mesmo teste, num campo `list` (`excluir_classes`):
+um item contendo `?` — `"0?"` nem chegava a *parsear* de volta (erro), `"?0"`
+virava um mapa `{0: None}` em silêncio — porque `?` só é perigoso dentro do
+CONTEXTO de uma lista `[a, b]`, não como escalar solto (o oráculo acima não
+via problema nele sozinho). Corrigido adicionando `?` ao conjunto de
+caracteres que força aspas em item de lista.
+
+**Testes de propriedade (Hypothesis).** A partir do Passo 85,
+`tests/test_propriedades_hypothesis.py` gera automaticamente valores para
+todo campo de `_CONFIG_SPEC` (não só os que alguém lembrou de escrever à
+mão) e confirma que sobrevivem ao ciclo salvar/carregar — foi este teste
+que achou o bug acima. Roda como dependência de desenvolvimento
+(`pip install -e .[dev]`), nunca em produção.
+
 **Por que o vocabulário importa.** Antes dos perfis, rodar o pipeline sobre
 milho em grão gerava um model card afirmando *"quantificação de adulterante
 em óleo vegetal amazônico"*. Nenhum número estava errado — a frase estava. O

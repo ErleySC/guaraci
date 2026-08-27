@@ -115,7 +115,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
-          pip install -e .   # valida o empacotamento (src/guaraci, entry point `guaraci`)
+          pip install -e .[dev]   # valida o empacotamento (src/guaraci, entry point `guaraci`)
 
       - name: Run tests with coverage
         # Suíte completa (inclui o end-to-end 'slow'): valida a integração dos
