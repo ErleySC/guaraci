@@ -97,8 +97,119 @@ Nenhuma revalidação necessária; nenhum número publicado mudou.
   SPXY com coluna alvo, contra-prova de arquivo ausente).
 - Documentado em `docs/MANUAL.md` §2.2c.
 
-## Estado da suíte
+## Estado da suíte (Passos 84-87)
 
 Commit do Passo 85: 987 testes (incl. Corn real) + ruff limpos.
-Passos 86+87 (commit seguinte): ver mensagem do commit para a contagem
-final — mesma disciplina (suíte completa + ruff a cada lote).
+Passos 86+87: 1008 testes + ruff limpos.
+
+---
+
+# Bloco 13d + varredura geral (2026-08-27, mesma sessão)
+
+## Frente 1 — Bloco 13d: linearidade e robustez formais
+
+- `src/guaraci/linearity.py` (novo, `__all__` desde o commit inicial):
+  `lack_of_fit_test` — teste F de falta de ajuste clássico (Draper &
+  Smith, cap. 2.6), nível da curva = grupo de réplica física (`mae_id`,
+  L2). Contra-prova: curvatura sintética deliberada produz F
+  significativo, e F cresce com a magnitude da curvatura.
+- `src/guaraci/robustness.py` (novo, `__all__` desde o commit inicial):
+  perturbação controlada (pré-processamento, ruído gaussiano, deriva de
+  linha de base) + protocolo que reporta variação como INTERVALO, nunca
+  binário (R2). Cobre PLS-R e PLS-DA (R3). Contra-prova: perturbação
+  maior produz variação maior.
+- Integrado ao dossiê via `append_linearity_robustness_model_card`
+  (mesmo mecanismo append-only de regressão/identificação/pureza).
+- **Validado contra Corn E Mendeley reais**: nos dois, sem `mae_id`
+  (réplica física), o teste de linearidade reporta corretamente "não
+  computável" — achado honesto (L2), não um bug. Protocolo de robustez
+  roda e reporta intervalo em ambos (RMSEP no Corn, bal.acc no
+  Mendeley).
+- **Decisão de escopo NÃO tomada sozinha (reportada)**: os dois módulos
+  NÃO estão fiados automaticamente em `executar()` via novo campo de
+  `Config` — isso mudaria o comportamento/custo padrão de toda execução
+  do pipeline (robustez roda múltiplos refits) e é uma decisão de
+  produto, não um ajuste mecânico "dentro do que já é interno". As
+  funções existem, são públicas, testadas e validadas contra dado real;
+  faltaria só a decisão de fiação automática + nome/default do flag de
+  `Config`, se for para acontecer.
+- `mypy`: os 3 módulos novos desta sessão (`linearity.py`,
+  `robustness.py`, `transferencia_calibracao.py` do Passo 86) passam
+  limpos e cabem no critério já documentado (sem I/O/UI/estado global)
+  — adicionados ao gate da CI (ver Frente 3a).
+- Commit: `feat: linearidade formal (lack-of-fit) + protocolo de
+  robustez (Bloco 13d, Frente 1)`.
+
+## Frente 2 — Infraestrutura de Hypothesis fortalecida
+
+- Auditoria dos 3 grupos de propriedade existentes: só o roundtrip de
+  config tinha `@example`. Adicionado `@example` para quantificação
+  cega (reproduz o cenário de envenenamento do teste manual original) e
+  3 `@example` defensivos de fronteira para o split group-aware (limiar
+  `n_grupos=4` onde o colapso por grupo liga) — documentado
+  explicitamente que não há bug histórico conhecido para essa
+  propriedade (ao contrário do roundtrip), para não sugerir cobertura
+  que não existe.
+- Profile diferenciado (`conftest.py`): `dev` (50 exemplos, local) vs
+  `ci` (300 exemplos, auto-selecionado via `CI=true`, já setado pelo
+  GitHub Actions — nenhuma mudança em `test.yml` necessária).
+  `max_examples=` por teste removido em favor do profile ativo.
+- `.hypothesis/` e `.pytest_cache/` no `.gitignore` (cache local, não
+  fonte de verdade).
+- `CONTRIBUTING.md`: nova seção documentando a lição medida no Passo 85
+  e a convenção resultante.
+- Commit: `test: fortalece infraestrutura de Hypothesis -- profile
+  CI/local + @example auditados (Bloco 13d, Frente 2)`.
+
+## Frente 3 — Varredura geral
+
+**3a — type-checking.** Medido por comando direto (`mypy` local): os 3
+módulos novos desta sessão (linearidade, robustez, transferência de
+calibração) passam limpos e cabem no critério de escopo já documentado
+(pyproject.toml) — adicionados ao gate da CI, custo zero (nenhum erro
+para corrigir). `dados_io.py`/`guaraci.py`/`config_io.py` continuam
+FORA do gate por critério — têm I/O/UI, fora do escopo por desenho, não
+por descuido.
+
+**3b — segurança.** Nenhum `eval`/`exec`/desserialização insegura nova
+encontrado. `subprocess`/`os.system` existentes são todos strings
+literais ou listas de argumento (sem `shell=True` com entrada do
+usuário), já auditados em 2026-08-07. O único script de download
+(`baixar_mendeley_oleos.py`) já segue a disciplina correta (HTTPS,
+tamanho+SHA-256 pinados, verificados ANTES de gravar em disco) —
+documentado como convenção obrigatória em `docs/VALIDACAO_PUBLICA.md`
+§6 para qualquer script futuro. `pip-audit` contra o ambiente inteiro
+(incl. `hypothesis`): **nenhuma vulnerabilidade conhecida**.
+
+**3c — documentação de alto nível.** `README.md`/`README.pt-br.md`:
+lista de funcionalidades atualizada (mode cego, planejamento
+experimental, auditoria de delineamento, linearidade/robustez,
+transferência de calibração, seleção de amostras). `paper/paper.md`:
+contagem de testes stale (779) corrigida para "1000+"; parágrafo novo
+cobrindo as funcionalidades pós-reposicionamento, com 4 referências
+novas em `paper.bib` (Wang-Veltkamp-Kowalski 1991, Snee 1977, Galvão et
+al. 2005, Draper & Smith 1998), DOIs verificados no Crossref.
+`CITATION.cff`: verificado — versão/data consistentes com
+`pyproject.toml`, nenhuma mudança necessária (bumping de data sem bump
+de versão seria enganoso).
+
+**3d — comparativo com concorrentes.** Verificado por busca (não
+presumido): Kennard-Stone **já é** funcionalidade padrão do Unscrambler
+(confirmado); PDS/transferência de calibração é método clássico,
+razoável supor presente em suites comerciais maduras mesmo sem
+confirmação direta — por isso **NÃO adicionados** à tabela comparativa
+como diferenciais (seria uma alegação de exclusividade sem lastro). Não
+encontrada evidência de que concorrentes ofereçam planejamento
+experimental automatizado, auditoria de confundimento ou identificação
+de conjunto aberto calibrada por predição conforme — mas ausência de
+evidência não é prova; por isso essas funcionalidades foram adicionadas
+como itens de lista (fato, sem comparação) na seção *Features*, não
+como linha nova na tabela comparativa (que faz uma alegação
+competitiva). Tabela comparativa do README mantida como estava.
+
+## Estado da suíte (Bloco 13d + varredura)
+
+1042 testes (incl. Corn e Mendeley reais) + ruff limpos após Frente 1 e
+Frente 2. Frente 3 é só documentação (README/paper/CONTRIBUTING/
+VALIDACAO_PUBLICA) — suíte completa reconfirmada mesmo assim, mesma
+disciplina.

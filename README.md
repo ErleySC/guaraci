@@ -74,9 +74,12 @@ external hold-out. That is what separates an honest metric from an artifact.
 - **Analysis modes:** class discrimination · pure vs. adulterated discrimination · adulterant-content quantification (regression).
 - **Preprocessing** (Rinnan et al. 2009 order): MSC/SNV → Savitzky-Golay → mean-centering. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
 - **Models:** PLS-DA, PLS regression, PCA, HCA (Ward), DD-SIMCA (one-class), OPLS-DA.
-- **Validation battery:** permutation test, Wold R²Y/Q²Y intercepts, CV-ANOVA, **BCa bootstrap CIs**, Hotelling T², Q-residuals.
+- **Validation battery:** permutation test, Wold R²Y/Q²Y intercepts, CV-ANOVA, **BCa bootstrap CIs**, Hotelling T², Q-residuals, formal linearity (lack-of-fit F-test) and a robustness protocol (preprocessing/noise/baseline-drift perturbation, reported as an interval — never pass/fail).
 - **Interpretation:** VIP (Chong & Jun 2005), Selectivity Ratio (Rajalahti 2009).
 - **Variable selection:** iPLS, VIP cutoff, SR top-fraction, sPLS-DA.
+- **Blind mode (default):** an unknown sample is classified, then quantified *from the predicted class* — never the true one — with a conformal-calibrated open-set identification step (species × adulterant) that reports a coverage guarantee per combination instead of a bare label.
+- **Experimental planning:** sample-size guidance (conformal or DD-SIMCA-coverage target) and a collection-session plan with randomized reading order, plus an automated design audit that flags class/session confounding before it produces a wrong metric.
+- **Calibration transfer** (Direct/Piecewise Direct Standardization) and **calibration-set selection** (Kennard-Stone, Duplex, SPXY) for moving a model between instruments or picking a representative subset from measured data.
 
 ---
 

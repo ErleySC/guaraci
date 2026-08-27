@@ -259,3 +259,32 @@ Nota honesta sobre **LOD/LOQ**: eles são calculados, mas dependem de
 réplicas físicas para estimar o ruído instrumental. Em datasets sem
 réplicas — o Corn é um deles — saem `N/A`, e é correto que saiam: um LOD
 estimado sem base de repetibilidade seria um número inventado.
+
+## 6. Convenção obrigatória para scripts de download (segurança)
+
+Reafirmado por varredura de segurança em 2026-08-27 (Bloco 13d, Frente 3b)
+sobre `scripts/download_datasets/baixar_mendeley_oleos.py` — o único
+script deste tipo hoje, já em conformidade; documentado aqui para que
+**qualquer script de download futuro siga o mesmo padrão desde o
+primeiro commit**, não como correção depois do fato:
+
+1. **HTTPS sempre**; nunca HTTP puro.
+2. **Tamanho esperado (bytes) E SHA-256 esperado, pinados no código** —
+   nunca lidos de um arquivo externo que o próprio download poderia
+   trocar.
+3. **Verificar os dois ANTES de gravar em disco** (o conteúdo baixado
+   fica em memória até passar na checagem — `_baixar_um` em
+   `baixar_mendeley_oleos.py` é o padrão de referência). Se o hash não
+   bater, `raise RuntimeError` — nunca gravar um arquivo não verificado,
+   nunca seguir em frente com um aviso apenas.
+4. **URL hardcoded no código**, nunca construída a partir de entrada do
+   usuário ou de variável de ambiente (evita um vetor de SSRF/redirect
+   trivial).
+5. Cache local fora do controle de versão (`$GUARACI_DATASETS_DIR`),
+   nunca comitar o dado de terceiro.
+
+O mesmo princípio (checksum pinado, verificado antes de confiar no
+conteúdo) já se aplica em `.github/workflows/test.yml` para o download
+direto do Corn (`CORN_SHA256`/`CORN_BYTES`) — os dois caminhos (script
+Python para Mendeley, `curl`+`sha256sum` inline para Corn) seguem a
+mesma regra por caminhos diferentes.

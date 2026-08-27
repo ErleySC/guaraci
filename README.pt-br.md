@@ -80,9 +80,12 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
   - **Quantificação de teor** (% de adulterante, regressão; código interno N3)
 - **Pré-processamento** (ordem de Rinnan et al., 2009): MSC ou SNV → Savitzky-Golay → *mean-centering*. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
 - **Modelos**: PLS-DA, PLS regressão, PCA, HCA (Ward), **DD-SIMCA** (one-class), **OPLS-DA**.
-- **Bateria de validação**: teste de permutação (Y-randomization), interceptos R²Y/Q²Y de Wold, CV-ANOVA (Eriksson), **IC por bootstrap BCa**, Hotelling T² (UCL Tracy-Young-Mason), Q-resíduos (Jackson-Mudholkar).
+- **Bateria de validação**: teste de permutação (Y-randomization), interceptos R²Y/Q²Y de Wold, CV-ANOVA (Eriksson), **IC por bootstrap BCa**, Hotelling T² (UCL Tracy-Young-Mason), Q-resíduos (Jackson-Mudholkar), linearidade formal (teste F de falta de ajuste) e protocolo de robustez (perturbação de pré-processamento/ruído/deriva de linha de base, reportado como intervalo — nunca aprovado/reprovado).
 - **Interpretação química**: VIP (Chong & Jun, 2005), Selectivity Ratio (Rajalahti, 2009), anotação de bandas.
 - **Etapa 4 — seleção de variáveis**: iPLS (intervalos), corte por VIP, top-fração por SR, sPLS-DA (NIPALS).
+- **Mode cego (padrão)**: uma amostra desconhecida é classificada e SÓ ENTÃO quantificada a partir da classe PREDITA — nunca a verdadeira —, com uma etapa de identificação de conjunto aberto calibrada por predição conforme (espécie × adulterante) que reporta uma garantia de cobertura por combinação, não um rótulo nu.
+- **Planejamento experimental**: orientação de tamanho amostral (alvo conformal ou de cobertura DD-SIMCA) e plano de sessões de coleta com ordem de leitura aleatorizada, além de auditoria automática de delineamento que sinaliza confundimento classe×sessão antes de virar uma métrica errada.
+- **Transferência de calibração** (Direct/Piecewise Direct Standardization) e **seleção do conjunto de calibração** (Kennard-Stone, Duplex, SPXY) para mover um modelo entre instrumentos ou escolher um subconjunto representativo a partir de dados já medidos.
 
 ---
 

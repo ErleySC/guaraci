@@ -122,12 +122,24 @@ quality-control laboratories that need the same rigor with an auditable
 trail. Its input/output layer is deliberately generic (JCAMP-DX and tabular
 formats), so it applies to matrices and analytical techniques beyond the one
 that motivated it, without code changes. The codebase is covered by an
-automated test suite (779 tests) and continuous integration (linting,
-type-checking, coverage gate) across Linux, Windows and macOS on Python
-3.10–3.13. Each implemented method is checked against a reference
-implementation or a closed-form analytical property (documented in
-`docs/VALIDATION.md`), so contributions and future chemometric methods can
-be added without regressing existing behaviour.
+automated test suite (1000+ tests, including Hypothesis property tests for
+the invariants most exposed to regression — grouped-validation leakage,
+configuration-file round-tripping, blind-mode label handling) and
+continuous integration (linting, type-checking, coverage gate) across
+Linux, Windows and macOS on Python 3.10–3.13. Each implemented method is
+checked against a reference implementation or a closed-form analytical
+property (documented in `docs/VALIDATION.md`), so contributions and future
+chemometric methods can be added without regressing existing behaviour.
+Beyond the core modelling loop, `GUARACI` also covers the surrounding
+workflow: experimental-design guidance and an automated audit that flags
+class/session confounding before it inflates a metric, formal linearity
+(lack-of-fit F-test [@DraperSmith1998]) and a robustness protocol
+reporting result variation under perturbation as an interval rather than
+a pass/fail verdict, and calibration transfer (Direct/Piecewise Direct
+Standardization [@WangVeltkampKowalski1991]) alongside calibration-set
+selection (Kennard-Stone, Duplex [@Snee1977], SPXY [@Galvao2005]) for
+moving a model between instruments or picking a representative measured
+subset.
 
 Performance claims rest exclusively on **public datasets**. On the
 Eigenvector *Corn* set (80 samples, 700 channels, 1100–2498 nm), `GUARACI`
