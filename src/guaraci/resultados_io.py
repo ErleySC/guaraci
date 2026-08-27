@@ -14,13 +14,17 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.cross_decomposition import PLSRegression
 
 from guaraci.config import Config, __version__, _NIVEL_NOME
+
+if TYPE_CHECKING:
+    from guaraci.linearity import LackOfFitResult
+    from guaraci.robustness import RobustnessResult
 
 __all__ = [
     "pls_model_metrics",
@@ -32,6 +36,7 @@ __all__ = [
     "append_regression_model_card",
     "append_identification_model_card",
     "append_purity_model_card",
+    "append_linearity_robustness_model_card",
 ]
 
 
@@ -728,3 +733,87 @@ def append_purity_model_card(pasta: str,
             f.write("\n".join(linhas) + "\n")
     except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar pureza ao model card: {e}")
+
+
+def append_linearity_robustness_model_card(
+        pasta: str,
+        linearidade: Optional["LackOfFitResult"] = None,
+        robustez: Optional[Dict[str, "RobustnessResult"]] = None,
+        ) -> None:
+    """Anexa o addendum de linearidade formal + robustez (Bloco 13d) ao
+    model_card.md -- mesmo padrao append-only das funcoes acima, mesmo
+    motivo do titulo sem numero fixo (chamada em ponto variavel do fluxo,
+    dependendo de quais diagnosticos o objetivo/nivel ligou).
+
+    `linearidade`: resultado de `linearity.lack_of_fit_test` (ou `None` --
+    diagnostico nao rodado nesta execucao). `robustez`: dict nome->
+    `robustness.RobustnessResult` de `robustness.run_robustness_protocol`
+    (ou `None`). Os dois sao independentes -- qualquer combinacao
+    presente/ausente e' valida (cada um pode nao ser computavel/aplicavel
+    sem o outro)."""
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+    if linearidade is None and not robustez:
+        return
+
+    def _fmt(v: Optional[float], nd: int = 4) -> str:
+        if v is None:
+            return "n/a"
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            return "n/a"
+        return f"{fv:.{nd}f}" if np.isfinite(fv) else "n/a"
+
+    linhas: List[str] = [
+        "", "## Addendum -- Linearidade formal e robustez (Bloco 13d)", "",
+    ]
+
+    if linearidade is not None:
+        linhas += ["**Teste de falta de ajuste (lack-of-fit)** -- "
+                   "Draper & Smith, *Applied Regression Analysis*, cap. "
+                   "2.6. H0: a reta de calibracao e' adequada (sem "
+                   "curvatura sistematica detectavel); rejeitar H0 "
+                   "(p < alpha) indica falta de ajuste significativa.", ""]
+        if not linearidade.computavel:
+            linhas.append(f"*Nao computavel: {linearidade.motivo}*")
+        else:
+            veredito = ("sem falta de ajuste detectavel"
+                        if linearidade.linear else
+                        "FALTA DE AJUSTE SIGNIFICATIVA (curvatura detectada)")
+            linhas.append(_md_tabela([
+                ("F", _fmt(linearidade.F, 3)),
+                ("p-valor", _fmt(linearidade.p_value, 4)),
+                ("graus de liberdade (falta-de-ajuste, erro puro)",
+                 f"{linearidade.df_lof}, {linearidade.df_pe}"),
+                ("niveis da curva (com replica)",
+                 f"{linearidade.n_niveis} ({linearidade.n_niveis_com_replica})"),
+                ("alpha", _fmt(linearidade.alpha, 2)),
+                ("veredito", veredito),
+            ]))
+        linhas.append("")
+
+    if robustez:
+        linhas += ["**Protocolo de robustez** -- variacao do resultado "
+                   "final sob perturbacao controlada (pre-processamento, "
+                   "ruido/deriva sinteticos). Reportado como INTERVALO "
+                   "(minimo-maximo), nao como aprovado/reprovado -- mesma "
+                   "filosofia do LOD/LOQ como intervalo (Bloco 12): "
+                   "declarar o que os dados sustentam.", ""]
+        linhas.append(_md_tabela([
+            (nome, f"baseline={_fmt(r.baseline, 4)} | "
+                    f"intervalo=[{_fmt(r.minimo, 4)}, {_fmt(r.maximo, 4)}] | "
+                    f"mediana={_fmt(r.mediana, 4)} | "
+                    f"variacao_absoluta={_fmt(r.variacao_absoluta, 4)} | "
+                    f"n_replicas={r.n_replicas}")
+            for nome, r in sorted(robustez.items())
+        ]))
+        linhas.append("")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar linearidade/robustez ao "
+              f"model card: {e}")

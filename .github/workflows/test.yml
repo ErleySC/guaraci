@@ -56,7 +56,10 @@ jobs:
             src/guaraci/validacao_estatistica.py \
             src/guaraci/modos_analise.py \
             src/guaraci/design_tokens.py \
-            src/guaraci/resumo_parse.py
+            src/guaraci/resumo_parse.py \
+            src/guaraci/transferencia_calibracao.py \
+            src/guaraci/linearity.py \
+            src/guaraci/robustness.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console

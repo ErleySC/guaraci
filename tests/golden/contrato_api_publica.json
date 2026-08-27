@@ -2041,6 +2041,77 @@
         "forma": "funcao"
       }
     },
+    "linearity": {
+      "LackOfFitResult": {
+        "campos": [
+          {
+            "nome": "computavel",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "motivo",
+            "tem_default": false,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "F",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "p_value",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "df_lof",
+            "tem_default": false,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "df_pe",
+            "tem_default": false,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "ss_lof",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "ss_pe",
+            "tem_default": false,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "n_niveis",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_niveis_com_replica",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "alpha",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "linear",
+            "tem_default": false,
+            "tipo": "Optional[bool]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "lack_of_fit_test": {
+        "assinatura": "(y_ref: 'np.ndarray', y_pred: 'np.ndarray', grupos: 'np.ndarray', faixa_trabalho: 'Optional[Tuple[float, float]]' = None, alpha: 'float' = 0.05) -> 'LackOfFitResult'",
+        "forma": "funcao"
+      }
+    },
     "log": {
       "configurar": {
         "assinatura": "(nivel: 'str' = 'INFO', arquivo: 'Optional[str]' = None) -> 'logging.Logger'",
@@ -2637,6 +2708,10 @@
         "assinatura": "(pasta: 'str', ensemble: 'Dict[Any, Dict[str, Any]]') -> 'None'",
         "forma": "funcao"
       },
+      "append_linearity_robustness_model_card": {
+        "assinatura": "(pasta: 'str', linearidade: \"Optional['LackOfFitResult']\" = None, robustez: \"Optional[Dict[str, 'RobustnessResult']]\" = None) -> 'None'",
+        "forma": "funcao"
+      },
       "append_purity_model_card": {
         "assinatura": "(pasta: 'str', modelos_por_especie: 'Dict[str, Dict[str, Any]]') -> 'None'",
         "forma": "funcao"
@@ -2677,6 +2752,77 @@
       },
       "parse_model_metrics": {
         "assinatura": "(resumo: 'str', default: 'str' = '-') -> 'Dict[str, str]'",
+        "forma": "funcao"
+      }
+    },
+    "robustness": {
+      "RobustnessResult": {
+        "campos": [
+          {
+            "nome": "perturbacao",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "baseline",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "valores",
+            "tem_default": false,
+            "tipo": "List[float]"
+          },
+          {
+            "nome": "minimo",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "maximo",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "mediana",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "variacao_absoluta",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_replicas",
+            "tem_default": false,
+            "tipo": "int"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "avaliar_bal_acc_plsda": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', mae_id: 'Optional[np.ndarray]', n_components: 'int' = 5, frac_cal: 'float' = 0.7) -> 'float'",
+        "forma": "funcao"
+      },
+      "avaliar_rmsep_plsr": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', mae_id: 'Optional[np.ndarray]', n_components: 'int' = 5, frac_cal: 'float' = 0.7) -> 'float'",
+        "forma": "funcao"
+      },
+      "baseline_drift_variants": {
+        "assinatura": "(X: 'np.ndarray', niveis: 'Sequence[float]' = (0.001, 0.005, 0.01), n_replicas: 'int' = 5, seed: 'int' = 1) -> 'Dict[str, List[np.ndarray]]'",
+        "forma": "funcao"
+      },
+      "gaussian_noise_variants": {
+        "assinatura": "(X: 'np.ndarray', niveis: 'Sequence[float]' = (0.001, 0.005, 0.01), n_replicas: 'int' = 5, seed: 'int' = 0) -> 'Dict[str, List[np.ndarray]]'",
+        "forma": "funcao"
+      },
+      "preprocessing_config_variants": {
+        "assinatura": "(cfg_base: \"'Config'\") -> \"Dict[str, 'Config']\"",
+        "forma": "funcao"
+      },
+      "run_robustness_protocol": {
+        "assinatura": "(avaliar_baseline: 'Callable[[], float]', variantes: 'Dict[str, List[Callable[[], float]]]') -> 'Dict[str, RobustnessResult]'",
         "forma": "funcao"
       }
     },

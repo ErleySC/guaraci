@@ -319,6 +319,15 @@ from guaraci.resultados_io import (   # noqa: F401
     save_model_summary, append_regression_summary, _md_tabela,
     generate_model_card, append_regression_model_card, append_heatmap_summary,
     append_identification_model_card, append_purity_model_card,
+    append_linearity_robustness_model_card,
+)
+
+# Linearidade formal (lack-of-fit) e protocolo de robustez (Bloco 13d).
+from guaraci.linearity import LackOfFitResult, lack_of_fit_test   # noqa: E402
+from guaraci.robustness import (   # noqa: E402
+    RobustnessResult, gaussian_noise_variants, baseline_drift_variants,
+    preprocessing_config_variants, run_robustness_protocol,
+    avaliar_rmsep_plsr, avaliar_bal_acc_plsda,
 )
 
 # Identificacao especie x adulterante (Bloco 9b) -- ensemble conformal +

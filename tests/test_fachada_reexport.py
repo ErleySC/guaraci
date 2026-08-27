@@ -78,6 +78,15 @@ CONTRATO = {
         "StandardizationTransform", "direct_standardization",
         "piecewise_direct_standardization", "apply_standardization",
     ],
+    "linearity": [
+        "LackOfFitResult", "lack_of_fit_test",
+    ],
+    "robustness": [
+        "RobustnessResult", "gaussian_noise_variants",
+        "baseline_drift_variants", "preprocessing_config_variants",
+        "run_robustness_protocol", "avaliar_rmsep_plsr",
+        "avaliar_bal_acc_plsda",
+    ],
 }
 
 _CASOS = [(mod, sym) for mod, syms in CONTRATO.items() for sym in syms]
