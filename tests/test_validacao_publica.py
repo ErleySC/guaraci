@@ -202,3 +202,69 @@ def test_gate_bate_com_a_faixa_publicada():
     assert RMSEP_PROTEINA_M5 == publicada, (
         f"gate do CI {RMSEP_PROTEINA_M5} != faixa publicada {publicada}. "
         "Um dos dois esta' mentindo; alinhe os dois no mesmo commit.")
+
+
+@requer_corn
+@pytest.mark.slow
+def test_transferencia_de_calibracao_reduz_erro_entre_instrumentos_do_corn(pq):
+    """Passo 86: o Corn tem as MESMAS 80 amostras medidas em 3
+    espectrometros (m5, mp5, mp6) -- o caso de uso real de transferencia de
+    calibracao. Calibra PLS de proteina so' no m5, aplica o modelo direto
+    no mp5 (sem transferencia -- deve degradar MUITO) e depois com PDS
+    (`piecewise_direct_standardization`) treinado num pequeno subconjunto
+    de amostras medidas nos dois instrumentos.
+
+    Hiperparametros (janela=5, alpha=0.001, PLS n_components=7) medidos
+    diretamente contra o corn.mat local antes de fixar o teste -- nao
+    adivinhados. Com esses valores: RMSEP sem transferencia ~0.51,
+    com PDS ~0.16 (quase o mesmo nivel do RMSEP so'-no-m5 ~0.148 do teste
+    `test_guaraci_reproduz_a_literatura_no_corn` acima).
+    """
+    import scipy.io as sio
+    from sklearn.cross_decomposition import PLSRegression
+
+    from guaraci.transferencia_calibracao import (
+        apply_standardization, piecewise_direct_standardization)
+
+    m = sio.loadmat(str(_caminho_corn()))
+    X_m5 = np.asarray(m["m5spec"]["data"][0, 0], dtype=float)
+    X_mp5 = np.asarray(m["mp5spec"]["data"][0, 0], dtype=float)
+    Y = np.asarray(m["propvals"]["data"][0, 0], dtype=float)
+    proteina = Y[:, 2]
+
+    rng = np.random.default_rng(0)
+    idx = rng.permutation(80)
+    # 3 grupos DISJUNTOS: transferencia (aprende F), calibracao (treina o
+    # PLS no m5), teste (avaliado so' no mp5, nunca visto por nenhum dos
+    # dois ajustes) -- sem isso o numero nao provaria generalizacao.
+    idx_transferencia, idx_calibracao, idx_teste = idx[:15], idx[15:55], idx[55:]
+
+    pls = PLSRegression(n_components=7, scale=False)
+    pls.fit(X_m5[idx_calibracao], proteina[idx_calibracao])
+    y_teste = proteina[idx_teste]
+
+    def _rmse(a, b):
+        return float(np.sqrt(np.mean((a - b) ** 2)))
+
+    # Sem transferencia: o modelo calibrado no m5 recebe espectro do mp5.
+    pred_sem = pls.predict(X_mp5[idx_teste]).ravel()
+    rmsep_sem = _rmse(pred_sem, y_teste)
+    assert rmsep_sem > 0.35, (
+        f"sem transferencia o RMSEP deveria ser claramente ruim (achado "
+        f"{rmsep_sem:.3f}) -- se ja' e' bom sem correcao, o Corn nao "
+        f"exercita o problema que a transferencia resolve, e o teste "
+        f"abaixo nao prova nada")
+
+    transform = piecewise_direct_standardization(
+        X_m5[idx_transferencia], X_mp5[idx_transferencia], janela=5, alpha=0.001)
+    X_mp5_padronizado = apply_standardization(X_mp5[idx_teste], transform)
+    pred_com = pls.predict(X_mp5_padronizado).ravel()
+    rmsep_com = _rmse(pred_com, y_teste)
+
+    assert rmsep_com < rmsep_sem * 0.5, (
+        f"PDS deveria reduzir o RMSEP entre instrumentos por pelo menos "
+        f"metade no Corn real (sem={rmsep_sem:.3f}, com PDS={rmsep_com:.3f})")
+    assert rmsep_com < 0.25, (
+        f"com PDS o RMSEP deveria chegar perto do nivel so'-no-m5 (~0.148, "
+        f"ver test_guaraci_reproduz_a_literatura_no_corn) -- achado "
+        f"{rmsep_com:.3f}")

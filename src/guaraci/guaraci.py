@@ -352,6 +352,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_perfis":     "Perfis Prontos",
         "t_predicao":   "Predicao em Lote",
         "t_planejamento": "Planejamento de Coleta",
+        "t_selecao_amostras": "Selecao de Amostras",
         "t_auditoria":  "Auditoria de Delineamento",
         "t_idioma":     "Idioma",
         "t_ajuda":      "Ajuda",
@@ -504,6 +505,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_perfis":     "Ready Profiles",
         "t_predicao":   "Batch Prediction",
         "t_planejamento": "Collection Planning",
+        "t_selecao_amostras": "Sample Selection",
         "t_auditoria":  "Design Audit",
         "t_idioma":     "Language",
         "t_ajuda":      "Help",
@@ -1211,7 +1213,7 @@ def _print_main_menu() -> None:
     t.add_row(*row("7", _t("t_viz"),        "8", _t("t_tecnica")))
     t.add_row(*row("9", _t("t_codigos"),    "H", _t("t_hardware"), style2=S))
     t.add_row(*row("B", _t("t_predicao"), "J", _t("t_planejamento"), style1=S, style2=S))
-    t.add_row(*row("U", _t("t_auditoria"), style1=S))
+    t.add_row(*row("U", _t("t_auditoria"), "K", _t("t_selecao_amostras"), style1=S, style2=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
@@ -2797,6 +2799,136 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
     _pause()
 
 
+def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
+    """Selecao de amostras de calibracao/validacao (Bloco 10, Passo 87):
+    dado um CSV com espectros JA medidos (e opcionalmente uma coluna de
+    referencia/teor), escolhe QUAIS amostras vao para calibracao via
+    Kennard-Stone, Duplex ou SPXY (`dados_io.py`) -- mesmo fluxo de
+    planejamento experimental de `_menu_plan` (que decide QUANTAS
+    coletar), agora atuando sobre dados que ja existem.
+    """
+    lang = _lang(); is_pt = lang == "PT"
+    _cls(); _print_header()
+
+    intro = (
+        "Escolhe quais amostras de um CSV vao para calibracao (cobertura "
+        "representativa do espaco espectral e/ou do teor) via Kennard-"
+        "Stone, Duplex ou SPXY -- so' separa/marca, nao altera o CSV "
+        "original."
+        if is_pt else
+        "Chooses which samples from a CSV go into the calibration set "
+        "(representative coverage of spectral space and/or target range) "
+        "via Kennard-Stone, Duplex or SPXY -- only splits/labels, never "
+        "alters the original CSV."
+    )
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_selecao_amostras')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print()
+
+    lbl_csv = ("Caminho do CSV com os espectros (1 amostra por linha)"
+               if is_pt else
+               "Path to the CSV with spectra (1 sample per row)")
+    caminho_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
+    if not caminho_csv or not os.path.isfile(caminho_csv):
+        console.print(f"  [{PR}]{'Arquivo nao encontrado' if is_pt else 'File not found'}[/{PR}]")
+        _pause(); return
+
+    import numpy as _np
+    import pandas as _pd
+    try:
+        df = _pd.read_csv(caminho_csv)
+    except (OSError, ValueError, UnicodeDecodeError) as e:
+        console.print(f"  [{PR}]{'Erro ao ler CSV' if is_pt else 'Error reading CSV'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    lbl_alvo = ("Coluna de referencia/teor (Enter = nenhuma -- so' habilita "
+                "Kennard-Stone/Duplex, nao SPXY)"
+                if is_pt else
+                "Reference/target column (Enter = none -- only enables "
+                "Kennard-Stone/Duplex, not SPXY)")
+    col_alvo = _ask(f"  [{PA}]{lbl_alvo}:[/{PA}] ").strip()
+    if col_alvo and col_alvo not in df.columns:
+        console.print(f"  [{PR}]{'Coluna nao encontrada' if is_pt else 'Column not found'}: {escape(col_alvo)}[/{PR}]")
+        _pause(); return
+
+    colunas_x = [c for c in df.columns if c != col_alvo]
+    df_x = df[colunas_x].select_dtypes(include=[_np.number])
+    if df_x.shape[1] == 0 or df_x.shape[0] < 2:
+        console.print(f"  [{PR}]{'CSV sem colunas numericas suficientes (pelo menos 2 amostras, 1 variavel)' if is_pt else 'CSV without enough numeric columns (at least 2 samples, 1 variable)'}[/{PR}]")
+        _pause(); return
+    X = df_x.to_numpy(dtype=float)
+
+    metodos = ["Kennard-Stone", "Duplex"] + (["SPXY"] if col_alvo else [])
+    lbl_metodo = "Metodo" if is_pt else "Method"
+    console.print(f"  [{PA}]{lbl_metodo}:[/{PA}]")
+    for i, m in enumerate(metodos, 1):
+        console.print(f"    ({i}) {m}")
+    escolha_m = _ask("  > ").strip()
+    if not escolha_m.isdigit() or not (1 <= int(escolha_m) <= len(metodos)):
+        console.print(f"  [{PR}]{'Opcao invalida' if is_pt else 'Invalid option'}[/{PR}]")
+        _pause(); return
+    metodo = metodos[int(escolha_m) - 1]
+
+    lbl_frac = "Fracao para calibracao (Enter = 0.7)" if is_pt else "Calibration fraction (Enter = 0.7)"
+    frac_raw = _ask(f"  [{PA}]{lbl_frac}:[/{PA}] ").strip()
+    try:
+        frac_cal = float(frac_raw) if frac_raw else 0.7
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]")
+        _pause(); return
+    if not (0.0 < frac_cal < 1.0):
+        console.print(f"  [{PR}]{'Fracao precisa estar entre 0 e 1' if is_pt else 'Fraction must be between 0 and 1'}[/{PR}]")
+        _pause(); return
+
+    from guaraci.dados_io import duplex_split, kennard_stone_split, spxy_split
+    if metodo == "Kennard-Stone":
+        idx_cal, idx_val = kennard_stone_split(X, frac_treino=frac_cal)
+    elif metodo == "Duplex":
+        idx_cal, idx_val = duplex_split(X, frac_treino=frac_cal)
+    else:
+        y = df[col_alvo].to_numpy(dtype=float)
+        idx_cal, idx_val = spxy_split(X, y, frac_treino=frac_cal)
+
+    df_saida = df.copy()
+    col_conjunto = "conjunto" if is_pt else "set"
+    df_saida[col_conjunto] = ""
+    df_saida.iloc[idx_cal, df_saida.columns.get_loc(col_conjunto)] = (
+        "calibracao" if is_pt else "calibration")
+    df_saida.iloc[idx_val, df_saida.columns.get_loc(col_conjunto)] = (
+        "validacao" if is_pt else "validation")
+
+    padrao_saida = str(Path.cwd() / "selecao_amostras.csv")
+    lbl_saida = "Arquivo de saida" if is_pt else "Output file"
+    cam_saida = _ask(
+        f"  [{PA}]{lbl_saida}[/{PA}] [{PM}](Enter = {escape(padrao_saida)})[/{PM}]: "
+    ).strip().strip('"')
+    if not cam_saida:
+        cam_saida = padrao_saida
+    try:
+        df_saida.to_csv(cam_saida, index=False)
+    except OSError as e:
+        console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    resumo_txt = (
+        f"  [{PG}]✔ {escape(metodo)}:[/{PG}] {len(idx_cal)} "
+        f"{'calibracao' if is_pt else 'calibration'} / {len(idx_val)} "
+        f"{'validacao' if is_pt else 'validation'} "
+        f"({'de' if is_pt else 'of'} {len(df)})"
+    )
+    console.print()
+    console.print(Panel(
+        Text.from_markup(resumo_txt),
+        title=f"[bold {PG}]{'Selecao gerada' if is_pt else 'Selection generated'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] {escape(cam_saida)}")
+    _pause()
+
+
 # ---------------------------------------------------------------------------
 # AUDITORIA DE DELINEAMENTO — comando dedicado (Bloco 11)
 # ---------------------------------------------------------------------------
@@ -4327,6 +4459,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             _menu_plan(cfg)
         elif escolha == "U":
             _menu_audit(cfg)
+        elif escolha == "K":
+            _menu_selecao_amostras(cfg)
         elif escolha == "P":
             _menu_profiles(cfg)
         elif escolha == "G":

@@ -227,38 +227,63 @@ def test_contraprova_modo_controle_de_fato_muda_com_o_veneno(
 
 
 # =========================================================================
-#  3. SPLIT GROUP-AWARE (Kennard-Stone) -- generaliza o padrao ja usado em
+#  3. SPLIT GROUP-AWARE -- generaliza o padrao ja usado em
 #  test_contrato_validacao_agrupada.py para tamanhos/numero de grupos
-#  aleatorios, sobre `kennard_stone_split_group_aware` diretamente (funcao
-#  pura, sem precisar rodar o pipeline inteiro).
+#  aleatorios, sobre os TRES splitters de selecao de amostras (Passo 87:
+#  Kennard-Stone, Duplex, SPXY) diretamente (funcoes puras, sem precisar
+#  rodar o pipeline inteiro).
 # =========================================================================
 
+def _rodar_kennard_stone(pq, X, y, mae, frac_cal):
+    return pq.kennard_stone_split_group_aware(X, mae, frac_cal)
+
+
+def _rodar_duplex(pq, X, y, mae, frac_cal):
+    return pq.duplex_split_group_aware(X, mae, frac_cal)
+
+
+def _rodar_spxy(pq, X, y, mae, frac_cal):
+    return pq.spxy_split_group_aware(X, y, mae, frac_cal)
+
+
+_SPLITTERS_GROUP_AWARE = {
+    "kennard_stone": _rodar_kennard_stone,
+    "duplex": _rodar_duplex,
+    "spxy": _rodar_spxy,
+}
+
+
 @given(
+    nome_splitter=st.sampled_from(sorted(_SPLITTERS_GROUP_AWARE)),
     n_grupos=st.integers(min_value=4, max_value=15),
     n_replicas=st.integers(min_value=1, max_value=4),
     n_features=st.integers(min_value=2, max_value=8),
     frac_cal=st.floats(min_value=0.2, max_value=0.8),
     seed=st.integers(min_value=0, max_value=10_000),
 )
-@settings(max_examples=60, deadline=None)
-def test_kennard_stone_group_aware_nunca_separa_grupo(
-        pq, n_grupos, n_replicas, n_features, frac_cal, seed):
+@settings(max_examples=90, deadline=None)
+def test_split_group_aware_nunca_separa_grupo(
+        pq, nome_splitter, n_grupos, n_replicas, n_features, frac_cal, seed):
     rng = np.random.default_rng(seed)
-    X_list, mae_list = [], []
+    X_list, y_list, mae_list = [], [], []
     for g in range(n_grupos):
         centro = rng.normal(size=n_features)
+        teor = rng.uniform(0, 10)
         for _ in range(n_replicas):
             X_list.append(centro + rng.normal(scale=0.05, size=n_features))
+            y_list.append(teor + rng.normal(scale=0.05))
             mae_list.append(f"G{g}")
     X = np.array(X_list)
+    y = np.array(y_list)
     mae = np.array(mae_list)
 
-    idx_cal, idx_val = pq.kennard_stone_split_group_aware(X, mae, frac_cal)
+    idx_cal, idx_val = _SPLITTERS_GROUP_AWARE[nome_splitter](pq, X, y, mae, frac_cal)
 
     grupos_cal = set(mae[idx_cal])
     grupos_val = set(mae[idx_val])
     assert not (grupos_cal & grupos_val), (
-        f"grupo(s) {grupos_cal & grupos_val} apareceram em cal E val")
+        f"[{nome_splitter}] grupo(s) {grupos_cal & grupos_val} apareceram "
+        f"em cal E val")
     assert set(idx_cal.tolist()) | set(idx_val.tolist()) == set(range(len(X)))
     assert not (set(idx_cal.tolist()) & set(idx_val.tolist()))
 

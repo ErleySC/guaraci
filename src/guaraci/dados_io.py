@@ -33,6 +33,10 @@ __all__ = [
     "kennard_stone",
     "kennard_stone_split",
     "kennard_stone_split_group_aware",
+    "duplex_split",
+    "duplex_split_group_aware",
+    "spxy_split",
+    "spxy_split_group_aware",
     "generate_synthetic_data",
     "load_csv",
     "parse_dx",
@@ -430,6 +434,168 @@ def kennard_stone_split_group_aware(
         mask_treino = np.isin(mae_subset, list(grupos_treino))
         return np.where(mask_treino)[0], np.where(~mask_treino)[0]
     return kennard_stone_split(X, frac_treino=frac_cal)
+
+
+def duplex_split(X: np.ndarray, frac_treino: float = 0.5
+                  ) -> Tuple[np.ndarray, np.ndarray]:
+    """Split calibracao/validacao por DUPLEX (Snee, 1977, "Validation of
+    Regression Models: Methods and Examples", Technometrics 19(4):415-428,
+    DOI 10.1080/00401706.1977.10489581 -- verificado no Crossref em
+    2026-08-27).
+
+    Diferenca p/ Kennard-Stone: KS enche PRIMEIRO o treino inteiro, so'
+    depois o que sobra vai p/ validacao -- a validacao herda qualquer
+    vies que sobrar. DUPLEX cresce os DOIS conjuntos EM PARALELO,
+    alternando (cada novo ponto vai pro conjunto que estiver mais atras da
+    proporcao alvo `frac_treino`, dentre os que sobraram, o mais distante
+    do PROPRIO conjunto que esta recebendo) -- os dois ficam
+    representativos do espaco, nao so' o treino.
+
+    Semente aproximada (mesma tecnica de `kennard_stone`, evita matriz de
+    distancias n×n): o par semente do treino e' o ponto mais distante do
+    centroide + o mais distante desse; o par semente da validacao e' a
+    MESMA logica aplicada so' aos pontos restantes.
+    """
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    if n == 0:
+        return np.array([], dtype=int), np.array([], dtype=int)
+    if n == 1:
+        return np.array([0], dtype=int), np.array([], dtype=int)
+
+    def _semente(idx_pool: np.ndarray) -> List[int]:
+        Xp = X[idx_pool]
+        centro = Xp.mean(axis=0)
+        p1 = int(idx_pool[np.argmax(np.sum((Xp - centro) ** 2, axis=1))])
+        dist_p1 = np.sqrt(np.sum((Xp - X[p1]) ** 2, axis=1))
+        p2 = int(idx_pool[np.argmax(dist_p1)])
+        return [p1, p2] if p2 != p1 else [p1]
+
+    treino = _semente(np.arange(n))
+    restantes = set(range(n)) - set(treino)
+    val = _semente(np.array(sorted(restantes))) if restantes else []
+    restantes -= set(val)
+
+    def _min_dist_a(conjunto: List[int]) -> np.ndarray:
+        if not conjunto:
+            return np.full(n, np.inf)
+        d = np.sqrt(np.sum((X - X[conjunto[0]]) ** 2, axis=1))
+        for k in conjunto[1:]:
+            d = np.minimum(d, np.sqrt(np.sum((X - X[k]) ** 2, axis=1)))
+        return d
+
+    min_dist_treino = _min_dist_a(treino)
+    min_dist_val = _min_dist_a(val)
+
+    while restantes:
+        prop_treino = len(treino) / (len(treino) + len(val))
+        candidatos = np.array(sorted(restantes))
+        if prop_treino < frac_treino:
+            alvo, min_dist = treino, min_dist_treino
+        else:
+            alvo, min_dist = val, min_dist_val
+        escolhido = int(candidatos[np.argmax(min_dist[candidatos])])
+        alvo.append(escolhido)
+        restantes.discard(escolhido)
+        d_escolhido = np.sqrt(np.sum((X - X[escolhido]) ** 2, axis=1))
+        min_dist_treino = np.minimum(min_dist_treino, d_escolhido)
+        min_dist_val = np.minimum(min_dist_val, d_escolhido)
+
+    return np.array(sorted(treino), dtype=int), np.array(sorted(val), dtype=int)
+
+
+def duplex_split_group_aware(
+        X: np.ndarray, mae_subset: Optional[np.ndarray], frac_cal: float
+        ) -> Tuple[np.ndarray, np.ndarray]:
+    """DUPLEX group-aware -- mesma logica de colapso por grupo/expansao de
+    `kennard_stone_split_group_aware`, aplicada a `duplex_split`."""
+    if mae_subset is not None and len(np.unique(mae_subset)) >= 4:
+        grupos_unicos = np.unique(mae_subset)
+        X_grupo = np.array([X[mae_subset == g].mean(axis=0)
+                             for g in grupos_unicos])
+        idx_treino_g, _idx_val_g = duplex_split(X_grupo, frac_treino=frac_cal)
+        grupos_treino = set(grupos_unicos[idx_treino_g].tolist())
+        mask_treino = np.isin(mae_subset, list(grupos_treino))
+        return np.where(mask_treino)[0], np.where(~mask_treino)[0]
+    return duplex_split(X, frac_treino=frac_cal)
+
+
+def spxy_split(X: np.ndarray, y: np.ndarray, frac_treino: float = 0.7
+               ) -> Tuple[np.ndarray, np.ndarray]:
+    """Split calibracao/validacao por SPXY -- Sample set Partitioning based
+    on joint X-Y distances (Galvao et al., 2005, "A method for calibration
+    and validation subset partitioning", Talanta 67(4):736-740, DOI
+    10.1016/j.talanta.2005.03.025 -- verificado no Crossref em 2026-08-27).
+
+    Mesmo algoritmo guloso de `kennard_stone`, mas a distancia usada para
+    escolher o proximo ponto e' `d_x/max(d_x) + d_y/max(d_y)` -- KS puro
+    cobre bem o espaco ESPECTRAL mas pode deixar o extremo do TEOR de fora
+    do treino (ex.: a amostra com o maior teor do dataset cai por acaso na
+    validacao); SPXY faz o treino cobrir X e y ao mesmo tempo. `y` pode ser
+    1D (um alvo) ou 2D (varios alvos empilhados por coluna).
+
+    Usa a matriz de distancias n×n completa (ao contrario de
+    `kennard_stone`, que aproxima a semente para evitar isso) porque a
+    normalizacao pelo MAXIMO de `d_x`/`d_y` e' parte da definicao do
+    metodo -- precisa do maximo real, nao de uma aproximacao. Aceitavel
+    para os tamanhos de dataset deste projeto (dezenas a poucas centenas
+    de amostras); para datasets muito maiores isto viraria o gargalo.
+    """
+    X = np.asarray(X, dtype=float)
+    y = np.asarray(y, dtype=float)
+    if y.ndim == 1:
+        y = y.reshape(-1, 1)
+    n = X.shape[0]
+    if n == 0:
+        return np.array([], dtype=int), np.array([], dtype=int)
+    if n == 1:
+        return np.array([0], dtype=int), np.array([], dtype=int)
+    n_sel = int(min(max(round(frac_treino * n), 1), n))
+
+    Dx = np.sqrt(((X[:, None, :] - X[None, :, :]) ** 2).sum(axis=2))
+    Dy = np.sqrt(((y[:, None, :] - y[None, :, :]) ** 2).sum(axis=2))
+    max_dx = Dx.max()
+    max_dy = Dy.max()
+    D = Dx / max_dx if max_dx > 0 else Dx
+    D = D + (Dy / max_dy if max_dy > 0 else Dy)
+    np.fill_diagonal(D, -np.inf)   # nunca parear um ponto com ele mesmo
+
+    i1, i2 = np.unravel_index(np.argmax(D), D.shape)
+    selecionados = [int(i1), int(i2)]
+    min_dist = np.minimum(D[i1], D[i2])
+
+    while len(selecionados) < n_sel:
+        candidato_dist = min_dist.copy()
+        candidato_dist[selecionados] = -np.inf
+        prox = int(np.argmax(candidato_dist))
+        selecionados.append(prox)
+        min_dist = np.minimum(min_dist, D[prox])
+
+    idx_treino = np.sort(np.array(selecionados[:n_sel], dtype=int))
+    idx_val = np.array(sorted(set(range(n)) - set(idx_treino.tolist())),
+                        dtype=int)
+    return idx_treino, idx_val
+
+
+def spxy_split_group_aware(
+        X: np.ndarray, y: np.ndarray, mae_subset: Optional[np.ndarray],
+        frac_cal: float) -> Tuple[np.ndarray, np.ndarray]:
+    """SPXY group-aware -- mesma logica de colapso por grupo/expansao de
+    `kennard_stone_split_group_aware`, aplicada a `spxy_split` (`y` tambem
+    colapsa por MEDIA do grupo, igual `X`)."""
+    if mae_subset is not None and len(np.unique(mae_subset)) >= 4:
+        grupos_unicos = np.unique(mae_subset)
+        y_arr = np.asarray(y, dtype=float)
+        X_grupo = np.array([X[mae_subset == g].mean(axis=0)
+                             for g in grupos_unicos])
+        y_grupo = np.array([y_arr[mae_subset == g].mean(axis=0)
+                             for g in grupos_unicos])
+        idx_treino_g, _idx_val_g = spxy_split(X_grupo, y_grupo,
+                                              frac_treino=frac_cal)
+        grupos_treino = set(grupos_unicos[idx_treino_g].tolist())
+        mask_treino = np.isin(mae_subset, list(grupos_treino))
+        return np.where(mask_treino)[0], np.where(~mask_treino)[0]
+    return spxy_split(X, y, frac_treino=frac_cal)
 
 
 def generate_synthetic_data(cfg: "Config"):

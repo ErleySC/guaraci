@@ -639,6 +639,92 @@ Disponível em dois lugares, com a **mesma lógica científica**
 depender do objetivo — seção 2.2) com opção de figuras detalhadas adicionais
 (`detailed_figures=True`). Formatos PNG/PDF/SVG, DPI configurável.
 
+### 2.2b Transferência de calibração entre instrumentos (Passo 86 — `transferencia_calibracao.py`)
+
+Um modelo PLS calibrado com espectros de um instrumento tipicamente degrada
+quando aplicado a espectros de OUTRO instrumento (mesma amostra,
+espectrômetro diferente): deriva de comprimento de onda, resposta de
+detector, ótica — produz um deslocamento sistemático que o modelo nunca viu
+no treino. `transferencia_calibracao.py` implementa dois métodos clássicos
+(Wang, Veltkamp e Kowalski, 1991 — *Multivariate instrument
+standardization*, *Analytical Chemistry* 63(23):2750-2756, DOI
+`10.1021/ac00023a016`) para corrigir isso a partir de um PEQUENO conjunto de
+amostras medidas nos DOIS instrumentos (*amostras de transferência*), sem
+recalibrar o modelo do zero:
+
+- **`piecewise_direct_standardization`** (PDS) — uma regressão ridge POR
+  CANAL do instrumento mestre, contra uma janela local de canais vizinhos
+  do escravo. É o método primário: o deslocamento entre instrumentos é
+  predominantemente LOCAL (um pico desloca poucos canais, não o espectro
+  inteiro).
+- **`direct_standardization`** (DS) — uma única regressão ridge global
+  (todos os canais de uma vez). Mais simples, mas o `F` denso (p×p) tende a
+  superajustar com poucas amostras de transferência — na validação contra o
+  Corn (abaixo), DS não reduziu o erro de forma relevante; PDS reduziu.
+
+`apply_standardization(X_novo, transform)` aplica a transformação aprendida
+a espectros novos do instrumento escravo antes de entrar no modelo
+calibrado no mestre.
+
+**Validado contra o Corn** (`test_validacao_publica.py`, dataset público —
+as mesmas 80 amostras medidas em 3 espectrômetros: m5, mp5, mp6): um PLS de
+proteína calibrado só no m5, aplicado direto no mp5, tem RMSEP ≈ 0,51 —
+quase 3,5× o RMSEP do m5 sozinho (≈ 0,148). Com PDS (15 amostras de
+transferência, janela=5, `alpha`=0,001), o RMSEP no mp5 cai para ≈ 0,16 —
+praticamente o mesmo nível do m5 sozinho.
+
+**Limitações conhecidas** (ver seção 9 para a lista completa do projeto):
+- **Quantas amostras de transferência**: a validação acima usou 15 — abaixo
+  disso a regressão ridge por janela fica instável (poucas amostras
+  relativas à largura da janela). Não há um mínimo teórico fechado; 15-20
+  amostras cobrindo a faixa de variação do analito é o que a literatura
+  original recomenda e o que este projeto validou.
+- **`alpha` (regularização) e `janela` são sensíveis ao par de
+  instrumentos** — os valores usados na validação (janela=5, alpha=0,001)
+  foram medidos empiricamente contra o Corn, não são universais. Um par de
+  instrumentos com deslocamento maior/menor pode pedir janela mais larga ou
+  `alpha` diferente; não há afinação automática hoje.
+- **Pressupõe deslocamento predominantemente linear e local** (o que PDS
+  corrige bem). Não corrige efeitos não-lineares fortes de detector, nem
+  substitui uma calibração própria no instrumento de destino quando há
+  amostras suficientes para isso.
+
+### 2.2c Seleção de amostras de calibração — Kennard-Stone, Duplex, SPXY (Passo 87)
+
+Além do Kennard-Stone (1969) já usado internamente pelo pipeline de
+quantificação, `dados_io.py` agora expõe também:
+
+- **`duplex_split`** (Snee, 1977 — *Validation of Regression Models:
+  Methods and Examples*, *Technometrics* 19(4):415-428, DOI
+  `10.1080/00401706.1977.10489581`) — em vez de encher primeiro o treino
+  para só depois sobrar a validação (como KS faz), cresce os DOIS
+  conjuntos em paralelo, alternando — os dois ficam representativos do
+  espaço, não só o treino. `frac_treino=0.5` é o Duplex clássico
+  (alternância estrita); outros valores enviesam a alternância.
+- **`spxy_split`** (Galvão et al., 2005 — *A method for calibration and
+  validation subset partitioning*, *Talanta* 67(4):736-740, DOI
+  `10.1016/j.talanta.2005.03.025`) — o mesmo algoritmo guloso do KS, mas a
+  distância combina X (espectro) **e** y (referência/teor), normalizadas:
+  `d = d_x/max(d_x) + d_y/max(d_y)`. Cobre o espaço espectral E a faixa do
+  analito ao mesmo tempo — KS puro pode deixar de fora o extremo do TEOR
+  se ele não for também um extremo espectral (`test_selecao_amostras.py`
+  tem um caso sintético que reproduz exatamente isso).
+
+Todos os três (`kennard_stone_split`, `duplex_split`, `spxy_split`) têm
+variante `*_group_aware` (mesmo padrão de
+`kennard_stone_split_group_aware`): com `mae_id` disponível (≥4 grupos),
+colapsa cada grupo de réplicas físicas num espectro médio antes de rodar o
+método, depois expande de volta — nenhum dos três separa réplica física
+entre calibração e validação (garantido por teste de propriedade
+Hypothesis, `tests/test_propriedades_hypothesis.py`).
+
+**CLI** — menu principal, tecla `[K]` *Seleção de Amostras* (Bloco 10, ao
+lado do planejamento de coleta): pede um CSV com os espectros (1 amostra
+por linha), opcionalmente uma coluna de referência/teor (habilita SPXY),
+o método e a fração de calibração, e grava uma cópia do CSV com uma coluna
+extra marcando `calibracao`/`validacao` por amostra. Só separa/marca — o
+CSV original nunca é alterado.
+
 ### 2.3 Planejamento de coleta (Bloco 10 — `plano_amostral.py`/`plano_coleta.py`)
 
 Antes de coletar dados, dois módulos ajudam a planejar **quanto** coletar

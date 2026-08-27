@@ -696,6 +696,10 @@ from guaraci.dados_io import (   # noqa: E402
     kennard_stone,
     kennard_stone_split,
     kennard_stone_split_group_aware,
+    duplex_split,
+    duplex_split_group_aware,
+    spxy_split,
+    spxy_split_group_aware,
     load_csv,
     _flush_asdf,
     _decodificar_linha_asdf,
@@ -787,6 +791,15 @@ from guaraci.hardware import (   # noqa: E402
     hardware_probe,
     auto_adjust_hardware_config,
     _verificar_ram,
+)
+# transferencia_calibracao.py (Passo 86): Direct/Piecewise Direct
+# Standardization -- corrige espectros de um instrumento "escravo" para
+# se parecerem com o instrumento "mestre" em que o modelo foi calibrado.
+from guaraci.transferencia_calibracao import (   # noqa: E402
+    StandardizationTransform,
+    direct_standardization,
+    piecewise_direct_standardization,
+    apply_standardization,
 )
 def clear_old_results(pasta_base: str,
                                manter_n: int = 3) -> Dict[str, Any]:

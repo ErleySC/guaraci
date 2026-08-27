@@ -38,6 +38,8 @@ CONTRATO = {
         "load_csv", "generate_synthetic_data", "parse_dx", "parse_spectrum",
         "CODIGO_ESPECIE", "ADULTERANTE_NOME",
         "kennard_stone", "kennard_stone_split", "kennard_stone_split_group_aware",
+        "duplex_split", "duplex_split_group_aware",
+        "spxy_split", "spxy_split_group_aware",
     ],
     "dados_imagem": [
         "load_images", "load_image_file", "recortar_relativo",
@@ -71,6 +73,10 @@ CONTRATO = {
         "PLSDAClassifier", "benchmark_classifiers", "monte_carlo_cv",
         "fig_det_curvas", "fig_shap_benchmark",
         "benchmark_regression_by_species", "fig_benchmark_regressors",
+    ],
+    "transferencia_calibracao": [
+        "StandardizationTransform", "direct_standardization",
+        "piecewise_direct_standardization", "apply_standardization",
     ],
 }
 

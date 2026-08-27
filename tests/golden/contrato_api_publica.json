@@ -1198,6 +1198,14 @@
         "assinatura": "(mae_id: 'Optional[str]') -> 'Optional[str]'",
         "forma": "funcao"
       },
+      "duplex_split": {
+        "assinatura": "(X: 'np.ndarray', frac_treino: 'float' = 0.5) -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "duplex_split_group_aware": {
+        "assinatura": "(X: 'np.ndarray', mae_subset: 'Optional[np.ndarray]', frac_cal: 'float') -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
       "extract_dx_title": {
         "assinatura": "(caminho: 'str') -> 'Optional[str]'",
         "forma": "funcao"
@@ -1252,6 +1260,14 @@
       },
       "session_from_mae_id": {
         "assinatura": "(mae_id: 'Optional[str]') -> 'Optional[str]'",
+        "forma": "funcao"
+      },
+      "spxy_split": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', frac_treino: 'float' = 0.7) -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "spxy_split_group_aware": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', mae_subset: 'Optional[np.ndarray]', frac_cal: 'float') -> 'Tuple[np.ndarray, np.ndarray]'",
         "forma": "funcao"
       }
     },
@@ -2783,6 +2799,55 @@
       "preview_spectra_dx": {
         "forma": "constante",
         "tipo": "CachedFunc"
+      }
+    },
+    "transferencia_calibracao": {
+      "StandardizationTransform": {
+        "campos": [
+          {
+            "nome": "F",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "bias",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "metodo",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "n_amostras_transferencia",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "janela",
+            "tem_default": true,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "alpha",
+            "tem_default": true,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "apply_standardization": {
+        "assinatura": "(X_novo: 'np.ndarray', transform: 'StandardizationTransform') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "direct_standardization": {
+        "assinatura": "(X_master: 'np.ndarray', X_slave: 'np.ndarray', alpha: 'float' = 1.0) -> 'StandardizationTransform'",
+        "forma": "funcao"
+      },
+      "piecewise_direct_standardization": {
+        "assinatura": "(X_master: 'np.ndarray', X_slave: 'np.ndarray', janela: 'int' = 5, alpha: 'float' = 1.0) -> 'StandardizationTransform'",
+        "forma": "funcao"
       }
     },
     "validacao_estatistica": {
