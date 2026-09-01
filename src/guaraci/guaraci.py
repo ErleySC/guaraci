@@ -369,9 +369,14 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_hardware":   "Capacidade e perfil recomendado.",
         "d_perfis":     "Configuracoes prontas para uso.",
         "d_ajuda":      "Documentacao interativa por campo.",
-        # Grupos do menu principal
-        "grp_config":   "Configuracao da Analise",
-        "grp_analise":  "Analise e Visualizacao",
+        # Grupos do menu principal (docs/DESIGN.md secao 4 -- Agente 5.2,
+        # aprovado 2026-09-01: substitui os 3 grupos antigos config/analise/
+        # sistema por 6 grupos alinhados ao fluxo real de trabalho)
+        "grp_preparar": "Preparar",
+        "grp_planejar": "Planejar",
+        "grp_modelar":  "Modelar",
+        "grp_validar":  "Validar",
+        "grp_prever":   "Prever",
         "grp_sistema":  "Sistema",
         "grp_execucao": "Execucao",
         # Acoes
@@ -521,8 +526,11 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_hardware":   "Capacity and recommended profile.",
         "d_perfis":     "Ready-to-use configurations.",
         "d_ajuda":      "Interactive field documentation.",
-        "grp_config":   "Analysis Configuration",
-        "grp_analise":  "Analysis & Visualization",
+        "grp_preparar": "Prepare",
+        "grp_planejar": "Plan",
+        "grp_modelar":  "Model",
+        "grp_validar":  "Validate",
+        "grp_prever":   "Predict",
         "grp_sistema":  "System",
         "grp_execucao": "Execution",
         "rodar":        "Run Pipeline",
@@ -1202,27 +1210,41 @@ def _print_main_menu() -> None:
         c2 = f"  [{style2}][{k2}][/{style2}] {lbl2}" if k2 else (f"  {lbl2}" if lbl2 else "")
         return Text.from_markup(c1), Text.from_markup(c2)
 
-    # Grupos
-    t.add_row(Text.from_markup(_grp(_t("grp_config"))), Text.from_markup(""))
-    t.add_row(*row("1", _t("t_projeto"),    "2", _t("t_dados")))
-    t.add_row(*row("3", _t("t_preproc"),    "4", _t("t_modelagem")))
-    t.add_row(*row("5", _t("t_validacao"),  "6", _t("t_avancado")))
+    # Grupos (docs/DESIGN.md secao 4 -- Agente 5.2, aprovado 2026-09-01):
+    # 6 grupos alinhados ao fluxo real de trabalho, substituindo os 3 grupos
+    # antigos (config/analise/sistema). Atalho direto de cada tecla continua
+    # funcionando igual, digitado de qualquer lugar deste menu -- so' a
+    # organizacao visual mudou, o dispatch em main() nao foi tocado.
+    t.add_row(Text.from_markup(_grp(_t("grp_preparar"))), Text.from_markup(""))
+    t.add_row(*row("2", _t("t_dados"),      "3", _t("t_preproc")))
+    t.add_row(*row("9", _t("t_codigos"),    "P", _t("t_perfis")))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_analise"))), Text.from_markup(""))
-    t.add_row(*row("7", _t("t_viz"),        "8", _t("t_tecnica")))
-    t.add_row(*row("9", _t("t_codigos"),    "H", _t("t_hardware"), style2=S))
-    t.add_row(*row("B", _t("t_predicao"), "J", _t("t_planejamento"), style1=S, style2=S))
-    t.add_row(*row("U", _t("t_auditoria"), "K", _t("t_selecao_amostras"), style1=S, style2=S))
+    t.add_row(Text.from_markup(_grp(_t("grp_planejar"))), Text.from_markup(""))
+    t.add_row(*row("J", _t("t_planejamento"), "K", _t("t_selecao_amostras")))
+    t.add_row(*row("U", _t("t_auditoria")))
+
+    t.add_row(Text.from_markup(""), Text.from_markup(""))
+    t.add_row(Text.from_markup(_grp(_t("grp_modelar"))), Text.from_markup(""))
+    t.add_row(*row("4", _t("t_modelagem"),  "6", _t("t_avancado")))
+    t.add_row(*row("8", _t("t_tecnica")))
+
+    t.add_row(Text.from_markup(""), Text.from_markup(""))
+    t.add_row(Text.from_markup(_grp(_t("grp_validar"), cor=S)), Text.from_markup(""))
+    t.add_row(*row("5", _t("t_validacao"),  "7", _t("t_viz"), style1=S, style2=S))
+
+    t.add_row(Text.from_markup(""), Text.from_markup(""))
+    t.add_row(Text.from_markup(_grp(_t("grp_prever"), cor=S)), Text.from_markup(""))
+    t.add_row(*row("B", _t("t_predicao"), style1=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
     modo_lbl = (f"Modo: {'Iniciante' if _modo_usuario()=='iniciante' else 'Avancado'}"
                 if is_pt else
                 f"Mode: {'Beginner' if _modo_usuario()=='iniciante' else 'Advanced'}")
-    t.add_row(*row("P", _t("t_perfis"),  "M", modo_lbl, style1=S, style2=S))
+    t.add_row(*row("1", _t("t_projeto"), "H", _t("t_hardware"), style1=S, style2=S))
+    t.add_row(*row("G", "Guaraci ☀", "M", modo_lbl, style1=PA, style2=S))
     t.add_row(*row("I", _t("t_idioma"),  "?", _t("t_ajuda"),  style1=S, style2=M))
-    t.add_row(*row("G", "Guaraci ☀", style1=PA))
     sobre_lbl = "Sobre" if lang == "PT" else "About"
     t.add_row(*row("A", sobre_lbl,       "Q", _t("sair"),     style1=S, style2=M))
 
