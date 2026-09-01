@@ -248,14 +248,44 @@ resultados_tcc/<amostra>/<Modo>/PLSDA_OE_{nível-amigável}_{pré-proc}_{AAAAMMD
 
 ## Validação
 
-Cada número da tabela abaixo vem de um teste automatizado que roda a cada
-commit — tabela completa, tolerâncias e como reproduzir em
-[`docs/VALIDATION.md`](docs/VALIDATION.md): o PLS-DA reproduz
-`sklearn.PLSRegression` + argmax exatamente (max|Δcoef| = 0,0), SNV/VIP/MSC/
+Duas camadas independentes, ambas automatizadas.
+
+**1. Contra as fórmulas que definem cada método.** O PLS-DA reproduz
+`sklearn.PLSRegression` + argmax exatamente (max|Δcoef| = 0,0); SNV/VIP/MSC/
 CV-ANOVA batem com suas fórmulas de definição dentro da tolerância
-numérica, o UCL do DD-SIMCA bate com as fórmulas fechadas de
-Tracy-Young-Mason/χ², a componente ortogonal do OPLS-DA é ortogonal a
-menos de 1e-6.
+numérica; o UCL do DD-SIMCA bate com as fórmulas fechadas de
+Tracy-Young-Mason/χ²; a componente ortogonal do OPLS-DA é ortogonal a
+menos de 1e-6. Tabela completa e tolerâncias em
+[`docs/VALIDATION.md`](docs/VALIDATION.md).
+
+**2. Contra resultados publicados em dados públicos** — a única base de
+evidência para alegação de desempenho:
+
+| Dataset | Matriz | Alvo | GUARACI | Literatura |
+|---|---|---|---|---|
+| [Eigenvector Corn](https://eigenvector.com/data/Corn/) (m5) | milho moído | proteína | **RMSEP 0,144 %m/m** | 0,1–0,2 |
+| Tecator | carne moída | gordura | RMSEP 2,001 | ver [`docs/BENCHMARK_TECATOR.md`](docs/BENCHMARK_TECATOR.md) |
+| [Mendeley `ctgg7k4m5g`](https://data.mendeley.com/datasets/ctgg7k4m5g/2) (CC BY 4.0) | 19 óleos comestíveis (NIR, 8mm) | espécie (8, n≥5) | **acurácia balanceada 0,35 CV / 0,475 holdout** | sem número publicado nesse formato; prova de multimatriz, não reprodução de benchmark |
+
+O número do milho e a classificação Mendeley são **jobs de CI**
+(`validacao-publica`, `validacao-publica-mendeley`, matriz de 3 SOs para
+o segundo): se o motor parar de reproduzir a literatura/piso, o build
+falha. Reproduza localmente com `GUARACI_DATASETS_DIR=<pasta>
+pytest tests/test_validacao_publica.py tests/test_validacao_publica_mendeley.py`
+(baixe os arquivos Mendeley antes com
+`python scripts/download_datasets/baixar_mendeley_oleos.py`). Nenhum dos
+dois datasets é versionado neste repositório — ver
+[`datasets/README.md`](datasets/README.md) para a política. O RMSEP de
+valor de peróxido publicado para o Mendeley (4,9) **não** reproduziu com
+um holdout independente usando os presets padrão do GUARACI — documentado
+como limitação honesta em
+[`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md), não escondido.
+
+Quantificação nunca reporta um RMSEP nu: **SEP, RPD e RER** acompanham,
+com o RPD carregando sua faixa de interpretação publicada (Williams 2014;
+AACC 39-00.01). LOD/LOQ são calculados quando réplicas físicas permitem
+estimar o ruído instrumental, e retornam `N/A` quando não permitem — um
+LOD sem base de repetibilidade seria um número inventado.
 
 ## Segurança
 
@@ -267,13 +297,16 @@ depois de exportado.
 
 ## Limitações conhecidas (honestidade científica)
 
-- **Validado em dois datasets públicos até agora** (milho NIR, Tecator NIT).
-  O motor é agnóstico de matriz, mas "agnóstico" é propriedade de arquitetura,
-  não resultado de validação — um perfil que você escreve para uma matriz nova
-  está por testar até que você o teste.
-- **`mel_vis_nir` está declarado, não validado** — o dataset de mel não foi
-  obtido. O perfil carrega e funciona; nenhuma afirmação é feita sobre seus
-  números.
+- **Validado em três datasets públicos até agora** (milho NIR, Tecator NIT,
+  óleos comestíveis Mendeley `ctgg7k4m5g` NIR). O motor é agnóstico de
+  matriz, mas "agnóstico" é propriedade de arquitetura, não resultado de
+  validação — um perfil que você escreve para uma matriz nova está por
+  testar até que você o teste.
+- **`mel_vis_nir` está declarado, não validado** — a origem do dataset de
+  mel foi identificada (Downey, Fouratier & Kelly 2003), mas não existe
+  repositório público para ele; busca ativa reconfirmada em 2026-08-27,
+  ainda sem achar. O perfil carrega e funciona; nenhuma afirmação é feita
+  sobre seus números.
 - **DD-SIMCA one-class depende de amostras FÍSICAS suficientes por classe**,
   não de espectros. Com um único ponto de amostragem físico por classe, os
   limites são calibrados contra uma só observação independente — e o software
