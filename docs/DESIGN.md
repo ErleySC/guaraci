@@ -285,3 +285,117 @@ Reaproveitar `perfil_matriz.load_profile`/`MatrixProfile` sem duplicar
 lógica; teste de contrato garantindo que salvar/carregar um perfil
 combinado preserva as duas dimensões (mesmo padrão de roundtrip que já
 pegou um bug real de `Config` nesta sessão).
+
+---
+
+# GUARACI — Assistente G (Agente 6, proposta)
+
+> **Status: PROPOSTA, não implementada.** Pausa obrigatória — aguardando
+> aprovação de escopo (6.2) antes de qualquer implementação, mesma regra
+> das seções anteriores.
+
+## 6.1 Diagnóstico do que `G` faz hoje
+
+Lido `_abrir_assistente`/`_guaraci_revisar_config`/`_guaraci_navegar_secoes`
+(`src/guaraci/guaraci.py:1073-1062`). `G` hoje é **decorativo**, nos 3
+sentidos que a instrução original cogitava:
+
+- **Passivo**: as duas opções ("Revisar configuração atual" / "Informações
+  sobre uma seção") só ecoam o que já está na tela — não lê dado nenhum
+  do dataset carregado, não roda nenhuma verificação.
+- **Estático**: `_guaraci_revisar_config` aplica um punhado de regras
+  hardcoded sobre 9 campos fixos de `Config` (ex.: "pre-proc == 'raw' →
+  avisa"); não usa `run_audit`, `applicability_domain`,
+  `achievable_alpha` nem nenhuma outra função de diagnóstico real que já
+  existe no projeto.
+- **Desatualizado por construção**: `_guaraci_navegar_secoes` é um dict
+  hardcoded de 8 seções (`"1"` a `"8"`) com descrição escrita à mão — não
+  inclui `H`/`B`/`J`/`U`/`K`/`P`/`?`/`A` (6 das 18 abas reais faltam), e
+  não deriva de `_CONFIG_SPEC`/`_HELP_DB` (que já existem e já alimentam
+  a ajuda `[?]` de cada campo — `G` reinventa uma segunda fonte, pior e
+  menor, em vez de reaproveitar a que já existe).
+
+## 6.2 Escopo proposto (aguardando aprovação)
+
+O pedido original tem 4 frentes ((a) diagnosticar, (b) sugerir+executar,
+(c) responder, (d) listar técnicas). Fazer as 4 por completo é um projeto
+maior que qualquer um dos Agentes 1-5B feitos até aqui nesta sessão — a
+proposta abaixo separa o que é **cirurgicamente viável agora** (reaproveita
+lógica 100% existente) do que fica para uma rodada futura, para não
+prometer mais do que dá pra entregar com o mesmo rigor de teste do resto
+do projeto.
+
+**Achado que reduz o risco da frente (a)**: as verificações de diagnóstico
+que a instrução pede como exemplo — "dataset sem identificador de
+agrupamento", "n insuficiente", "faixa de validação diferente da faixa de
+uso", "classe desbalanceada, duplicatas, variáveis constantes" — **já são,
+literalmente, as 6 funções `check_*` de `auditoria_delineamento.py`**
+(`check_grouping`, `check_class_session_confounding`, `check_duplicates`,
+`check_insufficient_n`, `check_validation_use_range`,
+`check_external_validation`), já testadas, já usadas pela aba `U`. Não é
+lógica nova para escrever — é *wiring* de algo que já existe.
+
+### Fase 1 (proposta para implementar agora, se aprovada)
+
+- **(a) Diagnosticar**: novo item de menu no assistente, "Diagnosticar
+  dados carregados" — só roda quando o usuário pede (não em todo `[G]`,
+  que seria lento e a maioria das aberturas é só pra ajuda pontual).
+  Carrega os dados da `Config` atual e chama `run_audit` — mesmo motor,
+  mesma saída da aba `U`, apresentada dentro do assistente. Regra dura já
+  válida hoje (aba `U` já segue): nunca inventa número, nunca esconde
+  ressalva.
+- **(d) Listar técnicas**: novo módulo `technique_registry.py` (mesmo
+  padrão de `model_registry.py`/`io_registry.py` já usados no projeto) —
+  uma entrada por método (DD-SIMCA, conformal, PLS-DA, PLS-R
+  pooled/por-espécie, Kennard-Stone/Duplex/SPXY, PDS/DS, LOD/LOQ/RPD/RER,
+  linearidade/robustez, perfis de matriz/técnica) com nome, categoria,
+  quando usar, limitação conhecida. "Nunca desatualizado" não vem de AST
+  introspection (caro e frágil para código científico) e sim do mesmo
+  mecanismo que já existe no projeto para `_CONFIG_SPEC`↔`MENU_FIELDS`
+  (`tests/test_interfaces_configuraveis.py`): um teste de contrato que
+  falha se uma função pública nova de método científico não tiver entrada
+  correspondente no registry — reprovar o build é o que impede
+  desatualização de verdade, não a promessa de que "ninguém vai esquecer".
+- **(b) Sugerir+executar — só 1 caso, como prova do padrão**: depois do
+  diagnóstico rodar, se `check_insufficient_n` (ou equivalente) apontar
+  que o `n` atual não atinge o alpha desejado, oferecer "Seu n permite α
+  mínimo de X. Quer ver quantas amostras faltam para Y?" chamando
+  `achievable_alpha`/`n_minimum_for_alpha` (já existem, só compor o
+  texto). Os demais exemplos do pedido original ("quer que eu tente
+  extrair agrupamento de mae_id?", "quer marcar como extrapolação?") ficam
+  para uma rodada futura — cada um precisa de uma ação de escrita
+  diferente (mexer em `Config`, re-rodar validação) que merece o mesmo
+  cuidado de teste que o resto do projeto tem, não convém empacotar todos
+  juntos sem verificação individual.
+
+### Fase 2 (fora do escopo desta rodada — registrar, não implementar)
+
+- **(c) Responder perguntas livres**: o projeto não tem nenhuma dependência
+  de LLM/NLP hoje (é uma ferramenta determinística) — "responder" não pode
+  virar um chat de linguagem natural sem mudar a natureza do projeto. Uma
+  versão viável é um FAQ curado (poucas perguntas canônicas, casadas por
+  palavra-chave, resposta montada a partir do estado real da sessão) — mas
+  isso é decisão de escopo própria, não encaixa como "correção cirúrgica"
+  desta rodada. Registrado como pendência, não implementado agora.
+- Ações de escrita do item (b) além do único caso da Fase 1 (extrair
+  agrupamento de `mae_id`, marcar predição como extrapolação, abrir
+  `guaraci plan` pré-preenchido).
+
+## 6.3 Implementação (só depois de aprovação da Fase 1 acima)
+
+- `_abrir_assistente` ganha um 3º item de menu ("Diagnosticar dados
+  carregados"), reaproveitando `pq.load_data`/`pq.validate_input`/
+  `run_audit` exatamente como `_menu_audit` já faz (mesmo padrão de
+  `console.status` da padronização 5.3).
+- Novo `technique_registry.py`: lista de entradas + teste de contrato
+  (mesmo padrão de `test_interfaces_configuraveis.py`) garantindo que
+  toda função pública das categorias listadas tem entrada correspondente.
+- `_guaraci_navegar_secoes` passa a derivar de `_CONFIG_SPEC` (todas as 18
+  abas, não 8 hardcoded) em vez do dict estático atual — fecha o gap de
+  desatualização descrito em 6.1 como efeito colateral direto da correção,
+  não como escopo novo.
+- Testes: cada achado de diagnóstico precisa de contra-prova (dataset
+  construído para violar a regra dispara o alerta; dataset limpo não
+  dispara) — já existem para as 6 funções `check_*` reaproveitadas
+  (`tests/test_auditoria_delineamento.py`); só a sugestão de α mínimo
+  (item novo) precisa de teste próprio.
