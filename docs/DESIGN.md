@@ -167,3 +167,112 @@ aprovação do agrupamento de navegação da seção 4, e se a família tipográ
 recomendada (nativa do Streamlit) está OK ou se você quer testar alguma
 alternativa antes de fixar. Nada em `src/guaraci/app_tabs/*.py`,
 `design_tokens.py` ou `guaraci_theme.py` foi alterado.
+
+**Atualização 2026-09-01**: seções 0 (caminho A, migração completa) e 4
+(agrupamento em 6 grupos) foram aprovadas e já implementadas — ver commits
+`209537f` e `52bb9c1`. Seção 3 (cabeçalho/rodapé padrão) e a parte de
+ajuda contextual/progresso/confirmação da instrução original (5.3/5.4)
+também já foram implementadas nas 18 abas do CLI e nas 8 do app web — ver
+commits `fcf3244` e `e07321d`. Só a tipografia (seção 2) segue sem decisão
+explícita — mantido o padrão nativo do Streamlit, nenhuma alternativa foi
+testada.
+
+---
+
+# GUARACI — Central de perfis (Agente 5B, proposta)
+
+> **Status: PROPOSTA, não implementada.** Nenhum arquivo de perfil foi
+> tocado para produzir esta seção. Pausa obrigatória — aguardando aprovação
+> antes de qualquer implementação (5B.2, mesma regra de 5.1/5.2 acima).
+
+## 5B.1 Diagnóstico (corrige a premissa da instrução original)
+
+A instrução original presumia que a aba `P` ("Perfis Prontos") já era um
+seletor de perfil de matriz química, e que o mecanismo de perfil de
+**técnica de aquisição** (Bloco 8, modo imagem) vivia "disperso" em outro
+lugar isolado. Lendo o código (não supondo), as duas metades dessa premissa
+estão erradas — de um jeito que muda o que faz sentido propor:
+
+1. **A aba `P` não tem nada a ver com perfil de matriz.** `_menu_profiles`
+   (`src/guaraci/guaraci.py:3221`) é uma biblioteca de **presets de
+   objetivo/rigor de análise** — "Explorar Dados", "Autenticar Pureza",
+   "Quantificar Teor", "Pesquisa Acadêmica", "Alta Rigorosidade" etc. — que
+   aplicam um conjunto de campos de `Config` (nível de rigor estatístico,
+   paleta de cor) de uma vez. É a mesma lista que alimenta os 3 botões de
+   atalho "Recommended analysis" da aba Data do app Streamlit
+   (`PROFILES`, `app_tabs/dados.py`). Repurposar `P` para virar "central de
+   perfis de matriz+técnica" quebraria essa feature existente, que
+   funciona e é referenciada em `CLAUDE.md` seção 6.
+2. **Perfil de matriz química e perfil de técnica de aquisição já são o
+   MESMO mecanismo, não dois.** `src/guaraci/perfil_matriz.py` define uma
+   única dataclass `MatrixProfile` com campos de matriz (unidade do eixo,
+   faixa espectral, vocabulário, código de classe) **e** campos de técnica
+   de aquisição (`resolucao_esperada`, `formatos_aceitos`,
+   `nivel_agrupamento_tipico` — comentário no código: "Bloco 8a,
+   2026-08-25"), lidos do mesmo diretório `perfis_matriz/*.yaml` (8
+   arquivos: `oleo_nir`, `milho_nir`, `oleos_comestiveis_nir`,
+   `mel_vis_nir` — sabor matriz; `bancada`, `celular`, `scanner` — sabor
+   técnica; `generico` — fallback de qualquer um dos dois). Não há
+   dispersão para unificar — a unificação de dados já existe.
+
+O problema real, achado por leitura de código e confirmado por grep (zero
+referência aos 3 campos de técnica em qualquer lugar fora do próprio
+`perfil_matriz.py`), é outro, em três partes:
+
+- **Os campos de técnica de aquisição nunca são lidos por ninguém.**
+  `resolucao_esperada`/`formatos_aceitos`/`nivel_agrupamento_tipico` são
+  carregados do YAML, viram atributos da dataclass, e não aparecem em
+  nenhuma tela, nem são consumidos por `dados_imagem.py` (o módulo que de
+  fato processa imagens). São dados mortos do ponto de vista do usuário —
+  existem, mas ninguém nunca vê.
+- **`Config` só guarda UM perfil por vez** (`matrix_profile: str`). Hoje
+  não há como escolher "isto é mel" (matriz, pro vocabulário do relatório)
+  **e** "foi fotografado com celular" (técnica, pra saber a garantia de
+  agrupamento típica) ao mesmo tempo — escolher um descarta as
+  informações do outro, mesmo os dois sendo relevantes juntos
+  especificamente no modo imagem.
+- **O único ponto de acesso interativo é um campo de texto livre**
+  (`_CONFIG_SPEC` tipo `"str"`, sem `opcoes`) dentro da aba `2` Dados,
+  junto com 8 outros campos não relacionados. O usuário digita o nome de
+  cor (ex. `oleo_nir`) sem ver a lista — pra descobrir os nomes precisa
+  sair da sessão interativa e rodar `guaraci perfis` (subcomando
+  não-interativo, lista e encerra) num terminal separado.
+
+## 5B.2 Escopo proposto (aguardando aprovação)
+
+- **Não mexer na aba `P`** — ela resolve um problema diferente e válido
+  (presets de análise), manter como está.
+- **Novo ponto de acesso interativo** — dentro da aba `2` Dados, ao
+  selecionar/editar o campo `perfil_matriz`, trocar o prompt de texto
+  livre por uma lista navegável (mesmo padrão já usado em `_menu_profiles`
+  — número + Enter, `[?]` pra detalhe) que mostra os 8 perfis, agrupados
+  visualmente em duas seções ("Perfis de matriz" / "Perfis de técnica de
+  aquisição de imagem") — a separação é só de apresentação, o carregamento
+  continua sendo o mesmo `load_profile()` para os dois grupos.
+- Para cada perfil de técnica, a lista exibe o que hoje é dado morto:
+  resolução esperada, formatos aceitos, nível de garantia de agrupamento
+  típico — a mesma transparência de cobertura que já existe no resto do
+  projeto (LOGO honesto, ressalva de cobertura não-validada), agora visível
+  no lugar certo.
+- **Decisão de arquitetura que precisa de aprovação explícita**: dar a
+  `Config` um segundo campo (`acquisition_profile: Optional[str] = None`)
+  para permitir combinar matriz + técnica simultaneamente no modo imagem —
+  hoje é estruturalmente impossível (um campo só). Sem esse segundo campo,
+  a proposta de "central de perfis com duas dimensões independentes" da
+  instrução original não é implementável de verdade, só apresentável.
+- Indicar na lista qual combinação já tem histórico de validação com dado
+  real (Corn/Mendeley/acervo privado) e qual é inédita — mesmo padrão de
+  honestidade de cobertura do resto do projeto. Hoje nenhum perfil de
+  imagem (`bancada`/`celular`/`scanner`) tem qualquer validação publicada;
+  isso precisa aparecer explicitamente, não só no código-fonte.
+- Criar/salvar perfil combinado: permitir ao usuário salvar um YAML próprio
+  que referencie os dois perfis escolhidos (ou os funda num terceiro
+  arquivo) para reuso — formato exato a definir na implementação, não
+  neste documento.
+
+## 5B.3 Implementação (só depois de aprovação)
+
+Reaproveitar `perfil_matriz.load_profile`/`MatrixProfile` sem duplicar
+lógica; teste de contrato garantindo que salvar/carregar um perfil
+combinado preserva as duas dimensões (mesmo padrão de roundtrip que já
+pegou um bug real de `Config` nesta sessão).
