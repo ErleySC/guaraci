@@ -2355,12 +2355,20 @@
         "assinatura": "(cfg: \"'Config'\") -> 'MatrixProfile'",
         "forma": "funcao"
       },
+      "combine_profiles": {
+        "assinatura": "(nome: 'str', matriz: 'MatrixProfile', tecnica: 'Optional[MatrixProfile]') -> 'MatrixProfile'",
+        "forma": "funcao"
+      },
       "load_profile": {
         "assinatura": "(nome_ou_caminho: 'str') -> 'MatrixProfile'",
         "forma": "funcao"
       },
       "perfis_disponiveis": {
         "assinatura": "(*, apenas: 'Optional[str]' = None) -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "save_profile": {
+        "assinatura": "(perfil: 'MatrixProfile', caminho: 'str') -> 'None'",
         "forma": "funcao"
       }
     },

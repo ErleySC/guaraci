@@ -44,6 +44,8 @@ __all__ = [
     "apply_profile",
     "cfg_profile",
     "perfis_disponiveis",
+    "combine_profiles",
+    "save_profile",
 ]
 
 #: Perfis embutidos, distribuidos junto com o pacote.
@@ -215,3 +217,83 @@ def apply_profile(cfg: "Config", perfil: MatrixProfile) -> "Config":
 def cfg_profile(cfg: "Config") -> MatrixProfile:
     """Perfil declarado em `cfg.matrix_profile`. Erro claro se nao existir."""
     return load_profile(getattr(cfg, "matrix_profile", "generico"))
+
+
+def combine_profiles(nome: str, matriz: MatrixProfile,
+                      tecnica: Optional[MatrixProfile]) -> MatrixProfile:
+    """Funde um perfil de MATRIZ (o que e' a amostra) com um perfil de
+    TECNICA de aquisicao (como ela foi capturada) num perfil novo, pronto
+    pra salvar com `save_profile` e reusar (Agente 5B, "criar/salvar
+    perfil combinado").
+
+    Regra de precedencia -- cada campo vem de UMA fonte, nunca misturado
+    campo-a-campo dentro do mesmo conceito:
+    - vocabulario/codigos_classe/faixa_trabalho/eixo/unidade_eixo/
+      referencia: sempre da MATRIZ (sao propriedade quimica da amostra,
+      tecnica de captura nao muda o que ela e').
+    - resolucao_esperada/formatos_aceitos/nivel_agrupamento_tipico: sempre
+      da TECNICA (matriz nao declara esses campos -- ver
+      `MatrixProfile.__doc__`).
+    - default_preprocessing: da TECNICA quando ela declarar um (o
+      pre-processamento de colorimetria digital -- ex. autoscaling -- e'
+      sobre COMO o dado foi extraido, nao sobre qual e' a matriz); cai pro
+      da MATRIZ quando a tecnica nao declarar nada.
+    - descricao: concatena as duas, pra' o perfil combinado deixar claro
+      as duas dimensoes de uma vez.
+
+    `tecnica=None` funde so' com os defaults de tecnica (equivalente a nao
+    combinar nada -- existe pra' nao forcar o chamador a checar None antes).
+    """
+    tec = tecnica if tecnica is not None else MatrixProfile(nome="")
+    descricao = matriz.descricao
+    if tecnica is not None and tecnica.descricao:
+        descricao = f"{matriz.descricao} — {tecnica.descricao}" if descricao else tecnica.descricao
+    return MatrixProfile(
+        nome=nome,
+        descricao=descricao,
+        unidade_eixo=matriz.unidade_eixo,
+        eixo_min=matriz.eixo_min,
+        eixo_max=matriz.eixo_max,
+        default_preprocessing=tec.default_preprocessing or matriz.default_preprocessing,
+        vocabulario=matriz.vocabulario,
+        codigos_classe=dict(matriz.codigos_classe),
+        faixa_trabalho=list(matriz.faixa_trabalho) if matriz.faixa_trabalho else None,
+        referencia=matriz.referencia,
+        resolucao_esperada=tec.resolucao_esperada,
+        formatos_aceitos=list(tec.formatos_aceitos) if tec.formatos_aceitos else None,
+        nivel_agrupamento_tipico=tec.nivel_agrupamento_tipico,
+    )
+
+
+def save_profile(perfil: MatrixProfile, caminho: str) -> None:
+    """Grava `perfil` como YAML no mesmo formato que `load_profile` le' --
+    inverso de `load_profile`. `caminho` e' um arquivo completo (nao um
+    diretorio); o chamador decide onde (perfil de usuario, fora de
+    `DIR_PERFIS` -- esse diretorio vive DENTRO do pacote instalado e pode
+    nao ser gravavel, ver `test_perfis_sao_empacotados_com_o_pacote`).
+    """
+    dados: Dict[str, Any] = {
+        "descricao": perfil.descricao,
+        "unidade_eixo": perfil.unidade_eixo,
+        "eixo_min": perfil.eixo_min,
+        "eixo_max": perfil.eixo_max,
+        "default_preprocessing": perfil.default_preprocessing,
+        "vocabulario": {
+            "classe": perfil.vocabulario.classe,
+            "classe_plural": perfil.vocabulario.classe_plural,
+            "matriz": perfil.vocabulario.matriz,
+            "alvo": perfil.vocabulario.alvo,
+            "conforme": perfil.vocabulario.conforme,
+            "nao_conforme": perfil.vocabulario.nao_conforme,
+        },
+        "codigos_classe": dict(perfil.codigos_classe),
+        "faixa_trabalho": list(perfil.faixa_trabalho) if perfil.faixa_trabalho else None,
+        "referencia": perfil.referencia,
+        "resolucao_esperada": perfil.resolucao_esperada,
+        "formatos_aceitos": list(perfil.formatos_aceitos) if perfil.formatos_aceitos else None,
+        "nivel_agrupamento_tipico": perfil.nivel_agrupamento_tipico,
+    }
+    caminho_p = Path(caminho)
+    caminho_p.parent.mkdir(parents=True, exist_ok=True)
+    with open(caminho_p, "w", encoding="utf-8") as f:
+        yaml.safe_dump(dados, f, allow_unicode=True, sort_keys=False)

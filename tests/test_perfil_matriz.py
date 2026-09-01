@@ -19,8 +19,9 @@ import numpy as np
 import pytest
 
 from guaraci.perfil_matriz import (PERFIS_TECNICA, UnknownProfileError,
-                                   apply_profile, load_profile,
-                                   perfis_disponiveis)
+                                   apply_profile, combine_profiles,
+                                   load_profile, perfis_disponiveis,
+                                   save_profile)
 
 
 # ── Contrato do carregador ───────────────────────────────────────────────────
@@ -280,3 +281,66 @@ def test_perfil_de_tecnica_carrega_campos_de_garantia():
         p = load_profile(nome)
         assert p.nivel_agrupamento_tipico in ("high", "medium", "none")
         assert p.formatos_aceitos or p.resolucao_esperada
+
+
+# ── Indicador de cobertura validada (Agente 5B, item pendente fechado) ────
+
+def test_referencia_distingue_perfil_validado_de_declarado():
+    """`referencia` nao-vazia = validado com dado publico real (paper/
+    dataset citado); vazia = so' declarado. Contra-prova contra o estado
+    real dos 8 perfis embutidos -- se um perfil ganhar validacao nova (ou
+    perder), o selo da UI (guaraci.py:_rotulo_opcao, app_quimiometria.py:
+    _rotulo_perfil) muda sozinho, sem precisar editar codigo de UI."""
+    validados = {"milho_nir", "oleos_comestiveis_nir"}
+    nao_validados = {"oleo_nir", "mel_vis_nir", "bancada", "celular", "scanner"}
+    for nome in validados:
+        assert load_profile(nome).referencia, f"{nome} deveria ter referencia"
+    for nome in nao_validados:
+        assert not load_profile(nome).referencia, f"{nome} nao deveria ter referencia"
+
+
+# ── Perfil combinado (Agente 5B, "criar/salvar perfil combinado") ─────────
+
+def test_combine_profiles_funde_matriz_e_tecnica_sem_misturar_campos():
+    """Vocabulario/faixa vem da matriz; resolucao/formatos/garantia vem da
+    tecnica -- contra-prova de que a fusao nao troca as fontes."""
+    matriz = load_profile("mel_vis_nir")
+    tecnica = load_profile("celular")
+    combinado = combine_profiles("mel_celular", matriz, tecnica)
+
+    assert combinado.nome == "mel_celular"
+    assert combinado.vocabulario.matriz == matriz.vocabulario.matriz
+    assert combinado.eixo_min == matriz.eixo_min
+    assert combinado.resolucao_esperada == tecnica.resolucao_esperada
+    assert combinado.formatos_aceitos == tecnica.formatos_aceitos
+    assert combinado.nivel_agrupamento_tipico == tecnica.nivel_agrupamento_tipico
+    # default_preprocessing: tecnica tem valor (autoscaling) -> vence.
+    assert combinado.default_preprocessing == tecnica.default_preprocessing
+
+
+def test_combine_profiles_sem_tecnica_usa_defaults_de_matriz():
+    matriz = load_profile("milho_nir")
+    combinado = combine_profiles("so_matriz", matriz, None)
+    assert combinado.default_preprocessing == matriz.default_preprocessing
+    assert combinado.resolucao_esperada is None
+    assert combinado.nivel_agrupamento_tipico is None
+
+
+def test_roundtrip_save_load_preserva_as_duas_dimensoes(tmp_path):
+    """Mesma disciplina de roundtrip que ja pegou um bug real de Config
+    nesta sessao (test_config_io.py) -- salvar/carregar um perfil
+    combinado precisa preservar matriz E tecnica juntas."""
+    matriz = load_profile("oleos_comestiveis_nir")
+    tecnica = load_profile("bancada")
+    combinado = combine_profiles("oleo_bancada", matriz, tecnica)
+
+    caminho = tmp_path / "oleo_bancada.yaml"
+    save_profile(combinado, str(caminho))
+    lido = load_profile(str(caminho))
+
+    assert lido.vocabulario.matriz == matriz.vocabulario.matriz
+    assert lido.faixa_trabalho == matriz.faixa_trabalho
+    assert lido.referencia == matriz.referencia
+    assert lido.resolucao_esperada == tecnica.resolucao_esperada
+    assert lido.formatos_aceitos == tecnica.formatos_aceitos
+    assert lido.nivel_agrupamento_tipico == tecnica.nivel_agrupamento_tipico

@@ -419,6 +419,31 @@ _ROTULOS_OPCAO: Dict[str, Dict[str, str]] = {
 }
 
 
+def _rotulo_perfil(op: str) -> str:
+    """Rotulo dinamico p/ perfil_matriz/perfil_tecnica -- mesma logica de
+    `_rotulo_opcao` da CLI (guaraci.py): descricao + selo de cobertura
+    validada (`referencia` nao-vazia = validado com dado publico real).
+    Duplicado deliberadamente (nao importa guaraci.py aqui -- CLI e web sao
+    interfaces separadas por design, ver Fase H) mas usa a MESMA fonte de
+    dado (`perfil_matriz.load_profile`), nunca reinventa o julgamento.
+    """
+    if not op:
+        return "(não declarado)"
+    try:
+        from guaraci.perfil_matriz import load_profile
+        p = load_profile(op)
+    except Exception:  # noqa: BLE001 -- rotulo e' so' exibicao.
+        return op
+    desc = (p.descricao or "").split(" (")[0].strip()
+    selo = ""
+    if op != "generico":
+        selo = "  ✅" if p.referencia else "  ⚠ não validado"
+    extra = ""
+    if p.nivel_agrupamento_tipico:
+        extra = f" [garantia típica: {p.nivel_agrupamento_tipico}]"
+    return f"{op} — {desc}{extra}{selo}" if desc else f"{op}{selo}"
+
+
 def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     """Renders ONE widget according to field type and returns current value."""
     chave = prefixo + s["key"]
@@ -442,6 +467,9 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     if t in ("choice", "preproc"):
         ops = list(s.get("opcoes") or [])
         idx = ops.index(valor_atual) if valor_atual in ops else 0
+        if s["key"] in ("perfil_matriz", "perfil_tecnica"):
+            return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave,
+                                format_func=_rotulo_perfil)
         _rot = _ROTULOS_OPCAO.get(s["key"])
         if _rot:
             return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave,

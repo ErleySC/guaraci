@@ -836,10 +836,25 @@ def _rotulo_opcao(key: str, op: Any) -> str:
             # so' cai pro nome cru (a validacao real acontece ao aplicar).
             return str(op)
         desc = (p.descricao or "").split(" (")[0].strip()
+        # Indicador de cobertura validada (Agente 5B, item pendente):
+        # `referencia` ja' e' o dado que distingue perfil validado com dado
+        # PUBLICO real (milho_nir/oleos_comestiveis_nir tem paper/dataset
+        # citado) de perfil so' declarado (mel_vis_nir/oleo_nir/bancada/
+        # celular/scanner -- referencia vazia, nenhum tem validacao
+        # publicada ainda). Nao inventa um campo novo -- so' expoe o que
+        # ja' existia sem aparecer em lugar nenhum da UI. "generico" fica
+        # de fora do selo -- e' um placeholder neutro, nao uma alegacao.
+        selo = ""
+        if str(op) != "generico":
+            if p.referencia:
+                selo = "  ✅" if _lang() == "PT" else "  ✅"
+            else:
+                selo = ("  ⚠ nao validado" if _lang() == "PT"
+                        else "  ⚠ not validated")
         if key == "perfil_tecnica" and p.nivel_agrupamento_tipico:
             garantia = ("garantia tipica" if _lang() == "PT" else "typical guarantee")
-            return f"{op} — {desc} [{garantia}: {p.nivel_agrupamento_tipico}]"
-        return f"{op} — {desc}" if desc else str(op)
+            return f"{op} — {desc} [{garantia}: {p.nivel_agrupamento_tipico}]{selo}"
+        return (f"{op} — {desc}{selo}" if desc else f"{op}{selo}")
     return str(op)
 
 
@@ -1929,15 +1944,67 @@ def _menu_project(cfg: Config) -> None:
     _loop_menu(_t("t_projeto"), _t("d_projeto"), ["pasta_dados", "pasta_saida", "tag"], cfg)
 
 
+_DIR_PERFIS_COMBINADOS = _USER_DIR / "perfis_matriz"
+
+
+def _salvar_perfil_combinado(cfg: Config) -> None:
+    """Funde `perfil_matriz` + `perfil_tecnica` (Agente 5B) e salva como
+    YAML de usuario, pronto pra reusar digitando o caminho no campo
+    `perfil_matriz` de uma proxima sessao."""
+    lang = _lang(); is_pt = lang == "PT"
+    nome_matriz = str(getattr(cfg, "matrix_profile", "") or "")
+    nome_tecnica = str(getattr(cfg, "acquisition_profile", "") or "")
+    if not nome_matriz:
+        console.print(f"  [{PR}]{'Defina o Perfil de matriz antes de combinar.' if is_pt else 'Set the matrix profile before combining.'}[/{PR}]")
+        _pause(); return
+    if not nome_tecnica:
+        console.print(f"  [{PR}]{'Defina o Perfil de tecnica de aquisicao antes de combinar.' if is_pt else 'Set the acquisition technique profile before combining.'}[/{PR}]")
+        _pause(); return
+
+    from guaraci.perfil_matriz import (UnknownProfileError, combine_profiles,
+                                        load_profile, save_profile)
+    try:
+        matriz = load_profile(nome_matriz)
+        tecnica = load_profile(nome_tecnica)
+    except UnknownProfileError as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]"); _pause(); return
+
+    nome_novo = _ask(
+        f"  [{PA}]{'Nome do perfil combinado (ex.: mel_celular)' if is_pt else 'Combined profile name (e.g. honey_phone)'}: [/{PA}]"
+    ).strip()
+    if not nome_novo:
+        console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
+    combinado = combine_profiles(nome_novo, matriz, tecnica)
+    caminho = _DIR_PERFIS_COMBINADOS / f"{nome_novo}.yaml"
+    try:
+        save_profile(combinado, str(caminho))
+    except OSError as e:
+        console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    msg = (f"✓ Perfil combinado salvo em {caminho}\n"
+           f"  Use digitando o caminho no campo 'Perfil de matriz' numa proxima sessao."
+           if is_pt else
+           f"✓ Combined profile saved to {caminho}\n"
+           f"  Use it by typing the path in the 'Matrix profile' field in a future session.")
+    console.print(f"  [g]{escape(msg)}[/g]")
+    _pause()
+
+
 def _menu_data(cfg: Config) -> None:
     # imagem_incluir_textura adicionado 2026-08-06: mesma classe de bug de
     # n_jobs_permutacao. So' relevante quando modo_entrada="imagem"
     # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
     # campos_avancados por ser niche, nao por risco.
+    extra_lbl = ("Salvar perfil combinado (matriz + tecnica)" if _lang() == "PT"
+                 else "Save combined profile (matrix + technique)")
     _loop_menu(_t("t_dados"), _t("d_dados"),
                ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
                 "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
                 "excluir_classes", "imagem_incluir_textura"], cfg,
+               extras=[("C", extra_lbl)],
+               on_extra={"C": lambda: _salvar_perfil_combinado(cfg)},
                campos_avancados={"perfil_tecnica", "imagem_incluir_textura"})
 
 
