@@ -179,11 +179,20 @@ testada.
 
 ---
 
-# GUARACI — Central de perfis (Agente 5B, proposta)
+# GUARACI — Central de perfis (Agente 5B)
 
-> **Status: PROPOSTA, não implementada.** Nenhum arquivo de perfil foi
-> tocado para produzir esta seção. Pausa obrigatória — aguardando aprovação
-> antes de qualquer implementação (5B.2, mesma regra de 5.1/5.2 acima).
+> **Status 2026-09-01: parcialmente implementado, aprovado pelo usuário.**
+> Ver commit `d50155c`. Implementado: 2º campo em `Config`
+> (`acquisition_profile`, independente de `matrix_profile`); seletor
+> navegável (era texto livre) tanto na CLI quanto no Streamlit, agrupado
+> por dimensão via `perfis_disponiveis()`; exposição do dado antes morto
+> (resolução/formatos/nível de garantia típico) na descrição de cada
+> opção do seletor. **Não implementado** (não fazia parte do pedido
+> mínimo, ficou para decisão futura): salvar um perfil combinado como
+> novo YAML de usuário; indicador visual de qual combinação já tem
+> histórico de validação com dado real vs. inédita — hoje nenhum perfil
+> de imagem tem validação publicada, mas isso não aparece na tela, só
+> neste documento.
 
 ## 5B.1 Diagnóstico (corrige a premissa da instrução original)
 
