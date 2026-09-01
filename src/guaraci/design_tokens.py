@@ -8,8 +8,11 @@ arrastar nenhuma biblioteca extra.
 
 Tokens SEMANTICOS (bg, surface, text, primary...), nao widget-a-widget. Um tema
 novo = adicionar uma chave em TOKENS; nada mais precisa mudar. Derivados da
-mesma paleta profissional (forest/amber/rust) usada pelo terminal, para que
-CLI, web e graficos pareçam o mesmo produto.
+mesma paleta de identidade (laranja/dourado, extraida por amostragem real de
+pixel da mascote em assets/guaraci_icon.png -- ver docs/DESIGN.md) usada pelo
+terminal, para que CLI, web e graficos pareçam o mesmo produto. `success`/
+`warn`/`error` continuam verde/ambar/vermelho -- migrar a cor de marca nao
+muda o significado das cores de status.
 """
 from __future__ import annotations
 
@@ -26,8 +29,8 @@ TOKENS: Dict[str, Dict[str, str]] = {
         "surface":    "#FFFFFF",   # cartoes / paineis
         "text":       "#1A2B22",   # texto principal (verde-navy)
         "text_muted": "#5A6B62",   # texto secundario
-        "primary":    "#3D8B57",   # forest — cor de marca
-        "accent":     "#B8963E",   # amber — destaque
+        "primary":    "#D95700",   # laranja (mascote) — cor de marca/acao
+        "accent":     "#B8850A",   # dourado (mascote) — destaque/borda
         "success":    "#2F7A48",   "success_bg": "#E6F2EA",
         "warn":       "#8A6D1E",   "warn_bg":    "#FBF3E0",
         "error":      "#9E3F22",   "error_bg":   "#F7E6E0",
@@ -38,8 +41,8 @@ TOKENS: Dict[str, Dict[str, str]] = {
         "surface":    "#18211C",
         "text":       "#E6EDE8",
         "text_muted": "#9DB0A5",
-        "primary":    "#55B06A",
-        "accent":     "#C9A94E",
+        "primary":    "#FF8A3D",   # laranja (mascote), mais claro p/ fundo escuro
+        "accent":     "#FFC100",   # dourado (mascote), tom vivido
         "success":    "#8FD69F",   "success_bg": "#16301F",
         "warn":       "#E0C978",   "warn_bg":    "#332B14",
         "error":      "#E39070",   "error_bg":   "#331C14",

@@ -26,12 +26,16 @@ __all__ = [
 ]
 
 # ---------------------------------------------------------------------------
-# PALETA PROFISSIONAL — tons discretos, aspecto cientifico
+# PALETA DE IDENTIDADE — extraida por amostragem real de pixel da mascote
+# (assets/guaraci_icon.png, ver docs/DESIGN.md secao 1). PF (marca/bordas) e
+# PA (destaque/aviso) migraram de forest/amber para laranja/dourado da
+# mascote em 2026-09-01; PG (sucesso) e PR (alerta/erro) NAO mudaram de
+# significado -- so' a cor de marca migrou, os status continuam verde/rust.
 # ---------------------------------------------------------------------------
-PA = "#B8963E"   # Amber (ouro discreto — destaques)
-PF = "#3D8B57"   # Forest (verde escuro — bordas, secoes)
+PA = "#FFC100"   # Dourado (mascote — destaque, aviso, bordas de identidade)
+PF = "#FF7F2B"   # Laranja (mascote — marca/acao primaria, secoes)
 PS = "#4A9E5C"   # Sage  (verde medio — substitui ciano)
-PR = "#B85030"   # Rust  (laranja-vermelho — alertas)
+PR = "#B85030"   # Rust  (laranja-vermelho — alertas/erro, distinto do laranja de marca)
 PW = "#C8C8C8"   # Light (texto principal)
 PM = "#686868"   # Muted (texto secundario)
 PD = "#3A3A3A"   # Dim   (linhas de separacao)
@@ -39,7 +43,7 @@ PG = "#55B06A"   # Green (ok / sucesso)
 
 # RGB de cada tom (para gerar escapes ANSI truecolor onde Rich nao e usado).
 _RGB: Dict[str, tuple] = {
-    "PA": (184, 150, 62), "PF": (61, 139, 87), "PS": (74, 158, 92),
+    "PA": (255, 193, 0), "PF": (255, 127, 43), "PS": (74, 158, 92),
     "PR": (184, 80, 48),  "PW": (200, 200, 200), "PM": (104, 104, 104),
     "PD": (58, 58, 58),   "PG": (85, 176, 106),
 }
