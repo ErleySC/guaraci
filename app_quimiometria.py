@@ -43,9 +43,9 @@ if os.path.isdir(_SRC) and _SRC not in sys.path:
 from guaraci.design_tokens import tokens as _theme_tokens
 # Lógica pura extraída da UI (item 19): testável sem Streamlit. Ver app_logic.py.
 from guaraci.app_logic import (
-    listar_figuras as _listar_figuras_pura,
-    ler_resumo as _ler_resumo_pura,
-    ler_model_card as _ler_model_card_pura,
+    list_figures as _listar_figuras_pura,
+    load_summary as _ler_resumo_pura,
+    load_model_card as _ler_model_card_pura,
 )
 # Geração de relatórios (PDF/Word/Excel/LaTeX/PPTX) extraída para módulo de
 # serviço próprio (item 18): app_quimiometria.py só cacheia e serve o download.
@@ -412,16 +412,16 @@ _IS_PUBLIC_DEMO = not os.path.exists(_CFG_PATH)
 if "cfg_base" not in st.session_state:
     try:
         st.session_state.cfg_base = (
-            pq.carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH)
+            pq.load_config(_CFG_PATH) if os.path.exists(_CFG_PATH)
             # No local config.yaml (e.g. public demo deploy): default to
             # synthetic data so first-time visitors get a working demo
             # instead of an empty "dados/" folder error.
-            else pq.Config(modo="sintetico"))
+            else pq.Config(mode="sintetico"))
     except (RuntimeError, FileNotFoundError, ValueError):
-        # carregar_config so' lanca esses 3 tipos (PyYAML ausente, arquivo
+        # load_config so' lanca esses 3 tipos (PyYAML ausente, arquivo
         # ausente, chaves invalidas) -- config.yaml quebrado nunca impede o
         # primeiro carregamento do app, cai para o modo demo sintetico.
-        st.session_state.cfg_base = pq.Config(modo="sintetico")
+        st.session_state.cfg_base = pq.Config(mode="sintetico")
 
 cfg_base = st.session_state.cfg_base
 
@@ -621,23 +621,23 @@ with tab_pred:
 # ==========================================================================
 @st.cache_data(show_spinner=False)
 def _pdf_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_pdf_relatorio(pasta, dict(proj_items)).read()
+    return reports.generate_pdf_report(pasta, dict(proj_items)).read()
 
 @st.cache_data(show_spinner=False)
 def _word_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_word_relatorio(pasta, dict(proj_items)).read()
+    return reports.generate_word_report(pasta, dict(proj_items)).read()
 
 @st.cache_data(show_spinner=False)
 def _excel_bytes(pasta: str) -> bytes:
-    return reports.gerar_excel_relatorio(pasta).read()
+    return reports.generate_excel_report(pasta).read()
 
 @st.cache_data(show_spinner=False)
 def _latex_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_latex_template(pasta, dict(proj_items))
+    return reports.generate_latex_template(pasta, dict(proj_items))
 
 @st.cache_data(show_spinner=False)
 def _pptx_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_pptx_relatorio(pasta, dict(proj_items)).read()
+    return reports.generate_pptx_report(pasta, dict(proj_items)).read()
 
 
 # ==========================================================================
