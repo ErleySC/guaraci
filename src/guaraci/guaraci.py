@@ -369,6 +369,14 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_hardware":   "Capacidade e perfil recomendado.",
         "d_perfis":     "Configuracoes prontas para uso.",
         "d_ajuda":      "Documentacao interativa por campo.",
+        # Faltavam pra' _guaraci_navegar_secoes cobrir as 18 abas reais
+        # (achado do Agente 6, docs/DESIGN.md): so' existiam d_ das 12
+        # abas com campo de _CONFIG_SPEC associado.
+        "d_predicao":       "Aplica modelo .joblib a espectros novos.",
+        "d_planejamento":   "Tamanho amostral e plano de coleta.",
+        "d_auditoria":      "Checagens de delineamento anti-vazamento.",
+        "d_selecao_amostras": "Divide CSV em calibracao/validacao.",
+        "d_sobre":          "Versao, licenca e creditos.",
         # Grupos do menu principal (docs/DESIGN.md secao 4 -- Agente 5.2,
         # aprovado 2026-09-01: substitui os 3 grupos antigos config/analise/
         # sistema por 6 grupos alinhados ao fluxo real de trabalho)
@@ -526,6 +534,11 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_hardware":   "Capacity and recommended profile.",
         "d_perfis":     "Ready-to-use configurations.",
         "d_ajuda":      "Interactive field documentation.",
+        "d_predicao":       "Applies a .joblib model to new spectra.",
+        "d_planejamento":   "Sample size and collection plan.",
+        "d_auditoria":      "Anti-leakage design checks.",
+        "d_selecao_amostras": "Splits a CSV into calibration/validation.",
+        "d_sobre":          "Version, license and credits.",
         "grp_preparar": "Prepare",
         "grp_planejar": "Plan",
         "grp_modelar":  "Model",
@@ -1054,19 +1067,42 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     ))
     _pause()
 
+#: As 18 abas reais do CLI (confirmado por auditoria funcional, Agente 1 --
+#: nao existe "0"), tecla -> (chave t_, chave d_). "G" fica de fora: e' o
+#: proprio assistente, nao uma secao pra' navegar ATE (circular).
+_SECOES_NAVEGAVEIS: List[Tuple[str, str, str]] = [
+    ("1", "t_projeto", "d_projeto"),
+    ("2", "t_dados", "d_dados"),
+    ("3", "t_preproc", "d_preproc"),
+    ("4", "t_modelagem", "d_modelagem"),
+    ("5", "t_validacao", "d_validacao"),
+    ("6", "t_avancado", "d_avancado"),
+    ("7", "t_viz", "d_viz"),
+    ("8", "t_tecnica", "d_tecnica"),
+    ("9", "t_codigos", "d_codigos"),
+    ("H", "t_hardware", "d_hardware"),
+    ("B", "t_predicao", "d_predicao"),
+    ("J", "t_planejamento", "d_planejamento"),
+    ("U", "t_auditoria", "d_auditoria"),
+    ("K", "t_selecao_amostras", "d_selecao_amostras"),
+    ("P", "t_perfis", "d_perfis"),
+    ("?", "t_ajuda", "d_ajuda"),
+]
+
+
 def _guaraci_navegar_secoes(cfg: Config) -> None:
-    """Lista as secoes e exibe descricao quando selecionada."""
+    """Lista as 18 abas reais do CLI e exibe descricao quando selecionada.
+
+    Antes (achado do Agente 6, docs/DESIGN.md): dict estatico escrito a
+    mao com so' 8 secoes, faltando 10 das 18 abas reais (H/B/J/U/K/P/?/A
+    + a lista supunha existir uma aba "0" que nunca existiu). Agora deriva
+    de `_t()`/`d_*`, a MESMA fonte que ja alimenta o rodape/ajuda de cada
+    aba individual -- uma secao nova precisa so' de um par t_/d_ na tabela
+    de traducao pra' aparecer aqui tambem, nao de editar este dict.
+    """
     lang = _lang()
-    secoes = {
-        "1": ("Projeto",           "Pastas de entrada/saida e nome da execucao."),
-        "2": ("Dados",             "Formato espectral, faixa de comprimento de onda e classes."),
-        "3": ("Pre-processamento", "Pipeline espectral — recomendado msc+sg+mc para FT-NIR."),
-        "4": ("Modelagem",         "PLS-DA, OPLS-DA, DD-SIMCA e selecao de variaveis."),
-        "5": ("Validacao",         "Holdout, permutacoes, Wold e CV-ANOVA."),
-        "6": ("Avancado",          "Benchmark, Monte Carlo CV e SHAP (aumentam tempo de execucao)."),
-        "7": ("Visualizacao",      "DPI, paleta, formato de figura e grid."),
-        "8": ("Tecnica Analitica", "Selecione a tecnica espectroscopica e ajuste faixas."),
-    }
+    secoes = {k: (_t(t_key), _t(d_key)) for k, t_key, d_key in _SECOES_NAVEGAVEIS}
+    secoes["A"] = ("Sobre" if lang == "PT" else "About", _t("d_sobre"))
     console.print()
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
     t.add_column("N", style=PA, width=4)

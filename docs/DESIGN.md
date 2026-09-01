@@ -406,13 +406,12 @@ lógica nova para escrever — é *wiring* de algo que já existe.
 > único têm cobertura completa de `__all__`), e o caso único de
 > sugerir+executar (α mínimo alcançável pra classe mais fraca, função
 > pura `_sugestao_alpha_classe_fraca`, testável sem console). **Não
-> implementado**: `_guaraci_navegar_secoes` continua com o dict estático
-> de 8 seções — investigando, `_CONFIG_SPEC` não tem metadado de
-> "seção"/agrupamento pronto pra derivar disso diretamente (`MENU_FIELDS`
-> em `cli_assistente.py` cobre só 7 das 18 abas, as com campo de config
-> associado); corrigir isso direito é mais trabalho do que cabia nesta
-> rodada — fica como pendência aberta, não como "efeito colateral
-> grátis" que a proposta original supunha.
+> implementado na hora, fechado depois** (ver commit posterior a este):
+> `_guaraci_navegar_secoes` agora deriva de `_t()`/`d_*` (a mesma fonte
+> que já alimenta o rodapé/ajuda de cada aba), cobrindo as 18 abas reais
+> em vez do dict estático de 8 — não veio de `_CONFIG_SPEC` como a
+> proposta original cogitava (esse não tinha o metadado certo), mas da
+> fonte de tradução, que é o registro correto no nível de aba.
 
 > **Status 2026-09-01: Fase 2 parcial.** FAQ curado implementado — `[5]`
 > no assistente, 4 perguntas canônicas escolhidas por número (não é chat

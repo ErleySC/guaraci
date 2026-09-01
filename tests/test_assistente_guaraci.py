@@ -165,3 +165,34 @@ def test_assistente_opcao_5_chama_faq(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda *a, **k: "5")
     guaraci_mod._abrir_assistente("teste", Config())
     assert chamado.get("ok") is True
+
+
+# ── _guaraci_navegar_secoes cobre as 18 abas reais (achado do Agente 6) ──
+
+def test_navegar_secoes_cobre_todas_as_18_abas_reais():
+    """Lista confirmada pelo Agente 1 (auditoria funcional, nao suposta):
+    18 abas -- 1-9, H, B, J, U, K, P, G, ?, A. "G" fica fora do proprio
+    indice (e' o assistente, navegar ate ele de dentro dele e' circular).
+    Antes desta correcao, so' 8 apareciam aqui."""
+    teclas_com_t_d = {k for k, _, _ in guaraci_mod._SECOES_NAVEGAVEIS}
+    teclas_indice = teclas_com_t_d | {"A"}   # "A" (Sobre) e' adicionado a parte
+    esperado = {"1", "2", "3", "4", "5", "6", "7", "8", "9",
+                "H", "B", "J", "U", "K", "P", "?", "A"}
+    assert teclas_indice == esperado
+
+
+def test_navegar_secoes_toda_chave_t_e_d_resolve_para_texto_real():
+    """Nenhuma entrada de _SECOES_NAVEGAVEIS pode apontar pra uma chave
+    _t()/d_ inexistente (cairia no fallback = a propria chave crua, ex.
+    'd_predicao' aparecendo literal na tela em vez de uma descricao)."""
+    for _k, t_key, d_key in guaraci_mod._SECOES_NAVEGAVEIS:
+        for chave in (t_key, d_key):
+            nome = guaraci_mod._t(chave)
+            assert nome != chave, f"chave de traducao '{chave}' sem entrada real"
+
+
+def test_navegar_secoes_roda_sem_excecao_para_cada_aba(monkeypatch):
+    for tecla, _t_key, _d_key in guaraci_mod._SECOES_NAVEGAVEIS + [("A", "", "")]:
+        respostas = iter([tecla, ""])
+        monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+        guaraci_mod._guaraci_navegar_secoes(Config())
