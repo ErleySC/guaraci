@@ -2518,7 +2518,6 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
     """
     lang = _lang()
     is_pt = lang == "PT"
-    _cls(); _print_header()
 
     intro = (
         "Aplica um modelo treinado (.joblib) a espectros novos e reporta "
@@ -2527,21 +2526,36 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
         "Applies a trained model (.joblib) to new spectra and reports "
         "predicted class + T2/Q diagnostics (applicability domain)."
     )
-    console.print(Panel(
-        Text.from_markup(f"  {intro}"),
-        title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
-        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
-    ))
-    console.print()
+
+    # Redesenha cabecalho + painel de contexto -- extraido p/ funcao local
+    # porque precisa ser chamado de novo apos fechar o assistente [G] (que
+    # limpa a tela), mantendo o mesmo padrao visual usado em todo o resto
+    # do CLI (rodape [G]/[0] logo abaixo do painel de intro).
+    def _intro() -> None:
+        _cls(); _print_header()
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        console.print()
+
+    _intro()
 
     lbl_modelo = "Caminho do modelo (.joblib)" if is_pt else "Model path (.joblib)"
     lbl_csv    = "Caminho do CSV de espectros novos" if is_pt else "New spectra CSV path"
     lbl_saida  = "Caminho de saida do CSV de resultados" if is_pt else "Output results CSV path"
     nao_encontrado = "Arquivo nao encontrado" if is_pt else "File not found"
 
-    cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
-    if not cam_modelo:
-        return
+    while True:
+        cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
+        if cam_modelo.upper() == "G":
+            _abrir_assistente(_t("t_predicao"), cfg)
+            _intro(); continue
+        if not cam_modelo or cam_modelo == "0":
+            return
+        break
     if not os.path.isfile(cam_modelo):
         console.print(f"  [{PR}]{nao_encontrado}: {escape(cam_modelo)}[/{PR}]")
         _pause(); return
@@ -2574,6 +2588,14 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
     ).strip().strip('"')
     if not cam_saida:
         cam_saida = padrao_saida
+
+    # Confirmacao antes de sobrescrever -- mesmo idioma s/n ja usado acima
+    # para o aviso de pickle (nao introduz um mecanismo novo).
+    if os.path.exists(cam_saida):
+        conf_sobre = ("Arquivo ja existe. Sobrescrever? (s/n)" if is_pt
+                      else "File already exists. Overwrite? (y/n)")
+        if _ask(f"  [{PA}]{conf_sobre}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
 
     try:
         import pandas as pd
@@ -2804,7 +2826,6 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
     """
     lang = _lang()
     is_pt = lang == "PT"
-    _cls(); _print_header()
 
     intro = (
         "Calcula quantas amostras coletar (gate conformal ou DD-SIMCA) e "
@@ -2815,15 +2836,29 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
         "gate) and generates a session plan + randomized reading order, "
         "with replicate/blank alerts."
     )
-    console.print(Panel(
-        Text.from_markup(f"  {intro}"),
-        title=f"[bold {PS}]{_t('t_planejamento')}[/bold {PS}]",
-        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
-    ))
-    console.print()
+
+    # Ver _menu_prediction: mesmo padrao de redesenho apos fechar [G].
+    def _intro() -> None:
+        _cls(); _print_header()
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_planejamento')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        console.print()
+
+    _intro()
 
     lbl_classes = "Classes (separadas por virgula)" if is_pt else "Classes (comma-separated)"
-    classes_raw = _ask(f"  [{PA}]{lbl_classes}:[/{PA}] ")
+    while True:
+        classes_raw = _ask(f"  [{PA}]{lbl_classes}:[/{PA}] ").strip()
+        if classes_raw.upper() == "G":
+            _abrir_assistente(_t("t_planejamento"), cfg)
+            _intro(); continue
+        break
+    if not classes_raw or classes_raw == "0":
+        return
     classes = [c.strip() for c in classes_raw.split(",") if c.strip()]
     if not classes:
         return
@@ -2885,6 +2920,16 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
                "Also generate PDF (optional, in addition to Markdown+Excel)? (y/N)")
     quer_pdf = _ask(f"  [{PA}]{lbl_pdf}[/{PA}] ").strip().lower() in ("s", "y", "sim", "yes")
 
+    # Confirmacao antes de sobrescrever -- mesmo idioma s/n de _menu_prediction.
+    _existentes = [p for p in (cam_saida + ".md", cam_saida + ".xlsx",
+                                cam_saida + ".pdf" if quer_pdf else None)
+                   if p and os.path.exists(p)]
+    if _existentes:
+        conf_sobre = ("Arquivo(s) ja existem. Sobrescrever? (s/n)" if is_pt
+                      else "File(s) already exist. Overwrite? (y/n)")
+        if _ask(f"  [{PA}]{conf_sobre}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
     try:
         md = _plano.export_markdown(plano)
         cam_md = cam_saida + ".md"
@@ -2930,7 +2975,6 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
     coletar), agora atuando sobre dados que ja existem.
     """
     lang = _lang(); is_pt = lang == "PT"
-    _cls(); _print_header()
 
     intro = (
         "Escolhe quais amostras de um CSV vao para calibracao (cobertura "
@@ -2943,17 +2987,31 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
         "via Kennard-Stone, Duplex or SPXY -- only splits/labels, never "
         "alters the original CSV."
     )
-    console.print(Panel(
-        Text.from_markup(f"  {intro}"),
-        title=f"[bold {PS}]{_t('t_selecao_amostras')}[/bold {PS}]",
-        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
-    ))
-    console.print()
+
+    # Ver _menu_prediction: mesmo padrao de redesenho apos fechar [G].
+    def _intro() -> None:
+        _cls(); _print_header()
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_selecao_amostras')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        console.print()
+
+    _intro()
 
     lbl_csv = ("Caminho do CSV com os espectros (1 amostra por linha)"
                if is_pt else
                "Path to the CSV with spectra (1 sample per row)")
-    caminho_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
+    while True:
+        caminho_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
+        if caminho_csv.upper() == "G":
+            _abrir_assistente(_t("t_selecao_amostras"), cfg)
+            _intro(); continue
+        break
+    if caminho_csv == "0":
+        return
     if not caminho_csv or not os.path.isfile(caminho_csv):
         console.print(f"  [{PR}]{'Arquivo nao encontrado' if is_pt else 'File not found'}[/{PR}]")
         _pause(); return
@@ -3006,13 +3064,18 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
         _pause(); return
 
     from guaraci.dados_io import duplex_split, kennard_stone_split, spxy_split
-    if metodo == "Kennard-Stone":
-        idx_cal, idx_val = kennard_stone_split(X, frac_treino=frac_cal)
-    elif metodo == "Duplex":
-        idx_cal, idx_val = duplex_split(X, frac_treino=frac_cal)
-    else:
-        y = df[col_alvo].to_numpy(dtype=float)
-        idx_cal, idx_val = spxy_split(X, y, frac_treino=frac_cal)
+    # console.status: Kennard-Stone/Duplex/SPXY sao O(n^2) em distancias --
+    # sem isso a tela ficava parada sem nenhum sinal para datasets maiores
+    # (mesmo padrao ja usado em _menu_prediction para o carregamento do modelo).
+    status_msg = "Calculando particao..." if is_pt else "Computing split..."
+    with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+        if metodo == "Kennard-Stone":
+            idx_cal, idx_val = kennard_stone_split(X, frac_treino=frac_cal)
+        elif metodo == "Duplex":
+            idx_cal, idx_val = duplex_split(X, frac_treino=frac_cal)
+        else:
+            y = df[col_alvo].to_numpy(dtype=float)
+            idx_cal, idx_val = spxy_split(X, y, frac_treino=frac_cal)
 
     df_saida = df.copy()
     col_conjunto = "conjunto" if is_pt else "set"
@@ -3029,6 +3092,14 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
     ).strip().strip('"')
     if not cam_saida:
         cam_saida = padrao_saida
+
+    # Confirmacao antes de sobrescrever -- mesmo idioma s/n de _menu_prediction.
+    if os.path.exists(cam_saida):
+        conf_sobre = ("Arquivo ja existe. Sobrescrever? (s/n)" if is_pt
+                      else "File already exists. Overwrite? (y/n)")
+        if _ask(f"  [{PA}]{conf_sobre}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
     try:
         df_saida.to_csv(cam_saida, index=False)
     except OSError as e:
@@ -3094,19 +3165,34 @@ def _menu_audit(cfg: Optional[Config] = None) -> None:
         _pause(); return
     console.print(f"  [{PM}]{msg}[/{PM}]")
 
+    # Gate antes de carregar dados + rodar a auditoria (pode demorar em
+    # datasets grandes): unica forma desta tela de oferecer [G] Guaraci e
+    # [0] Voltar sem sair -- ate aqui a tela so' rodava direto, sem nenhum
+    # ponto de escape ou ajuda contextual (mesmo padrao [G]/[0] usado em
+    # _menu_hardware/_menu_prediction).
+    gate_lbl = "[Enter] Rodar auditoria" if is_pt else "[Enter] Run audit"
+    raw_gate = _ask(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}"
+                     f"   [{PM}]{gate_lbl}[/{PM}]: ").strip().upper()
+    if raw_gate in ("0", "Q"):
+        return
+    if raw_gate == "G":
+        _abrir_assistente(_t("t_auditoria"), cfg)
+        return
+
+    status_msg = "Carregando dados e auditando..." if is_pt else "Loading data and auditing..."
     try:
-        wavenumbers, X_raw, rotulos, conc, mae_id, _metadados = pq.load_data(cfg)
-        X_raw, wavenumbers, rotulos, conc, mae_id, _relatorio = pq.validate_input(
-            X_raw, wavenumbers, rotulos, conc, mae_id)
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            wavenumbers, X_raw, rotulos, conc, mae_id, _metadados = pq.load_data(cfg)
+            X_raw, wavenumbers, rotulos, conc, mae_id, _relatorio = pq.validate_input(
+                X_raw, wavenumbers, rotulos, conc, mae_id)
+            from guaraci.auditoria_delineamento import run_audit
+            achados = run_audit(X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
     except Exception as e:  # noqa: BLE001 -- dado externo pode falhar de
         # varias formas (parsing, faixa espectral vazia, etc.) -- reportar
         # a mensagem, nunca stack trace cru numa ferramenta interativa.
         console.print(f"  [{PR}]{'Erro ao carregar dados' if is_pt else 'Error loading data'}: "
                       f"{escape(str(e))}[/{PR}]")
         _pause(); return
-
-    from guaraci.auditoria_delineamento import run_audit
-    achados = run_audit(X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
 
     cores = {"ok": PG, "aviso": PA, "critico": PR, "silenciado": PM}
     console.print()

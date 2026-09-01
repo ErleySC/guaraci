@@ -206,7 +206,9 @@ def test_silenciar_com_justificativa_nao_remove_do_relatorio():
 def test_menu_audit_cli_end_to_end_roda_sem_pipeline_completo(monkeypatch):
     import guaraci.guaraci as guaraci_mod
 
-    respostas = iter([""])   # Enter no _pause() final
+    # 1a resposta "" = Enter no gate [G]/[0]/[Enter]=Rodar (auditoria nesta
+    # varredura); 2a "" = Enter no _pause() final.
+    respostas = iter(["", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
 
     cfg = Config(mode="sintetico", seed=0)

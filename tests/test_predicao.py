@@ -208,7 +208,10 @@ def test_menu_predicao_alimenta_a_sentinela_de_deriva_entre_chamadas(
     estado_apos_1 = sent.load_state(cam_sentinela)
     assert estado_apos_1.n == X_novos.shape[0]
 
-    respostas2 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
+    # 4a resposta "" reaceita a mesma saida padrao de antes -- dessa vez ela
+    # ja existe (gravada na 1a chamada), entao a confirmacao de sobrescrita
+    # (adicionada nesta auditoria) entra no meio: "s" confirma.
+    respostas2 = iter([str(cam_modelo), "s", str(cam_csv), "", "s", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas2))
     guaraci_mod._menu_prediction(guaraci_mod.Config())
 
