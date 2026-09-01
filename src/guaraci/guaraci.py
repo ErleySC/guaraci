@@ -1162,6 +1162,26 @@ def _guaraci_diagnosticar(cfg: Config) -> None:
                 Text.from_markup(f"  [{PA}]{escape(sugestao)}[/{PA}]"),
                 border_style=PA, box=rbox.ROUNDED, padding=(0, 2),
             ))
+            # Fase 2 (Agente 6): "sugerir" nao para no texto -- oferece a
+            # ACAO. Reaproveita plan_from_statistical_target (mesma funcao
+            # que _menu_plan chama), nao inventa um calculo novo aqui.
+            pergunta = ("Quer ver o plano de coleta para atingir esse alpha? (s/n) "
+                        if is_pt else
+                        "Want to see the collection plan to reach that alpha? (y/n) ")
+            if _ask(f"  [{PA}]{pergunta}[/{PA}]").strip().lower() in ("s", "y", "sim", "yes"):
+                from guaraci.plano_coleta import plan_from_statistical_target
+                try:
+                    classes_unicas = sorted({str(r) for r in rotulos})
+                    plano, meta = plan_from_statistical_target(
+                        classes_unicas, n_sessoes=2,
+                        alpha_conformal=info["alpha_ref"])
+                    console.print()
+                    console.print(f"  [{PS}]{'n por classe' if is_pt else 'n per class'}: "
+                                  f"{meta['n_por_classe']} ({meta['origem']})[/{PS}]")
+                    for alerta in plano.alertas:
+                        console.print(f"  [{PM}]• {escape(str(alerta))}[/{PM}]")
+                except ValueError as e_plano:
+                    console.print(f"  [{PR}]{escape(str(e_plano))}[/{PR}]")
     _pause()
 
 
@@ -1229,6 +1249,129 @@ def _guaraci_tecnicas() -> None:
     _pause()
 
 
+def _faq_metodo_recomendado(cfg: Config, is_pt: bool) -> str:
+    """Grounded no cfg REAL da sessao (nivel/objetivo/mode) -- nunca um
+    conselho generico solto, regra dura do Agente 6."""
+    nivel = str(getattr(cfg, "level", "N1"))
+    mode = str(getattr(cfg, "mode", "dx"))
+    nome_nivel = pq._NIVEL_NOME.get(nivel, nivel)
+    if is_pt:
+        base = f"Sua sessao esta configurada para '{nome_nivel}' ({nivel}), modo de entrada '{mode}'."
+        if nivel == "N1":
+            return (base + " N1 = classificacao multiclasse -> PLS-DA e o "
+                    "metodo padrao do pipeline. Se quiser autenticar pureza "
+                    "(puro vs. adulterado) em vez de identificar a especie, "
+                    "troque pra N2 na aba Modelagem.")
+        if nivel == "N2":
+            return (base + " N2 = autenticacao one-class -> DD-SIMCA e "
+                    "conformal sao os dois metodos disponiveis (aba "
+                    "Modelagem, campo 'modo_ddsimca'/similar). DD-SIMCA da' "
+                    "um score continuo; conformal da' garantia de cobertura "
+                    "explicita, mas exige mais sessoes independentes pra "
+                    "alpha baixo (ver [3] Diagnosticar).")
+        return (base + " N3 = quantificacao -> PLS-R (pooled ou por "
+                "especie, aba Modelagem). Se tambem quiser identificar QUAL "
+                "adulterante antes de quantificar, o fluxo cego "
+                "(Detectar->Identificar->Quantificar) ja roda automatico na "
+                "predicao em lote quando o modelo tem o ensemble de "
+                "identificacao treinado.")
+    base = f"Your session is set to '{nome_nivel}' ({nivel}), input mode '{mode}'."
+    if nivel == "N1":
+        return (base + " N1 = multiclass classification -> PLS-DA is the "
+                "pipeline's default method. For purity authentication "
+                "(pure vs. adulterated) instead of species ID, switch to "
+                "N2 in the Model tab.")
+    if nivel == "N2":
+        return (base + " N2 = one-class authentication -> DD-SIMCA and "
+                "conformal are the two available methods (Model tab). "
+                "DD-SIMCA gives a continuous score; conformal gives an "
+                "explicit coverage guarantee but needs more independent "
+                "sessions for a low alpha (see [3] Diagnose).")
+    return (base + " N3 = quantification -> PLS-R (pooled or per-species, "
+            "Model tab). If you also want to identify WHICH adulterant "
+            "before quantifying, the blind flow (Detect->Identify->"
+            "Quantify) already runs automatically in batch prediction when "
+            "the model has a trained identification ensemble.")
+
+
+_FAQ: List[Tuple[str, str, Any]] = [
+    ("O que o GUARACI sabe fazer?", "What can GUARACI do?",
+     lambda cfg, is_pt: (
+         "Veja [4] Tecnicas disponiveis no menu do assistente -- lista "
+         "gerada do catalogo real do projeto, nunca fica desatualizada."
+         if is_pt else
+         "See [4] Available techniques in the assistant menu -- generated "
+         "from the project's real catalog, never goes stale.")),
+    ("Qual metodo devo usar?", "Which method should I use?",
+     _faq_metodo_recomendado),
+    ("Por que uma quantificacao pode ficar bloqueada?",
+     "Why can quantification be blocked?",
+     lambda cfg, is_pt: (
+         "No fluxo cego (Detectar->Identificar->Quantificar), a "
+         "quantificacao SO' roda quando o adulterante foi identificado com "
+         "garantia estatistica validada (identificacao_cobertura="
+         "'validado', >=2 sessoes de coleta independentes por combinacao "
+         "especie x adulterante). Sem essa garantia, a coluna "
+         "'quantificacao_motivo_bloqueio' explica o motivo especifico "
+         "('identificacao_desconhecida' ou 'identificacao_ambigua') -- "
+         "nunca um numero sem base."
+         if is_pt else
+         "In the blind flow (Detect->Identify->Quantify), quantification "
+         "ONLY runs when the adulterant was identified with a validated "
+         "statistical guarantee (identificacao_cobertura='validado', >=2 "
+         "independent collection sessions per species x adulterant "
+         "combination). Without that guarantee, the "
+         "'quantificacao_motivo_bloqueio' column explains the specific "
+         "reason ('identificacao_desconhecida' or 'identificacao_ambigua') "
+         "-- never a number without basis.")),
+    ("O que significa um perfil 'nao validado'?",
+     "What does an 'not validated' profile mean?",
+     lambda cfg, is_pt: (
+         "O selo ✅/⚠ no seletor de perfil (aba Dados) vem do campo "
+         "'referencia' do perfil: nao-vazio = tem paper/dataset publico "
+         "citado (ex.: milho_nir cita o dataset Corn); vazio = o perfil so' "
+         "foi DECLARADO (faixa/vocabulario definidos), sem nenhuma "
+         "validacao publicada ainda. Nao impede de usar -- so' nao alegue "
+         "que o resultado foi validado com dado real."
+         if is_pt else
+         "The ✅/⚠ badge on the profile selector (Data tab) comes from the "
+         "profile's 'referencia' field: non-empty = cites a public paper/"
+         "dataset (e.g. milho_nir cites the Corn dataset); empty = the "
+         "profile was only DECLARED (range/vocabulary set), with no "
+         "published validation yet. It doesn't block usage -- just don't "
+         "claim the result was validated against real data.")),
+]
+
+
+def _guaraci_faq(cfg: Config) -> None:
+    """Perguntas frequentes curadas (Agente 6, Fase 2) -- casadas por
+    numero, resposta ancorada no `cfg` real quando aplicavel (regra dura:
+    nunca inventa numero). Nao e' um chat de linguagem livre -- o projeto
+    nao tem dependencia de LLM/NLP, um FAQ curado e' o que da' pra' fazer
+    sem mudar a natureza determinista do software (ver docs/DESIGN.md,
+    secao do Agente 6, Fase 2)."""
+    lang = _lang(); is_pt = lang == "PT"
+    console.print()
+    t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
+    t.add_column("N", style=PA, width=4)
+    t.add_column("Pergunta" if is_pt else "Question", style=PW)
+    for i, (q_pt, q_en, _resp) in enumerate(_FAQ, 1):
+        t.add_row(f"[{i}]", q_pt if is_pt else q_en)
+    console.print(t)
+    raw = _ask(f"\n  [1-{len(_FAQ)}] ou Enter=voltar: " if is_pt
+               else f"\n  [1-{len(_FAQ)}] or Enter=back: ")
+    if raw.isdigit() and 1 <= int(raw) <= len(_FAQ):
+        _q_pt, _q_en, resposta_fn = _FAQ[int(raw) - 1]
+        resposta = resposta_fn(cfg, is_pt)
+        console.print()
+        console.print(Panel(
+            Text(resposta, style=PW),
+            title=f"[bold {PA}]{_q_pt if is_pt else _q_en}[/bold {PA}]",
+            border_style=PA, box=rbox.ROUNDED, padding=(0, 2), width=_W(),
+        ))
+    _pause()
+
+
 def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
     lang = _lang()
@@ -1240,6 +1383,7 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         ("2", "Informacoes sobre uma secao" if lang=="PT" else "Information about a section"),
         ("3", "Diagnosticar dados carregados" if lang=="PT" else "Diagnose loaded data"),
         ("4", "Tecnicas disponiveis" if lang=="PT" else "Available techniques"),
+        ("5", "Perguntas frequentes" if lang=="PT" else "Frequently asked questions"),
         ("Q", "Fechar assistente"           if lang=="PT" else "Close assistant"),
     ]
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
@@ -1268,6 +1412,8 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         _guaraci_diagnosticar(cfg or Config())
     elif raw == "4":
         _guaraci_tecnicas()
+    elif raw == "5":
+        _guaraci_faq(cfg or Config())
 
 # ---------------------------------------------------------------------------
 # CABECALHO COMPACTO

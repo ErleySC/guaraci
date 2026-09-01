@@ -181,18 +181,16 @@ testada.
 
 # GUARACI — Central de perfis (Agente 5B)
 
-> **Status 2026-09-01: parcialmente implementado, aprovado pelo usuário.**
-> Ver commit `d50155c`. Implementado: 2º campo em `Config`
-> (`acquisition_profile`, independente de `matrix_profile`); seletor
-> navegável (era texto livre) tanto na CLI quanto no Streamlit, agrupado
-> por dimensão via `perfis_disponiveis()`; exposição do dado antes morto
-> (resolução/formatos/nível de garantia típico) na descrição de cada
-> opção do seletor. **Não implementado** (não fazia parte do pedido
-> mínimo, ficou para decisão futura): salvar um perfil combinado como
-> novo YAML de usuário; indicador visual de qual combinação já tem
-> histórico de validação com dado real vs. inédita — hoje nenhum perfil
-> de imagem tem validação publicada, mas isso não aparece na tela, só
-> neste documento.
+> **Status 2026-09-01: implementado por completo.** Ver commits `d50155c`
+> e `c1939ce`. 2º campo em `Config` (`acquisition_profile`, independente
+> de `matrix_profile`); seletor navegável (era texto livre) na CLI e no
+> Streamlit, agrupado por dimensão via `perfis_disponiveis()`; exposição
+> do dado antes morto (resolução/formatos/nível de garantia típico) em
+> cada opção do seletor; indicador de cobertura validada (✅/⚠, derivado
+> do campo `referencia` que já existia — `milho_nir`/`oleos_comestiveis_nir`
+> validados com dado público, os demais 5 perfis só declarados); e
+> `combine_profiles`/`save_profile` para fundir matriz+técnica num perfil
+> de usuário reusável (`[C]` na aba Dados do CLI).
 
 ## 5B.1 Diagnóstico (corrige a premissa da instrução original)
 
@@ -415,3 +413,25 @@ lógica nova para escrever — é *wiring* de algo que já existe.
 > associado); corrigir isso direito é mais trabalho do que cabia nesta
 > rodada — fica como pendência aberta, não como "efeito colateral
 > grátis" que a proposta original supunha.
+
+> **Status 2026-09-01: Fase 2 parcial.** FAQ curado implementado — `[5]`
+> no assistente, 4 perguntas canônicas escolhidas por número (não é chat
+> de linguagem livre; o projeto não tem dependência de LLM), respostas
+> ancoradas no `cfg` real da sessão quando aplicável (regra dura: nunca
+> texto genérico solto — a resposta de "qual método usar" muda de verdade
+> com `cfg.level`, testado). A sugestão de α mínimo (Fase 1) ganhou a
+> parte "executar": responder 's' agora chama
+> `plano_coleta.plan_from_statistical_target` de verdade e mostra o
+> `n_por_classe`/alertas do plano, não só o texto da sugestão.
+> **Não implementado, avaliado e descartado por não ter ação segura
+> mapeável**: "extrair agrupamento de `mae_id`" — `grouping_guarantee` já
+> É derivado de `mae_id` automaticamente no carregamento; quando vem
+> baixo, é porque a estrutura de pasta/CSV genuinamente não permite
+> extrair — não há re-tentativa que o assistente possa oferecer sem
+> inventar uma garantia que os dados não sustentam. **Não implementado,
+> registrado como trabalho futuro real** (precisa mexer em
+> `predicao.py`, código já testado, com o mesmo cuidado do resto do
+> projeto): marcar predição fora da faixa de trabalho do perfil como
+> extrapolação — `MatrixProfile.outside_working_range` existe e é usado
+> em `check_validation_use_range` (tempo de calibração), mas nunca é
+> chamado em `predict_samples`/`predict_blind` (tempo de predição).

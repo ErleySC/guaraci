@@ -77,3 +77,91 @@ def test_assistente_opcao_4_chama_tecnicas(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda *a, **k: "4")
     guaraci_mod._abrir_assistente("teste", Config())
     assert chamado.get("ok") is True
+
+
+# ── Fase 2 (Agente 6): sugerir NAO para no texto -- oferece o plano de ────
+#    coleta de verdade, reaproveitando plan_from_statistical_target.
+
+def test_diagnosticar_oferece_plano_de_coleta_quando_n_insuficiente(monkeypatch):
+    """Forca um dataset com poucas sessoes por classe (mesmo padrao de
+    test_checar_n_insuficiente_classe_fraca em test_auditoria_delineamento.
+    py) via monkeypatch de load_data/validate_input -- confirma que a
+    pergunta "quer ver o plano?" aparece e que responder 's' produz um
+    plano real (nao so' nao lanca excecao)."""
+    rotulos = np.array(["A"] * 3 + ["B"] * 3)
+    mae_id = np.array([f"A-0{i}-01-2099-S1.00" for i in range(3)] +
+                      [f"B-0{i}-01-2099-S1.00" for i in range(3)])
+    wn = np.linspace(4000.0, 10000.0, 20)
+    X = np.random.default_rng(0).normal(size=(6, 20))
+    conc = None
+    metadados = {}
+
+    monkeypatch.setattr(guaraci_mod.pq, "load_data",
+                        lambda cfg: (wn, X, rotulos, conc, mae_id, metadados))
+    monkeypatch.setattr(guaraci_mod.pq, "validate_input",
+                        lambda *a, **k: (X, wn, rotulos, conc, mae_id, {}))
+
+    respostas = iter(["s", ""])   # 's' na pergunta do plano, "" no _pause
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    cfg = Config()
+    guaraci_mod._guaraci_diagnosticar(cfg)   # nao deve lancar excecao
+
+
+def test_diagnosticar_nao_oferece_plano_quando_n_ja_suficiente(monkeypatch):
+    """Contra-prova inversa: com sessoes suficientes, achado_n vem 'ok' e
+    a pergunta do plano nao deveria nem aparecer -- so' 1 resposta de
+    input (_pause) e' consumida, se sobrar resposta no iterator o teste
+    de outra forma nao pegaria isso, entao usamos um iterator de 1 item
+    so' -- StopIteration se o codigo pedir mais input do que devia."""
+    from guaraci.conformal import n_minimum_for_alpha
+    n_min = n_minimum_for_alpha(0.05)
+    rotulos = np.array(["A"] * n_min)
+    mae_id = np.array([f"A-{i:02d}-01-2099-S1.00" for i in range(n_min)])
+    wn = np.linspace(4000.0, 10000.0, 20)
+    X = np.random.default_rng(0).normal(size=(n_min, 20))
+
+    monkeypatch.setattr(guaraci_mod.pq, "load_data",
+                        lambda cfg: (wn, X, rotulos, None, mae_id, {}))
+    monkeypatch.setattr(guaraci_mod.pq, "validate_input",
+                        lambda *a, **k: (X, wn, rotulos, None, mae_id, {}))
+    monkeypatch.setattr("builtins.input", lambda *a, **k: iter([""]).__next__())
+
+    cfg = Config()
+    guaraci_mod._guaraci_diagnosticar(cfg)   # so' 1 input consumido -- OK
+
+
+# ── FAQ curado (Agente 6, Fase 2) ─────────────────────────────────────────
+
+def test_faq_roda_sem_excecao_para_cada_pergunta(monkeypatch):
+    """Cada entrada de _FAQ precisa produzir resposta sem lancar excecao,
+    pra' qualquer nivel de Config (a resposta de 'qual metodo usar' e'
+    condicional em cfg.level)."""
+    for nivel in ("N1", "N2", "N3"):
+        for n in range(1, len(guaraci_mod._FAQ) + 1):
+            respostas = iter([str(n), ""])
+            monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+            guaraci_mod._guaraci_faq(Config(level=nivel))
+
+
+def test_faq_metodo_recomendado_e_grounded_no_nivel_real():
+    """Regra dura do Agente 6: a resposta muda com o cfg real, nao e' um
+    texto fixo -- contra-prova de que os 3 niveis produzem texto DISTINTO
+    (prova minima de que a funcao le' cfg.level de verdade)."""
+    respostas = {
+        nivel: guaraci_mod._faq_metodo_recomendado(Config(level=nivel), True)
+        for nivel in ("N1", "N2", "N3")
+    }
+    assert len(set(respostas.values())) == 3
+    assert "PLS-DA" in respostas["N1"]
+    assert "DD-SIMCA" in respostas["N2"]
+    assert "PLS-R" in respostas["N3"]
+
+
+def test_assistente_opcao_5_chama_faq(monkeypatch):
+    chamado = {}
+    monkeypatch.setattr(guaraci_mod, "_guaraci_faq",
+                        lambda cfg: chamado.setdefault("ok", True))
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "5")
+    guaraci_mod._abrir_assistente("teste", Config())
+    assert chamado.get("ok") is True
