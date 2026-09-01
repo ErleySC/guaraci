@@ -399,3 +399,19 @@ lógica nova para escrever — é *wiring* de algo que já existe.
   dispara) — já existem para as 6 funções `check_*` reaproveitadas
   (`tests/test_auditoria_delineamento.py`); só a sugestão de α mínimo
   (item novo) precisa de teste próprio.
+
+> **Status 2026-09-01: Fase 1 implementada, 3 dos 4 itens acima.** Ver
+> commit seguinte a este. Implementado: item 1 (`_guaraci_diagnosticar`,
+> opção `[3]` do assistente, reaproveita `run_audit` sem lógica nova),
+> item 2 (`technique_registry.py`, 18 entradas, 2 testes de contrato:
+> toda `referencia` resolve pra símbolo real, e os módulos de propósito
+> único têm cobertura completa de `__all__`), e o caso único de
+> sugerir+executar (α mínimo alcançável pra classe mais fraca, função
+> pura `_sugestao_alpha_classe_fraca`, testável sem console). **Não
+> implementado**: `_guaraci_navegar_secoes` continua com o dict estático
+> de 8 seções — investigando, `_CONFIG_SPEC` não tem metadado de
+> "seção"/agrupamento pronto pra derivar disso diretamente (`MENU_FIELDS`
+> em `cli_assistente.py` cobre só 7 das 18 abas, as com campo de config
+> associado); corrigir isso direito é mais trabalho do que cabia nesta
+> rodada — fica como pendência aberta, não como "efeito colateral
+> grátis" que a proposta original supunha.

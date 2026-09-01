@@ -74,6 +74,7 @@ jobs:
             src/guaraci/auditoria_delineamento.py \
             src/guaraci/identificacao.py \
             src/guaraci/model_registry.py
+            src/guaraci/technique_registry.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console

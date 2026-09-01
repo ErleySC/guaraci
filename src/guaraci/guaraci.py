@@ -1070,6 +1070,150 @@ def _guaraci_navegar_secoes(cfg: Config) -> None:
         ))
         _pause()
 
+
+def _guaraci_diagnosticar(cfg: Config) -> None:
+    """Diagnostica o dataset carregado -- reaproveita `run_audit`, o MESMO
+    motor da aba U (Auditoria de delineamento), so' apresentado dentro do
+    assistente. So' roda sob demanda (nao em toda abertura do assistente,
+    que seria lento e a maioria das aberturas e' so' pra ajuda pontual).
+
+    Regra dura (Agente 6): nunca inventa numero, nunca esconde ressalva --
+    todo achado abaixo vem de uma funcao ja testada (`run_audit`,
+    `achievable_alpha`, `n_minimum_for_alpha`), nunca de um calculo novo
+    so' pra esta tela.
+    """
+    lang = _lang(); is_pt = lang == "PT"
+    status_msg = ("Carregando dados e diagnosticando..." if is_pt
+                  else "Loading data and diagnosing...")
+    try:
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            wavenumbers, X_raw, rotulos, conc, mae_id, _metadados = pq.load_data(cfg)
+            X_raw, wavenumbers, rotulos, conc, mae_id, _relatorio = pq.validate_input(
+                X_raw, wavenumbers, rotulos, conc, mae_id)
+            from guaraci.auditoria_delineamento import run_audit
+            achados = run_audit(X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
+    except Exception as e:  # noqa: BLE001 -- dado externo pode falhar de
+        # varias formas (parsing, faixa espectral vazia, etc.) -- reportar
+        # a mensagem, nunca stack trace cru numa ferramenta interativa
+        # (mesmo tratamento de _menu_audit).
+        console.print(f"  [{PR}]{'Erro ao carregar dados' if is_pt else 'Error loading data'}: "
+                      f"{escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    cores = {"ok": PG, "aviso": PA, "critico": PR, "silenciado": PM}
+    console.print()
+    for a in achados:
+        cor = cores.get(a.severidade, PW)
+        console.print(f"  [{cor}]{a.severidade.upper():>10}[/{cor}]  "
+                      f"[{PW}]{escape(a.nome)}[/{PW}]: {escape(a.mensagem)}")
+
+    n_criticos = sum(1 for a in achados if a.severidade == "critico")
+    n_avisos = sum(1 for a in achados if a.severidade == "aviso")
+    resumo_lbl = (f"{n_criticos} critico(s), {n_avisos} aviso(s) de {len(achados)} checagem(ns)."
+                  if is_pt else
+                  f"{n_criticos} critical, {n_avisos} warning(s) out of {len(achados)} check(s).")
+    cor_resumo = PR if n_criticos else (PA if n_avisos else PG)
+    console.print()
+    console.print(Panel(
+        Text.from_markup(f"  {resumo_lbl}"),
+        border_style=cor_resumo, box=rbox.ROUNDED, padding=(0, 2),
+    ))
+
+    # Sugerir+executar (Agente 6, Fase 1 -- so' este 1 caso, como prova do
+    # padrao; os demais exemplos do pedido original ficam para uma rodada
+    # futura, ver docs/DESIGN.md).
+    achado_n = next((a for a in achados
+                      if a.nome == "n_insuficiente" and a.severidade == "aviso"),
+                     None)
+    if achado_n is not None and mae_id is not None:
+        info = _sugestao_alpha_classe_fraca(rotulos, mae_id)
+        if info is not None:
+            sugestao = (
+                f"💡 Sua classe mais fraca ('{info['classe']}') tem "
+                f"{info['n']} sessao(oes) independente(s) → alpha minimo "
+                f"alcancavel = {info['alpha_alcancavel']:.2f}. Para "
+                f"alpha={info['alpha_ref']} de referencia (gate conformal "
+                f"padrao), seriam necessarias {info['n_para_ref']} sessoes "
+                "independentes dessa classe."
+                if is_pt else
+                f"💡 Your weakest class ('{info['classe']}') has "
+                f"{info['n']} independent session(s) → minimum achievable "
+                f"alpha = {info['alpha_alcancavel']:.2f}. For the "
+                f"reference alpha={info['alpha_ref']} (standard conformal "
+                f"gate), {info['n_para_ref']} independent sessions of that "
+                "class would be needed.")
+            console.print()
+            console.print(Panel(
+                Text.from_markup(f"  [{PA}]{escape(sugestao)}[/{PA}]"),
+                border_style=PA, box=rbox.ROUNDED, padding=(0, 2),
+            ))
+    _pause()
+
+
+def _sugestao_alpha_classe_fraca(rotulos, mae_id) -> Optional[Dict[str, Any]]:
+    """Sessoes independentes por classe (mesma funcao `session_from_mae_id`
+    que `check_insufficient_n` usa) e o alpha conformal minimo alcancavel
+    para a classe mais fraca. Funcao PURA (sem console) para ser testavel
+    direto -- usada por `_guaraci_diagnosticar` (Agente 6, sugerir+executar).
+    Nao duplica o VEREDITO da auditoria (isso continua em
+    `auditoria_delineamento.check_insufficient_n`), so' os numeros
+    descritivos que `AuditFinding` nao expoe (so' a mensagem ja formatada).
+    """
+    import numpy as np
+    from guaraci.conformal import achievable_alpha, n_minimum_for_alpha
+    from guaraci.dados_io import session_from_mae_id
+
+    rotulos_arr = np.asarray(rotulos, dtype=str)
+    sessao = np.array([session_from_mae_id(m) for m in mae_id], dtype=str)
+    contagens = {
+        classe: len({s for s, r in zip(sessao, rotulos_arr) if r == classe})
+        for classe in sorted(set(rotulos_arr))
+    }
+    if not contagens:
+        return None
+    classe_fraca, n_fraco = min(contagens.items(), key=lambda kv: kv[1])
+    alpha_ref = 0.05
+    return {
+        "classe": classe_fraca,
+        "n": n_fraco,
+        "alpha_alcancavel": achievable_alpha(n_fraco),
+        "alpha_ref": alpha_ref,
+        "n_para_ref": n_minimum_for_alpha(alpha_ref),
+    }
+
+
+def _guaraci_tecnicas() -> None:
+    """Lista o catalogo de tecnicas cientificas do GUARACI (Agente 6, item
+    d) -- gerado a partir de `technique_registry.REGISTRY`, fonte unica de
+    verdade (nunca uma lista escrita a mao so' pra esta tela)."""
+    lang = _lang(); is_pt = lang == "PT"
+    from guaraci.technique_registry import REGISTRY
+
+    rotulos_categoria = {
+        "classificacao_deteccao": ("Classificacao / deteccao", "Classification / detection"),
+        "quantificacao": ("Quantificacao", "Quantification"),
+        "identificacao_conjunto_aberto": ("Identificacao (conjunto aberto)", "Identification (open set)"),
+        "selecao_amostras": ("Selecao de amostras", "Sample selection"),
+        "transferencia_calibracao": ("Transferencia de calibracao", "Calibration transfer"),
+        "figuras_de_merito": ("Figuras de merito", "Figures of merit"),
+        "robustez_linearidade": ("Robustez / linearidade", "Robustness / linearity"),
+        "perfis": ("Perfis (matriz / tecnica de aquisicao)", "Profiles (matrix / acquisition technique)"),
+    }
+    console.print()
+    for cat_id, (nome_pt, nome_en) in rotulos_categoria.items():
+        entradas = [e for e in REGISTRY if e.categoria == cat_id]
+        if not entradas:
+            continue
+        console.print(f"  [bold {PA}]{nome_pt if is_pt else nome_en}[/bold {PA}]")
+        for e in entradas:
+            console.print(f"    [{PW}]▸ {escape(e.nome)}[/{PW}]")
+            console.print(f"      [{PM}]{escape(e.quando_usar)}[/{PM}]")
+        console.print()
+    console.print(f"  [{PM}]{len(REGISTRY)} tecnicas cadastradas.[/{PM}]" if is_pt
+                  else f"  [{PM}]{len(REGISTRY)} techniques registered.[/{PM}]")
+    _pause()
+
+
 def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
     lang = _lang()
@@ -1079,6 +1223,8 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     opcoes = [
         ("1", "Revisar configuracao atual" if lang=="PT" else "Review current configuration"),
         ("2", "Informacoes sobre uma secao" if lang=="PT" else "Information about a section"),
+        ("3", "Diagnosticar dados carregados" if lang=="PT" else "Diagnose loaded data"),
+        ("4", "Tecnicas disponiveis" if lang=="PT" else "Available techniques"),
         ("Q", "Fechar assistente"           if lang=="PT" else "Close assistant"),
     ]
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
@@ -1103,6 +1249,10 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         _guaraci_revisar_config(cfg)
     elif raw == "2":
         _guaraci_navegar_secoes(cfg or Config())
+    elif raw == "3":
+        _guaraci_diagnosticar(cfg or Config())
+    elif raw == "4":
+        _guaraci_tecnicas()
 
 # ---------------------------------------------------------------------------
 # CABECALHO COMPACTO

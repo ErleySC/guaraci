@@ -2984,6 +2984,51 @@
         "tipo": "CachedFunc"
       }
     },
+    "technique_registry": {
+      "MODULOS_COBERTURA_TOTAL": {
+        "forma": "constante",
+        "tipo": "dict"
+      },
+      "REGISTRY": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "TechniqueEntry": {
+        "campos": [
+          {
+            "nome": "id",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "categoria",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "nome",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "referencia",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "quando_usar",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "limitacao",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      }
+    },
     "transferencia_calibracao": {
       "StandardizationTransform": {
         "campos": [
