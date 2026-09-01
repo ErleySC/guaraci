@@ -472,3 +472,59 @@ def pq_nome_relatorios(_pasta):
     # para nao acoplar o topo do arquivo a um simbolo so' usado aqui.
     from guaraci.pipeline import NOME_RELATORIOS
     return NOME_RELATORIOS
+
+
+# =========================================================================
+#  Aba web (app_tabs/predicao.py): mesmo fluxo cego do CLI, portado nesta
+#  sessao (achado: a aba web so' rodava o fluxo N1 simples mesmo com um
+#  modelo de ensemble carregado -- "funcional, nao cosmetico", igual ao
+#  gap que o teste do CLI acima ja cobria desde antes). Contra-prova contra
+#  um pacote REAL (pkg_bloco9b), nao um mock -- mesmo padrao do resto do
+#  arquivo.
+# =========================================================================
+
+def test_app_web_predicao_porta_o_fluxo_cego(pkg_bloco9b, tmp_path):
+    from streamlit.testing.v1 import AppTest
+
+    pkg, _pasta, _cam_original = pkg_bloco9b
+    wn = np.asarray(pkg["wavenumbers"], dtype=float)
+    rng = np.random.default_rng(11)
+    X_novos = rng.normal(loc=0.5, scale=0.05, size=(3, len(wn)))
+
+    cam_modelo = tmp_path / "modelo_bloco9b_web.joblib"
+    joblib.dump(pkg, cam_modelo)
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    cam_csv = tmp_path / "novos_web.csv"
+    df_in.to_csv(cam_csv, index=False, sep=";")
+
+    def _app() -> None:
+        from guaraci.app_tabs import predicao
+
+        def _tok_falso():
+            return {"success_bg": "#000", "success": "#000",
+                    "error_bg": "#000", "error": "#000"}
+
+        predicao.render(False, _tok_falso)
+
+    at = AppTest.from_function(_app, default_timeout=60)
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+
+    at.text_input(key="pred_model_path").set_value(str(cam_modelo))
+    at.text_input(key="pred_csv_path").set_value(str(cam_csv))
+    at.checkbox(key="pred_model_confia").set_value(True)
+    at.button(key="btn_predizer").click()
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+
+    df_res = at.session_state["pred_resultados"]
+    for col in ("classe_identificada", "identificacao_cobertura",
+                "identificacao_alpha_alcancavel", "teor_estimado",
+                "quantificacao_motivo_bloqueio", "alpha_total"):
+        assert col in df_res.columns, (
+            f"coluna '{col}' do fluxo cego ausente na aba web -- "
+            "predict_blind nao foi chamado (voltou ao fluxo N1 simples)")
+    # Mesma garantia D7-b do teste do CLI: nunca forca classe/numero.
+    assert df_res["classe_identificada"].isna().all()
+    assert df_res["teor_estimado"].isna().all()
+    assert at.session_state["pred_resultados_cego"] is not None

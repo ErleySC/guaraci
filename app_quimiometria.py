@@ -251,6 +251,128 @@ _TR: Dict[str, Dict[str, str]] = {
     "Step 1: Fill project info": {"PT": "Passo 1: Preencha as informações do projeto", "EN": "Step 1: Fill project info"},
     "Step 2: Upload or select spectra folder": {"PT": "Passo 2: Faça upload ou selecione a pasta de espectros", "EN": "Step 2: Upload or select spectra folder"},
     "Step 3: Configure parameters and run": {"PT": "Passo 3: Configure os parâmetros e execute", "EN": "Step 3: Configure parameters and run"},
+    # ── Data tab (Agente 6.2 pos-sessao: as 4 abas abaixo -- Data/
+    # Preprocessing/Prediction/Reports -- nao passavam por T() nenhum,
+    # ficavam sempre em ingles mesmo com idioma=PT selecionado. Fechado
+    # aqui, 2026-09-01.) ──────────────────────────────────────────────
+    "📂 Step 2: Upload or select spectra folder → then go to **Model** tab.": {"PT": "📂 Passo 2: Faça upload ou selecione a pasta de espectros → depois vá para a aba **Modelo**.", "EN": "📂 Step 2: Upload or select spectra folder → then go to **Model** tab."},
+    "**🎯 Recommended analysis** *(optional shortcut)*": {"PT": "**🎯 Análise recomendada** *(atalho opcional)*", "EN": "**🎯 Recommended analysis** *(optional shortcut)*"},
+    "Pick what you want to do — sets sensible defaults across all tabs; fine-tune afterwards if needed.": {"PT": "Escolha o que você quer fazer — define valores padrão sensatos em todas as abas; ajuste depois se precisar.", "EN": "Pick what you want to do — sets sensible defaults across all tabs; fine-tune afterwards if needed."},
+    "**Upload CSV** *(alternative to the local path below)*": {"PT": "**Upload de CSV** *(alternativa ao caminho local abaixo)*", "EN": "**Upload CSV** *(alternative to the local path below)*"},
+    "Drag or select a CSV file": {"PT": "Arraste ou selecione um arquivo CSV", "EN": "Drag or select a CSV file"},
+    "**Data preview**": {"PT": "**Prévia dos dados**", "EN": "**Data preview**"},
+    "The file will be saved to a temporary folder and the path adjusted automatically.": {"PT": "O arquivo será salvo numa pasta temporária e o caminho ajustado automaticamente.", "EN": "The file will be saved to a temporary folder and the path adjusted automatically."},
+    "Mode automatically set to 'csv'. The path above will be overridden when running.": {"PT": "Modo ajustado automaticamente para 'csv'. O caminho acima será sobrescrito ao executar.", "EN": "Mode automatically set to 'csv'. The path above will be overridden when running."},
+    "🔍 Load spectra preview": {"PT": "🔍 Carregar prévia dos espectros", "EN": "🔍 Load spectra preview"},
+    "💾 Save config.yaml": {"PT": "💾 Salvar config.yaml", "EN": "💾 Save config.yaml"},
+    "↺ Reload config.yaml": {"PT": "↺ Recarregar config.yaml", "EN": "↺ Reload config.yaml"},
+    "Status: {msg_dados}": {"PT": "Status: {msg_dados}", "EN": "Status: {msg_dados}"},
+    "Loading spectra sample...": {"PT": "Carregando amostra de espectros...", "EN": "Loading spectra sample..."},
+    "Could not load spectra for preview. Check the path/mode.": {"PT": "Não foi possível carregar espectros para a prévia. Verifique o caminho/modo.", "EN": "Could not load spectra for preview. Check the path/mode."},
+    "Fields with errors:\n- ": {"PT": "Campos com erro:\n- ", "EN": "Fields with errors:\n- "},
+    "File saved: `{tmp_path}`": {"PT": "Arquivo salvo: `{tmp_path}`", "EN": "File saved: `{tmp_path}`"},
+    "Raw spectra (sample)": {"PT": "Espectros brutos (amostra)", "EN": "Raw spectra (sample)"},
+    "Fix the fields before saving.": {"PT": "Corrija os campos antes de salvar.", "EN": "Fix the fields before saving."},
+    "Config reloaded.": {"PT": "Config recarregado.", "EN": "Config reloaded."},
+    "**{n} spectra** · {k} classes: `{amostra}`{reticencias}": {"PT": "**{n} espectros** · {k} classes: `{amostra}`{reticencias}", "EN": "**{n} spectra** · {k} classes: `{amostra}`{reticencias}"},
+    "Preset '{pname}' applied — check the Model tab.": {"PT": "Preset '{pname}' aplicado — confira a aba Modelo.", "EN": "Preset '{pname}' applied — check the Model tab."},
+    "Saved to {cfg_path}": {"PT": "Salvo em {cfg_path}", "EN": "Saved to {cfg_path}"},
+    "Error: {e}": {"PT": "Erro: {e}", "EN": "Error: {e}"},
+    # ── Preprocessing tab ────────────────────────────────────────────
+    "Spectral Preprocessing": {"PT": "Pré-processamento Espectral", "EN": "Spectral Preprocessing"},
+    "⚗️ Choose the spectral preprocessing preset and preview before/after → then go to **Model** tab.": {"PT": "⚗️ Escolha o preset de pré-processamento espectral e visualize antes/depois → depois vá para a aba **Modelo**.", "EN": "⚗️ Choose the spectral preprocessing preset and preview before/after → then go to **Model** tab."},
+    "**Before / after preprocessing visualization**": {"PT": "**Visualização antes / depois do pré-processamento**", "EN": "**Before / after preprocessing visualization**"},
+    "Configure and validate data input (Data tab) to enable the preview.": {"PT": "Configure e valide a entrada de dados (aba Dados) para habilitar a prévia.", "EN": "Configure and validate data input (Data tab) to enable the preview."},
+    "⚗️ Generate before/after preview": {"PT": "⚗️ Gerar prévia antes/depois", "EN": "⚗️ Generate before/after preview"},
+    "Loading and processing spectra...": {"PT": "Carregando e processando espectros...", "EN": "Loading and processing spectra..."},
+    "Could not load spectra. Check the Data tab.": {"PT": "Não foi possível carregar espectros. Verifique a aba Dados.", "EN": "Could not load spectra. Check the Data tab."},
+    "Before preprocessing": {"PT": "Antes do pré-processamento", "EN": "Before preprocessing"},
+    "After: {preset}": {"PT": "Depois: {preset}", "EN": "After: {preset}"},
+    "Error applying preprocessing: {e}": {"PT": "Erro ao aplicar pré-processamento: {e}", "EN": "Error applying preprocessing: {e}"},
+    "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Compare presets on your own data with `comparar_pre_processamentos`.": {"PT": "MSC (correção de espalhamento) → 1ª derivada SG (Savitzky-Golay) → Centralização pela média. **Melhor para FT-NIR com espalhamento pronunciado.** Compare presets nos seus próprios dados com `comparar_pre_processamentos`.", "EN": "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Compare presets on your own data with `comparar_pre_processamentos`."},
+    "SNV (variance normalization) → SG → Mean-Centering. Robust alternative to MSC when global reference is not stable.": {"PT": "SNV (normalização por variância) → SG → Centralização pela média. Alternativa robusta ao MSC quando a referência global não é estável.", "EN": "SNV (variance normalization) → SG → Mean-Centering. Robust alternative to MSC when global reference is not stable."},
+    "Mean-Centering + division by standard deviation. **Caution**: collapses spectral noise when SG is not applied first.": {"PT": "Centralização pela média + divisão pelo desvio padrão. **Cuidado**: colapsa o ruído espectral quando o SG não é aplicado antes.", "EN": "Mean-Centering + division by standard deviation. **Caution**: collapses spectral noise when SG is not applied first."},
+    "Mean centering only. Recommended as a comparative baseline.": {"PT": "Só centralização pela média. Recomendado como referência comparativa.", "EN": "Mean centering only. Recommended as a comparative baseline."},
+    # ── Prediction tab ───────────────────────────────────────────────
+    "Prediction on Unknown Samples": {"PT": "Predição em Amostras Desconhecidas", "EN": "Prediction on Unknown Samples"},
+    "Upload a `.joblib` model generated by the pipeline and a CSV with new spectra (columns = wavenumbers, no class column).": {"PT": "Faça upload de um modelo `.joblib` gerado pelo pipeline e um CSV com espectros novos (colunas = números de onda, sem coluna de classe).", "EN": "Upload a `.joblib` model generated by the pipeline and a CSV with new spectra (columns = wavenumbers, no class column)."},
+    "🔮 Predict": {"PT": "🔮 Predizer", "EN": "🔮 Predict"},
+    "**1. Trained model (.joblib)**": {"PT": "**1. Modelo treinado (.joblib)**", "EN": "**1. Trained model (.joblib)**"},
+    "**2. New spectra (CSV)**": {"PT": "**2. Espectros novos (CSV)**", "EN": "**2. New spectra (CSV)**"},
+    "Upload CSV with new spectra": {"PT": "Upload de CSV com espectros novos", "EN": "Upload CSV with new spectra"},
+    "First column to use as wavenumber (leave empty = auto)": {"PT": "Primeira coluna a usar como número de onda (deixe vazio = automático)", "EN": "First column to use as wavenumber (leave empty = auto)"},
+    "**Prediction results**": {"PT": "**Resultados da predição**", "EN": "**Prediction results**"},
+    "⬇️ Download results (.csv)": {"PT": "⬇️ Baixar resultados (.csv)", "EN": "⬇️ Download results (.csv)"},
+    "🔒 Model loading (upload and local path) is disabled on this public deployment — a `.joblib`/pickle can execute arbitrary code when loaded, from ANY path on the server, not just uploaded files. Run the CLI or app locally to use the Prediction tab.": {"PT": "🔒 O carregamento de modelo (upload e caminho local) está desabilitado neste deploy público — um `.joblib`/pickle pode executar código arbitrário ao ser carregado, de QUALQUER caminho do servidor, não só de arquivos enviados. Rode a CLI ou o app localmente para usar a aba Predição.", "EN": "🔒 Model loading (upload and local path) is disabled on this public deployment — a `.joblib`/pickle can execute arbitrary code when loaded, from ANY path on the server, not just uploaded files. Run the CLI or app locally to use the Prediction tab."},
+    "⚠️ Only upload `.joblib` models you generated yourself. A model file is a pickle and **runs code when loaded** — never load one from an untrusted source.": {"PT": "⚠️ Só faça upload de modelos `.joblib` que você mesmo gerou. Um arquivo de modelo é um pickle e **executa código ao ser carregado** — nunca carregue um de origem não confiável.", "EN": "⚠️ Only upload `.joblib` models you generated yourself. A model file is a pickle and **runs code when loaded** — never load one from an untrusted source."},
+    "Upload the .joblib model": {"PT": "Upload do modelo .joblib", "EN": "Upload the .joblib model"},
+    "Or local path to model": {"PT": "Ou caminho local do modelo", "EN": "Or local path to model"},
+    "I trust the source of this model file (required to load it — `.joblib` executes code when loaded, see docs/SECURITY.md)": {"PT": "Eu confio na origem deste arquivo de modelo (obrigatório para carregar — `.joblib` executa código ao ser carregado, ver docs/SECURITY.md)", "EN": "I trust the source of this model file (required to load it — `.joblib` executes code when loaded, see docs/SECURITY.md)"},
+    "🔒 Local path to CSV is disabled on this public deployment — a free-text server-side path would let any visitor read arbitrary files on the server. Use the upload above instead.": {"PT": "🔒 O caminho local do CSV está desabilitado neste deploy público — um caminho de servidor em texto livre permitiria que qualquer visitante lesse arquivos arbitrários do servidor. Use o upload acima.", "EN": "🔒 Local path to CSV is disabled on this public deployment — a free-text server-side path would let any visitor read arbitrary files on the server. Use the upload above instead."},
+    "Or local path to CSV": {"PT": "Ou caminho local do CSV", "EN": "Or local path to CSV"},
+    "**Blind flow — Detect → Identify → Quantify**": {"PT": "**Fluxo cego — Detectar → Identificar → Quantificar**", "EN": "**Blind flow — Detect → Identify → Quantify**"},
+    "⚠ 'classe_identificada' only ever exists when 'identificacao_cobertura'='validado' (formal statistical guarantee, calibrated with ≥2 independent collection sessions) — there is no 'informational' label without that guarantee. 'identificacao_candidatos' carries only the closest guess (with NO guarantee at all) for reference, never as a result to act on for a quality decision without confirming by a reference method.": {"PT": "⚠ 'classe_identificada' só existe quando 'identificacao_cobertura'='validado' (garantia estatística formal, calibrada com ≥2 sessões de coleta independentes) — não há rótulo 'informativo' sem essa garantia. 'identificacao_candidatos' traz só o palpite mais próximo (SEM garantia nenhuma) para referência, nunca como resultado a usar numa decisão de qualidade sem confirmar por método de referência.", "EN": "⚠ 'classe_identificada' only ever exists when 'identificacao_cobertura'='validado' (formal statistical guarantee, calibrated with ≥2 independent collection sessions) — there is no 'informational' label without that guarantee. 'identificacao_candidatos' carries only the closest guess (with NO guarantee at all) for reference, never as a result to act on for a quality decision without confirming by a reference method."},
+    "Check 'I trust the source of this model file' above before loading — required (see docs/SECURITY.md).": {"PT": "Marque 'Eu confio na origem deste arquivo de modelo' acima antes de carregar — obrigatório (ver docs/SECURITY.md).", "EN": "Check 'I trust the source of this model file' above before loading — required (see docs/SECURITY.md)."},
+    "No spectra CSV provided.": {"PT": "Nenhum CSV de espectros fornecido.", "EN": "No spectra CSV provided."},
+    "Within PLS-DA model fit": {"PT": "Dentro do ajuste do modelo PLS-DA", "EN": "Within PLS-DA model fit"},
+    "Hotelling T² (distance along the model's main directions) and Q-residual (unexplained variation) both within their statistical limit — see the 'criterio' column for the exact rule applied. A sample outside this fit is an atypical spectrum for the calibration, not necessarily 'adulterated'.": {"PT": "Hotelling T² (distância ao longo das direções principais do modelo) e resíduo Q (variação não explicada), ambos dentro do limite estatístico — veja a coluna 'criterio' para a regra exata aplicada. Uma amostra fora deste ajuste é um espectro atípico para a calibração, não necessariamente 'adulterada'.", "EN": "Hotelling T² (distance along the model's main directions) and Q-residual (unexplained variation) both within their statistical limit — see the 'criterio' column for the exact rule applied. A sample outside this fit is an atypical spectrum for the calibration, not necessarily 'adulterated'."},
+    "Within applicability domain": {"PT": "Dentro do domínio de aplicabilidade", "EN": "Within applicability domain"},
+    "Exploratory PCA check (Hotelling T²/Q-residual, Jaworska et al. 2005) of similarity to the training set as a whole — a broader, less strict screen than the PLS-DA fit above. 'Outside' flags a spectrum unlike anything the model was calibrated on.": {"PT": "Checagem exploratória por PCA (Hotelling T²/resíduo Q, Jaworska et al. 2005) de similaridade com o conjunto de treino como um todo — uma triagem mais ampla e menos estrita que o ajuste PLS-DA acima. 'Fora' sinaliza um espectro diferente de tudo que o modelo foi calibrado para reconhecer.", "EN": "Exploratory PCA check (Hotelling T²/Q-residual, Jaworska et al. 2005) of similarity to the training set as a whole — a broader, less strict screen than the PLS-DA fit above. 'Outside' flags a spectrum unlike anything the model was calibrated on."},
+    "🧪 Purity (predicted species)": {"PT": "🧪 Pureza (espécie prevista)", "EN": "🧪 Purity (predicted species)"},
+    "🏷 Adulterant identified": {"PT": "🏷 Adulterante identificado", "EN": "🏷 Adulterant identified"},
+    "UNKNOWN means no species×adulterant combination had a statistical guarantee both sufficient AND exclusive for this sample — either no guarantee, or 2+ validated combinations tied (also blocks the label).": {"PT": "DESCONHECIDO significa que nenhuma combinação espécie×adulterante teve garantia estatística ao mesmo tempo suficiente E exclusiva para esta amostra — ou não há garantia, ou 2+ combinações validadas empataram (o que também bloqueia o rótulo).", "EN": "UNKNOWN means no species×adulterant combination had a statistical guarantee both sufficient AND exclusive for this sample — either no guarantee, or 2+ validated combinations tied (also blocks the label)."},
+    "⚖ Quantified": {"PT": "⚖ Quantificado", "EN": "⚖ Quantified"},
+    "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above.": {"PT": "Bloqueada = quantificação recusada porque o adulterante não foi identificado com confiabilidade — veja 'quantificacao_motivo_bloqueio' na tabela acima.", "EN": "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above."},
+    "No valid model provided (upload or path).": {"PT": "Nenhum modelo válido fornecido (upload ou caminho).", "EN": "No valid model provided (upload or path)."},
+    "pure": {"PT": "pura", "EN": "pure"},
+    "Error loading model: {e}": {"PT": "Erro ao carregar modelo: {e}", "EN": "Error loading model: {e}"},
+    "Error reading CSV: {e}": {"PT": "Erro ao ler CSV: {e}", "EN": "Error reading CSV: {e}"},
+    "Applying model...": {"PT": "Aplicando modelo...", "EN": "Applying model..."},
+    "DD-SIMCA for the species predicted above. {n} detected as adulterated.": {"PT": "DD-SIMCA para a espécie prevista acima. {n} detectada(s) como adulterada(s).", "EN": "DD-SIMCA for the species predicted above. {n} detected as adulterated."},
+    "Prediction complete: {n} samples.": {"PT": "Predição concluída: {n} amostras.", "EN": "Prediction complete: {n} samples."},
+    "Prediction error: {e}": {"PT": "Erro de predição: {e}", "EN": "Prediction error: {e}"},
+    # ── Reports tab ──────────────────────────────────────────────────
+    "Reports and Downloads": {"PT": "Relatórios e Downloads", "EN": "Reports and Downloads"},
+    "📄 Download reports (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), browse the figure gallery, and clean up old result folders.": {"PT": "📄 Baixe relatórios (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), navegue pela galeria de figuras e limpe pastas de resultados antigas.", "EN": "📄 Download reports (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), browse the figure gallery, and clean up old result folders."},
+    "### ⬇️ Downloads": {"PT": "### ⬇️ Downloads", "EN": "### ⬇️ Downloads"},
+    "### 🪪 Model Card": {"PT": "### 🪪 Model Card", "EN": "### 🪪 Model Card"},
+    "### 📋 Model summary": {"PT": "### 📋 Resumo do modelo", "EN": "### 📋 Model summary"},
+    "### 🖼️ Figure gallery": {"PT": "### 🖼️ Galeria de figuras", "EN": "### 🖼️ Figure gallery"},
+    "Run the pipeline (Model tab) to generate reports.": {"PT": "Execute o pipeline (aba Modelo) para gerar relatórios.", "EN": "Run the pipeline (Model tab) to generate reports."},
+    "Preparing report files (cached after the first time)...": {"PT": "Preparando arquivos de relatório (fica em cache depois da primeira vez)...", "EN": "Preparing report files (cached after the first time)..."},
+    "🗑️ Free space — Clean up old results": {"PT": "🗑️ Liberar espaço — Limpar resultados antigos", "EN": "🗑️ Free space — Clean up old results"},
+    "⬇️ Model Card (.md)": {"PT": "⬇️ Model Card (.md)", "EN": "⬇️ Model Card (.md)"},
+    "File model_card.md not found.": {"PT": "Arquivo model_card.md não encontrado.", "EN": "File model_card.md not found."},
+    "File resumo_modelo.txt not found.": {"PT": "Arquivo resumo_modelo.txt não encontrado.", "EN": "File resumo_modelo.txt not found."},
+    "Filter figures": {"PT": "Filtrar figuras", "EN": "Filter figures"},
+    "Columns": {"PT": "Colunas", "EN": "Columns"},
+    "No PNG/JPG images found in the results folder.": {"PT": "Nenhuma imagem PNG/JPG encontrada na pasta de resultados.", "EN": "No PNG/JPG images found in the results folder."},
+    "Results folder: `{pasta}`": {"PT": "Pasta de resultados: `{pasta}`", "EN": "Results folder: `{pasta}`"},
+    "Keep N most recent runs": {"PT": "Manter N execuções mais recentes", "EN": "Keep N most recent runs"},
+    "🗑️ Confirm cleanup": {"PT": "🗑️ Confirmar limpeza", "EN": "🗑️ Confirm cleanup"},
+    "Only one run stored. Nothing to clean.": {"PT": "Só há uma execução armazenada. Nada para limpar.", "EN": "Only one run stored. Nothing to clean."},
+    "View Model Card": {"PT": "Ver Model Card", "EN": "View Model Card"},
+    "Show only figures of one analysis type (e.g. PCA scores, confusion matrix, DD-SIMCA acceptance). 'All' shows every figure generated by the run.": {"PT": "Mostra só figuras de um tipo de análise (ex.: scores de PCA, matriz de confusão, aceitação DD-SIMCA). 'All' mostra todas as figuras geradas pela execução.", "EN": "Show only figures of one analysis type (e.g. PCA scores, confusion matrix, DD-SIMCA acceptance). 'All' shows every figure generated by the run."},
+    "📜 Execution log (terminal output)": {"PT": "📜 Log de execução (saída do terminal)", "EN": "📜 Execution log (terminal output)"},
+    "📦 Full results (.zip)": {"PT": "📦 Resultados completos (.zip)", "EN": "📦 Full results (.zip)"},
+    "📄 PDF Report": {"PT": "📄 Relatório PDF", "EN": "📄 PDF Report"},
+    "📝 Word Report (.docx)": {"PT": "📝 Relatório Word (.docx)", "EN": "📝 Word Report (.docx)"},
+    "📊 Data in Excel (.xlsx)": {"PT": "📊 Dados em Excel (.xlsx)", "EN": "📊 Data in Excel (.xlsx)"},
+    "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)": {"PT": "🔬 Template LaTeX (Talanta / Food Chemistry / J. Chemom.)", "EN": "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)"},
+    "🎯 PowerPoint Presentation (.pptx)": {"PT": "🎯 Apresentação PowerPoint (.pptx)", "EN": "🎯 PowerPoint Presentation (.pptx)"},
+    "Results folder: `{pasta}`  ({n} runs stored)": {"PT": "Pasta de resultados: `{pasta}`  ({n} execuções armazenadas)", "EN": "Results folder: `{pasta}`  ({n} runs stored)"},
+    "{n} figure(s) displayed.": {"PT": "{n} figura(s) exibida(s).", "EN": "{n} figure(s) displayed."},
+    "python-pptx not installed. Run: `pip install python-pptx>=1.1`": {"PT": "python-pptx não instalado. Rode: `pip install python-pptx>=1.1`", "EN": "python-pptx not installed. Run: `pip install python-pptx>=1.1`"},
+    "**{n_remover}** old run(s) will be removed (~{tam_est:.0f} MB freed). The current run **will not be affected**.": {"PT": "**{n_remover}** execução(ões) antiga(s) será(ão) removida(s) (~{tam_est:.0f} MB liberados). A execução atual **não será afetada**.", "EN": "**{n_remover}** old run(s) will be removed (~{tam_est:.0f} MB freed). The current run **will not be affected**."},
+    "No folders removed.": {"PT": "Nenhuma pasta removida.", "EN": "No folders removed."},
+    "ZIP: {e}": {"PT": "ZIP: {e}", "EN": "ZIP: {e}"},
+    "PDF: {e}": {"PT": "PDF: {e}", "EN": "PDF: {e}"},
+    "Word: {e}": {"PT": "Word: {e}", "EN": "Word: {e}"},
+    "Excel: {e}": {"PT": "Excel: {e}", "EN": "Excel: {e}"},
+    "LaTeX: {e}": {"PT": "LaTeX: {e}", "EN": "LaTeX: {e}"},
+    "PowerPoint: {e}": {"PT": "PowerPoint: {e}", "EN": "PowerPoint: {e}"},
+    "Removed {n} folder(s), freed {mb:.0f} MB.": {"PT": "Removida(s) {n} pasta(s), {mb:.0f} MB liberados.", "EN": "Removed {n} folder(s), freed {mb:.0f} MB."},
+    "Errors: {erro}": {"PT": "Erros: {erro}", "EN": "Errors: {erro}"},
 }
 
 def _T(key: str) -> str:
@@ -579,14 +701,14 @@ with tab_proj:
 #  TAB 2 — DATA
 # ==========================================================================
 with tab_dados:
-    _tab_dados.render(pq, cfg_base, specs, valores, _widget_para_campo, _CFG_PATH)
+    _tab_dados.render(pq, cfg_base, specs, valores, _widget_para_campo, _CFG_PATH, _T)
 
 
 # ==========================================================================
 #  TAB 3 — PREPROCESSING
 # ==========================================================================
 with tab_preproc:
-    _tab_preprocessamento.render(pq, cfg_base, specs, valores, _widget_para_campo)
+    _tab_preprocessamento.render(pq, cfg_base, specs, valores, _widget_para_campo, _T)
 
 
 # ==========================================================================
@@ -608,7 +730,7 @@ with tab_valid:
 #  TAB 6 — PREDICTION
 # ==========================================================================
 with tab_pred:
-    _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok)
+    _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok, _T)
 
 
 
@@ -647,7 +769,7 @@ with tab_rel:
     _tab_relatorios.render(pq, _MODO_ANALISE_ROTULO, _zip_da_pasta,
                           _pdf_bytes, _word_bytes, _excel_bytes,
                           _latex_bytes, _pptx_bytes,
-                          _ler_resumo, _ler_model_card, _listar_figuras)
+                          _ler_resumo, _ler_model_card, _listar_figuras, _T)
 
 
 # ==========================================================================

@@ -39,24 +39,29 @@ def _sincronizar_widgets_com_cfg(pq, cfg, apenas_chaves=None) -> None:
 
 
 def render(pq, cfg_base, specs: Dict, valores: Dict,
-           widget_para_campo: Callable, cfg_path: str) -> None:
+           widget_para_campo: Callable, cfg_path: str,
+           T: Callable[[str], str] = lambda s: s) -> None:
     """Renderiza a aba Data.
 
     `valores` é o dict COMPARTILHADO entre Data/Preprocessing/Model (o mesmo
     objeto é mutado por cada aba — mesma semântica de antes da extração,
     já que o Config final só é montado depois que as 3 abas rodaram).
+
+    `T`: traducao PT/EN (mesma funcao `_T` de app_quimiometria.py, ver
+    `_TR`). Default no-op (`lambda s: s`) so' para chamada direta em teste
+    isolado -- toda chamada real do app passa `_T`.
     """
-    st.subheader("Data Input")
-    st.caption("📂 Step 2: Upload or select spectra folder → then go to **Model** tab.")
+    st.subheader(T("Data Input"))
+    st.caption(T("📂 Step 2: Upload or select spectra folder → then go to **Model** tab."))
 
     # ---- Recommended analysis presets (CLAUDE.md sec. 6 / audit 2026-07-12:
     # "3 presets Autenticar/Explorar/Quantificar" so a new user doesn't have
     # to understand nivel/objetivo before picking something reasonable).
     # Same PROFILES dict as the CLI's [P] menu — one source of truth, no
     # duplicated preset definitions between interfaces.
-    st.markdown("**🎯 Recommended analysis** *(optional shortcut)*")
-    st.caption("Pick what you want to do — sets sensible defaults across all "
-               "tabs; fine-tune afterwards if needed.")
+    st.markdown(T("**🎯 Recommended analysis** *(optional shortcut)*"))
+    st.caption(T("Pick what you want to do — sets sensible defaults across all "
+               "tabs; fine-tune afterwards if needed."))
     _PRESETS_OBJETIVO = [
         ("Explorar Dados", "🔍 Explore",
          "First look: PCA/HCA, no forced classification"),
@@ -68,8 +73,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     cols_preset = st.columns(3)
     for (pname, label, help_txt), col in zip(_PRESETS_OBJETIVO, cols_preset):
         with col:
-            if st.button(label, key=f"btn_preset_{pname}",
-                         use_container_width=True, help=help_txt):
+            if st.button(T(label), key=f"btn_preset_{pname}",
+                         use_container_width=True, help=T(help_txt)):
                 pdata = PROFILES.get(pname, {})
                 cfg_novo = copy.deepcopy(cfg_base)
                 for s in pq._CONFIG_SPEC:
@@ -77,16 +82,17 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                         setattr(cfg_novo, s["attr"], pdata[s["key"]])
                 _sincronizar_widgets_com_cfg(pq, cfg_novo, apenas_chaves=pdata.keys())
                 st.session_state.cfg_base = cfg_novo
-                st.success(f"Preset '{pname}' applied — check the Model tab.")
+                st.success(T("Preset '{pname}' applied — check the Model tab.")
+                           .format(pname=pname))
                 st.rerun()
 
     # ---- CSV Upload (at top for easy access) -----------------------------
-    st.markdown("**Upload CSV** *(alternative to the local path below)*")
+    st.markdown(T("**Upload CSV** *(alternative to the local path below)*"))
     upld = st.file_uploader(
-        "Drag or select a CSV file",
+        T("Drag or select a CSV file"),
         type=["csv", "txt"],
         key="csv_upload_widget",
-        help="The file will be saved to a temporary folder and the path adjusted automatically.",
+        help=T("The file will be saved to a temporary folder and the path adjusted automatically."),
     )
     if upld is not None:
         # Subpasta por SESSAO (achado S1 da auditoria de seguranca,
@@ -109,9 +115,9 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                 f.write(upld.getvalue())
             st.session_state["_csv_upload_name"] = upld.name
             st.session_state["_csv_upload_path"] = tmp_path
-        st.success(f"File saved: `{tmp_path}`")
-        st.info("Mode automatically set to 'csv'. "
-                "The path above will be overridden when running.")
+        st.success(T("File saved: `{tmp_path}`").format(tmp_path=tmp_path))
+        st.info(T("Mode automatically set to 'csv'. "
+                "The path above will be overridden when running."))
 
     # ---- Path / config fields ---------------------------------------------
     st.divider()
@@ -129,16 +135,17 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
 
     # ---- Data statistics preview -------------------------------------------
     st.divider()
-    st.markdown("**Data preview**")
+    st.markdown(T("**Data preview**"))
     cfg_prev, _ = collect_config(cfg_base, valores)
     ok_dados, msg_dados = pq._validar_pasta_dados(cfg_prev)
-    (st.success if ok_dados else st.warning)(f"Status: {msg_dados}")
+    (st.success if ok_dados else st.warning)(
+        T("Status: {msg_dados}").format(msg_dados=msg_dados))
 
-    if ok_dados and st.button("🔍 Load spectra preview", key="btn_prev_dados"):
+    if ok_dados and st.button(T("🔍 Load spectra preview"), key="btn_prev_dados"):
         mode = cfg_prev.mode
         wn_mn = float(cfg_prev.wn_min)
         wn_mx = float(cfg_prev.wn_max)
-        with st.spinner("Loading spectra sample..."):
+        with st.spinner(T("Loading spectra sample...")):
             if mode == "dx":
                 wn_p, X_p, labs_p = preview_spectra_dx(
                     cfg_prev.input_folder, wn_mn, wn_mx)
@@ -152,33 +159,35 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
 
         if wn_p is not None and X_p is not None:
             cls_u = np.unique(np.asarray(labs_p))
-            st.markdown(f"**{len(X_p)} spectra** · {len(cls_u)} classes: "
-                        f"`{'`, `'.join(cls_u[:8])}`"
-                        + (" ..." if len(cls_u) > 8 else ""))
-            fig_p = plot_mean_spectra(wn_p, X_p, np.asarray(labs_p), titulo="Raw spectra (sample)")
+            st.markdown(T("**{n} spectra** · {k} classes: `{amostra}`{reticencias}").format(
+                n=len(X_p), k=len(cls_u),
+                amostra="`, `".join(cls_u[:8]),
+                reticencias=" ..." if len(cls_u) > 8 else ""))
+            fig_p = plot_mean_spectra(wn_p, X_p, np.asarray(labs_p),
+                                       titulo=T("Raw spectra (sample)"))
             st.pyplot(fig_p, use_container_width=True)
             plt.close(fig_p)
         else:
-            st.warning("Could not load spectra for preview. "
-                       "Check the path/mode.")
+            st.warning(T("Could not load spectra for preview. "
+                       "Check the path/mode."))
 
     # ---- Save / Reload config.yaml ---------------------------------
     st.divider()
     cfg_dados, erros_dados = collect_config(cfg_base, valores)
     if erros_dados:
-        st.warning("Fields with errors:\n- " + "\n- ".join(erros_dados))
+        st.warning(T("Fields with errors:\n- ") + "\n- ".join(erros_dados))
     c_s1, c_s2 = st.columns(2)
     with c_s1:
-        if st.button("💾 Save config.yaml", key="btn_salvar_cfg_dados",
+        if st.button(T("💾 Save config.yaml"), key="btn_salvar_cfg_dados",
                      use_container_width=True):
             if erros_dados:
-                st.error("Fix the fields before saving.")
+                st.error(T("Fix the fields before saving."))
             else:
                 pq.save_config(cfg_dados, cfg_path)
                 st.session_state.cfg_base = cfg_dados
-                st.success(f"Saved to {cfg_path}")
+                st.success(T("Saved to {cfg_path}").format(cfg_path=cfg_path))
     with c_s2:
-        if st.button("↺ Reload config.yaml", key="btn_reload_cfg_dados",
+        if st.button(T("↺ Reload config.yaml"), key="btn_reload_cfg_dados",
                      use_container_width=True):
             try:
                 cfg_recarregado = pq.load_config(cfg_path)
@@ -190,7 +199,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
                 # usuarios trocam nivel/objetivo via reload em sessao ja'
                 # em andamento).
                 _sincronizar_widgets_com_cfg(pq, cfg_recarregado)
-                st.success("Config reloaded.")
+                st.success(T("Config reloaded."))
                 st.rerun()
             except (RuntimeError, FileNotFoundError, ValueError) as e:
-                st.error(f"Error: {e}")
+                st.error(T("Error: {e}").format(e=e))
