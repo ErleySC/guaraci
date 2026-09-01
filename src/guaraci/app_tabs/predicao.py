@@ -22,6 +22,11 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
 
     `upload_bloqueado` reflete GUARACI_DISABLE_MODEL_UPLOAD (mitigação de RCE
     via pickle em deploy público — ver comentário em app_quimiometria.py).
+    Também esconde o campo de caminho local do CSV de predição quando ativo
+    (achado S-NOVO-1 da auditoria de segurança de 2026-09-01): um campo de
+    texto livre com caminho de servidor, num app público sem autenticação,
+    deixa qualquer visitante ler qualquer arquivo de texto acessível ao
+    processo, não só o operador que "sabe o caminho certo".
     """
     st.subheader("Prediction on Unknown Samples")
     st.markdown(
@@ -72,9 +77,17 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
         upld_csv_pred = st.file_uploader("Upload CSV with new spectra",
                                           type=["csv", "txt"],
                                           key="pred_csv_upload")
-        cam_csv_pred  = st.text_input("Or local path to CSV",
-                                       key="pred_csv_path",
-                                       placeholder="C:/data/new_spectra.csv")
+        if upload_bloqueado:
+            cam_csv_pred = ""
+            st.caption(
+                "🔒 Local path to CSV is disabled on this public "
+                "deployment — a free-text server-side path would let any "
+                "visitor read arbitrary files on the server. Use the "
+                "upload above instead.")
+        else:
+            cam_csv_pred = st.text_input("Or local path to CSV",
+                                          key="pred_csv_path",
+                                          placeholder="C:/data/new_spectra.csv")
         st.text_input(
             "First column to use as wavenumber (leave empty = auto)",
             key="pred_col_wn",

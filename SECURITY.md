@@ -48,6 +48,17 @@ rodar um programa desconhecido** no seu computador.
    um caminho fixo compartilhado entre todas as sessões — fecha uma
    condição de corrida entre usuários concorrentes e remove o caminho
    previsível que o achado S1 explorava (ver mesmo relatório, achado S2).
+5. **Campos de caminho de servidor fora da Predição** (achado S-NOVO-1,
+   auditoria de 2026-09-01): o campo "Or local path to CSV" da aba
+   Predição e os campos `pasta_dados`/`arquivo_csv` da aba Data eram texto
+   livre sem nenhuma proteção — mesmo com `GUARACI_DISABLE_MODEL_UPLOAD=1`
+   ativo. Isso não é RCE, mas é **leitura arbitrária de arquivo**: qualquer
+   visitante do deploy público podia digitar um caminho do servidor ali e
+   fazer o app ler/exibir qualquer arquivo de texto acessível ao processo,
+   ou enumerar diretórios via `glob`. A mesma flag agora também esconde
+   esses três campos em deploy público (uso local single-user continua
+   com todos habilitados por padrão, já que não há visitante remoto para
+   explorar o campo).
 
 ### O que isso NÃO resolve
 

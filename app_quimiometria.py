@@ -165,6 +165,15 @@ _APP_VERSION = f"v{getattr(pq, '__version__', '?')}"
 _UPLOAD_MODELO_BLOQUEADO = os.getenv(
     "GUARACI_DISABLE_MODEL_UPLOAD", "").strip().lower() in ("1", "true", "yes", "on")
 
+# Mesmo gate protege os campos de CAMINHO DE SERVIDOR (achado S-NOVO-1 da
+# auditoria de seguranca de 2026-09-01): um text_input livre com caminho de
+# pasta/arquivo, num app publico sem autenticacao, deixa QUALQUER visitante
+# remoto enumerar diretorios do servidor (glob) ou ler o conteudo de
+# qualquer arquivo de texto acessivel ao processo -- nao so' o operador que
+# "sabe o caminho certo". Nao e' RCE (como o pickle), mas e' leitura
+# arbitraria de arquivo/divulgacao de informacao real em deploy publico.
+_CAMPOS_CAMINHO_SERVIDOR = {"pasta_dados", "arquivo_csv"}
+
 # ── Language state ──────────────────────────────────────────────────────────
 # Light/dark é gerido pelo TEMA NATIVO do Streamlit (menu ⋮ → Settings → Theme),
 # lido via _active_theme(). Não há mais estado paralelo `dark_mode` nem CSS
@@ -298,6 +307,14 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     rotulo = _short if len(_short) > 4 else s["key"].replace("_", " ").capitalize()
     ajuda = s.get("desc", "")
     t = s["tipo"]
+    if s["key"] in _CAMPOS_CAMINHO_SERVIDOR and _UPLOAD_MODELO_BLOQUEADO:
+        st.caption(
+            f"🔒 {rotulo}: disabled on this public deployment — a free-text "
+            "server-side path would let any visitor enumerate directories "
+            "or read arbitrary files on the server. Use the CSV upload "
+            "above instead."
+        )
+        return valor_atual
     if t == "bool":
         return st.checkbox(rotulo, value=bool(valor_atual), help=ajuda, key=chave)
     if t in ("choice", "preproc"):
