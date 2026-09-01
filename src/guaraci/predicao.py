@@ -230,7 +230,20 @@ def load_model(caminho: str, *, confiar: bool = False) -> Dict[str, Any]:
             pass   # manifesto ilegivel -- nao ha' nada a conferir, segue
 
     import joblib
-    return joblib.load(caminho)
+    try:
+        return joblib.load(caminho)
+    except Exception as e:  # noqa: BLE001 -- pickle corrompido/truncado/de
+        # formato errado lanca varias classes diferentes (ModuleNotFoundError,
+        # UnpicklingError, EOFError, ValueError...) dependendo de COMO esta
+        # quebrado -- todas viram a mesma mensagem acionavel aqui, em vez de
+        # vazar o erro cru do pickle pro usuario (achado de auditoria,
+        # 2026-09-01: "ModuleNotFoundError: No module named 'sto nao e um
+        # pickle valido...'" nao diz o que aconteceu nem o que fazer).
+        raise ValueError(
+            f"'{caminho}' nao pode ser carregado como modelo .joblib -- "
+            f"arquivo corrompido, truncado, ou nao e' um .joblib de verdade "
+            f"(detalhe tecnico: {type(e).__name__}: {e}). Confirme o caminho "
+            "e re-exporte o modelo se necessario.") from e
 
 
 def validate_model_package(pkg: Dict) -> None:
@@ -255,21 +268,68 @@ def load_prediction_csv(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.D
     Retorna (X, wavenumbers, metadados_df). `metadados_df` pode ter 0
     colunas (nenhuma coluna nao-numerica encontrada).
     """
-    df = pd.read_csv(caminho_ou_buffer, sep=None, engine="python")
-    num_cols = []
-    for c in df.columns:
-        try:
-            float(c)
-            num_cols.append(c)
-        except ValueError:
-            pass
+    import csv as _csv_mod
+
+    try:
+        df = pd.read_csv(caminho_ou_buffer, sep=None, engine="python")
+    except (pd.errors.EmptyDataError, _csv_mod.Error) as e:
+        # csv.Error ("Could not determine delimiter") e' o que o sniffer
+        # (sep=None, engine="python") de fato lanca pra' um arquivo VAZIO --
+        # EmptyDataError so' cobre outros casos de "sem coluna pra' ler".
+        raise ValueError(
+            "O arquivo CSV esta vazio -- nao ha' nenhuma linha (nem "
+            "cabecalho) pra' ler. Confirme que o caminho/upload aponta pro "
+            "arquivo certo.") from e
+    except pd.errors.ParserError as e:
+        raise ValueError(
+            f"Nao foi possivel interpretar o arquivo como CSV (detalhe "
+            f"tecnico: {e}). Confirme que e' mesmo um CSV de texto (nao "
+            "um Excel/binario renomeado) e que as linhas tem o mesmo "
+            "numero de colunas.") from e
+    if df.empty or len(df.columns) == 0:
+        raise ValueError(
+            "O CSV nao tem nenhuma coluna de dado -- so' cabecalho, ou "
+            "arquivo vazio. Confirme o conteudo do arquivo.")
+
+    def _colunas_numericas(frame: pd.DataFrame) -> list:
+        cols = []
+        for c in frame.columns:
+            try:
+                float(c)
+                cols.append(c)
+            except ValueError:
+                pass
+        return cols
+
+    num_cols = _colunas_numericas(df)
     if not num_cols:
         raise ValueError(
             "Nenhuma coluna com nome numerico (numero de onda) encontrada. "
             "Garanta que os cabecalhos das colunas espectrais sejam numeros "
             "de onda (ex.: 4000.5, 4001.0...).")
     wn = np.array([float(c) for c in num_cols])
-    X = df[num_cols].values.astype(float)
+    try:
+        X = df[num_cols].values.astype(float)
+    except ValueError:
+        # Valores com decimal "," (padrao BR/Excel PT-BR) -- o proprio CSV
+        # de SAIDA do Guaraci usa sep=";", decimal="," (ver _menu_prediction
+        # em guaraci.py), entao rejeitar esse formato na ENTRADA seria o
+        # pipeline nao aceitar o proprio formato que ele produz (achado de
+        # auditoria, 2026-09-01). Cabecalho (numero de onda) ja' e' numerico
+        # dos dois jeitos -- so' os VALORES precisam reparse com decimal=",".
+        try:
+            if hasattr(caminho_ou_buffer, "seek"):
+                caminho_ou_buffer.seek(0)
+            df_virgula = pd.read_csv(caminho_ou_buffer, sep=None,
+                                      engine="python", decimal=",")
+            X = df_virgula[num_cols].values.astype(float)
+            df = df_virgula
+        except (pd.errors.EmptyDataError, pd.errors.ParserError,
+                _csv_mod.Error, KeyError, ValueError) as e:
+            raise ValueError(
+                "Nao foi possivel converter os valores espectrais para "
+                "numero, nem com ponto nem com virgula decimal (padrao "
+                "BR/Excel). Confirme o formato numerico do arquivo.") from e
     meta_df = df.drop(columns=num_cols, errors="ignore")
     return X, wn, meta_df
 

@@ -147,6 +147,43 @@ def test_carregar_csv_predicao_sem_colunas_numericas_leva_erro_claro(tmp_path):
         pr.load_prediction_csv(str(caminho))
 
 
+def test_carregar_csv_predicao_vazio_leva_erro_claro(tmp_path):
+    """Achado de auditoria (2026-09-01): antes vazava
+    'pandas.errors.EmptyDataError: No columns to parse from file' cru --
+    nao diz o que aconteceu nem o que fazer."""
+    caminho = tmp_path / "vazio.csv"
+    caminho.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="vazio"):
+        pr.load_prediction_csv(str(caminho))
+
+
+def test_carregar_csv_predicao_aceita_decimal_virgula_formato_br(tmp_path, modelo_e_dados):
+    """Achado de auditoria (2026-09-01): o proprio CSV de SAIDA do Guaraci
+    usa sep=';', decimal=',' (ver _menu_prediction em guaraci.py) -- mas a
+    ENTRADA rejeitava esse formato ('could not convert string to float:
+    0,001257...'), irônico: o pipeline nao aceitava o proprio formato que
+    ele produz. Confirma que agora aceita via fallback automatico."""
+    _pkg, X_novos, wn = modelo_e_dados
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    caminho = tmp_path / "espectros_br.csv"
+    df_in.to_csv(caminho, index=False, sep=";", decimal=",")
+
+    X_out, wn_out, _meta = pr.load_prediction_csv(str(caminho))
+    assert X_out.shape == X_novos.shape
+    assert len(wn_out) == len(wn)
+    np.testing.assert_allclose(X_out, X_novos, rtol=1e-4)
+
+
+def test_carregar_modelo_arquivo_corrompido_leva_erro_claro(tmp_path):
+    """Achado de auditoria (2026-09-01): antes vazava o erro cru do pickle
+    (ex.: 'ModuleNotFoundError: No module named ...') -- nao diz que o
+    arquivo esta corrompido nem o que fazer."""
+    caminho = tmp_path / "modelo_quebrado.joblib"
+    caminho.write_bytes(b"isto nao e um pickle valido -- bytes aleatorios 1234")
+    with pytest.raises(ValueError, match="corrompido"):
+        pr.load_model(str(caminho), confiar=True)
+
+
 # ── Integracao end-to-end via CLI (guaraci.py, menu_prediction) ──────────────
 
 @pytest.mark.slow
