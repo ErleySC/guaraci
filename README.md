@@ -85,6 +85,8 @@ external hold-out. That is what separates an honest metric from an artifact.
 - **Blind mode (default):** an unknown sample is classified, then quantified *from the predicted class* — never the true one — with a conformal-calibrated open-set identification step (species × adulterant) that reports a coverage guarantee per combination instead of a bare label.
 - **Experimental planning:** sample-size guidance (conformal or DD-SIMCA-coverage target) and a collection-session plan with randomized reading order, plus an automated design audit that flags class/session confounding before it produces a wrong metric.
 - **Calibration transfer** (Direct/Piecewise Direct Standardization) and **calibration-set selection** (Kennard-Stone, Duplex, SPXY) for moving a model between instruments or picking a representative subset from measured data.
+- **Applicability-domain drift sentinel**: accumulates the AD (in-/out-of-domain) rejection rate across successive batch-prediction runs and formally tests (one-sided exact binomial test, H0: rejection rate = nominal alpha) whether it is rising — a sign of instrument/process drift since calibration. State persists as JSON next to the model; the CLI's batch-prediction menu updates it automatically.
+- **Image mode (digital colorimetry, prototype)**: turns photos (RGB/HSV/Lab stats, optionally GLCM texture) into the same numeric matrix every other mode consumes — PCA, PLS-DA, DD-SIMCA etc. run unchanged. Auto-detects which replicate-leakage grouping guarantee the data folder supports (per-sample subfolder / manual association CSV / none) and states the level actually used in the log, model card and manifest — never assumes a guarantee it doesn't have.
 
 ---
 

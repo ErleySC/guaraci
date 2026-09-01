@@ -170,6 +170,24 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
                         df_res = pd.concat(
                             [meta_df.reset_index(drop=True), df_res], axis=1)
                 st.session_state["pred_resultados"] = df_res
+                # Bloco 9b (Detect -> Identify -> Quantify, conformal-calibrated
+                # open-set adulterant identification + blind quantification) is
+                # NOT wired into this tab -- only the CLI's batch-prediction menu
+                # ([B]) calls `predicao.predict_blind`. Flagged, not silently
+                # dropped: a model trained with N3/open-set identification still
+                # only shows the N1 class-fit/domain columns here (Agente 3,
+                # Passo 92 -- verified by grep against this file's imports,
+                # which never reference `predict_blind`).
+                if pkg_pred.get("identification_ensemble"):
+                    st.warning(
+                        "This model also carries an open-set adulterant "
+                        "identification ensemble (blind Detect → Identify "
+                        "→ Quantify flow), but this web tab only runs the "
+                        "class-fit / applicability-domain check below — it "
+                        "does not yet report purity, adulterant identity or "
+                        "blind quantification. Use the GUARACI terminal "
+                        "(`guaraci`, batch-prediction menu) for the full "
+                        "flow on this model.")
                 st.success(f"Prediction complete: {len(df_res)} samples.")
             except Exception as e_pred:  # noqa: BLE001 -- multi-etapa
                 # (predizer + concat de metadados); erro exibido ao usuario.
@@ -219,9 +237,15 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
             n_ac = int(df_show["aceito"].sum())
             n_tot = len(df_show)
             with col_m1:
-                st.metric("Accepted samples (PLS-DA fit, T² ≤ UCL and Q ≤ UCL)",
-                          f"{n_ac} / {n_tot}",
+                st.metric("Within PLS-DA model fit", f"{n_ac} / {n_tot}",
                           delta=f"{n_ac/n_tot*100:.1f}%")
+                st.caption(
+                    "Hotelling T² (distance along the model's main "
+                    "directions) and Q-residual (unexplained variation) "
+                    "both within their statistical limit — see the "
+                    "'criterio' column for the exact rule applied. A "
+                    "sample outside this fit is an atypical spectrum for "
+                    "the calibration, not necessarily 'adulterated'.")
         # Applicability Domain (PCA-based, Jaworska et al. 2005) — only
         # present if the .joblib package carries the AD artifacts (pipeline
         # versions exporting pca/ad_var_t/ad_t2_limite/ad_q_limite).
@@ -229,6 +253,11 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]]) -> None:
             n_ad = int(df_show["AD_dentro_dominio"].sum())
             n_tot = len(df_show)
             with col_m2:
-                st.metric("Within applicability domain (PCA T²/Q)",
-                          f"{n_ad} / {n_tot}",
+                st.metric("Within applicability domain", f"{n_ad} / {n_tot}",
                           delta=f"{n_ad/n_tot*100:.1f}%")
+                st.caption(
+                    "Exploratory PCA check (Hotelling T²/Q-residual, "
+                    "Jaworska et al. 2005) of similarity to the training "
+                    "set as a whole — a broader, less strict screen than "
+                    "the PLS-DA fit above. 'Outside' flags a spectrum "
+                    "unlike anything the model was calibrated on.")

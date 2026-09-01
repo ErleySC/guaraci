@@ -80,7 +80,14 @@ the true label describes a situation the user will never be in, and silently
 folds classification error out of the reported quantification error.
 `GUARACI` calibrates on the *predicted* class by default; the label-aware
 path exists, is reached only through an explicit `--modo=controle` flag, and
-is marked as such in every artifact it produces.
+is marked as such in every artifact it produces. The same blind-prediction
+path also drives an open-set identification step: an unknown sample's
+adulterant is matched against a conformal-calibrated ensemble of
+species-by-adulterant combinations, and quantification is only produced —
+never a bare number — for a combination whose coverage guarantee was
+actually validated on the training groups; an unmatched or statistically
+unvalidated combination blocks the quantification step and reports why,
+instead of returning a number with no error-rate guarantee behind it.
 
 # Statement of need
 
@@ -139,7 +146,16 @@ a pass/fail verdict, and calibration transfer (Direct/Piecewise Direct
 Standardization [@WangVeltkampKowalski1991]) alongside calibration-set
 selection (Kennard-Stone, Duplex [@Snee1977], SPXY [@Galvao2005]) for
 moving a model between instruments or picking a representative measured
-subset.
+subset. A drift sentinel accumulates the applicability-domain rejection
+rate across successive batch-prediction runs and formally tests, via an
+exact binomial test, whether that rate is rising above the nominal alpha —
+the question that matters for continuous production use, as opposed to
+flagging any single out-of-domain sample, which the nominal alpha already
+allows for. A prototype image mode extends the same modelling and
+diagnostic machinery to digital colorimetry (RGB/HSV/Lab statistics,
+optionally GLCM texture) by treating each photograph as one spectrum-like
+row, auto-detecting which replicate-grouping guarantee the data folder
+supports and declaring it explicitly rather than assuming one.
 
 Performance claims rest exclusively on **public datasets**. On the
 Eigenvector *Corn* set (80 samples, 700 channels, 1100–2498 nm), `GUARACI`

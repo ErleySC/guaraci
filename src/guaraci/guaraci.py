@@ -2614,12 +2614,17 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
 
     resumo_txt = (
         f"  [{PG}]✔ {n_tot} amostras processadas[/{PG}]  |  "
-        f"[{PG}]{n_ac}[/{PG}] aceitas (ajuste ao modelo PLS-DA, T2/Q) / "
-        f"[{PR}]{n_tot - n_ac}[/{PR}] rejeitadas"
+        f"[{PG}]{n_ac}[/{PG}] amostras dentro do ajuste do modelo PLS-DA "
+        f"(T2 <= limite e resíduo Q <= limite -- ver 'criterio' no CSV) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] fora do ajuste (espectro atipico, "
+        f"tratar com cautela)"
         if is_pt else
         f"  [{PG}]✔ {n_tot} samples processed[/{PG}]  |  "
-        f"[{PG}]{n_ac}[/{PG}] accepted (PLS-DA model fit, T2/Q) / "
-        f"[{PR}]{n_tot - n_ac}[/{PR}] rejected"
+        f"[{PG}]{n_ac}[/{PG}] samples within the PLS-DA model fit "
+        f"(Hotelling T2 <= limit and Q-residual <= limit -- see 'criterio' "
+        f"in the CSV) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] outside the fit (atypical spectrum, "
+        f"treat with caution)"
     )
     # Dominio de Aplicabilidade (PCA exploratorio, Jaworska et al. 2005) --
     # so' aparece se o pacote .joblib foi salvo por uma versao do pipeline
@@ -2630,19 +2635,25 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
             f"  [{PG}]🔎 Dominio de aplicabilidade:[/{PG}] "
             f"[{PG}]{n_ad_dentro}[/{PG}] dentro / "
             f"[{PR}]{n_tot - n_ad_dentro}[/{PR}] fora "
-            "(espectro atipico frente a calibracao)"
+            "(espectro parecido/nao-parecido com o que o modelo viu no "
+            "treino -- 'fora' NAO significa 'adulterado', so' 'diferente do "
+            "que foi calibrado')"
             if is_pt else
             f"  [{PG}]🔎 Applicability domain:[/{PG}] "
             f"[{PG}]{n_ad_dentro}[/{PG}] within / "
             f"[{PR}]{n_tot - n_ad_dentro}[/{PR}] outside "
-            "(atypical spectrum vs. calibration)"
+            "(similar/dissimilar to what the model saw during training -- "
+            "'outside' does NOT mean 'adulterated', only 'different from "
+            "what was calibrated')"
         )
         resumo_txt += "\n" + ad_txt
 
         # Bloco 13b: sentinela de deriva -- persistida ao lado do MODELO
         # (nao do CSV de saida), porque e' o modelo que fica fixo entre
         # varias rodadas de predicao ao longo do tempo -- exatamente o
-        # uso continuo que a sentinela existe para acompanhar.
+        # uso continuo que a sentinela existe para acompanhar. Depende de
+        # AD_dentro_dominio (nao de identification_ensemble), por isso fica
+        # sob este if, nao sob o do fluxo cego abaixo.
         try:
             import guaraci.sentinela_deriva as _sent
             cam_sentinela = cam_modelo + ".sentinela.json"
@@ -2663,6 +2674,95 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
             resumo_txt += (
                 f"\n  [{PM}]{'Sentinela de deriva indisponivel' if is_pt else 'Drift sentinel unavailable'}"
                 f": {escape(str(_e_sent))}[/{PM}]")
+
+    # Bloco 9b: fluxo cego completo (Detectar -> Identificar -> Quantificar)
+    # -- so' presente quando o pacote .joblib traz o ensemble de
+    # identificacao. Sem este bloco a saida seria so' uma tabela de colunas
+    # tecnicas (identificacao_cobertura, motivo_bloqueio, alpha_total) sem
+    # explicacao nenhuma -- o motivo original desta auditoria de veracidade
+    # (Agente 3, Passo 92).
+    if "classe_identificada" in df_res.columns:
+        n_pura = int(sum(1 for r in resultados_cego if r.pureza.aceito is True))
+        n_adulterada = int(sum(1 for r in resultados_cego if r.pureza.aceito is False))
+        n_pureza_indet = n_tot - n_pura - n_adulterada
+        n_identificado = int(sum(
+            1 for r in resultados_cego
+            if r.identificacao.classe_identificada is not None))
+        n_desconhecido = n_tot - n_identificado
+        n_quantificado = int(sum(
+            1 for r in resultados_cego if r.quantificacao.teor_estimado is not None))
+        n_bloqueado = n_tot - n_quantificado
+
+        if is_pt:
+            fluxo_txt = (
+                "\n  [bold]Fluxo cego -- Detectar → Identificar → Quantificar "
+                "(Bloco 9b):[/bold]\n"
+                f"  🧪 Pureza (DD-SIMCA da espécie prevista): "
+                f"[{PG}]{n_pura}[/{PG}] detectada como pura / "
+                f"[{PR}]{n_adulterada}[/{PR}] detectada como adulterada"
+                + (f" / [{PM}]{n_pureza_indet}[/{PM}] indeterminada "
+                   "(sem modelo de pureza calibrado para a espécie prevista)"
+                   if n_pureza_indet else "") + "\n"
+                f"  🏷 Adulterante: "
+                f"[{PG}]{n_identificado}[/{PG}] identificado / "
+                f"[{PR}]{n_desconhecido}[/{PR}] DESCONHECIDO (nenhuma "
+                "combinação espécie×adulterante teve garantia estatística "
+                "suficiente E exclusiva para rotular esta amostra -- por "
+                "falta de garantia, ou por 2+ combinações validadas "
+                "empatando, o que também bloqueia o rótulo)\n"
+                f"  ⚖ Quantificação (teor de adulterante estimado -- mesma "
+                "unidade da coluna de referência usada no treino do modelo, "
+                f"tipicamente %m/m): [{PG}]{n_quantificado}[/{PG}] com "
+                f"número / [{PR}]{n_bloqueado}[/{PR}] BLOQUEADA "
+                "(quantificação recusada por não haver identificação "
+                "confiável do adulterante -- ver coluna "
+                "'quantificacao_motivo_bloqueio' no CSV)\n"
+                f"  [{PM}]⚠ Um rótulo em 'classe_identificada' só existe "
+                "quando 'identificacao_cobertura'='validado' (garantia "
+                "estatística formal, calibrada com >=2 sessões de coleta "
+                "independentes) -- nunca há rótulo 'informativo' sem essa "
+                "garantia: nesse caso a amostra é DESCONHECIDA de propósito, "
+                "e a coluna 'identificacao_candidatos' traz só o palpite "
+                "mais próximo (SEM garantia nenhuma) para referência, nunca "
+                "como resultado a usar numa decisão de controle de "
+                f"qualidade sem confirmar por método de referência.[/{PM}]"
+            )
+        else:
+            fluxo_txt = (
+                "\n  [bold]Blind flow -- Detect → Identify → Quantify "
+                "(Bloco 9b):[/bold]\n"
+                f"  🧪 Purity (DD-SIMCA for the predicted species): "
+                f"[{PG}]{n_pura}[/{PG}] detected as pure / "
+                f"[{PR}]{n_adulterada}[/{PR}] detected as adulterated"
+                + (f" / [{PM}]{n_pureza_indet}[/{PM}] undetermined "
+                   "(no purity model calibrated for the predicted species)"
+                   if n_pureza_indet else "") + "\n"
+                f"  🏷 Adulterant: "
+                f"[{PG}]{n_identificado}[/{PG}] identified / "
+                f"[{PR}]{n_desconhecido}[/{PR}] UNKNOWN (no species x "
+                "adulterant combination had a statistical guarantee that "
+                "was both sufficient AND exclusive for this sample -- "
+                "either no guarantee, or 2+ validated combinations tied, "
+                "which also blocks the label)\n"
+                f"  ⚖ Quantification (estimated adulterant content -- same "
+                "unit as the reference column used to train the model, "
+                f"typically %w/w): [{PG}]{n_quantificado}[/{PG}] with a "
+                f"number / [{PR}]{n_bloqueado}[/{PR}] BLOCKED "
+                "(quantification refused because the adulterant was not "
+                "reliably identified -- see the 'quantificacao_motivo_"
+                "bloqueio' column in the CSV)\n"
+                f"  [{PM}]⚠ A 'classe_identificada' label only ever exists "
+                "when 'identificacao_cobertura'='validado' (formal "
+                "statistical guarantee, calibrated with >=2 independent "
+                "collection sessions) -- there is no 'informational' label "
+                "without that guarantee: in that case the sample is "
+                "UNKNOWN on purpose, and the 'identificacao_candidatos' "
+                "column carries only the closest guess (with NO guarantee "
+                "at all) for reference, never as a result to act on for a "
+                "quality decision without confirming by a reference "
+                f"method.[/{PM}]"
+            )
+        resumo_txt += fluxo_txt
     console.print()
     console.print(Panel(
         Group(Text.from_markup(resumo_txt), Text(""), t_res),
