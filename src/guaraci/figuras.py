@@ -45,6 +45,9 @@ if TYPE_CHECKING:
 __all__ = [
     "setup_matplotlib",
     "save",
+    "resetar_falhas_salvamento",
+    "obter_falhas_salvamento",
+    "registrar_falha_salvamento",
     "specificity_by_class",
     "ellipse_t2",
     "convex_hull_contorno",
@@ -118,6 +121,37 @@ def setup_matplotlib(cfg: Config) -> None:
 
 _AVISO_MOSTRAR_GRAFICOS_EMITIDO = False
 
+# Falhas de fig.savefig() ao longo de UMA execucao de executar() (achado de
+# auditoria funcional, 2026-09-01: em pasta de saida muito profunda -- MAX_
+# PATH do Windows, 260 chars -- ate 3 arquivos falhavam ao salvar
+# silenciosamente; o pipeline terminava e imprimia "Pipeline concluido"
+# mesmo assim, um "[ERROR]" perdido no meio de centenas de linhas de log e'
+# facil de nao notar). `executar()` zera esta lista no inicio e confere no
+# resumo final -- nao muda o comportamento de CONTINUAR salvando o resto
+# (isso ja' era certo, uma figura que falha nao devia derrubar a corrida
+# inteira), so' torna a falha impossivel de passar despercebida no fim.
+_FALHAS_SALVAMENTO: List[str] = []
+
+
+def resetar_falhas_salvamento() -> None:
+    """Zera o acumulador de falhas de salvamento -- chamar no INICIO de
+    `executar()`, pra' o resumo final refletir so' a corrida atual."""
+    _FALHAS_SALVAMENTO.clear()
+
+
+def obter_falhas_salvamento() -> List[str]:
+    """Falhas de salvamento acumuladas desde o ultimo `resetar_falhas_
+    salvamento()` -- `executar()` confere isto no resumo final."""
+    return list(_FALHAS_SALVAMENTO)
+
+
+def registrar_falha_salvamento(descricao: str) -> None:
+    """Registra uma falha de salvamento que NAO passou por `save()` (ex.:
+    modelo/manifesto, gravados por `predicao.py`, nao por este modulo) --
+    mesmo acumulador, pra' o resumo final de `executar()` ver as duas
+    fontes juntas."""
+    _FALHAS_SALVAMENTO.append(descricao)
+
 
 def save(fig, nome: str, pasta: str, cfg: Config,
            subpasta: str = "") -> None:
@@ -142,7 +176,10 @@ def save(fig, nome: str, pasta: str, cfg: Config,
         fig.savefig(caminho)
         print(f"  -> {caminho}")
     except OSError as e:   # disco cheio, permissao negada, path invalido
+        # (inclui MAX_PATH do Windows -- caminho >260 chars sem prefixo
+        # \\?\, achado real de auditoria com pasta de saida profunda).
         print(f"  [ERROR] {caminho}: {e}")
+        _FALHAS_SALVAMENTO.append(f"{caminho}: {e}")
     if cfg.show_plots:
         global _AVISO_MOSTRAR_GRAFICOS_EMITIDO
         if not _AVISO_MOSTRAR_GRAFICOS_EMITIDO:

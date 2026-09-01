@@ -2093,3 +2093,81 @@ def test_interpretar_rpd_cobre_as_faixas_publicadas(pq):
     assert pq.interpret_rpd(4.0) == "controle de qualidade"
     assert pq.interpret_rpd(7.0).startswith("controle de processo")
     assert pq.interpret_rpd(float("nan")) == "nao estimavel"
+
+
+def test_falha_de_salvamento_de_figura_aparece_no_resumo_final(pq, tmp_path, monkeypatch):
+    """Achado de auditoria funcional (2026-09-01): em pasta de saida muito
+    profunda (MAX_PATH do Windows), ate 3 arquivos falhavam ao salvar em
+    silencio -- o pipeline terminava dizendo "Pipeline concluido" do mesmo
+    jeito, um "[ERROR]" perdido em centenas de linhas de log. Forca UMA
+    falha real de fig.savefig() (monkeypatch de `save`, nao do disco) e
+    confirma que o resumo final AVISA, em vez de dizer "concluido" liso."""
+    import contextlib
+    import io
+    import os
+
+    # As funcoes fig_* (definidas em figuras.py) chamam `save` resolvido do
+    # PROPRIO namespace de figuras.py -- monkeypatch em pq.save (a copia
+    # re-exportada pela fachada) nao teria efeito nenhum aqui, confirmado
+    # rodando de verdade antes de escrever o teste assim.
+    import guaraci.figuras as figuras_mod
+    chamadas = {"n": 0}
+    _save_original = figuras_mod.save
+
+    def _save_com_1_falha(fig, nome, pasta, cfg, subpasta=""):
+        chamadas["n"] += 1
+        if chamadas["n"] == 1:
+            fig.savefig = lambda *a, **kw: (_ for _ in ()).throw(
+                OSError("caminho excede o limite do sistema operacional"))
+        return _save_original(fig, nome, pasta, cfg, subpasta)
+
+    monkeypatch.setattr(figuras_mod, "save", _save_com_1_falha)
+
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N1",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pq.executar(cfg)
+
+    saida = buf.getvalue()
+    assert "FALHA(S) DE SALVAMENTO" in saida
+    assert "Pipeline concluido." not in saida   # nunca "concluido" liso com falha
+    assert chamadas["n"] >= 1
+
+
+def test_pipeline_sem_falha_de_salvamento_reporta_concluido_liso(pq, tmp_path):
+    """Contra-prova inversa: corrida normal, sem nenhuma falha, continua
+    dizendo "Pipeline concluido." sem ressalva -- o acumulador nao pode
+    vazar falha de uma corrida anterior pra' esta (reset no inicio de
+    executar())."""
+    import contextlib
+    import io
+    import os
+
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N1",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pq.executar(cfg)
+
+    saida = buf.getvalue()
+    assert "FALHA(S) DE SALVAMENTO" not in saida
+    assert "Pipeline concluido." in saida

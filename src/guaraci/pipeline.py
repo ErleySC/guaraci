@@ -210,6 +210,9 @@ from guaraci.paleta_cores import (   # noqa: E402
 from guaraci.figuras import (   # noqa: E402
     setup_matplotlib,
     save,
+    resetar_falhas_salvamento,
+    obter_falhas_salvamento,
+    registrar_falha_salvamento,
     specificity_by_class,
     ellipse_t2,
     convex_hull_contorno,
@@ -1364,6 +1367,10 @@ def executar(cfg: Config):
     # ver guaraci/log.py:_StdoutHandler.
     _configurar_log()
     setup_matplotlib(cfg)
+    # Zera o acumulador de falhas de salvamento (figuras/manifesto) desta
+    # corrida -- ver resumo final, achado de auditoria sobre falha
+    # silenciosa em pasta de saida profunda (MAX_PATH do Windows).
+    resetar_falhas_salvamento()
 
     # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
     # Quantificacao). Decide quais figuras/relatorios serao gerados, para
@@ -2720,6 +2727,7 @@ def executar(cfg: Config):
         # (predicao em amostra nova); erro impresso, nao afeta as figuras/
         # relatorios ja gerados desta corrida.
         log.info(f"  [AVISO] Exportacao do modelo pulada: {_e_mod}")
+        registrar_falha_salvamento(f"modelo/manifesto ({cam_modelo}): {_e_mod}")
 
     if out_t2.size or out_q.size:
         log.info(f"\n[INFO] Outliers (T2 > lim): {out_t2.tolist()}")
@@ -2932,8 +2940,27 @@ def executar(cfg: Config):
     elif conc is None:
         log.info("\n[7/7] PLS regressao — pulado (sem coluna de concentracao)")
 
+    _falhas_salvamento = obter_falhas_salvamento()
     log.info(f"\n{'=' * 60}")
-    log.info("  Pipeline concluido.")
+    if _falhas_salvamento:
+        # Achado de auditoria funcional (2026-09-01): em pasta de saida
+        # muito profunda (MAX_PATH do Windows, 260 chars), ate 3 arquivos
+        # falhavam ao salvar e o pipeline terminava dizendo "concluido"
+        # do mesmo jeito -- um "[ERROR]" perdido em centenas de linhas de
+        # log e' facil de nao notar. Nao falha a corrida (o resto do
+        # resultado continua valido e usavel), mas o resumo final NUNCA
+        # pode dizer "concluido" sem ressalva quando algo nao foi salvo.
+        log.warning(f"  Pipeline concluido COM {len(_falhas_salvamento)} "
+                    "FALHA(S) DE SALVAMENTO:")
+        for _f in _falhas_salvamento:
+            log.warning(f"    - {_f}")
+        log.warning("  O resto do resultado desta corrida e' valido, mas "
+                    "os arquivos acima NAO foram gravados -- confira "
+                    "espaco em disco/permissao, e se o caminho de saida "
+                    "nao excede o limite do sistema operacional "
+                    "(Windows: 260 caracteres sem prefixo \\\\?\\).")
+    else:
+        log.info("  Pipeline concluido.")
     log.info(f"  Resultados em: {pasta}")
     log.info(f"{'=' * 60}")
 

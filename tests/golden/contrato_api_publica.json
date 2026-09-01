@@ -1422,8 +1422,20 @@
         "assinatura": "(vip: 'np.ndarray', sr: 'np.ndarray', wavenumbers: 'np.ndarray', top_n: 'int', cfg: 'Config', pasta: 'str') -> 'None'",
         "forma": "funcao"
       },
+      "obter_falhas_salvamento": {
+        "assinatura": "() -> 'List[str]'",
+        "forma": "funcao"
+      },
       "plot_scores_panel": {
         "assinatura": "(ax, scores, rotulos, mapa_cores, var_exp, titulo, xlabel, ylabel, puros_mask=None, mapa_marcadores=None, desenhar_elipses=True)",
+        "forma": "funcao"
+      },
+      "registrar_falha_salvamento": {
+        "assinatura": "(descricao: 'str') -> 'None'",
+        "forma": "funcao"
+      },
+      "resetar_falhas_salvamento": {
+        "assinatura": "() -> 'None'",
         "forma": "funcao"
       },
       "save": {

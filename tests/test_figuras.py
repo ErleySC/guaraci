@@ -341,3 +341,58 @@ def test_salvar_carimba_prototipo_apenas_no_modo_imagem(tmp_path):
 
     assert "PROTOTIPO" in textos_img and "NAO VALIDADO" in textos_img
     assert "PROTOTIPO" not in textos_dx
+
+
+# ── Falha de salvamento nunca fica silenciosa (achado de auditoria) ──────
+# Antes: fig.savefig() falhando (MAX_PATH do Windows, disco cheio,
+# permissao) so' imprimia "[ERROR]" e o pipeline seguia dizendo "concluido"
+# do mesmo jeito -- facil de nao notar em centenas de linhas de log.
+
+def test_save_falha_e_registrada_no_acumulador(tmp_path):
+    import matplotlib.pyplot as plt
+    from guaraci.figuras import (save, resetar_falhas_salvamento,
+                                  obter_falhas_salvamento)
+    from guaraci.config import Config
+
+    resetar_falhas_salvamento()
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [0, 1])
+    fig.savefig = lambda *a, **kw: (_ for _ in ()).throw(
+        OSError("caminho excede o limite do sistema operacional"))
+
+    save(fig, "fig_falha", str(tmp_path), Config(output_format="png"))
+
+    falhas = obter_falhas_salvamento()
+    assert len(falhas) == 1
+    assert "fig_falha" in falhas[0]
+
+
+def test_resetar_falhas_salvamento_limpa_o_acumulador(tmp_path):
+    import matplotlib.pyplot as plt
+    from guaraci.figuras import (save, resetar_falhas_salvamento,
+                                  obter_falhas_salvamento)
+    from guaraci.config import Config
+
+    resetar_falhas_salvamento()
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [0, 1])
+    fig.savefig = lambda *a, **kw: (_ for _ in ()).throw(OSError("falha"))
+    save(fig, "fig_falha", str(tmp_path), Config(output_format="png"))
+    assert obter_falhas_salvamento()
+
+    resetar_falhas_salvamento()
+    assert obter_falhas_salvamento() == []
+
+
+def test_registrar_falha_salvamento_aceita_fonte_externa():
+    """`registrar_falha_salvamento` existe pra' fontes que nao passam por
+    `save()` (ex.: modelo/manifesto, gravados em predicao.py) -- mesmo
+    acumulador, resumo final de executar() ve as duas fontes juntas."""
+    from guaraci.figuras import (resetar_falhas_salvamento,
+                                  obter_falhas_salvamento,
+                                  registrar_falha_salvamento)
+
+    resetar_falhas_salvamento()
+    registrar_falha_salvamento("modelo/manifesto (x.joblib): disco cheio")
+    assert obter_falhas_salvamento() == ["modelo/manifesto (x.joblib): disco cheio"]
+    resetar_falhas_salvamento()
