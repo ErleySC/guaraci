@@ -55,6 +55,8 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
     """Renderiza a aba Reports. Os `*_bytes`/`ler_*`/`list_figures` são as
     versões cacheadas (@st.cache_data) definidas em app_quimiometria.py."""
     st.subheader("Reports and Downloads")
+    st.caption("📄 Download reports (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), "
+               "browse the figure gallery, and clean up old result folders.")
     pasta_r = st.session_state.get("ultima_pasta")
 
     if not pasta_r or not os.path.isdir(pasta_r):
@@ -81,98 +83,103 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
     # Sorted tuple used as cache key (Dict is not hashable)
     _proj_items = tuple(sorted(_projeto_info.items()))
 
-    # Row 1: ZIP + PDF
-    col_a, col_b = st.columns(2)
-    with col_a:
-        try:
-            st.download_button(
-                "📦 Full results (.zip)",
-                data=zip_da_pasta(pasta_r),
-                file_name=_nome_base + ".zip",
-                mime="application/zip",
-                use_container_width=True,
-            )
-        except Exception as e_zip:  # noqa: BLE001 -- 1 botao de download de 6
-            # (ZIP/PDF/Word/Excel/LaTeX/PPTX, cada um c/ gerador proprio);
-            # erro exibido ao usuario via st.warning, os demais continuam.
-            st.warning(f"ZIP: {e_zip}")
+    # Generation is cached (@st.cache_data) after the first call, but the
+    # first time a report type is requested for this run (PDF/Word/PPTX
+    # embed up to ~14 figures) it can take a few seconds — a spinner avoids
+    # the tab looking frozen while nothing is on screen yet.
+    with st.spinner("Preparing report files (cached after the first time)..."):
+        # Row 1: ZIP + PDF
+        col_a, col_b = st.columns(2)
+        with col_a:
+            try:
+                st.download_button(
+                    "📦 Full results (.zip)",
+                    data=zip_da_pasta(pasta_r),
+                    file_name=_nome_base + ".zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                )
+            except Exception as e_zip:  # noqa: BLE001 -- 1 botao de download de 6
+                # (ZIP/PDF/Word/Excel/LaTeX/PPTX, cada um c/ gerador proprio);
+                # erro exibido ao usuario via st.warning, os demais continuam.
+                st.warning(f"ZIP: {e_zip}")
 
-    with col_b:
-        try:
-            st.download_button(
-                "📄 PDF Report",
-                data=pdf_bytes(pasta_r, _proj_items),
-                file_name=_nome_base + "_report.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                type="primary",
-            )
-        except Exception as e_pdf:  # noqa: BLE001 -- mesma logica: 1 de 6
-            # botoes de download, erro exibido via st.error.
-            st.error(f"PDF: {e_pdf}")
+        with col_b:
+            try:
+                st.download_button(
+                    "📄 PDF Report",
+                    data=pdf_bytes(pasta_r, _proj_items),
+                    file_name=_nome_base + "_report.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    type="primary",
+                )
+            except Exception as e_pdf:  # noqa: BLE001 -- mesma logica: 1 de 6
+                # botoes de download, erro exibido via st.error.
+                st.error(f"PDF: {e_pdf}")
 
-    # Row 2: Word + Excel
-    col_c, col_d = st.columns(2)
-    with col_c:
-        try:
-            st.download_button(
-                "📝 Word Report (.docx)",
-                data=word_bytes(pasta_r, _proj_items),
-                file_name=_nome_base + "_report.docx",
-                mime="application/vnd.openxmlformats-officedocument"
-                     ".wordprocessingml.document",
-                use_container_width=True,
-            )
-        except Exception as e_word:  # noqa: BLE001 -- 1 de 6 botoes de download.
-            st.error(f"Word: {e_word}")
+        # Row 2: Word + Excel
+        col_c, col_d = st.columns(2)
+        with col_c:
+            try:
+                st.download_button(
+                    "📝 Word Report (.docx)",
+                    data=word_bytes(pasta_r, _proj_items),
+                    file_name=_nome_base + "_report.docx",
+                    mime="application/vnd.openxmlformats-officedocument"
+                         ".wordprocessingml.document",
+                    use_container_width=True,
+                )
+            except Exception as e_word:  # noqa: BLE001 -- 1 de 6 botoes de download.
+                st.error(f"Word: {e_word}")
 
-    with col_d:
-        try:
-            st.download_button(
-                "📊 Data in Excel (.xlsx)",
-                data=excel_bytes(pasta_r),
-                file_name=_nome_base + "_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument"
-                     ".spreadsheetml.sheet",
-                use_container_width=True,
-            )
-        except Exception as e_xlsx:  # noqa: BLE001 -- 1 de 6 botoes de download.
-            st.error(f"Excel: {e_xlsx}")
+        with col_d:
+            try:
+                st.download_button(
+                    "📊 Data in Excel (.xlsx)",
+                    data=excel_bytes(pasta_r),
+                    file_name=_nome_base + "_data.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument"
+                         ".spreadsheetml.sheet",
+                    use_container_width=True,
+                )
+            except Exception as e_xlsx:  # noqa: BLE001 -- 1 de 6 botoes de download.
+                st.error(f"Excel: {e_xlsx}")
 
-    # Row 3: LaTeX + PowerPoint
-    col_e, col_f = st.columns(2)
-    with col_e:
-        try:
-            st.download_button(
-                "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)",
-                data=latex_bytes(pasta_r, _proj_items),
-                file_name=_nome_base + "_template.tex",
-                mime="text/plain",
-                use_container_width=True,
-            )
-        except Exception as e_tex:  # noqa: BLE001 -- 1 de 6 botoes de download.
-            st.error(f"LaTeX: {e_tex}")
+        # Row 3: LaTeX + PowerPoint
+        col_e, col_f = st.columns(2)
+        with col_e:
+            try:
+                st.download_button(
+                    "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)",
+                    data=latex_bytes(pasta_r, _proj_items),
+                    file_name=_nome_base + "_template.tex",
+                    mime="text/plain",
+                    use_container_width=True,
+                )
+            except Exception as e_tex:  # noqa: BLE001 -- 1 de 6 botoes de download.
+                st.error(f"LaTeX: {e_tex}")
 
-    with col_f:
-        try:
-            from pptx import Presentation as _PPTXCheck  # noqa: F401
-            st.download_button(
-                "🎯 PowerPoint Presentation (.pptx)",
-                data=pptx_bytes(pasta_r, _proj_items),
-                file_name=_nome_base + "_presentation.pptx",
-                mime="application/vnd.openxmlformats-officedocument"
-                     ".presentationml.presentation",
-                use_container_width=True,
-            )
-        except ImportError:
-            st.warning(
-                "python-pptx not installed. "
-                "Run: `pip install python-pptx>=1.1`",
-                icon="⚠️",
-            )
-        except Exception as e_pptx:  # noqa: BLE001 -- 1 de 6 botoes de download
-            # (ImportError ja tratado acima separadamente).
-            st.error(f"PowerPoint: {e_pptx}")
+        with col_f:
+            try:
+                from pptx import Presentation as _PPTXCheck  # noqa: F401
+                st.download_button(
+                    "🎯 PowerPoint Presentation (.pptx)",
+                    data=pptx_bytes(pasta_r, _proj_items),
+                    file_name=_nome_base + "_presentation.pptx",
+                    mime="application/vnd.openxmlformats-officedocument"
+                         ".presentationml.presentation",
+                    use_container_width=True,
+                )
+            except ImportError:
+                st.warning(
+                    "python-pptx not installed. "
+                    "Run: `pip install python-pptx>=1.1`",
+                    icon="⚠️",
+                )
+            except Exception as e_pptx:  # noqa: BLE001 -- 1 de 6 botoes de download
+                # (ImportError ja tratado acima separadamente).
+                st.error(f"PowerPoint: {e_pptx}")
 
     st.divider()
 
@@ -252,8 +259,11 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
     st.markdown("### 🖼️ Figure gallery")
     imgs_r = list_figures(pasta_r)
     if imgs_r:
-        filtro_r = st.selectbox("Filter figures",
-                                list(_CATS_R.keys()), key="filtro_rel")
+        filtro_r = st.selectbox(
+            "Filter figures", list(_CATS_R.keys()), key="filtro_rel",
+            help="Show only figures of one analysis type (e.g. PCA scores, "
+                 "confusion matrix, DD-SIMCA acceptance). 'All' shows every "
+                 "figure generated by the run.")
         token_r  = _CATS_R[filtro_r].lower()
         imgs_filt_r = [im for im in imgs_r
                        if token_r in os.path.basename(im).lower()] \

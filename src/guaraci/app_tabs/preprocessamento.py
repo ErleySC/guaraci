@@ -25,6 +25,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     """Renderiza a aba Preprocessing. `valores` é o dict compartilhado com
     Data/Model (mesmo objeto, mutado em sequência)."""
     st.subheader("Spectral Preprocessing")
+    st.caption("⚗️ Choose the spectral preprocessing preset and preview "
+               "before/after → then go to **Model** tab.")
 
     _PREPROC_KEYS = ["pre_processamento", "faixa_min_cm", "faixa_max_cm"]
 
