@@ -36,16 +36,26 @@ log = logging.getLogger(__name__)
 
 __all__ = [
     "DIR_PERFIS",
+    "PERFIS_TECNICA",
     "UnknownProfileError",
     "Vocabulary",
     "MatrixProfile",
     "load_profile",
     "apply_profile",
     "cfg_profile",
+    "perfis_disponiveis",
 ]
 
 #: Perfis embutidos, distribuidos junto com o pacote.
 DIR_PERFIS = Path(__file__).parent / "perfis_matriz"
+
+#: Nomes de perfil embutido cujo foco principal e' TECNICA DE AQUISICAO de
+#: imagem (campos resolucao_esperada/formatos_aceitos/nivel_agrupamento_
+#: tipico preenchidos), distintos dos perfis de MATRIZ quimica (foco em
+#: eixo espectral/vocabulario). "generico" nao entra aqui -- serve aos dois
+#: papeis (ver `perfis_disponiveis`). Convencao por nome de arquivo: os 3
+#: perfis de tecnica hoje existentes (Bloco 8a, 2026-08-25) sao estes.
+PERFIS_TECNICA = frozenset({"bancada", "celular", "scanner"})
 
 
 class UnknownProfileError(ValueError):
@@ -130,6 +140,22 @@ def _perfis_disponiveis() -> List[str]:
     if not DIR_PERFIS.is_dir():
         return []
     return sorted(p.stem for p in DIR_PERFIS.glob("*.yaml"))
+
+
+def perfis_disponiveis(*, apenas: Optional[str] = None) -> List[str]:
+    """Nomes de perfil embutido, opcionalmente filtrados por dimensao.
+
+    `apenas="tecnica"`: so' os de tecnica de aquisicao de imagem (+
+    "generico", que serve de fallback para as duas dimensoes).
+    `apenas="matriz"`: todos os que NAO sao de tecnica (inclui "generico").
+    `apenas=None` (default): lista completa, sem filtro.
+    """
+    todos = _perfis_disponiveis()
+    if apenas == "tecnica":
+        return [p for p in todos if p in PERFIS_TECNICA or p == "generico"]
+    if apenas == "matriz":
+        return [p for p in todos if p not in PERFIS_TECNICA]
+    return todos
 
 
 def load_profile(nome_ou_caminho: str) -> MatrixProfile:

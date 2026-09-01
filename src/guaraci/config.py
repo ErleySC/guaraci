@@ -133,6 +133,19 @@ class Config:
     # lista do que existe, em vez de cair num padrao errado em silencio.
     matrix_profile: str = "generico"
 
+    # ---- Perfil de TECNICA DE AQUISICAO (Bloco 8a/5B, so' relevante p/
+    # mode="imagem") -------------------------------------------------------
+    # Dimensao INDEPENDENTE de matrix_profile: matrix_profile diz "isto e'
+    # mel" (vocabulario/faixa do relatorio); acquisition_profile diz "foi
+    # fotografado com celular" (resolucao esperada/formatos aceitos/nivel de
+    # garantia de agrupamento tipico -- so' informativo, nunca restritivo; a
+    # garantia REAL vem da estrutura dos dados, ver dados_imagem.py). Os
+    # dois podem ser combinados ao mesmo tempo -- por isso e' um campo
+    # separado, nao uma reutilizacao de matrix_profile. "" (nao Optional,
+    # mesma convencao de matrix_profile) = nao declarado -- so' significa
+    # que a tela nao mostra a dica de resolucao/formato/garantia tipica.
+    acquisition_profile: str = ""
+
     # ---- Modo de rotulo na QUANTIFICACAO ---------------------------------
     # "cego" (PADRAO): a calibracao por classe usa a classe PREDITA pelo
     #     classificador, nao a verdadeira. E' o unico mode que corresponde

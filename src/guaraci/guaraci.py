@@ -820,6 +820,26 @@ def _rotulo_opcao(key: str, op: Any) -> str:
         return f"{nome} ({op})" if nome else str(op)
     if key == "modo_ddsimca":
         return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(op), str(op))
+    if key in ("perfil_matriz", "perfil_tecnica"):
+        # Agente 5B: expoe o que hoje e' dado morto (descricao do perfil, e
+        # para perfil de tecnica tambem a garantia tipica de agrupamento) --
+        # sem isso o usuario via' so' o nome de arquivo (ex. "bancada"), sem
+        # saber o que ele significa, tendo que sair da sessao e rodar
+        # `guaraci perfis` num terminal separado so' pra ler a descricao.
+        if not str(op):
+            return "(nao declarado)" if _lang() == "PT" else "(not declared)"
+        try:
+            from guaraci.perfil_matriz import load_profile
+            p = load_profile(str(op))
+        except Exception:  # noqa: BLE001 -- rotulo e' so' exibicao; um
+            # perfil quebrado/removido nao pode travar a tela de edicao,
+            # so' cai pro nome cru (a validacao real acontece ao aplicar).
+            return str(op)
+        desc = (p.descricao or "").split(" (")[0].strip()
+        if key == "perfil_tecnica" and p.nivel_agrupamento_tipico:
+            garantia = ("garantia tipica" if _lang() == "PT" else "typical guarantee")
+            return f"{op} — {desc} [{garantia}: {p.nivel_agrupamento_tipico}]"
+        return f"{op} — {desc}" if desc else str(op)
     return str(op)
 
 
@@ -1765,10 +1785,10 @@ def _menu_data(cfg: Config) -> None:
     # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
     # campos_avancados por ser niche, nao por risco.
     _loop_menu(_t("t_dados"), _t("d_dados"),
-               ["modo_entrada", "perfil_matriz", "arquivo_csv", "coluna_classe",
-                "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
+               ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
+                "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
                 "excluir_classes", "imagem_incluir_textura"], cfg,
-               campos_avancados={"imagem_incluir_textura"})
+               campos_avancados={"perfil_tecnica", "imagem_incluir_textura"})
 
 
 def _menu_preprocessing(cfg: Config) -> None:

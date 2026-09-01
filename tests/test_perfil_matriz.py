@@ -18,8 +18,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from guaraci.perfil_matriz import (UnknownProfileError, apply_profile,
-                                   load_profile)
+from guaraci.perfil_matriz import (PERFIS_TECNICA, UnknownProfileError,
+                                   apply_profile, load_profile,
+                                   perfis_disponiveis)
 
 
 # ── Contrato do carregador ───────────────────────────────────────────────────
@@ -245,3 +246,37 @@ def test_perfis_sao_empacotados_com_o_pacote():
         encontrados), f"perfis faltando no pacote: {encontrados}"
     assert DIR_PERFIS.is_relative_to(Path(guaraci.__file__).parent), (
         "os perfis precisam morar DENTRO do pacote para serem empacotados")
+
+
+# ── Central de perfis (Agente 5B, 2026-09-01) — matriz x tecnica ───────────
+
+def test_perfis_disponiveis_separa_matriz_de_tecnica():
+    """`generico` serve as duas dimensoes (fallback); os 3 perfis de tecnica
+    de imagem NUNCA aparecem na lista de matriz, e vice-versa."""
+    matriz = perfis_disponiveis(apenas="matriz")
+    tecnica = perfis_disponiveis(apenas="tecnica")
+
+    assert "generico" in matriz and "generico" in tecnica
+    assert PERFIS_TECNICA <= set(tecnica)
+    assert not (PERFIS_TECNICA & set(matriz)), (
+        "perfil de tecnica vazou pra lista de matriz")
+    assert {"oleo_nir", "milho_nir", "mel_vis_nir"} <= set(matriz)
+    assert not ({"oleo_nir", "milho_nir", "mel_vis_nir"} & set(tecnica)), (
+        "perfil de matriz vazou pra lista de tecnica")
+
+
+def test_perfis_disponiveis_sem_filtro_lista_tudo():
+    todos = set(perfis_disponiveis())
+    assert todos == set(perfis_disponiveis(apenas="matriz")) | set(
+        perfis_disponiveis(apenas="tecnica"))
+
+
+def test_perfil_de_tecnica_carrega_campos_de_garantia():
+    """Os campos do Bloco 8a (resolucao/formatos/nivel de garantia) --
+    antes mortos (nunca lidos por ninguem fora deste modulo) -- precisam
+    estar de fato populados nos 3 perfis de tecnica, senao a central de
+    perfis nao teria nada de novo pra mostrar."""
+    for nome in PERFIS_TECNICA:
+        p = load_profile(nome)
+        assert p.nivel_agrupamento_tipico in ("high", "medium", "none")
+        assert p.formatos_aceitos or p.resolucao_esperada

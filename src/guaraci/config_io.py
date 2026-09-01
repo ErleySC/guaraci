@@ -20,6 +20,7 @@ from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Tuple
 
 from guaraci.config import Config
+from guaraci.perfil_matriz import perfis_disponiveis
 
 __all__ = [
     "save_config",
@@ -41,12 +42,24 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
              "imagem (colorimetria digital, prototipo) | sintetico (teste)",
      "opcoes": ["dx", "csv", "imagem", "sintetico"]},
-    {"key": "perfil_matriz", "attr": "matrix_profile", "tipo": "str",
+    {"key": "perfil_matriz", "attr": "matrix_profile", "tipo": "choice",
      "desc": "Perfil da matriz analisada (faixa espectral, pre-processamento "
              "padrao e vocabulario da saida vem daqui, nao do codigo). "
-             "`guaraci perfis` lista os nomes embutidos; tambem aceita o "
-             "caminho de um YAML proprio",
-     "opcoes": None},
+             "Aceita tambem o caminho de um YAML proprio, digitado direto "
+             "(nao precisa estar nesta lista de perfis embutidos)",
+     "opcoes": perfis_disponiveis(apenas="matriz")},
+    # Dimensao INDEPENDENTE de perfil_matriz (Agente 5B, 2026-09-01): so'
+    # relevante quando modo_entrada="imagem". "" = nao declarado (aceito --
+    # mesma convencao de campo string vazio de perfil_matriz/generico, nao
+    # usa str_opcional/None porque a UI de escolha exige tipo="choice" nos
+    # dois lados, CLI e Streamlit).
+    {"key": "perfil_tecnica", "attr": "acquisition_profile", "tipo": "choice",
+     "desc": "Tecnica de aquisicao da imagem (so' modo_entrada=imagem): "
+             "resolucao esperada, formatos aceitos e nivel de garantia de "
+             "agrupamento TIPICO desta tecnica (informativo -- a garantia "
+             "REAL vem da estrutura real dos dados, nao deste campo). "
+             "Vazio = nao declarado",
+     "opcoes": [""] + perfis_disponiveis(apenas="tecnica")},
     {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
      "desc": "Pasta com os arquivos .dx OU imagens (mode dx/imagem; uma subpasta por classe)",
      "opcoes": None},
@@ -221,7 +234,14 @@ def _coagir_valor(spec: Dict[str, Any], val: Any) -> Any:
         return tuple(x.strip() for x in str(val).split(",") if x.strip())
     if t == "choice":
         sv = str(val)
-        if spec["opcoes"] and sv not in spec["opcoes"]:
+        # perfil_matriz/perfil_tecnica: a lista de `opcoes` e' so' um atalho
+        # de UI (picker numerado) para os perfis EMBUTIDOS -- o campo tambem
+        # aceita o caminho de um YAML proprio (load_profile() ja documenta e
+        # valida isso). Travar aqui quebraria qualquer config.yaml existente
+        # com um perfil de usuario -- a checagem real acontece so' quando o
+        # perfil e' de fato carregado, nao no parse do config.
+        if (spec["opcoes"] and sv not in spec["opcoes"]
+                and spec["key"] not in ("perfil_matriz", "perfil_tecnica")):
             raise ValueError(f"valor '{sv}' invalido; use {spec['opcoes']}")
         return sv
     if t == "preproc":

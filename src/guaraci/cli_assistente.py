@@ -1359,8 +1359,8 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
 
 MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
-    "dados": ["modo_entrada", "perfil_matriz", "arquivo_csv", "coluna_classe",
-              "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
+    "dados": ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
+              "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
               "excluir_classes", "imagem_incluir_textura"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",

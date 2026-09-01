@@ -115,8 +115,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
 
     # ---- Path / config fields ---------------------------------------------
     st.divider()
-    _DADOS_KEYS = ["modo_entrada", "perfil_matriz", "pasta_dados", "arquivo_csv",
-                   "coluna_classe", "coluna_concentracao",
+    _DADOS_KEYS = ["modo_entrada", "perfil_matriz", "perfil_tecnica", "pasta_dados",
+                   "arquivo_csv", "coluna_classe", "coluna_concentracao",
                    "pasta_saida", "excluir_classes", "imagem_incluir_textura"]
 
     col_d1, col_d2 = st.columns(2)

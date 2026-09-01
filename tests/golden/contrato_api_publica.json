@@ -249,8 +249,27 @@
       "attr": "matrix_profile",
       "max": null,
       "min": null,
-      "opcoes": null,
-      "tipo": "str"
+      "opcoes": [
+        "generico",
+        "mel_vis_nir",
+        "milho_nir",
+        "oleo_nir",
+        "oleos_comestiveis_nir"
+      ],
+      "tipo": "choice"
+    },
+    "perfil_tecnica": {
+      "attr": "acquisition_profile",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "",
+        "bancada",
+        "celular",
+        "generico",
+        "scanner"
+      ],
+      "tipo": "choice"
     },
     "pre_processamento": {
       "attr": "default_preprocessing",
@@ -783,6 +802,11 @@
           },
           {
             "nome": "matrix_profile",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "acquisition_profile",
             "tem_default": true,
             "tipo": "str"
           },
@@ -1547,6 +1571,11 @@
             "tipo": "str"
           },
           {
+            "nome": "acquisition_profile",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "label_mode",
             "tem_default": true,
             "tipo": "str"
@@ -2271,6 +2300,10 @@
         ],
         "forma": "dataclass"
       },
+      "PERFIS_TECNICA": {
+        "forma": "constante",
+        "tipo": "frozenset"
+      },
       "UnknownProfileError": {
         "bases": [
           "ValueError"
@@ -2324,6 +2357,10 @@
       },
       "load_profile": {
         "assinatura": "(nome_ou_caminho: 'str') -> 'MatrixProfile'",
+        "forma": "funcao"
+      },
+      "perfis_disponiveis": {
+        "assinatura": "(*, apenas: 'Optional[str]' = None) -> 'List[str]'",
         "forma": "funcao"
       }
     },

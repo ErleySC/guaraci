@@ -184,6 +184,39 @@ def test_roundtrip_preserva_valores(tmp_path):
     assert lido.default_preprocessing == "snv_sg_mc"
 
 
+def test_roundtrip_preserva_as_duas_dimensoes_de_perfil(tmp_path):
+    """Contrato do Agente 5B: matrix_profile (matriz) e acquisition_profile
+    (tecnica de aquisicao) sao campos independentes -- salvar/carregar
+    precisa preservar os dois ao mesmo tempo, sem um pisar no outro."""
+    cfg = Config()
+    cfg.matrix_profile = "mel_vis_nir"
+    cfg.acquisition_profile = "celular"
+    caminho = str(tmp_path / "config.yaml")
+
+    cio.save_config(cfg, caminho)
+    lido = cio.load_config(caminho)
+
+    assert lido.matrix_profile == "mel_vis_nir"
+    assert lido.acquisition_profile == "celular"
+
+
+def test_roundtrip_aceita_caminho_de_perfil_de_usuario(tmp_path):
+    """perfil_matriz/perfil_tecnica tem `opcoes` (lista de perfis embutidos,
+    pro picker numerado da CLI/selectbox do Streamlit), mas o campo TAMBEM
+    aceita o caminho de um YAML proprio (load_profile() ja documenta e
+    valida isso) -- _coagir_valor nao pode travar um valor fora da lista
+    pra estes 2 campos, ou quebraria qualquer config.yaml existente com um
+    perfil de usuario (achado ao ligar a validacao de `choice`, 2026-09-01)."""
+    cfg = Config()
+    cfg.matrix_profile = "/caminho/qualquer/meu_perfil.yaml"
+    caminho = str(tmp_path / "config.yaml")
+
+    cio.save_config(cfg, caminho)
+    lido = cio.load_config(caminho)
+
+    assert lido.matrix_profile == "/caminho/qualquer/meu_perfil.yaml"
+
+
 def test_carregar_config_inexistente_levanta(tmp_path):
     with pytest.raises(FileNotFoundError):
         cio.load_config(str(tmp_path / "nao_existe.yaml"))
