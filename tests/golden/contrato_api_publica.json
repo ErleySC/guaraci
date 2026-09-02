@@ -2164,6 +2164,10 @@
         ],
         "forma": "dataclass"
       },
+      "load_deephs_fruit_dataset": {
+        "assinatura": "(pasta: 'str', fruta: 'Optional[str]' = None, camera: 'Optional[str]' = None)",
+        "forma": "funcao"
+      },
       "load_deephs_kaki_dataset": {
         "assinatura": "(pasta: 'str')",
         "forma": "funcao"
@@ -2178,6 +2182,10 @@
       }
     },
     "hsi_pipeline": {
+      "apply_quality_gate_and_segment": {
+        "assinatura": "(cubos: 'List[np.ndarray]', group_ids: 'List[str]', rotulos: 'List[str]', dias: 'List[str]') -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
       "run_hsi_pipeline": {
         "assinatura": "(cfg: \"'Config'\", *, fracao_teste_interno: 'float' = 0.2, n_dias_externos: 'int' = 2, seed: 'int' = 42) -> 'Dict[str, object]'",
         "forma": "funcao"
@@ -2230,6 +2238,41 @@
       },
       "evaluate_cube_quality": {
         "assinatura": "(cubo: 'np.ndarray', *, fracao_saturacao_max: 'float' = 0.01, snr_minimo: 'float' = 3.0, fracao_validos_minima: 'float' = 0.95, limite_saturacao_inferior: 'float' = -0.5, limite_saturacao_superior: 'float' = 1.5) -> 'QualityGateResult'",
+        "forma": "funcao"
+      }
+    },
+    "hsi_resampling": {
+      "ClassEvaluability": {
+        "campos": [
+          {
+            "nome": "n_grupos",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_minimo",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "avaliavel",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "nota",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "class_evaluability_report": {
+        "assinatura": "(y: 'np.ndarray', groups: 'np.ndarray', *, alpha: 'float' = 0.05) -> 'Dict[str, ClassEvaluability]'",
+        "forma": "funcao"
+      },
+      "oversample_minority_groups": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', groups: 'np.ndarray', *, seed: 'int' = 42) -> 'Tuple[np.ndarray, np.ndarray, np.ndarray]'",
         "forma": "funcao"
       }
     },

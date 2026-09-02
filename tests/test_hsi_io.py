@@ -18,8 +18,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from guaraci.hsi_io import (HSICubeMetadata, load_deephs_kaki_dataset,
-                            load_envi_cube, parse_envi_header)
+from guaraci.hsi_io import (HSICubeMetadata, load_deephs_fruit_dataset,
+                            load_deephs_kaki_dataset, load_envi_cube,
+                            parse_envi_header)
 
 
 def _gravar_envi(tmp_path: Path, nome: str, cubo_bip: np.ndarray,
@@ -182,3 +183,89 @@ def test_load_deephs_kaki_dataset_real():
         "esperado ao menos 1 grupo com >=2 gravacoes (frente+costas da "
         "mesma fruta) -- se isso falhar, a premissa de agrupamento por "
         "objeto fisico do Passo 97 precisa ser revista.")
+
+
+# ── load_deephs_fruit_dataset (Passo 104): generalizacao multi-fruta/camera ──
+
+def _manifest_sintetico_multi_fruta(tmp_path: Path) -> Path:
+    """Constroi um manifest.json + arquivos ENVI sinteticos cobrindo 2
+    frutas x 2 cameras, com padroes de NOME DE ARQUIVO DIFERENTES entre
+    frutas (Kaki tem sufixo "_m3_" no dia, Avocado nao -- confirmado por
+    leitura direta dos nomes reais no Passo 104) -- testa que o regex
+    generalizado de group_id (`_PADRAO_NUMERO_OBJETO`) funciona nos 2
+    padroes, nao so' no do Kaki."""
+    cameras = [
+        {"id": "VIS", "name": "Specim FX10", "wavelengths": [400.0, 410.0, 420.0]},
+        {"id": "NIR", "name": "INNOSPEC RedEye", "wavelengths": [950.0, 960.0]},
+    ]
+    registros_spec = [
+        # (fruit, camera_type, day, side, nome_arquivo_sem_extensao, ripeness, storage_days)
+        ("Kaki", "VIS", "day_9_m3", "front", "kaki_day_9_m3_04_front", "overripe", 8),
+        ("Kaki", "VIS", "day_9_m3", "back", "kaki_day_9_m3_04_back", "overripe", 8),
+        ("Avocado", "VIS", "day_01", "front", "avocado_day_01_20_front", "unripe", 0),
+        ("Avocado", "VIS", "day_01", "back", "avocado_day_01_20_back", "unripe", 0),
+        ("Avocado", "NIR", "day_01", "front", "avocado_day_01_20_front", "unripe", 0),
+    ]
+    records = []
+    for i, (fruta, cam, dia, lado, nome, rip, sd) in enumerate(registros_spec):
+        n_bandas = 3 if cam == "VIS" else 2
+        cubo = np.random.default_rng(i).normal(size=(2, 2, n_bandas)).astype("<f4")
+        subpasta = tmp_path / fruta / cam / dia
+        subpasta.mkdir(parents=True, exist_ok=True)
+        caminho_bin = subpasta / f"{nome}.bin"
+        caminho_bin.write_bytes(cubo.astype("<f4").tobytes())
+        (subpasta / f"{nome}.hdr").write_text(
+            "ENVI\nsamples = 2\nlines = 2\nbands = %d\nheader offset = 0\n"
+            "file type = ENVI Standard\ndata type = 4\ninterleave = bip\n"
+            "byte order = 0\n" % n_bandas, encoding="utf-8")
+        rel_bin = f"{fruta}/{cam}/{dia}/{nome}.bin"
+        rel_hdr = f"{fruta}/{cam}/{dia}/{nome}.hdr"
+        records.append({
+            "id": i, "fruit": fruta, "camera_type": cam, "day": dia, "side": lado,
+            "header_file": rel_hdr, "data_file": rel_bin,
+            "ripeness_state": rip, "storage_days": sd, "firmness": 100,
+        })
+    import json as _json
+    with open(tmp_path / "manifest.json", "w", encoding="utf-8") as f:
+        _json.dump({"cameras": cameras, "records": records}, f)
+    return tmp_path
+
+
+def test_load_deephs_fruit_dataset_filtra_por_fruta_e_camera(tmp_path):
+    pasta = _manifest_sintetico_multi_fruta(tmp_path)
+    cubos, rotulos, grupos, wavelengths, meta_df = load_deephs_fruit_dataset(
+        str(pasta), fruta="Avocado", camera="VIS")
+    assert len(cubos) == 2  # front+back do mesmo abacate
+    assert wavelengths.shape == (3,)
+    assert set(rotulos) == {"unripe"}
+    assert len(set(grupos)) == 1  # front+back = MESMO objeto
+
+
+def test_load_deephs_fruit_dataset_group_id_generaliza_padrao_sem_sufixo_m(tmp_path):
+    """O regex antigo (especifico do Kaki, exigia "_m\\d+_" no nome) NAO
+    bateria com "avocado_day_01_20_front" -- confirma que o generalizado
+    (Passo 104) extrai "20" corretamente mesmo sem esse sufixo."""
+    pasta = _manifest_sintetico_multi_fruta(tmp_path)
+    _, _, grupos, _, meta_df = load_deephs_fruit_dataset(
+        str(pasta), fruta="Avocado", camera="VIS")
+    assert all(g == "Avocado_day_01_20" for g in grupos)
+
+
+def test_load_deephs_fruit_dataset_multiplas_cameras_sem_filtro_levanta_erro(tmp_path):
+    pasta = _manifest_sintetico_multi_fruta(tmp_path)
+    with pytest.raises(ValueError, match="cameras diferentes"):
+        load_deephs_fruit_dataset(str(pasta), fruta="Avocado")
+
+
+def test_load_deephs_fruit_dataset_sem_correspondencia_levanta_erro(tmp_path):
+    pasta = _manifest_sintetico_multi_fruta(tmp_path)
+    with pytest.raises(ValueError, match="Nenhuma gravacao"):
+        load_deephs_fruit_dataset(str(pasta), fruta="Manga", camera="VIS")
+
+
+def test_load_deephs_fruit_dataset_sem_filtro_devolve_tudo_de_1_camera(tmp_path):
+    """Sem `camera`, mas so' 1 fruta com 1 camera so' -- nao deveria
+    levantar erro de mistura (so' ha' 1 camera de verdade na selecao)."""
+    pasta = _manifest_sintetico_multi_fruta(tmp_path)
+    cubos, *_ = load_deephs_fruit_dataset(str(pasta), fruta="Kaki")
+    assert len(cubos) == 2

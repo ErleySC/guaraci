@@ -39,7 +39,49 @@ from guaraci.hsi_validation import run_external_validation_by_day
 if TYPE_CHECKING:
     from guaraci.config import Config
 
-__all__ = ["run_hsi_pipeline"]
+__all__ = ["apply_quality_gate_and_segment", "run_hsi_pipeline"]
+
+
+def apply_quality_gate_and_segment(
+        cubos: List[np.ndarray], group_ids: List[str], rotulos: List[str],
+        dias: List[str],
+        ) -> Dict[str, object]:
+    """Aplica o quality gate (Passo 95) a cada gravacao e segmenta
+    (Passo 96) as que passam -- extraido de `run_hsi_pipeline` (Passo
+    104) para ser reaproveitado tambem pela validacao contra outras
+    frutas/cameras do DeepHS Fruit (`tests/
+    test_validacao_publica_deephs_fruit.py`), sem duplicar a logica.
+
+    Devolve um dict com `cubos`/`mascaras`/`group_ids`/`rotulos`/`dias`
+    (so' as gravacoes ACEITAS, alinhados por indice) + `n_rejeitados`/
+    `motivos_rejeicao` (nunca descarta silenciosamente -- toda rejeicao
+    fica rastreavel)."""
+    cubos_ok: List[np.ndarray] = []
+    mascaras_ok: List[np.ndarray] = []
+    grupos_ok: List[str] = []
+    rotulos_ok: List[str] = []
+    dias_ok: List[str] = []
+    n_rejeitados = 0
+    motivos_rejeicao: List[str] = []
+
+    for cubo, gid, rotulo, dia in zip(cubos, group_ids, rotulos, dias):
+        qualidade = evaluate_cube_quality(cubo)
+        if not qualidade.aceito:
+            n_rejeitados += 1
+            motivos_rejeicao.append(f"{gid}: {qualidade.motivo}")
+            continue
+        mascara = segment_object_pca_otsu(cubo).mascara
+        cubos_ok.append(cubo)
+        mascaras_ok.append(mascara)
+        grupos_ok.append(gid)
+        rotulos_ok.append(rotulo)
+        dias_ok.append(dia)
+
+    return {
+        "cubos": cubos_ok, "mascaras": mascaras_ok, "group_ids": grupos_ok,
+        "rotulos": rotulos_ok, "dias": dias_ok,
+        "n_rejeitados": n_rejeitados, "motivos_rejeicao": motivos_rejeicao,
+    }
 
 
 def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
@@ -74,26 +116,15 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
 
     cubos, rotulos, grupos, wavelengths, meta_df = load_deephs_kaki_dataset(pasta)
 
-    cubos_ok: List[np.ndarray] = []
-    mascaras_ok: List[np.ndarray] = []
-    grupos_ok: List[str] = []
-    rotulos_ok: List[str] = []
-    dias_ok: List[str] = []
-    n_rejeitados = 0
-    motivos_rejeicao: List[str] = []
-
-    for cubo, gid, rotulo, dia in zip(cubos, grupos, rotulos, meta_df["day"]):
-        qualidade = evaluate_cube_quality(cubo)
-        if not qualidade.aceito:
-            n_rejeitados += 1
-            motivos_rejeicao.append(f"{gid}: {qualidade.motivo}")
-            continue
-        mascara = segment_object_pca_otsu(cubo).mascara
-        cubos_ok.append(cubo)
-        mascaras_ok.append(mascara)
-        grupos_ok.append(gid)
-        rotulos_ok.append(rotulo)
-        dias_ok.append(dia)
+    filtrado = apply_quality_gate_and_segment(
+        cubos, list(grupos), list(rotulos), list(meta_df["day"]))
+    cubos_ok = filtrado["cubos"]
+    mascaras_ok = filtrado["mascaras"]
+    grupos_ok = filtrado["group_ids"]
+    rotulos_ok = filtrado["rotulos"]
+    dias_ok = filtrado["dias"]
+    n_rejeitados = filtrado["n_rejeitados"]
+    motivos_rejeicao = filtrado["motivos_rejeicao"]
 
     if not cubos_ok:
         raise ValueError(

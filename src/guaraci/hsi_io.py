@@ -34,6 +34,7 @@ do "minimo viavel", adicionar quando um dataset real exigir.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
@@ -43,6 +44,7 @@ __all__ = [
     "HSICubeMetadata",
     "parse_envi_header",
     "load_envi_cube",
+    "load_deephs_fruit_dataset",
     "load_deephs_kaki_dataset",
 ]
 
@@ -205,34 +207,55 @@ def load_envi_cube(caminho_bin: str, caminho_hdr: Optional[str] = None,
     return cubo, meta
 
 
-def load_deephs_kaki_dataset(pasta: str):
-    """Le o subconjunto DeepHS Fruit / Kaki / camera VIS baixado por
-    `scripts/download_datasets/baixar_deephs_kaki.py` (ver
-    `datasets/README.md`) -- espera `manifest.json` (gravado pelo script,
-    com rotulo/agrupamento de cada gravacao) na raiz de `pasta`.
+#: Extrai o numero do objeto fisico do nome do arquivo -- o segmento
+#: numerico IMEDIATAMENTE ANTES de "_front"/"_back". Generalizado no
+#: Passo 104 (INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md): o padrao anterior
+#: (`_m\d+_(\d+)_`, especifico do Kaki, que tem sufixo de serie de
+#: medicao "_m3_" no nome do dia) NAO bate com o padrao de nome de
+#: arquivo de Avocado/Kiwi/Mango/Papaya (ex.
+#: `avocado_day_01_20_front.hdr`, sem "_m\d+_"). Este padrao mais
+#: generico funciona nos 5 -- confirmado por leitura direta dos nomes
+#: reais de cada fruta antes de generalizar (nao presumido).
+_PADRAO_NUMERO_OBJETO = re.compile(r"_(\d+)_(?:front|back)\.")
 
-    Devolve `(cubos, rotulos, group_id, wavelengths, metadados_df)`:
+
+def load_deephs_fruit_dataset(pasta: str, fruta: Optional[str] = None,
+                              camera: Optional[str] = None):
+    """Le o dataset publico DeepHS Fruit (uma ou mais frutas/cameras)
+    baixado por `scripts/download_datasets/baixar_deephs_kaki.py` (so'
+    Kaki/VIS) ou `baixar_deephs_fruit_todas.py` (as 5 frutas x cameras
+    disponiveis, Passo 104) -- espera `manifest.json` na raiz de `pasta`,
+    no formato `{"cameras": [...], "records": [...]}` (cada record com
+    campos `fruit`/`camera_type`).
+
+    `fruta`/`camera`: filtros opcionais (ex. `fruta="Kaki", camera="VIS"`).
+    Como cada camera tem um eixo de comprimento de onda PROPRIO
+    (numero de bandas diferente entre VIS/NIR/VIS_COR -- confirmado por
+    leitura direta dos headers reais), o resultado filtrado DEVE conter
+    UMA SO' camera -- levanta erro explicito se mais de uma sobrar
+    (nunca mistura wavelengths incompativeis numa mesma matriz X).
+
+    Devolve `(cubos, rotulos, group_id, wavelengths, metadados_df)` --
+    mesmo contrato de antes:
       - cubos:      lista de arrays `(altura, largura, n_bandas)`, 1 por
                     gravacao (front/back sao gravacoes SEPARADAS do MESMO
                     objeto fisico -- ver `group_id`).
       - rotulos:    `ripeness_state` de cada gravacao (unripe/perfect/
                     overripe), string -- alvo do Passo 98.
-      - group_id:   `f"{day}_<numero da fruta>"` -- MESMO id para front E
-                    back da mesma fruta fisica (confirmado por leitura
-                    direta do JSON de anotacoes original: front/back de um
-                    mesmo `id` de fruta compartilham `storage_days` e
-                    `ripeness_state` dentro do mesmo dia -- e' a MESMA
-                    fruta fotografada dos dois lados, nunca frutas
-                    diferentes). Equivalente do `mae_id`/`session_from_
-                    mae_id` para este dataset -- ver Passo 97.
-      - wavelengths: array 1D (nm), comum a todas as gravacoes (camera
-                    VIS = Specim FX10, unica usada neste subconjunto).
-      - metadados_df: 1 linha por gravacao com id/day/side/storage_days/
-                    firmness, para inspecao/relatorio.
+      - group_id:   `f"{fruta}_{day}_<numero do objeto>"` -- MESMO id
+                    para front E back do MESMO objeto fisico. Assuncao
+                    verificada por leitura direta do JSON de anotacoes
+                    para as 5 frutas (nao so' Kaki): front/back com o
+                    mesmo (fruta, dia, numero) SEMPRE compartilham
+                    `storage_days`/`ripeness_state` -- zero excecoes em
+                    636 gravacoes (Passo 104). Equivalente do
+                    `mae_id`/`session_from_mae_id` deste projeto.
+      - wavelengths: array 1D (nm) da camera efetivamente usada.
+      - metadados_df: 1 linha por gravacao com id/fruit/camera_type/day/
+                    side/storage_days/firmness, para inspecao/relatorio.
     """
     import json
     import os
-    import re
 
     import pandas as pd
 
@@ -240,31 +263,63 @@ def load_deephs_kaki_dataset(pasta: str):
     if not os.path.isfile(caminho_manifest):
         raise FileNotFoundError(
             f"{caminho_manifest} nao encontrado -- rode "
-            f"scripts/download_datasets/baixar_deephs_kaki.py primeiro.")
+            f"scripts/download_datasets/baixar_deephs_kaki.py (so' Kaki) "
+            f"ou baixar_deephs_fruit_todas.py (demais frutas) primeiro.")
     with open(caminho_manifest, "r", encoding="utf-8") as f:
         manifest = json.load(f)
 
-    wavelengths = np.array(manifest["camera"]["wavelengths"], dtype=float)
+    registros = manifest["records"]
+    if fruta is not None:
+        registros = [r for r in registros if r.get("fruit") == fruta]
+    if camera is not None:
+        registros = [r for r in registros if r.get("camera_type") == camera]
+    if not registros:
+        raise ValueError(
+            f"Nenhuma gravacao para fruta={fruta!r} camera={camera!r} em "
+            f"{caminho_manifest}.")
+
+    cameras_presentes = {r.get("camera_type") for r in registros}
+    if len(cameras_presentes) > 1:
+        raise ValueError(
+            f"{len(cameras_presentes)} cameras diferentes na selecao "
+            f"({sorted(cameras_presentes)}) -- filtre por `camera` "
+            f"(cada camera tem um eixo de comprimento de onda proprio, "
+            f"nao da pra' misturar numa mesma matriz X).")
+    camera_id = next(iter(cameras_presentes))
+    camera_spec = next(c for c in manifest["cameras"] if c["id"] == camera_id)
+    wavelengths = np.array(camera_spec["wavelengths"], dtype=float)
 
     cubos = []
     rotulos = []
     grupos = []
     meta_linhas = []
-    for rec in manifest["records"]:
+    for rec in registros:
         caminho_bin = os.path.join(pasta, rec["data_file"].replace("/", os.sep))
         caminho_hdr = os.path.join(pasta, rec["header_file"].replace("/", os.sep))
         cubo, _meta = load_envi_cube(caminho_bin, caminho_hdr,
                                      wavelengths=wavelengths)
         cubos.append(cubo)
         rotulos.append(rec["ripeness_state"])
-        m = re.search(r"_(m\d+)_(\d+)_", rec["data_file"])
-        numero_fruta = m.group(2) if m else rec["data_file"]
-        grupos.append(f"{rec['day']}_{numero_fruta}")
+        m = _PADRAO_NUMERO_OBJETO.search(rec["data_file"])
+        numero_objeto = m.group(1) if m else rec["data_file"]
+        fruta_rec = rec.get("fruit", "")
+        grupos.append(f"{fruta_rec}_{rec['day']}_{numero_objeto}")
         meta_linhas.append({
-            "id": rec["id"], "day": rec["day"], "side": rec["side"],
+            "id": rec["id"], "fruit": fruta_rec,
+            "camera_type": rec.get("camera_type", ""),
+            "day": rec["day"], "side": rec["side"],
             "storage_days": rec["storage_days"], "firmness": rec["firmness"],
             "group_id": grupos[-1],
         })
 
     return (cubos, np.array(rotulos, dtype=str), np.array(grupos, dtype=str),
             wavelengths, pd.DataFrame(meta_linhas))
+
+
+def load_deephs_kaki_dataset(pasta: str):
+    """Atalho equivalente a `load_deephs_fruit_dataset(pasta, fruta="Kaki",
+    camera="VIS")` -- mantido pelo nome historico (Passo 94) para nao
+    quebrar chamadores existentes. Requer que `manifest.json` esteja no
+    formato novo (campos `fruit`/`camera_type` por record, `cameras`
+    como lista) -- ver `baixar_deephs_kaki.py`."""
+    return load_deephs_fruit_dataset(pasta, fruta="Kaki", camera="VIS")

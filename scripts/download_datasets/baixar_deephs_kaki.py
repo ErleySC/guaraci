@@ -265,7 +265,6 @@ def baixar_dataset(pasta_destino: "str | Path | None" = None) -> Path:
     pasta_destino.mkdir(parents=True, exist_ok=True)
 
     ann = _baixar_annotations(pasta_destino)
-    cam_vis = next(c for c in ann["cameras"] if c["id"] == "VIS")
     anns_by_rec = {a["record_id"]: a for a in ann["annotations"]}
     recs = [r for r in ann["records"]
             if r["fruit"] == "Kaki" and r["camera_type"] == "VIS"]
@@ -280,7 +279,13 @@ def baixar_dataset(pasta_destino: "str | Path | None" = None) -> Path:
             f"auditoria de 2026-09-01?): {faltando[:5]}...")
 
     zf: "zipfile.ZipFile | None" = None
-    manifest = {"camera": cam_vis, "records": []}
+    # Schema unificado (Passo 104, INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md):
+    # "cameras" como LISTA (nao um dict "camera" singular) e cada record
+    # com "fruit"/"camera_type" -- mesmo formato de
+    # baixar_deephs_fruit_todas.py, para hsi_io.load_deephs_fruit_dataset
+    # ler os dois com o mesmo codigo, sem dois formatos de manifest para
+    # manter.
+    manifest: dict = {"cameras": ann["cameras"], "records": []}
     for r in recs:
         a = anns_by_rec[r["id"]]
         for nome in (r["files"]["header_file"], r["files"]["data_file"]):
@@ -296,7 +301,8 @@ def baixar_dataset(pasta_destino: "str | Path | None" = None) -> Path:
             dados = zf.read(nome)
             _verificar_e_gravar(local, dados, spec["sha256"], spec["bytes"], nome)
         manifest["records"].append({
-            "id": r["id"], "day": r["day"], "side": r["side"],
+            "id": r["id"], "fruit": r["fruit"], "camera_type": r["camera_type"],
+            "day": r["day"], "side": r["side"],
             "header_file": r["files"]["header_file"],
             "data_file": r["files"]["data_file"],
             "ripeness_state": a["ripeness_state"],
