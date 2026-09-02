@@ -2116,6 +2116,46 @@
         "forma": "funcao"
       }
     },
+    "hsi_segmentation": {
+      "SegmentationResult": {
+        "campos": [
+          {
+            "nome": "mascara",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "imagem_pc1",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "limiar",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "variancia_explicada_pc1",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "fracao_objeto",
+            "tem_default": false,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "otsu_threshold": {
+        "assinatura": "(valores: 'np.ndarray', n_bins: 'int' = 256) -> 'float'",
+        "forma": "funcao"
+      },
+      "segment_object_pca_otsu": {
+        "assinatura": "(cubo: 'np.ndarray', *, objeto_e_pico_maior: 'Optional[bool]' = None) -> 'SegmentationResult'",
+        "forma": "funcao"
+      }
+    },
     "identificacao": {
       "CoverageStatus": {
         "bases": [
