@@ -242,6 +242,14 @@ confirma** essa licença — corrigido aqui antes de qualquer uso da
 alegação em código/documentação, conforme a regra "evidência ou
 silêncio" desta auditoria.
 
+**Decisão explícita do usuário (2026-09-01):** apresentadas 3 opções
+(manter o tratamento atual / contatar os autores antes de prosseguir /
+substituir por dataset com licença explícita), o usuário escolheu
+**manter o tratamento atual** — uso exclusivo para validação, nunca
+redistribuído, baixado sob demanda a cada execução, mesmo padrão já
+aplicado ao Corn nesta mesma tabela. Nenhuma cláusula do dataset proíbe
+esse uso; a integração do Passo 93-102 permanece como está.
+
 ---
 
 ## 5. Métricas de quantificação agora reportadas
