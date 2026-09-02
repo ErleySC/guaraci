@@ -3313,15 +3313,18 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
 
     intro = (
         "Roda o pipeline HSI (leitura -> quality gate -> segmentacao -> "
-        "classificacao por pixel -> mapa espacial -> explicabilidade "
-        "quimica -> validacao externa) sobre um dataset ja' baixado com "
-        "scripts/download_datasets/baixar_deephs_kaki.py. "
+        "classificacao por pixel -> mapa espacial -> validacao) sobre "
+        "seus proprios cubos hiperespectrais (ENVI .hdr/.bin, 1 subpasta "
+        "por classe). Datasets publicos (DeepHS Fruit) sao usados so' "
+        "para os testes de validacao do projeto, nao sao necessarios "
+        "para uso normal. "
         + _AVISO_MATURIDADE_HSI_PT
         if is_pt else
         "Runs the HSI pipeline (reading -> quality gate -> segmentation -> "
-        "per-pixel classification -> spatial map -> chemical "
-        "explainability -> external validation) over a dataset already "
-        "downloaded with scripts/download_datasets/baixar_deephs_kaki.py. "
+        "per-pixel classification -> spatial map -> validation) over "
+        "your own hyperspectral cubes (ENVI .hdr/.bin, 1 subfolder per "
+        "class). Public datasets (DeepHS Fruit) are used only for the "
+        "project's own validation tests, not required for normal use. "
         + _AVISO_MATURIDADE_HSI_EN
     )
 
@@ -3334,8 +3337,10 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
     console.print(f"  [{PM}][0][/{PM}] {_t('voltar')}")
     console.print()
 
-    lbl_pasta = ("Pasta do dataset HSI (com manifest.json)" if is_pt
-                else "HSI dataset folder (with manifest.json)")
+    lbl_pasta = ("Pasta com seus cubos hiperespectrais (ou dataset publico "
+                "de validacao)" if is_pt else
+                "Folder with your hyperspectral cubes (or public "
+                "validation dataset)")
     default_pasta = getattr(cfg, "hsi_dataset_folder", "") or ""
     sufixo = f" [{default_pasta}]" if default_pasta else ""
     pasta = _ask(f"  [{PA}]{lbl_pasta}{sufixo}:[/{PA}] ").strip().strip('"')
@@ -3343,9 +3348,9 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
         return
     if not pasta:
         pasta = default_pasta
-    if not pasta or not os.path.isfile(os.path.join(pasta, "manifest.json")):
-        msg = (f"Pasta invalida ou sem manifest.json: {pasta}" if is_pt
-              else f"Invalid folder or missing manifest.json: {pasta}")
+    if not pasta or not os.path.isdir(pasta):
+        msg = (f"Pasta invalida: {pasta}" if is_pt
+              else f"Invalid folder: {pasta}")
         console.print(f"  [{PR}]{msg}[/{PR}]")
         _pause(); return
 
@@ -3367,15 +3372,33 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
         f"  {'Variaveis latentes (Wold)' if is_pt else 'Latent variables (Wold)'}: "
         f"{resumo['n_components']}",
     ]
+    # Passo 111: dataset generico (sem manifest.json) so' tem validacao
+    # INTERNA (n_objetos_teste_externo=0, dicts *_externa vazios -- ver
+    # hsi_validation.run_internal_validation_group_aware) -- declarado
+    # aqui explicitamente, nunca escondido atras de um "0" sem explicacao.
     val = resumo["validacao_externa"]
-    linhas.append(f"  {'Validacao externa' if is_pt else 'External validation'}: "
-                  f"n_interno={val.n_objetos_teste_interno}, "
-                  f"n_externo={val.n_objetos_teste_externo}")
-    for classe in val.classes:
+    tem_externa = val.n_objetos_teste_externo > 0
+    if tem_externa:
         linhas.append(
-            f"    {classe}: sens(int/ext)="
-            f"{val.sensibilidade_interna[classe]:.2f}/"
-            f"{val.sensibilidade_externa[classe]:.2f}")
+            f"  {'Validacao externa' if is_pt else 'External validation'}: "
+            f"n_interno={val.n_objetos_teste_interno}, "
+            f"n_externo={val.n_objetos_teste_externo}")
+        for classe in val.classes:
+            linhas.append(
+                f"    {classe}: sens(int/ext)="
+                f"{val.sensibilidade_interna[classe]:.2f}/"
+                f"{val.sensibilidade_externa[classe]:.2f}")
+    else:
+        rotulo_val = ("Validacao (so interna -- sem particao externa "
+                      "neste dataset)" if is_pt else
+                      "Validation (internal only -- no external "
+                      "partition for this dataset)")
+        linhas.append(
+            f"  {rotulo_val}: n_interno={val.n_objetos_teste_interno}")
+        for classe in val.classes:
+            linhas.append(
+                f"    {classe}: sens(int)="
+                f"{val.sensibilidade_interna[classe]:.2f}")
 
     # Confianca por objeto (Passo 107): heterogeneidade de pixel deixa de
     # ser so' um numero interno -- resumo por faixa + objetos de baixa

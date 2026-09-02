@@ -108,6 +108,60 @@ requer_deephs_kaki = pytest.mark.skipif(
             "aponte GUARACI_DATASETS_DIR."))
 
 
+def _mascara_objeto_suave(n_lin, n_col, raio_frac=0.35, largura_borda=4.0):
+    """Mesma logica de test_hsi_pipeline.py -- transicao suave evita que
+    o estimador de ruido (Laplaciano, hsi_quality.py) confunda um degrau
+    binario de mascara com ruido de alta frequencia."""
+    import numpy as np
+    yy, xx = np.ogrid[:n_lin, :n_col]
+    cy, cx = (n_lin - 1) / 2.0, (n_col - 1) / 2.0
+    dist = np.sqrt((yy - cy) ** 2 + (xx - cx) ** 2)
+    raio = raio_frac * min(n_lin, n_col)
+    return np.clip((raio - dist) / largura_borda + 0.5, 0.0, 1.0)
+
+
+def _montar_pasta_hsi_generica_cli(tmp_path):
+    import numpy as np
+    rng = np.random.default_rng(0)
+    raiz = tmp_path / "meu_dataset_hsi"
+    n_lin, n_col, n_bandas = 64, 64, 6
+    alpha = _mascara_objeto_suave(n_lin, n_col)[..., None]
+    for classe, nivel_objeto in (("madura", 0.85), ("verde", 0.45)):
+        for a in range(3):
+            pasta_amostra = raiz / classe / f"amostra{a}"
+            pasta_amostra.mkdir(parents=True)
+            fundo = rng.normal(loc=0.05, scale=0.01, size=(n_lin, n_col, n_bandas))
+            objeto = rng.normal(loc=nivel_objeto, scale=0.01,
+                                size=(n_lin, n_col, n_bandas))
+            cubo = alpha * objeto + (1.0 - alpha) * fundo
+            (pasta_amostra / "vista0.bin").write_bytes(cubo.astype("<f4").tobytes())
+            (pasta_amostra / "vista0.hdr").write_text(
+                f"ENVI\nsamples = {n_col}\nlines = {n_lin}\nbands = {n_bandas}\n"
+                f"header offset = 0\nfile type = ENVI Standard\ndata type = 4\n"
+                f"interleave = bip\nbyte order = 0\n", encoding="utf-8")
+    return raiz
+
+
+def test_menu_hsi_roda_pipeline_generico_via_cli_sem_dataset_publico(
+        monkeypatch, tmp_path):
+    """Passo 111: a prova de reachability p/ dado do PROPRIO usuario --
+    nao depende de GUARACI_DATASETS_DIR/dataset publico nenhum, ao
+    contrario de `test_menu_hsi_roda_pipeline_completo_via_cli` abaixo."""
+    pasta_dataset = str(_montar_pasta_hsi_generica_cli(tmp_path))
+    respostas = iter([pasta_dataset, ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    cfg = guaraci_mod.Config(output_root_folder=str(tmp_path / "saida"))
+    guaraci_mod._menu_hsi(cfg)
+
+    assert cfg.mode == "hsi"
+    assert cfg.hsi_dataset_folder == pasta_dataset
+    assert cfg.output_folder != ""
+    caminho_figura = (Path(cfg.output_folder) / "Graficos" / "hsi" /
+                      "hsi_mapa_classificacao_amostra.png")
+    assert caminho_figura.is_file()
+
+
 @requer_deephs_kaki
 def test_menu_hsi_roda_pipeline_completo_via_cli(monkeypatch, tmp_path):
     """A prova final de reachability: o usuario aciona o pipeline HSI

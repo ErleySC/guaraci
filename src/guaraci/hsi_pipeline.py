@@ -1,7 +1,7 @@
 """hsi_pipeline.py — Orquestracao ponta-a-ponta do modo de entrada `hsi`
 (Passo 102 da `INSTRUCAO_HSI_MINIMO_VIAVEL.md`): leitura -> quality gate
 -> segmentacao -> extracao de ROI/agrupamento -> classificacao por
-pixel -> mapa espacial -> explicabilidade cruzada -> validacao externa.
+pixel -> mapa espacial -> explicabilidade cruzada -> validacao.
 
 Modo `hsi` e' DISTINTO do modo `imagem` (colorimetria digital de foto
 comum, `dados_imagem.py`) -- nunca confundir os dois: `imagem` extrai
@@ -11,12 +11,29 @@ opera POR PIXEL de um cubo hiperespectral, com agregacao por objeto
 fisico -- forma de dado fundamentalmente diferente, por isso tem sua
 propria orquestracao aqui em vez de entrar em `pipeline.executar()`.
 
-Esta e' a fatia "minimo viavel" (Passos 94-101): 1 dataset publico
-(DeepHS Fruit/Kaki/VIS), 1 formato (ENVI), 1 leitor especifico
-(`hsi_io.load_deephs_kaki_dataset`). Um dataset/formato diferente
-precisaria de seu proprio leitor em `hsi_io.py` -- o resto do pipeline
-(quality gate, segmentacao, classificacao, figuras, quimica, validacao)
-ja' e' generico o suficiente para reaproveitar sem alteracao.
+Passo 111 (INSTRUCAO_HSI_DADO_PROPRIO.md) generalizou a entrada: ANTES,
+`run_hsi_pipeline` exigia `manifest.json` de um dataset publico
+especifico (DeepHS Fruit) -- agora aceita QUALQUER pasta com cubos ENVI
+do proprio usuario (`hsi_io.load_hsi_folder_dataset`), e o dataset
+publico vira so' um FIXTURE opcional de validacao. `run_hsi_pipeline`
+detecta qual caso e' (presenca de `manifest.json` na raiz da pasta) e
+despacha pra' uma das 2 orquestracoes internas:
+
+  - `_run_hsi_pipeline_deephs_fixture`: caminho ORIGINAL (Passos 94-104),
+    inalterado -- usa `load_deephs_kaki_dataset`/`load_deephs_fruit_
+    dataset`, particao de validacao externa por DIA de medicao (metadado
+    que so' o dataset publico tem), e explicabilidade cruzada com a
+    tabela de atribuicao quimica especifica de VIS-fruta.
+  - `_run_hsi_pipeline_generico`: caminho NOVO -- usa `load_hsi_folder_
+    dataset` (Bloco 8: hierarquia de agrupamento por subpasta/CSV/nenhuma
+    fonte), so' validacao INTERNA group-aware (nao ha' particao por dia
+    num dataset generico -- `hsi_validation.run_internal_validation_
+    group_aware` declara isso explicitamente, nao finge ter validacao
+    externa), e SEM explicabilidade quimica cruzada (a tabela `ATRIBUICAO_
+    QUIMICA_VIS_FRUTA` e' conhecimento de dominio especifico do dataset
+    publico -- aplica-la a comprimentos de onda arbitrarios do usuario,
+    ou a um eixo simbolico quando o `.hdr` nao traz `wavelength`, seria
+    uma alegacao cientifica falsa, nao uma limitacao honesta).
 """
 from __future__ import annotations
 
@@ -30,12 +47,13 @@ from guaraci.hsi_chemistry import (ATRIBUICAO_QUIMICA_VIS_FRUTA,
                                     cross_reference_vip_with_chemistry)
 from guaraci.hsi_classification import fit_predict_pixel_plsda
 from guaraci.hsi_figures import fig_hsi_classification_map
-from guaraci.hsi_io import load_deephs_kaki_dataset
+from guaraci.hsi_io import load_deephs_kaki_dataset, load_hsi_folder_dataset
 from guaraci.hsi_pixels import build_pixel_dataset
 from guaraci.hsi_quality import evaluate_cube_quality
 from guaraci.hsi_segmentation import segment_object_pca_otsu
 from guaraci.hsi_uncertainty import enrich_object_results
-from guaraci.hsi_validation import run_external_validation_by_day
+from guaraci.hsi_validation import (run_external_validation_by_day,
+                                    run_internal_validation_group_aware)
 
 if TYPE_CHECKING:
     from guaraci.config import Config
@@ -88,25 +106,48 @@ def apply_quality_gate_and_segment(
 def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
                      n_dias_externos: int = 2, seed: int = 42,
                      ) -> Dict[str, object]:
-    """Roda o pipeline HSI completo sobre `cfg.hsi_dataset_folder`
-    (pasta com `manifest.json` + arquivos ENVI, ver
-    `scripts/download_datasets/baixar_deephs_kaki.py`). Devolve um dict
-    de resumo (nunca lanca excecao por dado individual ruim -- cenas que
-    falham no quality gate sao PULADAS e contadas, nunca processadas em
-    silencio) e salva o mapa de classificacao espacial em
-    `cfg.output_folder`/Graficos/hsi/.
+    """Roda o pipeline HSI completo sobre `cfg.hsi_dataset_folder`.
 
-    `n_dias_externos`: quantos dos dias mais RECENTES (ordenados por
-    nome, que no dataset usado correspondem a ordem cronologica --
-    ver `hsi_io.load_deephs_kaki_dataset`) viram o teste de validacao
-    externa (Passo 101)."""
+    Aceita 2 casos (Passo 111, detectado automaticamente pela presenca
+    de `manifest.json` na raiz da pasta -- nunca uma flag manual que o
+    usuario precisaria lembrar de setar certo):
+
+      - Pasta SEM `manifest.json` (caso normal -- dado proprio do
+        usuario): qualquer pasta com cubos ENVI (.hdr+.bin), convencao
+        de subpasta-por-classe (ver `hsi_io.load_hsi_folder_dataset`).
+        So' validacao interna (nao ha' particao por dia num dataset
+        generico).
+      - Pasta COM `manifest.json` (dataset publico DeepHS Fruit, usado
+        so' como FIXTURE de validacao do projeto -- ver
+        `scripts/download_datasets/baixar_deephs_kaki.py`/
+        `baixar_deephs_fruit_todas.py`): caminho original com validacao
+        externa por dia de medicao + explicabilidade quimica cruzada.
+
+    Devolve um dict de resumo (nunca lanca excecao por dado individual
+    ruim -- cenas que falham no quality gate sao PULADAS e contadas,
+    nunca processadas em silencio) e salva o mapa de classificacao
+    espacial em `cfg.output_folder`/Graficos/hsi/.
+
+    `n_dias_externos`: so' usado no caminho do dataset publico -- quantos
+    dos dias mais RECENTES (ordenados por nome, que no dataset usado
+    correspondem a ordem cronologica) viram o teste de validacao externa
+    (Passo 101)."""
     pasta = getattr(cfg, "hsi_dataset_folder", "") or ""
     if not pasta:
         raise ValueError(
             "run_hsi_pipeline: cfg.hsi_dataset_folder nao configurado -- "
-            "aponte para a pasta com manifest.json (ver "
-            "scripts/download_datasets/baixar_deephs_kaki.py).")
+            "aponte para uma pasta com seus cubos hiperespectrais ENVI "
+            "(.hdr/.bin).")
 
+    if os.path.isfile(os.path.join(pasta, "manifest.json")):
+        return _run_hsi_pipeline_deephs_fixture(
+            cfg, pasta, fracao_teste_interno=fracao_teste_interno,
+            n_dias_externos=n_dias_externos, seed=seed)
+    return _run_hsi_pipeline_generico(
+        cfg, pasta, fracao_teste_interno=fracao_teste_interno, seed=seed)
+
+
+def _preparar_pasta_saida(cfg: "Config") -> None:
     if not getattr(cfg, "output_folder", ""):
         # Nome dedicado -- a convencao PLSDA_OE_.../pipeline.generate_
         # output_name() e' especifica do fluxo tabular (preset de
@@ -114,6 +155,15 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
         raiz = getattr(cfg, "output_root_folder", "") or "resultados_tcc"
         cfg.output_folder = os.path.join(
             raiz, "hsi", f"HSI_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+
+def _run_hsi_pipeline_deephs_fixture(
+        cfg: "Config", pasta: str, *, fracao_teste_interno: float,
+        n_dias_externos: int, seed: int) -> Dict[str, object]:
+    """Caminho ORIGINAL (Passos 94-104), inalterado -- dataset publico
+    DeepHS Fruit/Kaki/VIS (`manifest.json` no formato de `load_deephs_
+    kaki_dataset`), usado como fixture de validacao do projeto."""
+    _preparar_pasta_saida(cfg)
 
     cubos, rotulos, grupos, wavelengths, meta_df = load_deephs_kaki_dataset(pasta)
 
@@ -174,4 +224,82 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
         "validacao_externa": relatorio_validacao,
         "achados_quimica": achados_quimica,
         "confianca_por_objeto": relatorio_confianca,
+        "grouping_guarantee": "high",  # objeto fisico via nome de arquivo (Passo 97)
+    }
+
+
+def _run_hsi_pipeline_generico(
+        cfg: "Config", pasta: str, *, fracao_teste_interno: float,
+        seed: int) -> Dict[str, object]:
+    """Caminho NOVO (Passo 111) -- pasta com cubos ENVI do proprio
+    usuario, sem `manifest.json`. Ver docstring do modulo para o porque
+    de nao ter validacao externa nem explicabilidade quimica cruzada
+    aqui (nenhuma das duas faz sentido sem metadado especifico do
+    dataset publico)."""
+    _preparar_pasta_saida(cfg)
+
+    cubos, rotulos, mae_id, wavelengths, meta_df = load_hsi_folder_dataset(pasta)
+    nivel_agrupamento = meta_df.attrs.get("grouping_guarantee", "none")
+
+    # Nivel "none" (Bloco 8): mae_id vem None do loader -- cada gravacao
+    # precisa de um id UNICO aqui (nunca um placeholder compartilhado,
+    # que colapsaria objetos fisicos DIFERENTES no mesmo grupo e
+    # destruiria a garantia que build_pixel_dataset/hsi_validation
+    # existem pra' dar).
+    if mae_id is None:
+        grupos: List[str] = [f"__sem_grupo_{i}__" for i in range(len(cubos))]
+    else:
+        grupos = [str(g) for g in mae_id]
+
+    filtrado = apply_quality_gate_and_segment(
+        cubos, grupos, list(rotulos), [""] * len(cubos))
+    cubos_ok = filtrado["cubos"]
+    mascaras_ok = filtrado["mascaras"]
+    grupos_ok = filtrado["group_ids"]
+    rotulos_ok = filtrado["rotulos"]
+    n_rejeitados = filtrado["n_rejeitados"]
+    motivos_rejeicao = filtrado["motivos_rejeicao"]
+
+    if not cubos_ok:
+        raise ValueError(
+            f"run_hsi_pipeline: TODAS as {len(cubos)} gravacoes falharam "
+            f"no quality gate -- nada a processar. Motivos: "
+            f"{motivos_rejeicao[:5]}")
+
+    relatorio_validacao = run_internal_validation_group_aware(
+        cubos_ok, mascaras_ok, grupos_ok, rotulos_ok,
+        fracao_teste=fracao_teste_interno, seed=seed)
+
+    X, y, pixel_groups = build_pixel_dataset(
+        cubos_ok, mascaras_ok, grupos_ok, rotulos_ok)
+    resultado_modelo = fit_predict_pixel_plsda(
+        X, y, pixel_groups, X, pixel_groups, seed=seed)
+
+    classes_ordenadas = sorted(set(y.tolist()))
+    idx_amostra = 0
+    n_roi_amostra = int(mascaras_ok[idx_amostra].sum())
+    preds_amostra = resultado_modelo["predicoes_pixel"][:n_roi_amostra]
+    fig_hsi_classification_map(
+        mascaras_ok[idx_amostra], preds_amostra, classes_ordenadas, cfg,
+        cfg.output_folder, nome="hsi_mapa_classificacao_amostra")
+
+    relatorio_confianca = enrich_object_results(resultado_modelo["predicoes_objeto"])
+
+    if nivel_agrupamento == "none":
+        print("[WARNING] Validacao roda SEM garantia de agrupamento por "
+              "amostra fisica (nivel 'none' -- ver hsi_io.py). Resultados "
+              "devem ser tratados como exploratorios.")
+
+    return {
+        "n_gravacoes_total": len(cubos),
+        "n_gravacoes_aceitas": len(cubos_ok),
+        "n_gravacoes_rejeitadas": n_rejeitados,
+        "motivos_rejeicao": motivos_rejeicao,
+        "n_components": resultado_modelo["n_components"],
+        "validacao_externa": relatorio_validacao,
+        "achados_quimica": None,  # nao aplicavel: sem tabela de atribuicao
+                                  # quimica generica p/ dado do proprio usuario
+        "confianca_por_objeto": relatorio_confianca,
+        "grouping_guarantee": nivel_agrupamento,
+        "wavelengths": wavelengths,
     }
