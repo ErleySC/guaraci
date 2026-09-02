@@ -360,6 +360,11 @@ detalhamento passo a passo. Resumo do estado nesta rodada:
   registrado para o Mendeley (§2: bal.acc 0,35 CV). Não é um resultado
   de produção; confirma que o pipeline mecânico funciona ponta-a-ponta
   sobre dado real, não que o desempenho é bom.
-- **Explicabilidade cruzada, validação externa (Passos 100-101) e
-  integração ao menu/CLI (Passo 102):** ainda não implementados nesta
-  rodada — em andamento.
+- **Explicabilidade cruzada (Passo 100):** `src/guaraci/hsi_chemistry.py`
+  — cruza VIP com tabela de atribuição química (VIS 397-1004nm, fruta;
+  3 entradas citando Merzlyak, Solovchenko & Gitelson 2003 e Osborne,
+  Fearn & Hindle 1993). Medido contra o dataset real: 4 das 5 bandas de
+  maior VIP caem em 540-550nm, dentro da faixa de carotenoides/
+  antocianinas — consistente com a fisiologia do amadurecimento.
+- **Validação externa (Passo 101) e integração ao menu/CLI (Passo
+  102):** ainda não implementados nesta rodada — em andamento.

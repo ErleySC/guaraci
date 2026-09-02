@@ -140,6 +140,30 @@ pipeline mecanico (segmentacao -> extracao -> classificacao ->
 agregacao) funciona ponta-a-ponta sobre dado real -- nao que o
 desempenho e' bom.
 
+## Passo 99 — `src/guaraci/hsi_figures.py`
+
+Mapa de classificacao espacial por pixel, reaproveitando `figuras.save`
+(pasta/formato/carimbo de prototipo ja' padronizados) e `paleta_cores.
+color` (paleta da mascote) -- sem paleta nova. Testado contra o dataset
+real apos a correcao da segmentacao (Passo 96). Commit `4150a27`.
+
+## Passo 100 — `src/guaraci/hsi_chemistry.py`
+
+Cruzamento VIP (reaproveita `chemometric_stats.vip_scores` ja'
+existente, nao reimplementado) x tabela de atribuicao quimica --
+tabela ESPECIFICA da matriz/faixa deste dataset (VIS 397-1004nm,
+fruta), 3 entradas citando literatura real (Merzlyak, Solovchenko &
+Gitelson 2003 p/ clorofila-a e carotenoides/antocianinas; Osborne,
+Fearn & Hindle 1993 p/ agua). Nunca afirma causalidade -- so' "consistente
+com" ou a frase padrao de "sem atribuicao obvia".
+
+**Medido contra o dataset real** (top-5 bandas de maior VIP, PLS-DA
+5 componentes sobre TODOS os pixels de ROI): 4 das 5 bandas caem entre
+540-550nm, dentro da faixa tabelada de carotenoides/antocianinas --
+consistente com a fisiologia real do amadurecimento (degradacao de
+clorofila + acumulo de carotenoides), achado nao forcado (a tabela foi
+escrita ANTES de rodar o VIP real, ver commit).
+
 ---
 
 # PROGRESSO — Passos 84-87 (2026-08-27)

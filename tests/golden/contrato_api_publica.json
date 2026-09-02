@@ -2007,6 +2007,49 @@
         "forma": "funcao"
       }
     },
+    "hsi_chemistry": {
+      "ATRIBUICAO_QUIMICA_VIS_FRUTA": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "BandAttribution": {
+        "bases": [
+          "tuple"
+        ],
+        "forma": "classe",
+        "init": null,
+        "metodos_publicos": []
+      },
+      "BandFinding": {
+        "campos": [
+          {
+            "nome": "wavelength_nm",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "vip",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "atribuicao",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "referencia",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "cross_reference_vip_with_chemistry": {
+        "assinatura": "(wavelengths: 'np.ndarray', vip: 'np.ndarray', tabela: 'List[BandAttribution]', *, top_n: 'int' = 5) -> 'List[BandFinding]'",
+        "forma": "funcao"
+      }
+    },
     "hsi_classification": {
       "ObjectAggregationResult": {
         "campos": [
