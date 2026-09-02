@@ -2041,6 +2041,12 @@
         "forma": "funcao"
       }
     },
+    "hsi_figures": {
+      "fig_hsi_classification_map": {
+        "assinatura": "(mascara: 'np.ndarray', predicoes_pixel: 'np.ndarray', classes_ordenadas: 'Sequence[str]', cfg: \"'Config'\", pasta: 'str', nome: 'str' = 'hsi_mapa_classificacao') -> 'None'",
+        "forma": "funcao"
+      }
+    },
     "hsi_io": {
       "HSICubeMetadata": {
         "campos": [
@@ -2196,7 +2202,7 @@
         "forma": "funcao"
       },
       "segment_object_pca_otsu": {
-        "assinatura": "(cubo: 'np.ndarray', *, objeto_e_pico_maior: 'Optional[bool]' = None) -> 'SegmentationResult'",
+        "assinatura": "(cubo: 'np.ndarray', *, largura_borda: 'int' = 2) -> 'SegmentationResult'",
         "forma": "funcao"
       }
     },
