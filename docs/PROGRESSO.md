@@ -1,3 +1,47 @@
+# PROGRESSO — Passo 103 (2026-09-02)
+
+## Passo 103 — Texto/UI da tela HSI corrigidos
+
+Dois bugs reais reportados pelo usuario ao revisar a tela HSI:
+
+1. **Frase solta "Prototipo 'minimo viavel'"** -- substituida por
+   `_AVISO_MATURIDADE_HSI_PT`/`_EN` (fonte unica, mesmo padrao de
+   `_AVISO_PROTOTIPO_TITULO`/`_CORPO` em `reports.py`), descrevendo a
+   limitacao REAL e especifica ("validado em 1 fruta (Kaki) e 1 camera
+   (VIS)... overripe n=12, unripe n=2"), nao um rotulo generico.
+   **Decisao registrada**: NAO usar o carimbo formal "PROTOTYPE OUTPUT"
+   (`reports.py`) porque o criterio objetivo daquele carimbo (ausencia
+   de garantia de agrupamento anti-vazamento) NAO se aplica ao HSI -- o
+   HSI TEM garantia real (`group_id` por objeto fisico, Passo 97,
+   validada por Hypothesis). Sao limitacoes de natureza diferente;
+   reusar o carimbo verbatim seria factualmente impreciso.
+2. **Cabecalho fixo "Tecnica: FT-NIR"** herdado do template generico --
+   `_print_header`/`_print_status` agora usam `_rotulo_tecnica_efetivo
+   (cfg)`, que mostra "HSI" quando `cfg.mode=="hsi"`, "Colorimetria
+   digital" quando `cfg.mode=="imagem"` (MESMO bug, corrigido pela MESMA
+   fonte -- achado ao varrer as demais telas, nao so' a de HSI), e
+   preserva o comportamento antigo (tecnica escolhida em [8]) para
+   dx/csv/sintetico. `cfg.mode="hsi"` agora e' setado ANTES do primeiro
+   `_print_header`, nao so' apos validar a pasta -- senao a tela ainda
+   mostraria o rotulo errado no primeiro render.
+
+**Contra-prova de teste**: `tests/test_menu_hsi.py` renderiza a tela de
+verdade (cabecalho + intro, PT e EN) e confere que "FT-NIR"/"prototipo"/
+"minimo viavel" NAO aparecem e que "Tecnica: HSI"/"Technique: HSI"
+aparecem -- mais 2 testes unitarios de `_rotulo_tecnica_efetivo` (modo
+imagem corrigido, modo dx preservado -- contra-prova de nao-regressao).
+
+**Achado no processo, corrigido antes do commit**: o helper de teste
+`_renderizar_tela_hsi` setava `_STATE["lang"]="EN"` sem restaurar no
+`finally` -- vazava para os testes seguintes na mesma sessao pytest e
+quebrou 2 testes de `test_selecao_amostras.py` (coluna `"conjunto"`
+virava `"set"` em ingles). Mesma classe de bug ja documentada no
+helper `_render` de `test_guaraci_cli.py` (que EU deveria ter copiado
+completo, nao so' a parte de `console.file`) -- corrigido, suite
+completa voltou a 1113 passando.
+
+---
+
 # PROGRESSO — Passos 92-95 (2026-09-01)
 
 ## Passo 92 — Verificação da literatura citada em INSTRUCAO_HSI_MINIMO_VIAVEL.md

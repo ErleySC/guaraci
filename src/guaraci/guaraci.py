@@ -1416,7 +1416,7 @@ def _guaraci_faq(cfg: Config) -> None:
 def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
     lang = _lang()
-    _cls(); _print_header()
+    _cls(); _print_header(cfg)
     console.print()
 
     opcoes = [
@@ -1456,18 +1456,38 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     elif raw == "5":
         _guaraci_faq(cfg or Config())
 
+def _rotulo_tecnica_efetivo(cfg: Optional[Config]) -> str:
+    """Nome de 'tecnica' a exibir nos cabecalhos, ajustado ao `cfg.mode`
+    real -- achado do Passo 103 (INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md):
+    `_TECNICA_SELECIONADA` (escolhida em [8] Tecnica Analitica) so' faz
+    sentido para mode dx/csv/sintetico (espectros vibracionais). Modes
+    "imagem" (colorimetria) e "hsi" (imageamento hiperespectral) NAO sao
+    "uma tecnica vibracional escolhida" -- mostrar o default global
+    'FT-NIR' nessas telas era herdado do template generico, incorreto
+    (a tela HSI mostrando "Tecnica: FT-NIR" foi o achado que motivou
+    esta correcao). Usado tanto por `_print_header` quanto por
+    `_print_status` -- fonte unica, nao duas heuristicas divergentes."""
+    modo = getattr(cfg, "mode", None) if cfg is not None else None
+    if modo == "hsi":
+        return "HSI"
+    if modo == "imagem":
+        return "Colorimetria digital" if _lang() == "PT" else "Digital colorimetry"
+    return _TECNICA_SELECIONADA.get("nome", "FT-NIR")
+
+
 # ---------------------------------------------------------------------------
 # CABECALHO COMPACTO
 # ---------------------------------------------------------------------------
-def _print_header() -> None:
+def _print_header(cfg: Optional[Config] = None) -> None:
     # Titulo com icone solar flanqueando GUARACI
     titulo = Text(justify="center")
     titulo.append("  ", style=f"{PA}")
     titulo.append("GUARACI", style=f"bold {PA}")
     titulo.append("  ", style=f"{PA}")
 
-    # Tecnica ativa (atualizada dinamicamente)
-    tec_nome = _TECNICA_SELECIONADA.get("nome", "FT-NIR")
+    # Tecnica ativa (atualizada dinamicamente, ajustada ao mode -- ver
+    # _rotulo_tecnica_efetivo)
+    tec_nome = _rotulo_tecnica_efetivo(cfg)
     tec_str  = f"Tecnica: {tec_nome}" if _lang() == "PT" else f"Technique: {tec_nome}"
 
     sub = Text(
@@ -1525,7 +1545,7 @@ def _print_status(cfg: Config) -> None:
         else f"[err]{_t('status_erro')}[/err]"
     )
 
-    tec_nome = _TECNICA_SELECIONADA.get("nome", "FT-NIR")
+    tec_nome = _rotulo_tecnica_efetivo(cfg)
 
     t = Table(box=None, show_header=False, padding=(0, 1))
     t.add_column("L1", style=PM, width=10, no_wrap=True)
@@ -2094,7 +2114,7 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
     mostrar_avancado = False
     while True:
         _cls()
-        _print_header()
+        _print_header(cfg)
         fields_visiveis = _print_submenu_compact(
             title, desc, fields, cfg, extras,
             campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
@@ -2216,7 +2236,7 @@ def _menu_preprocessing(cfg: Config) -> None:
 
     fields = ["pre_processamento", "comparar_pre_processamentos"]
     while True:
-        _cls(); _print_header(); _show_pipeline()
+        _cls(); _print_header(cfg); _show_pipeline()
         _print_submenu_compact(_t("t_preproc"), _t("d_preproc"), fields, cfg)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0", "Q"):
@@ -2271,7 +2291,7 @@ def _menu_validation(cfg: Config) -> None:
     campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova", "teste_martens"}
     mostrar_avancado = False
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         ga = _cfgv(cfg, "validacao_group_aware", True)
         if not ga:
             console.print(Panel(
@@ -2303,7 +2323,7 @@ def _menu_advanced(cfg: Config) -> None:
     fields = ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
               "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"]
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         console.print(Panel(
             f"[{PR}]  ▲ Modulos pesados — verificar hardware em [H] antes de ativar.[/{PR}]",
             border_style=PR, box=rbox.SIMPLE, padding=(0, 1)
@@ -2444,7 +2464,7 @@ def _menu_visualization(cfg: Config) -> None:
             _salvar_visual_cfg(vcfg)
 
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         _print_submenu_compact(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0","Q"): break
@@ -2534,7 +2554,7 @@ def _menu_technique(cfg: Config) -> None:
             console.print(f"  [err]{escape(str(e))}[/err]")
 
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         lang = _lang()
         ordem = _tecnica_ordem()
         num = {tk: i for i, tk in enumerate(ordem, 1)}  # chave -> numero
@@ -2719,7 +2739,7 @@ def _menu_encoding(cfg: Config) -> None:
         _pause()
 
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
 
         # Painel explicativo — o que e, padrao de nome, como cadastrar/importar
         if lang == "PT":
@@ -2956,7 +2976,7 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
     # limpa a tela), mantendo o mesmo padrao visual usado em todo o resto
     # do CLI (rodape [G]/[0] logo abaixo do painel de intro).
     def _intro() -> None:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         console.print(Panel(
             Text.from_markup(f"  {intro}"),
             title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
@@ -3242,6 +3262,32 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
     _pause()
 
 
+# Aviso de maturidade da tela HSI (Passo 103 da
+# INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md) -- fonte UNICA (nao frase solta
+# duplicada em varios lugares, mesmo padrao de _AVISO_PROTOTIPO_TITULO/
+# _AVISO_PROTOTIPO_CORPO em reports.py), descrevendo a limitacao REAL e
+# especifica, nao um rotulo generico "prototipo". Escolhido em vez do
+# carimbo formal "PROTOTYPE OUTPUT" (reports.py) porque aquele carimbo
+# tem um criterio objetivo DIFERENTE (ausencia de garantia de
+# agrupamento anti-vazamento) que NAO se aplica aqui -- o HSI TEM
+# garantia de agrupamento real (group_id por objeto fisico, Passo 97,
+# validada por teste de propriedade Hypothesis). A limitacao real do
+# HSI e' outra: cobertura de validacao ainda pequena. Atualizar este
+# texto sempre que a cobertura de validacao mudar (ver Passo 104).
+_AVISO_MATURIDADE_HSI_PT = (
+    "Validado em 1 fruta (Kaki) e 1 camera (VIS) do dataset publico "
+    "DeepHS Fruit, com desbalanceamento de classe severo e nao corrigido "
+    "(overripe n=12, unripe n=2) -- ver docs/VALIDACAO_PUBLICA.md secao 7 "
+    "para os numeros completos antes de usar para resultado publicavel."
+)
+_AVISO_MATURIDADE_HSI_EN = (
+    "Validated on 1 fruit (Kaki) and 1 camera (VIS) from the public "
+    "DeepHS Fruit dataset, with severe and uncorrected class imbalance "
+    "(overripe n=12, unripe n=2) -- see docs/VALIDACAO_PUBLICA.md "
+    "section 7 for the full numbers before using for a publishable result."
+)
+
+
 def _menu_hsi(cfg: Optional[Config] = None) -> None:
     """Imageamento hiperespectral (HSI, mode='hsi', prototipo "minimo
     viavel" -- Passos 92-102 da INSTRUCAO_HSI_MINIMO_VIAVEL.md).
@@ -3257,6 +3303,11 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
     """
     if cfg is None:
         cfg = Config()
+    # Setado JA' aqui (nao so' apos validar a pasta) -- e' o que faz
+    # _print_header/_print_status mostrarem "Tecnica: HSI" em vez do
+    # default global errado assim que a tela abre, nao so' depois de
+    # rodar o pipeline (achado do Passo 103).
+    cfg.mode = "hsi"
     lang = _lang()
     is_pt = lang == "PT"
 
@@ -3264,20 +3315,17 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
         "Roda o pipeline HSI (leitura -> quality gate -> segmentacao -> "
         "classificacao por pixel -> mapa espacial -> explicabilidade "
         "quimica -> validacao externa) sobre um dataset ja' baixado com "
-        "scripts/download_datasets/baixar_deephs_kaki.py. Prototipo "
-        "'minimo viavel', validado com o dataset publico DeepHS Fruit "
-        "(Kaki/VIS) -- ver docs/VALIDACAO_PUBLICA.md secao 7."
+        "scripts/download_datasets/baixar_deephs_kaki.py. "
+        + _AVISO_MATURIDADE_HSI_PT
         if is_pt else
         "Runs the HSI pipeline (reading -> quality gate -> segmentation -> "
         "per-pixel classification -> spatial map -> chemical "
         "explainability -> external validation) over a dataset already "
         "downloaded with scripts/download_datasets/baixar_deephs_kaki.py. "
-        "'Minimum viable' prototype, validated against the DeepHS Fruit "
-        "public dataset (Kaki/VIS) -- see docs/VALIDACAO_PUBLICA.md "
-        "section 7."
+        + _AVISO_MATURIDADE_HSI_EN
     )
 
-    _cls(); _print_header()
+    _cls(); _print_header(cfg)
     console.print(Panel(
         Text.from_markup(f"  {intro}"),
         title=f"[bold {PS}]{_t('t_hsi')}[/bold {PS}]",
@@ -3301,7 +3349,6 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
         console.print(f"  [{PR}]{msg}[/{PR}]")
         _pause(); return
 
-    cfg.mode = "hsi"
     cfg.hsi_dataset_folder = pasta
 
     from guaraci.hsi_pipeline import run_hsi_pipeline
@@ -3360,7 +3407,7 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
 
     # Ver _menu_prediction: mesmo padrao de redesenho apos fechar [G].
     def _intro() -> None:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         console.print(Panel(
             Text.from_markup(f"  {intro}"),
             title=f"[bold {PS}]{_t('t_planejamento')}[/bold {PS}]",
@@ -3511,7 +3558,7 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
 
     # Ver _menu_prediction: mesmo padrao de redesenho apos fechar [G].
     def _intro() -> None:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         console.print(Panel(
             Text.from_markup(f"  {intro}"),
             title=f"[bold {PS}]{_t('t_selecao_amostras')}[/bold {PS}]",
@@ -3657,7 +3704,7 @@ def _menu_audit(cfg: Optional[Config] = None) -> None:
     cfg = cfg or Config()
     lang = _lang()
     is_pt = lang == "PT"
-    _cls(); _print_header()
+    _cls(); _print_header(cfg)
 
     intro = (
         "Roda so' a auditoria de delineamento (agrupamento, confundimento "
@@ -3811,7 +3858,7 @@ def _menu_profiles(cfg: Config) -> None:
         _pause()
 
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
 
         t = Table(box=None, show_header=True, header_style=PM, padding=(0, 1))
         t.add_column("N",      style=PA, width=4, no_wrap=True)
@@ -4136,7 +4183,7 @@ def _menu_about(cfg: Optional[Config] = None) -> None:
     # Loop principal da secao Sobre
     while True:
         lang = _lang()
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
         _painel_identidade(lang)
 
         if lang == "PT":
@@ -4185,7 +4232,7 @@ def _menu_help(cfg: Optional[Config] = None) -> None:
     keys = [k for k in keys if not (k in seen or seen.add(k))]
 
     while True:
-        _cls(); _print_header()
+        _cls(); _print_header(cfg)
 
         t = Table(show_header=True, header_style=PM, box=rbox.SIMPLE, padding=(0, 1))
         t.add_column("N", style=PA, width=4, no_wrap=True)
@@ -4538,7 +4585,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
 
 def _rodar_pipeline(cfg: Config) -> None:
     lang = _lang()
-    _cls(); _print_header()
+    _cls(); _print_header(cfg)
 
     pode = _print_checklist(cfg)
     if not pode:
@@ -5144,7 +5191,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     while True:
         _cls()
-        _print_header()
+        _print_header(cfg)
         _print_status(cfg)
         console.print()
         _print_main_menu()
@@ -5181,7 +5228,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         elif escolha == "8": _menu_technique(cfg)
         elif escolha == "9": _menu_encoding(cfg)
         elif escolha == "H":
-            _cls(); _print_header(); _menu_hardware(cfg)
+            _cls(); _print_header(cfg); _menu_hardware(cfg)
         elif escolha == "B":
             _menu_prediction(cfg)
         elif escolha == "X":
