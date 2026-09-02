@@ -490,3 +490,82 @@ o detalhamento passo a passo. Resumo:
 - **Licença do DeepHS Fruit (Passo 110):** rascunho de e-mail aos
   autores preparado em `docs/RASCUNHOS_CONTATO.md` — **não enviado**,
   aguarda revisão/envio manual do usuário.
+
+### Passo 111 — HSI aceita dado do próprio usuário, offline
+
+Falha de arquitetura corrigida: até aqui, `run_hsi_pipeline` exigia
+`manifest.json` de um dataset público específico — o resto do GUARACI
+sempre aceitou pasta do próprio usuário; o HSI era a exceção.
+
+`hsi_io.load_hsi_folder_dataset(pasta)`: lê qualquer pasta com cubos
+ENVI (`.hdr`+`.bin`), convenção de subpasta-por-classe. Agrupamento por
+amostra física reaproveita a hierarquia de 3 níveis já validada no modo
+`imagem` (Bloco 8, 2026-08-25) — extraída para `agrupamento_pastas.py`
+em vez de duplicada. `run_hsi_pipeline` despacha automaticamente
+(presença de `manifest.json`) entre o caminho ORIGINAL (dataset
+público, validação externa por dia + explicabilidade química,
+inalterado) e o caminho NOVO (só validação interna group-aware, SEM
+explicabilidade química — a tabela `ATRIBUICAO_QUIMICA_VIS_FRUTA` é
+conhecimento específico do dataset público, aplicá-la a comprimento de
+onda arbitrário do usuário seria alegação científica falsa).
+
+**Prova de independência (contra-prova obrigatória, não alegação de
+prosa):** `tests/test_hsi_offline_prova.py` — cubo hiperespectral
+sintético gerado localmente (zero download), `socket.socket`
+monkeypatchado para levantar exceção em qualquer tentativa de conexão
+de rede, pipeline completo (leitura → quality gate → segmentação →
+classificação → mapa → confiança por objeto → validação) rodando sem
+tocar rede — medido, não afirmado.
+
+### Passo 112 — Investigação do problema `unripe` (Kiwi/VIS): 3 hipóteses testadas, nenhuma resolveu
+
+O achado do Passo 104 (tabela acima): `Kiwi/VIS` é a ÚNICA combinação
+com as 3 classes `n≥19`, mas `unripe` ainda sai com sensibilidade 0,00
+interna E externa. 3 hipóteses testadas contra o dataset real (código
+reprodutível em `tests/test_investigacao_unripe_kiwi_vis.py`, requer
+`GUARACI_DATASETS_DIR` apontando para `deephs_fruit_all/`):
+
+- **Hipótese A — seleção de banda química** (clorofila 660-680nm +
+  carotenoide/antocianina 500-550nm, mesma tabela de
+  `hsi_chemistry.ATRIBUICAO_QUIMICA_VIS_FRUTA`, 26 das 224 bandas):
+  **não melhora** — `unripe` permanece sens(int/ext)=0,00/0,00,
+  idêntico ao espectro completo. Restringir a banda quimicamente
+  "óbvia" não resgata o sinal.
+- **Hipótese B — fronteira contínua** (`storage_days`, metadado real de
+  dias de armazenamento, como proxy de maturação; PLS-R com CV
+  group-aware por dia): **não confirma** — Q²=-0,17 (sem generalização
+  entre dias, pior que prever a média), e a média predita de
+  `unripe` (6,36 dias) fica quase idêntica à de `perfect` (6,17 dias) —
+  recast contínuo não separa as classes melhor que a discreta. Ressalva
+  própria da hipótese: `storage_days` é um proxy RUIDOSO do rótulo
+  visual (`unripe` real tem `storage_days` médio de 6,2, MAIOR que o de
+  `perfect`, 5,2 — avaliação humana visual não é função determinística
+  do tempo de armazenamento neste dataset).
+- **Hipótese C — sobreposição espectral real**: medida com Mahalanobis
+  entre centroides (espectro médio por objeto, `unripe` n=28 vs.
+  `perfect` n=39) em PCA de baixa dimensão (2 componentes, 86,7% da
+  variância, matriz bem condicionada) = **0,384** — distância PEQUENA.
+  Efeito por-banda (|diferença de média|/desvio-padrão combinado,
+  espectro completo, sem PCA): mediana **0,376**, máximo 0,803 — efeito
+  fraco-a-moderado, não uma separação clara. **Achado metodológico
+  colateral**: a MESMA distância de Mahalanobis calculada em PCA de
+  alta dimensão (10 componentes, 99,9% da variância) sobe para 1,048 —
+  não porque há mais separação real, mas por MAL-CONDICIONAMENTO da
+  covariância estimada com poucas amostras (n≈30-40/classe) em
+  dimensão alta (achado desta investigação, não hipotético — medido e
+  reportado em `tests/test_investigacao_unripe_kiwi_vis.py`, que
+  confirma explicitamente que o número cresce com a dimensão). A
+  leitura confiável (baixa dimensão, bem condicionada) e o efeito
+  por-banda univariado concordam: **sobreposição espectral substancial
+  entre `unripe` e `perfect`** nesta câmera/resolução (397-1004nm,
+  Specim FX10).
+
+**Fechamento**: nenhuma das 3 hipóteses resgatou a classificação de
+`unripe`. A evidência mais robusta (Hipótese C, medida com cuidado
+metodológico contra o próprio artefato que ela quase produziu) aponta
+para **limite real de separabilidade espectral** entre os estágios
+`unripe`/`perfect` de Kiwi nesta banda de câmera — não um bug de
+implementação, não resolvível só com seleção de banda (A) nem com
+reformulação contínua (B). Nenhuma das 3 foi implementada como opção
+configurável no pipeline (nenhuma mostrou melhora real que justificasse
+isso). 4 testes novos, suíte completa, ruff/mypy limpos.

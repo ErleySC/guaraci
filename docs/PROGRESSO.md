@@ -1,3 +1,41 @@
+# PROGRESSO — Passo 112 (2026-09-02)
+
+## Passo 112 — Investigação do `unripe` (Kiwi/VIS): 3 hipóteses, nenhuma resolveu
+
+Achado do Passo 104: `Kiwi/VIS` é a ÚNICA combinação do DeepHS Fruit com
+as 3 classes `n≥19`, mas `unripe` sai com sensibilidade 0,00 interna E
+externa mesmo assim — não é só falta de amostra. Investigação rigorosa
+de 3 hipóteses, código em `tests/test_investigacao_unripe_kiwi_vis.py`
+(gated por `GUARACI_DATASETS_DIR`, reproduzível):
+
+- **A (banda química)**: restringir a 26 bandas de clorofila
+  (660-680nm) + carotenoide/antocianina (500-550nm) — mesma tabela de
+  `hsi_chemistry.py` — **não melhora** `unripe` (permanece 0,00/0,00).
+- **B (fronteira contínua)**: PLS-R de `storage_days` (proxy real de
+  maturação) com CV group-aware por dia — **Q²=-0,17** (sem
+  generalização), e a média predita de `unripe` (6,36 dias) fica quase
+  igual à de `perfect` (6,17 dias). Achado extra: `storage_days` em si
+  é um proxy ruidoso do rótulo visual (`unripe` tem média de dias MAIOR
+  que `perfect` neste dataset).
+- **C (sobreposição espectral)**: Mahalanobis(unripe, perfect) em PCA
+  de 2 componentes (bem condicionado) = 0,384 — pequena. Efeito
+  por-banda mediano = 0,376 — fraco-moderado. **Achado metodológico
+  colateral medido**: a mesma distância em PCA de 10 componentes sobe
+  pra' 1,048 só por mal-condicionamento da covariância (n≈30-40/classe
+  em dimensão alta) — artefato explicitamente identificado e reportado,
+  não confundido com separação real.
+
+**Conclusão honesta**: nenhuma hipótese resgatou a classificação. A
+evidência mais robusta (C, medida com controle do próprio artefato de
+mal-condicionamento) indica limite real de separabilidade espectral
+entre `unripe`/`perfect` de Kiwi nesta câmera (Specim FX10,
+397-1004nm) — não bug de implementação. Nenhuma hipótese virou opção
+configurável (nenhuma mostrou melhora que justificasse). `docs/
+VALIDACAO_PUBLICA.md` §7 atualizado com os números completos. 4 testes
+novos, suíte completa (1170 passed), ruff/mypy limpos.
+
+---
+
 # PROGRESSO — Passo 111 (2026-09-02)
 
 ## Passo 111 — HSI aceita dado do próprio usuário, offline (INSTRUCAO_HSI_DADO_PROPRIO.md)
