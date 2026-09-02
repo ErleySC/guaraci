@@ -80,6 +80,7 @@ RISK_CLASS: Dict[str, str] = {
     "perfil_matriz": "ANALITICO",
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
     "coluna_concentracao": "ANALITICO", "imagem_incluir_textura": "ANALITICO",
+    "hsi_pasta_dataset": "ANALITICO",
     # AVANCADO
     "benchmark": "AVANCADO", "monte_carlo": "AVANCADO",
     "shap_benchmark": "AVANCADO", "n_monte_carlo": "AVANCADO",
@@ -92,6 +93,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "pasta_saida":                  {"PT": "Pasta de saida",          "EN": "Output folder"},
     "tag":                          {"PT": "Sufixo da pasta saida",   "EN": "Output folder tag"},
     "modo_entrada":                 {"PT": "Modo de entrada",         "EN": "Input mode"},
+    "hsi_pasta_dataset":            {"PT": "Pasta do dataset HSI",    "EN": "HSI dataset folder"},
     "perfil_matriz":                {"PT": "Perfil de matriz",        "EN": "Matrix profile"},
     "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
     "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
@@ -629,6 +631,25 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": "dados", "range": "Valid system path",
     },
+    "hsi_pasta_dataset": {
+        "PT": {
+            "desc": "Pasta do dataset HSI (manifest.json + arquivos ENVI .hdr/.bin) "
+                    "-- so' usada quando modo_entrada='hsi'. Ver "
+                    "scripts/download_datasets/baixar_deephs_kaki.py para obter um dataset.",
+            "impacto": "ANALITICO — define os dados de entrada do pipeline HSI.",
+            "exemplos": {"": "Nao configurado (mode hsi pede a pasta na tela [X])",
+                         r"C:\datasets\deephs_kaki_vis": "Pasta baixada pelo script"},
+        },
+        "EN": {
+            "desc": "HSI dataset folder (manifest.json + ENVI .hdr/.bin files) -- "
+                    "only used when modo_entrada='hsi'. See "
+                    "scripts/download_datasets/baixar_deephs_kaki.py to obtain a dataset.",
+            "impacto": "ANALYTICAL — defines the HSI pipeline input data.",
+            "exemplos": {"": "Not configured (mode hsi asks for the folder in screen [X])",
+                         r"C:\datasets\deephs_kaki_vis": "Folder downloaded by the script"},
+        },
+        "default": "", "range": "Valid system path (or empty)",
+    },
     "pasta_saida": {
         "PT": {
             "desc": "Pasta onde os resultados (figuras, metricas, relatorios) serao gravados.",
@@ -645,21 +666,25 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     "modo_entrada": {
         "PT": {
             "desc": "Origem dos dados de entrada: dx (espectros JCAMP-DX) | csv | "
-                    "imagem (colorimetria digital, prototipo) | sintetico (testes).",
+                    "imagem (colorimetria digital, prototipo) | hsi (imageamento "
+                    "hiperespectral, prototipo 'minimo viavel') | sintetico (testes).",
             "impacto": "ANALITICO — define o formato de leitura e parsing dos dados.",
             "exemplos": {"dx": "Espectros JCAMP-DX (FT-NIR, Raman, MIR)", "csv": "Tabela generica com colunas espectrais",
                          "imagem": "Fotos (1 subpasta por classe) -> features de cor RGB/HSV/Lab",
+                         "hsi": "Cubo hiperespectral ENVI (.hdr+.bin) -> classificacao por pixel",
                          "sintetico": "Dados simulados para teste do pipeline"},
         },
         "EN": {
             "desc": "Input data source: dx (JCAMP-DX spectra) | csv | "
-                    "imagem (digital colorimetry, prototype) | synthetic (for testing).",
+                    "imagem (digital colorimetry, prototype) | hsi (hyperspectral "
+                    "imaging, 'minimum viable' prototype) | synthetic (for testing).",
             "impacto": "ANALYTICAL — defines the data reading and parsing format.",
             "exemplos": {"dx": "JCAMP-DX spectra (FT-NIR, Raman, MIR)", "csv": "Generic table with spectral columns",
                          "imagem": "Photos (1 subfolder per class) -> RGB/HSV/Lab color features",
+                         "hsi": "Hyperspectral ENVI cube (.hdr+.bin) -> per-pixel classification",
                          "sintetico": "Simulated data for pipeline testing"},
         },
-        "default": "dx", "range": "dx | csv | imagem | sintetico",
+        "default": "dx", "range": "dx | csv | imagem | hsi | sintetico",
     },
     "perfil_matriz": {
         "PT": {
@@ -1361,7 +1386,7 @@ MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
     "dados": ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
               "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
-              "excluir_classes", "imagem_incluir_textura"],
+              "excluir_classes", "imagem_incluir_textura", "hsi_pasta_dataset"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "ddsimca_pcv",

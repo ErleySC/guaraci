@@ -130,6 +130,13 @@
       "opcoes": null,
       "tipo": "float"
     },
+    "hsi_pasta_dataset": {
+      "attr": "hsi_dataset_folder",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
     "imagem_incluir_textura": {
       "attr": "include_image_texture",
       "max": null,
@@ -162,6 +169,7 @@
         "dx",
         "csv",
         "imagem",
+        "hsi",
         "sintetico"
       ],
       "tipo": "choice"
@@ -734,6 +742,11 @@
             "nome": "include_image_texture",
             "tem_default": true,
             "tipo": "bool"
+          },
+          {
+            "nome": "hsi_dataset_folder",
+            "tem_default": true,
+            "tipo": "str"
           },
           {
             "nome": "output_root_folder",
@@ -1513,6 +1526,11 @@
             "tipo": "bool"
           },
           {
+            "nome": "hsi_dataset_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "output_root_folder",
             "tem_default": true,
             "tipo": "str"
@@ -2156,6 +2174,12 @@
       },
       "parse_envi_header": {
         "assinatura": "(texto: 'str') -> 'Dict[str, str]'",
+        "forma": "funcao"
+      }
+    },
+    "hsi_pipeline": {
+      "run_hsi_pipeline": {
+        "assinatura": "(cfg: \"'Config'\", *, fracao_teste_interno: 'float' = 0.2, n_dias_externos: 'int' = 2, seed: 'int' = 42) -> 'Dict[str, object]'",
         "forma": "funcao"
       }
     },

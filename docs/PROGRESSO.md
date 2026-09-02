@@ -192,6 +192,55 @@ insuficiente para qualquer split aprender o padrao. Nao e' escondido:
 e' exatamente o tipo de "queda/limitacao real" que a instrucao pede
 para documentar, nao maquiar.
 
+## Passo 102 — Integracao ao menu/CLI
+
+`src/guaraci/hsi_pipeline.py` (novo): orquestra leitura -> quality gate
+-> segmentacao -> classificacao por pixel -> mapa espacial ->
+explicabilidade -> validacao externa numa unica chamada. Modo `hsi`
+adicionado a `Config.mode`/`_CONFIG_SPEC` -- DISTINTO do modo `imagem`
+(docstring do modulo explica a diferenca: HSI e' por pixel, `imagem` e'
+por foto inteira; nunca confundidos no menu/docs, requisito explicito
+da instrucao).
+
+Acessivel pela tecla **[X]** do menu principal da CLI (`_menu_hsi` em
+guaraci.py) -- testado de ponta a ponta pelo caminho REAL do usuario
+(`tests/test_menu_hsi.py::test_menu_hsi_roda_pipeline_completo_via_cli`,
+digita o caminho da pasta na tela, nao chama `run_hsi_pipeline`
+diretamente). Novo campo `hsi_dataset_folder` (`hsi_pasta_dataset` no
+YAML) alcancavel nas 2 interfaces -- as redes de seguranca sistemicas
+do projeto (`test_todo_campo_do_spec_e_alcancavel_por_algum_menu`,
+`test_todo_campo_do_config_spec_aparece_no_app`/`no_menu_cli`) pegaram
+a lacuna automaticamente antes do commit, exatamente a classe de bug
+que esses testes existem para prevenir.
+
+`hsi_pasta_dataset` adicionado a `ALIASES_COM_CAMINHO_PROPRIO`
+(cli_assistente.py) -- tem caminho de edicao proprio e melhor
+(`_menu_hsi` valida `manifest.json` antes de aceitar) que o editor
+generico de campo.
+
+7 modulos HSI puros (`hsi_io/quality/segmentation/pixels/
+classification/chemistry/validation.py`) adicionados ao gate de mypy
+do CI (`.github/workflows/test.yml`) -- 2 erros reais de tipo achados e
+corrigidos em `hsi_validation.py` (parametro reatribuido com tipo
+incompativel; retorno `Dict[str, object]` de `fit_predict_pixel_plsda`
+usado sem `cast` explicito).
+
+README.md/README.pt-br.md/docs/MANUAL.md atualizados: modo `hsi`
+listado ao lado de NIR/MIR tabular e do modo `imagem`, com a mesma
+ressalva de maturidade ja' usada para `imagem` (protótipo, nao usar
+para resultado publicavel sem validacao adicional).
+
+Suite completa (1108 testes, incluindo o teste de propriedade
+obrigatorio do Passo 97) + ruff + mypy (7 modulos novos) limpos antes
+do commit.
+
+**Fatia "minimo viavel" da INSTRUCAO_HSI_MINIMO_VIAVEL.md concluida
+(Passos 92-102).** Fora de escopo por decisao consciente (registrado
+tambem no proprio arquivo da instrucao): deep learning, spectral
+unmixing, domain adaptation/few-shot learning, fusao multimodal, sensor
+multiespectral embarcado, arquitetura "detector de matriz + especialista
+por matriz".
+
 ---
 
 # PROGRESSO — Passos 84-87 (2026-08-27)

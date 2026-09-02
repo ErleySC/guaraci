@@ -167,17 +167,18 @@ def test_assistente_opcao_5_chama_faq(monkeypatch):
     assert chamado.get("ok") is True
 
 
-# ── _guaraci_navegar_secoes cobre as 18 abas reais (achado do Agente 6) ──
+# ── _guaraci_navegar_secoes cobre as 19 abas reais (achado do Agente 6 +
+#    "X" de HSI, Passo 102) ──────────────────────────────────────────────
 
-def test_navegar_secoes_cobre_todas_as_18_abas_reais():
+def test_navegar_secoes_cobre_todas_as_19_abas_reais():
     """Lista confirmada pelo Agente 1 (auditoria funcional, nao suposta):
-    18 abas -- 1-9, H, B, J, U, K, P, G, ?, A. "G" fica fora do proprio
-    indice (e' o assistente, navegar ate ele de dentro dele e' circular).
-    Antes desta correcao, so' 8 apareciam aqui."""
+    19 abas -- 1-9, H, B, X, J, U, K, P, G, ?, A ("X" = HSI, Passo 102).
+    "G" fica fora do proprio indice (e' o assistente, navegar ate ele de
+    dentro dele e' circular). Antes desta correcao, so' 8 apareciam aqui."""
     teclas_com_t_d = {k for k, _, _ in guaraci_mod._SECOES_NAVEGAVEIS}
     teclas_indice = teclas_com_t_d | {"A"}   # "A" (Sobre) e' adicionado a parte
     esperado = {"1", "2", "3", "4", "5", "6", "7", "8", "9",
-                "H", "B", "J", "U", "K", "P", "?", "A"}
+                "H", "B", "X", "J", "U", "K", "P", "?", "A"}
     assert teclas_indice == esperado
 
 

@@ -820,7 +820,12 @@ def test_todo_campo_do_spec_e_alcancavel_por_algum_menu(guaraci_mod):
     #   nome_execucao: mesmo atributo de "tag" (attr="tag" no spec), editado
     #   pelo prompt dedicado "Identificador atual / Novo identificador" em
     #   _rodar_pipeline()/main(), nao pelo menu numerado generico.
-    ALIASES_COM_CAMINHO_PROPRIO = {"nome_execucao"}
+    #   hsi_pasta_dataset: editado pelo prompt dedicado "Pasta do dataset
+    #   HSI" em _menu_hsi (Passo 102) -- valida (manifest.json presente)
+    #   e ja' aciona o pipeline na mesma tela, melhor UX que o editor
+    #   generico de campo para um caminho que precisa ser validado antes
+    #   de rodar.
+    ALIASES_COM_CAMINHO_PROPRIO = {"nome_execucao", "hsi_pasta_dataset"}
 
     todas_chaves = set(guaraci_mod._SPEC_BY_KEY.keys())
     alcancaveis = set()

@@ -40,8 +40,9 @@ _PRE_PROC_INV: Dict[str, str] = {v: k for k, v in _PRE_PROC_FRIENDLY.items()}
 _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "modo_entrada", "attr": "mode", "tipo": "choice",
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
-             "imagem (colorimetria digital, prototipo) | sintetico (teste)",
-     "opcoes": ["dx", "csv", "imagem", "sintetico"]},
+             "imagem (colorimetria digital, prototipo) | hsi (imageamento "
+             "hiperespectral, prototipo minimo viavel) | sintetico (teste)",
+     "opcoes": ["dx", "csv", "imagem", "hsi", "sintetico"]},
     {"key": "perfil_matriz", "attr": "matrix_profile", "tipo": "choice",
      "desc": "Perfil da matriz analisada (faixa espectral, pre-processamento "
              "padrao e vocabulario da saida vem daqui, nao do codigo). "
@@ -62,6 +63,10 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "opcoes": [""] + perfis_disponiveis(apenas="tecnica")},
     {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
      "desc": "Pasta com os arquivos .dx OU imagens (mode dx/imagem; uma subpasta por classe)",
+     "opcoes": None},
+    {"key": "hsi_pasta_dataset", "attr": "hsi_dataset_folder", "tipo": "str",
+     "desc": "Pasta com o dataset HSI (manifest.json + arquivos ENVI .hdr/.bin; "
+             "mode hsi) -- ver scripts/download_datasets/baixar_deephs_kaki.py",
      "opcoes": None},
     {"key": "imagem_incluir_textura", "attr": "include_image_texture", "tipo": "bool",
      "desc": "Modo imagem: incluir features de textura (GLCM) alem de cor "

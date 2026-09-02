@@ -305,6 +305,7 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 | `dx` | Espectros JCAMP-DX (FT-NIR/Raman/MIR) | Padrão; uma subpasta por classe |
 | `csv` | Tabela genérica (colunas espectrais + uma coluna de classe) | Qualquer dado tabular |
 | `imagem` | Colorimetria digital (protótipo só sem garantia de agrupamento — ver adiante) | Ver adiante |
+| `hsi` | Imageamento hiperespectral (protótipo "mínimo viável" — ver adiante) | Distinto de `imagem`: por pixel, não por foto |
 | `sintetico` | Dados simulados | Para testes/demonstração |
 
 **Modo `imagem` (colorimetria digital):** extrai estatísticas de
@@ -388,6 +389,33 @@ dados/Puro/foto2.jpg
 Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
 usuário definir a região de interesse via `image_crop` (recorte
 retangular relativo, `config.yaml`) antes da extração.
+
+**Modo `hsi` (imageamento hiperespectral, protótipo "mínimo viável"):**
+DISTINTO do mode `imagem` acima — opera **por pixel** de um cubo
+hiperespectral (formato ENVI, par `.hdr`+`.bin`), não por foto inteira.
+Fluxo: quality gate (saturação, SNR, fração de pixels válidos) →
+segmentação objeto/fundo (PCA+Otsu) → extração dos pixels da ROI, cada
+um marcado com o `group_id` do objeto físico de origem (mesmo conceito
+de `mae_id`, nunca dois pixels do mesmo objeto em lados diferentes de
+um split) → PLS-DA por pixel (reaproveita `PLSDAClassifier`) com
+agregação por objeto (classe majoritária + heterogeneidade) → mapa de
+classificação espacial → explicabilidade cruzada (VIP × tabela de
+atribuição química) → validação externa por partição nativa de dia de
+medição.
+
+Acessível pela tecla **`[X]`** do menu principal da CLI
+(`hsi_dataset_folder` aponta para a pasta com `manifest.json` + os
+arquivos ENVI — ver `scripts/download_datasets/baixar_deephs_kaki.py`
+para obter o dataset público usado na validação). Orquestrado por
+`hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a forma
+de dado (por pixel, agregação por objeto) é fundamentalmente diferente
+da matriz amostras×variáveis que os demais modes compartilham.
+
+Validado com o dataset público DeepHS Fruit (Kaki/câmera VIS, Varga,
+Makowski & Zell, IJCNN 2021) — desempenho ainda modesto (desbalanceamento
+severo de classes no dataset), números honestos em
+`docs/VALIDACAO_PUBLICA.md` §7 e `docs/PROGRESSO.md`. Não usar para
+resultado publicável sem validação adicional em dado próprio.
 
 ---
 
@@ -915,6 +943,15 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e mode sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
 | `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.mode` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
 | `dados_imagem.py` | Colorimetria digital (`mode="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
+| `hsi_io.py` | Leitor ENVI (`.hdr`+`.bin`) genérico + leitor específico do dataset DeepHS Fruit/Kaki (`mode="hsi"`) |
+| `hsi_quality.py` | Quality gate de cubo HSI: saturação, SNR (Immerkaer 1996), fração de pixels válidos |
+| `hsi_segmentation.py` | Segmentação objeto/fundo por PCA(PC1)+Otsu, inferência de fundo pela borda da cena |
+| `hsi_pixels.py` | Extração de espectros de pixel da ROI + `group_id` de objeto físico (base do split group-aware) |
+| `hsi_classification.py` | PLS-DA por pixel (reaproveita `PLSDAClassifier`), seleção de LVs por Wold, agregação por objeto |
+| `hsi_chemistry.py` | Explicabilidade cruzada: VIP × tabela de atribuição química (banda↔composto conhecido) |
+| `hsi_validation.py` | Validação externa por partição nativa de dia/lote — sensibilidade/especificidade/precisão sempre separadas |
+| `hsi_figures.py` | Mapa de classificação espacial por pixel (reaproveita `figuras.save` e a paleta da mascote) |
+| `hsi_pipeline.py` | Orquestração ponta-a-ponta do `mode="hsi"` (não usa `pipeline.executar()` — forma de dado diferente) |
 | `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `build_preprocessor` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
 | `figuras.py` | Camada de plotagem (todas as figuras do pipeline, incluindo `fig_merito_regressao`) |

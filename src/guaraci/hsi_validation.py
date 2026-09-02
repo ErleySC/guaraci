@@ -19,13 +19,14 @@ esconderia queda de desempenho no externo.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, cast
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, precision_score, recall_score
 
 from guaraci.figuras import specificity_by_class
-from guaraci.hsi_classification import fit_predict_pixel_plsda
+from guaraci.hsi_classification import (ObjectAggregationResult,
+                                        fit_predict_pixel_plsda)
 from guaraci.hsi_pixels import build_pixel_dataset
 
 __all__ = ["ExternalValidationReport", "run_external_validation_by_day"]
@@ -81,19 +82,19 @@ def run_external_validation_by_day(
 
     `dias` deve ter o MESMO comprimento de `cubos`/`mascaras`/
     `group_ids`/`rotulos` (1 entrada por gravacao)."""
-    dias = np.asarray(dias)
+    dias_arr = np.asarray(dias)
     n = len(cubos)
-    if not (len(mascaras) == len(group_ids) == len(rotulos) == len(dias) == n):
+    if not (len(mascaras) == len(group_ids) == len(rotulos) == len(dias_arr) == n):
         raise ValueError(
             "run_external_validation_by_day: todas as sequencias de "
             "entrada devem ter o mesmo comprimento (1 por gravacao).")
 
-    e_externo = np.isin(dias, list(dias_externos))
+    e_externo = np.isin(dias_arr, list(dias_externos))
     if not e_externo.any():
         raise ValueError(
             f"Nenhuma gravacao pertence a dias_externos={list(dias_externos)} "
             f"-- confira os valores de `dias` (dias disponiveis: "
-            f"{sorted(set(dias.tolist()))}).")
+            f"{sorted(set(dias_arr.tolist()))}).")
     if e_externo.all():
         raise ValueError(
             "Todas as gravacoes pertencem a dias_externos -- nao sobra "
@@ -129,15 +130,17 @@ def run_external_validation_by_day(
         pg_dev[~mascara_teste_interno],
         X_ext, pg_ext,   # predicoes no conjunto EXTERNO
         max_lvs=max_lvs, n_splits_wold=n_splits_wold, seed=seed)
-    predicoes_externo = resultado["predicoes_objeto"]
-    n_components = resultado["n_components"]
+    predicoes_externo = cast(Dict[str, ObjectAggregationResult],
+                             resultado["predicoes_objeto"])
+    n_components = cast(int, resultado["n_components"])
 
     resultado_interno = fit_predict_pixel_plsda(
         X_dev[~mascara_teste_interno], y_dev[~mascara_teste_interno],
         pg_dev[~mascara_teste_interno],
         X_dev[mascara_teste_interno], pg_dev[mascara_teste_interno],
         n_components=n_components)   # MESMO n_components do modelo externo
-    predicoes_interno = resultado_interno["predicoes_objeto"]
+    predicoes_interno = cast(Dict[str, ObjectAggregationResult],
+                             resultado_interno["predicoes_objeto"])
 
     classes = sorted(set(rotulos))
     y_real_interno = {g: y_dev[pg_dev == g][0] for g in objetos_teste_interno}

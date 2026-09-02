@@ -351,6 +351,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_hardware":   "Hardware",
         "t_perfis":     "Perfis Prontos",
         "t_predicao":   "Predicao em Lote",
+        "t_hsi":        "Imageamento Hiperespectral",
         "t_planejamento": "Planejamento de Coleta",
         "t_selecao_amostras": "Selecao de Amostras",
         "t_auditoria":  "Auditoria de Delineamento",
@@ -373,6 +374,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         # (achado do Agente 6, docs/DESIGN.md): so' existiam d_ das 12
         # abas com campo de _CONFIG_SPEC associado.
         "d_predicao":       "Aplica modelo .joblib a espectros novos.",
+        "d_hsi":            "Cubo hiperespectral: quality gate, segmentacao, classificacao por pixel.",
         "d_planejamento":   "Tamanho amostral e plano de coleta.",
         "d_auditoria":      "Checagens de delineamento anti-vazamento.",
         "d_selecao_amostras": "Divide CSV em calibracao/validacao.",
@@ -517,6 +519,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_hardware":   "Hardware",
         "t_perfis":     "Ready Profiles",
         "t_predicao":   "Batch Prediction",
+        "t_hsi":        "Hyperspectral Imaging",
         "t_planejamento": "Collection Planning",
         "t_selecao_amostras": "Sample Selection",
         "t_auditoria":  "Design Audit",
@@ -535,6 +538,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_perfis":     "Ready-to-use configurations.",
         "d_ajuda":      "Interactive field documentation.",
         "d_predicao":       "Applies a .joblib model to new spectra.",
+        "d_hsi":            "Hyperspectral cube: quality gate, segmentation, per-pixel classification.",
         "d_planejamento":   "Sample size and collection plan.",
         "d_auditoria":      "Anti-leakage design checks.",
         "d_selecao_amostras": "Splits a CSV into calibration/validation.",
@@ -1082,6 +1086,7 @@ _SECOES_NAVEGAVEIS: List[Tuple[str, str, str]] = [
     ("9", "t_codigos", "d_codigos"),
     ("H", "t_hardware", "d_hardware"),
     ("B", "t_predicao", "d_predicao"),
+    ("X", "t_hsi", "d_hsi"),
     ("J", "t_planejamento", "d_planejamento"),
     ("U", "t_auditoria", "d_auditoria"),
     ("K", "t_selecao_amostras", "d_selecao_amostras"),
@@ -1602,7 +1607,7 @@ def _print_main_menu() -> None:
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_prever"), cor=S)), Text.from_markup(""))
-    t.add_row(*row("B", _t("t_predicao"), style1=S))
+    t.add_row(*row("B", _t("t_predicao"), "X", _t("t_hsi"), style1=S, style2=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
@@ -3234,6 +3239,103 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
     ))
     console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
                   f"{escape(cam_saida)}")
+    _pause()
+
+
+def _menu_hsi(cfg: Optional[Config] = None) -> None:
+    """Imageamento hiperespectral (HSI, mode='hsi', prototipo "minimo
+    viavel" -- Passos 92-102 da INSTRUCAO_HSI_MINIMO_VIAVEL.md).
+
+    DISTINTO do mode "imagem" (colorimetria de foto comum, tecla [K] da
+    lista de fields de _menu_data): HSI opera POR PIXEL de um cubo
+    hiperespectral (ENVI .hdr+.bin), com quality gate, segmentacao,
+    classificacao por pixel + agregacao por objeto, explicabilidade
+    cruzada com banda quimica e validacao externa por dia de medicao --
+    fluxo orquestrado por `hsi_pipeline.run_hsi_pipeline`, nao pelo
+    `pipeline.executar()` usado pelos outros modes (forma de dado
+    diferente, ver docstring de hsi_pipeline.py).
+    """
+    if cfg is None:
+        cfg = Config()
+    lang = _lang()
+    is_pt = lang == "PT"
+
+    intro = (
+        "Roda o pipeline HSI (leitura -> quality gate -> segmentacao -> "
+        "classificacao por pixel -> mapa espacial -> explicabilidade "
+        "quimica -> validacao externa) sobre um dataset ja' baixado com "
+        "scripts/download_datasets/baixar_deephs_kaki.py. Prototipo "
+        "'minimo viavel', validado com o dataset publico DeepHS Fruit "
+        "(Kaki/VIS) -- ver docs/VALIDACAO_PUBLICA.md secao 7."
+        if is_pt else
+        "Runs the HSI pipeline (reading -> quality gate -> segmentation -> "
+        "per-pixel classification -> spatial map -> chemical "
+        "explainability -> external validation) over a dataset already "
+        "downloaded with scripts/download_datasets/baixar_deephs_kaki.py. "
+        "'Minimum viable' prototype, validated against the DeepHS Fruit "
+        "public dataset (Kaki/VIS) -- see docs/VALIDACAO_PUBLICA.md "
+        "section 7."
+    )
+
+    _cls(); _print_header()
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_hsi')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}][0][/{PM}] {_t('voltar')}")
+    console.print()
+
+    lbl_pasta = ("Pasta do dataset HSI (com manifest.json)" if is_pt
+                else "HSI dataset folder (with manifest.json)")
+    default_pasta = getattr(cfg, "hsi_dataset_folder", "") or ""
+    sufixo = f" [{default_pasta}]" if default_pasta else ""
+    pasta = _ask(f"  [{PA}]{lbl_pasta}{sufixo}:[/{PA}] ").strip().strip('"')
+    if pasta == "0":
+        return
+    if not pasta:
+        pasta = default_pasta
+    if not pasta or not os.path.isfile(os.path.join(pasta, "manifest.json")):
+        msg = (f"Pasta invalida ou sem manifest.json: {pasta}" if is_pt
+              else f"Invalid folder or missing manifest.json: {pasta}")
+        console.print(f"  [{PR}]{msg}[/{PR}]")
+        _pause(); return
+
+    cfg.mode = "hsi"
+    cfg.hsi_dataset_folder = pasta
+
+    from guaraci.hsi_pipeline import run_hsi_pipeline
+    console.print(f"  [{PM}]{'Rodando pipeline HSI...' if is_pt else 'Running HSI pipeline...'}[/{PM}]")
+    try:
+        resumo = run_hsi_pipeline(cfg)
+    except Exception as e:  # noqa: BLE001 -- reporta erro completo, nunca engole
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {e}[/{PR}]")
+        _pause(); return
+
+    linhas = [
+        f"  {'Gravacoes aceitas' if is_pt else 'Accepted recordings'}: "
+        f"{resumo['n_gravacoes_aceitas']}/{resumo['n_gravacoes_total']} "
+        f"({'rejeitadas pelo quality gate' if is_pt else 'rejected by quality gate'}: "
+        f"{resumo['n_gravacoes_rejeitadas']})",
+        f"  {'Variaveis latentes (Wold)' if is_pt else 'Latent variables (Wold)'}: "
+        f"{resumo['n_components']}",
+    ]
+    val = resumo["validacao_externa"]
+    linhas.append(f"  {'Validacao externa' if is_pt else 'External validation'}: "
+                  f"n_interno={val.n_objetos_teste_interno}, "
+                  f"n_externo={val.n_objetos_teste_externo}")
+    for classe in val.classes:
+        linhas.append(
+            f"    {classe}: sens(int/ext)="
+            f"{val.sensibilidade_interna[classe]:.2f}/"
+            f"{val.sensibilidade_externa[classe]:.2f}")
+    console.print(Panel(
+        "\n".join(linhas),
+        title=f"[bold {PG}]{'Resultado' if is_pt else 'Result'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
+                  f"{escape(cfg.output_folder)}")
     _pause()
 
 
@@ -5082,6 +5184,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             _cls(); _print_header(); _menu_hardware(cfg)
         elif escolha == "B":
             _menu_prediction(cfg)
+        elif escolha == "X":
+            _menu_hsi(cfg)
         elif escolha == "J":
             _menu_plan(cfg)
         elif escolha == "U":

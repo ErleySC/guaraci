@@ -374,5 +374,20 @@ detalhamento passo a passo. Resumo do estado nesta rodada:
   vezes contra-intuitivos (n pequeno por classe/partição), reportados
   sem suavizar — inclusive `unripe` com sensibilidade zero nas duas
   partições (só 2 gravações dessa classe no dataset inteiro).
-- **Integração ao menu/CLI (Passo 102):** ainda não implementada nesta
-  rodada — em andamento.
+- **Integração ao menu/CLI (Passo 102):** `hsi_pipeline.run_hsi_pipeline`
+  orquestra o fluxo completo (leitura → quality gate → segmentação →
+  classificação por pixel → mapa espacial → explicabilidade → validação
+  externa) numa única chamada, distinto do `mode="imagem"` (nunca
+  confundidos — ver docstring de `hsi_pipeline.py`). Acessível pela tecla
+  `[X]` do menu principal da CLI (`_menu_hsi`), testado de ponta a ponta
+  contra o dataset real, inclusive pelo caminho do usuário (digitar o
+  caminho da pasta na tela, não chamar a função Python diretamente).
+  Novo campo `hsi_dataset_folder`/`hsi_pasta_dataset` no `_CONFIG_SPEC`,
+  alcançável nas duas interfaces (CLI e app web) e coberto pelas redes de
+  segurança sistêmicas do projeto (`test_todo_campo_do_spec_e_alcancavel_
+  por_algum_menu`, `test_todo_campo_do_config_spec_aparece_no_app/no_
+  menu_cli`).
+
+**Fatia "mínimo viável" (Passos 92-102) concluída** — pipeline HSI
+completo, testado contra dado público real em cada etapa, integrado ao
+menu principal da CLI.

@@ -67,6 +67,13 @@ jobs:
             src/guaraci/sentinela_deriva.py \
             src/guaraci/predicao.py \
             src/guaraci/io_registry.py \
+            src/guaraci/hsi_io.py \
+            src/guaraci/hsi_quality.py \
+            src/guaraci/hsi_segmentation.py \
+            src/guaraci/hsi_pixels.py \
+            src/guaraci/hsi_classification.py \
+            src/guaraci/hsi_chemistry.py \
+            src/guaraci/hsi_validation.py \
             src/guaraci/config_io.py \
             src/guaraci/perfil_matriz.py \
             src/guaraci/plano_coleta.py \

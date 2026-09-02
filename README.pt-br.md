@@ -93,6 +93,7 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 - **Transferência de calibração** (Direct/Piecewise Direct Standardization) e **seleção do conjunto de calibração** (Kennard-Stone, Duplex, SPXY) para mover um modelo entre instrumentos ou escolher um subconjunto representativo a partir de dados já medidos.
 - **Sentinela de deriva do domínio de aplicabilidade**: acumula a taxa de rejeição AD (dentro/fora do domínio) ao longo de execuções sucessivas de predição em lote e testa formalmente (teste binomial exato, H0: taxa = alfa nominal) se ela está subindo — sinal de deriva de instrumento/processo desde a calibração. Estado persistido em JSON ao lado do modelo; atualizado automaticamente pela Predição em Lote da CLI.
 - **Modo imagem (colorimetria digital, protótipo)**: converte fotos (RGB/HSV/Lab, opcionalmente textura GLCM) na mesma matriz numérica que os outros modos consomem — PCA, PLS-DA, DD-SIMCA etc. funcionam sem alteração. Detecta automaticamente o nível de garantia de agrupamento contra vazamento de réplicas disponível na pasta de dados (subpasta por amostra física / CSV de associação manual / nenhum) e declara o nível usado no log, no model card e no manifesto — nunca finge uma garantia que não tem.
+- **Modo HSI (imageamento hiperespectral, protótipo "mínimo viável")**: DISTINTO do modo imagem — opera POR PIXEL de um cubo hiperespectral (formato ENVI, `.hdr`+`.bin`), não por foto inteira. Quality gate (saturação/SNR/pixels válidos), segmentação PCA+Otsu, PLS-DA por pixel com agregação por objeto físico (voto majoritário + heterogeneidade), mapa de classificação espacial, explicabilidade cruzada VIP×banda química e validação externa por partição de dia/lote — tudo reaproveitando a maquinaria PLS-DA/VIP/group-aware já existente. Acessível pela tecla `[X]` do menu principal da CLI. Validado com dado público real (DeepHS Fruit/Kaki, Varga, Makowski & Zell 2021) — desempenho ainda modesto (ver `docs/VALIDACAO_PUBLICA.md` §7), reportado sem inflar.
 
 ---
 
@@ -330,6 +331,12 @@ depois de exportado.
   a mesma proteção anti-vazamento dos demais mode; sem nenhum dos dois,
   cai em `StratifiedKFold` e o relatório carimba isso explicitamente. Não
   usar o nível sem garantia para resultado publicável.
+- **Modo HSI é protótipo "mínimo viável"** — validado com um único dataset
+  público (DeepHS Fruit/Kaki, 56 gravações), sem calibração radiométrica
+  própria (usa reflectância já calibrada pelo dataset), e com desempenho
+  de classificação ainda modesto por desbalanceamento severo de classes
+  (ver `docs/VALIDACAO_PUBLICA.md` §7 para os números honestos). Não usar
+  para resultado publicável sem validação adicional em dado próprio.
 
 ---
 
