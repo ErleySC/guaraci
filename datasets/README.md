@@ -13,6 +13,7 @@ faz a primeira.
 |---|---|---|---|
 | Eigenvector Corn | ver a fonte (benchmarking) | inline no job `validacao-publica` do CI (`.github/workflows/test.yml`) | `$GUARACI_DATASETS_DIR/corn.mat` |
 | Mendeley `ctgg7k4m5g` (óleos comestíveis, Ottaway et al. 2021) | CC BY 4.0 | `scripts/download_datasets/baixar_mendeley_oleos.py` | `$GUARACI_DATASETS_DIR/mendeley_ctgg7k4m5g/` |
+| DeepHS Fruit / Kaki / câmera VIS (Varga, Makowski & Zell, IJCNN 2021) | não declarada formalmente (SPDX) no repositório — ver `docs/VALIDACAO_PUBLICA.md` §4, mesmo tratamento já dado ao Corn | `scripts/download_datasets/baixar_deephs_kaki.py` | `$GUARACI_DATASETS_DIR/deephs_kaki_vis/` |
 
 Detalhes de cada dataset (n, técnica, referência, métricas obtidas) em
 `docs/VALIDACAO_PUBLICA.md`.

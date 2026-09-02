@@ -1,3 +1,89 @@
+# PROGRESSO — Passos 92-95 (2026-09-01)
+
+## Passo 92 — Verificação da literatura citada em INSTRUCAO_HSI_MINIMO_VIAVEL.md
+
+3 referências citadas na instrução, verificadas ANTES de qualquer uso em
+código/documentação (regra "não citar se não confirmar"):
+
+- `S0031320325004960` ("Revisão de classificação HSI entre domínios") —
+  **confirmado**: "Cross-domain hyperspectral image classification",
+  *Pattern Recognition* 168, dez/2025. Tema bate exatamente.
+- `S0169743926002212` ("Revisão sobre transferência de calibração e
+  incerteza") — **confirmado** via WebSearch (snippet retornou o PII
+  exato): "Chemometric and machine-learning strategies for calibration
+  transfer", *Chemometrics and Intelligent Laboratory Systems*, 2026.
+- `S2772375526007070` ("Framework de padronização e reprodutibilidade em
+  HSI") — **NÃO confirmado**. O ISSN implícito (2772-3755) corresponde a
+  um periódico real (*Smart Agricultural Technology*, Elsevier,
+  tematicamente compatível), mas o artigo especifico nunca apareceu em
+  nenhuma busca (WebSearch por PII exato, por título aproximado, por
+  termos-chave da descrição). Acesso direto ao ScienceDirect bloqueado
+  (WebFetch: 403; Browser pane: CAPTCHA Cloudflare) — sem via alternativa
+  de confirmação disponível nesta sessão. **Não citado** em nenhum lugar.
+
+## Passo 93 — Busca de dataset público de HSI (prioridade sobre implementação)
+
+Candidato escolhido: **DeepHS Fruit** (Varga, Makowski & Zell, IJCNN
+2021, arXiv:2104.09808, github.com/cogsys-tuebingen/deephs_fruit) —
+subconjunto Kaki (caqui) / câmera VIS (Specim FX10, 224 bandas,
+397,66-1003,81 nm), 56 gravações / 38 frutas físicas, rótulo real
+`ripeness_state` (unripe/perfect/overripe).
+
+Candidato alternativo considerado (Mendeley `gjwx64sgkp`, bagas de uva,
+CC BY 4.0) — descartado: não foi possível confirmar se distribui cubo
+BRUTO ou só espectro já extraído (o segundo não serve para
+segmentação/mapa espacial, Passos 96-99).
+
+Formato confirmado por leitura DIRETA (HTTP Range requests no
+`Kaki.zip` de 2,2G, sem baixar o arquivo inteiro — leitura só do
+directorio central + membros necessários): par ENVI `.hdr` (texto) +
+`.bin` (float32, BIP, sem header embutido). Comprimentos de onda vêm à
+parte, no JSON de anotações oficial do dataset (`cameras[].wavelengths`
+por câmera).
+
+**Agrupamento por objeto físico** (crítico para o Passo 97): confirmado
+por leitura direta do JSON de anotações que "frente"/"costas" da MESMA
+fruta compartilham `storage_days` e `ripeness_state` dentro do mesmo
+dia — group_id = `f"{day}_{numero_da_fruta}"`.
+
+## Passo 94 — `src/guaraci/hsi_io.py`
+
+Leitor ENVI genérico (`load_envi_cube`, aceita bip/bil/bsq, qualquer
+`data type` ENVI suportado, `wavelengths` externo quando o `.hdr` não
+traz) + leitor específico do subconjunto DeepHS/Kaki
+(`load_deephs_kaki_dataset`). 12 testes (11 sintéticos + 1 contra o
+dataset real, `GUARACI_DATASETS_DIR`-gated). Commit `5f3ec85`.
+
+## Passo 95 — `src/guaraci/hsi_quality.py`
+
+Quality gate fail-fast (saturação/faixa, SNR via Immerkaer 1996, fração
+de pixels válidos) — rejeita com motivo único e específico, nunca
+processa em silêncio. Contra-prova obrigatória da instrução (cubo
+saturado e cubo de SNR baixo, ambos rejeitados) — 8 testes. Calibração
+radiométrica por referência branco/preto **não implementada** nesta
+rodada: o dataset escolhido já vem calibrado e não há cubo de referência
+bruto disponível para testar essa etapa de verdade — documentado, não
+escondido. Commit `f3de9ca`.
+
+## Dataset baixado e infraestrutura de reprodução
+
+`scripts/download_datasets/baixar_deephs_kaki.py` — usa HTTP Range para
+extrair só os 112 arquivos (56 gravações × .hdr+.bin) do Kaki.zip de
+2,2G sem baixar o arquivo inteiro, cada um com SHA256+tamanho pinado
+(verificado ANTES de gravar, mesma regra de
+`baixar_mendeley_oleos.py`). Testado de verdade: cache-hit (pins batem
+com os 112 arquivos já extraídos) e extração fresca (pasta vazia, exercita
+o caminho de rede real) — ambos confirmados por execução direta, não
+suposto.
+
+Licença do DeepHS Fruit: **não declarada formalmente** (sem SPDX no
+repo/README, API do GitHub devolve `license: None`) — ver retratação em
+`docs/VALIDACAO_PUBLICA.md` §4 (uma busca inicial via WebSearch sugeriu
+CC BY-SA 4.0; não confirmado por verificação direta, corrigido antes de
+entrar em qualquer citação).
+
+---
+
 # PROGRESSO — Passos 84-87 (2026-08-27)
 
 > Log de progresso do checkout ativo (OneDrive). Convenção: um bloco por

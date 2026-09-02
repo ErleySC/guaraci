@@ -21,6 +21,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
 | **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | Downey, Fouratier & Kelly (2003), *J. Near Infrared Spectrosc.* 11:447-456 | ❌ **NÃO OBTIDO** (origem identificada, sem repositório público, reconfirmado 2026-08-27) |
 | Mendeley `10.17632/ctgg7k4m5g.2` (NIR 8mm) | 19 óleos comestíveis diversos | 100 | 11512 · 3899–14999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,35 (CV) / 0,475 (holdout)**; R²cal 0,833 (log10 PV) | balanced accuracy: sem alvo publicado nesta forma (ver §2); RMSEP publicado 4,9 **não reproduzido** (ver §2) | 🟢 **INTEGRADO** (2026-08-27) — classificação valida requisito multimatriz; regressão é sanity check, não gate de literatura |
+| DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | ver §7 (integração HSI, Passos 94-102 em andamento) | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -230,8 +231,16 @@ um novo. Nunca cai num padrão de outra matriz em silêncio.
 | Eigenvector Corn | distribuído publicamente pela Eigenvector Research para benchmarking; ver a página da fonte para os termos | página da fonte, 2026-08-17 |
 | Tecator | domínio público (StatLib) | `docs/BENCHMARK_TECATOR.md` |
 | Mendeley `ctgg7k4m5g` | **CC BY 4.0** | JSON da API oficial (`data_licence.short_name`), reconfirmado 2026-08-27 |
+| DeepHS Fruit (Kaki) | **não declarada formalmente** (sem SPDX no repo/README; `api.github.com/repos/cogsys-tuebingen/deephs_fruit` devolve `license: None`) — autores afirmam publicamente "we make public" o dataset (README, paper IJCNN 2021) e distribuem por HTTP sem autenticação; mesmo tratamento já dado ao Corn nesta tabela | leitura direta do repo + API do GitHub, 2026-09-01 |
 
 Nenhum destes arquivos é versionado neste repositório.
+
+**Retratação (2026-09-01):** uma busca inicial (WebSearch, via Papers with
+Code) sugeriu licença CC BY-SA 4.0 para o DeepHS Fruit. Verificação
+direta (README, ausência de arquivo `LICENSE`, `api.github.com`) **não
+confirma** essa licença — corrigido aqui antes de qualquer uso da
+alegação em código/documentação, conforme a regra "evidência ou
+silêncio" desta auditoria.
 
 ---
 
@@ -288,3 +297,36 @@ conteúdo) já se aplica em `.github/workflows/test.yml` para o download
 direto do Corn (`CORN_SHA256`/`CORN_BYTES`) — os dois caminhos (script
 Python para Mendeley, `curl`+`sha256sum` inline para Corn) seguem a
 mesma regra por caminhos diferentes.
+
+---
+
+## 7. HSI (imageamento hiperespectral) — em integração (2026-09-01)
+
+Ver `INSTRUCAO_HSI_MINIMO_VIAVEL.md` e `docs/PROGRESSO.md` para o
+detalhamento passo a passo. Resumo do estado nesta rodada:
+
+- **Literatura citada (Passo 92):** 2 das 3 referências confirmadas por
+  busca direta (Crossref/WebSearch) — "Cross-domain hyperspectral image
+  classification" (*Pattern Recognition* 168, dez/2025) e "Chemometric
+  and machine-learning strategies for calibration transfer"
+  (*Chemometrics and Intelligent Laboratory Systems*, 2026). A terceira
+  ("Framework de padronização... HSI", PII `S2772375526007070`) **não
+  foi confirmada** — o ISSN implícito corresponde a um periódico real
+  (*Smart Agricultural Technology*, Elsevier), mas o artigo específico
+  não foi localizado por nenhuma via de busca disponível nesta sessão.
+  **Não citada** em nenhum lugar do código/documentação, conforme a
+  regra do Passo 92.
+- **Dataset público (Passo 93):** DeepHS Fruit (Varga, Makowski & Zell,
+  IJCNN 2021) — subconjunto Kaki/câmera VIS (56 gravações, 38 frutas
+  físicas, rótulo `ripeness_state`). Formato ENVI (`.hdr`+`.bin`)
+  confirmado por leitura direta. Ver §4 para a licença (não declarada
+  formalmente, mesmo tratamento do Corn).
+- **Infraestrutura de leitura (Passo 94) e quality gate (Passo 95):**
+  `src/guaraci/hsi_io.py`, `src/guaraci/hsi_quality.py` — testados
+  contra o dataset real (`tests/test_hsi_io.py::
+  test_load_deephs_kaki_dataset_real`, requer `GUARACI_DATASETS_DIR`
+  apontando para `deephs_kaki_vis/`, obtido via
+  `scripts/download_datasets/baixar_deephs_kaki.py`).
+- **Segmentação, classificação por pixel, explicabilidade, validação
+  externa (Passos 96-101) e integração ao menu/CLI (Passo 102):** ainda
+  não implementados nesta rodada — em andamento.
