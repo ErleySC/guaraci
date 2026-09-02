@@ -1,3 +1,51 @@
+# PROGRESSO — Passo 111 (2026-09-02)
+
+## Passo 111 — HSI aceita dado do próprio usuário, offline (INSTRUCAO_HSI_DADO_PROPRIO.md)
+
+Falha de arquitetura corrigida: `run_hsi_pipeline` exigia `manifest.json`
+de um dataset público específico (DeepHS Fruit) pra' qualquer uso do
+modo `hsi` — o resto do GUARACI sempre aceitou pasta do próprio usuário.
+
+**111a/b** — `hsi_io.load_envi_cube` já era genérico (não precisou
+separar de nada). Nova `hsi_io.load_hsi_folder_dataset(pasta)`: lê
+qualquer pasta com cubos ENVI (`.hdr`+`.bin`), convenção de subpasta-
+por-classe (mesma de `dados_io.py`/`dados_imagem.py`), sem exigir
+`manifest.json`. Agrupamento por amostra física reaproveita a hierarquia
+de 3 níveis do Bloco 8 — extraída de `dados_imagem.py` pra' um módulo
+novo, `agrupamento_pastas.py` (extensão como parâmetro), em vez de
+duplicar a lógica; `dados_imagem.py` foi refatorado pra' delegar a ela,
+24/24 testes existentes continuam passando sem alteração de contrato.
+
+**111c** — `_menu_hsi` não exige mais `manifest.json`: aceita qualquer
+pasta válida, o erro real vem de dentro do pipeline se não houver
+cubos. Texto da tela deixa claro que dataset público é só fixture de
+validação, não pré-requisito. Painel de resultado declara
+explicitamente quando só há validação interna (nunca esconde atrás de
+um "0" sem explicação).
+
+**111d (contra-prova)** — `tests/test_hsi_offline_prova.py`: cubo
+sintético gerado localmente (zero download), `socket.socket`
+monkeypatchado pra' levantar exceção em QUALQUER tentativa de conexão
+de rede, pipeline completo (leitura → quality gate → segmentação →
+classificação → mapa → confiança por objeto → validação) rodando sem
+tocar rede. Inclui teste da própria fixture de bloqueio.
+
+**Decisão de arquitetura**: `run_hsi_pipeline` despacha automaticamente
+(presença de `manifest.json`) entre o caminho ORIGINAL (dataset público,
+validação externa por dia + explicabilidade química cruzada, inalterado)
+e o caminho NOVO (`hsi_validation.run_internal_validation_group_aware`
+— só validação interna, sem particao por dia que não existe num dataset
+genérico; SEM explicabilidade química cruzada, porque a tabela
+`ATRIBUICAO_QUIMICA_VIS_FRUTA` é conhecimento específico do dataset
+público — aplicá-la a comprimento de onda arbitrário do usuário seria
+alegação científica falsa, não limitação honesta).
+
+4 commits (1 por módulo), suíte completa a cada lote (1170 passed, 9
+skipped), ruff/mypy limpos, golden de contrato de API regravado (só
+adições).
+
+---
+
 # PROGRESSO — Passo 104 execução real + fechamento (2026-09-02)
 
 ## Passo 104 — Validação comparativa executada (achado real: estouro de memória)
