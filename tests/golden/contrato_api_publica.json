@@ -2076,6 +2076,46 @@
         "forma": "funcao"
       }
     },
+    "hsi_quality": {
+      "QualityGateResult": {
+        "campos": [
+          {
+            "nome": "aceito",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "motivo",
+            "tem_default": false,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "fracao_pixels_validos",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "fracao_pixels_saturados",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "snr_estimado",
+            "tem_default": false,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "estimate_noise_sigma": {
+        "assinatura": "(imagem_2d: 'np.ndarray') -> 'float'",
+        "forma": "funcao"
+      },
+      "evaluate_cube_quality": {
+        "assinatura": "(cubo: 'np.ndarray', *, fracao_saturacao_max: 'float' = 0.01, snr_minimo: 'float' = 3.0, fracao_validos_minima: 'float' = 0.95, limite_saturacao_inferior: 'float' = -0.5, limite_saturacao_superior: 'float' = 1.5) -> 'QualityGateResult'",
+        "forma": "funcao"
+      }
+    },
     "identificacao": {
       "CoverageStatus": {
         "bases": [
