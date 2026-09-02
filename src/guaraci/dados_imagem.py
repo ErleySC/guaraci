@@ -69,12 +69,13 @@ wn_min=-1, wn_max=100) ao usar mode="imagem".
 """
 from __future__ import annotations
 
-import glob
 import os
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+from guaraci import agrupamento_pastas as _ap
 
 __all__ = [
     "load_image_file",
@@ -220,27 +221,25 @@ def extract_texture_features(img: np.ndarray) -> Dict[str, float]:
     }
 
 
+#: Nome do CSV de associacao manual (nivel "medium"), procurado na raiz da
+#: pasta de dados. Nao configuravel neste prototipo -- ver docstring do modulo.
+_NOME_CSV_AMOSTRAS = _ap.NOME_CSV_AMOSTRAS
+
+_GROUPING_HIGH = _ap.GROUPING_HIGH
+_GROUPING_MEDIUM = _ap.GROUPING_MEDIUM
+_GROUPING_NONE = _ap.GROUPING_NONE
+
+
 def _listar_arquivos_imagem(pasta: str) -> List[str]:
-    """Busca arquivos de imagem por extensao. Usa um set p/ deduplicar: em
-    sistemas de arquivo case-insensitive (Windows, macOS default), buscar
-    "*.png" e "*.PNG" separadamente devolve o MESMO arquivo duas vezes."""
-    encontrados: set = set()
-    for ext in _EXTENSOES_IMAGEM:
-        encontrados.update(glob.glob(os.path.join(pasta, f"*{ext}")))
-        encontrados.update(glob.glob(os.path.join(pasta, f"*{ext.upper()}")))
-    return sorted(encontrados)
+    """Busca arquivos de imagem por extensao -- delega a `agrupamento_
+    pastas.py` (Passo 111, extraido daqui para ser reaproveitado pelo modo
+    `hsi`); mantido aqui com este nome por compatibilidade (testes e o
+    resto deste modulo importam por este nome)."""
+    return _ap.listar_arquivos_por_extensao(pasta, _EXTENSOES_IMAGEM)
 
 
 def _tem_imagem_direta_ou_em_subpasta(caminho: str) -> bool:
-    """True se `caminho` tem imagem solta OU (nivel "high") subpastas de
-    amostra que por sua vez tem imagem -- sem isso, uma classe organizada
-    em subpasta-por-amostra seria invisivel para `_detectar_subpastas_imagem`
-    (a classe pareceria vazia, ja que so' checava imagem DIRETA)."""
-    if _listar_arquivos_imagem(caminho):
-        return True
-    return any(os.path.isdir(os.path.join(caminho, n))
-               and _listar_arquivos_imagem(os.path.join(caminho, n))
-               for n in os.listdir(caminho))
+    return _ap.tem_arquivo_direto_ou_em_subpasta(caminho, _EXTENSOES_IMAGEM)
 
 
 def _detectar_subpastas_imagem(raiz: str) -> List[str]:
@@ -248,90 +247,21 @@ def _detectar_subpastas_imagem(raiz: str) -> List[str]:
     dentro de subpasta de amostra (nivel "high") — mesma convencao do mode
     .dx (`_detectar_subpastas_classe` em dados_io.py) generalizada para 1
     nivel extra opcional."""
-    if not os.path.isdir(raiz):
-        return []
-    subpastas = []
-    for nome in sorted(os.listdir(raiz)):
-        caminho = os.path.join(raiz, nome)
-        if os.path.isdir(caminho) and _tem_imagem_direta_ou_em_subpasta(caminho):
-            subpastas.append(caminho)
-    return subpastas
-
-
-#: Nome do CSV de associacao manual (nivel "medium"), procurado na raiz da
-#: pasta de dados. Nao configuravel neste prototipo -- ver docstring do modulo.
-_NOME_CSV_AMOSTRAS = "amostras.csv"
-
-_GROUPING_HIGH = "high"
-_GROUPING_MEDIUM = "medium"
-_GROUPING_NONE = "none"
+    return _ap.detectar_subpastas_por_extensao(raiz, _EXTENSOES_IMAGEM)
 
 
 def _subpasta_e_grupo_de_amostras(caminho_classe: str) -> bool:
-    """True se `caminho_classe` contem SO' subpastas (cada uma = 1 amostra
-    fisica), nunca arquivo de imagem solto. False se tiver ao menos 1
-    arquivo solto (mistura de niveis nao e' suportada -- ambigua)."""
-    entradas = [os.path.join(caminho_classe, n)
-                for n in os.listdir(caminho_classe)]
-    arquivos_soltos = [e for e in entradas if os.path.isfile(e)
-                       and e.lower().endswith(_EXTENSOES_IMAGEM)]
-    subpastas_amostra = [e for e in entradas if os.path.isdir(e)
-                         and _listar_arquivos_imagem(e)]
-    return not arquivos_soltos and bool(subpastas_amostra)
+    return _ap.subpasta_e_grupo_de_amostras(caminho_classe, _EXTENSOES_IMAGEM)
 
 
 def _detectar_nivel_high(subpastas_classe: List[str]
                           ) -> Optional[Dict[str, str]]:
-    """Nivel "high": cada subpasta de CLASSE contem so' subpastas de
-    AMOSTRA FISICA (nunca arquivo solto). Se TODA subpasta de classe
-    satisfizer isso, devolve {caminho_arquivo: grupo_id}; senao None (cai
-    p/ nivel "medium"). Grupo_id e' qualificado por classe
-    ("Classe/Amostra") p/ nunca colidir entre classes com o mesmo nome de
-    amostra."""
-    if not subpastas_classe:
-        return None
-    if not all(_subpasta_e_grupo_de_amostras(sp) for sp in subpastas_classe):
-        return None
-    grupos: Dict[str, str] = {}
-    for sp in subpastas_classe:
-        classe = os.path.basename(sp)
-        for nome_amostra in sorted(os.listdir(sp)):
-            caminho_amostra = os.path.join(sp, nome_amostra)
-            if not (os.path.isdir(caminho_amostra)
-                    and _listar_arquivos_imagem(caminho_amostra)):
-                continue
-            grupo_id = f"{classe}/{nome_amostra}"
-            for arq in _listar_arquivos_imagem(caminho_amostra):
-                grupos[arq] = grupo_id
-    return grupos
+    return _ap.detectar_nivel_high(subpastas_classe, _EXTENSOES_IMAGEM)
 
 
 def _detectar_nivel_medium(pasta_raiz: str, arquivos: List[str]
                             ) -> Optional[Dict[str, str]]:
-    """Nivel "medium": CSV `amostras.csv` na raiz da pasta de dados,
-    colunas `arquivo,id_amostra`. `arquivo` e' o caminho RELATIVO a
-    `pasta_raiz` (separador "/", como grava `os.path.relpath` normalizado).
-    Cobertura parcial e' erro explicito -- nunca processamento parcial."""
-    caminho_csv = os.path.join(pasta_raiz, _NOME_CSV_AMOSTRAS)
-    if not os.path.isfile(caminho_csv):
-        return None
-    df_csv = pd.read_csv(caminho_csv)
-    colunas_faltando = {"arquivo", "id_amostra"} - set(df_csv.columns)
-    if colunas_faltando:
-        raise ValueError(
-            f"{caminho_csv}: faltam as colunas {sorted(colunas_faltando)}. "
-            f"Esperado: 'arquivo,id_amostra' (uma linha por imagem).")
-    mapa_csv = {str(r["arquivo"]).replace("\\", "/"): str(r["id_amostra"])
-                for _, r in df_csv.iterrows()}
-    rel = {arq: os.path.relpath(arq, pasta_raiz).replace("\\", "/")
-           for arq in arquivos}
-    sem_cobertura = [rel[a] for a in arquivos if rel[a] not in mapa_csv]
-    if sem_cobertura:
-        raise ValueError(
-            f"{caminho_csv} existe mas nao cobre {len(sem_cobertura)} "
-            f"imagem(ns) do dataset -- nenhuma foi processada. Arquivos "
-            f"sem entrada no CSV: {', '.join(sorted(sem_cobertura))}")
-    return {arq: mapa_csv[rel[arq]] for arq in arquivos}
+    return _ap.detectar_nivel_medium(pasta_raiz, arquivos, _NOME_CSV_AMOSTRAS)
 
 
 def load_images(
