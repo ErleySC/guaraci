@@ -21,7 +21,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
 | **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | Downey, Fouratier & Kelly (2003), *J. Near Infrared Spectrosc.* 11:447-456 | ❌ **NÃO OBTIDO** (origem identificada, sem repositório público, reconfirmado 2026-08-27) |
 | Mendeley `10.17632/ctgg7k4m5g.2` (NIR 8mm) | 19 óleos comestíveis diversos | 100 | 11512 · 3899–14999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,35 (CV) / 0,475 (holdout)**; R²cal 0,833 (log10 PV) | balanced accuracy: sem alvo publicado nesta forma (ver §2); RMSEP publicado 4,9 **não reproduzido** (ver §2) | 🟢 **INTEGRADO** (2026-08-27) — classificação valida requisito multimatriz; regressão é sanity check, não gate de literatura |
-| DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | ver §7 (integração HSI, Passos 94-102 em andamento) | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) |
+| DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | **3/8 objetos corretos** (teste group-aware) — colapsa p/ classe majoritária | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) — pipeline funciona ponta-a-ponta, desempenho limitado por desbalanceamento severo (ver §7) |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -327,6 +327,27 @@ detalhamento passo a passo. Resumo do estado nesta rodada:
   test_load_deephs_kaki_dataset_real`, requer `GUARACI_DATASETS_DIR`
   apontando para `deephs_kaki_vis/`, obtido via
   `scripts/download_datasets/baixar_deephs_kaki.py`).
-- **Segmentação, classificação por pixel, explicabilidade, validação
-  externa (Passos 96-101) e integração ao menu/CLI (Passo 102):** ainda
-  não implementados nesta rodada — em andamento.
+- **Segmentação (Passo 96):** `src/guaraci/hsi_segmentation.py` — PCA
+  (PC1) + Otsu (implementado do zero, não depende de scikit-image).
+  Dataset não tem máscara de referência; validado por **inspeção visual
+  documentada** (`resultados_hsi_segmentacao/kaki_segmentacao_amostra.png`,
+  gitignorado) — o contorno da fruta aparece claramente isolado do fundo.
+- **Extração de ROI + agrupamento por objeto físico (Passo 97):**
+  `src/guaraci/hsi_pixels.py`. Contra-prova obrigatória (Hypothesis)
+  confirma que `StableStratifiedGroupKFold` nunca separa pixels do mesmo
+  objeto físico entre treino/validação, em nenhum fold.
+- **PLS-DA por pixel + agregação por voto majoritário (Passo 98):**
+  `src/guaraci/hsi_classification.py` — reaproveita `PLSDAClassifier`
+  já existente, seleção de LVs por parsimônia de Wold (mesmo critério de
+  `pipeline.py`, generalizado para classificação). **Medido contra o
+  dataset real** (8 objetos de teste, split group-aware,
+  `n_components=8`): **3/8 objetos corretos** — o modelo colapsa quase
+  todo para "perfect" (a classe majoritária, 42/56 gravações). Regime
+  genuinamente difícil por desbalanceamento severo (2 `unripe`, 12
+  `overripe`, 42 `perfect`), reportado honestamente — mesmo padrão já
+  registrado para o Mendeley (§2: bal.acc 0,35 CV). Não é um resultado
+  de produção; confirma que o pipeline mecânico funciona ponta-a-ponta
+  sobre dado real, não que o desempenho é bom.
+- **Explicabilidade cruzada, validação externa (Passos 100-101) e
+  integração ao menu/CLI (Passo 102):** ainda não implementados nesta
+  rodada — em andamento.

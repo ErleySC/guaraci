@@ -2007,6 +2007,40 @@
         "forma": "funcao"
       }
     },
+    "hsi_classification": {
+      "ObjectAggregationResult": {
+        "campos": [
+          {
+            "nome": "classe_predita",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "heterogeneidade",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_pixels",
+            "tem_default": false,
+            "tipo": "int"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "aggregate_predictions_by_object": {
+        "assinatura": "(predicoes_pixel: 'np.ndarray', group_ids: 'np.ndarray') -> 'Dict[str, ObjectAggregationResult]'",
+        "forma": "funcao"
+      },
+      "fit_predict_pixel_plsda": {
+        "assinatura": "(X_treino: 'np.ndarray', y_treino: 'np.ndarray', groups_treino: 'np.ndarray', X_teste: 'np.ndarray', groups_teste: 'np.ndarray', *, n_components: 'Optional[int]' = None, max_lvs: 'int' = 10, n_splits_wold: 'int' = 3, seed: 'int' = 42) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "select_n_components_wold": {
+        "assinatura": "(X: 'np.ndarray', y_int: 'np.ndarray', groups: 'np.ndarray', *, max_lvs: 'int' = 10, n_splits: 'int' = 3, seed: 'int' = 42) -> 'int'",
+        "forma": "funcao"
+      }
+    },
     "hsi_io": {
       "HSICubeMetadata": {
         "campos": [

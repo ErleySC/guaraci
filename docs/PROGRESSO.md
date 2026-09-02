@@ -82,6 +82,48 @@ repo/README, API do GitHub devolve `license: None`) — ver retratação em
 CC BY-SA 4.0; não confirmado por verificação direta, corrigido antes de
 entrar em qualquer citação).
 
+## Passo 96 — `src/guaraci/hsi_segmentation.py`
+
+PCA (PC1) + Otsu (implementado do zero -- scikit-image e' dependencia
+OPCIONAL do projeto). Distincao documentada do PCA de dominio de
+aplicabilidade (`chemometric_stats.applicability_domain`) -- uso
+espacial por pixel de UMA cena, nao distancia a um modelo pre-treinado.
+Sem mascara de referencia no dataset -- validado por INSPECAO VISUAL
+DOCUMENTADA (`resultados_hsi_segmentacao/kaki_segmentacao_amostra.png`,
+gitignorado): confirma visualmente que a mascara isola o contorno real
+da fruta. Cena sintetica com objeto conhecido: IoU>0.8. Commit `7de3727`.
+
+## Passo 97 — `src/guaraci/hsi_pixels.py`
+
+Extracao de espectros de pixel da ROI + `group_id` de objeto fisico
+replicado por pixel (frente/costas da MESMA fruta compartilham
+group_id, confirmado por leitura direta do JSON de anotacoes). Contra-
+prova OBRIGATORIA (Hypothesis, numero de objetos e pixels/objeto
+aleatorios): `StableStratifiedGroupKFold` (o splitter group-aware JA
+padronizado no projeto) nunca separa pixels do mesmo objeto entre
+treino/validacao, em nenhum fold. Commit `1c179f2`.
+
+## Passo 98 — `src/guaraci/hsi_classification.py`
+
+PLS-DA por pixel (reaproveita `avaliacao_modelos.PLSDAClassifier`, nao
+reimplementado), split group-aware, numero de LVs por parsimonia de
+Wold (mesmo criterio de `pipeline.py`, generalizado p/ classificacao
+via 1-balanced_accuracy). Agregacao por objeto: classe majoritaria +
+heterogeneidade (fracao de pixels em desacordo).
+
+**Medido contra o dataset real** (8 objetos de teste de 38 totais,
+split group-aware, seed=0, n_components=8 selecionado por Wold):
+**3/8 objetos corretos** -- o modelo colapsa quase todo para "perfect"
+(classe majoritaria, 42/56 gravacoes; overripe=12, unripe=2).
+Desbalanceamento severo, nao corrigido nesta rodada (fora do escopo do
+"minimo viavel" -- rebalanceamento/reponderacao seria proximo passo
+natural, nao feito aqui p/ nao inflar o resultado por ajuste ad-hoc).
+Reportado honestamente, mesmo padrao ja' registrado p/ o Mendeley
+(`docs/VALIDACAO_PUBLICA.md` §2: bal.acc 0,35 CV). Confirma que o
+pipeline mecanico (segmentacao -> extracao -> classificacao ->
+agregacao) funciona ponta-a-ponta sobre dado real -- nao que o
+desempenho e' bom.
+
 ---
 
 # PROGRESSO — Passos 84-87 (2026-08-27)
