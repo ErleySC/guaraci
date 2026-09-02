@@ -34,11 +34,15 @@ do "minimo viavel", adicionar quando um dataset real exigir.
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
+
+from guaraci import agrupamento_pastas as _ap
 
 __all__ = [
     "HSICubeMetadata",
@@ -46,6 +50,7 @@ __all__ = [
     "load_envi_cube",
     "load_deephs_fruit_dataset",
     "load_deephs_kaki_dataset",
+    "load_hsi_folder_dataset",
 ]
 
 # Codigos de tipo de dado do padrao ENVI (subconjunto que este leitor aceita
@@ -255,9 +260,6 @@ def load_deephs_fruit_dataset(pasta: str, fruta: Optional[str] = None,
                     side/storage_days/firmness, para inspecao/relatorio.
     """
     import json
-    import os
-
-    import pandas as pd
 
     caminho_manifest = os.path.join(pasta, "manifest.json")
     if not os.path.isfile(caminho_manifest):
@@ -323,3 +325,161 @@ def load_deephs_kaki_dataset(pasta: str):
     formato novo (campos `fruit`/`camera_type` por record, `cameras`
     como lista) -- ver `baixar_deephs_kaki.py`."""
     return load_deephs_fruit_dataset(pasta, fruta="Kaki", camera="VIS")
+
+
+#: Extensao que marca 1 gravacao ENVI -- o `.bin` irmao e' assumido presente
+#: (ver `load_envi_cube`, que resolve `.hdr` -> `.bin` pela mesma raiz de
+#: nome). So' contar `.hdr` evita listar a mesma gravacao 2x.
+_EXTENSOES_HSI: Tuple[str, ...] = (".hdr",)
+
+
+def load_hsi_folder_dataset(pasta: str) -> Tuple[
+        List[np.ndarray], np.ndarray, Optional[np.ndarray],
+        np.ndarray, "pd.DataFrame"]:
+    """Le uma pasta com cubos hiperespectrais do PROPRIO usuario (par
+    `.hdr`+`.bin` ENVI por gravacao) -- Passo 111 (INSTRUCAO_HSI_DADO_
+    PROPRIO.md). Ao contrario de `load_deephs_fruit_dataset`, NAO exige
+    `manifest.json` de nenhum dataset publico especifico: qualquer pasta
+    no formato ENVI serve, com a MESMA convencao de pastas ja usada em
+    `dados_io.py` (.dx) e `dados_imagem.py` (fotos) -- uma subpasta por
+    classe (rotulo), ou arquivos soltos na raiz (fallback, 1 classe por
+    arquivo).
+
+    Agrupamento por amostra fisica (`mae_id`, protecao contra vazamento
+    entre gravacoes da MESMA fruta/objeto no split treino/teste) segue a
+    MESMA hierarquia de 3 niveis do Bloco 8 -- reaproveitada de
+    `agrupamento_pastas.py`, nao reimplementada aqui:
+      - "high"   -- subpasta por amostra fisica dentro da subpasta de
+        classe (cada `.hdr`+`.bin` dentro dela e' uma replica/vista).
+      - "medium" -- CSV `amostras.csv` na raiz (colunas `arquivo,
+        id_amostra`), mesmo mecanismo de `dados_imagem.py`.
+      - "none"   -- nem um nem outro: processa mesmo assim, mas `mae_id`
+        fica `None` e a limitacao vai em `metadados_df.attrs[
+        "grouping_guarantee"]` (quem chama -- `hsi_pipeline.py` -- deve
+        declarar isso no log/relatorio, nunca silenciosamente, mesmo
+        padrao ja' seguido por `dados_imagem.py`).
+
+    Eixo espectral (`wavelengths`): usa o do `.hdr` quando presente; se
+    NENHUM `.hdr` da pasta trouxer o campo `wavelength` mas todos os
+    cubos tiverem o MESMO numero de bandas, cai para um indice simbolico
+    `0..n_bandas-1` (mesma limitacao ja aceita em `dados_imagem.py` para
+    fotos). Cubos com numero de bandas DIFERENTE entre si levantam erro
+    explicito -- sensores/cameras diferentes misturados na mesma pasta
+    nao formam uma matriz X coerente (mesma regra ja aplicada em
+    `load_deephs_fruit_dataset` para cameras do DeepHS).
+
+    Devolve `(cubos, rotulos, mae_id, wavelengths, metadados_df)` --
+    `mae_id` e' `None` quando o nivel detectado e' "none" (mesmo contrato
+    de `dados_imagem.load_images`).
+    """
+    subpastas = _ap.detectar_subpastas_por_extensao(pasta, _EXTENSOES_HSI)
+    if subpastas:
+        arquivos: List[Tuple[str, str]] = []
+        for sp in subpastas:
+            classe = os.path.basename(sp)
+            diretos = _ap.listar_arquivos_por_extensao(sp, _EXTENSOES_HSI)
+            if diretos:
+                arquivos.extend((a, classe) for a in diretos)
+            else:
+                # nivel "high" em potencial: sem gravacao direta, mas com
+                # subpastas de amostra fisica dentro da subpasta de classe.
+                for n in sorted(os.listdir(sp)):
+                    caminho_amostra = os.path.join(sp, n)
+                    if os.path.isdir(caminho_amostra):
+                        arquivos.extend(
+                            (a, classe) for a in _ap.listar_arquivos_por_extensao(
+                                caminho_amostra, _EXTENSOES_HSI))
+    else:
+        if not os.path.isdir(pasta):
+            raise FileNotFoundError(
+                f"Pasta nao existe: {pasta}\n"
+                f"  -> confira cfg.hsi_dataset_folder.")
+        arqs = _ap.listar_arquivos_por_extensao(pasta, _EXTENSOES_HSI)
+        if not arqs:
+            raise FileNotFoundError(
+                f"Pasta existe mas nao contem cubos hiperespectrais ENVI "
+                f"(pares .hdr/.bin).\n  Pasta: {pasta}")
+        arquivos = [(a, "") for a in arqs]
+
+    todos_arquivos = [a for a, _ in arquivos]
+    grupos_high = _ap.detectar_nivel_high(subpastas, _EXTENSOES_HSI)
+    if grupos_high is not None:
+        nivel = _ap.GROUPING_HIGH
+        mapa_grupo = grupos_high
+    else:
+        grupos_medium = _ap.detectar_nivel_medium(pasta, todos_arquivos)
+        if grupos_medium is not None:
+            nivel = _ap.GROUPING_MEDIUM
+            mapa_grupo = grupos_medium
+        else:
+            nivel = _ap.GROUPING_NONE
+            mapa_grupo = {}
+
+    if nivel == _ap.GROUPING_NONE:
+        print("[WARNING] Grouping guarantee: NONE -- nenhuma subpasta por "
+              "amostra fisica nem CSV de associacao (amostras.csv) foi "
+              "encontrado. Validacao cai sem protecao contra vazamento "
+              "entre gravacoes da MESMA fruta/objeto. Resultados devem "
+              "ser tratados como exploratorios. Ver docstring de "
+              "agrupamento_pastas.py para os niveis 'high'/'medium'.")
+    else:
+        print(f"[INFO] Grouping guarantee: {nivel.upper()} "
+              f"({len(set(mapa_grupo.values()))} grupos de amostra fisica).")
+
+    cubos: List[np.ndarray] = []
+    rotulos: List[str] = []
+    grupos_arr: List[Optional[str]] = []
+    meta_rows: List[Dict[str, object]] = []
+    n_falhos = 0
+    n_bandas_ref: Optional[int] = None
+    wl_ref: Optional[np.ndarray] = None
+
+    for caminho_hdr, subpasta_nome in arquivos:
+        try:
+            cubo, meta = load_envi_cube(caminho_hdr[:-4] + ".bin", caminho_hdr)
+        except Exception as e:  # noqa: BLE001 -- leitura defensiva de cubo
+            # externo (arquivo truncado/corrompido/header incompativel);
+            # erro impresso COM NOME DO ARQUIVO e contabilizado em
+            # n_falhos, nunca silencioso (mesmo padrao de dados_imagem.py).
+            n_falhos += 1
+            print(f"  [ERROR] {os.path.basename(caminho_hdr)}: {e}")
+            continue
+
+        if n_bandas_ref is None:
+            n_bandas_ref = meta.n_bands
+            wl_ref = meta.wavelengths
+        elif meta.n_bands != n_bandas_ref:
+            raise ValueError(
+                f"{caminho_hdr}: {meta.n_bands} bandas, mas outra(s) "
+                f"gravacao(oes) desta pasta tem {n_bandas_ref} -- nao da "
+                f"pra' formar um dataset coerente (sensores/cameras "
+                f"incompativeis misturados na mesma pasta). Separe-os em "
+                f"pastas diferentes.")
+
+        cubos.append(cubo)
+        classe = subpasta_nome or os.path.splitext(os.path.basename(caminho_hdr))[0]
+        rotulos.append(classe)
+        grupos_arr.append(mapa_grupo.get(caminho_hdr))
+        meta_rows.append({
+            "arquivo": os.path.basename(caminho_hdr), "subpasta": subpasta_nome,
+            "classe": classe, "grupo_id": mapa_grupo.get(caminho_hdr),
+            "n_linhas": meta.n_lines, "n_colunas": meta.n_samples,
+            "n_bandas": meta.n_bands,
+        })
+
+    if not cubos:
+        raise ValueError(
+            f"Nenhum cubo hiperespectral valido carregado ({n_falhos} com erro).")
+    if n_falhos > 0:
+        print(f"[WARNING] {n_falhos} cubos com erro de leitura -- pulados.")
+
+    mae_id = (np.array(grupos_arr, dtype=object)
+              if nivel != _ap.GROUPING_NONE else None)
+    wavelengths = (wl_ref if wl_ref is not None
+                   else np.arange(n_bandas_ref, dtype=float))
+    metadados_df = pd.DataFrame(meta_rows)
+    metadados_df.attrs["grouping_guarantee"] = nivel
+    print(f"[INFO] {len(cubos)} cubos hiperespectrais carregados, "
+          f"{n_bandas_ref} bandas.")
+
+    return cubos, np.array(rotulos, dtype=str), mae_id, wavelengths, metadados_df

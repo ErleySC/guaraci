@@ -356,6 +356,48 @@
     }
   },
   "modulos": {
+    "agrupamento_pastas": {
+      "GROUPING_HIGH": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "GROUPING_MEDIUM": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "GROUPING_NONE": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "NOME_CSV_AMOSTRAS": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "detectar_nivel_high": {
+        "assinatura": "(subpastas_classe: 'List[str]', extensoes: 'Sequence[str]') -> 'Optional[Dict[str, str]]'",
+        "forma": "funcao"
+      },
+      "detectar_nivel_medium": {
+        "assinatura": "(pasta_raiz: 'str', arquivos: 'List[str]', nome_csv: 'str' = 'amostras.csv') -> 'Optional[Dict[str, str]]'",
+        "forma": "funcao"
+      },
+      "detectar_subpastas_por_extensao": {
+        "assinatura": "(raiz: 'str', extensoes: 'Sequence[str]') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "listar_arquivos_por_extensao": {
+        "assinatura": "(pasta: 'str', extensoes: 'Sequence[str]') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "subpasta_e_grupo_de_amostras": {
+        "assinatura": "(caminho_classe: 'str', extensoes: 'Sequence[str]') -> 'bool'",
+        "forma": "funcao"
+      },
+      "tem_arquivo_direto_ou_em_subpasta": {
+        "assinatura": "(caminho: 'str', extensoes: 'Sequence[str]') -> 'bool'",
+        "forma": "funcao"
+      }
+    },
     "app_logic": {
       "LogThreadSafe": {
         "bases": [],
@@ -2248,6 +2290,10 @@
       },
       "load_envi_cube": {
         "assinatura": "(caminho_bin: 'str', caminho_hdr: 'Optional[str]' = None, wavelengths: 'Optional[np.ndarray]' = None) -> 'Tuple[np.ndarray, HSICubeMetadata]'",
+        "forma": "funcao"
+      },
+      "load_hsi_folder_dataset": {
+        "assinatura": "(pasta: 'str') -> \"Tuple[List[np.ndarray], np.ndarray, Optional[np.ndarray], np.ndarray, 'pd.DataFrame']\"",
         "forma": "funcao"
       },
       "parse_envi_header": {
