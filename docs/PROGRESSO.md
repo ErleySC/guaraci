@@ -1,3 +1,83 @@
+# PROGRESSO — Passos 104-107 (2026-09-02)
+
+## Passo 104 — `hsi_io.load_deephs_fruit_dataset` (generalizacao multi-fruta/camera)
+
+Regex de `group_id` generalizado (o antigo exigia sufixo `_m\d+_`
+especifico do Kaki -- nao bate com `avocado_day_01_20_front.hdr`).
+Premissa de agrupamento por objeto fisico (frente/costas = mesma fruta)
+reverificada por leitura direta do JSON de anotacoes p/ as 4 frutas
+novas -- zero inconsistencias em 328 gravacoes adicionais. Cada camera
+tem numero de bandas proprio (medido, nao presumido): nenhuma fruta tem
+as 3 cameras (Kaki: VIS/VIS_COR; Avocado/Kiwi: VIS/NIR; Mango/Papaya:
+VIS/VIS_COR) -- `load_deephs_fruit_dataset` levanta erro explicito se
+mais de 1 camera sobrar num filtro (wavelengths incompativeis).
+
+Download das 4 frutas novas (Avocado/Kiwi/Mango/Papaya, todas as
+cameras disponiveis, 636 gravacoes x 2 arquivos) via HTTP Range
+paralelizado (8 workers/fruta) -- script de producao
+`baixar_deephs_fruit_todas.py` com pins em sidecar JSON versionado
+(1272 arquivos, inline no .py seria ilegivel). Resultados da validacao
+comparativa (Passo 104 propriamente dito, sensibilidade/especificidade/
+precisao por fruta x camera) reportados numa secao separada assim que o
+download terminar -- este bloco documenta so' a infraestrutura.
+
+## Passo 105 — `hsi_resampling.py`
+
+`oversample_minority_groups` duplica OBJETOS FISICOS inteiros (nunca
+pixels soltos fora do grupo) das classes minoritarias -- duplicatas
+mantem o MESMO `group_id` (nao um id sintetico), o que garante que
+NENHUM split group-aware (nem o externo nem a selecao interna de LVs
+por Wold) separa uma copia do original. Iguala o PESO em pixels, nunca
+fabrica um objeto fisico novo (estrutural).
+
+`class_evaluability_report` reusa `conformal.n_minimum_for_alpha`
+(=19 p/ alpha=0.05) -- MESMO limiar ja' padronizado no assistente e no
+gate DD-SIMCA/conjunto aberto, nao um limiar novo so' p/ HSI. Contra-
+prova Hypothesis obrigatoria: reamostragem nunca separa pixels do
+mesmo objeto entre treino/validacao, generalizando a propriedade do
+Passo 97.
+
+## Passo 106 — `hsi_identification.py`
+
+Conjunto aberto adaptado de `identificacao.py` p/ o nivel de objeto do
+HSI. Diferenca estrutural real (nao no fluxo tabular): cada combinacao
+fruta x camera tem seu proprio numero de bandas -- 1 PCA por
+combinacao, nao 1 global compartilhado.
+
+Granularidade de calibracao MEDIDA antes de decidir (Passo 106 exige
+isso explicitamente): objetos fisicos distintos por fruta (28-88) e por
+fruta x camera (24-87), as duas >= n_minimum_for_alpha(0.05)=19 em
+TODAS as combinacoes reais do dataset -- escolhida a mais fina (fruta x
+camera) por tambem ser calibravel e evitar misturar variancia espectral
+de sensores diferentes. `n_grupos<=1` registrado explicitamente como
+NOT_VALIDATED_N1 (nao omitido em silencio -- achado durante os testes,
+corrigido antes do commit). Contra-prova obrigatoria: tipo espectral
+nao presente no treino retorna "desconhecido" (nao aceito por nenhuma
+entrada calibrada).
+
+## Passo 107 — `hsi_uncertainty.py`
+
+Heterogeneidade de pixel (ja' calculada no Passo 98) vira relatorio
+FORMAL (`enrich_object_results`, nota de confianca textual + numeros
+crus) -- wireado em `hsi_pipeline.run_hsi_pipeline` (chave
+`confianca_por_objeto`) e na tela `[X]` da CLI (objetos de baixa
+concordancia listados explicitamente, nunca escondidos).
+
+**DECISAO REGISTRADA (exigida pela instrucao antes de implementar):**
+NAO combinar alpha por Bonferroni entre etapas do fluxo HSI, ao
+contrario do fluxo tabular Detectar->Identificar->Quantificar. O fluxo
+HSI hoje so' tem UMA etapa com alpha formalmente calibrado
+(Identificacao, Passo 106) -- quality gate (Passo 95) e' limiar
+deterministico, classificacao+agregacao (Passo 98) e' decisao pontual
++ heterogeneidade descritiva, nenhuma das duas tem alpha proprio.
+Bonferroni de 1 alpha so' e' o proprio alpha -- nada a combinar. Se o
+HSI ganhar uma etapa de quantificacao formal com intervalo de predicao
+proprio no futuro, a combinacao passaria a fazer sentido, espelhando o
+fluxo tabular -- nao antes disso. Razao completa documentada no
+docstring de `hsi_uncertainty.py`.
+
+---
+
 # PROGRESSO — Passo 103 (2026-09-02)
 
 ## Passo 103 — Texto/UI da tela HSI corrigidos

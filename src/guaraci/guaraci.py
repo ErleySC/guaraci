@@ -3376,6 +3376,26 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
             f"    {classe}: sens(int/ext)="
             f"{val.sensibilidade_interna[classe]:.2f}/"
             f"{val.sensibilidade_externa[classe]:.2f}")
+
+    # Confianca por objeto (Passo 107): heterogeneidade de pixel deixa de
+    # ser so' um numero interno -- resumo por faixa + objetos de baixa
+    # concordancia listados explicitamente (nunca escondidos).
+    conf = resumo.get("confianca_por_objeto", {})
+    if conf:
+        baixa = [(gid, r) for gid, r in conf.items()
+                if r.heterogeneidade > 0.30]
+        linhas.append("")
+        linhas.append(
+            f"  {'Confianca por objeto' if is_pt else 'Per-object confidence'}: "
+            f"{len(conf) - len(baixa)}/{len(conf)} "
+            f"{'com concordancia alta/moderada' if is_pt else 'high/moderate agreement'}")
+        if baixa:
+            linhas.append(
+                f"    [{PR}]{'baixa concordancia' if is_pt else 'low agreement'} "
+                f"({len(baixa)}): " +
+                ", ".join(f"{gid} ({r.heterogeneidade:.0%})" for gid, r in baixa[:5]) +
+                ("..." if len(baixa) > 5 else "") + f"[/{PR}]")
+
     console.print(Panel(
         "\n".join(linhas),
         title=f"[bold {PG}]{'Resultado' if is_pt else 'Result'}[/bold {PG}]",

@@ -2360,6 +2360,41 @@
         "forma": "funcao"
       }
     },
+    "hsi_uncertainty": {
+      "ConfidenceReport": {
+        "campos": [
+          {
+            "nome": "classe_predita",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "heterogeneidade",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_pixels",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "nota_confianca",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "confidence_note": {
+        "assinatura": "(heterogeneidade: 'float') -> 'str'",
+        "forma": "funcao"
+      },
+      "enrich_object_results": {
+        "assinatura": "(predicoes_objeto: \"Dict[str, 'ObjectAggregationResult']\") -> 'Dict[str, ConfidenceReport]'",
+        "forma": "funcao"
+      }
+    },
     "hsi_validation": {
       "ExternalValidationReport": {
         "campos": [

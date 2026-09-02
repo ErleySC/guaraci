@@ -34,6 +34,7 @@ from guaraci.hsi_io import load_deephs_kaki_dataset
 from guaraci.hsi_pixels import build_pixel_dataset
 from guaraci.hsi_quality import evaluate_cube_quality
 from guaraci.hsi_segmentation import segment_object_pca_otsu
+from guaraci.hsi_uncertainty import enrich_object_results
 from guaraci.hsi_validation import run_external_validation_by_day
 
 if TYPE_CHECKING:
@@ -162,6 +163,8 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
     achados_quimica = cross_reference_vip_with_chemistry(
         wavelengths, vip, ATRIBUICAO_QUIMICA_VIS_FRUTA, top_n=5)
 
+    relatorio_confianca = enrich_object_results(resultado_modelo["predicoes_objeto"])
+
     return {
         "n_gravacoes_total": len(cubos),
         "n_gravacoes_aceitas": len(cubos_ok),
@@ -170,4 +173,5 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
         "n_components": resultado_modelo["n_components"],
         "validacao_externa": relatorio_validacao,
         "achados_quimica": achados_quimica,
+        "confianca_por_objeto": relatorio_confianca,
     }
