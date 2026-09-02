@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from guaraci.hsi_validation import run_external_validation_by_day
+from guaraci.hsi_validation import (run_external_validation_by_day,
+                                    run_internal_validation_group_aware)
 
 
 def _dataset_sintetico_multi_dia(seed: int = 0):
@@ -70,6 +71,52 @@ def test_run_external_validation_by_day_comprimentos_divergentes_levanta_erro():
         run_external_validation_by_day(
             cubos, mascaras, group_ids, rotulos, dias[:-1],
             dias_externos=["dia3"])
+
+
+# ── run_internal_validation_group_aware (Passo 111): sem particao por dia ──
+
+def test_run_internal_validation_group_aware_devolve_so_metricas_internas():
+    cubos, mascaras, group_ids, rotulos, _dias = _dataset_sintetico_multi_dia()
+    relatorio = run_internal_validation_group_aware(
+        cubos, mascaras, group_ids, rotulos, max_lvs=5, n_splits_wold=2)
+
+    assert relatorio.n_objetos_teste_externo == 0
+    assert relatorio.n_objetos_teste_interno >= 1
+    assert relatorio.sensibilidade_externa == {}
+    assert relatorio.especificidade_externa == {}
+    assert relatorio.precisao_externa == {}
+    for classe in relatorio.classes:
+        for metrica in (relatorio.sensibilidade_interna,
+                        relatorio.especificidade_interna,
+                        relatorio.precisao_interna):
+            assert 0.0 <= metrica[classe] <= 1.0
+
+
+def test_run_internal_validation_group_aware_fracao_extrema_leva_a_erro_claro():
+    """fracao_teste=0.99 deixa so' 1 objeto de treino (o holdout e' sempre
+    no maximo n_objetos-1, nunca esvazia o treino) -- mas 1 grupo so' e'
+    insuficiente para a selecao de LVs por Wold (precisa de >=2 grupos
+    pra' cross-validar): erro explicito da camada de baixo, nao um crash
+    silencioso nem um resultado forjado com dado de treino insuficiente."""
+    cubos, mascaras, group_ids, rotulos, _dias = _dataset_sintetico_multi_dia()
+    with pytest.raises(ValueError, match="grupos"):
+        run_internal_validation_group_aware(
+            cubos, mascaras, group_ids, rotulos, fracao_teste=0.99,
+            max_lvs=5, n_splits_wold=2)
+
+
+def test_run_internal_validation_group_aware_comprimentos_divergentes_levanta_erro():
+    cubos, mascaras, group_ids, rotulos, _dias = _dataset_sintetico_multi_dia()
+    with pytest.raises(ValueError, match="mesmo comprimento"):
+        run_internal_validation_group_aware(
+            cubos, mascaras, group_ids, rotulos[:-1])
+
+
+def test_run_internal_validation_group_aware_menos_de_2_objetos_levanta_erro():
+    cubos, mascaras, group_ids, rotulos, _dias = _dataset_sintetico_multi_dia()
+    with pytest.raises(ValueError, match="pelo menos 2"):
+        run_internal_validation_group_aware(
+            cubos[:1], mascaras[:1], group_ids[:1], rotulos[:1])
 
 
 # ── fim-a-fim contra o dataset publico real ──────────────────────────────

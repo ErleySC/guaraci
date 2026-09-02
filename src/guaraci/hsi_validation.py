@@ -29,7 +29,8 @@ from guaraci.hsi_classification import (ObjectAggregationResult,
                                         fit_predict_pixel_plsda)
 from guaraci.hsi_pixels import build_pixel_dataset
 
-__all__ = ["ExternalValidationReport", "run_external_validation_by_day"]
+__all__ = ["ExternalValidationReport", "run_external_validation_by_day",
+           "run_internal_validation_group_aware"]
 
 
 @dataclass
@@ -169,3 +170,80 @@ def run_external_validation_by_day(
         sensibilidade_externa=m_externo["sensibilidade"],
         especificidade_externa=m_externo["especificidade"],
         precisao_externa=m_externo["precisao"])
+
+
+def run_internal_validation_group_aware(
+        cubos: Sequence[np.ndarray], mascaras: Sequence[np.ndarray],
+        group_ids: Sequence[str], rotulos: Sequence[str], *,
+        fracao_teste: float = 0.25, seed: int = 42, max_lvs: int = 8,
+        n_splits_wold: int = 2,
+        max_pixels_por_gravacao: Optional[int] = None,
+        ) -> ExternalValidationReport:
+    """Validacao interna group-aware para dataset SEM particao nativa por
+    dia/sessao (dado proprio do usuario, Passo 111 -- INSTRUCAO_HSI_DADO_
+    PROPRIO.md) -- ao contrario de `run_external_validation_by_day`
+    (dataset publico DeepHS Fruit, particionado por dia de medicao), aqui
+    NAO existe uma fatia "nunca vista em nenhuma etapa" pra' reservar
+    como validacao externa de verdade: o holdout e' uma amostra aleatoria
+    de OBJETOS FISICOS inteiros (nunca pixel isolado, nunca metade de um
+    objeto em treino e metade em teste -- mesma garantia de
+    `hsi_pixels.build_pixel_dataset`), sorteada entre TODOS os objetos.
+
+    Por isso os campos `*_externa` do relatorio devolvido ficam VAZIOS
+    (`{}`) e `n_objetos_teste_externo=0` -- declara explicitamente que
+    so' ha' validacao interna disponivel, nunca finge ter uma fatia
+    externa que nao existe (quem chama -- `hsi_pipeline.py` -- deve
+    propagar isso pro log/tela, nao esconder atras de um numero zerado
+    sem explicacao).
+
+    `group_ids` NAO deve conter `None` -- quando o nivel de agrupamento
+    detectado por `hsi_io.load_hsi_folder_dataset` for "none" (Bloco 8),
+    quem chama deve resolver cada gravacao para um id UNICO antes de
+    passar aqui (nunca compartilhar um placeholder entre gravacoes
+    distintas -- isso colapsaria objetos fisicos DIFERENTES no mesmo
+    grupo, o oposto do que a garantia de agrupamento existe pra' evitar).
+    """
+    n = len(cubos)
+    if not (len(mascaras) == len(group_ids) == len(rotulos) == n):
+        raise ValueError(
+            "run_internal_validation_group_aware: todas as sequencias de "
+            "entrada devem ter o mesmo comprimento (1 por gravacao).")
+
+    X, y, pg = build_pixel_dataset(
+        cubos, mascaras, group_ids, rotulos,
+        max_pixels_por_gravacao=max_pixels_por_gravacao, seed=seed)
+
+    objetos = np.unique(pg)
+    if len(objetos) < 2:
+        raise ValueError(
+            f"run_internal_validation_group_aware: so' {len(objetos)} "
+            f"objeto(s) fisico(s) distinto(s) -- precisa de pelo menos 2 "
+            f"pra' formar um holdout treino/teste group-aware.")
+
+    rng = np.random.default_rng(seed)
+    n_teste = max(1, int(round(len(objetos) * fracao_teste)))
+    n_teste = min(n_teste, len(objetos) - 1)  # nunca esvazia o treino
+    objetos_teste = set(rng.choice(objetos, size=n_teste, replace=False))
+    mascara_teste = np.array([g in objetos_teste for g in pg])
+
+    resultado = fit_predict_pixel_plsda(
+        X[~mascara_teste], y[~mascara_teste], pg[~mascara_teste],
+        X[mascara_teste], pg[mascara_teste],
+        max_lvs=max_lvs, n_splits_wold=n_splits_wold, seed=seed)
+    predicoes = cast(Dict[str, ObjectAggregationResult],
+                     resultado["predicoes_objeto"])
+
+    classes = sorted(set(rotulos))
+    y_real = {g: y[pg == g][0] for g in objetos_teste}
+    y_pred = {g: r.classe_predita for g, r in predicoes.items()}
+    m_interno = _metricas_por_classe(y_real, y_pred, classes)
+
+    return ExternalValidationReport(
+        classes=classes,
+        n_objetos_teste_interno=len(y_real),
+        n_objetos_teste_externo=0,
+        sensibilidade_interna=m_interno["sensibilidade"],
+        especificidade_interna=m_interno["especificidade"],
+        precisao_interna=m_interno["precisao"],
+        sensibilidade_externa={}, especificidade_externa={},
+        precisao_externa={})
