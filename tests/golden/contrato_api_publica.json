@@ -2007,6 +2007,75 @@
         "forma": "funcao"
       }
     },
+    "hsi_io": {
+      "HSICubeMetadata": {
+        "campos": [
+          {
+            "nome": "n_lines",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_samples",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_bands",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "interleave",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "dtype_envi",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "byte_order",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "header_offset",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "wavelengths",
+            "tem_default": true,
+            "tipo": "Optional[np.ndarray]"
+          },
+          {
+            "nome": "camera",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "extras",
+            "tem_default": true,
+            "tipo": "Dict[str, str]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "load_deephs_kaki_dataset": {
+        "assinatura": "(pasta: 'str')",
+        "forma": "funcao"
+      },
+      "load_envi_cube": {
+        "assinatura": "(caminho_bin: 'str', caminho_hdr: 'Optional[str]' = None, wavelengths: 'Optional[np.ndarray]' = None) -> 'Tuple[np.ndarray, HSICubeMetadata]'",
+        "forma": "funcao"
+      },
+      "parse_envi_header": {
+        "assinatura": "(texto: 'str') -> 'Dict[str, str]'",
+        "forma": "funcao"
+      }
+    },
     "identificacao": {
       "CoverageStatus": {
         "bases": [
