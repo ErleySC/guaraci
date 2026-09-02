@@ -2108,6 +2108,50 @@
         "forma": "funcao"
       }
     },
+    "hsi_identification": {
+      "HSIIdentificationResult": {
+        "campos": [
+          {
+            "nome": "objeto_identificado",
+            "tem_default": false,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "candidatos_ambiguos",
+            "tem_default": true,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "cobertura_status",
+            "tem_default": true,
+            "tipo": "Optional[CoverageStatus]"
+          },
+          {
+            "nome": "alpha_alcancavel",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "escores",
+            "tem_default": true,
+            "tipo": "Dict[str, float]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "aggregate_object_spectrum": {
+        "assinatura": "(cubo: 'np.ndarray', mascara: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "identify_hsi_object": {
+        "assinatura": "(ensemble: 'Dict[Tuple[str, str], Dict[str, Any]]', cubo: 'np.ndarray', mascara: 'np.ndarray', camera: 'str', n_candidatos: 'int' = 3) -> 'HSIIdentificationResult'",
+        "forma": "funcao"
+      },
+      "train_hsi_identification_ensemble": {
+        "assinatura": "(cubos: 'Sequence[np.ndarray]', mascaras: 'Sequence[np.ndarray]', group_ids: 'Sequence[str]', frutas: 'Sequence[str]', cameras: 'Sequence[str]', *, alpha_nominal: 'float' = 0.05) -> 'Dict[Tuple[str, str], Dict[str, Any]]'",
+        "forma": "funcao"
+      }
+    },
     "hsi_io": {
       "HSICubeMetadata": {
         "campos": [
