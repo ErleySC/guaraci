@@ -16,7 +16,7 @@ scikit-learn), nunca um mecanismo group-aware paralelo.
 """
 from __future__ import annotations
 
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -48,7 +48,8 @@ def extract_roi_spectra(cubo: np.ndarray, mascara: np.ndarray,
 
 def build_pixel_dataset(
         cubos: Sequence[np.ndarray], mascaras: Sequence[np.ndarray],
-        group_ids: Sequence[str], rotulos: Sequence[str],
+        group_ids: Sequence[str], rotulos: Sequence[str], *,
+        max_pixels_por_gravacao: Optional[int] = None, seed: int = 42,
         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Monta o dataset POR-PIXEL a partir de N gravacoes (cada uma com seu
     cubo, mascara de ROI, group_id de objeto fisico e rotulo de
@@ -66,7 +67,19 @@ def build_pixel_dataset(
 
     As 4 sequencias de entrada devem ter o MESMO comprimento (1 entrada
     por gravacao) -- comprimentos divergentes levantam erro explicito em
-    vez de zip() truncar em silencio."""
+    vez de zip() truncar em silencio.
+
+    `max_pixels_por_gravacao` (Passo 104, achado real): resolucao de
+    imagem varia MUITO entre frutas do DeepHS Fruit (Kaki: 64x64=4096
+    pixels/imagem; Avocado/VIS medido em: ~286x294=~97000 pixels/imagem,
+    ~24x mais) -- sem limite, o dataset por-pixel de uma fruta de alta
+    resolucao estoura memoria (medido: ~2,8GB so' para 1 fit de PLS-DA
+    dentro do loop de selecao de LVs, com Avocado/VIS). Quando setado,
+    cada gravacao e' subamostrada (sem reposicao, RNG semeado por
+    `seed` -- reprodutivel) para no maximo esse numero de pixels ANTES
+    de concatenar -- os pixels retidos sao reais (nunca inventados), so'
+    uma fracao aleatoria da ROI real daquela gravacao. `None` (default)
+    preserva o comportamento antigo -- nenhuma gravacao e' truncada."""
     n = len(cubos)
     if not (len(mascaras) == len(group_ids) == len(rotulos) == n):
         raise ValueError(
@@ -75,11 +88,18 @@ def build_pixel_dataset(
             f"group_ids={len(group_ids)}, rotulos={len(rotulos)}. "
             f"Uma entrada por gravacao, os 4 devem bater.")
 
+    rng = np.random.default_rng(seed) if max_pixels_por_gravacao else None
+
     partes_X: List[np.ndarray] = []
     partes_y: List[np.ndarray] = []
     partes_g: List[np.ndarray] = []
     for cubo, mascara, gid, rotulo in zip(cubos, mascaras, group_ids, rotulos):
         pixels = extract_roi_spectra(cubo, mascara)
+        if (rng is not None and max_pixels_por_gravacao is not None
+                and len(pixels) > max_pixels_por_gravacao):
+            idx = rng.choice(len(pixels), size=max_pixels_por_gravacao,
+                             replace=False)
+            pixels = pixels[idx]
         partes_X.append(pixels)
         partes_y.append(np.full(len(pixels), rotulo, dtype=object))
         partes_g.append(np.full(len(pixels), gid, dtype=object))

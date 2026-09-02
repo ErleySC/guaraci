@@ -399,3 +399,94 @@ detalhamento passo a passo. Resumo do estado nesta rodada:
 **Fatia "mínimo viável" (Passos 92-102) concluída** — pipeline HSI
 completo, testado contra dado público real em cada etapa, integrado ao
 menu principal da CLI.
+
+### Passos 103-110 — robustez, validação ampliada, honestidade estatística
+
+Ver `INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md` e `docs/PROGRESSO.md` para
+o detalhamento passo a passo. Resumo:
+
+- **Texto/UI (Passo 103):** frase solta "Protótipo 'mínimo viável'" e
+  cabeçalho fixo "Técnica: FT-NIR" (herdado do template genérico,
+  incorreto para HSI) corrigidos — ver `docs/PROGRESSO.md` Passo 103
+  para a decisão registrada de não usar o carimbo formal "PROTOTYPE
+  OUTPUT" (critério objetivo diferente, não se aplica ao HSI).
+- **Validação expandida (Passo 104):** as 4 frutas restantes do DeepHS
+  Fruit (Avocado, Kiwi, Mango, Papaya) e todas as câmeras disponíveis
+  (nenhuma fruta tem as 3 câmeras — medido, não presumido) baixadas e
+  testadas com o **mesmo pipeline, sem alteração de código** — só os
+  parâmetros de `load_deephs_fruit_dataset`. Achado real durante a
+  validação: resolução de imagem varia ~24× entre frutas (Kaki
+  64×64=4096 pixels/imagem vs. Avocado/VIS ~286×294=~97000) — sem um
+  teto de pixels por gravação, o fit de PLS-DA estourava memória
+  (2,8GB numa única alocação). Corrigido com subamostragem por
+  gravação (`hsi_pixels.build_pixel_dataset(max_pixels_por_gravacao=
+  2000)`, pixels reais, nunca inventados, RNG semeado — reprodutível),
+  mesmo teto aplicado a TODAS as combinações (comparação justa: câmera
+  de alta resolução não ganha mais peso na agregação por objeto só por
+  ter mais pixels).
+
+  **Tabela comparativa (validação externa por dia, Passo 101 estendido
+  — sensibilidade interno/externo por classe; tabela completa com
+  especificidade/precisão em `tests/test_validacao_publica_deephs_
+  fruit.py`, reproduzível com `GUARACI_DATASETS_DIR` apontando para
+  `deephs_fruit_all/`):**
+
+  | Fruta | Câmera | n objetos | interno/externo n | overripe sens (int/ext) | perfect sens (int/ext) | unripe sens (int/ext) |
+  |---|---|---:|---|---|---|---|
+  | Avocado | NIR | 24 | 5/5 | 0,00/0,60 | 1,00/0,00 | 0,50/0,00 |
+  | Avocado | VIS | 54 | 11/9 | 0,00/0,33 | 1,00/0,33 | 0,00/0,00 |
+  | Kiwi | NIR | 35 | 8/2 | 0,00/0,00 | 0,83/1,00 | 0,00/0,00 |
+  | Kiwi | VIS | 87 | 19/12 | 0,00/0,40 | 1,00/1,00 | 0,00/0,00 |
+  | Mango | VIS | 36 | 6/11 | 0,00/0,00 | 0,00/0,00 | **1,00/1,00** |
+  | Mango | VIS_COR | 38 | 7/10 | 0,00/0,00 | 1,00/1,00 | 0,00/0,00 |
+  | Papaya | VIS | 26 | 5/5 | 0,00/0,00 | 1,00/1,00 | 0,00/0,00 |
+  | Papaya | VIS_COR | 25 | 5/6 | 0,00/0,00 | 1,00/1,00 | 0,00/0,00 |
+
+  Padrão consistente com o já visto no Kaki (§7 acima): colapso quase
+  total na classe majoritária (`perfect` na maioria das combinações),
+  exceto Mango/VIS onde `unripe` é a classe favorecida — reforça que o
+  colapso segue a distribuição real de classes do subconjunto, não um
+  viés fixo do modelo. **Achado não-óbvio**: `Kiwi/VIS` é a ÚNICA
+  combinação onde as 3 classes têm `n>=19` (limiar de
+  `n_minimum_for_alpha(0.05)`, ver Passo 105) — MESMO ASSIM `unripe`
+  sai com sensibilidade 0,00 interno E externo. Ou seja, o problema não
+  é só tamanho de amostra: há uma dificuldade de separabilidade real
+  entre `unripe` e as outras classes nessa combinação, não corrigível
+  só com mais dados — achado honesto, não escondido atrás da hipótese
+  mais confortável de "só falta n".
+
+- **Desbalanceamento (Passo 105):** `src/guaraci/hsi_resampling.py` —
+  reamostragem group-aware (nunca duplica pixel fora do grupo) +
+  `class_evaluability_report`, aplicado às 8 novas combinações acima
+  (asteriscos no log de teste marcam classes com `n<19`, "não
+  avaliável estatisticamente" — mesma linguagem já usada no resto do
+  projeto). Contra-prova obrigatória (Hypothesis) confirma que a
+  reamostragem nunca separa pixels do mesmo objeto entre
+  treino/validação.
+- **Conjunto aberto (Passo 106):** `src/guaraci/hsi_identification.py`
+  — granularidade de calibração MEDIDA (não presumida): objetos por
+  fruta (28-88) e por fruta×câmera (24-87), as duas ≥ 19 em TODAS as
+  10 combinações reais — escolhida a mais fina. Contra-prova: tipo
+  espectral fora do treino retorna "desconhecido".
+- **Incerteza (Passo 107):** `src/guaraci/hsi_uncertainty.py` —
+  heterogeneidade de pixel vira relatório formal. Decisão registrada:
+  **sem** combinação Bonferroni entre etapas do fluxo HSI (só 1 etapa
+  tem alpha formal hoje — Identificação; razão completa no docstring
+  do módulo e em `docs/PROGRESSO.md`).
+- **Domínio de aplicabilidade (Passo 108):**
+  `src/guaraci/hsi_applicability.py` — reaproveita
+  `chemometric_stats.training_applicability_domain`/
+  `applicability_domain_new_samples` sem alteração (pixel = amostra,
+  mesma granularidade do PLS-DA). Sensor incompatível (bandas
+  diferentes) detectado explicitamente, nunca um erro cru de shape.
+  Contra-prova: cena sintética fora do domínio rejeitada em >90% dos
+  pixels.
+- **Datasets adicionais (Passo 109):** melhor candidato encontrado —
+  **Olive Dataset** (Mendeley `10.17632/8xvhcsdvst.1`), ENVI,
+  **CC BY 4.0 confirmado via API oficial** (licença que o DeepHS Fruit
+  não tem), matriz nova (azeitona). **Não integrado nesta rodada** —
+  decisão de integrar fica para o usuário. Lista completa de
+  candidatos avaliados em `docs/PROGRESSO.md` Passo 109.
+- **Licença do DeepHS Fruit (Passo 110):** rascunho de e-mail aos
+  autores preparado em `docs/RASCUNHOS_CONTATO.md` — **não enviado**,
+  aguarda revisão/envio manual do usuário.

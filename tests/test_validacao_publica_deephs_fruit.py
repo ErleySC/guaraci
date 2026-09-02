@@ -58,20 +58,40 @@ def _combinacoes_disponiveis(pasta: Path) -> List[Tuple[str, str, int]]:
 #: avaliavel" em vez de forcar um numero de um n irrisorio.
 _MIN_OBJETOS_AVALIAVEL = 10
 
+#: Teto de pixels por GRAVACAO (Passo 104, achado real): resolucao de
+#: imagem varia MUITO entre frutas (Kaki: 64x64=4096 pixels/imagem,
+#: ~2400 na ROI; Avocado/VIS medido em: ~286x294=~97000 pixels/imagem,
+#: ~24x mais -- sem teto, Avocado/VIS estourou memoria ao tentar alocar
+#: 2,8GB num unico fit de PLS-DA dentro do loop de selecao de LVs).
+#: 2000 fica perto da escala natural do Kaki -- teto justo, nao
+#: artificialmente pequeno, e MESMO valor p/ todas as combinacoes
+#: (comparacao justa: nenhuma camera de alta resolucao ganha mais
+#: "votos" na agregacao por objeto so' por ter mais pixels).
+_MAX_PIXELS_POR_GRAVACAO = 2000
+
 
 def _avaliar_combinacao(pasta: Path, fruta: str, camera: str) -> Dict[str, object]:
     from guaraci.hsi_io import load_deephs_fruit_dataset
     from guaraci.hsi_pipeline import apply_quality_gate_and_segment
+    from guaraci.hsi_resampling import class_evaluability_report
     from guaraci.hsi_validation import run_external_validation_by_day
 
     cubos, rotulos, grupos, wavelengths, meta_df = load_deephs_fruit_dataset(
         str(pasta), fruta=fruta, camera=camera)
 
     n_objetos = len(set(grupos))
+    # Passo 105 "repetir para as frutas/cameras novas do Passo 104" --
+    # desbalanceamento varia por fruta, reportado por classe SEMPRE,
+    # mesmo quando a combinacao inteira nao for avaliavel para a
+    # validacao externa (o desbalanceamento em si ainda e' informacao
+    # real sobre o dataset).
+    avaliabilidade = class_evaluability_report(rotulos, grupos, alpha=0.05)
+
     if n_objetos < _MIN_OBJETOS_AVALIAVEL:
         return {"status": "nao_avaliavel",
                 "motivo": f"so' {n_objetos} objetos fisicos distintos "
-                          f"(< minimo {_MIN_OBJETOS_AVALIAVEL})"}
+                          f"(< minimo {_MIN_OBJETOS_AVALIAVEL})",
+                "avaliabilidade_por_classe": avaliabilidade}
 
     filtrado = apply_quality_gate_and_segment(
         cubos, list(grupos), list(rotulos), list(meta_df["day"]))
@@ -83,22 +103,26 @@ def _avaliar_combinacao(pasta: Path, fruta: str, camera: str) -> Dict[str, objec
     if len(dias_unicos) < 2:
         return {"status": "nao_avaliavel",
                 "motivo": f"so' {len(dias_unicos)} dia(s) distinto(s) -- "
-                          f"sem particao nativa p/ validacao externa"}
+                          f"sem particao nativa p/ validacao externa",
+                "avaliabilidade_por_classe": avaliabilidade}
 
     n_dias_externos = max(1, len(dias_unicos) // 4)
     try:
         relatorio = run_external_validation_by_day(
             filtrado["cubos"], filtrado["mascaras"], filtrado["group_ids"],
             filtrado["rotulos"], filtrado["dias"],
-            dias_externos=dias_unicos[-n_dias_externos:], seed=42)
-    except ValueError as e:
-        return {"status": "nao_avaliavel", "motivo": str(e)}
+            dias_externos=dias_unicos[-n_dias_externos:], seed=42,
+            max_pixels_por_gravacao=_MAX_PIXELS_POR_GRAVACAO)
+    except (ValueError, MemoryError) as e:
+        return {"status": "nao_avaliavel", "motivo": f"{type(e).__name__}: {e}",
+                "avaliabilidade_por_classe": avaliabilidade}
 
     return {
         "status": "ok", "relatorio": relatorio,
         "n_objetos": n_objetos, "n_gravacoes": len(cubos),
         "n_dias": len(dias_unicos),
         "classes_presentes": sorted(set(rotulos)),
+        "avaliabilidade_por_classe": avaliabilidade,
     }
 
 
@@ -122,6 +146,17 @@ def test_validacao_comparativa_todas_frutas_cameras():
         print(f"\n=== {fruta} / {camera} ({n_gravacoes} gravacoes) ===")
         resultado = _avaliar_combinacao(pasta, fruta, camera)
         resultados[(fruta, camera)] = resultado
+
+        avaliab = resultado.get("avaliabilidade_por_classe", {})
+        if avaliab:
+            print("  Desbalanceamento (Passo 105): " + ", ".join(
+                f"{c}=n{info.n_grupos}"
+                f"{'*' if not info.avaliavel else ''}"
+                for c, info in avaliab.items()))
+            for c, info in avaliab.items():
+                if not info.avaliavel:
+                    print(f"    * {c}: {info.nota}")
+
         if resultado["status"] == "nao_avaliavel":
             print(f"  NAO AVALIAVEL: {resultado['motivo']}")
             continue

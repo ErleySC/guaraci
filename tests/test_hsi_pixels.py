@@ -64,6 +64,51 @@ def test_build_pixel_dataset_comprimentos_divergentes_levanta_erro():
                             ["A", "B"], ["x"])
 
 
+# ── max_pixels_por_gravacao (Passo 104: frutas de resolucao alta) ───────
+
+def test_build_pixel_dataset_subamostra_ate_o_limite():
+    cubo = np.arange(10 * 1 * 3, dtype=float).reshape(10, 1, 3)  # 10 pixels
+    mascara = np.ones((10, 1), dtype=bool)
+    X, y, groups = build_pixel_dataset(
+        [cubo], [mascara], ["obj1"], ["perfect"],
+        max_pixels_por_gravacao=4, seed=0)
+    assert X.shape == (4, 3)
+    assert list(y) == ["perfect"] * 4
+    assert list(groups) == ["obj1"] * 4
+    # todos os pixels retidos vieram REALMENTE do cubo original (nunca
+    # inventados) -- cada linha de X deve bater com alguma linha real.
+    pixels_reais = cubo.reshape(-1, 3)
+    for linha in X:
+        assert any(np.array_equal(linha, p) for p in pixels_reais)
+
+
+def test_build_pixel_dataset_nao_subamostra_abaixo_do_limite():
+    cubo = np.arange(3 * 1 * 3, dtype=float).reshape(3, 1, 3)  # so' 3 pixels
+    mascara = np.ones((3, 1), dtype=bool)
+    X, y, groups = build_pixel_dataset(
+        [cubo], [mascara], ["obj1"], ["perfect"],
+        max_pixels_por_gravacao=100, seed=0)
+    assert X.shape == (3, 3)  # nada a subamostrar, todos os 3 mantidos
+
+
+def test_build_pixel_dataset_sem_limite_preserva_comportamento_antigo():
+    cubo = np.arange(50 * 1 * 3, dtype=float).reshape(50, 1, 3)
+    mascara = np.ones((50, 1), dtype=bool)
+    X, y, groups = build_pixel_dataset(
+        [cubo], [mascara], ["obj1"], ["perfect"])  # max_pixels_por_gravacao=None
+    assert X.shape == (50, 3)
+
+
+def test_build_pixel_dataset_subamostragem_e_reprodutivel_por_seed():
+    cubo = np.arange(20 * 1 * 3, dtype=float).reshape(20, 1, 3)
+    mascara = np.ones((20, 1), dtype=bool)
+    X1, *_ = build_pixel_dataset([cubo], [mascara], ["obj1"], ["perfect"],
+                                 max_pixels_por_gravacao=5, seed=7)
+    X2, *_ = build_pixel_dataset([cubo], [mascara], ["obj1"], ["perfect"],
+                                 max_pixels_por_gravacao=5, seed=7)
+    np.testing.assert_array_equal(X1, X2)
+
+
 # ── CONTRA-PROVA OBRIGATORIA (Passo 97): propriedade de nao-vazamento ───
 
 @given(

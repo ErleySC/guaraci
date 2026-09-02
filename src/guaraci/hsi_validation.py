@@ -19,7 +19,7 @@ esconderia queda de desempenho no externo.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Sequence, cast
+from typing import Dict, List, Optional, Sequence, cast
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, precision_score, recall_score
@@ -72,6 +72,7 @@ def run_external_validation_by_day(
         dias: Sequence[str], dias_externos: Sequence[str], *,
         fracao_teste_interno: float = 0.25, seed: int = 42,
         max_lvs: int = 8, n_splits_wold: int = 2,
+        max_pixels_por_gravacao: Optional[int] = None,
         ) -> ExternalValidationReport:
     """Treina com objetos de dias FORA de `dias_externos`, valida:
       - internamente: numa fracao dos MESMOS dias de treino (objetos
@@ -81,7 +82,12 @@ def run_external_validation_by_day(
         nunca vista em nenhuma etapa do treino).
 
     `dias` deve ter o MESMO comprimento de `cubos`/`mascaras`/
-    `group_ids`/`rotulos` (1 entrada por gravacao)."""
+    `group_ids`/`rotulos` (1 entrada por gravacao).
+
+    `max_pixels_por_gravacao`: repassado a `build_pixel_dataset` (Passo
+    104) -- necessario para frutas de resolucao alta (ex. Avocado/VIS,
+    ~97000 pixels/imagem vs. ~4096 do Kaki) nao estourarem memoria.
+    `None` (default) preserva o comportamento antigo."""
     dias_arr = np.asarray(dias)
     n = len(cubos)
     if not (len(mascaras) == len(group_ids) == len(rotulos) == len(dias_arr) == n):
@@ -114,9 +120,11 @@ def run_external_validation_by_day(
     rotulos_ext = _sel(rotulos, e_externo)
 
     X_dev, y_dev, pg_dev = build_pixel_dataset(
-        cubos_dev, mascaras_dev, grupos_dev, rotulos_dev)
+        cubos_dev, mascaras_dev, grupos_dev, rotulos_dev,
+        max_pixels_por_gravacao=max_pixels_por_gravacao, seed=seed)
     X_ext, y_ext, pg_ext = build_pixel_dataset(
-        cubos_ext, mascaras_ext, grupos_ext, rotulos_ext)
+        cubos_ext, mascaras_ext, grupos_ext, rotulos_ext,
+        max_pixels_por_gravacao=max_pixels_por_gravacao, seed=seed)
 
     objetos_dev = np.unique(pg_dev)
     rng = np.random.default_rng(seed)

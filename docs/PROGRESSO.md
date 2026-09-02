@@ -1,3 +1,44 @@
+# PROGRESSO — Passo 104 execução real + fechamento (2026-09-02)
+
+## Passo 104 — Validação comparativa executada (achado real: estouro de memória)
+
+Primeira tentativa (`tests/test_validacao_publica_deephs_fruit.py`
+contra as 1048 gravações baixadas): Avocado/NIR passou honestamente
+(numeros fracos, a maioria das classes com `n<19`), mas Avocado/VIS
+**crashou** com `MemoryError` -- tentativa de alocar 2,8GB para UM
+unico fit de PLS-DA dentro do loop de selecao de LVs.
+
+**Causa raiz medida** (nao presumida): resolucao de imagem varia MUITO
+entre frutas. Kaki: 64x64=4096 pixels/imagem. Avocado/VIS medido
+diretamente: ~286x294=~97000 pixels/imagem -- **~24x mais**. Sem teto,
+o dataset por-pixel de uma fruta de alta resolucao cresce sem
+controle.
+
+**Corrigido**: `hsi_pixels.build_pixel_dataset` ganhou
+`max_pixels_por_gravacao` (subamostragem SEM REPOSICAO por gravacao,
+RNG semeado -- reprodutivel, pixels retidos sao REAIS, nunca
+inventados). `hsi_validation.run_external_validation_by_day` repassa o
+parametro. Teto usado na validacao comparativa: 2000 pixels/gravacao
+(perto da escala natural do Kaki) -- MESMO teto para todas as 8
+combinacoes (comparacao justa, camera de alta resolucao nao ganha mais
+peso na agregacao por objeto). 4 novos testes em `tests/
+test_hsi_pixels.py` (subamostra ate' o limite, nao subamostra abaixo
+do limite, comportamento antigo preservado sem o parametro,
+reprodutibilidade por seed).
+
+**Resultado real, apos a correcao**: as 8 combinacoes rodaram sem erro
+(869s, ~14,5min). Tabela comparativa completa em
+`docs/VALIDACAO_PUBLICA.md` §7. Achado nao-obvio: `Kiwi/VIS` e' a UNICA
+combinacao com as 3 classes `n>=19` (limiar do Passo 105) -- MESMO
+ASSIM `unripe` sai com sensibilidade 0,00 interno E externo, indicando
+que o desbalanceamento de classe NAO e' a unica causa do colapso
+nessa combinacao especifica -- ha' dificuldade de separabilidade real,
+reportada honestamente em vez de assumida como "so' falta n".
+
+Suite completa + ruff + mypy limpos apos a correcao de memoria.
+
+---
+
 # PROGRESSO — Passo 109 (2026-09-02)
 
 ## Passo 109 — Datasets públicos adicionais de HSI (candidatos, NÃO integrados)
