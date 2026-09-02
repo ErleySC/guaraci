@@ -90,8 +90,23 @@ aplicabilidade (`chemometric_stats.applicability_domain`) -- uso
 espacial por pixel de UMA cena, nao distancia a um modelo pre-treinado.
 Sem mascara de referencia no dataset -- validado por INSPECAO VISUAL
 DOCUMENTADA (`resultados_hsi_segmentacao/kaki_segmentacao_amostra.png`,
-gitignorado): confirma visualmente que a mascara isola o contorno real
-da fruta. Cena sintetica com objeto conhecido: IoU>0.8. Commit `7de3727`.
+gitignorado). Cena sintetica com objeto conhecido: IoU>0.8. Commit
+`7de3727`.
+
+**RETRATACAO (2026-09-01, mesma rodada):** a versao commitada em
+`7de3727` assumia "objeto = MINORIA de pixels da cena" -- correto para
+a cena sintetica do teste, mas ERRADO no dataset real: a fruta ocupa
+~59% do quadro (maioria), entao a mascara marcava os CANTOS (fundo)
+como "objeto" -- inversao silenciosa. O relatorio desta auditoria
+descreveu a mascara commitada como "confirma visualmente" sem
+reconferir a propria imagem salva com atencao -- so' pego ao usa-la no
+Passo 99 (mapa de classificacao) e notar que a fruta aparecia em cinza
+(fora da ROI) em vez de colorida. Corrigido: fundo agora e' inferido
+pela BORDA da imagem (pixels mais externos), nao pela fracao de area --
+cobre objeto minoria OU maioria. Novo teste de propriedade (objeto
+majoritario, cena tipo "moldura fina") adicionado. Numeros do Passo 98
+abaixo foram RECALCULADOS com a mascara corrigida (a versao original
+tinha treinado/testado sobre pixels de FUNDO, nao da fruta).
 
 ## Passo 97 — `src/guaraci/hsi_pixels.py`
 
@@ -112,9 +127,10 @@ via 1-balanced_accuracy). Agregacao por objeto: classe majoritaria +
 heterogeneidade (fracao de pixels em desacordo).
 
 **Medido contra o dataset real** (8 objetos de teste de 38 totais,
-split group-aware, seed=0, n_components=8 selecionado por Wold):
-**3/8 objetos corretos** -- o modelo colapsa quase todo para "perfect"
-(classe majoritaria, 42/56 gravacoes; overripe=12, unripe=2).
+split group-aware, seed=0, n_components=5 selecionado por Wold, JA' com
+a mascara de segmentacao corrigida -- ver retratacao no Passo 96 acima):
+**5/8 objetos corretos** -- o modelo ainda tende a "perfect" (classe
+majoritaria, 42/56 gravacoes; overripe=12, unripe=2) nos erros restantes.
 Desbalanceamento severo, nao corrigido nesta rodada (fora do escopo do
 "minimo viavel" -- rebalanceamento/reponderacao seria proximo passo
 natural, nao feito aqui p/ nao inflar o resultado por ajuste ad-hoc).

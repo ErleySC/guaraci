@@ -87,20 +87,40 @@ def test_segment_object_pca_otsu_localiza_o_objeto():
     assert 0.0 < resultado.fracao_objeto < 1.0
 
 
-def test_segment_object_pca_otsu_respeita_objeto_e_pico_maior():
-    """Mesma cena, mas com o objeto sendo a MAIORIA da area -- confirma
-    que o parametro objeto_e_pico_maior=True inverte a escolha default
-    (que assume objeto=minoria)."""
+def test_segment_object_pca_otsu_objeto_ocupando_maioria_da_cena():
+    """ACHADO real corrigido (2026-09-01): a primeira versao deste modulo
+    assumia "objeto = minoria de pixels" e invertia a mascara quando a
+    fruta ocupava a MAIORIA do quadro (caso real do dataset Kaki/VIS,
+    achado por inspecao visual). A heuristica de borda (fundo = classe
+    majoritaria nos pixels mais externos) cobre este caso -- objeto
+    grande e centralizado, fundo so' aparecendo nos cantos."""
     rng = np.random.default_rng(1)
     altura, largura, bandas = 40, 40, 20
-    espectro_a = rng.normal(loc=0.2, scale=0.01, size=bandas)
-    espectro_b = rng.normal(loc=0.7, scale=0.01, size=bandas)
-    cubo = np.tile(espectro_b, (altura, largura, 1))  # maioria = "objeto"
-    cubo += rng.normal(scale=0.005, size=cubo.shape)
-    cubo[:5, :5] = espectro_a  # canto pequeno = "fundo"
+    espectro_fundo = rng.normal(loc=0.2, scale=0.01, size=bandas)
+    espectro_objeto = rng.normal(loc=0.7, scale=0.01, size=bandas)
 
-    resultado = segment_object_pca_otsu(cubo, objeto_e_pico_maior=True)
+    # Fundo = MOLDURA fina em volta de toda a cena (toca a borda inteira,
+    # como a mesa/bancada ao redor da fruta no dataset real); objeto =
+    # interior, MAIORIA da area.
+    cubo = np.tile(espectro_fundo, (altura, largura, 1))
+    cubo += rng.normal(scale=0.005, size=cubo.shape)
+    mascara_real = np.zeros((altura, largura), dtype=bool)
+    mascara_real[4:-4, 4:-4] = True
+    cubo[mascara_real] = espectro_objeto + rng.normal(
+        scale=0.005, size=(mascara_real.sum(), bandas))
+
+    resultado = segment_object_pca_otsu(cubo)
+    intersecao = np.sum(resultado.mascara & mascara_real)
+    uniao = np.sum(resultado.mascara | mascara_real)
+    iou = intersecao / uniao
+    assert iou > 0.8, f"IoU baixo ({iou:.3f}) -- objeto majoritario mal segmentado."
     assert resultado.fracao_objeto > 0.5
+
+
+def test_segment_object_pca_otsu_largura_borda_grande_demais_levanta_erro():
+    cubo = np.zeros((6, 6, 4))
+    with pytest.raises(ValueError, match="grande demais"):
+        segment_object_pca_otsu(cubo, largura_borda=3)
 
 
 def test_segment_object_pca_otsu_forma_errada_levanta_erro():

@@ -17,7 +17,6 @@ matematicamente relacionados (ambos PCA) mas SEMANTICAMENTE diferentes
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from sklearn.decomposition import PCA
@@ -75,21 +74,37 @@ class SegmentationResult:
 
 
 def segment_object_pca_otsu(cubo: np.ndarray, *,
-                             objeto_e_pico_maior: Optional[bool] = None,
+                             largura_borda: int = 2,
                              ) -> SegmentationResult:
     """Segmenta `cubo` (altura, largura, bandas) em objeto/fundo via PC1 +
-    Otsu. `objeto_e_pico_maior`: quando `None` (default), assume que o
-    objeto (fruta) ocupa uma MINORIA da cena -- convencao comum em bancada
-    de laboratorio (fundo/mesa dominam a area) -- e escolhe entre `PC1 >
-    limiar` e `PC1 <= limiar` o lado com MENOS pixels como "objeto". Passe
-    `True`/`False` explicitamente se a convencao da sua cena for diferente
-    (objeto preenchendo a maior parte do quadro)."""
+    Otsu. A escolha de QUAL dos dois lados do limiar e' o "objeto" usa a
+    BORDA da imagem (os `largura_borda` pixels mais externos de cada
+    lado) como proxy de fundo -- convencao de bancada de laboratorio: a
+    fruta fica centralizada no quadro, o fundo/mesa toca as bordas. O
+    lado do limiar MAIORITARIO na borda vira "fundo"; o outro vira
+    "objeto".
+
+    ACHADO real (2026-09-01, corrigido antes de qualquer alegacao de
+    "confirmado"): a primeira versao deste modulo assumia "objeto =
+    MINORIA de pixels da cena inteira" em vez de usar a borda -- correto
+    para a cena sintetica do teste (objeto pequeno e centralizado), mas
+    ERRADO para o dataset publico real (Kaki/VIS): a fruta la' ocupa a
+    MAIORIA do quadro (~59% dos pixels), entao a heuristica de minoria
+    marcava os CANTOS como "objeto" e a fruta como "fundo" -- inversao
+    silenciosa, so' percebida por inspecao visual (exatamente a
+    verificacao que a instrucao exige no Passo 96, e' o que a pegou).
+    A heuristica de borda nao depende de fracao de area e cobre os dois
+    casos (objeto minoria OU maioria) corretamente."""
     cubo = np.asarray(cubo, dtype=float)
     if cubo.ndim != 3:
         raise ValueError(f"segment_object_pca_otsu espera um cubo 3D "
                           f"(altura, largura, bandas), recebeu shape "
                           f"{cubo.shape}.")
     altura, largura, n_bandas = cubo.shape
+    if largura_borda * 2 >= min(altura, largura):
+        raise ValueError(
+            f"largura_borda={largura_borda} grande demais para uma cena "
+            f"{altura}x{largura} (a borda cobriria a cena inteira).")
     pixels = cubo.reshape(-1, n_bandas)
 
     pca = PCA(n_components=1)
@@ -99,12 +114,14 @@ def segment_object_pca_otsu(cubo: np.ndarray, *,
     limiar = otsu_threshold(pc1)
     acima = imagem_pc1 > limiar
 
-    if objeto_e_pico_maior is None:
-        mascara = acima if acima.sum() <= (~acima).sum() else ~acima
-    elif objeto_e_pico_maior:
-        mascara = acima if acima.sum() >= (~acima).sum() else ~acima
-    else:
-        mascara = acima if acima.sum() <= (~acima).sum() else ~acima
+    mascara_borda = np.zeros((altura, largura), dtype=bool)
+    mascara_borda[:largura_borda, :] = True
+    mascara_borda[-largura_borda:, :] = True
+    mascara_borda[:, :largura_borda] = True
+    mascara_borda[:, -largura_borda:] = True
+
+    acima_e_fundo = float(np.mean(acima[mascara_borda])) >= 0.5
+    mascara = (~acima) if acima_e_fundo else acima
 
     return SegmentationResult(
         mascara=mascara, imagem_pc1=imagem_pc1, limiar=limiar,
