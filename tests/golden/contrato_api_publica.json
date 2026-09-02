@@ -2076,6 +2076,16 @@
         "forma": "funcao"
       }
     },
+    "hsi_pixels": {
+      "build_pixel_dataset": {
+        "assinatura": "(cubos: 'Sequence[np.ndarray]', mascaras: 'Sequence[np.ndarray]', group_ids: 'Sequence[str]', rotulos: 'Sequence[str]') -> 'Tuple[np.ndarray, np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "extract_roi_spectra": {
+        "assinatura": "(cubo: 'np.ndarray', mascara: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
     "hsi_quality": {
       "QualityGateResult": {
         "campos": [
