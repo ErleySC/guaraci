@@ -1,3 +1,28 @@
+# PROGRESSO — Passo 109 (2026-09-02)
+
+## Passo 109 — Datasets públicos adicionais de HSI (candidatos, NÃO integrados)
+
+Busca ativa além do DeepHS Fruit, mesma disciplina do Passo 93 (formato,
+licença, tamanho, cubo bruto vs. processado, ANTES de qualquer
+integração). Reportado aqui, integração fica para decisão explícita
+(a instrução pede isso: "reportar a lista antes de integrar qualquer
+um").
+
+| Candidato | Matriz | Formato | Licença | Tamanho | Veredito |
+|---|---|---|---|---|---|
+| **Olive Dataset** (Mendeley `10.17632/8xvhcsdvst.1`) | Azeitona em campo (Manzanilla e Gordal), monitoramento sazonal | ENVI (`.hdr`+`.raw`, mesmo formato já suportado por `hsi_io.load_envi_cube` sem alteração), 400-1000nm, 204 bandas, imagens 512×512 | **CC BY 4.0 — confirmado via API oficial da Mendeley** (`data_licence`), SPDX explícito | `demo_Olive_Dataset.zip` = 385MB (viável mesmo sem HTTP Range); `Olive_Dataset.zip` completo = 10GB | ✅ **Melhor candidato** — matriz nova (azeitona/oleaginosa, diferente das 5 frutas do DeepHS), licença explícita (o DeepHS Fruit não tem), formato já suportado sem novo leitor |
+| Hyperspectral Pork Belly Dataset (Zenodo `17242553`) | Carne (detecção de corpo estranho) | Cubo 640×1000×184, 942-1723nm, mas o subconjunto de treino já vem como "patches" pré-processados (80 mil), não claramente cubo bruto por amostra | **CC BY 4.0 confirmado** | 18,9GB (subconjunto), 1,6TB total | ⚠️ Matriz nova (carne) e licença boa, mas formato interno do zip não confirmado como cubo bruto — precisaria inspeção direta (mesmo protocolo do Passo 93/104) antes de qualquer integração |
+| Barley Hyperspectral Dataset (Univ. Copenhague, ERDA) | Cevada (grão) | NIR-HSI, espectro medido já processado (absorbância média dentro da máscara) | CC BY-**NC** 4.0 (restrição de uso comercial) | não verificado | ⚠️ Matriz de grão (interessante), mas já vem como espectro processado (não cubo bruto) + licença não-comercial — não prioritário |
+| HSIFoodIngr-64 | Ingredientes alimentares diversos | não verificado em detalhe | CC BY-**NC-ND** 4.0 (sem derivados) | não verificado | ❌ Licença restritiva demais (proíbe obras derivadas) |
+
+**Nenhum destes foi baixado ou integrado nesta rodada** -- decisão de
+integrar (ou não) o Olive Dataset fica para o usuário confirmar, dado o
+volume de trabalho que uma integração completa (novo leitor
+específico, testes, validação) representaria em cima do que já foi
+feito nos Passos 92-108.
+
+---
+
 # PROGRESSO — Passo 108 (2026-09-02)
 
 ## Passo 108 — `hsi_applicability.py`
