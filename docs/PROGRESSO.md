@@ -164,6 +164,34 @@ consistente com a fisiologia real do amadurecimento (degradacao de
 clorofila + acumulo de carotenoides), achado nao forcado (a tabela foi
 escrita ANTES de rodar o VIP real, ver commit).
 
+## Passo 101 — `src/guaraci/hsi_validation.py`
+
+Particao nativa de origem = DIA de medicao (achado por leitura direta
+do JSON de anotacoes: cada dia e' uma sessao/lote separado,
+`storage_days` cresce por dia). Teste externo = dias `day_8_m3` +
+`day_9_m3` (nunca vistos no treino); teste interno = objetos held-out
+dos demais 6 dias. Sensibilidade/especificidade/precisao reportadas
+SEPARADAS por classe e por interno/externo (reaproveita
+`figuras.specificity_by_class`, ja' existente) -- nunca uma media
+unica.
+
+**Medido contra o dataset real** (interno n=6, externo n=12):
+
+| classe | sens(int) | sens(ext) | espec(int) | espec(ext) | prec(int) | prec(ext) |
+|---|---|---|---|---|---|---|
+| overripe | 0,00 | 0,50 | 1,00 | 1,00 | 0,00 | 1,00 |
+| perfect | 1,00 | 1,00 | 0,00 | 0,50 | 0,83 | 0,80 |
+| unripe | 0,00 | 0,00 | 1,00 | 1,00 | 0,00 | 0,00 |
+
+Numeros ruidosos e as vezes CONTRA-INTUITIVOS (sensibilidade de
+overripe MAIOR no externo que no interno) -- efeito esperado de n muito
+pequeno por classe/particao (6-12 objetos), reportado sem suavizar.
+`unripe` tem sensibilidade/precisao zero nas duas particoes -- o
+dataset so' tem 2 gravacoes dessa classe no total (ver Passo 93),
+insuficiente para qualquer split aprender o padrao. Nao e' escondido:
+e' exatamente o tipo de "queda/limitacao real" que a instrucao pede
+para documentar, nao maquiar.
+
 ---
 
 # PROGRESSO — Passos 84-87 (2026-08-27)

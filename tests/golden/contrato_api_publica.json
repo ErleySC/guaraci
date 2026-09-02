@@ -2249,6 +2249,62 @@
         "forma": "funcao"
       }
     },
+    "hsi_validation": {
+      "ExternalValidationReport": {
+        "campos": [
+          {
+            "nome": "classes",
+            "tem_default": false,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "n_objetos_teste_interno",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_objetos_teste_externo",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "sensibilidade_interna",
+            "tem_default": false,
+            "tipo": "Dict[str, float]"
+          },
+          {
+            "nome": "especificidade_interna",
+            "tem_default": false,
+            "tipo": "Dict[str, float]"
+          },
+          {
+            "nome": "precisao_interna",
+            "tem_default": false,
+            "tipo": "Dict[str, float]"
+          },
+          {
+            "nome": "sensibilidade_externa",
+            "tem_default": false,
+            "tipo": "Dict[str, float]"
+          },
+          {
+            "nome": "especificidade_externa",
+            "tem_default": false,
+            "tipo": "Dict[str, float]"
+          },
+          {
+            "nome": "precisao_externa",
+            "tem_default": false,
+            "tipo": "Dict[str, float]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "run_external_validation_by_day": {
+        "assinatura": "(cubos: 'Sequence[np.ndarray]', mascaras: 'Sequence[np.ndarray]', group_ids: 'Sequence[str]', rotulos: 'Sequence[str]', dias: 'Sequence[str]', dias_externos: 'Sequence[str]', *, fracao_teste_interno: 'float' = 0.25, seed: 'int' = 42, max_lvs: 'int' = 8, n_splits_wold: 'int' = 2) -> 'ExternalValidationReport'",
+        "forma": "funcao"
+      }
+    },
     "identificacao": {
       "CoverageStatus": {
         "bases": [

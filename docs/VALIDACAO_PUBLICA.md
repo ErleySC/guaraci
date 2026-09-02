@@ -366,5 +366,13 @@ detalhamento passo a passo. Resumo do estado nesta rodada:
   Fearn & Hindle 1993). Medido contra o dataset real: 4 das 5 bandas de
   maior VIP caem em 540-550nm, dentro da faixa de carotenoides/
   antocianinas — consistente com a fisiologia do amadurecimento.
-- **Validação externa (Passo 101) e integração ao menu/CLI (Passo
-  102):** ainda não implementados nesta rodada — em andamento.
+- **Validação externa (Passo 101):** `src/guaraci/hsi_validation.py` —
+  partição nativa por dia de medição (`day_8_m3`+`day_9_m3` como teste
+  externo nunca visto no treino). Sensibilidade/especificidade/precisão
+  reportadas separadas por classe e por interno/externo — ver tabela
+  completa em `docs/PROGRESSO.md` Passo 101. Números ruidosos e por
+  vezes contra-intuitivos (n pequeno por classe/partição), reportados
+  sem suavizar — inclusive `unripe` com sensibilidade zero nas duas
+  partições (só 2 gravações dessa classe no dataset inteiro).
+- **Integração ao menu/CLI (Passo 102):** ainda não implementada nesta
+  rodada — em andamento.
