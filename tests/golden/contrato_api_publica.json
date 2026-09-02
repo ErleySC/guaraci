@@ -2025,6 +2025,36 @@
         "forma": "funcao"
       }
     },
+    "hsi_applicability": {
+      "HSIApplicabilityDomain": {
+        "campos": [
+          {
+            "nome": "pca",
+            "tem_default": false,
+            "tipo": "object"
+          },
+          {
+            "nome": "n_bandas",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "artefatos",
+            "tem_default": false,
+            "tipo": "Dict[str, object]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "evaluate_hsi_applicability_domain": {
+        "assinatura": "(dominio: 'HSIApplicabilityDomain', X_new: 'np.ndarray') -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "train_hsi_applicability_domain": {
+        "assinatura": "(X_train: 'np.ndarray', *, n_components: 'int' = 5, alpha: 'float' = 0.05) -> 'HSIApplicabilityDomain'",
+        "forma": "funcao"
+      }
+    },
     "hsi_chemistry": {
       "ATRIBUICAO_QUIMICA_VIS_FRUTA": {
         "forma": "constante",

@@ -1,3 +1,31 @@
+# PROGRESSO — Passo 108 (2026-09-02)
+
+## Passo 108 — `hsi_applicability.py`
+
+Reaproveita `chemometric_stats.training_applicability_domain`/
+`applicability_domain_new_samples` SEM ALTERACAO -- ja' sao genericas
+o suficiente p/ aceitar pixels HSI direto (1 pixel = 1 "amostra", MESMA
+granularidade que `hsi_classification.py` usa p/ treinar o PLS-DA por
+pixel -- o dominio de aplicabilidade avalia exatamente o espaco que o
+classificador ve). Unica coisa nova: checagem de compatibilidade de
+CAMERA antes de chamar as funcoes existentes -- cameras diferentes tem
+numero de bandas diferente (Kaki/VIS=224, Kaki/VIS_COR=249), entao
+`pca.transform` cru levantaria um erro de shape em vez de uma decisao
+interpretavel. Sensor incompativel agora devolve
+`sensor_compativel=False` + motivo explicito, nunca um traceback cru.
+
+Testado tambem o caso onde a comparacao numerica FAZ sentido: 2
+combinacoes com o MESMO sensor (Specim FX10, mesmo `id`="VIS" e mesmo
+numero de bandas em varias frutas, confirmado no JSON de anotacoes) --
+o dominio calibrado numa fruta rejeita corretamente a maioria dos
+pixels de outra fruta (quimica/reflectancia diferente, mesmo eixo
+espectral).
+
+Contra-prova OBRIGATORIA: cena sintetica deliberadamente fora do
+dominio (deslocamento grande) e' rejeitada em >90% dos pixels.
+
+---
+
 # PROGRESSO — Passos 104-107 (2026-09-02)
 
 ## Passo 104 — `hsi_io.load_deephs_fruit_dataset` (generalizacao multi-fruta/camera)
