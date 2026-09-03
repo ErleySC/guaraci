@@ -1,3 +1,33 @@
+# PROGRESSO — Passo 121 (2026-09-03)
+
+## Passo 121 — Hipótese D registrada como conclusão DEFINITIVA (fechada, não mais em aberto)
+
+O achado só existia em resumo de conversa. Formalizado:
+
+- Teste confirmado ja' commitado (`80483e5`,
+  `test_hipotese_d_firmeza_objetiva_confirma_rotulo_nao_e_ruido`).
+- `docs/VALIDACAO_PUBLICA.md` §7 ganhou a conclusão definitiva textual:
+  a diferença física é real e robusta (Mann-Whitney p=8,87×10⁻⁸,
+  Cohen's d=1,64); a câmera VIS especificamente não capta essa
+  diferença -- limite de sensibilidade espectral da técnica, não ruído
+  de rótulo. Não é mais "questão em aberto".
+- README.md/README.pt-br.md ganham essa conclusão como 6ª evidência da
+  seção de validação honesta (Passo 115).
+- **Checagem adicional (não bloqueante, exploratória):** Kiwi também
+  tem câmera NIR (58 gravações, n_unripe=7 -- amostra pequena). Efeito
+  por-banda medido: mediana 0,968 (contra 0,376 em VIS) -- ~2,5× maior,
+  fisicamente plausível (NIR sensível a umidade/estrutura celular). Mas
+  a classificação por pixel em Kiwi/NIR TAMBÉM falhou pra' `unripe`
+  (mesma tabela do Passo 104) -- com n=7, causa mais provável é tamanho
+  de amostra, não falta de sinal. Evidência adicional (não confirmação
+  completa) de que o limite é da câmera VIS especificamente. Novo teste
+  `test_checagem_adicional_camera_nir_kiwi_efeito_por_banda`.
+
+Suite completa (6/6 na investigação, incl. o teste novo), ruff limpo.
+Commit, push.
+
+---
+
 # PROGRESSO — Passo 120 (2026-09-03)
 
 ## Passo 120 — README, MANUAL.md, CITATION.cff, paper.md atualizados por completo

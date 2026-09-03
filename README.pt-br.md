@@ -366,10 +366,19 @@ documentado de forma independente:
    dataset DeepHS Fruit que passa desse limiar) — 4 hipóteses testadas
    (seleção de banda, alvo contínuo, sobreposição espectral, checagem
    de ruído de rótulo contra uma medição independente de firmeza),
-   nenhuma resgatou. A evidência mais robusta aponta pra' um limite
-   real de separabilidade dessa câmera/técnica pra' esse par específico
-   de estágio de maturação, não um bug — ver `docs/VALIDACAO_PUBLICA.md`
-   §7, Passos 112 e 114.
+   nenhuma resgatou. Ver `docs/VALIDACAO_PUBLICA.md` §7, Passos 112 e
+   114, e o próximo item pra' leitura definitiva da checagem de ruído
+   de rótulo.
+6. **A checagem de ruído de rótulo (hipótese 4 acima) fechou com uma
+   resposta quantitativa, não um palpite.** A diferença física entre
+   kiwi `unripe` e `perfect` é real e estatisticamente robusta — uma
+   medição de firmeza objetiva e independente, no mesmo dataset,
+   separa as duas classes de forma limpa (Mann-Whitney p=8,87×10⁻⁸,
+   Cohen's d=1,64). A câmera VIS especificamente não captura essa
+   diferença no espectro de refletância (efeito por-banda ≈0,38,
+   fraco-a-moderado) — não é ruído de rótulo, é um limite genuíno de
+   sensibilidade espectral dessa técnica de aquisição pra' esse estágio
+   de maturação. Ver `docs/VALIDACAO_PUBLICA.md` §7, Passo 121.
 
 Nenhum desses números foi suavizado, re-rodado até dar certo, ou
 deixado fora de uma tabela. Se um número aqui parece pouco

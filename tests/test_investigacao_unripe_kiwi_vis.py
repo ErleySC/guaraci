@@ -95,6 +95,24 @@ def kiwi_vis_filtrado():
     return {"filtrado": filtrado, "wavelengths": wavelengths, "meta_df": meta_df}
 
 
+@pytest.fixture(scope="module")
+def kiwi_nir_filtrado():
+    """Mesmo Kiwi, camera NIR -- so' pra' checagem adicional do Passo
+    121 (nao usada pelas hipoteses A-D, que sao especificas de VIS)."""
+    pasta = _pasta_deephs_fruit_all()
+    if pasta is None:
+        pytest.skip(
+            "dataset publico DeepHS Fruit (todas as frutas/cameras) ausente. "
+            "Baixe com "
+            "'python scripts/download_datasets/baixar_deephs_fruit_todas.py' "
+            "e aponte GUARACI_DATASETS_DIR.")
+    cubos, rotulos, grupos, wavelengths, meta_df = load_deephs_fruit_dataset(
+        str(pasta), fruta="Kiwi", camera="NIR")
+    filtrado = apply_quality_gate_and_segment(
+        cubos, list(grupos), list(rotulos), list(meta_df["day"]))
+    return {"filtrado": filtrado, "wavelengths": wavelengths, "meta_df": meta_df}
+
+
 def _dias_externos(dias_unicos: List[str]) -> List[str]:
     n_dias_externos = max(1, len(dias_unicos) // 4)
     return dias_unicos[-n_dias_externos:]
@@ -367,3 +385,46 @@ def test_hipotese_d_firmeza_objetiva_confirma_rotulo_nao_e_ruido(kiwi_vis_filtra
         "unripe deveria ser MAIS firme que perfect (fisiologicamente) -- "
         "sinal invertido contradiz a premissa, investigar antes de "
         "reportar como confirmacao do rotulo.")
+
+
+def test_checagem_adicional_camera_nir_kiwi_efeito_por_banda(kiwi_nir_filtrado):
+    """Passo 121, checagem NAO BLOQUEANTE: o Kiwi tambem tem gravacoes de
+    camera NIR (alem da VIS investigada acima) -- mede se o NIR capta
+    MAIS da diferenca de firmeza que a VIS nao capta bem (Hipotese D).
+    Observacional/exploratorio (n_unripe=7, bem menor que os n=28 do
+    VIS) -- nao e' um teste de hipotese formal com p-valor, so' registra
+    o numero pra' comparar com o efeito por-banda ja medido em VIS
+    (mediana ~0,376, ver test_hipotese_c_...)."""
+    filtrado = kiwi_nir_filtrado["filtrado"]
+
+    espectros_por_obj: Dict[str, List[np.ndarray]] = {}
+    rotulo_por_obj: Dict[str, str] = {}
+    for cubo, mascara, gid, rot in zip(
+            filtrado["cubos"], filtrado["mascaras"], filtrado["group_ids"],
+            filtrado["rotulos"]):
+        espectros_por_obj.setdefault(gid, []).append(cubo[mascara].mean(axis=0))
+        rotulo_por_obj[gid] = rot
+
+    gids = sorted(espectros_por_obj)
+    X_obj = np.array([np.mean(espectros_por_obj[g], axis=0) for g in gids])
+    rot_obj = np.array([rotulo_por_obj[g] for g in gids])
+    contagem = {c: int((rot_obj == c).sum()) for c in sorted(set(rot_obj))}
+    print(f"\n[checagem NIR] n_objetos por classe: {contagem}")
+
+    idx_u, idx_p = rot_obj == "unripe", rot_obj == "perfect"
+    assert idx_u.sum() >= 2 and idx_p.sum() >= 2, (
+        "poucas amostras de NIR pra' sequer calcular um desvio-padrao "
+        "por classe -- checagem exploratoria nao aplicavel aqui.")
+
+    mu_u, mu_p = X_obj[idx_u].mean(axis=0), X_obj[idx_p].mean(axis=0)
+    std_u, std_p = X_obj[idx_u].std(axis=0), X_obj[idx_p].std(axis=0)
+    efeito = np.abs(mu_u - mu_p) / (0.5 * (std_u + std_p) + 1e-9)
+    print(f"[checagem NIR] efeito por-banda |diff|/dp: "
+          f"mediana={np.median(efeito):.3f} max={efeito.max():.3f} "
+          f"(referencia VIS: mediana~0.376, ver Hipotese C)")
+
+    # So' registra o numero (print acima) -- nao afirma superioridade do
+    # NIR como fato estabelecido (n_unripe=7 e' pequeno demais pra' isso).
+    # Ver docs/VALIDACAO_PUBLICA.md secao 7, Passo 121, pra' a leitura
+    # completa incluindo a ressalva de tamanho de amostra.
+    assert np.all(np.isfinite(efeito))

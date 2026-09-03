@@ -318,10 +318,19 @@ Five concrete instances, each independently measured and documented:
    sufficient sample size** (n≥19, the one combination in the DeepHS
    Fruit dataset that clears that bar) — four hypotheses tested (band
    selection, continuous target, spectral overlap, label-noise check
-   against an independent firmness measurement), none rescued it. The
-   most robust evidence points to a genuine separability limit of this
-   camera/technique for this specific ripeness pair, not a bug — see
-   `docs/VALIDACAO_PUBLICA.md` §7, Passos 112 and 114.
+   against an independent firmness measurement), none rescued it. See
+   `docs/VALIDACAO_PUBLICA.md` §7, Passos 112 and 114, and the next
+   point for the definitive read on the label-noise check.
+6. **The label-noise check (hypothesis 4 above) closed with a
+   quantitative answer, not a hunch.** The physical difference between
+   `unripe` and `perfect` kiwi is real and statistically robust — an
+   independent, objective firmness measurement in the same dataset
+   separates them cleanly (Mann-Whitney p=8.87×10⁻⁸, Cohen's d=1.64).
+   The VIS camera specifically does not capture that difference in its
+   reflectance spectrum (per-band effect size ≈0.38, weak-to-moderate)
+   — not label noise, a genuine spectral-sensitivity limit of this
+   acquisition technique for this ripeness stage. See
+   `docs/VALIDACAO_PUBLICA.md` §7, Passo 121.
 
 None of these numbers were softened, re-run until favorable, or left
 out of a table. If a number here looks unimpressive, that's the

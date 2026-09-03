@@ -612,6 +612,34 @@ princípio, separar melhor — questão em aberto, fora do escopo desta
 investigação (que cobriu as 3 hipóteses pedidas + a 4ª motivada pelo
 próprio achado da B).
 
+**Conclusão definitiva (Passo 121, fecha a investigação — não é mais
+"em aberto"):** a diferença física entre `unripe` e `perfect` é real e
+estatisticamente robusta (medição objetiva de firmeza, Mann-Whitney
+p=8,87×10⁻⁸, Cohen's d=1,64). A câmera VIS do DeepHS Fruit,
+especificamente, não captura essa diferença no espectro de
+refletância — não é ruído de rótulo, é limite de sensibilidade
+espectral desta técnica de aquisição para este estágio de maturação.
+
+**Checagem adicional — câmera NIR do mesmo Kiwi (Passo 121, não
+bloqueante, exploratória):** o dataset também tem Kiwi/NIR (58
+gravações, 35 objetos: unripe n=7, perfect n=19, overripe n=9 —
+amostra BEM menor que a do VIS, resultado abaixo é observacional, não
+um teste de hipótese formal). Efeito por-banda (|diferença de
+média|/desvio-padrão combinado, espectro NIR completo, mesmo espírito
+da Hipótese C): mediana **0,968**, máximo 1,119 — cerca de 2,5× MAIOR
+que o efeito medido em VIS (mediana 0,376), fisicamente plausível (NIR
+é sensível a mudanças de umidade/estrutura celular durante o
+amadurecimento, que a reflectância VIS não capta tão bem). **Mas a
+classificação por pixel em Kiwi/NIR também falhou para `unripe`**
+(sens 0,00/0,00, mesma tabela do Passo 104) — com n_unripe=7 objetos,
+a causa mais provável dessa falha específica é tamanho de amostra
+insuficiente para o split group-aware, não falta de sinal espectral.
+Ou seja: **evidência adicional de que o limite é da câmera VIS
+especificamente**, não da matriz Kiwi em geral — mas não uma
+confirmação completa (precisaria de mais objetos `unripe` de NIR pra'
+testar isso com uma classificação de verdade, fora do escopo desta
+rodada).
+
 Suíte completa, ruff/mypy limpos.
 
 ## 8. Isolamento físico de dataset de terceiro (Passo 118, P0)
