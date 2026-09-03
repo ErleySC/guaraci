@@ -1,3 +1,25 @@
+# PROGRESSO — Passo 123 (2026-09-03)
+
+## Passo 123 — Hipótese NIR registrada (especulativa, distinta da conclusão definitiva do Passo 121)
+
+Achado do Passo 121: efeito por-banda de firmeza ~2,5× maior em Kiwi/NIR
+que Kiwi/VIS -- registrado em `docs/VALIDACAO_PUBLICA.md` §7 como
+hipótese explícita ("sinal de maturação mais concentrado fora do
+visível"), com o texto exato pedido, claramente separada da conclusão
+DEFINITIVA do Passo 121 (aquela é confirmada; esta é especulativa).
+
+**Checagem em outra fruta** (Avocado, única outra opção com câmera NIR
+no DeepHS Fruit): o padrão NÃO se repete — Avocado/NIR (mediana 0,301)
+é MENOR que Avocado/VIS (mediana 0,548), razão 0,55× (oposto de Kiwi).
+Conclusão honesta registrada: a hipótese é **específica do Kiwi neste
+dataset, não um padrão geral** — ambas as amostras de NIR são pequenas
+(n_unripe=6-7), nenhuma direção deve ser tratada como estabelecida.
+Nenhuma alegação forte feita.
+
+Sem mudança de código (só documentação). Commit, push.
+
+---
+
 # PROGRESSO — Passo 122 (2026-09-03)
 
 ## Passo 122 — Identificação generalizada: aceita qualquer convenção de nome

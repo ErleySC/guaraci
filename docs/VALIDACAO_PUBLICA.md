@@ -642,6 +642,40 @@ rodada).
 
 Suíte completa, ruff/mypy limpos.
 
+### Passo 123 — Hipótese NIR (registro para investigação futura, NÃO conclusão)
+
+**Hipótese não confirmada, amostra pequena**: o sinal espectral de
+maturação do Kiwi parece mais concentrado na faixa NIR (950-1700 nm)
+que na VIS, possivelmente ligado a mudanças de composição química
+(açúcar, ácido, degradação de clorofila) que absorvem mais fortemente
+fora do visível. Se confirmado com amostra maior, isso orientaria a
+recomendação de câmera para esse tipo de aplicação.
+
+Esta é uma hipótese especulativa, distinta e mais fraca que a conclusão
+DEFINITIVA do Passo 121 acima (que é sobre a câmera VIS especificamente
+não captar uma diferença fisiológica REAL e confirmada por firmeza
+objetiva) — aqui a pergunta é se a câmera NIR captaria MAIS dessa
+diferença, e a amostra é pequena demais pra' afirmar isso com confiança.
+
+**Checagem em outra fruta com câmera NIR disponível (Avocado — única
+outra opção no DeepHS Fruit além do Kiwi)**: o padrão NÃO se repete.
+
+| Fruta | Câmera | n (unripe/perfect) | efeito por-banda mediano |
+|---|---|---|---:|
+| Kiwi | VIS | 28/39 | 0,376 |
+| Kiwi | NIR | 7/19 | 0,968 (**2,5× maior** que VIS) |
+| Avocado | VIS | 9/29 | 0,548 |
+| Avocado | NIR | 6/11 | 0,301 (**0,55×** — MENOR que VIS) |
+
+**Conclusão honesta**: a hipótese "NIR concentra mais sinal de
+maturação que VIS" é **específica do Kiwi neste dataset, não um padrão
+geral** — o Avocado mostra o efeito na direção OPOSTA (VIS maior que
+NIR). Ambas as amostras de NIR são pequenas (n_unripe=6-7), então nem a
+direção Kiwi nem a direção Avocado devem ser tratadas como
+estabelecidas — apenas registradas como hipóteses concorrentes para
+investigação futura com amostra maior. Nenhuma alegação forte é feita
+aqui sobre qual câmera é geralmente melhor para maturação de fruta.
+
 ## 8. Isolamento físico de dataset de terceiro (Passo 118, P0)
 
 Auditoria por comando direto — checagem P0 explícita, não alegação.
