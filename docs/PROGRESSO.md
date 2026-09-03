@@ -1,3 +1,53 @@
+# PROGRESSO — Passo 117 (2026-09-03)
+
+## Passo 117 — Auditoria de adaptabilidade multimatriz/multitecnica
+
+Repetido o teste de aceite multimatriz (`test_perfil_matriz.py`) para
+os 3 modos que faltavam, cada um com perfil/dominio FICTICIO nunca
+visto pelo pacote (`tests/test_aceitacao_adaptabilidade.py`):
+
+- **Tabular**: YAML de perfil (matriz "resina de cupuacu", inventada)
+  escrito num tmp_path como um usuario faria, carregado pelo CAMINHO
+  (nao precisa estar em `src/guaraci/perfis_matriz/`) -- roda
+  `executar()` ponta-a-ponta, model card declara so' o vocabulario
+  certo, zero linha de codigo alterada.
+- **Imagem colorimetrica**: tecnica ficticia nova ("microscopio_digital")
+  combinada com o perfil "generico" via `combine_profiles`/
+  `save_profile` (fluxo do Agente 5B) -- roda mode="imagem"
+  ponta-a-ponta.
+- **HSI**: dominio TOTALMENTE alheio a fruta -- autenticidade de
+  comprimido farmaceutico ("autentico"/"falsificado") via
+  `load_hsi_folder_dataset` + `run_hsi_pipeline`, confirmando que o
+  carregador do Passo 111 nao tem NENHUMA amarracao ao vocabulario do
+  DeepHS Fruit.
+
+**2 achados de arquitetura medidos e reportados (NAO corrigidos
+sozinhos -- decisao de escopo fica pro usuario)**:
+
+1. **Identificacao (Bloco 9b) e' estruturalmente amarrada ao conceito
+   de "adulterante"**, nao so' de vocabulario: `identificacao.
+   train_identification_ensemble` chama `dados_io.
+   adulterant_from_mae_id` (regex especifico das letras A/M/S do
+   dataset original de oleo) pra' particionar as combinacoes. Pra'
+   QUALQUER mae_id que nao siga essa convencao -- inclusive mae_id REAL
+   e valido de mode="imagem" nivel "high" -- a Identificacao roda sem
+   erro mas devolve SEMPRE 0 combinacoes, e o proprio `model_card.md`
+   ja' documenta a causa ("sem adulterante nomeavel"). Achado colateral
+   de ORDEM: `resumo["Identificacao (Bloco 9b) ..."]` em `pipeline.py`
+   e' escrito DEPOIS que `resumo_modelo.txt` ja' foi salvo em disco --
+   nunca aparece nesse arquivo, so' no `model_card.md`.
+2. **`perfil_matriz.PERFIS_TECNICA`** e' um frozenset fixo de 3 nomes
+   ("bancada"/"celular"/"scanner") usado so' pra' filtrar
+   `perfis_disponiveis(apenas="tecnica")` -- uma tecnica nova funciona
+   normalmente via `load_profile`/`combine_profiles` (confirmado pelo
+   teste de aceite acima), mas nao aparece na listagem filtrada por
+   "tecnica" (cai errado em "matriz"). So' afeta descoberta em
+   menu/listagem, nunca a execucao do pipeline.
+
+5 testes novos, suite completa (1179 passed), ruff limpo. Commit, push.
+
+---
+
 # PROGRESSO — Passo 114 (2026-09-03)
 
 ## Passo 113 — Push
