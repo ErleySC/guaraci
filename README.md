@@ -87,7 +87,39 @@ external hold-out. That is what separates an honest metric from an artifact.
 - **Calibration transfer** (Direct/Piecewise Direct Standardization) and **calibration-set selection** (Kennard-Stone, Duplex, SPXY) for moving a model between instruments or picking a representative subset from measured data.
 - **Applicability-domain drift sentinel**: accumulates the AD (in-/out-of-domain) rejection rate across successive batch-prediction runs and formally tests (one-sided exact binomial test, H0: rejection rate = nominal alpha) whether it is rising — a sign of instrument/process drift since calibration. State persists as JSON next to the model; the CLI's batch-prediction menu updates it automatically.
 - **Image mode (digital colorimetry, prototype)**: turns photos (RGB/HSV/Lab stats, optionally GLCM texture) into the same numeric matrix every other mode consumes — PCA, PLS-DA, DD-SIMCA etc. run unchanged. Auto-detects which replicate-leakage grouping guarantee the data folder supports (per-sample subfolder / manual association CSV / none) and states the level actually used in the log, model card and manifest — never assumes a guarantee it doesn't have.
-- **HSI mode (hyperspectral imaging, "minimum viable" prototype)**: DISTINCT from image mode above — operates PER PIXEL of a hyperspectral cube (ENVI format), not per whole photo. Quality gate, PCA+Otsu segmentation, per-pixel PLS-DA with physical-object aggregation (majority vote + heterogeneity), spatial classification map, VIP×chemical-band cross-explainability, and external validation by day/batch partition. Reachable via the `[X]` key in the CLI main menu. Validated against a real public dataset (DeepHS Fruit/Kaki, Varga, Makowski & Zell 2021) — performance is still modest, reported honestly (see `docs/VALIDACAO_PUBLICA.md` §7).
+- **HSI mode (hyperspectral imaging)**: DISTINCT from image mode above — operates PER PIXEL of a hyperspectral cube (ENVI `.hdr`/`.bin` format), not per whole photo. Quality gate, PCA+Otsu segmentation, per-pixel PLS-DA with physical-object aggregation (majority vote + heterogeneity), spatial classification map. **Works with your own cubes, offline, no public dataset required** — point it at any folder with one subfolder per class; the same 3-level replicate-leakage grouping guarantee as image mode applies (per-sample subfolder / association CSV / none, stated explicitly, never assumed). The public dataset (DeepHS Fruit) is used only as this project's own validation fixture, auto-detected by `manifest.json` (or forced either way with an explicit flag) — going through it also unlocks external validation by day/batch partition and VIP×chemical-band cross-explainability, neither of which apply to a generic folder with no such native partition. Offline operation is proven, not just claimed: a test builds a synthetic cube and runs the full pipeline with the network socket disabled. Reachable via the `[X]` key in the CLI main menu. Performance on the public fixture is still modest in places, reported honestly (see `docs/VALIDACAO_PUBLICA.md` §7).
+
+### Multimatrix and multitechnique by design — with two honest caveats
+
+Any matrix (oil, corn, honey, a hyperspectral cube of fruit or pills) and
+any acquisition technique (spectrometer, phone camera, hyperspectral
+camera) plugs in through a **profile** (a YAML file) or, for HSI, a
+plain folder of your own data — never a source-code change. This was
+re-verified directly (not just claimed) for all three modes with a
+profile/domain invented on the spot for the test: a fictitious tabular
+matrix loaded from a bare YAML file never shipped with the package, a
+fictitious image-acquisition technique combined with the generic
+profile, and an HSI domain with zero relation to any dataset this
+project has ever used (pharmaceutical-pill authenticity) — see
+`tests/test_aceitacao_adaptabilidade.py`.
+
+That same audit found two real, narrow limits, reported rather than
+quietly patched over:
+
+- **Species×adulterant identification (Blind mode's `identificacao.py`)
+  is structurally tied to the adulterant-coded sample-ID convention of
+  the original oil dataset** (a `{code}-{date}-{letter}{concentration}`
+  pattern) — it runs without error on any matrix, but only produces
+  non-empty calibrated combinations when sample IDs follow that
+  specific convention. On any other matrix (a different tabular
+  profile, image mode, HSI) it correctly reports zero calibrated
+  combinations rather than crashing, and the generated model card
+  states why — but it is genuinely inert there, not just differently
+  worded.
+- **A handful of image-acquisition-technique profiles are
+  hardcoded by name** (`bancada`/`celular`/`scanner`) for a menu-listing
+  filter — a new technique profile loads and runs correctly, but won't
+  show up in that filtered listing until its name is added.
 
 ---
 
@@ -337,6 +369,14 @@ after export.
   the same leakage protection as the other input modes; without either, it
   falls back to `StratifiedKFold` and the report explicitly stamps that.
   Do not use the no-guarantee level for publishable results.
+- **HSI mode accepts your own cube, but performance is only validated
+  against the public fixture so far** — several fruit×camera
+  combinations still perform modestly (class imbalance), and a
+  4-hypothesis investigation did not rescue `unripe` separability in
+  Kiwi/VIS even with a statistically sufficient sample — see
+  `docs/VALIDACAO_PUBLICA.md` §7. Running it on your own matrix works
+  mechanically (proven offline, above) — but, like any new profile,
+  performance on *your* matrix is untested until you test it.
 
 ## Author
 

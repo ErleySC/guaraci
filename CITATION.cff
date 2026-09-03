@@ -6,11 +6,12 @@ abstract: >
   GUARACI is an open, reproducible multi-technique chemometrics platform for
   classification, authentication and exploration of complex matrices. It supports
   vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
-  (HPLC, GC-MS) and resonance (NMR, IMS) data. It implements PLS-DA, OPLS-DA,
-  DD-SIMCA, VIP, SHAP and Monte Carlo CV with anti-leakage group-aware
-  validation, and offers a Rich-based bilingual terminal interface (GUARACI)
-  plus a Streamlit web app. Originally developed for FT-NIR authentication of
-  Amazonian vegetable oils.
+  (HPLC, GC-MS), resonance (NMR, IMS) and hyperspectral-imaging (HSI, ENVI
+  cubes, per-pixel classification with physical-object aggregation) data. It
+  implements PLS-DA, OPLS-DA, DD-SIMCA, VIP, SHAP and Monte Carlo CV with
+  anti-leakage group-aware validation, and offers a Rich-based bilingual
+  terminal interface (GUARACI) plus a Streamlit web app. Originally developed
+  for FT-NIR authentication of Amazonian vegetable oils.
 authors:
   - family-names: "Costa"
     given-names: "Erley S. da"
@@ -32,6 +33,8 @@ keywords:
   - FTIR
   - Raman
   - UV-Vis
+  - hyperspectral imaging
+  - HSI
   - multivariate analysis
   - PLS-DA
   - OPLS-DA

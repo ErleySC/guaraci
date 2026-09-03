@@ -5,6 +5,7 @@ tags:
   - chemometrics
   - spectroscopy
   - FT-NIR
+  - hyperspectral imaging
   - PLS-DA
   - SIMCA
   - food authentication
@@ -25,7 +26,9 @@ bibliography: paper.bib
 `GUARACI` is an open-source Python platform for chemometric classification,
 authentication, and quantification of complex sample matrices. It targets
 vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
-(HPLC, GC-MS), and resonance (NMR, IMS) data, and implements the standard
+(HPLC, GC-MS), resonance (NMR, IMS), and hyperspectral-imaging (ENVI cubes,
+per-pixel classification with physical-object aggregation) data, and
+implements the standard
 multivariate toolkit used in analytical chemistry — PLS-DA, OPLS-DA
 [@TryggWold2002], PLS regression, PCA, hierarchical clustering, and DD-SIMCA
 one-class modelling [@PomerantsevRodionova2014] — together with the
@@ -56,7 +59,17 @@ cross-validation splitting strategy are left entirely to the user's script,
 and there is no distinct interface layer for users who do not write code.
 `hyperSpec` [@BeleitesSergo] targets a narrower problem: representing and
 manipulating hyperspectral data structures in R, without a built-in
-modelling or validation layer. `pyChemometrics` [@Correia] implements
+modelling or validation layer. `GUARACI`'s hyperspectral-imaging (HSI)
+mode addresses that gap directly: a generic ENVI-cube reader (no public
+dataset required — any folder of the user's own cubes, organised one
+subfolder per class, works offline), the same physical-group leakage
+protection as the platform's other modes, per-pixel PLS-DA with
+object-level aggregation, and a spatial classification map. Reported
+performance on it is modest in places, honestly, on the public fixture
+used for the project's own validation — a matrix-agnostic engine is an
+architectural property, not a validation result; a profile or dataset
+a user brings is untested until they test it.
+`pyChemometrics` [@Correia] implements
 PCA, PLS and PLS-DA for NMR and mass-spectrometry metabolomics in Python,
 but is a research codebase without a packaged CLI or web interface, and,
 like `mdatools`, does not surface a first-class, guided option to keep

@@ -1,3 +1,48 @@
+# PROGRESSO — Passo 120 (2026-09-03)
+
+## Passo 120 — README, MANUAL.md, CITATION.cff, paper.md atualizados por completo
+
+Revisao de toda a escrita de alto nivel a luz do trabalho desta rodada
+(Passos 111-119). Achado real: o bullet de HSI em README.md/README.
+pt-br.md/MANUAL.md ainda descrevia "prototipo minimo viavel" exigindo
+`manifest.json` -- STALE desde o Passo 111 (HSI ja aceita dado proprio
+do usuario, offline).
+
+- **README.md/README.pt-br.md**: bullet de HSI reescrito (aceita cubo
+  proprio, offline provado por teste, dataset publico rebaixado a
+  fixture); nova subsecao "Multimatrix and multitechnique by design —
+  with two honest caveats" / "Multimatriz e multitécnica por design —
+  com 2 ressalvas honestas" declarando explicitamente a alegacao
+  multimatriz/multitecnica **com** os 2 achados do Passo 117
+  (Identificacao amarrada a "adulterante"; PERFIS_TECNICA fixo) --
+  nunca alegacao sem a ressalva ao lado. "Known limitations"/
+  "Limitações conhecidas" ganham bullet de HSI atualizado (perfomance
+  no fixture publico ainda modesta, matriz propria nao testada ate
+  testar).
+- **MANUAL.md**: secao HSI (§4) reescrita por completo (mesmo
+  conteudo do README, mais detalhado); tabela de modos de entrada
+  atualizada; **secao nova 4b.2** "Perfil de tecnica de aquisicao +
+  perfil combinado" -- documentando pela PRIMEIRA VEZ o fluxo
+  combinar/salvar (Agente 5B, ja implementado mas nunca documentado) +
+  o achado do Passo 117 sobre eixo espectral herdado da matriz ao
+  combinar com tecnica de imagem (renumerado 4b.2→4b.3→4b.4). Mapa de
+  modulos (§7) ganha `agrupamento_pastas.py` e atualiza `hsi_io.py`/
+  `hsi_validation.py`/`hsi_pipeline.py`.
+- **CITATION.cff/paper.md**: abstract/summary/tags ganham "hyperspectral
+  imaging"/"HSI"; paper.md (JOSS) ganha paragrafo no "State of the
+  field" ligando o modo HSI diretamente ao gap ja apontado do
+  `hyperSpec` (estrutura de dado sem camada de modelagem/validacao) --
+  com a mesma ressalva de desempenho honesto do README. Versao
+  (31.9.0) e data-released NAO alterados (diretriz permanente: nao
+  mexer em versao antes de fechar as pendencias 3/6/7).
+- Comparativo com concorrentes (`app_tabs/sobre.py`) ja revisado no
+  Passo 115.
+
+Suite completa (1183 passed), ruff limpo (unico arquivo de codigo
+tocado, `sobre.py`, so' texto). Commit, push.
+
+---
+
 # PROGRESSO — Passo 119 (2026-09-03)
 
 ## Passo 119 — Inventario essencial/util/obsoleto/duplicado

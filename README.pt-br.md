@@ -93,7 +93,39 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 - **Transferência de calibração** (Direct/Piecewise Direct Standardization) e **seleção do conjunto de calibração** (Kennard-Stone, Duplex, SPXY) para mover um modelo entre instrumentos ou escolher um subconjunto representativo a partir de dados já medidos.
 - **Sentinela de deriva do domínio de aplicabilidade**: acumula a taxa de rejeição AD (dentro/fora do domínio) ao longo de execuções sucessivas de predição em lote e testa formalmente (teste binomial exato, H0: taxa = alfa nominal) se ela está subindo — sinal de deriva de instrumento/processo desde a calibração. Estado persistido em JSON ao lado do modelo; atualizado automaticamente pela Predição em Lote da CLI.
 - **Modo imagem (colorimetria digital, protótipo)**: converte fotos (RGB/HSV/Lab, opcionalmente textura GLCM) na mesma matriz numérica que os outros modos consomem — PCA, PLS-DA, DD-SIMCA etc. funcionam sem alteração. Detecta automaticamente o nível de garantia de agrupamento contra vazamento de réplicas disponível na pasta de dados (subpasta por amostra física / CSV de associação manual / nenhum) e declara o nível usado no log, no model card e no manifesto — nunca finge uma garantia que não tem.
-- **Modo HSI (imageamento hiperespectral, protótipo "mínimo viável")**: DISTINTO do modo imagem — opera POR PIXEL de um cubo hiperespectral (formato ENVI, `.hdr`+`.bin`), não por foto inteira. Quality gate (saturação/SNR/pixels válidos), segmentação PCA+Otsu, PLS-DA por pixel com agregação por objeto físico (voto majoritário + heterogeneidade), mapa de classificação espacial, explicabilidade cruzada VIP×banda química e validação externa por partição de dia/lote — tudo reaproveitando a maquinaria PLS-DA/VIP/group-aware já existente. Acessível pela tecla `[X]` do menu principal da CLI. Validado com dado público real (DeepHS Fruit/Kaki, Varga, Makowski & Zell 2021) — desempenho ainda modesto (ver `docs/VALIDACAO_PUBLICA.md` §7), reportado sem inflar.
+- **Modo HSI (imageamento hiperespectral)**: DISTINTO do modo imagem — opera POR PIXEL de um cubo hiperespectral (formato ENVI, `.hdr`+`.bin`), não por foto inteira. Quality gate (saturação/SNR/pixels válidos), segmentação PCA+Otsu, PLS-DA por pixel com agregação por objeto físico (voto majoritário + heterogeneidade), mapa de classificação espacial. **Funciona com cubos do próprio usuário, offline, sem dataset público nenhum** — basta apontar pra' qualquer pasta com uma subpasta por classe; vale a mesma hierarquia de 3 níveis de garantia de agrupamento do modo imagem (subpasta por amostra / CSV de associação / nenhuma, sempre declarada explicitamente, nunca presumida). O dataset público (DeepHS Fruit) serve só de fixture de validação do próprio projeto, detectado automaticamente pelo `manifest.json` (ou forçado explicitamente pra' qualquer um dos dois lados) — passar por ele também libera validação externa por partição de dia/lote e explicabilidade cruzada VIP×banda química, nenhuma das duas aplicável a uma pasta genérica sem essa partição nativa. Funcionamento offline é PROVADO, não só alegado: um teste constrói um cubo sintético e roda o pipeline inteiro com o socket de rede desabilitado. Acessível pela tecla `[X]` do menu principal da CLI. Desempenho no fixture público ainda é modesto em alguns pontos, reportado sem inflar (ver `docs/VALIDACAO_PUBLICA.md` §7).
+
+### Multimatriz e multitécnica por design — com 2 ressalvas honestas
+
+Qualquer matriz (óleo, milho, mel, um cubo hiperespectral de fruta ou
+comprimido) e qualquer técnica de aquisição (espectrômetro, câmera de
+celular, câmera hiperespectral) entra via **perfil** (um arquivo YAML)
+ou, no HSI, uma pasta simples com dado próprio — nunca uma alteração de
+código-fonte. Isso foi reverificado por comando direto (não só
+alegado) para os 3 modos, com perfil/domínio inventado NA HORA pro
+teste: uma matriz tabular fictícia carregada de um YAML solto nunca
+distribuído com o pacote, uma técnica de aquisição de imagem fictícia
+combinada com o perfil genérico, e um domínio de HSI sem nenhuma
+relação com qualquer dataset já usado neste projeto (autenticidade de
+comprimido farmacêutico) — ver `tests/test_aceitacao_adaptabilidade.py`.
+
+Essa mesma auditoria achou 2 limites reais e estreitos, reportados em
+vez de remendados em silêncio:
+
+- **A Identificação espécie×adulterante (Bloco 9b do modo cego,
+  `identificacao.py`) é estruturalmente amarrada à convenção de
+  identificador de amostra codificado do dataset original de óleo**
+  (padrão `{código}-{data}-{letra}{teor}`) — roda sem erro em qualquer
+  matriz, mas só produz combinações calibradas não-vazias quando o
+  identificador de amostra segue essa convenção específica. Em
+  qualquer outra matriz (outro perfil tabular, modo imagem, HSI),
+  reporta corretamente zero combinações calibradas em vez de quebrar, e
+  o model card gerado explica o porquê — mas é genuinamente inerte lá,
+  não só diferente na palavra usada.
+- **Um punhado de perfis de técnica de aquisição de imagem é
+  fixo por nome** (`bancada`/`celular`/`scanner`) pra' um filtro de
+  listagem de menu — uma técnica nova carrega e funciona corretamente,
+  mas não aparece nessa listagem filtrada até seu nome ser adicionado.
 
 ---
 
@@ -387,12 +419,17 @@ depois de exportado.
   a mesma proteção anti-vazamento dos demais mode; sem nenhum dos dois,
   cai em `StratifiedKFold` e o relatório carimba isso explicitamente. Não
   usar o nível sem garantia para resultado publicável.
-- **Modo HSI é protótipo "mínimo viável"** — validado com um único dataset
-  público (DeepHS Fruit/Kaki, 56 gravações), sem calibração radiométrica
-  própria (usa reflectância já calibrada pelo dataset), e com desempenho
-  de classificação ainda modesto por desbalanceamento severo de classes
-  (ver `docs/VALIDACAO_PUBLICA.md` §7 para os números honestos). Não usar
-  para resultado publicável sem validação adicional em dado próprio.
+- **Modo HSI aceita cubo próprio, mas a validação de desempenho ainda é
+  só contra o dataset público** (DeepHS Fruit, várias frutas/câmeras) —
+  sem calibração radiométrica própria (usa reflectância já calibrada
+  pelo dataset), com desempenho de classificação ainda modesto em
+  várias combinações fruta×câmera por desbalanceamento severo de
+  classes, e com uma investigação de 4 hipóteses que não resgatou a
+  separabilidade de `unripe` em Kiwi/VIS mesmo com amostra
+  estatisticamente suficiente (ver `docs/VALIDACAO_PUBLICA.md` §7 para
+  os números honestos). Rodar em cubo próprio funciona mecanicamente
+  (provado offline, ver acima) — mas, como qualquer perfil novo, o
+  desempenho na SUA matriz é não testado até você testar.
 
 ---
 

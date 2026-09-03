@@ -305,7 +305,7 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 | `dx` | Espectros JCAMP-DX (FT-NIR/Raman/MIR) | Padrão; uma subpasta por classe |
 | `csv` | Tabela genérica (colunas espectrais + uma coluna de classe) | Qualquer dado tabular |
 | `imagem` | Colorimetria digital (protótipo só sem garantia de agrupamento — ver adiante) | Ver adiante |
-| `hsi` | Imageamento hiperespectral (protótipo "mínimo viável" — ver adiante) | Distinto de `imagem`: por pixel, não por foto |
+| `hsi` | Imageamento hiperespectral — aceita cubo próprio, offline (ver adiante) | Distinto de `imagem`: por pixel, não por foto |
 | `sintetico` | Dados simulados | Para testes/demonstração |
 
 **Modo `imagem` (colorimetria digital):** extrai estatísticas de
@@ -390,32 +390,55 @@ Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
 usuário definir a região de interesse via `image_crop` (recorte
 retangular relativo, `config.yaml`) antes da extração.
 
-**Modo `hsi` (imageamento hiperespectral, protótipo "mínimo viável"):**
-DISTINTO do mode `imagem` acima — opera **por pixel** de um cubo
-hiperespectral (formato ENVI, par `.hdr`+`.bin`), não por foto inteira.
-Fluxo: quality gate (saturação, SNR, fração de pixels válidos) →
-segmentação objeto/fundo (PCA+Otsu) → extração dos pixels da ROI, cada
-um marcado com o `group_id` do objeto físico de origem (mesmo conceito
-de `mae_id`, nunca dois pixels do mesmo objeto em lados diferentes de
-um split) → PLS-DA por pixel (reaproveita `PLSDAClassifier`) com
-agregação por objeto (classe majoritária + heterogeneidade) → mapa de
-classificação espacial → explicabilidade cruzada (VIP × tabela de
-atribuição química) → validação externa por partição nativa de dia de
-medição.
+**Modo `hsi` (imageamento hiperespectral):** DISTINTO do mode `imagem`
+acima — opera **por pixel** de um cubo hiperespectral (formato ENVI,
+par `.hdr`+`.bin`), não por foto inteira. Fluxo: leitura genérica
+(`hsi_io.load_hsi_folder_dataset`) → quality gate (saturação, SNR,
+fração de pixels válidos) → segmentação objeto/fundo (PCA+Otsu) →
+extração dos pixels da ROI, cada um marcado com o `group_id` do objeto
+físico de origem (mesmo conceito de `mae_id`, nunca dois pixels do
+mesmo objeto em lados diferentes de um split) → PLS-DA por pixel
+(reaproveita `PLSDAClassifier`) com agregação por objeto (classe
+majoritária + heterogeneidade) → mapa de classificação espacial →
+validação.
 
-Acessível pela tecla **`[X]`** do menu principal da CLI
-(`hsi_dataset_folder` aponta para a pasta com `manifest.json` + os
-arquivos ENVI — ver `scripts/download_datasets/baixar_deephs_kaki.py`
-para obter o dataset público usado na validação). Orquestrado por
-`hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a forma
-de dado (por pixel, agregação por objeto) é fundamentalmente diferente
-da matriz amostras×variáveis que os demais modes compartilham.
+**Aceita o cubo do PRÓPRIO usuário** (Passo 111) — `hsi_dataset_folder`
+aponta pra' QUALQUER pasta com cubos ENVI, convenção de subpasta-por-
+classe (mesma do mode `dx`/`imagem`), sem exigir nenhum arquivo de
+dataset público. Agrupamento por amostra física reaproveita a mesma
+hierarquia de 3 níveis do mode `imagem` (subpasta por amostra física /
+CSV `amostras.csv` de associação na raiz / nenhuma fonte, sempre
+declarado explicitamente, nunca presumido). Funcionamento **offline**
+verificado por teste com o socket de rede desabilitado
+(`tests/test_hsi_offline_prova.py`) — não é alegação.
 
-Validado com o dataset público DeepHS Fruit (Kaki/câmera VIS, Varga,
-Makowski & Zell, IJCNN 2021) — desempenho ainda modesto (desbalanceamento
-severo de classes no dataset), números honestos em
-`docs/VALIDACAO_PUBLICA.md` §7 e `docs/PROGRESSO.md`. Não usar para
-resultado publicável sem validação adicional em dado próprio.
+O dataset público DeepHS Fruit (Varga, Makowski & Zell, IJCNN 2021)
+continua existindo, mas só como **fixture de validação do projeto**:
+`run_hsi_pipeline` detecta automaticamente (presença de um
+`manifest.json` estruturalmente válido) qual dos dois caminhos usar —
+`modo_dataset="publico"`/`"generico"`/`"auto"` (default) força um lado
+ou deixa a detecção decidir. Só o caminho público tem validação externa
+por partição de dia de medição e explicabilidade cruzada (VIP × tabela
+de atribuição química) — nenhum dos dois se aplica a uma pasta genérica
+sem essa partição nativa nem tabela de atribuição química conhecida
+para a matriz do usuário. Para baixar o fixture:
+`scripts/download_datasets/baixar_deephs_kaki.py` (só Kaki/VIS) ou
+`baixar_deephs_fruit_todas.py` (demais frutas/câmeras).
+
+Acessível pela tecla **`[X]`** do menu principal da CLI. Orquestrado
+por `hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a
+forma de dado (por pixel, agregação por objeto) é fundamentalmente
+diferente da matriz amostras×variáveis que os demais modes
+compartilham.
+
+Desempenho no fixture público ainda é modesto em várias combinações
+fruta×câmera (desbalanceamento severo de classes) — números honestos
+em `docs/VALIDACAO_PUBLICA.md` §7 e `docs/PROGRESSO.md`, incluindo uma
+investigação de 4 hipóteses que não resgatou a separabilidade de
+`unripe` em Kiwi/VIS mesmo com amostra estatisticamente suficiente
+(§7, Passos 112/114). Rodar em cubo próprio funciona mecanicamente —
+como qualquer perfil/matriz nova, desempenho na SUA matriz é não
+testado até você testar.
 
 ---
 
@@ -493,7 +516,38 @@ instrução de como escrever um novo. Rodar mel com a faixa e o vocabulário de
 **Escrevendo um perfil novo:** copie `generico.yaml`, preencha, e passe o
 caminho. Não precisa entrar no pacote nem fazer fork.
 
-### 4b.2 Modo cego — o padrão, e por quê
+### 4b.2 Perfil de técnica de aquisição + perfil combinado
+
+Separado do perfil de **matriz** (o que é a amostra) existe o perfil de
+**técnica de aquisição** (como ela foi capturada) — usado hoje pelo
+mode `imagem` (`bancada.yaml`/`celular.yaml`/`scanner.yaml`, cada um
+com `unidade_eixo="indice"`, resolução esperada, formatos aceitos e o
+nível de garantia de agrupamento TÍPICO daquele fluxo de trabalho — só
+informativo, o nível real é sempre decidido pelos dados, nunca pelo
+perfil, ver §4). Carregado com o mesmo `load_profile` do perfil de
+matriz.
+
+**Combinar e salvar** (dentro do assistente interativo, `[2] Dados`,
+depois de escolher tanto `Perfil de matriz` quanto `Perfil de técnica
+de aquisição`): funde os dois com `perfil_matriz.combine_profiles`
+(vocabulário/faixa/eixo sempre da matriz; resolução/formatos/garantia
+típica sempre da técnica; `default_preprocessing` da técnica quando ela
+declarar um) e grava o resultado como um YAML novo em
+`~/.guaraci/perfis_matriz/<nome>.yaml`, pronto pra reusar digitando o
+caminho no campo `Perfil de matriz` numa próxima sessão — nunca precisa
+recombinar toda vez.
+
+**Ao combinar um perfil de matriz ESPECTRAL (nm/cm⁻¹) com uma técnica
+de imagem, o eixo herdado é o da matriz** (`apply_profile` só sobrescreve
+`wn_min`/`wn_max` quando o perfil declara um `eixo_min`/`eixo_max`) —
+usar diretamente um perfil como `mel_vis_nir` (400–1100nm) combinado
+com `celular` produziria uma faixa que descarta TODAS as 18 variáveis
+simbólicas de cor do mode `imagem` (achado da auditoria de
+adaptabilidade, Passo 117). Combine com o perfil `generico` (sem eixo
+declarado) quando a matriz não tiver perfil espectral próprio, ou ajuste
+`wn_min`/`wn_max` manualmente depois de aplicar o perfil combinado.
+
+### 4b.3 Modo cego — o padrão, e por quê
 
 Quem envia uma amostra desconhecida para um modelo de quantificação **não
 sabe a classe dela**. Se a calibração souber, o número medido descreve um
@@ -515,7 +569,7 @@ classificador ajustado, o mode reportado é `controle-forcado`, nunca `cego`:
 um resultado de controle disfarçado de cego seria pior que um resultado de
 controle assumido.
 
-### 4b.3 O que o software nunca grava
+### 4b.4 O que o software nunca grava
 
 O parser JCAMP lê apenas os 9 campos de que precisa. **`##AUDIT TRAIL`
 (operador, local) e `##$Detector model` não são lidos em momento nenhum** —
@@ -943,15 +997,16 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e mode sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
 | `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.mode` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
 | `dados_imagem.py` | Colorimetria digital (`mode="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
-| `hsi_io.py` | Leitor ENVI (`.hdr`+`.bin`) genérico + leitor específico do dataset DeepHS Fruit/Kaki (`mode="hsi"`) |
+| `agrupamento_pastas.py` | Hierarquia de 3 níveis de garantia de agrupamento (subpasta/CSV/nenhuma), extraída de `dados_imagem.py` pra' ser reaproveitada por `hsi_io.py` sem duplicar |
+| `hsi_io.py` | Leitor ENVI (`.hdr`+`.bin`) genérico; `load_hsi_folder_dataset` (pasta do próprio usuário, Passo 111) + leitor específico do dataset público DeepHS Fruit/Kaki (`mode="hsi"`) |
 | `hsi_quality.py` | Quality gate de cubo HSI: saturação, SNR (Immerkaer 1996), fração de pixels válidos |
 | `hsi_segmentation.py` | Segmentação objeto/fundo por PCA(PC1)+Otsu, inferência de fundo pela borda da cena |
 | `hsi_pixels.py` | Extração de espectros de pixel da ROI + `group_id` de objeto físico (base do split group-aware) |
 | `hsi_classification.py` | PLS-DA por pixel (reaproveita `PLSDAClassifier`), seleção de LVs por Wold, agregação por objeto |
-| `hsi_chemistry.py` | Explicabilidade cruzada: VIP × tabela de atribuição química (banda↔composto conhecido) |
-| `hsi_validation.py` | Validação externa por partição nativa de dia/lote — sensibilidade/especificidade/precisão sempre separadas |
+| `hsi_chemistry.py` | Explicabilidade cruzada: VIP × tabela de atribuição química (banda↔composto conhecido) — só se aplica ao caminho do dataset público |
+| `hsi_validation.py` | Validação externa por partição nativa de dia/lote (dataset público); `run_internal_validation_group_aware` — só interna, sem particao por dia (Passo 111, dataset genérico) |
 | `hsi_figures.py` | Mapa de classificação espacial por pixel (reaproveita `figuras.save` e a paleta da mascote) |
-| `hsi_pipeline.py` | Orquestração ponta-a-ponta do `mode="hsi"` (não usa `pipeline.executar()` — forma de dado diferente) |
+| `hsi_pipeline.py` | Orquestração ponta-a-ponta do `mode="hsi"` (não usa `pipeline.executar()` — forma de dado diferente); despacha genérico vs. dataset público (`modo_dataset`, Passo 116) |
 | `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `build_preprocessor` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
 | `figuras.py` | Camada de plotagem (todas as figuras do pipeline, incluindo `fig_merito_regressao`) |
