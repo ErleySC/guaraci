@@ -116,6 +116,19 @@ def render(pq, T: Callable[[str], str]) -> None:
     st.table({cols[0]: [r[0] for r in linhas],
               cols[1]: [r[1] for r in linhas],
               cols[2]: [r[2] for r in linhas]})
+    st.caption(
+        "* Faixa típica declarada pelos próprios fabricantes/usuários, "
+        "não medida por este projeto. \"Validação anti-vazamento: "
+        "Padrão\" é também por que alguns números deste projeto parecem "
+        "mais modestos do que uma validação ingênua sugeriria — ver "
+        "\"Por que os números aqui às vezes parecem modestos\" no "
+        "README."
+        if pt else
+        "* Typical range as stated by the vendors/users themselves, not "
+        "measured by this project. \"Leakage-safe validation: Default\" "
+        "is also why some numbers in this project look more modest than "
+        "a naive validation would suggest — see \"Why the numbers here "
+        "sometimes look modest\" in the README.")
 
     st.divider()
 

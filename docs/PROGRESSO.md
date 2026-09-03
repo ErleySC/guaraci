@@ -1,3 +1,34 @@
+# PROGRESSO — Passo 115 (2026-09-03)
+
+## Passo 115 — Secao de validacao externa honesta (README/app)
+
+Reunidas 5 evidencias ja existentes (nunca antes apresentadas como
+argumento coeso) numa secao nova, "Why the numbers here sometimes look
+modest" / "Por que os números aqui às vezes parecem modestos", em
+README.md e README.pt-br.md (entre "Validation"/"Validação" e
+"Security"/"Segurança"):
+
+1. RMSEP Mendeley nao reproduziu (R²val negativo) -- VALIDACAO_PUBLICA §2.
+2. Q² negativo na Hipotese B do unripe -- VALIDACAO_PUBLICA §7, Passo 112.
+3. DD-SIMCA platoa em ~0,94-0,945, nunca converge ao nominal -- MANUAL.md.
+4. Identificacao nao-validavel em 36/38 combinacoes -- technique_registry.py.
+5. Kiwi/VIS falha em unripe com n suficiente -- VALIDACAO_PUBLICA §7,
+   Passos 112/114.
+
+Framing: filosofia deliberada (holdout externo + grupo fisico protegido
++ cobertura formal), nao pedido de desculpas -- reporta desempenho mais
+modesto quando e' o que a medicao honesta mostra, em vez de esconder
+atras de uma particao mais favoravel.
+
+Comparativo com concorrentes (`app_tabs/sobre.py`, aba "Sobre") revisado
+a luz dessa secao: adicionada legenda ligando a linha "Validacao
+anti-vazamento: Padrao" a essa filosofia (e corrigido o asterisco
+"Pagos*" que ficava sem nota de rodape nenhuma).
+
+Suite completa (1183 passed), ruff limpo. Commit, push.
+
+---
+
 # PROGRESSO — Passo 118 (2026-09-03)
 
 ## Passo 118 — Isolamento fisico de dataset de terceiro (P0)

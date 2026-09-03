@@ -243,6 +243,59 @@ alongside it, with RPD carrying its published interpretation band
 replicates allow estimating instrumental noise, and return `N/A` when they
 do not — a LOD without a repeatability basis would be a made-up number.
 
+## Why the numbers here sometimes look modest
+
+This is deliberate, not an apology. GUARACI is built to measure with an
+**external holdout**, **physical-group protection** (never splitting
+replicates of the same sample across train/test), and **formal
+statistical coverage** (conformal prediction, LOGO cross-validation) —
+and to report the result even when that's less flattering than a naive
+internal validation would suggest. A model that looks great under
+random K-fold on correlated replicates and collapses on a truly unseen
+batch is a false positive dressed as a result; this project chooses to
+surface that collapse rather than hide it behind the friendlier split.
+Five concrete instances, each independently measured and documented:
+
+1. **Mendeley peroxide-value RMSEP did not reproduce.** The published
+   figure (4.9) failed on an independent holdout with GUARACI's default
+   presets — R²val came out **negative** (worse than predicting the
+   mean) — see [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md)
+   §2.
+2. **A continuous re-framing of a hard classification problem gave up
+   a negative Q².** Investigating why hyperspectral `unripe` kiwi
+   classification collapses (below), recasting ripeness as a continuous
+   PLS-R target (`storage_days`) generalized *worse* across days than
+   predicting the mean — reported as a negative result, not hidden as
+   a failed attempt — see `docs/VALIDACAO_PUBLICA.md` §7, Passo 112.
+3. **DD-SIMCA's coverage plateaus around 0.94–0.945 and never reaches
+   the nominal 0.95**, even at n=1200 calibration samples under a
+   perfectly-specified Gaussian data-generating process — the most
+   favorable case possible for the method. No functional form fits the
+   curve as "converges to nominal with more data"; it's "fast rise,
+   then a persistent floor." Measured with
+   `scripts/medicoes/medir_ddsimca_cobertura_vs_n.py`, documented in
+   [`docs/MANUAL.md`](docs/MANUAL.md).
+4. **Species×adulterant identification is structurally unvalidated in
+   36 of 38 combinations** of the private thesis dataset — each has
+   exactly one independent collection session, below the minimum the
+   conformal gate needs to certify a coverage guarantee. The pipeline
+   reports `DESCONHECIDO`/unvalidated rather than a confident label —
+   see `src/guaraci/technique_registry.py` and "Known limitations"
+   below.
+5. **Kiwi/VIS hyperspectral `unripe` fails even with a statistically
+   sufficient sample size** (n≥19, the one combination in the DeepHS
+   Fruit dataset that clears that bar) — four hypotheses tested (band
+   selection, continuous target, spectral overlap, label-noise check
+   against an independent firmness measurement), none rescued it. The
+   most robust evidence points to a genuine separability limit of this
+   camera/technique for this specific ripeness pair, not a bug — see
+   `docs/VALIDACAO_PUBLICA.md` §7, Passos 112 and 114.
+
+None of these numbers were softened, re-run until favorable, or left
+out of a table. If a number here looks unimpressive, that's the
+external-validation philosophy working as designed, not a gap in the
+writeup.
+
 ## Security
 
 Loading a `.joblib` model executes arbitrary code (it's a pickle) — see

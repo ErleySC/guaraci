@@ -288,6 +288,62 @@ AACC 39-00.01). LOD/LOQ são calculados quando réplicas físicas permitem
 estimar o ruído instrumental, e retornam `N/A` quando não permitem — um
 LOD sem base de repetibilidade seria um número inventado.
 
+## Por que os números aqui às vezes parecem modestos
+
+Isso é deliberado, não uma desculpa. O GUARACI é construído pra' medir
+com **holdout externo**, **proteção de grupo físico** (nunca separa
+réplicas da mesma amostra entre treino/teste) e **cobertura estatística
+formal** (predição conformal, validação cruzada LOGO) — e reportar o
+resultado mesmo quando isso é menos favorável do que uma validação
+interna ingênua sugeriria. Um modelo que parece ótimo sob K-fold
+aleatório em réplicas correlacionadas e desmorona num lote de verdade
+nunca visto é um falso positivo disfarçado de resultado; este projeto
+escolhe expor esse desmoronamento em vez de escondê-lo atrás da
+partição mais gentil. Cinco casos concretos, cada um medido e
+documentado de forma independente:
+
+1. **O RMSEP de valor de peróxido do Mendeley não reproduziu.** O
+   número publicado (4,9) falhou num holdout independente com os
+   presets padrão do GUARACI — R²val saiu **negativo** (pior que prever
+   a média) — ver [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md)
+   §2.
+2. **Uma reformulação contínua de um problema de classificação difícil
+   deu Q² negativo.** Investigando por que a classificação hiperespectral
+   de kiwi `unripe` colapsa (abaixo), reformular a maturação como um
+   alvo contínuo de PLS-R (`storage_days`) generalizou *pior* entre dias
+   do que prever a média — reportado como resultado negativo, não
+   escondido como tentativa fracassada — ver `docs/VALIDACAO_PUBLICA.md`
+   §7, Passo 112.
+3. **A cobertura do DD-SIMCA platôa em ~0,94-0,945 e nunca chega ao
+   nominal 0,95**, mesmo com n=1200 amostras de calibração sob um
+   processo gerador de dados gaussiano perfeitamente especificado — o
+   cenário mais favorável possível pro método. Nenhuma forma funcional
+   ajusta a curva como "converge ao nominal com mais dados"; é "subida
+   rápida, depois um piso persistente". Medido com
+   `scripts/medicoes/medir_ddsimca_cobertura_vs_n.py`, documentado em
+   [`docs/MANUAL.md`](docs/MANUAL.md).
+4. **A identificação espécie×adulterante é estruturalmente não-validável
+   em 36 das 38 combinações** do dataset privado do TCC — cada uma tem
+   exatamente 1 sessão de coleta independente, abaixo do mínimo que o
+   gate conformal precisa pra' certificar uma garantia de cobertura. O
+   pipeline reporta `DESCONHECIDO`/não-validado em vez de um rótulo
+   confiante — ver `src/guaraci/technique_registry.py` e "Limitações
+   conhecidas" abaixo.
+5. **O `unripe` hiperespectral de Kiwi/VIS falha mesmo com tamanho de
+   amostra estatisticamente suficiente** (n≥19, a única combinação do
+   dataset DeepHS Fruit que passa desse limiar) — 4 hipóteses testadas
+   (seleção de banda, alvo contínuo, sobreposição espectral, checagem
+   de ruído de rótulo contra uma medição independente de firmeza),
+   nenhuma resgatou. A evidência mais robusta aponta pra' um limite
+   real de separabilidade dessa câmera/técnica pra' esse par específico
+   de estágio de maturação, não um bug — ver `docs/VALIDACAO_PUBLICA.md`
+   §7, Passos 112 e 114.
+
+Nenhum desses números foi suavizado, re-rodado até dar certo, ou
+deixado fora de uma tabela. Se um número aqui parece pouco
+impressionante, é a filosofia de validação externa funcionando como
+projetada, não uma lacuna no texto.
+
 ## Segurança
 
 Carregar um modelo `.joblib` executa código arbitrário (é um pickle) — ver
