@@ -2,6 +2,12 @@
 do modo `hsi`, distinto do modo `imagem` (ver docstring do modulo)."""
 from __future__ import annotations
 
+import matplotlib
+matplotlib.use("Agg")  # mesmo padrao de test_hsi_figures.py -- este
+# arquivo roda o pipeline completo (gera figura de verdade), backend
+# interativo (Tk) pode nao estar disponivel/completo no ambiente de CI/
+# dev e so' e' evitado se ALGUM teste "pedir" Agg antes do 1o plt.figure()
+
 import os
 from pathlib import Path
 
@@ -132,6 +138,70 @@ def test_run_hsi_pipeline_generico_nivel_none_avisa_e_processa_mesmo_assim(
     assert resumo["grouping_guarantee"] == "none"
     saida = capsys.readouterr().out
     assert "SEM garantia de agrupamento" in saida
+
+
+# ── modo_dataset explicito + validacao de conteudo do manifest (Passo 116) ──
+
+def test_run_hsi_pipeline_manifest_json_de_outro_proposito_cai_no_generico(
+        tmp_path):
+    """Achado do Passo 116: so' checar "manifest.json existe" era fragil
+    -- um manifest.json de OUTRO proposito (mesmo nome de arquivo, outra
+    estrutura -- ex. de outra ferramenta na mesma pasta) nao pode
+    quebrar dentro de load_deephs_fruit_dataset com KeyError confuso.
+    Com modo_dataset='auto' (default), o conteudo e' validado -- um
+    manifest.json sem a estrutura esperada (chaves 'cameras'/'records',
+    cada uma uma lista) cai no caminho GENERICO, tratando a pasta como
+    dado do proprio usuario."""
+    raiz = _montar_pasta_hsi_generica(tmp_path)
+    (raiz / "manifest.json").write_text(
+        '{"outra_ferramenta": true, "versao": 3}', encoding="utf-8")
+
+    cfg = Config(mode="hsi", hsi_dataset_folder=str(raiz),
+                output_root_folder=str(tmp_path / "saida"),
+                output_format="png")
+    resumo = run_hsi_pipeline(cfg)  # modo_dataset="auto" (default)
+
+    assert resumo["grouping_guarantee"] == "high"  # caminho generico rodou
+    assert resumo["achados_quimica"] is None  # generico nunca tem
+
+
+def test_run_hsi_pipeline_modo_dataset_publico_explicito_com_manifest_invalido_da_erro_claro(
+        tmp_path):
+    """modo_dataset='publico' EXPLICITO com manifest.json invalido/ausente
+    -- erro claro e imediato, nunca cai silenciosamente no generico (o
+    usuario pediu o caminho publico de proposito, merece saber que a
+    pasta nao serve pra' isso)."""
+    raiz = _montar_pasta_hsi_generica(tmp_path)
+    cfg = Config(mode="hsi", hsi_dataset_folder=str(raiz),
+                output_root_folder=str(tmp_path / "saida"))
+    with pytest.raises(ValueError, match="manifest.json valido"):
+        run_hsi_pipeline(cfg, modo_dataset="publico")
+
+
+def test_run_hsi_pipeline_modo_dataset_generico_explicito_ignora_manifest_valido(
+        tmp_path, monkeypatch):
+    """modo_dataset='generico' EXPLICITO forca o caminho do usuario
+    mesmo quando ha' um manifest.json ESTRUTURALMENTE valido na pasta --
+    a escolha explicita sempre vence a deteccao automatica (Passo 116)."""
+    import json as _json
+
+    raiz = _montar_pasta_hsi_generica(tmp_path)
+    (raiz / "manifest.json").write_text(
+        _json.dumps({"cameras": [], "records": []}), encoding="utf-8")
+
+    cfg = Config(mode="hsi", hsi_dataset_folder=str(raiz),
+                output_root_folder=str(tmp_path / "saida"),
+                output_format="png")
+    resumo = run_hsi_pipeline(cfg, modo_dataset="generico")
+
+    assert resumo["grouping_guarantee"] == "high"  # rodou o caminho generico
+    assert resumo["achados_quimica"] is None
+
+
+def test_run_hsi_pipeline_modo_dataset_invalido_levanta_erro_claro(tmp_path):
+    cfg = Config(mode="hsi", hsi_dataset_folder=str(tmp_path))
+    with pytest.raises(ValueError, match="modo_dataset"):
+        run_hsi_pipeline(cfg, modo_dataset="ilegal")
 
 
 def _pasta_deephs_kaki():

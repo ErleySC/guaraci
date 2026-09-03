@@ -2307,7 +2307,7 @@
         "forma": "funcao"
       },
       "run_hsi_pipeline": {
-        "assinatura": "(cfg: \"'Config'\", *, fracao_teste_interno: 'float' = 0.2, n_dias_externos: 'int' = 2, seed: 'int' = 42) -> 'Dict[str, object]'",
+        "assinatura": "(cfg: \"'Config'\", *, modo_dataset: 'str' = 'auto', fracao_teste_interno: 'float' = 0.2, n_dias_externos: 'int' = 2, seed: 'int' = 42) -> 'Dict[str, object]'",
         "forma": "funcao"
       }
     },

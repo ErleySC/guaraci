@@ -37,6 +37,7 @@ despacha pra' uma das 2 orquestracoes internas:
 """
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List
@@ -103,25 +104,61 @@ def apply_quality_gate_and_segment(
     }
 
 
-def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
+#: Chaves de topo que um `manifest.json` do formato DeepHS Fruit precisa
+#: ter, cada uma como LISTA (ver `hsi_io.load_deephs_fruit_dataset` --
+#: `manifest["records"]`/`manifest["cameras"]` sao iterados diretamente).
+#: So' checar "o arquivo existe" (Passo 111) era fragil (achado do Passo
+#: 116): um `manifest.json` de OUTRO proposito na mesma pasta (ex. de
+#: outra ferramenta, coincidencia de nome) entrava no caminho do dataset
+#: publico e quebrava com KeyError confuso la' dentro em vez de um erro
+#: claro aqui ou de cair no caminho generico.
+_CHAVES_MANIFEST_DEEPHS = ("cameras", "records")
+
+
+def _manifest_deephs_valido(pasta: str) -> bool:
+    """True se `pasta/manifest.json` existe E tem a ESTRUTURA esperada do
+    formato DeepHS Fruit (nao so' o nome do arquivo) -- ver docstring de
+    `_CHAVES_MANIFEST_DEEPHS`."""
+    caminho = os.path.join(pasta, "manifest.json")
+    if not os.path.isfile(caminho):
+        return False
+    try:
+        with open(caminho, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(manifest, dict):
+        return False
+    return all(isinstance(manifest.get(k), list) for k in _CHAVES_MANIFEST_DEEPHS)
+
+
+def run_hsi_pipeline(cfg: "Config", *, modo_dataset: str = "auto",
+                     fracao_teste_interno: float = 0.2,
                      n_dias_externos: int = 2, seed: int = 42,
                      ) -> Dict[str, object]:
     """Roda o pipeline HSI completo sobre `cfg.hsi_dataset_folder`.
 
-    Aceita 2 casos (Passo 111, detectado automaticamente pela presenca
-    de `manifest.json` na raiz da pasta -- nunca uma flag manual que o
-    usuario precisaria lembrar de setar certo):
+    Aceita 2 casos (Passo 111/116) -- qual usar e' decidido por
+    `modo_dataset`, nunca so' implicitamente:
 
-      - Pasta SEM `manifest.json` (caso normal -- dado proprio do
+      - `modo_dataset="generico"` (caso normal -- dado proprio do
         usuario): qualquer pasta com cubos ENVI (.hdr+.bin), convencao
         de subpasta-por-classe (ver `hsi_io.load_hsi_folder_dataset`).
         So' validacao interna (nao ha' particao por dia num dataset
         generico).
-      - Pasta COM `manifest.json` (dataset publico DeepHS Fruit, usado
+      - `modo_dataset="publico"` (dataset publico DeepHS Fruit, usado
         so' como FIXTURE de validacao do projeto -- ver
         `scripts/download_datasets/baixar_deephs_kaki.py`/
         `baixar_deephs_fruit_todas.py`): caminho original com validacao
         externa por dia de medicao + explicabilidade quimica cruzada.
+        Exige `manifest.json` VALIDO (estrutura, nao so' presenca) na
+        raiz de `pasta` -- erro explicito se nao tiver.
+      - `modo_dataset="auto"` (default, Passo 111 original): a presenca
+        de um `manifest.json` ESTRUTURALMENTE VALIDO (Passo 116 --
+        checa as chaves esperadas, nao so' o nome do arquivo) na pasta
+        escolhe "publico"; caso contrario "generico". So' uma
+        CONVENIENCIA de default -- passar `modo_dataset` explicitamente
+        sempre vence a deteccao.
 
     Devolve um dict de resumo (nunca lanca excecao por dado individual
     ruim -- cenas que falham no quality gate sao PULADAS e contadas,
@@ -132,6 +169,11 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
     dos dias mais RECENTES (ordenados por nome, que no dataset usado
     correspondem a ordem cronologica) viram o teste de validacao externa
     (Passo 101)."""
+    if modo_dataset not in ("auto", "publico", "generico"):
+        raise ValueError(
+            f"run_hsi_pipeline: modo_dataset={modo_dataset!r} invalido -- "
+            f"use 'auto', 'publico' ou 'generico'.")
+
     pasta = getattr(cfg, "hsi_dataset_folder", "") or ""
     if not pasta:
         raise ValueError(
@@ -139,7 +181,18 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2,
             "aponte para uma pasta com seus cubos hiperespectrais ENVI "
             "(.hdr/.bin).")
 
-    if os.path.isfile(os.path.join(pasta, "manifest.json")):
+    if modo_dataset == "auto":
+        modo_dataset = "publico" if _manifest_deephs_valido(pasta) else "generico"
+
+    if modo_dataset == "publico":
+        if not _manifest_deephs_valido(pasta):
+            raise ValueError(
+                f"run_hsi_pipeline: modo_dataset='publico' mas {pasta} nao "
+                f"tem um manifest.json valido (esperado: dict com chaves "
+                f"{_CHAVES_MANIFEST_DEEPHS!r}, cada uma uma lista -- ver "
+                f"formato de scripts/download_datasets/"
+                f"baixar_deephs_fruit_todas.py). Se essa e' uma pasta com "
+                f"seus proprios cubos, use modo_dataset='generico'.")
         return _run_hsi_pipeline_deephs_fixture(
             cfg, pasta, fracao_teste_interno=fracao_teste_interno,
             n_dias_externos=n_dias_externos, seed=seed)
