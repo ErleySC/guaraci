@@ -1,3 +1,34 @@
+# PROGRESSO — Passo 114 (2026-09-03)
+
+## Passo 113 — Push
+
+`git push origin master` -- confirmado (`d53f39b..70c686c`), sincronizado
+com `origin/master`.
+
+## Passo 114 — Hipótese D: firmeza objetiva confirma o rótulo, não é ruído
+
+Motivada por um achado da Hipótese B (Passo 112): `unripe` tinha
+`storage_days` médio MAIOR que `perfect`, contraintuitivo o bastante
+pra' suspeitar de ruído de rótulo (o que exigiria retratar a Hipótese
+C). Verificado: o manifest do DeepHS Fruit publica `firmness` (medição
+objetiva por fruto). Testado em `tests/
+test_investigacao_unripe_kiwi_vis.py::
+test_hipotese_d_firmeza_objetiva_confirma_rotulo_nao_e_ruido`:
+`unripe` (n=28, média=2083,9) > `perfect` (n=39, média=1398,1) >
+`overripe` — ordem fisiologicamente correta. Mann-Whitney unripe vs.
+perfect: p=8,87×10⁻⁸, Cohen's d=1,64 (efeito grande).
+
+**Não é retratação, é refinamento** (registrado explicitamente em
+`docs/VALIDACAO_PUBLICA.md` §7, Passo 114): o rótulo é confiável
+(respaldado por medição independente), a conclusão da Hipótese C
+("nenhuma hipótese resgata a classificação") permanece — mas agora com
+leitura mais precisa: a diferença física é real e substancial (d=1,64
+na firmeza vs. d≈0,38-0,80 no sinal espectral), a câmera VIS é que tem
+sensibilidade fraca a ela especificamente. Suíte completa, ruff/mypy
+limpos, commit, push.
+
+---
+
 # PROGRESSO — Passo 112 (2026-09-02)
 
 ## Passo 112 — Investigação do `unripe` (Kiwi/VIS): 3 hipóteses, nenhuma resolveu

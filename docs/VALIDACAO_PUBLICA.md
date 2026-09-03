@@ -560,12 +560,56 @@ reprodutível em `tests/test_investigacao_unripe_kiwi_vis.py`, requer
   entre `unripe` e `perfect`** nesta câmera/resolução (397-1004nm,
   Specim FX10).
 
-**Fechamento**: nenhuma das 3 hipóteses resgatou a classificação de
-`unripe`. A evidência mais robusta (Hipótese C, medida com cuidado
-metodológico contra o próprio artefato que ela quase produziu) aponta
-para **limite real de separabilidade espectral** entre os estágios
-`unripe`/`perfect` de Kiwi nesta banda de câmera — não um bug de
-implementação, não resolvível só com seleção de banda (A) nem com
-reformulação contínua (B). Nenhuma das 3 foi implementada como opção
-configurável no pipeline (nenhuma mostrou melhora real que justificasse
-isso). 4 testes novos, suíte completa, ruff/mypy limpos.
+**Fechamento (Passo 112)**: nenhuma das 3 hipóteses resgatou a
+classificação de `unripe`. A evidência mais robusta (Hipótese C, medida
+com cuidado metodológico contra o próprio artefato que ela quase
+produziu) aponta para **limite real de separabilidade espectral** entre
+os estágios `unripe`/`perfect` de Kiwi nesta banda de câmera — não um
+bug de implementação, não resolvível só com seleção de banda (A) nem
+com reformulação contínua (B). Nenhuma das 3 foi implementada como
+opção configurável no pipeline (nenhuma mostrou melhora real que
+justificasse isso). 4 testes novos, suíte completa, ruff/mypy limpos.
+
+### Passo 114 — Hipótese D: a diferença é real (firmeza objetiva confirma), a técnica é que tem sensibilidade fraca
+
+A Hipótese B (acima) levantou uma suspeita: `unripe` tinha
+`storage_days` médio MAIOR que `perfect` — fisiologicamente
+contraintuitivo o suficiente para questionar se o rótulo `ripeness_state`
+em si é confiável (se não fosse, a conclusão certa seria "ruído de
+rótulo", não "sobreposição espectral", e a Hipótese C precisaria ser
+**retratada**).
+
+O manifest do DeepHS Fruit publica `firmness` — medição OBJETIVA de
+firmeza por fruto (penetrômetro ou equivalente), independente do
+rótulo visual. Testado diretamente (`tests/
+test_investigacao_unripe_kiwi_vis.py::
+test_hipotese_d_firmeza_objetiva_confirma_rotulo_nao_e_ruido`, 81/87
+objetos com firmeza medida — `firmness=0`/`None` só em `overripe`,
+nunca em `unripe`/`perfect`, confirmado por leitura direta do
+manifest):
+
+| Classe | n | firmeza média | dp |
+|---|---:|---:|---:|
+| unripe | 28 | 2083,9 | 459,4 |
+| perfect | 39 | 1398,1 | 374,0 |
+| overripe | 14 (73 com dado ausente/piso) | 548,2 | 568,1 |
+
+Ordem `unripe > perfect > overripe` — fisiologicamente correta (fruta
+amolece ao amadurecer). Mann-Whitney U (unripe vs. perfect):
+**p=8,87×10⁻⁸**; Cohen's d=**1,64** (efeito GRANDE, separação limpa).
+
+**Não é retratação — é refinamento.** O rótulo `ripeness_state` é
+respaldado por medição independente: NÃO é ruído de rótulo. A
+conclusão da Hipótese C (nenhuma hipótese resgata a classificação,
+"limite de separabilidade") permanece — mas agora com uma leitura mais
+precisa: a diferença FÍSICA entre `unripe` e `perfect` é real e
+substancial (d=1,64 na firmeza, contra d≈0,38-0,80 no sinal espectral
+por-banda) — a câmera VIS (397-1004nm, reflectância) é que tem
+sensibilidade fraca a essa diferença especificamente, não evidência de
+que as duas classes sejam fisicamente indistinguíveis em geral. Um
+sensor de textura/firmeza (ou NIR com penetração diferente) poderia, em
+princípio, separar melhor — questão em aberto, fora do escopo desta
+investigação (que cobriu as 3 hipóteses pedidas + a 4ª motivada pelo
+próprio achado da B).
+
+Suíte completa, ruff/mypy limpos.

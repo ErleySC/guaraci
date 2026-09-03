@@ -22,6 +22,27 @@ pra' inventar mais uma tentativa indefinidamente, ver instrucao):
      distancia por mal-condicionamento da covariancia, achado real desta
      investigacao, reportado explicitamente abaixo em vez de escondido).
 
+Passo 114 (rodada seguinte, INSTRUCAO_PUSH_HIPOTESE_D_...md) adicionou
+uma 4a hipotese, motivada por um achado da Hipotese B: `unripe` tinha
+`storage_days` MEDIO maior que `perfect` -- contraintuitivo o
+suficiente pra' levantar a suspeita de ruido de rotulo.
+
+  D. Qualidade do rotulo vs. medicao objetiva -- o manifest do DeepHS
+     Fruit publica `firmness` (medicao objetiva de firmeza por fruto,
+     independente do rotulo visual `ripeness_state`). Se o rotulo NAO
+     concordasse com a firmeza, seria evidencia de ruido de rotulo (nao
+     de sobreposicao espectral) e exigiria RETRATAR a conclusao da
+     Hipotese C. Medido: o rotulo CONCORDA fortemente com a firmeza
+     (unripe > perfect > overripe, ordem fisiologicamente correta,
+     Mann-Whitney unripe-vs-perfect p<1e-7, Cohen's d~1.6) -- ou seja,
+     NAO e' ruido de rotulo. Isso REFINA a conclusao da Hipotese C (nao
+     a retrata): a diferenca fisica entre `unripe` e `perfect` e' real e
+     substancial (confirmada por medicao independente), mas a tecnica
+     especifica usada aqui (reflectancia VIS, 397-1004nm) tem
+     sensibilidade fraca a essa diferenca -- limite da TECNICA pra' essa
+     distincao, nao evidencia de que as classes sejam fisicamente
+     indistinguiveis em geral, nem de rotulo nao confiavel.
+
 Mesmo padrao de `test_validacao_publica_deephs_fruit.py`: PULA (nao
 falha) se `GUARACI_DATASETS_DIR` nao apontar para o dataset ja baixado
 com `scripts/download_datasets/baixar_deephs_fruit_todas.py`.
@@ -271,3 +292,78 @@ def test_hipotese_c_sobreposicao_espectral_unripe_perfect(kiwi_vis_filtrado):
     # Confirma o proprio achado de instabilidade (cresce com ncomp) --
     # se isso deixar de ser verdade, a ressalva acima precisa ser revista.
     assert mahalanobis_por_ncomp[10] > mahalanobis_por_ncomp[2]
+
+
+def test_hipotese_d_firmeza_objetiva_confirma_rotulo_nao_e_ruido(kiwi_vis_filtrado):
+    """Hipotese D (Passo 114): o manifest do DeepHS Fruit publica
+    `firmness` -- medicao OBJETIVA de firmeza por fruto, independente do
+    rotulo visual `ripeness_state`. Testa se o rotulo concorda com essa
+    medicao (se nao concordasse, seria evidencia de ruido de rotulo, nao
+    de sobreposicao espectral -- exigiria retratar a Hipotese C)."""
+    from scipy import stats
+
+    filtrado = kiwi_vis_filtrado["filtrado"]
+    meta_df = kiwi_vis_filtrado["meta_df"]
+
+    assert "firmness" in meta_df.columns, (
+        "manifest do DeepHS Fruit nao publica 'firmness' -- premissa "
+        "desta hipotese mudou, revisar antes de interpretar o resto.")
+
+    rotulo_por_obj: Dict[str, str] = {}
+    for gid, rot in zip(filtrado["group_ids"], filtrado["rotulos"]):
+        rotulo_por_obj[gid] = rot
+
+    # 1 firmeza por OBJETO FISICO (front/back da mesma fruta compartilham
+    # o mesmo valor -- confirmado por leitura direta do manifest, zero
+    # divergencias; agrega por group_id em vez de usar a gravacao solta
+    # pra' nao contar a mesma fruta 2x na estatistica).
+    import pandas as pd
+
+    firmeza_por_obj: Dict[str, float] = {}
+    for gid, firm in zip(meta_df["group_id"], meta_df["firmness"]):
+        if pd.notna(firm) and gid in rotulo_por_obj:
+            firmeza_por_obj[gid] = float(firm)
+
+    gids_com_firmeza = sorted(firmeza_por_obj)
+    firmeza = np.array([firmeza_por_obj[g] for g in gids_com_firmeza])
+    rotulo = np.array([rotulo_por_obj[g] for g in gids_com_firmeza])
+
+    print(f"\n[hipotese D] {len(gids_com_firmeza)}/"
+          f"{len(set(filtrado['group_ids']))} objetos com firmeza medida.")
+    for c in sorted(set(rotulo)):
+        vals = firmeza[rotulo == c]
+        print(f"  {c}: n={len(vals)} media={vals.mean():.1f} "
+              f"dp={vals.std():.1f} min={vals.min():.0f} max={vals.max():.0f}")
+
+    # Firmness=0 e' um valor REAL (fruta totalmente amolecida, piso do
+    # instrumento) -- so' aparece em `overripe` (confirmado por leitura
+    # direta), nunca em unripe/perfect, entao nao contamina a comparacao
+    # abaixo (que e' so' unripe vs perfect).
+    f_unripe = firmeza[rotulo == "unripe"]
+    f_perfect = firmeza[rotulo == "perfect"]
+    stat, p_valor = stats.mannwhitneyu(f_unripe, f_perfect, alternative="two-sided")
+    d_cohen = ((f_unripe.mean() - f_perfect.mean())
+              / np.sqrt((f_unripe.std() ** 2 + f_perfect.std() ** 2) / 2))
+
+    print(f"[hipotese D] Mann-Whitney U unripe-vs-perfect (firmeza): "
+          f"U={stat:.1f} p={p_valor:.2e}")
+    print(f"[hipotese D] Cohen's d (firmeza, unripe vs perfect): "
+          f"{d_cohen:.2f}")
+
+    # Achado real (2026-09): unripe e' MAIS firme que perfect (fruta
+    # ainda dura, fisiologicamente correto), com separacao estatistica
+    # grande e limpa -- ao contrario do sinal espectral (Hipotese C,
+    # efeito fraco-moderado). O rotulo visual e' respaldado por medicao
+    # independente -- NAO e' ruido de rotulo. Isso REFINA a conclusao da
+    # Hipotese C (nao a retrata, ver docstring do modulo): a diferenca
+    # fisica e' real, a tecnica espectral especifica (VIS reflectancia)
+    # e' que tem sensibilidade fraca a ela.
+    assert p_valor < 0.05, (
+        "firmeza NAO separa unripe de perfect significativamente -- isso "
+        "MUDARIA a conclusao (evidencia de ruido de rotulo, nao de "
+        "sobreposicao espectral) e exigiria retratar a Hipotese C em "
+        "docs/VALIDACAO_PUBLICA.md; parar e reportar antes de prosseguir.")
+    assert d_cohen > 0, (
+        "unripe deveria ser MAIS firme que perfect (fisiologicamente) -- "
+        "sinal invertido contradiz a premissa, investigar antes de "
+        "reportar como confirmacao do rotulo.")
