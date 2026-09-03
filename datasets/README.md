@@ -1,11 +1,17 @@
 # Política de dados públicos
 
-**Nenhum arquivo de dado de terceiro é versionado neste repositório.**
-CSVs, `.mat`, espectros, imagens de amostra — nada disso entra no `git`,
-mesmo quando a licença do dataset permitiria redistribuição (ex.:
-Mendeley CC BY 4.0). "Usar um dataset para validação" e "publicar o
-dataset no nosso repositório" são coisas diferentes; este projeto só
-faz a primeira.
+**Nenhum dado de terceiro É ou SERÁ versionado neste repositório.**
+CSVs, `.mat`, espectros, cubos ENVI (`.hdr`/`.bin`), imagens de amostra
+— nada disso entra no `git`, mesmo quando a licença do dataset
+permitiria redistribuição (ex.: Mendeley CC BY 4.0). "Usar um dataset
+para validação" e "publicar o dataset no nosso repositório" são coisas
+diferentes; este projeto só faz a primeira. Todo dataset de validação é
+baixado **sob demanda** para `$GUARACI_DATASETS_DIR` (cache local, fora
+da árvore do repositório), listado no `.gitignore` (seção "Cache local
+de datasets públicos de terceiro") — verificado por auditoria direta
+(`git ls-files` + inspeção de blob em todo o histórico, não só a árvore
+atual) em 2026-09-03: nenhum arquivo de dataset público, em nenhuma
+revisão, jamais foi commitado (ver `docs/VALIDACAO_PUBLICA.md` §8).
 
 ## Como cada dataset público é obtido
 
@@ -14,6 +20,7 @@ faz a primeira.
 | Eigenvector Corn | ver a fonte (benchmarking) | inline no job `validacao-publica` do CI (`.github/workflows/test.yml`) | `$GUARACI_DATASETS_DIR/corn.mat` |
 | Mendeley `ctgg7k4m5g` (óleos comestíveis, Ottaway et al. 2021) | CC BY 4.0 | `scripts/download_datasets/baixar_mendeley_oleos.py` | `$GUARACI_DATASETS_DIR/mendeley_ctgg7k4m5g/` |
 | DeepHS Fruit / Kaki / câmera VIS (Varga, Makowski & Zell, IJCNN 2021) | não declarada formalmente (SPDX) no repositório — ver `docs/VALIDACAO_PUBLICA.md` §4, mesmo tratamento já dado ao Corn | `scripts/download_datasets/baixar_deephs_kaki.py` | `$GUARACI_DATASETS_DIR/deephs_kaki_vis/` |
+| DeepHS Fruit / Avocado+Kiwi+Mango+Papaya, todas as câmeras disponíveis (Passo 104) | mesma do Kaki acima | `scripts/download_datasets/baixar_deephs_fruit_todas.py` | `$GUARACI_DATASETS_DIR/deephs_fruit_all/` |
 
 Detalhes de cada dataset (n, técnica, referência, métricas obtidas) em
 `docs/VALIDACAO_PUBLICA.md`.

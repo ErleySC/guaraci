@@ -1,3 +1,33 @@
+# PROGRESSO — Passo 118 (2026-09-03)
+
+## Passo 118 — Isolamento fisico de dataset de terceiro (P0)
+
+Checagem P0 explicita, por comando direto -- resultado: **nenhum
+achado grave**.
+
+- `git ls-files` (arvore atual): zero arquivo com extensao de dado
+  bruto de terceiro, zero arquivo > 512KB.
+- `git rev-list --objects --all` + `cat-file --batch-check` (HISTORICO
+  COMPLETO, nao so' a arvore atual): maior blob de todo o historico e'
+  `guaraci_icon.png` (~2,7MB, icone legitimo) -- nenhum dataset publico
+  jamais foi commitado, em nenhuma revisao. `.git` total = 24MB,
+  consistente com isso (23GB do DeepHS Fruit deixaria rastro MUITO
+  maior se tivesse passado por 1 commit sequer).
+- Mecanismo unico confirmado: os 3 scripts de download usam o MESMO
+  padrao (`GUARACI_DATASETS_DIR`, fallback `datasets_publicos/`, ja
+  coberto pelo `.gitignore`) -- sem segundo mecanismo paralelo.
+- Prova automatizada em `tests/test_isolamento_datasets.py` (roda
+  sempre, nao gated -- checagem sobre o repositorio em si): 4 testes
+  (arvore atual, historico completo, cobertura do .gitignore,
+  consistencia entre scripts).
+- `datasets/README.md` atualizado: tabela completa (faltava DeepHS
+  Fruit/todas-as-frutas), linguagem explicita "e' e SERA" reforcada.
+  `docs/VALIDACAO_PUBLICA.md` secao 8 documenta a auditoria.
+
+Suite completa (1183 passed), ruff limpo. Commit, push.
+
+---
+
 # PROGRESSO — Passo 117 (2026-09-03)
 
 ## Passo 117 — Auditoria de adaptabilidade multimatriz/multitecnica

@@ -613,3 +613,36 @@ investigação (que cobriu as 3 hipóteses pedidas + a 4ª motivada pelo
 próprio achado da B).
 
 Suíte completa, ruff/mypy limpos.
+
+## 8. Isolamento físico de dataset de terceiro (Passo 118, P0)
+
+Auditoria por comando direto — checagem P0 explícita, não alegação.
+
+- **`git ls-files` (árvore atual)**: nenhum arquivo com extensão de
+  dado bruto de terceiro (`.mat`/`.hdr`/`.bin`/`.raw`/`.zip`) está
+  versionado; nenhum arquivo versionado passa de 512 KB.
+- **`git rev-list --objects --all` + `cat-file --batch-check`
+  (HISTÓRICO COMPLETO, não só a árvore atual)**: o maior blob de todo o
+  histórico é `guaraci_icon.png` (~2,7 MB, ícone legítimo do projeto);
+  o resto são revisões históricas de `guaraci.py` (código-fonte, não
+  dado). **Nenhum dataset público jamais foi commitado, em nenhuma
+  revisão** — não é só "não está lá hoje", nunca esteve.
+- Tamanho total de `.git`: 24 MB — consistente com "zero blob de
+  dataset", nunca teria esse tamanho se algo como o DeepHS Fruit
+  (23 GB) tivesse passado por um commit e sido removido depois (objetos
+  removidos de commits recentes continuam no `.git` até um `gc`
+  agressivo, então esse tamanho pequeno já é evidência forte).
+- **Mecanismo único confirmado**: os 3 scripts de
+  `scripts/download_datasets/` usam exatamente o mesmo padrão —
+  `os.environ.get("GUARACI_DATASETS_DIR", "datasets_publicos")` — sem
+  segundo mecanismo de cache paralelo. `datasets_publicos/` (o
+  fallback) está coberto pelo `.gitignore`.
+- Prova automatizada e repetível em `tests/test_isolamento_datasets.py`
+  (roda em toda suíte, não gated por `GUARACI_DATASETS_DIR` — é
+  checagem sobre o repositório em si): árvore atual, histórico
+  completo, cobertura do `.gitignore`, e consistência do mecanismo
+  entre os 3 scripts.
+
+**Resultado**: nenhum achado grave. `datasets/README.md` atualizado com
+a política completa e a tabela de todos os datasets já integrados
+(incluindo DeepHS Fruit — todas as frutas, que faltava na tabela).
