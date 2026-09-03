@@ -1,3 +1,44 @@
+# PROGRESSO — Passo 119 (2026-09-03)
+
+## Passo 119 — Inventario essencial/util/obsoleto/duplicado
+
+Nao havia inventario anterior persistido em arquivo pra' "reexecutar"
+(buscado em docs/*.md e *.md da raiz -- zero resultado) -- feito do
+zero, por comando direto.
+
+- **`pyproject.toml` packaging**: `[tool.setuptools.package-data]`
+  cobre `perfis_matriz/*.yaml` -- nenhum modulo novo desta rodada
+  (`agrupamento_pastas.py`, os `hsi_*` incrementais) precisa de entrada
+  nova (sao `.py` dentro do pacote `guaraci` ja listado, incluidos
+  automaticamente). Nenhuma pasta de dado nova foi criada. **Nada a
+  corrigir.**
+- **`scripts/medicoes/*.py` (10 arquivos)**: checado se cada um e'
+  referenciado por NOME em docs/README -- 6 deram "0 referencias"
+  (`medir_achados`, `medir_ad_vies_insample`, `medir_bug_progresso_cli`,
+  `medir_permutacao_grupos`, `medir_sessoes_especie_adulterante`,
+  `medir_sr_ranking`). Inspecionado cada um: **falso alarme** -- sao
+  recibos de reprodutibilidade de achados/numeros ESPECIFICOS ja
+  citados em docs (ex.: `medir_sessoes_especie_adulterante.py` produz
+  o "36 de 38" citado em MANUAL.md/technique_registry.py) -- o NUMERO e'
+  citado, nao o nome do arquivo. Nenhum e' obsoleto ou duplicado.
+  **Nada a remover.**
+- **2 scripts + 1 doc pessoais** (`scripts/gerar_relatorio_abnt.py`,
+  `scripts/run_benchmark_tcc.py`, `docs/_AUDITORIA_ESTADO.md`):
+  presentes no disco mas deliberadamente `.gitignore`d (padrao
+  `docs/_*.md` e nome explicito por script) -- ja corretamente
+  excluidos do pacote publicavel. **Nada a corrigir.**
+- **`INSTRUCAO_*.md`** citados em varios docstrings (ex.
+  `INSTRUCAO_HSI_MINIMO_VIAVEL.md`): confirmado que NUNCA foram
+  arquivos reais -- e' a convencao do projeto de referenciar a
+  instrucao de CHAT que motivou cada mudanca, consistente em toda a
+  historia do codigo. Nao e' arquivo faltando.
+- Working tree confirmado limpo (`git status --short`) ao final.
+
+**Lista de remocao proposta: vazia.** Repositorio ja esta organizado
+para publicacao nesta dimensao -- nenhum achado, nada apagado.
+
+---
+
 # PROGRESSO — Passo 115 (2026-09-03)
 
 ## Passo 115 — Secao de validacao externa honesta (README/app)
