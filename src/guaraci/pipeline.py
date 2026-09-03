@@ -912,7 +912,9 @@ def r2cv_species_by_adulterant(
         X: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], cfg: "Config", *,
         limiar_r2: float = 0.70, min_niveis: int = 3,
-        min_grupos: int = 3) -> Optional[Dict[str, Any]]:
+        min_grupos: int = 3,
+        mapa_adulterante: Optional[Dict[str, str]] = None,
+        ) -> Optional[Dict[str, Any]]:
     """R2 em validacao cruzada (group-aware) do teor, POR especie x adulterante.
 
     A regressao agrupando ESPECIES falha (a matriz vegetal domina o sinal,
@@ -928,6 +930,9 @@ def r2cv_species_by_adulterant(
     validate_input) via adulterant_from_mae_id -- evita desalinhar com o
     metadados_df, que NAO passa pela remocao de NaN/Inf.
 
+    `mapa_adulterante` (Passo 122): repassado a `adulterant_from_mae_id`
+    -- ver docstring de `identificacao.train_identification_ensemble`.
+
     Returns dict {especies, adulterantes, matriz{(esp,adult): r2|nan}, n_ok,
     n_falhas, n_na, n_total, limiar_r2} ou None se nao ha adulterante/combinacao.
     """
@@ -936,7 +941,8 @@ def r2cv_species_by_adulterant(
     conc = np.asarray(conc, dtype=float)
     conc = np.where(np.isnan(conc), 0.0, conc)
     adult_por_amostra = np.array(
-        [adulterant_from_mae_id(m) for m in mae_id], dtype=object)
+        [adulterant_from_mae_id(m, mapa_adulterante) for m in mae_id],
+        dtype=object)
     especies = sorted({str(r) for r in rotulos})
     adulterantes = sorted({a for a in adult_por_amostra if a})
     if not adulterantes:
@@ -2639,7 +2645,8 @@ def executar(cfg: Config):
         # explicito, em vez de rodar sem checagem nenhuma.
         try:
             _ensemble_id = train_identification_ensemble(
-                pca, _ad_treino["var_t"], X_processed, rotulos, conc, mae_id)
+                pca, _ad_treino["var_t"], X_processed, rotulos, conc, mae_id,
+                mapa_adulterante=(perfil.codigos_adulterante or None))
             pacote_modelo["identification_ensemble"] = _ensemble_id
             resumo["Identificacao (Bloco 9b) n_combinacoes"] = len(_ensemble_id)
             if _ensemble_id:
@@ -2917,7 +2924,8 @@ def executar(cfg: Config):
                     _rot_hm, _ = labels_for_quantification(
                         cfg, rotulos, pred_lab)
                     _r2cv = r2cv_species_by_adulterant(
-                        X_raw, conc_arr, _rot_hm, mae_id, cfg)
+                        X_raw, conc_arr, _rot_hm, mae_id, cfg,
+                        mapa_adulterante=(perfil.codigos_adulterante or None))
                     if _r2cv is not None:
                         log.info(f"\n[7c/7] R2cv por especie x adulterante — "
                               f"{_r2cv['n_falhas']}/{_r2cv['n_total']} "

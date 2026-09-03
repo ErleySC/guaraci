@@ -516,6 +516,17 @@ instrução de como escrever um novo. Rodar mel com a faixa e o vocabulário de
 **Escrevendo um perfil novo:** copie `generico.yaml`, preencha, e passe o
 caminho. Não precisa entrar no pacote nem fazer fork.
 
+**`codigos_adulterante` (Passo 122):** a Identificação (Bloco 9b, §5)
+lê o "segundo fator" de cada amostra do último token do `mae_id`
+(`{código}-{data}-{letra}{teor}`) — a letra vinha de um mapa GLOBAL e
+fixo (`dados_io.ADULTERANTE_NOME`, so' A/M/S → algodão/milho/soja),
+então uma matriz com sua própria convenção de letras nunca formava
+combinação nenhuma. Declare `codigos_adulterante` no seu perfil (ex.:
+`{"X": "quitosana", "Y": "amido"}`) para usar seu próprio mapa, sem
+tocar em código-fonte — vazio (default) preserva o mapa global de
+sempre. A ESTRUTURA do token (1 letra + dígitos no último segmento)
+continua fixa; só o dicionário letra→nome é parametrizável.
+
 ### 4b.2 Perfil de técnica de aquisição + perfil combinado
 
 Separado do perfil de **matriz** (o que é a amostra) existe o perfil de

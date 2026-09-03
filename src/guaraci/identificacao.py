@@ -171,7 +171,9 @@ def _score_to_centroid(T: np.ndarray, centroide: np.ndarray,
 def train_identification_ensemble(
         pca, var_t: np.ndarray, X_proc: np.ndarray, rotulos: np.ndarray,
         conc: np.ndarray, mae_id: Optional[np.ndarray],
-        alpha_nominal: float = 0.05) -> Dict[Tuple[str, str], Dict[str, Any]]:
+        alpha_nominal: float = 0.05,
+        mapa_adulterante: Optional[Dict[str, str]] = None,
+        ) -> Dict[Tuple[str, str], Dict[str, Any]]:
     """Calibra um `ConformalOneClass` por combinacao especie x adulterante
     presente nos dados de treino. Ver docstring do modulo para o escore e
     a classificacao de cobertura.
@@ -181,6 +183,14 @@ def train_identification_ensemble(
     informacao, nao por falta real de dados) -- retorna vazio se ausente.
     O "grupo" de calibracao e' a SESSAO DE COLETA (`dados_io.
     session_from_mae_id`), nao o `mae_id` bruto -- ver docstring do modulo.
+
+    `mapa_adulterante` (Passo 122): repassado a `dados_io.
+    adulterant_from_mae_id` -- letra->nome do "segundo fator" (o que e'
+    "adulterante" pra' oleo). `None` (default) usa o mapa global
+    `ADULTERANTE_NOME`, retrocompativel com todo `.joblib` ja
+    persistido. Uma matriz nova passa o `codigos_adulterante` do seu
+    proprio `MatrixProfile` aqui pra' usar SUA convencao de letra->nome,
+    sem editar `dados_io.py`.
 
     Retorna dict {(especie, adulterante): {"centroide", "conformal"
     (ConformalOneClass|None), "n_grupos", "n_amostras", "cobertura_status",
@@ -201,7 +211,8 @@ def train_identification_ensemble(
     conc_v = np.asarray(conc, dtype=float)
     conc_v = np.where(np.isnan(conc_v), 0.0, conc_v)
     adult_por_amostra = np.array(
-        [adulterant_from_mae_id(m) for m in mae_id], dtype=object)
+        [adulterant_from_mae_id(m, mapa_adulterante) for m in mae_id],
+        dtype=object)
 
     T_all = _pca_scores(pca, X_proc)
     var_t = np.asarray(var_t, dtype=float)

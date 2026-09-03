@@ -67,28 +67,40 @@ CODIGO_ESPECIE: Dict[str, str] = {
 ADULTERANTE_NOME: Dict[str, str] = {"A": "algodão", "M": "milho", "S": "soja"}
 
 
-def adulterant_from_mae_id(mae_id: Optional[str]) -> Optional[str]:
-    """Nome do adulterante (algodão/milho/soja) a partir do mae_id, ou None.
+def adulterant_from_mae_id(mae_id: Optional[str],
+                            mapa_adulterante: Optional[Dict[str, str]] = None,
+                            ) -> Optional[str]:
+    """Nome do adulterante a partir do mae_id, ou None.
 
     O mae_id de uma amostra ADULTERADA termina no token '{letra}{teor}':
-        real       'CAP-04-11-2099-A1.03' -> 'A' -> 'algodão'
-        sintetico  'ESA-S05.00'           -> 'S' -> 'soja'
+        real       'CAP-04-11-2099-A1.03' -> 'A' -> 'algodão' (mapa default)
+        sintetico  'ESA-S05.00'           -> 'S' -> 'soja' (mapa default)
     Amostras PURAS ('CAP-04-11-2099') e orfaos ('orfao_...') nao tem esse
     token e retornam None. Deriva o adulterante do mae_id (que sobrevive
     alinhado a validate_input), evitando desalinhamento com metadados_df.
-    """
+
+    `mapa_adulterante` (Passo 122, INSTRUCAO_HIPOTESE_D_IDENTIFICACAO_
+    GENERICA.md): letra -> nome legivel, default `ADULTERANTE_NOME`
+    (comportamento historico, retrocompativel -- nenhum `.joblib`
+    persistido muda de forma). Uma matriz nova pode declarar seu PROPRIO
+    mapa via `MatrixProfile.codigos_adulterante` em vez de editar este
+    modulo -- so' o MAPA letra->nome e' parametrizavel, a ESTRUTURA do
+    token (1 letra + digitos no ultimo segmento) continua fixa (e' a
+    convencao de `mae_id` deste projeto, nao da matriz)."""
     if mae_id is None:
         return None
+    mapa = mapa_adulterante if mapa_adulterante is not None else ADULTERANTE_NOME
     ultimo = str(mae_id).split("-")[-1]
     m = re.match(r"^([A-Za-z])[0-9]", ultimo)
     if not m:
         return None
     letra = m.group(1).upper()
-    # So' A/M/S sao adulterantes reais; qualquer outra letra+digito (ex.: o
-    # ponto puro sintetico 'ESA-P00') NAO e adulterante -> None.
-    if letra not in ADULTERANTE_NOME:
+    # So' letras REGISTRADAS no mapa sao adulterantes reais; qualquer
+    # outra letra+digito (ex.: o ponto puro sintetico 'ESA-P00') NAO e
+    # adulterante -> None.
+    if letra not in mapa:
         return None
-    return ADULTERANTE_NOME[letra]
+    return mapa[letra]
 
 
 def session_from_mae_id(mae_id: Optional[str]) -> Optional[str]:

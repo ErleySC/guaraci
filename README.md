@@ -89,7 +89,7 @@ external hold-out. That is what separates an honest metric from an artifact.
 - **Image mode (digital colorimetry, prototype)**: turns photos (RGB/HSV/Lab stats, optionally GLCM texture) into the same numeric matrix every other mode consumes — PCA, PLS-DA, DD-SIMCA etc. run unchanged. Auto-detects which replicate-leakage grouping guarantee the data folder supports (per-sample subfolder / manual association CSV / none) and states the level actually used in the log, model card and manifest — never assumes a guarantee it doesn't have.
 - **HSI mode (hyperspectral imaging)**: DISTINCT from image mode above — operates PER PIXEL of a hyperspectral cube (ENVI `.hdr`/`.bin` format), not per whole photo. Quality gate, PCA+Otsu segmentation, per-pixel PLS-DA with physical-object aggregation (majority vote + heterogeneity), spatial classification map. **Works with your own cubes, offline, no public dataset required** — point it at any folder with one subfolder per class; the same 3-level replicate-leakage grouping guarantee as image mode applies (per-sample subfolder / association CSV / none, stated explicitly, never assumed). The public dataset (DeepHS Fruit) is used only as this project's own validation fixture, auto-detected by `manifest.json` (or forced either way with an explicit flag) — going through it also unlocks external validation by day/batch partition and VIP×chemical-band cross-explainability, neither of which apply to a generic folder with no such native partition. Offline operation is proven, not just claimed: a test builds a synthetic cube and runs the full pipeline with the network socket disabled. Reachable via the `[X]` key in the CLI main menu. Performance on the public fixture is still modest in places, reported honestly (see `docs/VALIDACAO_PUBLICA.md` §7).
 
-### Multimatrix and multitechnique by design — with two honest caveats
+### Multimatrix and multitechnique by design — with one remaining honest caveat
 
 Any matrix (oil, corn, honey, a hyperspectral cube of fruit or pills) and
 any acquisition technique (spectrometer, phone camera, hyperspectral
@@ -103,19 +103,24 @@ profile, and an HSI domain with zero relation to any dataset this
 project has ever used (pharmaceutical-pill authenticity) — see
 `tests/test_aceitacao_adaptabilidade.py`.
 
-That same audit found two real, narrow limits, reported rather than
-quietly patched over:
+That same audit found two real, narrow limits. The more important one
+is now **fixed**: species×adulterant identification (Blind mode's
+`identificacao.py`) used to be structurally tied to the original oil
+dataset's specific sample-ID letter codes (A/M/S → cotton/corn/soy) —
+it ran without error on any matrix, but silently produced zero
+calibrated combinations for anything using a different naming
+convention, contradicting the multimatrix claim above. Fixed by moving
+the letter→name mapping into the matrix profile
+(`MatrixProfile.codigos_adulterante`), additively — every existing
+`.joblib` model keeps loading unchanged, since it never re-derives this
+mapping at prediction time. Verified directly with a synthetic dataset
+using a naming convention deliberately different from the oil one,
+running Detect→Identify→Quantify end to end and confirming the original
+oil dataset's own tests still pass unchanged — see
+`tests/test_identificacao_generica.py`.
 
-- **Species×adulterant identification (Blind mode's `identificacao.py`)
-  is structurally tied to the adulterant-coded sample-ID convention of
-  the original oil dataset** (a `{code}-{date}-{letter}{concentration}`
-  pattern) — it runs without error on any matrix, but only produces
-  non-empty calibrated combinations when sample IDs follow that
-  specific convention. On any other matrix (a different tabular
-  profile, image mode, HSI) it correctly reports zero calibrated
-  combinations rather than crashing, and the generated model card
-  states why — but it is genuinely inert there, not just differently
-  worded.
+One narrow limit remains, reported rather than quietly patched over:
+
 - **A handful of image-acquisition-technique profiles are
   hardcoded by name** (`bancada`/`celular`/`scanner`) for a menu-listing
   filter — a new technique profile loads and runs correctly, but won't

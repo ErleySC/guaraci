@@ -103,6 +103,18 @@ class MatrixProfile:
     #: Codigo -> nome legivel da classe (o que `CODIGO_ESPECIE` era para
     #: oleos). Vazio quando a matriz nao usa codificacao no nome do arquivo.
     codigos_classe: Dict[str, str] = field(default_factory=dict)
+    #: Letra -> nome legivel do "segundo fator" usado pela Identificacao
+    #: (Bloco 9b, `identificacao.py`) -- o que `ADULTERANTE_NOME`
+    #: (`dados_io.py`) era para oleos: {"A": "algodao", "M": "milho",
+    #: "S": "soja"}. Vazio (default) = usa o mapa global `ADULTERANTE_NOME`
+    #: (comportamento historico, retrocompativel). Uma matriz nova (Passo
+    #: 122) pode declarar o SEU proprio mapa aqui em vez de editar
+    #: dados_io.py -- ex. uma matriz de mel poderia declarar
+    #: {"X": "xarope de milho", "G": "glicose comercial"}. So' muda QUAL
+    #: letra->nome e' usada pra' ler o token final do `mae_id`
+    #: (`{cod}-{data}-{letra}{teor}`) -- a ESTRUTURA do token (1 letra +
+    #: digitos) continua fixa, nao e' parametrizavel por perfil.
+    codigos_adulterante: Dict[str, str] = field(default_factory=dict)
     #: Faixa de trabalho esperada do analito, em unidade do proprio analito.
     #: Serve para avisar quando uma predicao sai fora do que foi calibrado.
     faixa_trabalho: Optional[List[float]] = None
@@ -228,9 +240,9 @@ def combine_profiles(nome: str, matriz: MatrixProfile,
 
     Regra de precedencia -- cada campo vem de UMA fonte, nunca misturado
     campo-a-campo dentro do mesmo conceito:
-    - vocabulario/codigos_classe/faixa_trabalho/eixo/unidade_eixo/
-      referencia: sempre da MATRIZ (sao propriedade quimica da amostra,
-      tecnica de captura nao muda o que ela e').
+    - vocabulario/codigos_classe/codigos_adulterante/faixa_trabalho/eixo/
+      unidade_eixo/referencia: sempre da MATRIZ (sao propriedade quimica
+      da amostra, tecnica de captura nao muda o que ela e').
     - resolucao_esperada/formatos_aceitos/nivel_agrupamento_tipico: sempre
       da TECNICA (matriz nao declara esses campos -- ver
       `MatrixProfile.__doc__`).
@@ -257,6 +269,7 @@ def combine_profiles(nome: str, matriz: MatrixProfile,
         default_preprocessing=tec.default_preprocessing or matriz.default_preprocessing,
         vocabulario=matriz.vocabulario,
         codigos_classe=dict(matriz.codigos_classe),
+        codigos_adulterante=dict(matriz.codigos_adulterante),
         faixa_trabalho=list(matriz.faixa_trabalho) if matriz.faixa_trabalho else None,
         referencia=matriz.referencia,
         resolucao_esperada=tec.resolucao_esperada,
@@ -287,6 +300,7 @@ def save_profile(perfil: MatrixProfile, caminho: str) -> None:
             "nao_conforme": perfil.vocabulario.nao_conforme,
         },
         "codigos_classe": dict(perfil.codigos_classe),
+        "codigos_adulterante": dict(perfil.codigos_adulterante),
         "faixa_trabalho": list(perfil.faixa_trabalho) if perfil.faixa_trabalho else None,
         "referencia": perfil.referencia,
         "resolucao_esperada": perfil.resolucao_esperada,

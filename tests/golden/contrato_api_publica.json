@@ -1274,7 +1274,7 @@
         "tipo": "dict"
       },
       "adulterant_from_mae_id": {
-        "assinatura": "(mae_id: 'Optional[str]') -> 'Optional[str]'",
+        "assinatura": "(mae_id: 'Optional[str]', mapa_adulterante: 'Optional[Dict[str, str]]' = None) -> 'Optional[str]'",
         "forma": "funcao"
       },
       "duplex_split": {
@@ -2580,7 +2580,7 @@
         "forma": "funcao"
       },
       "train_identification_ensemble": {
-        "assinatura": "(pca, var_t: 'np.ndarray', X_proc: 'np.ndarray', rotulos: 'np.ndarray', conc: 'np.ndarray', mae_id: 'Optional[np.ndarray]', alpha_nominal: 'float' = 0.05) -> 'Dict[Tuple[str, str], Dict[str, Any]]'",
+        "assinatura": "(pca, var_t: 'np.ndarray', X_proc: 'np.ndarray', rotulos: 'np.ndarray', conc: 'np.ndarray', mae_id: 'Optional[np.ndarray]', alpha_nominal: 'float' = 0.05, mapa_adulterante: 'Optional[Dict[str, str]]' = None) -> 'Dict[Tuple[str, str], Dict[str, Any]]'",
         "forma": "funcao"
       }
     },
@@ -2809,6 +2809,11 @@
             "tipo": "Dict[str, str]"
           },
           {
+            "nome": "codigos_adulterante",
+            "tem_default": true,
+            "tipo": "Dict[str, str]"
+          },
+          {
             "nome": "faixa_trabalho",
             "tem_default": true,
             "tipo": "Optional[List[float]]"
@@ -2950,7 +2955,7 @@
         "forma": "funcao"
       },
       "r2cv_species_by_adulterant": {
-        "assinatura": "(X: numpy.ndarray, conc: numpy.ndarray, rotulos: numpy.ndarray, mae_id: Optional[numpy.ndarray], cfg: 'Config', *, limiar_r2: float = 0.7, min_niveis: int = 3, min_grupos: int = 3) -> Optional[Dict[str, Any]]",
+        "assinatura": "(X: numpy.ndarray, conc: numpy.ndarray, rotulos: numpy.ndarray, mae_id: Optional[numpy.ndarray], cfg: 'Config', *, limiar_r2: float = 0.7, min_niveis: int = 3, min_grupos: int = 3, mapa_adulterante: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]",
         "forma": "funcao"
       },
       "validate_input": {

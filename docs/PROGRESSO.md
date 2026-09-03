@@ -1,3 +1,52 @@
+# PROGRESSO — Passo 122 (2026-09-03)
+
+## Passo 122 — Identificação generalizada: aceita qualquer convenção de nome
+
+Achado do Passo 117: a Identificação (Bloco 9b) só produzia combinações
+calibradas com o padrão de letra do dataset original de óleo (A/M/S).
+
+**Diagnóstico**: problema de PARSING (mapa hardcoded), não de conceito
+semântico. `identificacao.train_identification_ensemble` chamava
+`dados_io.adulterant_from_mae_id(mae_id)`, que consulta um dicionário
+GLOBAL `ADULTERANTE_NOME = {"A":"algodão","M":"milho","S":"soja"}` fixo
+no módulo. A ESTRUTURA do token (`{cod}-{data}-{letra}{teor}`, 1 letra
++ dígitos no último segmento) já era genérica — usada por qualquer
+matriz em mode `dx`/`sintetico` — só o mapa letra→nome não tinha como
+ser trocado sem editar `dados_io.py`. `session_from_mae_id` (a outra
+função envolvida) já era agnóstica à letra (só olha a estrutura), não
+precisou mudar. `identify_sample` (predição em amostra nova) também já
+era genérico (nunca re-deriva o adulterante, só casa contra o ensemble
+já calibrado).
+
+**Generalização implementada**: `MatrixProfile.codigos_adulterante`
+(novo campo, mesmo padrão já usado por `codigos_classe`) — vazio
+(default) preserva o mapa global `ADULTERANTE_NOME`. Repassado
+explicitamente como `mapa_adulterante` por `train_identification_
+ensemble`, `r2cv_species_by_adulterant` e `adulterant_from_mae_id`.
+Sem mudança de schema do `.joblib` persistido — `identify_sample`
+nunca chamava essas funções (só casa contra o ensemble já calibrado),
+então nenhum modelo antigo muda de comportamento ao carregar.
+
+**Testes** (`tests/test_identificacao_generica.py`): (1) dataset
+sintético com `synthetic_adulterants=("X","Y")` — letras DIFERENTES de
+A/M/S — e perfil fictício `codigos_adulterante={"X":"quitosana",
+"Y":"amido"}`, `executar()` ponta-a-ponta, ensemble NÃO-VAZIO com os
+nomes certos, Detectar→Identificar→Quantificar (`predict_blind`) roda
+sem exceção; (2) contra-prova de retrocompatibilidade: dataset com
+A/M/S e perfil SEM `codigos_adulterante` produz exatamente o mesmo
+ensemble de antes (43 testes existentes de Identificação/modo cego/
+heatmap confirmados sem mudança).
+
+README.md/README.pt-br.md corrigidos: "duas ressalvas honestas" vira
+"uma ressalva honesta restante" (só o `PERFIS_TECNICA` fixo do Passo
+117 continua). MANUAL.md §4b.1 documenta `codigos_adulterante`.
+`docs/COMPATIBILITY.md` não precisou de entrada nova (mudança aditiva,
+golden de contrato regravado só com adições).
+
+Suite completa (1185 passed), ruff/mypy limpos. Commit, push.
+
+---
+
 # PROGRESSO — Passo 121 (2026-09-03)
 
 ## Passo 121 — Hipótese D registrada como conclusão DEFINITIVA (fechada, não mais em aberto)
