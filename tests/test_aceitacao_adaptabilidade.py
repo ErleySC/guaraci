@@ -180,13 +180,15 @@ def test_aceitacao_imagem_tecnica_ficticia_nova(pq, tmp_path):
     assert runs, "executar() nao criou saida para a tecnica ficticia"
 
 
-def test_achado_perfis_tecnica_e_lista_fixa_nao_generica(tmp_path):
-    """Achado de arquitetura (reportado, nao corrigido nesta rodada): uma
-    tecnica NOVA (nome fora do frozenset PERFIS_TECNICA) FUNCIONA via
-    load_profile/combine_profiles (ver teste acima), mas nao aparece na
-    listagem filtrada `perfis_disponiveis(apenas="tecnica")` -- cai
-    (errado) na lista de "matriz" em vez de "tecnica". So' afeta menu/
-    descoberta, nunca a execucao do pipeline."""
+def test_perfis_tecnica_e_generico_por_conteudo_nao_por_nome(tmp_path):
+    """CORRIGIDO no Passo 124 (achado original do Passo 117, ver git
+    blame/docs/PROGRESSO.md pra' o antes-e-depois): uma tecnica NOVA
+    (nome fora do frozenset PERFIS_TECNICA) FUNCIONA via load_profile/
+    combine_profiles (ver teste acima) E agora aparece corretamente na
+    listagem filtrada `perfis_disponiveis(apenas="tecnica")` --
+    classificacao e' por CONTEUDO (declara resolucao_esperada/
+    formatos_aceitos/nivel_agrupamento_tipico), nunca por nome de
+    arquivo contra uma lista fixa."""
     nome_tecnica_nova = "microscopio_digital_persistido"
     caminho = Path(__import__("guaraci.perfil_matriz", fromlist=["DIR_PERFIS"])
                   .DIR_PERFIS) / f"{nome_tecnica_nova}.yaml"
@@ -199,12 +201,9 @@ def test_achado_perfis_tecnica_e_lista_fixa_nao_generica(tmp_path):
     try:
         tecnica = perfis_disponiveis(apenas="tecnica")
         matriz = perfis_disponiveis(apenas="matriz")
-        # Comportamento MEDIDO hoje (achado, nao objetivo de design):
-        assert nome_tecnica_nova not in tecnica, (
-            "se isso passar a ser True, o achado abaixo foi corrigido -- "
-            "atualizar o docstring deste modulo e docs/PROGRESSO.md.")
-        assert nome_tecnica_nova in matriz
-        assert PERFIS_TECNICA <= set(tecnica)  # os 3 fixos continuam la
+        assert nome_tecnica_nova in tecnica
+        assert nome_tecnica_nova not in matriz
+        assert PERFIS_TECNICA <= set(tecnica)  # os 3 pre-cadastrados continuam la
     finally:
         caminho.unlink(missing_ok=True)
 

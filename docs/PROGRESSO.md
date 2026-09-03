@@ -1,3 +1,43 @@
+# PROGRESSO — Passo 124 (2026-09-03)
+
+## Passo 124 — Lista de técnicas de imagem generalizada (fecha o ciclo de adaptabilidade)
+
+Último achado pendente da auditoria do Passo 117:
+`perfil_matriz.PERFIS_TECNICA` era um frozenset fixo de 3 nomes
+(`bancada`/`celular`/`scanner`) usado só pra' filtrar
+`perfis_disponiveis(apenas="tecnica"/"matriz")` — uma técnica nova
+carregava e funcionava normalmente, mas nunca aparecia na listagem
+filtrada por "técnica".
+
+**Corrigido**: classificação agora é por CONTEÚDO
+(`_e_perfil_tecnica`, novo — declara `resolucao_esperada`/
+`formatos_aceitos`/`nivel_agrupamento_tipico`), não por nome de
+arquivo contra uma lista fixa. `PERFIS_TECNICA` continua existindo,
+mas só como registro dos 3 exemplos pré-cadastrados de conveniência —
+não decide mais classificação nenhuma. Zero mudança de assinatura
+pública (`perfis_disponiveis` continua igual por fora) — golden de
+contrato de API confirmado sem alteração.
+
+Teste que documentava o achado (Passo 117,
+`test_achado_perfis_tecnica_e_lista_fixa_nao_generica`) INVERTIDO pra'
+`test_perfis_tecnica_e_generico_por_conteudo_nao_por_nome`, confirmando
+a correção: uma 4ª técnica (inventada na hora) aparece corretamente na
+listagem filtrada, as 3 originais continuam lá (22/22 testes de
+`test_perfil_matriz.py` sem mudança). O teste de aceite completo
+(técnica fictícia rodando mode="imagem" ponta-a-ponta) já existia do
+Passo 117 (`test_aceitacao_imagem_tecnica_ficticia_nova`) — reaproveitado,
+não duplicado.
+
+README.md/README.pt-br.md: "com 1/2 ressalvas honestas" vira **"sem
+nenhuma ressalva conhecida"** — a alegação multimatriz/multitécnica
+agora está inteiramente sustentada por teste. MANUAL.md §4b.2 documenta
+a classificação por conteúdo.
+
+Suite completa (1185 passed), ruff/mypy limpos. Commit, push. **Fecha
+o ciclo de adaptabilidade aberto no Passo 117.**
+
+---
+
 # PROGRESSO — Passo 123 (2026-09-03)
 
 ## Passo 123 — Hipótese NIR registrada (especulativa, distinta da conclusão definitiva do Passo 121)

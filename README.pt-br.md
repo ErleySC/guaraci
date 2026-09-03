@@ -95,43 +95,50 @@ quanto no *holdout* externo. É o que separa um número honesto de um artefato.
 - **Modo imagem (colorimetria digital, protótipo)**: converte fotos (RGB/HSV/Lab, opcionalmente textura GLCM) na mesma matriz numérica que os outros modos consomem — PCA, PLS-DA, DD-SIMCA etc. funcionam sem alteração. Detecta automaticamente o nível de garantia de agrupamento contra vazamento de réplicas disponível na pasta de dados (subpasta por amostra física / CSV de associação manual / nenhum) e declara o nível usado no log, no model card e no manifesto — nunca finge uma garantia que não tem.
 - **Modo HSI (imageamento hiperespectral)**: DISTINTO do modo imagem — opera POR PIXEL de um cubo hiperespectral (formato ENVI, `.hdr`+`.bin`), não por foto inteira. Quality gate (saturação/SNR/pixels válidos), segmentação PCA+Otsu, PLS-DA por pixel com agregação por objeto físico (voto majoritário + heterogeneidade), mapa de classificação espacial. **Funciona com cubos do próprio usuário, offline, sem dataset público nenhum** — basta apontar pra' qualquer pasta com uma subpasta por classe; vale a mesma hierarquia de 3 níveis de garantia de agrupamento do modo imagem (subpasta por amostra / CSV de associação / nenhuma, sempre declarada explicitamente, nunca presumida). O dataset público (DeepHS Fruit) serve só de fixture de validação do próprio projeto, detectado automaticamente pelo `manifest.json` (ou forçado explicitamente pra' qualquer um dos dois lados) — passar por ele também libera validação externa por partição de dia/lote e explicabilidade cruzada VIP×banda química, nenhuma das duas aplicável a uma pasta genérica sem essa partição nativa. Funcionamento offline é PROVADO, não só alegado: um teste constrói um cubo sintético e roda o pipeline inteiro com o socket de rede desabilitado. Acessível pela tecla `[X]` do menu principal da CLI. Desempenho no fixture público ainda é modesto em alguns pontos, reportado sem inflar (ver `docs/VALIDACAO_PUBLICA.md` §7).
 
-### Multimatriz e multitécnica por design — com 1 ressalva honesta restante
+### Multimatriz e multitécnica por design — sem nenhuma ressalva conhecida
 
 Qualquer matriz (óleo, milho, mel, um cubo hiperespectral de fruta ou
 comprimido) e qualquer técnica de aquisição (espectrômetro, câmera de
-celular, câmera hiperespectral) entra via **perfil** (um arquivo YAML)
-ou, no HSI, uma pasta simples com dado próprio — nunca uma alteração de
-código-fonte. Isso foi reverificado por comando direto (não só
-alegado) para os 3 modos, com perfil/domínio inventado NA HORA pro
-teste: uma matriz tabular fictícia carregada de um YAML solto nunca
-distribuído com o pacote, uma técnica de aquisição de imagem fictícia
-combinada com o perfil genérico, e um domínio de HSI sem nenhuma
-relação com qualquer dataset já usado neste projeto (autenticidade de
-comprimido farmacêutico) — ver `tests/test_aceitacao_adaptabilidade.py`.
+celular, câmera hiperespectral, ou uma que você inventar) entra via
+**perfil** (um arquivo YAML) ou, no HSI, uma pasta simples com dado
+próprio — nunca uma alteração de código-fonte. Isso foi reverificado
+por comando direto (não só alegado) para os 3 modos, com perfil/
+domínio inventado NA HORA pro teste: uma matriz tabular fictícia
+carregada de um YAML solto nunca distribuído com o pacote, uma técnica
+de aquisição de imagem fictícia combinada com o perfil genérico, e um
+domínio de HSI sem nenhuma relação com qualquer dataset já usado neste
+projeto (autenticidade de comprimido farmacêutico) — ver
+`tests/test_aceitacao_adaptabilidade.py`.
 
-Essa mesma auditoria achou 2 limites reais e estreitos. O mais
-importante já está **corrigido**: a Identificação espécie×adulterante
-(Bloco 9b do modo cego, `identificacao.py`) era estruturalmente amarrada
-aos códigos de letra específicos do dataset original de óleo (A/M/S →
-algodão/milho/soja) — rodava sem erro em qualquer matriz, mas produzia
-silenciosamente zero combinações calibradas pra' qualquer convenção de
-nome diferente, contradizendo a própria alegação de multimatriz acima.
-Corrigido movendo o mapa letra→nome pro perfil de matriz
-(`MatrixProfile.codigos_adulterante`), de forma aditiva — todo `.joblib`
-já persistido continua carregando sem alteração, já que nunca re-deriva
-esse mapa no momento da predição. Verificado diretamente com um dataset
-sintético usando uma convenção de nome deliberadamente diferente da do
-óleo, rodando Detectar→Identificar→Quantificar de ponta a ponta e
-confirmando que os próprios testes do dataset de óleo original continuam
-passando sem mudança — ver `tests/test_identificacao_generica.py`.
+Uma auditoria de adaptabilidade achou 2 limites reais e estreitos —
+ambos já **corrigidos**:
 
-Um limite estreito permanece, reportado em vez de remendado em
-silêncio:
-
-- **Um punhado de perfis de técnica de aquisição de imagem é
-  fixo por nome** (`bancada`/`celular`/`scanner`) pra' um filtro de
-  listagem de menu — uma técnica nova carrega e funciona corretamente,
-  mas não aparece nessa listagem filtrada até seu nome ser adicionado.
+- **A Identificação espécie×adulterante** (Bloco 9b do modo cego,
+  `identificacao.py`) era estruturalmente amarrada aos códigos de letra
+  específicos do dataset original de óleo (A/M/S → algodão/milho/soja)
+  — rodava sem erro em qualquer matriz, mas produzia silenciosamente
+  zero combinações calibradas pra' qualquer convenção de nome
+  diferente. Corrigido movendo o mapa letra→nome pro perfil de matriz
+  (`MatrixProfile.codigos_adulterante`), de forma aditiva — todo
+  `.joblib` já persistido continua carregando sem alteração, já que
+  nunca re-deriva esse mapa no momento da predição. Verificado
+  diretamente com um dataset sintético usando uma convenção de nome
+  deliberadamente diferente da do óleo, rodando
+  Detectar→Identificar→Quantificar de ponta a ponta e confirmando que
+  os próprios testes do dataset de óleo original continuam passando
+  sem mudança — ver `tests/test_identificacao_generica.py`.
+- **Os perfis de técnica de aquisição de imagem eram reconhecidos por
+  uma lista fixa de 3 nomes** (`bancada`/`celular`/`scanner`) pra' um
+  filtro de listagem de menu — uma técnica nova sempre carregava e
+  funcionava corretamente, mas não aparecia nessa listagem filtrada.
+  Corrigido classificando um perfil como "técnica" pelo seu *conteúdo*
+  (se declara os campos de resolução esperada/formatos aceitos/nível
+  de agrupamento típico) em vez do nome do arquivo — esses 3 perfis
+  continuam como exemplos pré-cadastrados de conveniência, não um
+  limite rígido. Verificado com uma quarta técnica, inventada na hora,
+  aparecendo corretamente na listagem filtrada, sem afetar as 3
+  originais — ver `tests/test_perfil_matriz.py`/
+  `tests/test_aceitacao_adaptabilidade.py`.
 
 ---
 

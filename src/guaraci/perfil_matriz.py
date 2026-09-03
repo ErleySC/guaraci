@@ -51,13 +51,30 @@ __all__ = [
 #: Perfis embutidos, distribuidos junto com o pacote.
 DIR_PERFIS = Path(__file__).parent / "perfis_matriz"
 
-#: Nomes de perfil embutido cujo foco principal e' TECNICA DE AQUISICAO de
-#: imagem (campos resolucao_esperada/formatos_aceitos/nivel_agrupamento_
-#: tipico preenchidos), distintos dos perfis de MATRIZ quimica (foco em
-#: eixo espectral/vocabulario). "generico" nao entra aqui -- serve aos dois
-#: papeis (ver `perfis_disponiveis`). Convencao por nome de arquivo: os 3
-#: perfis de tecnica hoje existentes (Bloco 8a, 2026-08-25) sao estes.
+#: Nomes dos perfis de TECNICA DE AQUISICAO pre-cadastrados (Bloco 8a,
+#: 2026-08-25) -- exemplos de CONVENIENCIA, servidos junto com o pacote,
+#: NAO um limite do sistema. Ate' o Passo 124, `perfis_disponiveis`
+#: classificava um perfil como "tecnica" checando o NOME contra este
+#: frozenset -- uma tecnica nova (nome fora daqui) carregava e funcionava
+#: normalmente via `load_profile`/`combine_profiles`, mas nunca aparecia
+#: na listagem filtrada por "tecnica" (achado da auditoria de
+#: adaptabilidade, Passo 117). Corrigido: a classificacao agora e' por
+#: CONTEUDO (`_e_perfil_tecnica`, campos resolucao_esperada/
+#: formatos_aceitos/nivel_agrupamento_tipico preenchidos), nao por nome
+#: -- este frozenset so' serve mais pra' documentar quais sao os
+#: exemplos pre-cadastrados, nao decide mais classificacao nenhuma.
 PERFIS_TECNICA = frozenset({"bancada", "celular", "scanner"})
+
+
+def _e_perfil_tecnica(perfil: "MatrixProfile") -> bool:
+    """True se `perfil` declara ao menos um dos 3 campos que so' fazem
+    sentido pra' TECNICA DE AQUISICAO (nunca pra' matriz quimica, ver
+    docstring de `MatrixProfile`) -- classificacao por CONTEUDO, nao por
+    nome de arquivo (Passo 124), pra' que uma tecnica nova (qualquer
+    nome) seja reconhecida automaticamente na listagem filtrada."""
+    return (perfil.resolucao_esperada is not None
+            or perfil.formatos_aceitos is not None
+            or perfil.nivel_agrupamento_tipico is not None)
 
 
 class UnknownProfileError(ValueError):
@@ -163,12 +180,20 @@ def perfis_disponiveis(*, apenas: Optional[str] = None) -> List[str]:
     "generico", que serve de fallback para as duas dimensoes).
     `apenas="matriz"`: todos os que NAO sao de tecnica (inclui "generico").
     `apenas=None` (default): lista completa, sem filtro.
+
+    Classificacao por CONTEUDO (`_e_perfil_tecnica`), nao por nome de
+    arquivo (Passo 124) -- uma tecnica nova (qualquer nome, desde que
+    declare os campos certos) e' reconhecida automaticamente, sem
+    precisar editar `PERFIS_TECNICA` nem nenhum outro codigo-fonte.
     """
     todos = _perfis_disponiveis()
+    if apenas is None:
+        return todos
+    tecnicas = {p for p in todos if p != "generico" and _e_perfil_tecnica(load_profile(p))}
     if apenas == "tecnica":
-        return [p for p in todos if p in PERFIS_TECNICA or p == "generico"]
+        return [p for p in todos if p in tecnicas or p == "generico"]
     if apenas == "matriz":
-        return [p for p in todos if p not in PERFIS_TECNICA]
+        return [p for p in todos if p not in tecnicas]
     return todos
 
 

@@ -89,42 +89,46 @@ external hold-out. That is what separates an honest metric from an artifact.
 - **Image mode (digital colorimetry, prototype)**: turns photos (RGB/HSV/Lab stats, optionally GLCM texture) into the same numeric matrix every other mode consumes — PCA, PLS-DA, DD-SIMCA etc. run unchanged. Auto-detects which replicate-leakage grouping guarantee the data folder supports (per-sample subfolder / manual association CSV / none) and states the level actually used in the log, model card and manifest — never assumes a guarantee it doesn't have.
 - **HSI mode (hyperspectral imaging)**: DISTINCT from image mode above — operates PER PIXEL of a hyperspectral cube (ENVI `.hdr`/`.bin` format), not per whole photo. Quality gate, PCA+Otsu segmentation, per-pixel PLS-DA with physical-object aggregation (majority vote + heterogeneity), spatial classification map. **Works with your own cubes, offline, no public dataset required** — point it at any folder with one subfolder per class; the same 3-level replicate-leakage grouping guarantee as image mode applies (per-sample subfolder / association CSV / none, stated explicitly, never assumed). The public dataset (DeepHS Fruit) is used only as this project's own validation fixture, auto-detected by `manifest.json` (or forced either way with an explicit flag) — going through it also unlocks external validation by day/batch partition and VIP×chemical-band cross-explainability, neither of which apply to a generic folder with no such native partition. Offline operation is proven, not just claimed: a test builds a synthetic cube and runs the full pipeline with the network socket disabled. Reachable via the `[X]` key in the CLI main menu. Performance on the public fixture is still modest in places, reported honestly (see `docs/VALIDACAO_PUBLICA.md` §7).
 
-### Multimatrix and multitechnique by design — with one remaining honest caveat
+### Multimatrix and multitechnique by design — no known caveat left
 
 Any matrix (oil, corn, honey, a hyperspectral cube of fruit or pills) and
 any acquisition technique (spectrometer, phone camera, hyperspectral
-camera) plugs in through a **profile** (a YAML file) or, for HSI, a
-plain folder of your own data — never a source-code change. This was
-re-verified directly (not just claimed) for all three modes with a
-profile/domain invented on the spot for the test: a fictitious tabular
-matrix loaded from a bare YAML file never shipped with the package, a
-fictitious image-acquisition technique combined with the generic
-profile, and an HSI domain with zero relation to any dataset this
-project has ever used (pharmaceutical-pill authenticity) — see
-`tests/test_aceitacao_adaptabilidade.py`.
+camera, or one you invent) plugs in through a **profile** (a YAML file)
+or, for HSI, a plain folder of your own data — never a source-code
+change. This was re-verified directly (not just claimed) for all three
+modes with a profile/domain invented on the spot for the test: a
+fictitious tabular matrix loaded from a bare YAML file never shipped
+with the package, a fictitious image-acquisition technique combined
+with the generic profile, and an HSI domain with zero relation to any
+dataset this project has ever used (pharmaceutical-pill authenticity)
+— see `tests/test_aceitacao_adaptabilidade.py`.
 
-That same audit found two real, narrow limits. The more important one
-is now **fixed**: species×adulterant identification (Blind mode's
-`identificacao.py`) used to be structurally tied to the original oil
-dataset's specific sample-ID letter codes (A/M/S → cotton/corn/soy) —
-it ran without error on any matrix, but silently produced zero
-calibrated combinations for anything using a different naming
-convention, contradicting the multimatrix claim above. Fixed by moving
-the letter→name mapping into the matrix profile
-(`MatrixProfile.codigos_adulterante`), additively — every existing
-`.joblib` model keeps loading unchanged, since it never re-derives this
-mapping at prediction time. Verified directly with a synthetic dataset
-using a naming convention deliberately different from the oil one,
-running Detect→Identify→Quantify end to end and confirming the original
-oil dataset's own tests still pass unchanged — see
-`tests/test_identificacao_generica.py`.
+An adaptability audit found two real, narrow limits — both now fixed:
 
-One narrow limit remains, reported rather than quietly patched over:
-
-- **A handful of image-acquisition-technique profiles are
-  hardcoded by name** (`bancada`/`celular`/`scanner`) for a menu-listing
-  filter — a new technique profile loads and runs correctly, but won't
-  show up in that filtered listing until its name is added.
+- **Species×adulterant identification** (Blind mode's
+  `identificacao.py`) used to be structurally tied to the original oil
+  dataset's specific sample-ID letter codes (A/M/S → cotton/corn/soy) —
+  it ran without error on any matrix, but silently produced zero
+  calibrated combinations for anything using a different naming
+  convention. Fixed by moving the letter→name mapping into the matrix
+  profile (`MatrixProfile.codigos_adulterante`), additively — every
+  existing `.joblib` model keeps loading unchanged, since it never
+  re-derives this mapping at prediction time. Verified directly with a
+  synthetic dataset using a naming convention deliberately different
+  from the oil one, running Detect→Identify→Quantify end to end and
+  confirming the original oil dataset's own tests still pass unchanged
+  — see `tests/test_identificacao_generica.py`.
+- **Image-acquisition-technique profiles used to be recognized by a
+  hardcoded list of 3 names** (`bancada`/`celular`/`scanner`) for a
+  menu-listing filter — a new technique profile always loaded and ran
+  correctly, but wouldn't show up in that filtered listing. Fixed by
+  classifying a profile as "technique" from its *content* (whether it
+  declares expected-resolution/accepted-formats/typical-grouping-level
+  fields) rather than its file name — those 3 profiles remain
+  pre-registered convenience examples, not a hard limit. Verified with
+  a fourth, invented-on-the-spot technique profile showing up correctly
+  in the filtered listing, with the original 3 unaffected — see
+  `tests/test_perfil_matriz.py`/`tests/test_aceitacao_adaptabilidade.py`.
 
 ---
 

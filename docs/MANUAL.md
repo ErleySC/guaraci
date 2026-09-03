@@ -538,6 +538,14 @@ informativo, o nível real é sempre decidido pelos dados, nunca pelo
 perfil, ver §4). Carregado com o mesmo `load_profile` do perfil de
 matriz.
 
+Esses 3 são exemplos PRÉ-CADASTRADOS de conveniência, não um limite
+rígido — uma técnica nova (câmera de drone, microscópio digital, etc.)
+é reconhecida automaticamente assim que declara os mesmos campos
+(resolução esperada/formatos aceitos/nível de agrupamento típico), sem
+precisar entrar no pacote nem editar `perfil_matriz.py` (Passo 124: a
+listagem `guaraci perfis` filtrada por "técnica" classifica pelo
+CONTEÚDO do perfil, não por uma lista fixa de nomes).
+
 **Combinar e salvar** (dentro do assistente interativo, `[2] Dados`,
 depois de escolher tanto `Perfil de matriz` quanto `Perfil de técnica
 de aquisição`): funde os dois com `perfil_matriz.combine_profiles`
