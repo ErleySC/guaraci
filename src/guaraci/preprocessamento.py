@@ -149,7 +149,15 @@ class EMSC(BaseEstimator, TransformerMixin):
     polinomial de uma linha de base nao muda por reescala/deslocamento
     linear do eixo). `ordem_polinomial=0` sem `interferentes` reduz ao
     MSC (so' com solver por minimos quadrados em vez da forma fechada
-    usada em `MSC`, resultado numericamente equivalente)."""
+    usada em `MSC`, resultado numericamente equivalente).
+
+    VEREDITO DO PORTAO DE ACEITE (Bloco 20, medido em 2026-09-04, ver
+    `docs/PROGRESSO.md` Passo 134/`docs/VALIDACAO_PUBLICA.md` secao 9 --
+    `portao_correcao_sinal.avaliar_correcao_sinal_pls`, 10 seeds, Wilcoxon
+    pareado): APROVADO no acervo privado de oleo (RMSEP 4,70->4,39
+    pooled, p=0,002) E no Corn publico (0,164->0,132, p=0,002). Dos dois
+    metodos deste modulo, e' o unico com ganho comprovado nos DOIS
+    cenarios testados ate' agora -- OSC (abaixo) piora no oleo."""
 
     def __init__(self, eixo=None, ordem_polinomial: int = 2, interferentes=None):
         self.eixo = eixo
@@ -205,7 +213,16 @@ class OSC(BaseEstimator, TransformerMixin):
     componentes OSC anteriores), ortogonaliza iterativamente o escore `t`
     em relacao a `y` (projeta fora a parte de `t` correlacionada com y),
     recalcula o loading `w` contra esse `t` ortogonal, ate' convergir;
-    deflaciona X por esse componente e repete para `n_componentes`."""
+    deflaciona X por esse componente e repete para `n_componentes`.
+
+    VEREDITO DO PORTAO DE ACEITE (Bloco 20, medido em 2026-09-04, ver
+    `docs/PROGRESSO.md` Passo 134/`docs/VALIDACAO_PUBLICA.md` secao 9):
+    APROVADO no Corn publico (RMSEP 0,164->0,145, p=0,002), mas
+    **REJEITADO** no acervo privado de oleo (quantificacao pooled de
+    teor: RMSEP 4,70->4,99, PIOROU, p=0,002). Ganho NAO e' garantido por
+    cenario -- confirme com `avaliar_correcao_sinal_pls` no seu proprio
+    dataset antes de usar OSC como pre-processamento padrao; nao use so'
+    porque ajudou no Corn."""
 
     def __init__(self, n_componentes: int = 1, max_iter: int = 100, tol: float = 1e-8):
         self.n_componentes = n_componentes

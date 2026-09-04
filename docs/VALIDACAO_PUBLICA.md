@@ -708,3 +708,48 @@ Auditoria por comando direto — checagem P0 explícita, não alegação.
 **Resultado**: nenhum achado grave. `datasets/README.md` atualizado com
 a política completa e a tabela de todos os datasets já integrados
 (incluindo DeepHS Fruit — todas as frutas, que faltava na tabela).
+
+## 9. Portão de aceite (Bloco 20): EMSC/OSC e PDS/DS no Corn (Passos 134-135)
+
+Reproduzível: `GUARACI_DATASETS_DIR=... pytest tests/test_validacao_publica.py -k portao -v`.
+
+Nenhuma técnica de correção de sinal entra recomendada sem prova de
+ganho em validação bloqueada (Wilcoxon pareado, 10-20 seeds
+independentes, split group-aware repetido — `portao_correcao_sinal.py`,
+Bloco 20). Aplicado ao Corn real (único dataset público deste projeto
+com replicação entre instrumentos/proteína como alvo contínuo):
+
+| Técnica | Cenário | RMSEP sem | RMSEP com | p (Wilcoxon) | Veredito |
+|---|---|---:|---:|---:|---|
+| EMSC | Corn/m5, proteína | 0,164 | 0,132 | 0,002 | ✅ aprovado |
+| OSC | Corn/m5, proteína | 0,164 | 0,145 | 0,002 | ✅ aprovado |
+| PDS | Corn, m5→mp5 | 0,91* | 0,18* | <0,01 | ✅ aprovado (confirma o já conhecido) |
+| DS | Corn, m5→mp5 | 0,88* | 0,50* | <0,001 | ✅ aprovado (**retrata** achado anterior) |
+
+\* média sobre múltiplos seeds — mais alta que o RMSEP "sem" de um único
+split (0,51, o já publicado) porque splits aleatórios diferentes variam
+bastante em dificuldade; o veredito usa a distribuição inteira, não um
+ponto só.
+
+**PDS**: contra-prova do próprio mecanismo do portão — reproduz
+formalmente (10 seeds) o resultado já conhecido de
+`test_transferencia_de_calibracao_reduz_erro_entre_instrumentos_do_corn`
+(RMSEP ~0,51→~0,16 num único seed=0). Confirmado: o portão não inventa
+nem contradiz um resultado já validado.
+
+**DS — retratação**: uma nota anterior (rodada de transferência de
+calibração) registrava "DS não ajudou". Medido agora contra 20 seeds
+(não 1): DS **ajuda de verdade** (p<0,001, vence em 16/20 seeds), só que
+muito mais fraco e menos consistente que PDS — PDS sempre chega a
+~0,15-0,22, DS fica em ~0,44-0,58. A causa provável da alegação anterior:
+checar um único split (seed=0), onde por coincidência DS sai
+ligeiramente pior (0,510→0,528) — ilusão clássica de N=1. Regra que
+fica: nunca generalizar "PDS sempre funciona"/"DS nunca funciona" — o
+veredito é por par de instrumentos/dataset, e aqui os dois ajudam, em
+graus muito diferentes.
+
+**Acervo privado de óleo** (não registrado nesta página por política —
+ver linha 1-5 — mas resumido para contexto): EMSC aprovado (RMSEP
+4,70→4,39, p=0,002), OSC **rejeitado** (4,70→4,99, piorou, p=0,002) na
+quantificação pooled de teor de adulterante. Resultado real em
+`docs/PROGRESSO.md`, Passo 134.

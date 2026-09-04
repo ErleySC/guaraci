@@ -268,3 +268,116 @@ def test_transferencia_de_calibracao_reduz_erro_entre_instrumentos_do_corn(pq):
         f"com PDS o RMSEP deveria chegar perto do nivel so'-no-m5 (~0.148, "
         f"ver test_guaraci_reproduz_a_literatura_no_corn) -- achado "
         f"{rmsep_com:.3f}")
+
+
+@requer_corn
+@pytest.mark.slow
+def test_portao_correcao_sinal_aprova_emsc_e_osc_no_corn():
+    """Passo 134 (Bloco 21): EMSC/OSC atraves do portao de aceite (Bloco
+    20) contra o Corn real -- 10 seeds, Wilcoxon pareado. Medido
+    diretamente antes de fixar o teste (nao adivinhado): os dois sao
+    APROVADOS no Corn (RMSEP sem~0.164 -> EMSC~0.132, OSC~0.145, p=0.002
+    nos dois). Resultado no acervo privado de oleo e' MISTO (EMSC
+    aprovado, OSC rejeitado) -- ver docs/PROGRESSO.md Passo 134, nao
+    reportado aqui por ser dado privado (docs/VALIDACAO_PUBLICA.md so'
+    registra resultado de dataset publico)."""
+    import scipy.io as sio
+
+    from guaraci.portao_correcao_sinal import avaliar_correcao_sinal_pls
+    from guaraci.preprocessamento import EMSC, OSC
+
+    m = sio.loadmat(str(_caminho_corn()))
+    X = np.asarray(m["m5spec"]["data"][0, 0], dtype=float)
+    eixo = np.asarray(m["m5spec"]["axisscale"][0, 0][1, 0], dtype=float).ravel()
+    Y = np.asarray(m["propvals"]["data"][0, 0], dtype=float)
+    proteina = Y[:, 2]
+    grupos = np.array([f"corn_{i}" for i in range(X.shape[0])])
+
+    v_emsc = avaliar_correcao_sinal_pls(
+        "EMSC_corn", X, proteina, grupos, EMSC(eixo=eixo, ordem_polinomial=2),
+        metrica="RMSEP", n_componentes=7, n_seeds=10)
+    v_osc = avaliar_correcao_sinal_pls(
+        "OSC_corn", X, proteina, grupos, OSC(n_componentes=1),
+        metrica="RMSEP", n_componentes=7, n_seeds=10)
+
+    assert v_emsc.veredito == "aprovado", v_emsc.resumo()
+    assert v_emsc.poder_suficiente
+    assert v_osc.veredito == "aprovado", v_osc.resumo()
+    assert v_osc.poder_suficiente
+
+
+@requer_corn
+@pytest.mark.slow
+def test_portao_correcao_sinal_reproduz_pds_e_RETRATA_ds_no_corn():
+    """Passo 135 (Bloco 22): reaplica o portao de aceite (Bloco 20) a'
+    transferencia de calibracao formalmente -- contra-prova de que o
+    mecanismo reproduz um resultado ja conhecido antes de confiar nele
+    para tecnicas novas.
+
+    PDS: CONFIRMADO. `test_transferencia_de_calibracao_reduz_erro_entre_
+    instrumentos_do_corn` (so' seed=0) ja mostrava sem~0.51/com~0.16; aqui
+    (10 seeds independentes) o portao aprova com p<0.01 e o mesmo padrao
+    de magnitude (sem~0.7-0.9 medio, com~0.15-0.20).
+
+    DS: **RETRATACAO** de um achado anterior. `docs/PROGRESSO.md` (rodada
+    de transferencia de calibracao) registrava "DS nao ajudou" -- medido
+    aqui contra 20 seeds (nao 1): DS AJUDA de verdade (p<0.001, vence em
+    16/20 seeds, RMSEP medio 0.88->0.50), so' muito mais fraco e menos
+    consistente que PDS (que chega a ~0.16-0.20 SEMPRE). A alegacao
+    original provavelmente vinha de checar so' 1 split (seed=0), onde por
+    coincidencia DS fica ligeiramente PIOR (0.510->0.528) -- ilusao
+    classica de N=1. Regra do Bloco 22: nunca generalizar 'PDS sempre
+    funciona' nem 'DS nunca funciona' -- o veredito e' por par de
+    instrumentos/dataset, e aqui ambos ajudam, em graus MUITO diferentes."""
+    import scipy.io as sio
+    from sklearn.cross_decomposition import PLSRegression
+
+    from guaraci.transferencia_calibracao import (
+        apply_standardization, direct_standardization, piecewise_direct_standardization)
+    from guaraci.portao_correcao_sinal import avaliar_correcao_sinal
+
+    m = sio.loadmat(str(_caminho_corn()))
+    X_m5 = np.asarray(m["m5spec"]["data"][0, 0], dtype=float)
+    X_mp5 = np.asarray(m["mp5spec"]["data"][0, 0], dtype=float)
+    Y = np.asarray(m["propvals"]["data"][0, 0], dtype=float)
+    proteina = Y[:, 2]
+
+    def _rmse(a, b):
+        return float(np.sqrt(np.mean((a - b) ** 2)))
+
+    def _rodar(seed: int, metodo):
+        rng = np.random.default_rng(seed)
+        idx = rng.permutation(80)
+        idx_transf, idx_cal, idx_teste = idx[:15], idx[15:55], idx[55:]
+        pls = PLSRegression(n_components=7, scale=False)
+        pls.fit(X_m5[idx_cal], proteina[idx_cal])
+        y_teste = proteina[idx_teste]
+        if metodo is None:
+            return _rmse(pls.predict(X_mp5[idx_teste]).ravel(), y_teste)
+        transform = metodo(X_m5[idx_transf], X_mp5[idx_transf])
+        X_pad = apply_standardization(X_mp5[idx_teste], transform)
+        return _rmse(pls.predict(X_pad).ravel(), y_teste)
+
+    v_pds = avaliar_correcao_sinal(
+        "PDS_corn",
+        avaliar_sem_fn=lambda seed: _rodar(seed, None),
+        avaliar_com_fn=lambda seed: _rodar(
+            seed, lambda a, b: piecewise_direct_standardization(a, b, janela=5, alpha=0.001)),
+        metrica="RMSEP", n_seeds=10)
+    v_ds = avaliar_correcao_sinal(
+        "DS_corn",
+        avaliar_sem_fn=lambda seed: _rodar(seed, None),
+        avaliar_com_fn=lambda seed: _rodar(seed, lambda a, b: direct_standardization(a, b)),
+        metrica="RMSEP", n_seeds=20)
+
+    assert v_pds.veredito == "aprovado", v_pds.resumo()
+    assert v_pds.valor_com < 0.25, (
+        f"PDS deveria chegar perto do nivel so'-no-m5 (~0.148) -- achado "
+        f"{v_pds.valor_com:.3f}")
+    assert v_ds.veredito == "aprovado", (
+        f"esperava CONFIRMAR que DS ajuda (retratacao do achado anterior "
+        f"'DS nao ajudou') -- se isto falhar, e' achado grave: nem a "
+        f"retratacao se sustenta. {v_ds.resumo()}")
+    assert v_ds.tamanho_efeito_padronizado < v_pds.tamanho_efeito_padronizado, (
+        "DS precisa ajudar MENOS que PDS (mesmo os dois ajudando) -- "
+        "senao a distincao pratica entre os dois metodos desaparece")

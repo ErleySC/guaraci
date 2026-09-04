@@ -1,3 +1,75 @@
+# PROGRESSO — Passo 135 (2026-09-04)
+
+## Passo 135 — Portão aplicado ao PDS/DS (Bloco 22) — PDS confirmado, DS retratado
+
+Reaplicação formal do portão de aceite (Bloco 20) à transferência de
+calibração PDS/DS no Corn real, exigida pela própria regra de pausa da
+instrução ("se reaplicar o portão ao PDS do Corn não confirmar o
+resultado já conhecido, é achado grave"). Script:
+`scripts/medicoes/portao_pds_ds_corn.py`; teste permanente:
+`tests/test_validacao_publica.py::test_portao_correcao_sinal_reproduz_
+pds_e_RETRATA_ds_no_corn`.
+
+**PDS: confirmado.** 10 seeds independentes (não só o seed=0 fixo do
+teste original) — aprovado, RMSEP médio 0,91→0,18, chega abaixo de 0,25
+como esperado. O portão reproduz o resultado já conhecido — mecanismo
+validado antes de confiar nele em EMSC/OSC (Passo 134) ou casos novos.
+
+**DS: retratação, não confirmação.** A nota do Passo 86 ("DS não
+reduziu o erro de forma relevante") foi medida contra 1 único split.
+20 seeds independentes mostram o oposto: **DS ajuda de verdade**
+(RMSEP médio 0,88→0,50, p<0,001, vence em 16/20 seeds) — só que muito
+mais fraco e inconsistente que PDS (que chega a ~0,15-0,22 sempre; DS
+fica em ~0,44-0,58). Nota original corrigida em linha no Passo 86,
+acima. Regra que fica, explícita no teste: nunca generalizar "PDS
+sempre funciona"/"DS nunca funciona" — o veredito é por par de
+instrumentos/dataset.
+
+Suíte completa não re-executada isoladamente neste passo (mesmo lote do
+Passo 134, ver abaixo).
+
+---
+
+## Passo 134 — Portão aplicado a EMSC/OSC (Bloco 21)
+
+EMSC e OSC (implementados no Bloco 16, testados só estruturalmente até
+aqui) passam pelo portão de aceite (Bloco 20) contra dois cenários reais:
+acervo privado de óleo (quantificação pooled de teor de adulterante,
+todas as espécies/adulterantes juntos, split group-aware por `mae_id`,
+1633 amostras, 549 grupos) e Corn público (proteína, m5).
+Script: `scripts/medicoes/portao_emsc_osc.py`; teste permanente do
+cenário Corn: `tests/test_validacao_publica.py::
+test_portao_correcao_sinal_aprova_emsc_e_osc_no_corn`.
+
+| Técnica | Cenário | Veredito |
+|---|---|---|
+| EMSC | óleo pooled | ✅ aprovado (4,70→4,39 RMSEP, p=0,002) |
+| OSC | óleo pooled | ❌ rejeitado (4,70→4,99 RMSEP — PIOROU, p=0,002) |
+| EMSC | Corn/m5 | ✅ aprovado (0,164→0,132, p=0,002) |
+| OSC | Corn/m5 | ✅ aprovado (0,164→0,145, p=0,002) |
+
+**Resultado misto, honesto**: EMSC ajuda nos dois cenários; OSC ajuda no
+Corn mas **piora** no óleo. Nenhuma das duas é "sempre boa" — exatamente
+o problema estrutural que o Bloco 20 existe para impedir (recomendar sem
+prova por cenário). Veredito exibido **na docstring das duas classes**
+(`preprocessamento.EMSC`/`OSC`) — EMSC/OSC nunca foram expostas em
+menu/CLI (mesmo padrão de `apply_snv`/`apply_sg`/`apply_mc`, campos
+internos do `Config`, ver Passo 127), então não há um "ao lado da
+opção" de UI interativa para anexar; a docstring é a superfície real
+que existe hoje. Se/quando EMSC/OSC ganharem exposição de menu (fora do
+escopo deste bloco), o veredito deve migrar pra lá também.
+
+`docs/VALIDACAO_PUBLICA.md` §9 registra a parte pública (Corn); o
+resultado do óleo fica só aqui (política da própria página, ver seu
+cabeçalho).
+
+Ruff limpo nos scripts novos. Suíte completa (roda com Passo 135 abaixo,
+mesmo lote): 1299 passed, 23 skipped — +2 vs. Passo 133 (os 2 testes
+novos gated por Corn, que passam quando `GUARACI_DATASETS_DIR` aponta
+pro corn.mat baixado nesta sessão; sem ele, pulam como sempre).
+
+---
+
 # PROGRESSO — Passo 133 (2026-09-04)
 
 ## Passo 133 — Portão de aceite automático para correção de sinal (Bloco 20)
@@ -1524,6 +1596,15 @@ Nenhuma revalidação necessária; nenhum número publicado mudou.
   dataset, não adivinhados (ver `check_corn_transfer.py` no scratchpad da
   sessão para a varredura). DS não reduziu o erro de forma relevante neste
   par de instrumentos — achado honesto, não escondido.
+
+  **RETRATAÇÃO (Passo 135, 2026-09-04)**: a frase acima vinha de checar
+  um único split (seed=0). Reavaliado formalmente contra 20 seeds
+  independentes pelo portão de aceite (Bloco 20): **DS ajuda de
+  verdade** (RMSEP médio 0,88→0,50, p<0,001, vence em 16/20 seeds) — só
+  que muito mais fraco e menos consistente que PDS. No split seed=0
+  específico, DS por coincidência saiu ligeiramente pior (0,510→0,528),
+  o que produziu a impressão errada de "não ajuda". Ver
+  `docs/VALIDACAO_PUBLICA.md` §9 para a tabela completa.
 - Reexportado em `pipeline.py`; contrato de fachada
   (`tests/test_fachada_reexport.py`) e contrato de API pública
   (`tests/golden/contrato_api_publica.json`) atualizados.
