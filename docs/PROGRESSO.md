@@ -1,3 +1,57 @@
+# PROGRESSO — Passo 132 (2026-09-04)
+
+## Passo 132 — N-PLS vs. PLS-DA por pixel em dado público real (fecha a pendência do Passo 129)
+
+**Retratação do Passo 129**: o empate 1,0 vs. 1,0 em dado sintético
+"bem separável de propósito" foi aceito como resultado ali — correto
+apontar que não discriminava nada. Corrigido aqui com dado público
+real: DeepHS Fruit, **Mango/VIS** (56 gravações, 36 objetos físicos, 3
+classes de `ripeness_state`, 224 bandas).
+
+**Achado ao tentar baixar** (`scripts/download_datasets/
+baixar_deephs_fruit_todas.py`, a mesma ferramenta cogitada no Passo
+129): está **quebrada para qualquer fruta além de Kaki** — depende de
+`_deephs_fruit_todas_pins.json`, que a própria docstring do script
+descreve como "versionado junto com este script", mas nunca foi de fato
+commitado (confirmado por `git ls-files` + `git check-ignore`: nem
+rastreado, nem ignorado — só ausente). Corrigir esse gap está fora do
+escopo deste passo (achado registrado, não corrigido em silêncio);
+contornado baixando Mango/VIS com pins gerados nesta sessão (TOFU —
+sha256 do que foi baixado agora, **não** auditado externamente como os
+pins de Kaki). Conectividade de rede funciona neste ambiente (não era o
+bloqueio real do Passo 129) — Mango/VIS: 56 gravações, ~197MB via HTTP
+Range (bem abaixo do "~44GB só pra Kiwi" que motivou desistir no Passo
+129 — Mango é a menor das 4 frutas extras, escolha deliberada).
+
+**Comparação** (`scripts/medicoes/comparar_npls_pixelwise_mango.py`,
+mesmo split group-aware por objeto físico para os dois métodos, 10
+seeds independentes):
+
+| Método | balanced_accuracy (média±desvio, 10 seeds) |
+|---|---|
+| N-PLS | 0,389 ± 0,044 |
+| PLS-DA por pixel | 0,375 ± 0,050 |
+
+N-PLS venceu em 6/10 seeds. **Teste de Wilcoxon pareado: p=0,625 — sem
+diferença estatisticamente significativa.** Resultado honesto conforme
+a própria instrução previu como possível: os dois métodos são
+estatisticamente equivalentes nesta tarefa, não um "vencedor". Ambos
+ficam pertinho do nível de chance para 3 classes (0,333) — a tarefa
+(ripeness de manga por HSI) é genuinamente difícil, consistente com o
+desempenho modesto já registrado em `docs/VALIDACAO_PUBLICA.md` para
+Kaki/VIS (5/8 objetos corretos), não um sinal de bug num dos dois
+métodos.
+
+**Nenhuma preferência prática recomendada** a partir deste resultado —
+seria forçar uma conclusão que a evidência (p=0,625) não sustenta.
+
+Suíte completa não re-executada neste passo (script de medição novo,
+mesmo padrão de `scripts/medicoes/`, não reproduzível em CI por
+depender de dataset público baixado sob demanda). Ruff limpo no script
+novo.
+
+---
+
 # PROGRESSO — Passo 131 (2026-09-04)
 
 ## Passo 131 — MCR-ALS validado contra dado REAL do acervo privado (fecha a pendência do Passo 125)
