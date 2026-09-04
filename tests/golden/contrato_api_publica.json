@@ -2415,6 +2415,67 @@
         "forma": "funcao"
       }
     },
+    "hsi_multiway": {
+      "NPLS": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, n_componentes: 'int' = 2, max_iter: 'int' = 200, tol: 'float' = 1e-08)",
+        "metodos_publicos": [
+          "fit",
+          "predict",
+          "transform"
+        ]
+      },
+      "NPLSClassifier": {
+        "bases": [
+          "BaseEstimator",
+          "ClassifierMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, n_componentes: 'int' = 2)",
+        "metodos_publicos": [
+          "fit",
+          "predict"
+        ]
+      },
+      "ParafacHSIResultado": {
+        "campos": [
+          {
+            "nome": "fator_amostra",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "fator_espacial",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "fator_espectral",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "erro_reconstrucao_relativo",
+            "tem_default": false,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "comparar_npls_vs_pixelwise": {
+        "assinatura": "(cubos: 'Sequence[np.ndarray]', mascaras: 'Sequence[np.ndarray]', rotulos: 'Sequence[str]', grupos: 'Sequence[str]', *, n_linhas_grade: 'int' = 6, n_colunas_grade: 'int' = 6, n_componentes: 'int' = 2, n_splits: 'int' = 3, seed: 'int' = 42, max_pixels_por_gravacao: 'Optional[int]' = 2000) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      },
+      "construir_tensor_amostras": {
+        "assinatura": "(cubos: 'Sequence[np.ndarray]', mascaras: 'Sequence[np.ndarray]', *, n_linhas: 'int' = 6, n_colunas: 'int' = 6) -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "parafac_hsi": {
+        "assinatura": "(tensor: 'np.ndarray', n_componentes: 'int', *, max_iter: 'int' = 200, seed: 'int' = 0) -> 'ParafacHSIResultado'",
+        "forma": "funcao"
+      }
+    },
     "hsi_pipeline": {
       "apply_quality_gate_and_segment": {
         "assinatura": "(cubos: 'List[np.ndarray]', group_ids: 'List[str]', rotulos: 'List[str]', dias: 'List[str]') -> 'Dict[str, object]'",

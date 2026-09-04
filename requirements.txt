@@ -54,3 +54,7 @@ prcv>=1.2,<2.0
 # Mesmo motivo do prcv acima: sem isto aqui, o CI nunca exercita o caminho
 # real de parse_opus, so' o de "pacote ausente".
 brukeropus>=1.4,<2.0
+
+# ── PARAFAC / decomposicao tensorial (extra [multiway]) ──────────────────────
+# hsi_multiway.py. Mesmo motivo do brukeropus acima.
+tensorly>=0.8,<1.0

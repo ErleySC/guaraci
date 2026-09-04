@@ -1,3 +1,71 @@
+# PROGRESSO — Passo 129 (2026-09-04)
+
+## Passo 129 — PARAFAC e N-PLS multiway para HSI (Bloco 15)
+
+Novo módulo `hsi_multiway.py`: decomposição multiway do cubo
+hiperespectral. Referências verificadas no Crossref: Bro (1997) "PARAFAC.
+Tutorial and applications", DOI 10.1016/S0169-7439(97)00032-4; Bro (1996)
+"Multiway calibration. Multilinear PLS", DOI
+10.1002/(SICI)1099-128X(199601)10:1<47::AID-CEM400>3.0.CO;2-C.
+
+**Biblioteca avaliada antes de implementar PARAFAC do zero**: `tensorly`
+(BSD, madura, dedicada a decomposição tensorial) — usada via
+`tensorly.decomposition.parafac`, import lazy, novo extra `[multiway]`
+em `pyproject.toml`. N-PLS não tem biblioteca madura equivalente em
+Python (não está em `tensorly.regression`) — implementado seguindo o
+NIPALS multiway do artigo original (truque de Kroonenberg: SVD do tensor
+ponderado por `u` para achar o par de pesos rank-1 espacial/espectral a
+cada componente).
+
+**Problema de engenharia resolvido antes da decomposição em si**:
+PARAFAC/N-PLS exigem um array N-way REGULAR, mas gravações HSI reais de
+objetos físicos diferentes quase nunca têm a mesma resolução espacial
+(achado do agente de exploração: Kaki 64×64, Avocado/VIS ~286×294).
+`construir_tensor_amostras` resolve isso reduzindo a ROI de cada
+gravação a uma grade espacial FIXA por média de bloco (não interpolação)
+antes de empilhar — modo espacial fica com o mesmo significado relativo
+entre objetos (célula [0,0] = canto superior-esquerdo da bounding box da
+ROI em toda amostra).
+
+**Group-aware confirmado por teste dedicado**
+(`test_comparar_npls_vs_pixelwise_nunca_vaza_grupo_entre_treino_teste`):
+`comparar_npls_vs_pixelwise` levanta `RuntimeError` internamente se
+qualquer fold vazar `group_id` entre treino/teste — nunca silencioso.
+
+**Comparação N-PLS vs. PLS-DA por pixel** (reaproveita
+`hsi_classification.fit_predict_pixel_plsda`, mesmo split group-aware,
+mesmo nível de agregação por objeto): em dado sintético bem separável
+(estrutura de sinal forte de propósito, para confirmar que ambas as
+implementações estão corretas), **os dois métodos empatam em
+balanced_accuracy=1.0 em todos os folds** — resultado honesto, mas
+inconclusivo por efeito-teto: o dataset sintético não discrimina qual
+método generaliza melhor em situação real, ambíguo/difícil (só confirma
+que ambos funcionam). A comparação que responderia "qual performa
+melhor" de verdade — Kiwi/VIS + outra combinação do DeepHS Fruit, como
+pedido — está **bloqueada**: o dataset público (Kiwi sozinho ~44GB na
+fonte, ver `scripts/download_datasets/baixar_deephs_fruit_todas.py`) não
+está baixado neste ambiente e não foi baixado nesta sessão (inviável no
+tempo/rede disponível) — mesma classe de limitação já documentada no
+Passo 125 (MCR-ALS x dataset de óleo).
+
+12 testes (`tests/test_hsi_multiway.py`): grade regular com cubos de
+tamanho diferente, reconstrução PARAFAC de tensor de baixo posto
+sintético (erro<5%), N-PLS recupera estrutura supervisionada conhecida e
+separa classes (acc>85%), `NPLSClassifier.predict` em dado NOVO
+(transform sequencial com pesos do treino, não reajuste), propriedade
+group-aware, comparação honesta.
+
+`technique_registry.py` **não foi tocado** neste passo — registro de
+PARAFAC/N-PLS (e de MCR-ALS/CARS/UVE dos passos anteriores) fica para o
+Passo 130 (Bloco 19), quando o fluxo de decisão do assistente `G` de fato
+consome esse catálogo — evita registrar entradas antes de terem
+consumidor real.
+
+Suíte completa (1275 passed, 23 skipped — +12 vs. Passo 128). Contrato
+de API pública regravado (módulo novo, 6 nomes em `__all__`).
+
+---
+
 # PROGRESSO — Passo 128 (2026-09-04)
 
 ## Passo 128 — Importador OPUS (Bloco 18 da instrução de expansão técnica)
