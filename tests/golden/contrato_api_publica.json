@@ -412,6 +412,52 @@
         "forma": "funcao"
       }
     },
+    "amostragem_ativa": {
+      "PrioridadeAmostragem": {
+        "campos": [
+          {
+            "nome": "especie",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "adulterante",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "n_sessoes_atual",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_sessoes_necessario",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "sessoes_faltantes",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "cobertura_status",
+            "tem_default": false,
+            "tipo": "Optional[CoverageStatus]"
+          },
+          {
+            "nome": "prioridade",
+            "tem_default": false,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "priorizar_amostragem": {
+        "assinatura": "(ensemble: 'Dict[Tuple[str, str], Dict[str, Any]]', alpha: 'float' = 0.05, erro_por_especie: 'Optional[Dict[str, float]]' = None) -> 'List[PrioridadeAmostragem]'",
+        "forma": "funcao"
+      }
+    },
     "app_logic": {
       "LogThreadSafe": {
         "bases": [],

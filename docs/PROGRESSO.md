@@ -1,3 +1,66 @@
+# PROGRESSO — Passo 138 (2026-09-04)
+
+## Passo 138 — Amostragem ativa orientada por incerteza (Bloco 25)
+
+Novo módulo `amostragem_ativa.py`: `priorizar_amostragem(ensemble,
+alpha, erro_por_especie)` prioriza combinações espécie×adulterante por
+"impacto esperado por sessão investida" — reaproveita
+`identificacao.train_identification_ensemble` (nunca recalibra, só
+consome o `ensemble` já calculado) e `conformal.n_minimum_for_alpha`.
+Combinações já `VALIDATED` ficam com prioridade 0; entre as não
+validadas, prioridade = 1/(1+sessões_faltantes) — quem está mais perto
+de cruzar o limiar de validação vem primeiro. `erro_por_especie`
+(opcional, RMSEP/1-bal.acc já medido em outro lugar do pipeline) dá
+peso extra a espécies com erro pior.
+
+**Escopo decidido conscientemente**: `applicability_domain` NÃO entra
+diretamente — é uma propriedade por AMOSTRA NOVA, não um agregado
+natural "onde investir a próxima coleta" por combinação; o sinal que
+responde essa pergunta é cobertura estatística (sessões faltando), que
+é o que o módulo usa. Documentado no docstring, não escondido.
+
+**Achado durante a verificação** (`ConformalOneClass._colapsar_por_
+grupo` reduz o escore a UM POR SESSÃO antes de checar `achievable_
+alpha`): `cobertura_status` depende SÓ do número de sessões, nunca do
+valor dos escores PCA/DD-SIMCA em si — permitiu escrever o teste de
+sanidade sem precisar treinar PCA de verdade.
+
+**Teste de sanidade contra o acervo real**
+(`scripts/medicoes/amostragem_ativa_oleos_reais.py`): confirma
+exatamente o achado já documentado — **38/38 combinações não-validadas**
+a alpha=0,05 (nenhuma chega a `n_minimum_for_alpha(0,05)=19` sessões);
+36 têm exatamente 1 sessão, 2 têm exatamente 2 (Andiroba/soja,
+Maracujá/algodão — batendo exatamente com `docs/MANUAL.md`). A lista
+priorizada corretamente ranqueia essas 2 acima das 36 de 1 sessão
+(prioridade 0,0556 vs. 0,0526). Nenhuma retratação necessária — a
+alegação "36 de 38 têm só 1 sessão" já era precisa; a checagem só
+confirma que nenhuma das 38 está de fato *validada* a 0,05, o que os
+textos anteriores nunca alegaram.
+
+**Integração ao `guaraci plan`**: `_menu_plan` (TUI, não há subcomando
+`guaraci plan` de linha de comando — só o menu interativo, confirmado
+antes de implementar) ganha um passo opcional no final ("Refinar com
+amostragem ativa?") — carrega um `.joblib` já treinado (mesmo aviso de
+segurança de pickle já usado no menu de Predição, não um mecanismo
+novo) e mostra a lista priorizada numa tabela Rich.
+
+**Achado corrigido durante a verificação**: minha primeira versão do
+refinamento quebrava `test_menu_plan_cli_end_to_end_conformal` (a nova
+pergunta consumia o input que o teste reservava para o `_pause()`
+final) — pego pela suíte antes do commit, corrigido adicionando 1 input
+("n") à sequência do teste existente.
+
+12 testes novos (8 em `test_amostragem_ativa.py`, 4 em
+`test_plano_coleta.py`). Suíte completa (1327 passed, 19 skipped — +12
+vs. Passo 137; 1 falha em `test_regressao_pooled_com_benchmark_ligado_
+roda_sem_erro` numa rodada intermediária, confirmada como flakiness
+pré-existente não relacionada a este diff — passa isolado e a suíte
+inteira repetida ficou 100% verde). Contrato de API pública regravado
+(módulo novo). Ruff/mypy limpos, `amostragem_ativa.py` adicionado à
+lista de módulos puros do CI.
+
+---
+
 # PROGRESSO — Passo 137 (2026-09-04)
 
 ## Passo 137 — Faixa de decisão (Bloco 24)

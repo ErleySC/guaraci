@@ -3825,7 +3825,78 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
     caminhos_salvos = [cam_md, cam_xlsx] + ([cam_pdf] if cam_pdf else [])
     console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
                   f"{', '.join(escape(c) for c in caminhos_salvos)}")
+
+    # Bloco 25: refinamento por amostragem ativa -- opt-in, so' roda se o
+    # usuario tiver um modelo .joblib JA treinado com ensemble de
+    # identificacao calibrado (Bloco 9b). Nao substitui o plano acima
+    # (que so precisa das classes digitadas), so' reordena a prioridade
+    # ENTRE combinacoes especie x adulterante ja presentes no dataset de
+    # treino do modelo.
+    console.print()
+    lbl_refinar = ("Refinar com amostragem ativa (modelo .joblib ja "
+                   "treinado)? (s/n)" if is_pt else
+                   "Refine with active sampling (already-trained .joblib "
+                   "model)? (y/n)")
+    if _ask(f"  [{PA}]{lbl_refinar}[/{PA}] ").strip().lower() in ("s", "y", "sim", "yes"):
+        _refinar_plano_com_amostragem_ativa(is_pt)
     _pause()
+
+
+def _refinar_plano_com_amostragem_ativa(is_pt: bool) -> None:
+    """Bloco 25: carrega um pacote de modelo .joblib e mostra a lista de
+    combinacoes especie x adulterante priorizadas por
+    `amostragem_ativa.priorizar_amostragem`, usando o ensemble de
+    identificacao ja calibrado no treino (`pkg["identification_
+    ensemble"]", Bloco 9b) -- nunca recalibra nada aqui, so' consome."""
+    lbl_modelo = "Caminho do modelo (.joblib)" if is_pt else "Model path (.joblib)"
+    cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
+    if not cam_modelo or not os.path.isfile(cam_modelo):
+        console.print(f"  [{PR}]{'Arquivo nao encontrado' if is_pt else 'File not found'}"
+                      f"[/{PR}]")
+        return
+
+    aviso_pickle = (
+        f"  [{PR}]⚠ '.joblib' executa codigo ao ser carregado (formato "
+        f"pickle). So confirme se voce mesmo treinou este modelo ou confia "
+        f"plenamente na origem.[/{PR}]" if is_pt else
+        f"  [{PR}]⚠ '.joblib' runs code when loaded (pickle format). Only "
+        f"confirm if you trained this model yourself or fully trust its "
+        f"source.[/{PR}]")
+    console.print(aviso_pickle)
+    conf_lbl = "Confirma o carregamento? (s/n)" if is_pt else "Confirm loading? (y/n)"
+    if _ask(f"  [{PA}]{conf_lbl}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+        console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); return
+
+    try:
+        import joblib
+        from guaraci.amostragem_ativa import priorizar_amostragem
+        pkg = joblib.load(cam_modelo)
+        ensemble = pkg.get("identification_ensemble")
+        if not ensemble:
+            console.print(
+                f"  [{PM}]{'Modelo sem ensemble de identificacao calibrado (Bloco 9b) -- nada a priorizar.' if is_pt else 'Model has no calibrated identification ensemble (Bloco 9b) -- nothing to prioritize.'}[/{PM}]")
+            return
+        lista = priorizar_amostragem(ensemble)
+    except Exception as e:  # noqa: BLE001 -- carregamento de pacote
+        # externo, mostrado ao usuario, nunca crasha o menu.
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
+        return
+
+    t_prior = Table(show_header=True, header_style=PM, box=rbox.SIMPLE, padding=(0, 1))
+    t_prior.add_column("Especie" if is_pt else "Species", style=PW)
+    t_prior.add_column("Adulterante" if is_pt else "Adulterant", style=PW)
+    t_prior.add_column("Sessoes" if is_pt else "Sessions")
+    t_prior.add_column("Faltam" if is_pt else "Missing")
+    t_prior.add_column("Status")
+    for r in lista[:15]:
+        cor = PG if r.prioridade == 0.0 else PA
+        t_prior.add_row(
+            escape(r.especie), escape(r.adulterante), str(r.n_sessoes_atual),
+            str(r.sessoes_faltantes),
+            f"[{cor}]{r.cobertura_status.value if r.cobertura_status else '-'}[/{cor}]")
+    console.print()
+    console.print(t_prior)
+    console.print(f"  [{PM}]{'Ordenado por prioridade -- topo = maior impacto esperado por sessao investida.' if is_pt else 'Sorted by priority -- top = highest expected impact per invested session.'}[/{PM}]")
 
 
 def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:

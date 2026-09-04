@@ -244,6 +244,7 @@ def test_menu_plan_cli_end_to_end_conformal(monkeypatch, tmp_path):
         "0.10",                       # alpha
         prefixo,                      # prefixo de saida
         "s",                          # gerar tambem PDF? sim
+        "n",                          # Bloco 25: refinar com amostragem ativa? nao
         "",                           # Enter no _pause() final
     ])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
@@ -280,3 +281,68 @@ def test_menu_plan_cli_cobertura_ddsimca_inalcancavel_nao_gera_arquivo(
 
     assert not os.path.isfile(prefixo + ".md")
     assert not os.path.isfile(prefixo + ".xlsx")
+
+
+# =========================================================================
+#  Bloco 25: refinamento por amostragem ativa dentro do menu de planejamento
+# =========================================================================
+
+def test_refinar_plano_com_amostragem_ativa_sem_arquivo_nao_quebra(monkeypatch):
+    import guaraci.guaraci as guaraci_mod
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "/caminho/que/nao/existe.joblib")
+    guaraci_mod._refinar_plano_com_amostragem_ativa(is_pt=True)  # nao deve lancar excecao
+
+
+def test_refinar_plano_com_amostragem_ativa_carrega_e_prioriza(monkeypatch, tmp_path):
+    """Fim a fim com um .joblib fake minimo (so' o que a funcao de fato le:
+    'identification_ensemble') -- confirma que carrega, chama
+    priorizar_amostragem, e nao lanca excecao."""
+    import joblib
+    import guaraci.guaraci as guaraci_mod
+    from guaraci.identificacao import CoverageStatus
+
+    cam_modelo = str(tmp_path / "modelo_fake.joblib")
+    pkg = {"identification_ensemble": {
+        ("Andiroba", "soja"): {"n_grupos": 2,
+                               "cobertura_status": CoverageStatus.NOT_VALIDATED_N2_WEAK},
+        ("Bacaba", "milho"): {"n_grupos": 1,
+                              "cobertura_status": CoverageStatus.NOT_VALIDATED_N1},
+    }}
+    joblib.dump(pkg, cam_modelo)
+
+    respostas = iter([cam_modelo, "s"])   # caminho, confirma carregamento do pickle
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod._refinar_plano_com_amostragem_ativa(is_pt=True)
+
+
+def test_refinar_plano_com_amostragem_ativa_sem_ensemble_nao_quebra(monkeypatch, tmp_path):
+    import joblib
+    import guaraci.guaraci as guaraci_mod
+
+    cam_modelo = str(tmp_path / "modelo_sem_ensemble.joblib")
+    joblib.dump({"outra_chave": 1}, cam_modelo)
+
+    respostas = iter([cam_modelo, "s"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod._refinar_plano_com_amostragem_ativa(is_pt=True)
+
+
+def test_menu_plan_dispatch_refinar_amostragem_ativa(monkeypatch, tmp_path):
+    """Responder 's' na pergunta de refinamento chama de fato a funcao
+    nova -- nao so' mostra o texto sem acao."""
+    import guaraci.guaraci as guaraci_mod
+
+    chamado = {}
+    monkeypatch.setattr(guaraci_mod, "_refinar_plano_com_amostragem_ativa",
+                        lambda is_pt: chamado.setdefault("ok", True))
+
+    respostas = iter([
+        "Andiroba, Bacaba",
+        "2", "C", "0.10", str(tmp_path / "plano_refinar_teste"),
+        "n",    # sem PDF
+        "s",    # Bloco 25: refinar? sim
+        "",     # _pause() final
+    ])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod._menu_plan(guaraci_mod.Config())
+    assert chamado.get("ok") is True
