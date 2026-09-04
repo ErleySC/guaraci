@@ -930,6 +930,26 @@
             "tipo": "bool"
           },
           {
+            "nome": "apply_emsc",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "emsc_ordem_polinomial",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "apply_osc",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "osc_n_componentes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
             "nome": "max_lvs",
             "tem_default": true,
             "tipo": "int"
@@ -1740,6 +1760,26 @@
             "nome": "apply_mc",
             "tem_default": true,
             "tipo": "bool"
+          },
+          {
+            "nome": "apply_emsc",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "emsc_ordem_polinomial",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "apply_osc",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "osc_n_componentes",
+            "tem_default": true,
+            "tipo": "int"
           },
           {
             "nome": "max_lvs",
@@ -3346,6 +3386,18 @@
       }
     },
     "preprocessamento": {
+      "EMSC": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, eixo=None, ordem_polinomial: 'int' = 2, interferentes=None)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
       "MSC": {
         "bases": [
           "BaseEstimator",
@@ -3353,6 +3405,18 @@
         ],
         "forma": "classe",
         "init": null,
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "OSC": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, n_componentes: 'int' = 1, max_iter: 'int' = 100, tol: 'float' = 1e-08)",
         "metodos_publicos": [
           "fit",
           "transform"

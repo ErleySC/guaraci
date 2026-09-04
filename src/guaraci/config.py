@@ -192,6 +192,14 @@ class Config:
     sg_polyorder: int = 2
     sg_deriv: int = 1
     apply_mc: bool = True
+    # EMSC (Martens & Stark 1991) e OSC (Wold et al. 1998) -- so' tem efeito
+    # com default_preprocessing='custom' (mesmo padrao de apply_snv/apply_sg/
+    # apply_mc acima: campos internos, nao expostos no config.yaml/menu --
+    # apply_snv/apply_sg/apply_mc tambem nao sao, ver COMPATIBILITY.md).
+    apply_emsc: bool = False
+    emsc_ordem_polinomial: int = 2
+    apply_osc: bool = False
+    osc_n_componentes: int = 1
 
     max_lvs: int = 40
     n_pcs_pca: int = 10

@@ -1,3 +1,49 @@
+# PROGRESSO — Passo 127 (2026-09-04)
+
+## Passo 127 — EMSC e OSC (Bloco 16 da instrução de expansão técnica)
+
+`preprocessamento.py` ganha duas transformações sklearn-compatíveis
+novas, `EMSC` e `OSC`, integradas ao mesmo leque configurável de
+`apply_snv`/`apply_sg`/`apply_mc` (campos `Config` internos, só
+efetivos com `default_preprocessing='custom'` — **não** expostos em
+`config.yaml`/menu, mesmo precedente de `apply_snv`/`apply_sg`/
+`apply_mc`, confirmado por `grep` antes de decidir: zero referência a
+esses três em `cli_assistente.py`/`guaraci.py`/`app_tabs/`).
+
+- **EMSC** (Martens & Stark, 1991, DOI 10.1016/0731-7085(91)80188-F):
+  generaliza MSC — além do termo multiplicativo contra o espectro médio
+  de referência, ajusta linha de base POLINOMIAL (ordem configurável) e,
+  opcionalmente, espectros de interferentes conhecidos, numa única
+  regressão por amostra. Sem `eixo` explícito, usa o índice do canal
+  normalizado (suficiente para linha de base — forma polinomial não
+  muda por reescala/deslocamento linear do eixo).
+- **OSC** (Wold, Antti, Lindgren & Öhman, 1998, DOI
+  10.1016/S0169-7439(98)00109-9): remove de X só a variação ORTOGONAL ao
+  alvo `y` (NIPALS iterativo por componente). Ao contrário de
+  SNV/MSC/SG, **exige** `y` em `fit` — dentro de um `Pipeline`,
+  `fit(X, y)` já repassa `y` de treino a toda etapa que aceite, sem
+  vazamento adicional ao que o resto do pipeline já evita.
+
+Referências verificadas no Crossref em 2026-09-04.
+
+**Validado** (`tests/test_emsc_osc.py`, 12 testes): EMSC produz espectro
+numericamente diferente de MSC/SNV e estável; com `ordem_polinomial=0`
+sem interferentes reduz ao MSC (mesma base de regressão, `[1, ref]`);
+com linha de base linear sintética conhecida, EMSC(ordem 1) recupera o
+espectro puro com erro menor que MSC (caso construído para favorecer
+EMSC, não uma alegação geral de superioridade). OSC: produz resultado
+diferente de centrar-só, reduz variância total sem destruir a separação
+de classe (PLS pós-OSC ainda classifica bem), `fit` sem `y` lança
+`TypeError` (assinatura exige), transform em dado novo usa os pesos do
+treino. Integração fim-a-fim de `build_preprocessor` com `apply_osc=True`
+dentro de um `Pipeline` + `PLSRegression` completo.
+
+Suíte completa (1253 passed, 23 skipped — +11 vs. Passo 126). Contrato
+de API pública regravado (2 nomes novos em `__all__` de
+`preprocessamento`, 4 campos novos no `Config`).
+
+---
+
 # PROGRESSO — Passo 126 (2026-09-04)
 
 ## Passo 126 — CARS e UVE (Bloco 17 da instrução de expansão técnica)
