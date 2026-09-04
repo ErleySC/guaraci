@@ -243,4 +243,6 @@ jobs:
       - name: Rodar validacao externa
         env:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
-        run: pytest tests/test_validacao_publica_mendeley.py -v
+        run: >
+          pytest tests/test_validacao_publica_mendeley.py
+          tests/test_validacao_publica_mendeley_mir_raman.py -v

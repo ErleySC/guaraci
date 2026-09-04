@@ -10,13 +10,21 @@ docs/VALIDACAO_PUBLICA.md para a citacao completa). Mesmo padrao do Corn
 SHA256+tamanho, para que o teste que consome o arquivo nunca rode contra
 um conteudo diferente do verificado nesta auditoria (2026-08-26).
 
-So' baixa os 2 arquivos que a suite de validacao publica de fato usa
-(`tests/test_validacao_publica_mendeley.py`): NIR8mm1A.csv (RMSEP
-publicado mais confiavel entre as 4 tecnicas testadas no artigo
-original) e OilClassKey.csv (legenda numero->nome da classe). Os outros
-8 arquivos do dataset (MIR, Raman, NIR 24mm/2mm) nao sao baixados --
-sem uso nesta integracao, baixa-los so' aumentaria o tempo de CI sem
-beneficio.
+Baixa 4 arquivos: NIR8mm1A.csv + OilClassKey.csv (uso original, ver
+`tests/test_validacao_publica_mendeley.py`) e, desde o Passo 142/143
+(2026-09-04, auditoria das 11 tecnicas analiticas), MIR1A.csv e
+Raman1A.csv -- MESMAS 100 amostras/mesmo alvo (indice de peroxido) do
+artigo, so' medidas em tecnica diferente, o que permite validar MIR e
+Raman sem buscar dataset novo nenhum (ver
+`tests/test_validacao_publica_mendeley_mir_raman.py`). Os 4 arquivos
+restantes do dataset (NIR 24mm/2mm 1A/1B, Raman2, ATR*) continuam nao
+baixados -- sem uso em nenhuma suite ainda. SHA256/tamanho desses 2
+arquivos novos pinados a partir da API publica do Mendeley
+(`public-api/datasets/ctgg7k4m5g/files?folder_id=root&version=2`, que
+ja devolve o hash calculado pelo proprio Mendeley -- conferido em
+2026-09-04 que o hash da API bate exatamente com o de NIR8mm1A.csv
+ja pinado abaixo desde 2026-08-26, ou seja a API e' fonte confiavel
+para os 2 arquivos novos tambem).
 
 Uso:
     python scripts/download_datasets/baixar_mendeley_oleos.py [DESTINO]
@@ -51,6 +59,20 @@ _ARQUIVOS = {
                  "file_downloaded"),
         "sha256": "317abeb42aaa563177af19d42a7ce316f6c94963bcbf15a4bfcb8fc845655769",
         "bytes": 401,
+    },
+    "MIR1A.csv": {
+        "url": ("https://data.mendeley.com/public-files/datasets/"
+                 "ctgg7k4m5g/files/c9eb515e-4a4e-4882-9b33-88e1d1c7fbf7/"
+                 "file_downloaded"),
+        "sha256": "3fa249fbf3a34c2a06a4c8b389512fd8c560694ee95f2f4b641f2c523f7d02fa",
+        "bytes": 4268334,
+    },
+    "Raman1A.csv": {
+        "url": ("https://data.mendeley.com/public-files/datasets/"
+                 "ctgg7k4m5g/files/abf49aee-c5d7-4a55-aec4-b59eea61affb/"
+                 "file_downloaded"),
+        "sha256": "8fbd92e030605a48fd84f194bd48dbdba9fcf006b2368a6d278159930459e5b9",
+        "bytes": 1029350,
     },
 }
 

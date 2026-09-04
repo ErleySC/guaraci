@@ -21,6 +21,8 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
 | **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | Downey, Fouratier & Kelly (2003), *J. Near Infrared Spectrosc.* 11:447-456 | ❌ **NÃO OBTIDO** (origem identificada, sem repositório público, reconfirmado 2026-08-27) |
 | Mendeley `10.17632/ctgg7k4m5g.2` (NIR 8mm) | 19 óleos comestíveis diversos | 100 | 11512 · 3899–14999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,35 (CV) / 0,475 (holdout)**; R²cal 0,833 (log10 PV) | balanced accuracy: sem alvo publicado nesta forma (ver §2); RMSEP publicado 4,9 **não reproduzido** (ver §2) | 🟢 **INTEGRADO** (2026-08-27) — classificação valida requisito multimatriz; regressão é sanity check, não gate de literatura |
+| Mendeley `10.17632/ctgg7k4m5g.2` (**MIR**, arquivo-irmão do NIR 8mm) | mesmas 19 óleos, mesmas 100 amostras | 100 | 3423 · 699–3999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,696**; R²cal 0,79/R²val 0,57 (log10 PV) | idem NIR — sem alvo publicado nesta forma; sanity check, não gate | 🟢 **INTEGRADO** (2026-09-04, Passo 142/143) — R²val positivo, ao contrário do NIR 8mm |
+| Mendeley `10.17632/ctgg7k4m5g.2` (**Raman**, arquivo-irmão do NIR 8mm) | idem | 99 (1 amostra sem medição Raman, NaN removida) | 1340 · −18 a 1974 cm⁻¹ (Raman shift) | idem | **Balanced accuracy 0,389**; R²cal 0,67/R²val 0,43 (log10 PV) | idem — artigo original sinaliza Raman como possível correlação por acaso neste dataset | 🟢 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal mais fraco que MIR/NIR, coerente com a ressalva do artigo |
 | DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | **5/8 objetos corretos** (teste group-aware) — tende à classe majoritária | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) — pipeline funciona ponta-a-ponta, desempenho limitado por desbalanceamento severo (ver §7) |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
@@ -122,6 +124,56 @@ contra a literatura. Isso é uma limitação registrada, não escondida.
 ```
 python scripts/download_datasets/baixar_mendeley_oleos.py
 GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley.py -v
+```
+
+### 2b. MIR e Raman — os arquivos-irmãos do NIR 8mm (Passo 142/143, 2026-09-04)
+
+Auditoria das 11 técnicas do menu `cli_assistente.TECNICAS` (Passo 141)
+achou que só FT-NIR tinha validação real; as outras 10 eram metadado de
+menu (faixa espectral + preset de pré-processamento) sobre um motor
+genérico nunca exercitado contra dado real daquela técnica. Antes de
+sair buscando dataset novo por técnica (Passo 142), uma checagem no que
+já estava integrado mostrou que **o próprio dataset Mendeley usado para
+NIR já contém MIR e Raman das MESMAS 100 amostras** (`MIR1A.csv`,
+`Raman1A.csv` — arquivos-irmãos de `NIR8mm1A.csv` no mesmo repositório,
+mesma licença CC BY 4.0, mesmo artigo). Confirmado por leitura direta:
+`Class`/`PeroxideValue` são idênticos linha-a-linha nos 3 arquivos.
+`scripts/download_datasets/baixar_mendeley_oleos.py` foi estendido para
+baixar os 2 arquivos novos (SHA256/tamanho pinados a partir da API
+pública do Mendeley, que já devolve o hash calculado por eles — conferido
+que bate com o hash de `NIR8mm1A.csv` já pinado desde 2026-08-26).
+
+Nenhum perfil de matriz dedicado existe para MIR/Raman de óleos
+comestíveis (só NIR tem `oleos_comestiveis_nir`) — os testes usam
+`matrix_profile="generico"` com `wn_min`/`wn_max` explícitos por
+técnica. Criar perfis dedicados fica como pendência (fora do escopo
+aprovado deste passo).
+
+**Medido em 2026-09-04** (mesmo protocolo do §2: classificação com 8
+espécies com ≥5 amostras, n=78; regressão pooled em `log10(índice de
+peróxido)`, holdout de 25 amostras, seed=0):
+
+| Técnica | n | Canais | Bal. acc. (classif.) | R²cal | R²val | RMSEP (log10) |
+|---|---:|---:|---:|---:|---:|---:|
+| NIR 8mm (§2, referência) | 100 | 11512 | 0,475 (holdout) | 0,83 | **−0,53** | 0,49 |
+| MIR | 100 | 3423 | **0,696** | 0,79 | **0,57** | 0,26 |
+| Raman | 99 (1 NaN removida) | 1340 | 0,389 | 0,67 | **0,43** | 0,26 |
+
+Achado que vale registrar sem sicofantear: nesta medição pontual, tanto
+MIR quanto Raman tiveram **R²val positivo** — ao contrário do NIR 8mm,
+que ficou negativo (§2). Isso não vira "MIR é melhor que NIR para este
+problema" — é UMA medição, com holdout de alta variância (mesma ressalva
+do §2, n=100), e o próprio artigo original usa o NIR 8mm como a técnica
+de referência (RMSEP publicado mais confiável entre as 4). Os testes
+(`test_validacao_publica_mendeley_mir_raman.py`) usam limiares de
+sanidade com folga sob o valor medido (R²cal > 0,5 MIR / 0,4 Raman;
+balanced accuracy > 0,4 MIR / 0,2 Raman) — não um gate de literatura,
+mesma política do §2.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_mendeley_oleos.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley_mir_raman.py -v
 ```
 
 ### Histórico — RETRATAÇÃO de 2026-08-18

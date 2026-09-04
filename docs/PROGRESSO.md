@@ -1,3 +1,75 @@
+# PROGRESSO — Passo 141-143 (2026-09-04)
+
+## Passo 141 — Auditoria de realidade das 11 técnicas do menu
+
+Instrução nova: auditar o catálogo de 11 técnicas analíticas
+(`cli_assistente.TECNICAS`) por evidência de código direto, não pela
+existência no menu. Achado estrutural: cada entrada do dicionário só
+tem 4 campos funcionais (`faixa_min`/`faixa_max`/`preproc`/`mode`) —
+selecionar uma técnica no menu (`guaraci._menu_technique`) só escreve
+esses 4 valores na config, sem *dispatch* algum por técnica em
+nenhum outro lugar do pipeline. Só existem 3 parsers no sistema
+(`parse_dx` genérico JCAMP-DX, `load_csv` genérico tabular, `parse_opus`
+binário Bruker — este último não ligado a nenhum fluxo alcançável pelo
+menu, só chamável direto). Zero correção específica de física de
+técnica em qualquer lugar do código (busca por `baseline`/`airPLS`/
+`warp`/`binning`/`drift time`: zero ocorrências).
+
+Classificação: **funcional** só FT-NIR (única com validação real
+ponta-a-ponta) e Genérico (fallback idêntico em mecânica); as outras 9
+são **parcial** — herdam o motor genérico (que roda de fato sobre o
+dado se vier em CSV/DX plano) mas sem nenhuma correção física
+específica nem dataset próprio validado. Nenhuma é *placeholder* puro.
+
+Achado que decidiu o escopo do Passo 142: o dataset Mendeley
+`10.17632/ctgg7k4m5g.2` (Ottaway et al. 2021), já integrado para NIR em
+`docs/VALIDACAO_PUBLICA.md` §2, contém `MIR1A.csv` e `Raman1A.csv` —
+arquivos-irmãos das MESMAS 100 amostras, mesmo alvo, mesma licença.
+Também confirmado: `hsi_multiway.py` tem PARAFAC real (`tensorly`), mas
+o wrapper `construir_tensor_amostras` é acoplado a cubo espacial de
+imagem — não diretamente reaproveitável para EEM de fluorescência sem
+adaptação (só a chamada PARAFAC de baixo nível seria reusável).
+
+Usuário escolheu priorizar "MIR+Raman primeiro" (esforço baixo, reusa
+infra pronta) antes de buscar dataset novo para UV-Vis/Fluorescência/
+RMN e avaliar a complexidade maior de HPLC/GC-MS/IMS.
+
+## Passo 142/143 — MIR e Raman validados via arquivos-irmãos do NIR (Bloco 28)
+
+`scripts/download_datasets/baixar_mendeley_oleos.py` estendido para
+baixar `MIR1A.csv`/`Raman1A.csv` (SHA256/tamanho pinados a partir da API
+pública do Mendeley — confirmado que bate com o hash de `NIR8mm1A.csv`
+já pinado desde 2026-08-26, então a mesma fonte é confiável para os 2
+arquivos novos). Verificado por leitura direta: `Class`/`PeroxideValue`
+idênticos linha-a-linha nos 3 arquivos (mesmas 100 amostras, mesma
+ordem) — MIR1A.csv sem NaN, Raman1A.csv com 1 linha 100% NaN nas
+colunas espectrais (removida antes de treinar).
+
+`tests/test_validacao_publica_mendeley_mir_raman.py` (4 testes, mesmo
+protocolo do teste de NIR: classificação 8 espécies n≥5/n=78,
+regressão pooled em log10(índice de peróxido), holdout=25, seed=0):
+
+| Técnica | Bal. acc. | R²cal | R²val | RMSEP (log10) |
+|---|---:|---:|---:|---:|
+| NIR 8mm (referência, §2) | 0,475 | 0,83 | −0,53 | 0,49 |
+| MIR | **0,696** | 0,79 | **0,57** | 0,26 |
+| Raman | 0,389 | 0,67 | 0,43 | 0,26 |
+
+Achado real (não sicofanteado): MIR e Raman tiveram R²val POSITIVO
+nesta medição pontual, ao contrário do NIR 8mm — mas é uma única
+medição com holdout de alta variância (n=100), não motivo para afirmar
+"MIR é melhor que NIR" como conclusão geral. Nenhum perfil de matriz
+dedicado existe para MIR/Raman de óleos comestíveis ainda (usado
+`matrix_profile="generico"` com `wn_min`/`wn_max` explícitos) — registrado
+como pendência para um Passo futuro, fora do escopo aprovado aqui.
+
+CI (`validacao-publica-mendeley`) atualizado para rodar o arquivo novo
+nos 3 SOs. `docs/VALIDACAO_PUBLICA.md` §2b documenta os números. 4
+testes novos, suíte completa (1343 passed, 22 skipped). Ruff/mypy
+limpos.
+
+---
+
 # PROGRESSO — Passo 140 (2026-09-04)
 
 ## Passo 140 — interval-VIP com validação aninhada (Bloco 27, fecha a instrução de portão de aceite)
