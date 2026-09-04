@@ -900,6 +900,40 @@ def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
     assert "MSC" in base
 
 
+def test_gerar_nome_saida_custom_declara_emsc_airpls_osc(pq):
+    """Achado do Passo 147 (validacao publica UV-Vis): com
+    `default_preprocessing="custom"`, o nome da pasta de saida omitia
+    EMSC/AirPLS/OSC do rotulo de preprocessamento (so' checava
+    apply_snv/apply_sg/apply_mc) -- a pasta mentia sobre o que de fato
+    rodou sempre que uma dessas 3 correcoes era usada (ex.: qualquer
+    execucao do portao de aceite com EMSC/OSC, ou Raman com AirPLS).
+    Corrigido para declarar as 3, na mesma ordem em que
+    `preprocessamento.build_preprocessor` as aplica."""
+    cfg = pq.Config()
+    cfg.default_preprocessing = "custom"
+    cfg.apply_snv = False
+    cfg.apply_sg = False
+    cfg.apply_mc = True
+    cfg.apply_emsc = True
+    nome = pq.generate_output_name(cfg, n_classes=2, n_amostras=50)
+    base = nome.replace("\\", "/").split("/")[-1]
+    assert "EMSC" in base
+    assert "SNV" not in base
+
+    cfg2 = pq.Config()
+    cfg2.default_preprocessing = "custom"
+    cfg2.apply_airpls = True
+    cfg2.apply_snv = False
+    cfg2.apply_sg = False
+    cfg2.apply_mc = True
+    cfg2.apply_osc = True
+    base2 = pq.generate_output_name(cfg2, n_classes=2, n_amostras=50).replace("\\", "/").split("/")[-1]
+    assert "AirPLS" in base2
+    assert "OSC" in base2
+    # Ordem: AirPLS antes de MC antes de OSC, espelhando build_preprocessor.
+    assert base2.index("AirPLS") < base2.index("MC") < base2.index("OSC")
+
+
 # ── IO de configuração (futuro: guaraci/config.py) ────────────────────────────
 
 def test_config_roundtrip_preserva_valores(pq, tmp_path):

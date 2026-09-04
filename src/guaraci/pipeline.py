@@ -175,9 +175,12 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
         preproc = ["MSC", f"SG{cfg.sg_deriv}", "MC"]
     else:  # custom
         preproc = []
+        if cfg.apply_airpls: preproc.append("AirPLS")
         if cfg.apply_snv: preproc.append("SNV")
+        if cfg.apply_emsc: preproc.append("EMSC")
         if cfg.apply_sg:  preproc.append(f"SG{cfg.sg_deriv}")
         if cfg.apply_mc:  preproc.append("MC")
+        if cfg.apply_osc: preproc.append("OSC")
         if not preproc:     preproc.append("raw")
     partes = ["PLSDA_OE", _NIVEL_SLUG_PASTA.get(cfg.level, cfg.level)]
     partes.append("-".join(preproc))

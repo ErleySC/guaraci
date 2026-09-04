@@ -1,3 +1,73 @@
+# PROGRESSO — Passo 147: UV-Vis validado com dataset real (Fase A, 2026-09-04)
+
+## Passo 147 — UV-Vis: ERIC/Eawag (esgoto bruto), EMSC como pedido pela instrução
+
+Busca (Zenodo API + WebSearch; ScienceDirect bloqueado por CAPTCHA em
+pelo menos 2 candidatos — regra permanente, não contornado) encontrou
+Lechevallier et al. (2025), "Dataset on wastewater quality monitoring
+with adsorption and reflectance spectroscopy in the UV/Vis range",
+*Scientific Data* 12:1296, doi:10.1038/s41597-025-05459-x — campanha de
+25 semanas de esgoto bruto (Suíça), 2 espectrofotômetros UV-Vis a cada 2
+minutos, 533 amostras de laboratório para 9 indicadores de poluição.
+Dados em ERIC open (Eawag), **licença CC BY** confirmada via API do
+portal CKAN.
+
+Baixado só `2_data.zip` (~357 MB, CSV) — o pacote completo tem mais
+~180 GB de cubos hiperespectrais não usados aqui. Script novo:
+`scripts/download_datasets/baixar_eawag_esgoto_uvvis.py` (mesma
+disciplina de segurança dos demais — HTTPS, SHA-256+tamanho pinados,
+streaming para temporário e só promovido ao destino final depois de
+verificado, por ser um arquivo grande demais para carregar inteiro em
+memória como os scripts anteriores).
+
+**Metodologia (documentada em detalhe no módulo de teste e em
+`docs/VALIDACAO_PUBLICA.md` §2g)**: sensor `scan`/Spectrolyser
+(200-735nm, faixa completa sem descarte); alvo DOC (um dos 5
+indicadores com cobertura nas 533 amostras); casamento
+laboratório↔sensor por timestamp mais próximo (tolerância 3 min,
+513/529 casaram); **agregação por dia** (82 dias) para satisfazer a
+regra 5 (group-aware) sem precisar de uma coluna `mae_id` que o motor
+CSV não suporta — mesma solução já usada para a Fluorescência (§2d).
+Pré-processamento: EMSC (já aprovado no Corn, Passo 134) + MC, ISOLADO
+(sem SNV/SG) para atribuir o efeito só ao EMSC, por pedido explícito da
+instrução.
+
+**Medido em 2026-09-04**: RMSEC=20,83, RMSECV=31,71, RMSEP=34,25 mg/L,
+**R²cal=0,616 / R²val=0,650**, 7 LVs. Sanity check (não há RMSEP
+publicado para este recorte) — mas R²val positivo e substancial
+confirma que a calibração capturou sinal real sobre um espectro UV-Vis
+verdadeiro, não é ruído.
+
+**Achado colateral (bug de rotulagem, corrigido)**: ao montar a config
+com `default_preprocessing="custom"` + `apply_emsc=True`, o nome da
+pasta de saída (`pipeline.generate_output_name`) saiu como
+`..._SNV-SG1-MC_...` — sem nenhuma menção a EMSC, porque a função só
+checava `apply_snv`/`apply_sg`/`apply_mc`, nunca `apply_emsc`/
+`apply_airpls`/`apply_osc`. O cálculo em si estava correto (EMSC de
+fato rodou — confirmado lendo `preprocessamento.build_preprocessor`),
+só o RÓTULO da pasta mentia sobre o que rodou. Isso afeta retroativamente
+a rastreabilidade de QUALQUER execução anterior com EMSC/AirPLS/OSC via
+`default_preprocessing="custom"` (todo o portão de aceite do Passo
+134/135, e o Raman com AirPLS do Passo 144/145) — o cálculo dessas
+execuções nunca esteve errado, só o nome da pasta que as guarda.
+Corrigido em `src/guaraci/pipeline.py::generate_output_name` (3 linhas
+novas, mesma ordem de `build_preprocessor`). Teste de regressão:
+`tests/test_pipeline_core.py::test_gerar_nome_saida_custom_declara_emsc_airpls_osc`.
+
+**Estado da técnica #5 (UV-Vis) na tabela de 11: Parcial → Funcional.**
+`docs/VALIDACAO_PUBLICA.md` §1, §2g e §4 atualizados.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_eawag_esgoto_uvvis.py
+GUARACI_DATASETS_DIR=<pasta> pytest tests/test_validacao_publica_eawag_esgoto_uvvis.py -v
+```
+
+Próximo (Passo 148, Fase B): tentar melhorar o RMN via seleção
+geoestatística de variável (I de Moran).
+
+---
+
 # PROGRESSO — Passo 146: NIR Dispersivo reclassificado sem dataset novo (Fase A, 2026-09-04)
 
 ## Passo 146 — NIR Dispersivo: Eigenvector Corn reclassificado (achado por reconferência)
@@ -67,7 +137,7 @@ para quantificação.
 | 2 | **NIR Dispersivo** | **Funcional (novo, reclassificação — Passo 146)** | Eigenvector Corn (`m5`/`mp5`/`mp6`) — já integrado desde Passo 78/79, nunca antes atribuído a uma técnica do menu | RMSEP 0,144 %m/m (proteína, m5); R²val 0,912; 8 LVs | Reclassificação: FOSS NIRSystems 5000/6500 = "scanning monochromator spectrometer" (Digman, Cherney & Cherney 2022, *Sensors* 22(2):658) — tecnologia dispersiva, NÃO Fourier-transform. Nenhum dataset novo necessário |
 | 3 | **MIR/FTIR** | **Funcional (novo)** | Arquivo-irmão do NIR8mm no mesmo dataset Mendeley | Bal.acc 0,696; R²cal 0,79/R²val 0,57 | — |
 | 4 | **Raman** | **Funcional (novo)** | Arquivo-irmão do NIR8mm | Bal.acc 0,389; R²cal 0,67/R²val 0,43 | **AirPLS implementado e APROVADO no portão de aceite** (RMSEP 0,442→0,424, p=0,002) |
-| 5 | **UV-Vis** | Parcial | Nenhum candidato bom achado (melhor achado ficou atrás de CAPTCHA) | Não validado | Correção de turbidez **já existia** (EMSC, aprovado desde Passo 134) — nenhum trabalho novo necessário |
+| 5 | **UV-Vis** | **Funcional (novo — Passo 147)** | ERIC/Eawag `000D3C19` (Lechevallier et al. 2025, CC BY) — esgoto bruto, sensor Spectrolyser 200-735nm | R²cal 0,616 / R²val 0,650 (DOC, 82 dias agregados, EMSC+MC, sanity check) | EMSC **já existia** (aprovado desde Passo 134) — usado como pedido, achado colateral: bug de rótulo em `generate_output_name` corrigido (ver abaixo) |
 | 6 | **Fluorescência Molecular** | **Parcial→fraco-mas-real (novo)** | Mendeley `thkcz3h6n6` (simples) + `g6y69g8gwm` (EEM real, não integrado) | Bal.acc 0,383 (fraco, n=24 pequeno) | **PARAFAC generalizado implementado** (`eem_multiway.py`), provado por contraprova sintética; dataset EEM real não integrado (parser do formato bruto do instrumento é irregular, fora de escopo) |
 | 7 | **HPLC** | Parcial/quase-placeholder | Nenhum dataset com tabela de picos pronta achado | Não validado | COW (referência confirmada), bloqueado por falta de parser |
 | 8 | **GC-MS** | Parcial/quase-placeholder | Achado (`.CDF` NetCDF bruto, Lavandula) mas exige parser novo | Não validado | AMDIS (referência confirmada) ou MCR-ALS (já existe no Guaraci) como alternativa; bloqueado por falta de parser |

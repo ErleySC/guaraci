@@ -259,3 +259,26 @@ jobs:
           pytest tests/test_validacao_publica_mendeley.py
           tests/test_validacao_publica_mendeley_mir_raman.py
           tests/test_validacao_publica_mendeley_fluorescencia.py -v
+
+  # ── Validacao contra dataset PUBLICO ERIC/Eawag (esgoto, UV-Vis) ──────────
+  # Passo 147 (Fase A). Job proprio (nao entra no matrix Mendeley): fonte
+  # diferente (portal CKAN da Eawag), arquivo bem maior (~357 MB) -- 1 SO
+  # so' (mesma escolha do Corn) para nao baixar ~1 GB total por execucao de
+  # CI. `continue-on-error: false` -- mesma filosofia dos demais.
+  validacao-publica-eawag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (ERIC/Eawag, esgoto UV-Vis)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_eawag_esgoto_uvvis.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_eawag_esgoto_uvvis.py -v

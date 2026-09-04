@@ -26,6 +26,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | **5/8 objetos corretos** (teste group-aware) — tende à classe majoritária | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) — pipeline funciona ponta-a-ponta, desempenho limitado por desbalanceamento severo (ver §7) |
 | Mendeley `10.17632/thkcz3h6n6.6` (**Fluorescência**, LED 1) | 24 óleos de oliva (grau EXTRA/VIRGEN/LAMPANTE) | 24 (média de 20 repetições técnicas) | 1024 canais de emissão (índice, sem nm calibrado) | grau de qualidade (3 classes, n≥5) | **Balanced accuracy 0,383 (CV)** — fraco, logo acima do acaso (~0,333) | sem alvo publicado nesta forma | 🟡 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal fraco, n pequeno (ver §2d) |
 | Figshare `10.6084/m9.figshare.4307804` (**RMN**) | 97 azeites de oliva (Abruzzo/Itália) | 97 | 125 variáveis ppm (já binadas pelos autores) | província de origem (Pescara/Teramo) | **Balanced accuracy 0,500 — EXATAMENTE o acaso** (binário) | artigo original reporta 99% com LDA + seleção geoestatística de variável (não reproduzido) | 🔴 **NEGATIVO, documentado** (2026-09-04, Passo 142/143) — motor genérico não separa; ver §2e para a hipótese |
+| ERIC/Eawag `10.25678/000D3C19` (**UV-Vis**, sensor scan/Spectrolyser) | esgoto bruto (campanha de 25 semanas, flume) | 82 dias (agregado; 533 amostras de laboratório antes da agregação) | 215 · 200–735 nm | DOC (carbono orgânico dissolvido, mg/L) | **R²cal 0,616 / R²val 0,650**; RMSEP 34,2 mg/L; 7 LVs (EMSC+MC) | sem RMSEP publicado para este recorte (sanity check, não gate) | 🟢 **INTEGRADO** (2026-09-04, Passo 147) — EMSC (já aprovado no Corn, §9) capturou sinal real; ver §2g |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -310,6 +311,88 @@ agrupar, logo nenhum grupo pode vazar entre treino e validação.
 Parcial → Funcional.** `docs/PROGRESSO.md` Passo 146 tem o registro
 completo.
 
+### 2g. UV-Vis — ERIC/Eawag, esgoto bruto (Passo 147, Fase A, 2026-09-04)
+
+Busca dedicada (Zenodo API, ScienceDirect bloqueado por CAPTCHA em pelo
+menos 2 candidatos — regra permanente, não contornado) encontrou
+Lechevallier et al. (2025), "Dataset on wastewater quality monitoring
+with adsorption and reflectance spectroscopy in the UV/Vis range",
+*Scientific Data* 12:1296, doi:10.1038/s41597-025-05459-x — campanha de
+25 semanas medindo esgoto bruto (Suíça) com 2 espectrofotômetros UV-Vis
+(Spectrolyser/`scan`, 200-735nm; ISA, 200-706nm) a cada 2 minutos, e 533
+amostras coletadas manualmente e analisadas em laboratório para 9
+indicadores (turbidez, DOC, TSS, TOC, N dissolvido, N total, NH4, PO4,
+SO4). Dados publicados em ERIC open (Eawag), **licença CC BY** (campo
+`license_id` da API pública do portal CKAN,
+`opendata.eawag.ch/api/3/action/package_show`).
+
+Só o arquivo `2_data.zip` (~357 MB, CSV) é baixado — o pacote completo
+tem mais ~180 GB de cubos hiperespectrais (formato ENVI) que este
+projeto não usa; a validação de UV-Vis usa só as tabelas de sensor e
+laboratório. Script:
+`scripts/download_datasets/baixar_eawag_esgoto_uvvis.py` (mesma
+disciplina de segurança do §6: HTTPS, SHA-256+tamanho pinados,
+verificados antes de gravar em disco — arquivo grande, então
+transmitido em streaming para um temporário e só promovido ao destino
+final depois de bater os dois, em vez de carregado inteiro em memória
+como os scripts de arquivo pequeno).
+
+**Decisões metodológicas (documentadas, não escondidas):**
+- **Sensor**: `scan` (Spectrolyser) — faixa completa publicada (200-735nm)
+  sem descarte de canais, ao contrário do ISA (que descarta UV baixo por
+  absorção da fibra óptica, conforme o próprio artigo).
+- **Alvo**: DOC (carbono orgânico dissolvido) — um dos 5 indicadores
+  medidos para as 533 amostras inteiras (turbidez/DOC/N dissolvido/
+  NH4/PO4/SO4; TSS/TOC/N total só têm 45 amostras) e o correlato
+  clássico de absorbância UV-Vis na literatura de monitoramento de água
+  (UV254 como substituto de DOC).
+- **Casamento amostra-de-laboratório ↔ espectro do sensor**: pelo
+  timestamp mais próximo, tolerância de 3 minutos (o sensor mede a cada
+  2 min); 513/529 amostras de laboratório casaram dentro da tolerância.
+- **Agrupamento (regra 5, "group-aware em qualquer validação nova")**: o
+  motor `mode="csv"` do GUARACI (`load_csv`) trata toda coluna que não
+  seja classe/conc como CANAL espectral — não há como passar uma coluna
+  de agrupamento arbitrária sem quebrar o parser. Em vez de ignorar o
+  risco (várias coletas manuais no MESMO DIA são temporalmente
+  autocorrelacionadas), as amostras foram **agregadas por dia** (média
+  do alvo e do espectro casado) antes de montar o CSV — mesma solução já
+  usada para a Fluorescência (§2d, colapsar repetições técnicas).
+  Resultado: **82 dias** (não 533 amostras), cada um uma unidade física
+  independente — `group_by_mae_id=False` é correto aqui pela mesma razão
+  do Corn (nenhum grupo repetido a proteger depois da agregação).
+- **Pré-processamento**: EMSC (já aprovado no portão de aceite contra o
+  Corn, §9) + mean-centering, isolado (sem SNV/SG, que vêm ligados por
+  padrão em `default_preprocessing != "custom"` — ver achado de bug
+  abaixo) — por pedido explícito da instrução ("validar com EMSC já
+  disponível como opção de pré-processamento").
+
+**Medido em 2026-09-04** (holdout 25%, seed=0, 82 dias → ~61 treino/CV,
+~21 holdout): RMSEC=20,83, RMSECV=31,71, **RMSEP=34,25 mg/L**, **R²cal
+0,616 / R²val 0,650**, 7 LVs, RPD=1,79/RER=7,3 (ambos "não utilizável"
+pela faixa publicada — DOC em esgoto bruto tem alta variabilidade
+diária, 23-269 mg/L). Sanity check, não gate de literatura (não há
+RMSEP publicado para este recorte específico: sensor `scan`, alvo DOC,
+agregação diária) — o que o teste garante é R²cal/R²val positivos e
+substanciais, ou seja, a calibração capturou sinal real, não ruído.
+
+**Achado colateral (bug de rotulagem, não de cálculo) durante este
+passo**: `pipeline.generate_output_name` (nome da pasta de saída) só
+checava `apply_snv`/`apply_sg`/`apply_mc` no ramo `default_preprocessing
+== "custom"` — qualquer execução com EMSC/AirPLS/OSC (ex.: todo o portão
+de aceite do §9, ou Raman com AirPLS) tinha esses passos REALMENTE
+aplicados mas OMITIDOS do nome da pasta, que então sub-representava o
+que rodou (nunca afetou o cálculo em si, só a rastreabilidade do nome).
+Corrigido em `src/guaraci/pipeline.py` para declarar os 3, na mesma
+ordem em que `preprocessamento.build_preprocessor` os aplica. Teste de
+regressão novo:
+`tests/test_pipeline_core.py::test_gerar_nome_saida_custom_declara_emsc_airpls_osc`.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_eawag_esgoto_uvvis.py
+GUARACI_DATASETS_DIR=<pasta> pytest tests/test_validacao_publica_eawag_esgoto_uvvis.py -v
+```
+
 ### Histórico — RETRATAÇÃO de 2026-08-18
 
 > **A entrada anterior desta seção afirmava "❌ NÃO OBTIDO" com a rota
@@ -418,6 +501,7 @@ um novo. Nunca cai num padrão de outra matriz em silêncio.
 | Tecator | domínio público (StatLib) | `docs/BENCHMARK_TECATOR.md` |
 | Mendeley `ctgg7k4m5g` | **CC BY 4.0** | JSON da API oficial (`data_licence.short_name`), reconfirmado 2026-08-27 |
 | DeepHS Fruit (Kaki) | **não declarada formalmente** (sem SPDX no repo/README; `api.github.com/repos/cogsys-tuebingen/deephs_fruit` devolve `license: None`) — autores afirmam publicamente "we make public" o dataset (README, paper IJCNN 2021) e distribuem por HTTP sem autenticação; mesmo tratamento já dado ao Corn nesta tabela | leitura direta do repo + API do GitHub, 2026-09-01 |
+| ERIC/Eawag `000D3C19` (esgoto UV-Vis) | **CC BY** | campo `license_id` da API pública do portal CKAN, `opendata.eawag.ch/api/3/action/package_show`, 2026-09-04 |
 
 Nenhum destes arquivos é versionado neste repositório.
 
