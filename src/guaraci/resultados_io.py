@@ -25,6 +25,7 @@ from guaraci.config import Config, __version__, _NIVEL_NOME
 if TYPE_CHECKING:
     from guaraci.linearity import LackOfFitResult
     from guaraci.robustness import RobustnessResult
+    from guaraci.portao_correcao_sinal import VeredictoCorrecaoSinal
 
 __all__ = [
     "pls_model_metrics",
@@ -37,6 +38,7 @@ __all__ = [
     "append_identification_model_card",
     "append_purity_model_card",
     "append_linearity_robustness_model_card",
+    "append_correcao_sinal_model_card",
 ]
 
 
@@ -817,3 +819,50 @@ def append_linearity_robustness_model_card(
     except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar linearidade/robustez ao "
               f"model card: {e}")
+
+
+def append_correcao_sinal_model_card(
+        pasta: str, veredictos: List["VeredictoCorrecaoSinal"]) -> None:
+    """Anexa o veredito do portao de aceite de correcao de sinal (Bloco 20,
+    `portao_correcao_sinal.avaliar_correcao_sinal`/`_pls`) ao model_card.md
+    -- mesmo padrao append-only das funcoes acima, mesmo motivo do titulo
+    sem numero fixo (o portao pode rodar em pontos variados do fluxo,
+    dependendo de quais tecnicas de correcao o usuario tem configuradas).
+
+    NUNCA esconder um veredito 'neutro'/'rejeitado' -- e' exatamente o que
+    o Bloco 20 existe para tornar visivel (uma tecnica sem prova de ganho
+    continua DISPONIVEL, mas o usuario ve o veredito ao lado da opcao).
+    Lista TODO veredito recebido, na ordem dada -- nunca filtra so' os
+    aprovados."""
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+    if not veredictos:
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- Portao de aceite de correcao de sinal (Bloco 20)", "",
+        "Cada tecnica de correcao de sinal so' e' recomendada se passar por "
+        "este portao: mesmo pipeline com/sem a tecnica, sob o MESMO split "
+        "group-aware bloqueado, comparado por teste de Wilcoxon pareado "
+        "(mesmo metodo validado na comparacao N-PLS vs. PLS-DA por pixel, "
+        "Passo 132). 'Neutro'/'rejeitado' nao remove a tecnica do leque "
+        "configuravel -- so' declara que o ganho nao esta' comprovado "
+        "neste dataset/cenario.", "",
+    ]
+    linhas.append(_md_tabela([
+        (v.metodo, f"veredito={v.veredito} | metrica={v.metrica} "
+                    f"sem={v.valor_sem:.4g} com={v.valor_com:.4g} | "
+                    f"efeito_padronizado={v.tamanho_efeito_padronizado:.3f} | "
+                    f"p={v.p_valor:.4f} | n_pares={v.n_pares} | "
+                    f"poder_suficiente={'sim' if v.poder_suficiente else 'nao'}")
+        for v in veredictos
+    ]))
+    linhas.append("")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar portao de correcao de "
+              f"sinal ao model card: {e}")

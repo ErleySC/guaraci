@@ -1,3 +1,65 @@
+# PROGRESSO — Passo 133 (2026-09-04)
+
+## Passo 133 — Portão de aceite automático para correção de sinal (Bloco 20)
+
+Novo módulo `portao_correcao_sinal.py`: `avaliar_correcao_sinal(nome,
+avaliar_sem_fn, avaliar_com_fn, metrica, ...)` roda um pipeline com/sem
+uma técnica de correção sob o MESMO split group-aware bloqueado, repetido
+em `n_seeds` (default 10) partições independentes, e decide via Wilcoxon
+pareado (mesmo método já validado na comparação N-PLS vs. PLS-DA por
+pixel, Passo 132): `aprovado` (p<0,05 e ganho), `rejeitado` (p<0,05 e
+piora), `neutro` (sem diferença significativa) — sempre com
+`poder_suficiente` (n≥8 pares) reportado junto, nunca escondido.
+`avaliar_correcao_sinal_pls` é o atalho para o caso comum (alternar um
+transformer sklearn dentro de um Pipeline PLS-R/PLS-DA fixo, exatamente o
+caso de EMSC/OSC/PDS/DS dos próximos blocos).
+
+**Contra-prova exigida pelo bloco — achado real, não assumido**: tentei
+3 desenhos diferentes de "correção com ganho sintético claro" usando
+ganho multiplicativo + MSC/correção-oráculo (removendo o ganho exato,
+por construção) — **as três pioraram o RMSEP** em vez de melhorar,
+mesmo com conhecimento perfeito do ganho verdadeiro. Motivo, confirmado
+por medição direta: PLS é SUPERVISIONADO — sua própria definição
+(maximizar covariância com y) já ignora uma direção de ruído
+não-correlacionada com y, sem precisar de pré-processamento; qualquer
+correção adicional só soma variância de estimação sem ganho real
+disponível para capturar. O cenário "aprovado" que de fato funciona usa
+ruído gaussiano de alta frequência dominando um sinal fraco + suavização
+Savitzky-Golay (reduz SNR de qualquer entrada, ajuda mesmo modelo
+supervisionado) — 1,44→1,25 RMSEP, aprovado com p=0,008. Achado
+registrado no docstring do teste, não escondido: **a intuição de que
+"remover um ganho conhecido sempre ajuda" é falsa para PLS
+supervisionado** — prenuncia o que o Bloco 21 vai medir de verdade para
+EMSC/OSC (pode muito bem sair neutro/rejeitado).
+
+Ruído aleatório como correção: rejeitado corretamente (RMSEP piora,
+p<0,05). Identidade (mesmos valores dos dois lados): neutro corretamente
+(p=1,0 por definição matemática — não "rejeitado", que seria incorreto:
+não há diferença nenhuma para rejeitar).
+
+Veredito registrado no model card (`resultados_io.append_correcao_sinal_
+model_card`, addendum "Bloco 20") — lista TODO veredito recebido, nunca
+filtra só os aprovados, mesmo padrão append-only das demais funções de
+model card já existentes (`append_linearity_robustness_model_card` etc.).
+
+**Achado colateral, corrigido nesta sessão**: `gh run list` mostrou o job
+`typecheck` do CI falhando (exit 126) em **todo push desde antes desta
+sessão** — faltava um `\` de continuação de linha entre
+`model_registry.py` e `technique_registry.py` na lista de módulos puros
+do workflow, fazendo o shell tentar EXECUTAR `technique_registry.py`
+como comando. Isolado (só esse job falhava; suíte completa/lint/
+validação pública sempre verdes) mas real — o type-check não rodava de
+verdade nesse período. Corrigido, e os 4 módulos puros criados nas duas
+últimas sessões (`mcr_als.py`, `hsi_multiway.py`, `importadores_
+proprietarios.py`, `portao_correcao_sinal.py`) adicionados à lista —
+nenhum estava lá antes.
+
+14 testes (`tests/test_portao_correcao_sinal.py`). Suíte completa (1297
+passed, 23 skipped — +14 vs. Passo 132). Contrato de API pública
+regravado (módulo novo + 1 nome novo em `resultados_io.__all__`).
+
+---
+
 # PROGRESSO — Passo 132 (2026-09-04)
 
 ## Passo 132 — N-PLS vs. PLS-DA por pixel em dado público real (fecha a pendência do Passo 129)

@@ -3321,6 +3321,96 @@
         "forma": "funcao"
       }
     },
+    "portao_correcao_sinal": {
+      "VeredictoCorrecaoSinal": {
+        "campos": [
+          {
+            "nome": "metodo",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "metrica",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "minimizar",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "valor_sem",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "valor_com",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "desvio_sem",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "desvio_com",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "tamanho_efeito",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "tamanho_efeito_padronizado",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "p_valor",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_pares",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "poder_suficiente",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "veredito",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "scores_sem",
+            "tem_default": true,
+            "tipo": "List[float]"
+          },
+          {
+            "nome": "scores_com",
+            "tem_default": true,
+            "tipo": "List[float]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "avaliar_correcao_sinal": {
+        "assinatura": "(nome_metodo: 'str', avaliar_sem_fn: 'Callable[[int], float]', avaliar_com_fn: 'Callable[[int], float]', *, metrica: 'str', minimizar: 'Optional[bool]' = None, n_seeds: 'int' = 10, seed_base: 'int' = 0, alpha: 'float' = 0.05, n_minimo_poder: 'int' = 8) -> 'VeredictoCorrecaoSinal'",
+        "forma": "funcao"
+      },
+      "avaliar_correcao_sinal_pls": {
+        "assinatura": "(nome_metodo: 'str', X: 'np.ndarray', y: 'np.ndarray', grupos: 'np.ndarray', transformador_correcao, *, metrica: 'str', n_componentes: 'int' = 5, n_splits: 'int' = 3, n_seeds: 'int' = 10, seed_base: 'int' = 0, alpha: 'float' = 0.05, classificacao: 'bool' = False) -> 'VeredictoCorrecaoSinal'",
+        "forma": "funcao"
+      }
+    },
     "predicao": {
       "BlindPredictionResult": {
         "campos": [
@@ -3541,6 +3631,10 @@
       }
     },
     "resultados_io": {
+      "append_correcao_sinal_model_card": {
+        "assinatura": "(pasta: 'str', veredictos: \"List['VeredictoCorrecaoSinal']\") -> 'None'",
+        "forma": "funcao"
+      },
       "append_heatmap_summary": {
         "assinatura": "(pasta: 'str', resultado: 'Dict[str, object]') -> 'None'",
         "forma": "funcao"
