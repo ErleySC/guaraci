@@ -1,3 +1,42 @@
+# PROGRESSO — Passo 136 (2026-09-04)
+
+## Passo 136 — Aviso de escopo permanente do MCR-ALS (Bloco 23)
+
+Aviso explícito adicionado em 3 lugares (nenhum novo mecanismo de
+exibição — reaproveita superfícies já existentes):
+
+1. **Docstring do módulo** (`mcr_als.py`, seção "AVISO DE ESCOPO"): texto
+   completo com os números reais do Passo 131 (nenhuma correlação
+   detectável em nenhuma das duas combinações testadas, mesmo onde
+   PLS-R supervisionado funciona bem).
+2. **`technique_registry.py`** (campo `limitacao` da entrada `mcr_als`):
+   mesmo aviso, versão resumida — aparece em `[4] Técnicas disponíveis`
+   do assistente `G`.
+3. **Fluxo de decisão do assistente `G`** (`_FLUXO_DECISAO`, opção
+   "resolver mistura"): novo campo `aviso` (dict PT/EN), exibido de
+   forma proeminente (estilo `[warn]`, com ⚠) sempre que o usuário
+   seleciona essa opção — é exatamente o ponto de entrada onde alguém
+   com objetivo de QUANTIFICAR um traço poderia ser levado ao MCR-ALS
+   por engano. Redireciona explicitamente para "[3] Quantificar teor
+   (PLS-R)" quando o objetivo real é um número com garantia.
+
+**Experimento opcional (MCR-ALS como feature extra do PLS-R)**: testado
+via o portão (Bloco 20) se concatenar as proporções resolvidas pelo
+MCR-ALS como variáveis de entrada EXTRA (não como preditor direto)
+ajuda o PLS-R supervisionado — `scripts/medicoes/portao_mcr_als_como_
+feature.py`, Babaçu+milho (a combinação com sinal supervisionado forte
+do Passo 131). **Resultado: NEUTRO** (RMSEP sem=1,42 com=1,42, p=0,375)
+— os scores por seed são quase idênticos com/sem as 2 colunas extras
+(PLS aparentemente já ignora as variáveis não-informativas, mesmo
+padrão de robustez a ruído não-correlacionado já visto no Bloco 20).
+Tentativa negativa honesta, documentada — **não implementado** como
+feature padrão, conforme a própria instrução pedia para esse caso.
+
+4 testes novos (`tests/test_assistente_guaraci.py`). Suíte completa
+executada junto com o Passo 135 acima (mesmo lote). Ruff/mypy limpos.
+
+---
+
 # PROGRESSO — Passo 135 (2026-09-04)
 
 ## Passo 135 — Portão aplicado ao PDS/DS (Bloco 22) — PDS confirmado, DS retratado

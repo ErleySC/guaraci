@@ -32,6 +32,26 @@ aviso textual, e `avaliar_incerteza_rotacional` estima a sensibilidade da
 solucao a' inicializacao rodando multiplos starts e alinhando componentes
 por correlacao maxima (nao e' o calculo formal de banda de ambiguidade de
 MCR-BANDS/Jaumot et al. -- e' um proxy mais barato, documentado como tal).
+
+AVISO DE ESCOPO (Bloco 23, medido em 2026-09-04 -- ver
+`docs/PROGRESSO.md` Passo 125/136 e
+`scripts/medicoes/validar_mcr_als_oleos_reais.py`): MCR-ALS e' ferramenta
+de INTERPRETACAO e resolucao de componentes espectrais -- NAO
+recomendado para quantificar traco/adulterante MINORITARIO sem
+informacao supervisionada. Testado contra o acervo real de oleo (duas
+combinacoes especie+adulterante, uma com sinal supervisionado forte
+[PLS-R Q2=0,82], outra fraco): em NENHUMA das duas o componente
+recuperado correlacionou com o teor declarado (melhor |r|=0,17 e 0,09,
+ambos p>0,24) -- mesmo quando PLS-R SUPERVISIONADO consegue prever o
+teor bem no mesmo dado. Nao e' bug (lack-of-fit baixo confirma
+reconstrucao de espectro boa): MCR-ALS e' NAO-SUPERVISIONADO, otimiza
+fidelidade de reconstrucao (variancia total explicada), nao correlacao
+com uma variavel externa que nunca ve -- quando o adulterante e'
+minoritario (1-15%), a maior fonte de variancia espectral raramente e' o
+sinal do adulterante. Use PLS-R (`pipeline.pls_regressao_pooled`) pra
+quantificar; MCR-ALS serve pra' extrair/inspecionar espectros puros e
+proporcoes RELATIVAS quando o objetivo e' entender a mistura, nao prever
+um numero com garantia estatistica.
 """
 from __future__ import annotations
 

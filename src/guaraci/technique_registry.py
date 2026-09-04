@@ -312,8 +312,14 @@ REGISTRY: List[TechniqueEntry] = [
             "e espectrais (S) via minimos quadrados alternados, com "
             "restricoes de nao-negatividade/normalizacao."),
         limitacao=(
-            "Solucao SEM garantia de unicidade (ambiguidade rotacional -- "
-            "toda chamada carrega esse aviso no retorno). Use "
+            "Ferramenta de INTERPRETACAO, nao de quantificacao: NAO "
+            "recomendado para quantificar traco/adulterante minoritario "
+            "sem informacao supervisionada. Testado no acervo real de "
+            "oleo (Bloco 23) -- nao recuperou nenhum componente "
+            "correlacionado ao teor real declarado, mesmo onde PLS-R "
+            "supervisionado prediz bem o mesmo teor. Solucao tambem SEM "
+            "garantia de unicidade (ambiguidade rotacional -- toda "
+            "chamada carrega esse aviso no retorno). Use "
             "`avaliar_incerteza_rotacional` para medir sensibilidade a' "
             "inicializacao antes de tratar C/S como definitivos."),
     ),

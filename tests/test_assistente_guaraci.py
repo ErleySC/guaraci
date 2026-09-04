@@ -262,3 +262,23 @@ def test_navegar_secoes_roda_sem_excecao_para_cada_aba(monkeypatch):
         respostas = iter([tecla, ""])
         monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
         guaraci_mod._guaraci_navegar_secoes(Config())
+
+
+# ── Bloco 23: aviso de escopo do MCR-ALS no fluxo de decisao ─────────────
+
+def test_fluxo_decisao_resolver_mistura_tem_aviso_de_escopo():
+    opcao = next(o for o in guaraci_mod._FLUXO_DECISAO if o["id"] == "resolver_mistura")
+    assert "aviso" in opcao
+    assert "MCR-ALS" in opcao["aviso"]["PT"]
+    assert "MCR-ALS" in opcao["aviso"]["EN"]
+
+
+def test_fluxo_decisao_exibe_aviso_ao_selecionar_resolver_mistura(monkeypatch, capsys):
+    idx = next(i for i, o in enumerate(guaraci_mod._FLUXO_DECISAO, start=1)
+              if o["id"] == "resolver_mistura")
+    respostas = iter([str(idx), ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod._guaraci_fluxo_decisao(Config())
+    saida = capsys.readouterr().out
+    assert "MCR-ALS" in saida
+    assert "recuperou" in saida or "quantificar" in saida.lower()

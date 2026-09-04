@@ -1521,6 +1521,21 @@ _FLUXO_DECISAO: List[Dict[str, Any]] = [
                       "proportions, not just classify/quantify)"},
         nivel=None, preproc_default=None,
         tecnicas=["mcr_als"],
+        aviso={"PT": "MCR-ALS e' ferramenta de interpretacao e resolucao "
+                     "de componentes espectrais -- NAO recomendado para "
+                     "QUANTIFICAR traco/adulterante minoritario sem "
+                     "informacao supervisionada. Testado no acervo de "
+                     "oleo: nao recuperou sinal correlacionado ao teor "
+                     "real. Se seu objetivo e' um NUMERO de teor com "
+                     "garantia, use [3] Quantificar teor (PLS-R) em vez "
+                     "desta opcao.",
+               "EN": "MCR-ALS is an interpretation/component-resolution "
+                     "tool -- NOT recommended to QUANTIFY a minor trace/"
+                     "adulterant without supervised information. Tested "
+                     "on the oil archive: it recovered no signal "
+                     "correlated with the real content. If your goal is "
+                     "a content NUMBER with a guarantee, use [3] Quantify "
+                     "content (PLS-R) instead of this option."},
         validacao={"PT": "compare a proporcao estimada com o teor "
                          "declarado, se disponivel; SEMPRE rode "
                          "avaliar_incerteza_rotacional.",
@@ -1576,6 +1591,9 @@ def _guaraci_fluxo_decisao(cfg: Config) -> None:
         console.print(f"    [{PA}]▸ {escape(entrada.nome)}[/{PA}]")
         console.print(f"      [{PM}]{escape(entrada.quando_usar)}[/{PM}]")
     console.print()
+    if opcao.get("aviso"):
+        console.print(f"  [warn]⚠ {escape(opcao['aviso']['PT' if is_pt else 'EN'])}[/warn]")
+        console.print()
     if opcao.get("preproc_default"):
         console.print(
             f"  [{PW}]{'Pre-processamento default' if is_pt else 'Default preprocessing'}:"
