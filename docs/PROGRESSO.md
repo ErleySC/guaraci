@@ -1,3 +1,53 @@
+# PROGRESSO — Passo 140 (2026-09-04)
+
+## Passo 140 — interval-VIP com validação aninhada (Bloco 27, fecha a instrução de portão de aceite)
+
+**Estado do iPLS confirmado por comando direto ANTES de escrever
+código** (exigência explícita do bloco): `grep -in "interval.vip\|ivip"
+src/guaraci/*.py tests/*.py` → zero ocorrências. `selecao_ipls`
+(iPLS, refit completo de PLS-DA por intervalo) e `vip_scores`/
+`_mask_vip_threshold` (VIP por variável individual) já existiam,
+`_mask_melhor_intervalo` já tinha nested-CV desde o Passo 126 (Bloco
+17). A lacuna real: nenhum método combinava "intervalo espectral" com
+"VIP" — nem iPLS (usa CV, não VIP) nem VIP (por variável, não por
+região).
+
+Implementado só essa lacuna em `selecao_variaveis.py`:
+`_vip_por_intervalo` (1 único fit de PLS-DA no espectro inteiro, VIP
+agregado — média — dentro de cada intervalo, mais barato que o iPLS que
+reajusta 1 modelo POR intervalo — confirmado por teste que conta
+instâncias de `PLSRegression`), `_mask_melhor_intervalo_vip` (nested-CV,
+mesma disciplina do resto do módulo), `selecao_interval_vip` (função
+pública de diagnóstico, mesmo padrão de `selecao_ipls`). Item novo,
+sempre ativo (mesmo custo de VIP/SR/iPLS, não opt-in como CARS/UVE/SPA/
+AG), na tabela da Etapa 4.
+
+**Testado no cenário de adulterante minoritário, sob o portão do Bloco
+20** (exigência explícita): classe minoritária ~17%, sinal concentrado
+em 10 de 300 canais. **Achado real durante a validação**: a primeira
+tentativa (p=60, amplitude=3,0) deu efeito-teto — balanced_accuracy=1,0
+dos dois lados, mesma armadilha já encontrada e corrigida no Passo 132
+(Bloco 15) — corrigido aumentando p e reduzindo amplitude/aumentando
+ruído até o cenário ficar genuinamente difícil. Resultado real medido
+(não escolhido a dedo): **APROVADO**, balanced_accuracy 0,73→0,93,
+p=0,002, 10 seeds.
+
+6 testes novos. Suíte completa (1341 passed, 19 skipped — +6 vs. Passo
+139). Contrato de API pública regravado (1 nome novo em
+`selecao_variaveis.__all__`). Ruff/mypy limpos.
+
+**Fecha a instrução do portão de aceite (Blocos 20-27)**: o portão
+central está implementado e provado por contra-prova (identidade→
+neutro, ruído→rejeitado, ganho sintético real→aprovado); EMSC/OSC e
+PDS/DS foram avaliados formalmente (resultado misto para EMSC/OSC —
+aprovado no Corn, rejeitado/aprovado dependendo do cenário no óleo — e
+retratação honesta para DS, que ajuda mais do que o registro anterior
+dizia); MCR-ALS tem aviso de escopo permanente em 3 superfícies; faixa
+de decisão, amostragem ativa, política pooled/local e interval-VIP
+estão implementados e testados.
+
+---
+
 # PROGRESSO — Passo 139 (2026-09-04)
 
 ## Passo 139 — Política automática pooled vs. local (Bloco 26)

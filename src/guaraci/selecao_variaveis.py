@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "selecao_ipls",
+    "selecao_interval_vip",
     "sparse_plsda_mask",
     "selecao_spa",
     "ga_selection",
@@ -101,6 +102,72 @@ def _mask_vip_threshold(X_train: np.ndarray, Y_train: np.ndarray,
     pls.fit(X_train, Y_train)
     vip = vip_scores(pls)
     return np.asarray(vip) >= threshold
+
+
+def _vip_por_intervalo(X_train: np.ndarray, Y_train: np.ndarray,
+                        n_lv: int, n_intervalos: int) -> np.ndarray:
+    """VIP AGREGADO por intervalo espectral contiguo (Bloco 27):
+    diferente do iPLS (`_mask_melhor_intervalo`, reajusta um PLS-DA
+    INTEIRO por intervalo, mais caro) e' UM SO' fit de PLS-DA no espectro
+    inteiro; o VIP por variavel resultante e' entao AGREGADO (media)
+    dentro de cada intervalo -- um escore de importancia por REGIAO
+    espectral em vez de por variavel individual isolada (a lacuna real
+    identificada: `vip_scores`/`_mask_vip_threshold` ja existiam por
+    variavel, `selecao_ipls` ja existia por intervalo via refit, mas
+    nenhum combinava "intervalo" com "VIP" -- confirmado por grep antes
+    de escrever este codigo, ver docs/PROGRESSO.md Passo 140)."""
+    p = X_train.shape[1]
+    n_lv_eff = int(max(1, min(n_lv, p, X_train.shape[0] - 1)))
+    pls = PLSRegression(n_components=n_lv_eff, scale=False)
+    pls.fit(X_train, Y_train)
+    vip = np.asarray(vip_scores(pls))
+
+    bordas = np.linspace(0, p, n_intervalos + 1).astype(int)
+    escores = np.zeros(n_intervalos)
+    for i in range(n_intervalos):
+        a, b = bordas[i], bordas[i + 1]
+        escores[i] = float(vip[a:b].mean()) if b > a else 0.0
+    return escores
+
+
+def _mask_melhor_intervalo_vip(X_train: np.ndarray, Y_train: np.ndarray,
+                                n_lv: int, n_intervalos: int) -> np.ndarray:
+    """Mascara do intervalo de MAIOR VIP medio, usando SO' dados de
+    treino do fold (nested-CV -- mesma disciplina do resto do modulo)."""
+    p = X_train.shape[1]
+    escores = _vip_por_intervalo(X_train, Y_train, n_lv, n_intervalos)
+    melhor_i = int(np.argmax(escores))
+    bordas = np.linspace(0, p, n_intervalos + 1).astype(int)
+    mask = np.zeros(p, dtype=bool)
+    mask[bordas[melhor_i]:bordas[melhor_i + 1]] = True
+    return mask
+
+
+def selecao_interval_vip(X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv,
+                          n_intervalos: int) -> Tuple[list, np.ndarray]:
+    """interval-VIP (Bloco 27): divide o espectro em `n_intervalos`
+    contiguos, agrega o VIP (de UM SO' fit de PLS-DA no espectro inteiro)
+    dentro de cada intervalo -- diagnostico no dataset inteiro (para a
+    figura/CSV), mesmo padrao de `selecao_ipls`. Retorna (lista de
+    escores por intervalo, mascara do intervalo de maior VIP medio)."""
+    p = X_proc.shape[1]
+    escores = _vip_por_intervalo(X_proc, Y_bin, n_lv, n_intervalos)
+    bordas = np.linspace(0, p, n_intervalos + 1).astype(int)
+
+    resultados = []
+    for i in range(n_intervalos):
+        a, b = bordas[i], bordas[i + 1]
+        if b - a < 1:
+            continue
+        resultados.append({
+            "intervalo": i + 1, "vip_medio": float(escores[i]),
+            "wn_ini": float(wavenumbers[a]), "wn_fim": float(wavenumbers[b - 1]),
+            "idx_a": int(a), "idx_b": int(b),
+        })
+    melhor_i = int(np.argmax(escores))
+    mask_melhor = np.zeros(p, dtype=bool)
+    mask_melhor[bordas[melhor_i]:bordas[melhor_i + 1]] = True
+    return resultados, mask_melhor
 
 
 def _mask_melhor_intervalo(X_train: np.ndarray, Y_train: np.ndarray,
@@ -847,7 +914,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     continua rodando 1x so' para as figuras/CSV de diagnostico (convergencia
     do AG, cadeias do SPA) — nao para o bal.acc reportado na tabela."""
     print("\n[Etapa4] Selecao de variaveis "
-          f"(iPLS, VIP, SR, sPLS-DA"
+          f"(iPLS, interval-VIP, VIP, SR, sPLS-DA"
           f"{', SPA' if cfg.run_spa else ''}"
           f"{', AG' if cfg.executar_ag else ''}"
           f"{', CARS' if cfg.run_cars else ''}"
@@ -881,6 +948,25 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     print(f"  iPLS: bal.acc={m_ipls['balanced_accuracy']:.3f} "
           f"({m_ipls['n_vars']:.0f} vars, media/fold; "
           f"faixa {m_ipls['n_vars_min']}-{m_ipls['n_vars_max']})")
+
+    # 1b) interval-VIP (Bloco 27): mesma ideia de intervalo do iPLS, mas o
+    #    escore de cada intervalo vem de UM SO' fit de VIP no dataset
+    #    inteiro (nao um refit de PLS-DA por intervalo, mais barato que o
+    #    iPLS) -- nested-CV pela MESMA disciplina (mascara refeita por fold).
+    ivip_res, _mask_ivip_diagnostico = selecao_interval_vip(
+        X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv,
+        cfg.ipls_n_intervalos)
+    m_ivip = _avaliar_subset_nested_cv(
+        X_proc, Y_bin, y_int, cv_indices, n_lv,
+        lambda Xtr, Ytr, nlv: _mask_melhor_intervalo_vip(
+            Xtr, Ytr, nlv, cfg.ipls_n_intervalos))
+    tabela.append({"metodo": "interval-VIP (melhor intervalo)", **m_ivip})
+    pd.DataFrame(ivip_res).to_csv(
+        os.path.join(pasta_dados, "etapa4_interval_vip.csv"),
+        sep=";", decimal=",", index=False)
+    print(f"  interval-VIP: bal.acc={m_ivip['balanced_accuracy']:.3f} "
+          f"({m_ivip['n_vars']:.0f} vars, media/fold; "
+          f"faixa {m_ivip['n_vars_min']}-{m_ivip['n_vars_max']})")
 
     # 2) Selection by VIP >= threshold (nested-CV: mascara refeita por fold,
     #    so' com dados de treino -- ver docstring da funcao)
