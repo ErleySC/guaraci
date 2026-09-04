@@ -1,3 +1,93 @@
+# PROGRESSO — Passo 144/145: AirPLS (Raman) e PARAFAC/EEM (Bloco 30, 2026-09-04)
+
+## Passo 144 — Levantamento de análises complementares por modalidade
+
+Para cada técnica com sinal real (MIR/Raman/Fluorescência/RMN validados
+nos Passos 142/143) e as bloqueadas (HPLC/GC-MS/IMS), busquei correção
+específica de física com referência confirmada no Crossref antes de
+propor: airPLS (Zhang, Chen & Liang 2010, DOI 10.1039/b922045c) p/
+Raman; icoshift (Savorani et al. 2010, DOI 10.1016/j.jmr.2009.11.012)
+p/ RMN; COW (Nielsen et al. 1998, DOI 10.1016/s0021-9673(98)00021-1)
+p/ HPLC/GC-MS; AMDIS (Stein 1999, DOI 10.1016/s1044-0305(99)00047-1)
+p/ deconvolução GC-MS; Mason-Schamp (1958, DOI
+10.1016/0003-4916(58)90049-6) p/ correção de mobilidade reduzida em
+IMS. **Achado que evitou trabalho duplicado**: a correção de
+espalhamento/turbidez proposta p/ UV-Vis **já existe** —
+`EMSC` (Martens & Stark 1991) já implementado e já aprovado pelo
+portão de aceite desde o Passo 134, disponível pra qualquer técnica via
+`cfg.apply_emsc`. Das 7 propostas, só 2 tinham escopo implementável
+nesta rodada (zero dependência nova, dataset real disponível): airPLS
+e PARAFAC generalizado p/ EEM — as outras ficam bloqueadas até HPLC/
+GC-MS/IMS terem parser (Passo 143 não concluído p/ essas 3).
+
+## Passo 145 — AirPLS: implementado, testado, **APROVADO no portão de aceite**
+
+`AirPLS` (`preprocessamento.py`) -- Whittaker smoother com
+reponderação iterativa adaptativa (Zhang, Chen & Liang 2010).
+
+**Bug real achado E corrigido durante a própria contra-prova
+sintética** (disciplina do Passo 145 funcionando como deveria): a
+fórmula do peso de borda usava `abs(negativos).max()` (magnitude
+MÁXIMA do resíduo negativo) em vez de `negativos.max()` (resíduo mais
+PRÓXIMO de zero, a fórmula correta do artigo original) -- a versão
+errada fazia o peso da borda explodir exponencialmente nas últimas
+iterações (o denominador `dssn` encolhe a cada volta), dominando o
+ajuste e degradando a linha de base progressivamente em vez de
+convergir. Medido diretamente: com o bug, razão erro-corrigido/
+erro-bruto ficava em ~0.85-0.90 (mal corrigia); corrigido, ~0.04 (quase
+recupera os picos puros). A contra-prova sintética (espectro Raman
+simulado com fluorescência de fundo larga) só passou depois da
+correção -- exatamente o que a regra "contra-prova específica de cada
+correção" existe para pegar.
+
+**Portão de aceite (Bloco 20) contra Raman1A.csv real** (Mendeley
+ctgg7k4m5g, já integrado nos Passos 142/143), 10 seeds, Wilcoxon
+pareado: **APROVADO** -- RMSEP (log10 índice de peróxido) 0,442→0,424,
+p=0,002. É o único método deste módulo aprovado direto na primeira
+tentativa (EMSC/OSC precisaram de 2 datasets pra' decidir, ver §9 do
+VALIDACAO_PUBLICA.md). Novo preset nomeado `airpls_sg_mc` em
+`build_preprocessor` (AirPLS→SG→MC, sem MSC/SNV -- baseline Raman é
+aditiva, não multiplicativa); `cli_assistente.TECNICAS["raman"]`
+atualizado pra recomendar esse preset (era `"sg_mc"`, que na prática
+caía em SNV+SG+MC por não bater com nenhum preset nomeado -- bug de
+roteamento pré-existente, corrigido de passagem).
+
+## Passo 145 — PARAFAC generalizado para EEM (Fluorescência)
+
+`eem_multiway.py` (módulo novo, não reaproveita `hsi_multiway.py`
+diretamente): `construir_tensor_eem` empilha `{amostra: matriz EEM}`
+num tensor 3-way (SEM a lógica de redução espacial por ROI da versão
+HSI -- EEM de uma campanha compartilha a MESMA grade excitação/emissão
+por construção, não precisa reduzir nada); `parafac_eem` reusa a
+decomposição de `hsi_multiway.parafac_hsi` (matematicamente genérica)
+mas RENOMEIA os fatores pro vocabulário correto (`fator_excitacao`/
+`fator_emissao`, não `fator_espacial`/`fator_espectral` -- mesmo
+cuidado de vocabulário que motivou `perfil_matriz.py`, Passo 141).
+
+Contra-prova sintética (exigida antes de qualquer dado real): EEM
+simulada como mistura linear de 2 componentes puros (perfis excitação/
+emissão gaussianos bem separados) com proporções por amostra
+conhecidas -- PARAFAC recuperou as 2 proporções com correlação >0,9
+cada (melhor correspondência sob a ambiguidade de permutação/sinal do
+método), erro de reconstrução <10%.
+
+**Dataset público real (Mendeley `g6y69g8gwm`, 24 azeites, EEM real em
+10 etapas de envelhecimento) baixado e inspecionado, mas NÃO
+integrado**: o CSV bruto de exportação do instrumento é IRREGULAR por
+bloco excitação/amostra (confirmado por tokenização linha-a-linha --
+contagem de campos varia de 281 a 1 dependendo da linha, sem
+preenchimento consistente) -- escrever um parser robusto pra esse
+formato específico é trabalho de escopo próprio, fora do que foi
+aprovado ("PARAFAC generalizado", não "parser do formato do
+instrumento X"). Registrado como pendência honesta, não escondida --
+mesma disciplina do MCR-ALS antes de tocar dado real (Bloco 14).
+
+6 testes novos (3 AirPLS + 4 EEM, um deles reaproveitando o Raman
+público já baixado). Contrato de API pública regravado (AirPLS +
+2 campos de Config + módulo eem_multiway novos). Ruff/mypy limpos.
+
+---
+
 # PROGRESSO — Passo 142/143 continuação: Fluorescência e RMN (2026-09-04)
 
 ## Passo 142/143 — Fluorescência (Mendeley thkcz3h6n6) e RMN (Figshare 4307804), Bloco 29

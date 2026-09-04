@@ -200,6 +200,14 @@ class Config:
     emsc_ordem_polinomial: int = 2
     apply_osc: bool = False
     osc_n_componentes: int = 1
+    # AirPLS (Zhang, Chen & Liang 2010) -- correcao de linha de base,
+    # proposta p/ fluorescencia de fundo em Raman (Passo 144/145, mesmo
+    # padrao de apply_emsc/apply_osc acima: so' com default_preprocessing=
+    # 'custom', ainda sem preset default -- ver veredito do portao de
+    # aceite no docstring de AirPLS/docs/PROGRESSO.md antes de usar como
+    # padrao).
+    apply_airpls: bool = False
+    airpls_lam: float = 100.0
 
     max_lvs: int = 40
     n_pcs_pca: int = 10

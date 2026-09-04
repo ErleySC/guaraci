@@ -15,6 +15,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 
 import numpy as np
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
 from scipy.signal import savgol_filter
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
@@ -29,6 +31,7 @@ __all__ = [
     "MSC",
     "EMSC",
     "OSC",
+    "AirPLS",
     "build_preprocessor",
 ]
 
@@ -275,6 +278,105 @@ class OSC(BaseEstimator, TransformerMixin):
         return Xc
 
 
+def _whittaker_smooth(x: np.ndarray, w: np.ndarray, lam: float, porder: int = 1) -> np.ndarray:
+    """Suavizador de Whittaker ponderado: ajusta `z` que minimiza
+    `sum(w*(x-z)^2) + lam*sum(diff(z, porder)^2)` -- baseline penalizado
+    por curvatura, resolvido em forma fechada via sistema esparso
+    (banda), ponto central do algoritmo airPLS (ver docstring de
+    `AirPLS`)."""
+    m = x.shape[0]
+    E = sparse.eye(m, format="csc")
+    for _ in range(porder):
+        E = E[1:] - E[:-1]
+    W = sparse.diags(w, 0, shape=(m, m))
+    A = sparse.csc_matrix(W + lam * (E.T @ E))
+    B = W @ x
+    return np.asarray(spsolve(A, B))
+
+
+class AirPLS(BaseEstimator, TransformerMixin):
+    """Correcao de linha de base por minimos quadrados penalizados
+    adaptativos e iterativamente reponderados (Zhang, Chen & Liang,
+    2010, *Analyst* 135(5):1138-1146, DOI 10.1039/b922045c --
+    verificado no Crossref em 2026-09-04). Passo 144/145 da auditoria
+    das 11 tecnicas (2026-09-04) -- proposta especificamente para
+    remover fluorescencia de fundo de espectros Raman, mas nao
+    restrita a essa tecnica (opera em qualquer eixo de indice de
+    canal).
+
+    Ajusta iterativamente uma linha de base suave `z` (Whittaker
+    smoother, penalidade `lam` sobre a curvatura de ordem `porder`) que
+    so' segue os pontos ABAIXO do espectro (ruido/baseline de
+    verdade), nunca os PICOS (acima da linha de base): a cada
+    iteracao, pontos onde o residuo `x - z` e' positivo (picos) recebem
+    peso zero na proxima suavizacao; pontos negativos (baseline)
+    recebem peso crescente com a magnitude do residuo. Converge quando
+    a soma dos residuos negativos fica pequena o suficiente (ou apos
+    `itermax` iteracoes) -- nao precisa de deteccao de pico manual nem
+    de informacao previa sobre onde estao os picos.
+
+    `lam=100` (default) segue o valor de referencia do artigo original;
+    `lam` grande demais deixa a linha de base rigida (nao acompanha a
+    curvatura real do fundo, sub-corrige); pequeno demais deixa a linha
+    de base seguir os proprios picos (sobre-corrige). Ver contra-prova
+    sintetica em `tests/test_airpls.py` para o efeito medido.
+
+    NAO EM `build_preprocessor`/nenhum preset por default: correcao de
+    sinal nova so' vira recomendacao padrao depois de passar pelo
+    portao de aceite (`portao_correcao_sinal.avaliar_correcao_sinal_pls`)
+    -- ver `docs/PROGRESSO.md` para o veredito medido contra o dataset
+    publico Raman (Mendeley `ctgg7k4m5g`, arquivo `Raman1A.csv`, ja
+    integrado em `test_validacao_publica_mendeley_mir_raman.py`).
+    Disponivel via `cfg.apply_airpls`/campo `custom` do
+    `build_preprocessor`, mesmo padrao de EMSC/OSC."""
+
+    def __init__(self, lam: float = 100.0, porder: int = 1,
+                 itermax: int = 15, tol: float = 1e-3):
+        self.lam = lam
+        self.porder = porder
+        self.itermax = itermax
+        self.tol = tol
+
+    def fit(self, X, y=None):
+        return self
+
+    def _baseline_uma_amostra(self, x: np.ndarray) -> np.ndarray:
+        m = x.shape[0]
+        w = np.ones(m)
+        z = x.copy()
+        soma_abs_x = float(np.abs(x).sum())
+        for i in range(1, int(self.itermax) + 1):
+            z = _whittaker_smooth(x, w, float(self.lam), int(self.porder))
+            d = x - z
+            negativos = d[d < 0]
+            dssn = float(np.abs(negativos.sum())) if negativos.size else 0.0
+            if soma_abs_x > 1e-300 and dssn < self.tol * soma_abs_x:
+                break
+            if i == self.itermax:
+                break
+            w[d >= 0] = 0.0
+            if negativos.size and dssn > 1e-300:
+                w[d < 0] = np.exp(i * np.abs(negativos) / dssn)
+            # Peso de borda: usa negativos.max() (residuo NEGATIVO mais
+            # proximo de zero, nao a magnitude maxima) -- formula do
+            # algoritmo original (Zhang, Chen & Liang 2010): usar
+            # abs(negativos).max() aqui (magnitude maxima) faz o peso da
+            # borda explodir exponencialmente nas ultimas iteracoes
+            # (dssn encolhe a cada volta), dominando o ajuste e
+            # degradando a linha de base -- bug medido e corrigido
+            # durante a contra-prova sintetica deste modulo (Passo 145).
+            pico_extremo = np.exp(i * negativos.max() / dssn) if (
+                negativos.size and dssn > 1e-300) else 1.0
+            w[0] = pico_extremo
+            w[-1] = pico_extremo
+        return z
+
+    def transform(self, X):
+        X = np.asarray(X, dtype=float)
+        baselines = np.vstack([self._baseline_uma_amostra(x) for x in X])
+        return X - baselines
+
+
 def build_preprocessor(cfg: "Config") -> Pipeline:
     """Builds preprocessor according to cfg.default_preprocessing.
 
@@ -285,7 +387,14 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
                         — recommended when SG derivative destroys signal
                         or for NIR without pronounced scatter
         'mc'          : mean-centering only
-        'custom'      : honors apply_snv / apply_sg / apply_mc
+        'airpls_sg_mc': AirPLS (Zhang, Chen & Liang 2010) -> SG ->
+                        mean-centering — recomendado p/ Raman apos o
+                        portao de aceite (Bloco 20) APROVAR no dataset
+                        publico Raman em 2026-09-04 (RMSEP 0.442->0.424,
+                        p=0.002, ver docs/PROGRESSO.md Passo 145); NAO e'
+                        SNV/MSC (baseline Raman e' aditiva, nao
+                        multiplicativa como espalhamento NIR).
+        'custom'      : honors apply_snv / apply_sg / apply_mc / apply_airpls
 
     Mean-centering / autoscaling are kept INSIDE the Pipeline so that
     cross_val_predict does not leak statistics between folds.
@@ -302,6 +411,12 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
             ("sg",  SavGol(cfg.sg_window, cfg.sg_polyorder, cfg.sg_deriv)),
             ("mc",  StandardScaler(with_std=False)),
         ])
+    if preset == "airpls_sg_mc":
+        return Pipeline([
+            ("airpls", AirPLS(lam=cfg.airpls_lam)),
+            ("sg",  SavGol(cfg.sg_window, cfg.sg_polyorder, cfg.sg_deriv)),
+            ("mc",  StandardScaler(with_std=False)),
+        ])
     if preset == "msc_sg_mc":
         # MSC->SG+MC: default preset for diffuse FT-NIR with strong scatter.
         # MSC is stateful (reference = training mean) -> kept inside
@@ -313,6 +428,8 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
         ])
     # custom — uses individual flags
     etapas: List[Tuple[str, BaseEstimator]] = []
+    if cfg.apply_airpls:
+        etapas.append(("airpls", AirPLS(lam=cfg.airpls_lam)))
     if cfg.apply_snv:
         etapas.append(("snv", SNV()))
     if cfg.apply_emsc:

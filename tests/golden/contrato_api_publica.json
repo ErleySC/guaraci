@@ -1012,6 +1012,16 @@
             "tipo": "int"
           },
           {
+            "nome": "apply_airpls",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "airpls_lam",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
             "nome": "max_lvs",
             "tem_default": true,
             "tipo": "int"
@@ -1486,6 +1496,41 @@
         "forma": "funcao"
       }
     },
+    "eem_multiway": {
+      "ParafacEEMResultado": {
+        "campos": [
+          {
+            "nome": "fator_amostra",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "fator_excitacao",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "fator_emissao",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "erro_reconstrucao_relativo",
+            "tem_default": false,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "construir_tensor_eem": {
+        "assinatura": "(matrizes: 'Dict[str, np.ndarray]') -> \"'tuple[np.ndarray, List[str]]'\"",
+        "forma": "funcao"
+      },
+      "parafac_eem": {
+        "assinatura": "(tensor: 'np.ndarray', n_componentes: 'int', *, max_iter: 'int' = 200, seed: 'int' = 0) -> 'ParafacEEMResultado'",
+        "forma": "funcao"
+      }
+    },
     "figuras": {
       "adaptive_scatter_parameters": {
         "assinatura": "(n_total: 'int', n_classes: 'int') -> 'Tuple[float, float, float]'",
@@ -1842,6 +1887,16 @@
             "nome": "osc_n_componentes",
             "tem_default": true,
             "tipo": "int"
+          },
+          {
+            "nome": "apply_airpls",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "airpls_lam",
+            "tem_default": true,
+            "tipo": "float"
           },
           {
             "nome": "max_lvs",
@@ -3665,6 +3720,18 @@
       }
     },
     "preprocessamento": {
+      "AirPLS": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, lam: 'float' = 100.0, porder: 'int' = 1, itermax: 'int' = 15, tol: 'float' = 0.001)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
       "EMSC": {
         "bases": [
           "BaseEstimator",

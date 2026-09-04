@@ -1509,17 +1509,21 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
         "PT": {
             "nome": "Raman (Espectroscopia Raman)",
             "desc": "Espectroscopia vibracional por espalhamento Raman. Complementar ao IR.",
-            "preproc_rec": "SG+MC (sem MSC — baseline Raman diferente do NIR)",
+            "preproc_rec": "AirPLS+SG+MC (correcao de fluorescencia de fundo — aprovado no portao "
+                           "de aceite contra dataset publico Raman, 2026-09-04; sem MSC — "
+                           "baseline Raman e aditiva, nao multiplicativa como no NIR)",
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
         "EN": {
             "nome": "Raman Spectroscopy",
             "desc": "Vibrational spectroscopy by Raman scattering. Complementary to IR.",
-            "preproc_rec": "SG+MC (no MSC — Raman baseline differs from NIR)",
+            "preproc_rec": "AirPLS+SG+MC (background fluorescence correction — approved by the "
+                           "acceptance gate against a public Raman dataset, 2026-09-04; no MSC — "
+                           "Raman baseline is additive, not multiplicative like NIR scatter)",
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
         "faixa_min": 50.0, "faixa_max": 4000.0,
-        "preproc": "sg_mc", "mode": "dx",
+        "preproc": "airpls_sg_mc", "mode": "dx",
     },
     "uv-vis": {
         "PT": {
