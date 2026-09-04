@@ -71,7 +71,7 @@ def test_categorias_do_catalogo_sao_um_conjunto_pequeno_e_fechado():
         "classificacao_deteccao", "quantificacao",
         "identificacao_conjunto_aberto", "selecao_amostras",
         "transferencia_calibracao", "figuras_de_merito",
-        "robustez_linearidade", "perfis",
+        "robustez_linearidade", "perfis", "resolucao_mistura",
     }
     usadas = {e.categoria for e in REGISTRY}
     assert usadas <= categorias_conhecidas, (

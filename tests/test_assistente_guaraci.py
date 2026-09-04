@@ -167,6 +167,71 @@ def test_assistente_opcao_5_chama_faq(monkeypatch):
     assert chamado.get("ok") is True
 
 
+def test_assistente_opcao_6_chama_fluxo_decisao(monkeypatch):
+    chamado = {}
+    monkeypatch.setattr(guaraci_mod, "_guaraci_fluxo_decisao",
+                        lambda cfg: chamado.setdefault("ok", True))
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "6")
+    guaraci_mod._abrir_assistente("teste", Config())
+    assert chamado.get("ok") is True
+
+
+# ── Fluxo de entrada orientado a decisao (Bloco 19) ───────────────────────
+
+def test_fluxo_decisao_roda_sem_excecao_para_cada_opcao_sem_aplicar(monkeypatch):
+    """Cada opcao de _FLUXO_DECISAO precisa rodar sem excecao; resposta 'n'
+    na pergunta de aplicar (quando existe) -- cfg nao deve mudar."""
+    for n in range(1, len(guaraci_mod._FLUXO_DECISAO) + 1):
+        respostas = iter([str(n), "n", ""])
+        monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+        cfg = Config()
+        nivel_antes = cfg.level
+        guaraci_mod._guaraci_fluxo_decisao(cfg)
+        assert cfg.level == nivel_antes
+
+
+def test_fluxo_decisao_aplica_nivel_e_preprocessamento_quando_confirmado(monkeypatch):
+    """Opcao 'identificar_especie' tem nivel=N1 -- responder 's' precisa
+    de fato mudar cfg.level (nao so' mostrar o texto)."""
+    idx = next(i for i, o in enumerate(guaraci_mod._FLUXO_DECISAO, start=1)
+              if o["id"] == "identificar_especie")
+    respostas = iter([str(idx), "s", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    cfg = Config(level="N2")
+    guaraci_mod._guaraci_fluxo_decisao(cfg)
+    assert cfg.level == "N1"
+    assert cfg.default_preprocessing == "msc_sg_mc"
+
+
+def test_fluxo_decisao_opcao_invalida_nao_lanca_excecao(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "99")
+    guaraci_mod._guaraci_fluxo_decisao(Config())
+
+
+def test_fluxo_decisao_q_volta_sem_pedir_mais_input(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "Q")
+    guaraci_mod._guaraci_fluxo_decisao(Config())
+
+
+def test_fluxo_decisao_toda_tecnica_referenciada_existe_no_registry():
+    """Nenhuma opcao pode citar um id de tecnica que nao esta' no
+    REGISTRY -- pegaria um typo ou uma referencia a tecnica renomeada."""
+    from guaraci.technique_registry import REGISTRY
+    ids_registry = {e.id for e in REGISTRY}
+    for opcao in guaraci_mod._FLUXO_DECISAO:
+        for tid in opcao["tecnicas"]:
+            assert tid in ids_registry, (
+                f"opcao '{opcao['id']}' referencia tecnica inexistente "
+                f"no REGISTRY: '{tid}'")
+
+
+def test_fluxo_decisao_resolver_mistura_sugere_mcr_als():
+    """Confirma que o Bloco 14 (MCR-ALS) esta' de fato conectado ao fluxo
+    de decisao -- nao so' presente no REGISTRY sem uso."""
+    opcao = next(o for o in guaraci_mod._FLUXO_DECISAO if o["id"] == "resolver_mistura")
+    assert "mcr_als" in opcao["tecnicas"]
+
+
 # ── _guaraci_navegar_secoes cobre as 19 abas reais (achado do Agente 6 +
 #    "X" de HSI, Passo 102) ──────────────────────────────────────────────
 

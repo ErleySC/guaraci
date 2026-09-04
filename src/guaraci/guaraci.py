@@ -1274,6 +1274,7 @@ def _guaraci_tecnicas() -> None:
         "figuras_de_merito": ("Figuras de merito", "Figures of merit"),
         "robustez_linearidade": ("Robustez / linearidade", "Robustness / linearity"),
         "perfis": ("Perfis (matriz / tecnica de aquisicao)", "Profiles (matrix / acquisition technique)"),
+        "resolucao_mistura": ("Resolucao de mistura", "Mixture resolution"),
     }
     console.print()
     for cat_id, (nome_pt, nome_en) in rotulos_categoria.items():
@@ -1413,6 +1414,199 @@ def _guaraci_faq(cfg: Config) -> None:
     _pause()
 
 
+# ---------------------------------------------------------------------------
+# FLUXO DE ENTRADA ORIENTADO A DECISAO (Bloco 19) -- "o que voce precisa
+# decidir?" em vez de exigir que o usuario ja saiba o nome da tecnica.
+# Reaproveita `technique_registry.REGISTRY` (fonte unica) pra sugerir a(s)
+# tecnica(s) de cada opcao -- nunca uma lista de nomes escrita a mao aqui
+# (o mesmo erro que motivou `technique_registry.py` para [4] Tecnicas
+# disponiveis, Agente 6). O modo avancado (acesso direto as abas) continua
+# SEMPRE disponivel -- este fluxo e' um atalho A MAIS, nunca substitui o
+# menu numerado (nem os outros itens do assistente).
+# ---------------------------------------------------------------------------
+_FLUXO_DECISAO: List[Dict[str, Any]] = [
+    dict(
+        id="autenticidade",
+        rotulo={"PT": "Autenticidade (e' essa especie mesmo, sem adulteracao?)",
+                "EN": "Authenticity (is this really the declared species, unadulterated?)"},
+        nivel="N2", preproc_default="msc_sg_mc",
+        tecnicas=["ddsimca", "conformal_one_class"],
+        validacao={"PT": "LOGO (leave-one-group-out) por mae_id -- "
+                          "sensibilidade so' avaliavel com >=2 grupos de "
+                          "puros por especie.",
+                   "EN": "LOGO (leave-one-group-out) by mae_id -- "
+                         "sensitivity only evaluable with >=2 pure-sample "
+                         "groups per species."},
+        criterio={"PT": "amostra nova cai dentro do limite calibrado "
+                        "(DD-SIMCA) ou do conjunto de predicao conformal "
+                        "no alpha escolhido.",
+                  "EN": "new sample falls within the calibrated boundary "
+                        "(DD-SIMCA) or the conformal prediction set at the "
+                        "chosen alpha."},
+    ),
+    dict(
+        id="identificar_especie",
+        rotulo={"PT": "Identificar especie (qual especie e' essa amostra?)",
+                "EN": "Identify species (which species is this sample?)"},
+        nivel="N1", preproc_default="msc_sg_mc",
+        tecnicas=["pls_da"],
+        validacao={"PT": "CV group-aware (StableStratifiedGroupKFold) por mae_id.",
+                   "EN": "Group-aware CV (StableStratifiedGroupKFold) by mae_id."},
+        criterio={"PT": "balanced accuracy da CV group-aware -- sem limiar "
+                        "fixo universal, compare contra o baseline do "
+                        "proprio dataset.",
+                  "EN": "balanced accuracy from group-aware CV -- no "
+                        "universal fixed threshold, compare against the "
+                        "dataset's own baseline."},
+    ),
+    dict(
+        id="quantificar_teor",
+        rotulo={"PT": "Quantificar teor (qual a porcentagem de adulterante/composto?)",
+                "EN": "Quantify content (what's the adulterant/compound percentage?)"},
+        nivel="N3", preproc_default="msc_sg_mc",
+        tecnicas=["pls_r_pooled", "pls_r_por_especie"],
+        validacao={"PT": "Q2 via CV group-aware; RMSEP em holdout externo "
+                         "por objeto fisico.",
+                   "EN": "Q2 via group-aware CV; RMSEP on external "
+                         "per-object holdout."},
+        criterio={"PT": "RPD/RER (figuras de merito) -- ver categoria "
+                        "'Figuras de merito' no catalogo de tecnicas [4].",
+                  "EN": "RPD/RER (figures of merit) -- see 'Figures of "
+                        "merit' category in the technique catalog [4]."},
+    ),
+    dict(
+        id="adulterante_desconhecido",
+        rotulo={"PT": "Adulterante desconhecido (detectei que e' "
+                      "adulterada, qual adulterante?)",
+                "EN": "Unknown adulterant (detected adulteration, but "
+                      "which adulterant?)"},
+        nivel="N2", preproc_default="msc_sg_mc",
+        tecnicas=["identificacao_conjunto_aberto"],
+        validacao={"PT": "Predicao conforme por combinacao especie x "
+                         "adulterante; so' rotula com >=2 sessoes de "
+                         "coleta independentes.",
+                   "EN": "Conformal prediction per species x adulterant "
+                         "combination; only labels with >=2 independent "
+                         "collection sessions."},
+        criterio={"PT": "identificacao_cobertura='validado' -- senao "
+                        "reporta DESCONHECIDO em vez de arriscar palpite.",
+                  "EN": "identificacao_cobertura='validado' -- otherwise "
+                        "reports UNKNOWN instead of risking an "
+                        "unguaranteed guess."},
+    ),
+    dict(
+        id="transferencia_instrumentos",
+        rotulo={"PT": "Transferencia entre instrumentos (modelo calibrado "
+                      "num equipamento, quero usar noutro)",
+                "EN": "Instrument transfer (model calibrated on one "
+                      "instrument, want to use it on another)"},
+        nivel=None, preproc_default=None,
+        tecnicas=["piecewise_direct_standardization", "direct_standardization"],
+        validacao={"PT": "amostras medidas nos DOIS instrumentos (amostras "
+                         "de transferencia) -- validar erro do modelo "
+                         "transferido contra o original.",
+                   "EN": "samples measured on BOTH instruments (transfer "
+                         "samples) -- validate the transferred model's "
+                         "error against the original."},
+        criterio={"PT": "erro (RMSE) do modelo transferido comparavel ao "
+                        "erro original no instrumento mestre.",
+                  "EN": "transferred model's error (RMSE) comparable to "
+                        "the original error on the master instrument."},
+    ),
+    dict(
+        id="resolver_mistura",
+        rotulo={"PT": "Resolver mistura (quero os espectros puros e "
+                      "proporcoes, nao so' classificar/quantificar)",
+                "EN": "Resolve mixture (want the pure spectra and "
+                      "proportions, not just classify/quantify)"},
+        nivel=None, preproc_default=None,
+        tecnicas=["mcr_als"],
+        validacao={"PT": "compare a proporcao estimada com o teor "
+                         "declarado, se disponivel; SEMPRE rode "
+                         "avaliar_incerteza_rotacional.",
+                   "EN": "compare the estimated proportion against the "
+                        "declared content, if available; ALWAYS run "
+                        "avaliar_incerteza_rotacional."},
+        criterio={"PT": "baixo lack-of-fit (%) E baixa sensibilidade a' "
+                        "inicializacao -- nenhum dos dois sozinho basta.",
+                  "EN": "low lack-of-fit (%) AND low sensitivity to "
+                        "initialization -- neither alone is enough."},
+    ),
+]
+
+
+def _guaraci_fluxo_decisao(cfg: Config) -> None:
+    """Pergunta 'o que voce precisa decidir?' e sugere tecnica/pre-
+    processamento/validacao/criterio de aceitacao a partir de
+    `_FLUXO_DECISAO` + `technique_registry.REGISTRY` (fonte unica, ver
+    cabecalho da secao). Oferece aplicar nivel/pre-processamento a' sessao
+    atual -- SEMPRE opt-in (pergunta antes), nunca muda cfg em silencio."""
+    lang = _lang(); is_pt = lang == "PT"
+    from guaraci.technique_registry import REGISTRY
+    registry_por_id = {e.id: e for e in REGISTRY}
+
+    _cls(); _print_header(cfg)
+    console.print()
+    console.print(Panel(
+        Text("O que voce precisa decidir?" if is_pt else "What do you need to decide?",
+             style=f"bold {PA}"),
+        border_style=PA, box=rbox.ROUNDED, padding=(1, 2), width=_W()))
+
+    t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
+    t.add_column("Tecla", style=PA, width=4)
+    t.add_column("Opcao", style=PW)
+    for i, opcao in enumerate(_FLUXO_DECISAO, start=1):
+        t.add_row(f"[{i}]", opcao["rotulo"]["PT" if is_pt else "EN"])
+    t.add_row("[Q]", "Voltar" if is_pt else "Back")
+    console.print(t)
+
+    raw = _ask(f"  [{PA}]Opcao: [/{PA}]").strip().upper()
+    if raw in ("Q", "") or not raw.isdigit() or not (1 <= int(raw) <= len(_FLUXO_DECISAO)):
+        return
+
+    opcao = _FLUXO_DECISAO[int(raw) - 1]
+    console.print()
+    console.print(f"  [bold {PA}]{opcao['rotulo']['PT' if is_pt else 'EN']}[/bold {PA}]")
+    console.print()
+    console.print(f"  [{PW}]{'Tecnica(s) sugerida(s)' if is_pt else 'Suggested technique(s)'}:[/{PW}]")
+    for tid in opcao["tecnicas"]:
+        entrada = registry_por_id.get(tid)
+        if entrada is None:
+            continue
+        console.print(f"    [{PA}]▸ {escape(entrada.nome)}[/{PA}]")
+        console.print(f"      [{PM}]{escape(entrada.quando_usar)}[/{PM}]")
+    console.print()
+    if opcao.get("preproc_default"):
+        console.print(
+            f"  [{PW}]{'Pre-processamento default' if is_pt else 'Default preprocessing'}:"
+            f"[/{PW}] [{PA}]{opcao['preproc_default']}[/{PA}]")
+    console.print(f"  [{PW}]{'Validacao' if is_pt else 'Validation'}:[/{PW}] "
+                  f"{opcao['validacao']['PT' if is_pt else 'EN']}")
+    console.print(f"  [{PW}]{'Criterio de aceitacao' if is_pt else 'Acceptance criterion'}:"
+                  f"[/{PW}] {opcao['criterio']['PT' if is_pt else 'EN']}")
+    console.print()
+
+    if opcao.get("nivel"):
+        pergunta = (
+            f"Aplicar nivel={opcao['nivel']}"
+            + (f" e pre_processamento={opcao['preproc_default']}"
+               if opcao.get("preproc_default") else "")
+            + " a' sessao atual? [s/N]: "
+        ) if is_pt else (
+            f"Apply level={opcao['nivel']}"
+            + (f" and preprocessing={opcao['preproc_default']}"
+               if opcao.get("preproc_default") else "")
+            + " to the current session? [y/N]: "
+        )
+        resposta = _ask(f"  [{PA}]{pergunta}[/{PA}]").strip().lower()
+        if resposta in ("s", "sim", "y", "yes"):
+            cfg.level = opcao["nivel"]
+            if opcao.get("preproc_default"):
+                cfg.default_preprocessing = opcao["preproc_default"]
+            console.print(f"  [g]{'Aplicado.' if is_pt else 'Applied.'}[/g]")
+    _pause()
+
+
 def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
     lang = _lang()
@@ -1425,6 +1619,7 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         ("3", "Diagnosticar dados carregados" if lang=="PT" else "Diagnose loaded data"),
         ("4", "Tecnicas disponiveis" if lang=="PT" else "Available techniques"),
         ("5", "Perguntas frequentes" if lang=="PT" else "Frequently asked questions"),
+        ("6", "O que voce precisa decidir?" if lang=="PT" else "What do you need to decide?"),
         ("Q", "Fechar assistente"           if lang=="PT" else "Close assistant"),
     ]
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
@@ -1455,6 +1650,8 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         _guaraci_tecnicas()
     elif raw == "5":
         _guaraci_faq(cfg or Config())
+    elif raw == "6":
+        _guaraci_fluxo_decisao(cfg or Config())
 
 def _rotulo_tecnica_efetivo(cfg: Optional[Config]) -> str:
     """Nome de 'tecnica' a exibir nos cabecalhos, ajustado ao `cfg.mode`

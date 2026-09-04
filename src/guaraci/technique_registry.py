@@ -298,6 +298,25 @@ REGISTRY: List[TechniqueEntry] = [
             "associacao), nunca deste campo; nenhum perfil de tecnica "
             "de imagem tem validacao publicada com dado real ainda."),
     ),
+    # ---- Resolucao de mistura (Bloco 14, 2026-09-04) -----------------------
+    TechniqueEntry(
+        id="mcr_als",
+        categoria="resolucao_mistura",
+        nome="MCR-ALS",
+        referencia="guaraci.mcr_als.mcr_als",
+        quando_usar=(
+            "Quando o objetivo e' recuperar OS PROPRIOS espectros puros e "
+            "as proporcoes de cada componente numa mistura (nao so' "
+            "classificar/quantificar contra um alvo ja conhecido) -- "
+            "decompoe a matriz de espectros em perfis de concentracao (C) "
+            "e espectrais (S) via minimos quadrados alternados, com "
+            "restricoes de nao-negatividade/normalizacao."),
+        limitacao=(
+            "Solucao SEM garantia de unicidade (ambiguidade rotacional -- "
+            "toda chamada carrega esse aviso no retorno). Use "
+            "`avaliar_incerteza_rotacional` para medir sensibilidade a' "
+            "inicializacao antes de tratar C/S como definitivos."),
+    ),
 ]
 
 #: Modulos de proposito UNICO (todo simbolo em __all__ e' de fato uma

@@ -1,3 +1,66 @@
+# PROGRESSO — Passo 130 (2026-09-04)
+
+## Passo 130 — Fluxo de decisão do assistente `G` (Bloco 19, fecha a instrução de expansão técnica)
+
+Novo item `[6] O que você precisa decidir?` no menu do assistente `G`
+(`_abrir_assistente`, `guaraci.py`), aberto por `_guaraci_fluxo_decisao`:
+pergunta o objetivo do usuário em vez de exigir que ele já saiba o nome
+da técnica — 6 opções (`_FLUXO_DECISAO`): autenticidade, identificar
+espécie, quantificar teor, adulterante desconhecido, transferência entre
+instrumentos, resolver mistura. Cada opção mostra técnica(s) sugerida(s)
+(puxadas de `technique_registry.REGISTRY`, nunca uma lista escrita a mão
+— mesmo princípio anti-duplicação que motivou o catálogo no Agente 6),
+pré-processamento default, tipo de validação e critério de aceitação; se
+a opção tiver um nível associado, oferece (opt-in, pergunta antes) aplicar
+`cfg.level`/`cfg.default_preprocessing` à sessão atual. **Modo avançado
+preservado**: nenhum menu existente foi removido/alterado, o fluxo novo é
+só mais uma entrada no assistente.
+
+**MCR-ALS (Passo 125) registrado em `technique_registry.py`** (categoria
+nova `resolucao_mistura`, id `mcr_als`) — sem isso o Bloco 19 não teria
+como conectar "resolver mistura" a uma técnica real do catálogo.
+CARS/UVE/EMSC/OSC/PARAFAC/N-PLS **deliberadamente não registrados**:
+seguem o mesmo padrão já existente de VIP/SR/iPLS/SPA/AG/SNV/MSC (métodos
+de seleção/pré-processamento internos, nunca estiveram no catálogo — só
+métodos de decisão de nível superior como PLS-DA/DD-SIMCA/PLS-R estão).
+
+**Achado durante a implementação**: `_guaraci_tecnicas` (`[4]` do
+assistente) mapeia categoria→rótulo bilíngue via um dict local
+(`rotulos_categoria`) que **descarta silenciosamente** qualquer categoria
+do `REGISTRY` sem entrada nesse dict — uma categoria nova cadastrada sem
+atualizar esse mapa nunca apareceria na tela, sem erro nenhum. Corrigido
+para a categoria nova (`resolucao_mistura` adicionada ao dict); a
+armadilha em si (categoria sem rótulo = invisível, não é uma propriedade
+testada automaticamente) fica registrada aqui para a próxima categoria
+nova não cair no mesmo buraco.
+
+19 testes novos (`tests/test_assistente_guaraci.py`,
+`tests/test_technique_registry.py`): dispatch `[6]`, cada opção roda sem
+exceção, aplicar nível/pré-processamento muda `cfg` de verdade quando
+confirmado (e não muda quando recusado), toda técnica referenciada existe
+no `REGISTRY`, `resolver_mistura` está de fato conectada a `mcr_als`
+(não só presente no catálogo sem uso).
+
+Suíte completa (1283 passed, 23 skipped — +8 vs. Passo 129). Contrato de
+API pública **inalterado** (mudança é só em `guaraci.py`, fora do escopo
+mypy/API pública por design, e uma entrada de dado em
+`technique_registry.REGISTRY`, não em `__all__`).
+
+**Fecha a instrução de expansão técnica (Blocos 14-19)**: das 6
+capacidades pedidas, MCR-ALS/CARS/UVE/EMSC-OSC/importador
+OPUS/PARAFAC-N-PLS/fluxo de decisão — todas **implementadas e testadas**
+com dado sintético. Ficou de fora por limitação real (não por escolha):
+validação de MCR-ALS contra dataset real de óleo (dados/ vazio neste
+checkout) e comparação N-PLS vs. PLS-DA por pixel em dataset público real
+(DeepHS Fruit, Kiwi ~44GB na fonte, inviável baixar nesta sessão) — ambas
+documentadas explicitamente nos Passos 125 e 129, não escondidas. O
+GUARACI cobre agora a lacuna de composição de mistura (MCR-ALS) e
+estrutura multiway do HSI (PARAFAC/N-PLS) que não existia antes deste
+lote — com a ressalva honesta de que a validação contra dado público real
+dessas duas capacidades específicas ainda está pendente.
+
+---
+
 # PROGRESSO — Passo 129 (2026-09-04)
 
 ## Passo 129 — PARAFAC e N-PLS multiway para HSI (Bloco 15)
