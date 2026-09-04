@@ -1,3 +1,62 @@
+# PROGRESSO — Passo 146: NIR Dispersivo reclassificado sem dataset novo (Fase A, 2026-09-04)
+
+## Passo 146 — NIR Dispersivo: Eigenvector Corn reclassificado (achado por reconferência)
+
+Instrução (Fase A do plano de fechamento das 11 técnicas): antes de
+buscar dataset novo para NIR Dispersivo, reverificar se algum dataset
+já baixado nesta sessão foi classificado erroneamente como FT-NIR
+quando na verdade é dispersivo.
+
+O Corn (Eigenvector, `m5`/`mp5`/`mp6`, integrado desde Passo 78/79 — ver
+`docs/VALIDACAO_PUBLICA.md` §1) nunca tinha sido atribuído a nenhuma das
+11 técnicas do menu no levantamento do Passo 141 — contava só como
+prova de que "o motor reproduz a literatura", solto da tabela de 11
+técnicas (não era um caso de má classificação como FT-NIR; era ausência
+de classificação).
+
+**Achado, confirmado por busca direta (Crossref/leitura de artigo, não
+suposição):** os 3 instrumentos do Corn são da família **FOSS
+NIRSystems 5000/6500**. Digman, Cherney & Cherney (2022), *Sensors*
+22(2):658, doi:10.3390/s22020658 — estudo que compara diretamente um
+espectrômetro NIR de bancada contra um FT-NIR portátil — descreve o
+"(FOSS) NIRSystem 6500 (FOSS, Hillerød, Denmark)" explicitamente como
+"a scanning monochromator spectrometer with a wavelength range from
+1100 to 2498 nm" — faixa **idêntica** à do Corn (1100-2498nm,
+confirmado em `tests/test_validacao_publica.py`). O mesmo artigo
+contrasta esse instrumento diretamente com um FT-NIR (interferômetro de
+Michelson) medido no mesmo estudo — monocromador de rede com varredura
+mecânica e Fourier-transform são categorias tecnológicas distintas na
+própria literatura de instrumentação NIR. **O Corn nunca foi FT-NIR** —
+é NIR Dispersivo de livro-texto, só nunca conectado à tabela de 11
+técnicas até agora.
+
+Nenhuma mudança de código foi necessária: o teste já existente
+(`test_guaraci_reproduz_a_literatura_no_corn`) já reproduz RMSEP=0,144
+%m/m (proteína, m5), R²val=0,912, 8 LVs — reconfirmado por execução
+direta nesta rodada (dataset baixado de novo, SHA-256/tamanho
+conferidos contra os valores pinados no CI: `e28fd4be...c46b5`,
+1445616 bytes — batem). Split: `frac_holdout=0.25`,
+`group_by_mae_id=False` — correto para este dataset: cada uma das 80
+amostras tem 1 medição por instrumento, sem repetição técnica a
+agrupar, logo nenhum grupo pode vazar entre treino e validação.
+Suíte completa (`pytest tests/test_validacao_publica.py -k corn -v`):
+5 testes relacionados ao Corn, todos passando.
+
+**Estado da técnica #2 (NIR Dispersivo) na tabela de 11: Parcial →
+Funcional.** `docs/VALIDACAO_PUBLICA.md` §1 e §2f atualizados com a
+atribuição de técnica explícita e a citação completa do achado.
+
+Reproduzir:
+```
+curl -fsSL -o corn.mat https://eigenvector.com/data/Corn/corn.mat
+GUARACI_DATASETS_DIR=<pasta que contem corn.mat> pytest tests/test_validacao_publica.py -k corn -v
+```
+
+Próximo (Passo 147, ainda Fase A): buscar dataset público de UV-Vis
+para quantificação.
+
+---
+
 # PROGRESSO — Fechamento da auditoria das 11 técnicas analíticas (Passos 141-145, 2026-09-04)
 
 ## Estado final de cada uma das 11 técnicas do menu (`cli_assistente.TECNICAS`)
@@ -5,7 +64,7 @@
 | # | Técnica | Estado (Passo 141) | Dataset público | Validação real | Correção complementar |
 |---|---|---|---|---|---|
 | 1 | **FT-NIR** | Funcional | Mendeley `ctgg7k4m5g` (NIR8mm), CC BY 4.0 | Bal.acc 0,475 (holdout); R²cal 0,83/R²val −0,53 | — (já era o caso de uso original) |
-| 2 | **NIR Dispersivo** | Parcial | Não buscado | Não validado (motor genérico funciona, nunca testado como técnica própria) | — |
+| 2 | **NIR Dispersivo** | **Funcional (novo, reclassificação — Passo 146)** | Eigenvector Corn (`m5`/`mp5`/`mp6`) — já integrado desde Passo 78/79, nunca antes atribuído a uma técnica do menu | RMSEP 0,144 %m/m (proteína, m5); R²val 0,912; 8 LVs | Reclassificação: FOSS NIRSystems 5000/6500 = "scanning monochromator spectrometer" (Digman, Cherney & Cherney 2022, *Sensors* 22(2):658) — tecnologia dispersiva, NÃO Fourier-transform. Nenhum dataset novo necessário |
 | 3 | **MIR/FTIR** | **Funcional (novo)** | Arquivo-irmão do NIR8mm no mesmo dataset Mendeley | Bal.acc 0,696; R²cal 0,79/R²val 0,57 | — |
 | 4 | **Raman** | **Funcional (novo)** | Arquivo-irmão do NIR8mm | Bal.acc 0,389; R²cal 0,67/R²val 0,43 | **AirPLS implementado e APROVADO no portão de aceite** (RMSEP 0,442→0,424, p=0,002) |
 | 5 | **UV-Vis** | Parcial | Nenhum candidato bom achado (melhor achado ficou atrás de CAPTCHA) | Não validado | Correção de turbidez **já existia** (EMSC, aprovado desde Passo 134) — nenhum trabalho novo necessário |

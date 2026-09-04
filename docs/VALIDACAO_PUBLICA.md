@@ -17,7 +17,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 
 | Dataset | Matriz | n | Canais / faixa | Alvo | Métrica obtida | Referência da literatura | Estado |
 |---|---|---:|---|---|---|---|---|
-| Eigenvector **Corn** (m5) | milho em grão | 80 | 700 · 1100–2498 nm | proteína | **RMSEP 0,144 %m/m**; R²val 0,912; 8 LVs | RMSEP típico de PLS: **0,1–0,2** | ✅ dentro da faixa |
+| Eigenvector **Corn** (m5) — técnica: **NIR Dispersivo** (Passo 146) | milho em grão | 80 | 700 · 1100–2498 nm | proteína | **RMSEP 0,144 %m/m**; R²val 0,912; 8 LVs | RMSEP típico de PLS: **0,1–0,2** | ✅ dentro da faixa |
 | **Tecator** | carne moída | 240 | 100 · 850–1050 nm | gordura | RMSEP 2,001 (`autoscaling`) | ver `docs/BENCHMARK_TECATOR.md` | ✅ dentro do esperado |
 | **Mel adulterado** (478 × 700, 4 classes) | mel | — | — | puro vs. 3 xaropes | — | Downey, Fouratier & Kelly (2003), *J. Near Infrared Spectrosc.* 11:447-456 | ❌ **NÃO OBTIDO** (origem identificada, sem repositório público, reconfirmado 2026-08-27) |
 | Mendeley `10.17632/ctgg7k4m5g.2` (NIR 8mm) | 19 óleos comestíveis diversos | 100 | 11512 · 3899–14999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,35 (CV) / 0,475 (holdout)**; R²cal 0,833 (log10 PV) | balanced accuracy: sem alvo publicado nesta forma (ver §2); RMSEP publicado 4,9 **não reproduzido** (ver §2) | 🟢 **INTEGRADO** (2026-08-27) — classificação valida requisito multimatriz; regressão é sanity check, não gate de literatura |
@@ -268,6 +268,47 @@ Reproduzir:
 python scripts/download_datasets/baixar_figshare_azeite_nmr.py
 GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_figshare_azeite_nmr.py -v
 ```
+
+### 2f. NIR Dispersivo — reclassificação do Corn, sem dataset novo (Passo 146, 2026-09-04)
+
+Antes de sair buscando um dataset novo para a técnica #2 do menu (NIR
+Dispersivo, `cli_assistente.TECNICAS["nir"]`), a instrução do Passo 146
+pediu para reverificar se algum dataset já baixado nesta sessão tinha
+sido classificado erroneamente. O Corn (linha do topo desta tabela, §1)
+está integrado desde os Passos 78/79 mas **nunca tinha sido atribuído a
+nenhuma das 11 técnicas do menu** no levantamento do Passo 141 — contava
+só como prova de que "o motor reproduz a literatura", solto da tabela.
+
+**Achado confirmado por busca direta (não presumido):** os 3
+instrumentos do Corn (`m5`/`mp5`/`mp6`) são da família **FOSS
+NIRSystems 5000/6500**. Digman, Cherney & Cherney (2022), *Sensors*
+22(2):658, doi:10.3390/s22020658 — artigo que compara diretamente um
+espectrômetro NIR de bancada contra um FT-NIR portátil — descreve
+textualmente: "The (FOSS) NIRSystem 6500 (FOSS, Hillerød, Denmark) is a
+**scanning monochromator spectrometer** with a wavelength range from
+1100 to 2498 nm" — faixa **idêntica** à do Corn (1100-2498nm,
+confirmado em `tests/test_validacao_publica.py::
+test_guaraci_reproduz_a_literatura_no_corn`). O mesmo artigo usa esse
+instrumento como contraponto direto a um FT-NIR (interferômetro de
+Michelson) medido no mesmo estudo — monocromador de rede com varredura
+mecânica e Fourier-transform são categorias tecnológicas distintas na
+própria literatura de instrumentação NIR, não uma distinção inventada
+para este projeto.
+
+**Conclusão: o Corn nunca foi FT-NIR.** É NIR Dispersivo de livro-texto,
+só nunca conectado à tabela de 11 técnicas até agora. Nenhuma mudança
+de código foi necessária — o teste já existente já reproduz RMSEP=0,144
+%m/m (proteína, m5), R²val=0,912, 8 LVs (reconfirmado por execução
+direta nesta rodada: `corn.mat` baixado de novo, SHA-256 e tamanho
+conferidos contra os valores pinados no CI — `e28fd4be...c46b5`,
+1445616 bytes, batem). Split: `frac_holdout=0.25`,
+`group_by_mae_id=False` — correto para este dataset: cada uma das 80
+amostras tem 1 medição por instrumento, sem repetição técnica a
+agrupar, logo nenhum grupo pode vazar entre treino e validação.
+
+**Estado da técnica #2 (NIR Dispersivo) na tabela de 11 técnicas:
+Parcial → Funcional.** `docs/PROGRESSO.md` Passo 146 tem o registro
+completo.
 
 ### Histórico — RETRATAÇÃO de 2026-08-18
 
