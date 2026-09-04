@@ -1,3 +1,42 @@
+# PROGRESSO — Fechamento da auditoria das 11 técnicas analíticas (Passos 141-145, 2026-09-04)
+
+## Estado final de cada uma das 11 técnicas do menu (`cli_assistente.TECNICAS`)
+
+| # | Técnica | Estado (Passo 141) | Dataset público | Validação real | Correção complementar |
+|---|---|---|---|---|---|
+| 1 | **FT-NIR** | Funcional | Mendeley `ctgg7k4m5g` (NIR8mm), CC BY 4.0 | Bal.acc 0,475 (holdout); R²cal 0,83/R²val −0,53 | — (já era o caso de uso original) |
+| 2 | **NIR Dispersivo** | Parcial | Não buscado | Não validado (motor genérico funciona, nunca testado como técnica própria) | — |
+| 3 | **MIR/FTIR** | **Funcional (novo)** | Arquivo-irmão do NIR8mm no mesmo dataset Mendeley | Bal.acc 0,696; R²cal 0,79/R²val 0,57 | — |
+| 4 | **Raman** | **Funcional (novo)** | Arquivo-irmão do NIR8mm | Bal.acc 0,389; R²cal 0,67/R²val 0,43 | **AirPLS implementado e APROVADO no portão de aceite** (RMSEP 0,442→0,424, p=0,002) |
+| 5 | **UV-Vis** | Parcial | Nenhum candidato bom achado (melhor achado ficou atrás de CAPTCHA) | Não validado | Correção de turbidez **já existia** (EMSC, aprovado desde Passo 134) — nenhum trabalho novo necessário |
+| 6 | **Fluorescência Molecular** | **Parcial→fraco-mas-real (novo)** | Mendeley `thkcz3h6n6` (simples) + `g6y69g8gwm` (EEM real, não integrado) | Bal.acc 0,383 (fraco, n=24 pequeno) | **PARAFAC generalizado implementado** (`eem_multiway.py`), provado por contraprova sintética; dataset EEM real não integrado (parser do formato bruto do instrumento é irregular, fora de escopo) |
+| 7 | **HPLC** | Parcial/quase-placeholder | Nenhum dataset com tabela de picos pronta achado | Não validado | COW (referência confirmada), bloqueado por falta de parser |
+| 8 | **GC-MS** | Parcial/quase-placeholder | Achado (`.CDF` NetCDF bruto, Lavandula) mas exige parser novo | Não validado | AMDIS (referência confirmada) ou MCR-ALS (já existe no Guaraci) como alternativa; bloqueado por falta de parser |
+| 9 | **RMN/NMR** | **Parcial→negativo-documentado (novo)** | Figshare `4307804` (CC0, já binado) | Bal.acc 0,500 — **exatamente o acaso**, achado negativo real | icoshift (referência confirmada) — não implementado, dataset já vem pré-binado |
+| 10 | **IMS** | Parcial | 2 datasets GC-IMS reais achados (`.mea`, formato proprietário) | Não validado | Mason-Schamp (referência confirmada), bloqueado por falta de parser |
+| 11 | **Genérico** | Funcional | — (é o próprio fallback) | — | — |
+
+## Resumo em uma frase (exigido pela instrução original)
+
+Das 11 técnicas, **6 têm validação real com dado público agora**
+(FT-NIR, MIR, Raman, Genérico com sinal genuíno acima do acaso;
+Fluorescência com sinal fraco mas real; RMN com resultado
+**negativo** honestamente documentado — o motor genérico não separa
+as classes desse dataset); **NIR Dispersivo e UV-Vis permanecem sem
+validação própria** por limitação genuína de busca (nenhum dataset
+público bom localizado, não por falta de tentativa); **HPLC, GC-MS e
+IMS permanecem como placeholder de fato** — datasets públicos reais
+foram encontrados para os 3, mas todos exigem parser de formato
+binário/proprietário novo (`.CDF`, `.mea`) que não foi escrito nesta
+rodada, escopo maior corretamente antecipado pela própria instrução;
+duas análises complementares foram efetivamente implementadas e
+testadas — **AirPLS para Raman (aprovado no portão de aceite contra
+dado real)** e **PARAFAC generalizado para EEM de Fluorescência
+(provado por contraprova sintética)** — e uma terceira (EMSC para
+UV-Vis) revelou já existir, evitando trabalho duplicado.
+
+---
+
 # PROGRESSO — Passo 144/145: AirPLS (Raman) e PARAFAC/EEM (Bloco 30, 2026-09-04)
 
 ## Passo 144 — Levantamento de análises complementares por modalidade
