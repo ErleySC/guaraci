@@ -2683,6 +2683,56 @@
         "forma": "funcao"
       }
     },
+    "mcr_als": {
+      "MCRALSResultado": {
+        "campos": [
+          {
+            "nome": "C",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "S",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "lof_percent",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_iter",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "convergiu",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "historico_lof",
+            "tem_default": true,
+            "tipo": "List[float]"
+          },
+          {
+            "nome": "aviso_ambiguidade_rotacional",
+            "tem_default": true,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "avaliar_incerteza_rotacional": {
+        "assinatura": "(D: 'np.ndarray', n_componentes: 'int', *, n_inicializacoes: 'int' = 5, seed: 'int' = 0, **kwargs_mcr_als) -> 'dict'",
+        "forma": "funcao"
+      },
+      "mcr_als": {
+        "assinatura": "(D: 'np.ndarray', n_componentes: 'int', *, nao_negativo_c: 'bool' = True, nao_negativo_s: 'bool' = True, normalizacao: 'str' = 'soma_unitaria', unimodal_c: 'bool' = False, c_inicial: 'Optional[np.ndarray]' = None, s_inicial: 'Optional[np.ndarray]' = None, max_iter: 'int' = 200, tol: 'float' = 1e-06) -> 'MCRALSResultado'",
+        "forma": "funcao"
+      }
+    },
     "model_registry": {
       "Construtor": {
         "forma": "constante",

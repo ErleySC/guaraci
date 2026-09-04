@@ -1,3 +1,58 @@
+# PROGRESSO — Passo 125 (2026-09-04)
+
+## Passo 125 — MCR-ALS (Bloco 14 da instrução de expansão técnica)
+
+Novo módulo `mcr_als.py`: Resolução de Curvas Multivariada por Mínimos
+Quadrados Alternados. Referência verificada no Crossref: Tauler, R.
+(1995), *Chemometrics and Intelligent Laboratory Systems* 30(1):133-146,
+DOI 10.1016/0169-7439(95)00047-X; restrições revisadas em Tauler & de Juan
+(2006), DOI 10.1201/9781420018301.ch11.
+
+**O que faz.** Decompõe uma matriz de espectros de mistura `D` em perfis
+de concentração `C` e perfis espectrais puros `S`, com restrições de
+não-negatividade (ambos, default ligado), normalização configurável
+(soma unitária / norma unitária) e unimodalidade opcional em `C` (só faz
+sentido quando a ordem das amostras é significativa — off por default).
+API pública: `mcr_als`, `MCRALSResultado`, `avaliar_incerteza_rotacional`.
+
+**Ambiguidade rotacional** (limitação conhecida do método, não bug):
+`mcr_als` nunca reporta `(C, S)` como solução única — todo resultado
+carrega `aviso_ambiguidade_rotacional`. `avaliar_incerteza_rotacional`
+roda múltiplas inicializações aleatórias, alinha componentes entre
+execuções por correlação máxima (assignment ótimo via
+`scipy.optimize.linear_sum_assignment`, necessário porque o rótulo dos
+componentes não é preservado entre execuções independentes) e reporta o
+desvio-padrão das proporções recuperadas como proxy de sensibilidade —
+explicitamente **não** é o cálculo formal de banda de ambiguidade
+(MCR-BANDS, Jaumot & Tauler 2010), documentado como tal no próprio aviso
+de retorno.
+
+**Validação**: mistura sintética de 3 espectros puros (gaussianos bem
+separados) combinados em proporções `Dirichlet` conhecidas —
+`tests/test_mcr_als.py`, 10 testes. Achado durante a validação: o
+critério inicial de lack-of-fit (`<5%` fixo) estava errado — o "piso de
+ruído" da própria mistura sintética (LOF contra os parâmetros
+VERDADEIROS, não os ajustados) já fica em ~7% porque o sinal é pequeno
+na maior parte dos canais espectrais (só é grande perto dos picos); o
+teste foi corrigido para comparar o LOF ajustado contra esse piso
+calculado a partir do próprio dataset, não contra um número arbitrário.
+Dois bugs reais de implementação pegos pelos testes antes do commit:
+troca de ordem de argumentos em `_normalizar_S` (S/C invertidos na
+chamada) e uma transposição a mais na atribuição inicial de `S` — ambos
+None dos testes de reconstrução falhavam sem eles.
+
+**Pendência honesta**: o checklist do Bloco 14 pede validação contra o
+dataset real de óleo (misturas espécie+adulterante em teor declarado).
+A pasta `dados/` deste checkout está vazia (dado de terceiro, nunca
+versionado — ver `.gitignore`) — essa validação fica bloqueada até o
+dado estar acessível neste ambiente, não foi pulada por escolha.
+
+Suíte completa (1231 passed, 23 skipped — inalterado fora do novo
+módulo), ruff/mypy limpos em `mcr_als.py`. Contrato de API pública
+regravado intencionalmente (módulo novo, 3 nomes novos em `__all__`).
+
+---
+
 # PROGRESSO — Passo 124 (2026-09-03)
 
 ## Passo 124 — Lista de técnicas de imagem generalizada (fecha o ciclo de adaptabilidade)
