@@ -12,7 +12,7 @@ Coberto por tests/test_pipeline_core.py.
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Tuple, cast
+from typing import Dict, List, Optional, Tuple, cast
 
 import numpy as np
 from scipy.stats import f as f_dist, chi2, t as t_dist
@@ -38,6 +38,10 @@ __all__ = [
     "rpd_rer",
     "interpret_rpd",
     "regression_figures_of_merit",
+    "faixa_decisao",
+    "FAIXA_NAO_DETECTAVEL",
+    "FAIXA_ZONA_CINZENTA",
+    "FAIXA_QUANTIFICADO",
     "applicability_domain",
     "training_applicability_domain",
     "applicability_domain_new_samples",
@@ -679,6 +683,35 @@ def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
                 resultado["loq_ic_alto"] = 10.0 * sigma_alto * norm_b
 
     return resultado
+
+
+#: Rotulos da faixa de decisao (Bloco 24) -- string estavel, nao texto
+#: ja' traduzido (quem exibe decide o idioma).
+FAIXA_NAO_DETECTAVEL = "nao_detectavel"
+FAIXA_ZONA_CINZENTA = "zona_cinzenta"
+FAIXA_QUANTIFICADO = "quantificado_com_confianca"
+
+
+def faixa_decisao(valor: float, lod: float, loq: float) -> Optional[str]:
+    """Categoriza um valor quantificado (teor predito) em 3 estados
+    usando os limiares de LOD/LOQ do Bloco 12
+    (`regression_figures_of_merit`) -- MESMOS numeros, nunca recalculados
+    aqui: abaixo do LOD = "nao detectavel", entre LOD e LOQ = "zona
+    cinzenta" (deteccao possivel, quantificacao nao confiavel), acima do
+    LOQ = "quantificado com confianca".
+
+    Devolve `None` (nao "nao_detectavel") quando LOD/LOQ nao sao
+    computaveis (NaN -- sem replicas fisicas suficientes para estimar
+    ruido instrumental, ver `regression_figures_of_merit`) -- categorizar
+    contra um limiar que nao existe seria fabricar confianca que os dados
+    nao sustentam."""
+    if not (np.isfinite(lod) and np.isfinite(loq)):
+        return None
+    if valor < lod:
+        return FAIXA_NAO_DETECTAVEL
+    if valor < loq:
+        return FAIXA_ZONA_CINZENTA
+    return FAIXA_QUANTIFICADO
 
 
 # =========================================================================

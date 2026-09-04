@@ -365,3 +365,66 @@ def test_predizer_amostras_recusa_pacote_sem_q_ucl(modelo_e_dados):
     pkg_sem = {k: v for k, v in pkg.items() if k != "q_ucl"}
     with pytest.raises(ValueError, match="q_ucl"):
         pr.predict_samples(pkg_sem, X_novos, wn)
+
+
+# ── Bloco 24: faixa de decisao (LOD/LOQ) em quantify_sample ──────────────
+
+class _PipelineFalso:
+    """Fake sklearn-compativel: sempre prediz o mesmo teor, so pra testar
+    a categorizacao de faixa_decisao sem precisar de um pipeline PLS real."""
+    def __init__(self, teor):
+        self.teor = teor
+
+    def predict(self, X):
+        return np.full((len(X), 1), self.teor)
+
+
+def _identificacao_valida(especie: str, adulterante: str = "S"):
+    from guaraci.identificacao import CoverageStatus, IdentificationResult
+    return IdentificationResult(
+        classe_identificada=f"{especie}|{adulterante}",
+        candidatos_ambiguos=[], cobertura_status=CoverageStatus.VALIDATED,
+        alpha_alcancavel=0.05, escores={})
+
+
+def test_quantify_sample_categoriza_abaixo_do_lod():
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {"pipeline": _PipelineFalso(2.0), "lod": 5.0, "loq": 10.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.teor_estimado == pytest.approx(2.0)
+    assert r.faixa_decisao == "nao_detectavel"
+    assert r.lod == 5.0 and r.loq == 10.0
+
+
+def test_quantify_sample_categoriza_zona_cinzenta():
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {"pipeline": _PipelineFalso(7.0), "lod": 5.0, "loq": 10.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.faixa_decisao == "zona_cinzenta"
+
+
+def test_quantify_sample_categoriza_quantificado_com_confianca():
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {"pipeline": _PipelineFalso(15.0), "lod": 5.0, "loq": 10.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.faixa_decisao == "quantificado_com_confianca"
+
+
+def test_quantify_sample_pacote_antigo_sem_lod_loq_devolve_none_nao_quebra():
+    """Pacote salvo ANTES do Bloco 24 nao tem 'lod'/'loq' na entrada da
+    especie -- .get() devolve None, faixa_decisao fica None, sem excecao."""
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {"pipeline": _PipelineFalso(7.0)}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.teor_estimado == pytest.approx(7.0)
+    assert r.faixa_decisao is None
+    assert r.lod is None and r.loq is None
+
+
+def test_quantify_sample_bloqueada_nao_tem_faixa_decisao():
+    from guaraci.identificacao import IdentificationResult
+    ident_desconhecida = IdentificationResult(classe_identificada=None)
+    r = pr.quantify_sample({}, np.zeros((1, 10)), ident_desconhecida)
+    assert r.motivo_bloqueio is not None
+    assert r.teor_estimado is None
+    assert r.faixa_decisao is None

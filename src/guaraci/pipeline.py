@@ -292,6 +292,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     dmody,
     explained_variance,
     regression_figures_of_merit,
+    faixa_decisao,
     rpd_rer,
     interpret_rpd,
     applicability_domain,
@@ -1148,6 +1149,11 @@ def pls_regression_by_species(
         pipelines_especie[str(cls)] = {
             "pipeline": pipe_final, "n_lv": n_opt_reg,
             "rmsep": rmsep_c, "r2val": r2v_c,
+            # Bloco 24: LOD/LOQ (ja calculados acima em `_fom`) persistidos
+            # junto com o pipeline -- sem isso, `quantify_sample` (que so
+            # recebe UMA amostra nova, sem dado de calibracao/replicas) nao
+            # teria como categorizar o teor predito em faixa de decisao.
+            "lod": _fom["lod"], "loq": _fom["loq"],
         }
 
         # keep the RMSECV curve of the species with most samples (for panel a)

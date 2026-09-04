@@ -562,6 +562,18 @@
       }
     },
     "chemometric_stats": {
+      "FAIXA_NAO_DETECTAVEL": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "FAIXA_QUANTIFICADO": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "FAIXA_ZONA_CINZENTA": {
+        "forma": "constante",
+        "tipo": "str"
+      },
       "applicability_domain": {
         "assinatura": "(pca, X_train: 'np.ndarray', X_new: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, np.ndarray]'",
         "forma": "funcao"
@@ -592,6 +604,10 @@
       },
       "explained_variance": {
         "assinatura": "(X: 'np.ndarray', T: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "faixa_decisao": {
+        "assinatura": "(valor: 'float', lod: 'float', loq: 'float') -> 'Optional[str]'",
         "forma": "funcao"
       },
       "hotelling_t2": {
@@ -3493,6 +3509,21 @@
             "nome": "motivo_bloqueio",
             "tem_default": true,
             "tipo": "Optional[str]"
+          },
+          {
+            "nome": "faixa_decisao",
+            "tem_default": true,
+            "tipo": "Optional[str]"
+          },
+          {
+            "nome": "lod",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "loq",
+            "tem_default": true,
+            "tipo": "Optional[float]"
           }
         ],
         "forma": "dataclass"

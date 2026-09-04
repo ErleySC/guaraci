@@ -3291,6 +3291,14 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
                     for r in resultados_cego]
                 df_res["teor_estimado"] = [
                     r.quantificacao.teor_estimado for r in resultados_cego]
+                # Bloco 24: faixa de decisao ao lado do numero -- nunca so
+                # o teor cru, sem dizer se ele esta' abaixo do LOD (nao
+                # detectavel), na zona cinzenta (LOD-LOQ) ou quantificado
+                # com confianca (>=LOQ). Mesmos limiares do Bloco 12.
+                df_res["faixa_decisao"] = [
+                    r.quantificacao.faixa_decisao for r in resultados_cego]
+                df_res["lod"] = [r.quantificacao.lod for r in resultados_cego]
+                df_res["loq"] = [r.quantificacao.loq for r in resultados_cego]
                 df_res["quantificacao_motivo_bloqueio"] = [
                     r.quantificacao.motivo_bloqueio for r in resultados_cego]
                 df_res["alpha_total"] = [
@@ -3396,6 +3404,19 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
         n_quantificado = int(sum(
             1 for r in resultados_cego if r.quantificacao.teor_estimado is not None))
         n_bloqueado = n_tot - n_quantificado
+        # Bloco 24: faixa de decisao (LOD/LOQ, Bloco 12) -- so' conta entre
+        # as amostras que de fato tiveram um teor estimado (bloqueadas nao
+        # tem faixa nenhuma pra contar).
+        n_nao_detectavel = int(sum(
+            1 for r in resultados_cego
+            if r.quantificacao.faixa_decisao == "nao_detectavel"))
+        n_zona_cinzenta = int(sum(
+            1 for r in resultados_cego
+            if r.quantificacao.faixa_decisao == "zona_cinzenta"))
+        n_confiavel = int(sum(
+            1 for r in resultados_cego
+            if r.quantificacao.faixa_decisao == "quantificado_com_confianca"))
+        n_sem_lod_loq = n_quantificado - n_nao_detectavel - n_zona_cinzenta - n_confiavel
 
         if is_pt:
             fluxo_txt = (
@@ -3421,7 +3442,14 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
                 "(quantificação recusada por não haver identificação "
                 "confiável do adulterante -- ver coluna "
                 "'quantificacao_motivo_bloqueio' no CSV)\n"
-                f"  [{PM}]⚠ Um rótulo em 'classe_identificada' só existe "
+                + (f"  📏 Faixa de decisão (LOD/LOQ, Bloco 12) entre as "
+                   f"{n_quantificado} quantificadas: "
+                   f"[{PR}]{n_nao_detectavel}[/{PR}] não detectável (< LOD) / "
+                   f"[{PM}]{n_zona_cinzenta}[/{PM}] zona cinzenta (LOD–LOQ) / "
+                   f"[{PG}]{n_confiavel}[/{PG}] quantificado com confiança (≥ LOQ)"
+                   + (f" / {n_sem_lod_loq} sem LOD/LOQ calculável" if n_sem_lod_loq else "")
+                   + "\n" if n_quantificado else "")
+                + f"  [{PM}]⚠ Um rótulo em 'classe_identificada' só existe "
                 "quando 'identificacao_cobertura'='validado' (garantia "
                 "estatística formal, calibrada com >=2 sessões de coleta "
                 "independentes) -- nunca há rótulo 'informativo' sem essa "
@@ -3455,7 +3483,14 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
                 "(quantification refused because the adulterant was not "
                 "reliably identified -- see the 'quantificacao_motivo_"
                 "bloqueio' column in the CSV)\n"
-                f"  [{PM}]⚠ A 'classe_identificada' label only ever exists "
+                + (f"  📏 Decision band (LOD/LOQ, Bloco 12) among the "
+                   f"{n_quantificado} quantified: "
+                   f"[{PR}]{n_nao_detectavel}[/{PR}] not detectable (< LOD) / "
+                   f"[{PM}]{n_zona_cinzenta}[/{PM}] gray zone (LOD-LOQ) / "
+                   f"[{PG}]{n_confiavel}[/{PG}] quantified with confidence (>= LOQ)"
+                   + (f" / {n_sem_lod_loq} without computable LOD/LOQ" if n_sem_lod_loq else "")
+                   + "\n" if n_quantificado else "")
+                + f"  [{PM}]⚠ A 'classe_identificada' label only ever exists "
                 "when 'identificacao_cobertura'='validado' (formal "
                 "statistical guarantee, calibrated with >=2 independent "
                 "collection sessions) -- there is no 'informational' label "

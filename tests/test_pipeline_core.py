@@ -574,6 +574,42 @@ def test_ic_sem_replicas_fica_nan_como_o_ponto(pq):
     assert fom["lod_ic_graus_liberdade"] == 0.0
 
 
+# ── Faixa de decisao (Bloco 24) -- MESMOS limiares de LOD/LOQ do Bloco 12 ──
+
+def test_faixa_decisao_usa_exatamente_o_lod_loq_ja_validado(pq):
+    """Nao pode recalcular limiar nenhum -- so' categoriza contra o
+    lod/loq que `regression_figures_of_merit` (Bloco 12) ja devolveu."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=15)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    lod, loq = fom["lod"], fom["loq"]
+
+    assert pq.faixa_decisao(lod - 1e-9, lod, loq) == "nao_detectavel"
+    assert pq.faixa_decisao((lod + loq) / 2, lod, loq) == "zona_cinzenta"
+    assert pq.faixa_decisao(loq + 1e-9, lod, loq) == "quantificado_com_confianca"
+
+
+def test_faixa_decisao_limite_do_lod_e_zona_cinzenta_nao_nao_detectavel():
+    """Fronteira: valor == LOD entra na zona cinzenta (>= LOD), nao em
+    'nao detectavel' (< LOD, estritamente menor)."""
+    from guaraci.chemometric_stats import faixa_decisao
+    assert faixa_decisao(5.0, lod=5.0, loq=10.0) == "zona_cinzenta"
+
+
+def test_faixa_decisao_limite_do_loq_e_quantificado():
+    from guaraci.chemometric_stats import faixa_decisao
+    assert faixa_decisao(10.0, lod=5.0, loq=10.0) == "quantificado_com_confianca"
+
+
+def test_faixa_decisao_sem_lod_loq_computavel_devolve_none_nao_fabrica_faixa():
+    """LOD/LOQ NaN (sem replicas suficientes, ver Bloco 12) -> None, NUNCA
+    'nao_detectavel' por omissao -- categorizar contra um limiar
+    inexistente fabricaria confianca que os dados nao sustentam."""
+    from guaraci.chemometric_stats import faixa_decisao
+    assert faixa_decisao(3.0, lod=float("nan"), loq=10.0) is None
+    assert faixa_decisao(3.0, lod=5.0, loq=float("nan")) is None
+    assert faixa_decisao(3.0, lod=float("nan"), loq=float("nan")) is None
+
+
 def test_ic_bate_com_calculo_manual_qui_quadrado(pq):
     """Contra-prova numerica direta: reproduz a formula do IC de
     variancia (df*S^2/chi2) manualmente, com scipy.stats.chi2, e compara

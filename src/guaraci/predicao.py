@@ -23,6 +23,7 @@ import pandas as pd
 from guaraci.chemometric_stats import (
     applicability_domain_new_samples,
     combined_distance,
+    faixa_decisao as _faixa_decisao,
 )
 from guaraci.config import __version__ as _guaraci_version
 from guaraci.identificacao import (
@@ -512,11 +513,25 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
 class QuantificationResult:
     """Resultado estruturado de `quantify_sample` (D4, Bloco 9b). Nunca
     lanca excecao quando bloqueado -- `teor_estimado` fica `None` e
-    `motivo_bloqueio` diz por que."""
+    `motivo_bloqueio` diz por que.
+
+    `faixa_decisao` (Bloco 24): categoriza `teor_estimado` contra o
+    LOD/LOQ do modelo por especie usado (MESMOS limiares ja validados no
+    Bloco 12, `chemometric_stats.faixa_decisao` -- nunca recalculados
+    aqui) -- `"nao_detectavel"` (< LOD), `"zona_cinzenta"` (entre LOD e
+    LOQ, deteccao possivel mas quantificacao nao confiavel),
+    `"quantificado_com_confianca"` (>= LOQ). `None` quando o modelo da
+    especie nao tem LOD/LOQ persistido (pacote antigo, salvo antes do
+    Bloco 24) ou nao computavel (sem replicas fisicas suficientes) --
+    NUNCA "nao_detectavel" por omissao, que fabricaria uma alegacao sem
+    lastro."""
 
     teor_estimado: Optional[float] = None
     especie_usada: Optional[str] = None
     motivo_bloqueio: Optional[str] = None
+    faixa_decisao: Optional[str] = None
+    lod: Optional[float] = None
+    loq: Optional[float] = None
 
 
 @dataclass
@@ -629,8 +644,18 @@ def quantify_sample(pkg: Dict[str, Any], X_interp_amostra: np.ndarray,
 
     X = np.asarray(X_interp_amostra, dtype=float).reshape(1, -1)
     pred = np.asarray(info["pipeline"].predict(X)).flatten()
+    teor = float(pred[0])
+
+    # Bloco 24: faixa de decisao contra o LOD/LOQ persistido junto com o
+    # pipeline desta especie (ver pipeline.pls_regression_by_species) --
+    # `.get` porque pacotes salvos ANTES do Bloco 24 nao tem essas chaves.
+    lod, loq = info.get("lod"), info.get("loq")
+    faixa = (_faixa_decisao(teor, lod, loq)
+             if lod is not None and loq is not None else None)
+
     return QuantificationResult(
-        teor_estimado=float(pred[0]), especie_usada=especie)
+        teor_estimado=teor, especie_usada=especie,
+        faixa_decisao=faixa, lod=lod, loq=loq)
 
 
 def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,

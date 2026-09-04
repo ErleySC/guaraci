@@ -1,3 +1,40 @@
+# PROGRESSO — Passo 137 (2026-09-04)
+
+## Passo 137 — Faixa de decisão (Bloco 24)
+
+Todo resultado de quantificação passa a ser categorizado em 3 estados
+usando os **mesmos** limiares de LOD/LOQ já validados no Bloco 12
+(`chemometric_stats.regression_figures_of_merit`, nunca recalculados):
+`nao_detectavel` (< LOD), `zona_cinzenta` (LOD ≤ x < LOQ — detecção
+possível, quantificação não confiável), `quantificado_com_confianca`
+(≥ LOQ). Nova função pura `chemometric_stats.faixa_decisao(valor, lod,
+loq)`; `None` (nunca "não detectável" por omissão) quando LOD/LOQ não são
+computáveis (sem réplicas físicas suficientes) — categorizar contra um
+limiar inexistente fabricaria confiança sem lastro.
+
+**Wiring**: LOD/LOQ (já calculados em `pls_regression_by_species`, só
+não persistidos até agora) passam a viajar dentro do pacote `.joblib`
+por espécie (`pipelines_especie[esp]["lod"/"loq"]`) — sem isso,
+`quantify_sample` (que só recebe UMA amostra nova, sem acesso ao dado de
+calibração/réplicas) não teria como categorizar. `QuantificationResult`
+ganha `faixa_decisao`/`lod`/`loq`; pacotes salvos ANTES deste passo
+simplesmente não têm essas chaves (`.get()`, sem exceção, faixa fica
+`None`).
+
+**Exibição proeminente** (CLI, não nota de rodapé): coluna
+`faixa_decisao`/`lod`/`loq` no CSV de saída do fluxo cego (ao lado de
+`teor_estimado`, `guaraci.py`) + linha "📏 Faixa de decisão" no painel
+resumo do terminal, com contagem por estado (não detectável / zona
+cinzenta / quantificado com confiança), só aparece quando há pelo menos
+1 amostra quantificada.
+
+9 testes novos (4 em `test_pipeline_core.py`, 5 em `test_predicao.py`).
+Suíte completa (1314 passed, 19 skipped — +9 vs. Passo 136). Contrato de
+API pública regravado (4 nomes novos em `chemometric_stats.__all__`, 3
+campos novos em `QuantificationResult`, ambos aditivos/retrocompatíveis).
+
+---
+
 # PROGRESSO — Passo 136 (2026-09-04)
 
 ## Passo 136 — Aviso de escopo permanente do MCR-ALS (Bloco 23)
