@@ -240,9 +240,22 @@ jobs:
         env:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
         run: python scripts/download_datasets/baixar_mendeley_oleos.py
+      - name: Baixar dataset publico (Mendeley thkcz3h6n6, fluorescencia)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_mendeley_fluorescencia_oleo.py
+      # RMN (Figshare 4307804) NAO entra aqui de proposito: o Figshare
+      # bloqueia download automatizado com desafio de bot AWS WAF (ver
+      # docstring de baixar_figshare_azeite_nmr.py) -- rodar isso num
+      # runner de CI seria flakiness real (bloqueio depende do IP/trafego
+      # do runner, nao de bug), nao "fonte fora do ar" que vale falhar o
+      # job. tests/test_validacao_publica_figshare_azeite_nmr.py pula
+      # graciosamente quando o arquivo nao esta' presente; roda local com
+      # download manual (ver docstring do script/teste).
       - name: Rodar validacao externa
         env:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
         run: >
           pytest tests/test_validacao_publica_mendeley.py
-          tests/test_validacao_publica_mendeley_mir_raman.py -v
+          tests/test_validacao_publica_mendeley_mir_raman.py
+          tests/test_validacao_publica_mendeley_fluorescencia.py -v

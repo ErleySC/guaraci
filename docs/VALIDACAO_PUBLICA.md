@@ -24,6 +24,8 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | Mendeley `10.17632/ctgg7k4m5g.2` (**MIR**, arquivo-irmão do NIR 8mm) | mesmas 19 óleos, mesmas 100 amostras | 100 | 3423 · 699–3999 cm⁻¹ | classificação (8 espécies, n≥5) + índice de peróxido | **Balanced accuracy 0,696**; R²cal 0,79/R²val 0,57 (log10 PV) | idem NIR — sem alvo publicado nesta forma; sanity check, não gate | 🟢 **INTEGRADO** (2026-09-04, Passo 142/143) — R²val positivo, ao contrário do NIR 8mm |
 | Mendeley `10.17632/ctgg7k4m5g.2` (**Raman**, arquivo-irmão do NIR 8mm) | idem | 99 (1 amostra sem medição Raman, NaN removida) | 1340 · −18 a 1974 cm⁻¹ (Raman shift) | idem | **Balanced accuracy 0,389**; R²cal 0,67/R²val 0,43 (log10 PV) | idem — artigo original sinaliza Raman como possível correlação por acaso neste dataset | 🟢 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal mais fraco que MIR/NIR, coerente com a ressalva do artigo |
 | DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | **5/8 objetos corretos** (teste group-aware) — tende à classe majoritária | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) — pipeline funciona ponta-a-ponta, desempenho limitado por desbalanceamento severo (ver §7) |
+| Mendeley `10.17632/thkcz3h6n6.6` (**Fluorescência**, LED 1) | 24 óleos de oliva (grau EXTRA/VIRGEN/LAMPANTE) | 24 (média de 20 repetições técnicas) | 1024 canais de emissão (índice, sem nm calibrado) | grau de qualidade (3 classes, n≥5) | **Balanced accuracy 0,383 (CV)** — fraco, logo acima do acaso (~0,333) | sem alvo publicado nesta forma | 🟡 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal fraco, n pequeno (ver §2d) |
+| Figshare `10.6084/m9.figshare.4307804` (**RMN**) | 97 azeites de oliva (Abruzzo/Itália) | 97 | 125 variáveis ppm (já binadas pelos autores) | província de origem (Pescara/Teramo) | **Balanced accuracy 0,500 — EXATAMENTE o acaso** (binário) | artigo original reporta 99% com LDA + seleção geoestatística de variável (não reproduzido) | 🔴 **NEGATIVO, documentado** (2026-09-04, Passo 142/143) — motor genérico não separa; ver §2e para a hipótese |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -174,6 +176,97 @@ Reproduzir:
 ```
 python scripts/download_datasets/baixar_mendeley_oleos.py
 GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley_mir_raman.py -v
+```
+
+### 2c. Busca de dataset para UV-Vis, Fluorescência e RMN (Passo 142, 2026-09-04)
+
+Antes de integrar Fluorescência/RMN (§2d/§2e), a busca completa por
+técnica (candidato, formato, licença, viabilidade — exigido pelo Passo
+142) ficou registrada assim:
+
+| Técnica | Candidato | Formato (inspecionado por download direto) | Licença | Viabilidade |
+|---|---|---|---|---|
+| RMN | Figshare `4307804` (óleo, origem geográfica) | CSV pronto: 125 variáveis ppm já binadas | CC0 | ✅ dado ótimo; ⚠️ **Figshare bloqueia download automatizado** (desafio de bot AWS WAF, não CAPTCHA) — usado via download manual, ver §2e |
+| Fluorescência (simples) | Mendeley `thkcz3h6n6` (óleo, grau de qualidade) | CSV com coluna `Data` codificando espectro 1D (1024 pts) como string de lista | CC BY 4.0 | ✅ usado, ver §2d |
+| Fluorescência (EEM real) | Mendeley `g6y69g8gwm` (óleo envelhecendo) | Zip de 52 MB, CSVs brutos de instrumento por etapa de envelhecimento — EEM genuína (múltiplas amostras × ~35 excitações × varredura de emissão) | CC BY 4.0 | ⚠️ baixa sem bloqueio, mas exige parser novo (formato bruto, não tabular); **não integrado** — registrado como pendência para quando houver EEM real de verdade no roadmap |
+| UV-Vis | Mesmo `g6y69g8gwm` (traz painel UV também) | CSV de relatório de instrumento, só 4 comprimentos de onda | CC BY 4.0 | ⚠️ real mas fraco (4 pontos, não uma varredura) — **não integrado** |
+| UV-Vis (melhor candidato) | Artigo "Bangladeshi honey UV-vis-NIR" (1960 amostras, %adulteração 0–40%) — alvo quase idêntico ao caso de uso central do GUARACI | — | — | ❌ página atrás de CAPTCHA (ScienceDirect) — não contornado (regra permanente); nenhum repositório de dados público localizado nesta busca |
+
+HPLC/GC-MS/IMS: busca não iniciada ainda (fora do escopo desta rodada).
+
+### 2d. Fluorescência Molecular — Mendeley `thkcz3h6n6` (Passo 142/143, 2026-09-04)
+
+24 azeites de oliva com grau de qualidade oficial (EXTRA/VIRGEN/
+LAMPANTE — 10/8/6 amostras), espectros de emissão de fluorescência
+(1024 pontos) em 2 LEDs de excitação × 20 repetições técnicas por
+amostra. Licença CC BY 4.0.
+
+Decisões registradas (não escondidas): só o LED 1 foi usado (escolha
+arbitrária de um canal, mesmo espírito da escolha do NIR 8mm em §2);
+as 20 repetições técnicas por (amostra, LED) foram **médias antes de
+treinar** — o motor do GUARACI só suporta agrupamento via convenção
+`mae_id` própria do projeto, que não se aplica a um dataset externo;
+forçar um `mae_id` artificial contaminaria o vocabulário (o problema
+que `perfil_matriz.py` existe para evitar — Passo 141). Colapsar as
+repetições elimina o risco de vazamento na raiz, ao custo de n=24 (não
+480). O dataset não publica eixo de emissão calibrado em nm — usado
+índice de canal.
+
+**Medido em 2026-09-04**: balanced_accuracy = **0,383** (CV) — acima
+do acaso (~0,333 para 3 classes), mas um sinal fraco, coerente com
+n=24 pequeno. Testei a hipótese de que subtrair o espectro de fundo do
+instrumento (fornecido no próprio dataset) melhoraria o sinal —
+**resultado idêntico** (0,383 com e sem subtração): o preset padrão
+MSC+SG+MC já remove qualquer offset constante por amostra antes da
+subtração ter chance de importar.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_mendeley_fluorescencia_oleo.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley_fluorescencia.py -v
+```
+
+### 2e. RMN — Figshare `4307804` (Passo 142/143, 2026-09-04) — achado NEGATIVO documentado
+
+97 azeites de oliva da região Abruzzo/Itália, perfil ¹H-NMR já binado
+pelos autores originais em 125 variáveis de deslocamento químico (ppm)
+— zero NaN, pronto para o motor CSV genérico sem nenhum binning novo
+do GUARACI. Alvo: província de origem, codificada no prefixo do
+`Sample_ID` (`pe`=Pescara, 50; `te`=Teramo, 47 — confirmado por leitura
+das coordenadas lat/long de cada grupo). Licença **CC0**.
+
+**Limitação de acesso** (não do dado): o Figshare bloqueia download
+automatizado deste arquivo com um desafio de bot da AWS WAF — não é
+CAPTCHA, mas `scripts/download_datasets/baixar_figshare_azeite_nmr.py`
+tenta o caminho automático e, se falhar, orienta o download manual com
+instruções claras. O arquivo usado nesta auditoria foi obtido assim
+(hash SHA256 conferido).
+
+**Achado real, medido em 2026-09-04 — NÃO escondido**: ao contrário de
+NIR/MIR/Raman/Fluorescência, a classificação por província com o motor
+GENÉRICO do GUARACI (PLS-DA, 125 variáveis) ficou em
+**balanced_accuracy = 0,500 — EXATAMENTE o nível do acaso** para um
+problema binário. Testado com 4 presets de pré-processamento
+diferentes (`msc_sg_mc`/`snv_mc`/`autoscaling`/`sg_mc`) — todos deram o
+MESMO 0,500. Hipótese razoável (mesma disciplina do achado `unripe` do
+HSI, §7): o próprio GUARACI reporta que só ~32% das 125 variáveis
+carregam sinal acima do ruído (aviso `[AVISO] Faixa espectral`) — o
+artigo original (que reporta 99% de acurácia) **não** usou PLS-DA
+ingênuo sobre todas as variáveis; usou um teste geoestatístico (I de
+Moran) para selecionar quais variáveis têm autocorrelação espacial
+antes de rodar LDA só' nelas. A separação por província provavelmente
+existe em poucas variáveis específicas, não no espectro inteiro —
+reproduzir os 99% do artigo exigiria implementar seleção de variável
+por geoestatística, fora do escopo deste passo. O teste
+(`test_validacao_publica_figshare_azeite_nmr.py`) não tem gate de
+"aprendeu algo" — só confirma que o pipeline roda sem exceção e produz
+um número válido, porque um gate de sucesso aqui inventaria um
+resultado que a medição não mostra.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_figshare_azeite_nmr.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_figshare_azeite_nmr.py -v
 ```
 
 ### Histórico — RETRATAÇÃO de 2026-08-18

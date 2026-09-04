@@ -1,3 +1,47 @@
+# PROGRESSO — Passo 142/143 continuação: Fluorescência e RMN (2026-09-04)
+
+## Passo 142/143 — Fluorescência (Mendeley thkcz3h6n6) e RMN (Figshare 4307804), Bloco 29
+
+Busca real de dataset público para UV-Vis/Fluorescência/RMN (Passo 142)
+registrada em `docs/VALIDACAO_PUBLICA.md` §2c: RMN achou candidato
+ótimo (CC0, já binado) mas com Figshare bloqueando download
+automatizado (desafio de bot AWS WAF, contornado via download manual
+pelo usuário + verificação de hash); Fluorescência achou 2 candidatos
+(versão simples 1D usada, versão EEM real de instrumento bruto
+registrada como pendência — parser novo necessário, fora do escopo);
+UV-Vis não achou candidato bom o suficiente (melhor achado, honey
+Bangladesh 1960 amostras, ficou atrás de CAPTCHA — não contornado, regra
+permanente).
+
+**Fluorescência** (`tests/test_validacao_publica_mendeley_fluorescencia.py`):
+24 óleos (EXTRA/VIRGEN/LAMPANTE), 20 repetições técnicas colapsadas em
+média por amostra (motor do GUARACI só agrupa por `mae_id` próprio,
+não aplicável a dataset externo — forçar um `mae_id` artificial
+contaminaria vocabulário, o problema que `perfil_matriz.py` existe
+para evitar). balanced_accuracy=0,383 (CV) — sinal fraco mas acima do
+acaso (~0,333), n=24 pequeno. Testei hipótese de subtração de fundo do
+instrumento: resultado IDÊNTICO (MSC+SG+MC já remove offset antes da
+subtração importar) — achado negativo registrado, não escondido.
+
+**RMN** (`tests/test_validacao_publica_figshare_azeite_nmr.py`): 97
+azeites, 125 variáveis ppm já binadas pelos autores, alvo=província
+(Pescara/Teramo). **Achado NEGATIVO real**: balanced_accuracy=0,500 —
+EXATAMENTE o acaso, testado com 4 presets de pré-processamento
+diferentes (todos idênticos). Hipótese registrada: só ~32% das
+variáveis carregam sinal (aviso do próprio GUARACI); o artigo original
+usou seleção geoestatística de variável (I de Moran) antes de LDA, não
+PLS-DA ingênuo sobre tudo — reproduzir os 99% publicados exigiria essa
+seleção, fora de escopo. Teste sem gate de sucesso (só confirma que
+roda sem exceção) -- inventar um piso de acerto aqui mentiria sobre o
+que foi medido.
+
+CI (`validacao-publica-mendeley`) atualizado para Fluorescência (RMN
+deliberadamente FORA do CI -- bloqueio de bot dependeria do IP do
+runner, seria flakiness real, não bug). 2 testes novos, suíte
+completa, ruff/mypy limpos.
+
+---
+
 # PROGRESSO — Passo 141-143 (2026-09-04)
 
 ## Passo 141 — Auditoria de realidade das 11 técnicas do menu
