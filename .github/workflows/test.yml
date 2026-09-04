@@ -85,8 +85,12 @@ jobs:
             src/guaraci/paleta_cores.py \
             src/guaraci/auditoria_delineamento.py \
             src/guaraci/identificacao.py \
-            src/guaraci/model_registry.py
-            src/guaraci/technique_registry.py
+            src/guaraci/model_registry.py \
+            src/guaraci/technique_registry.py \
+            src/guaraci/mcr_als.py \
+            src/guaraci/hsi_multiway.py \
+            src/guaraci/importadores_proprietarios.py \
+            src/guaraci/portao_correcao_sinal.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console
