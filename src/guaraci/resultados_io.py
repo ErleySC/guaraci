@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from guaraci.linearity import LackOfFitResult
     from guaraci.robustness import RobustnessResult
     from guaraci.portao_correcao_sinal import VeredictoCorrecaoSinal
+    from guaraci.politica_pooled_local import DecisaoPooledLocal
 
 __all__ = [
     "pls_model_metrics",
@@ -39,6 +40,7 @@ __all__ = [
     "append_purity_model_card",
     "append_linearity_robustness_model_card",
     "append_correcao_sinal_model_card",
+    "append_politica_pooled_local_model_card",
 ]
 
 
@@ -866,3 +868,43 @@ def append_correcao_sinal_model_card(
     except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar portao de correcao de "
               f"sinal ao model card: {e}")
+
+
+def append_politica_pooled_local_model_card(
+        pasta: str, decisoes: List["DecisaoPooledLocal"]) -> None:
+    """Anexa a decisao pooled vs. local por especie (Bloco 26,
+    `politica_pooled_local.decidir_pooled_vs_local`) ao model_card.md --
+    mesmo padrao append-only das funcoes acima. Lista TODA especie
+    avaliada, inclusive as com dados insuficientes (recomendacao pooled
+    por definicao, nunca escondida) -- nunca so' as que foram pra local."""
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+    if not decisoes:
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- Politica pooled vs. local por especie (Bloco 26)", "",
+        "Local (modelo separado por especie) so' e' recomendado quando a "
+        "especie tem amostras suficientes (mesmo limiar de "
+        "`pls_regression_by_species`) E o portao de aceite (Bloco 20) "
+        "aprova o ganho sobre o pooled com poder estatistico suficiente "
+        "-- nunca so' porque o RMSEP local saiu menor num unico split.", "",
+    ]
+    linhas.append(_md_tabela([
+        (d.especie,
+         f"recomendacao={d.recomendacao} | n_amostras={d.n_amostras} "
+         f"(minimo={d.n_minimo}) | "
+         + (f"veredito={d.veredito.veredito} "
+            f"(p={d.veredito.p_valor:.4f}, n={d.veredito.n_pares})"
+            if d.veredito is not None else "portao nao rodado (dados insuficientes)"))
+        for d in decisoes
+    ]))
+    linhas.append("")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar politica pooled vs. "
+              f"local ao model card: {e}")

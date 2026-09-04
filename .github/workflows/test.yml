@@ -91,7 +91,8 @@ jobs:
             src/guaraci/hsi_multiway.py \
             src/guaraci/importadores_proprietarios.py \
             src/guaraci/portao_correcao_sinal.py \
-            src/guaraci/amostragem_ativa.py
+            src/guaraci/amostragem_ativa.py \
+            src/guaraci/politica_pooled_local.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console

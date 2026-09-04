@@ -1,3 +1,48 @@
+# PROGRESSO — Passo 139 (2026-09-04)
+
+## Passo 139 — Política automática pooled vs. local (Bloco 26)
+
+Novo módulo `politica_pooled_local.py`: `decidir_pooled_vs_local(X, y,
+rotulos, grupos, especie)` formaliza a decisão entre um modelo pooled
+(todas as espécies juntas) e um modelo LOCAL (só aquela espécie) — os
+dois já são calibrados hoje (`pipeline.pls_regressao_pooled`/
+`pls_regression_by_species`), mas até este passo nunca havia decisão
+formal sobre qual usar. **Reaproveita o portão do Bloco 20** (mesmo
+motor `avaliar_correcao_sinal`, Wilcoxon pareado), não um mecanismo
+paralelo: "sem" = RMSEP da espécie quando o modelo é treinado no pooled
+inteiro; "com" = RMSEP quando treinado só nos dados da espécie — os
+dois avaliados nas MESMAS amostras de teste da espécie, por seed,
+comparação pareada honesta.
+
+**Dois portões, não um**: `local` só é recomendado quando (a) a espécie
+tem amostras ≥ `MIN_AMOSTRAS_LOCAL_PADRAO` — **mesmo limiar** já
+estabelecido em `pipeline.pls_regression_by_species`
+(`min_amostras_adult=6`), confirmado por teste que lê o default via
+`inspect.signature` em vez de duplicar o número — E (b) o portão aprova
+o ganho com poder estatístico suficiente. Abaixo do limiar de amostras,
+a recomendação já sai `"pooled"` sem nem rodar o portão (economiza
+custo, decisão já está definida pelo limiar).
+
+**Validado com cenário sintético que espelha o motivo REAL** já
+documentado em `pls_regression_by_species` ("variação inter-espécies
+domina o sinal de adulteração"): com um offset espectral por espécie
+dominando a variância, pooled falha feio (RMSEP=2,28) e local resolve
+(RMSEP=0,24, aprovado p=0,008) → recomendação `"local"`. Sem esse
+confundimento, local não ajuda (RMSEP levemente pior, mais dados de
+treino vencem) → recomendação `"pooled"`, conservadora. Duas espécies
+no MESMO dataset podem receber recomendações diferentes — nunca
+"local para tudo" de uma vez.
+
+Registrado no model card (`resultados_io.append_politica_pooled_local_
+model_card`, addendum "Bloco 26") — lista toda espécie avaliada,
+inclusive as com dados insuficientes, nunca só as que foram para local.
+
+7 testes novos. Suíte completa (1335 passed, 19 skipped — +7 vs. Passo
+138). Contrato de API pública regravado. Ruff/mypy limpos, módulo
+adicionado à allowlist do CI.
+
+---
+
 # PROGRESSO — Passo 138 (2026-09-04)
 
 ## Passo 138 — Amostragem ativa orientada por incerteza (Bloco 25)

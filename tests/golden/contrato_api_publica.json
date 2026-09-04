@@ -3383,6 +3383,51 @@
         "forma": "funcao"
       }
     },
+    "politica_pooled_local": {
+      "DecisaoPooledLocal": {
+        "campos": [
+          {
+            "nome": "especie",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "n_amostras",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_minimo",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "dados_suficientes",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "veredito",
+            "tem_default": false,
+            "tipo": "Optional[VeredictoCorrecaoSinal]"
+          },
+          {
+            "nome": "recomendacao",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "MIN_AMOSTRAS_LOCAL_PADRAO": {
+        "forma": "constante",
+        "tipo": "int"
+      },
+      "decidir_pooled_vs_local": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', rotulos: 'np.ndarray', grupos: 'np.ndarray', especie: 'str', *, n_componentes: 'int' = 5, n_splits: 'int' = 3, n_seeds: 'int' = 10, min_amostras: 'int' = 6, alpha: 'float' = 0.05) -> 'DecisaoPooledLocal'",
+        "forma": "funcao"
+      }
+    },
     "portao_correcao_sinal": {
       "VeredictoCorrecaoSinal": {
         "campos": [
@@ -3722,6 +3767,10 @@
       },
       "append_linearity_robustness_model_card": {
         "assinatura": "(pasta: 'str', linearidade: \"Optional['LackOfFitResult']\" = None, robustez: \"Optional[Dict[str, 'RobustnessResult']]\" = None) -> 'None'",
+        "forma": "funcao"
+      },
+      "append_politica_pooled_local_model_card": {
+        "assinatura": "(pasta: 'str', decisoes: \"List['DecisaoPooledLocal']\") -> 'None'",
         "forma": "funcao"
       },
       "append_purity_model_card": {
