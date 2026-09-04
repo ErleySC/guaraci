@@ -48,3 +48,9 @@ shap>=0.42,<0.53    # SHAP TreeExplainer — cap: 0.52 is last validated; GBM mu
 # cobertura do núcleo científico (>=95%, CLAUDE.md P4). A falha ficou latente
 # porque o CI esteve bloqueado por cota entre a adição do PCV e 2026-08-16.
 prcv>=1.2,<2.0
+
+# ── Importador OPUS (extra [opus]) ───────────────────────────────────────────
+# Le arquivos binarios proprietarios Bruker (importadores_proprietarios.py).
+# Mesmo motivo do prcv acima: sem isto aqui, o CI nunca exercita o caminho
+# real de parse_opus, so' o de "pacote ausente".
+brukeropus>=1.4,<2.0

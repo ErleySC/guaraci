@@ -2698,6 +2698,12 @@
         "forma": "funcao"
       }
     },
+    "importadores_proprietarios": {
+      "parse_opus": {
+        "assinatura": "(filepath: 'str') -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      }
+    },
     "io_registry": {
       "DadosCarregados": {
         "forma": "constante",

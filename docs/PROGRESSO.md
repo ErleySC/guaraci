@@ -1,3 +1,61 @@
+# PROGRESSO — Passo 128 (2026-09-04)
+
+## Passo 128 — Importador OPUS (Bloco 18 da instrução de expansão técnica)
+
+Novo módulo `importadores_proprietarios.py`: `parse_opus(filepath) ->
+(X, Y)`, mesmo contrato de `dados_io.parse_dx`/`parse_spectrum` (dois
+arrays 1D — eixo espectral, intensidade), lendo arquivos binários OPUS
+(Bruker FT-NIR/FT-MIR).
+
+**Biblioteca avaliada ANTES de escrever parser do zero** (pedido
+explícito do bloco): comparadas `brukeropusreader` (mais antiga, GPLv3,
+sem manutenção desde 2019) e `brukeropus` (Josh Duran) — escolhida a
+segunda: release mais recente (2025-11-14), **MIT** (compatível com
+GPL-3.0-or-later deste projeto — confirmado pelo classifier
+`License :: OSI Approved :: MIT License` no pacote instalado, não só
+pela página do PyPI), dependência única `numpy`. Import LAZY dentro de
+`parse_opus` — pacote opcional (`pip install guaraci-chemometrics[opus]`,
+novo extra em `pyproject.toml`), não força a dependência em quem nunca
+abre arquivo OPUS.
+
+**Escopo deliberadamente limitado**: converte UM arquivo por vez, não
+generaliza a varredura de pasta de `dados_io.load_dx`
+(`_detectar_subpastas_classe`/`_listar_arquivos_espectro`) — arquivos
+OPUS usam extensão numérica por repetição de medida (`.0`, `.1`, `.2`…),
+não um marcador de formato filtrável como `.dx`; generalizar a varredura
+para esse padrão seria trabalho de escopo próprio e arriscaria código já
+congelado (Bloco B) por uma extensão que não é pura adição. O bloco pediu
+"converter para a estrutura já usada", não "generalizar a varredura".
+
+**Pendência honesta** (documentada na própria docstring do módulo, não
+escondida): nenhum arquivo OPUS binário real de teste estava disponível
+neste ambiente. A lógica de extração/preferência de bloco (`a` >
+`t` > `r` > `sm`, fallback pra primeira chave disponível) foi validada
+contra um DOUBLE que reproduz exatamente a forma documentada e
+confirmada por leitura do código-fonte da biblioteca instalada
+(`brukeropus.file.data.Data.x`/`.y`, `OPUSFile.data_keys`/`.is_opus`) —
+não contra um binário OPUS de verdade. Cobertura fim-a-fim com
+instrumento real fica pendente até haver um arquivo de exemplo genuíno.
+
+8 testes (`tests/test_importadores_proprietarios.py`): ausência do
+pacote opcional dá `ImportError` claro; preferência de bloco (absorbância
+> transmitância > fallback); arquivo não-OPUS e sem blocos de dados dão
+`ValueError`; formas x/y inconsistentes detectadas.
+
+`requirements.txt`/`requirements-lock.txt` ganham `brukeropus` (mesmo
+motivo já documentado ali para `prcv`: sem isso o CI nunca exercita o
+caminho real, só o de "pacote ausente") — **nota de honestidade**: o
+lock foi atualizado por inserção manual de uma linha (`brukeropus==1.4.3`,
+versão realmente instalada e usada nos testes desta sessão), não por
+regeneração completa a partir de venv limpo (processo documentado no
+cabeçalho do arquivo) — o resto do lock não foi reverificado do zero.
+
+Suíte completa (1262 passed, 23 skipped — +8 vs. Passo 127). Contrato de
+API pública regravado (1 nome novo em `importadores_proprietarios.__all__`,
+módulo novo).
+
+---
+
 # PROGRESSO — Passo 127 (2026-09-04)
 
 ## Passo 127 — EMSC e OSC (Bloco 16 da instrução de expansão técnica)
