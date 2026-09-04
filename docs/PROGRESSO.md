@@ -1,3 +1,71 @@
+# PROGRESSO — Passo 131 (2026-09-04)
+
+## Passo 131 — MCR-ALS validado contra dado REAL do acervo privado (fecha a pendência do Passo 125)
+
+**Diagnóstico do "bloqueio" reportado no Passo 125**: era caminho errado
+meu, não ausência de dado. Eu tinha verificado só a pasta `dados/` do
+repo (vazia de propósito — `.gitignore`, dado de terceiro nunca
+versionado) e concluído "acervo indisponível" sem checar
+`config.yaml` (`pasta_dados:`), que já apontava para
+`C:\Users\erley\OneDrive\Documentos\ERLEY\dados oleos\Por óleos` — 1741
+arquivos `.dx` reais, organizados por espécie, com adulterante e teor
+declarado no nome (padrão `COD-DD-MM-AAAA-AD-X-teor%-T_N.dx`, ex.
+`AND-10-02-2099-AD-S-1,1%-T_1.dx`), o mesmo acervo que
+`scripts/run_benchmark_tcc.py` já referencia diretamente. Confirmado com
+`load_dx` real: 1672 amostras carregadas, 13 espécies, 35 combinações
+espécie×adulterante com 15 níveis de teor declarado cada (1%-15%) + puros.
+Retratação: o Passo 125 registrou isso como "limitação de ambiente" —
+não era; é achado corrigido aqui.
+
+**Validação real** (`scripts/medicoes/validar_mcr_als_oleos_reais.py`,
+janela 4550-9000 cm⁻¹ — mesma de `config.yaml`, fora dela há saturação de
+detector; SEM SNV/MSC/SG, só clip de ruído residual <0 a zero — MCR-ALS
+pressupõe mistura aditiva/bilinear na absorbância bruta, pré-processamento
+padrão do pipeline quebraria essa premissa). Duas combinações
+deliberadamente contrastantes (nunca só a "melhor caso" vista de trás pra
+frente): Andiroba+algodão (pior sinal supervisionado num sanity-check PLS-R
+prévio, Q2=-0,29) e Babaçu+milho (melhor, Q2=0,82):
+
+| Combinação | lof% MCR-ALS | melhor \|r\| c/ teor declarado | R² calibrado | RMSE | desvio rotacional |
+|---|---|---|---|---|---|
+| Andiroba+algodão | 2,58% | 0,173 (p=0,24) | 0,030 | 4,54pp | 0,283 |
+| Babaçu+milho | 1,80% | 0,094 (p=0,53) | 0,009 | 4,60pp | 0,218 |
+
+**Resultado honesto**: MCR-ALS (2 componentes) **não recupera** um
+componente que rastreie o teor declarado de adulterante em nenhuma das
+duas combinações — mesmo na combinação onde PLS-R **supervisionado**
+consegue (Q2=0,82), a correlação do MCR-ALS não-supervisionado com o
+alvo é estatisticamente não-significativa (p>0,24 em ambas). Testado
+também com 3-4 componentes (Babaçu+milho): melhor \|r\| sobe de 0,17 a
+só 0,26, ainda fraco, com componente degenerado em k=4 — não é questão
+de sub-parametrização. Interpretação (não um bug de implementação — lof%
+baixo confirma que a reconstrução em si é boa): MCR-ALS é
+NÃO-SUPERVISIONADO, otimiza fidelidade de reconstrução (variância total
+explicada), não correlação com uma variável externa que nunca vê — numa
+mistura real onde o adulterante é um componente MINORITÁRIO (1-15%) em
+meio a ruído/variação instrumental de replicagem, a maior fonte de
+variância espectral não é necessariamente o sinal do adulterante. A alta
+sensibilidade à inicialização (desvio rotacional 0,22-0,28, bem acima do
+limiar "baixo" <0,15 usado no teste sintético do Passo 125) reforça que a
+solução não está bem restringida pelos dados reais nesse regime.
+Limitação genuína do método nesse tipo de mistura real, documentada como
+tal — não escondida atrás de "implementado e testado".
+
+`docs/VALIDACAO_PUBLICA.md` **não foi tocado**: sua própria política
+("validado exclusivamente em datasets públicos... nenhuma métrica desta
+página vem de dado privado", linha 1-5) proíbe explicitamente registrar
+resultado de dado privado ali — este resultado é só do acervo privado do
+PIBIC, então fica registrado aqui no PROGRESSO.md (mesmo tratamento já
+dado à rodada TCC 2026-07-10).
+
+Suíte completa não re-executada neste passo (nenhum código de produção
+mudou, só o script de medição novo em `scripts/medicoes/`, mesmo padrão
+já estabelecido de `medir_selecao_variaveis.py` etc. — não versionado com
+teste pytest próprio porque depende de caminho absoluto privado desta
+máquina, não reproduzível em CI). Ruff/mypy limpos no script novo.
+
+---
+
 # PROGRESSO — Passo 130 (2026-09-04)
 
 ## Passo 130 — Fluxo de decisão do assistente `G` (Bloco 19, fecha a instrução de expansão técnica)
