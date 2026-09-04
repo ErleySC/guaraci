@@ -2264,10 +2264,11 @@ def _menu_modeling(cfg: Config) -> None:
     _loop_menu(_t("t_modelagem"), _t("d_modelagem"),
                ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca",
                 "modo_ddsimca", "ddsimca_pcv", "selecao_variaveis_etapa4",
-                "selecao_spa", "selecao_ag"], cfg,
+                "selecao_spa", "selecao_ag", "selecao_cars", "selecao_uve"], cfg,
                campos_avancados={"objetivo", "opls_da", "ddsimca", "modo_ddsimca",
                                   "ddsimca_pcv", "selecao_variaveis_etapa4",
-                                  "selecao_spa", "selecao_ag"})
+                                  "selecao_spa", "selecao_ag",
+                                  "selecao_cars", "selecao_uve"})
 
 
 def _menu_validation(cfg: Config) -> None:
@@ -4390,6 +4391,8 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     if _cfgv(cfg, "selecao_variaveis_etapa4", False): t_extra += 2.0 * t_cv
     if _cfgv(cfg, "selecao_ag", False):     t_extra += 10.0 * t_cv
     if _cfgv(cfg, "selecao_spa", False):    t_extra += 4.0 * t_cv
+    if _cfgv(cfg, "selecao_cars", False):   t_extra += 8.0 * t_cv
+    if _cfgv(cfg, "selecao_uve", False):    t_extra += 2.0 * t_cv
 
     total_s = t_cv + t_perm + t_extra
     if total_s < 90:

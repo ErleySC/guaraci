@@ -72,6 +72,7 @@ RISK_CLASS: Dict[str, str] = {
     "ddsimca_pcv": "ANALITICO",
     "opls_da": "ANALITICO", "selecao_variaveis_etapa4": "ANALITICO",
     "selecao_spa": "ANALITICO", "selecao_ag": "ANALITICO",
+    "selecao_cars": "ANALITICO", "selecao_uve": "ANALITICO",
     "comparar_pre_processamentos": "ANALITICO",
     "validacao_group_aware": "ANALITICO", "teste_wold": "ANALITICO",
     "teste_cv_anova": "ANALITICO", "teste_martens": "ANALITICO",
@@ -114,6 +115,8 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "selecao_variaveis_etapa4":     {"PT": "Selecao de variaveis",    "EN": "Variable selection"},
     "selecao_spa":                  {"PT": "SPA (APS)",               "EN": "SPA (successive proj.)"},
     "selecao_ag":                   {"PT": "AG (Genetico)",           "EN": "GA (genetic algorithm)"},
+    "selecao_cars":                 {"PT": "CARS",                    "EN": "CARS"},
+    "selecao_uve":                  {"PT": "UVE",                     "EN": "UVE"},
     "holdout_fracao":               {"PT": "Fracao holdout",          "EN": "Holdout fraction"},
     "validacao_group_aware":        {"PT": "Validacao group-aware",   "EN": "Group-aware CV"},
     "n_permutacoes":                {"PT": "N. permutacoes",          "EN": "N permutations"},
@@ -601,6 +604,48 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                     "accuracy.",
             "impacto": "ANALYTICAL — the slowest selection method (population x "
                        "generations CV evaluations).",
+            "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
+        },
+        "default": False, "range": "true | false",
+    },
+    "selecao_cars": {
+        "PT": {
+            "desc": "Alem dos metodos acima, roda tambem CARS (Competitive "
+                    "Adaptive Reweighted Sampling, Li et al. 2009) — amostragem "
+                    "Monte Carlo + funcao exponencial decrescente elimina "
+                    "variaveis pouco informativas ao longo de varias iteracoes.",
+            "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
+                       "avaliacoes de CV por iteracao).",
+            "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
+        },
+        "EN": {
+            "desc": "In addition to the methods above, also runs CARS "
+                    "(Competitive Adaptive Reweighted Sampling, Li et al. 2009) "
+                    "— Monte Carlo sampling + exponentially decreasing function "
+                    "eliminates uninformative variables over several iterations.",
+            "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several CV "
+                       "evaluations per iteration).",
+            "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
+        },
+        "default": False, "range": "true | false",
+    },
+    "selecao_uve": {
+        "PT": {
+            "desc": "Alem dos metodos acima, roda tambem UVE (Uninformative "
+                    "Variable Elimination, Centner et al. 1996) — compara a "
+                    "estabilidade do coeficiente PLS de cada variavel real "
+                    "contra variaveis de ruido artificial.",
+            "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
+                       "avaliacoes de PLS por repeticao Monte Carlo).",
+            "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
+        },
+        "EN": {
+            "desc": "In addition to the methods above, also runs UVE "
+                    "(Uninformative Variable Elimination, Centner et al. 1996) "
+                    "— compares each real variable's PLS coefficient stability "
+                    "against artificial noise variables.",
+            "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several "
+                       "PLS evaluations per Monte Carlo repetition).",
             "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
         },
         "default": False, "range": "true | false",
@@ -1390,7 +1435,8 @@ MENU_FIELDS: Dict[str, list] = {
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "ddsimca_pcv",
-               "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
+               "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
+               "selecao_cars", "selecao_uve"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
                   "teste_wold", "teste_cv_anova", "teste_martens", "n_jobs_permutacao"],
     "avancado": ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",

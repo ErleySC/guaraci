@@ -1,3 +1,69 @@
+# PROGRESSO — Passo 126 (2026-09-04)
+
+## Passo 126 — CARS e UVE (Bloco 17 da instrução de expansão técnica)
+
+`selecao_variaveis.py` ganha dois métodos novos de seleção de variáveis,
+opt-in (`cfg.run_cars`/`cfg.run_uve`, default `False`, mesmo motivo do
+SPA/AG — mais avaliações de CV que iPLS/VIP/SR/sPLS-DA):
+
+- **CARS** (Li, Liang, Xu & Cao 2009, DOI 10.1016/j.aca.2009.06.046):
+  amostragem Monte Carlo + função exponencialmente decrescente (EDF) +
+  Adaptive Reweighted Sampling (roleta ponderada por |coeficiente|, não
+  corte duro por ranking). Adaptado de RMSECV (regressão univariada no
+  artigo original) para balanced_accuracy via CV, mesma adaptação já
+  usada pelo AG/SPA deste módulo (PLS-DA multi-classe, não regressão).
+- **UVE** (Centner et al. 1996, DOI 10.1021/ac960321m): concatena
+  variáveis de ruído artificial às reais, mede estabilidade do
+  coeficiente PLS (média/desvio entre repetições Monte Carlo) e elimina
+  variáveis reais indistinguíveis do ruído.
+
+Ambas as referências verificadas no Crossref em 2026-09-04.
+
+**Nested-CV garantido por reuso**: em vez de mecanismo novo, CARS entra
+em `_avaliar_busca_nested_cv` (mesmo arcabouço já usado e testado por
+AG/SPA) e UVE em `_avaliar_subset_nested_cv` (mesmo de VIP/SR/iPLS) — a
+seleção é sempre refeita usando só as amostras de treino de cada fold
+externo, nunca vê o fold de validação. Confirmado por teste de
+propriedade dedicado (`test_cars_nested_cv_nunca_ve_o_fold_de_validacao`,
+`test_uve_nested_cv_nunca_ve_o_fold_de_validacao`): um espião registra o
+tamanho de X recebido pela seleção em cada fold e confirma que bate
+exatamente com `len(treino)`, nunca com o dataset inteiro.
+
+**Estabilidade entre repetições** (`estabilidade_selecao_entre_repeticoes`,
+Jaccard pareado entre execuções com seeds diferentes): medido e
+confirmado no teste `test_estabilidade_cars_uve_menor_que_vip_deterministico`
+— VIP é perfeitamente estável (Jaccard=1.0, determinístico, mesmos dados
+sempre produzem a mesma máscara) enquanto CARS/UVE têm Jaccard<1.0 (usam
+amostragem Monte Carlo, esperado). Achado honesto, não um defeito: é o
+preço de usar amostragem estocástica para robustez a colinearidade, que
+VIP/SR/iPLS (determinísticos, ou quase) não pagam.
+
+Testado em `tests/test_cars_uve.py` (10 testes: EDF, recall de variáveis
+informativas em dataset sintético group-aware, corte do UVE em dataset
+100% ruído, propriedade de nested-CV, comparação de estabilidade) +
+integração de ponta a ponta de `etapa4_selecao_variaveis` com
+`run_cars=True, run_uve=True` verificada manualmente (CSV de iterações do
+CARS, tabela final, figura comparativa — sem erro).
+
+Wiring de interface (achado durante a suíte completa, mesma classe dos
+achados de 2026-08-06 documentados em `guaraci.py`): `selecao_cars`/
+`selecao_uve` precisaram ser adicionados em 4 lugares além do
+`_CONFIG_SPEC` para ficarem de fato editáveis/visíveis — `RISK_CLASS`,
+rótulos PT/EN e texto de ajuda (`cli_assistente.py`), `MENU_FIELDS`
+(`cli_assistente.py`), o menu real do CLI interativo
+(`_menu_modeling` em `guaraci.py`) e `_MODELO_KEYS_EXTRAS` (app web,
+`app_tabs/modelo.py`) — pego pelos 4 testes de cobertura de interface já
+existentes (`test_contrato_api_publica.py` cobre schema, os outros 3
+cobrem alcançabilidade nos menus).
+
+Suíte completa (1242 passed, 23 skipped — +11 vs. Passo 125). Contrato
+de API pública regravado intencionalmente (`config`/`guaraci`/
+`selecao_variaveis`/schema do config.yaml mudaram: 2 funções + 1 helper
+novos em `__all__`, 6 campos novos no `Config`, 2 chaves novas no
+`config.yaml`).
+
+---
+
 # PROGRESSO — Passo 125 (2026-09-04)
 
 ## Passo 125 — MCR-ALS (Bloco 14 da instrução de expansão técnica)

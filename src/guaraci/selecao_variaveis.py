@@ -34,6 +34,9 @@ __all__ = [
     "sparse_plsda_mask",
     "selecao_spa",
     "ga_selection",
+    "cars_selecao",
+    "uve_selecao",
+    "estabilidade_selecao_entre_repeticoes",
     "fig_etapa4_ag_convergencia",
     "fig_etapa4_ipls",
     "fig_etapa4_comparacao",
@@ -567,6 +570,183 @@ def ga_selection(X_proc: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
     return historico, melhor_mask
 
 
+# =========================================================================
+#  CARS -- Competitive Adaptive Reweighted Sampling (Li, Liang, Xu & Cao,
+#  2009, "Key wavelengths screening using competitive adaptive reweighted
+#  sampling method for multivariate calibration", Analytica Chimica Acta
+#  648:77-84, DOI 10.1016/j.aca.2009.06.046 -- verificado no Crossref em
+#  2026-09-04)
+#
+#  ADAPTACAO: o artigo original usa RMSECV de PLS de regressao (y
+#  continuo, univariado). Este pipeline e' PLS-DA de classificacao (Y_bin
+#  one-hot multi-coluna) -- mesma adaptacao ja' usada pelo AG/SPA deste
+#  modulo: o criterio de "melhor iteracao" e' balanced_accuracy via CV
+#  (`_avaliar_subset_cv`), nao RMSECV bruto. Direcao da otimizacao e'
+#  equivalente (ambos escolhem o subconjunto que generaliza melhor).
+# =========================================================================
+
+def _edf_contagens(p: int, n_iteracoes: int) -> np.ndarray:
+    """Funcao Exponencialmente Decrescente (EDF) do CARS: numero de
+    variaveis "candidatas" permitido a cada iteracao, caindo de `p` (i=0)
+    a 2 (ultima iteracao) -- agressiva no inicio, fina no fim (formula do
+    artigo original: r_i = a*exp(-k*i), a=1, k=ln(p/2)/(n_iteracoes-1))."""
+    if n_iteracoes <= 1:
+        return np.array([p])
+    k = np.log(p / 2.0) / (n_iteracoes - 1)
+    i = np.arange(n_iteracoes)
+    contagens = np.round(p * np.exp(-k * i)).astype(int)
+    return np.clip(contagens, 2, p)
+
+
+def _coef_por_variavel(pls: PLSRegression, n_vars: int) -> np.ndarray:
+    """Norma do coeficiente PLS por variavel, agregando sobre as colunas do
+    alvo (Y_bin multi-classe one-hot) -- `pls.coef_` muda de orientacao
+    entre versoes do sklearn ((n_features, n_targets) vs
+    (n_targets, n_features)), esta funcao normaliza para (n_vars,)."""
+    coef = np.asarray(pls.coef_)
+    if coef.ndim == 1:
+        return np.abs(coef)
+    if coef.shape[0] == n_vars:
+        return np.linalg.norm(coef, axis=1)
+    return np.linalg.norm(coef, axis=0)
+
+
+def cars_selecao(X_proc: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
+                  cv_indices: list, n_lv: int, n_iteracoes: int,
+                  frac_amostragem: float, seed: int
+                  ) -> Tuple[List[Dict], np.ndarray]:
+    """CARS: a cada iteracao, amostra `frac_amostragem` das amostras
+    (Monte Carlo sampling SEM reposicao), ajusta PLS no subconjunto,
+    calcula |coeficiente| por variavel. A EDF (`_edf_contagens`) diminui o
+    numero maximo de variaveis candidatas a cada iteracao; dentre as
+    candidatas atuais, ARS (Adaptive Reweighted Sampling) sorteia quais
+    sobrevivem via ROLETA ponderada por |coeficiente| (nao corte duro por
+    ranking -- e' o que distingue CARS de VIP/SR: uma variavel de
+    coeficiente baixo ainda tem chance de sobreviver, uma de coeficiente
+    alto tem MAIOR chance mas nao certeza). balanced_accuracy via CV
+    decide a melhor iteracao (ver nota de adaptacao no cabecalho da secao).
+
+    Retorna (historico por iteracao, mascara da melhor iteracao)."""
+    p = X_proc.shape[1]
+    n = X_proc.shape[0]
+    rng = np.random.default_rng(seed)
+    contagens = _edf_contagens(p, n_iteracoes)
+    n_amostras_sub = max(2, int(round(frac_amostragem * n)))
+
+    vars_ativas = np.arange(p)
+    historico: List[Dict] = []
+    melhor_bal = -1.0
+    melhor_mask = np.ones(p, dtype=bool)
+
+    for it, n_manter in enumerate(contagens):
+        idx_amostras = rng.choice(n, size=n_amostras_sub, replace=False)
+        n_lv_eff = int(max(1, min(n_lv, len(vars_ativas), n_amostras_sub - 1)))
+        Xs = X_proc[np.ix_(idx_amostras, vars_ativas)]
+        Ys = Y_bin[idx_amostras]
+        pls = PLSRegression(n_components=n_lv_eff, scale=False)
+        pls.fit(Xs - Xs.mean(axis=0), Ys - Ys.mean(axis=0))
+        b = _coef_por_variavel(pls, len(vars_ativas))
+
+        n_manter_local = int(max(2, min(int(n_manter), len(vars_ativas))))
+        if n_manter_local < len(vars_ativas):
+            pesos = np.abs(b)
+            soma = float(pesos.sum())
+            probs = (pesos / soma) if soma > 1e-300 else None
+            escolhidos_local = rng.choice(len(vars_ativas), size=n_manter_local,
+                                          replace=False, p=probs)
+            vars_ativas = np.sort(vars_ativas[escolhidos_local])
+
+        mask_atual = np.zeros(p, dtype=bool)
+        mask_atual[vars_ativas] = True
+        m = _avaliar_subset_cv(X_proc[:, mask_atual], Y_bin, y_int, cv_indices, n_lv)
+        historico.append({"iteracao": it + 1, "n_vars": int(mask_atual.sum()),
+                          "balanced_accuracy": m["balanced_accuracy"],
+                          "q2": m["q2"]})
+        if m["balanced_accuracy"] > melhor_bal:
+            melhor_bal = m["balanced_accuracy"]
+            melhor_mask = mask_atual.copy()
+
+    return historico, melhor_mask
+
+
+# =========================================================================
+#  UVE -- Uninformative Variable Elimination (Centner, Massart, de Noord,
+#  de Jong, Vandeginste & Sterna, 1996, "Elimination of Uninformative
+#  Variables for Multivariate Calibration", Analytical Chemistry
+#  68(21):3851-3858, DOI 10.1021/ac960321m -- verificado no Crossref em
+#  2026-09-04)
+# =========================================================================
+
+def uve_selecao(X_proc: np.ndarray, Y_bin: np.ndarray, n_lv: int,
+                 n_repeticoes: int, frac_amostragem: float, seed: int
+                 ) -> Tuple[Dict, np.ndarray]:
+    """UVE: concatena `p` variaveis de RUIDO artificial (amplitude ~1e-10x
+    menor que o desvio-padrao dos dados reais -- nao deve carregar sinal
+    nenhum, so serve de referencia) as `p` variaveis reais. Roda PLS
+    repetidas vezes em subamostras Monte Carlo (sem reposicao) das
+    amostras recebidas, coleta o coeficiente por variavel a cada
+    repeticao, e calcula a estabilidade c_j = media(coef_j) / desvio(coef_j).
+    O corte e' o MAIOR |c_j| entre as variaveis de RUIDO: uma variavel
+    real com |c_j| <= corte e' estatisticamente indistinguivel do ruido
+    artificial e e' eliminada.
+
+    Retorna (dict de diagnostico com c_scores/corte, mascara das
+    variaveis reais mantidas)."""
+    X = np.asarray(X_proc, dtype=float)
+    Y = np.asarray(Y_bin, dtype=float)
+    n, p = X.shape
+    rng = np.random.default_rng(seed)
+
+    escala_ruido = float(X.std()) * 1e-10
+    ruido = rng.normal(0.0, 1.0, size=(n, p)) * escala_ruido
+    X_aug = np.hstack([X, ruido])
+
+    n_amostras_sub = max(2, int(round(frac_amostragem * n)))
+    coefs = np.empty((n_repeticoes, 2 * p))
+    for r in range(n_repeticoes):
+        idx = rng.choice(n, size=n_amostras_sub, replace=False)
+        n_lv_eff = int(max(1, min(n_lv, 2 * p, n_amostras_sub - 1)))
+        Xs, Ys = X_aug[idx], Y[idx]
+        pls = PLSRegression(n_components=n_lv_eff, scale=False)
+        pls.fit(Xs - Xs.mean(axis=0), Ys - Ys.mean(axis=0))
+        coefs[r] = _coef_por_variavel(pls, 2 * p)
+
+    media = coefs.mean(axis=0)
+    desvio = coefs.std(axis=0)
+    desvio_seguro = np.where(desvio > 1e-300, desvio, 1e-300)
+    c = media / desvio_seguro
+    c_real, c_ruido = c[:p], c[p:]
+    corte = float(np.max(np.abs(c_ruido)))
+    mask = np.abs(c_real) > corte
+
+    info = {"c_scores": c_real, "corte": corte}
+    return info, mask
+
+
+def estabilidade_selecao_entre_repeticoes(selecionar_fn, n_repeticoes: int = 5,
+                                           seed_base: int = 0) -> Dict:
+    """Estabilidade de selecao de variaveis: roda `selecionar_fn(seed) ->
+    mascara` `n_repeticoes` vezes com seeds diferentes e mede o indice de
+    Jaccard PAREADO entre todas as mascaras resultantes (|intersecao| /
+    |uniao|; 1.0 = identico, 0.0 = disjunto). Generico o bastante para
+    comparar CARS/UVE/iPLS/VIP -- qualquer metodo cuja selecao dependa de
+    aleatoriedade (amostragem Monte Carlo, cadeias) ou de reparticao de
+    CV entre execucoes."""
+    mascaras = [selecionar_fn(seed_base + k) for k in range(n_repeticoes)]
+    jaccards = []
+    for i in range(len(mascaras)):
+        for j in range(i + 1, len(mascaras)):
+            inter = int(np.logical_and(mascaras[i], mascaras[j]).sum())
+            uniao = int(np.logical_or(mascaras[i], mascaras[j]).sum())
+            jaccards.append(inter / uniao if uniao > 0 else 1.0)
+    return {
+        "jaccard_medio": float(np.mean(jaccards)) if jaccards else 1.0,
+        "jaccard_desvio": float(np.std(jaccards)) if jaccards else 0.0,
+        "jaccards_pareados": jaccards,
+        "n_vars_por_repeticao": [int(m.sum()) for m in mascaras],
+    }
+
+
 def fig_etapa4_ag_convergencia(historico: List[Dict], cfg, pasta):
     """Convergencia do AG: melhor e media fitness (balanced_accuracy) por
     geracao — diagnostico padrao de algoritmos evolutivos."""
@@ -669,7 +849,9 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
     print("\n[Etapa4] Selecao de variaveis "
           f"(iPLS, VIP, SR, sPLS-DA"
           f"{', SPA' if cfg.run_spa else ''}"
-          f"{', AG' if cfg.executar_ag else ''})...")
+          f"{', AG' if cfg.executar_ag else ''}"
+          f"{', CARS' if cfg.run_cars else ''}"
+          f"{', UVE' if cfg.run_uve else ''})...")
     p = X_proc.shape[1]
     tabela = []
 
@@ -783,6 +965,46 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
             print(f"  AG: bal.acc={m_ag['balanced_accuracy']:.3f} "
                   f"({m_ag['n_vars']:.0f} vars, media/fold; "
                   f"faixa {m_ag['n_vars_min']}-{m_ag['n_vars_max']})")
+
+    # 7) CARS (opt-in — n_iteracoes avaliacoes de CV, vezes len(cv_indices)
+    #    por causa do nested-CV abaixo, mesmo esquema do AG/SPA). Historico
+    #    por iteracao (dataset inteiro) fica so' pro CSV de diagnostico; o
+    #    numero REPORTADO na tabela vem do nested-CV.
+    if cfg.run_cars:
+        historico_cars, _mask_cars_diagnostico = cars_selecao(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            cfg.cars_n_iteracoes, cfg.cars_frac_amostragem, cfg.seed)
+        if historico_cars:
+            pd.DataFrame(historico_cars).to_csv(
+                os.path.join(pasta_dados, "etapa4_cars_iteracoes.csv"),
+                sep=";", decimal=",", index=False)
+        m_cars = _avaliar_busca_nested_cv(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            lambda Xtr, Ytr, ytr, cvin: cars_selecao(
+                Xtr, Ytr, ytr, cvin, n_lv, cfg.cars_n_iteracoes,
+                cfg.cars_frac_amostragem, cfg.seed)[1],
+            cfg.seed, mae_id=mae_id)
+        if m_cars["n_vars_max"] >= 2:
+            tabela.append({"metodo": "CARS", **m_cars})
+            print(f"  CARS: bal.acc={m_cars['balanced_accuracy']:.3f} "
+                  f"({m_cars['n_vars']:.0f} vars, media/fold; "
+                  f"faixa {m_cars['n_vars_min']}-{m_cars['n_vars_max']})")
+
+    # 8) UVE (opt-in — n_repeticoes avaliacoes de PLS por fold externo, sem
+    #    CV interna guiando busca -- so' compara coeficiente real x ruido,
+    #    por isso usa `_avaliar_subset_nested_cv` (mesmo esquema de VIP/SR),
+    #    nao `_avaliar_busca_nested_cv`.
+    if cfg.run_uve:
+        m_uve = _avaliar_subset_nested_cv(
+            X_proc, Y_bin, y_int, cv_indices, n_lv,
+            lambda Xtr, Ytr, nlv: uve_selecao(
+                Xtr, Ytr, nlv, cfg.uve_n_repeticoes,
+                cfg.uve_frac_amostragem, cfg.seed)[1])
+        if m_uve["n_vars_max"] >= 2:
+            tabela.append({"metodo": "UVE", **m_uve})
+            print(f"  UVE: bal.acc={m_uve['balanced_accuracy']:.3f} "
+                  f"({m_uve['n_vars']:.0f} vars, media/fold; "
+                  f"faixa {m_uve['n_vars_min']}-{m_uve['n_vars_max']})")
 
     # Tabela + figura comparativa
     pd.DataFrame(tabela).to_csv(

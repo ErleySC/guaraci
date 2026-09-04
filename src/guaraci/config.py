@@ -312,3 +312,12 @@ class Config:
     ag_n_geracoes: int = 15             # AG: number of generations
     ag_prob_mutacao: float = 0.02       # AG: per-bit mutation probability
     ag_frac_inicial: float = 0.10       # AG: initial fraction of variables "on" per chromosome
+    # CARS (Li, Liang, Xu & Cao 2009, DOI 10.1016/j.aca.2009.06.046) and UVE
+    # (Centner et al. 1996, DOI 10.1021/ac960321m) — opt-in, mesmo motivo do
+    # SPA/AG (mais avaliacoes de CV que iPLS/VIP/SR/sPLS-DA).
+    run_cars: bool = False
+    cars_n_iteracoes: int = 50          # CARS: EDF sampling runs
+    cars_frac_amostragem: float = 0.80  # CARS: fracao de amostras por Monte Carlo run
+    run_uve: bool = False
+    uve_n_repeticoes: int = 50          # UVE: Monte Carlo runs p/ estabilidade do coeficiente
+    uve_frac_amostragem: float = 0.80   # UVE: fracao de amostras por Monte Carlo run

@@ -298,8 +298,22 @@
       "opcoes": null,
       "tipo": "bool"
     },
+    "selecao_cars": {
+      "attr": "run_cars",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
     "selecao_spa": {
       "attr": "run_spa",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
+    "selecao_uve": {
+      "attr": "run_uve",
       "max": null,
       "min": null,
       "opcoes": null,
@@ -1184,6 +1198,36 @@
             "nome": "ag_frac_inicial",
             "tem_default": true,
             "tipo": "float"
+          },
+          {
+            "nome": "run_cars",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "cars_n_iteracoes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "cars_frac_amostragem",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "run_uve",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "uve_n_repeticoes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "uve_frac_amostragem",
+            "tem_default": true,
+            "tipo": "float"
           }
         ],
         "forma": "dataclass"
@@ -1964,6 +2008,36 @@
           },
           {
             "nome": "ag_frac_inicial",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "run_cars",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "cars_n_iteracoes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "cars_frac_amostragem",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "run_uve",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "uve_n_repeticoes",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "uve_frac_amostragem",
             "tem_default": true,
             "tipo": "float"
           }
@@ -3463,6 +3537,14 @@
       }
     },
     "selecao_variaveis": {
+      "cars_selecao": {
+        "assinatura": "(X_proc: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv_indices: 'list', n_lv: 'int', n_iteracoes: 'int', frac_amostragem: 'float', seed: 'int') -> 'Tuple[List[Dict], np.ndarray]'",
+        "forma": "funcao"
+      },
+      "estabilidade_selecao_entre_repeticoes": {
+        "assinatura": "(selecionar_fn, n_repeticoes: 'int' = 5, seed_base: 'int' = 0) -> 'Dict'",
+        "forma": "funcao"
+      },
       "etapa4_selecao_variaveis": {
         "assinatura": "(X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv, cfg, pasta, pasta_dados, mae_id=None)",
         "forma": "funcao"
@@ -3493,6 +3575,10 @@
       },
       "sparse_plsda_mask": {
         "assinatura": "(X_proc, Y_bin, n_comp: 'int', keep_por_comp: 'int') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
+      "uve_selecao": {
+        "assinatura": "(X_proc: 'np.ndarray', Y_bin: 'np.ndarray', n_lv: 'int', n_repeticoes: 'int', frac_amostragem: 'float', seed: 'int') -> 'Tuple[Dict, np.ndarray]'",
         "forma": "funcao"
       }
     },

@@ -134,6 +134,16 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "lento dos metodos de selecao de variaveis (populacao x geracoes "
              "avaliacoes de CV)",
      "opcoes": None},
+    {"key": "selecao_cars", "attr": "run_cars", "tipo": "bool",
+     "desc": "Etapa 4: rodar tambem CARS (Competitive Adaptive Reweighted "
+             "Sampling, Li et al. 2009) — selecao por amostragem Monte Carlo "
+             "+ funcao exponencial decrescente, mais lento que iPLS/VIP/SR",
+     "opcoes": None},
+    {"key": "selecao_uve", "attr": "run_uve", "tipo": "bool",
+     "desc": "Etapa 4: rodar tambem UVE (Uninformative Variable Elimination, "
+             "Centner et al. 1996) — compara estabilidade do coeficiente PLS "
+             "de cada variavel contra variaveis de ruido artificial",
+     "opcoes": None},
     {"key": "ddsimca", "attr": "run_ddsimca", "tipo": "bool",
      "desc": "Rodar DD-SIMCA (classificacao one-class)", "opcoes": None},
     {"key": "modo_ddsimca", "attr": "ddsimca_train_on", "tipo": "choice",
