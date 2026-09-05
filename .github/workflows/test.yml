@@ -326,3 +326,47 @@ jobs:
         env:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
         run: pytest tests/test_validacao_publica_mendeley_gcms_lavanda.py tests/test_alinhamento_retencao.py -v
+
+  # ── Validacao contra dataset PUBLICO Zenodo (HPLC-CAD, azeite) ────────────
+  # Passo 157/159 (busca ampliada por HPLC ja' pre-processado). Arquivo
+  # pequeno (~3.2 MB, mirror do dataset classico de Rasmus Bro et al.
+  # 2011) -- 1 SO so', mesma escolha dos demais jobs desta secao.
+  validacao-publica-hplc-azeite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest scipy
+      - name: Baixar dataset publico (Zenodo 21245912, HPLC-CAD azeite)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_zenodo_hplc_azeite.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_hplc_azeite.py -v
+
+  # ── Validacao contra dataset PUBLICO Zenodo (GC-IMS, urina) ───────────────
+  # Passo 158/159 (busca ampliada por IMS ja' pre-processado). So' a tabela
+  # de picos e' baixada via HTTP Range (~150 KB) -- os 44 arquivos .mea
+  # brutos (~3.4 GB descomprimidos) do zip de 851 MB NAO sao baixados.
+  validacao-publica-gcims-urina:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar tabela de picos (Zenodo 19209004, GC-IMS urina)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_zenodo_gcims_urina.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_gcims_urina.py -v

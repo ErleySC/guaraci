@@ -1,3 +1,107 @@
+# PROGRESSO — Passos 157-160: HPLC e IMS fechados com dataset real (2026-09-05)
+
+## Passo 157/159 — HPLC: candidato encontrado e integrado (Zenodo `21245912`)
+
+Instrução: busca ampliada por dataset de HPLC com tabela de picos
+pronta, seguindo a lição já aplicada ao RMN e ao EEM (o obstáculo nunca
+foi o método, era o formato bruto sem pré-processamento).
+
+**Busca**: Metabolomics Workbench (formato de tabela confirmado, mas
+sem candidato específico de autenticidade alimentar navegável via
+busca), e API do DataCite (`api.datacite.org/dois?query=...&resource-
+type-id=dataset`) com termos de autenticidade por HPLC-DAD/CAD — rota
+que a busca anterior (Passo 152) não tinha tentado. Descartado: Zenodo
+`10941441` (biomassa de microalgas, 4 classes × 2 réplicas — n
+insuficiente).
+
+**Candidato aprovado, inspecionado por leitura direta do arquivo**
+(não por descrição de terceiros): `10.5281/zenodo.21245912`, mirror
+recente (2026-07-07) do dataset CLÁSSICO de de la Mata-Espinosa,
+Bosque-Sendra, **Bro** (mesmo autor já referenciado em
+`hsi_multiway.py`) & Cuadros-Rodríguez (2011) — 118 óleos comestíveis
+por HPLC-CAD, perfil de triacilglicerois já corrigido de baseline e
+alinhado. CC BY 4.0. Arquivo de 3,2MB baixado e verificado (SHA256
+conferido), `.mat` aberto com `scipy.io.loadmat` — MESMA convenção
+PLS_Toolbox do `corn.mat` já usado neste projeto.
+
+**Retratação metodológica interna, ANTES de publicar qualquer
+número**: a primeira tentativa classificou 3 classes (not/olive/mix,
+118 amostras) e mediu balanced_accuracy=0,646 — a classe "mistura"
+(n=5, sem campo de percentual contínuo no arquivo) não tem informação
+suficiente para virar classe própria, e arrastava a média macro para
+baixo enquanto azeite/não-azeite discriminavam muito bem sozinhas.
+Corrigido para o escopo do artigo original: classificação BINÁRIA
+azeite-vs-não-azeite (113 amostras, mistura excluída).
+
+**Achado real**: balanced_accuracy = **0,970 (CV) / 0,944 (holdout de
+23 amostras)** — consistente com a discriminação forte do artigo
+original. Group-aware confirmado (118 rótulos únicos, zero duplicata;
+6 pares de alta correlação aproximada, todos dentro da mesma classe).
+
+Script: `scripts/download_datasets/baixar_zenodo_hplc_azeite.py`.
+Teste: `tests/test_validacao_publica_hplc_azeite.py`. CI job:
+`validacao-publica-hplc-azeite`. `docs/VALIDACAO_PUBLICA.md` seção 2k.
+
+## Passo 158/159 — IMS/GC-IMS: candidato pequeno encontrado, achado negativo honesto
+
+Instrução: busca ampliada por variante MENOR e já processada de GC-IMS
+(os 2 datasets clássicos já identificados antes desta rodada, Mendeley
+`fr9t5fkkvz`/`jxj2r45t2x`, são espectros brutos de 4,8-6,9GB).
+
+**Correção de um achado anterior**: a nota do Passo 151 ("nenhum dos
+dois dumps brutos inclui tabela de rótulo") estava incompleta —
+verificado por leitura direta da API de pastas do Mendeley que os
+rótulos ESTÃO disponíveis via estrutura de subpastas (`Acacia`/
+`Canola`/`Honeydew` etc.), só não no nome do arquivo `.mea` em si (a
+única coisa checada antes). Isso não muda a decisão de adiamento: o
+problema real sempre foi o TAMANHO, não só o rótulo.
+
+**Candidato pequeno aprovado**: Zenodo `10.5281/zenodo.19209004`,
+"Targeted GC-IMS Urine Dataset..." (Fernández, Univ. Barcelona/IBEC) —
+diferente dos 2 anteriores porque os PRÓPRIOS AUTORES já processaram os
+44 espectros brutos e publicaram uma tabela de picos CSV pronta (184
+variáveis "Cluster⟨N⟩") dentro do mesmo pacote Zenodo (zip de 851MB
+com os `.mea` brutos + as tabelas). CC BY 4.0.
+
+**Engenharia**: confirmado por teste direto que o servidor do Zenodo
+suporta HTTP Range em requisições GET (`206 Partial Content` — um
+`HEAD` com Range é ignorado e retorna 200, o que enganou uma checagem
+inicial). `scripts/download_datasets/baixar_zenodo_gcims_urina.py`
+reaproveita a classe `_HTTPRangeFile` já existente em
+`baixar_deephs_kaki.py` para ler só os 4 arquivos pequenos (~150KB) do
+zip remoto, sem baixar os 44 `.mea` (~3,4GB descomprimidos).
+
+**Achado real, NEGATIVO, registrado honesto** (mesma disciplina do
+achado `unripe` do HSI): classificação CRC-vs-controle (30 amostras
+clínicas, 15/15) com o motor genérico dá balanced_accuracy = **0,500
+(CV) — exatamente o acaso**. Permutação p=0,619 (não significativo).
+Checagem direta nos 2 compostos-alvo do próprio estudo (anisol/2-
+heptanona): Mann-Whitney p=0,868/0,590 — nenhuma diferença
+significativa nem nos biomarcadores-alvo isolados. Não é o bug do
+Passo 148 (as duas classes aparecem nas predições, sem colapso) — é
+achado biológico honesto: o artigo associado foca em calibração/
+quantificação, não prova diagnóstica, e n=15/grupo é pequeno para
+biomarcador urinário de câncer. Isto valida o motor genérico contra
+dado IMS real pela 1ª vez — o nulo é sobre o biomarcador, não sobre o
+pipeline.
+
+Script: `scripts/download_datasets/baixar_zenodo_gcims_urina.py`.
+Teste: `tests/test_validacao_publica_gcims_urina.py`. CI job:
+`validacao-publica-gcims-urina`. `docs/VALIDACAO_PUBLICA.md` seção 2j.
+
+## Passo 160 — Fechamento honesto do estado final das 11 técnicas
+
+Tabela "Estado final de cada uma das 11 técnicas" atualizada: HPLC e
+IMS/GC-IMS saem de "aguardando dataset"/"adiado" para "Funcional"
+(IMS com sinal nulo, honestamente registrado, não escondido). Nenhum
+dataset sintético foi usado para preencher lacuna nenhuma — os dois
+candidatos são dados públicos reais, com licença e proveniência
+verificadas por leitura direta do arquivo.
+
+Suíte completa, ruff/mypy limpos, commit, push.
+
+---
+
 # PROGRESSO — Passos 154-156: fechamento de 3 pendências da auditoria das 11 técnicas (2026-09-05)
 
 ## Passo 154 — RMN: holdout confirmado genuinamente independente e robusto
@@ -611,10 +715,10 @@ para quantificação.
 | 4 | **Raman** | **Funcional (novo)** | Arquivo-irmão do NIR8mm | Bal.acc 0,389; R²cal 0,67/R²val 0,43 | **AirPLS implementado e APROVADO no portão de aceite** (RMSEP 0,442→0,424, p=0,002) |
 | 5 | **UV-Vis** | **Funcional (novo — Passo 147)** | ERIC/Eawag `000D3C19` (Lechevallier et al. 2025, CC BY) — esgoto bruto, sensor Spectrolyser 200-735nm | R²cal 0,616 / R²val 0,650 (DOC, 82 dias agregados, EMSC+MC, sanity check) | EMSC **já existia** (aprovado desde Passo 134) — usado como pedido, achado colateral: bug de rótulo em `generate_output_name` corrigido (ver abaixo) |
 | 6 | **Fluorescência Molecular** | **Funcional, forte (Passo 149)** | Mendeley `thkcz3h6n6` (simples, bal.acc 0,383) + **Zenodo `19755088` (EEM real, INTEGRADO)** | EEM: PARAFAC \|r\|=0,888 com fração real; PLS group-aware R²=0,976, RMSEP=4,09 p.p. | **PARAFAC generalizado rodou contra EEM real pela 1ª vez** (`eem_io.py` novo, parser regular — Mendeley `g6y69g8gwm` permanece fora de escopo, substituído por dataset melhor) |
-| 7 | **HPLC** | **Reavaliado (Passo 152) — "suportável, aguardando dataset"** | Busca ampliada (Zenodo API, Mendeley, UCI, site MCR-ALS) não achou tabela de picos pronta com alvo supervisionado — candidato mais próximo (Zenodo `8206165`, Tauler et al. 1996) é dado de resolução de curva (3 compostos), não um conjunto amostra×alvo | Não validado | Nenhuma técnica de correção nova implementada — sem dataset compatível, não há o que validar; motor genérico já suportaria `mode="csv"` se um dataset aparecer |
+| 7 | **HPLC** | **Funcional (Passo 157/159)** | Zenodo `21245912` — mirror do dataset clássico de Rasmus Bro et al. (2011), CC BY 4.0, 3,2MB | Bal.acc 0,970 (CV) / 0,944 (holdout) — azeite vs. não-azeite | Busca ampliada via API do DataCite achou o candidato que a busca anterior (Passo 152) não tinha encontrado; motor genérico sem pré-processamento novo |
 | 8 | **GC-MS** | **Funcional (Passo 150)** | Mendeley `pgkrc7wyj4` (55 amostras de lavanda, CC BY 4.0) | COW: corr. média par-a-par 0,753→0,884 (55 amostras reais) | `scipy.io.netcdf_file` lê ANDI-MS direto (zero dependência nova); COW implementado do zero e contra-provado; AMDIS/MCR-ALS não necessários para esta validação |
 | 9 | **RMN/NMR** | **RETRATADO no Passo 148 → Funcional, forte** | Figshare `4307804` (CC0, já binado) | ~~Bal.acc 0,500 (acaso)~~ **1,000 (CV/holdout)** — o "0,500" era bug de classificação binária em `pipeline.py`, corrigido no Passo 148, não limitação do dado (ver `docs/VALIDACAO_PUBLICA.md` §2e) | icoshift (referência confirmada) — não implementado, dataset já vem pré-binado |
-| 10 | **IMS** | **Parcial — adiado formalmente (Passo 151)** | 2 datasets GC-IMS reais achados (Mendeley `fr9t5fkkvz` azeite 6,9GB/157 arq.; `jxj2r45t2x` mel 4,8GB/110 arq., ambos CC BY 4.0) | Não validado | `gc-ims-tools` (BSD-3, compatível) confirmado; **adiado**: ambos datasets ~1-2 ordens de grandeza maiores que qualquer outro deste projeto, E nenhum tem tabela de rótulo/classe no dump bruto (nem no repo da biblioteca) — reconstruir exigiria abrir o binário `.mea` ou o artigo companheiro, escopo maior que "escrever um parser" |
+| 10 | **IMS/GC-IMS** | **Funcional, sinal nulo (Passo 158/159)** | Zenodo `19209004` (GC-IMS urina, tabela de picos já processada, CC BY 4.0) — os 2 datasets brutos grandes (Mendeley `fr9t5fkkvz`/`jxj2r45t2x`, 4,8-6,9GB) continuam adiados | Bal.acc 0,500 (CV) — exatamente o acaso; Mann-Whitney nos 2 compostos-alvo tb. não significativo (p=0,868/0,590) | Download via HTTP Range (`_HTTPRangeFile`, mesma técnica do Kaki) lê só a tabela de picos (~150KB) sem baixar os 44 `.mea` brutos (~3,4GB); achado negativo honesto (n pequeno, biomarcador sutil), não bug — motor genérico validado contra IMS real pela 1ª vez |
 | 11 | **Genérico** | Funcional | — (é o próprio fallback) | — | — |
 
 ## Resumo em uma frase (exigido pela instrução original)

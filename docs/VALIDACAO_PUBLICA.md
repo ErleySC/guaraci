@@ -29,6 +29,8 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | ERIC/Eawag `10.25678/000D3C19` (**UV-Vis**, sensor scan/Spectrolyser) | esgoto bruto (campanha de 25 semanas, flume) | 82 dias (agregado; 533 amostras de laboratório antes da agregação) | 215 · 200–735 nm | DOC (carbono orgânico dissolvido, mg/L) | **R²cal 0,616 / R²val 0,650**; RMSEP 34,2 mg/L; 7 LVs (EMSC+MC) | sem RMSEP publicado para este recorte (sanity check, não gate) | 🟢 **INTEGRADO** (2026-09-04, Passo 147) — EMSC (já aprovado no Corn, §9) capturou sinal real; ver §2g |
 | Zenodo `10.5281/zenodo.19755088` (**Fluorescência, EEM real**) | azeite EVOO (3 marcas) adulterado com 5 óleos (milho/canola/amendoim/soja/noz) | 330 (11 combinações marca×adulterante × 10 frações × 3 rodadas) | EEM 35 excitações × 270 emissões | fração de azeite (9,09%–90,91%) | PARAFAC (R=3): erro reconstrução 0,161, melhor \|r\| com fração real = **0,888**; PLS group-aware (n_lv=8, achatado): **R² 0,976**, RMSEP 4,09 p.p. | sem alvo publicado nesta forma (dataset próprio, sem artigo de referência com número comparável) | 🟢 **INTEGRADO** (2026-09-04, Passo 149) — PARAFAC rodou contra EEM real pela 1ª vez; ver §2h |
 | Mendeley `10.17632/pgkrc7wyj4.1` (**GC-MS**) | óleo essencial de Lavandula angustifolia (55 amostras comerciais) | 55 | TIC (varredura completa, ANDI-MS) | alinhamento de tempo de retenção (não supervisionado — sem rótulo de adulteração no dump bruto) | COW: correlação média par-a-par **0,753 → 0,884** (antes/depois) | sem alvo publicado nesta forma (validação de mecanismo, não de classificação) | 🟢 **INTEGRADO** (2026-09-04, Passo 150) — `scipy.io` lê ANDI-MS direto, zero dependência nova; ver §2i |
+| Zenodo `10.5281/zenodo.21245912` (**HPLC-CAD**) | 118 óleos comestíveis (azeite/não-azeite/mistura) | 113 (azeite vs. não-azeite; 5 misturas excluídas, ver §2k) | 4001 pontos (retenção, sem unidade calibrada) | classificação binária (azeite vs. não-azeite) | **Balanced accuracy 0,970 (CV) / 0,944 (holdout de 23 amostras)** | de la Mata-Espinosa et al. (2011) reporta discriminação forte com o mesmo perfil — CONSISTENTE | 🟢 **INTEGRADO** (2026-09-05, Passo 157/159) — mirror do dataset clássico de Rasmus Bro (UCPH Chemometrics); ver §2k |
+| Zenodo `10.5281/zenodo.19209004` (**GC-IMS**, tabela de picos) | urina humana (câncer colorretal/CRC vs. controle) | 30 (15 CRC, 15 CTRL; 14 QC excluídas) | 184 variáveis "Cluster⟨N⟩" (picos já detectados/clusterizados) | classificação binária (CRC vs. controle) | **Balanced accuracy 0,500 (CV) — EXATAMENTE o acaso**; Mann-Whitney nos 2 compostos-alvo (anisol/2-heptanona): p=0,868/0,590 | artigo associado foca em calibração/quantificação, não em prova diagnóstica — n=15/grupo pequeno para biomarcador urinário | 🟡 **INTEGRADO, sinal nulo** (2026-09-05, Passo 158/159) — motor genérico valida contra IMS real pela 1ª vez; achado negativo honesto, não bug (ver §2j) |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -585,7 +587,7 @@ python scripts/download_datasets/baixar_mendeley_gcms_lavanda.py
 GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley_gcms_lavanda.py tests/test_alinhamento_retencao.py -v
 ```
 
-### 2j. IMS — adiamento formal (Passo 151, Fase D, 2026-09-04)
+### 2j. IMS/GC-IMS — adiamento dos datasets grandes + integração de um dataset pequeno e já processado (Passo 151→158/159)
 
 Licença de `gc-ims-tools` (Charisma-Mannheim/gc-ims-tools) confirmada:
 **BSD-3-Clause**, compatível com GPL-3.0-or-later.
@@ -609,6 +611,133 @@ doi:10.1016/j.foodres.2022.111779) — qualquer um dos dois caminhos é
 trabalho de escopo próprio. Nenhuma linha de código nova para IMS nesta
 rodada; licença e datasets documentados para uma sessão futura com
 orçamento de tempo/banda compatível com a escala.
+
+**CORREÇÃO (Passo 158, 2026-09-05)**: a afirmação acima de que "nenhum
+dos dois dumps brutos inclui uma tabela de rótulo/classe por arquivo"
+estava **incompleta** — verificado por leitura direta da API de pastas
+do Mendeley (`public-api/datasets/{id}/folders/1`, não checada em
+2026-09-04) que os dois datasets ORGANIZAM os arquivos `.mea` em
+subpastas por classe/amostra (ex. `jxj2r45t2x`: pastas de topo
+`Acacia`/`Canola`/`Honeydew`, cada uma com uma subpasta por amostra
+como `Akazien_DE_001b`) — o rótulo NAO esta' no nome do arquivo `.mea`
+em si (que e' so' um timestamp de injeção, a parte que a investigação
+anterior checou), mas ESTA' disponível, só que num nível de metadado
+diferente do que foi olhado. Isso NAO muda a decisão de adiamento: o
+problema real nunca foi so' o rótulo, e' o TAMANHO (~4,8-6,9 GB de
+espectro bruto por dataset, exigindo pipeline completo de
+denoising/alinhamento/deteccao de picos mesmo com biblioteca madura
+disponível) — ver abaixo para o candidato menor e JA' processado que
+substituiu a necessidade de reabrir esse esforço.
+
+**Candidato pequeno integrado (Passo 158/159, 2026-09-05)**: Zenodo
+`10.5281/zenodo.19209004`, "Targeted GC-IMS Urine Dataset for Anisole
+and 2-Heptanone Analysis in Colorectal Cancer and Control Samples"
+(Fernández, Universidade de Barcelona/IBEC). Diferença crucial dos 2
+datasets acima: os próprios autores JÁ processaram os 44 espectros
+brutos `.mea` (denoising, alinhamento, detecção de picos por
+clustering) e publicaram o resultado como tabela de picos CSV — `peak_
+table_untargeted.csv`, 184 variáveis "Cluster⟨N⟩", zero NaN — dentro do
+mesmo arquivo Zenodo (zip de 851 MB contendo os `.mea` brutos + as
+tabelas + `annotations.csv` + `README.txt`). **Licença CC BY 4.0**
+(confirmada no `README.txt` do próprio dataset e na API do Zenodo).
+
+**Download inteligente, sem baixar os `.mea` brutos**: confirmado por
+teste direto que o servidor do Zenodo suporta HTTP Range corretamente
+em requisições GET (`206 Partial Content`) — um `HEAD` com `Range` é
+ignorado (retorna 200 com o tamanho total), o que tinha me enganado
+numa checagem inicial; só o teste com GET revelou o suporte real.
+`scripts/download_datasets/baixar_zenodo_gcims_urina.py` reaproveita a
+classe `_HTTPRangeFile` já usada em `baixar_deephs_kaki.py` para abrir
+o zip remoto e ler só os 4 arquivos pequenos (~150 KB no total) — os 44
+`.mea` (~3,4 GB descomprimidos) nunca são baixados.
+
+**Estrutura verificada por leitura direta**: 44 medições totais, 30
+clínicas (15 CRC, 15 controle, 1 medição por paciente, `patient_id`
+único — `group_by_mae_id=False` correto) + 14 QC (urina pool com
+concentrações conhecidas, excluídas da classificação por não serem
+amostras clínicas).
+
+**Achado real, medido em 2026-09-05 — NEGATIVO, registrado com a mesma
+disciplina do achado `unripe` do HSI**: balanced_accuracy = **0,500
+(CV) — exatamente o acaso** para CRC-vs-controle com o motor genérico
+(184 variáveis, sem seleção). Permutação (20 iterações): p=0,619, não
+significativo. Checagem direta nos 2 compostos-alvo do próprio estudo
+(anisol/2-heptanona): Mann-Whitney U, p=0,868 e p=0,590 — nenhuma
+diferença estatística nem nos biomarcadores-alvo isolados. Não é o
+sintoma do bug do Passo 148 (as duas classes aparecem nas predições,
+sem colapso) — é um achado biológico honesto: o artigo associado
+("Surrogate-matrix calibration for quantitative GC-IMS headspace
+analysis of urine", 2026, *ScienceDirect*) foca em metodologia de
+calibração/quantificação, não em prova de eficácia diagnóstica, e
+n=15/grupo é pequeno para biomarcador urinário de câncer. **Isto valida
+o motor genérico do GUARACI contra dado IMS real pela 1ª vez** — o
+resultado nulo é sobre o biomarcador específico deste dataset, não
+sobre a capacidade do pipeline.
+
+Script de download: `scripts/download_datasets/
+baixar_zenodo_gcims_urina.py`. Teste permanente:
+`tests/test_validacao_publica_gcims_urina.py`. CI job:
+`validacao-publica-gcims-urina`.
+
+### 2k. HPLC — Zenodo `21245912`, azeite vs. não-azeite (Passo 157/159, 2026-09-05)
+
+Busca ampliada (Passo 157) por dataset de HPLC com tabela pronta,
+seguindo a mesma lição do RMN e do EEM: o obstáculo nunca foi o método,
+era o formato bruto. Buscas em Metabolomics Workbench, Mendeley/Zenodo
+via API do DataCite (`api.datacite.org/dois`, `resource-type-id=
+dataset`) por termos de autenticidade alimentar por HPLC-DAD/CAD. A
+maioria dos resultados eram cromatogramas brutos sem alvo supervisionado
+ou tabelas de picos com n<10 (ex. Zenodo `10941441`, biomassa de
+microalgas, 4 classes × 2 réplicas — n insuficiente, descartado).
+
+**Candidato aprovado**: `10.5281/zenodo.21245912`, "Olive Oil
+Triacylglyceride Profiles by HPLC-CAD" — mirror (publicado no Zenodo em
+2026-07-07) do dataset CLÁSSICO de de la Mata-Espinosa, Bosque-Sendra,
+**Bro** & Cuadros-Rodríguez (2011), página original
+`ucphchemometrics.com/olive/` (grupo de quimiometria da Universidade de
+Copenhague — mesmo Rasmus Bro já referenciado em `hsi_multiway.py` para
+PARAFAC/N-PLS). Dois artigos peer-reviewed associados (*Anal Bioanal
+Chem* 399(6):2083-2092 e *Talanta* 85(1):177-182, ambos 2011, DOIs
+confirmados). **Licença CC BY 4.0** (confirmada na API oficial do
+Zenodo). Arquivo único de 3,2 MB (SHA256 conferido) contendo
+`HPLCforweb.mat` — objeto MATLAB "Dataset Object", MESMA convenção do
+PLS_Toolbox já usada pelo `corn.mat` deste projeto.
+
+**Estrutura verificada por leitura direta** (não por descrição de
+terceiros): matriz 120×4001 (perfil cromatográfico JÁ corrigido de
+baseline e alinhado pelos autores originais — zero pré-processamento de
+sinal novo necessário, mesma lógica do RMN já binado), subconjunto
+"ativo" de 118 amostras (`include`, linhas 3-120, decisão dos próprios
+autores), classes reais (`class`/`classlookup`): 71 azeite, 42
+não-azeite, 5 mistura. Zero NaN/Inf, zero rótulos de amostra duplicados.
+
+**Retratação metodológica interna, ANTES de publicar qualquer número**:
+a primeira tentativa classificou as 3 classes juntas e mediu
+balanced_accuracy=0,646 (CV) — a classe "mistura" (n=5) não tem
+informação suficiente (nenhum campo de percentual contínuo no arquivo)
+para virar uma classe própria; ela arrastava a média macro para baixo
+enquanto "azeite"/"não-azeite" discriminavam muito bem sozinhas (f1
+0,97/0,94). Corrigido para o MESMO escopo do artigo original (Anal
+Bioanal Chem 2011): classificação BINÁRIA azeite-vs-não-azeite, 113
+amostras (5 misturas excluídas — seu alvo de quantificação é do
+SEGUNDO artigo, que usa uma tabela de referência não incluída neste
+arquivo Zenodo).
+
+**Group-aware (regra 4)**: 118 rótulos de amostra ativos são todos
+únicos — 1 amostra física por linha, sem estrutura de réplica para
+vazar (mesmo raciocínio do Corn/RMN). Auditoria de correlação
+aproximada (limiar > 0,999) encontrou 6 pares de alta similaridade,
+todos DENTRO da classe "olive" (mesma cultivar, ex. `FRA_1..FRA_5`) —
+não pode inflar a separação azeite-vs-não-azeite.
+
+**Achado real, medido em 2026-09-05**: balanced_accuracy = **0,970
+(CV) / 0,944 (holdout de 23 amostras)** — consistente com a
+discriminação forte reportada no artigo original.
+
+Script de download: `scripts/download_datasets/
+baixar_zenodo_hplc_azeite.py`. Teste permanente:
+`tests/test_validacao_publica_hplc_azeite.py`. CI job:
+`validacao-publica-hplc-azeite`.
 
 ### Histórico — RETRATAÇÃO de 2026-08-18
 
