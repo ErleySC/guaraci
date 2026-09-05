@@ -22,24 +22,51 @@ MANUAL com instrucoes claras (ver docstring do script). O arquivo
 usado nesta auditoria (2026-09-04) foi obtido assim -- SHA256
 verificado bate com o pinado no script.
 
-ACHADO REAL (medido em 2026-09-04, NAO escondido): ao contrario de
-NIR/MIR/Raman/Fluorescencia (que aprenderam algo acima do acaso), a
-classificacao por provincia com o motor GENERICO do GUARACI (PLS-DA,
-125 variaveis, `matrix_profile="generico"`) fica em
-**balanced_accuracy = 0.500 -- EXATAMENTE o nivel do acaso para um
-problema binario** -- testado com 4 presets de pre-processamento
-diferentes (msc_sg_mc/snv_mc/autoscaling/sg_mc), todos deram o MESMO
-0.500. Hipotese razoavel (mesma disciplina do achado `unripe` do HSI):
-o proprio GUARACI reporta que so' ~32% das 125 variaveis carregam
-sinal acima do ruido (SNR>=3, aviso `[AVISO] Faixa espectral`) -- o
-artigo original NAO usou PLS-DA ingenuo sobre todas as variaveis; usou
-um teste geoestatistico (I de Moran) para SELECIONAR quais variaveis
-tem autocorrelacao espacial antes de rodar LDA só' nelas. A separacao
-por provincia provavelmente existe em poucas variaveis especificas,
-nao no espectro inteiro -- reproduzir os 99% do artigo exigiria
-implementar selecao de variavel por geoestatistica, fora do escopo
-deste passo. Registrado como NEGATIVO, nao escondido: RMN classifica
-no acaso com o motor generico atual do GUARACI para este dataset."""
+RETRATACAO (Passo 148, 2026-09-04): a nota anterior desta secao (achado
+de 2026-09-04, Passo 142/143) registrava "balanced_accuracy = 0.500 --
+EXATAMENTE o acaso" para este dataset, com 4 presets de
+pre-processamento diferentes todos dando o MESMO 0.500 -- coincidencia
+que deveria ter levantado suspeita na hora (0.500 exato E identico entre
+4 presets distintos e' o padrao de um COLAPSO, nao de "sinal fraco").
+**Era um bug real do GUARACI, nao uma limitacao do dado nem do motor
+generico.** Investigado ao tentar aplicar o I de Moran (ver ACHADO REAL
+abaixo): `pipeline.executar()` construia o alvo one-hot
+(`Y_bin = LabelBinarizer().fit_transform(rotulos)`) e so' expandia para
+2 colunas quando `Y_bin.ndim == 1` -- mas para EXATAMENTE 2 classes o
+sklearn ja devolve shape `(n, 1)` (ndim=**2**, nao 1), entao a expansao
+NUNCA disparava. Com 1 SO' coluna, `np.argmax(Y_bin, axis=1)` e' SEMPRE
+0, e toda predicao downstream colapsava na PRIMEIRA classe -- balanced_
+accuracy fica travado em exatamente 0.5 para QUALQUER dataset BINARIO,
+disfarcado de "acaso genuino", independente de pre-processamento (por
+isso os 4 presets davam o mesmo numero: nenhum deles chegava perto de
+mudar o resultado, o colapso acontecia DEPOIS). A mesma checagem
+CORRETA (`ndim == 1 or shape[1] == 1`) ja existia ha' muito tempo em
+`avaliacao_modelos.PLSDAClassifier.fit`/`hsi_multiway.NPLSClassifier.
+fit`/`portao_correcao_sinal` -- so' o caminho principal de classificacao
+(`pipeline.executar()`, usado por TODA execucao N1/N2) tinha ficado pra
+tras dessa correcao. Corrigido em `src/guaraci/pipeline.py`; contra-prova
+em `tests/test_pipeline_core.py::
+test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so`
+(dataset sintetico 2-classes bem separado, que colapsava para 0.5 antes
+da correcao e agora classifica >0.9). Este e' o UNICO dataset publico
+deste projeto com exatamente 2 classes -- por isso o bug nunca apareceu
+nos outros achados (Mendeley 8 especies, Fluorescencia 3 graus, HSI 3
+estagios).
+
+ACHADO REAL, CORRIGIDO (medido em 2026-09-04, apos o fix): com o bug
+corrigido, a classificacao por provincia com o motor GENERICO do
+GUARACI (PLS-DA, 125 variaveis, `matrix_profile="generico"`) fica em
+**balanced_accuracy = 1,000 (CV) / 1,000 (holdout de 20 amostras)** --
+robusto a 5 presets de pre-processamento diferentes E a 10 seeds de CV
+independentes testadas (faixa 0,98-1,00, nunca abaixo de 0,98). Ranking
+de separabilidade CONSISTENTE com o proprio artigo original (que reporta
+99% de acuracia) -- so' que o motor GENERICO do GUARACI, sem nenhuma
+selecao de variavel geoestatistica, ja alcanca o mesmo patamar. A
+tentativa de melhorar o resultado com I de Moran (motivacao original do
+Passo 148) acabou desnecessaria: a separacao real e' forte e nao precisa
+de selecao de variavel para aparecer -- ver `test_nmr_com_selecao_moran_
+reavaliado_passo_148` abaixo, mantido como comparacao honesta (Full vs.
+Moran, ambos ja perto do teto)."""
 from __future__ import annotations
 
 import os
@@ -71,7 +98,7 @@ requer_figshare_nmr = pytest.mark.skipif(
             "contem figshare_4307804/."))
 
 
-def _carregar_bruto():
+def _carregar_bruto_com_coords():
     pasta = _pasta_figshare()
     df = pd.read_csv(pasta / "oliando2012Frantoio_data_Rev_New.csv")
     assert df.isna().sum().sum() == 0, (
@@ -82,17 +109,26 @@ def _carregar_bruto():
     assert classe.isna().sum() == 0, (
         "algum Sample_ID nao comecava com 'pe'/'te' -- premissa de "
         "prefixo->provincia mudou.")
+    coords = df[["long", "lat"]].to_numpy(dtype=float)
     df = df.drop(columns=["Sample_ID", "long", "lat"]).copy()
     df["classe"] = classe
+    return df, coords
+
+
+def _carregar_bruto():
+    df, _coords = _carregar_bruto_com_coords()
     return df
 
 
 @requer_figshare_nmr
 @pytest.mark.slow
-def test_nmr_roda_sem_excecao_mas_nao_separa_provincia_com_motor_generico(pq, tmp_path):
-    """NAO e' um teste de "classificacao funciona" -- e' o oposto,
-    registrado com a mesma disciplina do achado `unripe` do HSI. Ver
-    ACHADO REAL no docstring do modulo para a hipotese de por que."""
+def test_nmr_classifica_provincia_com_motor_generico_apos_correcao_do_bug(pq, tmp_path):
+    """Ate 2026-09-04 este teste era o OPOSTO (nao separa) -- retratado
+    no docstring do modulo: era um bug de classificacao binaria no
+    GUARACI (`pipeline.py`), nao uma limitacao do dado. Corrigido, este
+    dataset classifica MUITO bem (gate deliberadamente com folga sob o
+    0,98-1,00 medido em 10 seeds, mesma disciplina de piso-com-folga do
+    resto do projeto)."""
     from conftest import achar_pastas_run
 
     sub = _carregar_bruto()
@@ -115,7 +151,7 @@ def test_nmr_roda_sem_excecao_mas_nao_separa_provincia_com_motor_generico(pq, tm
         run_ddsimca=False, executar_etapa4=False,
         n_permutations=20, frac_holdout=0.2, seed=0, max_lvs=10,
     )
-    pq.executar(cfg)   # nao deve lancar excecao -- e' o unico requisito real
+    pq.executar(cfg)
 
     runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou saida"
@@ -124,9 +160,79 @@ def test_nmr_roda_sem_excecao_mas_nao_separa_provincia_com_motor_generico(pq, tm
     achado = re.search(r"Balanced accuracy\s*\.*:\s*([\d.]+)", resumo)
     assert achado, f"Balanced accuracy nao encontrada no resumo:\n{resumo[:600]}"
     bal_acc = float(achado.group(1))
-    assert np.isfinite(bal_acc) and 0.0 <= bal_acc <= 1.0, (
-        f"balanced_accuracy={bal_acc} fora do intervalo valido -- "
-        f"sinal de bug (nao de dificuldade esperada).")
-    # Sem gate de "aprendeu algo": o achado real medido e' 0.500 (acaso),
-    # documentado no docstring do modulo. Um gate `> 0.6` aqui seria
-    # inventar sucesso que a medicao nao mostra.
+    assert np.isfinite(bal_acc) and 0.0 <= bal_acc <= 1.0
+    assert bal_acc > 0.85, (
+        f"balanced_accuracy={bal_acc:.3f} abaixo do piso esperado (0.85) "
+        f"para este dataset apos a correcao do Passo 148 -- se isto "
+        f"falhar, o bug de colapso em uma classe pode ter voltado (ver "
+        f"docstring do modulo).")
+
+    # Contra-prova direta do bug retratado: as predicoes NAO podem
+    # colapsar numa classe so' -- e' o sintoma exato do bug antigo.
+    achados_por_classe = re.findall(r"Acc (\w+)\s*\.*:\s*([\d.]+)", resumo)
+    assert len(achados_por_classe) == 2, (
+        f"esperava 2 classes na tabela 'Acc <classe>', achou "
+        f"{len(achados_por_classe)}: {achados_por_classe}")
+    accs_por_classe = [float(v) for _c, v in achados_por_classe]
+    assert min(accs_por_classe) > 0.5, (
+        f"pelo menos uma classe com accuracy <= 0.5 individual "
+        f"({achados_por_classe}) -- sintoma do bug de colapso retratado "
+        f"no docstring do modulo.")
+
+
+@requer_figshare_nmr
+@pytest.mark.slow
+def test_nmr_com_selecao_moran_reavaliado_passo_148(pq):
+    """Passo 148 (Fase B): motivacao original -- tentar melhorar o RMN
+    com a MESMA tecnica de selecao de variavel que o artigo original
+    usou (I de Moran, ver docstring de `selecao_variaveis.moran_i_mask`)
+    -- ficou PREJUDICADA pela descoberta do bug retratado no docstring
+    do modulo: o achado negativo que motivava a Fase B nunca foi real,
+    era um bug de classificacao binaria em `pipeline.py`. Mantido como
+    comparacao HONESTA agora que o motor generico ja classifica quase
+    perfeitamente sozinho (teste acima): 'Full (125 var)' vs. 'I de
+    Moran (subconjunto)', mesmos folds de CV (amostras independentes, 1
+    medicao por azeite -- mesmo raciocinio de `group_by_mae_id=False` do
+    teste acima), via `_avaliar_subset_cv` (harness limpo do modulo de
+    selecao de variaveis, NUNCA passou pelo bug de `pipeline.py` -- por
+    isso os numeros medidos aqui, ANTES da correcao do pipeline, ja eram
+    altos e foram a PISTA que levou a achar o bug).
+
+    A mascara de Moran e' refeita a cada fold usando so' o treino
+    daquele fold (`_avaliar_subset_nested_cv_moran`, nested-CV -- sem
+    isso o numero seria inflado por vazamento, o mesmo vies que o
+    Bloco 27 mediu para o iPLS)."""
+    from sklearn.model_selection import StratifiedKFold
+
+    from guaraci.selecao_variaveis import (
+        _avaliar_subset_cv, _avaliar_subset_nested_cv_moran)
+
+    df, coords = _carregar_bruto_com_coords()
+    cols_espectrais = [c for c in df.columns if c != "classe"]
+    X = df[cols_espectrais].to_numpy(dtype=float)
+    y_int = (df["classe"] == "Teramo").to_numpy(dtype=int)
+    Y_bin = np.eye(2)[y_int]
+
+    cv = list(StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+              .split(X, y_int))
+    n_lv = 5
+
+    completo = _avaliar_subset_cv(X, Y_bin, y_int, cv, n_lv)
+    moran = _avaliar_subset_nested_cv_moran(
+        X, Y_bin, y_int, coords, cv, n_lv,
+        k_vizinhos=8, alpha=0.05, n_permutacoes=999, seed=0)
+
+    print(f"\n[Passo 148] Full (125 var): balanced_accuracy="
+          f"{completo['balanced_accuracy']:.3f}")
+    print(f"[Passo 148] I de Moran ({moran['n_vars']:.0f} var em media, "
+          f"{moran['n_vars_min']}-{moran['n_vars_max']}): "
+          f"balanced_accuracy={moran['balanced_accuracy']:.3f}")
+
+    assert np.isfinite(moran["balanced_accuracy"])
+    # Piso com folga sob os dois numeros medidos em 2026-09-04 (Full~0.94,
+    # Moran~0.96 com n_lv=5, seed=0) -- os dois ja' perto do teto, achado
+    # honesto e' que a selecao de variavel NAO era o que faltava (o bug
+    # de pipeline.py era). Ver docs/VALIDACAO_PUBLICA.md secao 2e/
+    # docs/PROGRESSO.md Passo 148 para os numeros completos e a decisao.
+    assert completo["balanced_accuracy"] > 0.85
+    assert moran["balanced_accuracy"] > 0.85

@@ -759,6 +759,79 @@ def test_metricas_classificacao_perfeita(pq):
         assert m[k] == pytest.approx(1.0)
 
 
+def test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so(pq, tmp_path):
+    """Achado do Passo 148 (auditoria RMN, 2026-09-04): para EXATAMENTE 2
+    classes, `sklearn.preprocessing.LabelBinarizer.fit_transform` ja'
+    devolve shape (n, 1) -- ndim=2, NAO 1. O codigo antigo em
+    `executar()` so' checava `Y_bin.ndim == 1` (nunca disparava) para
+    decidir se reconstruia a 2a coluna -- Y_bin ficava com 1 SO' coluna,
+    `np.argmax(Y_bin, axis=1)` e' SEMPRE 0, e toda predicao downstream
+    colapsava na PRIMEIRA classe (`lb.classes_[0]`) -- balanced_accuracy
+    travado em exatamente 0.5 para QUALQUER dataset binario, disfarcado de
+    "acaso genuino". Descoberto validando o RMN publico (Figshare
+    4307804, Pescara vs Teramo) -- a mesma checagem correta
+    (`ndim == 1 or shape[1] == 1`) ja existia em
+    `avaliacao_modelos.PLSDAClassifier.fit`/`hsi_multiway.NPLSClassifier.
+    fit`/`portao_correcao_sinal` havia MUITO tempo; so' este caminho
+    principal (usado por toda execucao N1/N2) tinha ficado pra tras.
+
+    Contra-prova: 2 classes SINTETICAS, BEM separadas (deslocamento
+    grande, ruido pequeno) -- se o bug estivesse de volta, a predicao
+    colapsaria numa classe so' e balanced_accuracy cairia para ~0.5
+    mesmo com sinal obviamente aprendivel."""
+    rng = np.random.default_rng(0)
+    n_por_classe = 30
+    p = 20
+    X0 = rng.normal(0.0, 1.0, size=(n_por_classe, p))
+    X1 = rng.normal(6.0, 1.0, size=(n_por_classe, p))   # bem separado
+    X = np.vstack([X0, X1])
+    rot = np.array(["A"] * n_por_classe + ["B"] * n_por_classe)
+
+    df = pd.DataFrame(X, columns=[str(float(i)) for i in range(p)])
+    df.insert(0, "classe", rot)
+    csv = tmp_path / "binario.csv"
+    df.to_csv(csv, index=False)
+
+    cfg = pq.Config(
+        mode="csv", csv_file=str(csv),
+        class_column="classe", conc_column="",
+        matrix_profile="generico", wn_min=0.0, wn_max=float(p - 1),
+        objective="classificacao", level="N1",
+        output_root_folder=str(tmp_path / "saida"),
+        group_by_mae_id=False, show_plots=False,
+        run_benchmark=False, run_monte_carlo=False, run_shap=False,
+        run_wold=False, run_cv_anova=False, run_opls=False,
+        run_ddsimca=False, executar_etapa4=False,
+        n_permutations=5, frac_holdout=0.2, seed=0, max_lvs=5,
+        default_preprocessing="mc",
+    )
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(cfg.output_root_folder)
+    assert runs, "executar() nao criou saida"
+    resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+        encoding="utf-8", errors="replace")
+    achado = re.search(r"Balanced accuracy\s*\.*:\s*([\d.]+)", resumo)
+    assert achado, f"Balanced accuracy nao encontrada no resumo:\n{resumo[:600]}"
+    bal_acc = float(achado.group(1))
+    assert bal_acc > 0.9, (
+        f"balanced_accuracy={bal_acc:.3f} -- classes bem separadas "
+        f"deveriam classificar quase perfeitamente. Um valor proximo de "
+        f"0.5 aqui e' o sintoma exato do bug do Passo 148 (colapso na "
+        f"1a classe) voltando.")
+    # Contra-prova direta: as duas classes precisam aparecer nas predicoes
+    # (nao so' na tabela de rotulos verdadeiros) -- e' a evidencia mais
+    # literal de que o colapso-em-uma-classe-so' nao voltou.
+    tabela = (Path(runs[0]) / "Tabelas" / "amostras_identificadores.csv")
+    if tabela.is_file():
+        tdf = pd.read_csv(tabela)
+        col_pred = [c for c in tdf.columns if "pred" in c.lower()]
+        if col_pred:
+            preditas = set(tdf[col_pred[0]].astype(str).unique())
+            assert len(preditas) >= 2, (
+                f"predicoes colapsaram numa classe so': {preditas}")
+
+
 def test_especificidade_por_classe_valores_conhecidos(pq):
     """Especificidade one-vs-rest a partir de uma matriz de confusão conhecida."""
     cm = np.array([[5, 0], [1, 4]])

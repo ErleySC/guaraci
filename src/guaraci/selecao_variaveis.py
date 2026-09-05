@@ -37,6 +37,7 @@ __all__ = [
     "ga_selection",
     "cars_selecao",
     "uve_selecao",
+    "moran_i_mask",
     "estabilidade_selecao_entre_repeticoes",
     "fig_etapa4_ag_convergencia",
     "fig_etapa4_ipls",
@@ -788,6 +789,170 @@ def uve_selecao(X_proc: np.ndarray, Y_bin: np.ndarray, n_lv: int,
 
     info = {"c_scores": c_real, "corte": corte}
     return info, mask
+
+
+# =========================================================================
+#  I de Moran -- selecao GEOESTATISTICA de variavel (Passo 148, Fase B da
+#  auditoria das 11 tecnicas, 2026-09-04). Referencia confirmada no
+#  Crossref: Lamanna, Imparato, Tano, Braca, D'Ercole & Ghianni (2017),
+#  "Territorial origin of olive oil: representing georeferenced maps of
+#  olive oils by NMR profiling", Magnetic Resonance in Chemistry
+#  55(7):639-647, DOI 10.1002/mrc.4566 -- usa o teste I de Moran para
+#  escolher quais variaveis de RMN tem autocorrelacao espacial antes de
+#  rodar LDA, em vez do espectro inteiro (motivacao do achado negativo do
+#  RMN no dataset Figshare 4307804, docs/VALIDACAO_PUBLICA.md secao 2e).
+#
+#  DIFERENCA estrutural das demais funcoes deste modulo: todas as outras
+#  (VIP/iPLS/CARS/UVE/SPA/AG) selecionam variaveis olhando so' X_treino/
+#  Y_treino. O I de Moran precisa, alem disso, das COORDENADAS GEOGRAFICAS
+#  de cada amostra (nao um dado espectral) -- por isso NAO reaproveita o
+#  callback generico `selecionar_fn(X_treino, Y_treino, n_lv)` de
+#  `_avaliar_subset_nested_cv`, que so' passa X/Y por fold. Escopo
+#  deliberadamente restrito: NAO foi integrado ao menu/CLI/
+#  `etapa4_selecao_variaveis` porque nenhum outro dataset deste projeto
+#  publica coordenadas geograficas por amostra -- criar um mecanismo
+#  generico de "coords" no config/CSV/menu para um metodo que so' um
+#  dataset consegue usar seria especulacao, nao necessidade (regra do
+#  projeto contra funcionalidade alem do pedido). Uso: chamar
+#  `moran_i_mask`/`_avaliar_subset_nested_cv_moran` diretamente em quem
+#  tem coordenadas (ver `tests/test_validacao_publica_figshare_azeite_nmr.py`).
+# =========================================================================
+
+def _pesos_knn(coords: np.ndarray, k_vizinhos: int) -> np.ndarray:
+    """Matriz de pesos espaciais W (n x n), k-vizinhos-mais-proximos,
+    binaria e padronizada por linha (soma de cada linha = 1) -- convencao
+    classica de estatistica espacial (Cliff & Ord 1981) para o I de
+    Moran. Distancia euclidiana direta em graus de lat/long (SEM formula
+    geodesica): so' a ORDEM dos vizinhos importa para KNN, e ordem por
+    distancia e' invariante a qualquer transformacao monotona -- inclusive
+    a nao-linearidade local de graus->km, desde que a regiao seja pequena
+    o bastante para a metrica nao inverter vizinhos (verdade aqui: Abruzzo,
+    ~50km de extensao)."""
+    n = coords.shape[0]
+    dif = coords[:, None, :] - coords[None, :, :]
+    d = np.sqrt((dif ** 2).sum(-1))
+    np.fill_diagonal(d, np.inf)
+    k = min(k_vizinhos, n - 1)
+    idx_viz = np.argsort(d, axis=1)[:, :k]
+    W = np.zeros((n, n))
+    linhas = np.repeat(np.arange(n), k)
+    W[linhas, idx_viz.ravel()] = 1.0
+    soma = W.sum(axis=1, keepdims=True)
+    soma[soma == 0] = 1.0
+    return W / soma
+
+
+def moran_i_mask(X_train: np.ndarray, coords_train: np.ndarray,
+                  k_vizinhos: int = 8, alpha: float = 0.05,
+                  n_permutacoes: int = 999, seed: int = 0
+                  ) -> Tuple[Dict[str, np.ndarray], np.ndarray]:
+    """I de Moran global por variavel (canal espectral), usando as
+    coordenadas geograficas de cada amostra em `coords_train` (shape
+    (n, 2), ex. colunas long/lat). Variaveis com autocorrelacao espacial
+    POSITIVA e significativa (amostras geograficamente proximas tem
+    valores parecidos naquele canal) carregam informacao de origem --
+    a hipotese de "terroir" do artigo original.
+
+    Significancia por PERMUTACAO (nao formula assintotica -- mesma
+    disciplina do resto do projeto, que ja' usa permutacao para
+    Y-randomization): embaralha a ordem espacial de cada variavel
+    `n_permutacoes` vezes mantendo `W` fixa (W so' depende das
+    coordenadas, nunca do espectro). p-valor UNILATERAL (so'
+    autocorrelacao positiva interessa aqui). Correcao de multiplas
+    comparacoes por FDR (Benjamini-Hochberg) entre as `p` variaveis
+    testadas simultaneamente -- sem ela, ~alpha*p variaveis passariam por
+    acaso mesmo sem nenhum sinal geografico real (p~125, alpha=0.05 ->
+    ~6 variaveis espurias esperadas so' por chance).
+
+    Retorna (dict com `moran_i`/`p_valor` por variavel, mascara booleana
+    das variaveis selecionadas)."""
+    X = np.asarray(X_train, dtype=float)
+    coords = np.asarray(coords_train, dtype=float)
+    n, p = X.shape
+    W = _pesos_knn(coords, k_vizinhos)
+    S0 = float(W.sum())
+    if S0 <= 0:
+        info = {"moran_i": np.zeros(p), "p_valor": np.ones(p)}
+        return info, np.zeros(p, dtype=bool)
+
+    Z = X - X.mean(axis=0)
+    denominador = np.sum(Z ** 2, axis=0)
+    denominador_seguro = np.where(denominador > 1e-300, denominador, 1e-300)
+
+    def _moran_de(Zx: np.ndarray) -> np.ndarray:
+        WZ = W @ Zx
+        numerador = np.sum(Zx * WZ, axis=0)
+        return (n / S0) * (numerador / denominador_seguro)
+
+    moran_i = _moran_de(Z)
+
+    rng = np.random.default_rng(seed)
+    contagem_maior_igual = np.zeros(p, dtype=int)
+    for _ in range(n_permutacoes):
+        ordem = rng.permutation(n)
+        moran_i_perm = _moran_de(Z[ordem])
+        contagem_maior_igual += (moran_i_perm >= moran_i)
+    p_valor = (contagem_maior_igual + 1) / (n_permutacoes + 1)
+
+    ordem_p = np.argsort(p_valor)
+    p_ordenado = p_valor[ordem_p]
+    limiar_bh = alpha * (np.arange(1, p + 1) / p)
+    abaixo = p_ordenado <= limiar_bh
+    if abaixo.any():
+        p_critico = float(p_ordenado[np.max(np.where(abaixo)[0])])
+        mask_ordenada = p_ordenado <= p_critico
+    else:
+        mask_ordenada = np.zeros(p, dtype=bool)
+    mask = np.zeros(p, dtype=bool)
+    mask[ordem_p] = mask_ordenada
+
+    info = {"moran_i": moran_i, "p_valor": p_valor}
+    return info, mask
+
+
+def _avaliar_subset_nested_cv_moran(X_proc: np.ndarray, Y_bin: np.ndarray,
+                                     y_int: np.ndarray, coords: np.ndarray,
+                                     cv_indices: list, n_lv: int,
+                                     k_vizinhos: int = 8, alpha: float = 0.05,
+                                     n_permutacoes: int = 999, seed: int = 0
+                                     ) -> Dict[str, float]:
+    """Como `_avaliar_subset_nested_cv`, mas para o I de Moran --
+    reimplementado (nao reaproveita o callback generico) porque a selecao
+    precisa de `coords` fatiada pelos MESMOS indices de treino do fold
+    (`selecionar_fn` generico so' recebe X_treino/Y_treino, ver comentario
+    da secao acima). A mascara e' recalculada a cada fold EXTERNO usando
+    so' as amostras (e coordenadas) de treino daquele fold -- nunca olha
+    o fold de validacao antes de prever."""
+    p = X_proc.shape[1]
+    y_hat = np.zeros_like(Y_bin, dtype=float)
+    contador = np.zeros(len(Y_bin), dtype=int)
+    n_vars_por_fold: List[int] = []
+    for tr, va in cv_indices:
+        _info, mask = moran_i_mask(X_proc[tr], coords[tr], k_vizinhos=k_vizinhos,
+                                    alpha=alpha, n_permutacoes=n_permutacoes,
+                                    seed=seed)
+        if mask.sum() < 2:
+            mask = np.ones(p, dtype=bool)
+        n_vars_por_fold.append(int(mask.sum()))
+        n_lv_eff = int(max(1, min(n_lv, int(mask.sum()), len(tr) - 1)))
+        pipe = Pipeline([
+            ("mc",  StandardScaler(with_std=False)),
+            ("pls", PLSRegression(n_components=n_lv_eff, scale=False)),
+        ])
+        pipe.fit(X_proc[tr][:, mask], Y_bin[tr])
+        y_hat[va] += pipe.predict(X_proc[va][:, mask])
+        contador[va] += 1
+    contador[contador == 0] = 1
+    y_cv = y_hat / contador[:, None]
+    yhat = np.argmax(y_cv, axis=1)
+    return {
+        "accuracy":          float(accuracy_score(y_int, yhat)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_int, yhat)),
+        "n_vars":            float(np.mean(n_vars_por_fold)),
+        "n_vars_min":        int(min(n_vars_por_fold)),
+        "n_vars_max":        int(max(n_vars_por_fold)),
+        "n_lv":              n_lv,
+    }
 
 
 def estabilidade_selecao_entre_repeticoes(selecionar_fn, n_repeticoes: int = 5,

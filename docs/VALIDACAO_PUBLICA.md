@@ -25,7 +25,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | Mendeley `10.17632/ctgg7k4m5g.2` (**Raman**, arquivo-irmão do NIR 8mm) | idem | 99 (1 amostra sem medição Raman, NaN removida) | 1340 · −18 a 1974 cm⁻¹ (Raman shift) | idem | **Balanced accuracy 0,389**; R²cal 0,67/R²val 0,43 (log10 PV) | idem — artigo original sinaliza Raman como possível correlação por acaso neste dataset | 🟢 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal mais fraco que MIR/NIR, coerente com a ressalva do artigo |
 | DeepHS Fruit / Kaki / VIS (Varga, Makowski & Zell, IJCNN 2021) | caqui (imageamento hiperespectral, 64×64×224, Specim FX10) | 56 gravações (38 frutas físicas) | 224 · 397,66–1003,81 nm | ripeness_state (unripe/perfect/overripe) por pixel, agregado por objeto | **5/8 objetos corretos** (teste group-aware) — tende à classe majoritária | — (pipeline HSI, sem alvo de literatura comparável ainda) | 🟡 **EM INTEGRAÇÃO** (2026-09-01) — pipeline funciona ponta-a-ponta, desempenho limitado por desbalanceamento severo (ver §7) |
 | Mendeley `10.17632/thkcz3h6n6.6` (**Fluorescência**, LED 1) | 24 óleos de oliva (grau EXTRA/VIRGEN/LAMPANTE) | 24 (média de 20 repetições técnicas) | 1024 canais de emissão (índice, sem nm calibrado) | grau de qualidade (3 classes, n≥5) | **Balanced accuracy 0,383 (CV)** — fraco, logo acima do acaso (~0,333) | sem alvo publicado nesta forma | 🟡 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal fraco, n pequeno (ver §2d) |
-| Figshare `10.6084/m9.figshare.4307804` (**RMN**) | 97 azeites de oliva (Abruzzo/Itália) | 97 | 125 variáveis ppm (já binadas pelos autores) | província de origem (Pescara/Teramo) | **Balanced accuracy 0,500 — EXATAMENTE o acaso** (binário) | artigo original reporta 99% com LDA + seleção geoestatística de variável (não reproduzido) | 🔴 **NEGATIVO, documentado** (2026-09-04, Passo 142/143) — motor genérico não separa; ver §2e para a hipótese |
+| Figshare `10.6084/m9.figshare.4307804` (**RMN**) | 97 azeites de oliva (Abruzzo/Itália) | 97 | 125 variáveis ppm (já binadas pelos autores) | província de origem (Pescara/Teramo) | **Balanced accuracy 1,000 (CV) / 1,000 (holdout)** — RETRATADO de "0,500 (acaso)", era bug de classificação binária, não limitação do dado (ver §2e) | artigo original reporta 99% com LDA + seleção geoestatística de variável — CONSISTENTE (motor genérico chega ao mesmo patamar sem seleção) | 🟢 **INTEGRADO, forte** (2026-09-04, Passo 148) — bug corrigido em `pipeline.py`; ver §2e |
 | ERIC/Eawag `10.25678/000D3C19` (**UV-Vis**, sensor scan/Spectrolyser) | esgoto bruto (campanha de 25 semanas, flume) | 82 dias (agregado; 533 amostras de laboratório antes da agregação) | 215 · 200–735 nm | DOC (carbono orgânico dissolvido, mg/L) | **R²cal 0,616 / R²val 0,650**; RMSEP 34,2 mg/L; 7 LVs (EMSC+MC) | sem RMSEP publicado para este recorte (sanity check, não gate) | 🟢 **INTEGRADO** (2026-09-04, Passo 147) — EMSC (já aprovado no Corn, §9) capturou sinal real; ver §2g |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
@@ -227,7 +227,7 @@ python scripts/download_datasets/baixar_mendeley_fluorescencia_oleo.py
 GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley_fluorescencia.py -v
 ```
 
-### 2e. RMN — Figshare `4307804` (Passo 142/143, 2026-09-04) — achado NEGATIVO documentado
+### 2e. RMN — Figshare `4307804` (Passo 148, 2026-09-04) — RETRATAÇÃO do achado negativo: era bug, não limitação
 
 97 azeites de oliva da região Abruzzo/Itália, perfil ¹H-NMR já binado
 pelos autores originais em 125 variáveis de deslocamento químico (ppm)
@@ -243,31 +243,80 @@ tenta o caminho automático e, se falhar, orienta o download manual com
 instruções claras. O arquivo usado nesta auditoria foi obtido assim
 (hash SHA256 conferido).
 
-**Achado real, medido em 2026-09-04 — NÃO escondido**: ao contrário de
-NIR/MIR/Raman/Fluorescência, a classificação por província com o motor
-GENÉRICO do GUARACI (PLS-DA, 125 variáveis) ficou em
-**balanced_accuracy = 0,500 — EXATAMENTE o nível do acaso** para um
-problema binário. Testado com 4 presets de pré-processamento
-diferentes (`msc_sg_mc`/`snv_mc`/`autoscaling`/`sg_mc`) — todos deram o
-MESMO 0,500. Hipótese razoável (mesma disciplina do achado `unripe` do
-HSI, §7): o próprio GUARACI reporta que só ~32% das 125 variáveis
-carregam sinal acima do ruído (aviso `[AVISO] Faixa espectral`) — o
-artigo original (que reporta 99% de acurácia) **não** usou PLS-DA
-ingênuo sobre todas as variáveis; usou um teste geoestatístico (I de
-Moran) para selecionar quais variáveis têm autocorrelação espacial
-antes de rodar LDA só' nelas. A separação por província provavelmente
-existe em poucas variáveis específicas, não no espectro inteiro —
-reproduzir os 99% do artigo exigiria implementar seleção de variável
-por geoestatística, fora do escopo deste passo. O teste
-(`test_validacao_publica_figshare_azeite_nmr.py`) não tem gate de
-"aprendeu algo" — só confirma que o pipeline roda sem exceção e produz
-um número válido, porque um gate de sucesso aqui inventaria um
-resultado que a medição não mostra.
+> **RETRATAÇÃO (Passo 148, 2026-09-04).** A entrada anterior desta
+> seção (2026-09-04, Passo 142/143) registrava "balanced_accuracy =
+> 0,500 — EXATAMENTE o acaso", com 4 presets de pré-processamento
+> diferentes todos dando o MESMO 0,500, e uma hipótese de que a
+> separação "provavelmente existe em poucas variáveis específicas" —
+> exigindo seleção geoestatística (I de Moran) para aparecer. **Essa
+> hipótese estava errada. O número era um BUG do GUARACI, não uma
+> limitação do dado nem do motor genérico.** 0,500 exato e idêntico
+> entre 4 presets distintos é a assinatura de um COLAPSO de predição
+> (sempre a mesma classe), não de "sinal fraco espalhado pelo espectro"
+> — o tipo de coincidência que deveria ter sido investigada na hora, em
+> vez de racionalizada.
+
+**O bug, encontrado ao tentar aplicar o I de Moran (Passo 148)**:
+`pipeline.executar()` construía o alvo one-hot com
+`Y_bin = LabelBinarizer().fit_transform(rotulos)` e só expandia para 2
+colunas quando `Y_bin.ndim == 1` — mas para **exatamente 2 classes** o
+sklearn já devolve shape `(n, 1)`, que tem `ndim == 2` (não 1). A
+expansão nunca disparava. Com Y_bin de 1 coluna só, `np.argmax(Y_bin,
+axis=1)` é **sempre 0**, e toda predição downstream (`pred_lab =
+lb.classes_[np.argmax(Y_cv, axis=1)]`) colapsava na PRIMEIRA classe —
+balanced_accuracy trava em exatamente 0,5 para **qualquer** dataset
+binário, disfarçado de "acaso genuíno", **independentemente** do
+pré-processamento (por isso os 4 presets davam o mesmo número: nenhum
+deles chegava perto de influenciar o resultado — o colapso acontecia
+DEPOIS, na decodificação da predição). A checagem CORRETA (`Y_bin.ndim
+== 1 or Y_bin.shape[1] == 1`) já existia — e sempre existiu — em
+`avaliacao_modelos.PLSDAClassifier.fit`, `hsi_multiway.NPLSClassifier.
+fit` e `portao_correcao_sinal.py`; só o caminho de classificação
+PRINCIPAL (`pipeline.executar()`, usado por toda execução N1/N2) tinha
+ficado para trás dessa correção. Este é o **único dataset público deste
+projeto com exatamente 2 classes** — por isso o bug nunca apareceu nos
+outros achados (Mendeley 8 espécies, Fluorescência 3 graus, HSI 3
+estágios de maturação).
+
+Corrigido em `src/guaraci/pipeline.py` (Passo 148). Contra-prova
+obrigatória (regra 9): `tests/test_pipeline_core.py::
+test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so` — um
+dataset sintético de 2 classes bem separadas, que colapsaria para 0,5
+com o bug antigo e agora classifica >0,9.
+
+**Achado real, CORRIGIDO, medido em 2026-09-04**: com o bug corrigido,
+a classificação por província com o motor GENÉRICO do GUARACI (PLS-DA,
+125 variáveis, sem nenhuma seleção de variável) fica em
+**balanced_accuracy = 1,000 (CV) / 1,000 (holdout de 20 amostras)** —
+robusto a 5 presets de pré-processamento diferentes E a 10 seeds de CV
+independentes (faixa 0,98–1,00, nunca abaixo de 0,98). Isso é
+**consistente** com o artigo original (que reporta 99% de acurácia com
+LDA + seleção geoestatística) — só que o motor genérico do GUARACI, sem
+nenhuma seleção de variável, já chega ao mesmo patamar sozinho.
+
+**I de Moran, aplicado mesmo assim (motivação original do Passo 148)**:
+implementado do zero em `selecao_variaveis.moran_i_mask`/
+`_avaliar_subset_nested_cv_moran` (nested-CV, permutação para
+significância, correção FDR/Benjamini-Hochberg entre as 125 variáveis
+testadas — ver docstring do módulo; referência confirmada no Crossref:
+Lamanna, Imparato, Tano, Braca, D'Ercole & Ghianni 2017, *Magnetic
+Resonance in Chemistry* 55(7):639-647, DOI 10.1002/mrc.4566, o próprio
+artigo original deste dataset). Contra-prova sintética obrigatória
+(`tests/test_selecao_moran.py`) confirma que o método recupera
+variáveis geograficamente correlacionadas e rejeita ruído puro, e que
+embaralhar as coordenadas destrói o sinal detectado. Comparação
+honesta, MESMOS folds de CV, harness limpo (nunca passou pelo bug de
+`pipeline.py`): **Full (125 var) = 0,937** vs. **I de Moran (~31 var em
+média) = 0,957** — uma diferença pequena, ambos já perto do teto. A
+tentativa de melhorar o RMN com seleção geoestatística acabou
+desnecessária: a separação real é forte e não precisava de seleção de
+variável para aparecer — o que faltava era corrigir o bug de
+classificação binária, não escolher melhor quais variáveis usar.
 
 Reproduzir:
 ```
 python scripts/download_datasets/baixar_figshare_azeite_nmr.py
-GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_figshare_azeite_nmr.py -v
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_figshare_azeite_nmr.py tests/test_selecao_moran.py tests/test_pipeline_core.py::test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so -v
 ```
 
 ### 2f. NIR Dispersivo — reclassificação do Corn, sem dataset novo (Passo 146, 2026-09-04)

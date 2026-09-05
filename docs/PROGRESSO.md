@@ -1,3 +1,111 @@
+# PROGRESSO — Passo 148: bug real de classificação binária encontrado e corrigido, achado negativo do RMN RETRATADO (Fase B, 2026-09-04)
+
+## Passo 148 — RMN + I de Moran: a investigação achou um bug, não uma limitação
+
+Instrução (Fase B): tentar melhorar o resultado do RMN (documentado como
+"0,500 — exatamente o acaso" no Passo 142/143) usando a mesma técnica de
+seleção de variável do artigo original (I de Moran), aceitando o
+resultado como está — sem insistir numa 3ª abordagem se não melhorasse.
+
+**Passo 1 — referência confirmada via Crossref**: Lamanna, Imparato,
+Tano, Braca, D'Ercole & Ghianni (2017), "Territorial origin of olive
+oil: representing georeferenced maps of olive oils by NMR profiling",
+*Magnetic Resonance in Chemistry* 55(7):639-647, DOI 10.1002/mrc.4566 —
+confirmado que usa "the first principal component of NMR variables
+selected according to the Moran test" para o mesmo dataset
+(Figshare `4307804`).
+
+**Passo 2 — implementação**: `moran_i_mask`/`_pesos_knn`/
+`_avaliar_subset_nested_cv_moran` novos em `src/guaraci/
+selecao_variaveis.py` (mesmo padrão de VIP/iPLS/CARS/UVE do módulo,
+nested-CV respeitada — a máscara é recalculada a cada fold usando só o
+treino daquele fold). Escopo deliberadamente restrito: NÃO integrado ao
+menu/CLI/`etapa4_selecao_variaveis`, porque nenhum outro dataset deste
+projeto publica coordenadas geográficas por amostra — um mecanismo
+genérico de "coords" no config/CSV/menu para um método que só um
+dataset consegue usar seria especulação, não necessidade. Contra-prova
+obrigatória (regra 9) em `tests/test_selecao_moran.py`: dataset
+sintético com variáveis geograficamente correlacionadas misturadas com
+ruído puro — o método recupera as primeiras e rejeita o segundo;
+embaralhar as coordenadas destrói o sinal detectado (5 testes, todos
+passando).
+
+**Passo 3 — reavaliação, e a descoberta real**: ao rodar a comparação
+Full vs. Moran com um harness de CV limpo (`_avaliar_subset_cv`, direto
+em `selecao_variaveis.py`, nunca passa por `pipeline.executar()`), o
+resultado **Full (125 variáveis) já saiu em balanced_accuracy≈0,94** —
+completamente inconsistente com o "0,500 (acaso)" documentado
+anteriormente via `pq.executar()`. Isso não é "o harness ficou mais
+generoso" — é sinal de bug. Investigação (reprodução passo a passo do
+código de `pipeline.executar()`, instrumentação com monkeypatch em
+`classification_metrics` para capturar y_true/y_pred reais em cada
+chamada) isolou a causa exata:
+
+`pipeline.py` construía o alvo one-hot com `Y_bin =
+LabelBinarizer().fit_transform(rotulos)` e só expandia para 2 colunas
+quando `Y_bin.ndim == 1` — mas para EXATAMENTE 2 classes o sklearn já
+devolve shape `(n, 1)`, que tem `ndim == 2` (não 1). A expansão nunca
+disparava. Com Y_bin de 1 coluna só, `np.argmax(Y_bin, axis=1)` é
+SEMPRE 0, e toda predição downstream colapsava na PRIMEIRA classe —
+balanced_accuracy trava em exatamente 0,5 para QUALQUER dataset
+binário, independente de pré-processamento (por isso os 4 presets
+testados no Passo 142/143 davam todos o mesmo 0,500 — o colapso
+acontecia DEPOIS de qualquer pré-processamento, na decodificação da
+predição final). A checagem CORRETA (`Y_bin.ndim == 1 or Y_bin.shape[1]
+== 1`) já existia — e sempre existiu — em
+`avaliacao_modelos.PLSDAClassifier.fit`, `hsi_multiway.
+NPLSClassifier.fit` e `portao_correcao_sinal.py`; só o caminho de
+classificação PRINCIPAL (`pipeline.executar()`, usado por toda execução
+N1/N2 deste projeto inteiro) tinha ficado para trás dessa correção.
+
+**Por que isso nunca apareceu antes**: o Figshare `4307804` (RMN) é o
+ÚNICO dataset público validado neste projeto com exatamente 2 classes
+(Mendeley tem 8 espécies; Fluorescência, 3 graus; HSI, 3 estágios de
+maturação) — o bug só se manifesta no caso binário exato.
+
+**Correção**: `src/guaraci/pipeline.py`, 1 condição (`or Y_bin.shape[1]
+== 1` adicionado). Contra-prova obrigatória (regra 9):
+`tests/test_pipeline_core.py::
+test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so` —
+dataset sintético de 2 classes bem separadas via `pq.executar()`
+completo (não o harness interno), que colapsaria para balanced_accuracy
+≈0,5 com o bug antigo e agora classifica >0,9; verifica também que as
+predições cobrem as 2 classes (não uma só).
+
+**Resultado, medido com o bug corrigido**: RMN classifica província
+(Pescara/Teramo) com **balanced_accuracy = 1,000 (CV) / 1,000
+(holdout)**, robusto a 5 presets de pré-processamento e 10 seeds de CV
+(faixa 0,98-1,00). **Consistente com o artigo original** (99% com LDA +
+seleção geoestatística) — o motor genérico do GUARACI, SEM nenhuma
+seleção de variável, já chega ao mesmo patamar. A comparação Full vs.
+Moran (mesmos folds, harness limpo, nunca afetado pelo bug): Full=0,937,
+Moran(~31 var)=0,957 — diferença pequena, os dois já perto do teto.
+**A seleção geoestatística acabou não sendo o que faltava — o bug de
+classificação binária era.**
+
+**Estado da técnica #9 (RMN) na tabela de 11: RETRATADO de
+"negativo-documentado" para Funcional, um dos resultados mais fortes da
+tabela.** `docs/VALIDACAO_PUBLICA.md` §1 e §2e reescritos com retratação
+formal (nota antiga preservada e marcada como retratada, não apagada).
+
+Suíte completa, ruff limpo, golden do contrato de API pública
+regravado (`GUARACI_REGRAVAR_GOLDEN=1`, `moran_i_mask` novo em
+`selecao_variaveis.__all__`).
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_figshare_azeite_nmr.py
+GUARACI_DATASETS_DIR=<pasta> pytest tests/test_validacao_publica_figshare_azeite_nmr.py tests/test_selecao_moran.py tests/test_pipeline_core.py::test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so -v
+```
+
+Próximo (Passo 149, Fase C): parser real para o dataset EEM de
+fluorescência — candidato melhor que o originalmente cogitado já
+identificado (Zenodo `10.5281/zenodo.19755088`, 330 espectros EEM reais,
+adulteração quantitativa de azeite com 5 óleos diferentes, CC BY 4.0 —
+ver anotação de pesquisa desta sessão).
+
+---
+
 # PROGRESSO — Passo 147: UV-Vis validado com dataset real (Fase A, 2026-09-04)
 
 ## Passo 147 — UV-Vis: ERIC/Eawag (esgoto bruto), EMSC como pedido pela instrução
@@ -141,7 +249,7 @@ para quantificação.
 | 6 | **Fluorescência Molecular** | **Parcial→fraco-mas-real (novo)** | Mendeley `thkcz3h6n6` (simples) + `g6y69g8gwm` (EEM real, não integrado) | Bal.acc 0,383 (fraco, n=24 pequeno) | **PARAFAC generalizado implementado** (`eem_multiway.py`), provado por contraprova sintética; dataset EEM real não integrado (parser do formato bruto do instrumento é irregular, fora de escopo) |
 | 7 | **HPLC** | Parcial/quase-placeholder | Nenhum dataset com tabela de picos pronta achado | Não validado | COW (referência confirmada), bloqueado por falta de parser |
 | 8 | **GC-MS** | Parcial/quase-placeholder | Achado (`.CDF` NetCDF bruto, Lavandula) mas exige parser novo | Não validado | AMDIS (referência confirmada) ou MCR-ALS (já existe no Guaraci) como alternativa; bloqueado por falta de parser |
-| 9 | **RMN/NMR** | **Parcial→negativo-documentado (novo)** | Figshare `4307804` (CC0, já binado) | Bal.acc 0,500 — **exatamente o acaso**, achado negativo real | icoshift (referência confirmada) — não implementado, dataset já vem pré-binado |
+| 9 | **RMN/NMR** | **RETRATADO no Passo 148 → Funcional, forte** | Figshare `4307804` (CC0, já binado) | ~~Bal.acc 0,500 (acaso)~~ **1,000 (CV/holdout)** — o "0,500" era bug de classificação binária em `pipeline.py`, corrigido no Passo 148, não limitação do dado (ver `docs/VALIDACAO_PUBLICA.md` §2e) | icoshift (referência confirmada) — não implementado, dataset já vem pré-binado |
 | 10 | **IMS** | Parcial | 2 datasets GC-IMS reais achados (`.mea`, formato proprietário) | Não validado | Mason-Schamp (referência confirmada), bloqueado por falta de parser |
 | 11 | **Genérico** | Funcional | — (é o próprio fallback) | — | — |
 

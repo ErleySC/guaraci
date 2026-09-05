@@ -3983,6 +3983,10 @@
         "assinatura": "(X_proc: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv_indices: 'list', n_lv: 'int', tam_populacao: 'int', n_geracoes: 'int', prob_mutacao: 'float', frac_inicial: 'float', seed: 'int') -> 'Tuple[List[Dict], np.ndarray]'",
         "forma": "funcao"
       },
+      "moran_i_mask": {
+        "assinatura": "(X_train: 'np.ndarray', coords_train: 'np.ndarray', k_vizinhos: 'int' = 8, alpha: 'float' = 0.05, n_permutacoes: 'int' = 999, seed: 'int' = 0) -> 'Tuple[Dict[str, np.ndarray], np.ndarray]'",
+        "forma": "funcao"
+      },
       "selecao_interval_vip": {
         "assinatura": "(X_proc, Y_bin, y_int, wavenumbers, cv_indices, n_lv, n_intervalos: 'int') -> 'Tuple[list, np.ndarray]'",
         "forma": "funcao"
