@@ -291,11 +291,34 @@ com o bug antigo e agora classifica >0,9.
 a classificação por província com o motor GENÉRICO do GUARACI (PLS-DA,
 125 variáveis, sem nenhuma seleção de variável) fica em
 **balanced_accuracy = 1,000 (CV) / 1,000 (holdout de 20 amostras)** —
-robusto a 5 presets de pré-processamento diferentes E a 10 seeds de CV
-independentes (faixa 0,98–1,00, nunca abaixo de 0,98). Isso é
+robusto a 5 presets de pré-processamento diferentes. Isso é
 **consistente** com o artigo original (que reporta 99% de acurácia com
 LDA + seleção geoestatística) — só que o motor genérico do GUARACI, sem
 nenhuma seleção de variável, já chega ao mesmo patamar sozinho.
+
+**Independência do holdout verificada (Passo 154, 2026-09-05)**: o
+teste original usa `seed=0` — a MESMA seed usada quando o bug de
+colapso ainda estava presente (o split em si sempre foi válido; o bug
+era na decodificação da predição *depois* do split, não no split).
+Para descartar que 1,000 fosse sorte dessa divisão específica: (1) o
+dataset tem 97 `Sample_ID` **todos únicos** (zero réplica física),
+então `group_by_mae_id=False` não arrisca vazamento de grupo entre
+treino e holdout — não há grupo nenhum para vazar; (2) a auditoria de
+delineamento automática sinaliza 1 par de alta correlação aproximada
+(`pe09`/`pe20`, corr=0,99997) — confirmado por leitura direta que as
+DUAS são Pescara (mesma classe), logo não pode inflar a separação
+*entre* classes; (3) reexecutado com **15 seeds independentes (0–14)**
+via `pq.executar()` completo (5 delas — 1 a 5 — como teste permanente,
+`test_nmr_holdout_robusto_a_multiplas_seeds_passo_154`): balanced_
+accuracy do CV interno do pipeline (RepeatedStratifiedKFold, LVs
+otimizados por Wold) **e** do holdout ficou **exatamente 1,000 em
+TODAS as 15**, sem exceção. Isso corrige a nota anterior desta seção
+("10 seeds de CV independentes, faixa 0,98–1,00") — aquele número
+media outra coisa: o harness simplificado usado só para a comparação
+Full-vs-Moran (`_avaliar_subset_cv`, LV **fixo**=5, sem otimização por
+fold), que de fato varia 0,926–0,958 em 10 seeds (ver adiante) — não o
+pipeline completo. Os dois números não medem a mesma coisa e não devem
+ser confundidos. **Resultado declarado definitivamente fechado.**
 
 **I de Moran, aplicado mesmo assim (motivação original do Passo 148)**:
 implementado do zero em `selecao_variaveis.moran_i_mask`/

@@ -46,7 +46,37 @@ __all__ = [
     "training_applicability_domain",
     "applicability_domain_new_samples",
     "diagnose_spectral_range",
+    "expandir_binario_um_quente",
 ]
+
+
+def expandir_binario_um_quente(Y: np.ndarray) -> np.ndarray:
+    """Reconstroi a 2a coluna one-hot que falta quando `Y` vem de
+    `LabelBinarizer.fit_transform` para EXATAMENTE 2 classes.
+
+    Para 3+ classes o sklearn devolve uma coluna por classe (ndim=2,
+    shape[1]>=2), mas para exatamente 2 classes ele devolve UMA coluna so'
+    (shape (n,1), ndim=2 -- nao 1) por convencao binaria. Um check que so'
+    testa `Y.ndim == 1` nunca dispara nesse caso, e downstream
+    `np.argmax(Y, axis=1)` fica sempre 0: toda predicao colapsa na
+    primeira classe, balanced_accuracy trava em exatamente 0.5 (achado do
+    Passo 148, RETRATACAO do achado negativo do RMN -- ver
+    `docs/VALIDACAO_PUBLICA.md` secao 2e). Este mesmo padrao de correcao
+    (`Y.ndim == 1 or Y.shape[1] == 1`) existia duplicado, escrito a mao,
+    em `avaliacao_modelos.PLSDAClassifier.fit`,
+    `hsi_multiway.NPLSClassifier.fit`, `portao_correcao_sinal.py` e
+    `pipeline._construir_ybin_e_yint` -- extraido aqui no Passo 156 para
+    um unico ponto (dividia manutencao em 4 lugares que precisavam ficar
+    sincronizados manualmente, exatamente o tipo de duplicacao que deixou
+    `pipeline.py` desatualizado da correcao por tanto tempo).
+
+    Idempotente: se `Y` ja' tem 2+ colunas (multi-classe), retorna sem
+    alteracao."""
+    Y = np.asarray(Y)
+    if Y.ndim == 1 or Y.shape[1] == 1:
+        Y_col = Y.reshape(-1, 1)
+        Y = np.hstack([1 - Y_col, Y_col])
+    return Y
 
 
 def vip_scores(modelo: PLSRegression) -> np.ndarray:

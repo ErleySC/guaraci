@@ -1,3 +1,132 @@
+# PROGRESSO — Passos 154-156: fechamento de 3 pendências da auditoria das 11 técnicas (2026-09-05)
+
+## Passo 154 — RMN: holdout confirmado genuinamente independente e robusto
+
+Instrução de fechamento pedia 3 verificações antes de aceitar
+definitivamente o resultado do RMN (balanced_accuracy=1,000, Passo
+148): (1) o holdout pós-correção é o MESMO split usado quando o bug
+ainda mascarava o resultado, ou foi gerado de novo; (2) o split é
+group-aware; (3) o resultado se sustenta em múltiplas seeds, não é
+sorte de uma divisão favorável.
+
+**(1) Mesma seed, split sempre válido.** Comparação direta entre a
+versão do teste ANTES do Passo 148 (commit `70e6403`) e DEPOIS (`3cbe553`
+em diante): as duas usam `seed=0`, `frac_holdout=0.2`, mesmo
+carregamento de dados, na mesma ordem. **É o mesmo split.** Isso não é
+um problema: o bug do Passo 148 estava na DECODIFICAÇÃO da predição
+(`np.argmax` sempre 0 por causa do one-hot com 1 coluna só) — não na
+geração do split, que sempre foi aleatória e válida. Reaproveitar a
+mesma seed não "mascara" nada; só não prova sozinho que 1,000 não é
+sorte dessa divisão específica — daí o item (3).
+
+**(2) Group-aware confirmado por leitura direta.** `group_by_mae_id=
+False` é usado neste dataset — verificado que isso é correto, não uma
+omissão: os 97 `Sample_ID` do CSV bruto são **TODOS únicos** (`df
+['Sample_ID'].duplicated().sum() == 0`), ou seja, não existe nenhuma
+réplica física da mesma amostra em linhas diferentes — não há grupo
+nenhum para vazar entre treino e holdout. A auditoria de delineamento
+automática (`auditoria_delineamento.check_duplicates`) sinaliza 1 par
+de amostras com correlação aproximada > 0,99995 (`pe09`/`pe20`) como
+"possível réplica não identificada, risco de vazamento" — investigado
+por leitura direta: **as duas são Pescara** (mesma classe). Um par
+dentro da MESMA classe não pode inflar a separação ENTRE classes, que
+é o que a métrica mede — na pior hipótese afeta 1 predição individual,
+não o padrão de separabilidade inteiro.
+
+**(3) 15 seeds independentes testadas, resultado invariante.** Rodado
+`pq.executar()` completo (não só o harness simplificado de comparação
+Full-vs-Moran) com seeds 0 a 14 — 5 delas (1-5) viraram teste
+permanente (`test_nmr_holdout_robusto_a_multiplas_seeds_passo_154` em
+`tests/test_validacao_publica_figshare_azeite_nmr.py`), as demais
+medidas fora da suite por custo. Resultado: balanced_accuracy do CV
+interno do pipeline (RepeatedStratifiedKFold n_splits=5 repeats=3, LVs
+otimizados por Wold) **e** do holdout de 20 amostras ficou **exatamente
+1,000 em TODAS as 15 seeds**, sem uma única exceção. Consistente com o
+próprio artigo original (99% com LDA + seleção geoestatística).
+
+**Achado colateral: correção de uma nota imprecisa.** A nota anterior
+desta seção (`docs/VALIDACAO_PUBLICA.md` §2e e o docstring do módulo de
+teste) registrava "robusto a... 10 seeds de CV independentes (faixa
+0,98–1,00, nunca abaixo de 0,98)" — essa frase **nunca tinha sido
+verificada por um teste ou script commitado** e, medida agora, está
+ERRADA para o que ela alega descrever: o pipeline completo dá
+EXATAMENTE 1,000, sem variação nenhuma, não uma faixa 0,98-1,00. Essa
+faixa media outra coisa — o harness simplificado (`_avaliar_subset_cv`,
+LV FIXO=5, sem otimização por fold, usado só para comparar Full-vs-
+Moran) de fato varia 0,926-0,958 em 10 seeds (reconfirmado nesta
+rodada). Os dois números não medem a mesma coisa; a nota antiga os
+tinha confundido. Corrigido em ambos os lugares.
+
+**Resultado: DEFINITIVAMENTE FECHADO.** Holdout genuinamente
+independente (sem grupo para vazar, par de alta correlação isolado
+dentro da mesma classe) e robusto (0 de variação em 15 seeds).
+
+## Passo 155 — Varredura de "Corn = FT-NIR": zero ocorrências incorretas encontradas
+
+Instrução: varrer `docs/`, READMEs e docstrings por menções ao Corn
+ainda associadas a FT-NIR, desde a reclassificação para NIR Dispersivo
+no Passo 146.
+
+**Varredura realizada**: busca por `Corn` (27 arquivos) seguida de
+busca cruzada por `FT-?NIR` co-ocorrendo com `corn` na MESMA linha em
+todo o repositório (`.md`, `.py`, `.yaml`/`.yml`) — nenhuma restrição de
+diretório. **Resultado: 2 ocorrências, as DUAS corretas** ("O Corn nunca
+foi FT-NIR", em `docs/PROGRESSO.md` linha 442 e `docs/VALIDACAO_PUBLICA.
+md` linha 351 — as próprias frases de retratação do Passo 146). Revisado
+manualmente o contexto de TODAS as 27 menções a "Corn" no repositório
+(READMEs, `docs/MANUAL.md`, `docs/DESIGN.md`, `datasets/README.md`,
+`ACKNOWLEDGMENTS.md`, `technique_registry.py`, `hsi_io.py`,
+`preprocessamento.py`, `guaraci.py`, `perfis_matriz/milho_nir.yaml`,
+todos os testes e scripts que citam Corn, `.github/workflows/test.yml`,
+`.gitignore`): nenhuma usa "FT-NIR" para o Corn: usam "NIR" genérico
+(correto, dispersivo é um subtipo de NIR) ou nenhum rótulo de tecnologia.
+A tabela consolidada de `docs/VALIDACAO_PUBLICA.md` §1 e as tabelas de
+11 técnicas em `README.md`/`README.pt-br.md`/`docs/PROGRESSO.md` já
+rotulam o Corn corretamente como "NIR Dispersivo" desde o Passo 146. A
+menção específica ao RMSEP 0,144 citada na instrução (seção de
+validação externa) também não carrega atribuição de técnica incorreta —
+aparece em tabelas neutras (Dataset/Matriz/Alvo/Métrica) sem coluna de
+tecnologia, ou já com "NIR Dispersivo" explícito.
+
+**Resultado**: 0 ocorrências incorretas encontradas e corrigidas — a
+correção do Passo 146 já tinha sido completa. Nenhuma mudança de código
+ou documentação necessária além desta confirmação.
+
+## Passo 156 — Dívida técnica da checagem de shape duplicada: extraída (baixo risco)
+
+Localizados os 4 lugares EXATOS que implementavam à mão o mesmo padrão
+(`if Y.ndim == 1 or Y.shape[1] == 1: Y = hstack([1 - Y, Y])` para
+reconstruir a 2ª coluna one-hot que o `LabelBinarizer` do sklearn omite
+para exatamente 2 classes — a lacuna que causou o bug do Passo 148):
+`avaliacao_modelos.PLSDAClassifier.fit`, `hsi_multiway.NPLSClassifier.
+fit`, `portao_correcao_sinal.py` e `pipeline.py` (o que tinha ficado
+desatualizado).
+
+**Avaliado como baixo risco e implementado nesta mesma rodada** (função
+pura, sem estado, sem efeito colateral, comportamento idêntico em todos
+os 4 pontos de chamada): extraída para `chemometric_stats.
+expandir_binario_um_quente` — módulo escolhido por ser folha (zero
+imports internos do projeto), já usado por 2 dos 4 call sites, evitando
+qualquer risco de import circular nos outros 2 (`hsi_multiway.py`/
+`portao_correcao_sinal.py`, que antes não importavam nada de
+`guaraci.*`). Contra-prova: `test_expandir_binario_um_quente_extraida_
+bate_com_padrao_antigo` (`tests/test_pipeline_core.py`) confirma
+igualdade exata (`np.array_equal`) entre a função nova e o padrão
+antigo reproduzido inline, nos 3 formatos relevantes (vetor 1D, coluna
+única `(n,1)` — o caso real do `LabelBinarizer` binário — e passthrough
+multi-classe). Os 4 call sites continuam cobertos individualmente por
+testes já existentes (`test_pipeline_smoke.py` para `PLSDAClassifier`
+binário, `test_hsi_multiway.py` para `NPLSClassifier` binário,
+`test_portao_correcao_sinal.py`, e `test_executar_classificacao_
+binaria_nao_colapsa_em_uma_classe_so` para `pipeline.py`) — suite
+completa reconfirmada como contra-prova de que o comportamento nos 4
+lugares não mudou. Golden do contrato de API pública regravado
+(`expandir_binario_um_quente` novo em `chemometric_stats.__all__`).
+
+Suíte completa, ruff/mypy limpos, commit, push.
+
+---
+
 # PROGRESSO — Passo 152: reavaliação final de HPLC — "suportável, aguardando dataset" (2026-09-04)
 
 ## Passo 152 — HPLC: busca ampliada, nenhum dataset compatível encontrado

@@ -57,16 +57,40 @@ ACHADO REAL, CORRIGIDO (medido em 2026-09-04, apos o fix): com o bug
 corrigido, a classificacao por provincia com o motor GENERICO do
 GUARACI (PLS-DA, 125 variaveis, `matrix_profile="generico"`) fica em
 **balanced_accuracy = 1,000 (CV) / 1,000 (holdout de 20 amostras)** --
-robusto a 5 presets de pre-processamento diferentes E a 10 seeds de CV
-independentes testadas (faixa 0,98-1,00, nunca abaixo de 0,98). Ranking
-de separabilidade CONSISTENTE com o proprio artigo original (que reporta
+robusto a 5 presets de pre-processamento diferentes. Ranking de
+separabilidade CONSISTENTE com o proprio artigo original (que reporta
 99% de acuracia) -- so' que o motor GENERICO do GUARACI, sem nenhuma
 selecao de variavel geoestatistica, ja alcanca o mesmo patamar. A
 tentativa de melhorar o resultado com I de Moran (motivacao original do
 Passo 148) acabou desnecessaria: a separacao real e' forte e nao precisa
 de selecao de variavel para aparecer -- ver `test_nmr_com_selecao_moran_
 reavaliado_passo_148` abaixo, mantido como comparacao honesta (Full vs.
-Moran, ambos ja perto do teto)."""
+Moran, ambos ja perto do teto).
+
+INDEPENDENCIA DO HOLDOUT VERIFICADA (Passo 154, 2026-09-05): o teste
+principal abaixo usa `seed=0` -- a MESMA seed usada quando o bug de
+colapso ainda estava presente (a divisao em si sempre foi valida; o bug
+era na decodificacao da predicao, nao no split). Para descartar que
+1,000 fosse sorte dessa divisao especifica, `test_nmr_holdout_robusto_a_
+multiplas_seeds_passo_154` reroda com 5 seeds NOVAS (1-5); fora da suite
+(nao repetido em teste por custo) foram medidas tambem as seeds 0-14
+(15 no total): balanced_accuracy do CV interno do pipeline (Repeated
+StratifiedKFold, LVs otimizados por Wold) E do holdout ficou EXATAMENTE
+1,000 em TODAS as 15 -- nao 0,98-1,00 como uma nota anterior desta
+secao chegou a registrar (esse "0,98-1,00, 10 seeds" media outra coisa:
+o harness simplificado de `_avaliar_subset_cv`, LV FIXO=5 sem otimizacao
+por fold, usado so' para comparar Full-vs-Moran -- ali sim ha' variacao
+real, 0,926-0,958 em 10 seeds, ver `test_nmr_com_selecao_moran_
+reavaliado_passo_148`; os dois numeros nao medem a mesma coisa e nao
+devem ser confundidos). Independencia de grupo confirmada por leitura
+direta: os 97 `Sample_ID` sao TODOS unicos (nenhuma replica fisica no
+dataset), entao `group_by_mae_id=False` nao arrisca vazamento de grupo
+entre treino e holdout. A auditoria de delineamento automatica
+(`auditoria_delineamento.check_duplicates`) sinaliza 1 par de amostras
+com correlacao aproximada > 0,99995 (`pe09`/`pe20`) -- confirmado por
+leitura direta que as DUAS sao Pescara (mesma classe), entao esse par
+nao pode ser a causa de separacao artificial ENTRE classes. Resultado
+declarado DEFINITIVAMENTE FECHADO."""
 from __future__ import annotations
 
 import os
@@ -127,8 +151,9 @@ def test_nmr_classifica_provincia_com_motor_generico_apos_correcao_do_bug(pq, tm
     no docstring do modulo: era um bug de classificacao binaria no
     GUARACI (`pipeline.py`), nao uma limitacao do dado. Corrigido, este
     dataset classifica MUITO bem (gate deliberadamente com folga sob o
-    0,98-1,00 medido em 10 seeds, mesma disciplina de piso-com-folga do
-    resto do projeto)."""
+    1,000 medido em 15 seeds -- ver `test_nmr_holdout_robusto_a_
+    multiplas_seeds_passo_154` abaixo -- mesma disciplina de piso-com-
+    folga do resto do projeto)."""
     from conftest import achar_pastas_run
 
     sub = _carregar_bruto()
@@ -178,6 +203,71 @@ def test_nmr_classifica_provincia_com_motor_generico_apos_correcao_do_bug(pq, tm
         f"pelo menos uma classe com accuracy <= 0.5 individual "
         f"({achados_por_classe}) -- sintoma do bug de colapso retratado "
         f"no docstring do modulo.")
+
+
+@requer_figshare_nmr
+@pytest.mark.slow
+def test_nmr_holdout_robusto_a_multiplas_seeds_passo_154(pq, tmp_path):
+    """Passo 154: a instrucao de fechamento pediu para confirmar que o
+    holdout de 20 amostras que deu balanced_accuracy=1,000 nao e' um
+    artefato de uma unica divisao favoravel (seed=0, a MESMA seed usada
+    quando o bug de colapso ainda estava presente -- ver docstring do
+    modulo). Reexecutado aqui com 5 seeds NOVAS (1-5, nunca usadas em
+    nenhuma medicao anterior deste arquivo): balanced_accuracy do
+    holdout continua exatamente 1,000 em TODAS -- medido tambem com
+    seeds 0-14 fora da suite (15/15 em 1,000, CV interno do pipeline
+    incluido), consistente com o proprio artigo original (99% com LDA +
+    selecao geoestatistica). Nao e' sorte de uma divisao especifica.
+
+    Pre-condicao de independencia verificada (fora da suite, nao repetida
+    aqui por custo): as 97 `Sample_ID` sao TODAS unicas (nenhuma amostra
+    fisica duplicada) -- `group_by_mae_id=False` e' correto porque nao ha'
+    nenhum grupo/replica para vazar entre treino e holdout. O par de
+    maior correlacao aproximada sinalizado pela auditoria de delineamento
+    (`pe09`/`pe20`, corr=0,99997) e' DENTRO da mesma classe (Pescara-
+    Pescara) -- nao pode inflar a separacao ENTRE classes, que e' o que
+    este teste mede."""
+    from conftest import achar_pastas_run
+
+    sub = _carregar_bruto()
+    cols_espectrais = [c for c in sub.columns if c != "classe"]
+    wn_min = min(float(c) for c in cols_espectrais)
+    wn_max = max(float(c) for c in cols_espectrais)
+
+    resultados = {}
+    for seed in range(1, 6):
+        saida = tmp_path / f"saida_seed{seed}"
+        csv = tmp_path / f"nmr_seed{seed}.csv"
+        sub.to_csv(csv, index=False)
+        cfg = pq.Config(
+            mode="csv", csv_file=str(csv),
+            class_column="classe", conc_column="",
+            matrix_profile="generico", wn_min=wn_min, wn_max=wn_max,
+            objective="classificacao", level="N1",
+            output_root_folder=str(saida),
+            group_by_mae_id=False, show_plots=False,
+            run_benchmark=False, run_monte_carlo=False, run_shap=False,
+            run_wold=False, run_cv_anova=False, run_opls=False,
+            run_ddsimca=False, executar_etapa4=False,
+            n_permutations=20, frac_holdout=0.2, seed=seed, max_lvs=10,
+        )
+        pq.executar(cfg)
+        runs = achar_pastas_run(cfg.output_root_folder)
+        assert runs, f"executar() nao criou saida para seed={seed}"
+        resumo = (Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt").read_text(
+            encoding="utf-8", errors="replace")
+        achado = re.search(r"Holdout balanced acc\s*\.*:\s*([\d.]+)", resumo)
+        assert achado, (
+            f"'Holdout balanced acc' nao encontrada no resumo (seed={seed}):"
+            f"\n{resumo[:600]}")
+        resultados[seed] = float(achado.group(1))
+
+    for seed, bal_acc in resultados.items():
+        assert bal_acc >= 0.85, (
+            f"seed={seed}: holdout balanced_accuracy={bal_acc:.3f} abaixo "
+            f"do piso (0.85) -- o resultado 1,000 medido na seed=0 pode "
+            f"ter sido sorte de divisao, nao separabilidade real. "
+            f"Resultados completos: {resultados}")
 
 
 @requer_figshare_nmr

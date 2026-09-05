@@ -679,6 +679,10 @@
         "assinatura": "(residuo_y: 'np.ndarray', n_componentes: 'int', n_amostras: 'int', alpha: 'float' = 0.05) -> 'Dict[str, object]'",
         "forma": "funcao"
       },
+      "expandir_binario_um_quente": {
+        "assinatura": "(Y: 'np.ndarray') -> 'np.ndarray'",
+        "forma": "funcao"
+      },
       "explained_variance": {
         "assinatura": "(X: 'np.ndarray', T: 'np.ndarray') -> 'np.ndarray'",
         "forma": "funcao"
