@@ -1460,13 +1460,15 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "ft-nir": {
         "PT": {
             "nome": "FT-NIR (Infravermelho Proximo por Transformada de Fourier)",
-            "desc": "Espectroscopia NIR de alta resolucao. Ideal para oleos, alimentos, farmacos.",
+            "desc": "Espectroscopia NIR de alta resolucao. Ideal para oleos, alimentos, farmacos. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MSC+SG+MC",
             "faixa": "4000-10000 cm-1 (tipico) ou 4000-12000 cm-1",
         },
         "EN": {
             "nome": "FT-NIR (Fourier Transform Near Infrared Spectroscopy)",
-            "desc": "High-resolution NIR spectroscopy. Ideal for oils, food, pharmaceuticals.",
+            "desc": "High-resolution NIR spectroscopy. Ideal for oils, food, pharmaceuticals. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MSC+SG+MC",
             "faixa": "4000-10000 cm-1 (typical) or 4000-12000 cm-1",
         },
@@ -1476,13 +1478,15 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "nir": {
         "PT": {
             "nome": "NIR Dispersivo (Infravermelho Proximo)",
-            "desc": "NIR convencional com detector dispersivo. Faixa tipica 700-2500 nm.",
+            "desc": "NIR convencional com detector dispersivo. Faixa tipica 700-2500 nm. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC ou MSC+SG+MC",
             "faixa": "4000-14000 cm-1 (700-2500 nm)",
         },
         "EN": {
             "nome": "Dispersive NIR (Near Infrared Spectroscopy)",
-            "desc": "Conventional NIR with dispersive detector. Typical range 700-2500 nm.",
+            "desc": "Conventional NIR with dispersive detector. Typical range 700-2500 nm. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC or MSC+SG+MC",
             "faixa": "4000-14000 cm-1 (700-2500 nm)",
         },
@@ -1492,13 +1496,15 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "mir": {
         "PT": {
             "nome": "MIR/FTIR (Infravermelho Medio)",
-            "desc": "Infravermelho medio (4000-400 cm-1). Bandas fundamentais de absorcao molecular.",
+            "desc": "Infravermelho medio (4000-400 cm-1). Bandas fundamentais de absorcao molecular. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC ou SG+MC (MSC menos comum em MIR)",
             "faixa": "400-4000 cm-1",
         },
         "EN": {
             "nome": "MIR/FTIR (Mid-Infrared Spectroscopy)",
-            "desc": "Mid-infrared (4000-400 cm-1). Fundamental molecular absorption bands.",
+            "desc": "Mid-infrared (4000-400 cm-1). Fundamental molecular absorption bands. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC or SG+MC (MSC less common in MIR)",
             "faixa": "400-4000 cm-1",
         },
@@ -1508,17 +1514,17 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "raman": {
         "PT": {
             "nome": "Raman (Espectroscopia Raman)",
-            "desc": "Espectroscopia vibracional por espalhamento Raman. Complementar ao IR.",
-            "preproc_rec": "AirPLS+SG+MC (correcao de fluorescencia de fundo — aprovado no portao "
-                           "de aceite contra dataset publico Raman, 2026-09-04; sem MSC — "
+            "desc": "Espectroscopia vibracional por espalhamento Raman. Complementar ao IR. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
+            "preproc_rec": "AirPLS+SG+MC (correcao de fluorescencia de fundo; sem MSC — "
                            "baseline Raman e aditiva, nao multiplicativa como no NIR)",
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
         "EN": {
             "nome": "Raman Spectroscopy",
-            "desc": "Vibrational spectroscopy by Raman scattering. Complementary to IR.",
-            "preproc_rec": "AirPLS+SG+MC (background fluorescence correction — approved by the "
-                           "acceptance gate against a public Raman dataset, 2026-09-04; no MSC — "
+            "desc": "Vibrational spectroscopy by Raman scattering. Complementary to IR. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
+            "preproc_rec": "AirPLS+SG+MC (background fluorescence correction; no MSC — "
                            "Raman baseline is additive, not multiplicative like NIR scatter)",
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
@@ -1528,13 +1534,15 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "uv-vis": {
         "PT": {
             "nome": "UV-Vis (Ultravioleta-Visivel)",
-            "desc": "Espectroscopia de absorbancia UV-Vis. Use mode CSV com colunas de comprimento de onda.",
+            "desc": "Espectroscopia de absorbancia UV-Vis. Use mode CSV com colunas de comprimento de onda. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC ou Mean-centering (dados UV geralmente ja normalizados)",
             "faixa": "190-900 nm (use CSV — wavelength em nm como colunas)",
         },
         "EN": {
             "nome": "UV-Vis (Ultraviolet-Visible Spectroscopy)",
-            "desc": "UV-Vis absorbance spectroscopy. Use CSV mode with wavelength columns.",
+            "desc": "UV-Vis absorbance spectroscopy. Use CSV mode with wavelength columns. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC or Mean-centering (UV data is often already normalized)",
             "faixa": "190-900 nm (use CSV — wavelength in nm as columns)",
         },
@@ -1544,13 +1552,17 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "fluorescencia": {
         "PT": {
             "nome": "Fluorescencia Molecular",
-            "desc": "Espectrofluorimetria. Dados tipicamente em formato CSV (comprimento de onda em nm).",
+            "desc": "Espectrofluorimetria. Dados tipicamente em formato CSV (comprimento de onda em nm). "
+                    "Validado com dataset publico real (sinal fraco em parte dos dados, documentado) "
+                    "-- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC ou apenas MC (fluorescencia varia muito entre instrumentos)",
             "faixa": "200-800 nm (use CSV)",
         },
         "EN": {
             "nome": "Molecular Fluorescence",
-            "desc": "Spectrofluorimetry. Data typically in CSV format (wavelength in nm).",
+            "desc": "Spectrofluorimetry. Data typically in CSV format (wavelength in nm). "
+                    "Validated against real public data (weak signal in part of the data, "
+                    "documented) -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC or MC only (fluorescence varies widely between instruments)",
             "faixa": "200-800 nm (use CSV)",
         },
@@ -1560,13 +1572,15 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "hplc": {
         "PT": {
             "nome": "HPLC (Cromatografia Liquida de Alta Performance)",
-            "desc": "Dados cromatograficos em formato CSV. Colunas = tempo de retencao ou compostos.",
+            "desc": "Dados cromatograficos em formato CSV. Colunas = tempo de retencao ou compostos. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC ou autoscaling (dados HPLC sao areas/alturas de pico)",
             "faixa": "Nao aplicavel — use CSV com colunas de compostos",
         },
         "EN": {
             "nome": "HPLC (High Performance Liquid Chromatography)",
-            "desc": "Chromatographic data in CSV format. Columns = retention times or compounds.",
+            "desc": "Chromatographic data in CSV format. Columns = retention times or compounds. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC or autoscaling (HPLC data are peak areas/heights)",
             "faixa": "Not applicable — use CSV with compound columns",
         },
@@ -1576,13 +1590,17 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "gc-ms": {
         "PT": {
             "nome": "GC-MS (Cromatografia Gasosa / Massas)",
-            "desc": "Compostos volateis. Dados em CSV: TIC ou tabela de fragmentos m/z.",
+            "desc": "Compostos volateis. Dados em CSV: TIC ou tabela de fragmentos m/z. "
+                    "Alinhamento de retencao validado com dataset publico real -- "
+                    "ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC ou autoscaling (apos alinhamento de picos)",
             "faixa": "Nao aplicavel — use CSV (m/z ou tempo de retencao)",
         },
         "EN": {
             "nome": "GC-MS (Gas Chromatography / Mass Spectrometry)",
-            "desc": "Volatile compounds. CSV data: TIC or m/z fragment table.",
+            "desc": "Volatile compounds. CSV data: TIC or m/z fragment table. "
+                    "Retention alignment validated against real public data -- "
+                    "see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC or autoscaling (after peak alignment)",
             "faixa": "Not applicable — use CSV (m/z or retention time)",
         },
@@ -1592,13 +1610,17 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "nmr": {
         "PT": {
             "nome": "RMN / NMR (Ressonancia Magnetica Nuclear)",
-            "desc": "Fingerprint molecular. Bucketing por janelas de ppm antes de PCA/PLS.",
+            "desc": "Fingerprint molecular. Bucketing por janelas de ppm antes de PCA/PLS. "
+                    "Validado com dataset publico real, resultado forte -- "
+                    "ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV ou PQN + MC (apos binning)",
             "faixa": "0-12 ppm (deslocamento quimico)",
         },
         "EN": {
             "nome": "NMR (Nuclear Magnetic Resonance)",
-            "desc": "Molecular fingerprint. Bucketing by ppm windows before PCA/PLS.",
+            "desc": "Molecular fingerprint. Bucketing by ppm windows before PCA/PLS. "
+                    "Validated against real public data, strong result -- "
+                    "see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV or PQN + MC (after binning)",
             "faixa": "0-12 ppm (chemical shift)",
         },
@@ -1608,13 +1630,17 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "ims": {
         "PT": {
             "nome": "IMS (Espectrometria de Mobilidade Ionica)",
-            "desc": "Separacao de ions por mobilidade. Normalizar pelo pico do solvente (RIP).",
+            "desc": "Separacao de ions por mobilidade. Normalizar pelo pico do solvente (RIP). "
+                    "Validado com dataset publico real; resultado negativo documentado -- "
+                    "ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC (apos alinhamento por tempo de deriva)",
             "faixa": "5-50 ms (tempo de deriva)",
         },
         "EN": {
             "nome": "IMS (Ion Mobility Spectrometry)",
-            "desc": "Ion separation by mobility. Normalize by solvent peak (RIP).",
+            "desc": "Ion separation by mobility. Normalize by solvent peak (RIP). "
+                    "Validated against real public data; null result documented -- "
+                    "see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC (after drift-time alignment)",
             "faixa": "5-50 ms (drift time)",
         },

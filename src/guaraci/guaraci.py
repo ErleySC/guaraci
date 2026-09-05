@@ -3527,15 +3527,13 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
 # texto sempre que a cobertura de validacao mudar (ver Passo 104).
 _AVISO_MATURIDADE_HSI_PT = (
     "Validado em 1 fruta (Kaki) e 1 camera (VIS) do dataset publico "
-    "DeepHS Fruit, com desbalanceamento de classe severo e nao corrigido "
-    "(overripe n=12, unripe n=2) -- ver docs/VALIDACAO_PUBLICA.md secao 7 "
-    "para os numeros completos antes de usar para resultado publicavel."
+    "DeepHS Fruit, com desbalanceamento de classe nao corrigido -- ver "
+    "docs/VALIDACAO_PUBLICA.md secao 7 para os numeros completos."
 )
 _AVISO_MATURIDADE_HSI_EN = (
     "Validated on 1 fruit (Kaki) and 1 camera (VIS) from the public "
-    "DeepHS Fruit dataset, with severe and uncorrected class imbalance "
-    "(overripe n=12, unripe n=2) -- see docs/VALIDACAO_PUBLICA.md "
-    "section 7 for the full numbers before using for a publishable result."
+    "DeepHS Fruit dataset, with uncorrected class imbalance -- see "
+    "docs/VALIDACAO_PUBLICA.md section 7 for the full numbers."
 )
 
 

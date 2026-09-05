@@ -1,3 +1,138 @@
+# PROGRESSO — Passos 161-165: índice único do projeto e auditoria de documentação (2026-09-05)
+
+## Passo 161 — `docs/INDICE_PROJETO.md` criado
+
+Listados por comando direto (`git ls-files "*.md"`) os 25 arquivos `.md`
+rastreados pelo repositório (excluídos worktrees de agentes, `.venv`,
+saídas de execução e `docs/_*.md` — confirmados no `.gitignore` como
+rascunho local deliberadamente fora do controle de versão). Organizado
+em 7 categorias (Visão geral, Estado de desenvolvimento, Validação
+científica, Compatibilidade e contrato, Uso, Dados, Segurança) + uma
+categoria extra para `docs/RASCUNHOS_CONTATO.md`.
+
+**Achado ao verificar a nota sugerida pela instrução** ("dados de
+terceiro e rascunhos de contato ficam fora do repositório, em
+`~/.guaraci_local/`"): parcialmente imprecisa. `~/.guaraci_local/`
+existe de fato (CLAUDE.md/PROGRESSO.md privados + CSVs de dados do TCC
++ pasta `auditoria_privada/`), mas `docs/RASCUNHOS_CONTATO.md` — que É
+um rascunho de contato — está no repositório, rastreado, e isso está
+correto: seu conteúdo (dúvida de licença para autor de dataset público)
+não tem dado pessoal, diferente do que fica isolado em
+`~/.guaraci_local/`. A nota no índice foi escrita refletindo o estado
+real verificado, não a frase da instrução ao pé da letra.
+
+Referenciado a partir de `README.md`/`README.pt-br.md` (linha logo
+antes do primeiro separador).
+
+## Passo 162 — Auditoria de linguagem expositiva/redundante
+
+Varredura por padrões clássicos de linguagem expositiva ("descobrimos
+que", "após investigação cuidadosa", "vale destacar", "é importante
+ressaltar" etc., com e sem acento) em `README.md`, `README.pt-br.md`,
+`docs/MANUAL.md`, `docs/COMPATIBILITY.md`, `docs/VALIDATION.md`,
+`docs/BENCHMARK_TECATOR.md`, `docs/index.md`: **zero ocorrências** —
+rodadas de auditoria anteriores desta sessão de trabalho já
+estabeleceram um estilo direto/factual nesses documentos.
+
+Checado também redundância entre documentos: `docs/VALIDATION.md`
+(validação NUMÉRICA interna, fórmulas vs. referência) e
+`docs/BENCHMARK_TECATOR.md` (primeiro benchmark externo, histórico) já
+seguem o padrão correto de resumir e linkar a partir de
+`docs/VALIDACAO_PUBLICA.md`, não duplicar conteúdo. Nenhuma seção
+obsoleta substituída por versão posterior no mesmo arquivo foi
+encontrada nos documentos de usuário final auditados. `docs/PROGRESSO.md`
+mantém seu estilo de diário de bordo intencionalmente (não é
+documentação de usuário final) — retratações (RMN, DS) preservadas como
+histórico, não removidas.
+
+**Relatório**: nenhum corte de linguagem expositiva foi necessário
+nesta rodada — a varredura confirma que o padrão já estava limpo, não
+que não havia nada para achar.
+
+## Passo 163 — Auditoria de atualidade: 2 discrepâncias reais encontradas e corrigidas
+
+Verificação por comando direto de: versão (`__version__ = "31.9.0"` em
+`config.py` bate com o badge do README — OK), contagem de testes citada
+fora de VALIDACAO_PUBLICA/PROGRESSO (nenhuma encontrada — OK), testes
+citados em `docs/VALIDATION.md` (10 nomes conferidos, todos existem no
+código atual — OK).
+
+**Discrepância 1 (corrigida)**: a tabela "Status of all 11 analytical
+techniques" em `README.md`/README.pt-br.md ainda mostrava HPLC e IMS
+como "Supportable, not validated"/"adiado formalmente" — desatualizada
+em relação aos Passos 157-159 (fechados nesta mesma sessão, um passo
+antes desta auditoria). Corrigida para refletir o estado real: HPLC
+funcional (validado), IMS funcional com sinal nulo (validado,
+resultado negativo honesto). Data "fechado em" atualizada de
+2026-09-04 para 2026-09-05.
+
+**Discrepância 2 (corrigida)**: a seção "Known limitations"/"Limitações
+conhecidas" de ambos os READMEs afirmava "Validated on three public
+datasets so far (corn NIR, Tecator NIT, Mendeley ctgg7k4m5g)" — número
+que ficou obsoleto há várias rodadas (o projeto integrou desde então
+RMN, Fluorescência simples+EEM, GC-MS, UV-Vis, HPLC, GC-IMS, DeepHS
+Fruit). Corrigido para não hardcodar uma contagem que expira a cada
+nova técnica fechada: agora aponta para `docs/VALIDACAO_PUBLICA.md`
+como fonte única e atual, explicitando que a lista muda e este não é o
+lugar de mantê-la sincronizada — mesma lição do RMN aplicada
+preventivamente aqui.
+
+**Checado e considerado não-discrepância real**: `docs/PROGRESSO.md`
+tem uma entrada antiga (Passo ~125-era) dizendo "validação de MCR-ALS
+contra dataset real de óleo... ainda está pendente", resolvida por uma
+entrada CRONOLOGICAMENTE MAIS RECENTE (Passo posterior, mais acima no
+arquivo por ser reverso-cronológico) que já contém a retratação
+explícita ("Passo 125 registrou isso como limitação de ambiente — não
+era"). Como o arquivo é lido do topo (mais recente) para baixo, um
+leitor encontra a correção antes da nota antiga — não é uma contradição
+ativa, é um artefato normal de log append-only. Não editado (evita
+reescrever histórico por um caso já autorresolvido na ordem de
+leitura).
+
+## Passo 164 — Telas de ajuda: 2 achados de excesso de detalhe de auditoria corrigidos
+
+Varredura em `guaraci.py`, `cli_assistente.py` e `app_tabs/*.py` por
+data específica (`AAAA-MM-DD`), referência a "Passo N", contagem
+`n=N`, p-valor, ou instrução "antes de usar para resultado publicável"
+dentro de string literal (não comentário/docstring).
+
+**Achado 1** (o exemplo da própria instrução): `_AVISO_MATURIDADE_HSI_PT/EN`
+(`guaraci.py`) citava "(overripe n=12, unripe n=2)" e terminava com
+"antes de usar para resultado publicável". Reescrito para citar a
+limitação (Kaki/VIS, desbalanceamento) sem os números, com o link para
+`docs/VALIDACAO_PUBLICA.md` seção 7 bastando para quem quiser o
+detalhe completo.
+
+**Achado 2** (novo, mesmo padrão, não citado na instrução): o
+`preproc_rec` do Raman em `cli_assistente.TECNICAS` embutia "aprovado
+no portão de aceite contra dataset público Raman, 2026-09-04" — data e
+metodologia de auditoria dentro do texto de configuração de
+pré-processamento. Encurtado para só a recomendação prática.
+
+Nenhum outro caso do mesmo padrão encontrado nas outras técnicas ou na
+aba "Sobre" do app Streamlit (que só lista tipos de matriz suportados,
+sem alegação de validação).
+
+Teste de contrato novo: `tests/test_catalogo_tecnicas_texto.py` —
+verifica por regex que nenhuma entrada de `TECNICAS` nem o aviso do
+HSI contém data/Passo-N/n=N/p-valor/instrução-de-publicação.
+
+## Passo 165 — Catálogo de técnicas do menu atualizado
+
+As 11 entradas de `cli_assistente.TECNICAS` ganharam uma frase curta de
+maturidade (sem número, sem metodologia, só link):
+FT-NIR/NIR Dispersivo/MIR/Raman/UV-Vis/HPLC → "Validado com dataset
+público real"; RMN → mesmo + "resultado forte"; Fluorescência → mesmo +
+"(sinal fraco em parte dos dados, documentado)"; GC-MS →
+"Alinhamento de retenção validado..." (nuance: mecanismo, não
+classificação); IMS → "Validado...; resultado negativo documentado".
+"Genérico" confirmado como fallback, sem alegação de validação própria
+(teste de contrato garante isso não regredir).
+
+Suíte completa, ruff/mypy (gate) limpos, commit, push.
+
+---
+
 # PROGRESSO — Passos 157-160: HPLC e IMS fechados com dataset real (2026-09-05)
 
 ## Passo 157/159 — HPLC: candidato encontrado e integrado (Zenodo `21245912`)
