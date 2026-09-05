@@ -412,6 +412,37 @@
         "forma": "funcao"
       }
     },
+    "alinhamento_retencao": {
+      "ResultadoCOW": {
+        "campos": [
+          {
+            "nome": "amostra_alinhada",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "nos_amostra",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "nos_referencia",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "correlacao_media",
+            "tem_default": false,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "cow": {
+        "assinatura": "(referencia: 'np.ndarray', amostra: 'np.ndarray', n_segmentos: 'int', slack: 'int') -> 'ResultadoCOW'",
+        "forma": "funcao"
+      }
+    },
     "amostragem_ativa": {
       "PrioridadeAmostragem": {
         "campos": [
@@ -1717,6 +1748,31 @@
       },
       "spread_labels": {
         "assinatura": "(pos: 'np.ndarray', sep_x: 'float', sep_y: 'float') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
+    "gcms_io": {
+      "CromatogramaTIC": {
+        "campos": [
+          {
+            "nome": "tempo_min",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "intensidade",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "carregar_dataset_gcms": {
+        "assinatura": "(pasta: \"'str | Path'\", padrao: 'str' = '*.CDF') -> 'Dict[str, CromatogramaTIC]'",
+        "forma": "funcao"
+      },
+      "ler_tic_andi_ms": {
+        "assinatura": "(caminho: \"'str | Path'\") -> 'CromatogramaTIC'",
         "forma": "funcao"
       }
     },

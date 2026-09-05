@@ -28,6 +28,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | Figshare `10.6084/m9.figshare.4307804` (**RMN**) | 97 azeites de oliva (Abruzzo/Itália) | 97 | 125 variáveis ppm (já binadas pelos autores) | província de origem (Pescara/Teramo) | **Balanced accuracy 1,000 (CV) / 1,000 (holdout)** — RETRATADO de "0,500 (acaso)", era bug de classificação binária, não limitação do dado (ver §2e) | artigo original reporta 99% com LDA + seleção geoestatística de variável — CONSISTENTE (motor genérico chega ao mesmo patamar sem seleção) | 🟢 **INTEGRADO, forte** (2026-09-04, Passo 148) — bug corrigido em `pipeline.py`; ver §2e |
 | ERIC/Eawag `10.25678/000D3C19` (**UV-Vis**, sensor scan/Spectrolyser) | esgoto bruto (campanha de 25 semanas, flume) | 82 dias (agregado; 533 amostras de laboratório antes da agregação) | 215 · 200–735 nm | DOC (carbono orgânico dissolvido, mg/L) | **R²cal 0,616 / R²val 0,650**; RMSEP 34,2 mg/L; 7 LVs (EMSC+MC) | sem RMSEP publicado para este recorte (sanity check, não gate) | 🟢 **INTEGRADO** (2026-09-04, Passo 147) — EMSC (já aprovado no Corn, §9) capturou sinal real; ver §2g |
 | Zenodo `10.5281/zenodo.19755088` (**Fluorescência, EEM real**) | azeite EVOO (3 marcas) adulterado com 5 óleos (milho/canola/amendoim/soja/noz) | 330 (11 combinações marca×adulterante × 10 frações × 3 rodadas) | EEM 35 excitações × 270 emissões | fração de azeite (9,09%–90,91%) | PARAFAC (R=3): erro reconstrução 0,161, melhor \|r\| com fração real = **0,888**; PLS group-aware (n_lv=8, achatado): **R² 0,976**, RMSEP 4,09 p.p. | sem alvo publicado nesta forma (dataset próprio, sem artigo de referência com número comparável) | 🟢 **INTEGRADO** (2026-09-04, Passo 149) — PARAFAC rodou contra EEM real pela 1ª vez; ver §2h |
+| Mendeley `10.17632/pgkrc7wyj4.1` (**GC-MS**) | óleo essencial de Lavandula angustifolia (55 amostras comerciais) | 55 | TIC (varredura completa, ANDI-MS) | alinhamento de tempo de retenção (não supervisionado — sem rótulo de adulteração no dump bruto) | COW: correlação média par-a-par **0,753 → 0,884** (antes/depois) | sem alvo publicado nesta forma (validação de mecanismo, não de classificação) | 🟢 **INTEGRADO** (2026-09-04, Passo 150) — `scipy.io` lê ANDI-MS direto, zero dependência nova; ver §2i |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -510,6 +511,82 @@ python scripts/download_datasets/baixar_zenodo_eem_azeite.py
 GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_zenodo_eem_azeite.py tests/test_eem_multiway.py -v
 ```
 
+### 2i. GC-MS — Mendeley `pgkrc7wyj4`, lavanda (Passo 150, Fase D, 2026-09-04)
+
+55 amostras COMERCIAIS de óleo essencial de Lavandula angustifolia
+(Pokajewicz 2024), usadas no estudo original para detecção de
+adulteração. `L01.CDF`...`L55.CDF` — GC-MS de varredura completa,
+formato ANDI-MS/netCDF clássico (ASTM E1948). Licença **CC BY 4.0**.
+
+**Bibliotecas avaliadas antes de escrever parser do zero** (exigido
+pela instrução): os arquivos reais se confirmaram netCDF **clássico**
+(não HDF5) — `scipy.io.netcdf_file` (scipy já é dependência deste
+projeto) lê direto, **zero dependência nova** (nem `netCDF4`, nem
+`pyms`/PyMassSpec, com toda a superfície de licença/manutenção que
+viriam junto).
+
+**Parser** (`src/guaraci/gcms_io.py`): `ler_tic_andi_ms` lê
+`scan_acquisition_time`/`total_intensity` (variáveis padrão ANDI-MS,
+confirmadas por leitura direta) — TIC (corrente iônica total), não o
+espectro de massa completo por scan (fora de escopo desta validação,
+que usa só alinhamento cromatográfico).
+
+**COW implementado do zero** (`src/guaraci/alinhamento_retencao.py`):
+Nielsen, Carstensen & Smedsgaard (1998), *J. Chromatogr. A* 805:17-35,
+DOI 10.1016/S0021-9673(98)00021-1 (confirmado no Crossref). Contra-prova
+sintética obrigatória (`tests/test_alinhamento_retencao.py`, 4 testes):
+cromatograma com warp não-linear CONHECIDO — COW recupera o
+alinhamento (correlação 0,486→0,790); sem warp, não piora nada.
+
+**Validado contra as 55 amostras reais**: TICs resampleados numa grade
+de tempo comum (interseção segura — lotes com duração de corrida
+ligeiramente diferente, ~75 vs ~82 min) e alinhados por COW contra uma
+referência (L01, 30 segmentos, slack=10, grade de 1200 pontos).
+**Correlação média par-a-par entre as 55 amostras: 0,753 (antes) →
+0,884 (depois do COW)** — melhora real e mensurável contra dado real,
+mesmo espírito "antes/depois" já usado para validar PDS/DS no Corn
+(§9). Group-aware não se aplica: cada arquivo é 1 injeção por amostra.
+
+**Limite de escopo (decisão registrada, não escondida)**: o dump bruto
+(1020 arquivos, só `.CDF`/`.dat`) não inclui tabela de rótulo de
+autenticidade/adulteração por amostra — esse rótulo, se existir, está
+no artigo companheiro, não no repositório de dados; reconstruí-lo
+exigiria identificação de compostos por índice de retenção (escopo
+próprio, maior que "escrever um parser"). Esta validação prova o
+MECANISMO (parser + alinhamento), não uma classificação/quantificação
+de adulteração.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_mendeley_gcms_lavanda.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_mendeley_gcms_lavanda.py tests/test_alinhamento_retencao.py -v
+```
+
+### 2j. IMS — adiamento formal (Passo 151, Fase D, 2026-09-04)
+
+Licença de `gc-ims-tools` (Charisma-Mannheim/gc-ims-tools) confirmada:
+**BSD-3-Clause**, compatível com GPL-3.0-or-later.
+
+2 datasets GC-IMS reais identificados, ambos CC BY 4.0: Mendeley
+`fr9t5fkkvz` (53 azeites por origem geográfica — Espanha/Itália/Grécia,
+157 arquivos, **~6,9 GB**) e Mendeley `jxj2r45t2x` (50 méis por origem
+botânica — acácia/canola/melato, 110 arquivos, **~4,8 GB**).
+
+**Adiado formalmente** (mesmo tratamento do Bloco 13d): os dois
+datasets são 1-2 ordens de grandeza maiores que qualquer outro usado
+nesta auditoria inteira (o maior até aqui, o esgoto UV-Vis do §2g, tem
+~357 MB). Verificado adicionalmente: **nenhum dos dois dumps brutos
+inclui uma tabela de rótulo/classe por arquivo** — nomes de arquivo são
+timestamps de injeção; o repositório da própria biblioteca
+`gc-ims-tools` (checado via API do GitHub) também não traz essa tabela,
+só documentação de API. O rótulo verdadeiro estaria no cabeçalho
+binário do `.mea` (não confirmado sem abrir o formato) ou no artigo
+companheiro (*Food Research International*,
+doi:10.1016/j.foodres.2022.111779) — qualquer um dos dois caminhos é
+trabalho de escopo próprio. Nenhuma linha de código nova para IMS nesta
+rodada; licença e datasets documentados para uma sessão futura com
+orçamento de tempo/banda compatível com a escala.
+
 ### Histórico — RETRATAÇÃO de 2026-08-18
 
 > **A entrada anterior desta seção afirmava "❌ NÃO OBTIDO" com a rota
@@ -620,6 +697,7 @@ um novo. Nunca cai num padrão de outra matriz em silêncio.
 | DeepHS Fruit (Kaki) | **não declarada formalmente** (sem SPDX no repo/README; `api.github.com/repos/cogsys-tuebingen/deephs_fruit` devolve `license: None`) — autores afirmam publicamente "we make public" o dataset (README, paper IJCNN 2021) e distribuem por HTTP sem autenticação; mesmo tratamento já dado ao Corn nesta tabela | leitura direta do repo + API do GitHub, 2026-09-01 |
 | ERIC/Eawag `000D3C19` (esgoto UV-Vis) | **CC BY** | campo `license_id` da API pública do portal CKAN, `opendata.eawag.ch/api/3/action/package_show`, 2026-09-04 |
 | Zenodo `19755088` (EEM azeite) | **CC BY 4.0** | campo `metadata.license.id` da API oficial do Zenodo, `zenodo.org/api/records/19755088`, 2026-09-04 |
+| Mendeley `pgkrc7wyj4` (GC-MS lavanda) | **CC BY 4.0** | campo `data_licence` da API oficial do Mendeley, 2026-09-04 |
 
 Nenhum destes arquivos é versionado neste repositório.
 

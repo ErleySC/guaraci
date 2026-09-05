@@ -327,6 +327,20 @@ um holdout independente usando os presets padrão do GUARACI — documentado
 como limitação honesta em
 [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md), não escondido.
 
+**Estado das 11 técnicas analíticas do menu** (detalhe completo, números
+e comandos de reprodução em
+[`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md); fechado em
+2026-09-04):
+
+| Técnica | Estado |
+|---|---|
+| FT-NIR, MIR, Raman, UV-Vis, GC-MS, Genérico | **Funcional, validado** contra dado público real |
+| NIR Dispersivo | **Funcional, validado** — os próprios instrumentos do dataset Corn (FOSS NIRSystems) são dispersivos, não FT; reclassificado em vez de precisar de dataset novo |
+| RMN | **Funcional, validado, forte** — uma leitura anterior de "exatamente o acaso" era um bug real de classificação (codificação one-hot de alvo binário), achado e corrigido; retratação documentada por completo |
+| Fluorescência | **Funcional** — espectro de emissão 1D validado (sinal fraco, n pequeno, documentado como tal) mais um dataset EEM (matriz excitação-emissão) real validado ponta-a-ponta via decomposição PARAFAC |
+| IMS | Suportável, não validado — 2 datasets públicos reais identificados, mas de 5-7 GB cada e sem rótulo de referência incluído; adiado formalmente, não tentado |
+| HPLC | Suportável, não validado — nenhum dataset público encontrado com tabela de picos pronta no formato amostra×alvo deste projeto (candidato mais próximo é um dataset de resolução de curva, uma alegação diferente) |
+
 Quantificação nunca reporta um RMSEP nu: **SEP, RPD e RER** acompanham,
 com o RPD carregando sua faixa de interpretação publicada (Williams 2014;
 AACC 39-00.01). LOD/LOQ são calculados quando réplicas físicas permitem

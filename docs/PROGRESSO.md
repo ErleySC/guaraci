@@ -1,3 +1,164 @@
+# PROGRESSO — Passo 152: reavaliação final de HPLC — "suportável, aguardando dataset" (2026-09-04)
+
+## Passo 152 — HPLC: busca ampliada, nenhum dataset compatível encontrado
+
+Instrução: nova busca, mais ampla, por dataset de HPLC com tabela de
+picos pronta (formato compatível com o motor atual — amostras como
+linhas, picos/áreas como colunas, com alvo supervisionado). Se
+encontrado, validar como as demais técnicas tabulares; se não,
+documentar HPLC como "tecnicamente suportável, aguardando dataset" —
+diferente de placeholder.
+
+**Busca realizada** (mais ampla que a do Passo 141/142, que não tinha
+sido iniciada para HPLC): API do Zenodo (múltiplas queries — "HPLC peak
+area table", "HPLC honey/olive/wine adulteration", "HPLC-DAD
+chemometrics"), Mendeley Data (busca direta), UCI Machine Learning
+Repository, e o site especializado `mcrals.info` (via seu espelho no
+Zenodo, DOI 10.5281/zenodo.8206165 — coleção de datasets de referência
+do grupo Tauler, autoridade em resolução de curva multivariada).
+
+**Candidato mais próximo encontrado**: `adataset.zip`/`bdataset.zip`
+(Zenodo 8206165) — dado HPLC-DAD REAL (pesticidas organofosforados em
+águas naturais, Tauler, Lacorte & Barceló 1996, *J. Chromatogr. A*
+730:177-183), formato MATLAB. **Não serve para o padrão de validação
+deste projeto**: é um conjunto de RESOLUÇÃO DE CURVA (1 matriz de
+mistura com 3 compostos + 2 matrizes de padrão) — não uma tabela
+amostra×alvo com N amostras independentes para PLS/PLS-DA, que é o que
+`mode="csv"` do GUARACI espera. Usar esse dado exigiria reformular a
+alegação de "quantificação supervisionada" para "resolução de curva
+MCR-ALS" — um escopo diferente do que as outras 10 técnicas desta
+auditoria validam, não uma substituição equivalente.
+
+**Decisão**: nenhum dataset HPLC compatível com o padrão de validação
+encontrado. Registrado como **"suportável, aguardando dataset"** — o
+motor genérico (`mode="csv"`, PLS/PLS-DA) já processaria uma tabela de
+picos de HPLC sem nenhuma mudança de código, exatamente como já faz
+para RMN (variáveis ppm pré-binadas) e as demais técnicas tabulares;
+a lacuna é puramente de DADO disponível, não de capacidade do motor —
+distinção que evita tanto subestimar (não é "não suportado") quanto
+superestimar (não está "validado") a maturidade real desta técnica.
+
+Nenhuma linha de código nova para HPLC nesta rodada (não havia o que
+implementar sem um dataset). `docs/VALIDACAO_PUBLICA.md` não ganhou
+seção nova para HPLC (nada foi integrado) — só esta nota em
+`docs/PROGRESSO.md` e a atualização da tabela de 11 técnicas.
+
+Próximo (Passo 153): consolidação final — atualizar
+`docs/VALIDACAO_PUBLICA.md`/README/MANUAL/PROGRESSO.md com o estado
+final e completo das 11 técnicas.
+
+---
+
+# PROGRESSO — Passos 150/151: GC-MS validado com dado real; IMS adiado formalmente (Fase D, 2026-09-04)
+
+## Passo 150 — GC-MS: parser ANDI-MS + COW, validado contra 55 amostras reais
+
+Checklist da instrução: (1) avaliar bibliotecas antes de escrever parser
+do zero; (2) extrair TIC e picos do formato bruto; (3) implementar
+alinhamento de retenção (COW) entre as 55 amostras do dataset de
+lavanda; (4) converter para estrutura tabular interna; (5) validar com
+split group-aware.
+
+**(1) Bibliotecas avaliadas**: `netCDF4` e `pyms` (PyMassSpec) são as
+opções maduras citadas na literatura para ANDI-MS. Antes de adotar
+qualquer uma, os arquivos reais do dataset (Mendeley `10.17632/
+pgkrc7wyj4.1`, "Lavandula angustifolia essential oil adulteration
+dataset", Pokajewicz 2024, 55 amostras comerciais, CC BY 4.0,
+confirmado por `file` no binário) se confirmaram netCDF **CLÁSSICO**
+(não HDF5) — `scipy.io.netcdf_file` (scipy JÁ é dependência do projeto)
+lê direto, sem nenhuma dependência nova. Achado que evitou avaliação de
+licença de terceiros por completo.
+
+**(2) TIC extraído**: `src/guaraci/gcms_io.py` novo —
+`ler_tic_andi_ms`/`carregar_dataset_gcms` leem `scan_acquisition_time`/
+`total_intensity` (nomes de variável padrão ANDI-MS, confirmados por
+leitura direta). Baixados e verificados os 55 arquivos reais (~347 MB
+total, SHA-256 de cada um vindo da própria API do Mendeley — mesma
+prática de scripts anteriores). Extração de picos individuais (não só
+TIC) fica fora de escopo — não necessária para o alinhamento por COW.
+
+**(3) COW implementado do zero**: `src/guaraci/alinhamento_retencao.py`
+— Nielsen, Carstensen & Smedsgaard (1998), J. Chromatogr. A 805:17-35,
+DOI 10.1016/S0021-9673(98)00021-1 (confirmado no Crossref). Programação
+dinâmica sobre limites de segmento com folga (`slack`), maximizando a
+correlação segmento-a-segmento entre amostra deformada e referência.
+Contra-prova obrigatória (regra 9, `tests/test_alinhamento_retencao.py`,
+4 testes): cromatograma sintético com warp não-linear CONHECIDO — COW
+recupera o alinhamento (correlação sobe 0,486→0,790); sem warp, COW não
+piora nada.
+
+**(4)+(5) Validado contra as 55 amostras reais**: TICs resampleados
+numa grade de tempo comum (interseção seguRA entre lotes com duração de
+corrida ligeiramente diferente, ~75 vs ~82 min) e alinhados por COW
+contra uma referência (L01). **Correlação média par-a-par entre as 55
+amostras: 0,753 (antes) → 0,884 (depois do COW)** — melhora real,
+mensurável, contra dado real. "Group-aware" não se aplica aqui: cada
+arquivo é 1 injeção por amostra, sem repetição a proteger.
+
+**Escopo explicitamente NÃO coberto (decisão registrada, não
+escondida)**: o dump bruto do dataset (1020 arquivos, só `.CDF`/`.dat`)
+não inclui uma tabela de referência com rótulo de autenticidade/
+adulteração por amostra — esse rótulo, se existir, está no artigo
+companheiro, não no repositório de dados; reconstruí-lo exigiria
+identificação de compostos por índice de retenção, escopo maior que
+"escrever um parser". Por isso esta validação não tenta classificar/
+quantificar adulteração — valida exatamente o que os itens (1)-(5) da
+instrução pedem (parser + alinhamento), não além disso.
+
+Novos módulos (`gcms_io.py`, `alinhamento_retencao.py`) adicionados ao
+gate de mypy (0 erros). Suíte completa, ruff/mypy limpos.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_mendeley_gcms_lavanda.py
+GUARACI_DATASETS_DIR=<pasta> pytest tests/test_validacao_publica_mendeley_gcms_lavanda.py tests/test_alinhamento_retencao.py -v
+```
+
+## Passo 151 — IMS: adiamento formal (mesmo tratamento do Bloco 13d)
+
+Checklist: (1) confirmar licença de `gc-ims-tools`; (2) usar a
+biblioteca para ler `.mea`; (3) decidir redução da matriz 2D
+(retenção×deriva) — tabular ou PARAFAC/multiway; (4) validar contra mel
+ou azeite com split group-aware; (5) correção de K₀ se metadados
+existirem.
+
+**(1) Licença confirmada**: `gc-ims-tools` (Charisma-Mannheim/
+gc-ims-tools) — **BSD-3-Clause**, compatível com GPL-3.0-or-later.
+
+**Por que os itens (2)-(5) foram adiados**: os 2 candidatos reais
+encontrados (Mendeley `fr9t5fkkvz`, GC-IMS de 53 azeites por origem
+geográfica — Espanha/Itália/Grécia — 157 arquivos, **~6,9 GB**; e
+Mendeley `jxj2r45t2x`, GC-IMS de 50 méis por origem botânica — acácia/
+canola/melato — 110 arquivos, **~4,8 GB**) são, os dois, **1-2 ordens
+de grandeza maiores** que qualquer outro dataset usado nesta auditoria
+inteira (o maior até aqui, o esgoto UV-Vis do Passo 147, tinha ~357 MB
+— aqui estamos falando de 5-7 GB). Verificado adicionalmente: **nenhum
+dos dois dumps brutos inclui uma tabela de rótulo/classe por arquivo**
+— os nomes de arquivo são só timestamps de injeção (ex.:
+`161201_142928.mea`); o repositório da própria biblioteca
+`gc-ims-tools` (checado diretamente via API do GitHub — `docs/source/`
+só tem `.rst` de referência de API, nenhum notebook/CSV de exemplo
+bundlado) também não traz essa tabela. O rótulo verdadeiro estaria ou
+dentro do cabeçalho binário do `.mea` (campo de comentário/descrição do
+instrumento G.A.S. — não confirmado sem abrir o formato) ou no artigo
+companheiro (Food Research International,
+doi:10.1016/j.foodres.2022.111779) — qualquer um dos dois caminhos é
+trabalho de escopo próprio, maior que "ler o `.mea` com a biblioteca
+já pronta".
+
+**Decisão**: adiar Passo 151 formalmente, mesmo tratamento já dado a
+outros itens fora do escopo viável desta rodada (Bloco 13d). Registrado
+como pendência real — download de ~5-7 GB e reconstrução de rótulo a
+partir de binário/artigo, não "sem tentativa". Nenhuma linha de código
+nova para IMS nesta rodada; a licença confirmada e os 2 datasets/
+tamanhos ficam documentados para quando uma sessão futura tiver
+orçamento de tempo/banda para essa escala.
+
+Próximo (Passo 152): reavaliação final de HPLC (busca mais ampla por
+dataset com tabela de picos pronta).
+
+---
+
 # PROGRESSO — Passo 149: parser real para EEM de fluorescência, PARAFAC contra dado real pela 1ª vez (Fase C, 2026-09-04)
 
 ## Passo 149 — Fluorescência EEM: dataset melhor encontrado, parser escrito, PARAFAC validado
@@ -321,30 +482,43 @@ para quantificação.
 | 4 | **Raman** | **Funcional (novo)** | Arquivo-irmão do NIR8mm | Bal.acc 0,389; R²cal 0,67/R²val 0,43 | **AirPLS implementado e APROVADO no portão de aceite** (RMSEP 0,442→0,424, p=0,002) |
 | 5 | **UV-Vis** | **Funcional (novo — Passo 147)** | ERIC/Eawag `000D3C19` (Lechevallier et al. 2025, CC BY) — esgoto bruto, sensor Spectrolyser 200-735nm | R²cal 0,616 / R²val 0,650 (DOC, 82 dias agregados, EMSC+MC, sanity check) | EMSC **já existia** (aprovado desde Passo 134) — usado como pedido, achado colateral: bug de rótulo em `generate_output_name` corrigido (ver abaixo) |
 | 6 | **Fluorescência Molecular** | **Funcional, forte (Passo 149)** | Mendeley `thkcz3h6n6` (simples, bal.acc 0,383) + **Zenodo `19755088` (EEM real, INTEGRADO)** | EEM: PARAFAC \|r\|=0,888 com fração real; PLS group-aware R²=0,976, RMSEP=4,09 p.p. | **PARAFAC generalizado rodou contra EEM real pela 1ª vez** (`eem_io.py` novo, parser regular — Mendeley `g6y69g8gwm` permanece fora de escopo, substituído por dataset melhor) |
-| 7 | **HPLC** | Parcial/quase-placeholder | Nenhum dataset com tabela de picos pronta achado | Não validado | COW (referência confirmada), bloqueado por falta de parser |
-| 8 | **GC-MS** | Parcial/quase-placeholder | Achado (`.CDF` NetCDF bruto, Lavandula) mas exige parser novo | Não validado | AMDIS (referência confirmada) ou MCR-ALS (já existe no Guaraci) como alternativa; bloqueado por falta de parser |
+| 7 | **HPLC** | **Reavaliado (Passo 152) — "suportável, aguardando dataset"** | Busca ampliada (Zenodo API, Mendeley, UCI, site MCR-ALS) não achou tabela de picos pronta com alvo supervisionado — candidato mais próximo (Zenodo `8206165`, Tauler et al. 1996) é dado de resolução de curva (3 compostos), não um conjunto amostra×alvo | Não validado | Nenhuma técnica de correção nova implementada — sem dataset compatível, não há o que validar; motor genérico já suportaria `mode="csv"` se um dataset aparecer |
+| 8 | **GC-MS** | **Funcional (Passo 150)** | Mendeley `pgkrc7wyj4` (55 amostras de lavanda, CC BY 4.0) | COW: corr. média par-a-par 0,753→0,884 (55 amostras reais) | `scipy.io.netcdf_file` lê ANDI-MS direto (zero dependência nova); COW implementado do zero e contra-provado; AMDIS/MCR-ALS não necessários para esta validação |
 | 9 | **RMN/NMR** | **RETRATADO no Passo 148 → Funcional, forte** | Figshare `4307804` (CC0, já binado) | ~~Bal.acc 0,500 (acaso)~~ **1,000 (CV/holdout)** — o "0,500" era bug de classificação binária em `pipeline.py`, corrigido no Passo 148, não limitação do dado (ver `docs/VALIDACAO_PUBLICA.md` §2e) | icoshift (referência confirmada) — não implementado, dataset já vem pré-binado |
-| 10 | **IMS** | Parcial | 2 datasets GC-IMS reais achados (`.mea`, formato proprietário) | Não validado | Mason-Schamp (referência confirmada), bloqueado por falta de parser |
+| 10 | **IMS** | **Parcial — adiado formalmente (Passo 151)** | 2 datasets GC-IMS reais achados (Mendeley `fr9t5fkkvz` azeite 6,9GB/157 arq.; `jxj2r45t2x` mel 4,8GB/110 arq., ambos CC BY 4.0) | Não validado | `gc-ims-tools` (BSD-3, compatível) confirmado; **adiado**: ambos datasets ~1-2 ordens de grandeza maiores que qualquer outro deste projeto, E nenhum tem tabela de rótulo/classe no dump bruto (nem no repo da biblioteca) — reconstruir exigiria abrir o binário `.mea` ou o artigo companheiro, escopo maior que "escrever um parser" |
 | 11 | **Genérico** | Funcional | — (é o próprio fallback) | — | — |
 
 ## Resumo em uma frase (exigido pela instrução original)
 
-Das 11 técnicas, **6 têm validação real com dado público agora**
-(FT-NIR, MIR, Raman, Genérico com sinal genuíno acima do acaso;
-Fluorescência com sinal fraco mas real; RMN com resultado
-**negativo** honestamente documentado — o motor genérico não separa
-as classes desse dataset); **NIR Dispersivo e UV-Vis permanecem sem
-validação própria** por limitação genuína de busca (nenhum dataset
-público bom localizado, não por falta de tentativa); **HPLC, GC-MS e
-IMS permanecem como placeholder de fato** — datasets públicos reais
-foram encontrados para os 3, mas todos exigem parser de formato
-binário/proprietário novo (`.CDF`, `.mea`) que não foi escrito nesta
-rodada, escopo maior corretamente antecipado pela própria instrução;
-duas análises complementares foram efetivamente implementadas e
-testadas — **AirPLS para Raman (aprovado no portão de aceite contra
-dado real)** e **PARAFAC generalizado para EEM de Fluorescência
-(provado por contraprova sintética)** — e uma terceira (EMSC para
-UV-Vis) revelou já existir, evitando trabalho duplicado.
+> **Nota histórica preservada** (estado em 2026-09-04, ao fechar os
+> Passos 141-145, ANTES das Fases A-E do plano de fechamento): "Das 11
+> técnicas, 6 têm validação real com dado público agora (FT-NIR, MIR,
+> Raman, Genérico com sinal genuíno acima do acaso; Fluorescência com
+> sinal fraco mas real; RMN com resultado NEGATIVO honestamente
+> documentado); NIR Dispersivo e UV-Vis permanecem sem validação
+> própria; HPLC, GC-MS e IMS permanecem como placeholder de fato."
+> **Retratado/superado pelas Fases A-E abaixo — ver o resumo atual.**
+
+**Estado final (2026-09-04, ao fechar as Fases A-E do plano de
+fechamento das 11 técnicas)**: **9 das 11 técnicas têm validação real,
+forte, com dado público** (FT-NIR, NIR Dispersivo, MIR, Raman, UV-Vis,
+Fluorescência — incluindo EEM real —, RMN, GC-MS, Genérico). Duas
+permanecem sem validação, por limitação GENUÍNA e documentada, não por
+falta de tentativa: **HPLC** ("suportável, aguardando dataset" — motor
+genérico já processaria uma tabela de picos se um dataset compatível
+aparecer) e **IMS** (adiado formalmente — 2 datasets reais identificados,
+mas 5-7 GB cada e sem rótulo de referência, escopo maior que "escrever
+um parser"). Achado mais significativo da rodada: o "resultado negativo"
+do RMN nunca foi real — era um bug de classificação binária em
+`pipeline.py` (afetava qualquer dataset com exatamente 2 classes,
+encontrado só agora porque o RMN é o único dataset deste projeto com
+essa estrutura), corrigido e retratado por completo (§2e). Duas
+correções de física foram implementadas e aprovadas contra dado real
+(AirPLS para Raman, portão de aceite; COW para GC-MS, contra-prova
+sintética + 55 amostras reais); PARAFAC (EEM) e I de Moran (RMN) saíram
+da fase "só sintético" para rodar contra dado real pela primeira vez;
+EMSC (UV-Vis) e MCR-ALS (cogitado para HPLC) confirmaram já existir,
+evitando trabalho duplicado.
 
 ---
 
