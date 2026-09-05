@@ -1,3 +1,77 @@
+# PROGRESSO — Passo 149: parser real para EEM de fluorescência, PARAFAC contra dado real pela 1ª vez (Fase C, 2026-09-04)
+
+## Passo 149 — Fluorescência EEM: dataset melhor encontrado, parser escrito, PARAFAC validado
+
+Instrução (Fase C): escrever parser robusto para o dataset EEM real já
+identificado (Mendeley `g6y69g8gwm`, registrado em `eem_multiway.py`
+desde o Passo 144/145 como "formato irregular, parser fora de escopo")
+e conectar ao PARAFAC generalizado, até então só provado por
+contra-prova sintética.
+
+**Achado antes de escrever qualquer parser**: busca por um dataset EEM
+alternativo (Zenodo API) encontrou "EEM fluorescence spectral dataset
+of olive-oil adulteration samples across five adulterant systems" (DOI
+10.5281/zenodo.19755088, CC BY 4.0) — 330 espectros EEM REAIS (35
+excitações × 270 emissões) de azeite EVOO (3 marcas) adulterado com 5
+óleos (milho/canola/amendoim/soja/noz) em 10 frações conhecidas
+(9,09%-90,91%), 3 medições independentes por combinação. **Formato bem
+mais regular** que o Mendeley `g6y69g8gwm` (texto tab-separado, 3
+linhas de cabeçalho + 270 linhas de dado, confirmado por leitura direta
+em 3 arquivos de marcas/rodadas/frações diferentes — mesma grade exata
+de comprimentos de onda nos 3). Decisão: usar este dataset em vez de
+insistir no parser do formato antigo — a alegação a validar
+("PARAFAC funciona em EEM real") não exige ser especificamente aquele
+dataset.
+
+**Parser** (`src/guaraci/eem_io.py`, novo): `parse_eem_dat` (1 arquivo,
+nunca inventa valor — linha com número de colunas errado ou campo
+não-numérico é descartada e contada, nunca completada) +
+`carregar_dataset_eem_azeite` (varre a árvore de pastas, mapeia nomes
+em chinês → marca/adulterante via substring, calcula fração de azeite
+do nome da pasta de razão). **Achado de formato real** (não hipotético):
+16/330 pastas (4,8%) nomeiam o arquivo `0.dat` em vez do padrão
+`0_RM.dat` — mesmo conteúdo, variação de nomenclatura do dataset
+original. Corrigido com busca por glob (`*.dat`) em vez de nome fixo —
+as 16 amostras recuperadas sem inventar nada (`_localizar_arquivo_dat`
+retorna `None`, nunca adivinha, se achar 0 ou >1 candidato). Com a
+correção: **330/330 amostras carregadas, 0% de descarte de linhas**
+dentro dos arquivos (formato interno perfeitamente regular).
+
+**Conectado ao PARAFAC** (`eem_multiway.construir_tensor_eem` +
+`parafac_eem`, R=3): rodou contra o tensor real (330, 35, 270) pela
+primeira vez — erro de reconstrução relativo 0,161, e um dos 3 fatores
+recuperados (método não-supervisionado, nunca vê o rótulo) correlaciona
+**|r|=0,888** com a fração de azeite REAL. Robusto: idêntico em 5
+seeds, faixa 0,85-0,95 para R∈{2..5}.
+
+**Validação group-aware adicional** (regra 5, harness direto com
+sklearn — `mode="csv"` não suporta coluna de agrupamento arbitrária,
+mesma limitação do Passo 147): PLS sobre o espectro EEM achatado
+(9450 canais) prevendo fração de azeite, grupo=(marca,adulterante,razão)
+invariante entre as 3 rodadas, `GroupKFold` 5-fold sobre 110 grupos
+únicos. **R²=0,976, RMSEP=4,09 p.p.** (n_lv=8; faixa 0,95-0,98 testando
+n_lv∈{3,5,8,10} — não frágil a parâmetro).
+
+**Estado da técnica #6 (Fluorescência) na tabela de 11: Parcial→fraco-
+mas-real vira Funcional, forte** — o EEM real (a parte que faltava)
+agora tem validação completa. `docs/VALIDACAO_PUBLICA.md` §1 e §2h
+atualizados; §2c (busca original) e a entrada do Mendeley `g6y69g8gwm`
+mantidas com nota de substituição (não apagadas).
+
+Novo módulo `eem_io.py` adicionado ao gate de mypy (0 erros, mesmo
+padrão de `hsi_io.py`). Suíte completa, ruff/mypy limpos.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_zenodo_eem_azeite.py
+GUARACI_DATASETS_DIR=<pasta> pytest tests/test_validacao_publica_zenodo_eem_azeite.py tests/test_eem_multiway.py -v
+```
+
+Próximo (Passo 150/151, Fase D, podem rodar em paralelo): parsers de
+formato binário proprietário para GC-MS (NetCDF/ANDI-MS) e IMS (`.mea`).
+
+---
+
 # PROGRESSO — Passo 148: bug real de classificação binária encontrado e corrigido, achado negativo do RMN RETRATADO (Fase B, 2026-09-04)
 
 ## Passo 148 — RMN + I de Moran: a investigação achou um bug, não uma limitação
@@ -246,7 +320,7 @@ para quantificação.
 | 3 | **MIR/FTIR** | **Funcional (novo)** | Arquivo-irmão do NIR8mm no mesmo dataset Mendeley | Bal.acc 0,696; R²cal 0,79/R²val 0,57 | — |
 | 4 | **Raman** | **Funcional (novo)** | Arquivo-irmão do NIR8mm | Bal.acc 0,389; R²cal 0,67/R²val 0,43 | **AirPLS implementado e APROVADO no portão de aceite** (RMSEP 0,442→0,424, p=0,002) |
 | 5 | **UV-Vis** | **Funcional (novo — Passo 147)** | ERIC/Eawag `000D3C19` (Lechevallier et al. 2025, CC BY) — esgoto bruto, sensor Spectrolyser 200-735nm | R²cal 0,616 / R²val 0,650 (DOC, 82 dias agregados, EMSC+MC, sanity check) | EMSC **já existia** (aprovado desde Passo 134) — usado como pedido, achado colateral: bug de rótulo em `generate_output_name` corrigido (ver abaixo) |
-| 6 | **Fluorescência Molecular** | **Parcial→fraco-mas-real (novo)** | Mendeley `thkcz3h6n6` (simples) + `g6y69g8gwm` (EEM real, não integrado) | Bal.acc 0,383 (fraco, n=24 pequeno) | **PARAFAC generalizado implementado** (`eem_multiway.py`), provado por contraprova sintética; dataset EEM real não integrado (parser do formato bruto do instrumento é irregular, fora de escopo) |
+| 6 | **Fluorescência Molecular** | **Funcional, forte (Passo 149)** | Mendeley `thkcz3h6n6` (simples, bal.acc 0,383) + **Zenodo `19755088` (EEM real, INTEGRADO)** | EEM: PARAFAC \|r\|=0,888 com fração real; PLS group-aware R²=0,976, RMSEP=4,09 p.p. | **PARAFAC generalizado rodou contra EEM real pela 1ª vez** (`eem_io.py` novo, parser regular — Mendeley `g6y69g8gwm` permanece fora de escopo, substituído por dataset melhor) |
 | 7 | **HPLC** | Parcial/quase-placeholder | Nenhum dataset com tabela de picos pronta achado | Não validado | COW (referência confirmada), bloqueado por falta de parser |
 | 8 | **GC-MS** | Parcial/quase-placeholder | Achado (`.CDF` NetCDF bruto, Lavandula) mas exige parser novo | Não validado | AMDIS (referência confirmada) ou MCR-ALS (já existe no Guaraci) como alternativa; bloqueado por falta de parser |
 | 9 | **RMN/NMR** | **RETRATADO no Passo 148 → Funcional, forte** | Figshare `4307804` (CC0, já binado) | ~~Bal.acc 0,500 (acaso)~~ **1,000 (CV/holdout)** — o "0,500" era bug de classificação binária em `pipeline.py`, corrigido no Passo 148, não limitação do dado (ver `docs/VALIDACAO_PUBLICA.md` §2e) | icoshift (referência confirmada) — não implementado, dataset já vem pré-binado |

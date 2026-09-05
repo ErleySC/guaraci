@@ -1496,6 +1496,41 @@
         "forma": "funcao"
       }
     },
+    "eem_io": {
+      "ParseEEMRelatorio": {
+        "campos": [
+          {
+            "nome": "n_esperado",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_validas",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_descartadas",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "motivos_descarte",
+            "tem_default": true,
+            "tipo": "List[Tuple[int, str]]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "carregar_dataset_eem_azeite": {
+        "assinatura": "(pasta_data: \"'str | Path'\") -> 'Tuple[Dict[str, np.ndarray], pd.DataFrame, Dict[str, object]]'",
+        "forma": "funcao"
+      },
+      "parse_eem_dat": {
+        "assinatura": "(caminho: \"'str | Path'\") -> 'Tuple[np.ndarray, np.ndarray, np.ndarray, ParseEEMRelatorio]'",
+        "forma": "funcao"
+      }
+    },
     "eem_multiway": {
       "ParafacEEMResultado": {
         "campos": [

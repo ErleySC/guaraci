@@ -27,6 +27,7 @@ Nenhum dos dois datasets é versionado neste repositório — ver
 | Mendeley `10.17632/thkcz3h6n6.6` (**Fluorescência**, LED 1) | 24 óleos de oliva (grau EXTRA/VIRGEN/LAMPANTE) | 24 (média de 20 repetições técnicas) | 1024 canais de emissão (índice, sem nm calibrado) | grau de qualidade (3 classes, n≥5) | **Balanced accuracy 0,383 (CV)** — fraco, logo acima do acaso (~0,333) | sem alvo publicado nesta forma | 🟡 **INTEGRADO** (2026-09-04, Passo 142/143) — sinal fraco, n pequeno (ver §2d) |
 | Figshare `10.6084/m9.figshare.4307804` (**RMN**) | 97 azeites de oliva (Abruzzo/Itália) | 97 | 125 variáveis ppm (já binadas pelos autores) | província de origem (Pescara/Teramo) | **Balanced accuracy 1,000 (CV) / 1,000 (holdout)** — RETRATADO de "0,500 (acaso)", era bug de classificação binária, não limitação do dado (ver §2e) | artigo original reporta 99% com LDA + seleção geoestatística de variável — CONSISTENTE (motor genérico chega ao mesmo patamar sem seleção) | 🟢 **INTEGRADO, forte** (2026-09-04, Passo 148) — bug corrigido em `pipeline.py`; ver §2e |
 | ERIC/Eawag `10.25678/000D3C19` (**UV-Vis**, sensor scan/Spectrolyser) | esgoto bruto (campanha de 25 semanas, flume) | 82 dias (agregado; 533 amostras de laboratório antes da agregação) | 215 · 200–735 nm | DOC (carbono orgânico dissolvido, mg/L) | **R²cal 0,616 / R²val 0,650**; RMSEP 34,2 mg/L; 7 LVs (EMSC+MC) | sem RMSEP publicado para este recorte (sanity check, não gate) | 🟢 **INTEGRADO** (2026-09-04, Passo 147) — EMSC (já aprovado no Corn, §9) capturou sinal real; ver §2g |
+| Zenodo `10.5281/zenodo.19755088` (**Fluorescência, EEM real**) | azeite EVOO (3 marcas) adulterado com 5 óleos (milho/canola/amendoim/soja/noz) | 330 (11 combinações marca×adulterante × 10 frações × 3 rodadas) | EEM 35 excitações × 270 emissões | fração de azeite (9,09%–90,91%) | PARAFAC (R=3): erro reconstrução 0,161, melhor \|r\| com fração real = **0,888**; PLS group-aware (n_lv=8, achatado): **R² 0,976**, RMSEP 4,09 p.p. | sem alvo publicado nesta forma (dataset próprio, sem artigo de referência com número comparável) | 🟢 **INTEGRADO** (2026-09-04, Passo 149) — PARAFAC rodou contra EEM real pela 1ª vez; ver §2h |
 
 O RMSEP do Corn está no meio da faixa publicada — nem baixo demais (o que
 sugeriria vazamento) nem alto demais (bug de pré-processamento). É esse
@@ -189,7 +190,8 @@ técnica (candidato, formato, licença, viabilidade — exigido pelo Passo
 |---|---|---|---|---|
 | RMN | Figshare `4307804` (óleo, origem geográfica) | CSV pronto: 125 variáveis ppm já binadas | CC0 | ✅ dado ótimo; ⚠️ **Figshare bloqueia download automatizado** (desafio de bot AWS WAF, não CAPTCHA) — usado via download manual, ver §2e |
 | Fluorescência (simples) | Mendeley `thkcz3h6n6` (óleo, grau de qualidade) | CSV com coluna `Data` codificando espectro 1D (1024 pts) como string de lista | CC BY 4.0 | ✅ usado, ver §2d |
-| Fluorescência (EEM real) | Mendeley `g6y69g8gwm` (óleo envelhecendo) | Zip de 52 MB, CSVs brutos de instrumento por etapa de envelhecimento — EEM genuína (múltiplas amostras × ~35 excitações × varredura de emissão) | CC BY 4.0 | ⚠️ baixa sem bloqueio, mas exige parser novo (formato bruto, não tabular); **não integrado** — registrado como pendência para quando houver EEM real de verdade no roadmap |
+| Fluorescência (EEM real) | Mendeley `g6y69g8gwm` (óleo envelhecendo) | Zip de 52 MB, CSVs brutos de instrumento por etapa de envelhecimento — EEM genuína (múltiplas amostras × ~35 excitações × varredura de emissão) | CC BY 4.0 | ⚠️ baixa sem bloqueio, mas exige parser novo (formato bruto, não tabular); **substituído** pelo Zenodo `19755088` (Passo 149, ver §2h) — mesma classe de dado, formato bem mais regular |
+| Fluorescência (**EEM real, INTEGRADO**) | Zenodo `19755088` (azeite adulterado, 5 óleos) | 330 espectros EEM (35 exc. × 270 em.), `.dat` tab-separado | CC BY 4.0 | 🟢 **INTEGRADO** (2026-09-04, Passo 149) — ver §2h |
 | UV-Vis | Mesmo `g6y69g8gwm` (traz painel UV também) | CSV de relatório de instrumento, só 4 comprimentos de onda | CC BY 4.0 | ⚠️ real mas fraco (4 pontos, não uma varredura) — **não integrado** |
 | UV-Vis (melhor candidato) | Artigo "Bangladeshi honey UV-vis-NIR" (1960 amostras, %adulteração 0–40%) — alvo quase idêntico ao caso de uso central do GUARACI | — | — | ❌ página atrás de CAPTCHA (ScienceDirect) — não contornado (regra permanente); nenhum repositório de dados público localizado nesta busca |
 
@@ -442,6 +444,72 @@ python scripts/download_datasets/baixar_eawag_esgoto_uvvis.py
 GUARACI_DATASETS_DIR=<pasta> pytest tests/test_validacao_publica_eawag_esgoto_uvvis.py -v
 ```
 
+### 2h. Fluorescência — EEM real, Zenodo `19755088` (Passo 149, Fase C, 2026-09-04)
+
+Busca por dataset EEM real melhor que o já registrado (Mendeley
+`g6y69g8gwm`, formato bruto de instrumento irregular, parser fora de
+escopo desde o Passo 144/145) encontrou "EEM fluorescence spectral
+dataset of olive-oil adulteration samples across five adulterant
+systems" (Zenodo, DOI 10.5281/zenodo.19755088) — 330 espectros EEM reais
+de azeite de oliva extra-virgem (3 marcas comerciais: Earl, Olivoila,
+Luhua) misturado com 5 óleos adulterantes (milho, canola, amendoim,
+soja, noz) em 10 frações de azeite (9,09%–90,91%, passo de 1/11), 3
+medições independentes por combinação. Licença **CC BY 4.0**
+(confirmado via API oficial do Zenodo, campo `metadata.license.id`).
+
+**Formato**: cada amostra é um arquivo `.dat` texto separado por
+tabulação — 3 linhas de cabeçalho (nome, 35 comprimentos de onda de
+EXCITAÇÃO, unidade/normalização) seguidas de 270 linhas de dado (cada
+uma começando pelo comprimento de onda de EMISSÃO, com 35 intensidades).
+Organizado em pastas `data/<marca+adulterante>/<rodada>/<razão
+azeite:adulterante>/`. Bem mais regular que o Mendeley `g6y69g8gwm`
+descartado antes — confirmado por leitura direta, não suposto.
+
+**Achado sobre o formato (exigido pela instrução — "reportar taxa de
+linhas utilizáveis vs. descartadas")**: dentro de cada arquivo, a taxa
+de descarte de linhas é **0%** (270/270 linhas válidas em todo arquivo
+testado) — formato interno perfeitamente regular. A única
+irregularidade real: **16/330 pastas (4,8%) nomeiam o arquivo `0.dat`
+em vez do padrão `0_RM.dat`** — mesmo conteúdo, variação de
+nomenclatura do dataset original. `src/guaraci/eem_io.py`
+(`_localizar_arquivo_dat`) busca por glob (`*.dat`) em vez de nome fixo
+— as 16 amostras são recuperadas sem inventar nada; se uma pasta tiver
+0 ou >1 candidato `.dat`, é ignorada e contada, nunca adivinhada. Com
+essa correção: **330/330 amostras carregadas** (nenhuma ignorada).
+
+**Conectado ao PARAFAC pela primeira vez contra dado real** (até aqui
+`eem_multiway.py`, Passo 144/145, só tinha contra-prova sintética):
+`construir_tensor_eem` + `parafac_eem` (R=3 componentes) sobre o tensor
+completo (330, 35, 270). PARAFAC é **não-supervisionado** — nunca vê a
+fração de azeite real — mas um dos 3 fatores recuperados correlaciona
+**|r| = 0,888** com a fração real (robusto a seed — idêntico em 5 seeds
+testadas — e a R∈{2,...,5}, faixa 0,85–0,95). Erro de reconstrução
+relativo = 0,161 (16%, razoável para dado real ruidoso com poucos
+componentes). Achado real: o método provado só sinteticamente até agora
+recupera, sem supervisão, um fator quimicamente interpretável (a
+fração de adulteração) em dado real pela primeira vez.
+
+**Validação group-aware (regra 5)**: PLS direto sobre o espectro EEM
+achatado (35×270=9450 canais) prevendo a fração de azeite, com grupo =
+(marca, adulterante, razão) — invariante entre as 3 rodadas (medições
+independentes da MESMA condição física), nunca deixando as 3 rodadas de
+uma condição se separarem entre treino/validação (`GroupKFold`, 110
+grupos únicos, 5 folds). O motor `mode="csv"` do GUARACI não suporta uma
+coluna de agrupamento arbitrária (mesma limitação já documentada para o
+esgoto UV-Vis, §2g) — harness direto com sklearn, mesmo espírito de
+`selecao_variaveis._avaliar_subset_cv`. **Resultado: R² = 0,976, RMSEP =
+4,09 p.p. de fração de azeite** (n_lv=8; testado n_lv∈{3,5,8,10}, faixa
+R² 0,95–0,98, RMSEP 3,5–5,6 p.p. — consistente, não frágil a
+parâmetro). Sem alvo publicado nesta forma para comparar (dataset
+próprio, sem artigo de referência com número equivalente) — sanity
+check forte, não gate de literatura.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_zenodo_eem_azeite.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_validacao_publica_zenodo_eem_azeite.py tests/test_eem_multiway.py -v
+```
+
 ### Histórico — RETRATAÇÃO de 2026-08-18
 
 > **A entrada anterior desta seção afirmava "❌ NÃO OBTIDO" com a rota
@@ -551,6 +619,7 @@ um novo. Nunca cai num padrão de outra matriz em silêncio.
 | Mendeley `ctgg7k4m5g` | **CC BY 4.0** | JSON da API oficial (`data_licence.short_name`), reconfirmado 2026-08-27 |
 | DeepHS Fruit (Kaki) | **não declarada formalmente** (sem SPDX no repo/README; `api.github.com/repos/cogsys-tuebingen/deephs_fruit` devolve `license: None`) — autores afirmam publicamente "we make public" o dataset (README, paper IJCNN 2021) e distribuem por HTTP sem autenticação; mesmo tratamento já dado ao Corn nesta tabela | leitura direta do repo + API do GitHub, 2026-09-01 |
 | ERIC/Eawag `000D3C19` (esgoto UV-Vis) | **CC BY** | campo `license_id` da API pública do portal CKAN, `opendata.eawag.ch/api/3/action/package_show`, 2026-09-04 |
+| Zenodo `19755088` (EEM azeite) | **CC BY 4.0** | campo `metadata.license.id` da API oficial do Zenodo, `zenodo.org/api/records/19755088`, 2026-09-04 |
 
 Nenhum destes arquivos é versionado neste repositório.
 

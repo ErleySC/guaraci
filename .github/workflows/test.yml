@@ -69,6 +69,7 @@ jobs:
             src/guaraci/io_registry.py \
             src/guaraci/agrupamento_pastas.py \
             src/guaraci/hsi_io.py \
+            src/guaraci/eem_io.py \
             src/guaraci/hsi_quality.py \
             src/guaraci/hsi_segmentation.py \
             src/guaraci/hsi_pixels.py \
@@ -282,3 +283,24 @@ jobs:
         env:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
         run: pytest tests/test_validacao_publica_eawag_esgoto_uvvis.py -v
+
+  # ── Validacao contra dataset PUBLICO Zenodo (EEM real, azeite) ────────────
+  # Passo 149 (Fase C). Job proprio (nao Mendeley): fonte diferente
+  # (Zenodo), arquivo ~96 MB -- 1 SO so' (mesma escolha do Corn/Eawag).
+  validacao-publica-eem-zenodo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (Zenodo 19755088, EEM azeite)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_zenodo_eem_azeite.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_zenodo_eem_azeite.py tests/test_eem_multiway.py -v
