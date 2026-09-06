@@ -49,8 +49,9 @@ módulo + decisão + achado + conceito) — os parágrafos extraídos de
 `docs/PROGRESSO.md` mencionam `` `mcr_als.py` `` como texto corrido, sem
 link real para o módulo. Corrigido no GERADOR (não no motor de
 consulta, para não inventar relação que a fonte não afirma):
-`_autolinkar_modulos()` troca `` `nome.py` `` por `[[nome.py]]` sempre
-que `nome` é um módulo real de `src/guaraci/` — aplicado a docstring de
+`_autolinkar_modulos()` troca a crase (`` `nome.py` ``) por um wikilink
+para a nota do módulo sempre que `nome` é um módulo real de
+`src/guaraci/` — aplicado a docstring de
 módulo/conceito e a todo parágrafo extraído de achado/decisão/passo.
 Isso transforma menção em texto corrido (que a própria fonte já escreve
 entre crases) em aresta real do grafo, sem fabricar associação nenhuma.

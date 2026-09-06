@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -95,6 +97,24 @@ def test_guarda_nao_acusa_conteudo_legitimo():
 def test_plano_real_do_gerador_passa_na_guarda():
     plano, _contagens, _avisos = gvo.montar_plano()
     checar_conteudos_ou_falhar(plano)  # não levanta
+
+
+def test_plano_real_nao_tem_wikilink_quebrado():
+    """Achado real (2026-09-06): um trecho de docs/PROGRESSO.md descrevendo
+    a sintaxe `[[nome.py]]` em prosa (não como link de verdade) virou, ao
+    ser copiado para uma nota, um wikilink de verdade apontando para uma
+    nota "nome.py" inexistente. Este teste garante que isso não volta a
+    passar despercebido: todo `[[alvo]]`/`[[alvo|rótulo]]` do plano tem
+    que resolver a uma chave real do próprio plano."""
+    plano, _contagens, _avisos = gvo.montar_plano()
+    stems_existentes = {Path(rel).stem for rel in plano}
+    quebrados = []
+    for rel, conteudo in plano.items():
+        for m in re.finditer(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", conteudo):
+            alvo = m.group(1).strip()
+            if alvo not in stems_existentes:
+                quebrados.append((rel, alvo))
+    assert not quebrados, f"wikilink(s) quebrado(s) no plano: {quebrados}"
 
 
 def test_plano_real_tem_as_categorias_esperadas():
