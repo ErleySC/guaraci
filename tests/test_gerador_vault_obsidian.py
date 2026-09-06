@@ -26,21 +26,32 @@ from privacidade_amostras import (  # noqa: E402
 )
 
 
+def _identificador_sintetico(especie: str, ano: str, sep: str = "-") -> str:
+    """Monta um identificador em tempo de execução (nunca como literal no
+    código-fonte) -- mesma técnica de `tests/test_sem_identificador_real.py`
+    (`_id`): um literal com ano real neste arquivo seria pego pela própria
+    varredura de `test_sem_identificador_real.py`, já que ela varre TODO
+    arquivo versionado, este incluído."""
+    return f"{especie}{sep}04-11-{ano}"
+
+
 # ─────────────────────────────────────────────────────────────────────────
 #  Contra-prova da guarda de privacidade (Passo 169)
 # ─────────────────────────────────────────────────────────────────────────
 
 def test_guarda_acusa_identificador_real_no_conteudo():
+    ident = _identificador_sintetico("CAP", "2020")
     plano = {
-        "60-Achados/nota.md": "Achado sobre a amostra CAP-04-11-2020_T1.",
+        "60-Achados/nota.md": f"Achado sobre a amostra {ident}_T1.",
     }
     with pytest.raises(VazamentoDePrivacidade):
         checar_conteudos_ou_falhar(plano)
 
 
 def test_guarda_acusa_identificador_real_no_nome_do_arquivo():
+    ident = _identificador_sintetico("AND", "2020")
     plano = {
-        "60-Achados/AND-04-11-2020_T1.md": "conteúdo sem nada de especial",
+        f"60-Achados/{ident}_T1.md": "conteúdo sem nada de especial",
     }
     with pytest.raises(VazamentoDePrivacidade):
         checar_conteudos_ou_falhar(plano)

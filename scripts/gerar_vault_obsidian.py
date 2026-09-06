@@ -126,6 +126,22 @@ def _wikilink_titulo(titulo: str) -> str:
     return f"[[{_slug(titulo)}|{titulo}]]"
 
 
+_PADRAO_MODULO_EM_CRASE = re.compile(r"`(\w+)\.py`")
+
+
+def _autolinkar_modulos(texto: str, modulos_conhecidos: set[str]) -> str:
+    """Troca `` `nome.py` `` por `[[nome.py]]` quando `nome` é um módulo
+    real de `src/guaraci/`. Aplica-se a texto extraído de fonte (docstring,
+    parágrafo de achado/decisão) que já cita o módulo por convenção própria
+    da documentação -- transforma essa menção em aresta real do grafo
+    (Passo 173) sem inventar relação nenhuma: só liga ao que a própria
+    fonte já escreveu explicitamente entre crases."""
+    def _sub(m: re.Match[str]) -> str:
+        nome = m.group(1)
+        return f"[[{nome}.py]]" if nome in modulos_conhecidos else m.group(0)
+    return _PADRAO_MODULO_EM_CRASE.sub(_sub, texto)
+
+
 # ═════════════════════════════════════════════════════════════════════════
 #  Parsing das fontes de verdade
 # ═════════════════════════════════════════════════════════════════════════
@@ -408,8 +424,9 @@ def gerar_modulos(modulos: dict[str, ModuloInfo]) -> dict[str, str]:
     for c in CONCEITOS:
         for m in c["modulos"]:
             conceitos_por_modulo.setdefault(m, []).append(c["titulo"])
+    nomes_modulos = set(modulos)
     for nome, info in sorted(modulos.items()):
-        corpo = [_resumo_docstring(info.docstring)]
+        corpo = [_autolinkar_modulos(_resumo_docstring(info.docstring), nomes_modulos)]
         if info.all_publico:
             corpo.append("\n## Exporta (`__all__`)\n" +
                           "\n".join(f"- `{n}`" for n in info.all_publico))
@@ -439,6 +456,7 @@ def gerar_conceitos(modulos: dict[str, ModuloInfo],
                      tecnicas: dict[str, Any]) -> tuple[dict[str, str], list[str]]:
     plano: dict[str, str] = {}
     avisos: list[str] = []
+    nomes_modulos = set(modulos)
     for c in CONCEITOS:
         mods_existentes = [m for m in c["modulos"] if m in modulos]
         if not mods_existentes:
@@ -447,7 +465,8 @@ def gerar_conceitos(modulos: dict[str, ModuloInfo],
             continue
         partes = []
         for m in mods_existentes:
-            partes.append(_resumo_docstring(modulos[m].docstring, max_linhas=4))
+            resumo = _resumo_docstring(modulos[m].docstring, max_linhas=4)
+            partes.append(_autolinkar_modulos(resumo, nomes_modulos))
         corpo = "\n\n".join(partes)
         corpo += "\n\n## Implementado em\n" + "\n".join(
             f"- {_wikilink(f'{m}.py')}" for m in mods_existentes)
@@ -527,8 +546,35 @@ _PADRAO_DECISAO = re.compile(
 _ARQUIVOS_ACHADOS_DECISOES = ["docs/PROGRESSO.md", "docs/VALIDACAO_PUBLICA.md"]
 
 
+@dataclass
+class BlocoPasso:
+    titulo: str
+    linha_inicio: int  # 1-based, linha do cabeçalho "## Passo ..."
+    linha_fim: int  # 1-based, exclusiva (linha do próximo cabeçalho ou EOF+1)
+    corpo: str
+
+
+def parse_blocos_passo(rel: str = "docs/PROGRESSO.md") -> list[BlocoPasso]:
+    """Cada `## Passo ...` de `docs/PROGRESSO.md` vira 1 bloco, com o range
+    de linhas até o próximo `## ` (ou fim do arquivo). Usado para garantir
+    que TODO passo tenha alguma nota em `50-Decisoes/`/`60-Achados/`
+    (Passo 172) -- mesmo que só um resumo mínimo quando nenhum parágrafo
+    marcado (`**Achado**`/`**Decisão**`/...) cair dentro do bloco."""
+    texto = _ler(rel)
+    linhas = texto.splitlines()
+    indices = [i for i, ln in enumerate(linhas) if ln.startswith("## Passo")]
+    blocos = []
+    for pos, i in enumerate(indices):
+        fim = indices[pos + 1] if pos + 1 < len(indices) else len(linhas)
+        titulo = linhas[i][3:].strip()
+        corpo = "\n".join(linhas[i + 1:fim]).strip()
+        blocos.append(BlocoPasso(titulo=titulo, linha_inicio=i + 1, linha_fim=fim + 1,
+                                  corpo=corpo))
+    return blocos
+
+
 def _notas_de_paragrafos(paragrafos: list[ParagrafoMarcado], pasta: str,
-                          tag: str) -> dict[str, str]:
+                          tag: str, modulos_conhecidos: set[str]) -> dict[str, str]:
     plano: dict[str, str] = {}
     vistos: set[str] = set()
     for p in paragrafos:
@@ -544,7 +590,7 @@ def _notas_de_paragrafos(paragrafos: list[ParagrafoMarcado], pasta: str,
         conteudo = _nota(
             titulo=titulo, tags=[tag],
             fonte=f"{p.arquivo}:{p.linha}",
-            corpo=p.texto,
+            corpo=_autolinkar_modulos(p.texto, modulos_conhecidos),
         )
         rel = f"{pasta}/{_slug(titulo)}.md"
         if rel in plano:
@@ -553,24 +599,44 @@ def _notas_de_paragrafos(paragrafos: list[ParagrafoMarcado], pasta: str,
     return plano
 
 
-def gerar_achados() -> dict[str, str]:
-    paragrafos = parse_paragrafos_marcados(_PADRAO_ACHADO, _ARQUIVOS_ACHADOS_DECISOES)
-    return _notas_de_paragrafos(paragrafos, "60-Achados", "achado")
-
-
-def gerar_decisoes() -> dict[str, str]:
-    plano: dict[str, str] = {}
-    paragrafos = parse_paragrafos_marcados(_PADRAO_DECISAO, _ARQUIVOS_ACHADOS_DECISOES)
-    plano.update(_notas_de_paragrafos(paragrafos, "50-Decisoes", "decisao"))
+def gerar_achados_e_decisoes(modulos_conhecidos: set[str]) -> tuple[dict[str, str], dict[str, str]]:
+    """Retorna `(achados, decisoes)`. Todo `## Passo` de `docs/PROGRESSO.md`
+    (Passo 172 -- auditoria de cobertura) acaba representado em pelo menos
+    uma nota de uma das duas pastas: os parágrafos já marcados pela própria
+    fonte (`**Achado**`, `**RETRATAÇÃO**`, `**Decisão**`, ...) viram notas
+    ricas; qualquer passo que não caia em nenhum desses parágrafos ganha
+    uma nota-resumo mínima (tag `passo`, não `achado`) em `60-Achados/` --
+    nunca fica sem nenhuma nota, mas também não finge ser um achado real."""
+    achado_paragrafos = parse_paragrafos_marcados(_PADRAO_ACHADO, _ARQUIVOS_ACHADOS_DECISOES)
+    decisao_paragrafos = parse_paragrafos_marcados(_PADRAO_DECISAO, _ARQUIVOS_ACHADOS_DECISOES)
+    achados = _notas_de_paragrafos(achado_paragrafos, "60-Achados", "achado", modulos_conhecidos)
+    decisoes = _notas_de_paragrafos(decisao_paragrafos, "50-Decisoes", "decisao", modulos_conhecidos)
     for item in parse_compatibility_casos_especiais():
         conteudo = _nota(
             titulo=item["titulo"], tags=["decisao"],
             fonte="docs/COMPATIBILITY.md#Casos-especiais-documentados",
-            corpo=item["texto"],
+            corpo=_autolinkar_modulos(item["texto"], modulos_conhecidos),
         )
-        rel = f"50-Decisoes/{_slug(item['titulo'])}.md"
-        plano[rel] = conteudo
-    return plano
+        decisoes[f"50-Decisoes/{_slug(item['titulo'])}.md"] = conteudo
+
+    linhas_cobertas = {
+        p.linha for p in achado_paragrafos + decisao_paragrafos
+        if p.arquivo == "docs/PROGRESSO.md"
+    }
+    for bloco in parse_blocos_passo():
+        if any(bloco.linha_inicio <= ln < bloco.linha_fim for ln in linhas_cobertas):
+            continue
+        resumo = "\n".join(bloco.corpo.splitlines()[:5]).strip() or "(bloco sem corpo)"
+        conteudo = _nota(
+            titulo=bloco.titulo, tags=["passo"],
+            fonte=f"docs/PROGRESSO.md:{bloco.linha_inicio}",
+            corpo=_autolinkar_modulos(resumo, modulos_conhecidos),
+        )
+        rel = f"60-Achados/{_slug(bloco.titulo)}.md"
+        if rel in achados:
+            rel = f"60-Achados/{_slug(bloco.titulo)}-{bloco.linha_inicio}.md"
+        achados[rel] = conteudo
+    return achados, decisoes
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -805,6 +871,17 @@ Regenere depois de: um bloco/passo novo em `docs/PROGRESSO.md`, uma
 retratação, uma validação pública nova ou atualizada, ou uma mudança de
 `__all__`/docstring em `src/guaraci/`.
 
+## Como consultar
+
+```
+python scripts/consultar_vault.py "termo ou nome de nota"
+python scripts/consultar_vault.py --cobertura
+```
+
+Navega o grafo de wikilinks a partir da nota mais relevante (não só
+busca de texto isolada) e avisa explicitamente se o vault parece
+desatualizado em relação ao commit atual do repositório.
+
 ## Pasta protegida
 
 `{_PASTA_PROTEGIDA}/` é sua — o gerador nunca lê nem escreve nada lá.
@@ -819,7 +896,7 @@ Use-a para anotações pessoais, rascunhos, ligações manuais extras.
 | `30-Conceitos/` | mapeamento conceito→módulo (neste script) + docstring do(s) módulo(s) |
 | `40-Validacoes/` | `docs/VALIDACAO_PUBLICA.md` §1 (tabela consolidada), 1 nota por linha |
 | `50-Decisoes/` | parágrafos `**Decisão...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + `docs/COMPATIBILITY.md` (casos especiais) |
-| `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` |
+| `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + 1 resumo mínimo (tag `passo`, não `achado`) por `## Passo` que não caiu em nenhum parágrafo marcado — garante que todo passo tenha alguma nota (Passo 172) |
 | `90-Canvas/` | gerados programaticamente a partir dos mesmos dados acima |
 | `Estado-Atual.md` | commit HEAD + contagem de `def test_*` em `tests/` + Passo 160 |
 
@@ -867,8 +944,7 @@ def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
     p_modulos = gerar_modulos(modulos)
     p_conceitos, avisos_conceitos = gerar_conceitos(modulos, tecnicas)
     p_validacoes = gerar_validacoes(tabela_validacoes)
-    p_decisoes = gerar_decisoes()
-    p_achados = gerar_achados()
+    p_achados, p_decisoes = gerar_achados_e_decisoes(set(modulos))
     p_mocs = gerar_mocs(tecnicas, modulos, p_validacoes, p_decisoes, p_achados)
     p_estado = gerar_estado_atual(status11)
     p_canvas = {}
@@ -957,7 +1033,23 @@ def escrever_vault(vault_dir: Path, plano: dict[str, str]) -> tuple[int, int, in
     return escritos, inalterados, arquivados
 
 
+def _fixar_utf8_console() -> None:
+    """No Windows, o console pode estar num codepage que não é UTF-8 e
+    mostra acento como `�`. Mesmo ajuste de `src/guaraci/guaraci.py` --
+    chamado só em `main()`, nunca na importação do módulo, para não afetar
+    a captura de stdout dos testes."""
+    if sys.platform != "win32":
+        return
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+        except (OSError, ValueError):
+            pass
+
+
 def main() -> int:
+    _fixar_utf8_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", default=None, help="pasta de destino do vault")
     ap.add_argument("--check", action="store_true",

@@ -58,6 +58,7 @@ transparência de processo.
 |---|---|
 | [`docs/MANUAL.md`](MANUAL.md) | Manual de instruções de uso — cada funcionalidade, tela e fluxo do CLI/app, mantido atualizado a cada mudança de interface (diferente do README, que é a porta de entrada). |
 | [`scripts/gerar_vault_obsidian.py`](../scripts/gerar_vault_obsidian.py) | Gera um vault Obsidian navegável (técnicas, módulos, conceitos, validações, decisões, achados) a partir das fontes deste índice — o vault em si fica fora do repositório (`~/GuaraciVault/` por padrão, ou `GUARACI_VAULT_DIR`); rodar de novo regenera do zero. |
+| [`scripts/consultar_vault.py`](../scripts/consultar_vault.py) | Motor de consulta por grafo sobre o vault gerado: `python scripts/consultar_vault.py "termo"` navega os wikilinks a partir da nota mais relevante; `--cobertura` confere sob demanda se módulos/técnicas/passos/datasets estão todos representados e se o vault não está desatualizado. |
 
 ## Dados
 

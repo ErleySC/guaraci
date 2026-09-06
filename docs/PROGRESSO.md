@@ -1,4 +1,96 @@
-# PROGRESSO — Passos 166-171: vault Obsidian gerado por script (2026-09-06)
+# PROGRESSO — Passos 172-175: auditoria de cobertura + motor de consulta por grafo (2026-09-06)
+
+## Passo 172 — Commit pendente e auditoria de cobertura do vault
+
+Commit `2d83d17` (trabalho dos Passos 166-171) e push feitos primeiro,
+como pedido. Depois, `tests/test_cobertura_vault_obsidian.py` (7 testes)
+comparando a lista REAL de módulos/técnicas/passos/datasets contra o que
+o gerador coloca no plano — cada teste recalcula sua própria fonte da
+verdade (grep direto, glob de `src/guaraci/*.py`) em vez de confiar na
+lógica interna do gerador, para não ser tautológico.
+
+**Achado real ao rodar a auditoria pela primeira vez**: `docs/PROGRESSO.md`
+tem 84 blocos `## Passo`, mas antes desta rodada só ~30 caíam dentro de
+algum parágrafo marcado (`**Achado**`/`**Decisão**`/`**RETRATAÇÃO**`) —
+os outros ~54 passos não tinham NENHUMA nota no vault. Isso é exatamente
+o tipo de lacuna que a instrução pediu para voltar ao gerador, não
+compensar no motor de consulta. Corrigido em `gerar_achados_e_decisoes()`
+(`scripts/gerar_vault_obsidian.py`): todo `## Passo` sem parágrafo
+marcado dentro do seu range de linhas ganha uma nota-resumo mínima em
+`60-Achados/` com tag `passo` (não `achado` — não finge ser um achado
+real, só garante rastreabilidade). `60-Achados/` foi de 30 para 91 notas.
+
+Cobertura final confirmada por comando direto
+(`python scripts/consultar_vault.py --cobertura`, ver Passo 175):
+**65/65 módulos, 11/11 técnicas, 84/84 passos, 14/14 datasets — completa.**
+
+**Achado colateral (privacidade)**: `tests/test_gerador_vault_obsidian.py`
+tinha 2 identificadores sintéticos com ano REAL (2020) escritos como
+literal — pego pela própria `tests/test_sem_identificador_real.py` assim
+que o arquivo foi commitado (`git ls-files` só enxerga arquivo rastreado;
+antes do commit a varredura não o via, por isso passou despercebido na
+primeira rodada). Corrigido com a mesma técnica de `_id()` do teste
+original: identificador montado em runtime por f-string, nunca como
+literal no código-fonte.
+
+## Passo 173 — Motor de consulta por grafo
+
+`scripts/consultar_vault.py`: carrega toda nota do vault (exceto
+`70-Notas-Pessoais/`/`99-Arquivo/` — mesma fronteira de privacidade do
+gerador), monta o grafo de wikilinks (`links_saida`/`links_entrada`,
+backlinks calculados depois de carregar tudo), e para uma consulta
+devolve a nota mais relevante (nome exato > título exato > substring em
+título/tag/corpo) + os vizinhos a N saltos, cada um com resumo de 1
+linha.
+
+**Achado durante a implementação**: navegação PURA por wikilink não
+bastava para o exemplo da própria instrução ("MCR-ALS" deve trazer
+módulo + decisão + achado + conceito) — os parágrafos extraídos de
+`docs/PROGRESSO.md` mencionam `` `mcr_als.py` `` como texto corrido, sem
+link real para o módulo. Corrigido no GERADOR (não no motor de
+consulta, para não inventar relação que a fonte não afirma):
+`_autolinkar_modulos()` troca `` `nome.py` `` por `[[nome.py]]` sempre
+que `nome` é um módulo real de `src/guaraci/` — aplicado a docstring de
+módulo/conceito e a todo parágrafo extraído de achado/decisão/passo.
+Isso transforma menção em texto corrido (que a própria fonte já escreve
+entre crases) em aresta real do grafo, sem fabricar associação nenhuma.
+Com isso, consultar "MCR-ALS" devolve as 3 notas de passo
+(125/131/136), a nota de conceito e o módulo, todos conectados.
+
+## Passo 174 — Alerta de desatualização
+
+Antes de formatar a resposta, o motor compara o `commit:` do frontmatter
+das notas envolvidas contra `git rev-parse --short HEAD` do repositório
+atual — se divergir, a resposta abre com um aviso explícito
+("`gerado no commit X, repositório está em Y`"), nunca responde em
+silêncio como se o vault estivesse necessariamente atual. Testado com
+nota sintética de commit fabricado (não muta o git real).
+
+## Passo 175 — Verificação de cobertura sob demanda
+
+`python scripts/consultar_vault.py --cobertura` roda a mesma auditoria
+do Passo 172 contra o vault REALMENTE em disco (não o plano em memória
+que o gerador produziria) — detecta tanto módulo/passo faltando quanto
+vault desatualizado em relação às fontes atuais (mesmo alerta do Passo
+174). Saída: contagem por categoria + "Cobertura COMPLETA"/"INCOMPLETA".
+
+`tests/test_consultar_vault.py` (11 testes): 4 consultas representativas
+(técnica, módulo com dependentes reais, decisão, o exemplo MCR-ALS),
+consulta sem correspondência (evidência ou silêncio: não inventa nada),
+alerta de desatualização (dispara/não dispara/sem HEAD conhecido),
+cobertura completa no vault real + cobertura incompleta simulada
+(remove 1 nota e confirma que o comando acusa).
+
+Guarda de privacidade (Passo 169) reaproveitada no motor de consulta:
+toda resposta passa por `checar_conteudos_ou_falhar` antes de ser
+impressa — se algo vazar, a resposta é suprimida, não impressa mesmo
+que incompleta.
+
+Suíte completa (1344+ testes) + `ruff` limpo em todos os arquivos novos
++ `mypy` limpo nos 3 módulos de `scripts/` (fora do escopo oficial do
+gate de CI, que cobre só `src/guaraci/*.py` puro — checado por
+iniciativa própria, sem custo).
+
 
 ## Passo 166/167 — Estrutura do vault e gerador escritos
 
