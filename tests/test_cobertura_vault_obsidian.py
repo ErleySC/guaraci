@@ -61,18 +61,36 @@ def test_todo_modulo_de_src_guaraci_tem_nota(plano):
 # ─────────────────────────────────────────────────────────────────────────
 
 def test_todas_as_tecnicas_do_catalogo_tem_nota(plano):
+    """`10-Tecnicas/` cobre as chaves de `TECNICAS` MAIS as modalidades
+    reais fora do catálogo (`Config.mode`: `imagem`/`hsi` -- ver
+    `MODOS_FORA_DO_CATALOGO` em gerar_vault_obsidian.py). `sintetico` fica
+    de fora de propósito (dado de teste/demo, não técnica analítica)."""
     tecnicas_reais = gvo.parse_tecnicas_catalog()
     notas_tecnicas = [rel for rel in plano if rel.startswith("10-Tecnicas/")]
-    assert len(notas_tecnicas) == len(tecnicas_reais), (
-        f"{len(tecnicas_reais)} técnicas em TECNICAS, mas {len(notas_tecnicas)} "
-        "notas em 10-Tecnicas/"
+    esperado = len(tecnicas_reais) + len(gvo.MODOS_FORA_DO_CATALOGO)
+    assert len(notas_tecnicas) == esperado, (
+        f"{len(tecnicas_reais)} técnicas em TECNICAS + "
+        f"{len(gvo.MODOS_FORA_DO_CATALOGO)} fora do catálogo = {esperado} esperadas, "
+        f"mas {len(notas_tecnicas)} notas em 10-Tecnicas/"
     )
     slugs_esperados = {
         gvo._slug(dados.get("PT", {}).get("nome", chave))
         for chave, dados in tecnicas_reais.items()
-    }
+    } | {gvo._slug(item["nome"]) for item in gvo.MODOS_FORA_DO_CATALOGO}
     slugs_no_vault = {rel[len("10-Tecnicas/"):-len(".md")] for rel in notas_tecnicas}
     assert slugs_esperados == slugs_no_vault
+
+
+def test_modalidades_fora_do_catalogo_tem_modulo_principal_real():
+    """Cada item de `MODOS_FORA_DO_CATALOGO` precisa apontar para um
+    módulo que realmente existe -- se o módulo for renomeado/removido, a
+    nota correspondente é omitida silenciosamente (ver
+    `gerar_tecnicas_fora_do_catalogo`); este teste garante que isso não
+    acontece sem ninguém perceber."""
+    modulos_reais = {p.stem for p in (_RAIZ / "src" / "guaraci").glob("*.py")}
+    faltando = [item["modulo_principal"] for item in gvo.MODOS_FORA_DO_CATALOGO
+                if item["modulo_principal"] not in modulos_reais]
+    assert not faltando, f"módulo principal inexistente: {faltando}"
 
 
 # ─────────────────────────────────────────────────────────────────────────

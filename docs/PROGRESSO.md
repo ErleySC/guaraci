@@ -1,3 +1,50 @@
+# PROGRESSO — Passo 176: modalidades fora do catálogo TECNICAS no vault (2026-09-06)
+
+## Passo 176 — HSI e Imagem (colorimetria digital) faltavam em 10-Tecnicas/
+
+Pedido do usuário depois de abrir o vault no Obsidian: garantir que
+"todas as informações e técnicas, além do HSI e etc" estivessem
+representadas. Auditoria confirmou uma lacuna real: `10-Tecnicas/` só
+cobria as 11 chaves de `cli_assistente.TECNICAS`, mas `Config.mode`
+(`src/guaraci/config.py`) declara 5 modalidades de entrada —
+`"dx" | "csv" | "imagem" | "sintetico" | "hsi"`. `imagem` (colorimetria
+digital, `dados_imagem.py`) e `hsi` (imageamento hiperespectral,
+`hsi_pipeline.py` + 13 módulos `hsi_*.py`) são tecnicamente reais —
+`hsi` inclusive já tem dataset público validado (DeepHS Fruit/Kaki,
+§7 de `docs/VALIDACAO_PUBLICA.md`) — mas nunca apareceriam em
+`10-Tecnicas/` porque não estão no dicionário `TECNICAS` do menu.
+
+`sintetico` foi verificada e **excluída de propósito**: é dado simulado
+para teste/demonstração (`docs/MANUAL.md`: "Para testes/demonstração"),
+não uma técnica analítica — incluí-la seria o tipo de afirmação que a
+regra "evidência ou silêncio" desta auditoria proíbe.
+
+Corrigido em `scripts/gerar_vault_obsidian.py`: `MODOS_FORA_DO_CATALOGO`
+(lista de 2 itens, módulo-fonte real verificado em tempo de geração) +
+`gerar_tecnicas_fora_do_catalogo()`, que produz 2 notas novas em
+`10-Tecnicas/` (tags `tecnica`, `fora-do-catalogo`, e `pendente` para
+`imagem` — sem dataset público validado ainda) a partir da docstring do
+módulo principal, dos módulos relacionados, e — quando existe — um link
+real para a nota de `40-Validacoes/` correspondente (achado por busca
+de substring "deephs", não hardcoded). `10-Tecnicas/` foi de 11 para 13
+notas. `MOC-Tecnicas.md` e `Estado-Atual`/`README-VAULT.md` atualizados
+para refletir a contagem dinamicamente (nenhum "11" ficou hardcoded
+sobrando em lugar nenhum — verificado por grep).
+
+Testes de cobertura (`tests/test_cobertura_vault_obsidian.py`,
+`tests/test_gerador_vault_obsidian.py`) e o comando `--cobertura` de
+`scripts/consultar_vault.py` atualizados para a contagem nova (13, não
+11) — todos calculam o esperado a partir de
+`len(TECNICAS) + len(MODOS_FORA_DO_CATALOGO)`, nunca um literal, para
+não voltar a ficar desatualizados se um item for adicionado/removido.
+
+Suíte completa + `ruff`/`mypy` limpos. Cobertura final:
+**65/65 módulos, 13/13 técnicas, 88/88 passos, 14/14 datasets — completa.**
+Consulta manual confirmada: "HSI" retorna a técnica, os 13 módulos
+`hsi_*.py`, a validação DeepHS, 4 conceitos relacionados (domínio de
+aplicabilidade, quality gate, propagação de incerteza, multiway/PARAFAC)
+e ~20 passos/achados do histórico real de implementação.
+
 # PROGRESSO — Passos 172-175: auditoria de cobertura + motor de consulta por grafo (2026-09-06)
 
 ## Passo 172 — Commit pendente e auditoria de cobertura do vault

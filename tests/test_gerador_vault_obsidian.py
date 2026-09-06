@@ -119,7 +119,10 @@ def test_plano_real_nao_tem_wikilink_quebrado():
 
 def test_plano_real_tem_as_categorias_esperadas():
     plano, contagens, _avisos = gvo.montar_plano()
-    assert contagens["10-Tecnicas"] == 11  # cli_assistente.TECNICAS tem 11 chaves
+    # cli_assistente.TECNICAS (11 chaves) + modalidades fora do catálogo
+    # (Config.mode: "imagem"/"hsi" -- ver MODOS_FORA_DO_CATALOGO)
+    assert contagens["10-Tecnicas"] == len(gvo.parse_tecnicas_catalog()) + len(
+        gvo.MODOS_FORA_DO_CATALOGO)
     assert contagens["20-Modulos"] > 0
     assert contagens["30-Conceitos"] > 0
     assert contagens["40-Validacoes"] > 0

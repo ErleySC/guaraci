@@ -361,6 +361,72 @@ CONCEITOS: list[dict[str, Any]] = [
 
 
 # ═════════════════════════════════════════════════════════════════════════
+#  Modalidades de entrada fora do catálogo `cli_assistente.TECNICAS`
+#
+#  `TECNICAS` (11 chaves) não é a lista completa do que o Guaraci aceita
+#  como entrada -- `Config.mode` (src/guaraci/config.py) declara
+#  "dx" | "csv" | "imagem" | "sintetico" | "hsi". `imagem` (colorimetria
+#  digital) e `hsi` (imageamento hiperespectral) são tecnicamente reais
+#  (módulo próprio, e no caso de HSI dataset público validado) mas nunca
+#  apareceriam em 10-Tecnicas/ sem isto, porque não estão em `TECNICAS`.
+#  `sintetico` fica de fora de propósito: é dado simulado para teste/
+#  demonstração (`docs/MANUAL.md`: "Para testes/demonstração"), não uma
+#  técnica analítica -- incluí-la aqui seria o tipo de afirmação que
+#  "evidência ou silêncio" proíbe.
+# ═════════════════════════════════════════════════════════════════════════
+
+MODOS_FORA_DO_CATALOGO: list[dict[str, Any]] = [
+    {"chave": "hsi", "nome": "HSI (Imageamento Hiperespectral)",
+     "modulo_principal": "hsi_pipeline", "busca_validacao": "deephs",
+     "modulos_relacionados": [
+         "hsi_io", "hsi_quality", "hsi_segmentation", "hsi_pixels",
+         "hsi_classification", "hsi_chemistry", "hsi_validation",
+         "hsi_applicability", "hsi_uncertainty", "hsi_multiway",
+         "hsi_resampling", "hsi_figures", "hsi_identification",
+     ]},
+    {"chave": "imagem", "nome": "Imagem (Colorimetria Digital)",
+     "modulo_principal": "dados_imagem", "busca_validacao": None,
+     "modulos_relacionados": []},
+]
+
+
+def gerar_tecnicas_fora_do_catalogo(modulos: dict[str, ModuloInfo],
+                                     validacoes: dict[str, str]) -> dict[str, str]:
+    plano: dict[str, str] = {}
+    for item in MODOS_FORA_DO_CATALOGO:
+        principal = modulos.get(item["modulo_principal"])
+        if principal is None:
+            continue
+        corpo = [_resumo_docstring(principal.docstring, max_linhas=10)]
+        relacionados = [m for m in item["modulos_relacionados"] if m in modulos]
+        if relacionados:
+            corpo.append("\n## Módulos relacionados\n" +
+                          "\n".join(f"- {_wikilink(f'{m}.py')}" for m in relacionados))
+        nota_validacao_rel = None
+        if item["busca_validacao"]:
+            nota_validacao_rel = next(
+                (rel for rel in validacoes if item["busca_validacao"] in rel.lower()), None)
+        if nota_validacao_rel:
+            corpo.append("\n## Validação pública\n- " +
+                          _wikilink(Path(nota_validacao_rel).stem))
+        else:
+            corpo.append("\n## Validação pública\nSem dataset público validado registrado "
+                          "para esta modalidade em `docs/VALIDACAO_PUBLICA.md` nesta rodada.")
+        link_principal = _wikilink(f"{item['modulo_principal']}.py")
+        corpo.append(f"\n## Ver também\n- {link_principal}")
+        tags = ["tecnica", "fora-do-catalogo"]
+        if not nota_validacao_rel and item["busca_validacao"] is None:
+            tags.append("pendente")
+        conteudo = _nota(
+            titulo=item["nome"], tags=tags,
+            fonte=[principal.caminho, "src/guaraci/config.py"],
+            corpo="\n".join(corpo),
+        )
+        plano[f"10-Tecnicas/{_slug(item['nome'])}.md"] = conteudo
+    return plano
+
+
+# ═════════════════════════════════════════════════════════════════════════
 #  Geração de notas — 10-Tecnicas
 # ═════════════════════════════════════════════════════════════════════════
 
@@ -644,19 +710,21 @@ def gerar_achados_e_decisoes(modulos_conhecidos: set[str]) -> tuple[dict[str, st
 # ═════════════════════════════════════════════════════════════════════════
 
 def gerar_mocs(tecnicas: dict[str, Any], modulos: dict[str, ModuloInfo],
-                validacoes: dict[str, str], decisoes: dict[str, str],
-                achados: dict[str, str]) -> dict[str, str]:
+                tecnicas_notas: dict[str, str], validacoes: dict[str, str],
+                decisoes: dict[str, str], achados: dict[str, str]) -> dict[str, str]:
     plano: dict[str, str] = {}
 
     def _links(pasta_plano: dict[str, str]) -> str:
         nomes = sorted(Path(p).stem for p in pasta_plano)
         return "\n".join(f"- {_wikilink(n)}" for n in nomes)
 
+    n_extras = len(MODOS_FORA_DO_CATALOGO)
     plano["00-MOC/MOC-Tecnicas.md"] = _nota(
         "MOC — Técnicas", ["moc"], "src/guaraci/cli_assistente.py",
-        "As 11 técnicas do catálogo `cli_assistente.TECNICAS`.\n\n" +
-        "\n".join(f"- {_wikilink_titulo(t.get('PT', {}).get('nome', k))}"
-                   for k, t in tecnicas.items()))
+        f"As {len(tecnicas)} técnicas do catálogo `cli_assistente.TECNICAS` "
+        f"+ {n_extras} modalidade(s) de entrada real(is) que existem em "
+        "`Config.mode` mas não estão nesse catálogo (tag `fora-do-catalogo`"
+        " nas notas correspondentes).\n\n" + _links(tecnicas_notas))
 
     plano["00-MOC/MOC-Arquitetura.md"] = _nota(
         "MOC — Arquitetura", ["moc"], "src/guaraci/",
@@ -891,7 +959,7 @@ Use-a para anotações pessoais, rascunhos, ligações manuais extras.
 
 | Pasta | Fonte |
 |---|---|
-| `10-Tecnicas/` | `src/guaraci/cli_assistente.py` (catálogo `TECNICAS`) + `docs/PROGRESSO.md` (Passo 160) |
+| `10-Tecnicas/` | `src/guaraci/cli_assistente.py` (catálogo `TECNICAS`, 11) + `docs/PROGRESSO.md` (Passo 160) + `Config.mode` (`config.py`) para as modalidades fora do catálogo (`imagem`, `hsi`) |
 | `20-Modulos/` | `src/guaraci/*.py` — docstring de módulo, `__all__`, imports internos (introspecção estática) |
 | `30-Conceitos/` | mapeamento conceito→módulo (neste script) + docstring do(s) módulo(s) |
 | `40-Validacoes/` | `docs/VALIDACAO_PUBLICA.md` §1 (tabela consolidada), 1 nota por linha |
@@ -944,8 +1012,9 @@ def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
     p_modulos = gerar_modulos(modulos)
     p_conceitos, avisos_conceitos = gerar_conceitos(modulos, tecnicas)
     p_validacoes = gerar_validacoes(tabela_validacoes)
+    p_tecnicas.update(gerar_tecnicas_fora_do_catalogo(modulos, p_validacoes))
     p_achados, p_decisoes = gerar_achados_e_decisoes(set(modulos))
-    p_mocs = gerar_mocs(tecnicas, modulos, p_validacoes, p_decisoes, p_achados)
+    p_mocs = gerar_mocs(tecnicas, modulos, p_tecnicas, p_validacoes, p_decisoes, p_achados)
     p_estado = gerar_estado_atual(status11)
     p_canvas = {}
     p_canvas.update(gerar_canvas_fluxo_cego())

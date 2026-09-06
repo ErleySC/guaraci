@@ -266,11 +266,12 @@ def checar_cobertura_do_vault(notas: dict[str, Nota]) -> str:
     linhas.append(f"- **Módulos**: {len(modulos_vault)}/{len(modulos_reais)} "
                    + ("OK" if ok_mod else f"FALTANDO {faltando_mod} SOBRANDO {sobrando_mod}"))
 
-    tecnicas_reais = gvo.parse_tecnicas_catalog()
+    n_tecnicas_esperadas = len(gvo.parse_tecnicas_catalog()) + len(gvo.MODOS_FORA_DO_CATALOGO)
     n_tecnicas_vault = sum(1 for n in notas.values() if n.rel.startswith("10-Tecnicas/"))
-    ok_tec = n_tecnicas_vault == len(tecnicas_reais)
+    ok_tec = n_tecnicas_vault == n_tecnicas_esperadas
     completa &= ok_tec
-    linhas.append(f"- **Técnicas**: {n_tecnicas_vault}/{len(tecnicas_reais)} "
+    linhas.append(f"- **Técnicas** (catálogo + fora do catálogo): "
+                   f"{n_tecnicas_vault}/{n_tecnicas_esperadas} "
                    + ("OK" if ok_tec else "CONTAGEM DIVERGENTE"))
 
     blocos = gvo.parse_blocos_passo()
