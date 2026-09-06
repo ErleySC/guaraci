@@ -1,4 +1,111 @@
-# PROGRESSO — Passos 161-165: índice único do projeto e auditoria de documentação (2026-09-05)
+# PROGRESSO — Passos 166-171: vault Obsidian gerado por script (2026-09-06)
+
+## Passo 166/167 — Estrutura do vault e gerador escritos
+
+Vault criado em `~/GuaraciVault/` (confirmado com o usuário antes de
+gerar; variável `GUARACI_VAULT_DIR` sobrepõe o padrão). Estrutura:
+`00-MOC/`, `10-Tecnicas/`, `20-Modulos/`, `30-Conceitos/`,
+`40-Validacoes/`, `50-Decisoes/`, `60-Achados/`, `70-Notas-Pessoais/`
+(protegida — o gerador nunca lê nem escreve nela), `90-Canvas/`,
+`99-Arquivo/` (destino de nota removida da fonte — arquivar, não
+apagar).
+
+`scripts/gerar_vault_obsidian.py`, versionado no repositório (o script é
+do projeto; o vault gerado fica fora dele). Fontes lidas por AST/regex
+sobre o arquivo real, nunca por `import`/`exec` do módulo (evita efeito
+colateral de importar `cli_assistente.py`): `src/guaraci/cli_assistente.py`
+(`TECNICAS` via `ast.literal_eval`), `src/guaraci/*.py` (docstring de
+módulo + `__all__` + imports internos, por módulo — não-recursivo,
+65 arquivos hoje), `docs/PROGRESSO.md` (tabela "Fechamento honesto do
+estado final das 11 técnicas", Passo 160 — mesma ordem de `TECNICAS`,
+usada para o status por técnica), `docs/VALIDACAO_PUBLICA.md` (tabela
+consolidada §1, 1 nota por linha) e `docs/COMPATIBILITY.md` ("Casos
+especiais documentados").
+
+Nenhum número (RMSEP, balanced accuracy, contagem de teste) é literal no
+gerador — todos vêm de uma leitura de arquivo real no momento da
+execução. `gerado_em`/`commit` no frontmatter de cada nota vêm do commit
+HEAD (não do relógio da execução) precisamente para que rodar o gerador
+duas vezes sem o repositório mudar produza bytes idênticos — verificado
+por teste (`test_escrever_vault_e_idempotente`).
+
+## Passo 168 — Conteúdo mínimo por categoria
+
+- **10-Tecnicas/** (11 notas — as 11 chaves de `cli_assistente.TECNICAS`,
+  incluindo "Genérico"): faixa, pré-processamento recomendado, status de
+  validação (da tabela do Passo 160), dataset, métrica, link para
+  `preprocessamento.py` e para conceito aplicável quando existe (Raman →
+  Portão de aceite; NIR → Transferência de calibração).
+- **20-Modulos/** (65 notas): docstring, `__all__`, "depende de"/"usado
+  por" calculados por regex sobre `from guaraci.X import`/`from .X
+  import` (grafo bidirecional).
+- **30-Conceitos/** (15 notas): 15 conceitos metodológicos mapeados a
+  módulo(s) real(is) neste script — se um módulo mapeado deixar de
+  existir, a nota é omitida com aviso em stderr, nunca escrita com dado
+  velho.
+- **40-Validacoes/** (14 notas — 1 por linha da tabela consolidada).
+- **50-Decisoes/** (9 notas) e **60-Achados/** (28 notas): extraídas de
+  parágrafos que já seguem uma convenção própria da documentação
+  (`**Decisão...**`, `**Achado...**`, `**RETRATAÇÃO...**`,
+  `**Bug real...**`) em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md`,
+  mais os "Casos especiais documentados" de `docs/COMPATIBILITY.md`.
+  Cobertura depende de quão consistentemente a fonte já marca essas
+  frases — deliberadamente conservador (evidência ou silêncio) em vez de
+  minerar prosa livre com risco de falso positivo.
+
+**Achado durante a implementação**: a primeira versão deduplicava
+achados/decisões pelo texto do MARCADOR (“**Decisão**”, “**Achado**”).
+Como vários parágrafos completamente diferentes usam o mesmo marcador
+genérico, isso colapsava decisões distintas (HPLC, IMS, expansão de
+módulo) numa única nota "decisao.md", descartando conteúdo real em nome
+de uma deduplicação que não deveria ter disparado. Corrigido: a chave de
+dedup agora é o texto do PARÁGRAFO inteiro (primeiros 200 caracteres),
+e o título da nota completa o marcador genérico com as primeiras
+palavras do que vem depois dele quando o marcador sozinho tem menos de
+4 palavras.
+
+## Passo 169 — Guarda de privacidade
+
+A regex de identificador de amostra (`tests/test_sem_identificador_real.py`)
+foi extraída para `scripts/privacidade_amostras.py` para que o gerador
+reaproveite a MESMA regra em vez de duplicá-la — `test_sem_identificador_real.py`
+agora importa de lá (`_PADRAO`/`_ANO_SENTINELA`), sem mudança de
+comportamento (suíte confirmada verde após o refactor). Adicionado a
+essa mesma varredura: padrão de caminho absoluto de máquina (Windows
+`C:\Users\...` e Unix `/home/.../` `/Users/.../`), porque o vault vive
+fora do repositório e pode vazar o caminho da máquina que o gerou.
+
+O gerador monta o plano de escrita inteiro EM MEMÓRIA primeiro, roda a
+guarda sobre esse plano, e só grava em disco se a guarda passar — se
+algo vazar, nada é escrito (nem parcialmente). Contra-prova em
+`tests/test_gerador_vault_obsidian.py`: cenário sintético com
+identificador de ano real e com caminho absoluto, ambos devem falhar a
+guarda; o ano sentinela 2099 e conteúdo legítimo (versão, ISO-8601,
+RMSEP) não devem disparar falso positivo.
+
+## Passo 170 — Canvas curados
+
+3 arquivos `.canvas` (JSON, gerados programaticamente, validados por
+`json.load` nesta rodada): `Fluxo-Cego.canvas` (Detectar → Identificar →
+Quantificar com os 2 gates: cobertura não-validável e faixa de decisão
+contra LOD/LOQ), `Arquitetura-Geral.canvas` (entrada → pré-processamento
+→ modelagem → validação → saída, por módulo real) e
+`Mapa-Tecnicas.canvas` (11 técnicas agrupadas em 4 famílias, cor por
+status do Passo 160).
+
+## Passo 171 — Testes, documentação e verificação
+
+`tests/test_gerador_vault_obsidian.py` (12 testes): guarda de
+privacidade (5), integração do plano real do gerador (2), escrita em
+disco — idempotência, pasta protegida nunca tocada, arquivamento em vez
+de apagar, manifesto válido (5). Suíte completa + `ruff` + `mypy` sobre
+os arquivos novos confirmados limpos nesta rodada.
+
+`README-VAULT.md` é GERADO dentro do próprio vault (não escrito à mão)
+— documenta a pasta protegida, quando regenerar, e de onde vem cada
+categoria; contagens da última geração ficam no rodapé do próprio
+arquivo.
+
 
 ## Passo 161 — `docs/INDICE_PROJETO.md` criado
 

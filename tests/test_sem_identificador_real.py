@@ -21,8 +21,8 @@ reprova, independente de quem o escreveu saber se e' real.
 from __future__ import annotations
 
 import os
-import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -49,14 +49,17 @@ _RAIZ = Path(__file__).resolve().parents[1]
 #: `dados_io.py` chama `.upper()` justamente porque a caixa varia no
 #: dado real. Em NTFS, que ignora caixa, renomear para minuscula nem
 #: seria visivel. Achado na verificacao independente de 2026-08-20.
-_PADRAO = re.compile(
-    r"(?<![A-Za-z0-9])[A-Za-z]{2,5}[-_]\d{2}-\d{2}-(?:19|20)\d{2}(?!\d)",
-    re.IGNORECASE,
-)
+#:
+#: Extraido para `scripts/privacidade_amostras.py` (Passo 169) para que o
+#: gerador do vault Obsidian reaproveite a MESMA regra em vez de duplica-la.
+_SCRIPTS = str(_RAIZ / "scripts")
+if _SCRIPTS not in sys.path:
+    sys.path.insert(0, _SCRIPTS)
 
-#: Unica excecao. Ano que nao pode corresponder a leitura nenhuma, entao um
-#: identificador com ele e' inequivocamente inventado para exemplo/fixture.
-_ANO_SENTINELA = "2099"
+from privacidade_amostras import (  # noqa: E402
+    ANO_SENTINELA as _ANO_SENTINELA,
+    PADRAO_IDENTIFICADOR as _PADRAO,
+)
 
 #: Extensoes que nao sao texto -- lidas em mode binario dariam ruido.
 _BINARIO = {".png", ".ico", ".jpg", ".jpeg", ".gif", ".pdf", ".joblib",
