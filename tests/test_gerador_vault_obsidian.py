@@ -124,12 +124,15 @@ def test_plano_real_tem_as_categorias_esperadas():
     assert contagens["10-Tecnicas"] == len(gvo.parse_tecnicas_catalog()) + len(
         gvo.MODOS_FORA_DO_CATALOGO)
     assert contagens["20-Modulos"] > 0
+    assert contagens["25-Funcoes"] > 0
     assert contagens["30-Conceitos"] > 0
     assert contagens["40-Validacoes"] > 0
-    assert all(rel.startswith(("00-MOC/", "10-Tecnicas/", "20-Modulos/",
-                                "30-Conceitos/", "40-Validacoes/", "50-Decisoes/",
-                                "60-Achados/", "90-Canvas/", "README-VAULT.md",
-                                "Estado-Atual.md"))
+    assert contagens["05-Identidade"] > 0
+    assert contagens["06-Autoria-e-Seguranca"] > 0
+    assert all(rel.startswith(("00-MOC/", "05-Identidade/", "10-Tecnicas/", "20-Modulos/",
+                                "25-Funcoes/", "30-Conceitos/", "40-Validacoes/", "50-Decisoes/",
+                                "60-Achados/", "06-Autoria-e-Seguranca/", "90-Canvas/",
+                                "README-VAULT.md", "Estado-Atual.md"))
                for rel in plano)
 
 

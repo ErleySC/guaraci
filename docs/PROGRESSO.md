@@ -1,3 +1,192 @@
+# PROGRESSO — Passos 177-185: vault como rede de conhecimento (2026-09-07)
+
+Pedido do usuário (`INSTRUCAO_VAULT_REDE_NEURAL.md`): expandir o vault
+(Passos 166-176) em três frentes -- identidade do projeto, granularidade
+de função individual, e densificação de ligações (todo link explica por
+que existe) -- fundamentado em Zettelkasten (atomicidade + conexão
+explicada) e Diátaxis (referência vs. explicação). **Correção de
+numeração antes de começar**: a instrução chegou rotulada "PASSO 176" a
+"PASSO 184", mas o Passo 176 real já existe (acima, mesma sessão
+anterior) -- renumerado para 177-185 aqui para não colidir.
+
+## Passo 177 — Fundamentar o método no README-VAULT.md
+
+`gerar_readme_vault()` ganhou uma seção "Método" com duas frases por
+ideia (Zettelkasten: atomicidade + link sempre com a relação explícita;
+Diátaxis: `referência` vs. `explicação` por categoria, sem reestruturar
+pasta). Nenhuma pasta existente mudou de lugar — Diátaxis entra só como
+campo `modo:` de frontmatter (Passo 181).
+
+## Passo 178 — Nova categoria: Identidade do Projeto (`05-Identidade/`)
+
+5 notas (`Missao.md`, `Identidade-Visual.md`, `Mascote.md`,
+`Tom-de-Voz.md`, `MOC-Identidade.md`), todas com fonte real:
+
+- **Missao.md**: não existe, no repositório, um documento "Plano de
+  Evolução" (verificado por busca de texto antes de escrever) — os 3
+  compromissos citados pela instrução original são mantidos verbatim
+  (vêm da própria instrução desta auditoria), mas cada um ancorado a
+  uma nota real já existente em vez de repetir texto: vazamento →
+  `retratacao-metodologica-interna-antes-de-publicar-qualquer-numero`;
+  validação bloqueada → `decisao-nenhum-dataset-hplc-compativel-...`;
+  resultado negativo → `achado-real-negativo-registrado-honesto`.
+- **Identidade-Visual.md**: paleta e regras de uso lidas por parser
+  (`parse_paleta_mascote`/`parse_regras_uso_cor`/`parse_tipografia_design`)
+  de `docs/DESIGN.md` §1/1.2/2 -- nenhum hex escrito no gerador. Registra
+  que o caminho A (paleta da mascote como paleta oficial) já foi
+  aprovado e implementado (`docs/DESIGN.md`, atualização 2026-09-01),
+  não é mais proposta.
+- **Mascote.md**: descrição confirmada por inspeção visual direta de
+  `assets/guaraci_icon.png` (não só a partir do texto de `docs/DESIGN.md`).
+- **Tom-de-Voz.md**: 2 citações reais extraídas de `docs/VALIDACAO_PUBLICA.md`
+  (abertura + fechamento da tabela consolidada) via
+  `parse_tom_de_voz_evidencias()`.
+- **Achado real, medido nesta rodada**: o parser de seção markdown
+  (`_secao_markdown`) inicial usava `.*$` com `re.S`+`re.M` juntos, que é
+  ambíguo (DOTALL deixa `.` cruzar linha, e o backtracking de `$` some) —
+  sempre retornava vazio. Corrigido para `[^\n]*` na linha do cabeçalho.
+  Sem esse fix, `Identidade-Visual.md` teria ficado sem paleta
+  silenciosamente (o aviso "tabela não encontrada" pegou isso antes de
+  virar nota incompleta despercebida).
+- **Achado real #2**: `parse_regras_uso_cor()` inicial só pegava a
+  primeira linha de cada bullet (`docs/DESIGN.md` quebra bullet em 2+
+  linhas) — corrigido para juntar linha de continuação.
+
+## Passo 179 — Nova granularidade: `25-Funcoes/`
+
+**Decisão tomada com o usuário (pausa exigida pela própria instrução,
+regra (a)):** a instrução original pedia 1 nota por nome de `__all__`
+que fosse função — medido antes de gerar: **290 funções públicas em 65
+módulos** (`figuras.py` sozinho: 38). Volume muito maior que o esperado
+pela granularidade proposta. Opções apresentadas ao usuário: todas as
+290; só a função de entrada por módulo (~65); ou outro corte. Escolhido:
+**só a função de entrada por módulo**. Critério de escolha: a PRIMEIRA
+função de `__all__` que é, de fato, uma função top-level, na ordem
+declarada pelo próprio módulo -- verificável no código-fonte, não
+suposição de "qual é a mais importante" (61/65 módulos têm ao menos uma
+função pública; 4 só exportam classe/constante). Nenhuma colisão de
+nome entre módulos (verificado antes de gerar).
+
+Cada nota: assinatura completa via `ast.unparse` (nunca `inspect`/import
+do módulo descrito), primeiro parágrafo da docstring, localização
+`arquivo:linha`, "testada por" com busca real de chamada direta em
+`tests/test_*.py` (não suposição — 1 achado real: várias funções não
+têm chamada direta, texto explícito em vez de fingir cobertura).
+Frontmatter: `modulo:` (wikilink) e `assinatura:` (string), ambos
+citados no corpo do próprio Passo 180.
+
+## Passo 180 — Densificar a rede: todo link explica a si mesmo
+
+`_wikilink()`/`_wikilink_titulo()` ganharam parâmetro `relacao` opcional
+(`[[Nota]] — relação`), aplicado na GERAÇÃO (não editado depois à mão)
+em: `10-Tecnicas` (pré-processamento, conceito, módulo/validação
+relacionados), `20-Modulos` (depende de/usado por/implementa/função de
+entrada), `30-Conceitos` (implementado em/aplicável a), MOCs (relação
+por categoria). Autolink de menção em prosa (`_autolinkar_modulos`)
+mantido sem relação de propósito -- a frase ao redor já dá o contexto,
+adicionar relação ali duplicaria informação.
+
+Teste de densidade de grafo novo
+(`tests/test_proveniencia_e_densidade_vault.py`): grau de saída médio
+por categoria (relatório impresso, não bloqueante por nota individual —
+regra explícita da instrução: "sinalizar, não necessariamente
+bloquear") + assert duro só se uma categoria INTEIRA de conteúdo ficar
+com grau médio zero. 2 notas legitimamente órfãs de entrada encontradas
+e documentadas no README-VAULT.md (não corrigidas, porque não fazem
+sentido linkadas): `MOC-Guaraci.md` (ponto de entrada) e
+`README-VAULT.md` (documentação sobre o vault). Também: teste de piso
+(≥60% dos links de lista carregam relação explícita) para sinalizar
+regressão sem exigir 100% cego em autolinks de prosa.
+
+**Achado real, medido nesta rodada**: a própria seção nova do
+README-VAULT.md que descreve a convenção de link com relação usava
+colchete duplo literal na prosa — exatamente o bug já corrigido uma vez
+nesta auditoria (commit `b30b732`, achado de `docs/PROGRESSO.md`
+descrevendo a sintaxe de wikilink em prosa). Pego pelo teste de
+wikilink quebrado já existente antes de qualquer commit; reescrito sem
+colchete duplo literal.
+
+## Passo 181 — Dimensão Diátaxis: campo `modo:`
+
+Pós-processamento centralizado (`_aplicar_modo_diataxis`, roda 1x sobre
+o plano inteiro em `montar_plano()`) em vez de espalhar o cálculo em
+cada função geradora: `10-Tecnicas`/`20-Modulos`/`25-Funcoes`/
+`40-Validacoes` → `referencia`; `30-Conceitos`/`50-Decisoes`/
+`05-Identidade`/`06-Autoria-e-Seguranca` → `explicacao`; `60-Achados` →
+`explicacao`, exceto tag `passo` → `referencia`. Extensão não coberta
+pela instrução original (escrita antes de `06-Autoria` existir): MOCs
+(`00-MOC/` e os das categorias novas) tratados como `referencia`, mesma
+natureza de consulta rápida de `20-Modulos`/`40-Validacoes` — decisão
+documentada aqui, não silenciosa.
+
+## Passo 182 — Regenerar, verificar, documentar
+
+Gerador rodado 2x seguidas (`--check` e escrita real) para confirmar
+idempotência; guarda de privacidade limpa nas duas categorias novas
+(1 achado real durante a escrita: a nota `Seguranca-de-Dados.md`
+descrevia o PADRÃO de caminho absoluto usando um exemplo literal que a
+própria guarda reconheceu como vazamento — corrigido para descrever o
+padrão em prosa, sem reproduzir o literal); teste de link quebrado
+estendido automaticamente (já é genérico, cobre categoria nova sem
+mudança); `README-VAULT.md` final documenta contagens novas, o método
+(Passo 177) e a convenção de link com relação.
+
+## Passo 183 — Nova categoria: Autoria e Segurança de Dados (`06-Autoria-e-Seguranca/`)
+
+4 notas (`Autoria.md`, `Proveniencia.md`, `Seguranca-de-Dados.md`,
+`MOC-Autoria-Seguranca.md`), fonte real via `parse_citation_cff()`
+(`CITATION.cff` por `yaml.safe_load`, dependência já existente do
+projeto) + `git log --format=%an <%ae>`.
+
+**Pausa exigida pela própria instrução, decidida com o usuário**: o
+texto original pedia afiliação institucional e orientação acadêmica —
+checado, `CITATION.cff` não tem campo de afiliação e `git log` só tem
+nome/e-mail do autor, sem orientador(a). Em vez de preencher com a
+afiliação institucional já registrada em memória de sessões anteriores
+(UFPA/GEAAp — não é a fonte que a instrução pedia), reportado ao
+usuário; resposta: **projeto pessoal, idealizado e desenvolvido
+inteiramente por ele, sem vínculo institucional ou orientação acadêmica
+associada ao código deste repositório.** Registrado em `Autoria.md`
+com essa atribuição explícita (declaração direta do autor,
+2026-09-06), não como suposição.
+
+**Correção de premissa**: a instrução presumia "decisão de
+dual-licensing com CLA já registrada em `50-Decisoes/`" — checado por
+grep: nenhuma menção a CLA em nenhum `.md` do repositório, e nenhum
+parágrafo `**Decisão**` sobre isso nas duas fontes que alimentam
+`50-Decisoes/`. O que existe de fato (`docs/COMMERCIAL.md`, `README.md`):
+dual licensing simples (GPLv3 + licença comercial separada, copyright
+integral retido pelo autor), sem CLA. `Autoria.md` registra essa
+correção explicitamente em vez de inventar a peça que faltava.
+
+`Proveniencia.md` e `Seguranca-de-Dados.md` ambas trazem a ressalva
+"prova de proveniência informacional, não parecer jurídico" pedida pela
+instrução, e citam contra-prova real (`tests/test_gerador_vault_obsidian.py`,
+`tests/test_sem_identificador_real.py`) em vez de só descrever a regra.
+
+## Passo 184 — Campo `autor:` universal (proveniência de toda nota)
+
+`_frontmatter()`/`_nota()` ganharam parâmetro `autor` (padrão
+`"[[Autoria]]"`), aplicado a toda nota gerada por `_nota()` sem precisar
+tocar cada função geradora individualmente. Duas exceções, ambas
+explícitas no código: `06-Autoria-e-Seguranca/Autoria.md` (autorreferência
+sem sentido, `autor=None`) e `README-VAULT.md` (não usa `_nota()` — é
+documentação sobre o vault, não conteúdo do grafo). Teste de contrato
+novo (`tests/test_proveniencia_e_densidade_vault.py`): toda nota `.md`
+fora dessas 2 exceções tem `autor: "[[Autoria]]"`; `Autoria.md`
+especificamente NÃO tem o campo; `README-VAULT.md` especificamente não
+tem o campo.
+
+## Passo 185 — Regenerar e fechar
+
+Categorias novas incluídas na contagem do gerador (`05-Identidade`,
+`25-Funcoes`, `06-Autoria-e-Seguranca`), tabela de proveniência de
+`README-VAULT.md` estendida (linha `modo:` por pasta). Whitelist de
+prefixo em `test_plano_real_tem_as_categorias_esperadas` (já existente)
+estendida para as 3 pastas novas. `ruff`/`mypy` limpos em
+`scripts/gerar_vault_obsidian.py` e nos 2 arquivos de teste
+novos/alterados. Suíte completa rodada por último, antes do commit.
+
 # PROGRESSO — Passo 176: modalidades fora do catálogo TECNICAS no vault (2026-09-06)
 
 ## Passo 176 — HSI e Imagem (colorimetria digital) faltavam em 10-Tecnicas/

@@ -9,6 +9,7 @@ correção é no GERADOR, não neste teste nem no motor de consulta.
 """
 from __future__ import annotations
 
+import ast
 import re
 import sys
 from pathlib import Path
@@ -168,3 +169,98 @@ def test_todos_os_modulos_referenciados_por_conceitos_existem():
         f"conceito(s) apontando para módulo que não existe mais: {faltando} "
         "-- corrigir a tabela CONCEITOS em gerar_vault_obsidian.py"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+#  25-Funcoes -- 1 nota por módulo que tem função pública em __all__
+#  (Passo 178, escopo reduzido de "toda função de __all__" para "1 por
+#  módulo" -- ver docstring da seção no gerador)
+# ─────────────────────────────────────────────────────────────────────────
+
+def _modulos_com_funcao_publica_em_all() -> list[str]:
+    """Recalcula, direto do AST (independente de `gvo.parse_funcoes_principais`),
+    quais módulos têm ao menos 1 função top-level cujo nome está em
+    `__all__` -- verdade própria deste teste, não reaproveitada."""
+    modulos = []
+    for caminho in sorted((_RAIZ / "src" / "guaraci").glob("*.py")):
+        texto = caminho.read_text(encoding="utf-8")
+        arvore = ast.parse(texto)
+        all_publico: list[str] = []
+        for node in ast.walk(arvore):
+            if isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if getattr(t, "id", None) == "__all__":
+                        try:
+                            all_publico = list(ast.literal_eval(node.value))
+                        except (ValueError, SyntaxError):
+                            pass
+        funcoes_top = {n.name for n in arvore.body
+                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        if any(n in funcoes_top for n in all_publico):
+            modulos.append(caminho.stem)
+    return modulos
+
+
+def test_todo_modulo_com_funcao_publica_em_all_tem_nota_em_funcoes(plano):
+    modulos_com_funcao = _modulos_com_funcao_publica_em_all()
+    notas_funcoes = [rel for rel in plano if rel.startswith("25-Funcoes/")]
+    assert len(notas_funcoes) == len(modulos_com_funcao), (
+        f"{len(modulos_com_funcao)} módulo(s) com função pública em __all__, "
+        f"{len(notas_funcoes)} nota(s) em 25-Funcoes/"
+    )
+
+
+def test_toda_nota_de_funcao_referencia_seu_modulo_de_verdade(plano):
+    modulos_reais = {p.stem for p in (_RAIZ / "src" / "guaraci").glob("*.py")}
+    sem_modulo_real = []
+    for rel, conteudo in plano.items():
+        if not rel.startswith("25-Funcoes/"):
+            continue
+        m = re.search(r"^modulo: '\[\[(.+?)\.py\]\]'$", conteudo, re.M)
+        if not m or m.group(1) not in modulos_reais:
+            sem_modulo_real.append(rel)
+    assert not sem_modulo_real, f"nota(s) de função sem módulo real: {sem_modulo_real}"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+#  05-Identidade e 06-Autoria-e-Seguranca -- conjunto fixo de notas
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_05_identidade_tem_as_notas_esperadas(plano):
+    esperado = {
+        "05-Identidade/Missao.md", "05-Identidade/Identidade-Visual.md",
+        "05-Identidade/Mascote.md", "05-Identidade/Tom-de-Voz.md",
+        "05-Identidade/MOC-Identidade.md",
+    }
+    real = {rel for rel in plano if rel.startswith("05-Identidade/")}
+    assert real == esperado
+
+
+def test_06_autoria_seguranca_tem_as_notas_esperadas(plano):
+    esperado = {
+        "06-Autoria-e-Seguranca/Autoria.md", "06-Autoria-e-Seguranca/Proveniencia.md",
+        "06-Autoria-e-Seguranca/Seguranca-de-Dados.md",
+        "06-Autoria-e-Seguranca/MOC-Autoria-Seguranca.md",
+    }
+    real = {rel for rel in plano if rel.startswith("06-Autoria-e-Seguranca/")}
+    assert real == esperado
+
+
+def test_autoria_le_nome_e_email_reais_do_citation_cff(plano):
+    """Contra-prova de que Autoria.md vem de CITATION.cff de verdade, não
+    de um literal escrito no gerador -- recalcula direto do arquivo."""
+    citation = gvo.parse_citation_cff()
+    autor = citation["authors"][0]
+    nome_esperado = f"{autor['given-names']} {autor['family-names']}"
+    conteudo = plano["06-Autoria-e-Seguranca/Autoria.md"]
+    assert nome_esperado in conteudo
+    assert autor["email"] in conteudo
+    assert autor["orcid"] in conteudo
+
+
+def test_identidade_visual_le_paleta_real_de_design_md(plano):
+    paleta = gvo.parse_paleta_mascote()
+    assert paleta, "docs/DESIGN.md §1 não produziu nenhuma linha de paleta"
+    conteudo = plano["05-Identidade/Identidade-Visual.md"]
+    for cor in paleta:
+        assert cor["hex_moda"] in conteudo, f"hex {cor['hex_moda']} não apareceu na nota"

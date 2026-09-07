@@ -87,7 +87,15 @@ def _head_info() -> tuple[str, str]:
 _HEAD_HASH, _HEAD_DATA = _head_info()
 
 
-def _frontmatter(tags: list[str], fonte: str | list[str], **extra: Any) -> str:
+#: Toda nota gerada (exceto `Autoria.md` nela mesma e `README-VAULT.md`,
+#: que é documentação SOBRE o vault, não uma nota de conteúdo) carrega
+#: este campo -- Passo 183/184: proveniência universal, "linkar tudo de
+#: volta à autoria" mesmo que a nota seja extraída/copiada isoladamente.
+_LINK_AUTORIA = '"[[Autoria]]"'
+
+
+def _frontmatter(tags: list[str], fonte: str | list[str],
+                  autor: str | None = _LINK_AUTORIA, **extra: Any) -> str:
     linhas = ["---"]
     linhas.append("tags: [" + ", ".join(tags) + "]")
     if isinstance(fonte, list):
@@ -98,6 +106,8 @@ def _frontmatter(tags: list[str], fonte: str | list[str], **extra: Any) -> str:
         linhas.append(f"fonte: {fonte}")
     linhas.append(f"gerado_em: {_HEAD_DATA}")
     linhas.append(f"commit: {_HEAD_HASH}")
+    if autor is not None:
+        linhas.append(f"autor: {autor}")
     for k, v in extra.items():
         if v is None:
             continue
@@ -107,23 +117,37 @@ def _frontmatter(tags: list[str], fonte: str | list[str], **extra: Any) -> str:
 
 
 def _nota(titulo: str, tags: list[str], fonte: str | list[str],
-          corpo: str, **extra: Any) -> str:
-    return _frontmatter(tags, fonte, **extra) + f"\n# {titulo}\n\n" + corpo.strip() + "\n"
+          corpo: str, autor: str | None = _LINK_AUTORIA, **extra: Any) -> str:
+    return (_frontmatter(tags, fonte, autor=autor, **extra) +
+            f"\n# {titulo}\n\n" + corpo.strip() + "\n")
 
 
-def _wikilink(nome: str) -> str:
+def _yaml_str(s: str) -> str:
+    """Escapa `s` como string YAML de aspas simples (`'a''b'` para `a'b`)
+    -- usado para valores de frontmatter que podem conter `:`/`[`/`]`
+    (assinatura de função, wikilink)."""
+    return "'" + s.replace("'", "''") + "'"
+
+
+def _wikilink(nome: str, relacao: str | None = None) -> str:
     """Link para uma nota cujo NOME DE ARQUIVO já é `nome` (módulos
     `x.py.md`, MOCs, `Estado-Atual.md`, ou qualquer stem já calculado por
     `_slug` em outro lugar). Não usar com título humano livre -- ver
-    `_wikilink_titulo`."""
-    return f"[[{nome}]]"
+    `_wikilink_titulo`.
+
+    `relacao`, quando dado, é anexado como `— relação` (Passo 179/180:
+    todo link do vault explica por que existe, não fica nu)."""
+    base = f"[[{nome}]]"
+    return f"{base} — {relacao}" if relacao else base
 
 
-def _wikilink_titulo(titulo: str) -> str:
+def _wikilink_titulo(titulo: str, relacao: str | None = None) -> str:
     """Link para uma nota cujo arquivo foi nomeado com `_slug(titulo)`
     (técnicas, conceitos) -- usa alias `[[slug|Título Humano]]` para que o
-    link resolva ao arquivo real e ainda mostre o título legível."""
-    return f"[[{_slug(titulo)}|{titulo}]]"
+    link resolva ao arquivo real e ainda mostre o título legível. Ver
+    `_wikilink` para `relacao`."""
+    base = f"[[{_slug(titulo)}|{titulo}]]"
+    return f"{base} — {relacao}" if relacao else base
 
 
 _PADRAO_MODULO_EM_CRASE = re.compile(r"`(\w+)\.py`")
@@ -401,18 +425,19 @@ def gerar_tecnicas_fora_do_catalogo(modulos: dict[str, ModuloInfo],
         relacionados = [m for m in item["modulos_relacionados"] if m in modulos]
         if relacionados:
             corpo.append("\n## Módulos relacionados\n" +
-                          "\n".join(f"- {_wikilink(f'{m}.py')}" for m in relacionados))
+                          "\n".join(f"- {_wikilink(f'{m}.py', 'implementa parte desta modalidade')}"
+                                    for m in relacionados))
         nota_validacao_rel = None
         if item["busca_validacao"]:
             nota_validacao_rel = next(
                 (rel for rel in validacoes if item["busca_validacao"] in rel.lower()), None)
         if nota_validacao_rel:
             corpo.append("\n## Validação pública\n- " +
-                          _wikilink(Path(nota_validacao_rel).stem))
+                          _wikilink(Path(nota_validacao_rel).stem, "valida esta modalidade"))
         else:
             corpo.append("\n## Validação pública\nSem dataset público validado registrado "
                           "para esta modalidade em `docs/VALIDACAO_PUBLICA.md` nesta rodada.")
-        link_principal = _wikilink(f"{item['modulo_principal']}.py")
+        link_principal = _wikilink(f"{item['modulo_principal']}.py", "módulo de entrada desta modalidade")
         corpo.append(f"\n## Ver também\n- {link_principal}")
         tags = ["tecnica", "fora-do-catalogo"]
         if not nota_validacao_rel and item["busca_validacao"] is None:
@@ -464,8 +489,9 @@ def gerar_tecnicas(tecnicas: dict[str, Any], status11: list[dict[str, str]],
             "Detalhe completo, licenças e reprodução: `docs/VALIDACAO_PUBLICA.md` "
             "e `docs/PROGRESSO.md` (Passo 160).",
         ]
-        links = [_wikilink("preprocessamento.py")]
-        links += [_wikilink_titulo(c) for c in conceitos_por_tecnica.get(chave, [])]
+        links = [_wikilink("preprocessamento.py", "pré-processamento recomendado para esta técnica")]
+        links += [_wikilink_titulo(c, "conceito aplicável a esta técnica")
+                  for c in conceitos_por_tecnica.get(chave, [])]
         corpo.append("\n## Ver também\n" + "\n".join(f"- {l}" for l in links))
         conteudo = _nota(
             titulo=nome,
@@ -484,12 +510,14 @@ def gerar_tecnicas(tecnicas: dict[str, Any], status11: list[dict[str, str]],
 #  Geração de notas — 20-Modulos
 # ═════════════════════════════════════════════════════════════════════════
 
-def gerar_modulos(modulos: dict[str, ModuloInfo]) -> dict[str, str]:
+def gerar_modulos(modulos: dict[str, ModuloInfo],
+                   funcoes_por_modulo: dict[str, str] | None = None) -> dict[str, str]:
     plano: dict[str, str] = {}
     conceitos_por_modulo: dict[str, list[str]] = {}
     for c in CONCEITOS:
         for m in c["modulos"]:
             conceitos_por_modulo.setdefault(m, []).append(c["titulo"])
+    funcoes_por_modulo = funcoes_por_modulo or {}
     nomes_modulos = set(modulos)
     for nome, info in sorted(modulos.items()):
         corpo = [_autolinkar_modulos(_resumo_docstring(info.docstring), nomes_modulos)]
@@ -498,19 +526,165 @@ def gerar_modulos(modulos: dict[str, ModuloInfo]) -> dict[str, str]:
                           "\n".join(f"- `{n}`" for n in info.all_publico))
         if info.depende_de:
             corpo.append("\n## Depende de\n" +
-                          "\n".join(f"- {_wikilink(f'{d}.py')}" for d in sorted(info.depende_de)))
+                          "\n".join(f"- {_wikilink(f'{d}.py', 'depende de')}"
+                                    for d in sorted(info.depende_de)))
         if info.usado_por:
             corpo.append("\n## Usado por\n" +
-                          "\n".join(f"- {_wikilink(f'{u}.py')}" for u in sorted(info.usado_por)))
+                          "\n".join(f"- {_wikilink(f'{u}.py', 'usado por')}"
+                                    for u in sorted(info.usado_por)))
         conceitos = conceitos_por_modulo.get(nome, [])
         if conceitos:
             corpo.append("\n## Conceitos implementados\n" +
-                          "\n".join(f"- {_wikilink_titulo(c)}" for c in conceitos))
+                          "\n".join(f"- {_wikilink_titulo(c, 'implementa')}" for c in conceitos))
+        funcao_principal = funcoes_por_modulo.get(nome)
+        if funcao_principal:
+            corpo.append("\n## Função de entrada\n- " +
+                          _wikilink(funcao_principal, "função pública principal deste módulo"))
         conteudo = _nota(
             titulo=f"{nome}.py", tags=["modulo"], fonte=info.caminho,
             corpo="\n".join(corpo),
         )
         plano[f"20-Modulos/{nome}.py.md"] = conteudo
+    return plano
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Geração de notas — 25-Funcoes
+#
+#  Escopo: a instrução original pedia 1 nota por nome em `__all__` que
+#  fosse função (não classe/constante) -- medido: 290 funções em 65
+#  módulos (`figuras.py` sozinho: 38). Volume muito maior que o esperado
+#  pela granularidade proposta -- decisão tomada COM o usuário em
+#  2026-09-06 (regra de pausa (a) da instrução): reduzir para 1 função de
+#  entrada por módulo, a PRIMEIRA função de `__all__` na ordem em que o
+#  próprio módulo a declara (critério verificável no código-fonte, não
+#  suposição de "qual é a mais importante").
+# ═════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class FuncaoInfo:
+    nome: str
+    modulo: str
+    caminho: str
+    linha: int
+    assinatura: str
+    resumo_docstring: str
+    testada_por: list[str]
+
+
+def _assinatura_funcao(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    """Assinatura completa (parâmetros com tipo, retorno) por AST +
+    `ast.unparse` -- nunca por `inspect`/import (mesma disciplina de
+    `parse_tecnicas_catalog`: nunca importar o módulo que está sendo
+    descrito)."""
+    args = node.args
+    partes: list[str] = []
+    n_sem_default = len(args.args) - len(args.defaults)
+    defaults = [None] * n_sem_default + list(args.defaults)
+    for arg, default in zip(args.args, defaults):
+        ann = f": {ast.unparse(arg.annotation)}" if arg.annotation else ""
+        dflt = f" = {ast.unparse(default)}" if default is not None else ""
+        partes.append(f"{arg.arg}{ann}{dflt}")
+    if args.vararg:
+        ann = f": {ast.unparse(args.vararg.annotation)}" if args.vararg.annotation else ""
+        partes.append(f"*{args.vararg.arg}{ann}")
+    elif args.kwonlyargs:
+        partes.append("*")
+    for kwarg, default in zip(args.kwonlyargs, args.kw_defaults):
+        ann = f": {ast.unparse(kwarg.annotation)}" if kwarg.annotation else ""
+        dflt = f" = {ast.unparse(default)}" if default is not None else ""
+        partes.append(f"{kwarg.arg}{ann}{dflt}")
+    if args.kwarg:
+        ann = f": {ast.unparse(args.kwarg.annotation)}" if args.kwarg.annotation else ""
+        partes.append(f"**{args.kwarg.arg}{ann}")
+    ret = f" -> {ast.unparse(node.returns)}" if node.returns else ""
+    prefixo = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+    return f"{prefixo} {node.name}(" + ", ".join(partes) + f"){ret}"
+
+
+def _primeiro_paragrafo_docstring(doc: str) -> str:
+    if not doc:
+        return "(função sem docstring)"
+    paragrafos = re.split(r"\n\s*\n", doc.strip())
+    return re.sub(r"\s+", " ", paragrafos[0]).strip()
+
+
+def _carregar_arquivos_teste() -> list[tuple[str, str]]:
+    resultado = []
+    for caminho in sorted((_RAIZ / "tests").rglob("test_*.py")):
+        try:
+            texto = caminho.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        resultado.append((str(caminho.relative_to(_RAIZ)).replace("\\", "/"), texto))
+    return resultado
+
+
+def _testada_por(nome_funcao: str, arquivos_teste: list[tuple[str, str]]) -> list[str]:
+    """Chamada DIRETA ao nome da função em algum `tests/test_*.py` -- real
+    (busca em texto), não suposição. Não pega cobertura indireta (função
+    chamada só por outra função de produção, nunca pelo nome dela num
+    teste)."""
+    padrao = re.compile(rf"(?<!\w){re.escape(nome_funcao)}\s*\(")
+    return [rel for rel, texto in arquivos_teste if padrao.search(texto)]
+
+
+def parse_funcoes_principais(modulos: dict[str, ModuloInfo]) -> list[FuncaoInfo]:
+    arquivos_teste = _carregar_arquivos_teste()
+    resultado: list[FuncaoInfo] = []
+    for nome, info in sorted(modulos.items()):
+        caminho_abs = _RAIZ / info.caminho
+        try:
+            texto = caminho_abs.read_text(encoding="utf-8")
+            arvore = ast.parse(texto)
+        except (OSError, SyntaxError):
+            continue
+        funcoes_top_level = {
+            n.name: n for n in arvore.body
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        principal_nome = next((n for n in info.all_publico if n in funcoes_top_level), None)
+        if principal_nome is None:
+            continue
+        node = funcoes_top_level[principal_nome]
+        doc = ast.get_docstring(node) or ""
+        resultado.append(FuncaoInfo(
+            nome=principal_nome, modulo=nome, caminho=info.caminho,
+            linha=node.lineno, assinatura=_assinatura_funcao(node),
+            resumo_docstring=_primeiro_paragrafo_docstring(doc),
+            testada_por=_testada_por(principal_nome, arquivos_teste),
+        ))
+    return resultado
+
+
+def gerar_funcoes(funcoes: list[FuncaoInfo]) -> dict[str, str]:
+    plano: dict[str, str] = {}
+    for f in funcoes:
+        corpo = [
+            f"`{f.assinatura}`",
+            "",
+            f.resumo_docstring,
+            "",
+            f"**Localização:** `{f.caminho}:{f.linha}`",
+            "",
+            "## Módulo\n- " + _wikilink(f"{f.modulo}.py", "módulo que define esta função"),
+        ]
+        if f.testada_por:
+            corpo.append("\n## Testada por\n" + "\n".join(
+                f"- `{t}` — chama `{f.nome}(` diretamente" for t in f.testada_por))
+        else:
+            corpo.append(
+                f"\n## Testada por\nNenhuma chamada direta a `{f.nome}(` encontrada em "
+                "`tests/test_*.py` -- pode estar coberta indiretamente (via outra função "
+                "de produção que a chama) ou sem teste direto."
+            )
+        conteudo = _nota(
+            titulo=f.nome, tags=["funcao"], fonte=f"{f.caminho}:{f.linha}",
+            corpo="\n".join(corpo),
+            modulo=_yaml_str(f"[[{f.modulo}.py]]"),
+            assinatura=_yaml_str(f.assinatura),
+        )
+        plano[f"25-Funcoes/{f.nome}.md"] = conteudo
     return plano
 
 
@@ -535,11 +709,11 @@ def gerar_conceitos(modulos: dict[str, ModuloInfo],
             partes.append(_autolinkar_modulos(resumo, nomes_modulos))
         corpo = "\n\n".join(partes)
         corpo += "\n\n## Implementado em\n" + "\n".join(
-            f"- {_wikilink(f'{m}.py')}" for m in mods_existentes)
+            f"- {_wikilink(f'{m}.py', 'implementa este conceito')}" for m in mods_existentes)
         tecnicas_relacionadas = [t for t in c.get("tecnicas", []) if t in tecnicas]
         if tecnicas_relacionadas:
             corpo += "\n\n## Aplicável às técnicas\n" + "\n".join(
-                f"- {_wikilink_titulo(tecnicas[t].get('PT', {}).get('nome', t))}"
+                f"- {_wikilink_titulo(tecnicas[t].get('PT', {}).get('nome', t), 'usa este conceito')}"
                 for t in tecnicas_relacionadas)
         conteudo = _nota(
             titulo=c["titulo"], tags=["conceito"],
@@ -706,6 +880,332 @@ def gerar_achados_e_decisoes(modulos_conhecidos: set[str]) -> tuple[dict[str, st
 
 
 # ═════════════════════════════════════════════════════════════════════════
+#  Geração de notas — 05-Identidade
+# ═════════════════════════════════════════════════════════════════════════
+
+def _secao_markdown(texto: str, cabecalho: str) -> str:
+    """Corpo de uma seção markdown identificada por `cabecalho` (regex de
+    início de linha, ex. `r"## 1\\. Paleta"`) até o próximo cabeçalho de
+    qualquer nível (ou fim do arquivo)."""
+    m = re.search(rf"^{cabecalho}[^\n]*\n(.*?)(?=\n#{{1,6}} |\Z)", texto, re.M | re.S)
+    return m.group(1).strip() if m else ""
+
+
+def parse_paleta_mascote() -> list[dict[str, str]]:
+    """Tabela de `docs/DESIGN.md` §1 -- valores medidos por amostragem de
+    pixel real do ícone, não estimados. Este parser NUNCA reescreve os
+    hex aqui; se a tabela mudar de forma, a nota fica sem paleta (fail
+    silencioso controlado) em vez de mostrar um valor desatualizado."""
+    corpo = _secao_markdown(_ler("docs/DESIGN.md"), r"## 1\. Paleta extra.da da mascote")
+    linhas = [ln for ln in corpo.splitlines() if ln.startswith("|")][2:]
+    resultado = []
+    for ln in linhas:
+        campos = [c.strip() for c in ln.strip("|").split("|")]
+        if len(campos) < 4:
+            continue
+        resultado.append({"papel": campos[0], "hex_moda": campos[1].strip("`"),
+                           "hex_media": campos[2].strip("`"), "onde": campos[3]})
+    return resultado
+
+
+def parse_regras_uso_cor() -> list[str]:
+    """Bullets de `### 1.2 Regras de uso` -- cada um pode quebrar em 2+
+    linhas no markdown fonte (linha de continuação sem `- `); junta as
+    continuações na mesma entrada, senão a regra fica cortada no meio."""
+    corpo = _secao_markdown(_ler("docs/DESIGN.md"), r"### 1\.2 Regras de uso")
+    bullets: list[str] = []
+    for ln in corpo.splitlines():
+        ln_stripped = ln.strip()
+        if not ln_stripped:
+            continue
+        if ln_stripped.startswith("- "):
+            bullets.append(ln_stripped)
+        elif bullets:
+            bullets[-1] += " " + ln_stripped
+    return bullets
+
+
+def parse_tipografia_design() -> str:
+    return _secao_markdown(_ler("docs/DESIGN.md"), r"## 2\. Tipografia")
+
+
+def parse_tom_de_voz_evidencias() -> dict[str, str]:
+    """Exemplos reais de tom direto/honestidade de `docs/VALIDACAO_PUBLICA.md`
+    -- lidos do arquivo, não retdigitados de memória (Passo 177)."""
+    texto = _ler("docs/VALIDACAO_PUBLICA.md")
+    abertura = _secao_markdown(texto, r"# Valida[cç][aã]o p[uú]blica")
+    primeiro_paragrafo = abertura.split("\n\nReproduzir:")[0].strip()
+    m_fecho = re.search(
+        r"^O RMSEP do Corn está no meio da faixa publicada.*?desempenho\.",
+        texto, re.M | re.S)
+    return {
+        "abertura": primeiro_paragrafo,
+        "fechamento": m_fecho.group(0).strip() if m_fecho else "",
+    }
+
+
+def gerar_identidade(achados: dict[str, str], decisoes: dict[str, str]) -> dict[str, str]:
+    plano: dict[str, str] = {}
+
+    # -- Missao.md ----------------------------------------------------------
+    # Os 3 compromissos são citados verbatim pela própria instrução desta
+    # auditoria (2026-09-06) -- "Plano de Evolução" como documento próprio
+    # não existe no repositório (verificado por grep antes de escrever
+    # esta nota); em vez de inventar essa fonte, cada compromisso é
+    # ancorado a uma nota real de 60-Achados/50-Decisoes que o comprova.
+    compromissos = [
+        ("Nunca reportar métrica potencialmente inflada por vazamento",
+         next((Path(r).stem for r in achados
+               if "retratacao-metodologica-interna-antes-de-publicar-qualquer-numero" in r),
+              None)),
+        ("Nunca recomendar método sem prova sob validação bloqueada",
+         next((Path(r).stem for r in decisoes
+               if "decisao-nenhum-dataset-hplc-compativel" in r), None)),
+        ("Nunca esconder resultado negativo",
+         next((Path(r).stem for r in achados
+               if "achado-real-negativo-registrado-honesto" in r), None)),
+    ]
+    linhas_compromissos = []
+    for texto_compromisso, stem in compromissos:
+        if stem:
+            linhas_compromissos.append(
+                f"- **{texto_compromisso}** — exemplo real: "
+                f"{_wikilink(stem, 'prova este compromisso')}")
+        else:
+            linhas_compromissos.append(
+                f"- **{texto_compromisso}** — nenhuma nota-âncora encontrada nesta "
+                "geração (achado/decisão pode ter sido reformulado; revisar).")
+    corpo_missao = (
+        "Não existe, no repositório, um documento único chamado \"Plano de "
+        "Evolução\" (verificado por busca de texto antes de escrever esta "
+        "nota). Os três compromissos abaixo vêm diretamente da instrução "
+        "desta auditoria do vault (2026-09-06) -- cada um ancorado a uma "
+        "nota real, não repetido.\n\n" + "\n".join(linhas_compromissos))
+    plano["05-Identidade/Missao.md"] = _nota(
+        "Missão", ["identidade"], "docs/VALIDACAO_PUBLICA.md", corpo_missao)
+
+    # -- Identidade-Visual.md ------------------------------------------------
+    paleta = parse_paleta_mascote()
+    linhas_paleta = ["| Papel | Hex (moda) | Hex (média) | Onde aparece na mascote |",
+                      "|---|---|---|---|"]
+    for p in paleta:
+        linhas_paleta.append(
+            f"| {p['papel']} | `{p['hex_moda']}` | `{p['hex_media']}` | {p['onde']} |")
+    regras = parse_regras_uso_cor()
+    tipografia = parse_tipografia_design()
+    corpo_visual = (
+        "Paleta medida por amostragem de pixel real do ícone "
+        "(`assets/guaraci_icon.png`), documentada em `docs/DESIGN.md` §1 -- "
+        "não são valores \"de olho\". **Atualização registrada em "
+        "`docs/DESIGN.md`, 2026-09-01:** o caminho A (migração completa "
+        "para esta paleta, laranja como cor primária) foi aprovado e já "
+        "está implementado em `design_tokens.py`/`guaraci_theme.py` -- "
+        "não é mais só uma proposta.\n\n"
+        "## Paleta\n" + "\n".join(linhas_paleta) +
+        ("\n\n## Regras de uso (a cor carrega significado, não decoração)\n" +
+         "\n".join(regras) if regras else "") +
+        (f"\n\n## Tipografia\n{tipografia}" if tipografia else "") +
+        "\n\n## Ver também\n"
+        f"- {_wikilink('design_tokens.py', 'implementa esta paleta em código')}\n"
+        f"- {_wikilink('guaraci_theme.py', 'reexporta a paleta para o tema Rich do CLI')}\n"
+        f"- {_wikilink('Mascote', 'origem visual desta paleta')}")
+    plano["05-Identidade/Identidade-Visual.md"] = _nota(
+        "Identidade Visual", ["identidade"],
+        ["docs/DESIGN.md", "src/guaraci/design_tokens.py"], corpo_visual)
+
+    # -- Mascote.md -----------------------------------------------------------
+    corpo_mascote = (
+        "Cachorro cientista de jaleco branco, cocar com folha/flor "
+        "(elemento indígena/amazônico), sentado com um notebook (tela "
+        "mostrando um sol estilizado e um gráfico de barras) e um "
+        "erlenmeyer ao lado -- tudo dentro da silhueta maior de um "
+        "frasco/balão com gradiente laranja→verde e moldura dourada. "
+        "Descrição confirmada por inspeção direta de "
+        "`assets/guaraci_icon.png` (não só a partir do texto de "
+        "`docs/DESIGN.md`).\n\n"
+        "**O que representa:** identidade regional amazônica (o cocar, a "
+        "paleta laranja/verde) combinada com ciência aplicada (jaleco, "
+        "notebook, gráfico, vidraria de laboratório) -- a mesma "
+        "combinação que dá nome ao projeto (Guaraci, divindade solar "
+        "Tupi-Guarani) e à sua origem real (autenticação de óleos "
+        "amazônicos por FT-NIR).\n\n"
+        "**Elemento reaproveitável:** o sol no notebook é o elemento mais "
+        "simples de isolar como marca gráfica -- silhueta reconhecível em "
+        "tamanho pequeno, já carrega a cor dourada (`docs/DESIGN.md` "
+        "§1.3) -- e já é o favicon/ícone do app através deste mesmo "
+        "arquivo.\n\n"
+        "A imagem está versionada em `assets/guaraci_icon.png` (e "
+        "`assets/guaraci_icon.ico` para o ícone do executável Windows) -- "
+        "link ao arquivo, não embutida nesta nota.\n\n"
+        "## Ver também\n"
+        f"- {_wikilink('Identidade-Visual', 'paleta extraída desta mascote')}")
+    plano["05-Identidade/Mascote.md"] = _nota(
+        "Mascote", ["identidade"], "docs/DESIGN.md", corpo_mascote)
+
+    # -- Tom-de-Voz.md --------------------------------------------------------
+    evidencias = parse_tom_de_voz_evidencias()
+    partes_tom = [
+        "Direto, sem alegação sem prova, nunca insinua conformidade "
+        "regulatória -- resultado negativo é publicado com o mesmo peso "
+        "que resultado positivo (mesma disciplina de \"evidência ou "
+        "silêncio\" que rege o código e este próprio vault).",
+    ]
+    if evidencias["abertura"]:
+        partes_tom.append(
+            "## Exemplo real — abertura de `docs/VALIDACAO_PUBLICA.md`\n> " +
+            evidencias["abertura"].replace("\n", "\n> "))
+    if evidencias["fechamento"]:
+        partes_tom.append(
+            "## Exemplo real — fechamento da tabela consolidada\n> " +
+            evidencias["fechamento"].replace("\n", "\n> "))
+    stem_negativo = next((Path(r).stem for r in achados
+                          if "achado-real-negativo-registrado-honesto" in r), None)
+    stem_retratacao = next((Path(r).stem for r in achados
+                            if "retratacao-metodologica-interna-antes-de-publicar-qualquer-numero"
+                            in r), None)
+    links_tom = []
+    if stem_negativo:
+        links_tom.append(f"- {_wikilink(stem_negativo, 'resultado fraco publicado, não escondido')}")
+    if stem_retratacao:
+        links_tom.append(f"- {_wikilink(stem_retratacao, 'retratado antes de publicar, não depois')}")
+    if links_tom:
+        partes_tom.append("## Ver também\n" + "\n".join(links_tom))
+    plano["05-Identidade/Tom-de-Voz.md"] = _nota(
+        "Tom de Voz", ["identidade"], "docs/VALIDACAO_PUBLICA.md", "\n\n".join(partes_tom))
+
+    # -- MOC-Identidade.md ------------------------------------------------
+    plano["05-Identidade/MOC-Identidade.md"] = _nota(
+        "MOC — Identidade", ["moc"], "05-Identidade/",
+        "Ponto de entrada da identidade do projeto.\n\n"
+        f"- {_wikilink('Missao', 'os 3 compromissos do projeto')}\n"
+        f"- {_wikilink('Identidade-Visual', 'paleta, regras de uso e tipografia')}\n"
+        f"- {_wikilink('Mascote', 'origem da paleta e do símbolo do sol')}\n"
+        f"- {_wikilink('Tom-de-Voz', 'como o projeto se comunica')}\n")
+
+    return plano
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Geração de notas — 06-Autoria-e-Seguranca
+# ═════════════════════════════════════════════════════════════════════════
+
+def parse_citation_cff() -> dict[str, Any]:
+    import yaml
+    return yaml.safe_load(_ler("CITATION.cff"))
+
+
+def gerar_autoria_e_seguranca() -> dict[str, str]:
+    plano: dict[str, str] = {}
+    citation = parse_citation_cff()
+    autor_cff = (citation.get("authors") or [{}])[0]
+    nome = f"{autor_cff.get('given-names', '')} {autor_cff.get('family-names', '')}".strip()
+    email = autor_cff.get("email", "—")
+    orcid = autor_cff.get("orcid", "—")
+    licenca = citation.get("license", "—")
+    autores_git = sorted({ln for ln in _git("log", "--format=%an <%ae>").splitlines()})
+
+    # -- Autoria.md -----------------------------------------------------------
+    corpo_autoria = (
+        f"**Nome:** {nome}\n\n"
+        f"**E-mail:** {email}\n\n"
+        f"**ORCID:** {orcid}\n\n"
+        f"**Licença do projeto:** {licenca} (dual licensing -- ver "
+        "`docs/COMMERCIAL.md` e `README.md`).\n\n"
+        "## Afiliação institucional e orientação acadêmica\n"
+        "`CITATION.cff` não tem campo de afiliação institucional, e o "
+        f"histórico de commits (`git log`) só registra {len(autores_git)} "
+        "identidade(s) de autor -- nome/e-mail, sem afiliação nem "
+        "orientador(a). Em vez de preencher por suposição (a instrução "
+        "desta auditoria pedia para reportar antes de inventar), o autor "
+        "confirmou diretamente, nesta auditoria (2026-09-06): **projeto "
+        "pessoal, idealizado e desenvolvido inteiramente por ele, sem "
+        "vínculo institucional ou orientação acadêmica associada ao "
+        "código deste repositório.**\n\n"
+        "## Autoria dos commits\n" +
+        "\n".join(f"- `{a}`" for a in autores_git) +
+        "\n\n## Licenciamento (correção de premissa)\n"
+        "A instrução original desta auditoria presumia uma \"decisão de "
+        "dual-licensing com CLA já registrada em `50-Decisoes/`\" -- "
+        "checado: não existe menção a CLA (Contributor License Agreement) "
+        "em nenhum arquivo `.md` deste repositório, e nenhuma das duas "
+        "fontes que alimentam `50-Decisoes/` (`docs/PROGRESSO.md`, "
+        "`docs/VALIDACAO_PUBLICA.md`) tem um parágrafo `**Decisão**` "
+        "sobre isso. O que existe de fato, em `docs/COMMERCIAL.md` e "
+        "`README.md`, é dual licensing simples: GPLv3 para uso "
+        "acadêmico/pesquisa, licença comercial separada (contato direto "
+        "com o autor) para uso proprietário -- copyright integral "
+        "retido pelo autor, sem CLA.\n\n"
+        "## Ver também\n"
+        f"- {_wikilink('Proveniencia', 'como o histórico do git sustenta esta autoria')}\n"
+        f"- {_wikilink('Seguranca-de-Dados', 'o que é protegido antes de qualquer nota ser gravada')}")
+    plano["06-Autoria-e-Seguranca/Autoria.md"] = _nota(
+        "Autoria", ["autoria"], ["CITATION.cff", "docs/COMMERCIAL.md", "README.md"],
+        corpo_autoria, autor=None)
+
+    # -- Proveniencia.md --------------------------------------------------
+    corpo_proveniencia = (
+        "**Isto é prova de proveniência informacional, não parecer "
+        "jurídico sobre propriedade intelectual.**\n\n"
+        "Cada regeneração deste vault grava, no frontmatter de toda "
+        f"nota, o commit HEAD do repositório no momento da geração "
+        f"(`commit: {_HEAD_HASH}` nesta rodada) -- não um valor fixo "
+        "escrito à mão. O histórico do git por trás desse commit é "
+        "timestampado e distribuído: cada commit carrega autor e data, "
+        "e reescrever um commit já publicado (`git commit --amend`, "
+        "`rebase`) muda o hash de tudo que vem depois -- é detectável, "
+        "não silencioso. É essa cadeia verificável, não esta nota em si, "
+        "que dá peso a uma afirmação de autoria.\n\n"
+        "## Ver também\n"
+        f"- {_wikilink('Autoria', 'a quem esta cadeia de proveniência aponta')}")
+    plano["06-Autoria-e-Seguranca/Proveniencia.md"] = _nota(
+        "Proveniência", ["autoria"], ["scripts/gerar_vault_obsidian.py"],
+        corpo_proveniencia)
+
+    # -- Seguranca-de-Dados.md --------------------------------------------
+    corpo_seguranca = (
+        "## O que a guarda de privacidade protege\n"
+        "`scripts/privacidade_amostras.py` varre todo conteúdo ANTES de "
+        "gravar (Passo 169) por dois padrões: identificador real de "
+        "amostra (`COD-DD-MM-AAAA`, formato de `mae_id` do acervo de "
+        "origem) e caminho absoluto de máquina (unidade Windows seguida "
+        "de pasta de usuário, ou raiz Unix de pasta pessoal -- ver o "
+        "regex `PADRAO_CAMINHO_ABSOLUTO` no próprio módulo para o padrão "
+        "exato; não reproduzido aqui de propósito, para esta nota não "
+        "acionar a própria guarda que descreve).\n\n"
+        "## Como é aplicada\n"
+        "O gerador FALHA (`VazamentoDePrivacidade`, nada é escrito em "
+        "disco) se qualquer achado aparecer no plano em memória -- não "
+        "avisa e continua. Contra-prova real (não só a regra escrita): "
+        "`tests/test_gerador_vault_obsidian.py` monta um identificador "
+        "sintético em tempo de execução e confirma que a guarda realmente "
+        "levanta `VazamentoDePrivacidade` -- um guarda que nunca casasse "
+        "nada passaria despercebido sem este teste.\n\n"
+        "## Isolamento de dado de terceiro\n"
+        "Nenhum dataset público usado nas validações é versionado neste "
+        "repositório -- confirmado em `docs/VALIDACAO_PUBLICA.md` "
+        "(seção de reprodução: os datasets são baixados via "
+        "`GUARACI_DATASETS_DIR`/`scripts/download_datasets/`, não "
+        "commitados). Política de terceiro, não de amostra própria -- "
+        "mecanismo diferente do acima, mesma disciplina.\n\n"
+        "## Ver também\n"
+        f"- {_wikilink('Autoria', 'quem é responsável por esta política')}")
+    plano["06-Autoria-e-Seguranca/Seguranca-de-Dados.md"] = _nota(
+        "Segurança de Dados", ["autoria"],
+        ["scripts/privacidade_amostras.py", "docs/VALIDACAO_PUBLICA.md"],
+        corpo_seguranca)
+
+    # -- MOC-Autoria-Seguranca.md ------------------------------------------
+    plano["06-Autoria-e-Seguranca/MOC-Autoria-Seguranca.md"] = _nota(
+        "MOC — Autoria e Segurança", ["moc"], "06-Autoria-e-Seguranca/",
+        "Ponto de entrada de autoria, proveniência e segurança de dados.\n\n"
+        f"- {_wikilink('Autoria', 'quem fez, com qual licença')}\n"
+        f"- {_wikilink('Proveniencia', 'por que a autoria é verificável')}\n"
+        f"- {_wikilink('Seguranca-de-Dados', 'o que nunca vaza para o vault')}\n")
+
+    return plano
+
+
+# ═════════════════════════════════════════════════════════════════════════
 #  MOCs (Maps of Content)
 # ═════════════════════════════════════════════════════════════════════════
 
@@ -714,9 +1214,9 @@ def gerar_mocs(tecnicas: dict[str, Any], modulos: dict[str, ModuloInfo],
                 decisoes: dict[str, str], achados: dict[str, str]) -> dict[str, str]:
     plano: dict[str, str] = {}
 
-    def _links(pasta_plano: dict[str, str]) -> str:
+    def _links(pasta_plano: dict[str, str], relacao: str) -> str:
         nomes = sorted(Path(p).stem for p in pasta_plano)
-        return "\n".join(f"- {_wikilink(n)}" for n in nomes)
+        return "\n".join(f"- {_wikilink(n, relacao)}" for n in nomes)
 
     n_extras = len(MODOS_FORA_DO_CATALOGO)
     plano["00-MOC/MOC-Tecnicas.md"] = _nota(
@@ -724,35 +1224,38 @@ def gerar_mocs(tecnicas: dict[str, Any], modulos: dict[str, ModuloInfo],
         f"As {len(tecnicas)} técnicas do catálogo `cli_assistente.TECNICAS` "
         f"+ {n_extras} modalidade(s) de entrada real(is) que existem em "
         "`Config.mode` mas não estão nesse catálogo (tag `fora-do-catalogo`"
-        " nas notas correspondentes).\n\n" + _links(tecnicas_notas))
+        " nas notas correspondentes).\n\n" + _links(tecnicas_notas, "técnica catalogada"))
 
     plano["00-MOC/MOC-Arquitetura.md"] = _nota(
         "MOC — Arquitetura", ["moc"], "src/guaraci/",
         f"{len(modulos)} módulos em `src/guaraci/*.py`. Grafo completo de "
         "dependências: ver backlinks de cada nota de módulo.\n\n" +
-        "\n".join(f"- {_wikilink(f'{n}.py')}" for n in sorted(modulos)))
+        "\n".join(f"- {_wikilink(f'{n}.py', 'módulo do pipeline')}" for n in sorted(modulos)))
 
     plano["00-MOC/MOC-Validacoes.md"] = _nota(
         "MOC — Validações públicas", ["moc"], "docs/VALIDACAO_PUBLICA.md",
         "Um dataset público por linha da tabela consolidada "
-        "(`docs/VALIDACAO_PUBLICA.md` §1).\n\n" + _links(validacoes))
+        "(`docs/VALIDACAO_PUBLICA.md` §1).\n\n" +
+        _links(validacoes, "dataset público validado"))
 
     plano["00-MOC/MOC-Decisoes.md"] = _nota(
         "MOC — Decisões", ["moc"], ["docs/PROGRESSO.md", "docs/COMPATIBILITY.md"],
         "Decisões de design com razão registrada.\n\n### Decisões\n" +
-        _links(decisoes) + "\n\n### Achados e retratações\n" +
-        _links(achados))
+        _links(decisoes, "decisão registrada") + "\n\n### Achados e retratações\n" +
+        _links(achados, "achado ou retratação registrado"))
 
     plano["00-MOC/MOC-Guaraci.md"] = _nota(
         "MOC — Guaraci", ["moc"], "docs/INDICE_PROJETO.md",
         "Ponto de entrada. Este vault é GERADO por "
         "`scripts/gerar_vault_obsidian.py` a partir do repositório do "
         "Guaraci — ver `README-VAULT.md`.\n\n"
-        f"- {_wikilink('Estado-Atual')}\n"
-        f"- {_wikilink('MOC-Tecnicas')}\n"
-        f"- {_wikilink('MOC-Arquitetura')}\n"
-        f"- {_wikilink('MOC-Validacoes')}\n"
-        f"- {_wikilink('MOC-Decisoes')}\n")
+        f"- {_wikilink('Estado-Atual', 'snapshot vivo do estado do projeto')}\n"
+        f"- {_wikilink('MOC-Identidade', 'missão, identidade visual, mascote e tom de voz')}\n"
+        f"- {_wikilink('MOC-Tecnicas', 'catálogo de técnicas')}\n"
+        f"- {_wikilink('MOC-Arquitetura', 'mapa de módulos')}\n"
+        f"- {_wikilink('MOC-Validacoes', 'validações públicas')}\n"
+        f"- {_wikilink('MOC-Decisoes', 'decisões e achados')}\n"
+        f"- {_wikilink('MOC-Autoria-Seguranca', 'autoria, proveniência e segurança de dados')}\n")
 
     return plano
 
@@ -921,13 +1424,32 @@ def gerar_readme_vault(contagens: dict[str, int]) -> dict[str, str]:
 Este vault é **gerado inteiramente por script**
 (`scripts/gerar_vault_obsidian.py`, versionado no repositório do Guaraci)
 a partir das fontes de verdade do repositório: `docs/PROGRESSO.md`,
-`docs/VALIDACAO_PUBLICA.md`, `docs/COMPATIBILITY.md`,
-`src/guaraci/cli_assistente.py` e `src/guaraci/*.py`.
+`docs/VALIDACAO_PUBLICA.md`, `docs/COMPATIBILITY.md`, `docs/DESIGN.md`,
+`CITATION.cff`, `src/guaraci/cli_assistente.py` e `src/guaraci/*.py`.
 
 **Não edite nada fora de `{_PASTA_PROTEGIDA}/` à mão.** Qualquer edição
 manual em outra pasta é perdida na próxima regeneração — o script
 recalcula o conteúdo inteiro a cada execução e arquiva (nunca apaga) o
 que não existir mais nas fontes.
+
+## Método (por que o vault é estruturado assim)
+
+Duas ideias com precedente real, não invenção deste projeto:
+
+- **Zettelkasten** — cada nota é atômica (uma ideia só) e autônoma (faz
+  sentido lida isolada, fora do vault). A parte mais aplicada aqui é a
+  disciplina de conexão: um wikilink sem texto ao lado é uma conexão
+  fraca -- todo link deste vault carrega a relação por extenso logo
+  depois (travessão + poucas palavras, ex. "depende de", "implementa",
+  "testado por", "valida"), gerado já com a relação (não editado depois
+  à mão), para que o grafo em si comunique POR QUE duas notas estão
+  ligadas.
+- **Diátaxis** — separa conteúdo por propósito de leitura: `referência`
+  (consulta rápida, "o que é/o que faz" -- técnicas, módulos, funções,
+  validações) vs. `explicação` (entendimento profundo, "por quê" --
+  conceitos, decisões, achados, identidade, autoria). Não reorganiza
+  pasta nenhuma -- entra como o campo `modo:` no frontmatter de toda
+  nota, calculado pela categoria de origem.
 
 ## Quando regenerar
 
@@ -936,8 +1458,9 @@ python scripts/gerar_vault_obsidian.py
 ```
 
 Regenere depois de: um bloco/passo novo em `docs/PROGRESSO.md`, uma
-retratação, uma validação pública nova ou atualizada, ou uma mudança de
-`__all__`/docstring em `src/guaraci/`.
+retratação, uma validação pública nova ou atualizada, uma mudança de
+`__all__`/docstring em `src/guaraci/`, ou uma atualização em
+`docs/DESIGN.md`/`CITATION.cff`.
 
 ## Como consultar
 
@@ -957,29 +1480,54 @@ Use-a para anotações pessoais, rascunhos, ligações manuais extras.
 
 ## Como o conteúdo é derivado
 
-| Pasta | Fonte |
-|---|---|
-| `10-Tecnicas/` | `src/guaraci/cli_assistente.py` (catálogo `TECNICAS`, 11) + `docs/PROGRESSO.md` (Passo 160) + `Config.mode` (`config.py`) para as modalidades fora do catálogo (`imagem`, `hsi`) |
-| `20-Modulos/` | `src/guaraci/*.py` — docstring de módulo, `__all__`, imports internos (introspecção estática) |
-| `30-Conceitos/` | mapeamento conceito→módulo (neste script) + docstring do(s) módulo(s) |
-| `40-Validacoes/` | `docs/VALIDACAO_PUBLICA.md` §1 (tabela consolidada), 1 nota por linha |
-| `50-Decisoes/` | parágrafos `**Decisão...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + `docs/COMPATIBILITY.md` (casos especiais) |
-| `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + 1 resumo mínimo (tag `passo`, não `achado`) por `## Passo` que não caiu em nenhum parágrafo marcado — garante que todo passo tenha alguma nota (Passo 172) |
-| `90-Canvas/` | gerados programaticamente a partir dos mesmos dados acima |
-| `Estado-Atual.md` | commit HEAD + contagem de `def test_*` em `tests/` + Passo 160 |
+| Pasta | Fonte | `modo:` |
+|---|---|---|
+| `05-Identidade/` | `docs/DESIGN.md` (paleta/tipografia), `docs/VALIDACAO_PUBLICA.md` (tom de voz), `assets/guaraci_icon.png` (mascote, inspecionada diretamente) | `explicacao` |
+| `10-Tecnicas/` | `src/guaraci/cli_assistente.py` (catálogo `TECNICAS`, 11) + `docs/PROGRESSO.md` (Passo 160) + `Config.mode` (`config.py`) para as modalidades fora do catálogo (`imagem`, `hsi`) | `referencia` |
+| `20-Modulos/` | `src/guaraci/*.py` — docstring de módulo, `__all__`, imports internos (introspecção estática) | `referencia` |
+| `25-Funcoes/` | `src/guaraci/*.py` por AST — 1 função por módulo: a primeira função de `__all__` na ordem declarada (não toda função exportada -- ver nota no próprio script sobre o Passo 178) | `referencia` |
+| `30-Conceitos/` | mapeamento conceito→módulo (neste script) + docstring do(s) módulo(s) | `explicacao` |
+| `40-Validacoes/` | `docs/VALIDACAO_PUBLICA.md` §1 (tabela consolidada), 1 nota por linha | `referencia` |
+| `50-Decisoes/` | parágrafos `**Decisão...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + `docs/COMPATIBILITY.md` (casos especiais) | `explicacao` |
+| `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + 1 resumo mínimo (tag `passo`, não `achado`) por `## Passo` que não caiu em nenhum parágrafo marcado — garante que todo passo tenha alguma nota (Passo 172) | `explicacao` (`referencia` se tag `passo`) |
+| `06-Autoria-e-Seguranca/` | `CITATION.cff`, `git log`, `scripts/privacidade_amostras.py`, `docs/VALIDACAO_PUBLICA.md` | `explicacao` |
+| `00-MOC/` + MOCs de categoria | gerados a partir dos planos acima | `referencia` |
+| `90-Canvas/` | gerados programaticamente a partir dos mesmos dados acima | — |
+| `Estado-Atual.md` | commit HEAD + contagem de `def test_*` em `tests/` + Passo 160 | — |
 
-Nenhum número (RMSEP, balanced accuracy, contagem de testes etc.)
-aparece hardcoded no gerador — todos vêm de uma leitura de arquivo real
-no momento da geração.
+Nenhum número (RMSEP, balanced accuracy, contagem de testes, hex de
+cor etc.) aparece hardcoded no gerador — todos vêm de uma leitura de
+arquivo real no momento da geração.
+
+## Proveniência universal
+
+Toda nota (exceto `06-Autoria-e-Seguranca/Autoria.md`, que seria uma
+autorreferência sem sentido, e este arquivo, que é documentação SOBRE o
+vault) carrega `autor: "[[Autoria]]"` no frontmatter -- mesmo extraída
+ou copiada isoladamente do vault, a nota aponta de volta à origem e à
+autoria. Ver `06-Autoria-e-Seguranca/Autoria.md` e `Proveniencia.md`.
+
+## Densidade de grafo e notas órfãs (Passo 179/180)
+
+O gerador produz todo link já com a relação (`— relação`), e a suíte de
+testes (`tests/test_proveniencia_e_densidade_vault.py`) calcula o grau
+de saída médio por categoria e sinaliza qualquer nota sem link de saída
+OU sem link de entrada. Duas notas ficam legitimamente órfãs de entrada
+(nada precisa linkar de volta para elas) e isso é esperado, não um bug:
+`00-MOC/MOC-Guaraci.md` (ponto de entrada do vault) e este próprio
+`README-VAULT.md` (documentação sobre o vault, não conteúdo do grafo).
 
 ## Contagens desta geração
 
+- {contagens.get('05-Identidade', 0)} notas de identidade
 - {contagens.get('10-Tecnicas', 0)} técnicas
 - {contagens.get('20-Modulos', 0)} módulos
+- {contagens.get('25-Funcoes', 0)} funções de entrada
 - {contagens.get('30-Conceitos', 0)} conceitos
 - {contagens.get('40-Validacoes', 0)} validações públicas
 - {contagens.get('50-Decisoes', 0)} decisões
 - {contagens.get('60-Achados', 0)} achados/retratações
+- {contagens.get('06-Autoria-e-Seguranca', 0)} notas de autoria/segurança
 
 Commit: `{_HEAD_HASH}` ({_HEAD_DATA}).
 """
@@ -999,21 +1547,64 @@ def _resolve_vault_dir(cli_out: str | None) -> Path:
     return (Path.home() / "GuaraciVault").resolve()
 
 
+#: Diátaxis (Passo 180): `referencia` = consulta rápida ("o que é/o que
+#: faz"), `explicacao` = entendimento profundo ("por quê"). Mapeamento
+#: automático por pasta de origem -- nunca decisão manual por nota.
+_MODO_DIATAXIS_POR_PASTA = {
+    "10-Tecnicas": "referencia", "20-Modulos": "referencia",
+    "25-Funcoes": "referencia", "40-Validacoes": "referencia",
+    "30-Conceitos": "explicacao", "50-Decisoes": "explicacao",
+    "05-Identidade": "explicacao", "06-Autoria-e-Seguranca": "explicacao",
+    # MOCs (00-MOC/ e os das categorias novas) são consulta rápida de
+    # links, mesma natureza de 10-Tecnicas/20-Modulos -- não estavam na
+    # lista original da instrução (escrita antes de 06-Autoria existir);
+    # extensão razoável, documentada aqui.
+    "00-MOC": "referencia",
+}
+
+
+def _modo_diataxis_para(rel: str, conteudo: str) -> str | None:
+    pasta = rel.split("/")[0]
+    if pasta == "60-Achados":
+        m = re.search(r"^tags: \[(.*?)\]", conteudo, re.M)
+        tags = [t.strip() for t in (m.group(1).split(",") if m else [])]
+        return "referencia" if "passo" in tags else "explicacao"
+    if pasta.endswith(".md"):  # arquivo solto na raiz do vault (Estado-Atual.md)
+        return None
+    return _MODO_DIATAXIS_POR_PASTA.get(pasta)
+
+
+def _aplicar_modo_diataxis(plano: dict[str, str]) -> dict[str, str]:
+    resultado = {}
+    for rel, conteudo in plano.items():
+        modo = None if rel == "README-VAULT.md" else _modo_diataxis_para(rel, conteudo)
+        if modo and re.search(r"^tags: \[.*?\]\n", conteudo, re.M):
+            conteudo = re.sub(r"(^tags: \[.*?\]\n)", rf"\1modo: {modo}\n",
+                               conteudo, count=1, flags=re.M)
+        resultado[rel] = conteudo
+    return resultado
+
+
 def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
     tecnicas = parse_tecnicas_catalog()
     status11 = parse_status_tecnicas_11()
     modulos = parse_modulos()
     tabela_validacoes = parse_tabela_consolidada()
+    funcoes_principais = parse_funcoes_principais(modulos)
+    funcoes_por_modulo = {f.modulo: f.nome for f in funcoes_principais}
 
     plano: dict[str, str] = {}
     avisos: list[str] = []
 
     p_tecnicas = gerar_tecnicas(tecnicas, status11, modulos)
-    p_modulos = gerar_modulos(modulos)
+    p_modulos = gerar_modulos(modulos, funcoes_por_modulo)
+    p_funcoes = gerar_funcoes(funcoes_principais)
     p_conceitos, avisos_conceitos = gerar_conceitos(modulos, tecnicas)
     p_validacoes = gerar_validacoes(tabela_validacoes)
     p_tecnicas.update(gerar_tecnicas_fora_do_catalogo(modulos, p_validacoes))
     p_achados, p_decisoes = gerar_achados_e_decisoes(set(modulos))
+    p_identidade = gerar_identidade(p_achados, p_decisoes)
+    p_autoria = gerar_autoria_e_seguranca()
     p_mocs = gerar_mocs(tecnicas, modulos, p_tecnicas, p_validacoes, p_decisoes, p_achados)
     p_estado = gerar_estado_atual(status11)
     p_canvas = {}
@@ -1022,15 +1613,20 @@ def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
     p_canvas.update(gerar_canvas_mapa_tecnicas(tecnicas, status11))
 
     contagens = {
+        "05-Identidade": len(p_identidade),
         "10-Tecnicas": len(p_tecnicas), "20-Modulos": len(p_modulos),
+        "25-Funcoes": len(p_funcoes),
         "30-Conceitos": len(p_conceitos), "40-Validacoes": len(p_validacoes),
         "50-Decisoes": len(p_decisoes), "60-Achados": len(p_achados),
+        "06-Autoria-e-Seguranca": len(p_autoria),
     }
     p_readme = gerar_readme_vault(contagens)
 
-    for parte in (p_tecnicas, p_modulos, p_conceitos, p_validacoes, p_decisoes,
-                  p_achados, p_mocs, p_estado, p_canvas, p_readme):
+    for parte in (p_tecnicas, p_modulos, p_funcoes, p_conceitos, p_validacoes, p_decisoes,
+                  p_achados, p_identidade, p_autoria, p_mocs, p_estado, p_canvas, p_readme):
         plano.update(parte)
+
+    plano = _aplicar_modo_diataxis(plano)
 
     avisos.extend(avisos_conceitos)
     if not tabela_validacoes:
@@ -1039,6 +1635,9 @@ def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
     if not status11:
         avisos.append("Tabela do Passo 160 não encontrada em docs/PROGRESSO.md — "
                        "10-Tecnicas/ e Estado-Atual.md ficarão sem status por técnica.")
+    if not parse_paleta_mascote():
+        avisos.append("Tabela de paleta em docs/DESIGN.md §1 não encontrada/vazia — "
+                       "05-Identidade/Identidade-Visual.md ficará sem tabela de cores.")
 
     return plano, contagens, avisos
 
