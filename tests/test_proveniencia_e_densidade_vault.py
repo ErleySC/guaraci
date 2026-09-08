@@ -149,7 +149,7 @@ def test_densidade_de_grafo_por_categoria(plano, capsys):
 
     categorias_conteudo = {"05-Identidade", "10-Tecnicas", "20-Modulos", "25-Funcoes",
                             "30-Conceitos", "40-Validacoes", "50-Decisoes", "60-Achados",
-                            "06-Autoria-e-Seguranca"}
+                            "06-Autoria-e-Seguranca", "35-Telas-e-Fluxos", "08-Documentos"}
     zeradas = [c for c in categorias_conteudo
                if c in medias_por_categoria and medias_por_categoria[c] == 0.0]
     assert not zeradas, (

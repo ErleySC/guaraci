@@ -1206,6 +1206,590 @@ def gerar_autoria_e_seguranca() -> dict[str, str]:
 
 
 # ═════════════════════════════════════════════════════════════════════════
+#  Geração de notas — 35-Telas-e-Fluxos (CLI + Web) — Passo 186
+#
+#  Fonte real do dispatch da CLI: `_SECOES_NAVEGAVEIS` (guaraci.py) -- lista
+#  de 17 teclas -> (chave t_, chave d_) usada pelo próprio assistente ([G] ->
+#  "navegar seções") desde o achado do Agente 6 (docstring de
+#  `_guaraci_navegar_secoes`: um dict estático anterior tinha só 8 das 18
+#  abas reais). "A" (Sobre) é tratada à parte no próprio código-fonte, sem
+#  chave t_/d_ própria -- reproduzido aqui do mesmo jeito. G/M/I/S/L/R/N são
+#  ações do loop de `main()` que NÃO aparecem nesses 17+1 -- ou porque não
+#  têm submenu navegável (G é o próprio assistente, circular) ou porque
+#  ficam fora dos 6 grupos visuais de `_print_main_menu` (S/L/R/N, achado
+#  desta auditoria do vault, Passo 186 -- ver nota de cada uma abaixo).
+# ═════════════════════════════════════════════════════════════════════════
+
+def parse_i18n_menu() -> dict[str, dict[str, str]]:
+    """Extrai `_I18N` (dict PT/EN de rótulos/descrições de menu) de
+    `guaraci.py` por AST -- mesma disciplina de `parse_tecnicas_catalog`:
+    nunca importar o módulo (evita efeitos de import de `guaraci.py`, que
+    carrega Rich/console)."""
+    fonte = _ler("src/guaraci/guaraci.py")
+    arvore = ast.parse(fonte)
+    for node in ast.walk(arvore):
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "_I18N":
+            return ast.literal_eval(node.value)
+        if isinstance(node, ast.Assign):
+            for t in node.targets:
+                if getattr(t, "id", None) == "_I18N":
+                    return ast.literal_eval(node.value)
+    raise RuntimeError("_I18N não encontrado em guaraci.py — fonte mudou de "
+                        "forma, gerador precisa ser ajustado.")
+
+
+def parse_secoes_navegaveis() -> list[tuple[str, str, str]]:
+    """Extrai `_SECOES_NAVEGAVEIS` (tecla, chave t_, chave d_) de
+    `guaraci.py` por AST -- a mesma fonte que já alimenta
+    `_guaraci_navegar_secoes` no assistente (tecla G)."""
+    fonte = _ler("src/guaraci/guaraci.py")
+    arvore = ast.parse(fonte)
+    for node in ast.walk(arvore):
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "_SECOES_NAVEGAVEIS":
+            return [tuple(x) for x in ast.literal_eval(node.value)]
+    raise RuntimeError("_SECOES_NAVEGAVEIS não encontrado em guaraci.py — "
+                        "fonte mudou de forma, gerador precisa ser ajustado.")
+
+
+#: tecla -> função `_menu_*` real que a implementa (verificado por leitura
+#: direta do dispatch de `main()`, guaraci.py — Passo 186). "A" não está em
+#: `_SECOES_NAVEGAVEIS` mas tem função própria (`_menu_about`).
+_FUNCAO_POR_TECLA: dict[str, str] = {
+    "1": "_menu_project", "2": "_menu_data", "3": "_menu_preprocessing",
+    "4": "_menu_modeling", "5": "_menu_validation", "6": "_menu_advanced",
+    "7": "_menu_visualization", "8": "_menu_technique", "9": "_menu_encoding",
+    "H": "_menu_hardware", "B": "_menu_prediction", "X": "_menu_hsi",
+    "J": "_menu_plan", "U": "_menu_audit", "K": "_menu_selecao_amostras",
+    "P": "_menu_profiles", "?": "_menu_help", "A": "_menu_about",
+}
+
+#: Grupos reais do painel principal (`_print_main_menu`, guaraci.py:
+#: ~1820-1856, docs/DESIGN.md seção 4) -- confirmado por leitura direta,
+#: não pela ordem do dispatch. Teclas que não aparecem nesse painel (S/L/R/N)
+#: ficam de fora deste dict de propósito -- ver `_ACOES_SEM_PAINEL`.
+_GRUPO_POR_TECLA: dict[str, str] = {
+    "2": "Preparar", "3": "Preparar", "9": "Preparar", "P": "Preparar",
+    "J": "Planejar", "K": "Planejar", "U": "Planejar",
+    "4": "Modelar", "6": "Modelar", "8": "Modelar",
+    "5": "Validar", "7": "Validar",
+    "B": "Prever", "X": "Prever",
+    "1": "Sistema", "H": "Sistema", "G": "Sistema", "M": "Sistema",
+    "I": "Sistema", "?": "Sistema", "A": "Sistema", "Q": "Sistema",
+}
+
+#: Só estas 3 teclas têm subseção própria em `docs/MANUAL.md` citando a
+#: tecla explicitamente ("CLI — menu principal, tecla [X]") -- verificado
+#: por leitura direta (Passo 186). O manual é organizado por tópico
+#: científico, não por tela; as ~23 entradas restantes não têm
+#: correspondência 1:1 confiável, então ficam sem este campo em vez de
+#: inventar uma seção (acionamento da regra "evidência ou silêncio").
+_SECAO_MANUAL_POR_TECLA: dict[str, str] = {
+    "J": "`docs/MANUAL.md` §2.3 — Planejamento de coleta",
+    "K": "`docs/MANUAL.md` §2.2c — Seleção de amostras de calibração",
+    "U": "`docs/MANUAL.md` §2.4 — Auditoria de delineamento",
+}
+
+#: Teclas do dispatch de `main()` sem função `_menu_*` dedicada e sem par
+#: t_/d_ em `_SECOES_NAVEGAVEIS` -- cada uma descrita a partir de leitura
+#: direta do código (função real quando existe; senão, do bloco inline em
+#: `main()`). G/M/I ficam no grupo "Sistema" do painel principal mas
+#: chamam uma função de nome diferente do padrão `_menu_*`; S/L/R/N não
+#: aparecem em nenhum dos 6 grupos visuais (achado desta auditoria,
+#: registrado também em `Paridade-CLI-Web.md`).
+_ACOES_SEM_MENU_DEDICADO: dict[str, dict[str, Any]] = {
+    "G": {"titulo": "Assistente Guaraci", "funcao": "_abrir_assistente",
+          "grupo": "Sistema"},
+    "M": {"titulo": "Alternar Modo (Iniciante/Avançado)",
+          "funcao": "_toggle_modo_usuario", "grupo": "Sistema",
+          "resumo_extra": "Alterna globalmente entre os modos 'Iniciante' e "
+                           "'Avançado' -- controla se os submenus escondem "
+                           "campos avançados por padrão. Persistido em "
+                           "arquivo-flag próprio (mesmo padrão do idioma)."},
+    "I": {"titulo": "Alternar Idioma (PT/EN)", "funcao": "_toggle_idioma",
+          "grupo": "Sistema",
+          "resumo_extra": "Alterna a interface entre Português e Inglês, "
+                           "persistido em arquivo-flag."},
+    "S": {"titulo": "Salvar Configuração como Perfil", "funcao": "_salvar_yaml",
+          "grupo": None,
+          "resumo_extra": "Salva a configuração (`cfg`) atual como um perfil "
+                           "`.yaml` nomeado pelo usuário, em `_PERFIS_DIR` -- "
+                           "reaproveitável depois via `[L]`. Não aparece nos "
+                           "6 grupos do painel principal (achado desta "
+                           "auditoria do vault, Passo 186)."},
+    "L": {"titulo": "Carregar Configuração de Perfil", "funcao": "_carregar_yaml",
+          "grupo": None,
+          "resumo_extra": "Lista os perfis `.yaml` salvos em `_PERFIS_DIR` e "
+                           "carrega o escolhido na configuração ativa. Não "
+                           "aparece nos 6 grupos do painel principal (achado "
+                           "desta auditoria do vault, Passo 186)."},
+    "R": {"titulo": "Executar Pipeline", "funcao": "_rodar_pipeline",
+          "grupo": None,
+          "resumo_extra": "Roda o checklist pré-execução (faixa espectral "
+                           "incompatível, amostras sem `mae_id`, estimativa "
+                           "de tempo — `docs/MANUAL.md` §1.1) e, se os dados "
+                           "estiverem prontos, executa o pipeline "
+                           "(`pipeline.executar()`) com o painel de "
+                           "acompanhamento ao vivo (§1.2). Destacada em caixa "
+                           "própria (`_print_run_box`), não nos 6 grupos do "
+                           "painel principal (achado desta auditoria do "
+                           "vault, Passo 186)."},
+    "N": {"titulo": "Definir Tag/ID da Execução", "funcao": None, "grupo": None,
+          "resumo_extra": "Define um identificador (`cfg.tag`) usado para "
+                           "nomear a pasta de resultados da próxima "
+                           "execução, sanitizado para `[\\w\\-_]`. Ação "
+                           "inline no loop de `main()` (sem função própria) "
+                           "e sem entrada nos 6 grupos do painel principal "
+                           "(achado desta auditoria do vault, Passo 186)."},
+    "Q": {"titulo": "Sair", "funcao": None, "grupo": "Sistema",
+          "resumo_extra": "Encerra o assistente (`_exibir_despedida()` + "
+                           "`break` no loop de `main()`)."},
+}
+
+
+def _funcoes_de(fonte: str) -> dict[str, ast.FunctionDef]:
+    arvore = ast.parse(fonte)
+    return {n.name: n for n in ast.walk(arvore) if isinstance(n, ast.FunctionDef)}
+
+
+_CHAMADAS_COM_CAMPOS = {"_loop_menu", "_print_submenu_compact"}
+
+
+def _campos_de_chamada(node: ast.FunctionDef) -> list[str] | None:
+    """1ª lista literal de strings passada a `_loop_menu`/
+    `_print_submenu_compact` dentro do corpo de `node` -- os campos DE
+    VERDADE que aquele submenu exibe (ex.: `_loop_menu(t, d, ["pasta_dados",
+    "pasta_saida", "tag"], cfg)`), nunca uma suposição do que a tela mostra."""
+    for n in ast.walk(node):
+        if isinstance(n, ast.Call) and getattr(n.func, "id", None) in _CHAMADAS_COM_CAMPOS:
+            for arg in n.args:
+                if isinstance(arg, ast.List):
+                    try:
+                        valores = [ast.literal_eval(e) for e in arg.elts]
+                    except ValueError:
+                        continue
+                    if valores and all(isinstance(v, str) for v in valores):
+                        return valores
+    return None
+
+
+def _modulos_citados_por(fonte_completa: str, node: ast.AST,
+                          modulos_conhecidos: set[str]) -> list[str]:
+    """Módulos reais de `src/guaraci/` importados dentro do corpo de `node`
+    (`from guaraci.X import ...`) -- mesmo padrão de dependência interna já
+    usado por `parse_modulos`, aplicado aqui a uma função/tela em vez de a
+    um módulo inteiro."""
+    trecho = ast.get_source_segment(fonte_completa, node) or ""
+    citados = set(re.findall(r"from guaraci\.(\w+) import", trecho))
+    return sorted(m for m in citados if m in modulos_conhecidos)
+
+
+def gerar_telas_cli(modulos_conhecidos: set[str]) -> dict[str, str]:
+    plano: dict[str, str] = {}
+    fonte = _ler("src/guaraci/guaraci.py")
+    funcoes = _funcoes_de(fonte)
+    i18n_pt = parse_i18n_menu()["PT"]
+    secoes = parse_secoes_navegaveis()
+
+    entradas: list[tuple[str, str, str]] = [
+        (tecla, i18n_pt[t_key], i18n_pt[d_key]) for tecla, t_key, d_key in secoes
+    ]
+    entradas.append(("A", "Sobre", i18n_pt["d_sobre"]))
+
+    for tecla, titulo, descricao in entradas:
+        nome_funcao = _FUNCAO_POR_TECLA.get(tecla)
+        node = funcoes.get(nome_funcao) if nome_funcao else None
+        corpo = [
+            f"**Tecla:** `[{tecla}]`  ·  **Grupo no painel principal:** "
+            f"{_GRUPO_POR_TECLA.get(tecla, '(não aparece nos 6 grupos — ver Paridade-CLI-Web)')}",
+            "", descricao,
+        ]
+        fonte_campos = ["src/guaraci/guaraci.py (_SECOES_NAVEGAVEIS)"]
+        if node is not None:
+            fonte_campos = [f"src/guaraci/guaraci.py:{node.lineno} ({nome_funcao})"]
+            doc = ast.get_docstring(node)
+            if doc:
+                corpo.append("\n## Detalhe (docstring real da função)\n" +
+                              _resumo_docstring(doc, max_linhas=8))
+            campos = _campos_de_chamada(node)
+            if campos:
+                corpo.append("\n## Campos de configuração exibidos\n" +
+                              "\n".join(f"- `{c}`" for c in campos))
+            mods = _modulos_citados_por(fonte, node, modulos_conhecidos)
+            if mods:
+                corpo.append("\n## Chama\n" + "\n".join(
+                    f"- {_wikilink(f'{m}.py', 'chamado por esta tela da CLI')}" for m in mods))
+        secao_manual = _SECAO_MANUAL_POR_TECLA.get(tecla)
+        if secao_manual:
+            corpo.append(f"\n## Documentação de referência\n{secao_manual}")
+        corpo.append(
+            "\n## Ver também\n"
+            f"- {_wikilink('MOC-Telas-e-Fluxos', 'ponto de entrada de telas e fluxos')}\n"
+            f"- {_wikilink('Paridade-CLI-Web', 'cobertura desta tela na interface web')}")
+        conteudo = _nota(titulo=f"CLI — {titulo}", tags=["tela", "cli"],
+                          fonte=fonte_campos, corpo="\n".join(corpo))
+        plano[f"35-Telas-e-Fluxos/{_slug(f'CLI {titulo}')}.md"] = conteudo
+
+    for tecla, info in _ACOES_SEM_MENU_DEDICADO.items():
+        nome_funcao = info["funcao"]
+        node = funcoes.get(nome_funcao) if nome_funcao else None
+        corpo = [
+            f"**Tecla:** `[{tecla}]`  ·  **Grupo no painel principal:** "
+            f"{info['grupo'] or '(não aparece nos 6 grupos — achado desta auditoria, ver Paridade-CLI-Web)'}",
+        ]
+        if info.get("resumo_extra"):
+            corpo += ["", info["resumo_extra"]]
+        fonte_campos = ["src/guaraci/guaraci.py::main() (ação inline)"]
+        if node is not None:
+            fonte_campos = [f"src/guaraci/guaraci.py:{node.lineno} ({nome_funcao})"]
+            doc = ast.get_docstring(node)
+            if doc:
+                corpo.append("\n## Detalhe (docstring real da função)\n" +
+                              _resumo_docstring(doc, max_linhas=8))
+            mods = _modulos_citados_por(fonte, node, modulos_conhecidos)
+            if mods:
+                corpo.append("\n## Chama\n" + "\n".join(
+                    f"- {_wikilink(f'{m}.py', 'chamado por esta ação da CLI')}" for m in mods))
+        corpo.append(
+            "\n## Ver também\n"
+            f"- {_wikilink('MOC-Telas-e-Fluxos', 'ponto de entrada de telas e fluxos')}\n"
+            f"- {_wikilink('Paridade-CLI-Web', 'cobertura desta ação na interface web')}")
+        titulo_nota = f"CLI — {info['titulo']}"
+        conteudo = _nota(titulo=titulo_nota, tags=["tela", "cli"],
+                          fonte=fonte_campos, corpo="\n".join(corpo))
+        plano[f"35-Telas-e-Fluxos/{_slug(titulo_nota)}.md"] = conteudo
+
+    return plano
+
+
+#: Ordem real das 8 abas (`app_quimiometria.py`, `st.tabs([...])` — Passo 186).
+_ABAS_WEB_ORDEM: list[str] = [
+    "projeto", "dados", "preprocessamento", "modelo",
+    "validacao", "predicao", "relatorios", "sobre",
+]
+
+_PADRAO_ABA_DOCSTRING = re.compile(r"Aba\s+(\d+)\s*\(([^)]+)\)\s*:\s*(.+)", re.S)
+
+
+def parse_abas_web(modulos_conhecidos: set[str]) -> list[dict[str, Any]]:
+    """1 entrada por `src/guaraci/app_tabs/*.py` -- todos seguem a mesma
+    convenção real de docstring de módulo ("app_tabs/x.py — Aba N (Nome):
+    descrição"), verificada por leitura direta das 8 abas (Passo 186).
+    Nenhuma prosa é inventada aqui: número, nome e resumo vêm do parse
+    desse docstring; se um módulo novo não seguir a convenção, o resumo cai
+    no docstring bruto em vez de quebrar a geração."""
+    resultado = []
+    for nome in _ABAS_WEB_ORDEM:
+        rel = f"src/guaraci/app_tabs/{nome}.py"
+        texto = _ler(rel)
+        arvore = ast.parse(texto)
+        doc_modulo = ast.get_docstring(arvore) or ""
+        m = _PADRAO_ABA_DOCSTRING.search(doc_modulo)
+        numero = m.group(1) if m else "?"
+        titulo_en = m.group(2).strip() if m else nome
+        resumo = re.sub(r"\s+", " ", m.group(3)).strip() if m else doc_modulo.strip()
+        render_node = next(
+            (n for n in ast.walk(arvore)
+             if isinstance(n, ast.FunctionDef) and n.name == "render"), None)
+        mods = set(re.findall(r"from guaraci\.(\w+) import", texto))
+        resultado.append({
+            "modulo": nome, "caminho": rel, "numero": numero, "titulo_en": titulo_en,
+            "resumo": resumo,
+            "assinatura": _assinatura_funcao(render_node) if render_node else None,
+            "doc_render": (ast.get_docstring(render_node) or "") if render_node else "",
+            "linha_render": render_node.lineno if render_node else None,
+            "modulos_chamados": sorted(m for m in mods if m in modulos_conhecidos),
+        })
+    return resultado
+
+
+def gerar_abas_web(abas: list[dict[str, Any]]) -> dict[str, str]:
+    plano: dict[str, str] = {}
+    for aba in abas:
+        corpo = [f"**Ordem:** aba {aba['numero']} de {len(abas)}  ·  **Módulo:** "
+                 f"`{aba['caminho']}`", "", aba["resumo"]]
+        if aba["assinatura"]:
+            corpo.append(f"\n## Função de renderização\n`{aba['assinatura']}`")
+        if aba["doc_render"]:
+            corpo.append("\n" + _resumo_docstring(aba["doc_render"], max_linhas=8))
+        if aba["modulos_chamados"]:
+            corpo.append("\n## Chama\n" + "\n".join(
+                f"- {_wikilink(f'{m}.py', 'chamado por esta aba web')}"
+                for m in aba["modulos_chamados"]))
+        corpo.append(
+            "\n## Documentação de referência\n`docs/MANUAL.md` §6 (Fluxo "
+            "típico na interface web) -- lista consolidada das 8 abas, sem "
+            "subseção própria por aba (ver `Paridade-CLI-Web.md`).")
+        corpo.append(
+            "\n## Ver também\n"
+            f"- {_wikilink('MOC-Telas-e-Fluxos', 'ponto de entrada de telas e fluxos')}\n"
+            f"- {_wikilink('Paridade-CLI-Web', 'cobertura desta aba na CLI')}")
+        titulo = f"Web — {aba['titulo_en']}"
+        fonte = [aba["caminho"]]
+        if aba["linha_render"]:
+            fonte.append(f"{aba['caminho']}:{aba['linha_render']}")
+        conteudo = _nota(titulo=titulo, tags=["tela", "web"], fonte=fonte,
+                          corpo="\n".join(corpo))
+        plano[f"35-Telas-e-Fluxos/{_slug(titulo)}.md"] = conteudo
+    return plano
+
+
+#: Achado real desta auditoria do vault (Passo 186): estes 6 fluxos da CLI
+#: não têm equivalente na web, e `docs/MANUAL.md` os documenta sem
+#: qualquer nota de "falta portar" -- verificado por leitura direta das 8
+#: abas de `app_quimiometria.py` e do dispatch completo de `guaraci.py`.
+#: Decisão do autor (2026-09-07, resposta direta a esta auditoria):
+#: limitação de escopo aceita, não pendência a abrir.
+_GAPS_CLI_ONLY: list[tuple[str, str]] = [
+    ("Planejamento de Coleta (`[J]`)",
+     "tamanho amostral e distribuição de sessões de coleta; sem tela "
+     "equivalente na web."),
+    ("Seleção de Amostras (`[K]`)",
+     "divide um CSV em calibração/validação (Kennard-Stone/Duplex/SPXY); "
+     "sem tela equivalente na web."),
+    ("Auditoria de Delineamento como tela dedicada (`[U]`)",
+     "a auditoria em si roda embutida em toda execução, CLI e web "
+     "(`auditoria_delineamento.py`) — só a tela para rodá-la isoladamente, "
+     "sem treinar o modelo inteiro, é exclusiva da CLI."),
+    ("HSI — Imageamento Hiperespectral (`[X]`)",
+     "a web só expõe o campo de configuração `hsi_pasta_dataset` (aba "
+     "Dados), sem tela de resultado/classificação por pixel."),
+    ("Perfis Prontos (`[P]`)",
+     "tela de listar/aplicar perfis de matriz/técnica prontos; a web usa "
+     "perfis via `selectbox` dentro de cada campo, mas não tem esta tela "
+     "de gestão dedicada."),
+    ("Codificação DX (`[9]`)",
+     "nomenclatura JCAMP-DX e códigos de espécie; sem tela equivalente na web."),
+]
+
+
+def gerar_paridade_cli_web(modulos_conhecidos: set[str]) -> dict[str, str]:
+    corpo = [
+        "Cruzamento entre as telas/fluxos reais da CLI "
+        "(`_SECOES_NAVEGAVEIS` + ações diretas de `main()`, `guaraci.py`) e "
+        "as 8 abas do aplicativo web (`app_quimiometria.py`).",
+        "",
+        "## Fluxos só na CLI (achado real, Passo 186 desta auditoria do "
+        "vault — limitação de escopo aceita, não pendência aberta)",
+    ]
+    for titulo, texto in _GAPS_CLI_ONLY:
+        corpo.append(f"- **{titulo}** — {texto}")
+    if "auditoria_delineamento" in modulos_conhecidos:
+        corpo.append(f"\n({_wikilink('auditoria_delineamento.py', 'módulo que roda embutido nas duas interfaces')})")
+    corpo += [
+        "",
+        "## Fluxos com paridade real (presentes nas duas interfaces)",
+        "Entrada de dados, pré-processamento, modelagem, validação, "
+        "predição em amostras novas, relatórios e identificação do "
+        "projeto existem nas duas interfaces (menu `[1]`-`[8]`/`[B]` da "
+        "CLI ↔ as 8 abas da web), compartilhando o mesmo motor "
+        f"({_wikilink('pipeline.py', 'motor único das duas interfaces') if 'pipeline' in modulos_conhecidos else '`pipeline.py`'}) "
+        "e a mesma `Config`/`config.yaml`.",
+        "",
+        "## Gap de paridade já corrigido nesta sessão (evidência real, "
+        "verificado em código, não suposição)",
+        "- Textos de i18n (PT/EN) que faltavam em abas específicas (Data/"
+        "Preprocessing/Prediction/Reports) — comentário em "
+        "`app_quimiometria.py`: essas 4 abas \"não passavam por T() "
+        "nenhum, ficavam sempre em inglês mesmo com idioma=PT "
+        "selecionado\", fechado em 2026-09-01.",
+        "- O fluxo cego (Detectar → Identificar → Quantificar, "
+        "`predict_blind`) está presente hoje na aba Prediction da web "
+        "(`app_tabs/predicao.py` importa `predict_blind` de "
+        "`guaraci.predicao`, e `app_quimiometria.py` traduz os textos "
+        "\"Blind flow — Detect → Identify → Quantify\").",
+        "",
+        "## Decisão de escopo (Passo 186 desta auditoria do vault)",
+        "Os 6 fluxos CLI-only acima são tratados como **limitação de "
+        "escopo aceita**, não pendência a abrir — decisão do autor "
+        "nesta auditoria (2026-09-07), no mesmo espírito de outras "
+        "decisões de escopo já registradas no projeto.",
+    ]
+    conteudo = _nota(
+        "Paridade CLI ↔ Web", ["paridade"],
+        ["src/guaraci/guaraci.py", "app_quimiometria.py", "docs/MANUAL.md"],
+        "\n".join(corpo))
+    return {"35-Telas-e-Fluxos/Paridade-CLI-Web.md": conteudo}
+
+
+_GRUPOS_TELAS_FLUXOS = [
+    ("Preparar", ["Dados", "Pré-processamento", "Codificação DX", "Perfis Prontos"]),
+    ("Planejar", ["Planejamento de Coleta", "Seleção de Amostras",
+                  "Auditoria de Delineamento"]),
+    ("Modelar", ["Modelagem", "Métodos Avançados", "Técnica Analítica"]),
+    ("Validar", ["Validação", "Visualização"]),
+    ("Prever", ["Predição em Lote", "Imageamento Hiperespectral"]),
+]
+
+
+def gerar_moc_telas_fluxos(plano_cli: dict[str, str], plano_web: dict[str, str]) -> dict[str, str]:
+    stems_cli = {Path(p).stem: p for p in plano_cli}
+    corpo = [
+        f"Ponto de entrada das {len(plano_cli)} telas/ações da CLI e das "
+        f"{len(plano_web)} abas da web (Passo 186 desta auditoria do "
+        f"vault) — agrupadas pelo mesmo fluxo de trabalho já usado no "
+        "painel principal da CLI (`docs/DESIGN.md` seção 4).",
+        "",
+        f"- {_wikilink('Paridade-CLI-Web', 'o que existe só numa interface, e por quê')}",
+        "",
+        "## Web (8 abas, ordem real de `app_quimiometria.py`)",
+    ]
+    corpo += [f"- {_wikilink(Path(p).stem, 'aba do aplicativo web')}" for p in sorted(
+        plano_web, key=lambda p: Path(p).stem)]
+    corpo.append("\n## CLI, por grupo de fluxo de trabalho (painel principal)")
+    usados: set[str] = set()
+    for grupo, titulos in _GRUPOS_TELAS_FLUXOS:
+        linhas_grupo = []
+        for titulo in titulos:
+            stem = _slug(f"CLI {titulo}")
+            if stem in stems_cli:
+                linhas_grupo.append(f"- {_wikilink(stem, f'tela do grupo {grupo}')}")
+                usados.add(stems_cli[stem])
+        if linhas_grupo:
+            corpo.append(f"\n### {grupo}\n" + "\n".join(linhas_grupo))
+    restantes = sorted(set(plano_cli) - usados, key=lambda p: Path(p).stem)
+    if restantes:
+        corpo.append("\n### Sistema / ações diretas\n" + "\n".join(
+            f"- {_wikilink(Path(p).stem, 'ação/tela de sistema da CLI')}" for p in restantes))
+    conteudo = _nota(
+        "MOC — Telas e Fluxos", ["moc"],
+        ["src/guaraci/guaraci.py", "app_quimiometria.py"], "\n".join(corpo))
+    return {"35-Telas-e-Fluxos/MOC-Telas-e-Fluxos.md": conteudo}
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Geração de notas — 08-Documentos — Passo 187
+#
+#  1 nota por documento REAL e VERSIONADO do projeto -- "versionado" é
+#  verificado por `git ls-files` no momento da geração (não pela presença
+#  neste catálogo), então um arquivo removido/nunca commitado nunca vira
+#  nota. `para_quem`/`deriva_para` são julgamento curado sobre a ESTRUTURA
+#  do vault (mesmo padrão de `CONCEITOS`/`MODOS_FORA_DO_CATALOGO`); o
+#  conteúdo de cada nota (resumo, data) vem sempre de uma leitura real do
+#  arquivo/git no momento da geração.
+# ═════════════════════════════════════════════════════════════════════════
+
+_CATALOGO_DOCUMENTOS: list[dict[str, Any]] = [
+    {"rel": "README.md", "para_quem": "usuário final / quem descobre o projeto no GitHub",
+     "deriva_para": [("MOC-Guaraci", "ponto de entrada equivalente em prosa")]},
+    {"rel": "README.pt-br.md", "para_quem": "usuário final em português",
+     "deriva_para": [("MOC-Guaraci", "ponto de entrada equivalente em prosa")]},
+    {"rel": "docs/MANUAL.md", "para_quem": "usuário final e contribuidor — manual funcional completo",
+     "deriva_para": [("MOC-Telas-e-Fluxos", "fonte de descrição de telas/abas")]},
+    {"rel": "docs/VALIDACAO_PUBLICA.md", "para_quem": "revisor científico / contribuidor",
+     "deriva_para": [("MOC-Validacoes", "fonte da tabela consolidada")]},
+    {"rel": "docs/COMPATIBILITY.md", "para_quem": "contribuidor — contrato de não-regressão",
+     "deriva_para": [("MOC-Decisoes", "fonte dos casos especiais documentados")]},
+    {"rel": "docs/PROGRESSO.md", "para_quem": "o próprio autor / uma sessão futura do agente",
+     "deriva_para": [("MOC-Decisoes", "fonte de achados e decisões")]},
+    {"rel": "docs/INDICE_PROJETO.md", "para_quem": "contribuidor / agente — mapa de onde está cada coisa",
+     "deriva_para": [("MOC-Guaraci", "índice equivalente em prosa")]},
+    {"rel": "docs/DESIGN.md", "para_quem": "contribuidor — identidade visual e UX",
+     "deriva_para": [("MOC-Identidade", "fonte de paleta/tipografia/regras de uso")]},
+    {"rel": "SECURITY.md", "para_quem": "quem opera um deploy público / contribuidor",
+     "deriva_para": [("Seguranca-de-Dados", "documento formal da política; esta nota resume")]},
+    {"rel": "CITATION.cff", "para_quem": "quem cita o projeto em trabalho científico",
+     "deriva_para": [("Autoria", "fonte de nome/e-mail/ORCID/licença")]},
+    {"rel": "datasets/README.md", "para_quem": "contribuidor / revisor reproduzindo validações públicas",
+     "deriva_para": [("MOC-Validacoes", "instruções de download dos datasets validados")]},
+    {"rel": "docs/RASCUNHOS_CONTATO.md", "para_quem": "o próprio autor (rascunhos de contato/divulgação)",
+     "deriva_para": []},
+    {"rel": "docs/COMMERCIAL.md", "para_quem": "interessado em uso comercial/proprietário",
+     "deriva_para": [("Autoria", "fonte do modelo de dual licensing")]},
+    {"rel": "CONTRIBUTING.md", "para_quem": "contribuidor externo em potencial",
+     "deriva_para": []},
+    {"rel": "CODE_OF_CONDUCT.md", "para_quem": "qualquer participante da comunidade do projeto",
+     "deriva_para": []},
+    {"rel": "ACKNOWLEDGMENTS.md", "para_quem": "usuário/contribuidor — créditos de terceiros",
+     "deriva_para": []},
+    {"rel": "docs/BENCHMARK_TECATOR.md", "para_quem": "revisor científico — benchmark externo público",
+     "deriva_para": [("MOC-Validacoes", "detalha o benchmark Tecator")]},
+    {"rel": "docs/CHANGELOG.md", "para_quem": "usuário atualizando de versão / contribuidor",
+     "deriva_para": [("Estado-Atual", "versão atual, fonte única em pipeline.__version__")]},
+    {"rel": "docs/VALIDATION.md", "para_quem": "revisor científico — cartão de visita técnico",
+     "deriva_para": [("MOC-Validacoes", "complementar a VALIDACAO_PUBLICA.md")]},
+    {"rel": "docs/index.md", "para_quem": "visitante da página do projeto (GitHub Pages)",
+     "deriva_para": [("MOC-Guaraci", "página de entrada equivalente")]},
+]
+
+_PADRAO_LINHA_RUIDO_DOC = re.compile(r"^(<|\[!\[)")
+
+
+def _resumo_documento(texto: str, min_chars: int = 90) -> str:
+    """Primeiro parágrafo REAL e substancial do documento (>= `min_chars`),
+    pulando título, cabeçalhos, HTML cru e badges -- nunca reescrito à mão.
+    Blocos de blockquote (`>`) contam como parágrafo (convenção já usada
+    por vários docs do projeto, ex. `docs/MANUAL.md`/`VALIDATION.md`)."""
+    linhas = texto.splitlines()
+    corpo = linhas[1:] if linhas and linhas[0].startswith("#") else linhas
+    blocos: list[str] = []
+    atual: list[str] = []
+    for ln in corpo:
+        s = ln.strip()
+        if _PADRAO_LINHA_RUIDO_DOC.match(s) or s.startswith("#"):
+            continue
+        if not s:
+            if atual:
+                blocos.append(" ".join(atual)); atual = []
+            continue
+        atual.append(s.lstrip(">").strip() if s.startswith(">") else s)
+    if atual:
+        blocos.append(" ".join(atual))
+    for b in blocos:
+        if len(b) >= min_chars:
+            return " ".join(b.split()[:120])
+    return blocos[0] if blocos else "(sem parágrafo extraível na abertura do arquivo)"
+
+
+def gerar_documentos() -> dict[str, str]:
+    plano: dict[str, str] = {}
+    rastreados = set(_git("ls-files").splitlines())
+    for item in _CATALOGO_DOCUMENTOS:
+        rel = item["rel"]
+        caminho_abs = _RAIZ / rel
+        if rel not in rastreados or not caminho_abs.exists():
+            continue  # evidência ou silêncio: doc não versionado/sumiu, nota omitida
+        if rel.endswith(".cff"):
+            cff = parse_citation_cff()
+            resumo = (f"Metadados de citação (Citation File Format) -- "
+                      f"versão do software `{cff.get('version', '—')}`, "
+                      f"licença `{cff.get('license', '—')}`, "
+                      f"{len(cff.get('authors') or [])} autor(es) registrado(s).")
+        else:
+            resumo = _resumo_documento(caminho_abs.read_text(encoding="utf-8"))
+        try:
+            ultima_att = _git("log", "-1", "--format=%ci", "--", rel)
+        except subprocess.CalledProcessError:
+            ultima_att = ""
+        corpo = [
+            resumo, "",
+            f"**Para quem:** {item['para_quem']}",
+            f"**Última atualização (git log):** {ultima_att or 'sem histórico git'}",
+            f"**Arquivo:** `{rel}`",
+        ]
+        if item["deriva_para"]:
+            corpo.append("\n## Fonte de\n" + "\n".join(
+                f"- {_wikilink(alvo, relacao)}" for alvo, relacao in item["deriva_para"]))
+        titulo = f"Documento — {rel}"
+        conteudo = _nota(titulo=titulo, tags=["documento"], fonte=rel,
+                          corpo="\n".join(corpo))
+        plano[f"08-Documentos/{_slug(titulo)}.md"] = conteudo
+
+    corpo_moc = [
+        f"{len(plano)} documento(s) real(is) e versionado(s) do projeto — "
+        "antes só apareciam como referência de rodapé dentro de outras "
+        "notas; agora cada um é uma nota navegável que linka de volta às "
+        "categorias do vault que dele derivam (Passo 187 desta auditoria "
+        "do vault).",
+        "",
+    ]
+    corpo_moc += [f"- {_wikilink(Path(p).stem, 'documento do projeto')}"
+                  for p in sorted(plano, key=lambda p: Path(p).stem)]
+    plano["08-Documentos/MOC-Documentos.md"] = _nota(
+        "MOC — Documentos do Projeto", ["moc"], "git ls-files", "\n".join(corpo_moc))
+    return plano
+
+
+# ═════════════════════════════════════════════════════════════════════════
 #  MOCs (Maps of Content)
 # ═════════════════════════════════════════════════════════════════════════
 
@@ -1255,7 +1839,9 @@ def gerar_mocs(tecnicas: dict[str, Any], modulos: dict[str, ModuloInfo],
         f"- {_wikilink('MOC-Arquitetura', 'mapa de módulos')}\n"
         f"- {_wikilink('MOC-Validacoes', 'validações públicas')}\n"
         f"- {_wikilink('MOC-Decisoes', 'decisões e achados')}\n"
-        f"- {_wikilink('MOC-Autoria-Seguranca', 'autoria, proveniência e segurança de dados')}\n")
+        f"- {_wikilink('MOC-Autoria-Seguranca', 'autoria, proveniência e segurança de dados')}\n"
+        f"- {_wikilink('MOC-Telas-e-Fluxos', 'telas da CLI e abas da web, com paridade documentada')}\n"
+        f"- {_wikilink('MOC-Documentos', 'documentos reais do projeto como notas navegáveis')}\n")
 
     return plano
 
@@ -1425,7 +2011,10 @@ Este vault é **gerado inteiramente por script**
 (`scripts/gerar_vault_obsidian.py`, versionado no repositório do Guaraci)
 a partir das fontes de verdade do repositório: `docs/PROGRESSO.md`,
 `docs/VALIDACAO_PUBLICA.md`, `docs/COMPATIBILITY.md`, `docs/DESIGN.md`,
-`CITATION.cff`, `src/guaraci/cli_assistente.py` e `src/guaraci/*.py`.
+`CITATION.cff`, `src/guaraci/cli_assistente.py`, `src/guaraci/*.py`,
+`src/guaraci/guaraci.py` (dispatch da CLI), `app_quimiometria.py` +
+`src/guaraci/app_tabs/*.py` (abas da web), e os próprios documentos
+versionados do projeto (`08-Documentos/`, via `git ls-files`).
 
 **Não edite nada fora de `{_PASTA_PROTEGIDA}/` à mão.** Qualquer edição
 manual em outra pasta é perdida na próxima regeneração — o script
@@ -1491,6 +2080,8 @@ Use-a para anotações pessoais, rascunhos, ligações manuais extras.
 | `50-Decisoes/` | parágrafos `**Decisão...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + `docs/COMPATIBILITY.md` (casos especiais) | `explicacao` |
 | `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + 1 resumo mínimo (tag `passo`, não `achado`) por `## Passo` que não caiu em nenhum parágrafo marcado — garante que todo passo tenha alguma nota (Passo 172) | `explicacao` (`referencia` se tag `passo`) |
 | `06-Autoria-e-Seguranca/` | `CITATION.cff`, `git log`, `scripts/privacidade_amostras.py`, `docs/VALIDACAO_PUBLICA.md` | `explicacao` |
+| `35-Telas-e-Fluxos/` | `_SECOES_NAVEGAVEIS`/`_I18N`/dispatch de `main()` (`guaraci.py`) para a CLI + docstring de módulo de `src/guaraci/app_tabs/*.py` para a web -- 1 nota por tela/ação real, mais `Paridade-CLI-Web.md` (cruzamento das duas interfaces) | `referencia` (`explicacao` para `Paridade-CLI-Web.md`) |
+| `08-Documentos/` | 1 nota por documento real e VERSIONADO do projeto (`git ls-files` confirma no momento da geração); resumo = primeiro parágrafo real do arquivo | `referencia` |
 | `00-MOC/` + MOCs de categoria | gerados a partir dos planos acima | `referencia` |
 | `90-Canvas/` | gerados programaticamente a partir dos mesmos dados acima | — |
 | `Estado-Atual.md` | commit HEAD + contagem de `def test_*` em `tests/` + Passo 160 | — |
@@ -1528,6 +2119,8 @@ OU sem link de entrada. Duas notas ficam legitimamente órfãs de entrada
 - {contagens.get('50-Decisoes', 0)} decisões
 - {contagens.get('60-Achados', 0)} achados/retratações
 - {contagens.get('06-Autoria-e-Seguranca', 0)} notas de autoria/segurança
+- {contagens.get('35-Telas-e-Fluxos', 0)} telas/ações (CLI + web) + paridade
+- {contagens.get('08-Documentos', 0)} documentos do projeto
 
 Commit: `{_HEAD_HASH}` ({_HEAD_DATA}).
 """
@@ -1560,6 +2153,12 @@ _MODO_DIATAXIS_POR_PASTA = {
     # lista original da instrução (escrita antes de 06-Autoria existir);
     # extensão razoável, documentada aqui.
     "00-MOC": "referencia",
+    # 35-Telas-e-Fluxos (Passo 186): "o que essa tela faz" é consulta
+    # rápida, como 10-Tecnicas/20-Modulos -- exceto Paridade-CLI-Web.md,
+    # que é análise/decisão de escopo (explicacao), tratada à parte abaixo.
+    "35-Telas-e-Fluxos": "referencia",
+    # 08-Documentos (Passo 187): mesma natureza de referência rápida.
+    "08-Documentos": "referencia",
 }
 
 
@@ -1569,6 +2168,8 @@ def _modo_diataxis_para(rel: str, conteudo: str) -> str | None:
         m = re.search(r"^tags: \[(.*?)\]", conteudo, re.M)
         tags = [t.strip() for t in (m.group(1).split(",") if m else [])]
         return "referencia" if "passo" in tags else "explicacao"
+    if rel == "35-Telas-e-Fluxos/Paridade-CLI-Web.md":
+        return "explicacao"
     if pasta.endswith(".md"):  # arquivo solto na raiz do vault (Estado-Atual.md)
         return None
     return _MODO_DIATAXIS_POR_PASTA.get(pasta)
@@ -1612,6 +2213,18 @@ def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
     p_canvas.update(gerar_canvas_arquitetura(modulos))
     p_canvas.update(gerar_canvas_mapa_tecnicas(tecnicas, status11))
 
+    # 35-Telas-e-Fluxos (Passo 186) e 08-Documentos (Passo 187) -- ver
+    # docstrings das seções correspondentes acima.
+    p_telas_cli = gerar_telas_cli(set(modulos))
+    abas_web = parse_abas_web(set(modulos))
+    p_abas_web = gerar_abas_web(abas_web)
+    p_paridade = gerar_paridade_cli_web(set(modulos))
+    p_moc_telas = gerar_moc_telas_fluxos(p_telas_cli, p_abas_web)
+    p_telas_fluxos: dict[str, str] = {}
+    for parte in (p_telas_cli, p_abas_web, p_paridade, p_moc_telas):
+        p_telas_fluxos.update(parte)
+    p_documentos = gerar_documentos()
+
     contagens = {
         "05-Identidade": len(p_identidade),
         "10-Tecnicas": len(p_tecnicas), "20-Modulos": len(p_modulos),
@@ -1619,11 +2232,13 @@ def montar_plano() -> tuple[dict[str, str], dict[str, int], list[str]]:
         "30-Conceitos": len(p_conceitos), "40-Validacoes": len(p_validacoes),
         "50-Decisoes": len(p_decisoes), "60-Achados": len(p_achados),
         "06-Autoria-e-Seguranca": len(p_autoria),
+        "35-Telas-e-Fluxos": len(p_telas_fluxos), "08-Documentos": len(p_documentos),
     }
     p_readme = gerar_readme_vault(contagens)
 
     for parte in (p_tecnicas, p_modulos, p_funcoes, p_conceitos, p_validacoes, p_decisoes,
-                  p_achados, p_identidade, p_autoria, p_mocs, p_estado, p_canvas, p_readme):
+                  p_achados, p_identidade, p_autoria, p_mocs, p_estado, p_canvas,
+                  p_telas_fluxos, p_documentos, p_readme):
         plano.update(parte)
 
     plano = _aplicar_modo_diataxis(plano)

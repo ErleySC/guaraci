@@ -129,9 +129,12 @@ def test_plano_real_tem_as_categorias_esperadas():
     assert contagens["40-Validacoes"] > 0
     assert contagens["05-Identidade"] > 0
     assert contagens["06-Autoria-e-Seguranca"] > 0
+    assert contagens["35-Telas-e-Fluxos"] > 0
+    assert contagens["08-Documentos"] > 0
     assert all(rel.startswith(("00-MOC/", "05-Identidade/", "10-Tecnicas/", "20-Modulos/",
                                 "25-Funcoes/", "30-Conceitos/", "40-Validacoes/", "50-Decisoes/",
                                 "60-Achados/", "06-Autoria-e-Seguranca/", "90-Canvas/",
+                                "35-Telas-e-Fluxos/", "08-Documentos/",
                                 "README-VAULT.md", "Estado-Atual.md"))
                for rel in plano)
 
