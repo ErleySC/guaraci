@@ -23,6 +23,10 @@ _ARQUIVOS_ABAS = [
     _RAIZ / "src" / "guaraci" / "app_tabs" / "preprocessamento.py",
     _RAIZ / "src" / "guaraci" / "app_tabs" / "predicao.py",
     _RAIZ / "src" / "guaraci" / "app_tabs" / "relatorios.py",
+    # Projeto e Modelo entraram em 2026-09-08 (painel de status e seletor de
+    # paleta trouxeram texto novo para essas duas abas).
+    _RAIZ / "src" / "guaraci" / "app_tabs" / "projeto.py",
+    _RAIZ / "src" / "guaraci" / "app_tabs" / "modelo.py",
 ]
 
 

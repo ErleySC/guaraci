@@ -46,6 +46,11 @@ from privacidade_amostras import (  # noqa: E402
     checar_conteudos_ou_falhar,
 )
 
+if str(_RAIZ / "src") not in sys.path:
+    sys.path.insert(0, str(_RAIZ / "src"))
+
+from guaraci.validacao_publica import parse_consolidated_table  # noqa: E402
+
 _MANIFESTO = ".vault_manifest.json"
 _PASTA_PROTEGIDA = "70-Notas-Pessoais"
 
@@ -729,21 +734,11 @@ def gerar_conceitos(modulos: dict[str, ModuloInfo],
 # ═════════════════════════════════════════════════════════════════════════
 
 def parse_tabela_consolidada() -> list[dict[str, str]]:
-    texto = _ler("docs/VALIDACAO_PUBLICA.md")
-    m = re.search(r"^## 1\. Tabela consolidada\n\n(.*?)\n\n", texto, re.S | re.M)
-    if not m:
-        return []
-    linhas = [ln for ln in m.group(1).splitlines() if ln.startswith("|")]
-    linhas_dados = linhas[2:]  # pula cabeçalho + separador
-    cabecalho = ["dataset", "matriz", "n", "canais", "alvo", "metrica",
-                 "referencia", "estado"]
-    resultado = []
-    for ln in linhas_dados:
-        campos = [c.strip() for c in ln.strip("|").split("|")]
-        if len(campos) < len(cabecalho):
-            continue
-        resultado.append(dict(zip(cabecalho, campos)))
-    return resultado
+    """Wrapper de I/O sobre `guaraci.validacao_publica` — o parsing em si
+    mora la' desde 2026-09-08, porque o painel de status do app web precisa
+    da MESMA leitura (duas cópias divergiriam na primeira mudança da
+    tabela)."""
+    return parse_consolidated_table(_ler("docs/VALIDACAO_PUBLICA.md"))
 
 
 def gerar_validacoes(tabela: list[dict[str, str]]) -> dict[str, str]:

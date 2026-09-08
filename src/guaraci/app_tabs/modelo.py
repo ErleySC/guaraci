@@ -15,6 +15,8 @@ import streamlit as st
 
 from guaraci.app_logic import collect_config, fmt_time, log_progress
 from guaraci.app_logic import LogThreadSafe as _LogThreadSafe
+from guaraci.cli_assistente import PALETAS_COR, apply_palette
+from guaraci.preferencias_visuais import load_visual_config, save_visual_config
 
 
 def _ram_mb() -> Optional[float]:
@@ -25,6 +27,68 @@ def _ram_mb() -> Optional[float]:
         # (psutil ausente ou probe falha por variacao de SO/permissao);
         # None e' o fallback documentado pelo tipo de retorno Optional.
         return None
+
+
+def _paleta_escolhida() -> str:
+    """Paleta ativa do usuario, vinda do MESMO arquivo de preferencias que a
+    CLI grava (`~/.guaraci/visual_config.json`) — sem estado de cor paralelo
+    só da web."""
+    return str(load_visual_config().get("paleta", "qualitativo"))
+
+
+def _seletor_paleta(T: Callable[[str], str]) -> None:
+    """Seletor da paleta das figuras + amostra das cores reais do catálogo.
+
+    Estende o mecanismo que já existia (catálogo `PALETAS_COR`, preferência
+    persistida em `visual_config.json`, aplicação via
+    `cli_assistente.apply_palette`) — a web não define paleta própria nem
+    guarda a escolha em outro lugar. A paleta vale para as figuras da
+    PRÓXIMA execução: as figuras já gravadas em disco não são recoloridas
+    (recolorir exigiria rodar o pipeline de novo).
+    """
+    pt = st.session_state.get("lang") == "PT"
+    nomes = list(PALETAS_COR.keys())
+    atual = _paleta_escolhida()
+    idx = nomes.index(atual) if atual in nomes else 0
+
+    def _rotulo(chave: str) -> str:
+        entrada = PALETAS_COR.get(chave, {})
+        return str(entrada.get("PT" if pt else "EN", {}).get("nome", chave))
+
+    escolha = st.selectbox(T("Figure color palette"), nomes, index=idx,
+                           key="w_paleta_figuras", format_func=_rotulo,
+                           help=T("Applies to the figures of the NEXT run — "
+                                  "figures already saved on disk are not "
+                                  "recolored."))
+    entrada = PALETAS_COR.get(escolha, {})
+    st.caption(str(entrada.get("PT" if pt else "EN", {}).get("desc", "")))
+
+    cores = entrada.get("cores")
+    if cores:
+        # Amostra ao vivo com as cores REAIS do catálogo (as mesmas que vão
+        # para a figura), não uma simulação com cores inventadas.
+        st.markdown(
+            "".join(
+                f'<span style="display:inline-block;width:26px;height:18px;'
+                f'margin-right:4px;border-radius:4px;background:{c};'
+                f'border:1px solid rgba(128,128,128,.35)"></span>'
+                for c in cores),
+            unsafe_allow_html=True)
+        st.caption(T("A palette with fewer colors than the number of classes "
+                     "is refused at figure time (it would give two classes "
+                     "the same color) — the maximum-distinctiveness palette "
+                     "is used instead, and the run log says so."))
+    else:
+        st.caption(T("Uses the default color sequence — no fixed color list."))
+
+    if escolha != atual:
+        vcfg = load_visual_config()
+        vcfg["paleta"] = escolha
+        try:
+            save_visual_config(vcfg)
+        except OSError as _e_vis:
+            st.warning(T("Could not save the palette choice: {e}").format(
+                e=_e_vis))
 
 
 def _rodar_worker(pq, cfg, logger: _LogThreadSafe, estado: Dict):
@@ -176,6 +240,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
             if s is None: continue
             with cols_f[i % 2]:
                 valores[k] = widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
+        st.divider()
+        _seletor_paleta(T)
 
     st.divider()
 
@@ -240,6 +306,11 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 "Não foi possível gravar config.yaml — a análise continua com "
                 f"os valores atuais, mas 'Reload config.yaml' pode restaurar uma "
                 f"versão antiga. Detalhe: {_e_cfg}")
+
+        # Paleta escolhida vale a partir daqui: aplicada ANTES de executar()
+        # (mesmo ponto e mesma funcao que a CLI usa em `_rodar_pipeline`), o
+        # que faz as figuras desta execucao sairem com a cor escolhida.
+        apply_palette(_paleta_escolhida())
 
         logger = _LogThreadSafe(tee=sys.__stdout__)
         estado: Dict = {"fim": False, "erro": None, "pasta": None}

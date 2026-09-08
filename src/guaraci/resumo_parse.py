@@ -11,7 +11,7 @@ em isolamento (ver tests/test_resumo_parse.py).
 from __future__ import annotations
 
 import re
-from typing import Dict
+from typing import Dict, Optional
 
 # Métricas padrão exibidas no cabeçalho de relatório (PDF/Word). Cada valor é
 # (padrão_regex) aplicado ao resumo com IGNORECASE|MULTILINE; group(1) é o valor.
@@ -29,6 +29,28 @@ _PADROES_METRICAS = {
     "n samples (training)":     r"[Nn]\s+treino.*?[:=]\s*(\d+)",
     "n classes":                r"[Nn]\.?\s*[Cc]lasses.*?[:=]\s*(\d+)",
 }
+
+
+# Contagens do conjunto de dados da execucao. As chaves do resumo mudaram de
+# PT para EN ao longo do projeto ("Total de amostras" -> "Total samples"), e
+# runs antigos continuam em disco -- os dois nomes sao aceitos, senao o painel
+# de status mostraria "-" para uma execucao que tem o numero gravado.
+_PADROES_CONTAGEM = {
+    "amostras":  r"^\s*Total (?:de )?(?:samples|amostras)\s*[:=]\s*(\d+)",
+    "variaveis": r"^\s*Total (?:de )?(?:variables|vari[aá]veis)\s*[:=]\s*(\d+)",
+    "classes":   r"^\s*Total (?:de )?classes\s*[:=]\s*(\d+)",
+}
+
+
+def parse_dataset_counts(resumo: str) -> Dict[str, Optional[int]]:
+    """Contagens reais da execucao (amostras/variaveis/classes) lidas do
+    resumo_modelo.txt. Valor `None` quando a linha nao existe -- nunca zero,
+    que se leria como "nenhuma amostra" em vez de "nao informado"."""
+    contagens: Dict[str, Optional[int]] = {}
+    for nome, padrao in _PADROES_CONTAGEM.items():
+        bruto = extract_metric(resumo, padrao, default="")
+        contagens[nome] = int(bruto) if bruto.isdigit() else None
+    return contagens
 
 
 def extract_metric(resumo: str, padrao: str, default: str = "-") -> str:
@@ -60,4 +82,5 @@ def parse_accuracy_by_class(resumo: str) -> Dict[str, float]:
     return acc
 
 
-__all__ = ["extract_metric", "parse_model_metrics", "parse_accuracy_by_class"]
+__all__ = ["extract_metric", "parse_model_metrics", "parse_accuracy_by_class",
+           "parse_dataset_counts"]

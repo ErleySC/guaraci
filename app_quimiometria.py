@@ -324,6 +324,40 @@ _TR: Dict[str, Dict[str, str]] = {
     "⚖ Quantified": {"PT": "⚖ Quantificado", "EN": "⚖ Quantified"},
     "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above.": {"PT": "Bloqueada = quantificação recusada porque o adulterante não foi identificado com confiabilidade — veja 'quantificacao_motivo_bloqueio' na tabela acima.", "EN": "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above."},
     "No valid model provided (upload or path).": {"PT": "Nenhum modelo válido fornecido (upload ou caminho).", "EN": "No valid model provided (upload or path)."},
+    # ── Painel de status do projeto (topo da aba Projeto) ────────────
+    "No data loaded yet — start on the **Data** tab: point to a spectra folder or upload a CSV. This panel fills in with the real numbers as soon as there is data.": {"PT": "Nenhum dado carregado ainda — comece pela aba **Dados**: aponte uma pasta de espectros ou envie um CSV. Este painel se preenche com os números reais assim que houver dado.", "EN": "No data loaded yet — start on the **Data** tab: point to a spectra folder or upload a CSV. This panel fills in with the real numbers as soon as there is data."},
+    "### 📌 Project status": {"PT": "### 📌 Status do projeto", "EN": "### 📌 Project status"},
+    "last completed run": {"PT": "última execução concluída", "EN": "last completed run"},
+    "data preview (no run yet)": {"PT": "prévia dos dados (sem execução ainda)", "EN": "data preview (no run yet)"},
+    "spectra": {"PT": "espectros", "EN": "spectra"},
+    "classes": {"PT": "classes", "EN": "classes"},
+    "spectral variables": {"PT": "variáveis espectrais", "EN": "spectral variables"},
+    "Source: {origem}.": {"PT": "Origem: {origem}.", "EN": "Source: {origem}."},
+    "**Matrix / technique:** {matriz}": {"PT": "**Matriz / técnica:** {matriz}", "EN": "**Matrix / technique:** {matriz}"},
+    "**Public validation for this matrix:** {estado} — {dataset} ({metrica})": {"PT": "**Validação pública para esta matriz:** {estado} — {dataset} ({metrica})", "EN": "**Public validation for this matrix:** {estado} — {dataset} ({metrica})"},
+    "From the consolidated table in `docs/VALIDACAO_PUBLICA.md`.": {"PT": "Da tabela consolidada em `docs/VALIDACAO_PUBLICA.md`.", "EN": "From the consolidated table in `docs/VALIDACAO_PUBLICA.md`."},
+    "No public validation registered for this matrix in `docs/VALIDACAO_PUBLICA.md` — the pipeline still runs, but there is no external benchmark to compare against.": {"PT": "Nenhuma validação pública registrada para esta matriz em `docs/VALIDACAO_PUBLICA.md` — o pipeline roda do mesmo jeito, mas não há benchmark externo para comparar.", "EN": "No public validation registered for this matrix in `docs/VALIDACAO_PUBLICA.md` — the pipeline still runs, but there is no external benchmark to compare against."},
+    "Design audit not available for this run (run produced before this record existed).": {"PT": "Auditoria de delineamento indisponível para esta execução (execução anterior a este registro).", "EN": "Design audit not available for this run (run produced before this record existed)."},
+    "{crit} critical · {aviso} warning(s) · {n} checks": {"PT": "{crit} crítico(s) · {aviso} aviso(s) · {n} checagens", "EN": "{crit} critical · {aviso} warning(s) · {n} checks"},
+    "Design audit: {resumo}": {"PT": "Auditoria de delineamento: {resumo}", "EN": "Design audit: {resumo}"},
+    "Design audit findings": {"PT": "Achados da auditoria de delineamento", "EN": "Design audit findings"},
+    # ── Paleta de cores das figuras (aba Modelo) ─────────────────────
+    "Figure color palette": {"PT": "Paleta de cores das figuras", "EN": "Figure color palette"},
+    "Applies to the figures of the NEXT run — figures already saved on disk are not recolored.": {"PT": "Vale para as figuras da PRÓXIMA execução — figuras já gravadas em disco não são recoloridas.", "EN": "Applies to the figures of the NEXT run — figures already saved on disk are not recolored."},
+    "A palette with fewer colors than the number of classes is refused at figure time (it would give two classes the same color) — the maximum-distinctiveness palette is used instead, and the run log says so.": {"PT": "Uma paleta com menos cores que o número de classes é recusada na hora da figura (daria a mesma cor a duas classes) — a paleta de máxima distintividade é usada no lugar, e o log da execução avisa.", "EN": "A palette with fewer colors than the number of classes is refused at figure time (it would give two classes the same color) — the maximum-distinctiveness palette is used instead, and the run log says so."},
+    "Uses the default color sequence — no fixed color list.": {"PT": "Usa a sequência de cores padrão — sem lista fixa de cores.", "EN": "Uses the default color sequence — no fixed color list."},
+    "Could not save the palette choice: {e}": {"PT": "Não foi possível salvar a escolha de paleta: {e}", "EN": "Could not save the palette choice: {e}"},
+    # ── Faixa de decisão (LOD/LOQ, Bloco 24) na aba Predição ─────────
+    "**Decision range (LOD / LOQ)**": {"PT": "**Faixa de decisão (LOD / LOQ)**", "EN": "**Decision range (LOD / LOQ)**"},
+    "No LOD/LOQ available for the species models used — either the package predates the decision-range feature, or the limits are not computable (not enough physical replicates to estimate instrument noise). No decision range is shown rather than one without backing.": {"PT": "Sem LOD/LOQ disponível para os modelos de espécie usados — ou o pacote é anterior à faixa de decisão, ou os limites não são computáveis (sem réplicas físicas suficientes para estimar o ruído instrumental). Nenhuma faixa é mostrada, em vez de uma faixa sem lastro.", "EN": "No LOD/LOQ available for the species models used — either the package predates the decision-range feature, or the limits are not computable (not enough physical replicates to estimate instrument noise). No decision range is shown rather than one without backing."},
+    "Below LOD (not detectable)": {"PT": "Abaixo do LOD (não detectável)", "EN": "Below LOD (not detectable)"},
+    "Estimated content below the detection limit — the method cannot distinguish it from noise.": {"PT": "Teor estimado abaixo do limite de detecção — o método não consegue distingui-lo do ruído.", "EN": "Estimated content below the detection limit — the method cannot distinguish it from noise."},
+    "Grey zone (LOD–LOQ)": {"PT": "Zona cinzenta (LOD–LOQ)", "EN": "Grey zone (LOD–LOQ)"},
+    "Detection is possible, but quantification is not reliable in this range — report as 'detected, not quantifiable'.": {"PT": "A detecção é possível, mas a quantificação não é confiável nesta faixa — relate como 'detectado, não quantificável'.", "EN": "Detection is possible, but quantification is not reliable in this range — report as 'detected, not quantifiable'."},
+    "Quantified with confidence (≥ LOQ)": {"PT": "Quantificado com confiança (≥ LOQ)", "EN": "Quantified with confidence (≥ LOQ)"},
+    "At or above the quantification limit — the numeric value can be reported as a measurement.": {"PT": "No limite de quantificação ou acima dele — o valor numérico pode ser relatado como medida.", "EN": "At or above the quantification limit — the numeric value can be reported as a measurement."},
+    "{n} quantified sample(s) have no decision range: the species model used has no persisted LOD/LOQ.": {"PT": "{n} amostra(s) quantificada(s) sem faixa de decisão: o modelo de espécie usado não tem LOD/LOQ persistido.", "EN": "{n} quantified sample(s) have no decision range: the species model used has no persisted LOD/LOQ."},
+    "Limits from the analytical figures of merit of the per-species regression (Valderrama, Braga & Poppi 2009), computed during the run — see `lod`/`loq` in the table above.": {"PT": "Limites vindos das figuras de mérito analíticas da regressão por espécie (Valderrama, Braga & Poppi 2009), calculadas durante a execução — ver `lod`/`loq` na tabela acima.", "EN": "Limits from the analytical figures of merit of the per-species regression (Valderrama, Braga & Poppi 2009), computed during the run — see `lod`/`loq` in the table above."},
     "pure": {"PT": "pura", "EN": "pure"},
     "Error loading model: {e}": {"PT": "Erro ao carregar modelo: {e}", "EN": "Error loading model: {e}"},
     "Error reading CSV: {e}": {"PT": "Erro ao ler CSV: {e}", "EN": "Error reading CSV: {e}"},
@@ -704,6 +738,22 @@ if _IS_PUBLIC_DEMO:
 # ──────────────────────────────────────────────────────────────────────────
 # 7 Tabs
 # ──────────────────────────────────────────────────────────────────────────
+
+# Legenda de agrupamento lógico das 8 abas. Só texto (st.caption) acima da
+# barra nativa — nada de CSS sobre o widget do Streamlit nem troca de st.tabs
+# por accordion/sidebar: as abas continuam exatamente as mesmas, isto só diz
+# em voz alta a sequência que elas já seguem.
+st.caption(
+    "① Preparar: Projeto · Dados · Pré-processamento  →  "
+    "② Executar: Modelo  →  "
+    "③ Analisar: Validação · Predição · Relatórios  →  "
+    "④ Referência: Sobre"
+    if st.session_state.lang == "PT" else
+    "① Prepare: Project · Data · Preprocessing  →  "
+    "② Run: Model  →  "
+    "③ Analyse: Validation · Prediction · Reports  →  "
+    "④ Reference: About"
+)
 
 (tab_proj, tab_dados, tab_preproc, tab_modelo,
  tab_valid, tab_pred, tab_rel, tab_sobre) = st.tabs([

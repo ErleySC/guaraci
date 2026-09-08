@@ -41,7 +41,48 @@ __all__ = [
     "append_linearity_robustness_model_card",
     "append_correcao_sinal_model_card",
     "append_politica_pooled_local_model_card",
+    "save_design_audit",
+    "load_design_audit",
 ]
+
+# Auditoria de delineamento (Bloco 11) persistida tambem em JSON, ao lado do
+# model card. O model card ja' traz os mesmos achados em prosa (para leitura
+# humana); o JSON existe porque as INTERFACES precisam dos achados
+# estruturados -- o painel de status da aba Projeto do app web mostra
+# severidade por achado, e extrair isso de volta do Markdown seria reparsear
+# texto que ja' foi serializado uma vez.
+NOME_AUDITORIA_DELINEAMENTO = "auditoria_delineamento.json"
+
+
+def save_design_audit(pasta: str, achados: List[Dict[str, str]]) -> None:
+    """Grava os achados da auditoria de delineamento em JSON na pasta de
+    resultados. Best-effort: falha de escrita nao derruba a execucao (o
+    model card ja' tem os mesmos achados em prosa)."""
+    import json
+    import logging
+    try:
+        os.makedirs(pasta, exist_ok=True)
+        caminho = os.path.join(pasta, NOME_AUDITORIA_DELINEAMENTO)
+        with open(caminho, "w", encoding="utf-8") as f:
+            json.dump(achados, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        logging.getLogger(__name__).warning(
+            "auditoria de delineamento nao persistida em JSON: %s", e)
+
+
+def load_design_audit(pasta: str) -> List[Dict[str, str]]:
+    """Le os achados gravados por `save_design_audit`. Lista vazia quando o
+    arquivo nao existe (execucao anterior a este formato) ou esta ilegivel --
+    quem chama deve tratar vazio como "nao ha informacao", nunca como
+    "nenhum problema encontrado"."""
+    import json
+    caminho = os.path.join(pasta, NOME_AUDITORIA_DELINEAMENTO)
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            dados = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+    return dados if isinstance(dados, list) else []
 
 
 def pls_model_metrics(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,

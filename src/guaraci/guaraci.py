@@ -79,6 +79,7 @@ _load_config = pq.load_config
 # nao ha efeito colateral — o antigo carregamento por caminho (spec_from_file)
 # so existia porque os modulos eram scripts soltos na raiz.
 import guaraci.cli_assistente as _cli
+import guaraci.preferencias_visuais as _prefs_visuais
 
 def _try(name, fallback=None):
     return getattr(_cli, name, fallback if fallback is not None else {})
@@ -90,6 +91,7 @@ PROFILES             = _try("PROFILES")
 PROFILE_DESC         = _try("PROFILE_DESC")
 PROFILE_KEY_SUMMARY  = _try("PROFILE_KEY_SUMMARY")
 _PALETAS_COR          = _try("PALETAS_COR")
+_aplicar_paleta       = _cli.apply_palette
 _FONT_PRESETS         = _try("FONT_PRESETS")
 _TECNICAS             = _try("TECNICAS")
 _REFERENCIAS_GUARACI  = _try("REFERENCIAS_GUARACI")
@@ -151,26 +153,22 @@ __all__ = [
 # Agora as tres leem/gravam direto em _USER_DIR, no mesmo padrao ja usado
 # por `_cod_usr`/`_salvar_cod` (que sempre funcionaram) e pelos demais
 # arquivos de estado (_CFG_PATH, _LANG_FLAG, _MODO_FLAG).
+#
+# Leitura/escrita movidas para `guaraci.preferencias_visuais` (2026-09-08):
+# a aba Modelo do app web precisa do MESMO arquivo (paleta escolhida na CLI
+# aparece selecionada na web e vice-versa) e nao pode importar este modulo
+# (5 mil linhas + rich). Aqui ficam so' os wrappers com a apresentacao de
+# erro da CLI.
 def _carregar_visual_cfg() -> dict:
-    """Config visual (paleta/fonte/grid/alpha/dpi) de _VISUAL_PATH.
-
-    Arquivo ausente ou corrompido -> {} (defaults do matplotlib), nunca
-    excecao: configuracao cosmetica nao pode impedir uma analise de rodar.
-    """
-    try:
-        p = _VISUAL_PATH
-        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+    """Config visual (paleta/fonte/grid/alpha/dpi) de _VISUAL_PATH."""
+    return _prefs_visuais.load_visual_config(_VISUAL_PATH)
 
 def _salvar_visual_cfg(d: dict) -> None:
     """Grava a config visual. Falha de escrita AVISA em vez de sumir em
     silencio -- mesma licao de `_salvar_cod`: o usuario nao pode ver um
     'salvo' que nao aconteceu."""
     try:
-        _USER_DIR.mkdir(parents=True, exist_ok=True)
-        _VISUAL_PATH.write_text(
-            json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+        _prefs_visuais.save_visual_config(d, _VISUAL_PATH)
     except OSError as e:
         console.print(f"[err]✗ Falha ao salvar config visual: {e}[/err]")
 
@@ -4990,14 +4988,10 @@ def _rodar_pipeline(cfg: Config) -> None:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         vcfg = _carregar_visual_cfg()
-        paleta = _PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
-        try: plt.style.use(paleta.get("style", "default"))
-        except OSError:
-            pass   # nome de estilo matplotlib desconhecido -- mantem o default
-        cores = paleta.get("cores")
-        if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
-        cmap = paleta.get("cmap")
-        if cmap: plt.rcParams["image.cmap"] = cmap
+        # Implementacao unica em cli_assistente.apply_palette (compartilhada
+        # com a aba Modelo do app web) -- e' ela que tambem ativa a paleta em
+        # `paleta_cores`, sem o que a escolha nao chegava as figuras.
+        _aplicar_paleta(vcfg.get("paleta", "qualitativo"))
         fp = _FONT_PRESETS.get(vcfg.get("tamanho_fonte","m"), {})
         for k, v in fp.items(): plt.rcParams[k] = v
         if vcfg.get("grid_major", True):

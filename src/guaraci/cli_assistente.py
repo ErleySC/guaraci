@@ -229,6 +229,43 @@ PALETAS_COR: Dict[str, Dict[str, Any]] = {
     },
 }
 
+def apply_palette(nome: str) -> None:
+    """Ativa a paleta `nome` de `PALETAS_COR` para as figuras da proxima
+    execucao. Implementacao UNICA, usada pela CLI (`guaraci.py`, antes de
+    `executar()`) e pelo app web (aba Modelo) -- antes so' existia inline na
+    CLI.
+
+    Faz duas coisas, porque o projeto tem dois caminhos de cor:
+
+    1. `paleta_cores.set_active_palette` -- e' o que muda a cor das figuras
+       de fato. Toda figura do pipeline passa `color=color(i)` /
+       `map_class_colors()` explicitamente; nenhuma usa o ciclo padrao do
+       matplotlib. Ate' 2026-09-08 a escolha de paleta so' mexia no item 2
+       abaixo, ou seja: nao mudava cor nenhuma nas figuras gravadas.
+    2. `rcParams` (prop_cycle/cmap/style) -- para o que porventura NAO passe
+       cor explicita, e para o `style`/`cmap` (ex.: tema escuro, viridis).
+
+    Nome desconhecido = no-op (volta ao padrao), nunca excecao: escolha
+    cosmetica nao derruba uma analise.
+    """
+    import matplotlib.pyplot as plt
+
+    from guaraci.paleta_cores import set_active_palette
+
+    paleta = PALETAS_COR.get(nome) or {}
+    cores = paleta.get("cores")
+    set_active_palette(cores)
+    try:
+        plt.style.use(paleta.get("style", "default"))
+    except OSError:
+        pass   # nome de estilo matplotlib desconhecido -- mantem o default
+    if cores:
+        plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
+    cmap = paleta.get("cmap")
+    if cmap:
+        plt.rcParams["image.cmap"] = cmap
+
+
 FONT_PRESETS: Dict[str, Dict[str, Any]] = {
     "xs": {"font.size": 8,  "axes.titlesize": 9,  "axes.labelsize": 8,
            "xtick.labelsize": 7, "ytick.labelsize": 7, "legend.fontsize": 7},

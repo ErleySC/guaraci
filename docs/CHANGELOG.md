@@ -6,6 +6,28 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-09-08 — web/figuras: a escolha de paleta
+             de cores passou a mudar de fato a cor das figuras. Ate' aqui
+             ela so' alterava rcParams["axes.prop_cycle"], e nenhuma figura
+             do pipeline usa o ciclo padrao do matplotlib (todas passam
+             color=color(i)/map_class_colors) -- o menu confirmava a troca e
+             a figura saia identica. paleta_cores ganhou paleta ATIVA
+             (set_active_palette/get_active_palette), consultada por
+             color()/map_class_colors(); default None mantem o
+             comportamento historico. Paleta com menos cores que classes e'
+             recusada com aviso, para nunca dar a mesma cor a duas classes.
+             Implementacao unica em cli_assistente.apply_palette (CLI +
+             app web) e preferencia compartilhada em
+             preferencias_visuais.py (mesmo ~/.guaraci/visual_config.json).
+             Tambem: faixa de decisao (LOD/LOQ, Bloco 24) passou a aparecer
+             na aba Predicao do app web -- ja' era calculada e ja' saia na
+             CLI, faltava so' na web (paridade agora testada); painel de
+             status com dado real no topo da aba Projeto (achados da
+             auditoria de delineamento persistidos em
+             auditoria_delineamento.json); e correcao da aba Relatorios,
+             que quebrava inteira com exatamente 2 execucoes armazenadas
+             (st.slider com min_value == max_value).
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-20 — pipeline: terceiro caminho de
              quantificacao (regressao PLS pooled, sem separar por especie)
              extraido de dentro de executar() para pls_regressao_pooled().

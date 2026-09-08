@@ -134,7 +134,19 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   **representação gráfica dedicada** (`figS3_merito_regressao.png`, ver
   seção 5) — LOD/LOQ e seletividade por espécie lado a lado, com indicação
   explícita ("n/a") para espécies sem réplicas físicas suficientes para
-  estimar o ruído instrumental. **RPD/RER** (`chemometric_stats.rpd_rer`)
+  estimar o ruído instrumental.
+  **Faixa de decisão em 3 estados (Bloco 24):** todo teor previsto é
+  categorizado contra esse mesmo LOD/LOQ — `nao_detectavel` (< LOD),
+  `zona_cinzenta` (entre LOD e LOQ: detecção possível, quantificação não
+  confiável) e `quantificado_com_confianca` (≥ LOQ). As colunas
+  `faixa_decisao`, `lod` e `loq` saem no CSV de predição da **CLI e da aba
+  Predição do app web** (paridade garantida por
+  `tests/test_paridade_predicao_cli_web.py`); na web a coluna vem colorida
+  e há um resumo com a contagem de amostras em cada faixa. Quando o modelo
+  da espécie não tem LOD/LOQ persistido (ou não computável, sem réplicas
+  suficientes), a faixa é `None` e a interface diz isso — nunca
+  "não detectável" por omissão.
+  **RPD/RER** (`chemometric_stats.rpd_rer`)
   já estavam implementados antes deste bloco — reverificado por leitura
   direta do código nesta revisão, não presumido da memória: razão SD/SEP e
   amplitude/SEP, com as faixas de interpretação de Williams (2014), já
@@ -970,6 +982,12 @@ próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
 
 ## 6 Fluxo típico na interface web
 
+Acima da barra de abas há uma legenda do agrupamento lógico das 8 abas:
+**① Preparar** (Projeto · Dados · Pré-processamento) → **② Executar**
+(Modelo) → **③ Analisar** (Validação · Predição · Relatórios) →
+**④ Referência** (Sobre). É só um rótulo de leitura — a navegação continua
+sendo a mesma barra de abas.
+
 1. **Projeto** — preencha nome, autor, instituição e objetivo (campos
    descritivos, entram na capa dos relatórios).
 2. **Dados** — faça *upload* de um CSV ou aponte a pasta de espectros `.dx`
@@ -985,6 +1003,49 @@ próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
    resultados.
 6. **Sobre** — identidade do projeto, comparativo com softwares
    comerciais, licença (GPL-3.0-or-later) e como citar (APA/ABNT/BibTeX).
+
+### 6.1 Painel de status (topo da aba Projeto)
+
+No topo da aba **Projeto** há um resumo do estado real da sessão. Ele só
+aparece quando existe dado de verdade:
+
+- **Sem nada carregado** — uma linha dizendo para começar pela aba Dados.
+  Não há cartão vazio nem número zerado fingindo ser resultado.
+- **Com prévia de dados carregada** (botão *Load spectra preview* na aba
+  Dados) — contagem de espectros e classes da prévia; "variáveis
+  espectrais" fica `—`, porque esse número só existe depois de rodar.
+- **Com execução concluída** — contagens lidas do `resumo_modelo.txt`
+  daquela execução (amostras, variáveis, classes), matriz/técnica do
+  perfil ativo, o estado da validação pública correspondente (quando a
+  matriz consta da tabela consolidada de `docs/VALIDACAO_PUBLICA.md`) e o
+  resultado da **auditoria de delineamento** (seção 2.4) daquela execução:
+  quantos críticos/avisos e o detalhe por checagem.
+
+Quando a execução é antiga demais para ter o registro da auditoria em
+disco, o painel diz *"auditoria indisponível"* — nunca "nenhum problema
+encontrado", que seria uma afirmação sem lastro.
+
+### 6.2 Paleta de cores das figuras (aba Modelo → 🖼️ Figures)
+
+O seletor lista o catálogo de paletas do projeto (padrão, seguro para
+daltonismo — Wong 2011/Okabe-Ito, escala de cinza, viridis, publicação
+científica, tema escuro), com uma amostra das cores reais de cada uma. A
+escolha é gravada no MESMO arquivo de preferências que a CLI usa
+(`~/.guaraci/visual_config.json`), então vale para as duas interfaces.
+
+Duas regras importantes:
+
+- A paleta vale para as figuras da **próxima execução** — figuras já
+  gravadas em disco não são recoloridas (isso exigiria rodar o pipeline
+  de novo).
+- Uma paleta com **menos cores que o número de classes** é recusada na
+  hora de desenhar (daria a mesma cor a duas espécies): o pipeline volta à
+  paleta de máxima distintividade e registra o motivo no log.
+
+> Corrigido em 2026-09-08: até então a escolha de paleta só alterava
+> `rcParams["axes.prop_cycle"]` do matplotlib, e **nenhuma** figura do
+> pipeline usa esse ciclo (todas passam a cor explicitamente). O menu
+> confirmava a troca e as figuras saíam idênticas.
 
 Tema claro/escuro: menu ⋮ → *Settings* → *Theme* (segue a preferência do
 sistema operacional por padrão).

@@ -328,6 +328,7 @@ from guaraci.resultados_io import (   # noqa: F401
     generate_model_card, append_regression_model_card, append_heatmap_summary,
     append_identification_model_card, append_purity_model_card,
     append_linearity_robustness_model_card,
+    save_design_audit, load_design_audit,
 )
 
 # Linearidade formal (lack-of-fit) e protocolo de robustez (Bloco 13d).
@@ -2549,6 +2550,13 @@ def executar(cfg: Config):
     # Model Card (Mitchell et al. 2019) -- mesmo ponto/dados do resumo acima.
     generate_model_card(pasta_logs, cfg, resumo, _hw, classes_unicas)
     log.info(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
+
+    # Auditoria de delineamento tambem em JSON (mesmos achados do model card,
+    # ja calculados na etapa [0/7]): o painel de status da aba Projeto mostra
+    # severidade por checagem, e ler isso de volta do Markdown seria
+    # reparsear um texto que ja' foi serializado uma vez.
+    save_design_audit(pasta_logs, resumo["auditoria_delineamento"])
+    log.info(f"  -> {os.path.join(pasta_logs, 'auditoria_delineamento.json')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
     if cfg.run_benchmark and should_generate(cfg, "benchmark"):

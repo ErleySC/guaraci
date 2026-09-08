@@ -3191,6 +3191,10 @@
         "assinatura": "(i: 'int') -> 'str'",
         "forma": "funcao"
       },
+      "get_active_palette": {
+        "assinatura": "() -> 'Optional[List[str]]'",
+        "forma": "funcao"
+      },
       "get_edge_color": {
         "assinatura": "(hex_cor: 'str') -> 'str'",
         "forma": "funcao"
@@ -3201,6 +3205,10 @@
       },
       "map_class_markers": {
         "assinatura": "(classes) -> 'Dict[str, str]'",
+        "forma": "funcao"
+      },
+      "set_active_palette": {
+        "assinatura": "(cores: 'Optional[Sequence[str]]') -> 'None'",
         "forma": "funcao"
       }
     },
@@ -3814,6 +3822,24 @@
         "forma": "funcao"
       }
     },
+    "preferencias_visuais": {
+      "USER_DIR": {
+        "forma": "constante",
+        "tipo": "Path"
+      },
+      "VISUAL_PATH": {
+        "forma": "constante",
+        "tipo": "Path"
+      },
+      "load_visual_config": {
+        "assinatura": "(caminho: 'Optional[Path]' = None) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "save_visual_config": {
+        "assinatura": "(d: 'Dict[str, Any]', caminho: 'Optional[Path]' = None) -> 'None'",
+        "forma": "funcao"
+      }
+    },
     "preprocessamento": {
       "AirPLS": {
         "bases": [
@@ -3951,8 +3977,16 @@
         "assinatura": "(pasta: 'str', cfg: \"'Config'\", resumo: 'Dict[str, object]', hw: 'Dict[str, Any]', classes_unicas: 'np.ndarray') -> 'None'",
         "forma": "funcao"
       },
+      "load_design_audit": {
+        "assinatura": "(pasta: 'str') -> 'List[Dict[str, str]]'",
+        "forma": "funcao"
+      },
       "pls_model_metrics": {
         "assinatura": "(modelo: 'PLSRegression', X: 'np.ndarray', Y: 'np.ndarray', Y_cv: 'np.ndarray') -> 'Tuple[float, float, float]'",
+        "forma": "funcao"
+      },
+      "save_design_audit": {
+        "assinatura": "(pasta: 'str', achados: 'List[Dict[str, str]]') -> 'None'",
         "forma": "funcao"
       },
       "save_identifiers": {
@@ -3971,6 +4005,10 @@
       },
       "parse_accuracy_by_class": {
         "assinatura": "(resumo: 'str') -> 'Dict[str, float]'",
+        "forma": "funcao"
+      },
+      "parse_dataset_counts": {
+        "assinatura": "(resumo: 'str') -> 'Dict[str, Optional[int]]'",
         "forma": "funcao"
       },
       "parse_model_metrics": {
@@ -4308,6 +4346,24 @@
       },
       "wold_test": {
         "assinatura": "(pipeline_factory: 'Callable[[], Pipeline]', X: 'np.ndarray', Y_bin: 'np.ndarray', y_int: 'np.ndarray', cv, n_perm: 'int', seed: 'int', groups: 'Optional[np.ndarray]' = None, n_jobs: 'int' = 1) -> 'Dict[str, object]'",
+        "forma": "funcao"
+      }
+    },
+    "validacao_publica": {
+      "CABECALHO_TABELA": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "find_rows_for_matrix": {
+        "assinatura": "(tabela: 'List[Dict[str, str]]', matriz: 'Optional[str]') -> 'List[Dict[str, str]]'",
+        "forma": "funcao"
+      },
+      "load_consolidated_table": {
+        "assinatura": "(raiz: 'Path') -> 'List[Dict[str, str]]'",
+        "forma": "funcao"
+      },
+      "parse_consolidated_table": {
+        "assinatura": "(texto: 'str') -> 'List[Dict[str, str]]'",
         "forma": "funcao"
       }
     }

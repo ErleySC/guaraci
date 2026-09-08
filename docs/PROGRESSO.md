@@ -3622,3 +3622,115 @@ concorrente tem") — mais uma nota explícita ao lado da tabela dizendo
 que Kennard-Stone/transferência de calibração NÃO são reivindicados
 como diferenciais, para que a mudança não pareça contradizer a decisão
 anterior sobre esses dois itens especificamente.
+
+---
+
+# PROGRESSO — Passos 188-193: mockup web v3 implementado no app real (2026-09-08)
+
+Pedido do usuário: pegar o que tem valor real nos mockups HTML/SVG
+(`guaraci_web_mockup_v3.html`) e implementar **dentro** da arquitetura
+Streamlit já em produção — 8 abas sequenciais, `design_tokens.py`, tema
+nativo — sem sidebar, sem accordion e sem CSS `!important` sobre widget
+nativo (tentativa anterior quebrou ao trocar de tema; hoje a cor vem de
+`st.context.theme`). Regra permanente da sessão: **evidência ou silêncio**
+— nenhum número exibido pode ser fixo no código, como os "934 espectros"
+fictícios do mockup.
+
+## Passo 188 — Faixa de decisão (LOD/LOQ) na aba Predição
+
+Achado ao ler o código antes de escrever: a faixa de decisão do Bloco 24
+**já era calculada** (`QuantificationResult.faixa_decisao`, contra o
+LOD/LOQ do Bloco 12) e **já saía na CLI** (`guaraci.py:_menu_prediction`,
+colunas `faixa_decisao`/`lod`/`loq`) — mas a aba Predição do app web
+montava a tabela sem essas 3 colunas. Duas interfaces, dois resultados
+para a MESMA predição. Nada foi recalculado: só o *wiring* que faltava.
+
+Na web: coluna `faixa_decisao` colorida pelos design tokens (3 estados) e
+um resumo com a contagem por faixa (`st.progress` por zona), a partir dos
+mesmos objetos `resultados_cego` que a CLI usa. Quando não há LOD/LOQ
+persistido, o painel **diz isso** em vez de contar zero.
+
+Contrato novo: `tests/test_paridade_predicao_cli_web.py` compara por AST o
+conjunto de colunas `df_res[...]` da CLI e da web — a web pode apresentar
+como quiser, mas não pode omitir campo que a CLI entrega.
+
+## Passo 189 — A paleta de cores não chegava às figuras (bug real)
+
+Medido antes de implementar o seletor pedido pelo mockup: `grep -rn
+"prop_cycle" src/` retorna **uma** ocorrência (`guaraci.py:4998`), e
+**nenhuma** figura do pipeline usa o ciclo padrão do matplotlib — todas
+passam `color=color(i)`/`map_class_colors()` explicitamente
+(`figuras.py`). Ou seja: o menu Visualização → Paleta da CLI confirmava a
+escolha, gravava em `visual_config.json`, e as figuras saíam **idênticas**.
+Expor esse mecanismo na web como estava seria vender um botão que não faz
+nada.
+
+Correção: `paleta_cores` ganhou paleta ATIVA (`set_active_palette`/
+`get_active_palette`), consultada por `color()`/`map_class_colors()`.
+Default `None` = comportamento histórico intacto (nenhuma figura muda de
+cor sem escolha explícita). Paleta com **menos cores que classes** é
+recusada com aviso no log — duas espécies com a mesma cor é um gráfico que
+mente, pior que ignorar a escolha.
+
+Anti-duplicação: `cli_assistente.apply_palette(nome)` é a implementação
+ÚNICA (ativa a paleta + rcParams), usada pela CLI e pela web; a leitura/
+escrita da preferência saiu para `preferencias_visuais.py`, para as duas
+interfaces lerem o MESMO `~/.guaraci/visual_config.json` (a CLI não podia
+ser importada pela web: 5 mil linhas + rich).
+
+Na web: seletor na aba Modelo → 🖼️ Figures, com amostra das cores reais do
+catálogo. Decisão de UX registrada: a paleta vale para a **próxima
+execução** — recolorir figura já gravada exigiria rodar o pipeline de novo,
+então não há "pré-visualização instantânea" do gráfico real (a amostra de
+cor é instantânea; a figura, não).
+
+## Passo 190 — Painel de status no topo da aba Projeto
+
+Decisão de posicionamento: **não** é uma 9ª aba, e não é dashboard sempre
+visível. Fica no topo da aba Projeto (que já é a primeira do fluxo), e só
+popula quando existe estado real. Sem dado: uma linha dizendo para começar
+pela aba Dados — nunca cartão vazio.
+
+Fontes, todas reais: contagens de `resumo_modelo.txt` da execução
+(`resumo_parse.parse_dataset_counts`, tolerante às chaves em PT dos runs
+antigos) ou da prévia da aba Dados (agora guardada em
+`st.session_state["previa_dados"]`); matriz/técnica do perfil ativo
+cruzada com a tabela consolidada de `docs/VALIDACAO_PUBLICA.md`; e os
+achados da auditoria de delineamento **daquela execução**.
+
+Dois suportes criados para isso, ambos evitando duplicação:
+- `validacao_publica.py` — o parser da tabela consolidada saiu de
+  `scripts/gerar_vault_obsidian.py` (que agora importa de lá; teste de
+  paridade garante saída idêntica).
+- `resultados_io.save_design_audit`/`load_design_audit` — os achados do
+  Bloco 11, que já iam em prosa para o model card, passam a ser gravados
+  também como `auditoria_delineamento.json`; extrair de volta do Markdown
+  seria reparsear texto já serializado uma vez.
+
+Ausência de registro é exibida como "auditoria indisponível", nunca como
+"nenhum problema encontrado".
+
+## Passo 191 — Legenda de agrupamento das 8 abas
+
+Uma linha de `st.caption` acima da barra: ① Preparar · ② Executar ·
+③ Analisar · ④ Referência. Sem CSS sobre o widget nativo, sem trocar
+`st.tabs` por outra coisa — só nomear em voz alta a sequência que as abas
+já seguem.
+
+## Passo 192 — Bug real achado pelo teste do painel: aba Relatórios
+
+Com **exatamente 2** pastas de execução armazenadas, a limpeza de
+resultados montava `st.slider(min_value=1, max_value=1)` — e o Streamlit
+**lança** nesse caso, derrubando a aba Relatórios inteira (nenhum download
+acessível). Nada a ver com o painel; apareceu porque o teste novo criou o
+segundo diretório. Corrigido (sem slider quando só há uma escolha
+possível) + regressão em `tests/test_reports.py`.
+
+## Passo 193 — Logo nova: BLOQUEADO, arquivo não recebido
+
+A instrução dizia "arquivo já enviado nesta conversa". Não havia anexo de
+imagem na conversa, e uma varredura em `~/Downloads` não achou nenhum
+candidato (só o mockup HTML e documentos). `assets/` segue com
+`guaraci_icon.png` (jul/2026) e `guaraci_icon.ico`. Nada foi trocado nem
+arquivado — sem o arquivo novo, "atualizar a logo" só poderia ser
+inventar uma. Pendência aberta, aguardando o arquivo.

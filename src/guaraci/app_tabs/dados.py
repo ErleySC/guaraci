@@ -160,6 +160,13 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
 
         if wn_p is not None and X_p is not None:
             cls_u = np.unique(np.asarray(labs_p))
+            # Guardado na sessao para o painel de status da aba Projeto poder
+            # mostrar contagem REAL antes de existir execucao -- os mesmos
+            # numeros exibidos logo abaixo, nao uma segunda contagem.
+            st.session_state["previa_dados"] = {
+                "n_espectros": int(len(X_p)),
+                "n_classes": int(len(cls_u)),
+            }
             st.markdown(T("**{n} spectra** · {k} classes: `{amostra}`{reticencias}").format(
                 n=len(X_p), k=len(cls_u),
                 amostra="`, `".join(cls_u[:8]),
