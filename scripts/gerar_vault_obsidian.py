@@ -49,6 +49,7 @@ from privacidade_amostras import (  # noqa: E402
 if str(_RAIZ / "src") not in sys.path:
     sys.path.insert(0, str(_RAIZ / "src"))
 
+from guaraci import app_nav  # noqa: E402
 from guaraci.validacao_publica import parse_consolidated_table  # noqa: E402
 
 _MANIFESTO = ".vault_manifest.json"
@@ -991,11 +992,15 @@ def gerar_identidade(achados: dict[str, str], decisoes: dict[str, str]) -> dict[
     corpo_visual = (
         "Paleta medida por amostragem de pixel real do ícone "
         "(`assets/guaraci_icon.png`), documentada em `docs/DESIGN.md` §1 -- "
-        "não são valores \"de olho\". **Atualização registrada em "
-        "`docs/DESIGN.md`, 2026-09-01:** o caminho A (migração completa "
-        "para esta paleta, laranja como cor primária) foi aprovado e já "
-        "está implementado em `design_tokens.py`/`guaraci_theme.py` -- "
-        "não é mais só uma proposta.\n\n"
+        "não são valores \"de olho\". **2026-09-01:** o caminho A "
+        "(laranja como cor primária) foi aprovado e implementado em "
+        "`design_tokens.py`/`guaraci_theme.py`. **2026-09-08:** a marca foi "
+        "trocada e a paleta abaixo foi REAMOSTRADA da marca nova -- os "
+        "tokens implementados continuam sendo os derivados da marca "
+        "anterior, de propósito (trocar cor de CLI+web+cabeçalhos é decisão "
+        "de produto, não consequência de trocar um arquivo de imagem). A "
+        "comparação lado a lado das duas amostragens está em "
+        "`docs/DESIGN.md` §1.4, registrada como pendência explícita.\n\n"
         "## Paleta\n" + "\n".join(linhas_paleta) +
         ("\n\n## Regras de uso (a cor carrega significado, não decoração)\n" +
          "\n".join(regras) if regras else "") +
@@ -1010,25 +1015,32 @@ def gerar_identidade(achados: dict[str, str], decisoes: dict[str, str]) -> dict[
 
     # -- Mascote.md -----------------------------------------------------------
     corpo_mascote = (
-        "Cachorro cientista de jaleco branco, cocar com folha/flor "
-        "(elemento indígena/amazônico), sentado com um notebook (tela "
-        "mostrando um sol estilizado e um gráfico de barras) e um "
-        "erlenmeyer ao lado -- tudo dentro da silhueta maior de um "
-        "frasco/balão com gradiente laranja→verde e moldura dourada. "
-        "Descrição confirmada por inspeção direta de "
+        "Marca de 2026-09-08 (a anterior está em "
+        "`assets/legado/guaraci_icon_2026-07.png`): a silhueta em traço de "
+        "um **frasco de Erlenmeyer** contendo, de cima para baixo, um "
+        "**sol** estilizado e a **cabeça de um cão**; na base do frasco, "
+        "duas estruturas **moleculares** (grafos de nós e ligações). "
+        "Coroando o frasco, um **cocar de nós e folhas** -- metade "
+        "esquerda em laranja, metade direita em verde, gradiente contínuo "
+        "entre as duas. Descrição confirmada por inspeção direta de "
         "`assets/guaraci_icon.png` (não só a partir do texto de "
         "`docs/DESIGN.md`).\n\n"
-        "**O que representa:** identidade regional amazônica (o cocar, a "
-        "paleta laranja/verde) combinada com ciência aplicada (jaleco, "
-        "notebook, gráfico, vidraria de laboratório) -- a mesma "
-        "combinação que dá nome ao projeto (Guaraci, divindade solar "
-        "Tupi-Guarani) e à sua origem real (autenticação de óleos "
-        "amazônicos por FT-NIR).\n\n"
-        "**Elemento reaproveitável:** o sol no notebook é o elemento mais "
-        "simples de isolar como marca gráfica -- silhueta reconhecível em "
-        "tamanho pequeno, já carrega a cor dourada (`docs/DESIGN.md` "
-        "§1.3) -- e já é o favicon/ícone do app através deste mesmo "
-        "arquivo.\n\n"
+        "**O que representa:** as mesmas duas ideias da marca anterior, "
+        "ditas de forma mais gráfica -- identidade regional amazônica (o "
+        "cocar, o gradiente laranja→verde) e ciência aplicada (vidraria, "
+        "grafo molecular). O sol é o nome do projeto (Guaraci, divindade "
+        "solar Tupi-Guarani) e agora ocupa o centro da composição, não "
+        "mais a tela de um notebook. O cão permanece como figura afetiva "
+        "da marca.\n\n"
+        "**Elemento reaproveitável:** o sol continua sendo o mais simples "
+        "de isolar como marca gráfica -- silhueta reconhecível em tamanho "
+        "pequeno, carrega a cor dourada (`docs/DESIGN.md` §1.3) -- e o "
+        "arquivo inteiro já é o favicon/ícone do app.\n\n"
+        "**Contraste (medido, `docs/DESIGN.md` §1.4):** a tinta mais "
+        "escura da marca (`#0E3724`) tem 1,40:1 contra o fundo do tema "
+        "escuro -- por isso a moldura da logo no cabeçalho do app tem "
+        "fundo claro fixo, onde dá 12,4:1 nos dois temas. O PNG em si é "
+        "transparente.\n\n"
         "A imagem está versionada em `assets/guaraci_icon.png` (e "
         "`assets/guaraci_icon.ico` para o ícone do executável Windows) -- "
         "link ao arquivo, não embutida nesta nota.\n\n"
@@ -1456,38 +1468,51 @@ def gerar_telas_cli(modulos_conhecidos: set[str]) -> dict[str, str]:
     return plano
 
 
-#: Ordem real das 8 abas (`app_quimiometria.py`, `st.tabs([...])` — Passo 186).
-_ABAS_WEB_ORDEM: list[str] = [
-    "projeto", "dados", "preprocessamento", "modelo",
-    "validacao", "predicao", "relatorios", "sobre",
-]
+#: Ordem real das telas da web. Vem de `guaraci.app_nav` (dado puro, sem
+#: Streamlit), NAO de uma lista repetida aqui: desde a reestruturacao de
+#: 2026-09-08 (Passo 195) a navegacao e' barra lateral com 2 telas fixas +
+#: 4 grupos, e uma copia manual passaria a mentir na primeira mudanca.
+_ABAS_WEB_ORDEM: list[str] = [p.chave for p in app_nav.todas_paginas()]
 
-_PADRAO_ABA_DOCSTRING = re.compile(r"Aba\s+(\d+)\s*\(([^)]+)\)\s*:\s*(.+)", re.S)
+
+def _grupo_da_tela(chave: str) -> str:
+    """Grupo numerado da tela; "tela fixa" para Inicio/Visualizacao."""
+    g = app_nav.grupo_da_pagina(chave)
+    return f"{g.numero} {g.rotulo_pt}" if g else "tela fixa"
+
+#: O docstring de modulo das telas antigas comeca com "Aba N (Nome):" --
+#: convencao anterior a' navegacao lateral. O nome e a ordem NAO sao mais
+#: lidos dali (vem de `app_nav`, fonte unica); a regex serve so' para tirar
+#: esse prefixo do resumo. As telas novas usam "Tela ...:" e caem no mesmo
+#: tratamento.
+_PADRAO_PREFIXO_DOCSTRING = re.compile(
+    r"^app_tabs/\w+\.py\s*[—-]\s*(?:Aba\s+\d+\s*\([^)]+\)|Tela[^:]*)\s*:\s*",
+    re.S)
 
 
 def parse_abas_web(modulos_conhecidos: set[str]) -> list[dict[str, Any]]:
-    """1 entrada por `src/guaraci/app_tabs/*.py` -- todos seguem a mesma
-    convenção real de docstring de módulo ("app_tabs/x.py — Aba N (Nome):
-    descrição"), verificada por leitura direta das 8 abas (Passo 186).
-    Nenhuma prosa é inventada aqui: número, nome e resumo vêm do parse
-    desse docstring; se um módulo novo não seguir a convenção, o resumo cai
-    no docstring bruto em vez de quebrar a geração."""
+    """1 entrada por tela declarada em `guaraci.app_nav` -- ordem, chave e
+    nome em ingles vem de la' (a mesma estrutura que a barra lateral usa),
+    nao de uma copia mantida a mao neste script. Do docstring de modulo sai
+    apenas o resumo, com o prefixo de convencao removido; nenhuma prosa e'
+    inventada aqui."""
     resultado = []
-    for nome in _ABAS_WEB_ORDEM:
+    for ordem, pagina in enumerate(app_nav.todas_paginas(), start=1):
+        nome = pagina.chave
         rel = f"src/guaraci/app_tabs/{nome}.py"
         texto = _ler(rel)
         arvore = ast.parse(texto)
         doc_modulo = ast.get_docstring(arvore) or ""
-        m = _PADRAO_ABA_DOCSTRING.search(doc_modulo)
-        numero = m.group(1) if m else "?"
-        titulo_en = m.group(2).strip() if m else nome
-        resumo = re.sub(r"\s+", " ", m.group(3)).strip() if m else doc_modulo.strip()
+        primeiro_paragrafo = doc_modulo.split("\n\n")[0]
+        resumo = re.sub(r"\s+", " ",
+                        _PADRAO_PREFIXO_DOCSTRING.sub("", primeiro_paragrafo)).strip()
         render_node = next(
             (n for n in ast.walk(arvore)
              if isinstance(n, ast.FunctionDef) and n.name == "render"), None)
         mods = set(re.findall(r"from guaraci\.(\w+) import", texto))
         resultado.append({
-            "modulo": nome, "caminho": rel, "numero": numero, "titulo_en": titulo_en,
+            "modulo": nome, "caminho": rel, "numero": ordem,
+            "titulo_en": pagina.rotulo_en,
             "resumo": resumo,
             "assinatura": _assinatura_funcao(render_node) if render_node else None,
             "doc_render": (ast.get_docstring(render_node) or "") if render_node else "",
@@ -1500,24 +1525,26 @@ def parse_abas_web(modulos_conhecidos: set[str]) -> list[dict[str, Any]]:
 def gerar_abas_web(abas: list[dict[str, Any]]) -> dict[str, str]:
     plano: dict[str, str] = {}
     for aba in abas:
-        corpo = [f"**Ordem:** aba {aba['numero']} de {len(abas)}  ·  **Módulo:** "
-                 f"`{aba['caminho']}`", "", aba["resumo"]]
+        corpo = [f"**Grupo:** {_grupo_da_tela(aba['modulo'])}  ·  "
+                 f"**Ordem na navegação:** {aba['numero']} de {len(abas)}  ·  "
+                 f"**Módulo:** `{aba['caminho']}`", "", aba["resumo"]]
         if aba["assinatura"]:
             corpo.append(f"\n## Função de renderização\n`{aba['assinatura']}`")
         if aba["doc_render"]:
             corpo.append("\n" + _resumo_docstring(aba["doc_render"], max_linhas=8))
         if aba["modulos_chamados"]:
             corpo.append("\n## Chama\n" + "\n".join(
-                f"- {_wikilink(f'{m}.py', 'chamado por esta aba web')}"
+                f"- {_wikilink(f'{m}.py', 'chamado por esta tela da web')}"
                 for m in aba["modulos_chamados"]))
         corpo.append(
             "\n## Documentação de referência\n`docs/MANUAL.md` §6 (Fluxo "
-            "típico na interface web) -- lista consolidada das 8 abas, sem "
-            "subseção própria por aba (ver `Paridade-CLI-Web.md`).")
+            "típico na interface web) -- lista consolidada das telas; "
+            "Início e Visualização têm subseção própria (§6.1 e §6.2), "
+            "as demais não (ver `Paridade-CLI-Web.md`).")
         corpo.append(
             "\n## Ver também\n"
             f"- {_wikilink('MOC-Telas-e-Fluxos', 'ponto de entrada de telas e fluxos')}\n"
-            f"- {_wikilink('Paridade-CLI-Web', 'cobertura desta aba na CLI')}")
+            f"- {_wikilink('Paridade-CLI-Web', 'cobertura desta tela na CLI')}")
         titulo = f"Web — {aba['titulo_en']}"
         fonte = [aba["caminho"]]
         if aba["linha_render"]:
@@ -1561,7 +1588,8 @@ def gerar_paridade_cli_web(modulos_conhecidos: set[str]) -> dict[str, str]:
     corpo = [
         "Cruzamento entre as telas/fluxos reais da CLI "
         "(`_SECOES_NAVEGAVEIS` + ações diretas de `main()`, `guaraci.py`) e "
-        "as 8 abas do aplicativo web (`app_quimiometria.py`).",
+        "as telas do aplicativo web (`app_quimiometria.py`, navegacao "
+        "lateral desde 2026-09-08).",
         "",
         "## Fluxos só na CLI (achado real, Passo 186 desta auditoria do "
         "vault — limitação de escopo aceita, não pendência aberta)",
@@ -1576,7 +1604,7 @@ def gerar_paridade_cli_web(modulos_conhecidos: set[str]) -> dict[str, str]:
         "Entrada de dados, pré-processamento, modelagem, validação, "
         "predição em amostras novas, relatórios e identificação do "
         "projeto existem nas duas interfaces (menu `[1]`-`[8]`/`[B]` da "
-        "CLI ↔ as 8 abas da web), compartilhando o mesmo motor "
+        "CLI ↔ as telas da web), compartilhando o mesmo motor "
         f"({_wikilink('pipeline.py', 'motor único das duas interfaces') if 'pipeline' in modulos_conhecidos else '`pipeline.py`'}) "
         "e a mesma `Config`/`config.yaml`.",
         "",
@@ -1620,13 +1648,13 @@ def gerar_moc_telas_fluxos(plano_cli: dict[str, str], plano_web: dict[str, str])
     stems_cli = {Path(p).stem: p for p in plano_cli}
     corpo = [
         f"Ponto de entrada das {len(plano_cli)} telas/ações da CLI e das "
-        f"{len(plano_web)} abas da web (Passo 186 desta auditoria do "
+        f"{len(plano_web)} telas da web (Passo 186 desta auditoria do "
         f"vault) — agrupadas pelo mesmo fluxo de trabalho já usado no "
         "painel principal da CLI (`docs/DESIGN.md` seção 4).",
         "",
         f"- {_wikilink('Paridade-CLI-Web', 'o que existe só numa interface, e por quê')}",
         "",
-        "## Web (8 abas, ordem real de `app_quimiometria.py`)",
+        "## Web (ordem real da barra lateral, de `app_nav.todas_paginas()`)",
     ]
     corpo += [f"- {_wikilink(Path(p).stem, 'aba do aplicativo web')}" for p in sorted(
         plano_web, key=lambda p: Path(p).stem)]
@@ -1835,7 +1863,7 @@ def gerar_mocs(tecnicas: dict[str, Any], modulos: dict[str, ModuloInfo],
         f"- {_wikilink('MOC-Validacoes', 'validações públicas')}\n"
         f"- {_wikilink('MOC-Decisoes', 'decisões e achados')}\n"
         f"- {_wikilink('MOC-Autoria-Seguranca', 'autoria, proveniência e segurança de dados')}\n"
-        f"- {_wikilink('MOC-Telas-e-Fluxos', 'telas da CLI e abas da web, com paridade documentada')}\n"
+        f"- {_wikilink('MOC-Telas-e-Fluxos', 'telas da CLI e da web, com paridade documentada')}\n"
         f"- {_wikilink('MOC-Documentos', 'documentos reais do projeto como notas navegáveis')}\n")
 
     return plano
@@ -2008,7 +2036,7 @@ a partir das fontes de verdade do repositório: `docs/PROGRESSO.md`,
 `docs/VALIDACAO_PUBLICA.md`, `docs/COMPATIBILITY.md`, `docs/DESIGN.md`,
 `CITATION.cff`, `src/guaraci/cli_assistente.py`, `src/guaraci/*.py`,
 `src/guaraci/guaraci.py` (dispatch da CLI), `app_quimiometria.py` +
-`src/guaraci/app_tabs/*.py` (abas da web), e os próprios documentos
+`src/guaraci/app_tabs/*.py` (telas da web), e os próprios documentos
 versionados do projeto (`08-Documentos/`, via `git ls-files`).
 
 **Não edite nada fora de `{_PASTA_PROTEGIDA}/` à mão.** Qualquer edição
@@ -2075,7 +2103,7 @@ Use-a para anotações pessoais, rascunhos, ligações manuais extras.
 | `50-Decisoes/` | parágrafos `**Decisão...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + `docs/COMPATIBILITY.md` (casos especiais) | `explicacao` |
 | `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + 1 resumo mínimo (tag `passo`, não `achado`) por `## Passo` que não caiu em nenhum parágrafo marcado — garante que todo passo tenha alguma nota (Passo 172) | `explicacao` (`referencia` se tag `passo`) |
 | `06-Autoria-e-Seguranca/` | `CITATION.cff`, `git log`, `scripts/privacidade_amostras.py`, `docs/VALIDACAO_PUBLICA.md` | `explicacao` |
-| `35-Telas-e-Fluxos/` | `_SECOES_NAVEGAVEIS`/`_I18N`/dispatch de `main()` (`guaraci.py`) para a CLI + docstring de módulo de `src/guaraci/app_tabs/*.py` para a web -- 1 nota por tela/ação real, mais `Paridade-CLI-Web.md` (cruzamento das duas interfaces) | `referencia` (`explicacao` para `Paridade-CLI-Web.md`) |
+| `35-Telas-e-Fluxos/` | `_SECOES_NAVEGAVEIS`/`_I18N`/dispatch de `main()` (`guaraci.py`) para a CLI + `app_nav.todas_paginas()` (ordem/nome) + docstring de módulo de `src/guaraci/app_tabs/*.py` (resumo) para a web -- 1 nota por tela/ação real, mais `Paridade-CLI-Web.md` (cruzamento das duas interfaces) | `referencia` (`explicacao` para `Paridade-CLI-Web.md`) |
 | `08-Documentos/` | 1 nota por documento real e VERSIONADO do projeto (`git ls-files` confirma no momento da geração); resumo = primeiro parágrafo real do arquivo | `referencia` |
 | `00-MOC/` + MOCs de categoria | gerados a partir dos planos acima | `referencia` |
 | `90-Canvas/` | gerados programaticamente a partir dos mesmos dados acima | — |

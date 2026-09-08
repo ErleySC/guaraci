@@ -106,7 +106,8 @@ def test_contagens_leem_resumo_no_formato_atual_em_ingles():
               "  Total variables : 759\n"
               "  Total classes   : 13\n")
     assert parse_dataset_counts(resumo) == {
-        "amostras": 1346, "variaveis": 759, "classes": 13}
+        "amostras": 1346, "variaveis": 759, "classes": 13,
+        "amostras_fisicas": None}
 
 
 def test_contagens_leem_runs_antigos_em_portugues():
@@ -116,12 +117,23 @@ def test_contagens_leem_runs_antigos_em_portugues():
               "  Total de variaveis  : 500\n"
               "  Total de classes    : 5\n")
     assert parse_dataset_counts(resumo) == {
-        "amostras": 137, "variaveis": 500, "classes": 5}
+        "amostras": 137, "variaveis": 500, "classes": 5,
+        "amostras_fisicas": None}
 
 
 def test_contagem_ausente_e_none_nunca_zero():
     """Zero se leria como "nenhuma amostra"; o correto e' "nao informado"."""
     assert parse_dataset_counts("  Total classes : 4\n") == {
-        "amostras": None, "variaveis": None, "classes": 4}
+        "amostras": None, "variaveis": None, "classes": 4,
+        "amostras_fisicas": None}
     assert parse_dataset_counts("") == {
-        "amostras": None, "variaveis": None, "classes": None}
+        "amostras": None, "variaveis": None, "classes": None,
+        "amostras_fisicas": None}
+
+
+def test_amostra_fisica_vem_do_numero_de_grupos_mae_id():
+    """'Amostra física' = grupo mae_id: é esse número, não o de espectros,
+    que diz quantos pontos de coleta independentes existem."""
+    resumo = ("  Total samples     : 1346\n"
+              "  N grupos mae_id   : 457\n")
+    assert parse_dataset_counts(resumo)["amostras_fisicas"] == 457

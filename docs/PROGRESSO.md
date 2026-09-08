@@ -3726,7 +3726,7 @@ acessível). Nada a ver com o painel; apareceu porque o teste novo criou o
 segundo diretório. Corrigido (sem slider quando só há uma escolha
 possível) + regressão em `tests/test_reports.py`.
 
-## Passo 193 — Logo nova: BLOQUEADO, arquivo não recebido
+## Passo 193 — Logo nova: BLOQUEADO, arquivo não recebido *(resolvido no Passo 194, mesmo dia)*
 
 A instrução dizia "arquivo já enviado nesta conversa". Não havia anexo de
 imagem na conversa, e uma varredura em `~/Downloads` não achou nenhum
@@ -3734,3 +3734,144 @@ candidato (só o mockup HTML e documentos). `assets/` segue com
 `guaraci_icon.png` (jul/2026) e `guaraci_icon.ico`. Nada foi trocado nem
 arquivado — sem o arquivo novo, "atualizar a logo" só poderia ser
 inventar uma. Pendência aberta, aguardando o arquivo.
+
+## Passo 194 — Logo nova instalada, medida e propagada à documentação
+
+O arquivo chegou (imagem colada na conversa; localizada em disco como
+`OneDrive/Imagens/Screenshots/Captura de tela 2026-09-08 024758.png`,
+461×478 RGBA). Marca nova: silhueta de Erlenmeyer contendo o sol e a cabeça
+do cão, moléculas na base, cocar de nós e folhas em gradiente laranja→verde.
+
+**Tratamento da imagem, com motivo medido.** O arquivo veio com fundo branco
+opaco (`#FDFDFD`, alpha 255 em toda a imagem), enquanto o ícone anterior era
+transparente (25% dos pixels com alpha 0). Convertido para transparente por
+preenchimento a partir da borda (só o branco CONECTADO À BORDA vira alpha 0 —
+os vazados internos do desenho, inclusive o miolo do sol, continuam opacos),
+com descontaminação da borda anti-aliased para não deixar halo claro sobre
+fundo escuro. Recortado ao conteúdo, centralizado em quadrado com 8% de
+respiro e reamostrado para 512×512 (o anterior era 256×256; 512 rende melhor
+na moldura de 96 px em tela de alta densidade). `.ico` regerado com os
+mesmos 6 tamanhos do anterior (16→256).
+
+Arquivos antigos **arquivados, não apagados**: `assets/legado/
+guaraci_icon_2026-07.png` e `.ico` (via `git mv`, histórico preservado).
+
+**Contraste medido, e a decisão que veio dele.** A tinta mais escura da marca
+(`#0E3724`, base do frasco) tem contraste **1,40:1** contra o fundo do tema
+escuro (`#0F1613`) — abaixo do mínimo de 3:1 para elemento gráfico (WCAG
+1.4.11), ou seja: some. Contra o fundo claro (`#F7F9FB`) dá 12,41:1. Decisão:
+manter o PNG transparente (flexível) e dar **fundo claro fixo** (`#FDFDFD`)
+à moldura `.gua-logo-frame` do cabeçalho — que é elemento NOSSO, não widget
+nativo do Streamlit, então não repete a regressão do CSS `!important`. Mesma
+convenção já usada nas figuras científicas ("papel" branco, intencional em
+qualquer tema). Verificado no app rodando, nos dois temas.
+
+**Paleta reamostrada (o documento afirmava proveniência que deixou de valer).**
+`docs/DESIGN.md` §1 diz que a paleta vem de amostragem de pixel da mascote —
+com a mascote trocada, a afirmação ficaria falsa. Reamostrado com o MESMO
+método (agrupamento por matiz HSV, moda + média dos 200 tons mais frequentes):
+
+| Papel | Marca 2026-07 | Marca 2026-09 |
+|---|---|---|
+| Laranja | `#FF6400` | `#D5672C` |
+| Dourado | `#FFC100` | `#F9A233` |
+| Verde | `#46A41C` | `#19824E` |
+| Escuro | `#181E21` (grafite neutro) | `#1E4935` (verde escuro) |
+| Claro | `#FFFBD4` (creme) | `#FFFFFF` (branco) |
+
+A marca nova **não tem neutro escuro** — o mais escuro dela é verde. Os
+tokens de `design_tokens.py`/`guaraci_theme.py` **não** foram alterados: mudar
+a cor de CLI, web e cabeçalhos de uma vez é decisão de produto, não
+consequência automática de trocar um arquivo de imagem. Registrado como
+pendência explícita em `docs/DESIGN.md` §1.4 (realinhar os tokens à marca
+nova, ou assumir a paleta do produto como independente da mascote).
+
+**Documentação propagada a partir do vault.** `docs/DESIGN.md` §1/§1.3/§1.4
+atualizados; a descrição da mascote em `scripts/gerar_vault_obsidian.py`
+(que era texto fixo descrevendo a marca ANTIGA — cachorro de jaleco com
+notebook) reescrita por inspeção direta da imagem nova; a nota de Identidade
+Visual agora declara a divergência tokens×marca em vez de afirmar que a
+paleta implementada é a da imagem atual. Vault regerado: 366 notas escritas.
+
+## Passo 195 — Reestruturação da interface web: barra lateral no lugar das 8 abas
+
+Mockup v4 pedido "à risca". **Reversão explícita de duas decisões
+anteriores** (registrada aqui porque contradiz o que o próprio PROGRESSO
+dizia): o Passo 191 tinha fixado "abas horizontais, sem sidebar" e havia a
+regra "não pintar widget nativo do Streamlit" — o mockup novo pede as duas
+coisas. Ambas revertidas a pedido, com salvaguardas:
+
+- O degradê da barra lateral é montado a partir dos tokens do tema
+  **ativo** (`design_tokens` lidos de `st.context.theme`), então ele se
+  redesenha ao trocar claro/escuro em vez de ficar preso a um tema — foi
+  exatamente esse acoplamento que quebrou a tentativa antiga.
+- Nenhum `!important`: o CSS complementa o widget, não briga com ele.
+
+`src/guaraci/app_nav.py` (novo) é dado puro de navegação, **sem importar
+Streamlit**: `PAGINAS_FIXAS` (Início, Visualização), `GRUPOS` (① Preparar ·
+② Executar · ③ Analisar · ④ Referência) e as consultas. As 8 telas antigas
+continuam todas alcançáveis; `st.tabs` virou roteador
+`st.session_state["pagina"]` + `st.rerun()`, com fallback que volta ao
+Início se a chave for desconhecida (em vez de renderizar página em branco).
+
+Dois contratos novos em `tests/test_app_nav.py`: (1) por AST, toda tela
+declarada no menu tem ramo no roteador — sem isso o item existiria e não
+desenharia nada; (2) cada uma das 10 telas abre sem exceção
+(parametrizado). Selos ao lado dos itens (`Dados 934` no mockup) só
+aparecem com número real: espectros da prévia, `cego`, `✓`.
+
+## Passo 196 — Tela Início (`app_tabs/inicio.py`)
+
+O painel de status saiu do topo da aba Projeto e virou tela própria: faixa
+de **próxima ação sugerida** (de `app_logic.next_action`) + quatro cartões
+(dados carregados · espectros médios por classe · resultado da predição ·
+faixa de decisão/teor).
+
+O mockup mostra "934 espectros", "97,3% Andiroba" e uma faixa de decisão
+desenhada. Nada disso foi copiado: sem dado real o cartão mostra `—` e diz
+o que falta. A barra de três zonas só é desenhada quando LOD e LOQ são
+finitos naquele resultado; sem eles a tela diz isso em vez de desenhar uma
+escala inventada. Contratos em `tests/test_painel_status_projeto.py`
+(inclusive a contra-prova `">934<" not in textos`).
+
+## Passo 197 — Tela Visualização (`app_tabs/visualizacao.py`)
+
+Consolida a personalização de cor, que estava dentro de Modelo → Figures.
+Três esquemas (padrão · daltonismo · **alto contraste**, catalogado agora
+em `cli_assistente.PALETAS_COR`), cor por classe e pré-visualização.
+
+O ponto que importa: a pré-visualização **não é uma simulação**. Ela chama
+`spectra_preview.plot_mean_spectra`, que passou a colorir via
+`paleta_cores.map_class_colors` em vez de um `tab10` fixo — é a mesma
+função que o pipeline usa. Provado em `tests/test_seletor_paleta_web.py`:
+trocar o esquema muda as cores efetivamente desenhadas nas linhas do eixo,
+e as cores por classe chegam à figura.
+
+## Passo 198 — Dois defeitos só visíveis no tema CLARO
+
+Verificação em navegador real nos dois temas (o escuro passou de primeira):
+
+1. **Grupo ① invisível.** A regra `background: transparent` valia só para
+   o `<details>` do expander; no tema claro o `<summary>` vem branco por
+   padrão e o rótulo (branco, para contrastar com o degradê) sumia dentro
+   dele — o grupo aparecia como uma caixa branca vazia. Corrigido
+   estendendo a regra a `summary` e `stExpanderDetails`.
+2. **Barra superior cortada.** `padding-top: 2.2rem` no `.block-container`
+   deixava a primeira linha (título + tema + ações) atrás da barra fixa do
+   Streamlit (Deploy / ⋮). Para 3,4rem.
+
+Nenhum dos dois aparecia no tema escuro — daí a verificação nos dois.
+
+## Passo 199 — Documentação da reestruturação
+
+`docs/MANUAL.md` §6 reescrita (navegação lateral, selos, barra superior),
+§6.1 agora descreve a tela Início e §6.2 a tela Visualização; a tabela do
+§1 não diz mais "8 abas guiadas". CHANGELOG e vault do Obsidian
+regenerados — `35-Telas-e-Fluxos/` é gerado dos docstrings de
+`app_tabs/*.py`, então as duas telas novas entram por ali.
+
+**Limitação registrada, não contornada:** o mockup traz um interruptor
+Claro/Escuro funcional. O Streamlit **não expõe API para trocar o tema por
+código** (`st.context.theme` é somente leitura, e forçar por CSS foi o que
+quebrou antes). A barra superior mostra o estado real do tema e o caminho
+⋮ → *Settings* → *Theme*, em vez de um botão que não funcionaria.

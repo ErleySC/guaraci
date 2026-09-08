@@ -39,6 +39,11 @@ _PADROES_CONTAGEM = {
     "amostras":  r"^\s*Total (?:de )?(?:samples|amostras)\s*[:=]\s*(\d+)",
     "variaveis": r"^\s*Total (?:de )?(?:variables|vari[aá]veis)\s*[:=]\s*(\d+)",
     "classes":   r"^\s*Total (?:de )?classes\s*[:=]\s*(\d+)",
+    # "Amostra fisica" = grupo mae_id (todas as replicas do mesmo ponto de
+    # coleta). E' o numero que importa para dizer se a validacao esta'
+    # protegida contra vazamento -- por isso aparece no painel de status ao
+    # lado do total de espectros.
+    "amostras_fisicas": r"^\s*N grupos mae_id\s*[:=]\s*(\d+)",
 }
 
 

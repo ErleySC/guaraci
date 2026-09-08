@@ -500,6 +500,14 @@
           "write"
         ]
       },
+      "NextAction": {
+        "bases": [
+          "tuple"
+        ],
+        "forma": "classe",
+        "init": null,
+        "metodos_publicos": []
+      },
       "collect_config": {
         "assinatura": "(cfg_base, valores: 'Dict')",
         "forma": "funcao"
@@ -530,6 +538,10 @@
       },
       "log_warnings": {
         "assinatura": "(txt: 'str') -> 'List[str]'",
+        "forma": "funcao"
+      },
+      "next_action": {
+        "assinatura": "(*, tem_dados: 'bool', tem_execucao: 'bool', achados_auditoria: 'Optional[List[Dict[str, str]]]' = None, tem_predicao: 'bool' = False, pt: 'bool' = True) -> 'NextAction'",
         "forma": "funcao"
       },
       "temp_upload_path": {

@@ -1,4 +1,4 @@
-"""app_tabs/relatorios.py — Aba 7 (Reports): downloads (ZIP/PDF/Word/Excel/
+"""app_tabs/relatorios.py — Tela (Reports): downloads (ZIP/PDF/Word/Excel/
 LaTeX/PPTX), limpeza de execuções antigas, Model Card, resumo e galeria de
 figuras. Extraído de app_quimiometria.py (item 18).
 

@@ -6,6 +6,52 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-09-08 — web/navegacao: as 8 abas horizontais
+             viraram BARRA LATERAL com duas telas fixas (Inicio,
+             Visualizacao) e quatro grupos numerados (1 Preparar / 2 Executar
+             / 3 Analisar / 4 Referencia). Reversao explicita de duas
+             decisoes anteriores, a pedido: "abas, sem sidebar" e "nao pintar
+             widget nativo do Streamlit". Salvaguardas: o degrade vem dos
+             tokens do tema ATIVO (design_tokens via st.context.theme), entao
+             se redesenha ao trocar claro/escuro em vez de ficar preso a um
+             tema; e nenhum !important. Estrutura de navegacao isolada em
+             app_nav.py (dado puro, sem importar Streamlit); st.tabs virou
+             roteador por st.session_state["pagina"] com fallback ao Inicio.
+             Dois contratos novos: por AST, toda tela do menu tem ramo no
+             roteador; e cada uma das 10 telas abre sem excecao.
+             Telas novas: Inicio (painel de status -- proxima acao sugerida +
+             4 cartoes; o mockup mostrava "934 espectros" e uma faixa
+             desenhada, aqui sem dado real o cartao mostra "—" e diz o que
+             falta) e Visualizacao (3 esquemas de cor, incluindo ALTO
+             CONTRASTE novo no catalogo, cor por classe e previa). A previa
+             nao e' simulacao: plot_mean_spectra passou a colorir via
+             map_class_colors em vez de um tab10 fixo, entao e' a mesma
+             funcao que o pipeline usa.
+             Dois defeitos so' visiveis no tema CLARO, achados em verificacao
+             de navegador nos dois temas e corrigidos: o cabecalho do
+             expander da barra lateral vinha branco (grupo 1 aparecia como
+             caixa vazia, rotulo branco sobre branco) e a barra superior
+             ficava atras da barra fixa do Streamlit (padding-top 2,2 -> 3,4rem).
+             LIMITACAO registrada: o mockup traz interruptor Claro/Escuro
+             funcional -- o Streamlit nao expoe API para trocar tema por
+             codigo (st.context.theme e' somente leitura); a barra superior
+             mostra o estado real e o caminho para trocar, em vez de um botao
+             que nao funcionaria.
+
+NAO LANCADO (pos-v31.9.0) — 2026-09-08 — identidade: marca nova (frasco com
+             sol + cabeca de cao, moleculas na base, cocar de nos/folhas em
+             gradiente laranja->verde) instalada em assets/guaraci_icon.png
+             (512x512, fundo tornado transparente por preenchimento a partir
+             da borda) e .ico regerado nos 6 tamanhos. Marca anterior
+             ARQUIVADA em assets/legado/guaraci_icon_2026-07.{png,ico}.
+             Moldura da logo no cabecalho ganhou fundo claro fixo: medido,
+             a tinta mais escura da marca (#0E3724) tem contraste 1,40:1
+             contra o fundo do tema escuro (WCAG 1.4.11 pede >= 3:1 para
+             elemento grafico) -- some sem a moldura. Paleta de docs/DESIGN.md
+             S1 REAMOSTRADA da marca nova (mesmo metodo); os tokens de
+             design_tokens.py/guaraci_theme.py NAO mudaram, e a divergencia
+             ficou registrada como pendencia explicita em S1.4.
+
 NAO LANCADO (pos-v31.9.0) — 2026-09-08 — web/figuras: a escolha de paleta
              de cores passou a mudar de fato a cor das figuras. Ate' aqui
              ela so' alterava rcParams["axes.prop_cycle"], e nenhuma figura

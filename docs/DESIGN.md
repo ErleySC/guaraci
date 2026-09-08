@@ -48,13 +48,19 @@ Extraída por amostragem de pixel real do PNG (`assets/guaraci_icon.png`),
 agrupando por matiz (HSV) e tirando a moda + média dos 200 tons mais
 frequentes de cada grupo — não são valores "de olho".
 
+> **Reamostrada em 2026-09-08**, com a troca da marca (ver §1.4). Os números
+> abaixo são os da marca ATUAL. Os tokens implementados hoje
+> (`design_tokens.py`/`guaraci_theme.py`) foram derivados da marca ANTERIOR
+> e **não** foram alterados nesta rodada — a comparação está em §1.4, como
+> decisão aberta, não como mudança silenciosa de cor do produto.
+
 | Papel | Hex (moda) | Hex (média, mais neutro) | Onde aparece na mascote |
 |---|---|---|---|
-| Laranja | `#FF6400` | `#E26900` | fundo gradiente (topo do balão/frasco) |
-| Dourado | `#FFC100` | `#FDA801` | moldura do balão, sol no laptop |
-| Verde | `#46A41C` | `#47890B` | fundo (base), folha no cocar |
-| Grafite escuro | `#181E21` | `#3E423F` | contorno, laptop, texto |
-| Creme claro | `#FFFBD4` | `#FDF2C7` | reflexo/luz, favo de mel de fundo |
+| Laranja | `#D5672C` | `#EE862D` | lado esquerdo do cocar de nós/folhas (23,2% dos pixels) |
+| Dourado | `#F9A233` | `#F3A334` | sol central dentro do frasco (11,0%) |
+| Verde | `#19824E` | `#397845` | lado direito do cocar, moléculas (29,5%) |
+| Verde escuro | `#1E4935` | `#1C4734` | contorno do frasco e do cão, base da marca (14,7%) |
+| Branco | `#FFFFFF` | `#FDFDFC` | vazados internos do desenho (21,5%) |
 
 ### 1.1 Variantes por estado (derivadas, HSL ±L)
 
@@ -86,11 +92,47 @@ frequentes de cada grupo — não são valores "de olho".
 
 ### 1.3 Elemento simbólico: o sol
 
-O sol no laptop da mascote é o elemento mais reaproveitável como marca
-gráfica isolada (funciona em tamanho pequeno, silhueta simples, já
-carrega a cor dourada). Proposta: usar como favicon/ícone de app (já é,
-via `guaraci_icon.png`) e como marcador no cabeçalho padrão de cada tela
-(seção 3).
+O sol continua sendo o elemento mais reaproveitável como marca gráfica
+isolada (funciona em tamanho pequeno, silhueta simples, carrega a cor
+dourada). Na marca de 2026-09 ele passou do laptop da mascote para **dentro
+do frasco**, no centro da composição — ganhou peso, não perdeu. Usado como
+favicon/ícone de app (via `guaraci_icon.png`) e como marcador no cabeçalho
+padrão de cada tela (seção 3).
+
+### 1.4 Troca de marca em 2026-09-08 — o que mudou, e o que NÃO mudou
+
+A marca anterior (cachorro cientista de jaleco, com cocar, notebook e
+erlenmeyer ao lado) foi substituída por uma composição mais gráfica: a
+silhueta de um **frasco de Erlenmeyer** contendo o **sol** e a **cabeça do
+cão**, com estruturas **moleculares** na base e um **cocar de nós e folhas**
+em gradiente laranja→verde no topo. Arquivo anterior preservado em
+`assets/legado/guaraci_icon_2026-07.png` (e `.ico`) — arquivado, não
+apagado.
+
+Diferenças medidas entre as duas amostragens (mesmo método):
+
+| Papel | Marca 2026-07 (moda) | Marca 2026-09 (moda) | Leitura |
+|---|---|---|---|
+| Laranja | `#FF6400` | `#D5672C` | menos saturado, mais terroso |
+| Dourado | `#FFC100` | `#F9A233` | puxou para laranja |
+| Verde | `#46A41C` | `#19824E` | saiu do verde-amarelado para verde-azulado |
+| Escuro | `#181E21` (grafite neutro) | `#1E4935` (verde escuro) | **a marca nova não tem neutro escuro** |
+| Claro | `#FFFBD4` (creme) | `#FFFFFF` (branco) | perdeu o tom quente |
+
+**O que NÃO mudou (de propósito):** os tokens em `design_tokens.py`
+(`primary`/`accent` etc.) e a paleta Rich do CLI (`guaraci_theme.py`).
+Trocá-los muda a cor de CLI, web e cabeçalhos de uma vez — é decisão de
+produto, não consequência automática de trocar um arquivo de imagem. Fica
+registrado aqui como pendência explícita: **realinhar os tokens à marca
+nova, ou assumir que a paleta do produto é independente da mascote.**
+
+Nota de contraste (medida, não estimada): a tinta mais escura da marca nova
+(`#0E3724`, base do frasco) tem contraste **1,40:1** contra o fundo do tema
+escuro (`#0F1613`) — invisível na prática (o mínimo para elemento gráfico é
+3:1, WCAG 1.4.11). Por isso a moldura da logo no cabeçalho do app tem fundo
+claro fixo (`#FDFDFD`), onde o contraste é **12,4:1** nos dois temas — mesma
+convenção já usada para as figuras científicas ("papel" branco, intencional
+em qualquer tema). O PNG em si continua com fundo transparente.
 
 ## 2. Tipografia
 
@@ -176,6 +218,18 @@ também já foram implementadas nas 18 abas do CLI e nas 8 do app web — ver
 commits `fcf3244` e `e07321d`. Só a tipografia (seção 2) segue sem decisão
 explícita — mantido o padrão nativo do Streamlit, nenhuma alternativa foi
 testada.
+
+**Atualização 2026-09-08**: o app **web** deixou de ter 8 abas horizontais —
+a navegação virou barra lateral com 2 telas fixas (Início, Visualização) e os
+mesmos 4 grupos de fluxo já usados como legenda (① Preparar · ② Executar ·
+③ Analisar · ④ Referência), a pedido do mockup v4. A estrutura vive em
+`src/guaraci/app_nav.py` (dado puro, sem Streamlit), e é dela que o gerador do
+vault lê a ordem das telas. Isso **reverte** duas decisões registradas antes:
+"abas horizontais, sem sidebar" e "não pintar widget nativo do Streamlit" — a
+segunda com duas salvaguardas que a tentativa antiga não tinha (cores vindas
+dos tokens do tema **ativo**, e nenhum `!important`). O menu da **CLI** (18
+telas em 6 grupos, seção 4 acima) não mudou. Ver `docs/MANUAL.md` §6 e
+`docs/PROGRESSO.md` Passos 195-199.
 
 ---
 

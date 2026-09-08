@@ -1,4 +1,4 @@
-"""app_tabs/dados.py — Aba 2 (Data): entrada de dados (.dx, CSV local/upload)
+"""app_tabs/dados.py — Tela (Data): entrada de dados (.dx, CSV local/upload)
 + prévia dos espectros. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations
@@ -166,6 +166,14 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
             st.session_state["previa_dados"] = {
                 "n_espectros": int(len(X_p)),
                 "n_classes": int(len(cls_u)),
+            }
+            # Espectros guardados (nao a figura): as telas Inicio e
+            # Visualizacao redesenham com a paleta ATIVA, o que faz a
+            # pre-visualizacao de cor ser a figura de verdade, nao uma
+            # simulacao. Amostra pequena (previa), nao o dataset inteiro.
+            st.session_state["previa_espectros"] = {
+                "wn": np.asarray(wn_p), "X": np.asarray(X_p),
+                "labels": np.asarray(labs_p),
             }
             st.markdown(T("**{n} spectra** · {k} classes: `{amostra}`{reticencias}").format(
                 n=len(X_p), k=len(cls_u),

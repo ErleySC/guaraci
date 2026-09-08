@@ -1,8 +1,12 @@
-"""Painel de status no topo da aba Projeto.
+"""Tela Início: painel de status do projeto.
 
 Contrato central (regra "evidência ou silêncio"): todo número exibido vem de
-execução real ou de `st.session_state`. Sem dado carregado, o painel diz
-isso em uma linha -- nunca mostra cartão vazio/zero como se fosse resultado.
+execução real ou de `st.session_state`. Sem dado carregado, o cartão diz
+isso -- nunca mostra número zerado como se fosse resultado.
+
+O painel saiu do topo da aba Projeto e virou a tela Início na
+reestruturação de 2026-09-08 (navegação lateral); os testes navegam via
+`session_state["pagina"]`.
 """
 from __future__ import annotations
 
@@ -45,6 +49,17 @@ def pasta_run(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def _abrir_inicio(**estado) -> AppTest:
+    at = AppTest.from_file(_APP, default_timeout=90)
+    at.session_state["lang"] = "PT"
+    at.session_state["pagina"] = "inicio"
+    for chave, valor in estado.items():
+        at.session_state[chave] = valor
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+    return at
+
+
 def _textos(at: AppTest) -> str:
     return "\n".join(
         [m.value for m in at.markdown] + [c.value for c in at.caption]
@@ -53,49 +68,34 @@ def _textos(at: AppTest) -> str:
 
 
 def test_sem_dado_nenhum_o_painel_diz_por_onde_comecar_e_nao_mostra_numero():
-    at = AppTest.from_file(_APP, default_timeout=60)
-    at.session_state["lang"] = "PT"
-    at.run()
-    assert not at.exception, [str(e) for e in at.exception]
-
-    assert "Nenhum dado carregado ainda" in _textos(at)
-    assert "Status do projeto" not in _textos(at)
-    # Nenhuma metrica de contagem inventada antes de existir dado.
-    rotulos = [m.label for m in at.metric]
-    assert "espectros" not in rotulos and "classes" not in rotulos
+    at = _abrir_inicio()
+    textos = _textos(at)
+    assert "Nenhum dado carregado ainda" in textos
+    # Nenhuma contagem inventada antes de existir dado. (O `>N<` é a forma
+    # como o cartão renderiza um número; procurar só "934" acharia o dígito
+    # dentro do base64 da logo.)
+    assert ">934<" not in textos and ">311<" not in textos
+    # E a proxima acao sugerida aponta para onde comecar.
+    assert "Carregue os espectros" in textos
 
 
 def test_com_previa_de_dados_mostra_as_contagens_da_previa():
-    at = AppTest.from_file(_APP, default_timeout=60)
-    at.session_state["lang"] = "PT"
-    at.session_state["previa_dados"] = {"n_espectros": 42, "n_classes": 3}
-    at.run()
-    assert not at.exception, [str(e) for e in at.exception]
-
-    metricas = {m.label: m.value for m in at.metric}
-    assert metricas.get("espectros") == "42"
-    assert metricas.get("classes") == "3"
-    # Sem execucao nao ha' contagem de variaveis -- "—", nunca 0.
-    assert metricas.get("variáveis espectrais") == "—"
-    assert "prévia dos dados (sem execução ainda)" in _textos(at)
+    at = _abrir_inicio(previa_dados={"n_espectros": 42, "n_classes": 3})
+    textos = _textos(at)
+    assert ">42<" in textos and ">3<" in textos
+    # Sem execucao nao ha' amostra fisica nem variaveis -- "—", nunca 0.
+    assert ">—<" in textos
+    assert "prévia dos dados (sem execução ainda)" in textos
 
 
 def test_com_execucao_le_contagens_e_auditoria_reais_da_pasta(pasta_run: Path):
-    at = AppTest.from_file(_APP, default_timeout=60)
-    at.session_state["lang"] = "PT"
-    at.session_state["ultima_pasta"] = str(pasta_run)
-    at.run()
-    assert not at.exception, [str(e) for e in at.exception]
-
-    metricas = {m.label: m.value for m in at.metric}
-    assert metricas.get("espectros") == "137"
-    assert metricas.get("classes") == "5"
-    assert metricas.get("variáveis espectrais") == "759"
-
+    at = _abrir_inicio(ultima_pasta=str(pasta_run))
     textos = _textos(at)
+    assert ">137<" in textos          # espectros, do resumo_modelo.txt
+    assert ">5<" in textos            # classes
     assert "última execução concluída" in textos
-    # Achado critico do JSON aparece com a contagem real, nao texto fixo.
-    assert "1 crítico(s)" in textos
+    # O achado critico do JSON vira a proxima acao sugerida, com o texto real.
+    assert "1 achado(s) crítico(s)" in textos
     assert "Classe X com 2 grupos" in textos
 
 
@@ -106,12 +106,9 @@ def test_execucao_sem_json_de_auditoria_nao_afirma_que_esta_tudo_ok(
     rel.mkdir(parents=True)
     (rel / "resumo_modelo.txt").write_text(_RESUMO_FALSO, encoding="utf-8")
 
-    at = AppTest.from_file(_APP, default_timeout=60)
-    at.session_state["lang"] = "PT"
-    at.session_state["ultima_pasta"] = str(tmp_path)
-    at.run()
-    assert not at.exception, [str(e) for e in at.exception]
-
+    at = _abrir_inicio(ultima_pasta=str(tmp_path))
     textos = _textos(at)
-    assert "Auditoria de delineamento indisponível" in textos
-    assert "0 crítico(s)" not in textos
+    # Sem registro de auditoria, nada de "0 critico" -- a tela nao afirma
+    # ausencia de problema; ela sugere o proximo passo do fluxo.
+    assert "0 crítico" not in textos
+    assert "achado(s) crítico(s)" not in textos

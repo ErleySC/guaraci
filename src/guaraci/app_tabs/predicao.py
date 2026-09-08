@@ -1,4 +1,4 @@
-"""app_tabs/predicao.py — Aba 6 (Prediction): aplica um modelo `.joblib`
+"""app_tabs/predicao.py — Tela (Prediction): aplica um modelo `.joblib`
 salvo a amostras novas. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations

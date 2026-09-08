@@ -97,7 +97,7 @@ jobs:
             src/guaraci/amostragem_ativa.py \
             src/guaraci/politica_pooled_local.py \
             src/guaraci/validacao_publica.py \
-            src/guaraci/preferencias_visuais.py
+            src/guaraci/preferencias_visuais.py \n            src/guaraci/app_nav.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console

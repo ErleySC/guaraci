@@ -37,7 +37,7 @@ O código fica no pacote `guaraci` (em `src/`). Instale uma vez com
 
 | Forma | Comando | Para quem |
 |---|---|---|
-| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 8 abas guiadas. Demo público: <https://guaraci.streamlit.app> |
+| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, navegação lateral em 4 grupos + telas Início/Visualização. Demo público: <https://guaraci.streamlit.app> |
 | **Assistente de terminal** | `guaraci` (ou `PYTHONPATH=src python -m guaraci.guaraci`) | Menu interativo colorido, sem editar código |
 | **Pipeline direto** | `python -m guaraci.pipeline --rodar` | Execução automatizada a partir de `config.yaml` |
 
@@ -982,11 +982,30 @@ próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
 
 ## 6 Fluxo típico na interface web
 
-Acima da barra de abas há uma legenda do agrupamento lógico das 8 abas:
-**① Preparar** (Projeto · Dados · Pré-processamento) → **② Executar**
-(Modelo) → **③ Analisar** (Validação · Predição · Relatórios) →
-**④ Referência** (Sobre). É só um rótulo de leitura — a navegação continua
-sendo a mesma barra de abas.
+Desde 2026-09-08 a navegação é uma **barra lateral** (antes eram 8 abas
+horizontais). Ela tem duas telas fixas no topo e quatro grupos numerados
+que refletem a ordem do trabalho:
+
+- **◆ Início** — painel de status (seção 6.1).
+- **🎨 Visualização** — cores das figuras (seção 6.2).
+- **① Preparar** — Projeto · Dados · Pré-processamento
+- **② Executar** — Modelo
+- **③ Analisar** — Validação · Predição · Relatórios
+- **④ Referência** — Sobre
+
+O grupo que contém a tela aberta vem expandido; nas telas fixas abre-se o
+grupo ①. Ao lado de um item aparece um **selo** quando há algo real por
+trás dele: o número de espectros em *Dados* (só depois de carregar a
+prévia), `cego` em *Predição* (quando existe uma predição na sessão) e `✓`
+em *Relatórios* (quando existe uma execução). Nenhum selo é exibido sem
+dado — a mesma regra dos números do painel.
+
+Acima da tela há uma barra com o título e o subtítulo da tela atual, o
+**tema ativo** (somente leitura: o Streamlit não expõe API para trocar o
+tema por código, então ali fica o estado real e o caminho ⋮ → *Settings* →
+*Theme*) e dois atalhos: **Exportar relatório** e **Ir para Modelo →**.
+
+Ordem de trabalho:
 
 1. **Projeto** — preencha nome, autor, instituição e objetivo (campos
    descritivos, entram na capa dos relatórios).
@@ -1004,33 +1023,60 @@ sendo a mesma barra de abas.
 6. **Sobre** — identidade do projeto, comparativo com softwares
    comerciais, licença (GPL-3.0-or-later) e como citar (APA/ABNT/BibTeX).
 
-### 6.1 Painel de status (topo da aba Projeto)
+### 6.1 Tela Início — painel de status
 
-No topo da aba **Projeto** há um resumo do estado real da sessão. Ele só
-aparece quando existe dado de verdade:
+A tela **◆ Início** resume o estado real da sessão. Abre com uma faixa de
+**próxima ação sugerida** (com o botão que leva à tela certa) e quatro
+cartões: *Dados carregados*, *Espectros médios por classe*, *Resultado da
+predição* e *Faixa de decisão · teor estimado*.
 
-- **Sem nada carregado** — uma linha dizendo para começar pela aba Dados.
-  Não há cartão vazio nem número zerado fingindo ser resultado.
-- **Com prévia de dados carregada** (botão *Load spectra preview* na aba
-  Dados) — contagem de espectros e classes da prévia; "variáveis
-  espectrais" fica `—`, porque esse número só existe depois de rodar.
+Regra que vale para todos: **evidência ou silêncio**. Onde não há número
+real, o cartão mostra `—` e explica o que falta — nunca zero fingindo ser
+resultado.
+
+- **Sem nada carregado** — cada cartão diz por onde começar; a faixa
+  sugere carregar os espectros.
+- **Com prévia de dados carregada** (botão *Load spectra preview* na tela
+  Dados) — contagem de espectros e classes da prévia; "amostras físicas" e
+  "variáveis espectrais" ficam `—`, porque esses números só existem depois
+  de rodar.
 - **Com execução concluída** — contagens lidas do `resumo_modelo.txt`
-  daquela execução (amostras, variáveis, classes), matriz/técnica do
-  perfil ativo, o estado da validação pública correspondente (quando a
-  matriz consta da tabela consolidada de `docs/VALIDACAO_PUBLICA.md`) e o
-  resultado da **auditoria de delineamento** (seção 2.4) daquela execução:
-  quantos críticos/avisos e o detalhe por checagem.
+  daquela execução (amostras, variáveis, classes e nº de grupos `mae_id`,
+  que é a contagem de *amostras físicas*), matriz/técnica do perfil ativo,
+  o estado da validação pública correspondente (quando a matriz consta da
+  tabela consolidada de `docs/VALIDACAO_PUBLICA.md`) e o resultado da
+  **auditoria de delineamento** (seção 2.4) daquela execução: quantos
+  críticos/avisos e o detalhe por checagem. Um achado crítico vira a
+  próxima ação sugerida, com o texto real do achado.
 
 Quando a execução é antiga demais para ter o registro da auditoria em
 disco, o painel diz *"auditoria indisponível"* — nunca "nenhum problema
 encontrado", que seria uma afirmação sem lastro.
 
-### 6.2 Paleta de cores das figuras (aba Modelo → 🖼️ Figures)
+O cartão **Faixa de decisão** desenha a barra de três zonas (não
+detectado · zona cinza · confiável) com o marcador na posição do teor
+estimado, e só a desenha quando LOD e LOQ existem de fato naquele
+resultado (seção 5, figuras de mérito). Sem LOD/LOQ finitos ele diz isso,
+em vez de desenhar uma faixa sem escala.
 
-O seletor lista o catálogo de paletas do projeto (padrão, seguro para
-daltonismo — Wong 2011/Okabe-Ito, escala de cinza, viridis, publicação
-científica, tema escuro), com uma amostra das cores reais de cada uma. A
-escolha é gravada no MESMO arquivo de preferências que a CLI usa
+### 6.2 Tela Visualização — cores das figuras
+
+A tela **🎨 Visualização** concentra a personalização de cor (antes ficava
+dentro da aba Modelo → 🖼️ Figures).
+
+À esquerda, três esquemas: **padrão Guaraci**, **seguro para daltonismo**
+(Wong 2011/Okabe-Ito) e **alto contraste**, cada um com a amostra das
+cores reais e uma descrição. Abaixo, **cor por classe**, que permite
+trocar a cor de cada classe individualmente — as classes vêm da prévia
+carregada, então esse controle só aparece quando existe dado.
+
+À direita, a **pré-visualização ao vivo**: é a figura de espectros médios
+de verdade, desenhada pela mesma função que o pipeline usa
+(`spectra_preview.plot_mean_spectra` → `paleta_cores.map_class_colors`),
+não uma amostra decorativa. Sem espectros carregados a tela diz isso e
+mostra apenas as amostras de cor.
+
+A escolha é gravada no MESMO arquivo de preferências que a CLI usa
 (`~/.guaraci/visual_config.json`), então vale para as duas interfaces.
 
 Duas regras importantes:
@@ -1048,13 +1094,19 @@ Duas regras importantes:
 > confirmava a troca e as figuras saíam idênticas.
 
 Tema claro/escuro: menu ⋮ → *Settings* → *Theme* (segue a preferência do
-sistema operacional por padrão).
+sistema operacional por padrão). O degradê da barra lateral é montado a
+partir dos tokens do tema **ativo** (`design_tokens`, lidos de
+`st.context.theme`), então ele se redesenha ao trocar de tema em vez de
+ficar preso à paleta de um tema só.
 
-Cabeçalho: logo, versão e badges (licença/instituição) ficam sempre
-visíveis no topo, antes das abas. Quando o app roda **sem** `config.yaml`
-local (caso do deploy público em `guaraci.streamlit.app`, que não tem
-acesso aos dados reais de pesquisa), aparece um aviso de **mode
-demonstração** explicando que os espectros são sintéticos.
+Marca: a logo e a versão ficam no topo da barra lateral. A logo (marca de
+2026-09, ver `docs/DESIGN.md` §1.4) é um PNG transparente exibido sobre
+uma moldura de fundo claro fixo — medido: a tinta mais escura da marca tem
+contraste 1,40:1 contra o fundo do tema escuro, o que a tornaria invisível
+sem essa moldura. Quando o app roda **sem** `config.yaml` local (caso do
+deploy público em `guaraci.streamlit.app`, que não tem acesso aos dados
+reais de pesquisa), aparece um aviso de **mode demonstração** explicando
+que os espectros são sintéticos.
 
 ---
 

@@ -61,6 +61,11 @@ from guaraci.app_tabs import validacao as _tab_validacao
 from guaraci.app_tabs import predicao as _tab_predicao
 from guaraci.app_tabs import relatorios as _tab_relatorios
 from guaraci.app_tabs import sobre as _tab_sobre
+# Telas novas da reestruturacao de 2026-09-08 (mockup seguido a risca):
+# painel de status e personalizacao de cor, ambas fora dos 4 grupos.
+from guaraci.app_tabs import inicio as _tab_inicio
+from guaraci.app_tabs import visualizacao as _tab_visualizacao
+from guaraci import app_nav
 
 
 def _active_theme() -> str:
@@ -324,6 +329,55 @@ _TR: Dict[str, Dict[str, str]] = {
     "⚖ Quantified": {"PT": "⚖ Quantificado", "EN": "⚖ Quantified"},
     "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above.": {"PT": "Bloqueada = quantificação recusada porque o adulterante não foi identificado com confiabilidade — veja 'quantificacao_motivo_bloqueio' na tabela acima.", "EN": "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above."},
     "No valid model provided (upload or path).": {"PT": "Nenhum modelo válido fornecido (upload ou caminho).", "EN": "No valid model provided (upload or path)."},
+    # ── Barra superior e navegação (reestruturação de 2026-09-08) ────
+    "Switch in ⋮ → Settings → Theme": {"PT": "Trocar em ⋮ → Settings → Theme", "EN": "Switch in ⋮ → Settings → Theme"},
+    "Export report": {"PT": "Exportar relatório", "EN": "Export report"},
+    "Go to Model →": {"PT": "Ir para Modelo →", "EN": "Go to Model →"},
+    "Go there": {"PT": "Ver", "EN": "Go there"},
+    # ── Tela Início ──────────────────────────────────────────────────
+    "DATA LOADED": {"PT": "DADOS CARREGADOS", "EN": "DATA LOADED"},
+    "MEAN SPECTRA BY CLASS": {"PT": "ESPECTROS MÉDIOS POR CLASSE", "EN": "MEAN SPECTRA BY CLASS"},
+    "PREDICTION RESULT": {"PT": "RESULTADO DA PREDIÇÃO", "EN": "PREDICTION RESULT"},
+    "DECISION RANGE · ESTIMATED CONTENT": {"PT": "FAIXA DE DECISÃO · TEOR ESTIMADO", "EN": "DECISION RANGE · ESTIMATED CONTENT"},
+    "physical samples": {"PT": "amostras físicas", "EN": "physical samples"},
+    "Technique": {"PT": "Técnica", "EN": "Technique"},
+    "Grouping": {"PT": "Agrupamento", "EN": "Grouping"},
+    "By physical sample": {"PT": "Por amostra física", "EN": "By physical sample"},
+    "protected": {"PT": "protegido", "EN": "protected"},
+    "unprotected": {"PT": "desprotegido", "EN": "unprotected"},
+    "Guarantee: {g}": {"PT": "Garantia: {g}", "EN": "Guarantee: {g}"},
+    "No data loaded yet — start on the **Data** screen: point to a spectra folder or upload a CSV.": {"PT": "Nenhum dado carregado ainda — comece pela tela **Dados**: aponte uma pasta de espectros ou envie um CSV.", "EN": "No data loaded yet — start on the **Data** screen: point to a spectra folder or upload a CSV."},
+    "Load the spectra preview on the **Data** screen to see the mean spectrum of each class here.": {"PT": "Carregue a prévia dos espectros na tela **Dados** para ver aqui o espectro médio de cada classe.", "EN": "Load the spectra preview on the **Data** screen to see the mean spectrum of each class here."},
+    "Wavenumber (cm⁻¹) — decreasing": {"PT": "Número de onda (cm⁻¹) — decrescente", "EN": "Wavenumber (cm⁻¹) — decreasing"},
+    "No prediction yet — the **Prediction** screen applies a saved model to new samples.": {"PT": "Nenhuma predição ainda — a tela **Predição** aplica um modelo salvo a amostras novas.", "EN": "No prediction yet — the **Prediction** screen applies a saved model to new samples."},
+    "Detection": {"PT": "Detecção", "EN": "Detection"},
+    "Identification": {"PT": "Identificação", "EN": "Identification"},
+    "Quantification": {"PT": "Quantificação", "EN": "Quantification"},
+    "{n} of {t} adulterated": {"PT": "{n} de {t} adulteradas", "EN": "{n} of {t} adulterated"},
+    "{n} of {t} identified": {"PT": "{n} de {t} identificadas", "EN": "{n} of {t} identified"},
+    "{n} of {t} quantified": {"PT": "{n} de {t} quantificadas", "EN": "{n} of {t} quantified"},
+    "Unknown adulterant": {"PT": "Adulterante desconhecido", "EN": "Unknown adulterant"},
+    "Not performed": {"PT": "Não realizada", "EN": "Not performed"},
+    "Quantification was blocked because identification found no match with a known adulterant. A number here would have no statistical backing.": {"PT": "A quantificação foi bloqueada porque a identificação não encontrou correspondência com nenhum adulterante conhecido. Um número aqui não teria suporte estatístico.", "EN": "Quantification was blocked because identification found no match with a known adulterant. A number here would have no statistical backing."},
+    "Samples": {"PT": "Amostras", "EN": "Samples"},
+    "This model predates the blind flow, so there is no identification/quantification to show.": {"PT": "Este modelo é anterior ao fluxo cego, então não há identificação/quantificação para mostrar.", "EN": "This model predates the blind flow, so there is no identification/quantification to show."},
+    "No quantified sample yet — the decision range appears once a content is estimated.": {"PT": "Nenhuma amostra quantificada ainda — a faixa de decisão aparece quando houver teor estimado.", "EN": "No quantified sample yet — the decision range appears once a content is estimated."},
+    "species used": {"PT": "espécie usada", "EN": "species used"},
+    "No LOD/LOQ persisted for this species model, so no decision range is drawn — a bar without limits would suggest a confidence the data does not support.": {"PT": "Sem LOD/LOQ persistido para o modelo desta espécie, então nenhuma faixa é desenhada — uma barra sem limites sugeriria uma confiança que os dados não sustentam.", "EN": "No LOD/LOQ persisted for this species model, so no decision range is drawn — a bar without limits would suggest a confidence the data does not support."},
+    "< LOD": {"PT": "< LOD", "EN": "< LOD"},
+    "grey zone": {"PT": "zona cinzenta", "EN": "grey zone"},
+    "quantifiable": {"PT": "quantificável", "EN": "quantifiable"},
+    "Coverage of this combination: {c}.": {"PT": "Cobertura desta combinação: {c}.", "EN": "Coverage of this combination: {c}."},
+    "not declared": {"PT": "não declarada", "EN": "not declared"},
+    # ── Tela Visualização ────────────────────────────────────────────
+    "Colour scheme": {"PT": "Esquema de cor", "EN": "Colour scheme"},
+    "Colour per class (customise)": {"PT": "Cor por classe (personalizar)", "EN": "Colour per class (customise)"},
+    "Load the spectra preview on the **Data** screen to customise the colour of each real class.": {"PT": "Carregue a prévia dos espectros na tela **Dados** para personalizar a cor de cada classe real.", "EN": "Load the spectra preview on the **Data** screen to customise the colour of each real class."},
+    "Reset to the scheme": {"PT": "Voltar ao esquema", "EN": "Reset to the scheme"},
+    "This is the same palette catalogue the CLI offers (Visualisation menu). The choice is saved in `~/.guaraci/visual_config.json`, so terminal and web stay in sync, and it applies to **every figure of the next run**, not only to the preview below.": {"PT": "Este é o mesmo catálogo de paletas que a CLI oferece (menu Visualização). A escolha é gravada em `~/.guaraci/visual_config.json`, então terminal e web ficam em sincronia, e vale para **todas as figuras da próxima execução**, não só para a prévia ao lado.", "EN": "This is the same palette catalogue the CLI offers (Visualisation menu). The choice is saved in `~/.guaraci/visual_config.json`, so terminal and web stay in sync, and it applies to **every figure of the next run**, not only to the preview below."},
+    "Preview · mean spectrum by class": {"PT": "Pré-visualização · espectro médio por classe", "EN": "Preview · mean spectrum by class"},
+    "Figure colour palette: **{p}** — change it on the Visualisation screen.": {"PT": "Paleta de cores das figuras: **{p}** — troque na tela Visualização.", "EN": "Figure colour palette: **{p}** — change it on the Visualisation screen."},
+    "No spectra loaded yet, so there is nothing real to draw here. The swatches on the left already show the exact colours this scheme will use.": {"PT": "Nenhum espectro carregado ainda, então não há nada real para desenhar aqui. As amostras à esquerda já mostram as cores exatas que este esquema vai usar.", "EN": "No spectra loaded yet, so there is nothing real to draw here. The swatches on the left already show the exact colours this scheme will use."},
     # ── Painel de status do projeto (topo da aba Projeto) ────────────
     "No data loaded yet — start on the **Data** tab: point to a spectra folder or upload a CSV. This panel fills in with the real numbers as soon as there is data.": {"PT": "Nenhum dado carregado ainda — comece pela aba **Dados**: aponte uma pasta de espectros ou envie um CSV. Este painel se preenche com os números reais assim que houver dado.", "EN": "No data loaded yet — start on the **Data** tab: point to a spectra folder or upload a CSV. This panel fills in with the real numbers as soon as there is data."},
     "### 📌 Project status": {"PT": "### 📌 Status do projeto", "EN": "### 📌 Project status"},
@@ -620,23 +674,20 @@ del _fresh_cfg
 
 specs    = _spec_por_key()
 
-# ── Sidebar: Language ───────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("---")
-    _lang_choice = st.radio(
-        "🌐 Language", ["EN", "PT"],
-        index=0 if st.session_state.lang == "EN" else 1,
-        key="_sidebar_lang", horizontal=True
-    )
-    if _lang_choice != st.session_state.lang:
-        st.session_state.lang = _lang_choice
-        st.rerun()
-    st.caption(
-        "🌗 " + ("Tema claro/escuro: menu ⋮ → Settings → Theme"
-                 if st.session_state.lang == "PT"
-                 else "Light/dark theme: ⋮ menu → Settings → Theme")
-    )
-    st.markdown("---")
+# ── Navegação: estado da tela atual ─────────────────────────────────────────
+# A interface deixou de ser 8 abas horizontais e passou a barra lateral com
+# grupos (mockup de 2026-09-08). Cada tela é renderizada sozinha, em vez de
+# todas as abas serem montadas a cada rerun — o que também deixa a página
+# mais leve, já que só o conteúdo visível é calculado.
+if "pagina" not in st.session_state:
+    st.session_state.pagina = app_nav.PAGINA_INICIAL
+
+
+def _ir_para(chave: str) -> None:
+    """Navega para outra tela. Usado pela barra lateral, pelos botões da
+    barra superior e pelo botão de 'próxima ação sugerida' da tela Início."""
+    st.session_state.pagina = chave
+    st.rerun()
 
 # ── Polimento visual (design tokens, à prova de tema) ────────────────────────
 # NÃO pinta widgets internos do Streamlit (isso é papel do tema nativo, que
@@ -646,7 +697,10 @@ _tk = _tok()
 st.markdown(f"""
 <style>
 :root {{ --gua-primary: {_tk['primary']}; --gua-accent: {_tk['accent']}; }}
-.block-container {{ padding-top: 2.2rem; max-width: 1400px; }}
+/* 3,4rem e não 2,2rem: a barra superior própria (título + ações) precisa
+   começar ABAIXO da barra fixa do Streamlit (Deploy / ⋮), senão o primeiro
+   elemento da linha fica cortado -- visto no tema claro em 2026-09-08. */
+.block-container {{ padding-top: 3.4rem; max-width: 1400px; }}
 /* KPIs / métricas como cartões */
 [data-testid="stMetric"] {{
     border: 1px solid rgba(128,128,128,.22);
@@ -661,9 +715,17 @@ st.markdown(f"""
 /* Header / hero */
 .gua-hero {{ display:flex; align-items:center; gap:14px; margin-bottom:.15rem; }}
 .gua-hero .gua-logo {{ font-size: 3.4rem; line-height:1; }}
+/* Fundo claro FIXO na moldura (não é widget do Streamlit, é elemento nosso —
+   sem CSS sobre componente nativo, que foi o que quebrou ao trocar tema
+   antes). Medido em 2026-09-08: a tinta mais escura da logo (#0E3724, base
+   do frasco) tem contraste 1,40:1 contra o fundo do tema escuro (#0F1613) —
+   some. Sobre este fundo claro dá 12,4:1 nos dois temas. Mesma convenção já
+   usada nas figuras científicas ("papel" branco, intencional em qualquer
+   tema). */
 .gua-hero .gua-logo-frame {{
     width: 96px; height: 96px; min-width: 96px; flex-shrink: 0;
     padding: 8px; box-sizing: border-box;
+    background: #FDFDFD;
     border-radius: 20px; overflow: hidden;
     box-shadow: 0 1px 4px rgba(0,0,0,.18);
     display: flex; align-items: center; justify-content: center;
@@ -683,7 +745,56 @@ st.markdown(f"""
     font-size:.72rem; font-weight:600; padding:.15rem .55rem; border-radius:999px;
     border:1px solid rgba(128,128,128,.3); color: rgba(128,128,128,1);
 }}
-.stTabs [data-baseweb="tab"] {{ font-weight: 600; }}
+
+/* ── Barra lateral com degradê (mockup de 2026-09-08) ────────────────────
+   ATENÇÃO, decisão revertida: até 2026-09-07 a regra do projeto era "não
+   pintar widget nativo do Streamlit", justamente porque uma tentativa
+   anterior quebrou ao trocar de tema. O mockup novo foi pedido "à risca",
+   então o degradê voltou — mas com duas salvaguardas que a tentativa
+   antiga não tinha: (1) as cores vêm de `design_tokens` do tema ATIVO,
+   lido de `st.context.theme`, então o degradê se redesenha ao trocar
+   claro/escuro em vez de ficar preso à paleta de um tema só; (2) nenhum
+   `!important` — o CSS só complementa o widget, não briga com ele. */
+section[data-testid="stSidebar"] > div:first-child {{
+    background: linear-gradient(180deg,
+        {_tk['primary']} 0%, {_tk['accent']} 42%, {_tk['success']} 100%);
+}}
+section[data-testid="stSidebar"] * {{ color: #FFFFFF; }}
+section[data-testid="stSidebar"] .stButton > button {{
+    background: transparent; border: none; color: #FFFFFF;
+    text-align: left; justify-content: flex-start;
+    font-weight: 600; padding: .35rem .6rem;
+    border-left: 3px solid transparent; border-radius: 6px;
+}}
+section[data-testid="stSidebar"] .stButton > button:hover {{
+    background: rgba(255,255,255,.13);
+}}
+section[data-testid="stSidebar"] .stButton > button[kind="primary"] {{
+    background: rgba(255,255,255,.24); border-left-color: #FFFFFF;
+}}
+/* O `summary` também precisa ficar transparente, não só o `details`: no tema
+   CLARO o cabeçalho do expander vem branco por padrão e o rótulo (branco,
+   para contrastar com o degradê) sumia dentro dele -- o grupo ① aparecia
+   como uma caixa branca vazia. Visto na verificação de 2026-09-08. */
+section[data-testid="stSidebar"] [data-testid="stExpander"] details,
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary,
+section[data-testid="stSidebar"] [data-testid="stExpanderDetails"] {{
+    border: none; background: transparent; background-color: transparent;
+}}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary {{
+    font-size: .72rem; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; color: rgba(255,255,255,.82);
+}}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {{
+    background: rgba(255,255,255,.10);
+}}
+.gua-marca {{ text-align:center; padding:.2rem 0 .6rem; }}
+.gua-marca .n {{ font-weight:800; font-size:.86rem; letter-spacing:.06em; }}
+.gua-marca .v {{ font-size:.62rem; opacity:.8; letter-spacing:.03em; }}
+
+/* ── Barra superior (título da tela + ações) ─────────────────────────── */
+.gua-topo h1 {{ font-size:1.15rem; font-weight:800; margin:0; }}
+.gua-topo .sub {{ font-size:.78rem; color:rgba(128,128,128,1); }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -696,28 +807,101 @@ _logo_html = (f'<div class="gua-logo-frame"><img class="gua-logo-img" '
               f'src="{_logo_uri}" alt="GUARACI"></div>'
               if _logo_uri else '<span class="gua-logo">🧪</span>')
 
-st.markdown(
-    f"""
-    <div class="gua-hero">
-      {_logo_html}
-      <div>
-        <div class="gua-title">GUARACI · Chemometrics Platform</div>
-      </div>
-    </div>
-    <p class="gua-sub">
-      PLS-DA · PCA · OPLS-DA · DD-SIMCA · variable selection ·
-      group-aware validation (anti-leakage of replicates).
-      FT-NIR (.dx) or CSV table (Raman, UV-Vis, FTIR, chromatography…).
-    </p>
-    <div class="gua-badges">
-      <span class="gua-badge">v{pq.__version__}</span>
-      <span class="gua-badge">GPL-3.0-or-later</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+_pt = st.session_state.lang == "PT"
+_pagina_atual = st.session_state.pagina
 
-if _IS_PUBLIC_DEMO:
+# ──────────────────────────────────────────────────────────────────────────
+# Barra lateral: marca + navegação agrupada
+# ──────────────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown(
+        f'<div class="gua-hero" style="justify-content:center">{_logo_html}</div>'
+        f'<div class="gua-marca"><div class="n">GUARACI</div>'
+        f'<div class="v">v{pq.__version__} · local-first</div></div>',
+        unsafe_allow_html=True)
+
+    for _pag in app_nav.PAGINAS_FIXAS:
+        if st.button(f"{_pag.icone}  {_pag.rotulo(_pt)}",
+                     key=f"nav_{_pag.chave}", use_container_width=True,
+                     type="primary" if _pagina_atual == _pag.chave else "secondary"):
+            _ir_para(_pag.chave)
+
+    # Selos com números REAIS ao lado do item (o mockup mostra "Dados 934";
+    # aqui o número só aparece quando existe de fato).
+    _previa = st.session_state.get("previa_dados") or {}
+    _selos: Dict[str, str] = {}
+    if _previa.get("n_espectros"):
+        _selos["dados"] = str(_previa["n_espectros"])
+    if st.session_state.get("pred_resultados_cego"):
+        _selos["predicao"] = "cego" if _pt else "blind"
+    if st.session_state.get("ultima_pasta"):
+        _selos["relatorios"] = "✓"
+
+    _grupo_atual = app_nav.grupo_da_pagina(_pagina_atual)
+    for _grupo in app_nav.GRUPOS:
+        _num = "①②③④"[_grupo.numero - 1]
+        # Numa tela fixa (Início/Visualização) nenhum grupo contém a tela
+        # atual; abre-se o primeiro, como no mockup, para o fluxo ficar à
+        # vista em vez de tudo fechado.
+        _aberto = (_grupo.numero == _grupo_atual.numero if _grupo_atual
+                   else _grupo.numero == 1)
+        with st.expander(f"{_num}  {_grupo.rotulo(_pt)}", expanded=_aberto):
+            for _pag in _grupo.paginas:
+                _selo = _selos.get(_pag.chave)
+                _rot = f"{_pag.icone}  {_pag.rotulo(_pt)}"
+                if _selo:
+                    _rot += f"  ·  {_selo}"
+                if st.button(_rot, key=f"nav_{_pag.chave}",
+                             use_container_width=True,
+                             type=("primary" if _pagina_atual == _pag.chave
+                                   else "secondary")):
+                    _ir_para(_pag.chave)
+
+    st.markdown("---")
+    _lang_choice = st.radio(
+        "🌐 Language", ["EN", "PT"],
+        index=0 if st.session_state.lang == "EN" else 1,
+        key="_sidebar_lang", horizontal=True)
+    if _lang_choice != st.session_state.lang:
+        st.session_state.lang = _lang_choice
+        st.rerun()
+
+# ──────────────────────────────────────────────────────────────────────────
+# Barra superior: título da tela, tema e ações rápidas
+# ──────────────────────────────────────────────────────────────────────────
+_pag_obj = app_nav.pagina_por_chave(_pagina_atual)
+_titulo = _pag_obj.rotulo(_pt) if _pag_obj else ""
+_subtitulo = app_nav.subtitulo(_pagina_atual, _pt)
+
+_c_tit, _c_tema, _c_rel, _c_mod = st.columns([6, 2, 1.6, 1.6])
+with _c_tit:
+    st.markdown(
+        f'<div class="gua-topo"><h1>{_titulo}</h1>'
+        f'<div class="sub">{_subtitulo}</div></div>', unsafe_allow_html=True)
+with _c_tema:
+    # O mockup traz um interruptor Claro/Escuro. O Streamlit NÃO expõe API
+    # para trocar o tema por código (`st.context.theme` é somente leitura) —
+    # forçar por CSS foi exatamente o que quebrou antes. Então aqui fica o
+    # estado real do tema e o caminho para trocá-lo, sem fingir um botão que
+    # não funcionaria.
+    _tema_ativo = _active_theme()
+    st.caption(
+        ("🌗 Tema: **claro**" if _tema_ativo == "light" else "🌗 Tema: **escuro**")
+        if _pt else
+        ("🌗 Theme: **light**" if _tema_ativo == "light" else "🌗 Theme: **dark**"))
+    st.caption(_T("Switch in ⋮ → Settings → Theme"))
+with _c_rel:
+    if st.button(_T("Export report"), use_container_width=True,
+                 key="btn_topo_relatorio"):
+        _ir_para("relatorios")
+with _c_mod:
+    if st.button(_T("Go to Model →"), type="primary",
+                 use_container_width=True, key="btn_topo_modelo"):
+        _ir_para("modelo")
+
+st.divider()
+
+if _IS_PUBLIC_DEMO and _pagina_atual == app_nav.PAGINA_INICIAL:
     st.info(
         "🔬 **Modo demonstração pública** — sem dados reais configurados "
         "neste servidor, então o pipeline roda com **espectros sintéticos** "
@@ -735,83 +919,7 @@ if _IS_PUBLIC_DEMO:
         f"see the [repository]({_tab_sobre._REPO})."
     )
 
-# ──────────────────────────────────────────────────────────────────────────
-# 7 Tabs
-# ──────────────────────────────────────────────────────────────────────────
-
-# Legenda de agrupamento lógico das 8 abas. Só texto (st.caption) acima da
-# barra nativa — nada de CSS sobre o widget do Streamlit nem troca de st.tabs
-# por accordion/sidebar: as abas continuam exatamente as mesmas, isto só diz
-# em voz alta a sequência que elas já seguem.
-st.caption(
-    "① Preparar: Projeto · Dados · Pré-processamento  →  "
-    "② Executar: Modelo  →  "
-    "③ Analisar: Validação · Predição · Relatórios  →  "
-    "④ Referência: Sobre"
-    if st.session_state.lang == "PT" else
-    "① Prepare: Project · Data · Preprocessing  →  "
-    "② Run: Model  →  "
-    "③ Analyse: Validation · Prediction · Reports  →  "
-    "④ Reference: About"
-)
-
-(tab_proj, tab_dados, tab_preproc, tab_modelo,
- tab_valid, tab_pred, tab_rel, tab_sobre) = st.tabs([
-    "📋 " + _T("Project"),
-    "📂 " + _T("Data"),
-    "⚗️ " + _T("Preprocessing"),
-    "🧮 " + _T("Model"),
-    "📊 " + _T("Validation"),
-    "🔮 " + _T("Prediction"),
-    "📄 " + _T("Reports"),
-    "ℹ️ " + _T("About"),
-])
-
-valores: Dict = {}  # accumulated by widgets from each tab
-
-# ==========================================================================
-#  TAB 1 — PROJECT (guaraci.app_tabs.projeto — item 18)
-# ==========================================================================
-with tab_proj:
-    _tab_projeto.render(pq, _T, is_public_demo=_IS_PUBLIC_DEMO)
-
-# ==========================================================================
-#  TAB 2 — DATA
-# ==========================================================================
-with tab_dados:
-    _tab_dados.render(pq, cfg_base, specs, valores, _widget_para_campo, _CFG_PATH, _T)
-
-
-# ==========================================================================
-#  TAB 3 — PREPROCESSING
-# ==========================================================================
-with tab_preproc:
-    _tab_preprocessamento.render(pq, cfg_base, specs, valores, _widget_para_campo, _T)
-
-
-# ==========================================================================
-#  TAB 4 — MODEL (advanced parameters + execution)
-# ==========================================================================
-with tab_modelo:
-    _tab_modelo.render(pq, cfg_base, specs, valores, _T, _widget_para_campo,
-                       _MODO_ANALISE_ROTULO, _MODO_ANALISE_AJUDA, _CFG_PATH)
-
-
-# ==========================================================================
-#  TAB 5 — VALIDATION
-# ==========================================================================
-with tab_valid:
-    _tab_validacao.render(_T, _tok, _ler_resumo, _listar_figuras)
-
-
-# ==========================================================================
-#  TAB 6 — PREDICTION
-# ==========================================================================
-with tab_pred:
-    _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok, _T)
-
-
-
+valores: Dict = {}  # accumulated by widgets from the Data/Preproc/Model screens
 
 # ==========================================================================
 #  Report cache — avoids regenerating on every Streamlit rerun.
@@ -841,17 +949,41 @@ def _pptx_bytes(pasta: str, proj_items: tuple) -> bytes:
 
 
 # ==========================================================================
-#  TAB 7 — REPORTS
+#  Roteamento das telas
 # ==========================================================================
-with tab_rel:
+# Só a tela escolhida é desenhada. Antes, `st.tabs` montava as 8 abas em
+# todo rerun (inclusive as caras, como galeria de figuras e geração de
+# relatório), mesmo com o usuário olhando uma só.
+_pagina = st.session_state.pagina
+
+if _pagina == "inicio":
+    _tab_inicio.render(pq, _T, _ir_para, _tok)
+elif _pagina == "visualizacao":
+    _tab_visualizacao.render(_T, _tok)
+elif _pagina == "projeto":
+    _tab_projeto.render(pq, _T, is_public_demo=_IS_PUBLIC_DEMO)
+elif _pagina == "dados":
+    _tab_dados.render(pq, cfg_base, specs, valores, _widget_para_campo,
+                      _CFG_PATH, _T)
+elif _pagina == "preprocessamento":
+    _tab_preprocessamento.render(pq, cfg_base, specs, valores,
+                                 _widget_para_campo, _T)
+elif _pagina == "modelo":
+    _tab_modelo.render(pq, cfg_base, specs, valores, _T, _widget_para_campo,
+                       _MODO_ANALISE_ROTULO, _MODO_ANALISE_AJUDA, _CFG_PATH)
+elif _pagina == "validacao":
+    _tab_validacao.render(_T, _tok, _ler_resumo, _listar_figuras)
+elif _pagina == "predicao":
+    _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok, _T)
+elif _pagina == "relatorios":
     _tab_relatorios.render(pq, _MODO_ANALISE_ROTULO, _zip_da_pasta,
                           _pdf_bytes, _word_bytes, _excel_bytes,
                           _latex_bytes, _pptx_bytes,
                           _ler_resumo, _ler_model_card, _listar_figuras, _T)
-
-
-# ==========================================================================
-#  TAB 8 — ABOUT
-# ==========================================================================
-with tab_sobre:
+elif _pagina == "sobre":
     _tab_sobre.render(pq, _T)
+else:
+    # Chave desconhecida (ex.: sessão antiga com estado salvo): volta ao
+    # Início em vez de renderizar uma tela em branco.
+    st.session_state.pagina = app_nav.PAGINA_INICIAL
+    st.rerun()

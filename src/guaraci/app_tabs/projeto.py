@@ -1,13 +1,11 @@
-"""app_tabs/projeto.py — Aba 1 (Project): painel de status do projeto,
-identificação do projeto e status de hardware. Extraído de
-app_quimiometria.py (item 18 da auditoria).
+"""app_tabs/projeto.py — Tela (Project): identificação do projeto e status
+de hardware. Extraído de app_quimiometria.py (item 18 da auditoria).
 
-O painel de status ("Início") fica AQUI, no topo da primeira aba, e não como
-uma 9ª aba: a sequência de 8 abas (Preparar → Executar → Analisar) já é o
-fluxo do app, e uma aba a mais só empurraria todas as outras. Ele também não
-é um dashboard sempre visível — só aparece quando existe estado real (prévia
-de dados carregada ou execução concluída); sem isso, diz em uma linha por
-onde começar, em vez de mostrar cartões vazios como se fossem resultado.
+Histórico: o painel de status ficou AQUI, no topo desta tela, entre
+2026-09-08 (Passo 190) e a reestruturação do mesmo dia (Passo 195), que o
+promoveu a tela própria -- `app_tabs/inicio.py`. Com a navegação lateral
+uma tela a mais não empurra as outras, que era o motivo de ele estar
+embutido aqui.
 """
 from __future__ import annotations
 

@@ -178,6 +178,22 @@ PALETAS_COR: Dict[str, Dict[str, Any]] = {
         "cores": ["#000000", "#E69F00", "#56B4E9", "#009E73",
                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7"],
     },
+    "alto_contraste": {
+        "PT": {
+            "nome": "Alto Contraste",
+            "desc": "Preto, verde escuro e laranja de marca. Para projecao, impressao fraca e baixa visao.",
+        },
+        "EN": {
+            "nome": "High Contrast",
+            "desc": "Black, dark green and brand orange. For projectors, poor printing and low vision.",
+        },
+        # Derivada dos design tokens do projeto (text/primary de design_tokens.py)
+        # mais preto puro -- nao e' uma paleta nova inventada, e' a paleta de
+        # identidade levada ao extremo de contraste. Adicionada em 2026-09-08
+        # para atender o esquema "Alto contraste" da tela Visualizacao.
+        "cores": ["#000000", "#1A2B22", "#D95700", "#5A6B62",
+                  "#8A6D1E", "#9E3F22", "#2F7A48", "#B8850A"],
+    },
     "cinza": {
         "PT": {
             "nome": "Escala de Cinza",
