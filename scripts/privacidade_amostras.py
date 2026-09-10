@@ -24,14 +24,22 @@ PADRAO_IDENTIFICADOR = re.compile(
 #: Único ano aceito em identificador de exemplo/fixture.
 ANO_SENTINELA = "2099"
 
-#: Caminho absoluto de máquina: unidade Windows (`C:\Users\nome\...`) ou
-#: home Unix (`/home/nome/...`, `/Users/nome/...`). O vault é gerado fora do
+#: Caminho absoluto de máquina: unidade Windows (`C:\Users\alguem\...`) ou
+#: home Unix (`/home/alguem/...`, `/Users/alguem/...`). O vault é gerado fora do
 #: repositório (pasta pessoal do usuário) e não pode vazar ESSE caminho nem
 #: nenhum outro caminho absoluto da máquina que o gerou.
 PADRAO_CAMINHO_ABSOLUTO = re.compile(
     r"[A-Za-z]:[\\/](?:Users|home)[\\/][^\s\\/\"'`)]+"
     r"|/(?:home|Users)/[^\s/\"'`)]+",
 )
+
+#: Único usuário aceito em caminho absoluto de EXEMPLO dentro de arquivo
+#: versionado (fixture de teste, documentação do próprio padrão). Mesma
+#: lógica do `ANO_SENTINELA`: não se julga caso a caso se um nome é real.
+#: A exceção vale só para a varredura do repositório
+#: (`tests/test_sem_identificador_real.py`) -- a guarda do vault NÃO a
+#: aplica, e as contra-provas do vault usam justamente este nome.
+USUARIO_SENTINELA = "alguem"
 
 _BINARIO = {".png", ".ico", ".jpg", ".jpeg", ".gif", ".pdf", ".joblib",
             ".xlsx", ".docx", ".pptx", ".woff", ".woff2", ".zip", ".gz"}

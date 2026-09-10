@@ -401,7 +401,7 @@ reaproveite a MESMA regra em vez de duplicá-la — `test_sem_identificador_real
 agora importa de lá (`_PADRAO`/`_ANO_SENTINELA`), sem mudança de
 comportamento (suíte confirmada verde após o refactor). Adicionado a
 essa mesma varredura: padrão de caminho absoluto de máquina (Windows
-`C:\Users\...` e Unix `/home/.../` `/Users/.../`), porque o vault vive
+`C:\Users\alguem\...` e Unix `/home/alguem/...` `/Users/alguem/...`), porque o vault vive
 fora do repositório e pode vazar o caminho da máquina que o gerou.
 
 O gerador monta o plano de escrita inteiro EM MEMÓRIA primeiro, roda a
@@ -1962,9 +1962,9 @@ novo.
 meu, não ausência de dado. Eu tinha verificado só a pasta `dados/` do
 repo (vazia de propósito — `.gitignore`, dado de terceiro nunca
 versionado) e concluído "acervo indisponível" sem checar
-`config.yaml` (`pasta_dados:`), que já apontava para
-`C:\Users\erley\OneDrive\Documentos\ERLEY\dados oleos\Por óleos` — 1741
-arquivos `.dx` reais, organizados por espécie, com adulterante e teor
+`config.yaml` (`pasta_dados:`), que já apontava para a pasta local do
+acervo (fora do repositório; caminho absoluto omitido de propósito desde
+a rodada multiagente de 2026-09-10) — 1741 arquivos `.dx` reais, organizados por espécie, com adulterante e teor
 declarado no nome (padrão `COD-DD-MM-AAAA-AD-X-teor%-T_N.dx`, ex.
 `AND-10-02-2099-AD-S-1,1%-T_1.dx`), o mesmo acervo que
 `scripts/run_benchmark_tcc.py` já referencia diretamente. Confirmado com

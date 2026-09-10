@@ -21,6 +21,7 @@ reprova, independente de quem o escreveu saber se e' real.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -59,6 +60,8 @@ if _SCRIPTS not in sys.path:
 from privacidade_amostras import (  # noqa: E402
     ANO_SENTINELA as _ANO_SENTINELA,
     PADRAO_IDENTIFICADOR as _PADRAO,
+    USUARIO_SENTINELA as _USUARIO_SENTINELA,
+    caminhos_absolutos_em_texto,
 )
 
 #: Extensoes que nao sao texto -- lidas em mode binario dariam ruido.
@@ -174,6 +177,74 @@ def test_sentinela_2099_e_a_unica_excecao() -> None:
     # Ano vizinho nao e' excecao -- a folga tem que ser exatamente uma.
     vizinho = _PADRAO.search(_id("CAP", "04", "11", "2098"))
     assert not vizinho.group(0).endswith(_ANO_SENTINELA)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+#  Caminho absoluto de maquina em arquivo versionado
+#
+#  `PADRAO_CAMINHO_ABSOLUTO` nasceu no Passo 169 para o vault, e so' o
+#  gerador do vault o aplicava. A varredura do repositorio acima checava
+#  apenas identificador de amostra -- entao um caminho real de maquina
+#  (nome de usuario + pasta do acervo) entrou em docs/PROGRESSO.md no
+#  Passo 131 e foi publicado sem alarme. Achado na rodada multiagente de
+#  2026-09-10.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _usuario_do_caminho(caminho: str) -> str:
+    return re.split(r"[\\/]", caminho.rstrip("\\/"))[-1]
+
+
+def _caminhos_absolutos_versionados() -> list[tuple[str, int, str]]:
+    achados: list[tuple[str, int, str]] = []
+    for caminho in _arquivos_versionados():
+        rel = str(caminho.relative_to(_RAIZ)).replace("\\", "/")
+        for cam in caminhos_absolutos_em_texto(rel):
+            if _usuario_do_caminho(cam) != _USUARIO_SENTINELA:
+                achados.append((rel, 0, cam))
+        if caminho.suffix.lower() in _BINARIO or not caminho.is_file():
+            continue
+        try:
+            texto = caminho.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue  # ja' reportado como <ILEGIVEL> pela varredura acima
+        for n, linha in enumerate(texto.splitlines(), start=1):
+            for cam in caminhos_absolutos_em_texto(linha):
+                if _usuario_do_caminho(cam) != _USUARIO_SENTINELA:
+                    achados.append((rel, n, cam))
+    return achados
+
+
+def test_nenhum_caminho_absoluto_de_maquina_em_arquivo_versionado() -> None:
+    achados = _caminhos_absolutos_versionados()
+    if achados:
+        linhas = "\n".join(f"  {a}:{n}  ->  {cam}" for a, n, cam in achados)
+        pytest.fail(
+            f"{len(achados)} caminho(s) absoluto(s) de maquina em arquivo "
+            f"versionado:\n{linhas}\n\n"
+            f"Caminho de exemplo deve usar o usuario '{_USUARIO_SENTINELA}'; "
+            "caminho real vira descricao relativa (ex.: 'a pasta_dados do "
+            "config.yaml local')."
+        )
+
+
+def _caminho(sistema: str, usuario: str) -> str:
+    """Monta o caminho em tempo de execucao -- um literal aqui seria pego
+    pela propria varredura acima (mesma armadilha documentada em `_id`)."""
+    if sistema == "win":
+        return "C:" + "\\" + "Users" + "\\" + usuario + "\\projeto\\x.md"
+    return "/" + "home" + "/" + usuario + "/projeto/x.md"
+
+
+def test_usuario_sentinela_e_a_unica_excecao_de_caminho() -> None:
+    """Contra-prova: o regex acusa caminho real, e a folga e' exatamente o
+    usuario sentinela -- nem prefixo, nem vizinho."""
+    for sistema in ("win", "unix"):
+        (sentinela,) = caminhos_absolutos_em_texto(_caminho(sistema, _USUARIO_SENTINELA))
+        assert _usuario_do_caminho(sentinela) == _USUARIO_SENTINELA
+        for outro in ("fulano", _USUARIO_SENTINELA + "2", "x" + _USUARIO_SENTINELA):
+            (cam,) = caminhos_absolutos_em_texto(_caminho(sistema, outro))
+            assert _usuario_do_caminho(cam) != _USUARIO_SENTINELA, cam
 
 
 def test_padrao_nao_barra_texto_legitimo() -> None:
