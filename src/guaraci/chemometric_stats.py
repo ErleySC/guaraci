@@ -24,6 +24,7 @@ __all__ = [
     "vip_scores",
     "compute_selectivity_ratio",
     "martens_uncertainty_test",
+    "mahalanobis_distance_shrinkage",
     "hotelling_t2",
     "hotelling_t2_limit",
     "q_residuals",
@@ -256,6 +257,54 @@ def martens_uncertainty_test(
         "n_folds_validos": np.asarray(n_folds),
         "coef_medio_folds": b_bar[idx_max, np.arange(p)],
     }
+
+
+def mahalanobis_distance_shrinkage(X_a: np.ndarray, X_b: np.ndarray,
+                                    estimador: str = "shrinkage") -> float:
+    """Distância de Mahalanobis entre duas classes, com a covariância
+    conjunta (pooled) estimada por encolhimento de Ledoit-Wolf (Ledoit &
+    Wolf 2004, *J. Multivariate Anal.* 88:365-411, DOI
+    10.1016/S0047-259X(03)00096-4) em vez da covariância amostral crua.
+
+    Proposta T7 da rodada multiagente de 2026-09-10: a covariância crua
+    fica mal-condicionada quando o nº de amostras por classe é pequeno
+    face à dimensão (ex.: n≈30-40/classe em PCA de 10 componentes) — a
+    distância então SOBE por artefato numérico, não por separação real
+    (achado medido no Passo 112: 0,384 em 2 componentes → 1,048 em 10
+    componentes, mesmas classes). Ledoit-Wolf encolhe a covariância em
+    direção a um alvo bem condicionado, com a intensidade ótima calculada
+    dos próprios dados — a distância fica estável ao acrescentar
+    dimensões de puro ruído, ao contrário da covariância crua.
+
+    `estimador='raw'` reproduz o comportamento antigo (covariância
+    amostral, via pseudo-inversa) para comparação lado a lado — é o
+    número que INFLA por mal-condicionamento, não um substituto
+    recomendado.
+
+    Ganho é DIAGNÓSTICO: uma distância maior não promete separação real
+    entre as classes, só relata a distância COM a covariância bem
+    condicionada em vez de inflada por artefato.
+    """
+    from sklearn.covariance import LedoitWolf
+
+    X_a = np.asarray(X_a, dtype=float)
+    X_b = np.asarray(X_b, dtype=float)
+    mean_a = X_a.mean(axis=0)
+    mean_b = X_b.mean(axis=0)
+    residuos = np.vstack([X_a - mean_a, X_b - mean_b])
+
+    if estimador == "shrinkage":
+        cov = LedoitWolf().fit(residuos).covariance_
+    elif estimador == "raw":
+        cov = np.atleast_2d(np.cov(residuos, rowvar=False))
+    else:
+        raise ValueError(
+            f"estimador desconhecido: {estimador!r} (use 'shrinkage' ou 'raw')")
+
+    delta = mean_a - mean_b
+    inv_cov = np.linalg.pinv(cov)
+    d2 = float(delta @ inv_cov @ delta)
+    return float(np.sqrt(max(d2, 0.0)))
 
 
 def hotelling_t2(T: np.ndarray) -> np.ndarray:

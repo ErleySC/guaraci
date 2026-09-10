@@ -715,6 +715,10 @@
         "assinatura": "(rpd: 'float') -> 'str'",
         "forma": "funcao"
       },
+      "mahalanobis_distance_shrinkage": {
+        "assinatura": "(X_a: 'np.ndarray', X_b: 'np.ndarray', estimador: 'str' = 'shrinkage') -> 'float'",
+        "forma": "funcao"
+      },
       "martens_uncertainty_test": {
         "assinatura": "(X: 'np.ndarray', Y: 'np.ndarray', n_components: 'int', cv_indices: 'List[Tuple[np.ndarray, np.ndarray]]', coef_completo: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, np.ndarray]'",
         "forma": "funcao"
@@ -1067,6 +1071,11 @@
             "nome": "airpls_lam",
             "tem_default": true,
             "tipo": "float"
+          },
+          {
+            "nome": "apply_pqn",
+            "tem_default": true,
+            "tipo": "bool"
           },
           {
             "nome": "max_lvs",
@@ -2004,6 +2013,11 @@
             "nome": "airpls_lam",
             "tem_default": true,
             "tipo": "float"
+          },
+          {
+            "nome": "apply_pqn",
+            "tem_default": true,
+            "tipo": "bool"
           },
           {
             "nome": "max_lvs",
@@ -3901,6 +3915,18 @@
           "transform"
         ]
       },
+      "PQN": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": null,
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
       "SNV": {
         "bases": [
           "BaseEstimator",
@@ -4345,7 +4371,7 @@
         ]
       },
       "bootstrap_bca_ci": {
-        "assinatura": "(y_true: 'np.ndarray', y_pred: 'np.ndarray', metric_fn: 'Callable', n_boot: 'int' = 500, alpha: 'float' = 0.05, seed: 'int' = 42) -> 'Tuple[float, float, float]'",
+        "assinatura": "(y_true: 'np.ndarray', y_pred: 'np.ndarray', metric_fn: 'Callable', n_boot: 'int' = 500, alpha: 'float' = 0.05, seed: 'int' = 42, groups: \"'Optional[np.ndarray]'\" = None) -> 'Tuple[float, float, float]'",
         "forma": "funcao"
       },
       "cv_anova_eriksson": {

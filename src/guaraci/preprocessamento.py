@@ -29,6 +29,7 @@ __all__ = [
     "SNV",
     "SavGol",
     "MSC",
+    "PQN",
     "EMSC",
     "OSC",
     "AirPLS",
@@ -124,6 +125,48 @@ class MSC(BaseEstimator, TransformerMixin):
         if b_quase_zero.any():
             out[b_quase_zero] = (X - a[:, None])[b_quase_zero]
         return out
+
+
+class PQN(BaseEstimator, TransformerMixin):
+    """Probabilistic Quotient Normalization (Dieterle, Ross, Schlotterbeck &
+    Senn, *Anal. Chem.* 78:4281-4290, 2006, DOI 10.1021/ac051632c).
+
+    Proposta T6 da rodada multiagente de 2026-09-10: `cli_assistente.py`
+    já recomendava "SNV ou PQN + MC (após binning)" para RMN, mas PQN não
+    existia no pacote (achado R5b). Divide cada espectro por um fator de
+    diluição estimado como a MEDIANA das razões ponto a ponto entre ele e
+    um espectro de referência -- robusto a poucos picos que variam muito
+    (ex.: um metabólito que muda de concentração não domina a estimativa
+    de diluição, ao contrário de uma normalização por área/soma total).
+
+    Referência = espectro MEDIANO do conjunto de TREINO (fit), o mesmo
+    padrão de referência-por-treino de `MSC`/`EMSC` -- ajustada dentro do
+    Pipeline+CV para não vazar entre folds.
+    """
+
+    def fit(self, X, y=None):
+        X = np.asarray(X, dtype=float)
+        self.ref_ = np.median(X, axis=0)
+        return self
+
+    def transform(self, X):
+        X = np.asarray(X, dtype=float)
+        ref = self.ref_
+        # So' usa canais onde a referencia e' numericamente significativa --
+        # divisao por ~0 produziria razao instavel/infinita sem informacao
+        # real sobre diluicao.
+        escala = float(np.max(np.abs(ref))) if ref.size else 0.0
+        limiar = escala * 1e-6 if escala > 0 else 1e-12
+        mask_valida = np.abs(ref) > limiar
+        if not mask_valida.any():
+            # Referencia degenerada (treino ~constante em 0) -- nao ha'
+            # quociente estimavel; devolve o espectro sem alteracao em vez
+            # de propagar NaN/Inf silenciosamente.
+            return X
+        razoes = X[:, mask_valida] / ref[mask_valida]
+        fator = np.median(razoes, axis=1)
+        fator_seguro = np.where(np.abs(fator) > 1e-12, fator, 1.0)
+        return X / fator_seguro[:, None]
 
 
 class EMSC(BaseEstimator, TransformerMixin):
@@ -432,6 +475,8 @@ def build_preprocessor(cfg: "Config") -> Pipeline:
         etapas.append(("airpls", AirPLS(lam=cfg.airpls_lam)))
     if cfg.apply_snv:
         etapas.append(("snv", SNV()))
+    if cfg.apply_pqn:
+        etapas.append(("pqn", PQN()))
     if cfg.apply_emsc:
         etapas.append(("emsc", EMSC(ordem_polinomial=cfg.emsc_ordem_polinomial)))
     if cfg.apply_sg:

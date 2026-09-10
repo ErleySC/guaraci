@@ -208,6 +208,12 @@ class Config:
     # padrao).
     apply_airpls: bool = False
     airpls_lam: float = 100.0
+    # PQN (Dieterle et al. 2006) -- normalizacao por quociente probabilistico,
+    # robusta a diluicao. Proposta T6 da rodada multiagente 2026-09-10:
+    # `cli_assistente.py` ja recomendava "SNV ou PQN + MC" p/ RMN, mas PQN
+    # nao existia -- so' com default_preprocessing='custom' (mesmo padrao
+    # de apply_emsc/apply_osc/apply_airpls acima).
+    apply_pqn: bool = False
 
     max_lvs: int = 40
     n_pcs_pca: int = 10
