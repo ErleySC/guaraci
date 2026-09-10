@@ -244,16 +244,23 @@ def check_validation_use_range(conc: Optional[np.ndarray], cfg: "Any"
 
 
 def check_external_validation() -> AuditFinding:
-    """Informativo, nao derivado dos dados desta execucao -- ver
-    docs/MANUAL.md secao 9: benchmark PLS/pre-processamento contra
-    dataset publico (Tecator) existe; classificacao/DD-SIMCA/OPLS-DA
-    ainda nao tem benchmark externo."""
+    """Informativo, nao derivado dos dados desta execucao.
+
+    ATUALIZADO na rodada multiagente de 2026-09-10 (Passo 200, achado R5c):
+    a mensagem antiga dizia "classificacao ... AINDA sem benchmark
+    externo", o que ficou desatualizado -- PLS-DA (classificacao) tem
+    benchmark externo em 14 datasets publicos desde entao (ver
+    docs/VALIDACAO_PUBLICA.md). Só DD-SIMCA e OPLS-DA continuam sem
+    benchmark externo publicado; PLS-R/pre-processamento tem o Tecator
+    (docs/BENCHMARK_TECATOR.md)."""
     return AuditFinding(
         "validacao_externa", "aviso",
         "Benchmark contra dataset publico: PLS-R/pre-processamento "
-        "cobertos (Tecator, ver docs/BENCHMARK_TECATOR.md). "
-        "Classificacao/DD-SIMCA/OPLS-DA AINDA sem benchmark externo -- "
-        "nao valide conclusoes de metodo sem esse benchmark.")
+        "cobertos (Tecator, ver docs/BENCHMARK_TECATOR.md); classificacao "
+        "PLS-DA coberta em 14 datasets publicos (ver "
+        "docs/VALIDACAO_PUBLICA.md). DD-SIMCA/OPLS-DA AINDA sem benchmark "
+        "externo -- nao valide conclusoes desses dois metodos sem esse "
+        "benchmark.")
 
 
 def run_audit(X: np.ndarray, wavenumbers: np.ndarray,

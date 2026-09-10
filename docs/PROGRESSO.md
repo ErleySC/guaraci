@@ -3931,3 +3931,66 @@ de formato, exportação portátil do modelo, monitoramento em linha,
 execução não interativa pela CLI.
 
 **Suíte após as correções:** 1462 passed / 42 skipped / 0 failed.
+
+---
+
+# PROGRESSO — Passo 201 (2026-09-10)
+
+## Passo 201 — Fase 0 e Fase 1 da instrução "implementar todos os achados"
+
+Backlog rastreável criado (`docs/BACKLOG_MULTIAGENTE.md`), com todo item do
+relatório do Passo 200 marcado por status. Vinculado a `docs/INDICE_PROJETO.md`.
+
+**Fase 1 — medição crítica (bloqueante): resultado.** Escrito
+`scripts/medicoes/medir_mae_id_vs_sessao.py`, reusando as MESMAS funções de
+`pipeline.executar()` (`build_preprocessor`, `StableStratifiedGroupKFold`,
+`classification_metrics`) para medir o efeito de agrupar a CV/holdout de
+classificação (N1) por `session_from_mae_id` em vez de `mae_id`, no dataset
+privado de óleos.
+
+**Escopo confirmado ANTES de medir** (grep em `tests/test_validacao_publica*.py`):
+todos os 14 datasets públicos passam `group_by_mae_id=False` — nenhum usa
+agrupamento por `mae_id`. O achado é exclusivo do dataset PRIVADO.
+
+**Resultado: não é uma diferença numérica — é impossibilidade estrutural de
+partição.** 8 das 13 espécies (Babaçu, Bacaba, Buriti, Castanha do Pará,
+Goiaba, Graviola, Palmiste, Pracaxi) foram coletadas em **exatamente 1
+sessão**; as outras 5 têm 2. Com só 18 sessões no total (contra 562
+`mae_id` únicos), agrupar a CV por sessão faz `StableStratifiedGroupKFold`
+produzir folds vazios (medido: partição 1432/144/96/0/0 em 5 folds) — uma
+classe confinada a 1 sessão não pode aparecer em treino E validação ao
+mesmo tempo, com nenhum número de folds. O script detecta essa
+inviabilidade explicitamente (`GrupoInviavel`) antes de deixar o
+pré-processador estourar num erro de baixo nível (LAPACK, via lote vazio
+no `savgol_filter`).
+
+**Decisão sobre "propagar a correção" (Fase 1, 2º bloco):** NÃO aplicável
+como a instrução propôs ("substituir mae_id por session_from_mae_id"). Não
+há substituição possível sem quebrar a CV estratificada para 8/13 classes.
+A correção real depende de coleta futura com mais sessões independentes
+por espécie — fora do escopo de uma correção de código. **Nenhuma mudança
+foi propagada a `pipeline.py`.**
+
+**Números não retratados:** `docs/VALIDACAO_PUBLICA.md` não usa `mae_id`
+para nenhum dos 14 datasets (confirmado acima) — nada ali precisa de
+correção. O CV atual por `mae_id` mede `balanced_accuracy = 0,8299` (14
+LVs), reportado aqui como referência local; **não substitui nenhuma
+citação anterior** (essas usam runs específicas do pipeline, não este
+script de medição).
+
+**O que fica registrado, não um número a mais:** a limitação já existia
+registrada (CLAUDE.md P12: "36/38 casos de 1 sessão" na granularidade
+espécie×adulterante). Esta medição confirma a mesma limitação na
+granularidade espécie sozinha (8/13) e prova concretamente, com o
+splitter real do projeto, que "trocar a chave de agrupamento" não é uma
+correção de código executável hoje.
+
+**Pendência que exige decisão do autor (fora do código):** conferir se
+algum documento já entregue (relatório PIBIC) cita `balanced_accuracy` ou
+outra métrica de CV/holdout do dataset privado como se a validação
+protegesse contra vazamento **entre sessões de coleta** — o que a
+validação atual não faz nem pode fazer hoje. Não tenho visibilidade sobre
+o que já foi submetido; reportado ao usuário, não decidido aqui.
+
+CLAUDE.md local (0-G) atualizado com este resultado, substituindo o
+placeholder "efeito de nenhum foi medido".

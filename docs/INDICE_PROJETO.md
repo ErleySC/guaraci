@@ -36,6 +36,8 @@ transparência de processo.
 | [`docs/CHANGELOG.md`](CHANGELOG.md) | Histórico de versões do pipeline, extraído do cabeçalho de `pipeline.py`. |
 | [`docs/DESIGN.md`](DESIGN.md) | Proposta de identidade visual/navegação da interface — **não implementada**, exige aprovação explícita antes de qualquer mudança de UI. |
 | [`docs/COMMERCIAL.md`](COMMERCIAL.md) | Termos de licenciamento comercial (dual-license) do software. |
+| [`docs/RELATORIO_MULTIAGENTE_2026-09-10.md`](RELATORIO_MULTIAGENTE_2026-09-10.md) | Relatório de uma rodada de 4 agentes de pesquisa (estado/segurança, técnicas novas, problemas da área, concorrência) — Passo 200. |
+| [`docs/BACKLOG_MULTIAGENTE.md`](BACKLOG_MULTIAGENTE.md) | Rastreamento item a item dos achados do relatório acima: o que foi implementado, o que foi medido e aguarda decisão, e o que ficou registrado como backlog. |
 
 ## Validação científica
 
