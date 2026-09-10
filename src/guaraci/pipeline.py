@@ -1950,10 +1950,18 @@ def executar(cfg: Config):
               f"fora do mode Classificacao.")
     else:
         log.info(f"\n[5b/7] BCa CI 95% (n_boot={cfg.n_bootstrap_bca})")
+        # groups=mae_id (achado #13, rodada multiagente 2026-09-10): sem
+        # isto, o bootstrap reamostrava ESPECTROS individuais -- replicas
+        # fisicas (T1/T2/T3) do mesmo mae_id podiam cair em lados diferentes,
+        # deixando o IC mais estreito do que a independencia real sustenta.
+        # Medido no dataset privado (Passo 202): largura do IC de
+        # balanced_accuracy sobe de 0,0316 para 0,0411 (+30%) ao trocar para
+        # group-aware -- o comportamento antigo subestimava a incerteza.
         for nome, fn in metricas_funcoes.items():
             lo, hi, obs = bootstrap_bca_ci(rotulos, pred_lab, fn,
                                             n_boot=cfg.n_bootstrap_bca,
-                                            alpha=0.05, seed=cfg.seed)
+                                            alpha=0.05, seed=cfg.seed,
+                                            groups=mae_id)
             bca[nome] = (lo, hi, obs)
             log.info(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
     log.info("\n" + str(classification_report(rotulos, pred_lab,
@@ -2315,13 +2323,14 @@ def executar(cfg: Config):
                 log.info(f"  {k:>22s}: {v:.4f}")
             fig_extra_holdout(metricas_finais, metricas_holdout,
                                 cm_holdout, lb.classes_, n_holdout, cfg, pasta)
-            # BCa CI no holdout tambem
+            # BCa CI no holdout tambem -- groups=_mae_id_holdout, mesmo
+            # motivo do bloco de CV acima (achado #13).
             bca_holdout = {}
             for nome, fn in metricas_funcoes.items():
                 lo, hi, obs = bootstrap_bca_ci(
                     rot_ho, pred_holdout, fn,
                     n_boot=cfg.n_bootstrap_bca, alpha=0.05,
-                    seed=cfg.seed + 1)
+                    seed=cfg.seed + 1, groups=_mae_id_holdout)
                 bca_holdout[nome] = (lo, hi, obs)
         except Exception as e:  # noqa: BLE001 -- avaliacao externa opcional;
             # erro impresso, metricas_holdout fica None e some do resumo

@@ -21,7 +21,7 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | R2 | `avaliacao_modelos.py` (6 erros) e `resultados_io.py` (13 erros) | **corrigido (Passo 202)** — ambos `type: ignore` obsoletos (código de erro do mypy mudou de versão para versão) mais narrowing real com `isinstance` em 1 ponto; suíte de ambos os módulos passando | |
 | R2 | `hsi_pipeline.py` (31 erros) | **backlog — esforço maior**, não corrigido nesta rodada. Raiz sistêmica: um valor `object` (de config/manifesto lido de forma solta) se propaga por ~10 chamadas de função tipadas ao longo do módulo (`build_pixel_dataset`, `run_internal_validation_group_aware`, `run_external_validation_by_day`, `PLSDAClassifier`, `enrich_object_results`). Corrigir de verdade exige anotar o tipo na ORIGEM da leitura, não remendar cada call site — risco de introduzir tipo sutilmente errado num módulo científico sem tempo para validar cada ponto. | |
 | R3 | `consultar_vault.py` casa substring em sigla (`"EPO"` → "tempo") | _preenchido na Fase 2_ | |
-| R4 | 5 PRs do Dependabot abertas, nunca revisadas | _preenchido na Fase 2_ | |
+| R4 | 5 PRs do Dependabot abertas, nunca revisadas | **revisadas (Passo 202); merge bloqueado — decisão do autor** | Todas as 5 são bumps mecânicos, sem código de aplicação tocado: #8 `upload-artifact` v4→v7 (só `draft-pdf.yml`), #9 `setup-python` v6→v7, #10 `deploy-pages` v4→v5, #11 `upload-pages-artifact` v3→v5 (as 3 só em `docs.yml`), #20 22 atualizações de patch/minor em `requirements-lock.txt` (numpy/scikit-learn permanecem dentro dos tetos do `pyproject.toml`). Os 5 branches foram atualizados contra o `master` já com as correções de CI (02d65fe); #8 e #9 fecharam 100% verdes. Nenhuma exige revisão cuidadosa além da rotina. **Não mergeadas**: `gh pr merge` foi bloqueado pela permissão do ambiente (ação consequente em repositório público) — aguarda o autor mergear ou autorizar explicitamente. |
 | R5a | Docstring de `hsi_uncertainty.py` alega intervalo de predição inexistente | _preenchido na Fase 2_ | |
 | R5b | `cli_assistente.py` recomenda PQN para RMN sem implementação | _preenchido na Fase 2_ | vinculado a T6 |
 | R5c | `auditoria_delineamento.check_external_validation` com mensagem fixa desatualizada | _preenchido na Fase 2_ | |
@@ -50,10 +50,10 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | 9 | Caixa-preta sem atribuição química | RP | backlog — tabela de bandas NIR/MIR/Raman de óleos não existe |
 | 10 | Quantificação sem intervalo por amostra | NR | _preenchido na Fase 4 (T1)_ |
 | 11 | Classificação sem incerteza | RP | já parcialmente resolvido (conformal one-class); backlog o resto |
-| 12 | Nº de VLs escolhido de forma otimista | RP | _preenchido na Fase 3_ |
-| 13 | Métricas infladas / IC ingênuo | RP | _preenchido na Fase 3_ |
-| 14 | Y-randomização incompleta | RP | _preenchido na Fase 3_ |
-| 15 | "Melhor modelo" escolhido no mesmo CV | NR (declarado) | _preenchido na Fase 3_ |
+| 12 | Nº de VLs escolhido de forma otimista | RP | **medido (Passo 202), decisão adiada** — `scripts/medicoes/medir_vieses_selecao_lv.py`: CV aninhada deu balanced_accuracy MAIOR (0,8499) que a atual (0,8299), direção oposta à hipótese do relatório. Custo 3,7× por execução. Não propagado — precisa de mais réplicas antes de mudar a seleção de modelo central. |
+| 13 | Métricas infladas / IC ingênuo | RP | **corrigido e medido (Passo 202)** — `bootstrap_bca_ci(groups=...)`, retrocompatível; largura do IC de balanced_accuracy sobe de 0,0316 para 0,0411 (+30%) no dataset privado; propagado a `pipeline.py` (CV e holdout) |
+| 14 | Y-randomização incompleta | RP | **avaliado (Passo 202), documentado como proibitivo** — mover a seleção de LVs para dentro de cada permutação custaria ~150-200× o tempo atual (200 permutações × custo 3,7× medido em #12); mantido como limitação declarada |
+| 15 | "Melhor modelo" escolhido no mesmo CV | NR (declarado) | **avaliado (Passo 202)** — mesma restrição computacional de #14; mantido como limitação já documentada em `resultados_io._NOTAS_METODOLOGICAS` |
 | 16 | Pseudo-replicação | DNC | = item M1/M3 |
 | 17 | Duplicatas entre treino e teste | R | já resolvido; remoção linha a linha não reconferida (backlog, esforço baixo) |
 | 18 | Predição fora do domínio | R | já resolvido; nenhuma ação |

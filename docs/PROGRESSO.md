@@ -3994,3 +3994,93 @@ o que já foi submetido; reportado ao usuário, não decidido aqui.
 
 CLAUDE.md local (0-G) atualizado com este resultado, substituindo o
 placeholder "efeito de nenhum foi medido".
+
+---
+
+# PROGRESSO — Passo 202 (2026-09-10)
+
+## Passo 202 — Fase 2 (fechamento) e Fase 3 da instrução "implementar todos os achados"
+
+**Fase 2 fechada:**
+- R2: `avaliacao_modelos.py` (6 erros) e `resultados_io.py` (13 erros) com
+  mypy limpo — a maior parte era `# type: ignore[código]` obsoleto (o
+  código de erro do mypy mudou entre versões do mypy/matplotlib-stubs;
+  `warn_unused_ignores` acusava), mais 1 narrowing real com `isinstance`
+  (`resultados_io.py`: `resumo.get("auditoria_delineamento")` é `object`,
+  não iterável sem checar). `hsi_pipeline.py` (31 erros) registrado no
+  backlog como esforço maior — raiz sistêmica (um valor `object` se
+  propaga por ~10 chamadas tipadas), corrigir de verdade exige anotar na
+  ORIGEM da leitura, não remendar cada call site.
+- R4: as 5 PRs do Dependabot foram revisadas e os branches atualizados
+  contra o `master` (já com as correções de CI). Todas são bumps
+  mecânicos sem código de aplicação tocado. `gh pr merge` foi bloqueado
+  pela permissão do ambiente (ação consequente em repositório público) —
+  aguarda o autor mergear ou autorizar.
+- C1-C4: comparativo do README/README.pt-br.md reescrito (grupo-aware
+  validation como padrão, não capacidade exclusiva; "Reproducible ❌" sem
+  evidência; `.joblib` explicitado como formato fechado; parênteses de
+  transferência de calibração sem apresentar suposição como fato).
+- Achado colateral corrigido: `_http_retry.py` (novo, R1) quebrava
+  `test_todos_os_scripts_de_download_usam_o_mesmo_mecanismo` — o teste
+  varria todo `.py` da pasta exigindo `GUARACI_DATASETS_DIR`, e o helper
+  interno não é um script de download. Corrigido excluindo módulos com
+  prefixo `_` (convenção "interno") da varredura.
+
+**Fase 3 — correções científicas de esforço baixo-médio:**
+
+- **#13 (`bootstrap_bca_ci` group-aware): CORRIGIDO E MEDIDO.**
+  `validacao_estatistica.bootstrap_bca_ci` ganhou parâmetro `groups`
+  (retrocompatível — sem ele, comportamento idêntico ao anterior, 4
+  testes de regressão confirmam). Com `groups`, tanto o bootstrap quanto
+  o jackknife da aceleração reamostram GRUPOS inteiros (mesmo padrão de
+  `pipeline.bootstrap_vip_stratified`), nunca separando réplicas T1/T2/T3.
+  Contra-prova sintética: dataset com réplicas correlacionadas alarga o
+  IC (largura maior com `groups` que sem). **Medido no dataset privado**
+  (CV de classificação, n_opt=14): largura do IC de `balanced_accuracy`
+  sobe de 0,0316 (por amostra) para 0,0411 (por grupo) — **+30%**. O
+  comportamento antigo subestimava a incerteza. **Propagado** aos 2 call
+  sites de `pipeline.py` (CV principal e holdout), com `groups=mae_id` /
+  `groups=_mae_id_holdout`.
+
+- **#12 (viés de seleção de nº de VLs): MEDIDO — direção OPOSTA à
+  hipótese, decisão adiada.** Script
+  `scripts/medicoes/medir_vieses_selecao_lv.py` compara a metodologia
+  atual (n_opt escolhido pela parcimônia de Wold nos MESMOS 5 folds
+  externos cuja predição vira a métrica reportada) contra uma versão
+  ANINHADA (n_opt escolhido só com o treino de cada fold externo, via CV
+  interna, nunca vendo a validação externa). **Resultado real, não a
+  intuição do relatório:** a versão aninhada teve `balanced_accuracy`
+  **maior** (0,8499) que a atual (0,8299) — delta de **-0,0199** (a atual
+  é mais conservadora, não mais otimista). Causa aparente: a parcimônia
+  de Wold (regra "menor n com RMSECV a até 2% do mínimo") escolhe um
+  n_opt pequeno (14) de forma GLOBAL, enquanto a seleção por fold escolhe
+  valores bem maiores em 3 dos 5 folds (31, 31, 32) e menores nos outros
+  2 (12, 12) — o critério de parcimônia parece SUBAJUSTAR relativo ao
+  ótimo por fold neste dataset. Isso não é o viés clássico de "métrica
+  inflada por reusar o dado" descrito na literatura (#12) — é uma
+  observação nova, específica deste dataset, que merece mais réplicas
+  (seeds) antes de qualquer mudança. **Custo:** a versão aninhada levou
+  3,7× mais tempo para 1 execução (177s vs 48s); rodar isso dentro do
+  teste de permutação (200 iterações) multiplicaria o custo em ~150-200×
+  — proibitivo com a config padrão. **Não propagado**: muda a lógica
+  central de seleção de modelo do pipeline, com resultado na direção
+  oposta à esperada e sem replicação — precisa de mais medição, não uma
+  correção apressada. Registrado no backlog.
+
+- **#14 (Y-randomização com n_opt fixo): documentado como
+  computacionalmente proibitivo, não implementado.** Mover a seleção de
+  LVs para dentro de cada permutação custaria ~150-200× o tempo atual do
+  teste de permutação (baseado no fator 3,7× medido para UMA seleção
+  aninhada vs. a atual, multiplicado pelas 200 permutações padrão) —
+  inviabilizaria o `n_permutations` default em qualquer máquina comum.
+  Mantido como limitação documentada (já parcialmente reconhecida na
+  docstring de `permutation_test`).
+
+- **#15 (benchmark sem CV aninhada): mantido como limitação declarada.**
+  Mesma restrição computacional de #14 se aplicaria a qualquer
+  comparação de "melhor modelo" entre vários classificadores — já
+  documentado em `resultados_io._NOTAS_METODOLOGICAS` ("nested-CV would
+  be required for rigorous pairwise claims"). Nenhuma mudança.
+
+Suíte completa após #13: 1468 passed, 42 skipped (mais o teste corrigido
+de `test_isolamento_datasets.py`), `ruff`/`mypy` limpos.

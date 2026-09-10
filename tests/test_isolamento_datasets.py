@@ -136,7 +136,11 @@ def test_todos_os_scripts_de_download_usam_o_mesmo_mecanismo():
     import re
 
     pasta_scripts = _RAIZ_REPO / "scripts" / "download_datasets"
-    scripts_py = sorted(p for p in pasta_scripts.glob("*.py"))
+    # Prefixo "_" = modulo utilitario interno (ex.: _http_retry.py, achado
+    # R1 da rodada multiagente 2026-09-10), nao um script de download em
+    # si -- nao le GUARACI_DATASETS_DIR porque nao escreve em disco.
+    scripts_py = sorted(p for p in pasta_scripts.glob("*.py")
+                         if not p.name.startswith("_"))
     assert scripts_py, "nenhum script de download encontrado -- caminho mudou?"
 
     padrao_fallback = re.compile(

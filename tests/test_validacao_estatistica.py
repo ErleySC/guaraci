@@ -84,6 +84,67 @@ def test_bca_n_boot_baixo_retorna_nan():
     assert obs == 1.0
 
 
+# ── bootstrap_bca_ci group-aware (achado #13, rodada multiagente 2026-09-10) ──
+#
+# Sem `groups`, o bootstrap reamostra ESPECTROS individuais -- replicas
+# fisicas do mesmo mae_id podem cair em lados diferentes, inflando o "n"
+# efetivo e deixando o IC mais estreito do que a independencia real
+# sustenta. Contra-prova: com um dataset onde cada mae_id tem 3 replicas
+# QUASE IDENTICAS (mesmo padrao de erro correlacionado dentro do grupo),
+# o IC group-aware tem que ser mais LARGO que o IC por amostra -- o "n"
+# efetivo de grupos e' 1/3 do "n" de espectros.
+
+def _dataset_com_replicas_correlacionadas(seed: int, n_grupos: int = 15):
+    """3 replicas por grupo; o acerto/erro e' decidido POR GRUPO (replicas
+    do mesmo grupo sempre concordam) -- exatamente o cenario que infla o
+    bootstrap por amostra."""
+    rng = np.random.default_rng(seed)
+    y = np.tile(rng.integers(0, 3, size=n_grupos), 3)
+    grupos = np.repeat(np.arange(n_grupos), 3)
+    erra_grupo = rng.random(n_grupos) < 0.30
+    erra = np.tile(erra_grupo, 3)
+    yp = y.copy()
+    yp[erra] = (yp[erra] + 1) % 3
+    return y, yp, grupos
+
+
+def test_bca_group_aware_alarga_o_ic_com_replicas_correlacionadas():
+    y, yp, grupos = _dataset_com_replicas_correlacionadas(seed=5)
+    low_amostra, high_amostra, obs1 = bootstrap_bca_ci(
+        y, yp, accuracy_score, n_boot=500, seed=11)
+    low_grupo, high_grupo, obs2 = bootstrap_bca_ci(
+        y, yp, accuracy_score, n_boot=500, seed=11, groups=grupos)
+    assert obs1 == obs2   # o valor observado nao muda, so' o IC
+    largura_amostra = high_amostra - low_amostra
+    largura_grupo = high_grupo - low_grupo
+    assert largura_grupo > largura_amostra
+
+
+def test_bca_group_aware_replicas_nunca_se_separam():
+    """Cada bootstrap group-aware tem que preservar TODAS as replicas de
+    todo grupo sorteado -- nunca metade de um mae_id dentro e' metade fora."""
+    y, yp, grupos = _dataset_com_replicas_correlacionadas(seed=6, n_grupos=8)
+    # accuracy por grupo INTEIRO e' sempre 0.0 ou 1.0 (replicas concordam);
+    # se o bootstrap group-aware separasse replicas, alguma reamostragem
+    # produziria uma accuracy "fracionada" incompativel com grupos inteiros.
+    low, high, obs = bootstrap_bca_ci(y, yp, accuracy_score, n_boot=300,
+                                       seed=3, groups=grupos)
+    assert 0.0 <= low <= obs <= high <= 1.0
+
+
+def test_bca_group_aware_sem_groups_e_identico_ao_comportamento_antigo():
+    """Retrocompatibilidade explicita: groups=None tem que dar EXATAMENTE
+    o mesmo resultado de antes desta mudanca (mesma seed, mesmos dados)."""
+    rng = np.random.default_rng(2)
+    y = rng.integers(0, 2, size=60)
+    yp = y.copy()
+    yp[::5] = 1 - yp[::5]
+    sem_groups = bootstrap_bca_ci(y, yp, accuracy_score, n_boot=300, seed=7)
+    com_groups_none = bootstrap_bca_ci(y, yp, accuracy_score, n_boot=300,
+                                        seed=7, groups=None)
+    assert sem_groups == com_groups_none
+
+
 # ── cv_anova_eriksson ────────────────────────────────────────────────────────
 def test_cv_anova_predicao_perfeita_q2_alto_p_baixo():
     Y = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])

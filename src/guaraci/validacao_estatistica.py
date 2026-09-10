@@ -12,7 +12,7 @@ Coberto por tests/test_pipeline_smoke.py e tests/test_pipeline_core.py.
 from __future__ import annotations
 
 import logging
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy.stats import f as f_dist, norm as _norm_dist
@@ -207,10 +207,22 @@ def _gerar_permutacoes_rotulo(y_int: np.ndarray, groups: Optional[np.ndarray],
 
 def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
                       metric_fn: Callable, n_boot: int = 500,
-                      alpha: float = 0.05, seed: int = 42
+                      alpha: float = 0.05, seed: int = 42,
+                      groups: "Optional[np.ndarray]" = None
                       ) -> Tuple[float, float, float]:
     """BCa confidence interval (bias-corrected & accelerated, Efron 1987)
     for a classification metric via stratified bootstrap.
+
+    GROUP-AWARE quando `groups` (ex.: `mae_id`) e' passado (achado da rodada
+    multiagente de 2026-09-10, problema #13): sem grupos, o bootstrap
+    reamostra ESPECTROS individuais, e replicas fisicas (T1/T2/T3) do mesmo
+    ponto de medida podem cair em lados diferentes da reamostragem --
+    inflando a unidade de "n" efetivo e deixando o IC mais estreito do que
+    a independencia real dos dados sustenta. Com `groups`, tanto o bootstrap
+    quanto o jackknife da aceleracao reamostram GRUPOS inteiros (mesmo
+    padrao de `pipeline.bootstrap_vip_stratified`) -- todas as amostras de
+    um grupo entram ou saem juntas. Retrocompativel: sem `groups`, o
+    comportamento e' EXATAMENTE o de antes (reamostra por amostra).
 
     Returns (low, high, observed_value).
     """
@@ -224,12 +236,29 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
     classes = np.unique(y_true)
     idx_por_classe = {c: np.where(y_true == c)[0] for c in classes}
 
+    grupos_por_classe: "Optional[Dict[Any, np.ndarray]]" = None
+    if groups is not None:
+        groups = np.asarray(groups)
+        grupos_por_classe = {
+            c: np.unique(groups[idx_por_classe[c]]) for c in classes
+        }
+
     boot_vals: List[float] = []
     for _ in range(n_boot):
         partes = []
-        for c in classes:
-            ic = idx_por_classe[c]
-            partes.append(rng.choice(ic, size=len(ic), replace=True))
+        if grupos_por_classe is not None:
+            # Group-aware: reamostra GRUPOS por classe, inclui todas as
+            # amostras de cada grupo sorteado -- nunca separa T1/T2/T3.
+            for c in classes:
+                grps = grupos_por_classe[c]
+                grps_boot = rng.choice(grps, size=len(grps), replace=True)
+                for g in grps_boot:
+                    mask = (y_true == c) & (groups == g)
+                    partes.append(np.where(mask)[0])
+        else:
+            for c in classes:
+                ic = idx_por_classe[c]
+                partes.append(rng.choice(ic, size=len(ic), replace=True))
         idx = np.concatenate(partes)
         try:
             boot_vals.append(float(metric_fn(y_true[idx], y_pred[idx])))
@@ -250,17 +279,28 @@ def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
                 observed)
     z0 = _norm_dist.ppf(prop_less)
 
-    # Acceleration via jackknife
-    jack = np.empty(n)
-    for i in range(n):
-        mask = np.ones(n, dtype=bool); mask[i] = False
-        try:
-            jack[i] = float(metric_fn(y_true[mask], y_pred[mask]))
-        except (ValueError, ZeroDivisionError):
-            # Remover a i-esima amostra deixou uma classe sem exemplos --
-            # aproxima a influencia dessa amostra pelo valor observado (nao
-            # crasha o jackknife inteiro por 1 amostra degenerada).
-            jack[i] = observed
+    # Acceleration via jackknife -- por GRUPO quando `groups` e' passado
+    # (leave-one-group-out), por AMOSTRA senao (comportamento antigo).
+    if groups is not None:
+        gid_unicos = np.unique(groups)
+        jack = np.empty(len(gid_unicos))
+        for i, g in enumerate(gid_unicos):
+            mask = groups != g
+            try:
+                jack[i] = float(metric_fn(y_true[mask], y_pred[mask]))
+            except (ValueError, ZeroDivisionError):
+                jack[i] = observed
+    else:
+        jack = np.empty(n)
+        for i in range(n):
+            mask = np.ones(n, dtype=bool); mask[i] = False
+            try:
+                jack[i] = float(metric_fn(y_true[mask], y_pred[mask]))
+            except (ValueError, ZeroDivisionError):
+                # Remover a i-esima amostra deixou uma classe sem exemplos --
+                # aproxima a influencia dessa amostra pelo valor observado (nao
+                # crasha o jackknife inteiro por 1 amostra degenerada).
+                jack[i] = observed
     mean_jack = jack.mean()
     diffs = mean_jack - jack
     num = float(np.sum(diffs ** 3))
