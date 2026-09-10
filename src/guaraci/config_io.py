@@ -8,7 +8,7 @@ ler/gravar/validar/coagir. Depende só de config.Config; nenhuma dependência
 do motor (executar) — por isso não há import circular.
 
 pipeline.py reexporta todos estes nomes, então `pipeline._CONFIG_SPEC`,
-`pipeline.carregar_config(...)`, `pq._coagir_valor(...)` etc. seguem
+`pipeline.load_config(...)`, `pq._coagir_valor(...)` etc. seguem
 funcionando sem alteração (o menu de terminal legado em pipeline.py e o app
 web consomem daqui via a fachada).
 """
@@ -16,9 +16,16 @@ from __future__ import annotations
 
 import glob
 import os
+from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Tuple
 
 from guaraci.config import Config
+from guaraci.perfil_matriz import perfis_disponiveis
+
+__all__ = [
+    "save_config",
+    "load_config",
+]
 
 _PRE_PROC_FRIENDLY: Dict[str, str] = {
     "MSC+SG+MC":      "msc_sg_mc",
@@ -31,43 +38,66 @@ _PRE_PROC_INV: Dict[str, str] = {v: k for k, v in _PRE_PROC_FRIENDLY.items()}
 # Cada campo: chave_yaml, atributo da Config, tipo, descricao, opcoes.
 #   tipo in {"str","int","float","bool","list","choice","preproc"}
 _CONFIG_SPEC: List[Dict[str, Any]] = [
-    {"key": "modo_entrada", "attr": "modo", "tipo": "choice",
+    {"key": "modo_entrada", "attr": "mode", "tipo": "choice",
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
-             "imagem (colorimetria digital, prototipo) | sintetico (teste)",
-     "opcoes": ["dx", "csv", "imagem", "sintetico"]},
-    {"key": "pasta_dados", "attr": "pasta_entrada", "tipo": "str",
-     "desc": "Pasta com os arquivos .dx OU imagens (modo dx/imagem; uma subpasta por classe)",
+             "imagem (colorimetria digital, prototipo) | hsi (imageamento "
+             "hiperespectral, prototipo minimo viavel) | sintetico (teste)",
+     "opcoes": ["dx", "csv", "imagem", "hsi", "sintetico"]},
+    {"key": "perfil_matriz", "attr": "matrix_profile", "tipo": "choice",
+     "desc": "Perfil da matriz analisada (faixa espectral, pre-processamento "
+             "padrao e vocabulario da saida vem daqui, nao do codigo). "
+             "Aceita tambem o caminho de um YAML proprio, digitado direto "
+             "(nao precisa estar nesta lista de perfis embutidos)",
+     "opcoes": perfis_disponiveis(apenas="matriz")},
+    # Dimensao INDEPENDENTE de perfil_matriz (Agente 5B, 2026-09-01): so'
+    # relevante quando modo_entrada="imagem". "" = nao declarado (aceito --
+    # mesma convencao de campo string vazio de perfil_matriz/generico, nao
+    # usa str_opcional/None porque a UI de escolha exige tipo="choice" nos
+    # dois lados, CLI e Streamlit).
+    {"key": "perfil_tecnica", "attr": "acquisition_profile", "tipo": "choice",
+     "desc": "Tecnica de aquisicao da imagem (so' modo_entrada=imagem): "
+             "resolucao esperada, formatos aceitos e nivel de garantia de "
+             "agrupamento TIPICO desta tecnica (informativo -- a garantia "
+             "REAL vem da estrutura real dos dados, nao deste campo). "
+             "Vazio = nao declarado",
+     "opcoes": [""] + perfis_disponiveis(apenas="tecnica")},
+    {"key": "pasta_dados", "attr": "input_folder", "tipo": "str",
+     "desc": "Pasta com os arquivos .dx OU imagens (mode dx/imagem; uma subpasta por classe)",
      "opcoes": None},
-    {"key": "imagem_incluir_textura", "attr": "imagem_incluir_textura", "tipo": "bool",
+    {"key": "hsi_pasta_dataset", "attr": "hsi_dataset_folder", "tipo": "str",
+     "desc": "Pasta com o dataset HSI (manifest.json + arquivos ENVI .hdr/.bin; "
+             "mode hsi) -- ver scripts/download_datasets/baixar_deephs_kaki.py",
+     "opcoes": None},
+    {"key": "imagem_incluir_textura", "attr": "include_image_texture", "tipo": "bool",
      "desc": "Modo imagem: incluir features de textura (GLCM) alem de cor "
              "(media/desvio RGB+HSV+Lab) — requer 'pip install scikit-image'",
      "opcoes": None},
-    {"key": "arquivo_csv", "attr": "arquivo_csv", "tipo": "str",
-     "desc": "Caminho do CSV (modo csv): colunas espectrais/variaveis + 1 coluna de classe", "opcoes": None},
-    {"key": "coluna_classe", "attr": "coluna_classe", "tipo": "str",
-     "desc": "Nome da coluna de classe/rotulo no CSV (modo csv)", "opcoes": None},
-    {"key": "coluna_concentracao", "attr": "coluna_conc", "tipo": "str_opcional",
-     "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; modo csv)", "opcoes": None},
-    {"key": "pasta_saida", "attr": "pasta_saida_raiz", "tipo": "str",
+    {"key": "arquivo_csv", "attr": "csv_file", "tipo": "str",
+     "desc": "Caminho do CSV (mode csv): colunas espectrais/variaveis + 1 coluna de classe", "opcoes": None},
+    {"key": "coluna_classe", "attr": "class_column", "tipo": "str",
+     "desc": "Nome da coluna de classe/rotulo no CSV (mode csv)", "opcoes": None},
+    {"key": "coluna_concentracao", "attr": "conc_column", "tipo": "str_opcional",
+     "desc": "Nome da coluna de concentracao no CSV (vazio se nao houver; mode csv)", "opcoes": None},
+    {"key": "pasta_saida", "attr": "output_root_folder", "tipo": "str",
      "desc": "Pasta onde os resultados serao gravados", "opcoes": None},
-    {"key": "nivel", "attr": "nivel", "tipo": "choice",
+    {"key": "nivel", "attr": "level", "tipo": "choice",
      "desc": "Modo de analise: Classificacao (especie) | Discriminacao "
              "(puro vs. adulterado) | Quantificacao (teor de adulterante)",
      "opcoes": ["N1", "N2", "N3"]},
-    {"key": "objetivo", "attr": "objetivo", "tipo": "choice",
+    {"key": "objetivo", "attr": "objective", "tipo": "choice",
      "desc": "Objetivo cientifico que filtra QUAIS figuras/relatorios sao "
              "gerados: auto (deriva do nivel — N1/N2=Classificacao, "
              "N3=Quantificacao) | exploratorio (so PCA/HCA/loadings/pre-proc, "
              "sem PLS-DA) | classificacao (PLS-DA e derivados) | "
              "quantificacao (regressao PLS + figuras de merito)",
      "opcoes": ["auto", "exploratorio", "classificacao", "quantificacao"]},
-    {"key": "pre_processamento", "attr": "preprocessamento_padrao", "tipo": "preproc",
+    {"key": "pre_processamento", "attr": "default_preprocessing", "tipo": "preproc",
      "desc": "Pre-processamento espectral", "opcoes": list(_PRE_PROC_FRIENDLY)},
     {"key": "faixa_min_cm", "attr": "wn_min", "tipo": "float",
      "desc": "Inicio da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
     {"key": "faixa_max_cm", "attr": "wn_max", "tipo": "float",
      "desc": "Fim da faixa espectral util (cm-1)", "opcoes": None, "min": 0.0},
-    {"key": "excluir_classes", "attr": "excluir_classes", "tipo": "list",
+    {"key": "excluir_classes", "attr": "exclude_classes", "tipo": "list",
      "desc": "Especies a remover da analise (ex: [Copaiba])", "opcoes": None},
     {"key": "max_lvs", "attr": "max_lvs", "tipo": "int",
      "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None,
@@ -75,27 +105,27 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "holdout_fracao", "attr": "frac_holdout", "tipo": "float",
      "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None,
      "min": 0.0, "max": 0.5},
-    {"key": "validacao_group_aware", "attr": "agrupar_por_mae_id", "tipo": "bool",
+    {"key": "validacao_group_aware", "attr": "group_by_mae_id", "tipo": "bool",
      "desc": "Manter replicas (T1/T2/T3) juntas na validacao (evita vazamento)", "opcoes": None},
-    {"key": "n_permutacoes", "attr": "n_permutacoes", "tipo": "int",
+    {"key": "n_permutacoes", "attr": "n_permutations", "tipo": "int",
      "desc": "Iteracoes do teste de permutacao", "opcoes": None, "min": 1, "max": 100000},
-    {"key": "teste_wold", "attr": "executar_wold", "tipo": "bool",
+    {"key": "teste_wold", "attr": "run_wold", "tipo": "bool",
      "desc": "Rodar teste de Wold (intercepts R2Y/Q2Y)", "opcoes": None},
-    {"key": "n_jobs_permutacao", "attr": "n_jobs_permutacao", "tipo": "int",
+    {"key": "n_jobs_permutacao", "attr": "n_jobs_permutation", "tipo": "int",
      "desc": "Processos paralelos para os testes de permutacao/Wold "
              "(1 = sequencial, resultado identico; so muda o tempo). "
              "Medido: 4 processos = ~2x mais rapido no pipeline completo; "
              "acima disso o ganho cai (overhead de criar processos). "
              "Use 1 em ambientes com pouca RAM/CPU (ex.: Streamlit Cloud gratuito)",
      "opcoes": None, "min": 1, "max": 64},
-    {"key": "teste_cv_anova", "attr": "executar_cv_anova", "tipo": "bool",
+    {"key": "teste_cv_anova", "attr": "run_cv_anova", "tipo": "bool",
      "desc": "Rodar CV-ANOVA (Eriksson)", "opcoes": None},
-    {"key": "teste_martens", "attr": "executar_martens", "tipo": "bool",
+    {"key": "teste_martens", "attr": "run_martens", "tipo": "bool",
      "desc": "Teste de incerteza de Martens: jackknifing dos coeficientes "
              "PLS, p-valor de significancia por variavel", "opcoes": None},
     {"key": "selecao_variaveis_etapa4", "attr": "executar_etapa4", "tipo": "bool",
      "desc": "Rodar Etapa 4 (iPLS / VIP / SR / sPLS-DA)", "opcoes": None},
-    {"key": "selecao_spa", "attr": "executar_spa", "tipo": "bool",
+    {"key": "selecao_spa", "attr": "run_spa", "tipo": "bool",
      "desc": "Etapa 4: rodar tambem SPA/APS (Algoritmo das Projecoes "
              "Sucessivas, Araujo et al. 2001) — mais lento que iPLS/VIP/SR",
      "opcoes": None},
@@ -104,48 +134,64 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
              "lento dos metodos de selecao de variaveis (populacao x geracoes "
              "avaliacoes de CV)",
      "opcoes": None},
-    {"key": "ddsimca", "attr": "executar_ddsimca", "tipo": "bool",
+    {"key": "selecao_cars", "attr": "run_cars", "tipo": "bool",
+     "desc": "Etapa 4: rodar tambem CARS (Competitive Adaptive Reweighted "
+             "Sampling, Li et al. 2009) — selecao por amostragem Monte Carlo "
+             "+ funcao exponencial decrescente, mais lento que iPLS/VIP/SR",
+     "opcoes": None},
+    {"key": "selecao_uve", "attr": "run_uve", "tipo": "bool",
+     "desc": "Etapa 4: rodar tambem UVE (Uninformative Variable Elimination, "
+             "Centner et al. 1996) — compara estabilidade do coeficiente PLS "
+             "de cada variavel contra variaveis de ruido artificial",
+     "opcoes": None},
+    {"key": "ddsimca", "attr": "run_ddsimca", "tipo": "bool",
      "desc": "Rodar DD-SIMCA (classificacao one-class)", "opcoes": None},
-    {"key": "modo_ddsimca", "attr": "ddsimca_treinar_em", "tipo": "choice",
+    {"key": "modo_ddsimca", "attr": "ddsimca_train_on", "tipo": "choice",
      "desc": "Modo de treino do DD-SIMCA: 'puros' treina SO com amostras puras "
              "(o resto conta como contaminante/adulterado -- autenticacao de "
              "verdade); 'todos' treina com toda a classe (exploratorio, mais "
              "robusto com poucas amostras puras, porem menos rigoroso)",
      "opcoes": ["puros", "todos"]},
-    {"key": "opls_da", "attr": "executar_opls", "tipo": "bool",
+    {"key": "ddsimca_pcv", "attr": "ddsimca_pcv", "tipo": "bool",
+     "desc": "DD-SIMCA: diagnostico complementar por Procrustes Cross-"
+             "Validation (exige extra opcional [robusto], pacote 'prcv'). "
+             "NAO substitui o LOGO -- so' ajuda quando LOGO fica "
+             "inconclusivo por falta de dobras validas",
+     "opcoes": None},
+    {"key": "opls_da", "attr": "run_opls", "tipo": "bool",
      "desc": "Rodar OPLS-DA", "opcoes": None},
     {"key": "comparar_pre_processamentos", "attr": "comparar_pipelines", "tipo": "bool",
      "desc": "Comparar varios pre-processamentos", "opcoes": None},
-    {"key": "benchmark", "attr": "executar_benchmark", "tipo": "bool",
+    {"key": "benchmark", "attr": "run_benchmark", "tipo": "bool",
      "desc": "Auto-Benchmark: SVM RBF / RF / XGBoost vs PLS-DA (mesma CV group-aware)", "opcoes": None},
-    {"key": "benchmark_regressao", "attr": "executar_benchmark_regressao", "tipo": "bool",
+    {"key": "benchmark_regressao", "attr": "run_benchmark_regression", "tipo": "bool",
      "desc": "Auto-Benchmark de regressao: Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R "
              "(N2/N3, por especie, mesmo split cal/val)", "opcoes": None},
-    {"key": "monte_carlo", "attr": "executar_monte_carlo", "tipo": "bool",
+    {"key": "monte_carlo", "attr": "run_monte_carlo", "tipo": "bool",
      "desc": "Monte Carlo CV: IC95% por percentil (N repeticoes estratificadas por grupo)", "opcoes": None},
     {"key": "n_monte_carlo", "attr": "n_monte_carlo", "tipo": "int",
      "desc": "Numero de repeticoes do Monte Carlo CV", "opcoes": None, "min": 1, "max": 100000},
-    {"key": "monte_carlo_incluir_todos", "attr": "monte_carlo_incluir_todos", "tipo": "bool",
+    {"key": "monte_carlo_incluir_todos", "attr": "monte_carlo_include_all", "tipo": "bool",
      "desc": "MC CV: incluir SVM RBF / RF / XGBoost alem do PLS-DA (mais lento)", "opcoes": None},
-    {"key": "shap_benchmark", "attr": "executar_shap", "tipo": "bool",
+    {"key": "shap_benchmark", "attr": "run_shap", "tipo": "bool",
      "desc": "SHAP values (TreeExplainer) para RF/XGBoost/GBM — interpretabilidade espectral", "opcoes": None},
-    {"key": "shap_max_amostras", "attr": "shap_max_amostras", "tipo": "int",
+    {"key": "shap_max_amostras", "attr": "shap_max_samples", "tipo": "int",
      "desc": "Limite de amostras para calculo de SHAP (controle de memoria)", "opcoes": None,
      "min": 1, "max": 1000000},
-    {"key": "figuras_detalhadas", "attr": "figuras_detalhadas", "tipo": "bool",
+    {"key": "figuras_detalhadas", "attr": "detailed_figures", "tipo": "bool",
      "desc": "Gerar tambem as figuras exploratorias/detalhadas (HCA, loadings PCA, "
              "pre-processamento, contribuicao de score, DD-SIMCA por classe, Cooman). "
              "Desligado = so o conjunto essencial (mais rapido, menos arquivos)",
      "opcoes": None},
-    {"key": "figuras_mostrar_marcadores", "attr": "mostrar_marcadores_classe", "tipo": "bool",
+    {"key": "figuras_mostrar_marcadores", "attr": "show_class_markers", "tipo": "bool",
      "desc": "Usar formas diferentes por classe nos graficos de score", "opcoes": None},
-    {"key": "figuras_mostrar_elipses", "attr": "mostrar_elipses_grupo", "tipo": "bool",
+    {"key": "figuras_mostrar_elipses", "attr": "show_group_ellipses", "tipo": "bool",
      "desc": "Desenhar elipses de confianca por grupo", "opcoes": None},
-    {"key": "formato_figura", "attr": "formato_saida", "tipo": "choice",
+    {"key": "formato_figura", "attr": "output_format", "tipo": "choice",
      "desc": "Formato das figuras", "opcoes": ["png", "pdf", "svg"]},
-    {"key": "dpi", "attr": "dpi_salvar", "tipo": "int",
+    {"key": "dpi", "attr": "save_dpi", "tipo": "int",
      "desc": "Resolucao das figuras (DPI)", "opcoes": None, "min": 50, "max": 1200},
-    {"key": "abrir_figuras_na_tela", "attr": "mostrar_graficos", "tipo": "bool",
+    {"key": "abrir_figuras_na_tela", "attr": "show_plots", "tipo": "bool",
      "desc": "[Nao disponivel: o backend grafico e sempre headless/Agg, por "
              "estabilidade em execucao paralela e no servidor web] Figuras "
              "continuam sendo sempre salvas em disco normalmente",
@@ -203,7 +249,14 @@ def _coagir_valor(spec: Dict[str, Any], val: Any) -> Any:
         return tuple(x.strip() for x in str(val).split(",") if x.strip())
     if t == "choice":
         sv = str(val)
-        if spec["opcoes"] and sv not in spec["opcoes"]:
+        # perfil_matriz/perfil_tecnica: a lista de `opcoes` e' so' um atalho
+        # de UI (picker numerado) para os perfis EMBUTIDOS -- o campo tambem
+        # aceita o caminho de um YAML proprio (load_profile() ja documenta e
+        # valida isso). Travar aqui quebraria qualquer config.yaml existente
+        # com um perfil de usuario -- a checagem real acontece so' quando o
+        # perfil e' de fato carregado, nao no parse do config.
+        if (spec["opcoes"] and sv not in spec["opcoes"]
+                and spec["key"] not in ("perfil_matriz", "perfil_tecnica")):
             raise ValueError(f"valor '{sv}' invalido; use {spec['opcoes']}")
         return sv
     if t == "preproc":
@@ -252,6 +305,25 @@ def _validar_semantico(cfg: "Config") -> List[str]:
     return erros
 
 
+def _yaml_reinterpretaria(v: str) -> bool:
+    """True se PyYAML leria `v` (sem aspas) como algo DIFERENTE da propria
+    string. Nao e' so' os 6 nomes reservados (true/false/null/yes/no/~) --
+    e' qualquer escalar YAML implicito: int (inclusive octal -- '010' virava
+    8 em silencio, achado por teste de propriedade do Hypothesis em
+    2026-08-27, Passo 85), float com zeros a direita ('1.50' virava 1.5,
+    perdendo digito), etc. Usa o PROPRIO parser como oraculo em vez de
+    reimplementar a regex do resolver -- garante que bate exatamente com o
+    que `load_config` de fato faz, sem risco de as duas regras divergirem."""
+    try:
+        import yaml
+    except ImportError:
+        return True   # sem PyYAML p/ conferir: aspeia por seguranca
+    try:
+        return yaml.safe_load(v) != v
+    except yaml.YAMLError:
+        return True   # nao parseia nem como escalar simples: aspeia por seguranca
+
+
 def _fmt_yaml(v: Any) -> str:
     """Formata um valor Python como YAML simples (para o arquivo comentado).
     Usa ASPAS SIMPLES quando precisa citar: em YAML, dentro de aspas simples a
@@ -262,16 +334,23 @@ def _fmt_yaml(v: Any) -> str:
     if isinstance(v, (list, tuple)):
         return "[" + ", ".join(_fmt_yaml(x) for x in v) + "]"
     if isinstance(v, str):
-        precisa = (v == "" or v != v.strip()
-                   or v.lower() in ("true", "false", "null", "yes", "no", "~")
-                   or any(c in v for c in ':#,[]{}&*!|>%@`"\''))
+        # O check de pontuacao cobre o caso em que v vira ITEM de uma lista
+        # flow "[a, b]" (um "?" ou virgula/colchete dentro do item quebraria
+        # a lista mesmo que v sozinho parseasse limpo como escalar -- "?" e'
+        # so' perigoso em CONTEXTO de fluxo, achado por Hypothesis testando
+        # o campo "list" `excluir_classes` no Passo 85: item "0?" nem
+        # parseava, item "?0" virava mapa {0: None} em silencio); o oraculo
+        # YAML cobre o caso em que v sozinho ja' parseia para outra coisa
+        # (int/float/bool/null/strip). Precisa dos dois.
+        precisa = (any(c in v for c in ':#,?[]{}&*!|>%@`"\'')
+                   or _yaml_reinterpretaria(v))
         if precisa:
             return "'" + v.replace("'", "''") + "'"
         return v
     return str(v)
 
 
-def salvar_config(cfg: Config, caminho: str) -> None:
+def save_config(cfg: Config, caminho: str) -> None:
     """Escreve config.yaml em linguagem simples, com um comentario explicativo
     acima de cada campo. Regenera os comentarios a cada salvamento."""
     linhas = [
@@ -294,13 +373,30 @@ def salvar_config(cfg: Config, caminho: str) -> None:
         f.write("\n".join(linhas))
 
 
-def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
+def load_config(caminho: str, base: Optional[Config] = None) -> Config:
     """Le config.yaml e devolve uma Config. Mantem os defaults para chaves
-    ausentes; ignora chaves desconhecidas; reune erros numa mensagem clara."""
+    ausentes; reune erros (valor invalido OU chave desconhecida) numa
+    mensagem clara.
+
+    CHAVE DESCONHECIDA E' ERRO, NAO E' IGNORADA EM SILENCIO. Ate
+    2026-08-20 este metodo pulava silenciosamente qualquer chave que nao
+    reconhecesse -- um campo digitado errado, ou de uma versao diferente
+    do software, fazia o pipeline rodar com o DEFAULT daquele campo sem
+    aviso nenhum. Para um pipeline cientifico isso e' pior que um crash:
+    produz resultado plausivel e errado. Achado na verificacao
+    independente do Passo 24c; corrigido aqui reaproveitando o mesmo
+    agregador de erros que ja' existia para valor invalido, em vez de
+    introduzir um mecanismo novo so' de aviso.
+    """
     try:
         import yaml
-    except ImportError:
-        raise RuntimeError("PyYAML nao instalado. Rode: pip install pyyaml")
+    except ImportError as _e_yaml:
+        # `from _e_yaml`: preserva a cadeia de excecoes. Sem isso o traceback
+        # mostra "During handling of the above exception, another exception
+        # occurred", que sugere falha DENTRO do tratamento de erro em vez de
+        # dependencia ausente -- confunde o diagnostico do usuario.
+        raise RuntimeError(
+            "PyYAML nao instalado. Rode: pip install pyyaml") from _e_yaml
     if not os.path.exists(caminho):
         raise FileNotFoundError(
             f"Config nao encontrado: {caminho}. Gere um pelo assistente "
@@ -309,10 +405,14 @@ def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
         dados = yaml.safe_load(f) or {}
     cfg = base if base is not None else Config()
     spec_por_key = {s["key"]: s for s in _CONFIG_SPEC}
+    chaves_conhecidas = sorted(spec_por_key)
     erros: List[str] = []
     for key, val in dados.items():
         s = spec_por_key.get(key)
         if s is None:
+            sugestao = get_close_matches(key, chaves_conhecidas, n=1)
+            dica = f" -- voce quis dizer '{sugestao[0]}'?" if sugestao else ""
+            erros.append(f"  - '{key}': chave desconhecida{dica}")
             continue
         try:
             setattr(cfg, s["attr"], _coagir_valor(s, val))
@@ -329,19 +429,19 @@ def carregar_config(caminho: str, base: Optional[Config] = None) -> Config:
 
 
 def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
-    """Checagem amigavel da fonte de dados, ciente do modo de entrada.
+    """Checagem amigavel da fonte de dados, ciente do mode de entrada.
     Generico: serve para .dx (FT-NIR), CSV (qualquer dado tabular) ou
     dados sinteticos de teste."""
-    modo = getattr(cfg, "modo", "dx")
-    if modo == "sintetico":
-        return True, "OK — modo sintetico (dados gerados em memoria, sem arquivo)"
-    if modo == "csv":
-        cam = cfg.arquivo_csv
+    mode = getattr(cfg, "mode", "dx")
+    if mode == "sintetico":
+        return True, "OK — mode sintetico (dados gerados em memoria, sem arquivo)"
+    if mode == "csv":
+        cam = cfg.csv_file
         if not cam or not os.path.isfile(cam):
             return False, f"CSV nao encontrado: '{cam}' (confira o caminho)"
         return True, f"OK — CSV: {os.path.basename(cam)}"
-    if modo == "imagem":
-        p_img = cfg.pasta_entrada
+    if mode == "imagem":
+        p_img = cfg.input_folder
         if not p_img or not os.path.isdir(p_img):
             return False, f"pasta nao encontrada: '{p_img}' (confira o caminho)"
         exts = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
@@ -350,8 +450,8 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
         if n_img == 0:
             return False, f"nenhuma imagem em '{p_img}' (nem nas subpastas)"
         return True, f"OK — {n_img} imagens encontradas"
-    # modo dx (padrao)
-    p = cfg.pasta_entrada
+    # mode dx (padrao)
+    p = cfg.input_folder
     if not p or not os.path.isdir(p):
         return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
     n_dx = len(glob.glob(os.path.join(p, "**", "*.dx"), recursive=True))

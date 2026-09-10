@@ -3,7 +3,7 @@
 ATENCAO: este modulo NAO e mais um ponto de entrada executavel. A CLI
 interativa completa (menus, wizard, execucao do pipeline) foi UNIFICADA em
 guaraci.py (item 16 da auditoria: existiam DUAS implementacoes paralelas do
-mesmo fluxo -- menu_projeto/menu_dados/.../wizard_inicial/main aqui E em
+mesmo fluxo -- menu_project/menu_data/.../wizard_inicial/main aqui E em
 guaraci.py). guaraci.py absorveu a interface; este arquivo agora contem
 apenas os DADOS que guaraci.py consome (via a funcao `_try()` em guaraci.py,
 que resolve simbolos deste modulo por nome):
@@ -15,7 +15,7 @@ que resolve simbolos deste modulo por nome):
     (TECNICAS), layout de menu (MENU_FIELDS), rotulos de DD-SIMCA
     (_DDSIMCA_DISPLAY/_DDSIMCA_INPUT), e os re-exports de pipeline.py
     (_CONFIG_SPEC, _SPEC_BY_KEY, _attr_para_yaml, _coagir_valor, _fmt_yaml,
-    carregar_config, salvar_config) que guaraci.py tambem resolve por aqui.
+    load_config, save_config) que guaraci.py tambem resolve por aqui.
 
 Uso:
     python -m guaraci.guaraci   (unico ponto de entrada da CLI interativa)
@@ -32,15 +32,29 @@ import guaraci.pipeline as pq
 
 _CONFIG_SPEC = pq._CONFIG_SPEC
 
-salvar_config = pq.salvar_config
+_save_config = pq.save_config
 
-carregar_config = pq.carregar_config
+_load_config = pq.load_config
 
 _attr_para_yaml = pq._attr_para_yaml
 
 _fmt_yaml = pq._fmt_yaml
 
 _coagir_valor = pq._coagir_valor
+
+__all__ = [
+    "RISK_CLASS",
+    "FIELD_NAMES",
+    "PALETAS_COR",
+    "FONT_PRESETS",
+    "HELP_DB",
+    "PROFILES",
+    "PROFILE_DESC",
+    "PROFILE_KEY_SUMMARY",
+    "REFERENCIAS_GUARACI",
+    "MENU_FIELDS",
+    "TECNICAS",
+]
 
 
 RISK_CLASS: Dict[str, str] = {
@@ -55,15 +69,19 @@ RISK_CLASS: Dict[str, str] = {
     "nivel": "ANALITICO", "objetivo": "ANALITICO", "excluir_classes": "ANALITICO",
     "faixa_min_cm": "ANALITICO", "faixa_max_cm": "ANALITICO",
     "modo_ddsimca": "ANALITICO", "ddsimca": "ANALITICO",
+    "ddsimca_pcv": "ANALITICO",
     "opls_da": "ANALITICO", "selecao_variaveis_etapa4": "ANALITICO",
     "selecao_spa": "ANALITICO", "selecao_ag": "ANALITICO",
+    "selecao_cars": "ANALITICO", "selecao_uve": "ANALITICO",
     "comparar_pre_processamentos": "ANALITICO",
     "validacao_group_aware": "ANALITICO", "teste_wold": "ANALITICO",
     "teste_cv_anova": "ANALITICO", "teste_martens": "ANALITICO",
     "pasta_dados": "ANALITICO",
     "pasta_saida": "ANALITICO", "modo_entrada": "ANALITICO",
+    "perfil_matriz": "ANALITICO",
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
     "coluna_concentracao": "ANALITICO", "imagem_incluir_textura": "ANALITICO",
+    "hsi_pasta_dataset": "ANALITICO",
     # AVANCADO
     "benchmark": "AVANCADO", "monte_carlo": "AVANCADO",
     "shap_benchmark": "AVANCADO", "n_monte_carlo": "AVANCADO",
@@ -76,6 +94,8 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "pasta_saida":                  {"PT": "Pasta de saida",          "EN": "Output folder"},
     "tag":                          {"PT": "Sufixo da pasta saida",   "EN": "Output folder tag"},
     "modo_entrada":                 {"PT": "Modo de entrada",         "EN": "Input mode"},
+    "hsi_pasta_dataset":            {"PT": "Pasta do dataset HSI",    "EN": "HSI dataset folder"},
+    "perfil_matriz":                {"PT": "Perfil de matriz",        "EN": "Matrix profile"},
     "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
     "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
     "coluna_concentracao":          {"PT": "Coluna concentracao",     "EN": "Concentration column"},
@@ -91,9 +111,12 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "opls_da":                      {"PT": "OPLS-DA",                 "EN": "OPLS-DA"},
     "ddsimca":                      {"PT": "DD-SIMCA",                "EN": "DD-SIMCA"},
     "modo_ddsimca":                 {"PT": "Modo de treino (DD-SIMCA)", "EN": "Training mode (DD-SIMCA)"},
+    "ddsimca_pcv":                  {"PT": "Diagnostico PCV (DD-SIMCA)", "EN": "PCV diagnostic (DD-SIMCA)"},
     "selecao_variaveis_etapa4":     {"PT": "Selecao de variaveis",    "EN": "Variable selection"},
     "selecao_spa":                  {"PT": "SPA (APS)",               "EN": "SPA (successive proj.)"},
     "selecao_ag":                   {"PT": "AG (Genetico)",           "EN": "GA (genetic algorithm)"},
+    "selecao_cars":                 {"PT": "CARS",                    "EN": "CARS"},
+    "selecao_uve":                  {"PT": "UVE",                     "EN": "UVE"},
     "holdout_fracao":               {"PT": "Fracao holdout",          "EN": "Holdout fraction"},
     "validacao_group_aware":        {"PT": "Validacao group-aware",   "EN": "Group-aware CV"},
     "n_permutacoes":                {"PT": "N. permutacoes",          "EN": "N permutations"},
@@ -155,6 +178,22 @@ PALETAS_COR: Dict[str, Dict[str, Any]] = {
         "cores": ["#000000", "#E69F00", "#56B4E9", "#009E73",
                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7"],
     },
+    "alto_contraste": {
+        "PT": {
+            "nome": "Alto Contraste",
+            "desc": "Preto, verde escuro e laranja de marca. Para projecao, impressao fraca e baixa visao.",
+        },
+        "EN": {
+            "nome": "High Contrast",
+            "desc": "Black, dark green and brand orange. For projectors, poor printing and low vision.",
+        },
+        # Derivada dos design tokens do projeto (text/primary de design_tokens.py)
+        # mais preto puro -- nao e' uma paleta nova inventada, e' a paleta de
+        # identidade levada ao extremo de contraste. Adicionada em 2026-09-08
+        # para atender o esquema "Alto contraste" da tela Visualizacao.
+        "cores": ["#000000", "#1A2B22", "#D95700", "#5A6B62",
+                  "#8A6D1E", "#9E3F22", "#2F7A48", "#B8850A"],
+    },
     "cinza": {
         "PT": {
             "nome": "Escala de Cinza",
@@ -205,6 +244,43 @@ PALETAS_COR: Dict[str, Dict[str, Any]] = {
         "style": "dark_background",
     },
 }
+
+def apply_palette(nome: str) -> None:
+    """Ativa a paleta `nome` de `PALETAS_COR` para as figuras da proxima
+    execucao. Implementacao UNICA, usada pela CLI (`guaraci.py`, antes de
+    `executar()`) e pelo app web (aba Modelo) -- antes so' existia inline na
+    CLI.
+
+    Faz duas coisas, porque o projeto tem dois caminhos de cor:
+
+    1. `paleta_cores.set_active_palette` -- e' o que muda a cor das figuras
+       de fato. Toda figura do pipeline passa `color=color(i)` /
+       `map_class_colors()` explicitamente; nenhuma usa o ciclo padrao do
+       matplotlib. Ate' 2026-09-08 a escolha de paleta so' mexia no item 2
+       abaixo, ou seja: nao mudava cor nenhuma nas figuras gravadas.
+    2. `rcParams` (prop_cycle/cmap/style) -- para o que porventura NAO passe
+       cor explicita, e para o `style`/`cmap` (ex.: tema escuro, viridis).
+
+    Nome desconhecido = no-op (volta ao padrao), nunca excecao: escolha
+    cosmetica nao derruba uma analise.
+    """
+    import matplotlib.pyplot as plt
+
+    from guaraci.paleta_cores import set_active_palette
+
+    paleta = PALETAS_COR.get(nome) or {}
+    cores = paleta.get("cores")
+    set_active_palette(cores)
+    try:
+        plt.style.use(paleta.get("style", "default"))
+    except OSError:
+        pass   # nome de estilo matplotlib desconhecido -- mantem o default
+    if cores:
+        plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
+    cmap = paleta.get("cmap")
+    if cmap:
+        plt.rcParams["image.cmap"] = cmap
+
 
 FONT_PRESETS: Dict[str, Dict[str, Any]] = {
     "xs": {"font.size": 8,  "axes.titlesize": 9,  "axes.labelsize": 8,
@@ -332,8 +408,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     "objetivo": {
         "PT": {
             "desc": "Objetivo cientifico do run — FILTRA quais figuras e "
-                    "relatorios sao gerados, para que cada modo produza apenas "
-                    "o pertinente. 'auto' deriva do modo de analise "
+                    "relatorios sao gerados, para que cada mode produza apenas "
+                    "o pertinente. 'auto' deriva do mode de analise "
                     "(Classificacao/Discriminacao -> Classificacao, "
                     "Quantificacao -> Quantificacao) e preserva o "
                     "comportamento historico.",
@@ -386,6 +462,31 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "exemplos": {"true": "Recommended for publication", "false": "Saves time in exploration"},
         },
         "default": True, "range": "true | false",
+    },
+    "ddsimca_pcv": {
+        "PT": {
+            "desc": "Diagnostico complementar de sensibilidade por Procrustes Cross-Validation "
+                    "(Kucheryavskiy/Rodionova/Pomerantsev) -- gera um conjunto de validacao por "
+                    "reamostragem quando o LOGO fica inconclusivo por falta de grupos de replica "
+                    "validos. NAO substitui o LOGO: com 1 so grupo por classe (cenario comum com "
+                    "poucas amostras puras), so reflete ruido de medicao, nao autenticacao real. "
+                    "Exige o extra opcional [robusto] (pip install guaraci-chemometrics[robusto]).",
+            "impacto": "ANALITICO — adiciona um numero de sensibilidade exploratorio extra no resumo.",
+            "exemplos": {"true": "Quer um segundo diagnostico alem do LOGO",
+                        "false": "Pacote 'prcv' nao instalado, ou LOGO ja suficiente"},
+        },
+        "EN": {
+            "desc": "Complementary sensitivity diagnostic via Procrustes Cross-Validation "
+                    "(Kucheryavskiy/Rodionova/Pomerantsev) -- generates a resampled validation set "
+                    "when LOGO is inconclusive due to lack of valid replicate groups. Does NOT "
+                    "replace LOGO: with only 1 group per class (common with few pure samples), it "
+                    "only reflects measurement noise, not real authentication. Requires the "
+                    "optional [robusto] extra (pip install guaraci-chemometrics[robusto]).",
+            "impacto": "ANALYTICAL — adds an extra exploratory sensitivity figure to the summary.",
+            "exemplos": {"true": "Want a second diagnostic besides LOGO",
+                        "false": "'prcv' package not installed, or LOGO already sufficient"},
+        },
+        "default": False, "range": "true/false",
     },
     "benchmark": {
         "PT": {
@@ -560,6 +661,48 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": False, "range": "true | false",
     },
+    "selecao_cars": {
+        "PT": {
+            "desc": "Alem dos metodos acima, roda tambem CARS (Competitive "
+                    "Adaptive Reweighted Sampling, Li et al. 2009) — amostragem "
+                    "Monte Carlo + funcao exponencial decrescente elimina "
+                    "variaveis pouco informativas ao longo de varias iteracoes.",
+            "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
+                       "avaliacoes de CV por iteracao).",
+            "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
+        },
+        "EN": {
+            "desc": "In addition to the methods above, also runs CARS "
+                    "(Competitive Adaptive Reweighted Sampling, Li et al. 2009) "
+                    "— Monte Carlo sampling + exponentially decreasing function "
+                    "eliminates uninformative variables over several iterations.",
+            "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several CV "
+                       "evaluations per iteration).",
+            "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
+        },
+        "default": False, "range": "true | false",
+    },
+    "selecao_uve": {
+        "PT": {
+            "desc": "Alem dos metodos acima, roda tambem UVE (Uninformative "
+                    "Variable Elimination, Centner et al. 1996) — compara a "
+                    "estabilidade do coeficiente PLS de cada variavel real "
+                    "contra variaveis de ruido artificial.",
+            "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
+                       "avaliacoes de PLS por repeticao Monte Carlo).",
+            "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
+        },
+        "EN": {
+            "desc": "In addition to the methods above, also runs UVE "
+                    "(Uninformative Variable Elimination, Centner et al. 1996) "
+                    "— compares each real variable's PLS coefficient stability "
+                    "against artificial noise variables.",
+            "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several "
+                       "PLS evaluations per Monte Carlo repetition).",
+            "exemplos": {"false": "Quick exploration (recommended)", "true": "Publication"},
+        },
+        "default": False, "range": "true | false",
+    },
     "comparar_pre_processamentos": {
         "PT": {
             "desc": "Compara automaticamente varios pipelines de pre-processamento e reporta o melhor.",
@@ -586,6 +729,25 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": "dados", "range": "Valid system path",
     },
+    "hsi_pasta_dataset": {
+        "PT": {
+            "desc": "Pasta do dataset HSI (manifest.json + arquivos ENVI .hdr/.bin) "
+                    "-- so' usada quando modo_entrada='hsi'. Ver "
+                    "scripts/download_datasets/baixar_deephs_kaki.py para obter um dataset.",
+            "impacto": "ANALITICO — define os dados de entrada do pipeline HSI.",
+            "exemplos": {"": "Nao configurado (mode hsi pede a pasta na tela [X])",
+                         r"C:\datasets\deephs_kaki_vis": "Pasta baixada pelo script"},
+        },
+        "EN": {
+            "desc": "HSI dataset folder (manifest.json + ENVI .hdr/.bin files) -- "
+                    "only used when modo_entrada='hsi'. See "
+                    "scripts/download_datasets/baixar_deephs_kaki.py to obtain a dataset.",
+            "impacto": "ANALYTICAL — defines the HSI pipeline input data.",
+            "exemplos": {"": "Not configured (mode hsi asks for the folder in screen [X])",
+                         r"C:\datasets\deephs_kaki_vis": "Folder downloaded by the script"},
+        },
+        "default": "", "range": "Valid system path (or empty)",
+    },
     "pasta_saida": {
         "PT": {
             "desc": "Pasta onde os resultados (figuras, metricas, relatorios) serao gravados.",
@@ -602,21 +764,48 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     "modo_entrada": {
         "PT": {
             "desc": "Origem dos dados de entrada: dx (espectros JCAMP-DX) | csv | "
-                    "imagem (colorimetria digital, prototipo) | sintetico (testes).",
+                    "imagem (colorimetria digital, prototipo) | hsi (imageamento "
+                    "hiperespectral, prototipo 'minimo viavel') | sintetico (testes).",
             "impacto": "ANALITICO — define o formato de leitura e parsing dos dados.",
             "exemplos": {"dx": "Espectros JCAMP-DX (FT-NIR, Raman, MIR)", "csv": "Tabela generica com colunas espectrais",
                          "imagem": "Fotos (1 subpasta por classe) -> features de cor RGB/HSV/Lab",
+                         "hsi": "Cubo hiperespectral ENVI (.hdr+.bin) -> classificacao por pixel",
                          "sintetico": "Dados simulados para teste do pipeline"},
         },
         "EN": {
             "desc": "Input data source: dx (JCAMP-DX spectra) | csv | "
-                    "imagem (digital colorimetry, prototype) | synthetic (for testing).",
+                    "imagem (digital colorimetry, prototype) | hsi (hyperspectral "
+                    "imaging, 'minimum viable' prototype) | synthetic (for testing).",
             "impacto": "ANALYTICAL — defines the data reading and parsing format.",
             "exemplos": {"dx": "JCAMP-DX spectra (FT-NIR, Raman, MIR)", "csv": "Generic table with spectral columns",
                          "imagem": "Photos (1 subfolder per class) -> RGB/HSV/Lab color features",
+                         "hsi": "Hyperspectral ENVI cube (.hdr+.bin) -> per-pixel classification",
                          "sintetico": "Simulated data for pipeline testing"},
         },
-        "default": "dx", "range": "dx | csv | imagem | sintetico",
+        "default": "dx", "range": "dx | csv | imagem | hsi | sintetico",
+    },
+    "perfil_matriz": {
+        "PT": {
+            "desc": "Perfil da matriz analisada: define faixa espectral, "
+                    "pre-processamento padrao e vocabulario da saida (nunca no "
+                    "codigo-fonte). 'guaraci perfis' lista os perfis embutidos; "
+                    "tambem aceita o caminho de um YAML proprio.",
+            "impacto": "ANALITICO — troca a faixa espectral e o vocabulario do model card; nao edita codigo.",
+            "exemplos": {"generico": "Sem faixa/vocabulario especifico (default)",
+                         "milho_nir": "Milho em grao, NIR 1100-2498nm",
+                         "oleo_nir": "Oleo vegetal amazonico, NIR 4000-10000 cm-1"},
+        },
+        "EN": {
+            "desc": "Profile of the analyzed matrix: sets spectral range, "
+                    "default preprocessing and output vocabulary (never in "
+                    "source code). 'guaraci perfis' lists the built-in "
+                    "profiles; also accepts the path to your own YAML.",
+            "impacto": "ANALYTICAL — changes spectral range and model card vocabulary; no code edit.",
+            "exemplos": {"generico": "No specific range/vocabulary (default)",
+                         "milho_nir": "Ground corn, NIR 1100-2498nm",
+                         "oleo_nir": "Amazonian vegetable oil, NIR 4000-10000 cm-1"},
+        },
+        "default": "generico", "range": "Nome de perfil embutido ou caminho de YAML",
     },
     "imagem_incluir_textura": {
         "PT": {
@@ -773,8 +962,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "arquivo_csv": {
         "PT": {
-            "desc": "Caminho do arquivo CSV (no modo csv): deve conter colunas espectrais + 1 coluna de classe.",
-            "impacto": "ANALITICO — define os dados de entrada no modo CSV.",
+            "desc": "Caminho do arquivo CSV (no mode csv): deve conter colunas espectrais + 1 coluna de classe.",
+            "impacto": "ANALITICO — define os dados de entrada no mode CSV.",
             "exemplos": {"dados.csv": "Arquivo na pasta atual", r"C:\dados\amostras.csv": "Caminho absoluto"},
         },
         "EN": {
@@ -895,16 +1084,16 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "desc": "Formato de nomenclatura dos arquivos DX para leitura pelo pipeline.",
             "impacto": "ANALITICO — arquivos com nomenclatura incorreta serao ignorados.",
             "exemplos": {
-                "AND-10-06-2020_T1.dx": "Andiroba pura, triplicata 1",
-                "BCB-03-03-2020_AD-S-20_T1.dx": "Bacaba adulterada com 20% de soja",
+                "AND-10-06-2099_T1.dx": "Andiroba pura, triplicata 1",
+                "BCB-03-03-2099_AD-S-20_T1.dx": "Bacaba adulterada com 20% de soja",
             },
         },
         "EN": {
             "desc": "DX file naming format for pipeline reading.",
             "impacto": "ANALYTICAL — files with incorrect naming will be ignored.",
             "exemplos": {
-                "AND-10-06-2020_T1.dx": "Pure Andiroba, replicate 1",
-                "BCB-03-03-2020_AD-S-20_T1.dx": "Bacaba adulterated with 20% soy",
+                "AND-10-06-2099_T1.dx": "Pure Andiroba, replicate 1",
+                "BCB-03-03-2099_AD-S-20_T1.dx": "Bacaba adulterated with 20% soy",
             },
         },
         "default": "COD-DD-MM-AAAA_Tn.dx", "range": "Ver menu Codificacao",
@@ -1189,7 +1378,7 @@ PROFILE_DESC: Dict[str, Dict[str, str]] = {
 
 PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
     "Explorar Dados": {
-        "PT": "objetivo=exploratorio | LVs=15 | PCA/HCA | sem PLS-DA/DD-SIMCA",
+        "PT": "objective=exploratorio | LVs=15 | PCA/HCA | sem PLS-DA/DD-SIMCA",
         "EN": "objective=exploratory | LVs=15 | PCA/HCA | no PLS-DA/DD-SIMCA",
     },
     "Autenticar Pureza": {
@@ -1240,7 +1429,7 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
     "pls_geladi_1986": {
         "cit": ("Geladi, P.; Kowalski, B. R. (1986). Partial least-squares regression: "
                 "a tutorial. Analytica Chimica Acta, 185, 1-17. "
-                "doi:10.1016/0003-2670(85)85121-2"),
+                "doi:10.1016/0003-2670(86)80028-9"),
         "contexto": "PLS — referencia fundamental",
     },
     "opls_da_trygg_2002": {
@@ -1256,7 +1445,7 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
     "msc_geladi_1985": {
         "cit": ("Geladi, P. et al. (1985). Linearization and scatter-correction for "
                 "near-infrared reflectance spectra of meat. Applied Spectroscopy, 39(3), 491-500. "
-                "doi:10.1366/0003702854248684"),
+                "doi:10.1366/0003702854248656"),
         "contexto": "MSC — artigo original",
     },
     "snv_barnes_1989": {
@@ -1293,12 +1482,14 @@ REFERENCIAS_GUARACI: Dict[str, Dict[str, str]] = {
 
 MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
-    "dados": ["modo_entrada", "arquivo_csv", "coluna_classe", "coluna_concentracao",
-              "faixa_min_cm", "faixa_max_cm", "excluir_classes",
-              "imagem_incluir_textura"],
+    "dados": ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
+              "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
+              "excluir_classes", "imagem_incluir_textura", "hsi_pasta_dataset"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
-               "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag"],
+               "ddsimca_pcv",
+               "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
+               "selecao_cars", "selecao_uve"],
     "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
                   "teste_wold", "teste_cv_anova", "teste_martens", "n_jobs_permutacao"],
     "avancado": ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
@@ -1322,162 +1513,192 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
     "ft-nir": {
         "PT": {
             "nome": "FT-NIR (Infravermelho Proximo por Transformada de Fourier)",
-            "desc": "Espectroscopia NIR de alta resolucao. Ideal para oleos, alimentos, farmacos.",
+            "desc": "Espectroscopia NIR de alta resolucao. Ideal para oleos, alimentos, farmacos. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MSC+SG+MC",
             "faixa": "4000-10000 cm-1 (tipico) ou 4000-12000 cm-1",
         },
         "EN": {
             "nome": "FT-NIR (Fourier Transform Near Infrared Spectroscopy)",
-            "desc": "High-resolution NIR spectroscopy. Ideal for oils, food, pharmaceuticals.",
+            "desc": "High-resolution NIR spectroscopy. Ideal for oils, food, pharmaceuticals. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MSC+SG+MC",
             "faixa": "4000-10000 cm-1 (typical) or 4000-12000 cm-1",
         },
         "faixa_min": 4000.0, "faixa_max": 10000.0,
-        "preproc": "msc_sg_mc", "modo": "dx",
+        "preproc": "msc_sg_mc", "mode": "dx",
     },
     "nir": {
         "PT": {
             "nome": "NIR Dispersivo (Infravermelho Proximo)",
-            "desc": "NIR convencional com detector dispersivo. Faixa tipica 700-2500 nm.",
+            "desc": "NIR convencional com detector dispersivo. Faixa tipica 700-2500 nm. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC ou MSC+SG+MC",
             "faixa": "4000-14000 cm-1 (700-2500 nm)",
         },
         "EN": {
             "nome": "Dispersive NIR (Near Infrared Spectroscopy)",
-            "desc": "Conventional NIR with dispersive detector. Typical range 700-2500 nm.",
+            "desc": "Conventional NIR with dispersive detector. Typical range 700-2500 nm. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC or MSC+SG+MC",
             "faixa": "4000-14000 cm-1 (700-2500 nm)",
         },
         "faixa_min": 4000.0, "faixa_max": 14000.0,
-        "preproc": "snv_sg_mc", "modo": "dx",
+        "preproc": "snv_sg_mc", "mode": "dx",
     },
     "mir": {
         "PT": {
             "nome": "MIR/FTIR (Infravermelho Medio)",
-            "desc": "Infravermelho medio (4000-400 cm-1). Bandas fundamentais de absorcao molecular.",
+            "desc": "Infravermelho medio (4000-400 cm-1). Bandas fundamentais de absorcao molecular. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC ou SG+MC (MSC menos comum em MIR)",
             "faixa": "400-4000 cm-1",
         },
         "EN": {
             "nome": "MIR/FTIR (Mid-Infrared Spectroscopy)",
-            "desc": "Mid-infrared (4000-400 cm-1). Fundamental molecular absorption bands.",
+            "desc": "Mid-infrared (4000-400 cm-1). Fundamental molecular absorption bands. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC or SG+MC (MSC less common in MIR)",
             "faixa": "400-4000 cm-1",
         },
         "faixa_min": 400.0, "faixa_max": 4000.0,
-        "preproc": "snv_sg_mc", "modo": "dx",
+        "preproc": "snv_sg_mc", "mode": "dx",
     },
     "raman": {
         "PT": {
             "nome": "Raman (Espectroscopia Raman)",
-            "desc": "Espectroscopia vibracional por espalhamento Raman. Complementar ao IR.",
-            "preproc_rec": "SG+MC (sem MSC — baseline Raman diferente do NIR)",
+            "desc": "Espectroscopia vibracional por espalhamento Raman. Complementar ao IR. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
+            "preproc_rec": "AirPLS+SG+MC (correcao de fluorescencia de fundo; sem MSC — "
+                           "baseline Raman e aditiva, nao multiplicativa como no NIR)",
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
         "EN": {
             "nome": "Raman Spectroscopy",
-            "desc": "Vibrational spectroscopy by Raman scattering. Complementary to IR.",
-            "preproc_rec": "SG+MC (no MSC — Raman baseline differs from NIR)",
+            "desc": "Vibrational spectroscopy by Raman scattering. Complementary to IR. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
+            "preproc_rec": "AirPLS+SG+MC (background fluorescence correction; no MSC — "
+                           "Raman baseline is additive, not multiplicative like NIR scatter)",
             "faixa": "50-4000 cm-1 (Raman shift)",
         },
         "faixa_min": 50.0, "faixa_max": 4000.0,
-        "preproc": "sg_mc", "modo": "dx",
+        "preproc": "airpls_sg_mc", "mode": "dx",
     },
     "uv-vis": {
         "PT": {
             "nome": "UV-Vis (Ultravioleta-Visivel)",
-            "desc": "Espectroscopia de absorbancia UV-Vis. Use modo CSV com colunas de comprimento de onda.",
+            "desc": "Espectroscopia de absorbancia UV-Vis. Use mode CSV com colunas de comprimento de onda. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC ou Mean-centering (dados UV geralmente ja normalizados)",
             "faixa": "190-900 nm (use CSV — wavelength em nm como colunas)",
         },
         "EN": {
             "nome": "UV-Vis (Ultraviolet-Visible Spectroscopy)",
-            "desc": "UV-Vis absorbance spectroscopy. Use CSV mode with wavelength columns.",
+            "desc": "UV-Vis absorbance spectroscopy. Use CSV mode with wavelength columns. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC or Mean-centering (UV data is often already normalized)",
             "faixa": "190-900 nm (use CSV — wavelength in nm as columns)",
         },
         "faixa_min": 190.0, "faixa_max": 900.0,
-        "preproc": "snv_mc", "modo": "csv",
+        "preproc": "snv_mc", "mode": "csv",
     },
     "fluorescencia": {
         "PT": {
             "nome": "Fluorescencia Molecular",
-            "desc": "Espectrofluorimetria. Dados tipicamente em formato CSV (comprimento de onda em nm).",
+            "desc": "Espectrofluorimetria. Dados tipicamente em formato CSV (comprimento de onda em nm). "
+                    "Validado com dataset publico real (sinal fraco em parte dos dados, documentado) "
+                    "-- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC ou apenas MC (fluorescencia varia muito entre instrumentos)",
             "faixa": "200-800 nm (use CSV)",
         },
         "EN": {
             "nome": "Molecular Fluorescence",
-            "desc": "Spectrofluorimetry. Data typically in CSV format (wavelength in nm).",
+            "desc": "Spectrofluorimetry. Data typically in CSV format (wavelength in nm). "
+                    "Validated against real public data (weak signal in part of the data, "
+                    "documented) -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+MC or MC only (fluorescence varies widely between instruments)",
             "faixa": "200-800 nm (use CSV)",
         },
         "faixa_min": 200.0, "faixa_max": 800.0,
-        "preproc": "snv_mc", "modo": "csv",
+        "preproc": "snv_mc", "mode": "csv",
     },
     "hplc": {
         "PT": {
             "nome": "HPLC (Cromatografia Liquida de Alta Performance)",
-            "desc": "Dados cromatograficos em formato CSV. Colunas = tempo de retencao ou compostos.",
+            "desc": "Dados cromatograficos em formato CSV. Colunas = tempo de retencao ou compostos. "
+                    "Validado com dataset publico real -- ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC ou autoscaling (dados HPLC sao areas/alturas de pico)",
             "faixa": "Nao aplicavel — use CSV com colunas de compostos",
         },
         "EN": {
             "nome": "HPLC (High Performance Liquid Chromatography)",
-            "desc": "Chromatographic data in CSV format. Columns = retention times or compounds.",
+            "desc": "Chromatographic data in CSV format. Columns = retention times or compounds. "
+                    "Validated against real public data -- see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC or autoscaling (HPLC data are peak areas/heights)",
             "faixa": "Not applicable — use CSV with compound columns",
         },
         "faixa_min": 0.0, "faixa_max": 60.0,
-        "preproc": "autoscaling", "modo": "csv",
+        "preproc": "autoscaling", "mode": "csv",
     },
     "gc-ms": {
         "PT": {
             "nome": "GC-MS (Cromatografia Gasosa / Massas)",
-            "desc": "Compostos volateis. Dados em CSV: TIC ou tabela de fragmentos m/z.",
+            "desc": "Compostos volateis. Dados em CSV: TIC ou tabela de fragmentos m/z. "
+                    "Alinhamento de retencao validado com dataset publico real -- "
+                    "ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC ou autoscaling (apos alinhamento de picos)",
             "faixa": "Nao aplicavel — use CSV (m/z ou tempo de retencao)",
         },
         "EN": {
             "nome": "GC-MS (Gas Chromatography / Mass Spectrometry)",
-            "desc": "Volatile compounds. CSV data: TIC or m/z fragment table.",
+            "desc": "Volatile compounds. CSV data: TIC or m/z fragment table. "
+                    "Retention alignment validated against real public data -- "
+                    "see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "MC or autoscaling (after peak alignment)",
             "faixa": "Not applicable — use CSV (m/z or retention time)",
         },
         "faixa_min": 0.0, "faixa_max": 90.0,
-        "preproc": "autoscaling", "modo": "csv",
+        "preproc": "autoscaling", "mode": "csv",
     },
     "nmr": {
         "PT": {
             "nome": "RMN / NMR (Ressonancia Magnetica Nuclear)",
-            "desc": "Fingerprint molecular. Bucketing por janelas de ppm antes de PCA/PLS.",
+            "desc": "Fingerprint molecular. Bucketing por janelas de ppm antes de PCA/PLS. "
+                    "Validado com dataset publico real, resultado forte -- "
+                    "ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV ou PQN + MC (apos binning)",
             "faixa": "0-12 ppm (deslocamento quimico)",
         },
         "EN": {
             "nome": "NMR (Nuclear Magnetic Resonance)",
-            "desc": "Molecular fingerprint. Bucketing by ppm windows before PCA/PLS.",
+            "desc": "Molecular fingerprint. Bucketing by ppm windows before PCA/PLS. "
+                    "Validated against real public data, strong result -- "
+                    "see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV or PQN + MC (after binning)",
             "faixa": "0-12 ppm (chemical shift)",
         },
         "faixa_min": 0.0, "faixa_max": 12.0,
-        "preproc": "snv_mc", "modo": "csv",
+        "preproc": "snv_mc", "mode": "csv",
     },
     "ims": {
         "PT": {
             "nome": "IMS (Espectrometria de Mobilidade Ionica)",
-            "desc": "Separacao de ions por mobilidade. Normalizar pelo pico do solvente (RIP).",
+            "desc": "Separacao de ions por mobilidade. Normalizar pelo pico do solvente (RIP). "
+                    "Validado com dataset publico real; resultado negativo documentado -- "
+                    "ver docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC (apos alinhamento por tempo de deriva)",
             "faixa": "5-50 ms (tempo de deriva)",
         },
         "EN": {
             "nome": "IMS (Ion Mobility Spectrometry)",
-            "desc": "Ion separation by mobility. Normalize by solvent peak (RIP).",
+            "desc": "Ion separation by mobility. Normalize by solvent peak (RIP). "
+                    "Validated against real public data; null result documented -- "
+                    "see docs/VALIDACAO_PUBLICA.md.",
             "preproc_rec": "SNV+SG+MC (after drift-time alignment)",
             "faixa": "5-50 ms (drift time)",
         },
         "faixa_min": 5.0, "faixa_max": 50.0,
-        "preproc": "snv_sg_mc", "modo": "csv",
+        "preproc": "snv_sg_mc", "mode": "csv",
     },
     "generico": {
         "PT": {
@@ -1493,6 +1714,6 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
             "faixa": "Configure manually in Data menu",
         },
         "faixa_min": 0.0, "faixa_max": 999999.0,
-        "preproc": "msc_sg_mc", "modo": "dx",
+        "preproc": "msc_sg_mc", "mode": "dx",
     },
 }

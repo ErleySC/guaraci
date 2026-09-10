@@ -15,10 +15,10 @@ from conftest import achar_pastas_run
 
 def test_config_defaults(pq):
     cfg = pq.Config()
-    assert cfg.preprocessamento_padrao == "msc_sg_mc"
+    assert cfg.default_preprocessing == "msc_sg_mc"
     assert cfg.max_lvs == 40
-    assert cfg.agrupar_por_mae_id is True
-    assert cfg.n_permutacoes_wold == 200   # raised from 50 for publication
+    assert cfg.group_by_mae_id is True
+    assert cfg.n_permutations_wold == 200   # raised from 50 for publication
 
 
 def test_config_spec_keys(pq):
@@ -125,7 +125,8 @@ def test_opls_orthogonality_binary(pq):
 
 
 def test_opls_orthogonality_multiclass(pq):
-    """OPLS 14-class: LDA y-vector used; t_orth still ⊥ t_pred."""
+    """OPLS 14-class: PLS2 y-vector used (achado A4, auditoria 2026-08-07 --
+    era LDA); t_orth still ⊥ t_pred."""
     rng = np.random.default_rng(99)
     n_classes = 14
     n_per = 20
@@ -174,7 +175,7 @@ def test_avaliar_subset_cv_q2_no_overflow(pq):
 
 
 def test_wold_no_nan_intercept(pq):
-    """teste_wold: intercepts must be finite or nan — never blow up to ±inf.
+    """wold_test: intercepts must be finite or nan — never blow up to ±inf.
 
     Regression test: degenerate models caused polyfit to receive non-finite
     r2/q2 values, returning NaN intercepts silently.
@@ -194,7 +195,7 @@ def test_wold_no_nan_intercept(pq):
         ])
 
     cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=1)
-    res = pq.teste_wold(fac, X, Y_bin, y_int, cv, n_perm=10, seed=0)
+    res = pq.wold_test(fac, X, Y_bin, y_int, cv, n_perm=10, seed=0)
 
     for key in ("intercept_r2", "intercept_q2", "slope_r2", "slope_q2"):
         v = res[key]
@@ -206,7 +207,7 @@ def _spec(pq, key):
     return next(s for s in pq._CONFIG_SPEC if s["key"] == key)
 
 
-def test_teste_permutacao_paralelo_identico_ao_sequencial(pq):
+def test_permutation_test_paralelo_identico_ao_sequencial(pq):
     """n_jobs>1 deve produzir exatamente os mesmos resultados que n_jobs=1
     (mesma sequência de permutações, mesmo cálculo por iteração — só muda o
     tempo de parede). Regressão de segurança da paralelização da Fase E."""
@@ -228,9 +229,9 @@ def test_teste_permutacao_paralelo_identico_ao_sequencial(pq):
 
     cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=2)
 
-    res_seq = pq.teste_permutacao(fac, X, Y_bin, y_int, cv, n_perm=12,
+    res_seq = pq.permutation_test(fac, X, Y_bin, y_int, cv, n_perm=12,
                                    seed=42, n_jobs=1)
-    res_par = pq.teste_permutacao(fac, X, Y_bin, y_int, cv, n_perm=12,
+    res_par = pq.permutation_test(fac, X, Y_bin, y_int, cv, n_perm=12,
                                    seed=42, n_jobs=4)
 
     assert res_seq["n_validos"] == res_par["n_validos"]
@@ -241,9 +242,9 @@ def test_teste_permutacao_paralelo_identico_ao_sequencial(pq):
     assert res_seq["p_value"] == pytest.approx(res_par["p_value"])
 
 
-def test_teste_wold_paralelo_identico_ao_sequencial(pq):
+def test_wold_test_paralelo_identico_ao_sequencial(pq):
     """n_jobs>1 deve produzir exatamente os mesmos resultados que n_jobs=1
-    para teste_wold — mesma verificação de segurança que teste_permutacao."""
+    para wold_test — mesma verificação de segurança que permutation_test."""
     rng = np.random.default_rng(5)
     n, p = 50, 10
     X = rng.normal(size=(n, p))
@@ -260,8 +261,8 @@ def test_teste_wold_paralelo_identico_ao_sequencial(pq):
 
     cv = StratifiedKFold(n_splits=2, shuffle=True, random_state=1)
 
-    res_seq = pq.teste_wold(fac, X, Y_bin, y_int, cv, n_perm=10, seed=7, n_jobs=1)
-    res_par = pq.teste_wold(fac, X, Y_bin, y_int, cv, n_perm=10, seed=7, n_jobs=4)
+    res_seq = pq.wold_test(fac, X, Y_bin, y_int, cv, n_perm=10, seed=7, n_jobs=1)
+    res_par = pq.wold_test(fac, X, Y_bin, y_int, cv, n_perm=10, seed=7, n_jobs=4)
 
     for key in ("intercept_r2", "intercept_q2", "slope_r2", "slope_q2",
                 "r2_obs", "q2_obs"):
@@ -306,31 +307,31 @@ def test_pipeline_end_to_end_synthetic(pq, tmp_path):
     """End-to-end: executar() with synthetic data must produce resumo_modelo.txt."""
     import os
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),  # synthetic mode ignores this
-        pasta_saida_raiz=str(tmp_path / "saida"),
-        modo="sintetico",
-        n_por_classe=8,
-        n_pontos_sint=50,
+        input_folder=str(tmp_path / "dados"),  # synthetic mode ignores this
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico",
+        n_per_class=8,
+        n_synthetic_points=50,
         # Synthetic data uses linspace(4000, 400) — match the range so
         # spectral truncation keeps all 50 points (sg_window=25 requires n>25)
         wn_min=400.0,
         wn_max=4001.0,
         n_splits_cv=2,
         n_repeats_cv=1,
-        n_permutacoes=5,
-        n_permutacoes_wold=5,
+        n_permutations=5,
+        n_permutations_wold=5,
         n_bootstrap_vip=3,
         n_bootstrap_bca=20,
         n_monte_carlo=3,
-        executar_benchmark=False,
-        executar_monte_carlo=False,
-        executar_shap=False,
-        executar_wold=False,
-        executar_cv_anova=False,
-        executar_opls=False,
+        run_benchmark=False,
+        run_monte_carlo=False,
+        run_shap=False,
+        run_wold=False,
+        run_cv_anova=False,
+        run_opls=False,
         executar_etapa4=False,
         comparar_pipelines=False,
-        comparar_hca_pipelines=False,
+        compare_hca_pipelines=False,
         max_lvs=5,
     )
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)

@@ -6,6 +6,786 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 > Ordem histórica original preservada como estava no código-fonte.
 
 ```
+NAO LANCADO (pos-v31.9.0) — 2026-09-08 — web/navegacao: as 8 abas horizontais
+             viraram BARRA LATERAL com duas telas fixas (Inicio,
+             Visualizacao) e quatro grupos numerados (1 Preparar / 2 Executar
+             / 3 Analisar / 4 Referencia). Reversao explicita de duas
+             decisoes anteriores, a pedido: "abas, sem sidebar" e "nao pintar
+             widget nativo do Streamlit". Salvaguardas: o degrade vem dos
+             tokens do tema ATIVO (design_tokens via st.context.theme), entao
+             se redesenha ao trocar claro/escuro em vez de ficar preso a um
+             tema; e nenhum !important. Estrutura de navegacao isolada em
+             app_nav.py (dado puro, sem importar Streamlit); st.tabs virou
+             roteador por st.session_state["pagina"] com fallback ao Inicio.
+             Dois contratos novos: por AST, toda tela do menu tem ramo no
+             roteador; e cada uma das 10 telas abre sem excecao.
+             Telas novas: Inicio (painel de status -- proxima acao sugerida +
+             4 cartoes; o mockup mostrava "934 espectros" e uma faixa
+             desenhada, aqui sem dado real o cartao mostra "—" e diz o que
+             falta) e Visualizacao (3 esquemas de cor, incluindo ALTO
+             CONTRASTE novo no catalogo, cor por classe e previa). A previa
+             nao e' simulacao: plot_mean_spectra passou a colorir via
+             map_class_colors em vez de um tab10 fixo, entao e' a mesma
+             funcao que o pipeline usa.
+             Dois defeitos so' visiveis no tema CLARO, achados em verificacao
+             de navegador nos dois temas e corrigidos: o cabecalho do
+             expander da barra lateral vinha branco (grupo 1 aparecia como
+             caixa vazia, rotulo branco sobre branco) e a barra superior
+             ficava atras da barra fixa do Streamlit (padding-top 2,2 -> 3,4rem).
+             LIMITACAO registrada: o mockup traz interruptor Claro/Escuro
+             funcional -- o Streamlit nao expoe API para trocar tema por
+             codigo (st.context.theme e' somente leitura); a barra superior
+             mostra o estado real e o caminho para trocar, em vez de um botao
+             que nao funcionaria.
+
+NAO LANCADO (pos-v31.9.0) — 2026-09-08 — identidade: marca nova (frasco com
+             sol + cabeca de cao, moleculas na base, cocar de nos/folhas em
+             gradiente laranja->verde) instalada em assets/guaraci_icon.png
+             (512x512, fundo tornado transparente por preenchimento a partir
+             da borda) e .ico regerado nos 6 tamanhos. Marca anterior
+             ARQUIVADA em assets/legado/guaraci_icon_2026-07.{png,ico}.
+             Moldura da logo no cabecalho ganhou fundo claro fixo: medido,
+             a tinta mais escura da marca (#0E3724) tem contraste 1,40:1
+             contra o fundo do tema escuro (WCAG 1.4.11 pede >= 3:1 para
+             elemento grafico) -- some sem a moldura. Paleta de docs/DESIGN.md
+             S1 REAMOSTRADA da marca nova (mesmo metodo); os tokens de
+             design_tokens.py/guaraci_theme.py NAO mudaram, e a divergencia
+             ficou registrada como pendencia explicita em S1.4.
+
+NAO LANCADO (pos-v31.9.0) — 2026-09-08 — web/figuras: a escolha de paleta
+             de cores passou a mudar de fato a cor das figuras. Ate' aqui
+             ela so' alterava rcParams["axes.prop_cycle"], e nenhuma figura
+             do pipeline usa o ciclo padrao do matplotlib (todas passam
+             color=color(i)/map_class_colors) -- o menu confirmava a troca e
+             a figura saia identica. paleta_cores ganhou paleta ATIVA
+             (set_active_palette/get_active_palette), consultada por
+             color()/map_class_colors(); default None mantem o
+             comportamento historico. Paleta com menos cores que classes e'
+             recusada com aviso, para nunca dar a mesma cor a duas classes.
+             Implementacao unica em cli_assistente.apply_palette (CLI +
+             app web) e preferencia compartilhada em
+             preferencias_visuais.py (mesmo ~/.guaraci/visual_config.json).
+             Tambem: faixa de decisao (LOD/LOQ, Bloco 24) passou a aparecer
+             na aba Predicao do app web -- ja' era calculada e ja' saia na
+             CLI, faltava so' na web (paridade agora testada); painel de
+             status com dado real no topo da aba Projeto (achados da
+             auditoria de delineamento persistidos em
+             auditoria_delineamento.json); e correcao da aba Relatorios,
+             que quebrava inteira com exatamente 2 execucoes armazenadas
+             (st.slider com min_value == max_value).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-20 — pipeline: terceiro caminho de
+             quantificacao (regressao PLS pooled, sem separar por especie)
+             extraido de dentro de executar() para pls_regressao_pooled().
+             Decisao registrada (Passo 27 do plano de preparacao p/ v1.0):
+             a alegacao "validacao agrupada por padrao" (subtitulo do
+             projeto) tinha cobertura de teste parcial -- classificacao e
+             quantificacao por especie protegidas por
+             tests/test_contrato_validacao_agrupada.py, mas o terceiro
+             ponto de split (o caminho que roda quando ha' 1 unica
+             especie, nivel N1, ou nenhuma especie com amostra adulterada
+             suficiente) vivia inline em executar(), sem funcao propria e
+             sem teste. Extracao cirurgica avaliada como viavel (bloco
+             autocontido, ~150 linhas, sem dependencia oculta de outras
+             variaveis locais de executar()) e executada: mesmo corpo,
+             mesma assinatura de retorno de pls_regression_by_species.
+             Verificado bit-a-bit (rtol=1e-12) que a extracao nao mudou
+             nenhum valor numerico -- nao so' que a suite passa, que o
+             VALOR e' identico antes/depois (P9 do plano de divida tecnica
+             de executar() alerta especificamente para esse risco: PNG
+             gerado, valor mudando em silencio). NAO e' inicio da quebra
+             do monolito de executar() -- resto do arquivo continua como
+             estava, decisao de nao refatorar mantida.
+NAO LANCADO (pos-v31.9.0) — 2026-08-17 — CLI: persistencia de estado volta a
+             funcionar -- 3 wrappers eram no-op SILENCIOSO (varredura de
+             bugs). `_carregar_visual_cfg`, `_salvar_visual_cfg` e
+             `_carregar_codigos_usuario` procuravam implementacoes em
+             `cli_assistente` que NUNCA existiram la'; `getattr(..., None)`
+             devolvia None e os wrappers caiam no fallback vazio. O proprio
+             codigo ja registrava "esse esta quebrado ... fora do escopo
+             desta feature consertar isso" desde 2026-07-13.
+             Impacto 1 (menu Visualizacao): as 4 opcoes (Paleta/Fonte/Grid/
+             Alpha) gravavam no dict, chamavam _salvar_visual_cfg(),
+             imprimiam "OK Paleta: X" e NAO persistiam nada -- confirmacao
+             falsa, valor de volta ao default na proxima abertura. Pelo
+             mesmo caminho, `_sincronizar_dpi` e TODA a aplicacao de estilo
+             em `_rodar_pipeline` (paleta/fonte/grid/alpha nos rcParams do
+             matplotlib) liam {} e caiam nos defaults. O usuario ja tinha
+             `~/.guaraci/visual_config.json` com paleta="publicacao"
+             gravado desde 2026-06-01, ignorado desde entao.
+             Impacto 2 (codigos de especie): o menu gravava certo
+             (`_salvar_cod`) e listava certo (`_cod_usr`) -- as duas tem
+             implementacao propria e sempre funcionaram -- mas a UNICA
+             linha que injeta os codigos no pipeline
+             (`pq.CODIGO_ESPECIE.update(...)`) usava o wrapper quebrado e
+             recebia {}. Codigo cadastrado aparecia no menu e era ignorado
+             na analise.
+             CORRIGIDO: as tres leem/gravam direto em _USER_DIR, no mesmo
+             padrao de `_cod_usr`/`_salvar_cod`. Novo `_VISUAL_PATH`
+             (~/.guaraci/visual_config.json), incluido na migracao de
+             estado legado -- inclusive a partir do cwd, porque a versao
+             antiga gravava por caminho RELATIVO (era por isso que havia um
+             visual_config.json na raiz do repo). Falha de escrita agora
+             AVISA em vez de sumir. 3 testes novos.
+             Varredura sistematica: enumerados TODOS os `_try(...)` e
+             `getattr(_cli, ...)` de guaraci.py contra o modulo real --
+             estes 3 eram os unicos ausentes; as constantes estao todas OK.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-17 — Robustez: `zip(strict=True)` no
+             pareamento mae_id<->metadados e cadeia de excecao preservada.
+             (1) dados_io: `zip(mae_ids, meta_rows)` monta o array de
+             grupos; as duas listas sao preenchidas em lockstep, entao
+             comprimentos diferentes sao bug de programacao -- e um zip()
+             normal esconderia isso TRUNCANDO em silencio, gerando um
+             mae_arr mais curto que X e deslocando o grupo de todas as
+             amostras seguintes. Como mae_id e' justamente o que impede
+             vazamento de replica, o erro passaria despercebido. Agora
+             estoura. (Auditados os outros 23 `zip()` sem strict do pacote:
+             todos com comprimento garantido por construcao --
+             np.unique(return_counts=True), labels=lb.classes_, listas
+             preenchidas no mesmo laco -- nao alterados, para nao virar
+             churn com risco de quebra.)
+             (2) config_io: `raise RuntimeError(...) from _e_yaml` no
+             ImportError do PyYAML -- sem o `from`, o traceback dizia
+             "During handling of the above exception, another exception
+             occurred", sugerindo falha no tratamento de erro em vez de
+             dependencia ausente.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — DD-SIMCA: Q de treino sai da
+             escala in-sample na figura de aceitacao (achado A1, o achado
+             original da Fase A que faltava aplicar). `fit()` calibra
+             q0/Nq/f_crit a partir de `Q_train` LEAVE-ONE-OUT, mas
+             `score_matrix()` -> `_t2_q()` recalculava Q IN-SAMPLE para
+             TODAS as linhas, inclusive as de treino -- e uma amostra de
+             treino reconstroi a si mesma de forma otimista, porque ajudou
+             a definir a PCA que depois a reconstroi. A figura de aceitacao
+             plotava entao os pontos numa escala e a fronteira noutra.
+             Medido (scripts/medicoes/medir_ddsimca_loo_vs_insample.py,
+             p=8192, 40 seeds/celula): Q in-sample e' **10 a 15x menor** que
+             o LOO no regime real (nc=3-4 puros/classe) -- em eixo log,
+             mais de uma decada de folga visual inventada.
+             IMPACTO NA DECISAO, medido e declarado: **0,0%** dos pontos de
+             treino mudam de lado da fronteira com nc=3-4 (sobe a 7-12% com
+             nc>=6). E' defeito de fidelidade da FIGURA, nao de numero --
+             consistente com o golden test nao ter mudado com esta
+             correcao (a especificidade vem de amostras adulteradas, que
+             nao estao no treino, e `predict()` nao passa por
+             `score_matrix`).
+             CORRIGIDO: `score_matrix(X, mask_treino=..., y=...)` usa o
+             Q_train LOO armazenado para as linhas de treino, mantendo
+             in-sample para amostras novas (que e' o valor CORRETO para
+             elas -- nao participaram do ajuste). Guarda de desalinhamento:
+             se X nao confere com o usado em fit(), mantem in-sample e
+             AVISA, em vez de trocar Q pelas linhas erradas. 2 testes novos.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: unificacao de mae_id da
+             Andiroba + exclusao de espectro com pureza indeterminada
+             (achados A2-1 e A2-2, segunda parte).
+             A2-1: a regra `mae_id = cod + data` separava em dois grupos as
+             replicas puras de Andiroba lidas em datas diferentes --
+             um grupo com (T2,T3) e outro com (T1), triplicatas
+             COMPLEMENTARES somando exatamente {1,2,3}. Duas amostras
+             fisicas distintas teriam cada uma sua propria triplicata (ou
+             ao menos ambas comecando em T1); a complementaridade exata e'
+             assinatura de UMA amostra com leituras separadas. Unificado
+             via `_ALIAS_MAE_ID`.
+             RESSALVA REGISTRADA NO CODIGO: as duas datas estao muito
+             apartadas, o que e' incomum para replicas tecnicas e enfraquece
+             a hipotese. A unificacao foi aplicada mesmo assim porque e' a
+             escolha CONSERVADORA nas duas hipoteses: se e' a mesma amostra,
+             corrige o vazamento; se sao distintas, agrupa a mais, reduz o
+             n efetivo e retira a Andiroba do rol de especies com LOGO
+             estimavel -- deixa de reivindicar um numero, nunca inventa um.
+             NAO unificar e' que era arriscado: mantinha a Andiroba como a
+             UNICA especie com LOGO calculavel, calculado sobre um par que
+             pode ser a mesma amostra. Confirmar no caderno de coleta
+             continua valendo.
+             A2-2 (2a parte): o espectro sem metadado recuperavel -- unico dos 7
+             orfaos sem informacao recuperavel do TITLE. Entrava com
+             conc=0.0, isto e', como PURO, contaminando o treino one-class
+             de uma classe cujo conjunto puro tem pouquissimos espectros -- uma
+             fracao de contaminacao alta o bastante para inviabilizar o
+             modelo one-class. Excluido via
+             `_TITLES_PUREZA_INDETERMINADA`, com aviso NOMINAL no log --
+             nunca em silencio. Nao e' regra generica de "TITLE ilegivel ->
+             descartar": um TITLE ilegivel cuja pureza seja recuperavel do
+             nome do arquivo continua sendo carregado.
+             Verificado contra o dataset de desenvolvimento: orfaos 1 ->
+             **0**, 100%% dos arquivos parseados, e a especie que aparentava
+             ter duas amostras puras passa a ter um unico mae_id com
+             triplicatas. Contagens em documentacao local, nao publicada.
+             1 teste novo.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Etapa 4: sPLS-DA passa a usar o
+             soft-thresholding da referencia (achado B1-2, correcao
+             completa). A docstring ja havia sido corrigida antes; agora a
+             IMPLEMENTACAO tambem: `sparse_plsda_mask` fazia truncamento
+             DURO (`argsort(|w|)[:keep]`, zerando o resto sem encolher as
+             sobreviventes) onde Le Cao et al. (2008) definem a esparsidade
+             por penalizacao com soft-threshold
+             `w_j <- sign(w_j)*max(|w_j|-lambda, 0)`. Implementado com
+             lambda = o (keep+1)-esimo maior |w|, o que preserva a
+             parametrizacao por CONTAGEM (mesma ideia do `keepX` do
+             mixOmics) e ao mesmo tempo encolhe as sobreviventes -- e' o
+             encolhimento que muda a direcao normalizada de w, logo o
+             escore t, logo a deflacao, logo o conjunto escolhido pelos
+             componentes seguintes. Divergencia previamente medida entre as
+             duas variantes: Jaccard 1,000 com 1 componente (identicas por
+             construcao) caindo a ~0,87 com 5. 1 teste novo (cardinalidade
+             exata + coincidencia com top-k no 1o componente).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Monte Carlo CV: falha por poucos
+             grupos vira aviso explicito (achado B2-1b, encontrado ao
+             RETRATAR o B2-1). `_stratified_group_shuffle_splits` levanta
+             ValueError quando n_grupos_teste < n_classes (exigencia do
+             StratifiedShuffleSplit) e a chamada em `monte_carlo_cv` nao
+             estava protegida -- num dataset com poucos grupos de replica
+             por classe o MC CV inteiro morria e o usuario so' via a
+             mensagem generica do except amplo do pipeline, sem saber a
+             causa. Agora a condicao e' detectada ANTES, com aviso que diz
+             o numero de grupos, o de classes e o que fazer (reduzir
+             classes, aumentar test_size, ou coletar mais amostras
+             fisicas). Nao afeta o dataset de desenvolvimento, que tem folga de mais
+             de uma ordem de grandeza.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Figuras: marca d'agua de
+             PROTOTIPO no modo imagem (residual do B4-1). Os relatorios
+             PDF/Word/LaTeX ja saiam carimbados, mas uma figura .png
+             exportada solta da pasta Graficos/ circulava sem contexto
+             nenhum -- e' justamente o arquivo que acaba colado num slide
+             ou num texto. `salvar()` e' o ponto unico por onde TODA figura
+             passa, entao a marca entra la' e cobre as ~30 figuras de uma
+             vez. 1 teste novo (verifica a propriedade -- texto de aviso
+             presente na figura -- nao pixels).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Etapa 4: iPLS entra no nested-CV
+             e a CV interna das buscas vira group-aware (achados B1-1 e
+             B1-3 da auditoria de modulos nao auditados).
+             B1-1: o bal.acc do iPLS reportado na tabela comparativa era o
+             MAXIMO de `ipls_n_intervalos` avaliacoes feitas na MESMA
+             particao de CV que depois reportava o numero (selecao_ipls
+             escolhia o melhor intervalo sobre `cv_indices`; etapa4
+             reavaliava o vencedor na mesma `cv_indices`). Vies de
+             maximo-de-N. O comentario do modulo justificava excluir o
+             iPLS do nested-CV porque "a particao em intervalos NAO usa
+             rotulo" -- verdade, e irrelevante: a ESCOLHA do melhor
+             intervalo usa. Medido: **+0,070 pontos de balanced accuracy,
+             positivo em 12/12 seeds** (
+             scripts/medicoes/medir_selecao_variaveis.py). O agravante era a tabela: os
+             outros 6 metodos ja passavam por nested-CV, e
+             `etapa4_selecao_variaveis` elege automaticamente o metodo
+             "mais parcimonioso dentro de 1% do maximo" -- o vies era 7x
+             o criterio de desempate, favorecendo sistematicamente o iPLS.
+             Corrigido com `_mask_melhor_intervalo` (escolha do intervalo
+             refeita a cada fold, so' com dados de treino) via
+             `_avaliar_subset_nested_cv`, o mesmo caminho de VIP/SR/
+             sPLS-DA. A busca no dataset inteiro continua rodando 1x para
+             a figura/CSV de diagnostico por intervalo (mesmo padrao ja
+             usado por SPA/AG).
+             B1-3: `_cv_local` -- a CV INTERNA que guia a fitness do AG e
+             a pontuacao do SPA -- usava sempre `StratifiedKFold`, entao
+             replicas do mesmo `mae_id` caiam em treino e validacao da
+             particao que escolhe as VARIAVEIS. A justificativa no codigo
+             ("so' orienta a otimizacao; o numero reportado usa o fold
+             externo group-aware") estava metade certa: o numero e' de
+             fato honesto, mas o produto cientifico da Etapa 4 nao e' o
+             bal.acc -- sao as variaveis selecionadas, e uma busca guiada
+             por particao com vazamento prefere justamente as variaveis
+             que exploram similaridade entre replicas. Corrigido:
+             `_cv_local` aceita `grupos_local` e usa
+             `StratifiedGroupKFoldEstavel` quando ha' >=2 grupos;
+             `mae_id` propagado de `executar()` ate
+             `etapa4_selecao_variaveis` -> `_avaliar_busca_nested_cv`.
+             Sem `mae_id`, comportamento anterior preservado.
+             4 testes novos em test_pipeline_core.py.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Relatorios: saida do modo imagem
+             sai carimbada como PROTOTIPO (achado B4-1). O modo
+             `modo="imagem"` (colorimetria digital) nunca foi validado com
+             dataset real e `dados_imagem` devolve `mae_id=None` SEMPRE,
+             entao o pipeline cai no fallback `StratifiedKFold` e a
+             validacao group-aware -- o diferencial central do projeto --
+             fica desligada. A unica mencao a "prototipo" vivia em
+             docstrings e no texto de ajuda do CLI: nunca no caminho de
+             execucao, de figura ou de relatorio. Um PDF gerado em modo
+             imagem era tipograficamente identico ao de uma analise FT-NIR
+             validada -- e, combinado com o B3-1 (corrigido na mesma
+             sessao), afirmava ter usado GroupKFold.
+             Corrigido em 3 camadas: (1) `executar()` grava "Modo de
+             entrada" no resumo_modelo.txt (mesma fonte unica que o B3-1
+             usa para o cv_label); (2) aviso de nivel WARNING (nao INFO) no
+             inicio da execucao em modo imagem; (3) PDF, Word e LaTeX
+             carimbam "PROTOTYPE OUTPUT - NOT VALIDATED" na CAPA (nao em
+             nota de rodape), com texto de fonte unica
+             (`_AVISO_PROTOTIPO_TITULO`/`_CORPO`) para os geradores nao
+             divergirem. 1 teste novo em test_reports.py (confirma que o
+             carimbo aparece SO' no modo imagem).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — RETRATACAO de achado de auditoria
+             (B2-1): a alegacao de que `monte_carlo_cv` produzia IC95%
+             otimista ao descartar iteracoes sem todas as classes no treino
+             **nao se sustentou na medicao e foi retirada**. O raciocinio
+             original leu o `continue` isoladamente, sem confrontar com a
+             garantia dada por `_stratified_group_shuffle_splits` 90 linhas
+             acima: ele estratifica NO NIVEL DE GRUPO, entao ja garante
+             toda classe representada em treino e teste, e a condicao do
+             guard praticamente nao pode ocorrer. Medido (200 iteracoes por
+             celula, classes deliberadamente pouco separadas p/ a BA nao
+             saturar): **descarte de 0,0%** em todos os regimes viaveis,
+             incluindo o regime do dataset de desenvolvimento, com BA
+             variando de 0,86 a 1,00 entre celulas -- confirmando que o 0%
+             nao e' artefato de problema facil demais. Script:
+             scripts/medicoes/medir_monte_carlo_descarte.py. O guard e'
+             defensivo, nao fonte de vies. Registrado como exemplo de que
+             reverificar a propria auditoria e' obrigatorio (mesma licao
+             da retratacao do q_residuos_limite no P11).
+             Achado MENOR encontrado no lugar (nao corrigido, nao afeta
+             este dataset): `_stratified_group_shuffle_splits` levanta
+             ValueError quando n_grupos_teste < n_classes (exigencia do
+             StratifiedShuffleSplit), e a chamada em monte_carlo_cv nao
+             esta protegida -- num dataset com poucos grupos por classe o
+             MC CV inteiro morre com mensagem generica. E' modo de falha
+             RUIDOSO (o oposto do descarte silencioso alegado).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — dados_io: amostras adulteradas
+             deixam de entrar no dataset como PURAS (achado A2-2 da
+             auditoria de gate 0). Inspecao manual dos arquivos que
+             `load_dx` reportava como "isolated orphans" (TITLE nao
+             casou com `_RE_TITLE`) achou algo mais serio que agrupamento
+             perdido: parte deles tinha erro de digitacao no ##TITLE=
+             (virgula extra antes do "%", digito de triplicata cortado ou
+             duplicado) que quebrava o parse -- e o fallback por nome de
+             arquivo TAMBEM falhava em extrair o teor, entao o arquivo
+             entrava no dataset com conc=0.0/puro=True. Amostras
+             adulteradas estavam contaminando o conjunto "puros" usado
+             para treinar o DD-SIMCA one-class das classes afetadas.
+             CORRIGIDO com `_CORRECOES_TITLE_CONHECIDAS`: tabela explicita
+             (nao regex generico, de proposito) reconhecendo os TITLEs
+             malformados por correspondencia EXATA, cada um verificado
+             lendo o proprio ##TITLE= (nao adivinhado). Os erros eram de
+             digitacao no campo -- virgula extra no teor, digito de
+             replicata ausente ou duplicado, marcador de replica faltando.
+             A tabela vive fora da arvore versionada: especie, teor e
+             defeito de cada arquivo sao metadado de amostra. Um deles
+             NAO foi corrigido de proposito -- convencao de nome
+             diferente, zero informacao recuperavel do TITLE; permanece
+             marcado como pendencia de verificacao manual contra o
+             caderno de coleta.
+             Verificado contra o dataset de desenvolvimento (nao so'
+             sintetico): titles nao-conformes caem, concentracoes
+             extraidas sobem, mae_id parseados sobem e os orfaos isolados
+             caem para um unico caso. Contagens em documentacao local,
+             nao publicada. 1 teste novo em test_pipeline_core.py.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — DD-SIMCA: limiar calibrado por
+             AMOSTRA FISICA (mae_id), nao por espectro (achado F1/A2-3 da
+             auditoria de gate 0). `DDSimca.fit()` calculava h0/q0/Nh/Nq
+             (os graus de liberdade que definem a regiao de aceitacao,
+             Eq. 3-4 de Kucheryavskiy/Rodionova/Pomerantsev 2024) a partir
+             de `len(Xc)` -- os ESPECTROS de treino tratados como
+             observacoes independentes. Com 3 replicas tecnicas (T1/T2/T3)
+             da MESMA amostra fisica, isso e' o mesmo vazamento de replica
+             que o projeto existe para impedir, cometido no proprio
+             calculo do limiar que decide aceitacao/rejeicao: ruido de
+             replica era lido como se fosse informacao sobre variabilidade
+             ENTRE amostras.
+             Medido no dataset de desenvolvimento (auditoria A2, 2026-08-16): quase
+             toda classe tem exatamente 1 mae_id puro independente -- ou
+             seja, para praticamente todo o dataset, Nh/Nq nao-degenerados
+             (>1) vinham inteiramente de ruido de replica, nunca de
+             variabilidade real entre amostras.
+             CORRIGIDO: `fit()` aceita `mae_id` opcional; quando presente,
+             h0/q0/Nh/Nq sao estimados da MEDIA de T2/Q por `mae_id`, nao
+             por espectro. Com 1 grupo (regime real da maioria das
+             especies), Nh=Nq=1.0 (o minimo honesto, mesmo raciocinio do
+             P1: numero mais largo/conservador substituindo confianca
+             espuria, nao um defeito). Propagado ao pipeline (`ddsimca.fit`
+             em pipeline.py) e aos dois consumidores internos que fitam um
+             DDSimca temporario (`sensibilidade_ddsimca_logo`,
+             `sensibilidade_ddsimca_pcv`) -- sem isso, a "estimativa
+             honesta" do LOGO mediria aceitacao contra um limiar com o
+             MESMO vies que o LOGO existe para corrigir.
+             Sem `mae_id` (None): comportamento anterior preservado, com
+             aviso explicito no log e `calibrado_por_amostra=False`
+             exposto no modelo/score_matrix -- necessario quando nao ha'
+             identificador de replica (ex.: modo_entrada="imagem", achado
+             B4-1). Figuras de aceitacao (fig_sprint3_ddsimca_acceptance,
+             fig_ddsimca_individuais) passam a mostrar `n_grupos_calibracao`
+             ao lado do limiar (mesmo criterio de aceite do P1: nunca
+             mostrar limiar sem dizer com quantas amostras fisicas
+             independentes ele foi calibrado).
+             IMPACTO NUMERICO MEDIDO (golden test, dataset sintetico):
+             especificidade Esp_A 38,1%->23,8%, Esp_C 25,0%->12,5%,
+             n_desconhecidos 14->8 -- a regiao de aceitacao ficou mais
+             larga/permissiva, na direcao esperada (menos confianca
+             espuria = menos rejeicao "confiante"). Qualquer numero de
+             especificidade/sensibilidade DD-SIMCA de execucoes anteriores
+             a este commit foi calibrado pelo metodo antigo (por espectro)
+             e precisa ser reexecutado antes de ser citado.
+             44 testes em test_classificadores.py (5 novos, propriedade
+             matematica: duplicar replicas da MESMA amostra nao deve
+             inflar o limiar quando mae_id esta disponivel; sem mae_id,
+             1 amostra fisica com varias replicas produz Nh/Nq
+             espuriamente nao-degenerados).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-16 — Relatorios: template LaTeX nao
+             afirma mais "group-aware cross-validation (GroupKFold)"
+             CRAVADO no texto (achado B3-1 da auditoria de modulos nao
+             auditados). O pipeline pode cair para StratifiedKFold quando
+             mae_id esta indisponivel (mesmo caso do achado acima, ex.:
+             modo_entrada="imagem") -- nesse caso o manuscrito gerado
+             continuava alegando validacao group-aware que nao rodou
+             naquela execucao. `generate_latex_template` agora le
+             `Group-aware (mae_id)` e `Validacao` do resumo_modelo.txt real
+             (mesmos campos gravados por pipeline.py) e condiciona o texto:
+             afirma GroupKFold so' quando de fato usado, com o `cv_label`
+             real; caso contrario, avisa explicitamente que a protecao
+             NAO foi aplicada naquela execucao. Faixa espectral e numero
+             de permutacoes tambem deixaram de ser constantes cravadas
+             (\SIrange{4000}{10000} e "200 permutations" fixos no template)
+             -- agora interpolados do resumo real, ja que ambos sao
+             configuraveis (cfg.wn_min/wn_max, cfg.n_permutacoes).
+             Auditoria dos runs ja usados no material do TCC (run_N1/N2/N3
+             .log + 6 resumo_modelo.txt em resultados_tcc/): todos com
+             "Group-aware (mae_id): sim" -- nenhuma figura/tabela ja citada
+             veio de execucao em fallback. O defeito era so' no TEXTO do
+             LaTeX gerado, nao nos numeros ja obtidos.
+             Teste de regressao: gera o LaTeX duas vezes (resumo com
+             group-aware sim/nao) e confirma que o texto muda de fato, nao
+             so' que compila (tests/test_reports.py).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Seguranca: fecha bypass da
+             mitigacao de RCE via pickle no app web (CRITICO) + 2 achados
+             menores.
+             [AUDITORIA DE SEGURANCA] GUARACI_DISABLE_MODEL_UPLOAD=1
+             (mitigacao documentada em SECURITY.md p/ deploy publico)
+             desabilitava APENAS o uploader de .joblib, deixando um
+             segundo caminho de entrada pelo qual um visitante remoto NAO
+             autenticado conseguia fazer o servidor carregar um pickle
+             escolhido por ele -- RCE, apesar da mitigacao estar
+             corretamente configurada. Passo a passo omitido de proposito
+             enquanto a correcao nao estiver implantada no deploy publico
+             (ver nota de divulgacao adiada em
+             AUDITORIA_SEGURANCA_2026-08-07.md); permanece no historico
+             do Git p/ quem precisar auditar. Corrigido em 2
+             camadas: (1) campo de caminho local tambem oculto quando
+             upload_bloqueado=True -- nesse modo a aba Predicao nao
+             carrega nada pela web; (2) nova app_logic.caminho_upload_temp()
+             isola uploads por sessao (uuid aleatorio via st.session_state)
+             em vez de caminho fixo compartilhado -- fecha a
+             previsibilidade e corrige de brinde uma condicao de corrida
+             real entre sessoes concorrentes. Achado menor (BAIXA):
+             os.system(f'open "{pasta_run}"') ao abrir a pasta de
+             resultados do `guaraci demo` -- pasta_run e' sempre gerado
+             internamente (nao explora'vel hoje), mas e' o padrao que vira
+             injecao de comando real se um dia alimentado por input do
+             usuario; trocado por subprocess.run() com lista de
+             argumentos, que nunca passa por shell.
+             Relatorio completo: AUDITORIA_SEGURANCA_2026-08-07.md.
+             701 testes passam (697 + 4 novos), ruff limpo.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — CLI: estado do usuario sai do
+             diretorio de instalacao do pacote.
+             [_CFG_PATH / _USER_DIR] config.yaml, perfis/, flags de
+             idioma/modo e codigos_usuario.json eram gravados DENTRO do
+             diretorio onde guaraci.py esta instalado -- quebra em
+             qualquer instalacao read-only (pip de sistema, Docker,
+             `pip install --user` em alguns casos). save_config() logo
+             antes de rodar o pipeline nao tinha NENHUMA guarda contra
+             isso, derrubando o CLI com PermissionError no pior momento
+             possivel. Movido para Path.home()/".guaraci". Migracao
+             automatica e' best-effort (nunca sobrescreve, nunca apaga a
+             origem), chamada uma vez no inicio de main() -- nao na
+             importacao do modulo, pra nao escrever no HOME de quem so'
+             esta importando (ex.: testes). Verificado com o ambiente real
+             do autor: config.yaml/.cli_modo_usuario/perfis/ migrados com
+             conteudo identico, arquivos antigos intactos. De brinde,
+             achado um gap de isolamento pre-existente num teste (escrevia
+             de verdade dentro do checkout do pacote a cada rodada).
+             697 testes passam (693 + 4 novos), ruff limpo.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Testes: spectra_preview.py
+             cobertura 0% -> 94%.
+             Modulo de previa de espectros da UI web (abas Data/
+             Preprocessing) nunca tinha teste. 12 testes cobrindo
+             preview_espectros_dx (estrutura multi-pasta, pasta vazia,
+             arquivo .dx corrompido excluido sem derrubar os demais,
+             reamostragem p/ grade de referencia diferente),
+             preview_espectros_csv (colunas nao-numericas, coluna de
+             classe ausente) e plot_espectros_media (inversao de eixo com
+             wavenumber decrescente). 693 testes passam (681 + 12 novos).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Performance: MSC.transform
+             vetorizado (forma fechada, sem loop de lstsq).
+             A regressao de 2 parametros (a, b tal que X_i~a+b*ref) por
+             AMOSTRA usava np.linalg.lstsq num loop Python -- e' regressao
+             linear simples, que tem forma fechada (b=Cov(ref,X_i)/
+             Var(ref)), resolvida p/ todas as amostras de uma vez.
+             Verificado numericamente identico ao lstsq por amostra (20
+             casos aleatorios + estruturados, diff<1e-8); medido 1.5x mais
+             rapido em escala real do projeto (934x8192). Unica mudanca de
+             comportamento, documentada e testada: referencia de treino
+             com variancia ~0 (nao ocorre com dado real) -- antes dava a
+             solucao de norma minima do SVG (artefato sem significado
+             cientifico), agora cai no mesmo fallback ja usado p/ b~=0.
+             681 testes passam (678 + 3 novos).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — print() -> logging nos 2 modulos
+             do nucleo cientifico que ainda faltavam.
+             P6 (2026-07-13) migrou pipeline.py; a tabela ESTADO ALEGADO
+             do CLAUDE.md afirmava (nunca reverificado com grep correto,
+             sem excluir falsos positivos de console.print()) que "os
+             demais modulos ja usavam logging". Nao era verdade:
+             chemometric_stats.py e validacao_estatistica.py -- 2 dos 4
+             modulos do nucleo -- tinham 10 print() ao todo (chamadas de
+             progresso do teste de Wold/permutacao + avisos de taxa de
+             falha). Como esses 2 caminhos so' rodam de dentro de
+             executar() (que ja chama log.py:configurar() antes de
+             qualquer coisa), a saida em producao fica identica -- so'
+             passa a ser roteavel/silenciavel. 678 testes passam (sem
+             novos, so' migracao).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — CI: matriz de teste reduzida em
+             PRs (cota de minutos do Actions esgotada).
+             Multiplicador de minutos do GitHub Actions: 1x Linux / 2x
+             Windows / 10x macOS. A matriz cheia (10 combinacoes, incl. 2
+             macOS) rodava por INTEIRO a cada push de PR. Em
+             `pull_request`: 3 combinacoes (Ubuntu 3.10/3.13 + Windows
+             3.11, sem macOS). Em `push` p/ master/main (uma vez por
+             merge): matriz cheia mantida. Selecao via
+             `github.event_name == 'pull_request' && fromJSON(...) ||
+             fromJSON(...)` no matrix.include.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — CLI: 2 bugs de robustez achados
+             num "checkup geral" de interface pedido explicitamente.
+             [BUG DO PROGRESSO] A etapa "[6/7]" (figuras+DD-SIMCA+OPLS-DA+
+             holdout) concentra a maior parte do tempo real de execucao,
+             mas so' tinha 2 marcadores de texto OPCIONAIS entre inicio e
+             fim -- progresso ficava CRAVADO em 6/7=0.857 durante toda a
+             fase (medido: 96.1% das amostras de progresso presas nesse
+             numero antes da correcao, 31.1% depois). progresso_do_log()
+             ganhou parametro opcional total_figuras_planejadas: quando a
+             etapa atual e' a 6, soma bonus fracionario proporcional a
+             figuras ja salvas -- retrocompativel (None preserva
+             comportamento antigo exato).
+             [EOF INFINITO] main() girava para sempre (chamando
+             os.system("cls") a cada iteracao) quando stdin chegava a EOF
+             permanente (pipe fechado, sessao SSH caindo, automacao
+             alimentando sequencia fixa de comandos) -- _input() engolia
+             EOFError internamente e devolvia "", que nunca bate com
+             nenhuma opcao de menu, entao o try/except que JA existia ao
+             redor da leitura nunca disparava. Reproduzido: >350 redesenhos
+             em 8s sem terminar. Corrigido trocando por input() direto
+             nesse UNICO ponto, deixando o EOFError propagar ate' o
+             handler que ja existia.
+             677 testes passam (672 + 5, bug do progresso) / 678 (+1, EOF).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Auditoria metodologica do nucleo
+             cientifico: 5 achados (A1-A5), mesma classe do bug do P1.
+             [A1, CRITICO] Teste de permutacao/Wold permutava rotulos por
+             AMOSTRA, ignorando mae_id -- apos embaralhar, um mesmo grupo
+             de replica fisica ficava com rotulos diferentes, impossivel
+             sob H0. Medido: falso positivo de 15.0% contra 5% nominal (12
+             grupos x 3 replicas, 120 repeticoes). O mais grave: atinge o
+             argumento central do projeto (validacao group-aware) -- o
+             teste que produz o p-valor citavel nao era group-aware.
+             Corrigido: _gerar_permutacoes_rotulo() permuta a atribuicao
+             de rotulo ENTRE grupos (Winkler et al. 2015), preservando
+             coerencia de mae_id.
+             [A2, CRITICO] Selectivity Ratio usava o peso PLS w1 em vez do
+             vetor de regressao normalizado b/||b|| (Rajalahti et al.
+             2009) -- so' coincidem com 1 LV. Medido: corr(t_tp,yhat) --
+             a propriedade que define o metodo -- caia de 1.000000 p/
+             ~0.92 com >=2 LVs; SR congelado na resposta de 1 LV p/
+             qualquer numero de LVs; Jaccard@20 do ranking = 0.39. Usado
+             por selecao_variaveis.py p/ SELECIONAR variaveis -- metodo
+             anterior escolhia um conjunto diferente do que a literatura
+             escolheria.
+             [A3, ALTA] Dominio de aplicabilidade usava a MESMA regra
+             retangular (T2<=UCL E Q<=UCL, alpha independente por eixo) ja
+             corrigida no DD-SIMCA (P1, 2026-08-08 -- ver acima). Medido:
+             rejeicao de 11.6% contra 5% nominal em amostras da propria
+             distribuicao do treino. Usado em producao por predicao.py.
+             Corrigido por REUSO: media_e_dof_momentos()/distancia_
+             combinada() extraidas do DD-SIMCA p/ chemometric_stats.py,
+             compartilhadas em vez de reimplementadas pela 3a vez.
+             [A4, MEDIA -- decisao do autor] OPLS-DA multiclasse construia
+             o alvo continuo via LDA(X,y) -- nao e' o metodo publicado
+             (Trygg & Wold 2002 definem OPLS p/ y binario/continuo; a
+             extensao multiclasse publicada e' OPLS/O2PLS com Y
+             multi-coluna via PLS2). Trocado pelo caminho publicado:
+             OPLSDAWrapper._alvo_continuo() usa o 1o escore Y de um PLS2
+             ajustado em (X,Y).
+             [A5, BAIXA] Docstring de hotelling_t2_limite contradizia a
+             propria referencia citada (afirmava validade em Fase I
+             quando TYM 1992 define Fase I via Beta, nao F). Corrigida.
+             Retratacao registrada no proprio relatorio: alegacao inicial
+             sobre q_residuos_limite (atribuicao a Jackson & Mudholkar por
+             engano) verificada como FALSA apos busca adicional -- a
+             atribuicao ja existente estava correta, nenhuma mudanca de
+             codigo para esse item.
+             Relatorio completo: AUDITORIA_METODOLOGICA_2026-08-07.md.
+             672 testes passam (663 + 9 liquidos), ruff e mypy limpos.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: diagnostico robusto
+             (mediana/MAD) de replicas de treino atipicas.
+             [OUTLIERS ROBUSTOS] Terceiro item da pesquisa de "novas
+             tecnologias" pedida: Kucheryavskiy/Rodionova/Pomerantsev
+             (2024) recomendam explicitamente estimadores ROBUSTOS
+             (mediana/IQR) para DETECTAR outliers no treino, revertendo
+             para estimadores classicos so' depois de removidos. Dado que
+             este projeto opera com nc=3-4 amostras puras (excluir uma so'
+             por suspeita pode derrubar o modelo inteiro abaixo do minimo
+             de graus de liberdade), a decisao de escopo foi deliberada:
+             `_outliers_robustos_mad()` (z-score modificado, Iglewicz &
+             Hoaglin 1993) SO' SINALIZA -- nunca remove automaticamente.
+             Verificado empiricamente que funciona no cenario real (2
+             replicas proximas + 1 divergente -> divergente sinalizada) e
+             documentado honestamente que a uniao dos 2 eixos (T2 e Q) tem
+             ~10% de falso positivo mesmo em n=20 (medido: 3/30 seeds) --
+             o proprio T2/Q_train ja e' instavel com so' 2 graus de
+             liberdade residuais, entao o aviso deve ser lido como "vale
+             conferir", nunca como "esta errado".
+             `n_train` do modelo continua o numero ORIGINAL de amostras
+             sempre -- testado explicitamente que nenhuma e' removida.
+             Exposto em score_matrix() (`outliers_treino`) e no resumo
+             (`DD-SIMCA {classe} AVISO treino`).
+             663 testes passam (eram 657), ruff limpo; mypy limpo nos 7
+             modulos puros do gate de CI (pipeline.py tem debito de
+             tipagem pre-existente, fora do escopo, confirmado identico
+             antes/depois via git stash).
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: diagnostico complementar
+             por Procrustes Cross-Validation (PCV), opt-in via
+             cfg.ddsimca_pcv.
+             [PCV] Pesquisa de literatura atualizada (pedido explicito:
+             "busque por novas tecnologias") achou Kucheryavskiy/Zhilin/
+             Rodionova/Pomerantsev (2020) Anal. Chem. 92(17):11842-11850 e
+             Pomerantsev/Rodionova (2021) Talanta 226:122104 ("Procrustes
+             Cross-Validation of SHORT datasets in PCA context" -- mesmos
+             autores do DD-SIMCA, atacando exatamente o problema de poucas
+             amostras puras deste projeto). Integrado via pacote opcional
+             `prcv` (extra [robusto] novo em pyproject.toml). Nova funcao
+             `sensibilidade_ddsimca_pcv()` gera um "PV-set" por reamostragem
+             e reporta sensibilidade sobre ele, ao LADO do LOGO (nunca em
+             vez dele).
+             Caveat cientifico verificado empiricamente, nao suposto: com
+             todas as replicas puras de uma classe pertencendo ao MESMO
+             grupo mae_id (n_grupos=1, o caso mais comum neste dataset), o
+             PV-set so' reproduz ruido de MEDICAO (T1/T2/T3 da mesma
+             amostra), nunca variacao entre amostras fisicas diferentes --
+             PCV nao fabrica a informacao que falta, nenhuma tecnica de
+             validacao fabrica. Testado tambem que passar o split de CV
+             agrupado por mae_id quando so' existe 1 grupo faz `pcvpca`
+             falhar (ValueError de shape) -- corrigido com fallback para
+             leave-one-out por amostra individual nesse caso, unica
+             estrutura possivel quando nao ha' mais de 1 grupo a proteger.
+             O aviso reportado deixa esse limite explicito sempre que
+             n_grupos<2, para o numero nao ser lido como equivalente ao
+             LOGO.
+             Wiring completo: campo em Config/_CONFIG_SPEC, menu CLI
+             (menu_modeling) E aba do app web (modelo.py) -- os testes de
+             alcancabilidade de campo (test_interfaces_configuraveis.py,
+             AST-based reachability em test_guaraci_cli.py) pegaram os 2
+             pontos que faltavam antes do commit.
+             657 testes passam (eram 651), ruff e mypy limpos.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-08 — DD-SIMCA: regra de decisao corrigida
+             para a distancia combinada do metodo publicado (fecha P1
+             residual do CLAUDE.md).
+             [REGRA RETANGULAR -> DISTANCIA COMBINADA] predict() aceitava um
+             objeto se T2<=UCL(T2) E Q<=UCL(Q) independentemente -- uma
+             regiao retangular. O docstring da classe ja documentava isso
+             como divergencia do metodo citado (Rodionova/Pomerantsev), mas
+             sem a formula exata para corrigir. Pesquisa de literatura
+             atualizada achou Kucheryavskiy, Rodionova & Pomerantsev (2024)
+             J. Chemometrics 38(7):e3556 -- tutorial dos proprios autores do
+             DD-SIMCA com as Eq. 3-4 exatas: distancia combinada
+             f=(T2/h0)*Nh+(Q/q0)*Nq comparada a UM UNICO f_crit=chi2(1-alpha,
+             Nh+Nq), com Nh/Nq estimados DOS DADOS por metodo dos momentos
+             (a mesma matematica que chemometric_stats.q_residuos_limite ja
+             usava so' para Q -- estendida agora para T2 tambem, unificando
+             os dois eixos sob o "data-driven" que da nome ao metodo).
+             Com alpha independente por eixo a rejeicao conjunta efetiva era
+             ~1-(1-alpha)^2~=0.0975 (quase o dobro do alpha=0.05 declarado)
+             -- medido num caso sintetico controlado: regra antiga aceitava
+             93.85% dos pontos de uma distribuicao conhecida (deveria ser
+             ~95%), regra nova aceita 96.80%; 2.95% dos pontos MUDAM de
+             classificacao entre as duas regras (nao e' so' um campo novo
+             sem uso). A regra estava duplicada em 3 lugares (predict(),
+             sensibilidade_ddsimca_logo(), especificidade no pipeline) --
+             unificada numa so' fonte de verdade (score_matrix() agora
+             expoe "f"/"f_crit", os 3 usos comparam contra eles).
+             Figuras (fig_sprint3_ddsimca_acceptance, fig_ddsimca_
+             individuais) atualizadas: a "caixa" de duas linhas retas
+             perpendiculares (T2_norm=1, Q_norm=1) nunca foi a regiao de
+             aceitacao real do modelo -- agora desenham a reta diagonal
+             unica que a distancia combinada de fato usa
+             (_fronteira_ddsimca()), senao a figura continuaria mostrando
+             uma fronteira diferente da que o codigo usa para decidir.
+             Golden test regravado: especificidade/n_desconhecidos do
+             cenario sintetico N2 mudaram (ex.: Esp_A 61.9->38.1%) --
+             direcao esperada: a regra antiga super-rejeitava em geral
+             (inclusive amostras da propria classe), inflando especificidade
+             como efeito colateral; a regra correta aceita mais amostras no
+             total (proprias e estranhas), entao a especificidade cai para
+             um valor mais honesto.
+             651 testes passam (eram 644), ruff e mypy limpos.
+
+NAO LANCADO (pos-v31.9.0) — 2026-08-07 — Figuras: curva DET era uma reta sem
+             significado, rotulos do biplot ilegiveis, painel de execucao
+             apagava a tela, e diagnostico novo de faixa espectral.
+             [CURVA DET ERRADA] `sklearn.metrics.det_curve` devolve os pontos
+             em ordem de limiar CRESCENTE, o que deixa `fmr` DECRESCENTE.
+             `np.interp` exige `xp` crescente e NAO ordena sozinho -- a
+             interpolacao degenerava e devolvia `fnmr[-1]` constante para todo
+             FMR > 0. Resultado: TODA figura DET gerada ate hoje era uma RETA
+             HORIZONTAL, nao uma curva. Nenhum erro era lancado. O teste
+             existente so' verificava que o arquivo .png existia, por isso o
+             defeito sobreviveu. Extraida `interpolar_det()` como funcao pura
+             + 3 testes de propriedade (monotonicidade, extremos, degenerado);
+             verificado que o teste FALHA com o codigo antigo. A diagonal, que
+             era rotulada "Ref. diagonal" (induzindo a leitura errada de que a
+             curva deveria segui-la), agora e' identificada como a linha de
+             EER, e o EER de cada classificador aparece na legenda.
+             [BIPLOT ILEGIVEL] Dois defeitos somados: (a) o top-N por
+             magnitude selecionava canais VIZINHOS da mesma banda (no espectro
+             real: 5875/5883/5891/5899... = 2 bandas contadas 12 vezes) e (b)
+             nao havia anti-colisao de rotulos, entao os numeros de onda saiam
+             impressos uns por cima dos outros. Corrigido com
+             `selecionar_loadings_distintos()` (separacao espectral minima +
+             piso relativo de magnitude, para nao completar a cota com ruido:
+             o titulo passa a mostrar "top-5" quando so' ha' 5 bandas reais) e
+             `spread_labels()` (agrupa em colunas por x e empilha em y,
+             convergencia garantida em uma passada + linha-guia ate a seta).
+             Uma primeira versao por repulsao par-a-par iterativa OSCILAVA e
+             deixava 7 pares sobrepostos mesmo apos 120 iteracoes -- medido,
+             descartado e substituido.
+             [TELA PRETA] `figures_completed`/`avisos_do_log` cresciam sem
+             teto; numa corrida completa (26 figuras + varios avisos) o painel
+             passava de 35 linhas num terminal de 24. O `Live` do Rich perde o
+             controle do cursor quando o bloco nao cabe na janela: a tela fica
+             preta com so' o cursor piscando, embora o calculo siga rodando
+             normalmente por baixo. Painel limitado (4 avisos mais recentes +
+             contador do que ficou de fora, lista de figuras truncada) e
+             `vertical_overflow="crop"` como rede de seguranca. Medido: pior
+             caso caiu de 35 para 22 linhas.
+             [FAIXA ESPECTRAL] Novo `diagnosticar_faixa_espectral()`: separa
+             regiao MORTA (sem sinal) de RUIDOSA (dominada por alta
+             frequencia) via SNR entre componente suave e residuo, e sugere a
+             faixa com sinal. Emite AVISO e entra no resumo_modelo.txt; NUNCA
+             corta sozinho -- mudar a faixa muda o resultado, e a decisao e'
+             do usuario. Verificado que nao da' falso positivo em espectro
+             que usa a faixa inteira.
+             [np.interp SEM ORDENAR — latente] Auditoria do mesmo tipo de bug
+             achou 3 outros sitios sem ordenacao do eixo: dados_io (preenche
+             NaN), predicao (aplica modelo a amostra nova) e spectra_preview.
+             O ABB MB3600 grava numero de onda CRESCENTE, entao NAO afeta os
+             resultados deste dataset -- mas um .dx de terceiro em ordem
+             decrescente (convencao comum em FTIR) daria predicao errada em
+             silencio. Corrigidos os tres.
+             634 testes passam (eram 617), ruff e mypy limpos.
+
 NAO LANCADO (pos-v31.9.0) — 2026-08-06 — UI: markup cru, vazamento de PT em
              EN, padronizacao de booleanos, reset por nivel, 7 campos
              inalcancaveis por qualquer menu, e limpeza de identificacao.
@@ -46,7 +826,7 @@ NAO LANCADO (pos-v31.9.0) — 2026-08-06 — UI: markup cru, vazamento de PT em
              atualizados para bater com o que o software gera desde a
              remocao do branding institucional (ver nota de 2026-08-05
              abaixo); contradicao de copyright corrigida em README.md/
-             README.pt-br.md/COMMERCIAL.md ("Erley S. da Costa & GEAAp/UFPA"
+             README.pt-br.md/COMMERCIAL.md (autor + instituicao
              vs "o autor retem integralmente o copyright" no mesmo
              documento -- ficava so' com Erley, conforme decisao ja
              registrada no CLAUDE.md); CITATION.cff perde o bloco
@@ -124,6 +904,14 @@ v31.9.0 — 2026-08-04 — CORRECAO CIENTIFICA no DD-SIMCA + itens de comunidade
              sincronizado); READMEs e CITATION passam a usar o CONCEPT DOI
              do Zenodo (10.5281/zenodo.21311867), que sempre resolve para a
              ultima versao, em vez do DOI versionado da v31.1.1.
+             [NOTA de 2026-08-19 -- a entrada acima fica como registro
+             historico, mas nao descreve mais o estado atual: os dois
+             depositos no Zenodo foram retirados PELA CONTA DONA em
+             2026-08-04, motivo 'duplicate' (21311868 = v31.1.0;
+             21313436 = v31.1.1). O concept DOI devolve HTTP 410 e
+             /versions devolve total: 0 -- nao resolve mais para versao
+             nenhuma. Badge e link foram removidos dos READMEs e do
+             CITATION.cff; ver PR #16 para o estado atual da citacao.]
 v31.8.0 — 2026-07-13 — MkDocs + GitHub Pages (item #12) e secao State of the
              field no paper JOSS (item #14):
              (1) mkdocs.yml novo: tema Material, plugin mkdocstrings (API
@@ -156,20 +944,20 @@ v31.7.0 — 2026-07-13 — Modo Iniciante/Avancado nos submenus da CLI (CLAUDE.m
                  precisam usar essa lista, nao o `fields` original, senao
                  o numero digitado pelo usuario aponta pro campo errado
                  quando ha' campos escondidos). Compatibilidade: chamadores
-                 que nao passam `campos_avancados` (menu_preproc,
-                 menu_avancado, menu_visualizacao) continuam vendo todos os
+                 que nao passam `campos_avancados` (menu_preprocessing,
+                 menu_advanced, menu_visualization) continuam vendo todos os
                  campos, sem mudanca de comportamento;
-             (3) revelacao LOCAL [V] por submenu (menu_modelagem via
-                 `_loop_menu`, menu_validacao com loop proprio): expande
+             (3) revelacao LOCAL [V] por submenu (menu_modeling via
+                 `_loop_menu`, menu_validation com loop proprio): expande
                  so' aquela visita ao menu, sem mudar o modo da sessao
                  inteira -- design pedido explicitamente pelo autor;
-             (4) Campos escondidos por padrao: menu_modelagem ->
+             (4) Campos escondidos por padrao: menu_modeling ->
                  opls_da/ddsimca/modo_ddsimca/selecao_variaveis_etapa4
-                 (nivel N2 ja forca DD-SIMCA automaticamente); menu_validacao
+                 (nivel N2 ja forca DD-SIMCA automaticamente); menu_validation
                  -> n_permutacoes/teste_wold/teste_cv_anova (testes extras,
-                 tuning fino). menu_preproc (so' 2 campos), menu_avancado
+                 tuning fino). menu_preprocessing (so' 2 campos), menu_advanced
                  (ja e' uma secao separada de modulos pesados) e
-                 menu_tecnica/menu_codificacao (nao sao listas de
+                 menu_technique/menu_encoding (nao sao listas de
                  hiperparametro) foram deixados de fora, de proposito;
              (5) Verificado interativamente via CLI real (stdin scriptado):
                  modo Iniciante esconde 4/6 campos em Modelagem com o aviso
@@ -297,7 +1085,7 @@ v31.3.0 — 2026-07-13 — Correções da auditoria multidisciplinar de 15 etapa
                  em disco mudou (P8 residual, decisão aprovada explicitamente
                  por ser mudança de formato de saída);
              (7) 3 presets por objetivo científico — "Explorar Dados" /
-                 "Autenticar Pureza" / "Quantificar Teor" (CLI: `menu_perfis`;
+                 "Autenticar Pureza" / "Quantificar Teor" (CLI: `menu_profiles`;
                  app web: aba Dados) — reaproveitam `PROFILES`
                  (`cli_assistente.py`), mesma fonte usada pelos perfis de
                  rigor já existentes. CLI: aplicar um perfil agora pergunta
@@ -321,7 +1109,7 @@ v31.2.0 — 2026-07-12 — Mudanças de COMPORTAMENTO CIENTÍFICO (CLAUDE.md P1/
              (2) heatmap espécie×adulterante (R²cv) passa a ser figura nativa
                  de `executar()` no objetivo Quantificação, com contagem de
                  combinações abaixo de R²cv=0.70 no título;
-             (3) `predicao.carregar_modelo` passa a exigir `confiar=True`
+             (3) `predicao.load_model` passa a exigir `confiar=True`
                  explícito (joblib/pickle executa código arbitrário) e cada
                  modelo salvo passa a vir com manifesto SHA-256
                  (docs/SECURITY.md);
@@ -346,14 +1134,17 @@ v12 — 2026-05-28 — M1: pure(*)/adulterated(o) markers in score plots;
                    M2: sens/spec in DD-SIMCA acceptance plot titles
 v13 — 2026-05-28 — M3: chemical annotation of VIP bands; M4: accuracy per
                    class in resumo_modelo.txt
-v14 — 2026-05-28 — FINDING: MSC->SG+MC = 0.923 bal.acc on full dataset
-                   (1807) vs autoscaling 0.472 (AUTO advantage was
+v14 — 2026-05-28 — FINDING: MSC->SG+MC foi o melhor preset no dataset
+             entao em uso (metrica retirada em 2026-08-18: derivada de
+             dataset institucional, fora do escopo publico do software)
+                   vs autoscaling (metrica retirada em 2026-08-18 --
+                   dataset institucional fora do escopo publico) (AUTO advantage was
                    artifact of 80% subset). Changes:
                    (1) preset "msc_sg_mc" in construir_preprocessador;
                    (2) preprocessamento_padrao default = "msc_sg_mc";
                    (3) frac_holdout default = 0.20;
                    (4) gerar_nome_saida case "msc_sg_mc" -> "MSC-SGd-MC";
-                   (5) M1: stars -> circle with black edge (avoids cluttering 1807pts);
+                   (5) M1: stars -> circle with black edge (avoids cluttering dense plots);
                    (6) DD-SIMCA reverts to training on ALL samples (3 pure/class
                        makes one-class infeasible; requires >=15 pure/class)
 v15 — 2026-05-28 — (1) holdout_preserva_puros=True: pure samples always in training
@@ -398,7 +1189,7 @@ v20 — 2026-05-28 — Organization Q1: folder PLSDA_OE_{level}_{preproc}_
                    ->modelos/. Sprint1 audit (A1,A2,A3,A5,A6,A11):
                    confirmed ALREADY implemented in previous versions.
 v22 — 2026-05-29 — Phase 0 (rigor fixes):
-                   B1: validar_entrada synchronizes mae_id with the SAME mask
+                   B1: validate_input synchronizes mae_id with the SAME mask
                        for NaN/Inf removal (before, 1 NaN silently disabled
                        GroupKFold = replica leakage);
                    B4: DD-SIMCA 'todos' mode no longer reports misleading
@@ -432,7 +1223,7 @@ v23 — 2026-05-29 — ACCESSIBLE LAYER (no code editing):
                    (1) _CONFIG_SPEC: single source mapping friendly names
                        <-> Config attributes, with type,
                        description and options for validation;
-                   (2) salvar_config/carregar_config: commented YAML in
+                   (2) save_config/load_config: commented YAML in
                        plain language; defaults preserved for missing keys;
                        unknown keys ignored;
                    (3) menu_interativo: terminal assistant (CMD-style)
@@ -442,7 +1233,7 @@ v23 — 2026-05-29 — ACCESSIBLE LAYER (no code editing):
                        (legacy CFG), or interactive menu when in terminal;
                    (5) config.yaml template generated (excludes Copaiba
                        anomalous batch, max_lvs=40). Pipeline logic INTACT.
-v27  benchmark_classificadores integrated into executar()
+v27  benchmark_classifiers integrated into executar()
 v28  Monte Carlo CV (IC95%); SHAP TreeExplainer; DET curves (linear+log)
 v29  hardware_probe; auto RAM tiers (4 levels); RAM guards; cleanup util
 v30  PowerPoint export; .streamlit/config.toml; CLAUDE.md; English i18n

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "guaraci-chemometrics"
 version = "31.9.0"
-description = "GUARACI — multi-technique chemometrics platform for Amazonian matrices (group-aware validation)"
+description = "GUARACI — chemometrics platform with leakage-safe validation by default"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Erley S. Costa", email = "erleysdacosta@gmail.com" }]
@@ -56,7 +56,23 @@ reports = [
 ]
 benchmark = ["xgboost>=1.7,<5.0", "shap>=0.42,<0.53"]
 imagem = ["scikit-image>=0.19,<1.0"]  # features de textura (GLCM) no modo_entrada="imagem"
-all = ["guaraci-chemometrics[web,reports,benchmark,imagem]"]
+# prcv: Procrustes Cross-Validation (Kucheryavskiy/Rodionova/Pomerantsev) --
+# gera um conjunto de validacao por reamostragem quando ha poucos grupos de
+# replica fisica para leave-one-group-out convencional. Ver
+# sensibilidade_ddsimca_pcv() em classificadores.py.
+robusto = ["prcv>=1.2,<2.0"]
+# Leitor de arquivos OPUS (Bruker FT-NIR/FT-MIR) -- MIT (compativel com
+# GPL-3.0-or-later deste projeto, verificado no classifier do pacote em
+# 2026-09-04). Ver importadores_proprietarios.py.
+opus = ["brukeropus>=1.4,<2.0"]
+# PARAFAC (decomposicao tensorial N-way) -- hsi_multiway.py. BSD,
+# compativel com GPL-3.0-or-later. N-PLS (mesmo modulo) e' implementacao
+# propria (sem lib madura equivalente) e nao precisa deste extra.
+multiway = ["tensorly>=0.8,<1.0"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,multiway]"]
+# Dev-only -- NUNCA em requirements.txt (manifesto de deploy do Streamlit
+# Cloud): hypothesis gera casos de teste, nao roda em producao.
+dev = ["hypothesis>=6.100,<7.0"]
 
 [project.scripts]
 guaraci = "guaraci.guaraci:main"
@@ -78,6 +94,13 @@ Changelog     = "https://github.com/ErleySC/guaraci/blob/master/docs/CHANGELOG.m
 [tool.setuptools]
 package-dir = { "" = "src" }
 packages = ["guaraci", "guaraci.app_tabs"]
+
+# Os perfis de matriz sao DADOS do pacote, nao codigo: sem esta linha eles
+# ficam de fora da wheel e `guaraci perfis` lista zero perfis num ambiente
+# instalado por pip -- exatamente o cenario de quem nunca viu o projeto.
+# Achado testando instalacao limpa em 2026-08-18.
+[tool.setuptools.package-data]
+guaraci = ["perfis_matriz/*.yaml"]
 
 # Type-checking APENAS nos módulos de cálculo puro (CLAUDE.md, item 17 do
 # roadmap). Escopo deliberadamente estreito: são os módulos sem I/O, sem UI e

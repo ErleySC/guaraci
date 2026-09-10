@@ -1,0 +1,154 @@
+{
+  "benchmark_classifiers_csv": [
+    "Classifier",
+    "Bal.Acc mean",
+    "Bal.Acc std",
+    "F1 macro mean",
+    "F1 macro std",
+    "Total time (s)",
+    "p Wilcoxon (vs PLS-DA)"
+  ],
+  "benchmark_regression_by_species_csv": [
+    "Model",
+    "RMSEP (pooled)",
+    "R2val (pooled)",
+    "N species",
+    "RMSEP std (between species)"
+  ],
+  "comparacao_pipelines": [
+    "Unnamed: 0",
+    "q2",
+    "accuracy",
+    "balanced_acc",
+    "n_lv"
+  ],
+  "etapa4": {
+    "ag_historico": [
+      "geracao",
+      "melhor_fitness",
+      "media_fitness",
+      "n_vars_melhor"
+    ],
+    "ipls_intervalos": [
+      "accuracy",
+      "balanced_accuracy",
+      "q2",
+      "n_vars",
+      "n_lv",
+      "intervalo",
+      "wn_ini",
+      "wn_fim",
+      "idx_a",
+      "idx_b"
+    ],
+    "spa_cadeias": [
+      "accuracy",
+      "balanced_accuracy",
+      "q2",
+      "n_vars",
+      "n_lv",
+      "inicio_idx"
+    ],
+    "tabela_final": [
+      "metodo",
+      "accuracy",
+      "balanced_accuracy",
+      "q2",
+      "n_vars",
+      "n_lv",
+      "n_vars_min",
+      "n_vars_max"
+    ]
+  },
+  "identifiers_csv": [
+    "ID",
+    "indice",
+    "classe_real",
+    "classe_predita",
+    "correto",
+    "LV1",
+    "LV2",
+    "LV3",
+    "T2",
+    "T2_outlier",
+    "Q",
+    "Q_outlier"
+  ],
+  "identifiers_via_executar": [
+    "ID",
+    "indice",
+    "classe_real",
+    "classe_predita",
+    "correto",
+    "LV1",
+    "LV2",
+    "LV3",
+    "T2",
+    "T2_outlier",
+    "Q",
+    "Q_outlier"
+  ],
+  "metadados_sanitizados_csv": [
+    "titulo",
+    "grupo_replica"
+  ],
+  "monte_carlo_cv_csv": [
+    "Classifier",
+    "Valid iterations",
+    "Mean BA",
+    "Median BA",
+    "Std BA",
+    "CI95% inf",
+    "CI95% sup",
+    "Mean F1 macro",
+    "CI95% F1 inf",
+    "CI95% F1 sup",
+    "Test fraction"
+  ],
+  "plano_coleta_excel": {
+    "Alertas": [
+      "Alerta"
+    ],
+    "Ordem de Leitura": [
+      "Sessao",
+      "Ordem de leitura",
+      "Classe",
+      "Replica"
+    ]
+  },
+  "predict_samples_csv": [
+    "amostra",
+    "classe_pred",
+    "confianca_%",
+    "T2",
+    "T2_ucl",
+    "Q",
+    "Q_ucl",
+    "T2_ok",
+    "Q_ok",
+    "f",
+    "f_crit",
+    "aceito",
+    "criterio",
+    "AD_T2",
+    "AD_Q",
+    "AD_f",
+    "AD_f_crit",
+    "AD_dentro_dominio"
+  ],
+  "selecao_amostras_csv": [
+    "canal_0",
+    "canal_1",
+    "canal_2",
+    "canal_3",
+    "canal_4",
+    "canal_5",
+    "conjunto"
+  ],
+  "teste_martens": [
+    "wavenumber",
+    "t_valor",
+    "p_valor",
+    "significativo"
+  ]
+}

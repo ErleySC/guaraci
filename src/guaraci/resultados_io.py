@@ -6,15 +6,15 @@ Extraído de pipeline.py (dívida técnica pós-auditoria): estas funções são
 CHAMADAS por executar() para persistir os resultados de uma corrida, mas não
 dependem do orquestrador — só de config (__version__, _NIVEL_NOME), numpy,
 pandas e sklearn. pipeline.py reexporta todos os nomes, então
-`pipeline.salvar_resumo_modelo(...)`, `pq.gerar_model_card(...)`,
-`pq.anexar_regressao_resumo(...)` etc. seguem funcionando (executar e os
+`pipeline.save_model_summary(...)`, `pq.generate_model_card(...)`,
+`pq.append_regression_summary(...)` etc. seguem funcionando (executar e os
 testes consomem via fachada).
 """
 from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -22,8 +22,70 @@ from sklearn.cross_decomposition import PLSRegression
 
 from guaraci.config import Config, __version__, _NIVEL_NOME
 
+if TYPE_CHECKING:
+    from guaraci.linearity import LackOfFitResult
+    from guaraci.robustness import RobustnessResult
+    from guaraci.portao_correcao_sinal import VeredictoCorrecaoSinal
+    from guaraci.politica_pooled_local import DecisaoPooledLocal
 
-def metricas_modelo_pls(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
+__all__ = [
+    "pls_model_metrics",
+    "save_identifiers",
+    "save_model_summary",
+    "append_regression_summary",
+    "append_heatmap_summary",
+    "generate_model_card",
+    "append_regression_model_card",
+    "append_identification_model_card",
+    "append_purity_model_card",
+    "append_linearity_robustness_model_card",
+    "append_correcao_sinal_model_card",
+    "append_politica_pooled_local_model_card",
+    "save_design_audit",
+    "load_design_audit",
+]
+
+# Auditoria de delineamento (Bloco 11) persistida tambem em JSON, ao lado do
+# model card. O model card ja' traz os mesmos achados em prosa (para leitura
+# humana); o JSON existe porque as INTERFACES precisam dos achados
+# estruturados -- o painel de status da aba Projeto do app web mostra
+# severidade por achado, e extrair isso de volta do Markdown seria reparsear
+# texto que ja' foi serializado uma vez.
+NOME_AUDITORIA_DELINEAMENTO = "auditoria_delineamento.json"
+
+
+def save_design_audit(pasta: str, achados: List[Dict[str, str]]) -> None:
+    """Grava os achados da auditoria de delineamento em JSON na pasta de
+    resultados. Best-effort: falha de escrita nao derruba a execucao (o
+    model card ja' tem os mesmos achados em prosa)."""
+    import json
+    import logging
+    try:
+        os.makedirs(pasta, exist_ok=True)
+        caminho = os.path.join(pasta, NOME_AUDITORIA_DELINEAMENTO)
+        with open(caminho, "w", encoding="utf-8") as f:
+            json.dump(achados, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        logging.getLogger(__name__).warning(
+            "auditoria de delineamento nao persistida em JSON: %s", e)
+
+
+def load_design_audit(pasta: str) -> List[Dict[str, str]]:
+    """Le os achados gravados por `save_design_audit`. Lista vazia quando o
+    arquivo nao existe (execucao anterior a este formato) ou esta ilegivel --
+    quem chama deve tratar vazio como "nao ha informacao", nunca como
+    "nenhum problema encontrado"."""
+    import json
+    caminho = os.path.join(pasta, NOME_AUDITORIA_DELINEAMENTO)
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            dados = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+    return dados if isinstance(dados, list) else []
+
+
+def pls_model_metrics(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
                          Y_cv: np.ndarray) -> Tuple[float, float, float]:
     """R2X via 1 - SS(X - T @ P^T) / SS(X_centered); R2Y via 1 - SS(res)/SS(Y);
     Q2 likewise using CV predictions. Rigorous reconstruction formula."""
@@ -47,7 +109,7 @@ def metricas_modelo_pls(modelo: PLSRegression, X: np.ndarray, Y: np.ndarray,
     return r2x, r2y, q2
 
 
-def salvar_identificadores(rotulos: np.ndarray, pred_lab: np.ndarray,
+def save_identifiers(rotulos: np.ndarray, pred_lab: np.ndarray,
                             scores_pls: np.ndarray, T2: np.ndarray,
                             Q: np.ndarray, t2_lim: float, q_lim: float,
                             pasta: str) -> None:
@@ -73,7 +135,7 @@ def salvar_identificadores(rotulos: np.ndarray, pred_lab: np.ndarray,
 
 
 #: Notas metodologicas de transparencia (Methods section de artigo) --
-#: compartilhadas por salvar_resumo_modelo (.txt) e gerar_model_card (.md),
+#: compartilhadas por save_model_summary (.txt) e generate_model_card (.md),
 #: fonte unica para nao divergirem com o tempo.
 _NOTAS_METODOLOGICAS: List[Tuple[str, str]] = [
     ("LV selection", "Wold parsimony criterion (2% RMSECV tolerance above "
@@ -101,7 +163,7 @@ _NOTAS_METODOLOGICAS: List[Tuple[str, str]] = [
 ]
 
 
-def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
+def save_model_summary(pasta: str, info: Dict[str, object]) -> None:
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     with open(caminho, "w", encoding="utf-8") as f:
         f.write("=" * 60 + "\n")
@@ -133,7 +195,7 @@ def salvar_resumo_modelo(pasta: str, info: Dict[str, object]) -> None:
                 f.write(line + "\n")
 
 
-def anexar_regressao_resumo(
+def append_regression_summary(
         pasta: str,
         pooled: Optional[Dict[str, object]] = None,
         tabela_especie: Optional[List[Dict[str, object]]] = None,
@@ -171,6 +233,13 @@ def anexar_regressao_resumo(
         linhas.append(f"    RMSEP .....: {_fmt(pooled.get('rmsep'))}")
         if pooled.get('bias') is not None:
             linhas.append(f"    Bias ......: {_fmt(pooled.get('bias'), 4)}")
+        # RPD/RER com a faixa de uso ao lado: um RPD nu vira alegacao
+        # exagerada em texto (Williams 2014; AACC 39-00.01).
+        if pooled.get('rpd') is not None:
+            linhas.append(f"    SEP .......: {_fmt(pooled.get('sep'), 3)}")
+            linhas.append(f"    RPD .......: {_fmt(pooled.get('rpd'), 2)}"
+                          f"  ({pooled.get('rpd_faixa', '-')})")
+            linhas.append(f"    RER .......: {_fmt(pooled.get('rer'), 1)}")
         if pooled.get('dmody_crit') is not None:
             linhas.append(f"    DModY critico (SIMCA): "
                           f"{_fmt(pooled.get('dmody_crit'), 3)}")
@@ -191,6 +260,22 @@ def anexar_regressao_resumo(
                 f"{_fmt(t.get('lod'), 2):>7s} {_fmt(t.get('loq'), 2):>7s} "
                 f"{_fmt(t.get('sensibilidade'), 3):>7s} "
                 f"{_fmt(t.get('seletividade_media'), 3):>6s}")
+            # Bloco 12: LOD/LOQ nunca isolado -- IC (Allegrini & Olivieri
+            # 2014, ver chemometric_stats.regression_figures_of_merit) +
+            # faixa/desvio-padrao do conjunto de VALIDACAO logo abaixo.
+            if t.get("lod_ic_baixo") is not None and t.get("lod") is not None \
+                    and np.isfinite(t.get("lod", float("nan"))):
+                _conf = t.get("lod_ic_confianca")
+                _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"
+                linhas.append(
+                    f"      IC({_conf_txt}): LOD "
+                    f"[{_fmt(t.get('lod_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('lod_ic_alto'), 2)}]  "
+                    f"LOQ [{_fmt(t.get('loq_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('loq_ic_alto'), 2)}]  |  "
+                    f"validacao: [{_fmt(t.get('validacao_teor_min'), 2)}, "
+                    f"{_fmt(t.get('validacao_teor_max'), 2)}]% "
+                    f"DP={_fmt(t.get('validacao_teor_dp'), 2)}%")
     if fom_pooled is not None:
         linhas.append("")
         linhas.append("  Figures of merit (single pooled model):")
@@ -211,12 +296,12 @@ def anexar_regressao_resumo(
         print(f"  [AVISO] Nao foi possivel anexar regressao ao resumo: {e}")
 
 
-def anexar_heatmap_resumo(pasta: str, resultado: Dict[str, object]) -> None:
+def append_heatmap_summary(pasta: str, resultado: Dict[str, object]) -> None:
     """Anexa ao resumo_modelo.txt o balanco do heatmap especie x adulterante
     (R2cv por combinacao). Deixa EXPLICITO quantas combinacoes NAO atingem o
     limiar de aceite -- uma quantificacao que so funciona em parte das
     combinacoes nao deve ser lida como sucesso geral. Append-only pelo mesmo
-    motivo de anexar_regressao_resumo (roda depois do 1o flush do resumo).
+    motivo de append_regression_summary (roda depois do 1o flush do resumo).
     """
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     limiar   = float(resultado.get("limiar_r2", 0.70))   # type: ignore[arg-type]
@@ -271,30 +356,38 @@ def _md_tabela(linhas: List[Tuple[str, str]]) -> str:
     return "\n".join(out)
 
 
-def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
+def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                       hw: Dict[str, Any], classes_unicas: np.ndarray) -> None:
     """Gera `model_card.md` (secoes de Mitchell et al. 2019, adaptado a um
     pipeline quimiometrico de autenticacao/quantificacao). Escrito no MESMO
-    ponto de `salvar_resumo_modelo` -- reaproveita o dict `resumo` inteiro,
+    ponto de `save_model_summary` -- reaproveita o dict `resumo` inteiro,
     ja com todas as metricas/diagnosticos/integridade de dados calculados,
     em vez de recalcular ou receber duzias de parametros separados.
 
     Regressao (N2/N3) e' um addendum ANEXADO depois (mesmo padrao de
-    `anexar_regressao_resumo`), pois so' fica disponivel mais tarde em
-    executar() -- ver `anexar_regressao_model_card`.
+    `append_regression_summary`), pois so' fica disponivel mais tarde em
+    executar() -- ver `append_regression_model_card`.
     """
-    nivel = cfg.nivel
+    nivel = cfg.level
     nivel_nome = _NIVEL_NOME.get(nivel, nivel)
     agora = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    # A matriz e o vocabulario vem do PERFIL (guaraci/perfis_matriz/*.yaml),
+    # nunca do codigo: o texto anterior afirmava "oleo vegetal amazonico" em
+    # qualquer execucao -- inclusive rodando sobre milho em grao (medido na
+    # auditoria mestre de 2026-08-17). Um model card que declara a matriz
+    # errada e' pior que um sem matriz nenhuma.
+    from guaraci.perfil_matriz import cfg_profile
+    perfil = cfg_profile(cfg)
+    voc = perfil.vocabulario
     uso_pretendido = {
-        "N1": ("Identificacao de especie de oleo vegetal amazonico a partir "
-               "de espectro FT-NIR (classificacao multiclasse via PLS-DA)."),
-        "N2": ("Autenticacao de pureza POR ESPECIE (puro vs. adulterado) via "
-               "DD-SIMCA one-class, a partir de espectro FT-NIR."),
-        "N3": ("Quantificacao do teor (%) de adulterante em oleo vegetal "
-               "amazonico, calibrada separadamente por especie (PLS-R)."),
-    }.get(nivel, "Analise quimiometrica de espectros FT-NIR.")
+        "N1": (f"Identificacao de {voc.classe} em {voc.matriz} a partir do "
+               "espectro (classificacao multiclasse via PLS-DA)."),
+        "N2": (f"Autenticacao POR {voc.classe.upper()} ({voc.conforme} vs. "
+               f"{voc.nao_conforme}) via DD-SIMCA one-class, em {voc.matriz}."),
+        "N3": (f"Quantificacao de {voc.alvo} em {voc.matriz}, calibrada "
+               f"separadamente por {voc.classe} (PLS-R)."),
+    }.get(nivel, "Analise quimiometrica de dados espectrais.")
 
     linhas: List[str] = [
         f"# Model Card -- GUARACI v{__version__}",
@@ -303,6 +396,46 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         "artefatos de UMA execucao do pipeline; regenere a cada novo "
         "conjunto de dados ou configuracao.*",
         "",
+    ]
+    # Passo 57 (achado na revisao com o usuario): dados sinteticos
+    # (`dados_io.generate_synthetic_data`) tem sinal construido com uma
+    # banda marcadora limpa por classe -- metricas quase perfeitas
+    # (accuracy/balanced accuracy/kappa = 1,0000) sao ESPERADAS nesse
+    # regime, nao evidencia de desempenho. Sem esta marca, um exemplo
+    # sintetico e' indistinguivel de um resultado real no documento --
+    # exatamente o tipo de "metrica perfeita sem contexto" que ja foi
+    # achado de auditoria grave quando apareceu em dataset real. Primeiro
+    # aviso do documento (antes ate' do grouping_guarantee).
+    if cfg.mode == "sintetico":
+        linhas += [
+            "> ## ⚠️ EXECUTADO COM DADOS SINTETICOS DE DEMONSTRACAO",
+            ">",
+            "> Esta execucao usou o gerador sintetico "
+            "(`dados_io.generate_synthetic_data`), nao espectros reais "
+            "medidos. O sinal de cada classe/adulterante e' construido com "
+            "uma banda marcadora limpa -- metricas perfeitas ou quase "
+            "perfeitas (accuracy, balanced accuracy, kappa = 1,0000) sao "
+            "ESPERADAS neste regime e NAO indicam desempenho real do "
+            "metodo. Use apenas para verificar que o pipeline roda de "
+            "ponta a ponta; nunca cite estes numeros como evidencia de "
+            "desempenho em dado real.",
+            "",
+        ]
+    if cfg.grouping_guarantee != "high":
+        linhas += [
+            f"> ## ⚠️ GROUPING GUARANTEE: {cfg.grouping_guarantee.upper()}",
+            ">",
+            "> Esta execucao nao tem um identificador de grupo confiavel "
+            "(mae_id equivalente) para TODA amostra -- a validacao caiu em "
+            "`StratifiedKFold` (sem protecao contra vazamento entre "
+            "replicas/fotos da mesma amostra fisica). Trate as metricas "
+            "abaixo como exploratorias, nao como evidencia de desempenho "
+            "de publicacao. Ver `dados_imagem.py` para como declarar um "
+            "nivel de garantia mais alto (subpasta por amostra ou CSV de "
+            "associacao).",
+            "",
+        ]
+    linhas += [
         "## 1. Detalhes do Modelo",
         "",
         _md_tabela([
@@ -313,7 +446,14 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
              "Discriminant Analysis)" if nivel != "N3" else
              "PLS-DA + PLS-R por especie"),
             ("Pre-processamento", str(resumo.get("Pre-processamento", "-"))),
-            ("Faixa espectral", str(resumo.get("Faixa espectral (cm-1)", "-"))),
+            ("Perfil de matriz", f"{perfil.nome} ({perfil.descricao})"
+             if perfil.descricao else perfil.nome),
+            ("Matriz", voc.matriz),
+            (f"Faixa espectral ({perfil.unidade_eixo})",
+             str(resumo.get("Faixa espectral (cm-1)", "-"))),
+            ("Faixa de trabalho declarada",
+             (f"{perfil.faixa_trabalho[0]} a {perfil.faixa_trabalho[1]}"
+              if perfil.faixa_trabalho else "nao declarada no perfil")),
             ("Tag de execucao", str(resumo.get("Tag", "-"))),
             ("Licenca", "GPL-3.0-or-later (dual-licensed -- ver docs/COMMERCIAL.md)"),
             ("Repositorio", "github.com/ErleySC/guaraci"),
@@ -324,8 +464,8 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         f"**Uso primario:** {uso_pretendido}",
         "",
         "**Usuarios primarios:** pesquisadores em quimiometria, laboratorios "
-        "de controle de qualidade de oleos vegetais, projetos academicos "
-        "(TCC/PIBIC/pos-graduacao).",
+        "de controle de qualidade, projetos academicos "
+        "(graduacao/pos-graduacao).",
         "",
         "**Fora do escopo:** nao substitui metodos analiticos de referencia "
         "regulamentados (ex.: cromatografia certificada) sem validacao "
@@ -354,23 +494,23 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
                      "Q-residual (95%)", "ROC AUC macro (OvR)",
                      "BCa Accuracy", "BCa Balanced acc.", "BCa F1 (macro)",
                      "BCa Cohen's kappa", "Martens n_significativas",
-                     "Martens n_folds_validos", "DModX critico (SIMCA)",
-                     "N amostras fora do DModX")
+                     "Martens n_folds_validos", "DModX critical (SIMCA)",
+                     "N samples outside DModX")
         ]),
         "",
         "## 5. Dados de Avaliacao/Treino",
         "",
         _md_tabela([
-            ("Total de amostras", str(resumo.get("Total de amostras", "-"))),
-            ("Total de variaveis", str(resumo.get("Total de variaveis", "-"))),
-            ("Total de classes", str(resumo.get("Total de classes", "-"))),
+            ("Total samples", str(resumo.get("Total samples", "-"))),
+            ("Total variables", str(resumo.get("Total variables", "-"))),
+            ("Total classes", str(resumo.get("Total classes", "-"))),
             ("Amostras com NaN removidas",
-             str(resumo.get("Integridade NaN", "-"))),
+             str(resumo.get("NaN integrity", "-"))),
             ("Amostras com Inf removidas",
              str(resumo.get("Integridade Inf", "-"))),
             ("Variaveis constantes removidas",
-             str(resumo.get("Variaveis constantes", "-"))),
-            ("Duplicatas exatas", str(resumo.get("Duplicatas exatas", "-"))),
+             str(resumo.get("Constant variables", "-"))),
+            ("Exact duplicates", str(resumo.get("Exact duplicates", "-"))),
         ]),
         "",
         "## 6. Analises Quantitativas (por classe)",
@@ -388,6 +528,28 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     if ddsimca_linhas:
         linhas += ["", "**DD-SIMCA -- sensibilidade/especificidade por classe:**", "",
                    _md_tabela(ddsimca_linhas)]
+
+    # Auditoria de delineamento (Bloco 11) -- roda por padrao em toda
+    # execucao (pipeline.run_audit), nao opt-in. Icone por
+    # severidade para leitura rapida; "silenciado" ainda aparece, com a
+    # justificativa anexada na propria mensagem -- nunca some do
+    # relatorio so' por ter sido silenciado.
+    _achados_audit = resumo.get("auditoria_delineamento")
+    if _achados_audit:
+        _icone_sev = {"ok": "OK", "aviso": "AVISO", "critico": "CRITICO",
+                      "silenciado": "SILENCIADO"}
+        linhas += [
+            "", "## Auditoria de Delineamento (Bloco 11)", "",
+            "Roda por padrao em toda execucao -- checagens silenciaveis "
+            "individualmente, sempre com justificativa registrada (nunca "
+            "desaparecem do relatorio so' por terem sido silenciadas).",
+            "",
+            _md_tabela([
+                (a["nome"], f"[{_icone_sev.get(a['severidade'], a['severidade'].upper())}] "
+                 f"{a['mensagem']}")
+                for a in _achados_audit
+            ]),
+        ]
 
     linhas += [
         "",
@@ -418,19 +580,19 @@ def gerar_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
         print(f"  [AVISO] Nao foi possivel gerar model_card.md: {e}")
 
 
-def anexar_regressao_model_card(
+def append_regression_model_card(
         pasta: str,
         pooled: Optional[Dict[str, object]] = None,
         tabela_especie: Optional[List[Dict[str, object]]] = None,
         fom_pooled: Optional[Dict[str, float]] = None) -> None:
     """Anexa o addendum de regressao (N2/N3) ao model_card.md -- mesmos
-    parametros de `anexar_regressao_resumo` (chamar as duas juntas nos
+    parametros de `append_regression_summary` (chamar as duas juntas nos
     mesmos pontos de executar()), append-only pelo mesmo motivo: a
-    regressao roda DEPOIS de `gerar_model_card` no fluxo de executar().
+    regressao roda DEPOIS de `generate_model_card` no fluxo de executar().
     """
     caminho = os.path.join(pasta, "model_card.md")
     if not os.path.isfile(caminho):
-        return   # model_card.md nao foi gerado (ex.: gerar_model_card falhou)
+        return   # model_card.md nao foi gerado (ex.: generate_model_card falhou)
 
     def _fmt(v: object, nd: int = 3) -> str:
         try:
@@ -452,13 +614,29 @@ def anexar_regressao_model_card(
                 ("Amostras fora do DModY", str(pooled.get("n_fora_do_dmody", "n/a"))))
         linhas.append(_md_tabela(_linhas_pooled))
     if tabela_especie:
+        def _linha_especie(t: Dict[str, Any]) -> str:
+            base = (f"RMSEP={_fmt(t.get('rmsep'), 2)} | "
+                    f"LOD={_fmt(t.get('lod'), 2)}% | "
+                    f"LOQ={_fmt(t.get('loq'), 2)}%")
+            if t.get("lod_ic_baixo") is None:
+                return base
+            _conf = t.get("lod_ic_confianca")
+            _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"
+            # Bloco 12: LOD/LOQ nunca isolado -- IC (Allegrini & Olivieri
+            # 2014) + faixa/desvio-padrao do conjunto de VALIDACAO juntos.
+            return (f"{base} | IC({_conf_txt})=[{_fmt(t.get('lod_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('lod_ic_alto'), 2)}]%/"
+                    f"[{_fmt(t.get('loq_ic_baixo'), 2)}-"
+                    f"{_fmt(t.get('loq_ic_alto'), 2)}]% | "
+                    f"validacao=[{_fmt(t.get('validacao_teor_min'), 2)}, "
+                    f"{_fmt(t.get('validacao_teor_max'), 2)}]% "
+                    f"(DP={_fmt(t.get('validacao_teor_dp'), 2)}%)")
+
         linhas += ["", "**Figuras de merito por especie "
-                   "(Valderrama, Braga & Poppi, 2009):**", "",
+                   "(Valderrama, Braga & Poppi, 2009; IC do LOD/LOQ: "
+                   "Allegrini & Olivieri, 2014):**", "",
                    _md_tabela([
-                       (str(t.get("especie", "")),
-                        f"RMSEP={_fmt(t.get('rmsep'), 2)} | "
-                        f"LOD={_fmt(t.get('lod'), 2)}% | "
-                        f"LOQ={_fmt(t.get('loq'), 2)}%")
+                       (str(t.get("especie", "")), _linha_especie(t))
                        for t in tabela_especie
                    ])]
     if fom_pooled is not None:
@@ -473,3 +651,301 @@ def anexar_regressao_model_card(
             f.write("\n".join(linhas) + "\n")
     except OSError as e:
         print(f"  [AVISO] Nao foi possivel anexar regressao ao model card: {e}")
+
+
+def append_identification_model_card(pasta: str,
+                                      ensemble: Dict[Any, Dict[str, Any]]
+                                      ) -> None:
+    """Anexa o addendum de Identificacao especie x adulterante (Bloco 9b)
+    ao model_card.md -- mesmo padrao append-only de
+    `append_regression_model_card` (chamada depois de `generate_model_card`
+    no fluxo de `executar()`, sem re-escrever o arquivo).
+
+    Esta e' UM dos 3 lugares onde a ressalva de nao-validacao tem que
+    aparecer (D5, Bloco 9b) -- os outros dois sao o log da execucao
+    (`pipeline.executar()`) e o manifesto (`predicao.generate_manifest`,
+    chave `identification_coverage`). Lista TODA combinacao, nunca so' as
+    validadas -- omitir as nao-validadas seria esconder exatamente a
+    ressalva que esta secao existe para tornar visivel.
+
+    SEM NUMERO de secao fixo (ao contrario de `append_regression_model_card`,
+    que sempre escreve "## 9."): esta funcao e' chamada logo apos o dominio
+    de aplicabilidade, ANTES da regressao (secao 9, condicional, so' roda
+    quando ha' adulterante+especies suficientes) -- numerar como "## 10."
+    produziria "10." aparecendo ANTES de "9." no arquivo sempre que a
+    regressao rodasse depois (achado real, verificado lendo o model_card.md
+    gerado por uma execucao de teste). Titulo sem numero e' correto em
+    qualquer ordem de chamada.
+    """
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- Identificacao especie x adulterante "
+        "(Bloco 9b, mode cego)", "",
+        "Ensemble conformal calibrado por combinacao especie x adulterante "
+        "-- ver `identificacao.py` para o metodo. `alpha_alcancavel` e' o "
+        "MENOR erro que a calibracao atual pode garantir para aquela "
+        "combinacao (1/(n_grupos+1)); `n/a` quando `n_grupos<=1` (nem um "
+        "limiar minimamente informativo pode ser calculado).",
+        "",
+    ]
+    if not ensemble:
+        linhas.append("*Nenhuma combinacao especie x adulterante calibrada "
+                       "nesta execucao (sem `mae_id`, ou dataset sem "
+                       "adulterante nomeavel).*")
+    else:
+        n_validado = sum(1 for v in ensemble.values()
+                          if str(v["cobertura_status"].value) == "validado")
+        linhas.append(
+            f"**{len(ensemble)} combinacoes calibradas, {n_validado} com "
+            f"cobertura VALIDADA.** Combinacoes NAO validadas nao "
+            f"identificam amostra nenhuma com garantia estatistica -- "
+            f"aparecem so' como candidato informacional (ver "
+            f"`identificacao.identify_sample`).")
+        def _fmt_alpha(a: Optional[float]) -> str:
+            return "n/a" if a is None else f"{a:.3f}"
+
+        linhas.append("")
+        linhas.append(_md_tabela([
+            (f"{esp} x {adult}",
+             f"n_grupos={v['n_grupos']} | status={v['cobertura_status'].value} | "
+             f"alpha_alcancavel={_fmt_alpha(v['alpha_alcancavel'])}")
+            for (esp, adult), v in sorted(ensemble.items())
+        ]))
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar identificacao ao model card: {e}")
+
+
+def append_purity_model_card(pasta: str,
+                              modelos_por_especie: Dict[str, Dict[str, Any]]
+                              ) -> None:
+    """Anexa o addendum de DD-SIMCA de pureza por especie (Detectar,
+    Bloco 9b) ao model_card.md -- mesmo padrao append-only das duas
+    funcoes acima, mesmo motivo do titulo sem numero fixo.
+
+    Este e' o segundo sinal de Detectar (`predicao.detect_purity`),
+    complementar ao dominio de aplicabilidade -- ver docstring de
+    `predicao.PurityResult` para a diferenca entre os dois. `confiavel`
+    (`n_grupos_calibracao>=3`) e' o mesmo limiar ja usado no aviso de
+    `DDSimca.fit` para "regiao larga/conservadora por construcao" --
+    abaixo dele, o metodo AINDA decide aceitar/rejeitar, mas sem alpha
+    declarado com lastro (fica de fora da soma de Bonferroni).
+    """
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- DD-SIMCA de pureza por especie (Detectar, "
+        "Bloco 9b)", "",
+        "Segundo sinal de Detectar, complementar ao dominio de "
+        "aplicabilidade: o dominio de aplicabilidade e' ajustado em toda a "
+        "amostragem (pura + adulterada) e responde 'isto e' parecido com "
+        "algo que vimos'; este DD-SIMCA e' ajustado SO' nos puros de cada "
+        "especie e responde 'isto e' puro para a especie predita'. Uma "
+        "amostra adulterada pode passar no dominio de aplicabilidade (ela "
+        "FAZ parte do treino dele) e ainda assim ser rejeitada aqui.",
+        "",
+    ]
+    if not modelos_por_especie:
+        linhas.append("*Nenhum modelo DD-SIMCA de pureza calibrado nesta "
+                       "execucao.*")
+    else:
+        n_confiavel = sum(1 for m in modelos_por_especie.values()
+                           if int(m.get("n_grupos_calibracao", 0)) >= 3)
+        linhas.append(
+            f"**{len(modelos_por_especie)} especies calibradas, "
+            f"{n_confiavel} com calibracao confiavel "
+            f"(n_grupos_calibracao>=3).** Abaixo desse limiar, o alpha "
+            f"declarado (0,05) nao entra na soma de Bonferroni de "
+            f"`predict_blind` -- decide aceitar/rejeitar mesmo assim, mas "
+            f"sem garantia numerica com lastro.")
+        linhas.append("")
+        linhas.append(_md_tabela([
+            (esp, f"n_grupos_calibracao={m.get('n_grupos_calibracao', 'n/a')} | "
+             f"confiavel={'sim' if int(m.get('n_grupos_calibracao', 0)) >= 3 else 'nao'}")
+            for esp, m in sorted(modelos_por_especie.items())
+        ]))
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar pureza ao model card: {e}")
+
+
+def append_linearity_robustness_model_card(
+        pasta: str,
+        linearidade: Optional["LackOfFitResult"] = None,
+        robustez: Optional[Dict[str, "RobustnessResult"]] = None,
+        ) -> None:
+    """Anexa o addendum de linearidade formal + robustez (Bloco 13d) ao
+    model_card.md -- mesmo padrao append-only das funcoes acima, mesmo
+    motivo do titulo sem numero fixo (chamada em ponto variavel do fluxo,
+    dependendo de quais diagnosticos o objetivo/nivel ligou).
+
+    `linearidade`: resultado de `linearity.lack_of_fit_test` (ou `None` --
+    diagnostico nao rodado nesta execucao). `robustez`: dict nome->
+    `robustness.RobustnessResult` de `robustness.run_robustness_protocol`
+    (ou `None`). Os dois sao independentes -- qualquer combinacao
+    presente/ausente e' valida (cada um pode nao ser computavel/aplicavel
+    sem o outro)."""
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+    if linearidade is None and not robustez:
+        return
+
+    def _fmt(v: Optional[float], nd: int = 4) -> str:
+        if v is None:
+            return "n/a"
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            return "n/a"
+        return f"{fv:.{nd}f}" if np.isfinite(fv) else "n/a"
+
+    linhas: List[str] = [
+        "", "## Addendum -- Linearidade formal e robustez (Bloco 13d)", "",
+    ]
+
+    if linearidade is not None:
+        linhas += ["**Teste de falta de ajuste (lack-of-fit)** -- "
+                   "Draper & Smith, *Applied Regression Analysis*, cap. "
+                   "2.6. H0: a reta de calibracao e' adequada (sem "
+                   "curvatura sistematica detectavel); rejeitar H0 "
+                   "(p < alpha) indica falta de ajuste significativa.", ""]
+        if not linearidade.computavel:
+            linhas.append(f"*Nao computavel: {linearidade.motivo}*")
+        else:
+            veredito = ("sem falta de ajuste detectavel"
+                        if linearidade.linear else
+                        "FALTA DE AJUSTE SIGNIFICATIVA (curvatura detectada)")
+            linhas.append(_md_tabela([
+                ("F", _fmt(linearidade.F, 3)),
+                ("p-valor", _fmt(linearidade.p_value, 4)),
+                ("graus de liberdade (falta-de-ajuste, erro puro)",
+                 f"{linearidade.df_lof}, {linearidade.df_pe}"),
+                ("niveis da curva (com replica)",
+                 f"{linearidade.n_niveis} ({linearidade.n_niveis_com_replica})"),
+                ("alpha", _fmt(linearidade.alpha, 2)),
+                ("veredito", veredito),
+            ]))
+        linhas.append("")
+
+    if robustez:
+        linhas += ["**Protocolo de robustez** -- variacao do resultado "
+                   "final sob perturbacao controlada (pre-processamento, "
+                   "ruido/deriva sinteticos). Reportado como INTERVALO "
+                   "(minimo-maximo), nao como aprovado/reprovado -- mesma "
+                   "filosofia do LOD/LOQ como intervalo (Bloco 12): "
+                   "declarar o que os dados sustentam.", ""]
+        linhas.append(_md_tabela([
+            (nome, f"baseline={_fmt(r.baseline, 4)} | "
+                    f"intervalo=[{_fmt(r.minimo, 4)}, {_fmt(r.maximo, 4)}] | "
+                    f"mediana={_fmt(r.mediana, 4)} | "
+                    f"variacao_absoluta={_fmt(r.variacao_absoluta, 4)} | "
+                    f"n_replicas={r.n_replicas}")
+            for nome, r in sorted(robustez.items())
+        ]))
+        linhas.append("")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar linearidade/robustez ao "
+              f"model card: {e}")
+
+
+def append_correcao_sinal_model_card(
+        pasta: str, veredictos: List["VeredictoCorrecaoSinal"]) -> None:
+    """Anexa o veredito do portao de aceite de correcao de sinal (Bloco 20,
+    `portao_correcao_sinal.avaliar_correcao_sinal`/`_pls`) ao model_card.md
+    -- mesmo padrao append-only das funcoes acima, mesmo motivo do titulo
+    sem numero fixo (o portao pode rodar em pontos variados do fluxo,
+    dependendo de quais tecnicas de correcao o usuario tem configuradas).
+
+    NUNCA esconder um veredito 'neutro'/'rejeitado' -- e' exatamente o que
+    o Bloco 20 existe para tornar visivel (uma tecnica sem prova de ganho
+    continua DISPONIVEL, mas o usuario ve o veredito ao lado da opcao).
+    Lista TODO veredito recebido, na ordem dada -- nunca filtra so' os
+    aprovados."""
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+    if not veredictos:
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- Portao de aceite de correcao de sinal (Bloco 20)", "",
+        "Cada tecnica de correcao de sinal so' e' recomendada se passar por "
+        "este portao: mesmo pipeline com/sem a tecnica, sob o MESMO split "
+        "group-aware bloqueado, comparado por teste de Wilcoxon pareado "
+        "(mesmo metodo validado na comparacao N-PLS vs. PLS-DA por pixel, "
+        "Passo 132). 'Neutro'/'rejeitado' nao remove a tecnica do leque "
+        "configuravel -- so' declara que o ganho nao esta' comprovado "
+        "neste dataset/cenario.", "",
+    ]
+    linhas.append(_md_tabela([
+        (v.metodo, f"veredito={v.veredito} | metrica={v.metrica} "
+                    f"sem={v.valor_sem:.4g} com={v.valor_com:.4g} | "
+                    f"efeito_padronizado={v.tamanho_efeito_padronizado:.3f} | "
+                    f"p={v.p_valor:.4f} | n_pares={v.n_pares} | "
+                    f"poder_suficiente={'sim' if v.poder_suficiente else 'nao'}")
+        for v in veredictos
+    ]))
+    linhas.append("")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar portao de correcao de "
+              f"sinal ao model card: {e}")
+
+
+def append_politica_pooled_local_model_card(
+        pasta: str, decisoes: List["DecisaoPooledLocal"]) -> None:
+    """Anexa a decisao pooled vs. local por especie (Bloco 26,
+    `politica_pooled_local.decidir_pooled_vs_local`) ao model_card.md --
+    mesmo padrao append-only das funcoes acima. Lista TODA especie
+    avaliada, inclusive as com dados insuficientes (recomendacao pooled
+    por definicao, nunca escondida) -- nunca so' as que foram pra local."""
+    caminho = os.path.join(pasta, "model_card.md")
+    if not os.path.isfile(caminho):
+        return
+    if not decisoes:
+        return
+
+    linhas: List[str] = [
+        "", "## Addendum -- Politica pooled vs. local por especie (Bloco 26)", "",
+        "Local (modelo separado por especie) so' e' recomendado quando a "
+        "especie tem amostras suficientes (mesmo limiar de "
+        "`pls_regression_by_species`) E o portao de aceite (Bloco 20) "
+        "aprova o ganho sobre o pooled com poder estatistico suficiente "
+        "-- nunca so' porque o RMSEP local saiu menor num unico split.", "",
+    ]
+    linhas.append(_md_tabela([
+        (d.especie,
+         f"recomendacao={d.recomendacao} | n_amostras={d.n_amostras} "
+         f"(minimo={d.n_minimo}) | "
+         + (f"veredito={d.veredito.veredito} "
+            f"(p={d.veredito.p_valor:.4f}, n={d.veredito.n_pares})"
+            if d.veredito is not None else "portao nao rodado (dados insuficientes)"))
+        for d in decisoes
+    ]))
+    linhas.append("")
+
+    try:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write("\n".join(linhas) + "\n")
+    except OSError as e:
+        print(f"  [AVISO] Nao foi possivel anexar politica pooled vs. "
+              f"local ao model card: {e}")

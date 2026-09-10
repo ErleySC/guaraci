@@ -1,6 +1,6 @@
 """Testes de dados_io.py com arquivos JCAMP-DX (.dx) REAIS gravados em disco
 (não só parse_title isolado, já coberto em test_pipeline_core.py) — exercita
-parse_dx (decodificação ASDF) e carregar_dx (estrutura de pastas, mae_id, CSV
+parse_dx (decodificação ASDF) e load_dx (estrutura de pastas, mae_id, CSV
 de metadados), que respondiam por boa parte dos 81% não cobertos do módulo.
 """
 import numpy as np
@@ -44,7 +44,7 @@ def test_parse_dx_reconstroi_grade_e_valores(pq, tmp_path):
     Y decodificados batem com os inteiros gravados (YFACTOR=1)."""
     y_ints = [1, 2, 3, 4, 5, -1, -2, 0, 3, 9]
     caminho = str(tmp_path / "amostra.dx")
-    _escrever_dx(caminho, "AND-04-11-2020-T1", firstx=100, lastx=109,
+    _escrever_dx(caminho, "AND-04-11-2099-T1", firstx=100, lastx=109,
                  y_ints=y_ints)
 
     x, y = pq.parse_dx(caminho)
@@ -54,16 +54,16 @@ def test_parse_dx_reconstroi_grade_e_valores(pq, tmp_path):
 
 
 def test_extrair_title_do_dx_le_sem_carregar_espectro(pq, tmp_path):
-    """extrair_title_do_dx: le só a linha ##TITLE=, sem decodificar os dados."""
+    """extract_dx_title: le só a linha ##TITLE=, sem decodificar os dados."""
     caminho = str(tmp_path / "amostra.dx")
-    _escrever_dx(caminho, "CAP-04-11-2020-AD-S-4.13%-T2", firstx=100,
+    _escrever_dx(caminho, "CAP-04-11-2099-AD-S-4.13%-T2", firstx=100,
                  lastx=105, y_ints=[1, 2, 3, 4, 5, 6])
-    title = pq.extrair_title_do_dx(caminho)
-    assert title == "CAP-04-11-2020-AD-S-4.13%-T2"
+    title = pq.extract_dx_title(caminho)
+    assert title == "CAP-04-11-2099-AD-S-4.13%-T2"
 
 
 def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
-    """carregar_dx: estrutura real (1 subpasta por espécie), TITLE com
+    """load_dx: estrutura real (1 subpasta por espécie), TITLE com
     réplicas T1/T2/T3 do mesmo ponto — confirma classe, mae_id compartilhado
     entre réplicas, e teor de adulteração extraído do TITLE."""
     raiz = tmp_path / "dados"
@@ -75,14 +75,14 @@ def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
     # Andiroba: 1 ponto puro com 3 replicas (T1/T2/T3, mesmo mae_id)
     for t in (1, 2, 3):
         _escrever_dx(str(raiz / "Andiroba" / f"and_puro_T{t}.dx"),
-                     f"AND-04-11-2020-T{t}", 100, 109, y_base)
+                     f"AND-04-11-2099-T{t}", 100, 109, y_base)
 
     # Castanha do Para: 1 ponto adulterado (teor 4.13%), 2 replicas
     for t in (1, 2):
         _escrever_dx(str(raiz / "CastanhaDoPara" / f"cap_adult_T{t}.dx"),
-                     f"CAP-05-11-2020-AD-S-4.13%-T{t}", 100, 109, y_base)
+                     f"CAP-05-11-2099-AD-S-4.13%-T{t}", 100, 109, y_base)
 
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dx(str(raiz))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_dx(str(raiz))
 
     assert X.shape[0] == 5  # 3 replicas Andiroba + 2 replicas Castanha
     assert set(rotulos) == {"Andiroba", "Castanha do Pará"}
@@ -98,15 +98,15 @@ def test_carregar_dx_estrutura_multi_pasta_com_replicas(pq, tmp_path):
 
 
 def test_carregar_dados_modo_dx_delega_para_carregar_dx(pq, tmp_path):
-    """carregar_dados(cfg) com modo='dx' delega corretamente para carregar_dx
+    """load_data(cfg) com mode='dx' delega corretamente para load_dx
     (mesmo caminho que o pipeline real usa a partir de Config)."""
     raiz = tmp_path / "dados"
     (raiz / "Andiroba").mkdir(parents=True)
-    _escrever_dx(str(raiz / "Andiroba" / "and_T1.dx"), "AND-04-11-2020-T1",
+    _escrever_dx(str(raiz / "Andiroba" / "and_T1.dx"), "AND-04-11-2099-T1",
                  100, 105, [1, 2, 3, 4, 5, 6])
 
-    cfg = pq.Config(modo="dx", pasta_entrada=str(raiz))
-    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.carregar_dados(cfg)
+    cfg = pq.Config(mode="dx", input_folder=str(raiz))
+    wavenumbers, X, rotulos, conc, mae_id, meta_df = pq.load_data(cfg)
     assert X.shape[0] == 1
     assert rotulos[0] == "Andiroba"
 
@@ -126,12 +126,12 @@ def _montar_dataset(base, especie_a=("CAP", 6), especie_b=("BAB", 3),
         os.makedirs(pasta, exist_ok=True)
         for i in range(n):
             # 2 replicas por ponto de coleta -> mae_id compartilhado.
-            title = f"{cod}-0{i // 2 + 1}-11-2020_T{i % 2 + 1}"
+            title = f"{cod}-0{i // 2 + 1}-11-2099_T{i % 2 + 1}"
             _escrever_dx(os.path.join(pasta, f"{title}.dx"), title, 0.0, 4000.0, y)
     pasta_a = os.path.join(str(base), especie_a[0])
     for i in range(fora_da_faixa):
         # LASTX bem diferente -> cai fora da faixa dominante.
-        title = f"{especie_a[0]}-09-09-2020_T{i + 1}"
+        title = f"{especie_a[0]}-09-09-2099_T{i + 1}"
         _escrever_dx(os.path.join(pasta_a, f"forafaixa{i}.dx"), title,
                      0.0, 15797.0, y)
     for i in range(sem_titulo_valido):
@@ -154,7 +154,7 @@ def test_prescan_conta_arquivos_e_grupos(pq, tmp_path):
 
 
 def test_prescan_preve_o_descarte_por_faixa_espectral(pq, tmp_path):
-    """O numero previsto tem de ser o MESMO que carregar_dx vai descartar --
+    """O numero previsto tem de ser o MESMO que load_dx vai descartar --
     e' o que torna o aviso confiavel em vez de so' indicativo."""
     pasta = _montar_dataset(tmp_path / "ds2", fora_da_faixa=2)
     r = pq.prescan_dx(pasta)
@@ -165,7 +165,7 @@ def test_prescan_preve_o_descarte_por_faixa_espectral(pq, tmp_path):
         "o descarte tem de ser atribuido a especie (pasta) certa"
 
     # A previsao tem de bater com a carga REAL do mesmo dataset.
-    _wn, X, _rot, _conc, _mae, _meta = pq.carregar_dx(pasta, extrair_conc=False)
+    _wn, X, _rot, _conc, _mae, _meta = pq.load_dx(pasta, extrair_conc=False)
     assert X.shape[0] == r["n_apos_descarte"]
 
 
@@ -176,7 +176,7 @@ def test_prescan_conta_orfas_apos_o_descarte(pq, tmp_path):
     pasta = _montar_dataset(tmp_path / "ds3", sem_titulo_valido=2)
     r = pq.prescan_dx(pasta)
     assert r["n_sem_mae_id"] == 2
-    # Cada orfa vira um grupo de 1 em carregar_dx -> 5 reais + 2 orfas.
+    # Cada orfa vira um grupo de 1 em load_dx -> 5 reais + 2 orfas.
     assert r["n_grupos_reais"] == 5
     assert r["n_grupos"] == 7
 
@@ -203,3 +203,38 @@ def test_prescan_pasta_vazia_nao_quebra(pq, tmp_path):
     assert r["n_arquivos"] == 0
     assert r["faixa_dominante"] is None
     assert r["n_grupos"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Eixo espectral DECRESCENTE (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def test_predicao_interpola_espectro_com_eixo_decrescente():
+    """REGRESSAO: `np.interp` exige eixo crescente e NAO ordena sozinho.
+
+    Um .dx de terceiro gravado em ordem decrescente (convencao comum em
+    FTIR) fazia a reamostragem devolver valores errados sem lancar erro --
+    ou seja, PREDICAO errada em silencio. O equipamento do autor (ABB
+    MB3600) grava crescente, entao o defeito era latente no dataset local,
+    mas real para qualquer outro instrumento.
+
+    Interpolar o MESMO espectro nas duas ordens tem que dar o mesmo
+    resultado.
+    """
+    import numpy as np
+    wn_ref = np.linspace(4000, 6000, 50)
+    wn_cresc = np.linspace(3900, 6100, 200)
+    espectro = np.exp(-((wn_cresc - 5000) / 300.0) ** 2)
+
+    def reamostrar(wn, y):
+        ordem = np.argsort(wn)
+        return np.interp(wn_ref, wn[ordem], y[ordem])
+
+    ref = reamostrar(wn_cresc, espectro)
+    inv = reamostrar(wn_cresc[::-1], espectro[::-1])
+    np.testing.assert_allclose(ref, inv, rtol=1e-12)
+
+    # E o caminho ERRADO (sem ordenar) de fato difere -- prova que o teste
+    # nao e' vacuo e que havia um defeito real a corrigir.
+    errado = np.interp(wn_ref, wn_cresc[::-1], espectro[::-1])
+    assert not np.allclose(errado, ref), (
+        "premissa do teste: sem ordenar, np.interp devolveria outro resultado")

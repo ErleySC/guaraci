@@ -24,11 +24,11 @@ def trunc(s: str, n: int) -> str:
     return corte.rstrip() + "…"
 
 
-def truncar_desc_por_frase(desc: str, max_c: int) -> str:
+def truncate_desc_by_sentence(desc: str, max_c: int) -> str:
     """Núcleo de truncamento de descrições curtas: prefere cortar na primeira
     frase (se couber em max_c); senão, corta em borda de palavra (nunca no
     meio) com reticências. Usado por `_desc_curta` (guaraci.py) e por
-    `menu_avancado`/`_print_submenu_compact` indiretamente.
+    `menu_advanced`/`_print_submenu_compact` indiretamente.
     """
     desc = (desc or "").strip()
     if not desc:
@@ -56,7 +56,7 @@ def fmt_bool(v, lang: str) -> str:
     return str(v)
 
 
-def validar_faixas(faixa_min: float, faixa_max: float) -> list:
+def validate_ranges(faixa_min: float, faixa_max: float) -> list:
     """Retorna lista de avisos se faixa_min >= faixa_max (intervalo inválido)."""
     avisos = []
     if faixa_min >= faixa_max:
@@ -65,7 +65,7 @@ def validar_faixas(faixa_min: float, faixa_max: float) -> list:
     return avisos
 
 
-def contar_dx(pasta: str) -> int:
+def count_dx(pasta: str) -> int:
     """Conta arquivos .dx em `pasta` — checa a raiz E subpastas imediatas
     (suporta tanto layout plano quanto uma-subpasta-por-classe)."""
     try:
@@ -84,4 +84,4 @@ def contar_dx(pasta: str) -> int:
         return 0
 
 
-__all__ = ["trunc", "truncar_desc_por_frase", "fmt_bool", "validar_faixas", "contar_dx"]
+__all__ = ["trunc", "truncate_desc_by_sentence", "fmt_bool", "validate_ranges", "count_dx"]

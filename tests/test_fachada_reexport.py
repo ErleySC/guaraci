@@ -22,55 +22,70 @@ import pytest
 # módulo de origem -> símbolos que pipeline.py deve reexportar (contrato público)
 CONTRATO = {
     "chemometric_stats": [
-        "vip_scores", "calcular_selectivity_ratio", "teste_incerteza_martens",
+        "vip_scores", "compute_selectivity_ratio", "martens_uncertainty_test",
         "dmodx", "dmody", "hotelling_t2",
-        "hotelling_t2_limite", "q_residuos", "q_residuos_limite",
-        "variancia_explicada", "figuras_merito_regressao",
-        "dominio_aplicabilidade", "dominio_aplicabilidade_treino",
-        "dominio_aplicabilidade_amostras_novas", "rmse_flat",
+        "hotelling_t2_limit", "q_residuals", "q_residuals_limit",
+        "explained_variance", "regression_figures_of_merit",
+        "applicability_domain", "training_applicability_domain",
+        "applicability_domain_new_samples", "rmse_flat",
     ],
     "paleta_cores": [
-        "PALETA", "MARCADORES", "cor", "mapear_cores_classes",
-        "mapear_marcadores_classes", "edge_para_cor",
+        "PALETA", "MARCADORES", "color", "map_class_colors",
+        "map_class_markers", "get_edge_color",
     ],
     "dados_io": [
-        "parse_title", "extrair_title_do_dx", "carregar_dados", "carregar_dx",
-        "carregar_csv", "gerar_dados_sinteticos", "parse_dx", "parse_spectrum",
+        "parse_title", "extract_dx_title", "load_data", "load_dx",
+        "load_csv", "generate_synthetic_data", "parse_dx", "parse_spectrum",
         "CODIGO_ESPECIE", "ADULTERANTE_NOME",
         "kennard_stone", "kennard_stone_split", "kennard_stone_split_group_aware",
+        "duplex_split", "duplex_split_group_aware",
+        "spxy_split", "spxy_split_group_aware",
     ],
     "dados_imagem": [
-        "carregar_imagens", "carregar_imagem_arquivo", "recortar_relativo",
-        "extrair_features_cor", "extrair_features_textura",
+        "load_images", "load_image_file", "recortar_relativo",
+        "extract_color_features", "extract_texture_features",
     ],
     "preprocessamento": [
-        "SNV", "SavGol", "MSC", "construir_preprocessador",
+        "SNV", "SavGol", "MSC", "build_preprocessor",
     ],
     "classificadores": [
         "DDSimca", "OPLSDAWrapper",
     ],
     "figuras": [
-        "salvar", "setup_matplotlib", "especificidade_por_classe",
+        "save", "setup_matplotlib", "specificity_by_class",
         "fig1_pca_scores", "fig4_confusao",
     ],
     "validacao_estatistica": [
         "_cv_predict_manual", "bootstrap_bca_ci", "cv_anova_eriksson",
-        "teste_wold", "teste_permutacao",
+        "wold_test", "permutation_test",
     ],
     "hardware": [
-        "hardware_probe", "auto_ajustar_config_hardware", "_verificar_ram",
+        "hardware_probe", "auto_adjust_hardware_config", "_verificar_ram",
     ],
     "selecao_variaveis": [
         "selecao_ipls", "sparse_plsda_mask", "etapa4_selecao_variaveis",
         "fig_etapa4_ipls", "fig_etapa4_comparacao",
-        "selecao_spa", "selecao_ag", "fig_etapa4_ag_convergencia",
+        "selecao_spa", "ga_selection", "fig_etapa4_ag_convergencia",
         "_avaliar_subset_nested_cv", "_mask_vip_threshold", "_mask_sr_top_frac",
         "_avaliar_busca_nested_cv", "_cv_local",
     ],
     "avaliacao_modelos": [
-        "PLSDAClassifier", "benchmark_classificadores", "monte_carlo_cv",
+        "PLSDAClassifier", "benchmark_classifiers", "monte_carlo_cv",
         "fig_det_curvas", "fig_shap_benchmark",
-        "benchmark_regressao_por_especie", "fig_benchmark_regressores",
+        "benchmark_regression_by_species", "fig_benchmark_regressors",
+    ],
+    "transferencia_calibracao": [
+        "StandardizationTransform", "direct_standardization",
+        "piecewise_direct_standardization", "apply_standardization",
+    ],
+    "linearity": [
+        "LackOfFitResult", "lack_of_fit_test",
+    ],
+    "robustness": [
+        "RobustnessResult", "gaussian_noise_variants",
+        "baseline_drift_variants", "preprocessing_config_variants",
+        "run_robustness_protocol", "avaliar_rmsep_plsr",
+        "avaliar_bal_acc_plsda",
     ],
 }
 

@@ -76,10 +76,10 @@ _GOLDEN = Path(__file__).parent / "golden" / "pipeline_n2_sintetico.json"
 # ajuste (R2X/R2Y/Q2), limites de diagnóstico (Hotelling/Q/DModX), e contagens
 # estruturais (LVs, grupos) que denunciam mudança na validação group-aware.
 _METRICAS_TRAVADAS = [
-    "Total de amostras",
-    "Total de variaveis",
-    "Total de classes",
-    "LVs otimas",
+    "Total samples",
+    "Total variables",
+    "Total classes",
+    "Optimal LVs",
     "N grupos mae_id",
     "Accuracy (CV)",
     "Balanced accuracy",
@@ -92,8 +92,8 @@ _METRICAS_TRAVADAS = [
     "Q-residual (95%)",
     "N outliers T2",
     "N outliers Q",
-    "DModX critico (SIMCA)",
-    "N amostras fora do DModX",
+    "DModX critical (SIMCA)",
+    "N samples outside DModX",
     "ROC AUC macro (OvR)",
     "Holdout accuracy",
     "Holdout balanced acc",
@@ -151,32 +151,32 @@ def _cfg_golden(pq, base: Path):
     """Config FIXA do run golden. Não mudar sem regravar o golden.
 
     Valores pequenos de propósito (o teste roda na CI em 10 combinações de
-    SO/versão), mas com `n_replicas_sint=3` para que a validação group-aware
+    SO/versão), mas com `n_synthetic_replicates=3` para que a validação group-aware
     por `mae_id` e o DD-SIMCA tenham o que exercitar de verdade.
     """
     cfg = pq.Config(
-        pasta_entrada=str(base / "in"),
-        pasta_saida_raiz=str(base / "saida"),
-        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
-        n_replicas_sint=3, wn_min=400.0, wn_max=4001.0,
+        input_folder=str(base / "in"),
+        output_root_folder=str(base / "saida"),
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
-        n_permutacoes=5, n_permutacoes_wold=5,
+        n_permutations=5, n_permutations_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
-        max_lvs=5, nivel="N2", figuras_detalhadas=False,
+        max_lvs=5, level="N2", detailed_figures=False,
     )
     # DD-SIMCA ligado (é o diferencial científico do projeto e o cálculo mais
     # sensível); módulos pesados/opcionais desligados para manter o teste
     # rápido e sem depender de xgboost/shap.
     for attr, val in [
-        ("executar_ddsimca", True), ("executar_opls", False),
-        ("executar_etapa4", False), ("executar_wold", False),
-        ("comparar_pipelines", False), ("executar_cv_anova", False),
-        ("executar_benchmark", False), ("executar_monte_carlo", False),
-        ("executar_shap", False),
+        ("run_ddsimca", True), ("run_opls", False),
+        ("executar_etapa4", False), ("run_wold", False),
+        ("comparar_pipelines", False), ("run_cv_anova", False),
+        ("run_benchmark", False), ("run_monte_carlo", False),
+        ("run_shap", False),
     ]:
         if hasattr(cfg, attr):
             setattr(cfg, attr, val)
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     return cfg
 
 
@@ -187,7 +187,7 @@ def valores_run(pq, tmp_path_factory) -> dict:
     cfg = _cfg_golden(pq, base)
     with contextlib.redirect_stdout(io.StringIO()):
         pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou pasta de saida"
     resumo_path = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
     assert resumo_path.is_file(), f"resumo_modelo.txt nao encontrado em {runs[0]}"

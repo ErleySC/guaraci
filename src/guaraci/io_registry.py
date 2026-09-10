@@ -1,16 +1,16 @@
 """io_registry.py — Registry de leitores de dados (item 20 da auditoria).
 
-Formaliza o despacho por `cfg.modo` que antes era um if/elif fixo dentro de
-`dados_io.carregar_dados()`. Cada leitor e' um `Callable[[Config], DadosCarregados]`
-registrado sob uma chave `modo` (ex.: "dx", "csv", "imagem", "sintetico").
+Formaliza o despacho por `cfg.mode` que antes era um if/elif fixo dentro de
+`dados_io.load_data()`. Cada leitor e' um `Callable[[Config], DadosCarregados]`
+registrado sob uma chave `mode` (ex.: "dx", "csv", "imagem", "sintetico").
 
 Adicionar um novo formato de entrada (uma nova tecnica analitica, um novo
 layout de arquivo) passa a ser: escrever a funcao de leitura e chamar
-`registrar_leitor("meu_modo", minha_funcao)` — de qualquer modulo, inclusive
-fora do pacote guaraci — sem editar o dispatch de `carregar_dados()` nem
+`register_reader("meu_modo", minha_funcao)` — de qualquer modulo, inclusive
+fora do pacote guaraci — sem editar o dispatch de `load_data()` nem
 tocar em if/elif espalhados pelo nucleo cientifico.
 
-Contrato do leitor (o mesmo que `carregar_dados()` sempre devolveu):
+Contrato do leitor (o mesmo que `load_data()` sempre devolveu):
     (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     - wavenumbers: eixo espectral/variavel (1D)
     - X:           matriz de amostras x variaveis (2D)
@@ -39,34 +39,34 @@ LeitorDados = Callable[["Config"], DadosCarregados]
 _LEITORES: Dict[str, LeitorDados] = {}
 
 
-def registrar_leitor(modo: str, leitor: LeitorDados) -> None:
-    """Registra (ou substitui) o leitor de dados para `cfg.modo == modo`.
+def register_reader(mode: str, leitor: LeitorDados) -> None:
+    """Registra (ou substitui) o leitor de dados para `cfg.mode == mode`.
 
-    Chamar de novo com o mesmo `modo` SUBSTITUI o leitor anterior (util para
-    testes ou para trocar a implementacao de um modo built-in).
+    Chamar de novo com o mesmo `mode` SUBSTITUI o leitor anterior (util para
+    testes ou para trocar a implementacao de um mode built-in).
     """
-    _LEITORES[modo] = leitor
+    _LEITORES[mode] = leitor
 
 
-def obter_leitor(modo: str) -> LeitorDados:
-    """Devolve o leitor registrado para `modo`.
+def get_reader(mode: str) -> LeitorDados:
+    """Devolve o leitor registrado para `mode`.
 
-    Levanta ValueError com a lista de modos disponiveis se `modo` nao foi
+    Levanta ValueError com a lista de modos disponiveis se `mode` nao foi
     registrado — mensagem de erro acionavel em vez de um KeyError cru.
     """
     try:
-        return _LEITORES[modo]
+        return _LEITORES[mode]
     except KeyError:
-        disponiveis = ", ".join(modos_registrados()) or "(nenhum registrado)"
+        disponiveis = ", ".join(registered_modes()) or "(nenhum registrado)"
         raise ValueError(
-            f"Modo de entrada desconhecido: '{modo}'. "
+            f"Modo de entrada desconhecido: '{mode}'. "
             f"Modos disponiveis: {disponiveis}.") from None
 
 
-def modos_registrados() -> Tuple[str, ...]:
+def registered_modes() -> Tuple[str, ...]:
     """Lista (ordenada) dos modos atualmente registrados."""
     return tuple(sorted(_LEITORES))
 
 
-__all__ = ["DadosCarregados", "LeitorDados", "registrar_leitor",
-           "obter_leitor", "modos_registrados"]
+__all__ = ["DadosCarregados", "LeitorDados", "register_reader",
+           "get_reader", "registered_modes"]

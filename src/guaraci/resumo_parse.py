@@ -11,7 +11,7 @@ em isolamento (ver tests/test_resumo_parse.py).
 from __future__ import annotations
 
 import re
-from typing import Dict
+from typing import Dict, Optional
 
 # Métricas padrão exibidas no cabeçalho de relatório (PDF/Word). Cada valor é
 # (padrão_regex) aplicado ao resumo com IGNORECASE|MULTILINE; group(1) é o valor.
@@ -21,7 +21,7 @@ _PADROES_METRICAS = {
     "R2Y":                      r"\bR2Y\b.*?[:=]\s*([\d.]+)",
     "Q2Y":                      r"\bQ2\b.*?[:=]\s*([\d.E+-]+)",
     "R2X":                      r"\bR2X\b.*?[:=]\s*([\d.]+)",
-    "Optimal LVs":              r"LVs?\s+otim[ao].*?[:=]\s*(\d+)",
+    "Optimal LVs":              r"Optimal LVs.*?[:=]\s*(\d+)",
     "p-value (permutation)":    r"p.?value.*?[:=]\s*([\d.E+-]+)",
     "Preprocessing":            r"[Pp]re.?[Pp]rocessamento.*?[:=]\s*([A-Za-z0-9_+]+)",
     "Hotelling T2 UCL (95%)":   r"[Hh]otelling.*?[:=]\s*([\d.]+)",
@@ -31,7 +31,34 @@ _PADROES_METRICAS = {
 }
 
 
-def extrair_metrica(resumo: str, padrao: str, default: str = "-") -> str:
+# Contagens do conjunto de dados da execucao. As chaves do resumo mudaram de
+# PT para EN ao longo do projeto ("Total de amostras" -> "Total samples"), e
+# runs antigos continuam em disco -- os dois nomes sao aceitos, senao o painel
+# de status mostraria "-" para uma execucao que tem o numero gravado.
+_PADROES_CONTAGEM = {
+    "amostras":  r"^\s*Total (?:de )?(?:samples|amostras)\s*[:=]\s*(\d+)",
+    "variaveis": r"^\s*Total (?:de )?(?:variables|vari[aá]veis)\s*[:=]\s*(\d+)",
+    "classes":   r"^\s*Total (?:de )?classes\s*[:=]\s*(\d+)",
+    # "Amostra fisica" = grupo mae_id (todas as replicas do mesmo ponto de
+    # coleta). E' o numero que importa para dizer se a validacao esta'
+    # protegida contra vazamento -- por isso aparece no painel de status ao
+    # lado do total de espectros.
+    "amostras_fisicas": r"^\s*N grupos mae_id\s*[:=]\s*(\d+)",
+}
+
+
+def parse_dataset_counts(resumo: str) -> Dict[str, Optional[int]]:
+    """Contagens reais da execucao (amostras/variaveis/classes) lidas do
+    resumo_modelo.txt. Valor `None` quando a linha nao existe -- nunca zero,
+    que se leria como "nenhuma amostra" em vez de "nao informado"."""
+    contagens: Dict[str, Optional[int]] = {}
+    for nome, padrao in _PADROES_CONTAGEM.items():
+        bruto = extract_metric(resumo, padrao, default="")
+        contagens[nome] = int(bruto) if bruto.isdigit() else None
+    return contagens
+
+
+def extract_metric(resumo: str, padrao: str, default: str = "-") -> str:
     """Extrai group(1) do primeiro casamento de `padrao` no resumo.
 
     IGNORECASE|MULTILINE, `.strip()` no valor; devolve `default` se nada casar.
@@ -41,14 +68,14 @@ def extrair_metrica(resumo: str, padrao: str, default: str = "-") -> str:
     return m.group(1).strip() if m else default
 
 
-def parse_metricas_modelo(resumo: str, default: str = "-") -> Dict[str, str]:
+def parse_model_metrics(resumo: str, default: str = "-") -> Dict[str, str]:
     """Dicionário padrão de 12 métricas (Balanced Accuracy, R2Y/Q2Y, LVs,
     p-valor, etc.) para o cabeçalho dos relatórios PDF/Word."""
-    return {nome: extrair_metrica(resumo, padrao, default)
+    return {nome: extract_metric(resumo, padrao, default)
             for nome, padrao in _PADROES_METRICAS.items()}
 
 
-def parse_acuracia_por_classe(resumo: str) -> Dict[str, float]:
+def parse_accuracy_by_class(resumo: str) -> Dict[str, float]:
     """Extrai a acurácia (recall) por classe das linhas 'Acc <classe>: <val>'
     do resumo. Usado pela aba Validation para a tabela colorida por classe.
     Retorna {classe: valor_float}; dict vazio se não houver nenhuma linha."""
@@ -60,4 +87,5 @@ def parse_acuracia_por_classe(resumo: str) -> Dict[str, float]:
     return acc
 
 
-__all__ = ["extrair_metrica", "parse_metricas_modelo", "parse_acuracia_por_classe"]
+__all__ = ["extract_metric", "parse_model_metrics", "parse_accuracy_by_class",
+           "parse_dataset_counts"]
