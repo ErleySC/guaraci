@@ -88,12 +88,21 @@ def preview_spectra_csv(caminho: str, col_cls: str,
 
 def plot_mean_spectra(wn: np.ndarray, X: np.ndarray,
                           rotulos: np.ndarray, titulo: str = ""):
-    """Plots mean ± std per class."""
+    """Plots mean ± std per class.
+
+    As cores vem de `paleta_cores.map_class_colors` -- a MESMA funcao que
+    colore as figuras do pipeline. Ate' 2026-09-08 esta previa usava
+    `tab10` fixo, entao ela nao refletia a paleta escolhida pelo usuario e a
+    "pre-visualizacao de cor" da tela Visualizacao teria sido uma simulacao,
+    nao o resultado de verdade.
+    """
+    from guaraci.paleta_cores import map_class_colors
+
     classes = np.unique(np.asarray(rotulos))
-    cmap = plt.get_cmap("tab10")
+    mapa_cores = map_class_colors(classes)
     fig, ax = plt.subplots(figsize=(8, 3.5), constrained_layout=True)
     for i, cls in enumerate(classes[:10]):
-        cor = cmap(i / 10)
+        cor = mapa_cores[str(cls)]
         mask = rotulos == cls
         med = X[mask].mean(axis=0)
         std = X[mask].std(axis=0)

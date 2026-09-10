@@ -49,6 +49,8 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import LabelBinarizer
 
+from guaraci.chemometric_stats import expandir_binario_um_quente
+
 __all__ = [
     "construir_tensor_amostras",
     "ParafacHSIResultado",
@@ -259,8 +261,7 @@ class NPLSClassifier(BaseEstimator, ClassifierMixin):
     def fit(self, X: np.ndarray, y: np.ndarray) -> "NPLSClassifier":
         self._lb = LabelBinarizer()
         Y_bin = np.asarray(self._lb.fit_transform(y))
-        if Y_bin.ndim == 1 or Y_bin.shape[1] == 1:
-            Y_bin = np.hstack([1 - Y_bin.reshape(-1, 1), Y_bin.reshape(-1, 1)])
+        Y_bin = expandir_binario_um_quente(Y_bin)
         self._npls = NPLS(n_componentes=self.n_componentes).fit(X, Y_bin)
         self.classes_ = self._lb.classes_
         return self

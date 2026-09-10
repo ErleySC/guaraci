@@ -304,6 +304,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     mean_and_dof_moments,
     rmse_flat,
     diagnose_spectral_range,
+    expandir_binario_um_quente,
 )
 
 
@@ -327,6 +328,7 @@ from guaraci.resultados_io import (   # noqa: F401
     generate_model_card, append_regression_model_card, append_heatmap_summary,
     append_identification_model_card, append_purity_model_card,
     append_linearity_robustness_model_card,
+    save_design_audit, load_design_audit,
 )
 
 # Linearidade formal (lack-of-fit) e protocolo de robustez (Bloco 13d).
@@ -1716,22 +1718,12 @@ def executar(cfg: Config):
 
     lb = LabelBinarizer()
     Y_bin = np.asarray(lb.fit_transform(rotulos), dtype=float)
-    # Achado do Passo 148 (2026-09-04): para EXATAMENTE 2 classes,
-    # LabelBinarizer.fit_transform ja' devolve shape (n, 1) -- ndim=2, NAO
-    # 1 -- entao o check antigo (`if Y_bin.ndim == 1`) NUNCA disparava e o
-    # 2o rotulo nunca era reconstruido. Y_bin ficava com 1 SO' coluna:
-    # np.argmax(Y_bin, axis=1) e' SEMPRE 0 (nao ha' coluna 1 pra' vencer),
-    # entao TODA predicao downstream colapsava em lb.classes_[0] -- balanced_
-    # accuracy ficava travada em exatamente 0.5 para QUALQUER dataset
-    # binario, disfarcado de "acaso genuino" (achado negativo do RMN,
-    # docs/VALIDACAO_PUBLICA.md secao 2e, agora RETRATADO). O mesmo padrao
-    # ja' existia CORRETO em `avaliacao_modelos.PLSDAClassifier.fit`,
-    # `hsi_multiway.NPLSClassifier.fit` e `portao_correcao_sinal` (todos
-    # com `or Y_bin.shape[1] == 1`) -- so' este ponto, o caminho principal
-    # de classificacao usado por TODA execucao N1/N2, tinha ficado pra'
-    # tras dessa correcao.
-    if Y_bin.ndim == 1 or Y_bin.shape[1] == 1:
-        Y_bin = np.column_stack([1 - Y_bin, Y_bin])
+    # Achado do Passo 148 (2026-09-04, RETRATACAO do achado negativo do
+    # RMN -- docs/VALIDACAO_PUBLICA.md secao 2e): faltava reconstruir a
+    # 2a coluna one-hot para EXATAMENTE 2 classes; sem ela, toda predicao
+    # colapsava na 1a classe. Extraido para funcao compartilhada no Passo
+    # 156 -- ver docstring de `expandir_binario_um_quente`.
+    Y_bin = expandir_binario_um_quente(Y_bin)
     y_int = np.argmax(Y_bin, axis=1)
 
     # --- 2. Pre-processamento (uma vez, para visualizacao e PCA) -----------
@@ -2558,6 +2550,13 @@ def executar(cfg: Config):
     # Model Card (Mitchell et al. 2019) -- mesmo ponto/dados do resumo acima.
     generate_model_card(pasta_logs, cfg, resumo, _hw, classes_unicas)
     log.info(f"  -> {os.path.join(pasta_logs, 'model_card.md')}")
+
+    # Auditoria de delineamento tambem em JSON (mesmos achados do model card,
+    # ja calculados na etapa [0/7]): o painel de status da aba Projeto mostra
+    # severidade por checagem, e ler isso de volta do Markdown seria
+    # reparsear um texto que ja' foi serializado uma vez.
+    save_design_audit(pasta_logs, resumo["auditoria_delineamento"])
+    log.info(f"  -> {os.path.join(pasta_logs, 'auditoria_delineamento.json')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
     if cfg.run_benchmark and should_generate(cfg, "benchmark"):

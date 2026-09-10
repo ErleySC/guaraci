@@ -9,6 +9,7 @@ import textwrap
 
 from guaraci.resumo_parse import (
     extract_metric, parse_model_metrics, parse_accuracy_by_class,
+    parse_dataset_counts,
 )
 
 _RESUMO_EXEMPLO = textwrap.dedent("""\
@@ -96,3 +97,43 @@ def test_parse_acuracia_vazio_sem_linhas_acc():
 def test_parse_acuracia_aceita_igual_ou_doispontos():
     acc = parse_accuracy_by_class("Acc X = 0.7\nAcc Y: 0.8")
     assert acc == {"X": 0.7, "Y": 0.8}
+
+
+# ── Contagens do conjunto de dados (painel de status da aba Projeto) ───────
+
+def test_contagens_leem_resumo_no_formato_atual_em_ingles():
+    resumo = ("  Total samples   : 1346\n"
+              "  Total variables : 759\n"
+              "  Total classes   : 13\n")
+    assert parse_dataset_counts(resumo) == {
+        "amostras": 1346, "variaveis": 759, "classes": 13,
+        "amostras_fisicas": None}
+
+
+def test_contagens_leem_runs_antigos_em_portugues():
+    """Runs gravados antes da troca das chaves para ingles continuam em
+    disco -- o painel nao pode mostrar "-" para um numero que existe."""
+    resumo = ("  Total de amostras   : 137\n"
+              "  Total de variaveis  : 500\n"
+              "  Total de classes    : 5\n")
+    assert parse_dataset_counts(resumo) == {
+        "amostras": 137, "variaveis": 500, "classes": 5,
+        "amostras_fisicas": None}
+
+
+def test_contagem_ausente_e_none_nunca_zero():
+    """Zero se leria como "nenhuma amostra"; o correto e' "nao informado"."""
+    assert parse_dataset_counts("  Total classes : 4\n") == {
+        "amostras": None, "variaveis": None, "classes": 4,
+        "amostras_fisicas": None}
+    assert parse_dataset_counts("") == {
+        "amostras": None, "variaveis": None, "classes": None,
+        "amostras_fisicas": None}
+
+
+def test_amostra_fisica_vem_do_numero_de_grupos_mae_id():
+    """'Amostra física' = grupo mae_id: é esse número, não o de espectros,
+    que diz quantos pontos de coleta independentes existem."""
+    resumo = ("  Total samples     : 1346\n"
+              "  N grupos mae_id   : 457\n")
+    assert parse_dataset_counts(resumo)["amostras_fisicas"] == 457

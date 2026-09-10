@@ -1,4 +1,4 @@
-"""app_tabs — um módulo por aba do app web (item 18 da auditoria: quebrar o
+"""app_tabs — um módulo por tela do app web (item 18 da auditoria: quebrar o
 monólito app_quimiometria.py por aba/serviço).
 
 Cada submódulo expõe uma função `render(...)` chamada de dentro do

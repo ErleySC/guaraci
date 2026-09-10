@@ -23,6 +23,13 @@ _ARQUIVOS_ABAS = [
     _RAIZ / "src" / "guaraci" / "app_tabs" / "preprocessamento.py",
     _RAIZ / "src" / "guaraci" / "app_tabs" / "predicao.py",
     _RAIZ / "src" / "guaraci" / "app_tabs" / "relatorios.py",
+    # Projeto e Modelo entraram em 2026-09-08 (painel de status e seletor de
+    # paleta trouxeram texto novo para essas duas abas).
+    _RAIZ / "src" / "guaraci" / "app_tabs" / "projeto.py",
+    _RAIZ / "src" / "guaraci" / "app_tabs" / "modelo.py",
+    # Telas criadas na reestruturação de 2026-09-08 (navegação lateral).
+    _RAIZ / "src" / "guaraci" / "app_tabs" / "inicio.py",
+    _RAIZ / "src" / "guaraci" / "app_tabs" / "visualizacao.py",
 ]
 
 
@@ -107,24 +114,46 @@ def test_placeholders_de_format_batem_entre_chave_e_traducao_pt():
     assert not problemas, problemas
 
 
+def _abrir(pagina: str) -> AppTest:
+    """Abre UMA tela em PT. Desde a navegação lateral (2026-09-08) só a tela
+    escolhida é renderizada, então cada verificação precisa navegar."""
+    at = AppTest.from_file(str(_RAIZ / "app_quimiometria.py"), default_timeout=60)
+    at.session_state["lang"] = "PT"
+    at.session_state["pagina"] = pagina
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+    return at
+
+
+def _textos(at: AppTest) -> str:
+    return ("\n".join(m.value for m in at.markdown)
+            + "\n".join(s.value for s in at.subheader)
+            + "\n".join(c.value for c in at.caption)
+            + "\n".join(i.value for i in at.info))
+
+
 def test_abas_traduzem_de_verdade_com_lang_pt():
     """Nao basta a chave existir em _TR -- roda o app de verdade com
     session_state.lang='PT' e confirma que o texto PT aparece (contra-prova
     de que T() esta' de fato recebendo _T, nao um no-op esquecido numa
     chamada de render())."""
-    at = AppTest.from_file(str(_RAIZ / "app_quimiometria.py"), default_timeout=30)
-    at.session_state["lang"] = "PT"
-    at.run()
-    assert not at.exception, [str(e) for e in at.exception]
+    textos_dados = _textos(_abrir("dados"))
+    assert "Entrada de Dados" in textos_dados
+    assert "Data Input" not in textos_dados
 
-    textos = ("\n".join(m.value for m in at.markdown)
-              + "\n".join(s.value for s in at.subheader)
-              + "\n".join(c.value for c in at.caption)
-              + "\n".join(i.value for i in at.info))
-    assert "Entrada de Dados" in textos       # Data tab
-    assert "Data Input" not in textos
-    assert "Pré-processamento Espectral" in textos   # Preprocessing tab
-    assert "Spectral Preprocessing" not in textos
-    assert any("Predizer" in b.label for b in at.button)   # Prediction tab
-    assert "Relatórios e Downloads" in textos   # Reports tab (early-return msg)
-    assert "Execute o pipeline (aba Modelo) para gerar relatórios." in textos
+    textos_preproc = _textos(_abrir("preprocessamento"))
+    assert "Pré-processamento Espectral" in textos_preproc
+    assert "Spectral Preprocessing" not in textos_preproc
+
+    at_pred = _abrir("predicao")
+    assert any("Predizer" in b.label for b in at_pred.button)
+
+    textos_rel = _textos(_abrir("relatorios"))
+    assert "Relatórios e Downloads" in textos_rel
+    assert "Execute o pipeline (aba Modelo) para gerar relatórios." in textos_rel
+
+    textos_inicio = _textos(_abrir("inicio"))
+    assert "DADOS CARREGADOS" in textos_inicio
+
+    textos_viz = _textos(_abrir("visualizacao"))
+    assert "Esquema de cor" in textos_viz

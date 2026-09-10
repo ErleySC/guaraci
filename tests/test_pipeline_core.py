@@ -819,6 +819,7 @@ def test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so(pq, tmp_pat
         f"deveriam classificar quase perfeitamente. Um valor proximo de "
         f"0.5 aqui e' o sintoma exato do bug do Passo 148 (colapso na "
         f"1a classe) voltando.")
+
     # Contra-prova direta: as duas classes precisam aparecer nas predicoes
     # (nao so' na tabela de rotulos verdadeiros) -- e' a evidencia mais
     # literal de que o colapso-em-uma-classe-so' nao voltou.
@@ -830,6 +831,39 @@ def test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so(pq, tmp_pat
             preditas = set(tdf[col_pred[0]].astype(str).unique())
             assert len(preditas) >= 2, (
                 f"predicoes colapsaram numa classe so': {preditas}")
+
+
+def test_expandir_binario_um_quente_extraida_bate_com_padrao_antigo():
+    """Passo 156: a checagem `ndim == 1 or shape[1] == 1` + reconstrucao
+    da 2a coluna one-hot estava duplicada A MAO em 4 lugares
+    (`avaliacao_modelos.PLSDAClassifier.fit`,
+    `hsi_multiway.NPLSClassifier.fit`, `portao_correcao_sinal.py` e
+    `pipeline.py` -- este ultimo o que tinha ficado pra tras no Passo
+    148). Extraida para `chemometric_stats.expandir_binario_um_quente`
+    -- este teste confirma que a funcao unica reproduz EXATAMENTE o
+    padrao antigo (`np.hstack([1 - Y.reshape(-1,1), Y.reshape(-1,1)])`)
+    nos 3 formatos de entrada relevantes: vetor 1D, coluna unica (n,1)
+    -- o caso real de LabelBinarizer com 2 classes -- e passthrough
+    quando ja' multi-classe (nao deve alterar nada). Os 4 call sites
+    continuam cobertos individualmente por `test_pipeline_smoke.py`
+    (PLSDAClassifier binario), `test_hsi_multiway.py` (NPLSClassifier
+    binario), `test_portao_correcao_sinal.py` e o teste acima
+    (pipeline.executar()) -- rodar a suite completa e' a contra-prova de
+    que o comportamento nos 4 lugares nao mudou."""
+    from guaraci.chemometric_stats import expandir_binario_um_quente
+
+    casos = [
+        np.array([0, 1, 0, 1, 1]),
+        np.array([[0.0], [1.0], [0.0], [1.0]]),
+        np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]]),
+    ]
+    for Y in casos:
+        if Y.ndim == 1 or Y.shape[1] == 1:
+            esperado = np.hstack([1 - Y.reshape(-1, 1), Y.reshape(-1, 1)])
+        else:
+            esperado = Y
+        obtido = expandir_binario_um_quente(Y)
+        assert np.array_equal(obtido, esperado), (Y.shape, obtido, esperado)
 
 
 def test_especificidade_por_classe_valores_conhecidos(pq):

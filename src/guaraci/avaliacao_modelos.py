@@ -29,7 +29,7 @@ from guaraci.figuras import save, color
 from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
 from guaraci.config import NOME_TABELAS
-from guaraci.chemometric_stats import rmse_flat
+from guaraci.chemometric_stats import rmse_flat, expandir_binario_um_quente
 from guaraci.model_registry import build_benchmark_list
 
 log = logging.getLogger(__name__)
@@ -67,9 +67,7 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         self._lb = _LB()
         Y_bin: np.ndarray = np.asarray(self._lb.fit_transform(y))  # ensure ndarray (not spmatrix)
         # Binary: LabelBinarizer returns (n,1) — expand to (n,2)
-        if Y_bin.ndim == 1 or Y_bin.shape[1] == 1:
-            Y_bin = np.hstack([1 - Y_bin.reshape(-1, 1),
-                                   Y_bin.reshape(-1, 1)])
+        Y_bin = expandir_binario_um_quente(Y_bin)
         n_comp = min(self.n_components, X.shape[1], X.shape[0] - 1)
         self._pls = PLSRegression(n_components=n_comp, scale=False)
         self._pls.fit(X, Y_bin)

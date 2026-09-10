@@ -8,6 +8,8 @@ a geração de PDF em QUALQUER projeto (achado ao exercitar o gerador contra
 dados reais após a extração do item 18). Os testes abaixo rodam os 5
 geradores contra uma pasta mínima e confirmam que nenhum lança exceção.
 """
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -256,3 +258,24 @@ def test_gerar_excel_relatorio_csv_corrompido_nao_quebra(tmp_path):
     (tabelas / "amostras_identificadores.csv").write_bytes(b"\xff\xfe\x00\x01lixo binario")
     buf = reports.generate_excel_report(str(tmp_path))
     assert len(buf.getvalue()) > 0
+
+
+def test_aba_relatorios_com_exatamente_duas_execucoes_nao_quebra(tmp_path):
+    """REGRESSAO (2026-09-08): com EXATAMENTE 2 pastas de execucao
+    armazenadas, a limpeza de resultados montava `st.slider(min_value=1,
+    max_value=1)` -- e o Streamlit LANCA nesse caso, derrubando a aba
+    Relatorios inteira (nenhum download acessivel). Achado por teste."""
+    from streamlit.testing.v1 import AppTest
+
+    base = tmp_path / "resultados"
+    for nome in ("run_antiga", "run_atual"):
+        rel = base / nome / "Relatorios"
+        rel.mkdir(parents=True)
+        (rel / "resumo_modelo.txt").write_text("Total samples : 10\n",
+                                               encoding="utf-8")
+
+    raiz = Path(__file__).resolve().parents[1]
+    at = AppTest.from_file(str(raiz / "app_quimiometria.py"), default_timeout=60)
+    at.session_state["ultima_pasta"] = str(base / "run_atual")
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]

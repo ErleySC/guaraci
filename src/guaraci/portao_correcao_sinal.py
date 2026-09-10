@@ -38,6 +38,8 @@ from typing import Callable, List, Optional
 import numpy as np
 from scipy.stats import wilcoxon
 
+from guaraci.chemometric_stats import expandir_binario_um_quente
+
 __all__ = [
     "VeredictoCorrecaoSinal",
     "avaliar_correcao_sinal",
@@ -196,8 +198,7 @@ def avaliar_correcao_sinal_pls(
     if classificacao:
         lb = LabelBinarizer()
         Y = np.asarray(lb.fit_transform(y))
-        if Y.ndim == 1 or Y.shape[1] == 1:
-            Y = np.hstack([1 - Y.reshape(-1, 1), Y.reshape(-1, 1)])
+        Y = expandir_binario_um_quente(Y)
         y_estratificacao = y
     else:
         Y = y.reshape(-1, 1) if y.ndim == 1 else y
