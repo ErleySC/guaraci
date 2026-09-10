@@ -3875,3 +3875,59 @@ Claro/Escuro funcional. O Streamlit **não expõe API para trocar o tema por
 código** (`st.context.theme` é somente leitura, e forçar por CSS foi o que
 quebrou antes). A barra superior mostra o estado real do tema e o caminho
 ⋮ → *Settings* → *Theme*, em vez de um botão que não funcionaria.
+
+---
+
+# PROGRESSO — Passo 200 (2026-09-10)
+
+## Passo 200 — Rodada multiagente: estado, segurança, técnicas e mercado
+
+Relatório completo: `docs/RELATORIO_MULTIAGENTE_2026-09-10.md`. Vault
+regenerado antes da pesquisa (estava em `fe1223d`), cobertura COMPLETA.
+
+**Correções aplicadas (Agente 1):**
+
+- `02d65fe` — CI vermelho em todo push desde 2026-09-05 por dois defeitos
+  do workflow: (1) `\n` literal na lista do mypy (`8b784de`), que o bash
+  reduz a `n` → `Cannot read file 'n'`; (2) job `validacao-publica-eem-zenodo`
+  sem o extra `[multiway]` → `ModuleNotFoundError: tensorly` desde
+  `7396666`. `eem_multiway.py` entrou no gate (50 arquivos, limpo).
+- `676e9c4` — a guarda `PADRAO_CAMINHO_ABSOLUTO` (Passo 169) só varria o
+  vault; um caminho real de máquina entrou aqui no Passo 131 e foi
+  publicado. Agora a varredura cobre todo arquivo versionado, com usuário
+  sentinela `alguem` como única exceção. O caminho continua no histórico
+  git (decisão do autor).
+
+**Estado medido:** 1460 passed / 42 skipped / 0 failed (linha de base);
+ruff e mypy limpos; pip-audit (OSV) sem vulnerabilidade conhecida em 139
+pacotes; nenhuma ocorrência de `eval`/`exec`/`pickle.loads`/`yaml.load`
+em código de produção.
+
+**Reportado, não corrigido:** falhas intermitentes do Zenodo (504/timeout)
+em 3 jobs de validação sem retry; `consultar_vault.py` casa substring em
+siglas ("EPO" → "tempo"); 3 inconsistências de documentação (intervalo de
+predição citado em `hsi_uncertainty.py` e inexistente; PQN recomendado e
+inexistente; mensagem fixa em `check_external_validation`).
+
+**Achado científico que exige decisão (Agente 3, reconferido no código):**
+CV e holdout agrupam por `mae_id`, mas `session_from_mae_id` documenta que
+o `mae_id` adulterado é um por nível de teor; `bootstrap_bca_ci` não aceita
+grupos; métricas de CV da classificação vêm dos mesmos folds que escolhem
+`n_opt`; a Etapa 4 recebe `X_processed` ajustado no treino inteiro. Nenhum
+teve o efeito medido. Nada foi alterado — toca lógica já validada.
+
+**Propostas (Agentes 2–4), não implementadas:** 10 técnicas priorizadas com
+DOI conferido (conformal para regressão, EPO/GLSW, ASCA+, correção por
+QC/brancos, di-PLS, PQN, Ledoit-Wolf, espectro+delineamento, MCR-ALS com
+restrição de correlação, LWR); 21 de 31 candidatas já estavam registradas.
+
+**Concorrência (Agente 4):** o comparativo do README tem afirmações
+contraditas ou sem sustentação na documentação dos concorrentes (L23-24 e
+L56: PLS_Toolbox/Solo e Unscrambler têm CV por grupo configurável; L57
+"❌ Reproducible" sem evidência; L27 ignora que o modelo é `.joblib`;
+L62-66 é suposição) — reescrita proposta, não aplicada. Concorrentes à
+frente em: intervalo de predição por amostra, fusão multibloco, leitores
+de formato, exportação portátil do modelo, monitoramento em linha,
+execução não interativa pela CLI.
+
+**Suíte após as correções:** 1462 passed / 42 skipped / 0 failed.
