@@ -1,0 +1,34 @@
+# Oleos comestiveis diversos por NIR de transmitancia (8 mm de caminho
+# optico). Calibrado contra o dataset publico Mendeley
+# `10.17632/ctgg7k4m5g.2` (CC BY 4.0): 100 garrafas de 19 tipos de oleo
+# comestivel (azeite extra-virgem/leve/puro, abacate, amendoim, milho,
+# semente de uva, canola, girassol, entre outros -- ver OilClassKey.csv),
+# envelhecidas naturalmente (5-7 anos), medidas por NIR/MIR/Raman.
+#
+# Alvo cientifico deste perfil: indice de peroxido (grau de oxidacao/
+# rancidez, mEq O2/kg) -- NAO e' percentual de adulterante. O arquivo
+# NIR8mm1A.csv (8 mm) tem o RMSEP publicado mais baixo/confiavel entre as
+# 4 tecnicas testadas no artigo original (Raman e' sinalizado no proprio
+# artigo como correlacao por acaso, nao usado aqui).
+#
+# Referencia: Ottaway, J.M.; Carter, J.C.; Adams, K.L.; Camancho, J.;
+# Lavine, B.K.; Booksh, K.S. (2021). "Comparison of Spectroscopic
+# Techniques for Determining the Peroxide Value of 19 Classes of
+# Naturally Aged, Plant-Based Edible Oils." Applied Spectroscopy 75(6),
+# 700-709. doi:10.1177/0003702821994500 -- RMSEP NIR 8mm = 4.9.
+descricao: "Oleos comestiveis diversos por NIR de transmitancia, 8mm (Mendeley ctgg7k4m5g)"
+unidade_eixo: "cm-1"
+eixo_min: 3899.0
+eixo_max: 15000.0
+default_preprocessing: "msc_sg_mc"
+vocabulario:
+  classe: "tipo de oleo"
+  classe_plural: "tipos de oleo"
+  matriz: "oleo comestivel (NIR, 8mm)"
+  alvo: "o indice de peroxido (mEq O2/kg)"
+  conforme: "dentro do esperado"
+  nao_conforme: "fora do esperado"
+codigos_classe: {}
+# Faixa de indice de peroxido observada no dataset (100 amostras).
+faixa_trabalho: [1.5, 165.4]
+referencia: "Ottaway et al. (2021) Appl. Spectrosc. 75(6):700-709, doi:10.1177/0003702821994500 -- dataset: Mendeley 10.17632/ctgg7k4m5g.2 (CC BY 4.0)"

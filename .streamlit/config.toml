@@ -13,8 +13,11 @@ fastReruns = false
 
 [theme]
 # Tema CLARO (padrão) — espelha os design tokens "light" de design_tokens.py.
+# primaryColor precisa ser mantido em sincronia manual com TOKENS["light"]["primary"]:
+# o Streamlit lê este TOML no boot do processo, antes de qualquer import Python
+# rodar -- nao ha' como o config.toml importar design_tokens.py de volta.
 base = "light"
-primaryColor       = "#3D8B57"   # Forest — cor de marca GUARACI
+primaryColor       = "#D95700"   # Laranja (mascote) — cor de marca GUARACI
 backgroundColor    = "#F7F9FB"
 secondaryBackgroundColor = "#FFFFFF"
 textColor          = "#1A2B22"
@@ -25,7 +28,7 @@ baseRadius         = "0.6rem"    # Cantos arredondados (aspecto moderno)
 # Tema ESCURO — espelha os design tokens "dark". O Streamlit troca entre este e
 # o claro pelo menu Settings/sistema; st.context.theme.type informa ao Python
 # qual está ativo (para figuras e tabelas coloridas).
-primaryColor       = "#55B06A"
+primaryColor       = "#FF8A3D"   # Laranja (mascote), mais claro p/ fundo escuro
 backgroundColor    = "#0F1613"
 secondaryBackgroundColor = "#18211C"
 textColor          = "#E6EDE8"

@@ -32,6 +32,14 @@ dados/
 *.dx
 dados_oleos/
 
+# --- Cache local de datasets PUBLICOS de terceiro (Corn, Mendeley) --
+# NUNCA versionar o dado em si (licenca de terceiro -- ver
+# docs/VALIDACAO_PUBLICA.md e datasets/README.md). Baixado sob demanda por
+# scripts/download_datasets/*.py ou pelo job validacao-publica* do CI;
+# aponte GUARACI_DATASETS_DIR para a pasta que os contem.
+datasets_publicos/
+*.mat
+
 # --- Local archive of old versions / scratch (kept out of the repo) ---
 _test*/
 "pineline_quimiometria_14 copy.py"
@@ -52,6 +60,11 @@ dist/
 coverage.xml
 htmlcov/
 .ruff_cache/
+.pytest_cache/
+# Banco de dados de exemplos falhos do Hypothesis: cache local, nao fonte
+# de verdade -- casos que importam ficam versionados como @example no
+# codigo (Bloco 13d, Frente 2), nao aqui.
+.hypothesis/
 
 # --- MkDocs build output (gerado pelo CI, nao versionado) ---
 site/
@@ -87,3 +100,7 @@ val_out.txt
 # (citam numeros de estado que mudam a cada commit) e poluem o git status.
 council-*
 docs/_*.md
+
+# Notas de trabalho e material de auditoria: local, nao versionado.
+docs/auditoria/
+CLAUDE.md

@@ -17,7 +17,7 @@ from sklearn.preprocessing import LabelBinarizer
 from conftest import achar_pastas_run
 
 
-def _dados_benchmark(seed=0, n_por_classe=15, p=25, n_classes=3):
+def _dados_benchmark(seed=0, n_per_class=15, p=25, n_classes=3):
     """Dados sintéticos com grupos (estilo mae_id) para exercitar CV
     group-aware — classes bem separadas para os classificadores convergirem
     rápido (o objetivo é cobertura de código, não desempenho)."""
@@ -25,7 +25,7 @@ def _dados_benchmark(seed=0, n_por_classe=15, p=25, n_classes=3):
     X_list, y_list, grp_list = [], [], []
     for c in range(n_classes):
         centro = rng.normal(loc=c * 4.0, size=p)
-        for i in range(n_por_classe):
+        for i in range(n_per_class):
             X_list.append(centro + rng.normal(scale=1.0, size=p))
             y_list.append(c)
             grp_list.append(f"grupo_{c}_{i}")
@@ -42,57 +42,57 @@ def test_benchmark_classificadores_roda_e_gera_saidas(pq, tmp_path):
     Verifica DataFrame + CSV + figura de boxplot + curvas DET (>=2
     classificadores válidos)."""
     X, y_int, grupos, lb = _dados_benchmark()
-    cfg = pq.Config(n_splits_cv=3, seed=0, executar_shap=False)
+    cfg = pq.Config(n_splits_cv=3, seed=0, run_shap=False)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
-    df = pq.benchmark_classificadores(X, y_int, grupos, lb, n_opt=2,
+    df = pq.benchmark_classifiers(X, y_int, grupos, lb, n_opt=2,
                                        cfg=cfg, pasta=pasta)
 
-    nomes = set(df["Classificador"].values)
+    nomes = set(df["Classifier"].values)
     assert "PLS-DA" in nomes
     assert "XGBoost" in nomes  # confirma que o import opcional funcionou de verdade
     assert os.path.exists(
-        os.path.join(pasta, pq.NOME_TABELAS, "benchmark_classificadores.csv"))
+        os.path.join(pasta, pq.NOME_TABELAS, "benchmark_classifiers.csv"))
     assert os.path.exists(
-        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_classificadores.png"))
+        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_classifiers.png"))
     assert glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_det_curvas*.png"))
-    for v in df["Bal.Acc media"]:
+    for v in df["Bal.Acc mean"]:
         assert 0.0 <= v <= 1.0
 
 
 @pytest.mark.slow
 def test_monte_carlo_cv_apenas_plsda(pq, tmp_path):
-    """Monte Carlo CV no modo padrão (só PLS-DA, monte_carlo_incluir_todos=False):
+    """Monte Carlo CV no mode padrão (só PLS-DA, monte_carlo_include_all=False):
     roda rápido, gera CSV + DataFrame com IC95%."""
     X, y_int, grupos, lb = _dados_benchmark(seed=1)
     cfg = pq.Config(n_monte_carlo=8, monte_carlo_test_size=0.3,
-                     monte_carlo_incluir_todos=False, seed=1)
+                     monte_carlo_include_all=False, seed=1)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
-    assert list(df["Classificador"]) == ["PLS-DA"]
-    assert df["Iteracoes validas"].iloc[0] > 0
-    assert 0.0 <= df["IC95% inf"].iloc[0] <= df["IC95% sup"].iloc[0] <= 1.0
+    assert list(df["Classifier"]) == ["PLS-DA"]
+    assert df["Valid iterations"].iloc[0] > 0
+    assert 0.0 <= df["CI95% inf"].iloc[0] <= df["CI95% sup"].iloc[0] <= 1.0
     assert os.path.exists(os.path.join(pasta, pq.NOME_TABELAS, "monte_carlo_cv.csv"))
 
 
 @pytest.mark.slow
 def test_monte_carlo_cv_todos_os_modelos(pq, tmp_path):
-    """Monte Carlo CV com monte_carlo_incluir_todos=True: roda PLS-DA + SVM +
+    """Monte Carlo CV com monte_carlo_include_all=True: roda PLS-DA + SVM +
     RF + GBM + XGBoost, com >= 5 iterações válidas cada (gate para a figura
     violino, que exige exatamente esse mínimo)."""
-    X, y_int, grupos, lb = _dados_benchmark(seed=2, n_por_classe=20)
+    X, y_int, grupos, lb = _dados_benchmark(seed=2, n_per_class=20)
     cfg = pq.Config(n_monte_carlo=6, monte_carlo_test_size=0.3,
-                     monte_carlo_incluir_todos=True, seed=2)
+                     monte_carlo_include_all=True, seed=2)
     pasta = str(tmp_path)
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
 
     df = pq.monte_carlo_cv(X, y_int, grupos, lb, n_opt=2, cfg=cfg, pasta=pasta)
 
-    nomes = set(df["Classificador"])
+    nomes = set(df["Classifier"])
     assert {"PLS-DA", "SVM RBF", "Random Forest", "Grad. Boost.", "XGBoost"} <= nomes
 
 
@@ -104,7 +104,7 @@ def test_fig_shap_benchmark_gera_figura(pq, tmp_path):
     # p=30: preprocessamento padrão (msc_sg_mc) usa Savitzky-Golay com janela
     # default 25 — precisa n_variaveis > sg_window.
     X, y_int, _grupos, _lb = _dados_benchmark(seed=3, p=30)
-    cfg = pq.Config(shap_max_amostras=100, seed=3)
+    cfg = pq.Config(shap_max_samples=100, seed=3)
     pasta = str(tmp_path)
     wavenumbers = np.linspace(4000, 400, X.shape[1])
 
@@ -120,7 +120,7 @@ def _dados_regressao_multi_especie(seed=0, n_por_especie=24, p=30,
                                    n_especies=3, n_replicas=3):
     """Dados sinteticos multi-especie com replicas fisicas (mae_id) e teor
     de adulterante correlacionado ao espectro (mesmo estilo de
-    gerar_dados_sinteticos, mas construido diretamente p/ o teste)."""
+    generate_synthetic_data, mas construido diretamente p/ o teste)."""
     rng = np.random.default_rng(seed)
     X_list, conc_list, rot_list, mae_list = [], [], [], []
     especies = [f"Esp_{chr(65+i)}" for i in range(n_especies)]
@@ -148,7 +148,7 @@ def _dados_regressao_multi_especie(seed=0, n_por_especie=24, p=30,
 @pytest.mark.slow
 def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     """Auto-Benchmark de regressao: PLS-R (reaproveitado de
-    pls_regressao_por_especie, sem refit) + Ridge/Lasso/EN/SVR/RF, mesmo
+    pls_regression_by_species, sem refit) + Ridge/Lasso/EN/SVR/RF, mesmo
     split por especie. Verifica DataFrame + CSV + figura."""
     X, conc, rotulos, mae_id, classes_unicas = _dados_regressao_multi_especie()
     cfg = pq.Config(seed=0, max_lvs=5, frac_cal=0.7)
@@ -156,33 +156,33 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
     os.makedirs(os.path.join(pasta, pq.NOME_TABELAS), exist_ok=True)
     os.makedirs(os.path.join(pasta, pq.NOME_GRAFICOS), exist_ok=True)
 
-    reg_esp = pq.pls_regressao_por_especie(
+    reg_esp = pq.pls_regression_by_species(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, n_splits=3)
     assert reg_esp is not None, "fixture nao gerou dados suficientes p/ PLS-R"
 
-    df = pq.benchmark_regressao_por_especie(
+    df = pq.benchmark_regression_by_species(
         X, conc, rotulos, mae_id, classes_unicas, cfg, pasta, reg_esp)
 
     assert df is not None
     modelos_esperados = {"PLS-R", "Ridge", "Lasso", "Elastic Net",
                          "SVR (RBF)", "Random Forest"}
-    assert modelos_esperados.issubset(set(df["Modelo"]))
+    assert modelos_esperados.issubset(set(df["Model"]))
     assert (df["RMSEP (pooled)"] >= 0).all()
     assert os.path.exists(
         os.path.join(pasta, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
-        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
+        os.path.join(pasta, pq.NOME_GRAFICOS, "fig_benchmark_regressors.png"))
 
-    # PLS-R do benchmark bate com o ja calculado por pls_regressao_por_especie
+    # PLS-R do benchmark bate com o ja calculado por pls_regression_by_species
     # (reaproveitado, nao deve ser refeito com numeros diferentes)
-    linha_pls = df[df["Modelo"] == "PLS-R"].iloc[0]
+    linha_pls = df[df["Model"] == "PLS-R"].iloc[0]
     assert linha_pls["RMSEP (pooled)"] == pytest.approx(
         round(float(reg_esp["rmsep"]), 3))
 
 
 def test_benchmark_regressao_sem_especies_suficientes_retorna_none(pq, tmp_path):
     """Sem nenhuma especie com amostras adulteradas suficientes, retorna
-    None (mesmo criterio de pls_regressao_por_especie) em vez de crashar."""
+    None (mesmo criterio de pls_regression_by_species) em vez de crashar."""
     rng = np.random.default_rng(9)
     X = rng.normal(size=(10, 15))
     conc = np.zeros(10)          # nenhuma amostra adulterada
@@ -192,7 +192,7 @@ def test_benchmark_regressao_sem_especies_suficientes_retorna_none(pq, tmp_path)
     reg_esp_fake = {"rmsep": 0.0, "r2v": 0.0, "n_especies": 0,
                     "tabela_especie": []}
 
-    df = pq.benchmark_regressao_por_especie(
+    df = pq.benchmark_regression_by_species(
         X, conc, rotulos, None, classes_unicas, cfg, str(tmp_path),
         reg_esp_fake)
     assert df is None
@@ -201,26 +201,75 @@ def test_benchmark_regressao_sem_especies_suficientes_retorna_none(pq, tmp_path)
 @pytest.mark.slow
 def test_regressao_pooled_com_benchmark_ligado_roda_sem_erro(pq, tmp_path):
     """Integracao real: executar() em N3 sintetico com
-    executar_benchmark_regressao=True gera o CSV/figura do benchmark de
+    run_benchmark_regression=True gera o CSV/figura do benchmark de
     regressao junto com o restante do pipeline, sem quebrar nada."""
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
-        modo="sintetico", nivel="N3",
-        n_por_classe=10, n_pontos_sint=60, n_replicas_sint=3,
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N3",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
         wn_min=400.0, wn_max=4001.0,
-        n_splits_cv=2, n_repeats_cv=1, n_permutacoes=5,
-        n_permutacoes_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
         n_monte_carlo=3, max_lvs=5,
-        executar_benchmark_regressao=True,
+        run_benchmark_regression=True,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     pq.executar(cfg)
 
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou pasta de saida"
     pasta_run = runs[0]
     assert os.path.exists(
         os.path.join(pasta_run, pq.NOME_TABELAS, "benchmark_regressao.csv"))
     assert os.path.exists(
-        os.path.join(pasta_run, pq.NOME_GRAFICOS, "fig_benchmark_regressores.png"))
+        os.path.join(pasta_run, pq.NOME_GRAFICOS, "fig_benchmark_regressors.png"))
+
+
+# ---------------------------------------------------------------------------
+# Curva DET — regressao do bug de interpolacao (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def test_interpolar_det_aceita_fmr_decrescente_do_sklearn():
+    """`det_curve` devolve fmr DECRESCENTE; a reamostragem tem que lidar
+    com isso. Este teste FALHA com o codigo antigo (np.interp direto), que
+    devolvia fnmr[-1] constante -- a reta horizontal das figuras antigas."""
+    from sklearn.metrics import det_curve
+
+    from guaraci.avaliacao_modelos import interpolar_det
+
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 2, 400)
+    escores = rng.random(400) * 0.9 + y * 0.25      # sobreposicao real
+    fmr, fnmr, _ = det_curve(y, escores)
+    assert fmr[0] > fmr[-1], "premissa do teste: sklearn devolve fmr decrescente"
+
+    grid = np.linspace(0.0, 1.0, 200)
+    out = interpolar_det(fmr, fnmr, grid)
+
+    # 1) NAO pode ser constante (era exatamente o bug)
+    assert out.max() - out.min() > 0.1, (
+        "curva DET degenerou em reta horizontal — bug de interpolacao voltou")
+    # 2) DET e' monotona nao-crescente: afrouxar o limiar aumenta FMR e
+    #    reduz FNMR. Tolerancia p/ ruido de interpolacao.
+    assert np.all(np.diff(out) <= 1e-9), "DET nao e' monotona nao-crescente"
+    # 3) extremos coerentes: FMR=0 => FNMR maximo; FMR=1 => FNMR minimo
+    assert out[0] == pytest.approx(fnmr.max(), abs=1e-6)
+    assert out[-1] == pytest.approx(fnmr.min(), abs=1e-6)
+
+
+def test_interpolar_det_ja_crescente_nao_e_invertido():
+    """Se `fmr` ja vier crescente, a funcao nao pode inverter (senao
+    quebraria o caso generico)."""
+    from guaraci.avaliacao_modelos import interpolar_det
+    fmr = np.array([0.0, 0.5, 1.0])
+    fnmr = np.array([1.0, 0.4, 0.0])
+    out = interpolar_det(fmr, fnmr, np.array([0.0, 0.5, 1.0]))
+    np.testing.assert_allclose(out, fnmr)
+
+
+def test_interpolar_det_um_ponto_nao_quebra():
+    """Classe degenerada (score constante) da' 1-2 pontos; nao pode estourar."""
+    from guaraci.avaliacao_modelos import interpolar_det
+    out = interpolar_det(np.array([0.5]), np.array([0.3]),
+                         np.linspace(0, 1, 10))
+    assert np.all(np.isfinite(out))

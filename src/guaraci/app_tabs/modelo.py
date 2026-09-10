@@ -1,4 +1,4 @@
-"""app_tabs/modelo.py — Aba 4 (Model): parâmetros avançados + execução do
+"""app_tabs/modelo.py — Tela (Model): parâmetros avançados + execução do
 pipeline com progresso ao vivo. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations
@@ -13,8 +13,10 @@ from typing import Callable, Dict, Optional
 
 import streamlit as st
 
-from guaraci.app_logic import coletar_config, fmt_tempo, progresso_do_log
+from guaraci.app_logic import collect_config, fmt_time, log_progress
 from guaraci.app_logic import LogThreadSafe as _LogThreadSafe
+from guaraci.cli_assistente import apply_palette
+from guaraci.preferencias_visuais import load_visual_config
 
 
 def _ram_mb() -> Optional[float]:
@@ -27,12 +29,19 @@ def _ram_mb() -> Optional[float]:
         return None
 
 
+def _paleta_escolhida() -> str:
+    """Paleta ativa do usuario, vinda do MESMO arquivo de preferencias que a
+    CLI grava (`~/.guaraci/visual_config.json`) — sem estado de cor paralelo
+    só da web."""
+    return str(load_visual_config().get("paleta", "qualitativo"))
+
+
 def _rodar_worker(pq, cfg, logger: _LogThreadSafe, estado: Dict):
     try:
         with contextlib.redirect_stdout(logger), \
              contextlib.redirect_stderr(logger):
             pq.executar(cfg)
-        estado["pasta"] = getattr(cfg, "pasta_saida", None)
+        estado["pasta"] = getattr(cfg, "output_folder", None)
         estado["erro"] = None
     except Exception:  # noqa: BLE001 -- boundary de topo da thread de
         # execucao (mesmo padrao de guaraci.py): qualquer excecao do
@@ -59,7 +68,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
         for k in specs
         if f"w_{k}" in st.session_state
     }
-    _cfg_top, _erros_top = coletar_config(cfg_base, _valores_top)
+    _cfg_top, _erros_top = collect_config(cfg_base, _valores_top)
     _erros_top = _erros_top + pq._validar_semantico(_cfg_top)
     _ok_top = (not _erros_top) and pq._validar_pasta_dados(_cfg_top)[0]
     _rodar_top = st.button(
@@ -75,7 +84,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     _MODELO_KEYS_VALID    = ["n_permutacoes", "teste_wold", "teste_cv_anova",
                               "teste_martens", "n_jobs_permutacao"]
     _MODELO_KEYS_EXTRAS   = ["selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
-                              "ddsimca", "modo_ddsimca", "opls_da",
+                              "selecao_cars", "selecao_uve",
+                              "ddsimca", "modo_ddsimca", "ddsimca_pcv", "opls_da",
                               "comparar_pre_processamentos", "benchmark",
                               "benchmark_regressao",
                               "monte_carlo", "n_monte_carlo",
@@ -175,18 +185,24 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
             if s is None: continue
             with cols_f[i % 2]:
                 valores[k] = widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
+        st.divider()
+        # A escolha de paleta mora na tela Visualização (mockup de
+        # 2026-09-08) — aqui fica só o lembrete de qual está ativa, para
+        # não haver dois lugares disputando a mesma preferência.
+        st.caption(T("Figure colour palette: **{p}** — change it on the "
+                     "Visualisation screen.").format(p=_paleta_escolhida()))
 
     st.divider()
 
     # ---- Final Config assembly and execution ----------------------------
-    cfg_run, erros_run = coletar_config(cfg_base, valores)
+    cfg_run, erros_run = collect_config(cfg_base, valores)
 
     # If user uploaded a CSV, override the path
     if st.session_state.get("_csv_upload_path"):
         csv_upld_path = st.session_state["_csv_upload_path"]
         if os.path.exists(csv_upld_path):
-            cfg_run.modo = "csv"
-            cfg_run.arquivo_csv = csv_upld_path
+            cfg_run.mode = "csv"
+            cfg_run.csv_file = csv_upld_path
 
     ok_run, msg_run = pq._validar_pasta_dados(cfg_run)
     erros_run = erros_run + pq._validar_semantico(cfg_run)
@@ -194,8 +210,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     if erros_run:
         st.error("Invalid fields in configuration:\n- " + "\n- ".join(erros_run))
 
-    _objetivo_run = pq.resolver_objetivo(cfg_run)
-    _plano_run = pq.descrever_plano(cfg_run)
+    _objetivo_run = pq.resolve_objective(cfg_run)
+    _plano_run = pq.describe_plan(cfg_run)
     with st.expander(
         f"📋 {T('What will be generated')} — "
         f"{pq.OBJETIVO_ROTULO.get(_objetivo_run, _objetivo_run.capitalize())}",
@@ -230,7 +246,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 "novamente.")
             st.stop()
         try:
-            pq.salvar_config(cfg_run, cfg_path)
+            pq.save_config(cfg_run, cfg_path)
         except OSError as _e_cfg:
             # Não impede a execução (a config vai em memória para o worker),
             # mas avisa: sem isso, um filesystem só-leitura (comum no Cloud)
@@ -239,6 +255,11 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 "Não foi possível gravar config.yaml — a análise continua com "
                 f"os valores atuais, mas 'Reload config.yaml' pode restaurar uma "
                 f"versão antiga. Detalhe: {_e_cfg}")
+
+        # Paleta escolhida vale a partir daqui: aplicada ANTES de executar()
+        # (mesmo ponto e mesma funcao que a CLI usa em `_rodar_pipeline`), o
+        # que faz as figuras desta execucao sairem com a cor escolhida.
+        apply_palette(_paleta_escolhida())
 
         logger = _LogThreadSafe(tee=sys.__stdout__)
         estado: Dict = {"fim": False, "erro": None, "pasta": None}
@@ -264,7 +285,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                     estado["erro"] = "Pipeline exceeded maximum runtime (2 h)."
                     break
                 txt = logger.text()
-                frac, nome = progresso_do_log(txt)
+                frac, nome = log_progress(txt, len(_plano_run) or None)
                 elapsed = time.monotonic() - t0
                 if frac >= 0.10:
                     eta = elapsed / frac - elapsed
@@ -275,8 +296,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 # Single atomic DOM update per iteration
                 ph.markdown(
                     f"**[{int(frac * 100)}%] {nome}**\n\n"
-                    f"⏱️ `{fmt_tempo(elapsed)}` elapsed  |  "
-                    f"⏳ `{fmt_tempo(eta_best) if eta_best else 'calculating…'}` remaining  |  "
+                    f"⏱️ `{fmt_time(elapsed)}` elapsed  |  "
+                    f"⏳ `{fmt_time(eta_best) if eta_best else 'calculating…'}` remaining  |  "
                     f"💾 `{f'{ram:.0f} MB' if ram else 'n/a'}`\n\n"
                     f"```text\n{log_tail}\n```"
                 )
@@ -288,11 +309,11 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
             ph.empty()
             if estado["erro"]:
                 _run_status.update(
-                    label=f"❌ Pipeline failed after {fmt_tempo(elapsed)}.",
+                    label=f"❌ Pipeline failed after {fmt_time(elapsed)}.",
                     state="error", expanded=True)
             else:
                 _run_status.update(
-                    label=f"✅ Completed in {fmt_tempo(elapsed)}!",
+                    label=f"✅ Completed in {fmt_time(elapsed)}!",
                     state="complete", expanded=False)
 
         # Libera a trava só se o worker de fato terminou; se ficou órfão por
@@ -304,7 +325,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
         if estado["erro"]:
             st.session_state.erro_run  = estado["erro"]
             st.session_state.ultima_pasta = None
-            st.error(f"Pipeline failed after {fmt_tempo(elapsed)}.")
+            st.error(f"Pipeline failed after {fmt_time(elapsed)}.")
         else:
             st.session_state.erro_run  = None
             st.session_state.ultima_pasta = estado["pasta"]

@@ -43,9 +43,9 @@ if os.path.isdir(_SRC) and _SRC not in sys.path:
 from guaraci.design_tokens import tokens as _theme_tokens
 # Lógica pura extraída da UI (item 19): testável sem Streamlit. Ver app_logic.py.
 from guaraci.app_logic import (
-    listar_figuras as _listar_figuras_pura,
-    ler_resumo as _ler_resumo_pura,
-    ler_model_card as _ler_model_card_pura,
+    list_figures as _listar_figuras_pura,
+    load_summary as _ler_resumo_pura,
+    load_model_card as _ler_model_card_pura,
 )
 # Geração de relatórios (PDF/Word/Excel/LaTeX/PPTX) extraída para módulo de
 # serviço próprio (item 18): app_quimiometria.py só cacheia e serve o download.
@@ -61,6 +61,11 @@ from guaraci.app_tabs import validacao as _tab_validacao
 from guaraci.app_tabs import predicao as _tab_predicao
 from guaraci.app_tabs import relatorios as _tab_relatorios
 from guaraci.app_tabs import sobre as _tab_sobre
+# Telas novas da reestruturacao de 2026-09-08 (mockup seguido a risca):
+# painel de status e personalizacao de cor, ambas fora dos 4 grupos.
+from guaraci.app_tabs import inicio as _tab_inicio
+from guaraci.app_tabs import visualizacao as _tab_visualizacao
+from guaraci import app_nav
 
 
 def _active_theme() -> str:
@@ -165,6 +170,15 @@ _APP_VERSION = f"v{getattr(pq, '__version__', '?')}"
 _UPLOAD_MODELO_BLOQUEADO = os.getenv(
     "GUARACI_DISABLE_MODEL_UPLOAD", "").strip().lower() in ("1", "true", "yes", "on")
 
+# Mesmo gate protege os campos de CAMINHO DE SERVIDOR (achado S-NOVO-1 da
+# auditoria de seguranca de 2026-09-01): um text_input livre com caminho de
+# pasta/arquivo, num app publico sem autenticacao, deixa QUALQUER visitante
+# remoto enumerar diretorios do servidor (glob) ou ler o conteudo de
+# qualquer arquivo de texto acessivel ao processo -- nao so' o operador que
+# "sabe o caminho certo". Nao e' RCE (como o pickle), mas e' leitura
+# arbitraria de arquivo/divulgacao de informacao real em deploy publico.
+_CAMPOS_CAMINHO_SERVIDOR = {"pasta_dados", "arquivo_csv"}
+
 # ── Language state ──────────────────────────────────────────────────────────
 # Light/dark é gerido pelo TEMA NATIVO do Streamlit (menu ⋮ → Settings → Theme),
 # lido via _active_theme(). Não há mais estado paralelo `dark_mode` nem CSS
@@ -242,6 +256,211 @@ _TR: Dict[str, Dict[str, str]] = {
     "Step 1: Fill project info": {"PT": "Passo 1: Preencha as informações do projeto", "EN": "Step 1: Fill project info"},
     "Step 2: Upload or select spectra folder": {"PT": "Passo 2: Faça upload ou selecione a pasta de espectros", "EN": "Step 2: Upload or select spectra folder"},
     "Step 3: Configure parameters and run": {"PT": "Passo 3: Configure os parâmetros e execute", "EN": "Step 3: Configure parameters and run"},
+    # ── Data tab (Agente 6.2 pos-sessao: as 4 abas abaixo -- Data/
+    # Preprocessing/Prediction/Reports -- nao passavam por T() nenhum,
+    # ficavam sempre em ingles mesmo com idioma=PT selecionado. Fechado
+    # aqui, 2026-09-01.) ──────────────────────────────────────────────
+    "📂 Step 2: Upload or select spectra folder → then go to **Model** tab.": {"PT": "📂 Passo 2: Faça upload ou selecione a pasta de espectros → depois vá para a aba **Modelo**.", "EN": "📂 Step 2: Upload or select spectra folder → then go to **Model** tab."},
+    "**🎯 Recommended analysis** *(optional shortcut)*": {"PT": "**🎯 Análise recomendada** *(atalho opcional)*", "EN": "**🎯 Recommended analysis** *(optional shortcut)*"},
+    "Pick what you want to do — sets sensible defaults across all tabs; fine-tune afterwards if needed.": {"PT": "Escolha o que você quer fazer — define valores padrão sensatos em todas as abas; ajuste depois se precisar.", "EN": "Pick what you want to do — sets sensible defaults across all tabs; fine-tune afterwards if needed."},
+    "**Upload CSV** *(alternative to the local path below)*": {"PT": "**Upload de CSV** *(alternativa ao caminho local abaixo)*", "EN": "**Upload CSV** *(alternative to the local path below)*"},
+    "Drag or select a CSV file": {"PT": "Arraste ou selecione um arquivo CSV", "EN": "Drag or select a CSV file"},
+    "**Data preview**": {"PT": "**Prévia dos dados**", "EN": "**Data preview**"},
+    "The file will be saved to a temporary folder and the path adjusted automatically.": {"PT": "O arquivo será salvo numa pasta temporária e o caminho ajustado automaticamente.", "EN": "The file will be saved to a temporary folder and the path adjusted automatically."},
+    "Mode automatically set to 'csv'. The path above will be overridden when running.": {"PT": "Modo ajustado automaticamente para 'csv'. O caminho acima será sobrescrito ao executar.", "EN": "Mode automatically set to 'csv'. The path above will be overridden when running."},
+    "🔍 Load spectra preview": {"PT": "🔍 Carregar prévia dos espectros", "EN": "🔍 Load spectra preview"},
+    "💾 Save config.yaml": {"PT": "💾 Salvar config.yaml", "EN": "💾 Save config.yaml"},
+    "↺ Reload config.yaml": {"PT": "↺ Recarregar config.yaml", "EN": "↺ Reload config.yaml"},
+    "Status: {msg_dados}": {"PT": "Status: {msg_dados}", "EN": "Status: {msg_dados}"},
+    "Loading spectra sample...": {"PT": "Carregando amostra de espectros...", "EN": "Loading spectra sample..."},
+    "Could not load spectra for preview. Check the path/mode.": {"PT": "Não foi possível carregar espectros para a prévia. Verifique o caminho/modo.", "EN": "Could not load spectra for preview. Check the path/mode."},
+    "Fields with errors:\n- ": {"PT": "Campos com erro:\n- ", "EN": "Fields with errors:\n- "},
+    "File saved: `{tmp_path}`": {"PT": "Arquivo salvo: `{tmp_path}`", "EN": "File saved: `{tmp_path}`"},
+    "Raw spectra (sample)": {"PT": "Espectros brutos (amostra)", "EN": "Raw spectra (sample)"},
+    "Fix the fields before saving.": {"PT": "Corrija os campos antes de salvar.", "EN": "Fix the fields before saving."},
+    "Config reloaded.": {"PT": "Config recarregado.", "EN": "Config reloaded."},
+    "**{n} spectra** · {k} classes: `{amostra}`{reticencias}": {"PT": "**{n} espectros** · {k} classes: `{amostra}`{reticencias}", "EN": "**{n} spectra** · {k} classes: `{amostra}`{reticencias}"},
+    "Preset '{pname}' applied — check the Model tab.": {"PT": "Preset '{pname}' aplicado — confira a aba Modelo.", "EN": "Preset '{pname}' applied — check the Model tab."},
+    "Saved to {cfg_path}": {"PT": "Salvo em {cfg_path}", "EN": "Saved to {cfg_path}"},
+    "Error: {e}": {"PT": "Erro: {e}", "EN": "Error: {e}"},
+    # ── Preprocessing tab ────────────────────────────────────────────
+    "Spectral Preprocessing": {"PT": "Pré-processamento Espectral", "EN": "Spectral Preprocessing"},
+    "⚗️ Choose the spectral preprocessing preset and preview before/after → then go to **Model** tab.": {"PT": "⚗️ Escolha o preset de pré-processamento espectral e visualize antes/depois → depois vá para a aba **Modelo**.", "EN": "⚗️ Choose the spectral preprocessing preset and preview before/after → then go to **Model** tab."},
+    "**Before / after preprocessing visualization**": {"PT": "**Visualização antes / depois do pré-processamento**", "EN": "**Before / after preprocessing visualization**"},
+    "Configure and validate data input (Data tab) to enable the preview.": {"PT": "Configure e valide a entrada de dados (aba Dados) para habilitar a prévia.", "EN": "Configure and validate data input (Data tab) to enable the preview."},
+    "⚗️ Generate before/after preview": {"PT": "⚗️ Gerar prévia antes/depois", "EN": "⚗️ Generate before/after preview"},
+    "Loading and processing spectra...": {"PT": "Carregando e processando espectros...", "EN": "Loading and processing spectra..."},
+    "Could not load spectra. Check the Data tab.": {"PT": "Não foi possível carregar espectros. Verifique a aba Dados.", "EN": "Could not load spectra. Check the Data tab."},
+    "Before preprocessing": {"PT": "Antes do pré-processamento", "EN": "Before preprocessing"},
+    "After: {preset}": {"PT": "Depois: {preset}", "EN": "After: {preset}"},
+    "Error applying preprocessing: {e}": {"PT": "Erro ao aplicar pré-processamento: {e}", "EN": "Error applying preprocessing: {e}"},
+    "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Compare presets on your own data with `comparar_pre_processamentos`.": {"PT": "MSC (correção de espalhamento) → 1ª derivada SG (Savitzky-Golay) → Centralização pela média. **Melhor para FT-NIR com espalhamento pronunciado.** Compare presets nos seus próprios dados com `comparar_pre_processamentos`.", "EN": "MSC (scatter correction) → 1st derivative SG (Savitzky-Golay) → Mean-Centering. **Best for FT-NIR with pronounced scatter.** Compare presets on your own data with `comparar_pre_processamentos`."},
+    "SNV (variance normalization) → SG → Mean-Centering. Robust alternative to MSC when global reference is not stable.": {"PT": "SNV (normalização por variância) → SG → Centralização pela média. Alternativa robusta ao MSC quando a referência global não é estável.", "EN": "SNV (variance normalization) → SG → Mean-Centering. Robust alternative to MSC when global reference is not stable."},
+    "Mean-Centering + division by standard deviation. **Caution**: collapses spectral noise when SG is not applied first.": {"PT": "Centralização pela média + divisão pelo desvio padrão. **Cuidado**: colapsa o ruído espectral quando o SG não é aplicado antes.", "EN": "Mean-Centering + division by standard deviation. **Caution**: collapses spectral noise when SG is not applied first."},
+    "Mean centering only. Recommended as a comparative baseline.": {"PT": "Só centralização pela média. Recomendado como referência comparativa.", "EN": "Mean centering only. Recommended as a comparative baseline."},
+    # ── Prediction tab ───────────────────────────────────────────────
+    "Prediction on Unknown Samples": {"PT": "Predição em Amostras Desconhecidas", "EN": "Prediction on Unknown Samples"},
+    "Upload a `.joblib` model generated by the pipeline and a CSV with new spectra (columns = wavenumbers, no class column).": {"PT": "Faça upload de um modelo `.joblib` gerado pelo pipeline e um CSV com espectros novos (colunas = números de onda, sem coluna de classe).", "EN": "Upload a `.joblib` model generated by the pipeline and a CSV with new spectra (columns = wavenumbers, no class column)."},
+    "🔮 Predict": {"PT": "🔮 Predizer", "EN": "🔮 Predict"},
+    "**1. Trained model (.joblib)**": {"PT": "**1. Modelo treinado (.joblib)**", "EN": "**1. Trained model (.joblib)**"},
+    "**2. New spectra (CSV)**": {"PT": "**2. Espectros novos (CSV)**", "EN": "**2. New spectra (CSV)**"},
+    "Upload CSV with new spectra": {"PT": "Upload de CSV com espectros novos", "EN": "Upload CSV with new spectra"},
+    "First column to use as wavenumber (leave empty = auto)": {"PT": "Primeira coluna a usar como número de onda (deixe vazio = automático)", "EN": "First column to use as wavenumber (leave empty = auto)"},
+    "**Prediction results**": {"PT": "**Resultados da predição**", "EN": "**Prediction results**"},
+    "⬇️ Download results (.csv)": {"PT": "⬇️ Baixar resultados (.csv)", "EN": "⬇️ Download results (.csv)"},
+    "🔒 Model loading (upload and local path) is disabled on this public deployment — a `.joblib`/pickle can execute arbitrary code when loaded, from ANY path on the server, not just uploaded files. Run the CLI or app locally to use the Prediction tab.": {"PT": "🔒 O carregamento de modelo (upload e caminho local) está desabilitado neste deploy público — um `.joblib`/pickle pode executar código arbitrário ao ser carregado, de QUALQUER caminho do servidor, não só de arquivos enviados. Rode a CLI ou o app localmente para usar a aba Predição.", "EN": "🔒 Model loading (upload and local path) is disabled on this public deployment — a `.joblib`/pickle can execute arbitrary code when loaded, from ANY path on the server, not just uploaded files. Run the CLI or app locally to use the Prediction tab."},
+    "⚠️ Only upload `.joblib` models you generated yourself. A model file is a pickle and **runs code when loaded** — never load one from an untrusted source.": {"PT": "⚠️ Só faça upload de modelos `.joblib` que você mesmo gerou. Um arquivo de modelo é um pickle e **executa código ao ser carregado** — nunca carregue um de origem não confiável.", "EN": "⚠️ Only upload `.joblib` models you generated yourself. A model file is a pickle and **runs code when loaded** — never load one from an untrusted source."},
+    "Upload the .joblib model": {"PT": "Upload do modelo .joblib", "EN": "Upload the .joblib model"},
+    "Or local path to model": {"PT": "Ou caminho local do modelo", "EN": "Or local path to model"},
+    "I trust the source of this model file (required to load it — `.joblib` executes code when loaded, see docs/SECURITY.md)": {"PT": "Eu confio na origem deste arquivo de modelo (obrigatório para carregar — `.joblib` executa código ao ser carregado, ver docs/SECURITY.md)", "EN": "I trust the source of this model file (required to load it — `.joblib` executes code when loaded, see docs/SECURITY.md)"},
+    "🔒 Local path to CSV is disabled on this public deployment — a free-text server-side path would let any visitor read arbitrary files on the server. Use the upload above instead.": {"PT": "🔒 O caminho local do CSV está desabilitado neste deploy público — um caminho de servidor em texto livre permitiria que qualquer visitante lesse arquivos arbitrários do servidor. Use o upload acima.", "EN": "🔒 Local path to CSV is disabled on this public deployment — a free-text server-side path would let any visitor read arbitrary files on the server. Use the upload above instead."},
+    "Or local path to CSV": {"PT": "Ou caminho local do CSV", "EN": "Or local path to CSV"},
+    "**Blind flow — Detect → Identify → Quantify**": {"PT": "**Fluxo cego — Detectar → Identificar → Quantificar**", "EN": "**Blind flow — Detect → Identify → Quantify**"},
+    "⚠ 'classe_identificada' only ever exists when 'identificacao_cobertura'='validado' (formal statistical guarantee, calibrated with ≥2 independent collection sessions) — there is no 'informational' label without that guarantee. 'identificacao_candidatos' carries only the closest guess (with NO guarantee at all) for reference, never as a result to act on for a quality decision without confirming by a reference method.": {"PT": "⚠ 'classe_identificada' só existe quando 'identificacao_cobertura'='validado' (garantia estatística formal, calibrada com ≥2 sessões de coleta independentes) — não há rótulo 'informativo' sem essa garantia. 'identificacao_candidatos' traz só o palpite mais próximo (SEM garantia nenhuma) para referência, nunca como resultado a usar numa decisão de qualidade sem confirmar por método de referência.", "EN": "⚠ 'classe_identificada' only ever exists when 'identificacao_cobertura'='validado' (formal statistical guarantee, calibrated with ≥2 independent collection sessions) — there is no 'informational' label without that guarantee. 'identificacao_candidatos' carries only the closest guess (with NO guarantee at all) for reference, never as a result to act on for a quality decision without confirming by a reference method."},
+    "Check 'I trust the source of this model file' above before loading — required (see docs/SECURITY.md).": {"PT": "Marque 'Eu confio na origem deste arquivo de modelo' acima antes de carregar — obrigatório (ver docs/SECURITY.md).", "EN": "Check 'I trust the source of this model file' above before loading — required (see docs/SECURITY.md)."},
+    "No spectra CSV provided.": {"PT": "Nenhum CSV de espectros fornecido.", "EN": "No spectra CSV provided."},
+    "Within PLS-DA model fit": {"PT": "Dentro do ajuste do modelo PLS-DA", "EN": "Within PLS-DA model fit"},
+    "Hotelling T² (distance along the model's main directions) and Q-residual (unexplained variation) both within their statistical limit — see the 'criterio' column for the exact rule applied. A sample outside this fit is an atypical spectrum for the calibration, not necessarily 'adulterated'.": {"PT": "Hotelling T² (distância ao longo das direções principais do modelo) e resíduo Q (variação não explicada), ambos dentro do limite estatístico — veja a coluna 'criterio' para a regra exata aplicada. Uma amostra fora deste ajuste é um espectro atípico para a calibração, não necessariamente 'adulterada'.", "EN": "Hotelling T² (distance along the model's main directions) and Q-residual (unexplained variation) both within their statistical limit — see the 'criterio' column for the exact rule applied. A sample outside this fit is an atypical spectrum for the calibration, not necessarily 'adulterated'."},
+    "Within applicability domain": {"PT": "Dentro do domínio de aplicabilidade", "EN": "Within applicability domain"},
+    "Exploratory PCA check (Hotelling T²/Q-residual, Jaworska et al. 2005) of similarity to the training set as a whole — a broader, less strict screen than the PLS-DA fit above. 'Outside' flags a spectrum unlike anything the model was calibrated on.": {"PT": "Checagem exploratória por PCA (Hotelling T²/resíduo Q, Jaworska et al. 2005) de similaridade com o conjunto de treino como um todo — uma triagem mais ampla e menos estrita que o ajuste PLS-DA acima. 'Fora' sinaliza um espectro diferente de tudo que o modelo foi calibrado para reconhecer.", "EN": "Exploratory PCA check (Hotelling T²/Q-residual, Jaworska et al. 2005) of similarity to the training set as a whole — a broader, less strict screen than the PLS-DA fit above. 'Outside' flags a spectrum unlike anything the model was calibrated on."},
+    "🧪 Purity (predicted species)": {"PT": "🧪 Pureza (espécie prevista)", "EN": "🧪 Purity (predicted species)"},
+    "🏷 Adulterant identified": {"PT": "🏷 Adulterante identificado", "EN": "🏷 Adulterant identified"},
+    "UNKNOWN means no species×adulterant combination had a statistical guarantee both sufficient AND exclusive for this sample — either no guarantee, or 2+ validated combinations tied (also blocks the label).": {"PT": "DESCONHECIDO significa que nenhuma combinação espécie×adulterante teve garantia estatística ao mesmo tempo suficiente E exclusiva para esta amostra — ou não há garantia, ou 2+ combinações validadas empataram (o que também bloqueia o rótulo).", "EN": "UNKNOWN means no species×adulterant combination had a statistical guarantee both sufficient AND exclusive for this sample — either no guarantee, or 2+ validated combinations tied (also blocks the label)."},
+    "⚖ Quantified": {"PT": "⚖ Quantificado", "EN": "⚖ Quantified"},
+    "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above.": {"PT": "Bloqueada = quantificação recusada porque o adulterante não foi identificado com confiabilidade — veja 'quantificacao_motivo_bloqueio' na tabela acima.", "EN": "Blocked = quantification refused because the adulterant was not reliably identified — see 'quantificacao_motivo_bloqueio' in the table above."},
+    "No valid model provided (upload or path).": {"PT": "Nenhum modelo válido fornecido (upload ou caminho).", "EN": "No valid model provided (upload or path)."},
+    # ── Barra superior e navegação (reestruturação de 2026-09-08) ────
+    "Switch in ⋮ → Settings → Theme": {"PT": "Trocar em ⋮ → Settings → Theme", "EN": "Switch in ⋮ → Settings → Theme"},
+    "Export report": {"PT": "Exportar relatório", "EN": "Export report"},
+    "Go to Model →": {"PT": "Ir para Modelo →", "EN": "Go to Model →"},
+    "Go there": {"PT": "Ver", "EN": "Go there"},
+    # ── Tela Início ──────────────────────────────────────────────────
+    "DATA LOADED": {"PT": "DADOS CARREGADOS", "EN": "DATA LOADED"},
+    "MEAN SPECTRA BY CLASS": {"PT": "ESPECTROS MÉDIOS POR CLASSE", "EN": "MEAN SPECTRA BY CLASS"},
+    "PREDICTION RESULT": {"PT": "RESULTADO DA PREDIÇÃO", "EN": "PREDICTION RESULT"},
+    "DECISION RANGE · ESTIMATED CONTENT": {"PT": "FAIXA DE DECISÃO · TEOR ESTIMADO", "EN": "DECISION RANGE · ESTIMATED CONTENT"},
+    "physical samples": {"PT": "amostras físicas", "EN": "physical samples"},
+    "Technique": {"PT": "Técnica", "EN": "Technique"},
+    "Grouping": {"PT": "Agrupamento", "EN": "Grouping"},
+    "By physical sample": {"PT": "Por amostra física", "EN": "By physical sample"},
+    "protected": {"PT": "protegido", "EN": "protected"},
+    "unprotected": {"PT": "desprotegido", "EN": "unprotected"},
+    "Guarantee: {g}": {"PT": "Garantia: {g}", "EN": "Guarantee: {g}"},
+    "No data loaded yet — start on the **Data** screen: point to a spectra folder or upload a CSV.": {"PT": "Nenhum dado carregado ainda — comece pela tela **Dados**: aponte uma pasta de espectros ou envie um CSV.", "EN": "No data loaded yet — start on the **Data** screen: point to a spectra folder or upload a CSV."},
+    "Load the spectra preview on the **Data** screen to see the mean spectrum of each class here.": {"PT": "Carregue a prévia dos espectros na tela **Dados** para ver aqui o espectro médio de cada classe.", "EN": "Load the spectra preview on the **Data** screen to see the mean spectrum of each class here."},
+    "Wavenumber (cm⁻¹) — decreasing": {"PT": "Número de onda (cm⁻¹) — decrescente", "EN": "Wavenumber (cm⁻¹) — decreasing"},
+    "No prediction yet — the **Prediction** screen applies a saved model to new samples.": {"PT": "Nenhuma predição ainda — a tela **Predição** aplica um modelo salvo a amostras novas.", "EN": "No prediction yet — the **Prediction** screen applies a saved model to new samples."},
+    "Detection": {"PT": "Detecção", "EN": "Detection"},
+    "Identification": {"PT": "Identificação", "EN": "Identification"},
+    "Quantification": {"PT": "Quantificação", "EN": "Quantification"},
+    "{n} of {t} adulterated": {"PT": "{n} de {t} adulteradas", "EN": "{n} of {t} adulterated"},
+    "{n} of {t} identified": {"PT": "{n} de {t} identificadas", "EN": "{n} of {t} identified"},
+    "{n} of {t} quantified": {"PT": "{n} de {t} quantificadas", "EN": "{n} of {t} quantified"},
+    "Unknown adulterant": {"PT": "Adulterante desconhecido", "EN": "Unknown adulterant"},
+    "Not performed": {"PT": "Não realizada", "EN": "Not performed"},
+    "Quantification was blocked because identification found no match with a known adulterant. A number here would have no statistical backing.": {"PT": "A quantificação foi bloqueada porque a identificação não encontrou correspondência com nenhum adulterante conhecido. Um número aqui não teria suporte estatístico.", "EN": "Quantification was blocked because identification found no match with a known adulterant. A number here would have no statistical backing."},
+    "Samples": {"PT": "Amostras", "EN": "Samples"},
+    "This model predates the blind flow, so there is no identification/quantification to show.": {"PT": "Este modelo é anterior ao fluxo cego, então não há identificação/quantificação para mostrar.", "EN": "This model predates the blind flow, so there is no identification/quantification to show."},
+    "No quantified sample yet — the decision range appears once a content is estimated.": {"PT": "Nenhuma amostra quantificada ainda — a faixa de decisão aparece quando houver teor estimado.", "EN": "No quantified sample yet — the decision range appears once a content is estimated."},
+    "species used": {"PT": "espécie usada", "EN": "species used"},
+    "No LOD/LOQ persisted for this species model, so no decision range is drawn — a bar without limits would suggest a confidence the data does not support.": {"PT": "Sem LOD/LOQ persistido para o modelo desta espécie, então nenhuma faixa é desenhada — uma barra sem limites sugeriria uma confiança que os dados não sustentam.", "EN": "No LOD/LOQ persisted for this species model, so no decision range is drawn — a bar without limits would suggest a confidence the data does not support."},
+    "< LOD": {"PT": "< LOD", "EN": "< LOD"},
+    "grey zone": {"PT": "zona cinzenta", "EN": "grey zone"},
+    "quantifiable": {"PT": "quantificável", "EN": "quantifiable"},
+    "Coverage of this combination: {c}.": {"PT": "Cobertura desta combinação: {c}.", "EN": "Coverage of this combination: {c}."},
+    "not declared": {"PT": "não declarada", "EN": "not declared"},
+    # ── Tela Visualização ────────────────────────────────────────────
+    "Colour scheme": {"PT": "Esquema de cor", "EN": "Colour scheme"},
+    "Colour per class (customise)": {"PT": "Cor por classe (personalizar)", "EN": "Colour per class (customise)"},
+    "Load the spectra preview on the **Data** screen to customise the colour of each real class.": {"PT": "Carregue a prévia dos espectros na tela **Dados** para personalizar a cor de cada classe real.", "EN": "Load the spectra preview on the **Data** screen to customise the colour of each real class."},
+    "Reset to the scheme": {"PT": "Voltar ao esquema", "EN": "Reset to the scheme"},
+    "This is the same palette catalogue the CLI offers (Visualisation menu). The choice is saved in `~/.guaraci/visual_config.json`, so terminal and web stay in sync, and it applies to **every figure of the next run**, not only to the preview below.": {"PT": "Este é o mesmo catálogo de paletas que a CLI oferece (menu Visualização). A escolha é gravada em `~/.guaraci/visual_config.json`, então terminal e web ficam em sincronia, e vale para **todas as figuras da próxima execução**, não só para a prévia ao lado.", "EN": "This is the same palette catalogue the CLI offers (Visualisation menu). The choice is saved in `~/.guaraci/visual_config.json`, so terminal and web stay in sync, and it applies to **every figure of the next run**, not only to the preview below."},
+    "Preview · mean spectrum by class": {"PT": "Pré-visualização · espectro médio por classe", "EN": "Preview · mean spectrum by class"},
+    "Figure colour palette: **{p}** — change it on the Visualisation screen.": {"PT": "Paleta de cores das figuras: **{p}** — troque na tela Visualização.", "EN": "Figure colour palette: **{p}** — change it on the Visualisation screen."},
+    "No spectra loaded yet, so there is nothing real to draw here. The swatches on the left already show the exact colours this scheme will use.": {"PT": "Nenhum espectro carregado ainda, então não há nada real para desenhar aqui. As amostras à esquerda já mostram as cores exatas que este esquema vai usar.", "EN": "No spectra loaded yet, so there is nothing real to draw here. The swatches on the left already show the exact colours this scheme will use."},
+    # ── Painel de status do projeto (topo da aba Projeto) ────────────
+    "No data loaded yet — start on the **Data** tab: point to a spectra folder or upload a CSV. This panel fills in with the real numbers as soon as there is data.": {"PT": "Nenhum dado carregado ainda — comece pela aba **Dados**: aponte uma pasta de espectros ou envie um CSV. Este painel se preenche com os números reais assim que houver dado.", "EN": "No data loaded yet — start on the **Data** tab: point to a spectra folder or upload a CSV. This panel fills in with the real numbers as soon as there is data."},
+    "### 📌 Project status": {"PT": "### 📌 Status do projeto", "EN": "### 📌 Project status"},
+    "last completed run": {"PT": "última execução concluída", "EN": "last completed run"},
+    "data preview (no run yet)": {"PT": "prévia dos dados (sem execução ainda)", "EN": "data preview (no run yet)"},
+    "spectra": {"PT": "espectros", "EN": "spectra"},
+    "classes": {"PT": "classes", "EN": "classes"},
+    "spectral variables": {"PT": "variáveis espectrais", "EN": "spectral variables"},
+    "Source: {origem}.": {"PT": "Origem: {origem}.", "EN": "Source: {origem}."},
+    "**Matrix / technique:** {matriz}": {"PT": "**Matriz / técnica:** {matriz}", "EN": "**Matrix / technique:** {matriz}"},
+    "**Public validation for this matrix:** {estado} — {dataset} ({metrica})": {"PT": "**Validação pública para esta matriz:** {estado} — {dataset} ({metrica})", "EN": "**Public validation for this matrix:** {estado} — {dataset} ({metrica})"},
+    "From the consolidated table in `docs/VALIDACAO_PUBLICA.md`.": {"PT": "Da tabela consolidada em `docs/VALIDACAO_PUBLICA.md`.", "EN": "From the consolidated table in `docs/VALIDACAO_PUBLICA.md`."},
+    "No public validation registered for this matrix in `docs/VALIDACAO_PUBLICA.md` — the pipeline still runs, but there is no external benchmark to compare against.": {"PT": "Nenhuma validação pública registrada para esta matriz em `docs/VALIDACAO_PUBLICA.md` — o pipeline roda do mesmo jeito, mas não há benchmark externo para comparar.", "EN": "No public validation registered for this matrix in `docs/VALIDACAO_PUBLICA.md` — the pipeline still runs, but there is no external benchmark to compare against."},
+    "Design audit not available for this run (run produced before this record existed).": {"PT": "Auditoria de delineamento indisponível para esta execução (execução anterior a este registro).", "EN": "Design audit not available for this run (run produced before this record existed)."},
+    "{crit} critical · {aviso} warning(s) · {n} checks": {"PT": "{crit} crítico(s) · {aviso} aviso(s) · {n} checagens", "EN": "{crit} critical · {aviso} warning(s) · {n} checks"},
+    "Design audit: {resumo}": {"PT": "Auditoria de delineamento: {resumo}", "EN": "Design audit: {resumo}"},
+    "Design audit findings": {"PT": "Achados da auditoria de delineamento", "EN": "Design audit findings"},
+    # ── Paleta de cores das figuras (aba Modelo) ─────────────────────
+    "Figure color palette": {"PT": "Paleta de cores das figuras", "EN": "Figure color palette"},
+    "Applies to the figures of the NEXT run — figures already saved on disk are not recolored.": {"PT": "Vale para as figuras da PRÓXIMA execução — figuras já gravadas em disco não são recoloridas.", "EN": "Applies to the figures of the NEXT run — figures already saved on disk are not recolored."},
+    "A palette with fewer colors than the number of classes is refused at figure time (it would give two classes the same color) — the maximum-distinctiveness palette is used instead, and the run log says so.": {"PT": "Uma paleta com menos cores que o número de classes é recusada na hora da figura (daria a mesma cor a duas classes) — a paleta de máxima distintividade é usada no lugar, e o log da execução avisa.", "EN": "A palette with fewer colors than the number of classes is refused at figure time (it would give two classes the same color) — the maximum-distinctiveness palette is used instead, and the run log says so."},
+    "Uses the default color sequence — no fixed color list.": {"PT": "Usa a sequência de cores padrão — sem lista fixa de cores.", "EN": "Uses the default color sequence — no fixed color list."},
+    "Could not save the palette choice: {e}": {"PT": "Não foi possível salvar a escolha de paleta: {e}", "EN": "Could not save the palette choice: {e}"},
+    # ── Faixa de decisão (LOD/LOQ, Bloco 24) na aba Predição ─────────
+    "**Decision range (LOD / LOQ)**": {"PT": "**Faixa de decisão (LOD / LOQ)**", "EN": "**Decision range (LOD / LOQ)**"},
+    "No LOD/LOQ available for the species models used — either the package predates the decision-range feature, or the limits are not computable (not enough physical replicates to estimate instrument noise). No decision range is shown rather than one without backing.": {"PT": "Sem LOD/LOQ disponível para os modelos de espécie usados — ou o pacote é anterior à faixa de decisão, ou os limites não são computáveis (sem réplicas físicas suficientes para estimar o ruído instrumental). Nenhuma faixa é mostrada, em vez de uma faixa sem lastro.", "EN": "No LOD/LOQ available for the species models used — either the package predates the decision-range feature, or the limits are not computable (not enough physical replicates to estimate instrument noise). No decision range is shown rather than one without backing."},
+    "Below LOD (not detectable)": {"PT": "Abaixo do LOD (não detectável)", "EN": "Below LOD (not detectable)"},
+    "Estimated content below the detection limit — the method cannot distinguish it from noise.": {"PT": "Teor estimado abaixo do limite de detecção — o método não consegue distingui-lo do ruído.", "EN": "Estimated content below the detection limit — the method cannot distinguish it from noise."},
+    "Grey zone (LOD–LOQ)": {"PT": "Zona cinzenta (LOD–LOQ)", "EN": "Grey zone (LOD–LOQ)"},
+    "Detection is possible, but quantification is not reliable in this range — report as 'detected, not quantifiable'.": {"PT": "A detecção é possível, mas a quantificação não é confiável nesta faixa — relate como 'detectado, não quantificável'.", "EN": "Detection is possible, but quantification is not reliable in this range — report as 'detected, not quantifiable'."},
+    "Quantified with confidence (≥ LOQ)": {"PT": "Quantificado com confiança (≥ LOQ)", "EN": "Quantified with confidence (≥ LOQ)"},
+    "At or above the quantification limit — the numeric value can be reported as a measurement.": {"PT": "No limite de quantificação ou acima dele — o valor numérico pode ser relatado como medida.", "EN": "At or above the quantification limit — the numeric value can be reported as a measurement."},
+    "{n} quantified sample(s) have no decision range: the species model used has no persisted LOD/LOQ.": {"PT": "{n} amostra(s) quantificada(s) sem faixa de decisão: o modelo de espécie usado não tem LOD/LOQ persistido.", "EN": "{n} quantified sample(s) have no decision range: the species model used has no persisted LOD/LOQ."},
+    "Limits from the analytical figures of merit of the per-species regression (Valderrama, Braga & Poppi 2009), computed during the run — see `lod`/`loq` in the table above.": {"PT": "Limites vindos das figuras de mérito analíticas da regressão por espécie (Valderrama, Braga & Poppi 2009), calculadas durante a execução — ver `lod`/`loq` na tabela acima.", "EN": "Limits from the analytical figures of merit of the per-species regression (Valderrama, Braga & Poppi 2009), computed during the run — see `lod`/`loq` in the table above."},
+    "pure": {"PT": "pura", "EN": "pure"},
+    "Error loading model: {e}": {"PT": "Erro ao carregar modelo: {e}", "EN": "Error loading model: {e}"},
+    "Error reading CSV: {e}": {"PT": "Erro ao ler CSV: {e}", "EN": "Error reading CSV: {e}"},
+    "Applying model...": {"PT": "Aplicando modelo...", "EN": "Applying model..."},
+    "DD-SIMCA for the species predicted above. {n} detected as adulterated.": {"PT": "DD-SIMCA para a espécie prevista acima. {n} detectada(s) como adulterada(s).", "EN": "DD-SIMCA for the species predicted above. {n} detected as adulterated."},
+    "Prediction complete: {n} samples.": {"PT": "Predição concluída: {n} amostras.", "EN": "Prediction complete: {n} samples."},
+    "Prediction error: {e}": {"PT": "Erro de predição: {e}", "EN": "Prediction error: {e}"},
+    # ── Reports tab ──────────────────────────────────────────────────
+    "Reports and Downloads": {"PT": "Relatórios e Downloads", "EN": "Reports and Downloads"},
+    "📄 Download reports (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), browse the figure gallery, and clean up old result folders.": {"PT": "📄 Baixe relatórios (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), navegue pela galeria de figuras e limpe pastas de resultados antigas.", "EN": "📄 Download reports (ZIP/PDF/Word/Excel/LaTeX/PowerPoint), browse the figure gallery, and clean up old result folders."},
+    "### ⬇️ Downloads": {"PT": "### ⬇️ Downloads", "EN": "### ⬇️ Downloads"},
+    "### 🪪 Model Card": {"PT": "### 🪪 Model Card", "EN": "### 🪪 Model Card"},
+    "### 📋 Model summary": {"PT": "### 📋 Resumo do modelo", "EN": "### 📋 Model summary"},
+    "### 🖼️ Figure gallery": {"PT": "### 🖼️ Galeria de figuras", "EN": "### 🖼️ Figure gallery"},
+    "Run the pipeline (Model tab) to generate reports.": {"PT": "Execute o pipeline (aba Modelo) para gerar relatórios.", "EN": "Run the pipeline (Model tab) to generate reports."},
+    "Preparing report files (cached after the first time)...": {"PT": "Preparando arquivos de relatório (fica em cache depois da primeira vez)...", "EN": "Preparing report files (cached after the first time)..."},
+    "🗑️ Free space — Clean up old results": {"PT": "🗑️ Liberar espaço — Limpar resultados antigos", "EN": "🗑️ Free space — Clean up old results"},
+    "⬇️ Model Card (.md)": {"PT": "⬇️ Model Card (.md)", "EN": "⬇️ Model Card (.md)"},
+    "File model_card.md not found.": {"PT": "Arquivo model_card.md não encontrado.", "EN": "File model_card.md not found."},
+    "File resumo_modelo.txt not found.": {"PT": "Arquivo resumo_modelo.txt não encontrado.", "EN": "File resumo_modelo.txt not found."},
+    "Filter figures": {"PT": "Filtrar figuras", "EN": "Filter figures"},
+    "Columns": {"PT": "Colunas", "EN": "Columns"},
+    "No PNG/JPG images found in the results folder.": {"PT": "Nenhuma imagem PNG/JPG encontrada na pasta de resultados.", "EN": "No PNG/JPG images found in the results folder."},
+    "Results folder: `{pasta}`": {"PT": "Pasta de resultados: `{pasta}`", "EN": "Results folder: `{pasta}`"},
+    "Keep N most recent runs": {"PT": "Manter N execuções mais recentes", "EN": "Keep N most recent runs"},
+    "🗑️ Confirm cleanup": {"PT": "🗑️ Confirmar limpeza", "EN": "🗑️ Confirm cleanup"},
+    "Only one run stored. Nothing to clean.": {"PT": "Só há uma execução armazenada. Nada para limpar.", "EN": "Only one run stored. Nothing to clean."},
+    "View Model Card": {"PT": "Ver Model Card", "EN": "View Model Card"},
+    "Show only figures of one analysis type (e.g. PCA scores, confusion matrix, DD-SIMCA acceptance). 'All' shows every figure generated by the run.": {"PT": "Mostra só figuras de um tipo de análise (ex.: scores de PCA, matriz de confusão, aceitação DD-SIMCA). 'All' mostra todas as figuras geradas pela execução.", "EN": "Show only figures of one analysis type (e.g. PCA scores, confusion matrix, DD-SIMCA acceptance). 'All' shows every figure generated by the run."},
+    "📜 Execution log (terminal output)": {"PT": "📜 Log de execução (saída do terminal)", "EN": "📜 Execution log (terminal output)"},
+    "📦 Full results (.zip)": {"PT": "📦 Resultados completos (.zip)", "EN": "📦 Full results (.zip)"},
+    "📄 PDF Report": {"PT": "📄 Relatório PDF", "EN": "📄 PDF Report"},
+    "📝 Word Report (.docx)": {"PT": "📝 Relatório Word (.docx)", "EN": "📝 Word Report (.docx)"},
+    "📊 Data in Excel (.xlsx)": {"PT": "📊 Dados em Excel (.xlsx)", "EN": "📊 Data in Excel (.xlsx)"},
+    "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)": {"PT": "🔬 Template LaTeX (Talanta / Food Chemistry / J. Chemom.)", "EN": "🔬 LaTeX Template (Talanta / Food Chemistry / J. Chemom.)"},
+    "🎯 PowerPoint Presentation (.pptx)": {"PT": "🎯 Apresentação PowerPoint (.pptx)", "EN": "🎯 PowerPoint Presentation (.pptx)"},
+    "Results folder: `{pasta}`  ({n} runs stored)": {"PT": "Pasta de resultados: `{pasta}`  ({n} execuções armazenadas)", "EN": "Results folder: `{pasta}`  ({n} runs stored)"},
+    "{n} figure(s) displayed.": {"PT": "{n} figura(s) exibida(s).", "EN": "{n} figure(s) displayed."},
+    "python-pptx not installed. Run: `pip install python-pptx>=1.1`": {"PT": "python-pptx não instalado. Rode: `pip install python-pptx>=1.1`", "EN": "python-pptx not installed. Run: `pip install python-pptx>=1.1`"},
+    "**{n_remover}** old run(s) will be removed (~{tam_est:.0f} MB freed). The current run **will not be affected**.": {"PT": "**{n_remover}** execução(ões) antiga(s) será(ão) removida(s) (~{tam_est:.0f} MB liberados). A execução atual **não será afetada**.", "EN": "**{n_remover}** old run(s) will be removed (~{tam_est:.0f} MB freed). The current run **will not be affected**."},
+    "No folders removed.": {"PT": "Nenhuma pasta removida.", "EN": "No folders removed."},
+    "ZIP: {e}": {"PT": "ZIP: {e}", "EN": "ZIP: {e}"},
+    "PDF: {e}": {"PT": "PDF: {e}", "EN": "PDF: {e}"},
+    "Word: {e}": {"PT": "Word: {e}", "EN": "Word: {e}"},
+    "Excel: {e}": {"PT": "Excel: {e}", "EN": "Excel: {e}"},
+    "LaTeX: {e}": {"PT": "LaTeX: {e}", "EN": "LaTeX: {e}"},
+    "PowerPoint: {e}": {"PT": "PowerPoint: {e}", "EN": "PowerPoint: {e}"},
+    "Removed {n} folder(s), freed {mb:.0f} MB.": {"PT": "Removida(s) {n} pasta(s), {mb:.0f} MB liberados.", "EN": "Removed {n} folder(s), freed {mb:.0f} MB."},
+    "Errors: {erro}": {"PT": "Erros: {erro}", "EN": "Errors: {erro}"},
 }
 
 def _T(key: str) -> str:
@@ -288,6 +507,31 @@ _ROTULOS_OPCAO: Dict[str, Dict[str, str]] = {
 }
 
 
+def _rotulo_perfil(op: str) -> str:
+    """Rotulo dinamico p/ perfil_matriz/perfil_tecnica -- mesma logica de
+    `_rotulo_opcao` da CLI (guaraci.py): descricao + selo de cobertura
+    validada (`referencia` nao-vazia = validado com dado publico real).
+    Duplicado deliberadamente (nao importa guaraci.py aqui -- CLI e web sao
+    interfaces separadas por design, ver Fase H) mas usa a MESMA fonte de
+    dado (`perfil_matriz.load_profile`), nunca reinventa o julgamento.
+    """
+    if not op:
+        return "(não declarado)"
+    try:
+        from guaraci.perfil_matriz import load_profile
+        p = load_profile(op)
+    except Exception:  # noqa: BLE001 -- rotulo e' so' exibicao.
+        return op
+    desc = (p.descricao or "").split(" (")[0].strip()
+    selo = ""
+    if op != "generico":
+        selo = "  ✅" if p.referencia else "  ⚠ não validado"
+    extra = ""
+    if p.nivel_agrupamento_tipico:
+        extra = f" [garantia típica: {p.nivel_agrupamento_tipico}]"
+    return f"{op} — {desc}{extra}{selo}" if desc else f"{op}{selo}"
+
+
 def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     """Renders ONE widget according to field type and returns current value."""
     chave = prefixo + s["key"]
@@ -298,11 +542,22 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
     rotulo = _short if len(_short) > 4 else s["key"].replace("_", " ").capitalize()
     ajuda = s.get("desc", "")
     t = s["tipo"]
+    if s["key"] in _CAMPOS_CAMINHO_SERVIDOR and _UPLOAD_MODELO_BLOQUEADO:
+        st.caption(
+            f"🔒 {rotulo}: disabled on this public deployment — a free-text "
+            "server-side path would let any visitor enumerate directories "
+            "or read arbitrary files on the server. Use the CSV upload "
+            "above instead."
+        )
+        return valor_atual
     if t == "bool":
         return st.checkbox(rotulo, value=bool(valor_atual), help=ajuda, key=chave)
     if t in ("choice", "preproc"):
         ops = list(s.get("opcoes") or [])
         idx = ops.index(valor_atual) if valor_atual in ops else 0
+        if s["key"] in ("perfil_matriz", "perfil_tecnica"):
+            return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave,
+                                format_func=_rotulo_perfil)
         _rot = _ROTULOS_OPCAO.get(s["key"])
         if _rot:
             return st.selectbox(rotulo, ops, index=idx, help=ajuda, key=chave,
@@ -395,16 +650,16 @@ _IS_PUBLIC_DEMO = not os.path.exists(_CFG_PATH)
 if "cfg_base" not in st.session_state:
     try:
         st.session_state.cfg_base = (
-            pq.carregar_config(_CFG_PATH) if os.path.exists(_CFG_PATH)
+            pq.load_config(_CFG_PATH) if os.path.exists(_CFG_PATH)
             # No local config.yaml (e.g. public demo deploy): default to
             # synthetic data so first-time visitors get a working demo
             # instead of an empty "dados/" folder error.
-            else pq.Config(modo="sintetico"))
+            else pq.Config(mode="sintetico"))
     except (RuntimeError, FileNotFoundError, ValueError):
-        # carregar_config so' lanca esses 3 tipos (PyYAML ausente, arquivo
+        # load_config so' lanca esses 3 tipos (PyYAML ausente, arquivo
         # ausente, chaves invalidas) -- config.yaml quebrado nunca impede o
         # primeiro carregamento do app, cai para o modo demo sintetico.
-        st.session_state.cfg_base = pq.Config(modo="sintetico")
+        st.session_state.cfg_base = pq.Config(mode="sintetico")
 
 cfg_base = st.session_state.cfg_base
 
@@ -419,23 +674,20 @@ del _fresh_cfg
 
 specs    = _spec_por_key()
 
-# ── Sidebar: Language ───────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("---")
-    _lang_choice = st.radio(
-        "🌐 Language", ["EN", "PT"],
-        index=0 if st.session_state.lang == "EN" else 1,
-        key="_sidebar_lang", horizontal=True
-    )
-    if _lang_choice != st.session_state.lang:
-        st.session_state.lang = _lang_choice
-        st.rerun()
-    st.caption(
-        "🌗 " + ("Tema claro/escuro: menu ⋮ → Settings → Theme"
-                 if st.session_state.lang == "PT"
-                 else "Light/dark theme: ⋮ menu → Settings → Theme")
-    )
-    st.markdown("---")
+# ── Navegação: estado da tela atual ─────────────────────────────────────────
+# A interface deixou de ser 8 abas horizontais e passou a barra lateral com
+# grupos (mockup de 2026-09-08). Cada tela é renderizada sozinha, em vez de
+# todas as abas serem montadas a cada rerun — o que também deixa a página
+# mais leve, já que só o conteúdo visível é calculado.
+if "pagina" not in st.session_state:
+    st.session_state.pagina = app_nav.PAGINA_INICIAL
+
+
+def _ir_para(chave: str) -> None:
+    """Navega para outra tela. Usado pela barra lateral, pelos botões da
+    barra superior e pelo botão de 'próxima ação sugerida' da tela Início."""
+    st.session_state.pagina = chave
+    st.rerun()
 
 # ── Polimento visual (design tokens, à prova de tema) ────────────────────────
 # NÃO pinta widgets internos do Streamlit (isso é papel do tema nativo, que
@@ -445,7 +697,10 @@ _tk = _tok()
 st.markdown(f"""
 <style>
 :root {{ --gua-primary: {_tk['primary']}; --gua-accent: {_tk['accent']}; }}
-.block-container {{ padding-top: 2.2rem; max-width: 1400px; }}
+/* 3,4rem e não 2,2rem: a barra superior própria (título + ações) precisa
+   começar ABAIXO da barra fixa do Streamlit (Deploy / ⋮), senão o primeiro
+   elemento da linha fica cortado -- visto no tema claro em 2026-09-08. */
+.block-container {{ padding-top: 3.4rem; max-width: 1400px; }}
 /* KPIs / métricas como cartões */
 [data-testid="stMetric"] {{
     border: 1px solid rgba(128,128,128,.22);
@@ -460,9 +715,17 @@ st.markdown(f"""
 /* Header / hero */
 .gua-hero {{ display:flex; align-items:center; gap:14px; margin-bottom:.15rem; }}
 .gua-hero .gua-logo {{ font-size: 3.4rem; line-height:1; }}
+/* Fundo claro FIXO na moldura (não é widget do Streamlit, é elemento nosso —
+   sem CSS sobre componente nativo, que foi o que quebrou ao trocar tema
+   antes). Medido em 2026-09-08: a tinta mais escura da logo (#0E3724, base
+   do frasco) tem contraste 1,40:1 contra o fundo do tema escuro (#0F1613) —
+   some. Sobre este fundo claro dá 12,4:1 nos dois temas. Mesma convenção já
+   usada nas figuras científicas ("papel" branco, intencional em qualquer
+   tema). */
 .gua-hero .gua-logo-frame {{
     width: 96px; height: 96px; min-width: 96px; flex-shrink: 0;
     padding: 8px; box-sizing: border-box;
+    background: #FDFDFD;
     border-radius: 20px; overflow: hidden;
     box-shadow: 0 1px 4px rgba(0,0,0,.18);
     display: flex; align-items: center; justify-content: center;
@@ -482,7 +745,56 @@ st.markdown(f"""
     font-size:.72rem; font-weight:600; padding:.15rem .55rem; border-radius:999px;
     border:1px solid rgba(128,128,128,.3); color: rgba(128,128,128,1);
 }}
-.stTabs [data-baseweb="tab"] {{ font-weight: 600; }}
+
+/* ── Barra lateral com degradê (mockup de 2026-09-08) ────────────────────
+   ATENÇÃO, decisão revertida: até 2026-09-07 a regra do projeto era "não
+   pintar widget nativo do Streamlit", justamente porque uma tentativa
+   anterior quebrou ao trocar de tema. O mockup novo foi pedido "à risca",
+   então o degradê voltou — mas com duas salvaguardas que a tentativa
+   antiga não tinha: (1) as cores vêm de `design_tokens` do tema ATIVO,
+   lido de `st.context.theme`, então o degradê se redesenha ao trocar
+   claro/escuro em vez de ficar preso à paleta de um tema só; (2) nenhum
+   `!important` — o CSS só complementa o widget, não briga com ele. */
+section[data-testid="stSidebar"] > div:first-child {{
+    background: linear-gradient(180deg,
+        {_tk['primary']} 0%, {_tk['accent']} 42%, {_tk['success']} 100%);
+}}
+section[data-testid="stSidebar"] * {{ color: #FFFFFF; }}
+section[data-testid="stSidebar"] .stButton > button {{
+    background: transparent; border: none; color: #FFFFFF;
+    text-align: left; justify-content: flex-start;
+    font-weight: 600; padding: .35rem .6rem;
+    border-left: 3px solid transparent; border-radius: 6px;
+}}
+section[data-testid="stSidebar"] .stButton > button:hover {{
+    background: rgba(255,255,255,.13);
+}}
+section[data-testid="stSidebar"] .stButton > button[kind="primary"] {{
+    background: rgba(255,255,255,.24); border-left-color: #FFFFFF;
+}}
+/* O `summary` também precisa ficar transparente, não só o `details`: no tema
+   CLARO o cabeçalho do expander vem branco por padrão e o rótulo (branco,
+   para contrastar com o degradê) sumia dentro dele -- o grupo ① aparecia
+   como uma caixa branca vazia. Visto na verificação de 2026-09-08. */
+section[data-testid="stSidebar"] [data-testid="stExpander"] details,
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary,
+section[data-testid="stSidebar"] [data-testid="stExpanderDetails"] {{
+    border: none; background: transparent; background-color: transparent;
+}}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary {{
+    font-size: .72rem; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; color: rgba(255,255,255,.82);
+}}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {{
+    background: rgba(255,255,255,.10);
+}}
+.gua-marca {{ text-align:center; padding:.2rem 0 .6rem; }}
+.gua-marca .n {{ font-weight:800; font-size:.86rem; letter-spacing:.06em; }}
+.gua-marca .v {{ font-size:.62rem; opacity:.8; letter-spacing:.03em; }}
+
+/* ── Barra superior (título da tela + ações) ─────────────────────────── */
+.gua-topo h1 {{ font-size:1.15rem; font-weight:800; margin:0; }}
+.gua-topo .sub {{ font-size:.78rem; color:rgba(128,128,128,1); }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -495,28 +807,101 @@ _logo_html = (f'<div class="gua-logo-frame"><img class="gua-logo-img" '
               f'src="{_logo_uri}" alt="GUARACI"></div>'
               if _logo_uri else '<span class="gua-logo">🧪</span>')
 
-st.markdown(
-    f"""
-    <div class="gua-hero">
-      {_logo_html}
-      <div>
-        <div class="gua-title">GUARACI · Chemometrics Platform</div>
-      </div>
-    </div>
-    <p class="gua-sub">
-      PLS-DA · PCA · OPLS-DA · DD-SIMCA · variable selection ·
-      group-aware validation (anti-leakage of replicates).
-      FT-NIR (.dx) or CSV table (Raman, UV-Vis, FTIR, chromatography…).
-    </p>
-    <div class="gua-badges">
-      <span class="gua-badge">v{pq.__version__}</span>
-      <span class="gua-badge">GPL-3.0-or-later</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+_pt = st.session_state.lang == "PT"
+_pagina_atual = st.session_state.pagina
 
-if _IS_PUBLIC_DEMO:
+# ──────────────────────────────────────────────────────────────────────────
+# Barra lateral: marca + navegação agrupada
+# ──────────────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown(
+        f'<div class="gua-hero" style="justify-content:center">{_logo_html}</div>'
+        f'<div class="gua-marca"><div class="n">GUARACI</div>'
+        f'<div class="v">v{pq.__version__} · local-first</div></div>',
+        unsafe_allow_html=True)
+
+    for _pag in app_nav.PAGINAS_FIXAS:
+        if st.button(f"{_pag.icone}  {_pag.rotulo(_pt)}",
+                     key=f"nav_{_pag.chave}", use_container_width=True,
+                     type="primary" if _pagina_atual == _pag.chave else "secondary"):
+            _ir_para(_pag.chave)
+
+    # Selos com números REAIS ao lado do item (o mockup mostra "Dados 934";
+    # aqui o número só aparece quando existe de fato).
+    _previa = st.session_state.get("previa_dados") or {}
+    _selos: Dict[str, str] = {}
+    if _previa.get("n_espectros"):
+        _selos["dados"] = str(_previa["n_espectros"])
+    if st.session_state.get("pred_resultados_cego"):
+        _selos["predicao"] = "cego" if _pt else "blind"
+    if st.session_state.get("ultima_pasta"):
+        _selos["relatorios"] = "✓"
+
+    _grupo_atual = app_nav.grupo_da_pagina(_pagina_atual)
+    for _grupo in app_nav.GRUPOS:
+        _num = "①②③④"[_grupo.numero - 1]
+        # Numa tela fixa (Início/Visualização) nenhum grupo contém a tela
+        # atual; abre-se o primeiro, como no mockup, para o fluxo ficar à
+        # vista em vez de tudo fechado.
+        _aberto = (_grupo.numero == _grupo_atual.numero if _grupo_atual
+                   else _grupo.numero == 1)
+        with st.expander(f"{_num}  {_grupo.rotulo(_pt)}", expanded=_aberto):
+            for _pag in _grupo.paginas:
+                _selo = _selos.get(_pag.chave)
+                _rot = f"{_pag.icone}  {_pag.rotulo(_pt)}"
+                if _selo:
+                    _rot += f"  ·  {_selo}"
+                if st.button(_rot, key=f"nav_{_pag.chave}",
+                             use_container_width=True,
+                             type=("primary" if _pagina_atual == _pag.chave
+                                   else "secondary")):
+                    _ir_para(_pag.chave)
+
+    st.markdown("---")
+    _lang_choice = st.radio(
+        "🌐 Language", ["EN", "PT"],
+        index=0 if st.session_state.lang == "EN" else 1,
+        key="_sidebar_lang", horizontal=True)
+    if _lang_choice != st.session_state.lang:
+        st.session_state.lang = _lang_choice
+        st.rerun()
+
+# ──────────────────────────────────────────────────────────────────────────
+# Barra superior: título da tela, tema e ações rápidas
+# ──────────────────────────────────────────────────────────────────────────
+_pag_obj = app_nav.pagina_por_chave(_pagina_atual)
+_titulo = _pag_obj.rotulo(_pt) if _pag_obj else ""
+_subtitulo = app_nav.subtitulo(_pagina_atual, _pt)
+
+_c_tit, _c_tema, _c_rel, _c_mod = st.columns([6, 2, 1.6, 1.6])
+with _c_tit:
+    st.markdown(
+        f'<div class="gua-topo"><h1>{_titulo}</h1>'
+        f'<div class="sub">{_subtitulo}</div></div>', unsafe_allow_html=True)
+with _c_tema:
+    # O mockup traz um interruptor Claro/Escuro. O Streamlit NÃO expõe API
+    # para trocar o tema por código (`st.context.theme` é somente leitura) —
+    # forçar por CSS foi exatamente o que quebrou antes. Então aqui fica o
+    # estado real do tema e o caminho para trocá-lo, sem fingir um botão que
+    # não funcionaria.
+    _tema_ativo = _active_theme()
+    st.caption(
+        ("🌗 Tema: **claro**" if _tema_ativo == "light" else "🌗 Tema: **escuro**")
+        if _pt else
+        ("🌗 Theme: **light**" if _tema_ativo == "light" else "🌗 Theme: **dark**"))
+    st.caption(_T("Switch in ⋮ → Settings → Theme"))
+with _c_rel:
+    if st.button(_T("Export report"), use_container_width=True,
+                 key="btn_topo_relatorio"):
+        _ir_para("relatorios")
+with _c_mod:
+    if st.button(_T("Go to Model →"), type="primary",
+                 use_container_width=True, key="btn_topo_modelo"):
+        _ir_para("modelo")
+
+st.divider()
+
+if _IS_PUBLIC_DEMO and _pagina_atual == app_nav.PAGINA_INICIAL:
     st.info(
         "🔬 **Modo demonstração pública** — sem dados reais configurados "
         "neste servidor, então o pipeline roda com **espectros sintéticos** "
@@ -534,67 +919,7 @@ if _IS_PUBLIC_DEMO:
         f"see the [repository]({_tab_sobre._REPO})."
     )
 
-# ──────────────────────────────────────────────────────────────────────────
-# 7 Tabs
-# ──────────────────────────────────────────────────────────────────────────
-
-(tab_proj, tab_dados, tab_preproc, tab_modelo,
- tab_valid, tab_pred, tab_rel, tab_sobre) = st.tabs([
-    "📋 " + _T("Project"),
-    "📂 " + _T("Data"),
-    "⚗️ " + _T("Preprocessing"),
-    "🧮 " + _T("Model"),
-    "📊 " + _T("Validation"),
-    "🔮 " + _T("Prediction"),
-    "📄 " + _T("Reports"),
-    "ℹ️ " + _T("About"),
-])
-
-valores: Dict = {}  # accumulated by widgets from each tab
-
-# ==========================================================================
-#  TAB 1 — PROJECT (guaraci.app_tabs.projeto — item 18)
-# ==========================================================================
-with tab_proj:
-    _tab_projeto.render(pq, _T, is_public_demo=_IS_PUBLIC_DEMO)
-
-# ==========================================================================
-#  TAB 2 — DATA
-# ==========================================================================
-with tab_dados:
-    _tab_dados.render(pq, cfg_base, specs, valores, _widget_para_campo, _CFG_PATH)
-
-
-# ==========================================================================
-#  TAB 3 — PREPROCESSING
-# ==========================================================================
-with tab_preproc:
-    _tab_preprocessamento.render(pq, cfg_base, specs, valores, _widget_para_campo)
-
-
-# ==========================================================================
-#  TAB 4 — MODEL (advanced parameters + execution)
-# ==========================================================================
-with tab_modelo:
-    _tab_modelo.render(pq, cfg_base, specs, valores, _T, _widget_para_campo,
-                       _MODO_ANALISE_ROTULO, _MODO_ANALISE_AJUDA, _CFG_PATH)
-
-
-# ==========================================================================
-#  TAB 5 — VALIDATION
-# ==========================================================================
-with tab_valid:
-    _tab_validacao.render(_T, _tok, _ler_resumo, _listar_figuras)
-
-
-# ==========================================================================
-#  TAB 6 — PREDICTION
-# ==========================================================================
-with tab_pred:
-    _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok)
-
-
-
+valores: Dict = {}  # accumulated by widgets from the Data/Preproc/Model screens
 
 # ==========================================================================
 #  Report cache — avoids regenerating on every Streamlit rerun.
@@ -604,37 +929,61 @@ with tab_pred:
 # ==========================================================================
 @st.cache_data(show_spinner=False)
 def _pdf_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_pdf_relatorio(pasta, dict(proj_items)).read()
+    return reports.generate_pdf_report(pasta, dict(proj_items)).read()
 
 @st.cache_data(show_spinner=False)
 def _word_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_word_relatorio(pasta, dict(proj_items)).read()
+    return reports.generate_word_report(pasta, dict(proj_items)).read()
 
 @st.cache_data(show_spinner=False)
 def _excel_bytes(pasta: str) -> bytes:
-    return reports.gerar_excel_relatorio(pasta).read()
+    return reports.generate_excel_report(pasta).read()
 
 @st.cache_data(show_spinner=False)
 def _latex_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_latex_template(pasta, dict(proj_items))
+    return reports.generate_latex_template(pasta, dict(proj_items))
 
 @st.cache_data(show_spinner=False)
 def _pptx_bytes(pasta: str, proj_items: tuple) -> bytes:
-    return reports.gerar_pptx_relatorio(pasta, dict(proj_items)).read()
+    return reports.generate_pptx_report(pasta, dict(proj_items)).read()
 
 
 # ==========================================================================
-#  TAB 7 — REPORTS
+#  Roteamento das telas
 # ==========================================================================
-with tab_rel:
+# Só a tela escolhida é desenhada. Antes, `st.tabs` montava as 8 abas em
+# todo rerun (inclusive as caras, como galeria de figuras e geração de
+# relatório), mesmo com o usuário olhando uma só.
+_pagina = st.session_state.pagina
+
+if _pagina == "inicio":
+    _tab_inicio.render(pq, _T, _ir_para, _tok)
+elif _pagina == "visualizacao":
+    _tab_visualizacao.render(_T, _tok)
+elif _pagina == "projeto":
+    _tab_projeto.render(pq, _T, is_public_demo=_IS_PUBLIC_DEMO)
+elif _pagina == "dados":
+    _tab_dados.render(pq, cfg_base, specs, valores, _widget_para_campo,
+                      _CFG_PATH, _T)
+elif _pagina == "preprocessamento":
+    _tab_preprocessamento.render(pq, cfg_base, specs, valores,
+                                 _widget_para_campo, _T)
+elif _pagina == "modelo":
+    _tab_modelo.render(pq, cfg_base, specs, valores, _T, _widget_para_campo,
+                       _MODO_ANALISE_ROTULO, _MODO_ANALISE_AJUDA, _CFG_PATH)
+elif _pagina == "validacao":
+    _tab_validacao.render(_T, _tok, _ler_resumo, _listar_figuras)
+elif _pagina == "predicao":
+    _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok, _T)
+elif _pagina == "relatorios":
     _tab_relatorios.render(pq, _MODO_ANALISE_ROTULO, _zip_da_pasta,
                           _pdf_bytes, _word_bytes, _excel_bytes,
                           _latex_bytes, _pptx_bytes,
-                          _ler_resumo, _ler_model_card, _listar_figuras)
-
-
-# ==========================================================================
-#  TAB 8 — ABOUT
-# ==========================================================================
-with tab_sobre:
+                          _ler_resumo, _ler_model_card, _listar_figuras, _T)
+elif _pagina == "sobre":
     _tab_sobre.render(pq, _T)
+else:
+    # Chave desconhecida (ex.: sessão antiga com estado salvo): volta ao
+    # Início em vez de renderizar uma tela em branco.
+    st.session_state.pagina = app_nav.PAGINA_INICIAL
+    st.rerun()

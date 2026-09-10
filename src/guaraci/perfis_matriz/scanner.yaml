@@ -1,0 +1,20 @@
+# Perfil de tecnica de imagem: scanner de mesa/documento (superficie plana,
+# iluminacao interna do proprio aparelho, resolucao alta e consistente).
+descricao: "Colorimetria digital via scanner (documentos/laminas planas)"
+unidade_eixo: "indice"
+default_preprocessing: "autoscaling"
+vocabulario:
+  classe: "classe"
+  classe_plural: "classes"
+  matriz: "a amostra escaneada"
+  alvo: "o teor do analito de interesse"
+  conforme: "conforme"
+  nao_conforme: "nao conforme"
+codigos_classe: {}
+faixa_trabalho: null
+referencia: ""
+resolucao_esperada: "300 DPI ou superior"
+formatos_aceitos: [".png", ".tif", ".tiff"]
+# Aparelho fixo, sem variacao de camera -- mesmo patamar de controle de
+# "bancada". "high" tipicamente alcancavel com esforco minimo.
+nivel_agrupamento_tipico: "high"

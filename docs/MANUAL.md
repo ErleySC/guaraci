@@ -5,8 +5,10 @@
 > instalação, citação e licença, ver `README.md`.
 
 O **GUARACI** é uma plataforma de quimiometria multitécnica para autenticação
-e caracterização de matrizes complexas — óleos amazônicos por FT-NIR e
-qualquer dado espectral ou tabular (Raman, UV-Vis, FTIR, cromatografia).
+e caracterização de matrizes complexas, a partir de qualquer dado espectral
+ou tabular (FT-NIR, NIR, MIR, Raman, UV-Vis, cromatografia). O que é
+específico de cada matriz vive num **perfil** (`guaraci/perfis_matriz/*.yaml`),
+nunca no código-fonte — ver a seção "Perfis de matriz".
 Cobre todo o fluxo científico — análise exploratória, classificação,
 autenticação, quantificação e relatórios de publicação — com validação
 estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
@@ -17,6 +19,7 @@ estatística rigorosa e proteção contra vazamento de réplicas em cada etapa.
 2. [Modos de análise e objetivo científico](#2-modos-de-análise-e-objetivo-científico)
 3. [Estrutura de saída dos resultados](#3-estrutura-de-saída-dos-resultados)
 4. [Fontes de dados de entrada](#4-fontes-de-dados-de-entrada)
+4b. [Perfis de matriz e mode cego](#4b-perfis-de-matriz-e-mode-cego)
 5. [Funcionalidades científicas](#5-funcionalidades-científicas)
 6. [Fluxo típico na interface web](#6-fluxo-típico-na-interface-web)
 7. [Mapa dos módulos (para desenvolvedores)](#7-mapa-dos-módulos-para-desenvolvedores)
@@ -34,7 +37,7 @@ O código fica no pacote `guaraci` (em `src/`). Instale uma vez com
 
 | Forma | Comando | Para quem |
 |---|---|---|
-| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, 8 abas guiadas. Demo público: <https://guaraci.streamlit.app> |
+| **Web (Streamlit)** | `streamlit run app_quimiometria.py` | Uso visual, navegação lateral em 4 grupos + telas Início/Visualização. Demo público: <https://guaraci.streamlit.app> |
 | **Assistente de terminal** | `guaraci` (ou `PYTHONPATH=src python -m guaraci.guaraci`) | Menu interativo colorido, sem editar código |
 | **Pipeline direto** | `python -m guaraci.pipeline --rodar` | Execução automatizada a partir de `config.yaml` |
 
@@ -61,7 +64,7 @@ no meio do log, depois de a execução já ter começado:
 
 Também mostra uma **estimativa de tempo** (faixa, não valor exato — ex.:
 `~6-15 min`), calibrada em medição real, não em regra de bolso. Quando
-`n_jobs_permutacao=1` e há muitas permutações, o checklist sugere
+`n_jobs_permutation=1` e há muitas permutações, o checklist sugere
 explicitamente subir esse valor: o resultado é idêntico (mesmo seed, mesma
 partição), só o tempo de execução muda.
 
@@ -80,20 +83,20 @@ progresso do aplicativo web.
 
 ## 2 Modos de análise e objetivo científico
 
-O **modo de análise** define o que o pipeline faz. Na interface aparecem com
+O **mode de análise** define o que o pipeline faz. Na interface aparecem com
 nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 ### 2.1 Os três níveis (N1 / N2 / N3)
 
-> `N1`/`N2`/`N3` é o código interno de `cfg.nivel` (usado em `config.yaml`,
+> `N1`/`N2`/`N3` é o código interno de `cfg.level` (usado em `config.yaml`,
 > nunca exibido como termo primário na CLI/web). No nome da pasta de saída
 > (seção 3), cada nível vira um slug amigável: `N1`→`PorEspecie`,
 > `N2`→`Autenticacao`, `N3`→`Quantificacao` (corrigido em 2026-07-13 —
 > versões anteriores gravavam `N1`/`N2`/`N3` cru no nome do diretório).
 
 - **N1 — Classificação (por espécie).**
-  Identifica a qual espécie/classe cada amostra pertence (por exemplo, 13 a
-  14 óleos amazônicos). Método: **PLS-DA** com `GroupKFold` anti-vazamento
+  Identifica a qual classe cada amostra pertence (espécie, variedade, tipo —
+  o nome vem do perfil de matriz). Método: **PLS-DA** com `GroupKFold` anti-vazamento
   de réplicas (as réplicas T1/T2/T3 do mesmo ponto amostral nunca são
   separadas entre treino e validação).
 
@@ -112,17 +115,44 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 - **N3 — Quantificação (% de adulterante).**
   Estima o teor de adulterante por **regressão PLS calibrada por espécie**
-  (`pls_regressao_por_especie`). Reporta também as **figuras de mérito
+  (`pls_regression_by_species`). Reporta também as **figuras de mérito
   analíticas** — LOD, LOQ, sensibilidade, sensibilidade analítica (γ) e
   seletividade, segundo Valderrama, Braga e Poppi (2009) — calculadas
   automaticamente a partir das réplicas físicas (T1/T2/T3) de cada espécie.
-  Além do bloco de texto no console e no `resumo_modelo.txt` ("*Analytical
-  Figures of Merit*"), essas figuras de mérito têm agora uma **representação
-  gráfica dedicada** (`figS3_merito_regressao.png`, ver seção 5) — LOD/LOQ e
-  seletividade por espécie lado a lado, com indicação explícita ("n/a") para
-  espécies sem réplicas físicas suficientes para estimar o ruído
-  instrumental. O *split* calibração/validação dessa regressão aceita dois
-  métodos via `divisao_cal_val` no `config.yaml` (hiperparâmetro avançado,
+  **LOD/LOQ como intervalo, não ponto (Bloco 12):** o ruído instrumental
+  (`delta_x`) usado no LOD/LOQ é ele próprio uma *estimativa* com graus de
+  liberdade limitados (poucas réplicas físicas por espécie) — reportar só o
+  valor pontual esconde essa incerteza. Cada LOD/LOQ vem acompanhado de um
+  **intervalo de confiança** (95% por padrão, via qui-quadrado sobre a
+  variância pooled — conceito de reportar o limite de detecção como
+  intervalo, não número único, segue Allegrini e Olivieri, 2014, *Anal.
+  Chem.* 86(15):7858-7866) **e** da **faixa e desvio-padrão do próprio
+  conjunto de validação** ao lado — um LOD pequeno não diz nada sozinho se
+  o teor de validação variou pouco. Aparece no console, no
+  `resumo_modelo.txt` e no `model_card.md` sempre junto do LOD/LOQ pontual,
+  nunca isolado. Além do bloco de texto, essas figuras de mérito têm uma
+  **representação gráfica dedicada** (`figS3_merito_regressao.png`, ver
+  seção 5) — LOD/LOQ e seletividade por espécie lado a lado, com indicação
+  explícita ("n/a") para espécies sem réplicas físicas suficientes para
+  estimar o ruído instrumental.
+  **Faixa de decisão em 3 estados (Bloco 24):** todo teor previsto é
+  categorizado contra esse mesmo LOD/LOQ — `nao_detectavel` (< LOD),
+  `zona_cinzenta` (entre LOD e LOQ: detecção possível, quantificação não
+  confiável) e `quantificado_com_confianca` (≥ LOQ). As colunas
+  `faixa_decisao`, `lod` e `loq` saem no CSV de predição da **CLI e da aba
+  Predição do app web** (paridade garantida por
+  `tests/test_paridade_predicao_cli_web.py`); na web a coluna vem colorida
+  e há um resumo com a contagem de amostras em cada faixa. Quando o modelo
+  da espécie não tem LOD/LOQ persistido (ou não computável, sem réplicas
+  suficientes), a faixa é `None` e a interface diz isso — nunca
+  "não detectável" por omissão.
+  **RPD/RER** (`chemometric_stats.rpd_rer`)
+  já estavam implementados antes deste bloco — reverificado por leitura
+  direta do código nesta revisão, não presumido da memória: razão SD/SEP e
+  amplitude/SEP, com as faixas de interpretação de Williams (2014), já
+  integrados ao pooled do `pls_regression_by_species`. O *split*
+  calibração/validação dessa regressão aceita dois
+  métodos via `cal_val_split` no `config.yaml` (hiperparâmetro avançado,
   **não** exposto no aplicativo/CLI — mesmo padrão de
   `ipls_n_intervalos`/`vip_threshold_sel`): `"aleatoria"` (padrão,
   `GroupShuffleSplit` *group-aware*) ou `"kennard_stone"` (Kennard e Stone,
@@ -141,8 +171,8 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   o título + o `resumo_modelo.txt` trazem o **contador de falhas** (ex.: "3/9
   combinações abaixo de R²cv = 0,70") — para que uma quantificação que só
   funciona em parte das combinações não seja lida como sucesso geral. O
-  adulterante de cada amostra é derivado do `mae_id`. *(No modo sintético, ative
-  com `sint_adulterantes` no `config.yaml`, ex.: `["S","M","A"]`.)*
+  adulterante de cada amostra é derivado do `mae_id`. *(No mode sintético, ative
+  com `synthetic_adulterants` no `config.yaml`, ex.: `["S","M","A"]`.)*
 
 ### 2.2 Objetivo científico: Exploratório, Classificação, Quantificação
 
@@ -200,12 +230,12 @@ aparecerem como valores não computados.
 
 **Curadoria de figuras por tipo de análise (regras adicionais):**
 - **DD-SIMCA** (autenticação de pureza) é um conceito de **N2**. Em **N1**
-  (classificação por espécie), o toggle `ddsimca`/`executar_ddsimca` é
+  (classificação por espécie), o toggle `ddsimca`/`run_ddsimca` é
   **ignorado com aviso** — não agrega a um estudo de identificação de
   espécie. Em N2 ele é sempre ligado automaticamente (não precisa
   configurar).
 - **OPLS-DA** não é específico de nenhum nível — no Guaraci ele discrimina
-  **espécie** (mesmo alvo do PLS-DA, via LDA quando há mais de duas
+  **espécie** (mesmo alvo do PLS-DA, via PLS2 quando há mais de duas
   classes), então continua disponível como extra no objetivo Classificação.
 
 **Conjunto padrão de fábrica (~8 a 10 figuras "*core*"), qualquer nível:**
@@ -229,7 +259,7 @@ Cada execução grava seus resultados em uma hierarquia de pastas que separa
 conteúdo por categoria:
 
 ```text
-<pasta_saida_raiz>/
+<output_root_folder>/
   <Amostra>/
     <Modo>/
       <Execução>/
@@ -241,7 +271,7 @@ conteúdo por categoria:
 
 - **`<Amostra>`** — identificador do conjunto de dados. Vem do rótulo livre
   `tag` (em `Config`/`config.yaml`) quando preenchido; senão é derivado
-  automaticamente do modo de entrada (nome do arquivo CSV, nome da pasta de
+  automaticamente do mode de entrada (nome do arquivo CSV, nome da pasta de
   espectros, ou `"sintetico"` para dados de teste).
 - **`<Modo>`** — rótulo amigável do objetivo científico resolvido:
   `Exploratorio`, `Classificacao` ou `Quantificacao`.
@@ -251,7 +281,7 @@ conteúdo por categoria:
   `Quantificacao` — corrigido em 2026-07-13; versões anteriores usavam
   `N1`/`N2`/`N3` cru aqui).
 - **`Graficos/`** — todas as figuras (`.png`/`.pdf`/`.svg`, conforme
-  `formato_saida`), incluindo subpastas de figuras detalhadas (por exemplo,
+  `output_format`), incluindo subpastas de figuras detalhadas (por exemplo,
   `ddsimca/`).
 - **`Tabelas/`** — dados tabulares em CSV (identificadores de amostra,
   metadados, teste de Martens, comparação de *pipelines*, benchmarks).
@@ -286,19 +316,79 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 |---|---|---|
 | `dx` | Espectros JCAMP-DX (FT-NIR/Raman/MIR) | Padrão; uma subpasta por classe |
 | `csv` | Tabela genérica (colunas espectrais + uma coluna de classe) | Qualquer dado tabular |
-| `imagem` | **Colorimetria digital (protótipo)** | Ver adiante |
+| `imagem` | Colorimetria digital (protótipo só sem garantia de agrupamento — ver adiante) | Ver adiante |
+| `hsi` | Imageamento hiperespectral — aceita cubo próprio, offline (ver adiante) | Distinto de `imagem`: por pixel, não por foto |
 | `sintetico` | Dados simulados | Para testes/demonstração |
 
-**Modo `imagem` (colorimetria digital, protótipo):** extrai estatísticas de
+**Modo `imagem` (colorimetria digital):** extrai estatísticas de
 cor (média/desvio-padrão por canal em RGB, HSV e Lab — 18 variáveis) de cada
 fotografia e, opcionalmente, textura (GLCM, requer `pip install
-scikit-image`). Mesma convenção de pastas do modo `dx` (uma subpasta por
+scikit-image`). Mesma convenção de pastas do mode `dx` (uma subpasta por
 classe). A partir da extração, toda a maquinaria quimiométrica (PCA, PLS-DA,
 DD-SIMCA, seleção de variáveis, figuras de mérito) funciona sem alteração —
 cada estatística de cor vira uma "variável", exatamente como um comprimento
 de onda.
 
-**Duas configurações obrigatórias ao usar `modo="imagem"`:**
+**Três níveis de garantia de agrupamento (Bloco 8, 2026-08-25).** Ao
+contrário do mode `dx` (que sempre tem `mae_id` real, extraído do
+metadado `##TITLE=`), o mode `imagem` detecta automaticamente qual fonte
+de agrupamento por amostra física está disponível, nesta ordem de
+prioridade:
+
+1. **`high`** — subpasta por amostra física: `Classe/Amostra/*.jpg`, um
+   nível extra opcional dentro da subpasta de classe. Cada subpasta de
+   amostra vira um grupo; as fotos dentro dela são réplicas do mesmo
+   grupo. Sem parsing de nome, sem ambiguidade. Detectado automaticamente
+   quando **toda** subpasta de classe contém só subpastas (nunca arquivo
+   solto).
+2. **`medium`** — CSV de associação manual (`amostras.csv` na raiz da
+   pasta de dados, colunas `arquivo,id_amostra`, caminho relativo à raiz).
+   Usado quando o nível `high` não está presente. **Toda** imagem
+   carregada precisa aparecer no CSV — cobertura parcial falha com
+   mensagem explícita listando os arquivos faltantes, nunca processa
+   parcialmente em silêncio.
+3. **`none`** — nem subpasta por amostra nem CSV presentes: o sistema
+   aceita processar mesmo assim (uso direto, "só jogar as fotos e
+   rodar"), mas cai em `StratifiedKFold` (sem proteção contra vazamento
+   entre fotos da mesma amostra) e declara isso explicitamente em três
+   lugares — log da execução, `model_card.md` e o manifesto do modelo
+   (`*.manifest.json`) — nunca só em comentário/docstring interno. Os
+   geradores de relatório (PDF/Word/LaTeX) carimbam **"PROTOTYPE OUTPUT —
+   NO GROUPING GUARANTEE"** só neste nível.
+
+EXIF **não** é usado como fonte de agrupamento — avaliado e descartado:
+recompressão/edição de apps de galeria/mensageria apaga o metadado na
+prática, e mesmo quando presente, fotos tiradas numa janela de tempo curta
+não garantem "mesma amostra física".
+
+Perfis de técnica de aquisição (`bancada`/`celular`/`scanner`, em
+`guaraci/perfis_matriz/`) declaram resolução esperada, formatos aceitos e
+o nível de garantia **tipicamente** alcançável por aquele fluxo de
+trabalho — informativo, nunca restritivo: o nível real de cada execução é
+sempre decidido pelos dados fornecidos.
+
+Exemplo mínimo dos três modos de uso:
+
+```
+# Nível "high" — pasta organizada por amostra física
+dados/Puro/amostra01/foto1.jpg
+dados/Puro/amostra01/foto2.jpg
+dados/Puro/amostra02/foto1.jpg
+dados/Adulterado/amostra01/foto1.jpg
+
+# Nível "medium" — pasta flat + CSV de associação na raiz
+dados/Puro/foto1.jpg
+dados/Puro/foto2.jpg
+dados/amostras.csv        # arquivo,id_amostra
+                           # Puro/foto1.jpg,S1
+                           # Puro/foto2.jpg,S1
+
+# Nível "none" — pasta flat, sem CSV (uso direto, sem garantia)
+dados/Puro/foto1.jpg
+dados/Puro/foto2.jpg
+```
+
+**Duas configurações obrigatórias ao usar `mode="imagem"`:**
 1. `pre_processamento` deve ser `autoscaling` ou `mc` — **nunca** um preset
    com Savitzky-Golay (`msc_sg_mc`/`snv_sg_mc`), que pressupõe um sinal
    espectral contínuo, sem sentido para um vetor curto de estatísticas de
@@ -309,8 +399,224 @@ de onda.
    (4000–10000) descartariam todas as variáveis.
 
 Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
-usuário definir a região de interesse via `imagem_recorte` (recorte
+usuário definir a região de interesse via `image_crop` (recorte
 retangular relativo, `config.yaml`) antes da extração.
+
+**Modo `hsi` (imageamento hiperespectral):** DISTINTO do mode `imagem`
+acima — opera **por pixel** de um cubo hiperespectral (formato ENVI,
+par `.hdr`+`.bin`), não por foto inteira. Fluxo: leitura genérica
+(`hsi_io.load_hsi_folder_dataset`) → quality gate (saturação, SNR,
+fração de pixels válidos) → segmentação objeto/fundo (PCA+Otsu) →
+extração dos pixels da ROI, cada um marcado com o `group_id` do objeto
+físico de origem (mesmo conceito de `mae_id`, nunca dois pixels do
+mesmo objeto em lados diferentes de um split) → PLS-DA por pixel
+(reaproveita `PLSDAClassifier`) com agregação por objeto (classe
+majoritária + heterogeneidade) → mapa de classificação espacial →
+validação.
+
+**Aceita o cubo do PRÓPRIO usuário** (Passo 111) — `hsi_dataset_folder`
+aponta pra' QUALQUER pasta com cubos ENVI, convenção de subpasta-por-
+classe (mesma do mode `dx`/`imagem`), sem exigir nenhum arquivo de
+dataset público. Agrupamento por amostra física reaproveita a mesma
+hierarquia de 3 níveis do mode `imagem` (subpasta por amostra física /
+CSV `amostras.csv` de associação na raiz / nenhuma fonte, sempre
+declarado explicitamente, nunca presumido). Funcionamento **offline**
+verificado por teste com o socket de rede desabilitado
+(`tests/test_hsi_offline_prova.py`) — não é alegação.
+
+O dataset público DeepHS Fruit (Varga, Makowski & Zell, IJCNN 2021)
+continua existindo, mas só como **fixture de validação do projeto**:
+`run_hsi_pipeline` detecta automaticamente (presença de um
+`manifest.json` estruturalmente válido) qual dos dois caminhos usar —
+`modo_dataset="publico"`/`"generico"`/`"auto"` (default) força um lado
+ou deixa a detecção decidir. Só o caminho público tem validação externa
+por partição de dia de medição e explicabilidade cruzada (VIP × tabela
+de atribuição química) — nenhum dos dois se aplica a uma pasta genérica
+sem essa partição nativa nem tabela de atribuição química conhecida
+para a matriz do usuário. Para baixar o fixture:
+`scripts/download_datasets/baixar_deephs_kaki.py` (só Kaki/VIS) ou
+`baixar_deephs_fruit_todas.py` (demais frutas/câmeras).
+
+Acessível pela tecla **`[X]`** do menu principal da CLI. Orquestrado
+por `hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a
+forma de dado (por pixel, agregação por objeto) é fundamentalmente
+diferente da matriz amostras×variáveis que os demais modes
+compartilham.
+
+Desempenho no fixture público ainda é modesto em várias combinações
+fruta×câmera (desbalanceamento severo de classes) — números honestos
+em `docs/VALIDACAO_PUBLICA.md` §7 e `docs/PROGRESSO.md`, incluindo uma
+investigação de 4 hipóteses que não resgatou a separabilidade de
+`unripe` em Kiwi/VIS mesmo com amostra estatisticamente suficiente
+(§7, Passos 112/114). Rodar em cubo próprio funciona mecanicamente —
+como qualquer perfil/matriz nova, desempenho na SUA matriz é não
+testado até você testar.
+
+---
+
+## 4b Perfis de matriz e mode cego
+
+### 4b.1 Perfil de matriz — trocar de matriz sem tocar em código
+
+Tudo que é propriedade da **matriz**, e não do **método**, vive num arquivo
+de perfil (`src/guaraci/perfis_matriz/*.yaml`):
+
+| Campo | O que define |
+|---|---|
+| `unidade_eixo` | `cm-1` ou `nm` — aparece nos rótulos e no model card |
+| `eixo_min` / `eixo_max` | faixa espectral usada; só se aplica se você não definiu a sua |
+| `default_preprocessing` | preset inicial adequado à matriz |
+| `vocabulario` | como a saída chama as coisas: `classe`, `matriz`, `alvo`, `conforme`, `nao_conforme` |
+| `faixa_trabalho` | faixa do analito coberta pela calibração; usada para marcar extrapolação |
+| `referencia` | de onde vieram esses valores (nunca inventar) |
+
+```bash
+guaraci perfis                 # lista os perfis embutidos
+guaraci --perfil=milho_nir     # ou o caminho de um YAML seu
+```
+
+Também editável **dentro** do assistente interativo, em `[2] Dados` →
+*Perfil de matriz* — não é só um flag de lançamento. Até 2026-08-27 esse
+campo não estava em `_CONFIG_SPEC`: não tinha entrada de menu e, mais
+grave, **`[S] Salvar Perfil` seguido de `[L] Carregar` resetava
+silenciosamente para `generico`**, mesmo se o usuário tivesse escolhido
+outro perfil na sessão que gerou o `--perfil=` original (achado da
+auditoria de acessibilidade do Passo 83). Corrigido: o campo agora
+persiste em `config.yaml` como qualquer outro.
+
+**Achado relacionado (Passo 85, 2026-08-27).** Verificando a extensão do
+bug acima com um teste de propriedade (Hypothesis), apareceu uma segunda
+via de perda silenciosa de valor no ciclo salvar/carregar: um campo de
+texto (`str`) cujo conteúdo *parece* outra coisa em YAML — `"010"`
+(octal implícito → inteiro `8`), `"1.50"` (float → perde o zero,
+vira `1.5`), `"0x1A"` (hex implícito → `26`) — era escrito **sem aspas**
+em `config.yaml` e, ao recarregar, vinha de volta como outro valor. Não
+era específico de `perfil_matriz`: qualquer campo `str`/`str_opcional`
+(ex.: nome de coluna, caminho) sofria o mesmo se o usuário digitasse algo
+que o YAML interpreta implicitamente. Corrigido em `_fmt_yaml`
+(`config_io.py`): a decisão de citar ou não uma string agora usa o
+próprio `yaml.safe_load` como oráculo (`yaml.safe_load(v) != v` → cita),
+em vez de uma lista fixa de palavras reservadas — cobre qualquer forma
+que o YAML reinterprete, não só as 6 que alguém lembrou de listar.
+
+Uma SEGUNDA via apareceu no mesmo teste, num campo `list` (`excluir_classes`):
+um item contendo `?` — `"0?"` nem chegava a *parsear* de volta (erro), `"?0"`
+virava um mapa `{0: None}` em silêncio — porque `?` só é perigoso dentro do
+CONTEXTO de uma lista `[a, b]`, não como escalar solto (o oráculo acima não
+via problema nele sozinho). Corrigido adicionando `?` ao conjunto de
+caracteres que força aspas em item de lista.
+
+**Testes de propriedade (Hypothesis).** A partir do Passo 85,
+`tests/test_propriedades_hypothesis.py` gera automaticamente valores para
+todo campo de `_CONFIG_SPEC` (não só os que alguém lembrou de escrever à
+mão) e confirma que sobrevivem ao ciclo salvar/carregar — foi este teste
+que achou o bug acima. Roda como dependência de desenvolvimento
+(`pip install -e .[dev]`), nunca em produção.
+
+**Por que o vocabulário importa.** Antes dos perfis, rodar o pipeline sobre
+milho em grão gerava um model card afirmando *"quantificação de adulterante
+em óleo vegetal amazônico"*. Nenhum número estava errado — a frase estava. O
+motor nunca lê esses termos para decidir nada; eles só aparecem em texto, e é
+essa separação que impede o vocabulário de uma matriz de contaminar os
+resultados de outra.
+
+**Matriz sem perfil não roda.** `UnknownProfileError` é levantado
+**antes de carregar qualquer dado**, com a lista de perfis existentes e a
+instrução de como escrever um novo. Rodar mel com a faixa e o vocabulário de
+óleo produziria números que parecem válidos e afirmações químicas que não são.
+
+**Escrevendo um perfil novo:** copie `generico.yaml`, preencha, e passe o
+caminho. Não precisa entrar no pacote nem fazer fork.
+
+**`codigos_adulterante` (Passo 122):** a Identificação (Bloco 9b, §5)
+lê o "segundo fator" de cada amostra do último token do `mae_id`
+(`{código}-{data}-{letra}{teor}`) — a letra vinha de um mapa GLOBAL e
+fixo (`dados_io.ADULTERANTE_NOME`, so' A/M/S → algodão/milho/soja),
+então uma matriz com sua própria convenção de letras nunca formava
+combinação nenhuma. Declare `codigos_adulterante` no seu perfil (ex.:
+`{"X": "quitosana", "Y": "amido"}`) para usar seu próprio mapa, sem
+tocar em código-fonte — vazio (default) preserva o mapa global de
+sempre. A ESTRUTURA do token (1 letra + dígitos no último segmento)
+continua fixa; só o dicionário letra→nome é parametrizável.
+
+### 4b.2 Perfil de técnica de aquisição + perfil combinado
+
+Separado do perfil de **matriz** (o que é a amostra) existe o perfil de
+**técnica de aquisição** (como ela foi capturada) — usado hoje pelo
+mode `imagem` (`bancada.yaml`/`celular.yaml`/`scanner.yaml`, cada um
+com `unidade_eixo="indice"`, resolução esperada, formatos aceitos e o
+nível de garantia de agrupamento TÍPICO daquele fluxo de trabalho — só
+informativo, o nível real é sempre decidido pelos dados, nunca pelo
+perfil, ver §4). Carregado com o mesmo `load_profile` do perfil de
+matriz.
+
+Esses 3 são exemplos PRÉ-CADASTRADOS de conveniência, não um limite
+rígido — uma técnica nova (câmera de drone, microscópio digital, etc.)
+é reconhecida automaticamente assim que declara os mesmos campos
+(resolução esperada/formatos aceitos/nível de agrupamento típico), sem
+precisar entrar no pacote nem editar `perfil_matriz.py` (Passo 124: a
+listagem `guaraci perfis` filtrada por "técnica" classifica pelo
+CONTEÚDO do perfil, não por uma lista fixa de nomes).
+
+**Combinar e salvar** (dentro do assistente interativo, `[2] Dados`,
+depois de escolher tanto `Perfil de matriz` quanto `Perfil de técnica
+de aquisição`): funde os dois com `perfil_matriz.combine_profiles`
+(vocabulário/faixa/eixo sempre da matriz; resolução/formatos/garantia
+típica sempre da técnica; `default_preprocessing` da técnica quando ela
+declarar um) e grava o resultado como um YAML novo em
+`~/.guaraci/perfis_matriz/<nome>.yaml`, pronto pra reusar digitando o
+caminho no campo `Perfil de matriz` numa próxima sessão — nunca precisa
+recombinar toda vez.
+
+**Ao combinar um perfil de matriz ESPECTRAL (nm/cm⁻¹) com uma técnica
+de imagem, o eixo herdado é o da matriz** (`apply_profile` só sobrescreve
+`wn_min`/`wn_max` quando o perfil declara um `eixo_min`/`eixo_max`) —
+usar diretamente um perfil como `mel_vis_nir` (400–1100nm) combinado
+com `celular` produziria uma faixa que descarta TODAS as 18 variáveis
+simbólicas de cor do mode `imagem` (achado da auditoria de
+adaptabilidade, Passo 117). Combine com o perfil `generico` (sem eixo
+declarado) quando a matriz não tiver perfil espectral próprio, ou ajuste
+`wn_min`/`wn_max` manualmente depois de aplicar o perfil combinado.
+
+### 4b.3 Modo cego — o padrão, e por quê
+
+Quem envia uma amostra desconhecida para um modelo de quantificação **não
+sabe a classe dela**. Se a calibração souber, o número medido descreve um
+cenário que o usuário final nunca terá em mãos.
+
+| Modo | O que a calibração por classe usa | Quando usar |
+|---|---|---|
+| `cego` (**padrão**) | a classe **predita** pelo classificador | sempre que o número for para fora |
+| `controle` | a classe **verdadeira** | só para isolar erro de quantificação de erro de classificação, no desenvolvimento |
+
+```bash
+guaraci                     # cego
+guaraci --mode=controle     # marcado como tal em toda a saída
+```
+
+No mode cego, um erro do classificador se propaga para a quantificação — e é
+**correto** que se propague: é o que aconteceria em produção. Quando não há
+classificador ajustado, o mode reportado é `controle-forcado`, nunca `cego`:
+um resultado de controle disfarçado de cego seria pior que um resultado de
+controle assumido.
+
+### 4b.4 O que o software nunca grava
+
+O parser JCAMP lê apenas os 9 campos de que precisa. **`##AUDIT TRAIL`
+(operador, local) e `##$Detector model` não são lidos em momento nenhum** —
+não é sorte, é contrato, e há um teste que falha se alguém os adicionar à
+lista "porque pode ser útil".
+
+O `##TITLE` **é** lido (dele saem classe, teor e o agrupamento de réplicas),
+mas não é gravado: `metadados.csv` passa por `sanitizar_metadados()`, que
+remove `title_original`, `arquivo`, `cod`, `data`, `mae_id` e `subpasta`, e
+os substitui por `grupo_replica` (`G000`, `G001`…) — anônimo, e preservando
+exatamente o agrupamento que sustenta a validação *group-aware*.
+
+Para sanitizar os **arquivos de origem** (útil antes de depositar espectros
+num repositório público), use
+`python scripts/sanitizar_dx.py <entrada> <saida>` — ele escreve cópias e
+**nunca** sobrescreve os originais.
 
 ---
 
@@ -368,7 +674,7 @@ significativo) e um resumo (número de variáveis significativas) no
 **DModX / DModY** (nomenclatura padrão SIMCA-P/Unscrambler, Eriksson et al.,
 2006) — sempre calculados, sem *toggle*: são o **mesmo** T²/Q-resíduo e
 resíduo de predição já usados nas figuras (`fig3_outliers`/
-`fig7_pls_regressao`), apenas **normalizados e nomeados** na escala/convenção
+`fig7_pls_regression`), apenas **normalizados e nomeados** na escala/convenção
 que usuários vindos dessas ferramentas comerciais já reconhecem (DModX ≈ 1 =
 resíduo típico; acima do limite crítico = fora do modelo). Não geram figura
 nova (seria redundante com as já existentes) — aparecem como resumo (limite
@@ -382,16 +688,16 @@ Forest* vs. *Gradient Boosting* vs. XGBoost, sob a mesma validação cruzada
 (*TreeExplainer*).
 
 **Auto-Benchmark de regressão (Quantificação):** PLS-R (o modelo já
-calibrado por `pls_regressao_por_especie`, reaproveitado sem reajuste) vs.
+calibrado por `pls_regression_by_species`, reaproveitado sem reajuste) vs.
 Ridge, Lasso, *Elastic Net*, SVR (RBF) e *Random Forest Regressor* — um
 modelo **por espécie** (mesma arquitetura da quantificação, calibração
 separada evita que a variação entre espécies confunda o sinal de
 adulteração), com o **mesmo *split* calibração/validação** (determinístico,
-mesma semente/`divisao_cal_val` do PLS-R) e o mesmo pré-processamento, para
+mesma semente/`cal_val_split` do PLS-R) e o mesmo pré-processamento, para
 uma comparação honesta ponto a ponto. *Opt-in* via `benchmark_regressao`
 (aplicativo e CLI, categoria Avançado — mesmo padrão do Auto-Benchmark de
 classificação): gera `benchmark_regressao.csv` (RMSEP/R² agregado e por
-espécie) e `fig_benchmark_regressores.png` (*boxplot* de RMSEP por espécie,
+espécie) e `fig_benchmark_regressors.png` (*boxplot* de RMSEP por espécie,
 menor é melhor).
 
 **Predição em amostras novas (aplicativo e CLI):** aplica um modelo já
@@ -424,7 +730,7 @@ Disponível em dois lugares, com a **mesma lógica científica**
 > é um *pickle*: carregá-lo **executa qualquer código contido nele**, antes
 > de qualquer validação de conteúdo ser possível. Por isso, todo
 > carregamento de modelo (CLI e aplicativo) passa por
-> `guaraci.predicao.carregar_modelo(caminho, confiar=True)` — um portão
+> `guaraci.predicao.load_model(caminho, confiar=True)` — um portão
 > único que **recusa carregar sem confirmação explícita**: na CLI, uma
 > pergunta (s/n); no aplicativo, uma caixa de seleção obrigatória. Além
 > disso, todo `modelo_plsda.joblib` exportado pelo pipeline vem com um
@@ -444,7 +750,209 @@ Disponível em dois lugares, com a **mesma lógica científica**
 
 **Figuras:** conjunto essencial por padrão (cerca de 8 a 10 figuras, a
 depender do objetivo — seção 2.2) com opção de figuras detalhadas adicionais
-(`figuras_detalhadas=True`). Formatos PNG/PDF/SVG, DPI configurável.
+(`detailed_figures=True`). Formatos PNG/PDF/SVG, DPI configurável.
+
+### 2.2b Transferência de calibração entre instrumentos (Passo 86 — `transferencia_calibracao.py`)
+
+Um modelo PLS calibrado com espectros de um instrumento tipicamente degrada
+quando aplicado a espectros de OUTRO instrumento (mesma amostra,
+espectrômetro diferente): deriva de comprimento de onda, resposta de
+detector, ótica — produz um deslocamento sistemático que o modelo nunca viu
+no treino. `transferencia_calibracao.py` implementa dois métodos clássicos
+(Wang, Veltkamp e Kowalski, 1991 — *Multivariate instrument
+standardization*, *Analytical Chemistry* 63(23):2750-2756, DOI
+`10.1021/ac00023a016`) para corrigir isso a partir de um PEQUENO conjunto de
+amostras medidas nos DOIS instrumentos (*amostras de transferência*), sem
+recalibrar o modelo do zero:
+
+- **`piecewise_direct_standardization`** (PDS) — uma regressão ridge POR
+  CANAL do instrumento mestre, contra uma janela local de canais vizinhos
+  do escravo. É o método primário: o deslocamento entre instrumentos é
+  predominantemente LOCAL (um pico desloca poucos canais, não o espectro
+  inteiro).
+- **`direct_standardization`** (DS) — uma única regressão ridge global
+  (todos os canais de uma vez). Mais simples, mas o `F` denso (p×p) tende a
+  superajustar com poucas amostras de transferência — na validação contra o
+  Corn (abaixo), DS não reduziu o erro de forma relevante; PDS reduziu.
+
+`apply_standardization(X_novo, transform)` aplica a transformação aprendida
+a espectros novos do instrumento escravo antes de entrar no modelo
+calibrado no mestre.
+
+**Validado contra o Corn** (`test_validacao_publica.py`, dataset público —
+as mesmas 80 amostras medidas em 3 espectrômetros: m5, mp5, mp6): um PLS de
+proteína calibrado só no m5, aplicado direto no mp5, tem RMSEP ≈ 0,51 —
+quase 3,5× o RMSEP do m5 sozinho (≈ 0,148). Com PDS (15 amostras de
+transferência, janela=5, `alpha`=0,001), o RMSEP no mp5 cai para ≈ 0,16 —
+praticamente o mesmo nível do m5 sozinho.
+
+**Limitações conhecidas** (ver seção 9 para a lista completa do projeto):
+- **Quantas amostras de transferência**: a validação acima usou 15 — abaixo
+  disso a regressão ridge por janela fica instável (poucas amostras
+  relativas à largura da janela). Não há um mínimo teórico fechado; 15-20
+  amostras cobrindo a faixa de variação do analito é o que a literatura
+  original recomenda e o que este projeto validou.
+- **`alpha` (regularização) e `janela` são sensíveis ao par de
+  instrumentos** — os valores usados na validação (janela=5, alpha=0,001)
+  foram medidos empiricamente contra o Corn, não são universais. Um par de
+  instrumentos com deslocamento maior/menor pode pedir janela mais larga ou
+  `alpha` diferente; não há afinação automática hoje.
+- **Pressupõe deslocamento predominantemente linear e local** (o que PDS
+  corrige bem). Não corrige efeitos não-lineares fortes de detector, nem
+  substitui uma calibração própria no instrumento de destino quando há
+  amostras suficientes para isso.
+
+### 2.2c Seleção de amostras de calibração — Kennard-Stone, Duplex, SPXY (Passo 87)
+
+Além do Kennard-Stone (1969) já usado internamente pelo pipeline de
+quantificação, `dados_io.py` agora expõe também:
+
+- **`duplex_split`** (Snee, 1977 — *Validation of Regression Models:
+  Methods and Examples*, *Technometrics* 19(4):415-428, DOI
+  `10.1080/00401706.1977.10489581`) — em vez de encher primeiro o treino
+  para só depois sobrar a validação (como KS faz), cresce os DOIS
+  conjuntos em paralelo, alternando — os dois ficam representativos do
+  espaço, não só o treino. `frac_treino=0.5` é o Duplex clássico
+  (alternância estrita); outros valores enviesam a alternância.
+- **`spxy_split`** (Galvão et al., 2005 — *A method for calibration and
+  validation subset partitioning*, *Talanta* 67(4):736-740, DOI
+  `10.1016/j.talanta.2005.03.025`) — o mesmo algoritmo guloso do KS, mas a
+  distância combina X (espectro) **e** y (referência/teor), normalizadas:
+  `d = d_x/max(d_x) + d_y/max(d_y)`. Cobre o espaço espectral E a faixa do
+  analito ao mesmo tempo — KS puro pode deixar de fora o extremo do TEOR
+  se ele não for também um extremo espectral (`test_selecao_amostras.py`
+  tem um caso sintético que reproduz exatamente isso).
+
+Todos os três (`kennard_stone_split`, `duplex_split`, `spxy_split`) têm
+variante `*_group_aware` (mesmo padrão de
+`kennard_stone_split_group_aware`): com `mae_id` disponível (≥4 grupos),
+colapsa cada grupo de réplicas físicas num espectro médio antes de rodar o
+método, depois expande de volta — nenhum dos três separa réplica física
+entre calibração e validação (garantido por teste de propriedade
+Hypothesis, `tests/test_propriedades_hypothesis.py`).
+
+**CLI** — menu principal, tecla `[K]` *Seleção de Amostras* (Bloco 10, ao
+lado do planejamento de coleta): pede um CSV com os espectros (1 amostra
+por linha), opcionalmente uma coluna de referência/teor (habilita SPXY),
+o método e a fração de calibração, e grava uma cópia do CSV com uma coluna
+extra marcando `calibracao`/`validacao` por amostra. Só separa/marca — o
+CSV original nunca é alterado.
+
+### 2.3 Planejamento de coleta (Bloco 10 — `plano_amostral.py`/`plano_coleta.py`)
+
+Antes de coletar dados, dois módulos ajudam a planejar **quanto** coletar
+e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
+
+- **`plano_amostral.py` — quanto coletar.** Duas fontes de garantia,
+  nunca misturadas: (1) o gate **conformal** (Identificar/agrupado) —
+  `n_minimum_conformal(alpha)` reaproveita `conformal.n_minimum_for_alpha`
+  diretamente, garantia *distribution-free* real; (2) **DD-SIMCA por
+  espécie** — `ddsimca_sample_size_guidance(cobertura_alvo)`
+  **nunca promete** uma cobertura-alvo acima do platô medido (~0,94-0,945,
+  ver seção 9) — acima disso, devolve `alcancavel=False` e recomenda o
+  gate conformal em vez de sugerir um `n` que não resolveria o problema.
+- **`plano_coleta.py` — como distribuir.** `plan_collection(classes,
+  n_por_classe, n_sessoes)` distribui as amostras entre sessões de forma
+  **balanceada** (nenhuma sessão fica dominada por uma única classe — o
+  confundimento classe×sessão faria qualquer deriva instrumental
+  daquela sessão ficar indistinguível de efeito de classe) e
+  **aleatoriza a ordem de leitura dentro de cada sessão** (evita ler as
+  amostras em ordem correlacionada com teor/classe, que confundiria
+  deriva instrumental com sinal químico). Gera alertas automáticos:
+  réplica técnica (T1/T2/T3) não conta como amostra independente extra;
+  recomendação de brancos/controles intercalados; aviso forte se só 1
+  sessão foi pedida (impossível separar classe de deriva temporal nesse
+  caso). `plan_from_statistical_target` combina os dois módulos
+  numa chamada só.
+- **Saída:** Markdown (formato primário) + planilha Excel (`openpyxl`,
+  já dependência do projeto — sem biblioteca nova), com a ordem de
+  leitura completa por sessão e a lista de alertas. PDF **opcional**
+  (`export_pdf`, `fpdf2` — já dependência do projeto via `reports.py`,
+  usa `FPDF.table()` nativo), mesmo conteúdo, layout imprimível para
+  levar ao laboratório.
+- **CLI** — menu principal, tecla `[J]` *Planejamento de Coleta*: pede
+  classes, número de sessões, e o alvo estatístico (conformal ou
+  DD-SIMCA); gera Markdown+Excel sempre, e pergunta se também quer PDF
+  (opcional, `(s/N)`); mostra o resumo + alertas na tela.
+
+### 2.4 Auditoria de delineamento (Bloco 11 — `auditoria_delineamento.py`)
+
+Roda **por padrão em toda execução** (não é opt-in), logo após a
+validação de integridade dos dados. Consolida checagens que antes viviam
+espalhadas — algumas já existiam em produção, outras só em scripts
+privados de auditoria, uma (`outside_working_range`) existia sem
+nenhum chamador:
+
+| Checagem | O que verifica |
+|---|---|
+| `agrupamento` | `cfg.grouping_guarantee` (Bloco 8) — se a validação tem proteção real contra vazamento de réplica. |
+| `confundimento_classe_sessao` | Se alguma classe está confinada a **1 única sessão de coleta** (`session_from_mae_id`) enquanto o dataset tem múltiplas sessões — deriva instrumental daquela sessão fica indistinguível de efeito de classe. |
+| `duplicatas` | Reaproveita `pipeline.validate_input` — duplicatas exatas/aproximadas (risco de vazamento treino/teste). |
+| `n_insuficiente` | Quantas sessões independentes cada classe tem, frente ao mínimo do gate conformal (`conformal.n_minimum_for_alpha`). |
+| `faixa_validacao_uso` | Faixa de teor **observada** na calibração vs. faixa de trabalho **declarada** no perfil da matriz (`perfil_matriz.outside_working_range`) — extrapolação silenciosa. |
+| `validacao_externa` | Informativo: PLS-R/pré-processamento têm benchmark público (Tecator); classificação/DD-SIMCA/OPLS-DA ainda não. |
+
+Cada checagem é **silenciável individualmente**, mas exige justificativa
+não-vazia — a checagem silenciada continua aparecendo no relatório
+(severidade `silenciado` + a justificativa anexada), nunca desaparece
+sem deixar rastro. Resultado integrado ao `model_card.md` (seção
+"Auditoria de Delineamento").
+
+**CLI** — menu principal, tecla `[U]` *Auditoria de Delineamento*: roda
+`run_audit` isoladamente sobre o dataset já configurado em `[2] Dados`,
+sem exigir rodar o pipeline de classificação/quantificação inteiro (ex.:
+auditar antes de decidir se vale a pena treinar). Reaproveita
+`load_data`/`validate_input` — mesmo caminho de dados que `executar()`
+usa antes de chamar `run_audit`, nenhuma lógica duplicada. Sem fonte de
+dados configurada, reporta o erro amigável e aponta para `[2] Dados` em
+vez de quebrar.
+
+**Fora do escopo desta versão (registrado, não implementado):** ordem de
+leitura correlacionada com o alvo (teor/classe). O método já existe,
+validado, num script privado que extrai o timestamp de aquisição do
+*audit trail* JCAMP-DX — mas o parser DX em produção não expõe esse
+timestamp hoje; portar isso exige mudança no parser, não só *wiring*.
+
+### 2.5 Sentinela de deriva do domínio de aplicabilidade (Bloco 13b — `sentinela_deriva.py`)
+
+Uma amostra isolada fora do domínio de aplicabilidade pode ser só ruído
+de amostragem — o próprio *alpha* nominal já prevê uma fração de
+rejeições legítimas. O que importa em produção contínua é outra
+pergunta: **a taxa de rejeição está subindo ao longo do tempo** — sinal
+de que o instrumento/matriz/processo derivou desde a calibração?
+
+`SentinelState` acumula 1 booleano (`AD_dentro_dominio`) por amostra
+julgada, com `janela` opcional (`None` = cumulativo sem limite, nunca
+descarta dado silenciosamente; um inteiro ativa janela deslizante para
+detectar deriva **recente** especificamente — o *trade-off* fica
+explícito ao chamador, não escondido atrás de um default mágico).
+`check_drift` testa **H0: taxa de rejeição = alpha nominal** contra
+**H1: taxa > alpha nominal** via **teste binomial exato** unilateral
+(`scipy.stats.binomtest`) — não um limiar cru tipo "2× o nominal", que
+teria taxa de falso alarme dependente de `n` sem justificativa formal.
+
+**Defaults justificados, não escolhidos a dedo:**
+- `n_minimo` (abaixo disso, não testa — sem poder estatístico): por
+  padrão `conformal.n_minimum_for_alpha(alpha_nominal)` — o MESMO mínimo
+  prático já usado em todo o projeto para o gate conformal atingir aquele
+  *alpha* (ex.: 0,05 → 19). Reaproveitado por consistência, não recalculado.
+- `significancia` do teste de deriva: 0,05 por padrão — o mesmo *alpha*
+  nominal usado em todo o projeto para os próprios gates (DD-SIMCA, AD,
+  conformal).
+
+Verificado por simulação (não só "não quebra"): gerando exatamente na
+taxa nominal (H0 verdadeiro), a taxa de falso alarme observada em 300
+repetições Monte Carlo fica próxima do `significancia` declarado; uma
+deriva real (taxa de rejeição 6× o nominal) dispara o alerta com `n`
+suficiente.
+
+**Persistência e integração:** `save_state`/`load_state` (JSON)
+permitem que a sentinela sobreviva entre execuções — uso real (LIMS
+chamando o pipeline ao longo de dias/semanas) não mantém um processo
+Python vivo o tempo todo. CLI — menu `[B]` *Predição em Lote* atualiza
+automaticamente a sentinela persistida ao lado do modelo
+(`<modelo>.joblib.sentinela.json`) a cada rodada, quando o pacote tem
+artefatos de domínio de aplicabilidade, e mostra o status no resumo.
 
 **Figura de mérito analítica dedicada (Quantificação):**
 `figS3_merito_regressao.png` — dois painéis lado a lado: LOD/LOQ por espécie
@@ -474,6 +982,31 @@ próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
 
 ## 6 Fluxo típico na interface web
 
+Desde 2026-09-08 a navegação é uma **barra lateral** (antes eram 8 abas
+horizontais). Ela tem duas telas fixas no topo e quatro grupos numerados
+que refletem a ordem do trabalho:
+
+- **◆ Início** — painel de status (seção 6.1).
+- **🎨 Visualização** — cores das figuras (seção 6.2).
+- **① Preparar** — Projeto · Dados · Pré-processamento
+- **② Executar** — Modelo
+- **③ Analisar** — Validação · Predição · Relatórios
+- **④ Referência** — Sobre
+
+O grupo que contém a tela aberta vem expandido; nas telas fixas abre-se o
+grupo ①. Ao lado de um item aparece um **selo** quando há algo real por
+trás dele: o número de espectros em *Dados* (só depois de carregar a
+prévia), `cego` em *Predição* (quando existe uma predição na sessão) e `✓`
+em *Relatórios* (quando existe uma execução). Nenhum selo é exibido sem
+dado — a mesma regra dos números do painel.
+
+Acima da tela há uma barra com o título e o subtítulo da tela atual, o
+**tema ativo** (somente leitura: o Streamlit não expõe API para trocar o
+tema por código, então ali fica o estado real e o caminho ⋮ → *Settings* →
+*Theme*) e dois atalhos: **Exportar relatório** e **Ir para Modelo →**.
+
+Ordem de trabalho:
+
 1. **Projeto** — preencha nome, autor, instituição e objetivo (campos
    descritivos, entram na capa dos relatórios).
 2. **Dados** — faça *upload* de um CSV ou aponte a pasta de espectros `.dx`
@@ -490,14 +1023,90 @@ próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
 6. **Sobre** — identidade do projeto, comparativo com softwares
    comerciais, licença (GPL-3.0-or-later) e como citar (APA/ABNT/BibTeX).
 
-Tema claro/escuro: menu ⋮ → *Settings* → *Theme* (segue a preferência do
-sistema operacional por padrão).
+### 6.1 Tela Início — painel de status
 
-Cabeçalho: logo, versão e badges (licença/instituição) ficam sempre
-visíveis no topo, antes das abas. Quando o app roda **sem** `config.yaml`
-local (caso do deploy público em `guaraci.streamlit.app`, que não tem
-acesso aos dados reais de pesquisa), aparece um aviso de **modo
-demonstração** explicando que os espectros são sintéticos.
+A tela **◆ Início** resume o estado real da sessão. Abre com uma faixa de
+**próxima ação sugerida** (com o botão que leva à tela certa) e quatro
+cartões: *Dados carregados*, *Espectros médios por classe*, *Resultado da
+predição* e *Faixa de decisão · teor estimado*.
+
+Regra que vale para todos: **evidência ou silêncio**. Onde não há número
+real, o cartão mostra `—` e explica o que falta — nunca zero fingindo ser
+resultado.
+
+- **Sem nada carregado** — cada cartão diz por onde começar; a faixa
+  sugere carregar os espectros.
+- **Com prévia de dados carregada** (botão *Load spectra preview* na tela
+  Dados) — contagem de espectros e classes da prévia; "amostras físicas" e
+  "variáveis espectrais" ficam `—`, porque esses números só existem depois
+  de rodar.
+- **Com execução concluída** — contagens lidas do `resumo_modelo.txt`
+  daquela execução (amostras, variáveis, classes e nº de grupos `mae_id`,
+  que é a contagem de *amostras físicas*), matriz/técnica do perfil ativo,
+  o estado da validação pública correspondente (quando a matriz consta da
+  tabela consolidada de `docs/VALIDACAO_PUBLICA.md`) e o resultado da
+  **auditoria de delineamento** (seção 2.4) daquela execução: quantos
+  críticos/avisos e o detalhe por checagem. Um achado crítico vira a
+  próxima ação sugerida, com o texto real do achado.
+
+Quando a execução é antiga demais para ter o registro da auditoria em
+disco, o painel diz *"auditoria indisponível"* — nunca "nenhum problema
+encontrado", que seria uma afirmação sem lastro.
+
+O cartão **Faixa de decisão** desenha a barra de três zonas (não
+detectado · zona cinza · confiável) com o marcador na posição do teor
+estimado, e só a desenha quando LOD e LOQ existem de fato naquele
+resultado (seção 5, figuras de mérito). Sem LOD/LOQ finitos ele diz isso,
+em vez de desenhar uma faixa sem escala.
+
+### 6.2 Tela Visualização — cores das figuras
+
+A tela **🎨 Visualização** concentra a personalização de cor (antes ficava
+dentro da aba Modelo → 🖼️ Figures).
+
+À esquerda, três esquemas: **padrão Guaraci**, **seguro para daltonismo**
+(Wong 2011/Okabe-Ito) e **alto contraste**, cada um com a amostra das
+cores reais e uma descrição. Abaixo, **cor por classe**, que permite
+trocar a cor de cada classe individualmente — as classes vêm da prévia
+carregada, então esse controle só aparece quando existe dado.
+
+À direita, a **pré-visualização ao vivo**: é a figura de espectros médios
+de verdade, desenhada pela mesma função que o pipeline usa
+(`spectra_preview.plot_mean_spectra` → `paleta_cores.map_class_colors`),
+não uma amostra decorativa. Sem espectros carregados a tela diz isso e
+mostra apenas as amostras de cor.
+
+A escolha é gravada no MESMO arquivo de preferências que a CLI usa
+(`~/.guaraci/visual_config.json`), então vale para as duas interfaces.
+
+Duas regras importantes:
+
+- A paleta vale para as figuras da **próxima execução** — figuras já
+  gravadas em disco não são recoloridas (isso exigiria rodar o pipeline
+  de novo).
+- Uma paleta com **menos cores que o número de classes** é recusada na
+  hora de desenhar (daria a mesma cor a duas espécies): o pipeline volta à
+  paleta de máxima distintividade e registra o motivo no log.
+
+> Corrigido em 2026-09-08: até então a escolha de paleta só alterava
+> `rcParams["axes.prop_cycle"]` do matplotlib, e **nenhuma** figura do
+> pipeline usa esse ciclo (todas passam a cor explicitamente). O menu
+> confirmava a troca e as figuras saíam idênticas.
+
+Tema claro/escuro: menu ⋮ → *Settings* → *Theme* (segue a preferência do
+sistema operacional por padrão). O degradê da barra lateral é montado a
+partir dos tokens do tema **ativo** (`design_tokens`, lidos de
+`st.context.theme`), então ele se redesenha ao trocar de tema em vez de
+ficar preso à paleta de um tema só.
+
+Marca: a logo e a versão ficam no topo da barra lateral. A logo (marca de
+2026-09, ver `docs/DESIGN.md` §1.4) é um PNG transparente exibido sobre
+uma moldura de fundo claro fixo — medido: a tinta mais escura da marca tem
+contraste 1,40:1 contra o fundo do tema escuro, o que a tornaria invisível
+sem essa moldura. Quando o app roda **sem** `config.yaml` local (caso do
+deploy público em `guaraci.streamlit.app`, que não tem acesso aos dados
+reais de pesquisa), aparece um aviso de **mode demonstração** explicando
+que os espectros são sintéticos.
 
 ---
 
@@ -511,16 +1120,26 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | Módulo | Responsabilidade |
 |---|---|
 | `pipeline.py` | Orquestrador `executar()`, menu de terminal legado e **fachada de reexport** de todos os módulos |
-| `modos_analise.py` | **Objetivo científico** (Exploratório/Classificação/Quantificação, seção 2.2): fonte única que decide quais figuras/relatórios cada execução gera (`resolver_objetivo`, `deve_gerar`, `descrever_plano`). `descrever_plano` filtra tanto pelo objetivo quanto pelos módulos opt-in ligados (DD-SIMCA, OPLS-DA, Benchmark...) — alimenta o painel ao vivo do terminal **e** a prévia "O que será gerado" da aba Model do app web, que atualiza em tempo real conforme os toggles mudam |
-| `config_io.py` | **Fonte única da configuração**: `_CONFIG_SPEC` (campo amigável ↔ atributo), ler/gravar/validar/coagir (`carregar_config`, `salvar_config`, `_coagir_valor`, `_validar_semantico`) |
+| `modos_analise.py` | **Objetivo científico** (Exploratório/Classificação/Quantificação, seção 2.2): fonte única que decide quais figuras/relatórios cada execução gera (`resolve_objective`, `should_generate`, `describe_plan`). `describe_plan` filtra tanto pelo objetivo quanto pelos módulos opt-in ligados (DD-SIMCA, OPLS-DA, Benchmark...) — alimenta o painel ao vivo do terminal **e** a prévia "O que será gerado" da aba Model do app web, que atualiza em tempo real conforme os toggles mudam |
+| `config_io.py` | **Fonte única da configuração**: `_CONFIG_SPEC` (campo amigável ↔ atributo), ler/gravar/validar/coagir (`load_config`, `save_config`, `_coagir_valor`, `_validar_semantico`) |
 | `resultados_io.py` | Escrita dos artefatos de uma corrida: `resumo_modelo.txt`, `model_card.md`, identificadores CSV, notas metodológicas, métricas PLS |
 | `config.py` | *dataclass* `Config`, fonte única de `__version__`/`_NIVEL_NOME` e das constantes de nome de pasta (`NOME_GRAFICOS`/`NOME_TABELAS`/`NOME_RELATORIOS`/`NOME_MODELOS`, seção 3) |
 | `chemometric_stats.py` | VIP, Selectivity Ratio, teste de incerteza de Martens, Hotelling T², Q-resíduos, variância explicada, figuras de mérito (LOD/LOQ/SEN/SEL), domínio de aplicabilidade |
 | `paleta_cores.py` | Paleta e marcadores de máxima distintividade por classe |
-| `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e modo sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
-| `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.modo` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
-| `dados_imagem.py` | Colorimetria digital (`modo="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
-| `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `construir_preprocessador` |
+| `dados_io.py` | *Parsing* JCAMP-DX/ASDF, CSV e mode sintético; metadados do `TITLE`; seleção de amostras Kennard-Stone; despacha a leitura via `io_registry.py` |
+| `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.mode` (`dx`/`csv`/`imagem`/`sintetico`) ao leitor correspondente |
+| `dados_imagem.py` | Colorimetria digital (`mode="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
+| `agrupamento_pastas.py` | Hierarquia de 3 níveis de garantia de agrupamento (subpasta/CSV/nenhuma), extraída de `dados_imagem.py` pra' ser reaproveitada por `hsi_io.py` sem duplicar |
+| `hsi_io.py` | Leitor ENVI (`.hdr`+`.bin`) genérico; `load_hsi_folder_dataset` (pasta do próprio usuário, Passo 111) + leitor específico do dataset público DeepHS Fruit/Kaki (`mode="hsi"`) |
+| `hsi_quality.py` | Quality gate de cubo HSI: saturação, SNR (Immerkaer 1996), fração de pixels válidos |
+| `hsi_segmentation.py` | Segmentação objeto/fundo por PCA(PC1)+Otsu, inferência de fundo pela borda da cena |
+| `hsi_pixels.py` | Extração de espectros de pixel da ROI + `group_id` de objeto físico (base do split group-aware) |
+| `hsi_classification.py` | PLS-DA por pixel (reaproveita `PLSDAClassifier`), seleção de LVs por Wold, agregação por objeto |
+| `hsi_chemistry.py` | Explicabilidade cruzada: VIP × tabela de atribuição química (banda↔composto conhecido) — só se aplica ao caminho do dataset público |
+| `hsi_validation.py` | Validação externa por partição nativa de dia/lote (dataset público); `run_internal_validation_group_aware` — só interna, sem particao por dia (Passo 111, dataset genérico) |
+| `hsi_figures.py` | Mapa de classificação espacial por pixel (reaproveita `figuras.save` e a paleta da mascote) |
+| `hsi_pipeline.py` | Orquestração ponta-a-ponta do `mode="hsi"` (não usa `pipeline.executar()` — forma de dado diferente); despacha genérico vs. dataset público (`modo_dataset`, Passo 116) |
+| `preprocessamento.py` | *Transformers* SNV/SavGol/MSC e `build_preprocessor` |
 | `classificadores.py` | DD-SIMCA, OPLS-DA |
 | `figuras.py` | Camada de plotagem (todas as figuras do pipeline, incluindo `fig_merito_regressao`) |
 | `validacao_estatistica.py` | BCa, CV-ANOVA, permutação, teste de Wold, validação cruzada manual |
@@ -532,7 +1151,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `reports.py` | Geração de relatórios do aplicativo web (PDF/Word/Excel/LaTeX/PowerPoint) |
 | `app_logic.py` | Lógica pura da interface web (progresso, formatação, coleta de configuração, leitura de artefatos, captura de log — `LogThreadSafe`), testável sem *Streamlit* |
 | `cli_logic.py` | Lógica pura da CLI de terminal (truncamento, validação de faixas, contagem de arquivos), testável sem *Rich* |
-| `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_metricas_modelo` e `parse_acuracia_por_classe` |
+| `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_model_metrics` e `parse_accuracy_by_class` |
 | `spectra_preview.py` | Carregamento/plotagem de amostra de espectros para prévia (abas Data e Preprocessing) |
 | `app_tabs/` | Um módulo por aba do aplicativo web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `relatorios`, `sobre`) |
 
@@ -587,6 +1206,47 @@ re-executada nesta sessão).
   adulterados) não tem essa limitação — é medida em amostras que nunca
   entraram no treino.
 
+- **DD-SIMCA não converge para a cobertura nominal só com mais amostras
+  de calibração — há um platô assintótico (medido em 2026-08-26, ver
+  `scripts/medicoes/medir_ddsimca_cobertura_vs_n.py`).** Simulação com DGP
+  gaussiano controlado (modelo bem especificado, o cenário mais favorável
+  possível ao método): a cobertura empírica sobe rápido até n≈150 e depois
+  **estanca** num platô de ~0,94-0,945 — inclusive em n=1200, sem sinal de
+  aproximar o nominal 0,95 (α=0,05).
+
+  | n | cobertura | desvio | déficit (1−cobertura) |
+  |---|---|---|---|
+  | 5 | 0,8450 | 0,1510 | 0,1550 |
+  | 10 | 0,8957 | 0,0697 | 0,1043 |
+  | 20 | 0,9038 | 0,0666 | 0,0962 |
+  | 40 | 0,9230 | 0,0346 | 0,0770 |
+  | 80 | 0,9306 | 0,0218 | 0,0694 |
+  | 150 | 0,9428 | 0,0201 | 0,0572 |
+  | 300 | 0,9425 | 0,0122 | 0,0575 |
+  | 600 | 0,9448 | 0,0103 | 0,0552 |
+  | 1200 | 0,9411 | 0,0070 | 0,0589 |
+
+  Nenhuma forma funcional simples (C/n, C/√n, exponencial) ajusta essa
+  curva inteira — C/n teve R²=−1,49 (pior que uma reta horizontal),
+  porque a forma real é "convergência rápida + platô persistente", não
+  uma curva suave até zero. **Consequência prática:** não existe `n`
+  finito que garanta cobertura-alvo abaixo do platô (~0,94-0,945 nesta
+  configuração) via DD-SIMCA (método paramétrico χ²-momentos) — para
+  cobertura-alvo mais exigente, só o gate conformal (`identificacao.py`/
+  `conformal.py`, `ConformalOneClass`) tem garantia formal
+  *distribution-free*, sem esse piso assintótico. Este achado motivou a
+  reformulação do P1 do Bloco 10 (`guaraci plan`): a orientação de
+  tamanho amostral para DD-SIMCA não promete atingir qualquer cobertura
+  aumentando `n`.
+
+  **Retratação:** uma instrução anterior desta sessão citou 3 pontos
+  específicos (0,840@n=80 / 0,921@n=300 / 0,943@n=1200) como "já medidos
+  e validados" — busca no repositório inteiro (código, docs, scripts de
+  medição, arquivo de acompanhamento local) não encontrou nenhum artefato
+  que os sustentasse. A medição real acima não bate com nenhum dos três
+  (diferenças de +0,09, +0,02 e −0,002, sem padrão de erro consistente) —
+  os números citados não vieram de medição real.
+
 - **~~`Q2` muda com a versão do scikit-learn~~ — RESOLVIDO em 2026-08-05.**
   Registrado aqui porque afeta a comparação com resultados anteriores.
   *O problema:* o `StratifiedGroupKFold` do scikit-learn muda a partição
@@ -596,7 +1256,7 @@ re-executada nesta sessão).
   `RMSECV`, acurácia, F1, kappa e até o nº de LVs ótimas dependerem da
   versão instalada.
   *A correção:* o Guaraci passou a usar partição própria
-  (`StratifiedGroupKFoldEstavel`), com ordenação fixada por hash
+  (`StableStratifiedGroupKFold`), com ordenação fixada por hash
   determinístico — mesma partição em qualquer versão de scikit-learn,
   numpy ou Python, em qualquer sistema operacional (verificado: hash da
   partição idêntico em 1.7.2 e 1.9.0).
@@ -610,26 +1270,141 @@ re-executada nesta sessão).
   espectral entre espécies (~90% da variância total) domina completamente
   o sinal de adulteração — o modelo "aprende a prever a média" em vez de
   quantificar. A granularidade correta é **por espécie** (padrão do
-  Guaraci, `pls_regressao_por_especie`) ou, mais fino ainda, **por espécie
+  Guaraci, `pls_regression_by_species`) ou, mais fino ainda, **por espécie
   × adulterante** (o mapa de calor da seção 2.1) — nem todo par
   espécie/adulterante é quantificável, e o heatmap marca explicitamente
   quais falham em vez de escondê-los numa média.
 
-- **Modo imagem (colorimetria digital) é protótipo, não validado com
-  dataset real.** O carregador (`dados_imagem.py`) está documentado no
-  próprio código como protótipo: `conc` e `mae_id` são sempre `None`
-  (sem quantificação, sem proteção anti-vazamento de réplica nesse modo),
-  e o eixo de "variáveis" retornado não corresponde a comprimento de onda
-  físico. Não usar para resultado publicável sem validação adicional.
+- **A identificação de adulterante não pode ser agregada entre espécies —
+  a matriz-hospedeira domina o sinal de adulteração mais que o próprio
+  adulterante (medido e RE-VERIFICADO com script reprodutível em
+  2026-08-26, design do Bloco 9).** Antes de calibrar um identificador de
+  adulterante (conjunto aberto, um por soja/algodão/milho, agregando as 13
+  espécies), testou-se se a assinatura espectral de cada adulterante é
+  consistente entre matrizes — pré-requisito para que uma classe agregada
+  seja estatisticamente válida (exchangeability). Calculou-se, para cada
+  amostra física adulterada (réplicas T1/T2/T3 colapsadas por `mae_id`,
+  espectro pré-processado), o desvio em relação à média da própria
+  espécie pura (delta), e mediu-se quanto dessa direção é explicada por
+  ESPÉCIE vs. por ADULTERANTE (R² tipo ANOVA/PERMANOVA one-way, Anderson
+  2001 — `scripts/medicoes/medir_especie_vs_adulterante_permanova.py`):
+
+  | Corte de teor | R² por adulterante (3 classes) | R² por espécie (13 classes) |
+  |---|---|---|
+  | ≥0% (n=549 amostras físicas) | 0,0032 | 0,5566 (bruto) / 0,5105 (direção normalizada) |
+  | ≥10% (n=216 amostras físicas) | 0,0153 | 0,5873 (bruto) / 0,5160 (direção normalizada) |
+
+  **Espécie explica de 21× a 175× mais variância do delta que o tipo de
+  adulterante** — bem mais forte que a estimativa anterior ("6 a 13×"),
+  não mais fraca. A relação **se fortalece** em concentrações mais altas
+  no lado do adulterante (R² sobe de 0,0032 para 0,0153), consistente com
+  sinal químico ficando mais evidente com mais teor. Isso reforça que o
+  efeito de matriz-hospedeira é real e sistemático, não um artefato de
+  baixa razão sinal-ruído: "soja em Andiroba" e "soja em Castanha do
+  Pará" não compartilham uma direção espectral comum o suficiente para
+  serem tratadas como a mesma população estatística. **A decisão de
+  design permanece a mesma e fica mais bem sustentada, não reaberta:** o
+  identificador de adulterante (Bloco 9) é calibrado por combinação
+  espécie×adulterante, com cobertura reportada como **não validável** no
+  dataset atual (mesmo padrão e mesma linguagem do gate DD-SIMCA, Seção
+  4.6 do relatório PIBIC): 36 das 38 combinações espécie×adulterante têm
+  exatamente 1 sessão de coleta independente (`session_from_mae_id`,
+  Bloco 9b — `grupos_mae_id` inflado pela variação de teor dentro da
+  mesma sessão não conta como independência real). A ressalva "não
+  validado" se propaga para o resultado final de qualquer predição em
+  amostra nova, não fica só no relatório de auditoria interno.
+
+  **Retratação (2026-08-26):** a tabela e a frase "6 a 13×" publicadas
+  antes desta correção NUNCA tiveram um script reprodutível — varredura
+  de lastro (Passo 62, revisão desta sessão) não encontrou nenhum
+  artefato em `scripts/medicoes/` nem nos scripts privados de auditoria
+  que os produzisse. Pior: a aritmética do próprio texto publicado não
+  fechava — das 4 razões possíveis na tabela antiga (0,1866/0,0034=54,9×
+  · 0,1034/0,0034=30,4× · 0,2182/0,0140=15,6× · 0,1147/0,0140=8,2×),
+  nenhuma estava genuinamente entre 6 e 13×. Remedido do zero com a
+  metodologia acima: o R² por adulterante bateu quase exatamente com o
+  citado (0,0032 vs. 0,0034 e 0,0153 vs. 0,0140 — forte indício de que a
+  metodologia reconstruída está alinhada com a original), mas o R² por
+  espécie saiu ~3× maior que o citado (0,55-0,59 vs. 0,19-0,22) — a causa
+  exata dessa diferença específica não foi determinada (o método exato
+  usado para gerar os números antigos não está documentado em código em
+  lugar nenhum). A conclusão qualitativa (espécie domina, decisão de
+  design válida) não muda em nenhum dos dois casos — e fica mais forte
+  com os números corrigidos, não mais fraca.
+
+- **Bloco 9b (implementado e verificado em 2026-08-25): fluxo completo
+  Detectar → Identificar → Quantificar em amostra nova, no mode cego.**
+  `identificacao.py` calibra um ensemble conformal (`ConformalOneClass`,
+  ver `conformal.py`) por combinação espécie×adulterante, reaproveitando o
+  mesmo espaço PCA do domínio de aplicabilidade — sem ajustar um espaço
+  novo por combinação, a maioria tem poucos espectros de 1-2 sessões. A
+  contagem de sessão independente usa `dados_io.session_from_mae_id`
+  (**não** o `mae_id` bruto: uma amostra adulterada tem um `mae_id` por
+  NÍVEL DE TEOR, não por sessão de coleta — contar bruto infla o `n` de 1
+  sessão real para até 15). Reexecutado contra o dataset real após essa
+  correção: **confirma exatamente** os números já citados acima (36
+  combinações com 1 sessão, 2 com 2 — Andiroba×soja e Maracujá×algodão,
+  as únicas com `alpha_alcançável` real de 0,333 em vez de `n/a`).
+  `Identificar` nunca força uma classe: só preenche resultado quando
+  exatamente UMA combinação é aceita sob cobertura estatisticamente
+  validada (nenhuma, no dataset atual). `Quantificar` é bloqueado por
+  `Identificar` (nunca lança exceção — devolve motivo estruturado:
+  `identificacao_desconhecida` ou `identificacao_ambigua`). A ressalva
+  aparece nos 3 lugares combinados (log da execução, addendum "Identificação
+  espécie×adulterante" no `model_card.md`, e `<modelo>.joblib.manifest.json`
+  → `identification_coverage`)
+  — mesmo padrão já usado para `grouping_guarantee` (Bloco 8). A predição
+  em lote (CLI, menu "Predição em Lote") ganha as colunas
+  `classe_identificada`, `identificacao_cobertura`,
+  `identificacao_alpha_alcancavel`, `identificacao_candidatos`,
+  `teor_estimado`, `quantificacao_motivo_bloqueio` e `alpha_total`
+  (limite de união/Bonferroni sobre os alpha de Detectar+Identificar —
+  Vovk, Gammerman & Shafer 2005; Angelopoulos & Bates 2022) sempre que o
+  modelo carregado tiver o ensemble; modelos exportados antes do
+  Bloco 9b continuam funcionando sem essas colunas (retrocompatível).
+
+  **Detectar tem DOIS sinais complementares, não um só.** Revisão com o
+  usuário (mesmo dia): o domínio de aplicabilidade (AD) é ajustado em toda
+  a amostragem — puros **e** adulterados juntos — e responde "isto é
+  parecido com algo que vimos no treino"; uma amostra adulterada passa
+  tranquilamente pelo AD, porque ela faz parte do próprio treino do AD.
+  Isso não é o que "Detectar" deveria checar num fluxo de autenticação. O
+  DD-SIMCA por espécie (`predicao.detect_purity`, novo) é ajustado só nos
+  puros e responde "isto é puro para a espécie predita pela classificação
+  N1" — até esta correção, esse modelo só existia dentro de uma rodada N2
+  isolada e nunca era persistido no `.joblib` para aplicar depois a uma
+  amostra nova. Contra-prova dedicada (`test_ad_e_ddsimca_nao_sao_
+  redundantes`): uma amostra sintética adulterada passa no AD e é
+  corretamente rejeitada pelo DD-SIMCA de pureza — os dois sinais não
+  colapsam no mesmo resultado. Mesmo tratamento honesto de cobertura do
+  restante do Bloco 9b: `n_grupos_calibracao<3` (o caso comum é 1 amostra
+  pura por sessão) não impede o DD-SIMCA de decidir aceitar/rejeitar
+  (método paramétrico χ², não recusa como o conformal), mas o alpha
+  declarado fica de fora da soma de Bonferroni — sem lastro numérico não
+  entra na conta. Ressalva também nos 3 lugares (`purity_coverage` no
+  manifesto, addendum próprio no `model_card.md`, log da execução).
+
+- **Modo imagem (colorimetria digital): protótipo só quando não há fonte
+  de agrupamento por amostra física.** Desde o Bloco 8 (2026-08-25), o
+  carregador (`dados_imagem.py`) detecta automaticamente 3 níveis de
+  garantia de agrupamento — `high` (subpasta por amostra) e `medium` (CSV
+  de associação) têm a MESMA proteção anti-vazamento que dx/sintético;
+  só `none` (nem estrutura nem CSV) cai em `StratifiedKFold` sem proteção
+  e carimba "PROTOTYPE OUTPUT" nos relatórios. `conc` continua sempre
+  `None` (sem quantificação neste protótipo, em qualquer nível), e o eixo
+  de "variáveis" retornado não corresponde a comprimento de onda físico.
+  Não usar nível `none` para resultado publicável sem validação
+  adicional; `high`/`medium` têm a mesma garantia group-aware dos outros
+  mode de entrada.
 
 - **Validado majoritariamente em FT-NIR.** O motor de pré-processamento e
   modelagem é agnóstico ao tipo de espectro (o parser JCAMP-DX aceita
   FT-NIR, NIR, MIR e Raman, e a interface oferece presets de
   pré-processamento para MIR), mas **nenhuma rodada com dado real de MIR
-  ou Raman foi validada neste projeto** — o caso de uso âncora e todos os
-  resultados reportados são FT-NIR de óleos amazônicos. Relatos de uso com
-  outras técnicas são bem-vindos, mas trate como não testado até prova em
-  contrário.
+  ou Raman foi validada neste projeto** — os resultados reportados vêm de
+  datasets públicos de NIR (Eigenvector Corn, Tecator; ver
+  `docs/VALIDACAO_PUBLICA.md`). Relatos de uso com outras técnicas
+  são bem-vindos, mas trate como não testado até prova em contrário.
 
 - **Carregar um modelo `.joblib` executa código arbitrário.** É uma
   limitação do formato pickle, não do Guaraci — ver `SECURITY.md` na raiz
@@ -666,14 +1441,13 @@ re-executada nesta sessão).
 - **Classes com poucas amostras ou espectralmente próximas têm recall mais
   baixo** — reporte sempre a **matriz de confusão completa**, nunca só a
   acurácia agregada, que pode esconder uma classe minoritária mal
-  classificada. Duas espécies de palmácea com assinatura NIR muito
-  próxima (Babaçu e Palmiste) são um caso conhecido de limitação
-  **botânica/química**, não de código — ver `README.md`. *(Números
-  específicos de recall por classe e de espectros descartados por faixa
-  incompatível variam por dataset; a última rodada completa contra o
-  dataset real do TCC não foi re-executada nesta sessão de auditoria —
-  conferir o `resumo_modelo.txt`/matriz de confusão da rodada mais
-  recente para os valores atuais.)*
+  classificada. Classes quimicamente muito próximas — por exemplo, duas
+  espécies da mesma família botânica, ou duas variedades do mesmo grão —
+  podem se sobrepor no espectro: é limitação **química** da técnica, não do
+  código, e nenhum pré-processamento a remove. *(Recall por classe e número
+  de espectros descartados por faixa incompatível variam por dataset;
+  confira o `resumo_modelo.txt` e a matriz de confusão da sua própria
+  rodada.)*
 
 ---
 
@@ -718,9 +1492,51 @@ WOLD, S. Cross-validatory estimation of the number of components in factor
 and principal components models. **Technometrics**, v. 20, n. 4,
 p. 397-405, 1978.
 
+ANGELOPOULOS, A. N.; BATES, S. A gentle introduction to conformal
+prediction and distribution-free uncertainty quantification. **arXiv**,
+2107.07511, 2022.
+
+VOVK, V.; GAMMERMAN, A.; SHAFER, G. **Algorithmic learning in a random
+world**. New York: Springer, 2005.
+
 ---
 
-*Última revisão do manual: novo `docs/VALIDATION.md` (cartão de visita
+*Última revisão do manual: Bloco 9b FECHADO (2026-08-25/26) — Passos 56-57
+da revisão final. (56) O manifesto tinha um ÚNICO booleano
+`quantificacao_disponivel` calculado só de "existe algum pipeline de
+regressão", `true` mesmo com 0/N combinações validadas (quando
+`predict_blind` nunca quantificaria de fato) — substituído por
+`quantificacao_disponivel_com_garantia` (exige combinação validada COM
+modelo de regressão da mesma espécie) + `quantificacao_possivel_sem_
+garantia` (maquinaria existe, sem garantia estatística). (57) Execução com
+dado sintético não se autodeclarava em lugar nenhum — métricas quase
+perfeitas (accuracy/kappa=1,0000, regime ESPERADO do gerador sintético)
+ficavam indistinguíveis de resultado real; `dados_sinteticos` agora no
+manifesto + aviso no topo do `model_card.md` sempre que
+`cfg.mode=="sintetico"`. Antes, mesmo Bloco 9b: Detectar fechado com um
+segundo sinal complementar (`predicao.
+detect_purity`, DD-SIMCA por espécie ajustado só nos puros, persistido no
+`.joblib` pela primeira vez — antes só existia dentro de uma rodada N2
+isolada); o domínio de aplicabilidade sozinho responde "parecido com o
+treino", não "puro", e uma amostra adulterada passa por ele sem problema
+(contra-prova dedicada confirma que os dois sinais não colapsam). Também
+corrigido: addendum de Identificação no `model_card.md` tinha número de
+seção fixo ("## 10.") que aparecia ANTES do addendum de Quantificação
+("## 9.") sempre que a regressão também rodava (append-only, ordem de
+escrita = ordem no arquivo) — título sem número agora. Antes, no mesmo
+Bloco 9b: fluxo completo Detectar
+→ Identificar → Quantificar em amostra nova (mode cego), implementado e
+verificado contra o dataset real: `identificacao.py` novo (ensemble
+conformal por combinação espécie×adulterante), `pipeline.
+pls_regression_by_species` agora persiste os modelos de regressão POR
+ESPÉCIE ajustados (antes só calculava métricas de CV, não guardava o
+modelo pronto para uso), `predicao.predict_blind`/`quantify_sample` novos,
+CLI (menu Predição em Lote) ganha as colunas do fluxo cego. Achado
+corrigido durante a implementação: a contagem de "sessão de coleta
+independente" não pode usar `mae_id` bruto (infla até 15× por diluição de
+teor dentro da mesma sessão) — `dados_io.session_from_mae_id` novo,
+reexecução contra o dataset real confirma os números já citados acima (36
+combinações com 1 sessão, 2 com 2). Antes: novo `docs/VALIDATION.md` (cartão de visita
 técnico) — tabela com 11 linhas de validação contra sklearn/fórmulas
 fechadas (PLS-DA, SNV normalização+invariância de espalhamento, VIP, MSC,
 DD-SIMCA T²/Q-resíduos, CV-ANOVA, BCa, teste de permutação, OPLS-DA),
@@ -728,12 +1544,12 @@ valores obtidos rodando a suíte nesta sessão, com seção honesta do que
 ainda NÃO está validado (dataset público externo, cobertura empírica do
 BCa). Linkado em README.md/README.pt-br.md. Antes: terminologia da
 interface (CLI e README) revisada
-para liderar com o nome amigável do modo de análise ("Classificação por
+para liderar com o nome amigável do mode de análise ("Classificação por
 espécie (N1)" em vez de "N1 — Classificação..."); o código interno N1/N2/N3
 passa a aparecer como referência técnica secundária, nunca como o rótulo
 principal — a tabela de equivalência nível↔objetivo (seção 2.2) já estava
 correta e não mudou. Antes disso: `SECURITY.md` novo (raiz) — carregamento
-de modelo `.joblib` agora passa por `carregar_modelo(confiar=True)`
+de modelo `.joblib` agora passa por `load_model(confiar=True)`
 obrigatório (CLI: confirmação s/n; app: caixa de seleção) + manifesto
 SHA-256 gerado junto de todo modelo exportado, que bloqueia o carregamento
 se o arquivo for trocado depois. Antes disso: nova seção 9 "Limitações
@@ -749,7 +1565,7 @@ eixo de menor alcance fora da área visível — corrigido calibrando por eixo
 e usando o mais restritivo (`_escala_vetores_biplot`, com teste de
 regressão dedicado). Antes disso: nova seção 9 "Limitações
 conhecidas" (item do roadmap CLAUDE.md) — 9 itens verificados no código
-desta revisão (DD-SIMCA/LOGO, regressão por espécie, modo imagem
+desta revisão (DD-SIMCA/LOGO, regressão por espécie, mode imagem
 protótipo, FT-NIR vs. MIR/Raman não validado, `.joblib`/RCE, `mae_id`
 órfão, hiperparâmetros do benchmark sem tuning, sem dataset público
 externo, recall por classe) — números específicos de dataset real
@@ -761,5 +1577,5 @@ leave-one-group-out honesto por réplica `mae_id` — sempre exibida com o núme
 de grupos e aviso de incerteza; `n/a (não validado)` quando há um só grupo de
 puros (substitui a re-substituição, que inflava até 100%). Antes: prévia "O que
 será gerado" em tempo real na aba Model (web), 8ª aba **Sobre** (identidade,
-licença, como citar), cabeçalho com logo/versão/badges e aviso de modo
+licença, como citar), cabeçalho com logo/versão/badges e aviso de mode
 demonstração no deploy público sem `config.yaml` local.*

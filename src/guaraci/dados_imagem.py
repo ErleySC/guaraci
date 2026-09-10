@@ -6,13 +6,13 @@ Protótipo GENERICO (2026-07): converte cada imagem numa matriz de "sinal"
 usando estatisticas de cor (RGB/HSV/Lab) — e opcionalmente textura (GLCM,
 requer scikit-image) — analogo a um espectro: cada imagem vira UMA LINHA da
 matriz X, cada estatistica de canal vira UMA VARIAVEL (coluna), exatamente
-como cada comprimento de onda e uma variavel no modo .dx. A partir dai, TODA
+como cada comprimento de onda e uma variavel no mode .dx. A partir dai, TODA
 a maquinaria quimiometrica existente (PCA, PLS-DA, DD-SIMCA, OPLS-DA, selecao
 de variaveis, figuras de merito) funciona SEM alteracao — essas funcoes so
 enxergam uma matriz numerica, nao sabem se a coluna 47 e um comprimento de
 onda ou o canal G medio de uma foto.
 
-Convencao de pastas: MESMA do modo .dx — uma subpasta por classe (ou pasta
+Convencao de pastas: MESMA do mode .dx — uma subpasta por classe (ou pasta
 unica com arquivos soltos, fallback). Extensoes aceitas: .jpg/.jpeg/.png/
 .bmp/.tif/.tiff.
 
@@ -24,12 +24,36 @@ esse eixo com os nomes reais das features e uma extensao futura (afeta varias
 funcoes de figura em figuras.py, fora do escopo deste prototipo).
 
 mae_id/concentracao: nao ha convencao de metadado equivalente ao ##TITLE=
-do JCAMP-DX para imagens genericas — mae_id fica None (sem agrupamento de
-replicas) e conc fica None (sem quantificacao) neste prototipo. Rotulos vem
-do nome da subpasta (mesma convencao do modo .dx).
+do JCAMP-DX para imagens genericas. `conc` fica None sempre (sem
+quantificacao neste protótipo) e `mae_id` depende do NIVEL DE GARANTIA DE
+AGRUPAMENTO detectado automaticamente na pasta de dados (Bloco 8,
+2026-08-25), nesta ordem de prioridade:
 
-IMPORTANTE — pre-processamento: use `preprocessamento_padrao="autoscaling"`
-(ou "mc") no modo="imagem", NUNCA os presets com Savitzky-Golay
+  - "high"   — subpasta por amostra fisica: cada subpasta de classe
+    contem SO' subpastas (nunca arquivo solto), uma por amostra fisica;
+    cada foto dentro dela e' uma replica do mesmo grupo. Sem parsing de
+    nome, sem ambiguidade.
+  - "medium" — CSV de associacao manual (`amostras.csv` por padrao) na
+    RAIZ da pasta de dados, colunas `arquivo,id_amostra`. Usado quando o
+    nivel "high" nao esta presente. TODO arquivo de imagem carregado
+    precisa aparecer no CSV -- cobertura parcial e' erro, nunca
+    processamento parcial em silencio.
+  - "none"   — nem subpasta por amostra nem CSV presentes: aceita
+    processar mesmo assim (uso pratico, "so' jogar as fotos e rodar"),
+    mas `mae_id` fica None (fallback StratifiedKFold, sem protecao contra
+    vazamento) e a limitacao e' declarada explicitamente em 3 saidas:
+    log da execucao, model card, e manifesto do modelo -- nunca so' em
+    docstring/comentario interno (ver `dados_io._leitor_imagem` e
+    `pipeline.executar`).
+
+EXIF NAO e' usado como fonte de agrupamento -- avaliado e descartado:
+recompressao/edicao (WhatsApp, apps de galeria) apaga o metadado na
+pratica, e mesmo quando presente, "fotos tiradas numa janela de tempo
+curta" nao garante "mesma amostra fisica" (heuristica fragil demais para
+uma alegacao de seguranca contra vazamento).
+
+IMPORTANTE — pre-processamento: use `default_preprocessing="autoscaling"`
+(ou "mc") no mode="imagem", NUNCA os presets com Savitzky-Golay
 ("msc_sg_mc"/"snv_sg_mc"). MSC e SG pressupoem um sinal espectral CONTINUO
 ao longo do eixo de variaveis (comprimento de onda) — nao fazem sentido
 cientifico p/ um vetor curto de estatisticas de cor discretas e heterogeneas
@@ -37,36 +61,45 @@ cientifico p/ um vetor curto de estatisticas de cor discretas e heterogeneas
 EXIGE janela <= numero de variaveis (18 por padrao — sem textura), o que
 pode nem ser satisfeito.
 
-IMPORTANTE — faixa espectral: `carregar_dados()` aplica o mesmo filtro
-wn_min/wn_max do modo .dx sobre o eixo simbolico (indices 0..n_features-1).
+IMPORTANTE — faixa espectral: `load_data()` aplica o mesmo filtro
+wn_min/wn_max do mode .dx sobre o eixo simbolico (indices 0..n_features-1).
 Os defaults de Config (wn_min=4000, wn_max=10000) NAO cobrem esse intervalo
 pequeno e descartariam TODAS as variaveis — ajuste wn_min/wn_max (ex.:
-wn_min=-1, wn_max=100) ao usar modo="imagem".
+wn_min=-1, wn_max=100) ao usar mode="imagem".
 """
 from __future__ import annotations
 
-import glob
 import os
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
+from guaraci import agrupamento_pastas as _ap
+
+__all__ = [
+    "load_image_file",
+    "recortar_relativo",
+    "extract_color_features",
+    "extract_texture_features",
+    "load_images",
+]
+
 _EXTENSOES_IMAGEM = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
-# Nomes das features de cor, na ordem em que `extrair_features_cor` as monta —
+# Nomes das features de cor, na ordem em que `extract_color_features` as monta —
 # usado tambem como "wavenumbers" simbolicos (ver limitacao no docstring do modulo).
-NOMES_FEATURES_COR: Tuple[str, ...] = (
+_NOMES_FEATURES_COR: Tuple[str, ...] = (
     "R_media", "G_media", "B_media", "R_dp", "G_dp", "B_dp",
     "H_media", "S_media", "V_media", "H_dp", "S_dp", "V_dp",
     "L_media", "a_media", "b_media", "L_dp", "a_dp", "b_dp",
 )
-NOMES_FEATURES_TEXTURA: Tuple[str, ...] = (
+_NOMES_FEATURES_TEXTURA: Tuple[str, ...] = (
     "GLCM_contraste", "GLCM_homogeneidade", "GLCM_energia", "GLCM_correlacao",
 )
 
 
-def carregar_imagem_arquivo(caminho: str) -> np.ndarray:
+def load_image_file(caminho: str) -> np.ndarray:
     """Le uma imagem do disco como array RGB uint8 (H, W, 3), via Pillow."""
     from PIL import Image
     with Image.open(caminho) as im:
@@ -137,9 +170,9 @@ def _rgb_para_lab(img_rgb01: np.ndarray) -> np.ndarray:
     return np.stack([L, a, b_], axis=-1)
 
 
-def extrair_features_cor(img: np.ndarray) -> Dict[str, float]:
+def extract_color_features(img: np.ndarray) -> Dict[str, float]:
     """Media e desvio-padrao por canal em RGB, HSV e Lab — 18 features no
-    total, na mesma ordem de `NOMES_FEATURES_COR`. Entrada: array uint8
+    total, na mesma ordem de `_NOMES_FEATURES_COR`. Entrada: array uint8
     (H, W, 3) ou (H, W) RGB/tons de cinza."""
     img = np.asarray(img)
     if img.ndim == 2:
@@ -159,10 +192,10 @@ def extrair_features_cor(img: np.ndarray) -> Dict[str, float]:
     for nome, canal in zip(("L", "a", "b"), range(3)):
         feats[f"{nome}_media"] = float(np.mean(lab[..., canal]))
         feats[f"{nome}_dp"] = float(np.std(lab[..., canal]))
-    return {k: feats[k] for k in NOMES_FEATURES_COR}
+    return {k: feats[k] for k in _NOMES_FEATURES_COR}
 
 
-def extrair_features_textura(img: np.ndarray) -> Dict[str, float]:
+def extract_texture_features(img: np.ndarray) -> Dict[str, float]:
     """Features de textura via GLCM (contraste/homogeneidade/energia/
     correlacao) usando scikit-image — OPCIONAL, retorna dict vazio (com
     aviso) se scikit-image nao estiver instalado. Nao e dependencia
@@ -188,31 +221,50 @@ def extrair_features_textura(img: np.ndarray) -> Dict[str, float]:
     }
 
 
+#: Nome do CSV de associacao manual (nivel "medium"), procurado na raiz da
+#: pasta de dados. Nao configuravel neste prototipo -- ver docstring do modulo.
+_NOME_CSV_AMOSTRAS = _ap.NOME_CSV_AMOSTRAS
+
+_GROUPING_HIGH = _ap.GROUPING_HIGH
+_GROUPING_MEDIUM = _ap.GROUPING_MEDIUM
+_GROUPING_NONE = _ap.GROUPING_NONE
+
+
 def _listar_arquivos_imagem(pasta: str) -> List[str]:
-    """Busca arquivos de imagem por extensao. Usa um set p/ deduplicar: em
-    sistemas de arquivo case-insensitive (Windows, macOS default), buscar
-    "*.png" e "*.PNG" separadamente devolve o MESMO arquivo duas vezes."""
-    encontrados: set = set()
-    for ext in _EXTENSOES_IMAGEM:
-        encontrados.update(glob.glob(os.path.join(pasta, f"*{ext}")))
-        encontrados.update(glob.glob(os.path.join(pasta, f"*{ext.upper()}")))
-    return sorted(encontrados)
+    """Busca arquivos de imagem por extensao -- delega a `agrupamento_
+    pastas.py` (Passo 111, extraido daqui para ser reaproveitado pelo modo
+    `hsi`); mantido aqui com este nome por compatibilidade (testes e o
+    resto deste modulo importam por este nome)."""
+    return _ap.listar_arquivos_por_extensao(pasta, _EXTENSOES_IMAGEM)
+
+
+def _tem_imagem_direta_ou_em_subpasta(caminho: str) -> bool:
+    return _ap.tem_arquivo_direto_ou_em_subpasta(caminho, _EXTENSOES_IMAGEM)
 
 
 def _detectar_subpastas_imagem(raiz: str) -> List[str]:
-    """Subpastas (1 por classe) que contem >=1 arquivo de imagem — mesma
-    convencao do modo .dx (`_detectar_subpastas_classe` em dados_io.py)."""
-    if not os.path.isdir(raiz):
-        return []
-    subpastas = []
-    for nome in sorted(os.listdir(raiz)):
-        caminho = os.path.join(raiz, nome)
-        if os.path.isdir(caminho) and _listar_arquivos_imagem(caminho):
-            subpastas.append(caminho)
-    return subpastas
+    """Subpastas (1 por classe) que contem >=1 arquivo de imagem, direto ou
+    dentro de subpasta de amostra (nivel "high") — mesma convencao do mode
+    .dx (`_detectar_subpastas_classe` em dados_io.py) generalizada para 1
+    nivel extra opcional."""
+    return _ap.detectar_subpastas_por_extensao(raiz, _EXTENSOES_IMAGEM)
 
 
-def carregar_imagens(
+def _subpasta_e_grupo_de_amostras(caminho_classe: str) -> bool:
+    return _ap.subpasta_e_grupo_de_amostras(caminho_classe, _EXTENSOES_IMAGEM)
+
+
+def _detectar_nivel_high(subpastas_classe: List[str]
+                          ) -> Optional[Dict[str, str]]:
+    return _ap.detectar_nivel_high(subpastas_classe, _EXTENSOES_IMAGEM)
+
+
+def _detectar_nivel_medium(pasta_raiz: str, arquivos: List[str]
+                            ) -> Optional[Dict[str, str]]:
+    return _ap.detectar_nivel_medium(pasta_raiz, arquivos, _NOME_CSV_AMOSTRAS)
+
+
+def load_images(
         pasta: str,
         caixa_recorte: Tuple[float, float, float, float] = (0.0, 0.0, 1.0, 1.0),
         incluir_textura: bool = False,
@@ -221,22 +273,37 @@ def carregar_imagens(
                      Optional[pd.DataFrame]]:
     """Carrega uma pasta de imagens (uma subpasta por classe, ou pasta unica
     com arquivos soltos como fallback) e extrai features de cor (+ textura,
-    se pedido) — mesmo contrato de retorno de `dados_io.carregar_dados`:
+    se pedido) — mesmo contrato de retorno de `dados_io.load_data`:
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     `wavenumbers` aqui e um indice simbolico (ver limitacao no docstring do
-    modulo); `conc` e `mae_id` sao sempre None neste prototipo generico
-    (sem convencao de metadado equivalente ao ##TITLE= do JCAMP-DX)."""
+    modulo); `conc` e sempre None (sem quantificacao neste prototipo).
+    `mae_id` depende do nivel de garantia de agrupamento detectado (ver
+    docstring do modulo) -- real p/ "high"/"medium", None p/ "none". O
+    nivel detectado tambem vai em `metadados_df.attrs["grouping_guarantee"]`
+    (o contrato de retorno de 6 posicoes nao muda; o nivel viaja junto do
+    DataFrame de metadados que ja' faz parte do contrato)."""
     subpastas = _detectar_subpastas_imagem(pasta)
     if subpastas:
         arquivos: List[Tuple[str, str]] = []
         for sp in subpastas:
-            arquivos.extend((a, os.path.basename(sp))
-                             for a in _listar_arquivos_imagem(sp))
+            classe = os.path.basename(sp)
+            diretos = _listar_arquivos_imagem(sp)
+            if diretos:
+                arquivos.extend((a, classe) for a in diretos)
+            else:
+                # nivel "high" em potencial: sem imagem direta, mas com
+                # subpastas de amostra fisica dentro da subpasta de classe.
+                for n in sorted(os.listdir(sp)):
+                    caminho_amostra = os.path.join(sp, n)
+                    if os.path.isdir(caminho_amostra):
+                        arquivos.extend(
+                            (a, classe)
+                            for a in _listar_arquivos_imagem(caminho_amostra))
     else:
         if not os.path.isdir(pasta):
             raise FileNotFoundError(
                 f"Pasta nao existe: {pasta}\n"
-                f"  -> confira cfg.pasta_entrada (modo='imagem').")
+                f"  -> confira cfg.input_folder (mode='imagem').")
         arqs = _listar_arquivos_imagem(pasta)
         if not arqs:
             raise FileNotFoundError(
@@ -244,21 +311,47 @@ def carregar_imagens(
                 f"({', '.join(_EXTENSOES_IMAGEM)}).\n  Pasta: {pasta}")
         arquivos = [(a, "") for a in arqs]
 
+    todos_arquivos = [a for a, _ in arquivos]
+    grupos_high = _detectar_nivel_high(subpastas)
+    if grupos_high is not None:
+        nivel_agrupamento = _GROUPING_HIGH
+        mapa_grupo = grupos_high
+    else:
+        grupos_medium = _detectar_nivel_medium(pasta, todos_arquivos)
+        if grupos_medium is not None:
+            nivel_agrupamento = _GROUPING_MEDIUM
+            mapa_grupo = grupos_medium
+        else:
+            nivel_agrupamento = _GROUPING_NONE
+            mapa_grupo = {}
+
+    if nivel_agrupamento == _GROUPING_NONE:
+        print("[WARNING] Grouping guarantee: NONE -- nenhuma subpasta por "
+              "amostra fisica nem CSV de associacao (amostras.csv) foi "
+              "encontrado. Validacao cai em StratifiedKFold, SEM protecao "
+              "contra vazamento entre fotos da mesma amostra. Resultados "
+              "devem ser tratados como exploratorios. Ver docstring de "
+              "dados_imagem.py para os niveis 'high'/'medium'.")
+    else:
+        print(f"[INFO] Grouping guarantee: {nivel_agrupamento.upper()} "
+              f"({len(set(mapa_grupo.values()))} grupos de amostra fisica).")
+
     linhas: List[np.ndarray] = []
     rotulos: List[str] = []
+    grupos_arr: List[Optional[str]] = []
     meta_rows: List[Dict[str, object]] = []
     n_falhos = 0
 
-    nomes_features = list(NOMES_FEATURES_COR) + (
-        list(NOMES_FEATURES_TEXTURA) if incluir_textura else [])
+    nomes_features = list(_NOMES_FEATURES_COR) + (
+        list(_NOMES_FEATURES_TEXTURA) if incluir_textura else [])
 
     for arq, subpasta_nome in arquivos:
         try:
-            img = carregar_imagem_arquivo(arq)
+            img = load_image_file(arq)
             img = recortar_relativo(img, caixa_recorte)
-            feats = extrair_features_cor(img)
+            feats = extract_color_features(img)
             if incluir_textura:
-                feats.update(extrair_features_textura(img))
+                feats.update(extract_texture_features(img))
         except Exception as e:  # noqa: BLE001 -- parsing defensivo de imagem
             # externa (formato/tamanho variavel); erro impresso COM NOME DO
             # ARQUIVO e contabilizado em n_falhos, nunca silencioso.
@@ -270,8 +363,10 @@ def carregar_imagens(
         linhas.append(vetor)
         classe = subpasta_nome or os.path.splitext(os.path.basename(arq))[0]
         rotulos.append(classe)
+        grupos_arr.append(mapa_grupo.get(arq))
         meta_rows.append({"arquivo": os.path.basename(arq),
-                           "subpasta": subpasta_nome, "especie": classe})
+                           "subpasta": subpasta_nome, "especie": classe,
+                           "grupo_id": mapa_grupo.get(arq)})
 
     if not linhas:
         raise ValueError(f"Nenhuma imagem valida carregada ({n_falhos} com erro).")
@@ -280,9 +375,12 @@ def carregar_imagens(
 
     X = np.array(linhas, dtype=float)
     wavenumbers = np.arange(len(nomes_features), dtype=float)
+    mae_id = (np.array(grupos_arr, dtype=object)
+              if nivel_agrupamento != _GROUPING_NONE else None)
     metadados_df = pd.DataFrame(meta_rows)
+    metadados_df.attrs["grouping_guarantee"] = nivel_agrupamento
     print(f"[INFO] {len(X)} imagens carregadas, {len(nomes_features)} "
           f"features ({'cor+textura' if incluir_textura else 'cor'}).")
 
-    return (wavenumbers, X, np.array(rotulos, dtype=str), None, None,
+    return (wavenumbers, X, np.array(rotulos, dtype=str), None, mae_id,
             metadados_df)
