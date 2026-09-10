@@ -67,6 +67,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _http_retry import urlopen_com_retry  # noqa: E402
+
 _ZIP_URL = ("https://zenodo.org/api/records/19209004/files/"
             "Targeted%20GC-IMS%20Urine%20Dataset%20for%20Anisole%20and%20"
             "2-Heptanone%20Analysis%20in%20Colorectal%20Cancer%20and%20"
@@ -109,7 +112,7 @@ class _HTTPRangeFile(io.IOBase):
     def __init__(self, url: str):
         self.url = url
         req = urllib.request.Request(url, method="HEAD")
-        with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+        with urlopen_com_retry(req, timeout=30) as r:
             self.size = int(r.headers["Content-Length"])
         self.pos = 0
 
@@ -131,7 +134,7 @@ class _HTTPRangeFile(io.IOBase):
             return b""
         req = urllib.request.Request(
             self.url, headers={"Range": f"bytes={self.pos}-{fim}"})
-        with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310
+        with urlopen_com_retry(req, timeout=60) as r:
             dados = r.read()
         self.pos += len(dados)
         return dados

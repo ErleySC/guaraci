@@ -81,6 +81,41 @@ def test_consulta_sem_correspondencia_nao_inventa_nada(vault_real):
 
 
 # ─────────────────────────────────────────────────────────────────────────
+#  Sigla curta não casa substring dentro de outra palavra (achado R3,
+#  rodada multiagente 2026-09-10): consultar_vault.py "EPO" devolvia
+#  "t**EMPO**" como nota principal.
+# ─────────────────────────────────────────────────────────────────────────
+
+def _vault_epo_tempo() -> dict[str, cvv.Nota]:
+    tempo = cvv.Nota(rel="30-Conceitos/tempo.md", stem="tempo", titulo="Tempo de execução",
+                      tags=[], fonte=["docs/x.md"], commit="abc1234",
+                      gerado_em="2020-01-01",
+                      corpo="Discussão sobre tempo de execução do pipeline.")
+    epo = cvv.Nota(rel="30-Conceitos/epo.md", stem="epo", titulo="EPO",
+                    tags=[], fonte=["docs/y.md"], commit="abc1234",
+                    gerado_em="2020-01-01",
+                    corpo="EPO remove a direção de um fator de perturbação.")
+    return {"tempo": tempo, "epo": epo}
+
+
+def test_sigla_nao_casa_substring_de_outra_palavra():
+    notas = _vault_epo_tempo()
+    resultado = cvv.buscar("EPO", notas)
+    assert [n.stem for n in resultado] == ["epo"]   # "tempo" NAO deveria aparecer
+
+
+def test_termo_comum_continua_casando_por_substring():
+    """Contra-prova: a correção não pode virar fronteira de palavra para
+    todo termo -- "valida" precisa continuar achando "validação"."""
+    valida = cvv.Nota(rel="30-Conceitos/validacao.md", stem="validacao",
+                       titulo="Validação group-aware", tags=[],
+                       fonte=["docs/x.md"], commit="abc1234",
+                       gerado_em="2020-01-01", corpo="corpo")
+    resultado = cvv.buscar("valida", {"validacao": valida})
+    assert resultado == [valida]
+
+
+# ─────────────────────────────────────────────────────────────────────────
 #  Alerta de desatualização (Passo 174)
 # ─────────────────────────────────────────────────────────────────────────
 

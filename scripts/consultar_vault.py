@@ -125,6 +125,25 @@ def carregar_vault(vault_dir: Path) -> dict[str, Nota]:
 #  Consulta: busca textual + navegação por grafo (Passo 173)
 # ═════════════════════════════════════════════════════════════════════════
 
+#: Sigla curta (ex.: "EPO", "MCR-ALS"): tudo maiúsculo/dígito/hífen, até 6
+#: caracteres. Achado de auditoria (rodada multiagente 2026-09-10, R3):
+#: `consultar_vault.py "EPO"` casava substring dentro de "t**EMPO**" e
+#: devolvia essa nota como principal -- exatamente o falso "já registrado"
+#: que a consulta prévia existe para evitar. Para sigla, a busca por
+#: título/corpo abaixo passa a exigir fronteira de palavra.
+_RE_SIGLA = re.compile(r"^[A-Z0-9][A-Z0-9\-]{0,5}$")
+
+
+def _contem_com_fronteira(termo: str, texto: str) -> bool:
+    """Substring simples para termo comum (preserva o comportamento
+    existente, ex.: "valida" deve casar dentro de "validação"); fronteira
+    de palavra (`\\b`) quando `termo` parece sigla, para não casar dentro
+    de outra palavra maior por acaso."""
+    if _RE_SIGLA.match(termo):
+        return re.search(rf"\b{re.escape(termo)}\b", texto, re.IGNORECASE) is not None
+    return termo.lower() in texto.lower()
+
+
 def buscar(termo: str, notas: dict[str, Nota]) -> list[Nota]:
     """Busca por (a) nome exato de nota, (b) título/tag, (c) corpo --
     nessa ordem de relevância. Não é só "grep": o resultado alimenta a
@@ -133,9 +152,9 @@ def buscar(termo: str, notas: dict[str, Nota]) -> list[Nota]:
     grupos = [
         [n for n in notas.values() if n.stem.lower() == termo_low],
         [n for n in notas.values() if n.titulo.lower() == termo_low],
-        [n for n in notas.values() if termo_low in n.titulo.lower()],
+        [n for n in notas.values() if _contem_com_fronteira(termo, n.titulo)],
         [n for n in notas.values() if any(termo_low in t.lower() for t in n.tags)],
-        [n for n in notas.values() if termo_low in n.corpo.lower()],
+        [n for n in notas.values() if _contem_com_fronteira(termo, n.corpo)],
     ]
     vistos: set[str] = set()
     ordenadas: list[Nota] = []

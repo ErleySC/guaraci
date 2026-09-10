@@ -43,6 +43,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _http_retry import urlopen_com_retry  # noqa: E402
+
 _URL = "https://zenodo.org/api/records/19755088/files/data.zip/content"
 _NOME = "data.zip"
 _SHA256 = "d65cad5d716d7b912c1735f896392d537b0a9850519fdcd7516d0b0e6eca3b83"
@@ -81,7 +84,7 @@ def baixar_dataset(pasta_destino: "str | Path | None" = None,
             h = hashlib.sha256()
             tamanho = 0
             with os.fdopen(fd, "wb") as tmp_f, \
-                    urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
+                    urlopen_com_retry(req, timeout=120) as resp:
                 for bloco in iter(lambda: resp.read(1 << 20), b""):
                     tmp_f.write(bloco)
                     h.update(bloco)
