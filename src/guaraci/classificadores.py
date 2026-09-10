@@ -4,14 +4,14 @@ classificadores.py — Classificadores quimiométricos avançados: DD-SIMCA
 
 Extraído de pipeline.py como parte da modularização (Fase H). Sem
 acoplamento a Config — dependem só de numpy/scipy/sklearn e de
-chemometric_stats.py (hotelling_t2_limite, q_residuos_limite). pipeline.py
+chemometric_stats.py (hotelling_t2_limit, q_residuals_limit). pipeline.py
 reexporta estes nomes, então `pipeline.DDSimca(...)`,
 `pipeline.OPLSDAWrapper(...)` etc. continuam funcionando sem alteração.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy.stats import chi2
@@ -19,7 +19,16 @@ from sklearn.base import BaseEstimator
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 
-from guaraci.chemometric_stats import hotelling_t2_limite, q_residuos_limite
+from guaraci.chemometric_stats import (hotelling_t2_limit, q_residuals_limit,
+                                       mean_and_dof_moments, combined_distance,
+                                       q_residuals_loo)
+
+__all__ = [
+    "DDSimca",
+    "OPLSDAWrapper",
+    "ddsimca_logo_sensitivity",
+    "ddsimca_pcv_sensitivity",
+]
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +37,7 @@ log = logging.getLogger(__name__)
 # o treino EXATAMENTE (Q_train ~= 0 para toda amostra, pois todos os graus
 # de liberdade entre as nc amostras centradas foram consumidos). Isso nao
 # e' ruido numerico: e' uma propriedade exata de PCA quando n_comp se
-# aproxima de nc-1. q_residuos_limite() estima o UCL a partir de
+# aproxima de nc-1. q_residuals_limit() estima o UCL a partir de
 # media/variancia de Q_train (Jackson & Mudholkar) -- com Q_train ~= 0
 # para todas as amostras, a variancia colapsa e o UCL colapsa junto,
 # rejeitando qualquer amostra nova/retida por um fator de ordens de
@@ -43,30 +52,74 @@ _MIN_Q_RESIDUAL_DF = 2
 class DDSimca:
     """Data-Driven SIMCA: per-class one-class classifier via PCA.
 
-    For each class, trains an independent PCA model and defines
-    acceptance limits (UCL) for T2 and Q-residuals:
-        T2_UCL  — computed by ucl_method:
+    For each class, trains an independent PCA model. Duas coisas sao
+    reportadas por eixo, mas a DECISAO de aceitar/rejeitar usa a
+    ESTATISTICA COMBINADA do metodo original (corrigido em 2026-08-08 —
+    ver nota abaixo):
+
+        T2_UCL, Q_UCL — limites POR EIXO, so' para diagnostico/plotagem
+                  individual (nao usados para aceitar/rejeitar):
                     'empirical'  : (1-alpha) percentile of training T2
                     'theoretical': Tracy-Young-Mason (F-distribution)
                     'chi2'       : chi2(1-alpha, n_components)
-                  'empirical' is the only one that VARIES PER CLASS
-                  (theoretical and chi2 depend only on n,k); recommended.
-        Q_UCL   — chi2 approximation (Jackson & Mudholkar) via mean/var of
-                  training Q-residuals — naturally data-driven. Requires at
-                  least `_MIN_Q_RESIDUAL_DF` residual degrees of freedom
-                  (nc - n_comp); classes without enough training samples for
-                  that are skipped (see fit()), same as the existing
-                  insufficient-samples case.
+                  ('ucl_method' controla so' o T2_UCL exibido; Q_UCL e'
+                  sempre chi2 Jackson-Mudholkar via mean/var, como antes.)
 
-    A new sample is 'accepted' by the class if T2 <= UCL **and** Q <= UCL.
-    Note: with independent per-statistic alpha, the effective joint
-    acceptance rate is looser than alpha (approx. 1-(1-alpha)^2 for the
-    rejection rate) — the acceptance region is rectangular, not the
-    Rodionova/Pomerantsev combined-distance ellipsoid. Tracked separately.
+        f, f_crit — a DISTANCIA COMBINADA de fato usada em predict():
+                    h0, q0 = media de T2_train, Q_train (respectivamente)
+                    Nh, Nq = graus de liberdade estimados DOS DADOS via
+                             metodo dos momentos (Jackson & Mudholkar
+                             1979): N = 2*(media/desvio)^2 -- o "data-
+                             driven" que da nome ao metodo, aplicado aos
+                             DOIS eixos, nao so' a Q.
+                    f       = (T2/h0)*Nh + (Q/q0)*Nq
+                    f_crit  = chi2.ppf(1-alpha, Nh+Nq)
+                  Um novo objeto e' aceito se f <= f_crit.
+
+    CORRIGIDO em 2026-08-08 (achado por auditoria de figuras + pesquisa de
+    literatura atualizada): a versao anterior aceitava um objeto se
+    T2<=T2_UCL **e** Q<=Q_UCL independentemente -- uma regiao retangular,
+    nao a elipse/reta combinada do metodo publicado. Com alpha independente
+    em cada eixo, a taxa de rejeicao conjunta efetiva era ~1-(1-alpha)^2
+    (~0.0975 para alpha=0.05), quase o dobro do alpha nominal declarado.
+    A formula f/f_crit acima e' a Eq. (3)-(4) de Kucheryavskiy, Rodionova &
+    Pomerantsev (2024) -- ver referencia completa abaixo -- reproduzida
+    exatamente (Nq/Nh la' chamados N_q/N_h, h0/q0 la' chamados h0/q0).
+
+    CORRIGIDO em 2026-08-16 (achado F1/A2-3 da auditoria de gate 0): Nh/Nq
+    eram estimados por ESPECTRO (`fit(X, y)` usava `len(Xc)` direto), nao
+    por AMOSTRA FISICA -- replicas tecnicas (T1/T2/T3 da mesma amostra)
+    inflavam artificialmente os graus de liberdade do proprio limiar que
+    decide aceitacao. E' o argumento central do projeto (vazamento de
+    replica) nao aplicado ao calculo do limiar. `fit()` aceita `mae_id`
+    opcional para calibrar h0/q0/Nh/Nq pela media de T2/Q por amostra
+    fisica -- ver docstring de `fit()` para o mecanismo e a consequencia
+    medida num dataset de referencia interno (Nh=Nq=1 para a maioria das
+    classes, que so'
+    tem 1 amostra pura independente).
+
+    COBERTURA NAO CONVERGE PARA O NOMINAL SO' COM MAIS `n` (medido
+    2026-08-26, ver `scripts/medicoes/medir_ddsimca_cobertura_vs_n.py`):
+    a aproximacao chi2-momentos (h0/q0/Nh/Nq via `mean_and_dof_moments`)
+    e' PARAMETRICA, nao distribution-free. Simulacao com DGP gaussiano
+    controlado (onde o modelo esta' bem especificado) mostrou cobertura
+    empirica subindo rapido ate' n~150 e depois ESTACANDO num plato de
+    ~0,94-0,945 -- mesmo em n=1200, sem sinal de aproximar o nominal 0,95.
+    Ou seja: NAO existe `n` finito, por maior que seja, que garanta
+    cobertura-alvo abaixo desse plato usando este metodo. Para cobertura-
+    alvo mais exigente que isso, use `identificacao.py`/`conformal.py`
+    (`ConformalOneClass`) -- garantia distribution-free real,
+    `alpha_min = 1/(n+1)`, sem piso assintotico. Este achado motivou a
+    revisao do Bloco 10 (`guaraci plan`): a orientacao de tamanho amostral
+    para DD-SIMCA nao pode prometer atingir qualquer cobertura aumentando
+    `n` (ver `docs/MANUAL.md`, Limitacoes conhecidas).
 
     Referencias:
-        Rodionova O.Y. & Pomerantsev A.L. (2020). Chemom. Intell. Lab.
-        Syst. 200:103958.
+        Rodionova O.Y. & Pomerantsev A.L. (2020). Popular decision rules in
+        SIMCA: critical review. J. Chemometrics 200:103958.
+        Kucheryavskiy S., Rodionova O. & Pomerantsev A. (2024). A
+        comprehensive tutorial on Data-Driven SIMCA: theory and
+        implementation in web. J. Chemometrics 38(7):e3556.
     """
 
     def __init__(self, n_components: int = 3, alpha: float = 0.05,
@@ -77,6 +130,66 @@ class DDSimca:
         self._modelos: Dict[str, Dict[str, Any]] = {}
         self._classes: np.ndarray = np.array([], dtype=str)
 
+    @staticmethod
+    def _outliers_robustos_mad(valores: np.ndarray,
+                               limiar: float = 3.5) -> np.ndarray:
+        """Indices sinalizados como possiveis outliers via z-score
+        modificado (Iglewicz & Hoaglin 1993): M_i = 0.6745*(x_i-mediana)/MAD.
+
+        Kucheryavskiy, Rodionova & Pomerantsev (2024) recomendam
+        explicitamente estimadores ROBUSTOS (mediana/IQR, nao media/desvio)
+        para a DETECCAO de outliers no treino, revertendo para os
+        estimadores classicos so' DEPOIS de remover o que for encontrado
+        ("Once all outliers have been removed, it is recommended to revert
+        to the classic estimates for further calculations").
+
+        Aqui SO' sinaliza (nunca remove automaticamente): com nc=3-4
+        amostras puras de treino -- o regime real deste projeto -- excluir
+        uma amostra pode derrubar o modelo inteiro abaixo do minimo de
+        graus de liberdade (`_MIN_Q_RESIDUAL_DF`). Remocao automatica seria
+        arriscada demais com um treino ja tao escasso; um AVISO deixa a
+        decisao (investigar a replica, ou aceitar o risco) com o usuario,
+        em vez de o software decidir sozinho o que descartar.
+
+        `limiar=3.5` e' o valor recomendado pelos autores do metodo.
+        MAD=0 (valores identicos -- treino degenerado ou n<2) devolve
+        nenhum outlier, nao ZeroDivisionError/NaN.
+
+        LIMITACAO HONESTA (medida, nao suposta): com nc=3, T2/Q_train ja
+        sao inerentemente instaveis (so' 2 graus de liberdade residuais,
+        `_MIN_Q_RESIDUAL_DF`) mesmo sem outlier real algum -- o "sinal" que
+        este detector ve pode ser so' o ruido de amostragem do proprio
+        regime de poucas amostras. Aplicado nos dois eixos (T2 e Q, uniao
+        dos dois), a taxa de falso positivo medida chega a ~10% mesmo em
+        n=20 (3 de 30 seeds testadas). Interpretar o aviso como "vale
+        conferir esta replica", nunca como "esta replica esta errada".
+        """
+        valores = np.asarray(valores, dtype=float)
+        if valores.size < 3:
+            return np.array([], dtype=int)
+        mediana = float(np.median(valores))
+        mad = float(np.median(np.abs(valores - mediana)))
+        if mad <= 0:
+            return np.array([], dtype=int)
+        z_mod = 0.6745 * (valores - mediana) / mad
+        return np.where(np.abs(z_mod) > limiar)[0]
+
+    @staticmethod
+    def _f_distance(T2: np.ndarray, Q: np.ndarray,
+                    m: Dict[str, Any]) -> np.ndarray:
+        """Distancia combinada f = (T2/h0)*Nh + (Q/q0)*Nq (Eq. 3 de
+        Kucheryavskiy/Rodionova/Pomerantsev 2024) -- a estatistica que de
+        fato decide aceitar/rejeitar, substituindo o teste retangular
+        independente T2<=UCL e Q<=UCL. Delega para
+        `chemometric_stats.combined_distance` (achado A3 da auditoria de
+        2026-08-07: `applicability_domain` reimplementava a mesma regra de
+        forma independente; unificado numa so' fonte de verdade). Mantida
+        como metodo (em vez de chamar `combined_distance` direto nos usos
+        externos) para preservar a MESMA chamada em predict(), score_matrix()
+        e nos usos externos (ddsimca_logo_sensitivity, resumo do
+        pipeline)."""
+        return combined_distance(T2, Q, m["h0"], m["q0"], m["Nh"], m["Nq"])
+
     def _compute_t2_ucl(self, T2_train: np.ndarray, n: int, k: int) -> float:
         method = (self.ucl_method or "empirical").lower()
         if method == "empirical":
@@ -84,7 +197,7 @@ class DDSimca:
                 return float("inf")
             return float(np.percentile(T2_train, 100 * (1 - self.alpha)))
         if method == "theoretical":
-            return hotelling_t2_limite(n, k, self.alpha)
+            return hotelling_t2_limit(n, k, self.alpha)
         if method == "chi2":
             return float(chi2.ppf(1 - self.alpha, k))
         # fallback
@@ -94,44 +207,66 @@ class DDSimca:
     def _q_residuals_loo(Xc: np.ndarray, n_comp: int) -> np.ndarray:
         """Q-residuo leave-one-out (jackknife) de cada amostra de treino.
 
-        PCA ajustada em TODAS as nc amostras reconstroi cada uma delas de
-        forma otimista: a propria amostra ajudou a definir o subespaco que
-        depois a reconstroi. Com nc pequeno frente a p (regime deste
-        projeto: poucos puros por especie, espectros de milhares de
-        variaveis), esse viés faz Q_train colapsar perto de zero -- e o UCL
-        derivado dele rejeita qualquer amostra genuinamente nova (achado de
-        auditoria adversarial, 2026-07-19).
-
-        Aqui, o Q de cada amostra i e' medido contra um modelo ajustado nas
-        OUTRAS nc-1 amostras (i excluida) -- a mesma logica de validacao
-        cruzada, aplicada dentro do proprio calculo do limite. Remove o
-        viés estruturalmente, sem depender de escolher um limiar de graus
-        de liberdade "grande o bastante" (nenhum limiar resolve o viés
-        in-sample; so' excluir a amostra do seu proprio ajuste resolve).
-
-        Custo: nc ajustes extras de PCA por classe -- aceitavel porque nc e'
-        pequeno justamente no regime em que isso importa.
+        Delega para `chemometric_stats.q_residuals_loo`. A implementacao
+        nasceu aqui (achado da auditoria adversarial de 2026-07-19) e foi
+        promovida a funcao pura em 2026-08-17, quando se descobriu que
+        `training_applicability_domain` precisava exatamente da mesma
+        correcao -- manter duas copias da mesma regra estatistica foi o que
+        permitiu que uma delas ficasse para tras (mesmo padrao do achado A3).
+        Mantido como metodo para nao quebrar chamadores/testes existentes.
         """
-        nc = Xc.shape[0]
-        Q = np.empty(nc)
-        idx = np.arange(nc)
-        for i in range(nc):
-            Xtr = Xc[idx != i]
-            n_comp_i = min(n_comp, Xtr.shape[0] - 1, Xtr.shape[1])
-            if n_comp_i < 1:
-                Q[i] = 0.0
-                continue
-            pca_i = PCA(n_components=n_comp_i)
-            pca_i.fit(Xtr)
-            xi = Xc[i:i + 1]
-            t_i = pca_i.transform(xi)
-            x_rec = pca_i.inverse_transform(t_i)
-            Q[i] = float(np.sum((xi - x_rec) ** 2))
-        return Q
+        return q_residuals_loo(Xc, n_comp)
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "DDSimca":
+    @staticmethod
+    def _media_por_grupo(valores: np.ndarray,
+                         grupos: np.ndarray) -> np.ndarray:
+        """Colapsa `valores` (1 por espectro) em 1 valor por `mae_id`
+        distinto (media do grupo). Usado para calibrar h0/q0/Nh/Nq por
+        AMOSTRA FISICA, nao por espectro -- ver nota em `fit()`."""
+        _u, inv = np.unique(grupos, return_inverse=True)
+        soma = np.bincount(inv, weights=valores)
+        cont = np.bincount(inv)
+        return soma / cont
+
+    def fit(self, X: np.ndarray, y: np.ndarray,
+            mae_id: Optional[np.ndarray] = None) -> "DDSimca":
+        """Ajusta um modelo DD-SIMCA por classe.
+
+        `mae_id` (opcional, mesmo comprimento de X/y): identificador de
+        replica fisica (T1/T2/T3 da mesma amostra compartilham o mesmo
+        `mae_id`). Quando fornecido, h0/q0/Nh/Nq (a calibracao do LIMIAR
+        de aceitacao, ver docstring da classe) sao estimados a partir da
+        MEDIA de T2/Q por `mae_id` -- isto e', um valor por AMOSTRA FISICA
+        independente, nao um valor por espectro.
+
+        POR QUE ISSO IMPORTA (achado F1/A2-3 da auditoria de 2026-08-16):
+        sem `mae_id`, 3 replicas tecnicas da MESMA amostra sao tratadas
+        como 3 observacoes independentes ao estimar Nh/Nq pelo metodo dos
+        momentos -- exatamente o erro de vazamento de replica que o
+        projeto existe para impedir, cometido no proprio calculo do
+        limiar que decide aceitacao/rejeicao. Duplicar espectros da MESMA
+        amostra fisica (sem adicionar amostra real nenhuma) infla Nh/Nq
+        sem fundamento quando `mae_id` esta ausente; com `mae_id`, nao.
+
+        CONSEQUENCIA HONESTA quando ha' so' 1 mae_id de treino por classe
+        (regime comum em autenticacao one-class, em que so' se dispoe de
+        um ponto de amostragem fisico genuino por classe): Nh=Nq=1.0 (o
+        minimo que `mean_and_dof_moments` retorna para entrada degenerada
+        de tamanho 1) -- NAO e' um bug desta funcao, e' a calibracao mais
+        honesta possivel dado que so' existe 1 amostra fisica independente
+        para calibrar contra. E' o mesmo movimento do P1 (sensibilidade
+        LOGO honesta substituindo re-substituicao inflada): o numero fica
+        mais largo/conservador, que e' o objetivo, nao um problema.
+
+        Sem `mae_id` (None): comportamento anterior preservado (Nh/Nq
+        estimados por espectro) -- necessario quando nao ha' identificador
+        de replica disponivel (ex.: modo_entrada="imagem", B4-1 da mesma
+        auditoria). `calibrado_por_amostra=False` fica marcado no modelo
+        para que figuras/relatorios distingam os dois casos.
+        """
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=str)
+        mae_id = np.asarray(mae_id, dtype=str) if mae_id is not None else None
         self._classes = np.unique(y)
         self._modelos = {}
         for cls in self._classes:
@@ -164,18 +299,72 @@ class DDSimca:
             Q_train = self._q_residuals_loo(Xc, n_comp)
 
             t2_ucl = self._compute_t2_ucl(T2_train, nc, n_comp)
-            q_ucl  = q_residuos_limite(Q_train, self.alpha)
+            q_ucl  = q_residuals_limit(Q_train, self.alpha)
+
+            # Estatistica combinada (ver docstring da classe): h0/q0/Nh/Nq
+            # data-driven a partir de T2_train/Q_train, f_crit por chi2 com
+            # Nf=Nh+Nq graus de liberdade. E' o que predict() usa de fato.
+            #
+            # CALIBRACAO POR AMOSTRA FISICA (ver docstring de fit(), achado
+            # F1/A2-3): com mae_id disponivel, h0/q0/Nh/Nq vem da MEDIA de
+            # T2/Q por mae_id, nao dos nc espectros individuais -- replicas
+            # tecnicas da mesma amostra nao inflam os graus de liberdade
+            # estimados.
+            mae_id_c = mae_id[y == cls] if mae_id is not None else None
+            if mae_id_c is not None and len(np.unique(mae_id_c)) >= 1:
+                n_grupos_calib = int(len(np.unique(mae_id_c)))
+                T2_calib = self._media_por_grupo(T2_train, mae_id_c)
+                Q_calib  = self._media_por_grupo(Q_train, mae_id_c)
+                calibrado_por_amostra = True
+            else:
+                n_grupos_calib = nc
+                T2_calib, Q_calib = T2_train, Q_train
+                calibrado_por_amostra = False
+            h0, Nh = mean_and_dof_moments(T2_calib)
+            q0, Nq = mean_and_dof_moments(Q_calib)
+            f_crit = float(chi2.ppf(1 - self.alpha, Nh + Nq))
+            if calibrado_por_amostra and n_grupos_calib < 3:
+                log.warning(
+                    "[DDSimca] Classe '%s': limiar calibrado com apenas "
+                    "%d amostra(s) fisica(s) independente(s) (mae_id). "
+                    "Nh=%.2f, Nq=%.2f -- regiao de aceitacao larga/"
+                    "conservadora por construcao, nao um defeito.",
+                    cls, n_grupos_calib, Nh, Nq)
+
+            # Diagnostico robusto (mediana/MAD, Iglewicz & Hoaglin 1993):
+            # SO' sinaliza replicas de treino atipicas, NUNCA remove
+            # sozinho -- com nc=3-4 (regime real deste projeto), excluir uma
+            # amostra pode derrubar o modelo abaixo do minimo de graus de
+            # liberdade. Ver docstring de _outliers_robustos_mad.
+            idx_out_t2 = self._outliers_robustos_mad(T2_train)
+            idx_out_q  = self._outliers_robustos_mad(Q_train)
+            idx_out = sorted(set(idx_out_t2) | set(idx_out_q))
+            if idx_out:
+                log.warning(
+                    "[DDSimca] Classe '%s': %d amostra(s) de treino "
+                    "atipica(s) (indices %s de %d, deteccao robusta "
+                    "mediana/MAD). Nao removidas automaticamente -- "
+                    "considere investigar essas replicas.",
+                    cls, len(idx_out), idx_out, nc)
 
             self._modelos[cls] = {
                 "pca":      pca,
                 "var_t":    var_t,
                 "T2_ucl":   t2_ucl,
                 "Q_ucl":    q_ucl,
+                "h0":       h0,
+                "q0":       q0,
+                "Nh":       Nh,
+                "Nq":       Nq,
+                "f_crit":   f_crit,
                 "T_train":  T,
                 "T2_train": T2_train,
                 "Q_train":  Q_train,
                 "n_train":  nc,
                 "n_comp":   n_comp,
+                "outliers_treino": idx_out,
+                "n_grupos_calibracao":    n_grupos_calib,
+                "calibrado_por_amostra":  calibrado_por_amostra,
             }
         return self
 
@@ -189,15 +378,69 @@ class DDSimca:
         T2 = np.sum((T ** 2) / m["var_t"], axis=1)
         return T2, Q
 
-    def score_matrix(self, X: np.ndarray) -> Dict[str, Dict[str, Any]]:
-        """T2, Q and normalized versions (T2/UCL, Q/UCL) per class."""
+    def score_matrix(self, X: np.ndarray,
+                     mask_treino: Optional[np.ndarray] = None,
+                     y: Optional[np.ndarray] = None
+                     ) -> Dict[str, Dict[str, Any]]:
+        """T2, Q, versoes normalizadas por eixo (T2/UCL, Q/UCL — so'
+        diagnostico) e a distancia combinada f/f_crit (o que decide
+        aceitar/rejeitar) por classe.
+
+        `mask_treino` + `y` (opcionais, ambos do tamanho de X): identificam
+        quais linhas de X estavam no TREINO. Quando fornecidos, o Q dessas
+        linhas vem do residuo LEAVE-ONE-OUT armazenado em `fit()`, nao do
+        residuo in-sample recalculado por `_t2_q`.
+
+        POR QUE (achado A1 da auditoria de gate 0, 2026-08-16): `fit()`
+        calibra q0/Nq/f_crit a partir de `Q_train` LOO, mas `_t2_q`
+        recalcula Q in-sample -- e uma amostra de treino reconstroi a si
+        mesma de forma otimista, porque ajudou a definir a PCA que depois
+        a reconstroi. Plotar pontos de treino via `_t2_q` contra uma
+        fronteira derivada do q0 LOO poe pontos e fronteira em ESCALAS
+        DIFERENTES. Medido no regime real do projeto (p=8192, nc=3-4
+        puros/classe): o Q in-sample e' **10 a 15x menor** que o LOO --
+        em eixo log, mais de uma decada de folga visual inventada.
+        Ver scripts/medicoes/medir_ddsimca_loo_vs_insample.py.
+
+        Impacto na DECISAO: nenhum no regime de producao -- a fracao de
+        pontos de treino que muda de lado da fronteira foi medida em 0,0%
+        com nc=3-4 (sobe a 7-12% com nc>=6). E' defeito de fidelidade da
+        FIGURA, nao de numero; a correcao existe para a figura nao mentir
+        sobre a folga.
+
+        Sem os dois argumentos: comportamento anterior (tudo in-sample) --
+        que continua CORRETO para amostras novas, que nao participaram do
+        ajuste. So' o subconjunto de treino precisava do LOO.
+        """
         X = np.asarray(X, dtype=float)
+        usar_loo = mask_treino is not None and y is not None
+        if usar_loo:
+            mask_treino = np.asarray(mask_treino, dtype=bool)
+            y = np.asarray(y, dtype=str)
         res: Dict[str, Dict[str, Any]] = {}
         for cls in self._classes:
             if cls not in self._modelos:
                 continue
             m = self._modelos[cls]
             T2, Q = self._t2_q(X, cls)
+            if usar_loo:
+                # Linhas de treino DESTA classe, na mesma ordem em que
+                # `fit()` as consumiu (indexacao booleana preserva ordem,
+                # entao a k-esima linha aqui e' a k-esima de Q_train).
+                idx_tr = np.where(mask_treino & (y == cls))[0]
+                q_loo = np.asarray(m["Q_train"], dtype=float)
+                if idx_tr.size == q_loo.size:
+                    Q = Q.copy()
+                    Q[idx_tr] = q_loo
+                elif idx_tr.size:
+                    # Desalinhamento (X diferente do usado em fit): nao
+                    # adivinhar a correspondencia -- manter in-sample e
+                    # avisar, em vez de trocar Q pelas linhas erradas.
+                    log.warning(
+                        "[DDSimca] score_matrix: %d linhas de treino da "
+                        "classe '%s' contra %d valores de Q_train — X nao "
+                        "confere com o usado em fit(); mantendo Q in-sample "
+                        "para essa classe.", idx_tr.size, cls, q_loo.size)
             res[cls] = {
                 "T2":       T2,
                 "Q":        Q,
@@ -205,14 +448,27 @@ class DDSimca:
                 "Q_ucl":    m["Q_ucl"],
                 "T2_norm":  T2 / max(m["T2_ucl"], 1e-12),
                 "Q_norm":   Q  / max(m["Q_ucl"],  1e-12),
+                "f":        self._f_distance(T2, Q, m),
+                "f_crit":   m["f_crit"],
+                "h0":       m["h0"],
+                "q0":       m["q0"],
+                "Nh":       m["Nh"],
+                "Nq":       m["Nq"],
                 "T_train":  m["T_train"],
                 "Q_train":  m["Q_train"],
                 "n_train":  m["n_train"],
+                "n_comp":   m["n_comp"],
+                "outliers_treino": m["outliers_treino"],
+                "n_grupos_calibracao":   m["n_grupos_calibracao"],
+                "calibrado_por_amostra": m["calibrado_por_amostra"],
             }
         return res
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Returns: class name | 'Ambiguo' | 'Desconhecido'."""
+        """Returns: class name | 'Ambiguo' | 'Desconhecido'.
+
+        Aceita via distancia combinada f<=f_crit (ver docstring da classe),
+        nao mais o teste retangular independente por eixo."""
         X = np.asarray(X, dtype=float)
         preds = []
         for i in range(len(X)):
@@ -223,7 +479,8 @@ class DDSimca:
                     continue
                 m = self._modelos[cls]
                 T2, Q = self._t2_q(xi, cls)
-                if T2[0] <= m["T2_ucl"] and Q[0] <= m["Q_ucl"]:
+                f = self._f_distance(T2, Q, m)
+                if f[0] <= m["f_crit"]:
                     aceitas.append(cls)
             if   len(aceitas) == 1: preds.append(aceitas[0])
             elif len(aceitas) >  1: preds.append("Ambiguo")
@@ -298,37 +555,44 @@ class OPLSDAWrapper(BaseEstimator):
         p = X.T @ t / nt if nt > 1e-12 else np.zeros(X.shape[1])
         return w, t, p
 
+    @staticmethod
+    def _alvo_continuo(X: np.ndarray, Y: np.ndarray) -> np.ndarray:
+        """Alvo y continuo (1 coluna, centrado) usado para achar a direcao
+        preditiva do OPLS via NIPALS PLS1. Captura a direcao de covariancia
+        X-Y dominante. Para Y binario (1 coluna): a propria coluna.
+
+        Para Y multiclasse (K colunas, one-hot): CORRIGIDO em 2026-08-07
+        (achado A4 da auditoria metodologica -- ver
+        AUDITORIA_METODOLOGICA_2026-08-07.md). A versao
+        anterior usava o 1o escore de uma LinearDiscriminantAnalysis(X,
+        y_int) como alvo -- nao e' o metodo publicado: Trygg & Wold (2002)
+        definem OPLS para y binario/continuo; a extensao multiclasse
+        publicada e' OPLS/O2PLS com Y multi-coluna via PLS2, nao um alvo
+        derivado separadamente de X por um classificador supervisionado (a
+        LDA usa so' a estrutura de classes em X, ignorando a covariancia
+        X-Y que define o eixo preditivo do (O)PLS). Usa-se agora o escore Y
+        da 1a variavel latente de um PLS2 ajustado em (X, Y) -- a direcao
+        que capta a covariancia dominante X-Y entre TODAS as K classes
+        simultaneamente, o caminho publicado. Using Y[:,0] (first class vs.
+        rest) would silently bias the OPLS toward one class only — a
+        methodological error for 14-class FT-NIR data; PLS2's y_scores_
+        avoids that by construction (all K columns enter the covariance
+        direction jointly).
+        """
+        if Y.ndim == 2 and Y.shape[1] > 1:
+            _pls2 = PLSRegression(n_components=1, scale=False)
+            _pls2.fit(X, Y)
+            _ys = _pls2.y_scores_
+            y = (np.asarray(_ys, dtype=float)[:, 0]
+                 if _ys is not None else Y @ np.ones(Y.shape[1]))
+        else:
+            y = (Y[:, 0] if Y.ndim == 2 else Y.copy()).astype(float)
+        return y - float(y.mean())
+
     def fit(self, X: np.ndarray, Y: np.ndarray) -> "OPLSDAWrapper":
         X = np.asarray(X, dtype=float)
         Y = np.asarray(Y, dtype=float)
-        # Build a single continuous y that captures all-class discriminant structure.
-        # For binary Y (1 column): use that column directly.
-        # For multiclass Y (K columns, one-hot): use the first Linear Discriminant
-        # component (LDA), which maximally separates all K classes simultaneously.
-        # Using Y[:,0] (first class vs. rest) would silently bias the OPLS toward
-        # one class only — a methodological error for 14-class FT-NIR data.
-        if Y.ndim == 2 and Y.shape[1] > 1:
-            from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as _LDA
-            y_int_opls = np.argmax(Y, axis=1)
-            try:
-                _lda = _LDA(n_components=1)
-                y = _lda.fit_transform(X, y_int_opls)[:, 0].astype(float)
-            except (ValueError, np.linalg.LinAlgError) as _e_lda:
-                # LDA falha tipicamente com matriz de dispersao intra-classe
-                # singular (classe com poucas/colineares amostras) -- cai p/
-                # o fallback PLS2 (menos otimo mas correto p/ multiclasse).
-                # Registrado pois muda o eixo y do OPLS-DA/S-Plot silenciosamente.
-                log.warning("OPLS-DA: LDA falhou (%s); usando fallback PLS2.",
-                           _e_lda)
-                from sklearn.cross_decomposition import PLSRegression as _PLSr
-                _pls2 = _PLSr(n_components=1, scale=False)
-                _pls2.fit(X, Y)
-                _ys = _pls2.y_scores_
-                y = (np.asarray(_ys, dtype=float)[:, 0]
-                     if _ys is not None else Y @ np.ones(Y.shape[1]))
-        else:
-            y = (Y[:, 0] if Y.ndim == 2 else Y.copy()).astype(float)
-        y = y - float(y.mean())
+        y = self._alvo_continuo(X, Y)
 
         n = X.shape[0]
         Xr = X.copy()
@@ -420,7 +684,7 @@ class OPLSDAWrapper(BaseEstimator):
         return t_pred, t_orth
 
 
-def sensibilidade_ddsimca_logo(
+def ddsimca_logo_sensitivity(
     X_puros: np.ndarray,
     grupos_puros: np.ndarray,
     *,
@@ -489,13 +753,17 @@ def sensibilidade_ddsimca_logo(
             continue
         modelo = DDSimca(n_components=n_components, alpha=alpha,
                          ucl_method=ucl_method)
-        modelo.fit(X_puros[treino], np.array(["_c"] * int(treino.sum())))
+        # mae_id=grupos[treino] (achado F1/A2-3): o limiar interno desta
+        # dobra tambem deve ser calibrado por amostra fisica, nao por
+        # espectro -- senao o LOGO mede aceitacao contra um limiar com o
+        # MESMO vies que o LOGO existe para corrigir.
+        modelo.fit(X_puros[treino], np.array(["_c"] * int(treino.sum())),
+                   mae_id=grupos[treino])
         res = modelo.score_matrix(X_puros[teste])
         if "_c" not in res:   # classe pulada (puros de treino insuficientes)
             continue
         m = res["_c"]
-        aceito = ((np.asarray(m["T2_norm"]) <= 1.0) &
-                  (np.asarray(m["Q_norm"]) <= 1.0))
+        aceito = np.asarray(m["f"]) <= m["f_crit"]
         aceitos.extend(bool(a) for a in aceito)
         validos += 1
 
@@ -514,5 +782,128 @@ def sensibilidade_ddsimca_logo(
             f"Sensibilidade estimada por LOGO com apenas {n_grupos} grupos de "
             "replica. Incerteza alta; IC bootstrap nao e confiavel neste "
             "regime. Interpretar como exploratoria."
+        )
+    return resultado
+
+
+def ddsimca_pcv_sensitivity(
+    X_puros: np.ndarray,
+    grupos_puros: np.ndarray,
+    *,
+    n_components: int,
+    alpha: float = 0.05,
+    ucl_method: str = "empirical",
+) -> Dict[str, Any]:
+    """Sensibilidade DD-SIMCA por Procrustes Cross-Validation (PCV) --
+    diagnostico COMPLEMENTAR ao LOGO (`ddsimca_logo_sensitivity`), NUNCA
+    um substituto.
+
+    PCV (Kucheryavskiy, Zhilin, Rodionova & Pomerantsev -- ver referencias)
+    gera um "PV-set" por reamostragem que se comporta estatisticamente como
+    um conjunto de validacao independente, sem exigir mais amostras reais.
+    Isso ajuda quando LOGO fica inconclusivo por FALTA DE DOBRAS validas
+    (poucos grupos com >=2 puros cada) -- mas PCV nao fabrica variacao que
+    nao existe nos dados: se todas as replicas puras de uma classe vem do
+    MESMO grupo `mae_id` (`n_grupos==1`, o caso mais comum neste dataset),
+    o PV-set so' pode reproduzir ruido de MEDICAO (variacao entre T1/T2/T3
+    da mesma amostra fisica), nunca variacao ENTRE amostras fisicas
+    diferentes -- a unica coisa que provaria generalizacao de autenticacao.
+    Por isso este diagnostico e' SEMPRE rotulado como exploratorio e NUNCA
+    substitui o aviso "nao validado" do LOGO quando `n_grupos<2`.
+
+    O split de CV usado dentro do PCV respeita os grupos `mae_id` quando ha'
+    2 ou mais (nao trata cada espectro como independente -- a mesma logica
+    group-aware do resto do projeto). Com `n_grupos==1`, cai para
+    leave-one-out por AMOSTRA individual (nao ha' estrutura de grupo a
+    proteger quando so' existe 1 grupo; testado empiricamente que o split
+    por grupo unico faz o PCV falhar -- ValueError de shape).
+
+    Requer o pacote opcional `prcv` (`pip install
+    guaraci-chemometrics[robusto]`); ausente, devolve `disponivel=False`
+    sem lancar excecao.
+
+    Returns
+    -------
+    dict com chaves: sensibilidade (float|nan), n_grupos (int),
+    n_amostras (int), aviso (str|None), disponivel (bool).
+
+    Referencias:
+        Kucheryavskiy S., Zhilin S., Rodionova O. & Pomerantsev A. (2020).
+        Procrustes cross-validation -- a bridge between cross-validation
+        and independent validation sets. Anal. Chem. 92(17):11842-11850.
+        Pomerantsev A.L. & Rodionova O.Y. (2021). Procrustes
+        cross-validation of short datasets in PCA context. Talanta
+        226:122104.
+    """
+    X_puros = np.asarray(X_puros, dtype=float)
+    grupos = np.asarray(grupos_puros)
+    grupos_unicos = np.unique(grupos)
+    n_grupos = int(len(grupos_unicos))
+    nc = len(X_puros)
+    resultado: Dict[str, Any] = {
+        "sensibilidade": float("nan"),
+        "n_grupos": n_grupos,
+        "n_amostras": int(nc),
+        "aviso": None,
+        "disponivel": True,
+    }
+    try:
+        from prcv.methods import pcvpca
+    except ImportError:
+        resultado["disponivel"] = False
+        resultado["aviso"] = (
+            "Pacote opcional 'prcv' nao instalado -- diagnostico PCV "
+            "indisponivel (pip install guaraci-chemometrics[robusto])."
+        )
+        return resultado
+
+    n_comp_pv = min(n_components, nc - 1)
+    if n_comp_pv < 1:
+        resultado["aviso"] = f"Amostras insuficientes (n={nc}) para gerar PV-set."
+        return resultado
+
+    cv_split: Any
+    if n_grupos >= 2:
+        # Segmentos = grupos mae_id (preserva group-awareness dentro do PCV)
+        _, indices = np.unique(grupos, return_inverse=True)
+        cv_split = (indices + 1).astype(int)   # prcv espera segmentos >=1
+    else:
+        # 1 grupo so': nao ha estrutura a proteger, e o split por grupo
+        # unico faz pcvpca falhar (ValueError de shape, verificado).
+        cv_split = {"type": "loo"}
+
+    try:
+        Xpv = pcvpca(X_puros, ncomp=n_comp_pv, cv=cv_split)
+    except Exception as e:  # noqa: BLE001 -- diagnostico auxiliar opcional;
+        # qualquer falha do PCV (matriz mal condicionada, nc muito pequeno)
+        # nao pode derrubar o resto do pipeline, so' reporta.
+        resultado["aviso"] = f"PCV falhou: {e}"
+        return resultado
+
+    modelo = DDSimca(n_components=n_components, alpha=alpha,
+                     ucl_method=ucl_method)
+    # mae_id=grupos (achado F1/A2-3): mesma razao do LOGO acima -- o limiar
+    # usado para avaliar o PV-set deve ser calibrado por amostra fisica.
+    modelo.fit(X_puros, np.array(["_c"] * nc), mae_id=grupos)
+    res = modelo.score_matrix(Xpv)
+    if "_c" not in res:
+        resultado["aviso"] = "Modelo nao ajustavel com estes puros (ver LOGO)."
+        return resultado
+    m = res["_c"]
+    aceito = np.asarray(m["f"]) <= m["f_crit"]
+    resultado["sensibilidade"] = float(np.mean(aceito))
+
+    if n_grupos < 2:
+        resultado["aviso"] = (
+            "PCV com um unico grupo de replica pura: o PV-set reproduz so' "
+            "ruido de MEDICAO (T1/T2/T3 da mesma amostra), nao variacao "
+            "entre amostras fisicas diferentes. Nao e' evidencia de "
+            "generalizacao -- interpretar como robustez a ruido "
+            "instrumental, nunca como autenticacao validada."
+        )
+    elif n_grupos < 10:
+        resultado["aviso"] = (
+            f"PCV com {n_grupos} grupos de replica. Diagnostico "
+            "exploratorio, complementar ao LOGO -- nao o substitui."
         )
     return resultado

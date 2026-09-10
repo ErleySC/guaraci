@@ -1,0 +1,23 @@
+# Perfil de tecnica de imagem: aquisicao informal por celular (sem controle
+# de iluminacao/enquadramento; sujeito a compressao/edicao de app de
+# galeria/mensageria, que costuma apagar metadado EXIF).
+descricao: "Colorimetria digital via foto de celular (aquisicao informal)"
+unidade_eixo: "indice"
+default_preprocessing: "autoscaling"
+vocabulario:
+  classe: "classe"
+  classe_plural: "classes"
+  matriz: "a amostra fotografada"
+  alvo: "o teor do analito de interesse"
+  conforme: "conforme"
+  nao_conforme: "nao conforme"
+codigos_classe: {}
+faixa_trabalho: null
+referencia: ""
+resolucao_esperada: "sem minimo -- varia por aparelho"
+formatos_aceitos: [".jpg", ".jpeg", ".png"]
+# Sem controle de captura, "high" exige esforco extra do usuario (organizar
+# em subpasta por amostra); sem isso, o dataset tende a cair em "medium"
+# (CSV) ou "none". Nunca usar EXIF como fonte de agrupamento (ver docstring
+# de dados_imagem.py -- recompressao/edicao apaga o metadado na pratica).
+nivel_agrupamento_tipico: "medium"

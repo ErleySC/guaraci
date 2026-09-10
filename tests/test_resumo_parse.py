@@ -8,7 +8,8 @@ testável sem UI.
 import textwrap
 
 from guaraci.resumo_parse import (
-    extrair_metrica, parse_metricas_modelo, parse_acuracia_por_classe,
+    extract_metric, parse_model_metrics, parse_accuracy_by_class,
+    parse_dataset_counts,
 )
 
 _RESUMO_EXEMPLO = textwrap.dedent("""\
@@ -19,7 +20,7 @@ _RESUMO_EXEMPLO = textwrap.dedent("""\
     R2Y: 0.87
     Q2: 0.81
     R2X: 0.95
-    LVs otimo: 14
+    Optimal LVs: 14
     p-value: 0.004
     Hotelling T2 UCL: 21.3
     Q-residual UCL: 0.0123
@@ -31,33 +32,33 @@ _RESUMO_EXEMPLO = textwrap.dedent("""\
 """)
 
 
-# ── extrair_metrica ──────────────────────────────────────────────────────────
+# ── extract_metric ──────────────────────────────────────────────────────────
 def test_extrair_metrica_casa():
-    assert extrair_metrica(_RESUMO_EXEMPLO, r"R2Y.*?[:=]\s*([\d.]+)") == "0.87"
+    assert extract_metric(_RESUMO_EXEMPLO, r"R2Y.*?[:=]\s*([\d.]+)") == "0.87"
 
 
 def test_extrair_metrica_default_quando_nao_casa():
-    assert extrair_metrica(_RESUMO_EXEMPLO, r"INEXISTENTE.*?([\d]+)") == "-"
-    assert extrair_metrica(_RESUMO_EXEMPLO, r"INEXISTENTE.*?([\d]+)", "—") == "—"
+    assert extract_metric(_RESUMO_EXEMPLO, r"INEXISTENTE.*?([\d]+)") == "-"
+    assert extract_metric(_RESUMO_EXEMPLO, r"INEXISTENTE.*?([\d]+)", "—") == "—"
 
 
 def test_extrair_metrica_resumo_vazio():
-    assert extrair_metrica("", r"R2Y.*?([\d.]+)", "n/a") == "n/a"
-    assert extrair_metrica(None, r"R2Y.*?([\d.]+)", "n/a") == "n/a"
+    assert extract_metric("", r"R2Y.*?([\d.]+)", "n/a") == "n/a"
+    assert extract_metric(None, r"R2Y.*?([\d.]+)", "n/a") == "n/a"
 
 
 def test_extrair_metrica_ignora_case():
-    assert extrair_metrica("balanced accuracy: 0.5", r"Balanced Accuracy.*?([\d.]+)") == "0.5"
+    assert extract_metric("balanced accuracy: 0.5", r"Balanced Accuracy.*?([\d.]+)") == "0.5"
 
 
-# ── parse_metricas_modelo ────────────────────────────────────────────────────
+# ── parse_model_metrics ────────────────────────────────────────────────────
 def test_parse_metricas_tem_12_chaves():
-    m = parse_metricas_modelo(_RESUMO_EXEMPLO)
+    m = parse_model_metrics(_RESUMO_EXEMPLO)
     assert len(m) == 12
 
 
 def test_parse_metricas_valores_esperados():
-    m = parse_metricas_modelo(_RESUMO_EXEMPLO)
+    m = parse_model_metrics(_RESUMO_EXEMPLO)
     assert m["Balanced Accuracy (CV)"] == "0.912"
     assert m["R2Y"] == "0.87"
     assert m["Q2Y"] == "0.81"
@@ -67,32 +68,72 @@ def test_parse_metricas_valores_esperados():
 
 
 def test_parse_metricas_ausentes_viram_default():
-    m = parse_metricas_modelo("resumo sem nenhuma metrica reconhecivel")
+    m = parse_model_metrics("resumo sem nenhuma metrica reconhecivel")
     assert all(v == "-" for v in m.values())
 
 
 def test_parse_metricas_equivale_ao_ex_manual():
-    """Equivalência: parse_metricas_modelo deve dar o MESMO resultado que
-    aplicar extrair_metrica manualmente aos padrões (garante que a
+    """Equivalência: parse_model_metrics deve dar o MESMO resultado que
+    aplicar extract_metric manualmente aos padrões (garante que a
     consolidação dos 5 geradores não mudou o parsing)."""
     from guaraci.resumo_parse import _PADROES_METRICAS
-    m = parse_metricas_modelo(_RESUMO_EXEMPLO)
+    m = parse_model_metrics(_RESUMO_EXEMPLO)
     for nome, padrao in _PADROES_METRICAS.items():
-        assert m[nome] == extrair_metrica(_RESUMO_EXEMPLO, padrao)
+        assert m[nome] == extract_metric(_RESUMO_EXEMPLO, padrao)
 
 
-# ── parse_acuracia_por_classe ────────────────────────────────────────────────
+# ── parse_accuracy_by_class ────────────────────────────────────────────────
 def test_parse_acuracia_extrai_todas_as_classes():
-    acc = parse_acuracia_por_classe(_RESUMO_EXEMPLO)
+    acc = parse_accuracy_by_class(_RESUMO_EXEMPLO)
     assert acc == {"Andiroba": 0.95, "Copaiba": 0.88, "Babacu": 0.42}
 
 
 def test_parse_acuracia_vazio_sem_linhas_acc():
-    assert parse_acuracia_por_classe("resumo sem linhas de acuracia") == {}
-    assert parse_acuracia_por_classe("") == {}
-    assert parse_acuracia_por_classe(None) == {}
+    assert parse_accuracy_by_class("resumo sem linhas de acuracia") == {}
+    assert parse_accuracy_by_class("") == {}
+    assert parse_accuracy_by_class(None) == {}
 
 
 def test_parse_acuracia_aceita_igual_ou_doispontos():
-    acc = parse_acuracia_por_classe("Acc X = 0.7\nAcc Y: 0.8")
+    acc = parse_accuracy_by_class("Acc X = 0.7\nAcc Y: 0.8")
     assert acc == {"X": 0.7, "Y": 0.8}
+
+
+# ── Contagens do conjunto de dados (painel de status da aba Projeto) ───────
+
+def test_contagens_leem_resumo_no_formato_atual_em_ingles():
+    resumo = ("  Total samples   : 1346\n"
+              "  Total variables : 759\n"
+              "  Total classes   : 13\n")
+    assert parse_dataset_counts(resumo) == {
+        "amostras": 1346, "variaveis": 759, "classes": 13,
+        "amostras_fisicas": None}
+
+
+def test_contagens_leem_runs_antigos_em_portugues():
+    """Runs gravados antes da troca das chaves para ingles continuam em
+    disco -- o painel nao pode mostrar "-" para um numero que existe."""
+    resumo = ("  Total de amostras   : 137\n"
+              "  Total de variaveis  : 500\n"
+              "  Total de classes    : 5\n")
+    assert parse_dataset_counts(resumo) == {
+        "amostras": 137, "variaveis": 500, "classes": 5,
+        "amostras_fisicas": None}
+
+
+def test_contagem_ausente_e_none_nunca_zero():
+    """Zero se leria como "nenhuma amostra"; o correto e' "nao informado"."""
+    assert parse_dataset_counts("  Total classes : 4\n") == {
+        "amostras": None, "variaveis": None, "classes": 4,
+        "amostras_fisicas": None}
+    assert parse_dataset_counts("") == {
+        "amostras": None, "variaveis": None, "classes": None,
+        "amostras_fisicas": None}
+
+
+def test_amostra_fisica_vem_do_numero_de_grupos_mae_id():
+    """'Amostra física' = grupo mae_id: é esse número, não o de espectros,
+    que diz quantos pontos de coleta independentes existem."""
+    resumo = ("  Total samples     : 1346\n"
+              "  N grupos mae_id   : 457\n")
+    assert parse_dataset_counts(resumo)["amostras_fisicas"] == 457

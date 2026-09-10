@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [master, main]
 
+# Escopo minimo explicito: sem isto o workflow herda o padrao do
+# repositorio, que pode conceder write ao GITHUB_TOKEN sem necessidade.
+permissions:
+  contents: read
+
 jobs:
   # ── Lint estático (rápido, falha cedo antes de rodar a suíte pesada) ───────
   lint:
@@ -51,27 +56,74 @@ jobs:
             src/guaraci/validacao_estatistica.py \
             src/guaraci/modos_analise.py \
             src/guaraci/design_tokens.py \
-            src/guaraci/resumo_parse.py
+            src/guaraci/resumo_parse.py \
+            src/guaraci/transferencia_calibracao.py \
+            src/guaraci/linearity.py \
+            src/guaraci/robustness.py \
+            src/guaraci/conformal.py \
+            src/guaraci/config.py \
+            src/guaraci/plano_amostral.py \
+            src/guaraci/selecao_variaveis.py \
+            src/guaraci/sentinela_deriva.py \
+            src/guaraci/predicao.py \
+            src/guaraci/io_registry.py \
+            src/guaraci/agrupamento_pastas.py \
+            src/guaraci/hsi_io.py \
+            src/guaraci/eem_io.py \
+            src/guaraci/gcms_io.py \
+            src/guaraci/alinhamento_retencao.py \
+            src/guaraci/hsi_quality.py \
+            src/guaraci/hsi_segmentation.py \
+            src/guaraci/hsi_pixels.py \
+            src/guaraci/hsi_classification.py \
+            src/guaraci/hsi_chemistry.py \
+            src/guaraci/hsi_validation.py \
+            src/guaraci/hsi_resampling.py \
+            src/guaraci/hsi_identification.py \
+            src/guaraci/hsi_uncertainty.py \
+            src/guaraci/hsi_applicability.py \
+            src/guaraci/config_io.py \
+            src/guaraci/perfil_matriz.py \
+            src/guaraci/plano_coleta.py \
+            src/guaraci/paleta_cores.py \
+            src/guaraci/auditoria_delineamento.py \
+            src/guaraci/identificacao.py \
+            src/guaraci/model_registry.py \
+            src/guaraci/technique_registry.py \
+            src/guaraci/mcr_als.py \
+            src/guaraci/hsi_multiway.py \
+            src/guaraci/importadores_proprietarios.py \
+            src/guaraci/portao_correcao_sinal.py \
+            src/guaraci/amostragem_ativa.py \
+            src/guaraci/politica_pooled_local.py \
+            src/guaraci/validacao_publica.py \
+            src/guaraci/preferencias_visuais.py \
+            src/guaraci/app_nav.py \
+            src/guaraci/eem_multiway.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console
   # específico de win32 em guaraci.py/cli_assistente.py), então validamos em
   # windows-latest além de ubuntu e macos, nas pontas da faixa suportada
-  # (3.10–3.13, requires-python em pyproject.toml). macOS só entra nas
-  # pontas (3.10/3.13) para não triplicar o tempo total de CI à toa — Windows
-  # e Linux já cobrem toda a faixa de versão.
+  # (3.10–3.13, requires-python em pyproject.toml).
+  #
+  # REDUZIDA em PR (2026-08-07, cota de minutos do Actions esgotada numa
+  # conta privada): o multiplicador de minutos do GitHub é 1x Linux / 2x
+  # Windows / 10x macOS — a matriz cheia (10 combinações, incl. 2 macOS)
+  # custava caro demais para rodar em CADA push de uma PR em iteração. Em
+  # `pull_request`, roda só 3 combinações (Ubuntu 3.10/3.13 nas pontas da
+  # faixa suportada + 1 Windows, sem macOS — ainda pega regressão de
+  # encoding/console win32, só não a cada iteração). A matriz CHEIA (10
+  # combinações, macOS incluso) só roda em `push` para master/main — ou
+  # seja, uma vez por merge, não uma vez por commit de PR. Se a cota
+  # voltar a sobrar, reverter é so' trocar `matrix.include` de volta pela
+  # combinação de `os`+`python-version` (ver historico do arquivo).
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        include:
-          - os: macos-latest
-            python-version: "3.10"
-          - os: macos-latest
-            python-version: "3.13"
+        include: ${{ github.event_name == 'pull_request' && fromJSON('[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.11"}]') || fromJSON('[{"os":"ubuntu-latest","python-version":"3.10"},{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.12"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.10"},{"os":"windows-latest","python-version":"3.11"},{"os":"windows-latest","python-version":"3.12"},{"os":"windows-latest","python-version":"3.13"},{"os":"macos-latest","python-version":"3.10"},{"os":"macos-latest","python-version":"3.13"}]') }}
 
     defaults:
       run:
@@ -106,7 +158,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
-          pip install -e .   # valida o empacotamento (src/guaraci, entry point `guaraci`)
+          pip install -e .[dev]   # valida o empacotamento (src/guaraci, entry point `guaraci`)
 
       - name: Run tests with coverage
         # Suíte completa (inclui o end-to-end 'slow'): valida a integração dos
@@ -136,3 +188,193 @@ jobs:
         with:
           name: coverage-xml-${{ matrix.os }}-py${{ matrix.python-version }}
           path: coverage.xml
+
+  # ── Validacao contra dataset PUBLICO ──────────────────────────────────────
+  # Separado da suite principal de proposito: depende de rede e de um
+  # arquivo que NAO e' versionado (licenca de terceiro). Falha aqui = o
+  # motor deixou de reproduzir a literatura, o que e' bug, nao flakiness.
+  # `continue-on-error: false` -- se a fonte cair, o job falha e alguem olha,
+  # em vez de virar verde silencioso.
+  validacao-publica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest scipy
+      - name: Baixar dataset publico (Eigenvector Corn)
+        env:
+          # Fixado em 2026-08-20. Sem isto, o gate de validacao publica
+          # aceitaria silenciosamente qualquer conteudo que a origem servisse
+          # -- e o .mat vai direto para scipy.io.loadmat.
+          CORN_SHA256: e28fd4be274a54ca57b1f2c67ef5a8bf4981f8314bcc73e4c64836fe658c46b5
+          CORN_BYTES: "1445616"
+        run: |
+          mkdir -p "$HOME/datasets_publicos"
+          destino="$HOME/datasets_publicos/corn.mat"
+          curl -fsSL --retry 3 -o "$destino" https://eigenvector.com/data/Corn/corn.mat
+          echo "$CORN_SHA256  $destino" | sha256sum -c -
+          tamanho=$(wc -c < "$destino")
+          if [ "$tamanho" != "$CORN_BYTES" ]; then
+            echo "corn.mat com $tamanho bytes, esperado $CORN_BYTES" >&2
+            exit 1
+          fi
+      - name: Rodar validacao externa
+        run: |
+          export GUARACI_DATASETS_DIR="$HOME/datasets_publicos"
+          pytest tests/test_validacao_publica.py -v
+
+  # ── Validacao contra dataset PUBLICO Mendeley (oleos comestiveis) ─────────
+  # Matriz de 3 SOs (Passo 82): download em Python (script versionado, nao
+  # bash inline) para ser identico nos 3 runners. Mesma filosofia do Corn --
+  # falha aqui e' bug real ou fonte fora do ar, nunca flakiness silenciada.
+  validacao-publica-mendeley:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (Mendeley ctgg7k4m5g)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_mendeley_oleos.py
+      - name: Baixar dataset publico (Mendeley thkcz3h6n6, fluorescencia)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_mendeley_fluorescencia_oleo.py
+      # RMN (Figshare 4307804) NAO entra aqui de proposito: o Figshare
+      # bloqueia download automatizado com desafio de bot AWS WAF (ver
+      # docstring de baixar_figshare_azeite_nmr.py) -- rodar isso num
+      # runner de CI seria flakiness real (bloqueio depende do IP/trafego
+      # do runner, nao de bug), nao "fonte fora do ar" que vale falhar o
+      # job. tests/test_validacao_publica_figshare_azeite_nmr.py pula
+      # graciosamente quando o arquivo nao esta' presente; roda local com
+      # download manual (ver docstring do script/teste).
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: >
+          pytest tests/test_validacao_publica_mendeley.py
+          tests/test_validacao_publica_mendeley_mir_raman.py
+          tests/test_validacao_publica_mendeley_fluorescencia.py -v
+
+  # ── Validacao contra dataset PUBLICO ERIC/Eawag (esgoto, UV-Vis) ──────────
+  # Passo 147 (Fase A). Job proprio (nao entra no matrix Mendeley): fonte
+  # diferente (portal CKAN da Eawag), arquivo bem maior (~357 MB) -- 1 SO
+  # so' (mesma escolha do Corn) para nao baixar ~1 GB total por execucao de
+  # CI. `continue-on-error: false` -- mesma filosofia dos demais.
+  validacao-publica-eawag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (ERIC/Eawag, esgoto UV-Vis)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_eawag_esgoto_uvvis.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_eawag_esgoto_uvvis.py -v
+
+  # ── Validacao contra dataset PUBLICO Zenodo (EEM real, azeite) ────────────
+  # Passo 149 (Fase C). Job proprio (nao Mendeley): fonte diferente
+  # (Zenodo), arquivo ~96 MB -- 1 SO so' (mesma escolha do Corn/Eawag).
+  validacao-publica-eem-zenodo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      # [multiway] traz o tensorly: o PARAFAC de eem_multiway.py importa a
+      # lib, e sem o extra os 2 testes de PARAFAC deste job falhavam com
+      # ModuleNotFoundError em todo push desde 2026-09-05 (o job `test`
+      # passava porque instala requirements.txt, que ja' lista tensorly).
+      - name: Instalar
+        run: pip install -e .[multiway] && pip install pytest
+      - name: Baixar dataset publico (Zenodo 19755088, EEM azeite)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_zenodo_eem_azeite.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_zenodo_eem_azeite.py tests/test_eem_multiway.py -v
+
+  # ── Validacao contra dataset PUBLICO Mendeley (GC-MS, lavanda) ────────────
+  # Passo 150 (Fase D). 55 arquivos, ~347 MB total -- 1 SO so'.
+  validacao-publica-gcms-lavanda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (Mendeley pgkrc7wyj4, GC-MS lavanda)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_mendeley_gcms_lavanda.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_mendeley_gcms_lavanda.py tests/test_alinhamento_retencao.py -v
+
+  # ── Validacao contra dataset PUBLICO Zenodo (HPLC-CAD, azeite) ────────────
+  # Passo 157/159 (busca ampliada por HPLC ja' pre-processado). Arquivo
+  # pequeno (~3.2 MB, mirror do dataset classico de Rasmus Bro et al.
+  # 2011) -- 1 SO so', mesma escolha dos demais jobs desta secao.
+  validacao-publica-hplc-azeite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest scipy
+      - name: Baixar dataset publico (Zenodo 21245912, HPLC-CAD azeite)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_zenodo_hplc_azeite.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_hplc_azeite.py -v
+
+  # ── Validacao contra dataset PUBLICO Zenodo (GC-IMS, urina) ───────────────
+  # Passo 158/159 (busca ampliada por IMS ja' pre-processado). So' a tabela
+  # de picos e' baixada via HTTP Range (~150 KB) -- os 44 arquivos .mea
+  # brutos (~3.4 GB descomprimidos) do zip de 851 MB NAO sao baixados.
+  validacao-publica-gcims-urina:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar tabela de picos (Zenodo 19209004, GC-IMS urina)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_zenodo_gcims_urina.py
+      - name: Rodar validacao externa
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_validacao_publica_gcims_urina.py -v

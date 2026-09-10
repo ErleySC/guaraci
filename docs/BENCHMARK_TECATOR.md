@@ -3,7 +3,7 @@
 > Resolve a lacuna citada em `docs/VALIDATION.md` ("sem *benchmark* contra
 > um dataset público externo"). Todas as validações anteriores do GUARACI
 > usavam dados sintéticos, propriedades matemáticas, ou o dataset próprio
-> do autor (óleos amazônicos). Esta página roda o motor real de
+> do autor. Esta página roda o motor real de
 > pré-processamento + regressão PLS do GUARACI — não uma reimplementação —
 > num dataset público, de terceiros, bem estabelecido na literatura de
 > quimiometria, fora de qualquer dado que o autor tenha coletado.
@@ -35,9 +35,9 @@ de teste durante a seleção de LVs (CV só no treino, `KFold` de 5 folds).
 
 Script reprodutível: [`scripts/benchmark_tecator.py`](../scripts/benchmark_tecator.py)
 (baixa o dataset da fonte original a cada execução — não redistribuído no
-repositório). Roda literalmente `guaraci.preprocessamento.construir_preprocessador()`
+repositório). Roda literalmente `guaraci.preprocessamento.build_preprocessor()`
 e `sklearn.cross_decomposition.PLSRegression` — os mesmos componentes que
-`pipeline.pls_regressao_por_especie()` usa internamente — com seleção do
+`pipeline.pls_regression_by_species()` usa internamente — com seleção do
 número de variáveis latentes por validação cruzada no conjunto de treino
 (mesma metodologia usada em produção), para 4 dos presets de
 pré-processamento do GUARACI.
@@ -81,9 +81,9 @@ rodando o script novamente.
   rodando num dataset que o autor nunca viu, produz um resultado dentro do
   intervalo esperado por um método PLS bem calibrado** — não um número
   patológico (o que indicaria um bug de pré-processamento ou vazamento).
-- **Achado interessante, não escondido**: o preset `msc_sg_mc` — o melhor
-  preset no dataset próprio do autor (óleos amazônicos FT-NIR, Bal.Acc =
-  0,923) — é o **pior** dos 4 aqui (RMSEP = 2,343). `autoscaling` (o pior
+- **Achado interessante, não escondido**: o preset `msc_sg_mc` — o preset
+  padrão do GUARACI, escolhido para FT-NIR difuso com espalhamento forte —
+  é o **pior** dos 4 aqui (RMSEP = 2,343). `autoscaling` (o pior
   em muitos cenários de FT-NIR com espalhamento) é o **melhor** aqui
   (RMSEP = 2,001). Isso é esperado e cientificamente correto: a Tecator
   usa NIT (transmitância), não NIR difuso, então o espalhamento que

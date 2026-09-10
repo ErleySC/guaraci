@@ -1,8 +1,8 @@
 """Rede de regressão das figuras do pipeline + contrato de MODO CIENTÍFICO.
 
 Roda `executar()` duas vezes (fixtures de sessão) com dados sintéticos:
-  - um run de CLASSIFICAÇÃO (nivel=N2, objetivo derivado=classificacao);
-  - um run de QUANTIFICAÇÃO (nivel=N3, objetivo derivado=quantificacao).
+  - um run de CLASSIFICAÇÃO (level=N2, objetivo derivado=classificacao);
+  - um run de QUANTIFICAÇÃO (level=N3, objetivo derivado=quantificacao).
 
 Depois faz asserções BARATAS sobre os arquivos gerados. Além de travar a
 saída visual (PNG válido, tamanho não-trivial, dimensões sãs), agora também
@@ -13,7 +13,7 @@ supervisionadas de PLS-DA (confusão/ROC/DD-SIMCA/SR-VIP). Antes desta
 mudança, N2 e N3 produziam o mesmo conjunto (defeito auditado).
 
 Não é comparação pixel-a-pixel (frágil): valida ESTRUTURA + presença/ausência
-do conjunto pertinente ao modo.
+do conjunto pertinente ao mode.
 """
 import os
 import struct
@@ -33,8 +33,8 @@ FIGURAS_CLASSIFICACAO = {
     "fig4_confusao_e_metricas_por_classe",
     "figS1_selecao_lvs",
     "fig_sprint3_sr_vip",
-    "fig6_preprocessamento",              # exploratória via escotilha figuras_detalhadas
-    "fig_hca_dendrograma",
+    "fig6_preprocessing",              # exploratória via escotilha figuras_detalhadas
+    "fig_hca_dendrogram",
     "fig_loadings_pca",
     "fig_biplot_pca",                     # exploratória via escotilha figuras_detalhadas
     "fig_roc_auc_multiclasse",
@@ -46,11 +46,11 @@ FIGURAS_QUANTIFICACAO = {
     "fig0_espectros_medios_classe",  # overview
     "fig1_pca_scores",       # overview
     "fig3_outliers_T2_Q",    # overview
-    "figS2_pls_regressao",   # nome de arquivo de fig7_pls_regressao (só em Quantificação)
+    "figS2_pls_regressao",   # nome de arquivo de fig7_pls_regression (só em Quantificação)
     "figS3_merito_regressao",  # LOD/LOQ/Seletividade dedicada (auditoria item 5)
 }
 
-# Contrato de filtragem: figuras que NÃO podem aparecer no modo Quantificação
+# Contrato de filtragem: figuras que NÃO podem aparecer no mode Quantificação
 # (são supervisionadas de classificação — pertencem a outro objetivo).
 FIGURAS_PROIBIDAS_EM_QUANTIFICACAO = {
     "fig2_plsda_scores",
@@ -66,7 +66,7 @@ FIGURAS_PROIBIDAS_EM_CLASSIFICACAO = {
     "figS3_merito_regressao",
 }
 
-# Piso de contagem por modo (abaixo disso algo quebrou em massa).
+# Piso de contagem por mode (abaixo disso algo quebrou em massa).
 MIN_FIGURAS_CLASSIFICACAO = 10
 MIN_FIGURAS_QUANTIFICACAO = 3
 
@@ -91,36 +91,36 @@ def _coletar_pngs(figbase):
 
 def _cfg_base(pq, base, **overrides):
     cfg = pq.Config(
-        pasta_entrada=str(base / "dados"),
-        pasta_saida_raiz=str(base / "saida"),
-        modo="sintetico", n_por_classe=10, n_pontos_sint=60,
-        n_replicas_sint=3,   # replicas fisicas -> DD-SIMCA/figuras de merito treinam de verdade
+        input_folder=str(base / "dados"),
+        output_root_folder=str(base / "saida"),
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3,   # replicas fisicas -> DD-SIMCA/figuras de merito treinam de verdade
         wn_min=400.0, wn_max=4001.0,
         n_splits_cv=2, n_repeats_cv=1,
-        n_permutacoes=5, n_permutacoes_wold=5,
+        n_permutations=5, n_permutations_wold=5,
         n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
-        max_lvs=5, figuras_detalhadas=True,
+        max_lvs=5, detailed_figures=True,
     )
     # Liga os módulos científicos que produzem figura (guardado por hasattr).
     # Benchmark/MC/SHAP ficam DESLIGADOS: são lentos e exigem xgboost/shap.
     for attr, val in [
-        ("executar_ddsimca", True), ("executar_opls", True),
-        ("executar_etapa4", True), ("executar_wold", True),
-        ("comparar_pipelines", True), ("executar_cv_anova", True),
-        ("executar_benchmark", False), ("executar_monte_carlo", False),
-        ("executar_shap", False),
+        ("run_ddsimca", True), ("run_opls", True),
+        ("executar_etapa4", True), ("run_wold", True),
+        ("comparar_pipelines", True), ("run_cv_anova", True),
+        ("run_benchmark", False), ("run_monte_carlo", False),
+        ("run_shap", False),
     ]:
         if hasattr(cfg, attr):
             setattr(cfg, attr, val)
     for k, v in overrides.items():
         setattr(cfg, k, v)
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
     return cfg
 
 
 def _rodar(pq, cfg):
     pq.executar(cfg)
-    runs = achar_pastas_run(cfg.pasta_saida_raiz)
+    runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() não criou pasta de saída"
     figbase = os.path.join(runs[0], pq.NOME_GRAFICOS)
     assert os.path.isdir(figbase), f"pasta {pq.NOME_GRAFICOS}/ não foi criada"
@@ -129,17 +129,17 @@ def _rodar(pq, cfg):
 
 @pytest.fixture(scope="session")
 def figuras_classificacao(pq, tmp_path_factory):
-    """Run de classificação (nivel=N2 -> objetivo derivado=classificacao)."""
+    """Run de classificação (level=N2 -> objetivo derivado=classificacao)."""
     base = tmp_path_factory.mktemp("figclass")
-    cfg = _cfg_base(pq, base, nivel="N2")
+    cfg = _cfg_base(pq, base, level="N2")
     return _rodar(pq, cfg)
 
 
 @pytest.fixture(scope="session")
 def figuras_quantificacao(pq, tmp_path_factory):
-    """Run de quantificação (nivel=N3 -> objetivo derivado=quantificacao)."""
+    """Run de quantificação (level=N3 -> objetivo derivado=quantificacao)."""
     base = tmp_path_factory.mktemp("figquant")
-    cfg = _cfg_base(pq, base, nivel="N3")
+    cfg = _cfg_base(pq, base, level="N3")
     return _rodar(pq, cfg)
 
 
@@ -154,18 +154,18 @@ def test_figuras_classificacao_presentes(figuras_classificacao):
 
 @pytest.mark.slow
 def test_classificacao_nao_emite_regressao(figuras_classificacao):
-    """Contrato de modo: run de classificação NÃO gera a figura de regressão."""
+    """Contrato de mode: run de classificação NÃO gera a figura de regressão."""
     _figbase, pngs = figuras_classificacao
     nomes = {os.path.splitext(os.path.basename(p))[0] for p in pngs}
     intrusas = FIGURAS_PROIBIDAS_EM_CLASSIFICACAO & nomes
     assert not intrusas, (
-        f"Figuras de quantificação vazaram para o modo Classificação: "
+        f"Figuras de quantificação vazaram para o mode Classificação: "
         f"{sorted(intrusas)}")
 
 
 @pytest.mark.slow
 def test_figuras_quantificacao_presentes(figuras_quantificacao):
-    """As figuras pertinentes ao modo Quantificação foram geradas."""
+    """As figuras pertinentes ao mode Quantificação foram geradas."""
     _figbase, pngs = figuras_quantificacao
     nomes = {os.path.splitext(os.path.basename(p))[0] for p in pngs}
     faltando = FIGURAS_QUANTIFICACAO - nomes
@@ -174,19 +174,19 @@ def test_figuras_quantificacao_presentes(figuras_quantificacao):
 
 @pytest.mark.slow
 def test_quantificacao_nao_emite_classificacao(figuras_quantificacao):
-    """Contrato de modo: run de quantificação NÃO gera figuras supervisionadas
+    """Contrato de mode: run de quantificação NÃO gera figuras supervisionadas
     de classificação (confusão/ROC/DD-SIMCA/SR-VIP/scores PLS-DA)."""
     _figbase, pngs = figuras_quantificacao
     nomes = {os.path.splitext(os.path.basename(p))[0] for p in pngs}
     intrusas = FIGURAS_PROIBIDAS_EM_QUANTIFICACAO & nomes
     assert not intrusas, (
-        f"Figuras de classificação vazaram para o modo Quantificação: "
+        f"Figuras de classificação vazaram para o mode Quantificação: "
         f"{sorted(intrusas)}")
 
 
 @pytest.mark.slow
 def test_contagem_minima_de_figuras(figuras_classificacao, figuras_quantificacao):
-    """Cada modo gera um piso de figuras (nenhuma etapa sumiu em massa)."""
+    """Cada mode gera um piso de figuras (nenhuma etapa sumiu em massa)."""
     _fb_c, pngs_c = figuras_classificacao
     _fb_q, pngs_q = figuras_quantificacao
     assert len(pngs_c) >= MIN_FIGURAS_CLASSIFICACAO, (
@@ -250,7 +250,7 @@ def test_model_card_gerado_com_addendum_de_regressao(figuras_quantificacao):
                   "## 8. Ressalvas e Recomendacoes"):
         assert secao in txt, f"secao ausente no model card: {secao}"
     assert "## 9. Addendum -- Quantificacao" in txt, (
-        "addendum de regressao ausente (fixture usa nivel=N3)")
+        "addendum de regressao ausente (fixture usa level=N3)")
     assert "Wold parsimony criterion" in txt, (
         "notas metodologicas ausentes (deveriam vir de _NOTAS_METODOLOGICAS)")
 
@@ -279,7 +279,7 @@ def test_dimensoes_sanas(figuras_classificacao, figuras_quantificacao):
 
 @pytest.mark.slow
 def test_classificacao_calcula_permutacao_e_bca(figuras_classificacao):
-    """No modo Classificacao, o teste de permutacao e o BCa CI RODAM de
+    """No mode Classificacao, o teste de permutacao e o BCa CI RODAM de
     verdade e aparecem no resumo com valores finitos."""
     figbase, _pngs = figuras_classificacao
     run_dir = os.path.dirname(figbase)
@@ -293,7 +293,7 @@ def test_classificacao_calcula_permutacao_e_bca(figuras_classificacao):
 
 @pytest.mark.slow
 def test_quantificacao_pula_permutacao_e_bca(figuras_quantificacao):
-    """Fora do modo Classificacao, a computacao cara de permutacao/BCa e'
+    """Fora do mode Classificacao, a computacao cara de permutacao/BCa e'
     pulada e os campos correspondentes NAO aparecem no resumo (em vez de
     poluir o relatorio com placeholders 'nan')."""
     figbase, _pngs = figuras_quantificacao

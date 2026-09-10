@@ -3,12 +3,12 @@
 
 Antes desta extração, a MESMA lista de classificadores de comparação
 (PLS-DA, SVM RBF, Random Forest, Gradient Boosting, XGBoost opcional) estava
-hardcoded DUAS VEZES — em `benchmark_classificadores()` e `monte_carlo_cv()`
+hardcoded DUAS VEZES — em `benchmark_classifiers()` e `monte_carlo_cv()`
 (avaliacao_modelos.py) — e havia divergido silenciosamente: o Gradient
 Boosting do Monte Carlo CV não tinha `subsample=0.8` (o do benchmark tinha),
 apesar da docstring de `monte_carlo_cv` afirmar "mesmos hiperparâmetros do
 benchmark". Este módulo é a fonte ÚNICA de verdade; as duas funções agora
-chamam `construir_lista_benchmark()` — a divergência foi corrigida
+chamam `build_benchmark_list()` — a divergência foi corrigida
 alinhando ao benchmark (fonte mais completa/documentada).
 
 Adicionar, remover ou re-parametrizar um modelo do Auto-Benchmark e do
@@ -51,7 +51,7 @@ def _construir_grad_boost(n_opt: int, cfg: "Config"):
 
 
 def _construir_xgboost(n_opt: int, cfg: "Config"):
-    from xgboost import XGBClassifier  # type: ignore  -- ImportError se nao instalado
+    from xgboost import XGBClassifier  # ImportError se nao instalado (extra [benchmark])
     return XGBClassifier(n_estimators=300, learning_rate=0.05, max_depth=4,
                           subsample=0.8, colsample_bytree=0.8,
                           eval_metric="mlogloss", verbosity=0,
@@ -61,7 +61,7 @@ def _construir_xgboost(n_opt: int, cfg: "Config"):
 # Fonte UNICA de verdade: (nome, construtor, obrigatorio).
 # obrigatorio=True (so' PLS-DA) -> sempre incluido, mesmo com
 # incluir_opcionais=False (caso de monte_carlo_cv quando
-# cfg.monte_carlo_incluir_todos=False: so' PLS-DA participa).
+# cfg.monte_carlo_include_all=False: so' PLS-DA participa).
 _REGISTRO: List[Tuple[str, Construtor, bool]] = [
     ("PLS-DA",        _construir_pls_da,        True),
     ("SVM RBF",       _construir_svm_rbf,       False),
@@ -71,13 +71,13 @@ _REGISTRO: List[Tuple[str, Construtor, bool]] = [
 ]
 
 
-def construir_lista_benchmark(n_opt: int, cfg: "Config",
+def build_benchmark_list(n_opt: int, cfg: "Config",
                                incluir_opcionais: bool = True
                                ) -> List[Tuple[str, Any]]:
     """Monta a lista (nome, instância) de classificadores para comparação.
 
     incluir_opcionais=False: só o modelo obrigatório (PLS-DA) — usado por
-    monte_carlo_cv quando cfg.monte_carlo_incluir_todos=False. Modelos cujo
+    monte_carlo_cv quando cfg.monte_carlo_include_all=False. Modelos cujo
     pacote opcional não está instalado (ex.: xgboost) são pulados
     silenciosamente (ImportError), preservando o comportamento histórico.
     """
@@ -98,4 +98,4 @@ def nomes_modelos_benchmark(incluir_opcionais: bool = True) -> Tuple[str, ...]:
                  if obrig or incluir_opcionais)
 
 
-__all__ = ["construir_lista_benchmark", "nomes_modelos_benchmark", "Construtor"]
+__all__ = ["build_benchmark_list", "nomes_modelos_benchmark", "Construtor"]

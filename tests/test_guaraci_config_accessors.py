@@ -58,15 +58,15 @@ def test_rotulo_opcao_campo_sem_alias_especial_devolve_str(g):
 
 def test_get_val_nivel_usa_rotulo_opcao(g):
     cfg = g.Config()
-    cfg.nivel = "N2"
+    cfg.level = "N2"
     assert g._get_val(cfg, "nivel") == g._rotulo_opcao("nivel", "N2")
 
 
 # ── _cfgv: resolve key -> attr real (evita getattr direto errado) ────────────
 def test_cfgv_resolve_attr_diferente_da_key(g):
-    # key "benchmark" no _CONFIG_SPEC mapeia para o atributo executar_benchmark
+    # key "benchmark" no _CONFIG_SPEC mapeia para o atributo run_benchmark
     cfg = g.Config()
-    cfg.executar_benchmark = True
+    cfg.run_benchmark = True
     assert g._cfgv(cfg, "benchmark") is True
 
 

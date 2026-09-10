@@ -33,9 +33,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from guaraci.chemometric_stats import rmse_flat  # noqa: E402
 from guaraci.config import Config  # noqa: E402
-from guaraci.preprocessamento import construir_preprocessador  # noqa: E402
+from guaraci.preprocessamento import build_preprocessor  # noqa: E402
 
-TECATOR_URL = "http://lib.stat.cmu.edu/datasets/tecator"
+# HTTPS (achado da auditoria de 2026-09-01: era HTTP puro, sem TLS, sem
+# checksum -- diferente de scripts/download_datasets/baixar_mendeley_
+# oleos.py, que pina SHA256+tamanho). NAO pinamos SHA256 aqui porque a
+# rede desta sessao nao conseguiu alcancar lib.stat.cmu.edu pra' medir o
+# hash real (403 tanto em HTTP quanto HTTPS, com e sem User-Agent
+# customizado -- pode ser bloqueio temporario do servidor ou do egress
+# desta maquina, nao investigado a fundo). Inventar um hash sem medir
+# contra o conteudo real seria pior que nao ter nenhum -- ver a mesma
+# regra que motivou pinar o Mendeley com o valor MEDIDO, nunca suposto.
+# `_parsear_tecator` ja' valida estrutura (240 amostras exatas, 25
+# linhas/amostra) como piso de integridade -- nao e' criptografico, mas
+# pega corrupcao/truncamento grosseiro. Pinar SHA256+tamanho fica como
+# TODO pra' quem tiver acesso de rede pra' medir o valor real.
+TECATOR_URL = "https://lib.stat.cmu.edu/datasets/tecator"
 N_SAMPLES = 240
 N_WAVELENGTHS = 100
 LINES_PER_SAMPLE = 25
@@ -43,7 +56,9 @@ DATA_START_MARKER = "extrapolation_examples=25"
 
 
 def _baixar_tecator_raw() -> str:
-    with urllib.request.urlopen(TECATOR_URL, timeout=30) as resp:  # noqa: S310
+    req = urllib.request.Request(
+        TECATOR_URL, headers={"User-Agent": "guaraci-benchmark/1.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
         return resp.read().decode("utf-8", errors="replace")
 
 
@@ -102,7 +117,7 @@ def _rmsecv_por_lv(X: np.ndarray, y: np.ndarray, cfg: Config,
     erros = []
     for n in range(1, lv_max + 1):
         pipe = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n, scale=False)),
         ])
         try:
@@ -140,7 +155,7 @@ def rodar_benchmark(presets=("msc_sg_mc", "snv_sg_mc", "mc", "autoscaling"),
         n_opt = int(np.argmin(erros_cv)) + 1
 
         pipe_final = Pipeline([
-            ("preproc", construir_preprocessador(cfg)),
+            ("preproc", build_preprocessor(cfg)),
             ("pls", PLSRegression(n_components=n_opt, scale=False)),
         ]).fit(X_tr, y_tr.reshape(-1, 1))
         y_pred = np.asarray(pipe_final.predict(X_te)).flatten()

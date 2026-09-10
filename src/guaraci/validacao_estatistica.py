@@ -5,12 +5,13 @@ teste de permutacao e teste de Wold (com paralelismo opcional via joblib).
 
 Extraido de pipeline.py como parte da modularizacao (Fase H). Sem acoplamento a
 Config — funcoes puras sobre X/Y/cv/pipeline_factory. pipeline.py reexporta os
-nomes, entao pipeline.teste_permutacao(...), pipeline._cv_predict_manual(...)
-etc. seguem inalterados (usados por comparar_pipelines, etapa4 e executar).
+nomes, entao pipeline.permutation_test(...), pipeline._cv_predict_manual(...)
+etc. seguem inalterados (usados por compare_pipelines, etapa4 e executar).
 Coberto por tests/test_pipeline_smoke.py e tests/test_pipeline_core.py.
 """
 from __future__ import annotations
 
+import logging
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -18,8 +19,18 @@ from scipy.stats import f as f_dist, norm as _norm_dist
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.pipeline import Pipeline
 
+log = logging.getLogger(__name__)
 
-class StratifiedGroupKFoldEstavel:
+__all__ = [
+    "StableStratifiedGroupKFold",
+    "bootstrap_bca_ci",
+    "cv_anova_eriksson",
+    "wold_test",
+    "permutation_test",
+]
+
+
+class StableStratifiedGroupKFold:
     """`StratifiedGroupKFold` com partição ESTÁVEL entre versões de biblioteca.
 
     Por que existe
@@ -96,7 +107,7 @@ class StratifiedGroupKFoldEstavel:
         """
         if groups is None:
             raise ValueError(
-                "StratifiedGroupKFoldEstavel exige `groups` (ex.: mae_id). "
+                "StableStratifiedGroupKFold exige `groups` (ex.: mae_id). "
                 "Sem grupos as replicas vazam entre treino e teste.")
         y = np.asarray(y)
         groups = np.asarray(groups)
@@ -156,6 +167,42 @@ def _cv_predict_manual(pipeline_factory, X, Y_bin, cv_indices):
         contador[va] += 1
     contador[contador == 0] = 1
     return y_hat / contador[:, None]
+
+
+def _gerar_permutacoes_rotulo(y_int: np.ndarray, groups: Optional[np.ndarray],
+                               n_perm: int, rng: np.random.Generator
+                               ) -> List[np.ndarray]:
+    """Gera `n_perm` vetores de rotulos permutados para os testes de
+    Y-randomization (`permutation_test`, `wold_test`).
+
+    Com `groups` (ex.: `mae_id`), permuta a ATRIBUICAO de rotulo por GRUPO,
+    nao por amostra — preserva a coerencia de cada grupo (todas as replicas
+    fisicas de uma amostra devem ficar com o MESMO rotulo em cada
+    permutacao, exatamente como no dado real). Permutar por amostra quebra
+    essa coerencia: gera conjuntos que nao podem existir sob H0 (um mesmo
+    `mae_id` com rotulos diferentes) e por isso mais dificeis de classificar
+    que o nulo verdadeiro, o que estreita a distribuicao nula
+    artificialmente. Medido (`scripts/medicoes/medir_permutacao_grupos.py`,
+    H0 verdadeiro, 12 grupos de 3 replicas, 3 classes): taxa de falso
+    positivo de 15,0% com permutacao por amostra vs. 4,2% com permutacao
+    por grupo (nominal: 5%).
+
+    Ref.: Winkler A.M. et al. (2015), "Multi-level block permutation",
+    NeuroImage 123:253-268 — unidade de troca (exchangeable unit) sob H0
+    e' o GRUPO em dado com estrutura hierarquica, nao a observacao
+    individual.
+
+    Sem `groups`, cai para permutacao por amostra (nao ha estrutura de
+    grupo a preservar).
+    """
+    y_int = np.asarray(y_int)
+    if groups is None:
+        return [y_int[rng.permutation(len(y_int))] for _ in range(n_perm)]
+    groups = np.asarray(groups)
+    gid_unicos, inv = np.unique(groups, return_inverse=True)
+    rot_por_grupo = np.array([y_int[groups == g][0] for g in gid_unicos])
+    n_grupos = len(gid_unicos)
+    return [rot_por_grupo[rng.permutation(n_grupos)][inv] for _ in range(n_perm)]
 
 
 def bootstrap_bca_ci(y_true: np.ndarray, y_pred: np.ndarray,
@@ -297,7 +344,7 @@ def _iter_wold(pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups):
     sequencialmente quanto via joblib.Parallel — o resultado depende so dos
     argumentos, entao rodar em paralelo nao muda o valor calculado, so a
     ordem de execucao (a ordem dos resultados e sempre preservada pelo
-    chamador). Replica exatamente a logica de teste_wold pre-paralelizacao.
+    chamador). Replica exatamente a logica de wold_test pre-paralelizacao.
     Retorna ("ok", sim, r2, q2) | ("skip", ...) | ("fail", ...).
     """
     try:
@@ -318,12 +365,12 @@ def _iter_wold(pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups):
         return ("ok", sim, r2, q2)
     except (ValueError, np.linalg.LinAlgError):
         # Y permutado degenerado p/ este fold (ex.: classe some do treino
-        # apos a permutacao) -- contado como falha em teste_wold (n_falhos),
+        # apos a permutacao) -- contado como falha em wold_test (n_falhos),
         # nao mascarado. Excecoes de outro tipo (bug real) propagam.
         return ("fail", None, None, None)
 
 
-def teste_wold(pipeline_factory: Callable[[], Pipeline],
+def wold_test(pipeline_factory: Callable[[], Pipeline],
                 X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                 cv, n_perm: int, seed: int,
                 groups: Optional[np.ndarray] = None,
@@ -362,12 +409,16 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
     # Permutacoes geradas SEMPRE na mesma ordem/sequencia do rng, independente
     # de n_jobs — garante que o resultado (para um dado seed) e identico seja
     # a execucao sequencial ou paralela; so o tempo de parede muda.
-    permutacoes = [rng.permutation(len(Y_bin)) for _ in range(n_perm)]
+    # Group-aware: permuta a ATRIBUICAO de rotulo por grupo (mae_id), nao por
+    # amostra — ver docstring de _gerar_permutacoes_rotulo (achado A1 da
+    # auditoria de 2026-08-07: permutacao por amostra inflava o falso
+    # positivo de 5% nominal para 15%).
+    K = Y_bin.shape[1]
+    permutacoes = _gerar_permutacoes_rotulo(y_int, groups, n_perm, rng)
 
     if n_jobs <= 1:
-        for i, idx in enumerate(permutacoes):
-            Y_perm = Y_bin[idx]
-            y_perm_int = np.argmax(Y_perm, axis=1)
+        for i, y_perm_int in enumerate(permutacoes):
+            Y_perm = np.eye(K)[y_perm_int]
             status, sim, r2, q2 = _iter_wold(
                 pipeline_factory, X, Y_perm, y_perm_int, y_int, cv, groups)
             if status == "ok":
@@ -382,15 +433,14 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
                 taxa    = (i + 1) / max(elapsed, 1e-6)
                 eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
                 pct = (i + 1) / n_perm * 100
-                print(f"    Wold {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                      f"valid={n_validos} failed={n_falhos}  "
-                      f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
-                      flush=True)
+                log.info("    Wold %4d/%d  (%5.1f%%)  valid=%d failed=%d  "
+                         "elapsed=%5.1fs  ETA=%5.1fs",
+                         i + 1, n_perm, pct, n_validos, n_falhos, elapsed, eta_s)
     else:
         from joblib import Parallel, delayed
         import threadpoolctl
-        print(f"    Wold: {n_perm} permutacoes em paralelo (n_jobs={n_jobs})...",
-              flush=True)
+        log.info("    Wold: %d permutacoes em paralelo (n_jobs=%d)...",
+                 n_perm, n_jobs)
         # backend="loky" (processos, nao threads): medido que threading NAO
         # acelera aqui — grande parte do tempo e overhead Python do sklearn
         # (validacao/roteamento de metadados), que segura o GIL e nao roda em
@@ -402,17 +452,17 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
         with threadpoolctl.threadpool_limits(1):
             resultados = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_iter_wold)(
-                    pipeline_factory, X, Y_bin[idx], np.argmax(Y_bin[idx], axis=1),
+                    pipeline_factory, X, np.eye(K)[y_perm_int], y_perm_int,
                     y_int, cv, groups)
-                for idx in permutacoes)
+                for y_perm_int in permutacoes)
         for status, sim, r2, q2 in resultados:
             if status == "ok":
                 sims.append(sim); r2s.append(r2); q2s.append(q2)
                 n_validos += 1
             elif status == "fail":
                 n_falhos += 1
-        print(f"    Wold: concluido em {_time.time() - t0:.1f}s  "
-              f"(valid={n_validos} failed={n_falhos})", flush=True)
+        log.info("    Wold: concluido em %.1fs  (valid=%d failed=%d)",
+                 _time.time() - t0, n_validos, n_falhos)
 
     sims_arr = np.asarray(sims); r2s_arr = np.asarray(r2s); q2s_arr = np.asarray(q2s)
     # Add observed point (sim=1)
@@ -449,7 +499,7 @@ def teste_wold(pipeline_factory: Callable[[], Pipeline],
 
 def _iter_permutacao(pipeline_factory, X, Y_perm, y_perm_int, cv, groups):
     """Uma iteracao (pura, sem estado global) do teste de permutacao. Mesma
-    logica de teste_permutacao pre-paralelizacao — usada sequencialmente ou
+    logica de permutation_test pre-paralelizacao — usada sequencialmente ou
     via joblib.Parallel. Retorna ("ok", acc) | ("fail", None)."""
     try:
         cv_perm_idx = list(cv.split(X, y_perm_int, groups=groups))
@@ -457,12 +507,12 @@ def _iter_permutacao(pipeline_factory, X, Y_perm, y_perm_int, cv, groups):
         acc = float(balanced_accuracy_score(y_perm_int, np.argmax(y_hat, axis=1)))
         return ("ok", acc)
     except (ValueError, np.linalg.LinAlgError):
-        # Mesma logica de _iter_wold: falha contada em teste_permutacao
+        # Mesma logica de _iter_wold: falha contada em permutation_test
         # (n_falhos), nao mascarada.
         return ("fail", None)
 
 
-def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
+def permutation_test(pipeline_factory: Callable[[], Pipeline],
                       X: np.ndarray, Y_bin: np.ndarray, y_int: np.ndarray,
                       cv, n_perm: int, seed: int,
                       groups: Optional[np.ndarray] = None,
@@ -494,12 +544,15 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
 
     # Mesma sequencia de permutacoes independente de n_jobs (reprodutibilidade
     # do seed identica, sequencial ou paralelo — so o tempo de parede muda).
-    permutacoes = [rng.permutation(len(Y_bin)) for _ in range(n_perm)]
+    # Group-aware: ver docstring de _gerar_permutacoes_rotulo (achado A1 da
+    # auditoria de 2026-08-07: permutacao por amostra inflava o falso
+    # positivo de 5% nominal para 15%).
+    K = Y_bin.shape[1]
+    permutacoes = _gerar_permutacoes_rotulo(y_int, groups, n_perm, rng)
 
     if n_jobs <= 1:
-        for i, idx in enumerate(permutacoes):
-            Y_perm = Y_bin[idx]
-            y_perm_int = np.argmax(Y_perm, axis=1)
+        for i, y_perm_int in enumerate(permutacoes):
+            Y_perm = np.eye(K)[y_perm_int]
             status, acc = _iter_permutacao(pipeline_factory, X, Y_perm,
                                             y_perm_int, cv, groups)
             if status == "ok":
@@ -513,45 +566,44 @@ def teste_permutacao(pipeline_factory: Callable[[], Pipeline],
                 taxa    = (i + 1) / max(elapsed, 1e-6)
                 eta_s   = (n_perm - i - 1) / max(taxa, 1e-6)
                 pct = (i + 1) / n_perm * 100
-                print(f"    Perm {i+1:4d}/{n_perm}  ({pct:5.1f}%)  "
-                      f"valid={len(accs)} failed={n_falhos}  "
-                      f"elapsed={elapsed:5.1f}s  ETA={eta_s:5.1f}s",
-                      flush=True)
+                log.info("    Perm %4d/%d  (%5.1f%%)  valid=%d failed=%d  "
+                         "elapsed=%5.1fs  ETA=%5.1fs",
+                         i + 1, n_perm, pct, len(accs), n_falhos, elapsed, eta_s)
     else:
         from joblib import Parallel, delayed
         import threadpoolctl
-        print(f"    Perm: {n_perm} permutacoes em paralelo (n_jobs={n_jobs})...",
-              flush=True)
-        # Ver comentario equivalente em teste_wold: threading nao acelera
+        log.info("    Perm: %d permutacoes em paralelo (n_jobs=%d)...",
+                 n_perm, n_jobs)
+        # Ver comentario equivalente em wold_test: threading nao acelera
         # (overhead Python do sklearn segura o GIL) — loky (processos) sim;
         # threadpool_limits(1) evita oversubscription do BLAS interno.
         with threadpoolctl.threadpool_limits(1):
             resultados = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_iter_permutacao)(
-                    pipeline_factory, X, Y_bin[idx], np.argmax(Y_bin[idx], axis=1),
+                    pipeline_factory, X, np.eye(K)[y_perm_int], y_perm_int,
                     cv, groups)
-                for idx in permutacoes)
+                for y_perm_int in permutacoes)
         for status, acc in resultados:
             if status == "ok":
                 accs.append(acc)
             else:
                 n_falhos += 1
-        print(f"    Perm: concluido em {_time.time() - t0:.1f}s  "
-              f"(valid={len(accs)} failed={n_falhos})", flush=True)
+        log.info("    Perm: concluido em %.1fs  (valid=%d failed=%d)",
+                 _time.time() - t0, len(accs), n_falhos)
 
     n_validos = len(accs)
     failure_rate = n_falhos / n_perm if n_perm > 0 else 0.0
     accs_arr = np.asarray(accs, dtype=float)
 
     if failure_rate > 0.30:
-        print(f"[WARNING] Permutation test: failure rate = "
-              f"{failure_rate:.1%} ({n_falhos}/{n_perm}). "
-              f"Result may be unreliable (classes too "
-              f"imbalanced for stratified CV after shuffle).")
+        log.warning("Permutation test: failure rate = %.1f%% (%d/%d). "
+                    "Result may be unreliable (classes too imbalanced for "
+                    "stratified CV after shuffle).",
+                    failure_rate * 100, n_falhos, n_perm)
 
     if n_validos == 0:
-        print("[ERROR] Permutation test: 0 valid iterations. "
-              "p_value returned as 1.0 (non-informative).")
+        log.error("Permutation test: 0 valid iterations. p_value returned "
+                  "as 1.0 (non-informative).")
         p_val = 1.0
     else:
         p_val = float((np.sum(accs_arr >= acc_obs) + 1) / (n_validos + 1))

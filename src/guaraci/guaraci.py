@@ -1,6 +1,6 @@
 """
 guaraci.py v31.9.0 — Interface profissional GUARACI para o pipeline quimiometrico
-☀  GUARACI — Inteligencia Quimiometrica para Matrizes Amazonicas
+☀  GUARACI — Plataforma quimiometrica com validacao anti-vazamento por padrao
 Quimiometria • Machine Learning • Espectroscopia multitecnica
 
 Uso:
@@ -17,6 +17,7 @@ import logging
 import json
 import os
 import re as _re
+import shutil
 import sys
 import threading
 import time
@@ -35,7 +36,10 @@ if sys.platform == "win32":
             pass   # stdout/stderr redirecionado p/ algo sem reconfigure util
     try:
         import subprocess
-        subprocess.run(["chcp", "65001"], capture_output=True, shell=True)
+        # shell=True e' necessario aqui: `chcp` e' builtin do cmd.exe, nao um
+        # executavel. Os argumentos sao constantes -- nada vindo do usuario
+        # chega nesta linha, entao nao ha superficie de injecao.
+        subprocess.run("chcp 65001", capture_output=True, shell=True)  # noqa: S602
     except OSError:
         pass   # chcp indisponivel neste shell
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
@@ -59,36 +63,38 @@ from rich import box as rbox
 import guaraci.pipeline as pq
 from guaraci.app_logic import (
     LogThreadSafe as _LogThreadSafe,
-    figuras_concluidas as _figuras_concluidas,
-    avisos_do_log as _avisos_do_log,
-    progresso_do_log as _progresso_do_log,
-    fmt_tempo as _fmt_tempo,
+    figures_completed as _figures_completed,
+    log_warnings as _avisos_do_log,
+    log_progress as _progresso_do_log,
+    fmt_time as _fmt_time,
 )
 
 Config        = pq.Config
-executar      = pq.executar
-salvar_config = pq.salvar_config
-carregar_config = pq.carregar_config
+_executar      = pq.executar
+_save_config = pq.save_config
+_load_config = pq.load_config
 
 # Dicionarios de i18n/perfis do cli_assistente. Import de pacote normal (mesmo
 # pacote): importar o modulo NAO dispara main() (guardado por __main__), entao
 # nao ha efeito colateral — o antigo carregamento por caminho (spec_from_file)
 # so existia porque os modulos eram scripts soltos na raiz.
 import guaraci.cli_assistente as _cli
+import guaraci.preferencias_visuais as _prefs_visuais
 
 def _try(name, fallback=None):
     return getattr(_cli, name, fallback if fallback is not None else {})
 
-FIELD_NAMES          = _try("FIELD_NAMES")
-HELP_DB              = _try("HELP_DB")
-RISK_CLASS           = _try("RISK_CLASS")
+_FIELD_NAMES          = _try("FIELD_NAMES")
+_HELP_DB              = _try("HELP_DB")
+_RISK_CLASS           = _try("RISK_CLASS")
 PROFILES             = _try("PROFILES")
 PROFILE_DESC         = _try("PROFILE_DESC")
 PROFILE_KEY_SUMMARY  = _try("PROFILE_KEY_SUMMARY")
-PALETAS_COR          = _try("PALETAS_COR")
-FONT_PRESETS         = _try("FONT_PRESETS")
-TECNICAS             = _try("TECNICAS")
-REFERENCIAS_GUARACI  = _try("REFERENCIAS_GUARACI")
+_PALETAS_COR          = _try("PALETAS_COR")
+_aplicar_paleta       = _cli.apply_palette
+_FONT_PRESETS         = _try("FONT_PRESETS")
+_TECNICAS             = _try("TECNICAS")
+_REFERENCIAS_GUARACI  = _try("REFERENCIAS_GUARACI")
 _CONFIG_SPEC         = _try("_CONFIG_SPEC", [])
 _SPEC_BY_KEY         = _try("_SPEC_BY_KEY")
 _DDSIMCA_DISPLAY     = _try("_DDSIMCA_DISPLAY")
@@ -96,30 +102,158 @@ _DDSIMCA_INPUT       = _try("_DDSIMCA_INPUT")
 _coagir_valor        = _try("_coagir_valor", lambda s, r: r)
 _attr_para_yaml      = _try("_attr_para_yaml", lambda s, c: "")
 _fmt_yaml            = _try("_fmt_yaml", str)
-salvar_config        = _try("salvar_config", pq.salvar_config)
-carregar_config      = _try("carregar_config", pq.carregar_config)
+_save_config        = _try("save_config", pq.save_config)
+_load_config      = _try("load_config", pq.load_config)
 
+# __all__ so' cobre a superficie realmente consumida de fora deste arquivo
+# (confirmado por grep + suite de testes): `main` e' o ponto de entrada da
+# CLI; `Config` e' usado extensivamente pela suite via `guaraci_mod.Config`;
+# PROFILES/PROFILE_DESC/PROFILE_KEY_SUMMARY sao testados diretamente por
+# `test_guaraci_cli.py` via `guaraci_mod.X` (achado ao aplicar este __all__:
+# pareciam mirrors so'-internos de cli_assistente.py, mas ha um teste que os
+# consome por este caminho especifico -- mantidos publicos aqui por isso).
+# O resto (menu_*, cls, I18N, GUARACI_TIPS, FIELD_NAMES/HELP_DB/RISK_CLASS/
+# PALETAS_COR/FONT_PRESETS/TECNICAS/REFERENCIAS_GUARACI, os aliases locais
+# _executar/_save_config/_load_config) e' wiring interno da CLI -- nunca
+# consumido fora deste arquivo, renomeado para _privado nesta auditoria.
+__all__ = [
+    "main",
+    "Config",
+    "PROFILES",
+    "PROFILE_DESC",
+    "PROFILE_KEY_SUMMARY",
+]
+
+# Persistencia de estado do CLI.
+#
+# CORRIGIDO em 2026-08-16 (varredura de bugs): estas tres funcoes eram
+# wrappers que procuravam implementacoes em `cli_assistente` -- que NUNCA
+# existiram la'. `getattr(..., None)` devolvia None, entao `_carregar_*`
+# retornava sempre {} e `_salvar_visual_cfg` era um no-op SILENCIOSO. O
+# comentario do proprio codigo (secao do Modo Iniciante/Avancado) ja
+# registrava "esse esta quebrado ... fora do escopo desta feature
+# consertar isso" desde 2026-07-13.
+#
+# Consequencias reais, ambas do tipo que o projeto mais combate (o software
+# mente sem travar):
+#   1. As 4 opcoes do menu Visualizacao (Paleta/Fonte/Grid/Alpha) gravavam
+#      no dicionario, chamavam _salvar_visual_cfg(), imprimiam "OK Paleta:
+#      X" e NAO persistiam nada -- a confirmacao era falsa. Na proxima
+#      abertura o valor voltava ao default. O mesmo valia para o DPI
+#      (`_sincronizar_dpi`) e para toda a aplicacao de estilo em
+#      `_rodar_pipeline` (paleta/fonte/grid/alpha nos rcParams do
+#      matplotlib), que le de `_carregar_visual_cfg()`.
+#   2. Codigos de especie cadastrados pelo usuario eram gravados
+#      corretamente pelo menu (`_salvar_cod`, que tem implementacao propria
+#      e funciona), apareciam listados no proprio menu (`_cod_usr`, idem),
+#      mas NAO eram aplicados a analise: a unica linha que injeta os
+#      codigos no pipeline (`pq.CODIGO_ESPECIE.update(cod_u)`) usava o
+#      wrapper quebrado e recebia {} sempre.
+#
+# Agora as tres leem/gravam direto em _USER_DIR, no mesmo padrao ja usado
+# por `_cod_usr`/`_salvar_cod` (que sempre funcionaram) e pelos demais
+# arquivos de estado (_CFG_PATH, _LANG_FLAG, _MODO_FLAG).
+#
+# Leitura/escrita movidas para `guaraci.preferencias_visuais` (2026-09-08):
+# a aba Modelo do app web precisa do MESMO arquivo (paleta escolhida na CLI
+# aparece selecionada na web e vice-versa) e nao pode importar este modulo
+# (5 mil linhas + rich). Aqui ficam so' os wrappers com a apresentacao de
+# erro da CLI.
 def _carregar_visual_cfg() -> dict:
-    fn = getattr(_cli, "_carregar_visual_cfg", None)
-    return fn() if callable(fn) else {}
+    """Config visual (paleta/fonte/grid/alpha/dpi) de _VISUAL_PATH."""
+    return _prefs_visuais.load_visual_config(_VISUAL_PATH)
 
 def _salvar_visual_cfg(d: dict) -> None:
-    fn = getattr(_cli, "_salvar_visual_cfg", None)
-    if callable(fn):
-        fn(d)
+    """Grava a config visual. Falha de escrita AVISA em vez de sumir em
+    silencio -- mesma licao de `_salvar_cod`: o usuario nao pode ver um
+    'salvo' que nao aconteceu."""
+    try:
+        _prefs_visuais.save_visual_config(d, _VISUAL_PATH)
+    except OSError as e:
+        console.print(f"[err]✗ Falha ao salvar config visual: {e}[/err]")
 
 def _carregar_codigos_usuario() -> dict:
-    fn = getattr(_cli, "_carregar_codigos_usuario", None)
-    return fn() if callable(fn) else {}
+    """Codigos de especie cadastrados pelo usuario, de _CODIGOS_PATH.
+
+    Mesma leitura de `_cod_usr()` (menu de codificacao) -- e' de proposito
+    que as duas leiam o MESMO arquivo: o que o menu lista tem de ser o que
+    a analise aplica.
+    """
+    try:
+        p = _CODIGOS_PATH
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 # ---------------------------------------------------------------------------
 # Caminhos
 # ---------------------------------------------------------------------------
+# _BASE_DIR: diretorio de INSTALACAO do pacote -- so' para recursos
+# somente-leitura que o pacote ja traz consigo (ex.: CITATION.cff).
+#
+# _USER_DIR: onde o CLI grava ESTADO do usuario (config.yaml, perfis
+# salvos, flags de idioma/mode, codigos customizados). CORRIGIDO em
+# 2026-08-07 (achado do "checkup geral" de interface -- ver
+# ): ate' entao esses arquivos eram gravados dentro de
+# _BASE_DIR, ou seja, DENTRO do diretorio de instalacao do pacote. Isso
+# quebra em qualquer instalacao read-only (pip de sistema, imagem Docker,
+# alguns `pip install --user`) -- `save_config()` logo antes de rodar o
+# pipeline (ver `_rodar_pipeline`) nao tinha nenhuma guarda contra isso e
+# derrubava o CLI com um PermissionError bem na hora de rodar a analise.
+# Home do usuario e' gravavel em praticamente qualquer instalacao.
 _BASE_DIR    = Path(os.path.dirname(os.path.abspath(__file__)))
-_CFG_PATH    = _BASE_DIR / "config.yaml"
-_PERFIS_DIR  = _BASE_DIR / "perfis"
-_LANG_FLAG   = _BASE_DIR / ".cli_wizard_done"
-_CODIGOS_PATH= _BASE_DIR / "codigos_usuario.json"
+_USER_DIR    = Path.home() / ".guaraci"
+_CFG_PATH    = _USER_DIR / "config.yaml"
+_PERFIS_DIR  = _USER_DIR / "perfis"
+_LANG_FLAG   = _USER_DIR / ".cli_wizard_done"
+_CODIGOS_PATH= _USER_DIR / "codigos_usuario.json"
+_VISUAL_PATH = _USER_DIR / "visual_config.json"
+
+
+def _migrar_estado_legado() -> None:
+    """Copia, uma vez, o estado gravado pela versao anterior (dentro de
+    _BASE_DIR) para o novo local (_USER_DIR), se o novo local ainda nao
+    tiver esse arquivo. NUNCA sobrescreve nem apaga o arquivo antigo --
+    so' copia o que falta, best-effort (falha de permissao aqui nao pode
+    impedir o CLI de abrir). Chamada uma vez no inicio de `main()`, nao na
+    importacao do modulo (importar `guaraci.guaraci` -- em testes, por
+    exemplo -- nao deve escrever no HOME de quem esta rodando os testes).
+    """
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return
+    for nome, alvo in (
+        ("config.yaml", _CFG_PATH),
+        (".cli_wizard_done", _LANG_FLAG),
+        ("codigos_usuario.json", _CODIGOS_PATH),
+        (".cli_modo_usuario", _MODO_FLAG),
+        ("visual_config.json", _VISUAL_PATH),
+    ):
+        origem = _BASE_DIR / nome
+        if origem.exists() and not alvo.exists():
+            try:
+                shutil.copy2(origem, alvo)
+            except OSError:
+                pass
+    # `visual_config.json` tinha uma origem legada A MAIS: a versao antiga
+    # gravava por caminho RELATIVO, entao o arquivo ficava no diretorio de
+    # onde o CLI foi chamado (tipicamente a raiz do repositorio), nao em
+    # _BASE_DIR. Recuperado aqui para nao perder a paleta que o usuario ja
+    # tinha escolhido -- so' se _USER_DIR ainda nao tiver a sua.
+    if not _VISUAL_PATH.exists():
+        try:
+            origem_cwd = Path.cwd() / "visual_config.json"
+            if origem_cwd.is_file():
+                shutil.copy2(origem_cwd, _VISUAL_PATH)
+        except OSError:
+            pass
+    origem_perfis = _BASE_DIR / "perfis"
+    if origem_perfis.is_dir() and not _PERFIS_DIR.exists():
+        try:
+            shutil.copytree(origem_perfis, _PERFIS_DIR)
+        except OSError:
+            pass
 
 # ---------------------------------------------------------------------------
 # Estado global
@@ -132,6 +266,7 @@ def _lang() -> str:
 def _set_lang(l: str) -> None:
     _STATE["lang"] = l
     try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
         _LANG_FLAG.write_text(l, encoding="utf-8")
     except OSError:
         pass
@@ -142,13 +277,16 @@ def _toggle_idioma() -> str:
     return novo
 
 # Modo Iniciante/Avancado (CLAUDE.md secao 6 / auditoria 2026-07-12): alterna
-# GLOBALMENTE se os submenus escondem campos avancados por padrao. Mesmo
-# padrao de persistencia do idioma (arquivo-flag lido no proximo start);
-# NAO usa o mecanismo de visual_config.json -- esse esta quebrado (achado
-# 2026-07-13: _cli nao define _carregar_visual_cfg/_salvar_visual_cfg, os
-# wrappers em guaraci.py sempre retornam {} / viram no-op silenciosamente;
-# fora do escopo desta feature consertar isso).
-_MODO_FLAG = _BASE_DIR / ".cli_modo_usuario"
+# GLOBALMENTE se os submenus escondem campos avancados por padrao. Usa
+# arquivo-flag proprio (mesmo padrao de persistencia do idioma), nao o
+# visual_config.json -- que guarda aparencia de FIGURA (paleta/fonte/grid),
+# nao estado de navegacao do menu; sao coisas diferentes.
+# (Este comentario dizia, ate 2026-08-16, que o mecanismo de
+# visual_config.json estava quebrado e que consertar estava "fora do
+# escopo". Estava mesmo quebrado desde 2026-07-13 e foi CORRIGIDO na
+# varredura de bugs de 2026-08-16 -- ver as funcoes de persistencia no topo
+# do modulo.)
+_MODO_FLAG = _USER_DIR / ".cli_modo_usuario"
 
 def _modo_usuario() -> str:
     return _STATE["modo_usuario"]
@@ -156,6 +294,7 @@ def _modo_usuario() -> str:
 def _set_modo_usuario(m: str) -> None:
     _STATE["modo_usuario"] = m
     try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
         _MODO_FLAG.write_text(m, encoding="utf-8")
     except OSError:
         pass
@@ -183,10 +322,10 @@ from guaraci.guaraci_theme import (  # noqa: E402
 # Lógica pura extraída da CLI (item 19): testável sem Rich/console. Ver cli_logic.py.
 from guaraci.cli_logic import (  # noqa: E402
     trunc as _trunc,
-    truncar_desc_por_frase as _truncar_desc_por_frase,
+    truncate_desc_by_sentence as _truncar_desc_por_frase,
     fmt_bool as _fmt_bool_puro,
-    validar_faixas as _validar_faixas_puro,
-    contar_dx as _contar_dx,
+    validate_ranges as _validar_faixas_puro,
+    count_dx as _count_dx,
 )
 
 # Estado global da tecnica selecionada (persiste entre menus)
@@ -195,7 +334,7 @@ _TECNICA_SELECIONADA: Dict[str, str] = {"key": "ft-nir", "nome": "FT-NIR"}
 # ---------------------------------------------------------------------------
 # Internacionalizacao — sem repeticao entre idiomas
 # ---------------------------------------------------------------------------
-I18N: Dict[str, Dict[str, str]] = {
+_I18N: Dict[str, Dict[str, str]] = {
     "PT": {
         # Titulos de menu
         "t_projeto":    "Projeto",
@@ -210,6 +349,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "t_hardware":   "Hardware",
         "t_perfis":     "Perfis Prontos",
         "t_predicao":   "Predicao em Lote",
+        "t_hsi":        "Imageamento Hiperespectral",
+        "t_planejamento": "Planejamento de Coleta",
+        "t_selecao_amostras": "Selecao de Amostras",
+        "t_auditoria":  "Auditoria de Delineamento",
         "t_idioma":     "Idioma",
         "t_ajuda":      "Ajuda",
         # Descricoes de secao (curtas)
@@ -225,9 +368,23 @@ I18N: Dict[str, Dict[str, str]] = {
         "d_hardware":   "Capacidade e perfil recomendado.",
         "d_perfis":     "Configuracoes prontas para uso.",
         "d_ajuda":      "Documentacao interativa por campo.",
-        # Grupos do menu principal
-        "grp_config":   "Configuracao da Analise",
-        "grp_analise":  "Analise e Visualizacao",
+        # Faltavam pra' _guaraci_navegar_secoes cobrir as 18 abas reais
+        # (achado do Agente 6, docs/DESIGN.md): so' existiam d_ das 12
+        # abas com campo de _CONFIG_SPEC associado.
+        "d_predicao":       "Aplica modelo .joblib a espectros novos.",
+        "d_hsi":            "Cubo hiperespectral: quality gate, segmentacao, classificacao por pixel.",
+        "d_planejamento":   "Tamanho amostral e plano de coleta.",
+        "d_auditoria":      "Checagens de delineamento anti-vazamento.",
+        "d_selecao_amostras": "Divide CSV em calibracao/validacao.",
+        "d_sobre":          "Versao, licenca e creditos.",
+        # Grupos do menu principal (docs/DESIGN.md secao 4 -- Agente 5.2,
+        # aprovado 2026-09-01: substitui os 3 grupos antigos config/analise/
+        # sistema por 6 grupos alinhados ao fluxo real de trabalho)
+        "grp_preparar": "Preparar",
+        "grp_planejar": "Planejar",
+        "grp_modelar":  "Modelar",
+        "grp_validar":  "Validar",
+        "grp_prever":   "Prever",
         "grp_sistema":  "Sistema",
         "grp_execucao": "Execucao",
         # Acoes
@@ -271,7 +428,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "chk_descarte": "{n} espectros serao DESCARTADOS (faixa espectral incompativel)",
         "chk_orfaos":   "{n} amostras sem mae_id — entram SEM protecao anti-leakage",
         "chk_grupos":   "{n} grupos de replica (mae_id)",
-        "chk_dica_jobs": "(n_jobs_permutacao=1 — subir p/ 4 reduz o tempo sem mudar o resultado)",
+        "chk_dica_jobs": "(n_jobs_permutation=1 — subir p/ 4 reduz o tempo sem mudar o resultado)",
         "chk_modo":     "Modo",
         "chk_prescan_erro": "pre-varredura indisponivel ({erro})",
         # Hardware
@@ -360,6 +517,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "t_hardware":   "Hardware",
         "t_perfis":     "Ready Profiles",
         "t_predicao":   "Batch Prediction",
+        "t_hsi":        "Hyperspectral Imaging",
+        "t_planejamento": "Collection Planning",
+        "t_selecao_amostras": "Sample Selection",
+        "t_auditoria":  "Design Audit",
         "t_idioma":     "Language",
         "t_ajuda":      "Help",
         "d_projeto":    "Input and output folders.",
@@ -374,8 +535,17 @@ I18N: Dict[str, Dict[str, str]] = {
         "d_hardware":   "Capacity and recommended profile.",
         "d_perfis":     "Ready-to-use configurations.",
         "d_ajuda":      "Interactive field documentation.",
-        "grp_config":   "Analysis Configuration",
-        "grp_analise":  "Analysis & Visualization",
+        "d_predicao":       "Applies a .joblib model to new spectra.",
+        "d_hsi":            "Hyperspectral cube: quality gate, segmentation, per-pixel classification.",
+        "d_planejamento":   "Sample size and collection plan.",
+        "d_auditoria":      "Anti-leakage design checks.",
+        "d_selecao_amostras": "Splits a CSV into calibration/validation.",
+        "d_sobre":          "Version, license and credits.",
+        "grp_preparar": "Prepare",
+        "grp_planejar": "Plan",
+        "grp_modelar":  "Model",
+        "grp_validar":  "Validate",
+        "grp_prever":   "Predict",
         "grp_sistema":  "System",
         "grp_execucao": "Execution",
         "rodar":        "Run Pipeline",
@@ -415,7 +585,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "chk_descarte": "{n} spectra will be DISCARDED (incompatible spectral range)",
         "chk_orfaos":   "{n} samples without mae_id — enter WITHOUT anti-leakage protection",
         "chk_grupos":   "{n} replicate groups (mae_id)",
-        "chk_dica_jobs": "(n_jobs_permutacao=1 — raising it to 4 cuts the time without changing results)",
+        "chk_dica_jobs": "(n_jobs_permutation=1 — raising it to 4 cuts the time without changing results)",
         "chk_modo":     "Mode",
         "chk_prescan_erro": "pre-scan unavailable ({erro})",
         "hw_alto":      "High Performance",
@@ -485,7 +655,7 @@ I18N: Dict[str, Dict[str, str]] = {
 }
 
 def _t(key: str, **kw) -> str:
-    s = I18N[_lang()].get(key, key)
+    s = _I18N[_lang()].get(key, key)
     if kw:
         try:
             s = s.format(**kw)
@@ -494,9 +664,9 @@ def _t(key: str, **kw) -> str:
     return s
 
 # ---------------------------------------------------------------------------
-# GUARACI TIPS — dicas unicas, diferentes das descricoes do HELP_DB
+# GUARACI TIPS — dicas unicas, diferentes das descricoes do _HELP_DB
 # ---------------------------------------------------------------------------
-GUARACI_TIPS: Dict[str, Dict[str, str]] = {
+_GUARACI_TIPS: Dict[str, Dict[str, str]] = {
     "pasta_dados": {
         "PT": "Use caminho absoluto para evitar problemas. Verifique se os .dx estao na raiz da pasta, nao em subpastas.",
         "EN": "Use absolute paths to avoid issues. Check that .dx files are at the folder root, not in subfolders.",
@@ -510,12 +680,12 @@ GUARACI_TIPS: Dict[str, Dict[str, str]] = {
         "EN": "Tag runs like 'paper_v2' or 'thesis_final'. Makes it easy to compare results across runs.",
     },
     "modo_entrada": {
-        "PT": "Para óleos amazônicos com arquivos do espectrômetro: use 'dx'. CSV é para dados tabelados de outras fontes.",
-        "EN": "For Amazonian oils from the spectrometer: use 'dx'. CSV is for tabular data from other sources.",
+        "PT": "Arquivos do espectrômetro: use 'dx'. CSV é para dados tabelados de outras fontes.",
+        "EN": "Spectrometer files: use 'dx'. CSV is for tabular data from other sources.",
     },
     "pre_processamento": {
-        "PT": "Para FT-NIR de óleos vegetais, MSC+SG+MC deu Bal.Acc=0.92 no benchmark. Autoscaling isolado caiu para 0.47.",
-        "EN": "For vegetable oil FT-NIR, MSC+SG+MC achieved Bal.Acc=0.92 in benchmark. Autoscaling alone dropped to 0.47.",
+        "PT": "MSC+SG+MC costuma ser um bom padrão para FT-NIR/NIR. Autoscaling isolado tende a perder desempenho em espectros com espalhamento — compare os dois no Auto-Benchmark.",
+        "EN": "MSC+SG+MC tends to be a strong default for FT-NIR/NIR. Autoscaling alone tends to lose performance on spectra with scattering — compare both in the Auto-Benchmark.",
     },
     "comparar_pre_processamentos": {
         "PT": "Ativa teste de todos os 6 pipelines. Use apenas uma vez para descobrir o melhor — depois fixe e desative.",
@@ -600,15 +770,15 @@ _RISK_ICON = {"VISUAL": "●", "ANALITICO": "◆", "AVANCADO": "▲"}
 _RISK_MARK = {"VISUAL": "○", "ANALITICO": "◆", "AVANCADO": "▲"}  # icon inline
 
 def _risco_hex(key: str) -> str:
-    return _RISK_HEX.get(RISK_CLASS.get(key, "ANALITICO"), PA)
+    return _RISK_HEX.get(_RISK_CLASS.get(key, "ANALITICO"), PA)
 
 def _risco_icon(key: str) -> str:
-    return _RISK_ICON.get(RISK_CLASS.get(key, "ANALITICO"), "◆")
+    return _RISK_ICON.get(_RISK_CLASS.get(key, "ANALITICO"), "◆")
 
 # ---------------------------------------------------------------------------
 # Utilitarios
 # ---------------------------------------------------------------------------
-def cls() -> None:
+def _cls() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 def _input(msg: str = "", default: str = "") -> str:
@@ -639,7 +809,7 @@ def _pause(msg: str = "") -> None:
         pass
 
 def _nome_campo(key: str) -> str:
-    return FIELD_NAMES.get(key, {}).get(_lang(), key)
+    return _FIELD_NAMES.get(key, {}).get(_lang(), key)
 
 # Traducao dos nomes de nivel APENAS para exibicao. `pq._NIVEL_NOME` (em
 # config.py) segue sendo a fonte unica em portugues, porque tambem alimenta o
@@ -665,6 +835,41 @@ def _rotulo_opcao(key: str, op: Any) -> str:
         return f"{nome} ({op})" if nome else str(op)
     if key == "modo_ddsimca":
         return _DDSIMCA_DISPLAY.get(_lang(), {}).get(str(op), str(op))
+    if key in ("perfil_matriz", "perfil_tecnica"):
+        # Agente 5B: expoe o que hoje e' dado morto (descricao do perfil, e
+        # para perfil de tecnica tambem a garantia tipica de agrupamento) --
+        # sem isso o usuario via' so' o nome de arquivo (ex. "bancada"), sem
+        # saber o que ele significa, tendo que sair da sessao e rodar
+        # `guaraci perfis` num terminal separado so' pra ler a descricao.
+        if not str(op):
+            return "(nao declarado)" if _lang() == "PT" else "(not declared)"
+        try:
+            from guaraci.perfil_matriz import load_profile
+            p = load_profile(str(op))
+        except Exception:  # noqa: BLE001 -- rotulo e' so' exibicao; um
+            # perfil quebrado/removido nao pode travar a tela de edicao,
+            # so' cai pro nome cru (a validacao real acontece ao aplicar).
+            return str(op)
+        desc = (p.descricao or "").split(" (")[0].strip()
+        # Indicador de cobertura validada (Agente 5B, item pendente):
+        # `referencia` ja' e' o dado que distingue perfil validado com dado
+        # PUBLICO real (milho_nir/oleos_comestiveis_nir tem paper/dataset
+        # citado) de perfil so' declarado (mel_vis_nir/oleo_nir/bancada/
+        # celular/scanner -- referencia vazia, nenhum tem validacao
+        # publicada ainda). Nao inventa um campo novo -- so' expoe o que
+        # ja' existia sem aparecer em lugar nenhum da UI. "generico" fica
+        # de fora do selo -- e' um placeholder neutro, nao uma alegacao.
+        selo = ""
+        if str(op) != "generico":
+            if p.referencia:
+                selo = "  ✅" if _lang() == "PT" else "  ✅"
+            else:
+                selo = ("  ⚠ nao validado" if _lang() == "PT"
+                        else "  ⚠ not validated")
+        if key == "perfil_tecnica" and p.nivel_agrupamento_tipico:
+            garantia = ("garantia tipica" if _lang() == "PT" else "typical guarantee")
+            return f"{op} — {desc} [{garantia}: {p.nivel_agrupamento_tipico}]{selo}"
+        return (f"{op} — {desc}{selo}" if desc else f"{op}{selo}")
     return str(op)
 
 
@@ -693,14 +898,14 @@ def _cfgv(cfg: Config, key: str, default: Any = None) -> Any:
     """Le um valor do Config pela KEY do _CONFIG_SPEC, resolvendo o atributo real.
 
     Evita o erro comum de usar `getattr(cfg, "benchmark")` quando o atributo
-    real e `executar_benchmark`. Sempre use esta funcao para ler config por key.
+    real e `run_benchmark`. Sempre use esta funcao para ler config por key.
     """
     spec = _SPEC_BY_KEY.get(key)
     attr = spec["attr"] if spec else key
     return getattr(cfg, attr, default)
 
 
-# _contar_dx importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
+# _count_dx importada de guaraci.cli_logic (item 19) — ver topo do arquivo.
 
 def _fmt_bool(v: Any, lang: str = "") -> str:
     """Wrapper fino: resolve o idioma ativo (ou usa o passado) e delega o
@@ -791,9 +996,9 @@ def _sugerir_cafe() -> None:
 # ---------------------------------------------------------------------------
 # VALIDACAO DE INTEGRIDADE — faixas e paleta antes de rodar
 # ---------------------------------------------------------------------------
-def _validar_faixas(cfg: Config) -> list:
+def _validate_ranges(cfg: Config) -> list:
     """Wrapper fino: le faixa_min/max do Config e delega a validacao pura
-    a `guaraci.cli_logic.validar_faixas` (testada)."""
+    a `guaraci.cli_logic.validate_ranges` (testada)."""
     f_min = _cfgv(cfg, "faixa_min_cm", 400)
     f_max = _cfgv(cfg, "faixa_max_cm", 4000)
     return _validar_faixas_puro(f_min, f_max)
@@ -831,7 +1036,7 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     inf = f"[{PS}]ℹ[/{PS}]"
 
     linhas.append(f"  {ok if preproc != 'raw' else av} Pre-proc: {preproc}" +
-                  (f"  [{PM}](Para FT-NIR, msc+sg+mc = Bal.Acc 0.923)[/{PM}]" if preproc == "raw" else ""))
+                  (f"  [{PM}](Para FT-NIR difuso, comece por msc+sg+mc)[/{PM}]" if preproc == "raw" else ""))
     linhas.append(f"  {ok if max_lvs <= 40 else av} max_lvs = {max_lvs}" +
                   (f"  [{PM}](>40 aumenta risco de overfitting)[/{PM}]" if max_lvs > 40 else ""))
     linhas.append(f"  {ok if 100 <= n_perm else av} n_permutacoes = {n_perm}" +
@@ -851,7 +1056,7 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     if not dds:
         linhas.append(f"  [{PM}]ℹ DD-SIMCA desativado.[/{PM}]")
 
-    avisos_faixa = _validar_faixas(cfg)
+    avisos_faixa = _validate_ranges(cfg)
     for av_msg in avisos_faixa:
         linhas.append(f"  [{PR}]✖ {av_msg}[/{PR}]")
 
@@ -864,19 +1069,43 @@ def _guaraci_revisar_config(cfg: Config) -> None:
     ))
     _pause()
 
+#: As 18 abas reais do CLI (confirmado por auditoria funcional, Agente 1 --
+#: nao existe "0"), tecla -> (chave t_, chave d_). "G" fica de fora: e' o
+#: proprio assistente, nao uma secao pra' navegar ATE (circular).
+_SECOES_NAVEGAVEIS: List[Tuple[str, str, str]] = [
+    ("1", "t_projeto", "d_projeto"),
+    ("2", "t_dados", "d_dados"),
+    ("3", "t_preproc", "d_preproc"),
+    ("4", "t_modelagem", "d_modelagem"),
+    ("5", "t_validacao", "d_validacao"),
+    ("6", "t_avancado", "d_avancado"),
+    ("7", "t_viz", "d_viz"),
+    ("8", "t_tecnica", "d_tecnica"),
+    ("9", "t_codigos", "d_codigos"),
+    ("H", "t_hardware", "d_hardware"),
+    ("B", "t_predicao", "d_predicao"),
+    ("X", "t_hsi", "d_hsi"),
+    ("J", "t_planejamento", "d_planejamento"),
+    ("U", "t_auditoria", "d_auditoria"),
+    ("K", "t_selecao_amostras", "d_selecao_amostras"),
+    ("P", "t_perfis", "d_perfis"),
+    ("?", "t_ajuda", "d_ajuda"),
+]
+
+
 def _guaraci_navegar_secoes(cfg: Config) -> None:
-    """Lista as secoes e exibe descricao quando selecionada."""
+    """Lista as 18 abas reais do CLI e exibe descricao quando selecionada.
+
+    Antes (achado do Agente 6, docs/DESIGN.md): dict estatico escrito a
+    mao com so' 8 secoes, faltando 10 das 18 abas reais (H/B/J/U/K/P/?/A
+    + a lista supunha existir uma aba "0" que nunca existiu). Agora deriva
+    de `_t()`/`d_*`, a MESMA fonte que ja alimenta o rodape/ajuda de cada
+    aba individual -- uma secao nova precisa so' de um par t_/d_ na tabela
+    de traducao pra' aparecer aqui tambem, nao de editar este dict.
+    """
     lang = _lang()
-    secoes = {
-        "1": ("Projeto",           "Pastas de entrada/saida e nome da execucao."),
-        "2": ("Dados",             "Formato espectral, faixa de comprimento de onda e classes."),
-        "3": ("Pre-processamento", "Pipeline espectral — recomendado msc+sg+mc para FT-NIR."),
-        "4": ("Modelagem",         "PLS-DA, OPLS-DA, DD-SIMCA e selecao de variaveis."),
-        "5": ("Validacao",         "Holdout, permutacoes, Wold e CV-ANOVA."),
-        "6": ("Avancado",          "Benchmark, Monte Carlo CV e SHAP (aumentam tempo de execucao)."),
-        "7": ("Visualizacao",      "DPI, paleta, formato de figura e grid."),
-        "8": ("Tecnica Analitica", "Selecione a tecnica espectroscopica e ajuste faixas."),
-    }
+    secoes = {k: (_t(t_key), _t(d_key)) for k, t_key, d_key in _SECOES_NAVEGAVEIS}
+    secoes["A"] = ("Sobre" if lang == "PT" else "About", _t("d_sobre"))
     console.print()
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
     t.add_column("N", style=PA, width=4)
@@ -895,15 +1124,518 @@ def _guaraci_navegar_secoes(cfg: Config) -> None:
         ))
         _pause()
 
+
+def _guaraci_diagnosticar(cfg: Config) -> None:
+    """Diagnostica o dataset carregado -- reaproveita `run_audit`, o MESMO
+    motor da aba U (Auditoria de delineamento), so' apresentado dentro do
+    assistente. So' roda sob demanda (nao em toda abertura do assistente,
+    que seria lento e a maioria das aberturas e' so' pra ajuda pontual).
+
+    Regra dura (Agente 6): nunca inventa numero, nunca esconde ressalva --
+    todo achado abaixo vem de uma funcao ja testada (`run_audit`,
+    `achievable_alpha`, `n_minimum_for_alpha`), nunca de um calculo novo
+    so' pra esta tela.
+    """
+    lang = _lang(); is_pt = lang == "PT"
+    status_msg = ("Carregando dados e diagnosticando..." if is_pt
+                  else "Loading data and diagnosing...")
+    try:
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            wavenumbers, X_raw, rotulos, conc, mae_id, _metadados = pq.load_data(cfg)
+            X_raw, wavenumbers, rotulos, conc, mae_id, _relatorio = pq.validate_input(
+                X_raw, wavenumbers, rotulos, conc, mae_id)
+            from guaraci.auditoria_delineamento import run_audit
+            achados = run_audit(X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
+    except Exception as e:  # noqa: BLE001 -- dado externo pode falhar de
+        # varias formas (parsing, faixa espectral vazia, etc.) -- reportar
+        # a mensagem, nunca stack trace cru numa ferramenta interativa
+        # (mesmo tratamento de _menu_audit).
+        console.print(f"  [{PR}]{'Erro ao carregar dados' if is_pt else 'Error loading data'}: "
+                      f"{escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    cores = {"ok": PG, "aviso": PA, "critico": PR, "silenciado": PM}
+    console.print()
+    for a in achados:
+        cor = cores.get(a.severidade, PW)
+        console.print(f"  [{cor}]{a.severidade.upper():>10}[/{cor}]  "
+                      f"[{PW}]{escape(a.nome)}[/{PW}]: {escape(a.mensagem)}")
+
+    n_criticos = sum(1 for a in achados if a.severidade == "critico")
+    n_avisos = sum(1 for a in achados if a.severidade == "aviso")
+    resumo_lbl = (f"{n_criticos} critico(s), {n_avisos} aviso(s) de {len(achados)} checagem(ns)."
+                  if is_pt else
+                  f"{n_criticos} critical, {n_avisos} warning(s) out of {len(achados)} check(s).")
+    cor_resumo = PR if n_criticos else (PA if n_avisos else PG)
+    console.print()
+    console.print(Panel(
+        Text.from_markup(f"  {resumo_lbl}"),
+        border_style=cor_resumo, box=rbox.ROUNDED, padding=(0, 2),
+    ))
+
+    # Sugerir+executar (Agente 6, Fase 1 -- so' este 1 caso, como prova do
+    # padrao; os demais exemplos do pedido original ficam para uma rodada
+    # futura, ver docs/DESIGN.md).
+    achado_n = next((a for a in achados
+                      if a.nome == "n_insuficiente" and a.severidade == "aviso"),
+                     None)
+    if achado_n is not None and mae_id is not None:
+        info = _sugestao_alpha_classe_fraca(rotulos, mae_id)
+        if info is not None:
+            sugestao = (
+                f"💡 Sua classe mais fraca ('{info['classe']}') tem "
+                f"{info['n']} sessao(oes) independente(s) → alpha minimo "
+                f"alcancavel = {info['alpha_alcancavel']:.2f}. Para "
+                f"alpha={info['alpha_ref']} de referencia (gate conformal "
+                f"padrao), seriam necessarias {info['n_para_ref']} sessoes "
+                "independentes dessa classe."
+                if is_pt else
+                f"💡 Your weakest class ('{info['classe']}') has "
+                f"{info['n']} independent session(s) → minimum achievable "
+                f"alpha = {info['alpha_alcancavel']:.2f}. For the "
+                f"reference alpha={info['alpha_ref']} (standard conformal "
+                f"gate), {info['n_para_ref']} independent sessions of that "
+                "class would be needed.")
+            console.print()
+            console.print(Panel(
+                Text.from_markup(f"  [{PA}]{escape(sugestao)}[/{PA}]"),
+                border_style=PA, box=rbox.ROUNDED, padding=(0, 2),
+            ))
+            # Fase 2 (Agente 6): "sugerir" nao para no texto -- oferece a
+            # ACAO. Reaproveita plan_from_statistical_target (mesma funcao
+            # que _menu_plan chama), nao inventa um calculo novo aqui.
+            pergunta = ("Quer ver o plano de coleta para atingir esse alpha? (s/n) "
+                        if is_pt else
+                        "Want to see the collection plan to reach that alpha? (y/n) ")
+            if _ask(f"  [{PA}]{pergunta}[/{PA}]").strip().lower() in ("s", "y", "sim", "yes"):
+                from guaraci.plano_coleta import plan_from_statistical_target
+                try:
+                    classes_unicas = sorted({str(r) for r in rotulos})
+                    plano, meta = plan_from_statistical_target(
+                        classes_unicas, n_sessoes=2,
+                        alpha_conformal=info["alpha_ref"])
+                    console.print()
+                    console.print(f"  [{PS}]{'n por classe' if is_pt else 'n per class'}: "
+                                  f"{meta['n_por_classe']} ({meta['origem']})[/{PS}]")
+                    for alerta in plano.alertas:
+                        console.print(f"  [{PM}]• {escape(str(alerta))}[/{PM}]")
+                except ValueError as e_plano:
+                    console.print(f"  [{PR}]{escape(str(e_plano))}[/{PR}]")
+    _pause()
+
+
+def _sugestao_alpha_classe_fraca(rotulos, mae_id) -> Optional[Dict[str, Any]]:
+    """Sessoes independentes por classe (mesma funcao `session_from_mae_id`
+    que `check_insufficient_n` usa) e o alpha conformal minimo alcancavel
+    para a classe mais fraca. Funcao PURA (sem console) para ser testavel
+    direto -- usada por `_guaraci_diagnosticar` (Agente 6, sugerir+executar).
+    Nao duplica o VEREDITO da auditoria (isso continua em
+    `auditoria_delineamento.check_insufficient_n`), so' os numeros
+    descritivos que `AuditFinding` nao expoe (so' a mensagem ja formatada).
+    """
+    import numpy as np
+    from guaraci.conformal import achievable_alpha, n_minimum_for_alpha
+    from guaraci.dados_io import session_from_mae_id
+
+    rotulos_arr = np.asarray(rotulos, dtype=str)
+    sessao = np.array([session_from_mae_id(m) for m in mae_id], dtype=str)
+    contagens = {
+        classe: len({s for s, r in zip(sessao, rotulos_arr) if r == classe})
+        for classe in sorted(set(rotulos_arr))
+    }
+    if not contagens:
+        return None
+    classe_fraca, n_fraco = min(contagens.items(), key=lambda kv: kv[1])
+    alpha_ref = 0.05
+    return {
+        "classe": classe_fraca,
+        "n": n_fraco,
+        "alpha_alcancavel": achievable_alpha(n_fraco),
+        "alpha_ref": alpha_ref,
+        "n_para_ref": n_minimum_for_alpha(alpha_ref),
+    }
+
+
+def _guaraci_tecnicas() -> None:
+    """Lista o catalogo de tecnicas cientificas do GUARACI (Agente 6, item
+    d) -- gerado a partir de `technique_registry.REGISTRY`, fonte unica de
+    verdade (nunca uma lista escrita a mao so' pra esta tela)."""
+    lang = _lang(); is_pt = lang == "PT"
+    from guaraci.technique_registry import REGISTRY
+
+    rotulos_categoria = {
+        "classificacao_deteccao": ("Classificacao / deteccao", "Classification / detection"),
+        "quantificacao": ("Quantificacao", "Quantification"),
+        "identificacao_conjunto_aberto": ("Identificacao (conjunto aberto)", "Identification (open set)"),
+        "selecao_amostras": ("Selecao de amostras", "Sample selection"),
+        "transferencia_calibracao": ("Transferencia de calibracao", "Calibration transfer"),
+        "figuras_de_merito": ("Figuras de merito", "Figures of merit"),
+        "robustez_linearidade": ("Robustez / linearidade", "Robustness / linearity"),
+        "perfis": ("Perfis (matriz / tecnica de aquisicao)", "Profiles (matrix / acquisition technique)"),
+        "resolucao_mistura": ("Resolucao de mistura", "Mixture resolution"),
+    }
+    console.print()
+    for cat_id, (nome_pt, nome_en) in rotulos_categoria.items():
+        entradas = [e for e in REGISTRY if e.categoria == cat_id]
+        if not entradas:
+            continue
+        console.print(f"  [bold {PA}]{nome_pt if is_pt else nome_en}[/bold {PA}]")
+        for e in entradas:
+            console.print(f"    [{PW}]▸ {escape(e.nome)}[/{PW}]")
+            console.print(f"      [{PM}]{escape(e.quando_usar)}[/{PM}]")
+        console.print()
+    console.print(f"  [{PM}]{len(REGISTRY)} tecnicas cadastradas.[/{PM}]" if is_pt
+                  else f"  [{PM}]{len(REGISTRY)} techniques registered.[/{PM}]")
+    _pause()
+
+
+def _faq_metodo_recomendado(cfg: Config, is_pt: bool) -> str:
+    """Grounded no cfg REAL da sessao (nivel/objetivo/mode) -- nunca um
+    conselho generico solto, regra dura do Agente 6."""
+    nivel = str(getattr(cfg, "level", "N1"))
+    mode = str(getattr(cfg, "mode", "dx"))
+    nome_nivel = pq._NIVEL_NOME.get(nivel, nivel)
+    if is_pt:
+        base = f"Sua sessao esta configurada para '{nome_nivel}' ({nivel}), modo de entrada '{mode}'."
+        if nivel == "N1":
+            return (base + " N1 = classificacao multiclasse -> PLS-DA e o "
+                    "metodo padrao do pipeline. Se quiser autenticar pureza "
+                    "(puro vs. adulterado) em vez de identificar a especie, "
+                    "troque pra N2 na aba Modelagem.")
+        if nivel == "N2":
+            return (base + " N2 = autenticacao one-class -> DD-SIMCA e "
+                    "conformal sao os dois metodos disponiveis (aba "
+                    "Modelagem, campo 'modo_ddsimca'/similar). DD-SIMCA da' "
+                    "um score continuo; conformal da' garantia de cobertura "
+                    "explicita, mas exige mais sessoes independentes pra "
+                    "alpha baixo (ver [3] Diagnosticar).")
+        return (base + " N3 = quantificacao -> PLS-R (pooled ou por "
+                "especie, aba Modelagem). Se tambem quiser identificar QUAL "
+                "adulterante antes de quantificar, o fluxo cego "
+                "(Detectar->Identificar->Quantificar) ja roda automatico na "
+                "predicao em lote quando o modelo tem o ensemble de "
+                "identificacao treinado.")
+    base = f"Your session is set to '{nome_nivel}' ({nivel}), input mode '{mode}'."
+    if nivel == "N1":
+        return (base + " N1 = multiclass classification -> PLS-DA is the "
+                "pipeline's default method. For purity authentication "
+                "(pure vs. adulterated) instead of species ID, switch to "
+                "N2 in the Model tab.")
+    if nivel == "N2":
+        return (base + " N2 = one-class authentication -> DD-SIMCA and "
+                "conformal are the two available methods (Model tab). "
+                "DD-SIMCA gives a continuous score; conformal gives an "
+                "explicit coverage guarantee but needs more independent "
+                "sessions for a low alpha (see [3] Diagnose).")
+    return (base + " N3 = quantification -> PLS-R (pooled or per-species, "
+            "Model tab). If you also want to identify WHICH adulterant "
+            "before quantifying, the blind flow (Detect->Identify->"
+            "Quantify) already runs automatically in batch prediction when "
+            "the model has a trained identification ensemble.")
+
+
+_FAQ: List[Tuple[str, str, Any]] = [
+    ("O que o GUARACI sabe fazer?", "What can GUARACI do?",
+     lambda cfg, is_pt: (
+         "Veja [4] Tecnicas disponiveis no menu do assistente -- lista "
+         "gerada do catalogo real do projeto, nunca fica desatualizada."
+         if is_pt else
+         "See [4] Available techniques in the assistant menu -- generated "
+         "from the project's real catalog, never goes stale.")),
+    ("Qual metodo devo usar?", "Which method should I use?",
+     _faq_metodo_recomendado),
+    ("Por que uma quantificacao pode ficar bloqueada?",
+     "Why can quantification be blocked?",
+     lambda cfg, is_pt: (
+         "No fluxo cego (Detectar->Identificar->Quantificar), a "
+         "quantificacao SO' roda quando o adulterante foi identificado com "
+         "garantia estatistica validada (identificacao_cobertura="
+         "'validado', >=2 sessoes de coleta independentes por combinacao "
+         "especie x adulterante). Sem essa garantia, a coluna "
+         "'quantificacao_motivo_bloqueio' explica o motivo especifico "
+         "('identificacao_desconhecida' ou 'identificacao_ambigua') -- "
+         "nunca um numero sem base."
+         if is_pt else
+         "In the blind flow (Detect->Identify->Quantify), quantification "
+         "ONLY runs when the adulterant was identified with a validated "
+         "statistical guarantee (identificacao_cobertura='validado', >=2 "
+         "independent collection sessions per species x adulterant "
+         "combination). Without that guarantee, the "
+         "'quantificacao_motivo_bloqueio' column explains the specific "
+         "reason ('identificacao_desconhecida' or 'identificacao_ambigua') "
+         "-- never a number without basis.")),
+    ("O que significa um perfil 'nao validado'?",
+     "What does an 'not validated' profile mean?",
+     lambda cfg, is_pt: (
+         "O selo ✅/⚠ no seletor de perfil (aba Dados) vem do campo "
+         "'referencia' do perfil: nao-vazio = tem paper/dataset publico "
+         "citado (ex.: milho_nir cita o dataset Corn); vazio = o perfil so' "
+         "foi DECLARADO (faixa/vocabulario definidos), sem nenhuma "
+         "validacao publicada ainda. Nao impede de usar -- so' nao alegue "
+         "que o resultado foi validado com dado real."
+         if is_pt else
+         "The ✅/⚠ badge on the profile selector (Data tab) comes from the "
+         "profile's 'referencia' field: non-empty = cites a public paper/"
+         "dataset (e.g. milho_nir cites the Corn dataset); empty = the "
+         "profile was only DECLARED (range/vocabulary set), with no "
+         "published validation yet. It doesn't block usage -- just don't "
+         "claim the result was validated against real data.")),
+]
+
+
+def _guaraci_faq(cfg: Config) -> None:
+    """Perguntas frequentes curadas (Agente 6, Fase 2) -- casadas por
+    numero, resposta ancorada no `cfg` real quando aplicavel (regra dura:
+    nunca inventa numero). Nao e' um chat de linguagem livre -- o projeto
+    nao tem dependencia de LLM/NLP, um FAQ curado e' o que da' pra' fazer
+    sem mudar a natureza determinista do software (ver docs/DESIGN.md,
+    secao do Agente 6, Fase 2)."""
+    lang = _lang(); is_pt = lang == "PT"
+    console.print()
+    t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
+    t.add_column("N", style=PA, width=4)
+    t.add_column("Pergunta" if is_pt else "Question", style=PW)
+    for i, (q_pt, q_en, _resp) in enumerate(_FAQ, 1):
+        t.add_row(f"[{i}]", q_pt if is_pt else q_en)
+    console.print(t)
+    raw = _ask(f"\n  [1-{len(_FAQ)}] ou Enter=voltar: " if is_pt
+               else f"\n  [1-{len(_FAQ)}] or Enter=back: ")
+    if raw.isdigit() and 1 <= int(raw) <= len(_FAQ):
+        _q_pt, _q_en, resposta_fn = _FAQ[int(raw) - 1]
+        resposta = resposta_fn(cfg, is_pt)
+        console.print()
+        console.print(Panel(
+            Text(resposta, style=PW),
+            title=f"[bold {PA}]{_q_pt if is_pt else _q_en}[/bold {PA}]",
+            border_style=PA, box=rbox.ROUNDED, padding=(0, 2), width=_W(),
+        ))
+    _pause()
+
+
+# ---------------------------------------------------------------------------
+# FLUXO DE ENTRADA ORIENTADO A DECISAO (Bloco 19) -- "o que voce precisa
+# decidir?" em vez de exigir que o usuario ja saiba o nome da tecnica.
+# Reaproveita `technique_registry.REGISTRY` (fonte unica) pra sugerir a(s)
+# tecnica(s) de cada opcao -- nunca uma lista de nomes escrita a mao aqui
+# (o mesmo erro que motivou `technique_registry.py` para [4] Tecnicas
+# disponiveis, Agente 6). O modo avancado (acesso direto as abas) continua
+# SEMPRE disponivel -- este fluxo e' um atalho A MAIS, nunca substitui o
+# menu numerado (nem os outros itens do assistente).
+# ---------------------------------------------------------------------------
+_FLUXO_DECISAO: List[Dict[str, Any]] = [
+    dict(
+        id="autenticidade",
+        rotulo={"PT": "Autenticidade (e' essa especie mesmo, sem adulteracao?)",
+                "EN": "Authenticity (is this really the declared species, unadulterated?)"},
+        nivel="N2", preproc_default="msc_sg_mc",
+        tecnicas=["ddsimca", "conformal_one_class"],
+        validacao={"PT": "LOGO (leave-one-group-out) por mae_id -- "
+                          "sensibilidade so' avaliavel com >=2 grupos de "
+                          "puros por especie.",
+                   "EN": "LOGO (leave-one-group-out) by mae_id -- "
+                         "sensitivity only evaluable with >=2 pure-sample "
+                         "groups per species."},
+        criterio={"PT": "amostra nova cai dentro do limite calibrado "
+                        "(DD-SIMCA) ou do conjunto de predicao conformal "
+                        "no alpha escolhido.",
+                  "EN": "new sample falls within the calibrated boundary "
+                        "(DD-SIMCA) or the conformal prediction set at the "
+                        "chosen alpha."},
+    ),
+    dict(
+        id="identificar_especie",
+        rotulo={"PT": "Identificar especie (qual especie e' essa amostra?)",
+                "EN": "Identify species (which species is this sample?)"},
+        nivel="N1", preproc_default="msc_sg_mc",
+        tecnicas=["pls_da"],
+        validacao={"PT": "CV group-aware (StableStratifiedGroupKFold) por mae_id.",
+                   "EN": "Group-aware CV (StableStratifiedGroupKFold) by mae_id."},
+        criterio={"PT": "balanced accuracy da CV group-aware -- sem limiar "
+                        "fixo universal, compare contra o baseline do "
+                        "proprio dataset.",
+                  "EN": "balanced accuracy from group-aware CV -- no "
+                        "universal fixed threshold, compare against the "
+                        "dataset's own baseline."},
+    ),
+    dict(
+        id="quantificar_teor",
+        rotulo={"PT": "Quantificar teor (qual a porcentagem de adulterante/composto?)",
+                "EN": "Quantify content (what's the adulterant/compound percentage?)"},
+        nivel="N3", preproc_default="msc_sg_mc",
+        tecnicas=["pls_r_pooled", "pls_r_por_especie"],
+        validacao={"PT": "Q2 via CV group-aware; RMSEP em holdout externo "
+                         "por objeto fisico.",
+                   "EN": "Q2 via group-aware CV; RMSEP on external "
+                         "per-object holdout."},
+        criterio={"PT": "RPD/RER (figuras de merito) -- ver categoria "
+                        "'Figuras de merito' no catalogo de tecnicas [4].",
+                  "EN": "RPD/RER (figures of merit) -- see 'Figures of "
+                        "merit' category in the technique catalog [4]."},
+    ),
+    dict(
+        id="adulterante_desconhecido",
+        rotulo={"PT": "Adulterante desconhecido (detectei que e' "
+                      "adulterada, qual adulterante?)",
+                "EN": "Unknown adulterant (detected adulteration, but "
+                      "which adulterant?)"},
+        nivel="N2", preproc_default="msc_sg_mc",
+        tecnicas=["identificacao_conjunto_aberto"],
+        validacao={"PT": "Predicao conforme por combinacao especie x "
+                         "adulterante; so' rotula com >=2 sessoes de "
+                         "coleta independentes.",
+                   "EN": "Conformal prediction per species x adulterant "
+                         "combination; only labels with >=2 independent "
+                         "collection sessions."},
+        criterio={"PT": "identificacao_cobertura='validado' -- senao "
+                        "reporta DESCONHECIDO em vez de arriscar palpite.",
+                  "EN": "identificacao_cobertura='validado' -- otherwise "
+                        "reports UNKNOWN instead of risking an "
+                        "unguaranteed guess."},
+    ),
+    dict(
+        id="transferencia_instrumentos",
+        rotulo={"PT": "Transferencia entre instrumentos (modelo calibrado "
+                      "num equipamento, quero usar noutro)",
+                "EN": "Instrument transfer (model calibrated on one "
+                      "instrument, want to use it on another)"},
+        nivel=None, preproc_default=None,
+        tecnicas=["piecewise_direct_standardization", "direct_standardization"],
+        validacao={"PT": "amostras medidas nos DOIS instrumentos (amostras "
+                         "de transferencia) -- validar erro do modelo "
+                         "transferido contra o original.",
+                   "EN": "samples measured on BOTH instruments (transfer "
+                         "samples) -- validate the transferred model's "
+                         "error against the original."},
+        criterio={"PT": "erro (RMSE) do modelo transferido comparavel ao "
+                        "erro original no instrumento mestre.",
+                  "EN": "transferred model's error (RMSE) comparable to "
+                        "the original error on the master instrument."},
+    ),
+    dict(
+        id="resolver_mistura",
+        rotulo={"PT": "Resolver mistura (quero os espectros puros e "
+                      "proporcoes, nao so' classificar/quantificar)",
+                "EN": "Resolve mixture (want the pure spectra and "
+                      "proportions, not just classify/quantify)"},
+        nivel=None, preproc_default=None,
+        tecnicas=["mcr_als"],
+        aviso={"PT": "MCR-ALS e' ferramenta de interpretacao e resolucao "
+                     "de componentes espectrais -- NAO recomendado para "
+                     "QUANTIFICAR traco/adulterante minoritario sem "
+                     "informacao supervisionada. Testado no acervo de "
+                     "oleo: nao recuperou sinal correlacionado ao teor "
+                     "real. Se seu objetivo e' um NUMERO de teor com "
+                     "garantia, use [3] Quantificar teor (PLS-R) em vez "
+                     "desta opcao.",
+               "EN": "MCR-ALS is an interpretation/component-resolution "
+                     "tool -- NOT recommended to QUANTIFY a minor trace/"
+                     "adulterant without supervised information. Tested "
+                     "on the oil archive: it recovered no signal "
+                     "correlated with the real content. If your goal is "
+                     "a content NUMBER with a guarantee, use [3] Quantify "
+                     "content (PLS-R) instead of this option."},
+        validacao={"PT": "compare a proporcao estimada com o teor "
+                         "declarado, se disponivel; SEMPRE rode "
+                         "avaliar_incerteza_rotacional.",
+                   "EN": "compare the estimated proportion against the "
+                        "declared content, if available; ALWAYS run "
+                        "avaliar_incerteza_rotacional."},
+        criterio={"PT": "baixo lack-of-fit (%) E baixa sensibilidade a' "
+                        "inicializacao -- nenhum dos dois sozinho basta.",
+                  "EN": "low lack-of-fit (%) AND low sensitivity to "
+                        "initialization -- neither alone is enough."},
+    ),
+]
+
+
+def _guaraci_fluxo_decisao(cfg: Config) -> None:
+    """Pergunta 'o que voce precisa decidir?' e sugere tecnica/pre-
+    processamento/validacao/criterio de aceitacao a partir de
+    `_FLUXO_DECISAO` + `technique_registry.REGISTRY` (fonte unica, ver
+    cabecalho da secao). Oferece aplicar nivel/pre-processamento a' sessao
+    atual -- SEMPRE opt-in (pergunta antes), nunca muda cfg em silencio."""
+    lang = _lang(); is_pt = lang == "PT"
+    from guaraci.technique_registry import REGISTRY
+    registry_por_id = {e.id: e for e in REGISTRY}
+
+    _cls(); _print_header(cfg)
+    console.print()
+    console.print(Panel(
+        Text("O que voce precisa decidir?" if is_pt else "What do you need to decide?",
+             style=f"bold {PA}"),
+        border_style=PA, box=rbox.ROUNDED, padding=(1, 2), width=_W()))
+
+    t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
+    t.add_column("Tecla", style=PA, width=4)
+    t.add_column("Opcao", style=PW)
+    for i, opcao in enumerate(_FLUXO_DECISAO, start=1):
+        t.add_row(f"[{i}]", opcao["rotulo"]["PT" if is_pt else "EN"])
+    t.add_row("[Q]", "Voltar" if is_pt else "Back")
+    console.print(t)
+
+    raw = _ask(f"  [{PA}]Opcao: [/{PA}]").strip().upper()
+    if raw in ("Q", "") or not raw.isdigit() or not (1 <= int(raw) <= len(_FLUXO_DECISAO)):
+        return
+
+    opcao = _FLUXO_DECISAO[int(raw) - 1]
+    console.print()
+    console.print(f"  [bold {PA}]{opcao['rotulo']['PT' if is_pt else 'EN']}[/bold {PA}]")
+    console.print()
+    console.print(f"  [{PW}]{'Tecnica(s) sugerida(s)' if is_pt else 'Suggested technique(s)'}:[/{PW}]")
+    for tid in opcao["tecnicas"]:
+        entrada = registry_por_id.get(tid)
+        if entrada is None:
+            continue
+        console.print(f"    [{PA}]▸ {escape(entrada.nome)}[/{PA}]")
+        console.print(f"      [{PM}]{escape(entrada.quando_usar)}[/{PM}]")
+    console.print()
+    if opcao.get("aviso"):
+        console.print(f"  [warn]⚠ {escape(opcao['aviso']['PT' if is_pt else 'EN'])}[/warn]")
+        console.print()
+    if opcao.get("preproc_default"):
+        console.print(
+            f"  [{PW}]{'Pre-processamento default' if is_pt else 'Default preprocessing'}:"
+            f"[/{PW}] [{PA}]{opcao['preproc_default']}[/{PA}]")
+    console.print(f"  [{PW}]{'Validacao' if is_pt else 'Validation'}:[/{PW}] "
+                  f"{opcao['validacao']['PT' if is_pt else 'EN']}")
+    console.print(f"  [{PW}]{'Criterio de aceitacao' if is_pt else 'Acceptance criterion'}:"
+                  f"[/{PW}] {opcao['criterio']['PT' if is_pt else 'EN']}")
+    console.print()
+
+    if opcao.get("nivel"):
+        pergunta = (
+            f"Aplicar nivel={opcao['nivel']}"
+            + (f" e pre_processamento={opcao['preproc_default']}"
+               if opcao.get("preproc_default") else "")
+            + " a' sessao atual? [s/N]: "
+        ) if is_pt else (
+            f"Apply level={opcao['nivel']}"
+            + (f" and preprocessing={opcao['preproc_default']}"
+               if opcao.get("preproc_default") else "")
+            + " to the current session? [y/N]: "
+        )
+        resposta = _ask(f"  [{PA}]{pergunta}[/{PA}]").strip().lower()
+        if resposta in ("s", "sim", "y", "yes"):
+            cfg.level = opcao["nivel"]
+            if opcao.get("preproc_default"):
+                cfg.default_preprocessing = opcao["preproc_default"]
+            console.print(f"  [g]{'Aplicado.' if is_pt else 'Applied.'}[/g]")
+    _pause()
+
+
 def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
     """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
     lang = _lang()
-    cls(); _print_header()
+    _cls(); _print_header(cfg)
     console.print()
 
     opcoes = [
         ("1", "Revisar configuracao atual" if lang=="PT" else "Review current configuration"),
         ("2", "Informacoes sobre uma secao" if lang=="PT" else "Information about a section"),
+        ("3", "Diagnosticar dados carregados" if lang=="PT" else "Diagnose loaded data"),
+        ("4", "Tecnicas disponiveis" if lang=="PT" else "Available techniques"),
+        ("5", "Perguntas frequentes" if lang=="PT" else "Frequently asked questions"),
+        ("6", "O que voce precisa decidir?" if lang=="PT" else "What do you need to decide?"),
         ("Q", "Fechar assistente"           if lang=="PT" else "Close assistant"),
     ]
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
@@ -928,25 +1660,53 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         _guaraci_revisar_config(cfg)
     elif raw == "2":
         _guaraci_navegar_secoes(cfg or Config())
+    elif raw == "3":
+        _guaraci_diagnosticar(cfg or Config())
+    elif raw == "4":
+        _guaraci_tecnicas()
+    elif raw == "5":
+        _guaraci_faq(cfg or Config())
+    elif raw == "6":
+        _guaraci_fluxo_decisao(cfg or Config())
+
+def _rotulo_tecnica_efetivo(cfg: Optional[Config]) -> str:
+    """Nome de 'tecnica' a exibir nos cabecalhos, ajustado ao `cfg.mode`
+    real -- achado do Passo 103 (INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md):
+    `_TECNICA_SELECIONADA` (escolhida em [8] Tecnica Analitica) so' faz
+    sentido para mode dx/csv/sintetico (espectros vibracionais). Modes
+    "imagem" (colorimetria) e "hsi" (imageamento hiperespectral) NAO sao
+    "uma tecnica vibracional escolhida" -- mostrar o default global
+    'FT-NIR' nessas telas era herdado do template generico, incorreto
+    (a tela HSI mostrando "Tecnica: FT-NIR" foi o achado que motivou
+    esta correcao). Usado tanto por `_print_header` quanto por
+    `_print_status` -- fonte unica, nao duas heuristicas divergentes."""
+    modo = getattr(cfg, "mode", None) if cfg is not None else None
+    if modo == "hsi":
+        return "HSI"
+    if modo == "imagem":
+        return "Colorimetria digital" if _lang() == "PT" else "Digital colorimetry"
+    return _TECNICA_SELECIONADA.get("nome", "FT-NIR")
+
 
 # ---------------------------------------------------------------------------
 # CABECALHO COMPACTO
 # ---------------------------------------------------------------------------
-def _print_header() -> None:
+def _print_header(cfg: Optional[Config] = None) -> None:
     # Titulo com icone solar flanqueando GUARACI
     titulo = Text(justify="center")
     titulo.append("  ", style=f"{PA}")
     titulo.append("GUARACI", style=f"bold {PA}")
     titulo.append("  ", style=f"{PA}")
 
-    # Tecnica ativa (atualizada dinamicamente)
-    tec_nome = _TECNICA_SELECIONADA.get("nome", "FT-NIR")
+    # Tecnica ativa (atualizada dinamicamente, ajustada ao mode -- ver
+    # _rotulo_tecnica_efetivo)
+    tec_nome = _rotulo_tecnica_efetivo(cfg)
     tec_str  = f"Tecnica: {tec_nome}" if _lang() == "PT" else f"Technique: {tec_nome}"
 
     sub = Text(
-        "Inteligencia Quimiometrica para Matrizes Amazonicas"
+        "Plataforma quimiometrica com validacao anti-vazamento por padrao"
         if _lang() == "PT" else
-        "Chemometric Intelligence for Amazonian Matrices",
+        "Chemometrics platform with leakage-safe validation by default",
         style=PS, justify="center"
     )
     rod_txt = f"Quimiometria  |  Machine Learning  |  {tec_str}"
@@ -963,7 +1723,7 @@ def _print_status(cfg: Config) -> None:
     lang = _lang()
     pasta = _cfgv(cfg, "pasta_dados", "dados")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if pasta_ok else 0
 
     if pasta_ok and n_dx > 0:
         dados_str = f"[g]{_t('dados_ok', n=n_dx)}[/g]"
@@ -973,7 +1733,7 @@ def _print_status(cfg: Config) -> None:
         dados_str = f"[err]{_t('dados_err')}[/err]"
 
     preproc  = escape(str(_cfgv(cfg, "pre_processamento", "msc_sg_mc")))
-    # Barra de status compacta: usa so a palavra-chave do modo (Classificacao/
+    # Barra de status compacta: usa so a palavra-chave do mode (Classificacao/
     # Discriminacao/Quantificacao) — o rotulo completo estouraria as colunas.
     _niv_raw  = str(_cfgv(cfg, "nivel", "N1"))
     _niv_nome = pq._NIVEL_NOME.get(_niv_raw, "")
@@ -998,7 +1758,7 @@ def _print_status(cfg: Config) -> None:
         else f"[err]{_t('status_erro')}[/err]"
     )
 
-    tec_nome = _TECNICA_SELECIONADA.get("nome", "FT-NIR")
+    tec_nome = _rotulo_tecnica_efetivo(cfg)
 
     t = Table(box=None, show_header=False, padding=(0, 1))
     t.add_column("L1", style=PM, width=10, no_wrap=True)
@@ -1055,26 +1815,41 @@ def _print_main_menu() -> None:
         c2 = f"  [{style2}][{k2}][/{style2}] {lbl2}" if k2 else (f"  {lbl2}" if lbl2 else "")
         return Text.from_markup(c1), Text.from_markup(c2)
 
-    # Grupos
-    t.add_row(Text.from_markup(_grp(_t("grp_config"))), Text.from_markup(""))
-    t.add_row(*row("1", _t("t_projeto"),    "2", _t("t_dados")))
-    t.add_row(*row("3", _t("t_preproc"),    "4", _t("t_modelagem")))
-    t.add_row(*row("5", _t("t_validacao"),  "6", _t("t_avancado")))
+    # Grupos (docs/DESIGN.md secao 4 -- Agente 5.2, aprovado 2026-09-01):
+    # 6 grupos alinhados ao fluxo real de trabalho, substituindo os 3 grupos
+    # antigos (config/analise/sistema). Atalho direto de cada tecla continua
+    # funcionando igual, digitado de qualquer lugar deste menu -- so' a
+    # organizacao visual mudou, o dispatch em main() nao foi tocado.
+    t.add_row(Text.from_markup(_grp(_t("grp_preparar"))), Text.from_markup(""))
+    t.add_row(*row("2", _t("t_dados"),      "3", _t("t_preproc")))
+    t.add_row(*row("9", _t("t_codigos"),    "P", _t("t_perfis")))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_analise"))), Text.from_markup(""))
-    t.add_row(*row("7", _t("t_viz"),        "8", _t("t_tecnica")))
-    t.add_row(*row("9", _t("t_codigos"),    "H", _t("t_hardware"), style2=S))
-    t.add_row(*row("B", _t("t_predicao"), style1=S))
+    t.add_row(Text.from_markup(_grp(_t("grp_planejar"))), Text.from_markup(""))
+    t.add_row(*row("J", _t("t_planejamento"), "K", _t("t_selecao_amostras")))
+    t.add_row(*row("U", _t("t_auditoria")))
+
+    t.add_row(Text.from_markup(""), Text.from_markup(""))
+    t.add_row(Text.from_markup(_grp(_t("grp_modelar"))), Text.from_markup(""))
+    t.add_row(*row("4", _t("t_modelagem"),  "6", _t("t_avancado")))
+    t.add_row(*row("8", _t("t_tecnica")))
+
+    t.add_row(Text.from_markup(""), Text.from_markup(""))
+    t.add_row(Text.from_markup(_grp(_t("grp_validar"), cor=S)), Text.from_markup(""))
+    t.add_row(*row("5", _t("t_validacao"),  "7", _t("t_viz"), style1=S, style2=S))
+
+    t.add_row(Text.from_markup(""), Text.from_markup(""))
+    t.add_row(Text.from_markup(_grp(_t("grp_prever"), cor=S)), Text.from_markup(""))
+    t.add_row(*row("B", _t("t_predicao"), "X", _t("t_hsi"), style1=S, style2=S))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
     modo_lbl = (f"Modo: {'Iniciante' if _modo_usuario()=='iniciante' else 'Avancado'}"
                 if is_pt else
                 f"Mode: {'Beginner' if _modo_usuario()=='iniciante' else 'Advanced'}")
-    t.add_row(*row("P", _t("t_perfis"),  "M", modo_lbl, style1=S, style2=S))
+    t.add_row(*row("1", _t("t_projeto"), "H", _t("t_hardware"), style1=S, style2=S))
+    t.add_row(*row("G", "Guaraci ☀", "M", modo_lbl, style1=PA, style2=S))
     t.add_row(*row("I", _t("t_idioma"),  "?", _t("t_ajuda"),  style1=S, style2=M))
-    t.add_row(*row("G", "Guaraci ☀", style1=PA))
     sobre_lbl = "Sobre" if lang == "PT" else "About"
     t.add_row(*row("A", sobre_lbl,       "Q", _t("sair"),     style1=S, style2=M))
 
@@ -1103,7 +1878,7 @@ def _print_run_box(cfg: Config) -> None:
 
     pasta = _cfgv(cfg, "pasta_dados", "dados")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if pasta_ok else 0
     pronto = pasta_ok and n_dx > 0
 
     # RAM livre — indicador visual de 3 niveis
@@ -1177,12 +1952,12 @@ def _print_run_box(cfg: Config) -> None:
 def _desc_curta(key: str, max_c: int = 42) -> str:
     """Retorna descricao resumida do campo (max_c chars) para exibicao inline.
 
-    Resolve idioma/HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
-    truncamento a `guaraci.cli_logic.truncar_desc_por_frase` (funcao pura,
+    Resolve idioma/_HELP_DB/_SPEC_BY_KEY (estado desta tela) e delega o
+    truncamento a `guaraci.cli_logic.truncate_desc_by_sentence` (funcao pura,
     testada).
     """
     lang = _lang()
-    h = HELP_DB.get(key, {})
+    h = _HELP_DB.get(key, {})
     desc = h.get(lang, h.get("PT", {})).get("desc", "")
     if not desc:
         desc = _SPEC_BY_KEY.get(key, {}).get("desc", "")
@@ -1199,7 +1974,7 @@ def _print_submenu_compact(
     Submenu compacto: [N] ICON Nome  Valor  Descricao-breve
     Exibe o valor atual e uma descricao curta na mesma linha.
 
-    `campos_avancados`: subconjunto de `fields` a ESCONDER quando o modo do
+    `campos_avancados`: subconjunto de `fields` a ESCONDER quando o mode do
     usuario e' Iniciante e `mostrar_avancado=False` (CLAUDE.md secao 6 /
     auditoria 2026-07-12: reduzir a densidade de configuracao p/ quem so'
     quer usar os defaults). Quando `None`, nenhum campo e' escondido --
@@ -1290,7 +2065,7 @@ def _print_submenu_compact(
 
 # Toggles cuja utilidade depende do OBJETIVO cientifico resolvido (nao do
 # nivel em si) -- espelha 1:1 modos_analise._FIG_OBJETIVOS: fora do objetivo
-# listado, o motor nem computa (gated por deve_gerar() em pipeline.executar(),
+# listado, o motor nem computa (gated por should_generate() em pipeline.executar(),
 # ou, no caso de teste_wold/teste_cv_anova, pelo guard adicionado no achado
 # de 2026-08-06 -- antes rodavam incondicionalmente e escreviam metrica de
 # CLASSIFICACAO sem sentido no resumo de um run de Quantificacao).
@@ -1306,7 +2081,7 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
     """Desliga toggles que ficam INERTES no nivel/objetivo atual de `cfg`.
 
     Chamado apos o campo "nivel" mudar de valor (pedido do usuario,
-    2026-08-06: "quando mudo de modo... continua ativado a dd simca e
+    2026-08-06: "quando mudo de mode... continua ativado a dd simca e
     semelhantes... gostaria que ao mudar o N, mudasse as opcoes de modos
     como esse que nao agrega a analise"). Antes disso, o toggle DD-SIMCA
     permanecia visualmente "ligado" no menu mesmo em N1 -- funcionalmente
@@ -1316,9 +2091,9 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
     decidem em runtime -- nao e' uma aproximacao da UI, e' a mesma regra:
       - DD-SIMCA: N1 sempre ignora (forca False); N2 sempre forca ligado
         internamente (forca True, refletindo o que vai acontecer de
-        qualquer forma); demais niveis respeitam deve_gerar (objetivo).
+        qualquer forma); demais niveis respeitam should_generate (objetivo).
       - Demais toggles (ver `_TOGGLES_SO_CLASSIFICACAO`): forcados False
-        fora de objetivo=Classificacao; `benchmark_regressao` fora de
+        fora de objective=Classificacao; `benchmark_regressao` fora de
         Quantificacao.
 
     Retorna a lista de CHAVES (_CONFIG_SPEC) efetivamente alteradas, para o
@@ -1336,14 +2111,14 @@ def _ajustar_toggles_por_nivel(cfg: Config) -> List[str]:
             setattr(cfg, attr, valor)
             mudou.append(key)
 
-    if cfg.nivel == "N1":
+    if cfg.level == "N1":
         _forcar("ddsimca", False)
-    elif cfg.nivel == "N2":
+    elif cfg.level == "N2":
         _forcar("ddsimca", True)
     else:
-        _forcar("ddsimca", pq.deve_gerar(cfg, "ddsimca"))
+        _forcar("ddsimca", pq.should_generate(cfg, "ddsimca"))
 
-    objetivo = pq.resolver_objetivo(cfg)
+    objetivo = pq.resolve_objective(cfg)
     if objetivo != pq.CLASSIFICACAO:
         for key in _TOGGLES_SO_CLASSIFICACAO:
             _forcar(key, False)
@@ -1373,7 +2148,7 @@ def _editar_campo(cfg: Config, key: str) -> bool:
     val_cru   = _attr_para_yaml(spec, cfg)
     tipo      = spec.get("tipo", "str")
     opcoes    = spec.get("opcoes")
-    risk      = RISK_CLASS.get(key, "ANALITICO")
+    risk      = _RISK_CLASS.get(key, "ANALITICO")
     r_hex     = _risco_hex(key)
 
     # Painel de edicao minimalista
@@ -1482,13 +2257,13 @@ def _editar_campo(cfg: Config, key: str) -> bool:
 # ---------------------------------------------------------------------------
 def _mostrar_ajuda(key: str) -> None:
     lang   = _lang()
-    h      = HELP_DB.get(key, {})
+    h      = _HELP_DB.get(key, {})
     h_lang = h.get(lang, h.get("PT", {}))
     nome   = _nome_campo(key)
     r_hex  = _risco_hex(key)
     spec   = _SPEC_BY_KEY.get(key, {})
 
-    # Fallback: se HELP_DB nao cobre o campo, usa a descricao do _CONFIG_SPEC
+    # Fallback: se _HELP_DB nao cobre o campo, usa a descricao do _CONFIG_SPEC
     desc    = h_lang.get("desc") or spec.get("desc") or (
         "Sem descricao detalhada para este campo." if lang == "PT"
         else "No detailed description for this field.")
@@ -1498,7 +2273,7 @@ def _mostrar_ajuda(key: str) -> None:
     opcoes   = spec.get("opcoes")
     faixa    = h.get("range") or (" | ".join(str(o) for o in opcoes) if opcoes else
                                   spec.get("tipo", "—"))
-    tip      = GUARACI_TIPS.get(key, {}).get(lang, "")
+    tip      = _GUARACI_TIPS.get(key, {}).get(lang, "")
 
     info = Table(box=None, show_header=False, padding=(0, 1))
     info.add_column("L", style=PM, width=12, no_wrap=True)
@@ -1547,12 +2322,12 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
 
     `campos_avancados`: ver `_print_submenu_compact`. O reveal ("V") e'
     local a esta visita ao menu -- sai e volta a entrar reseta p/ escondido
-    de novo quando o modo do usuario e' Iniciante (design: expandir um
-    submenu especifico nao muda o modo da sessao inteira)."""
+    de novo quando o mode do usuario e' Iniciante (design: expandir um
+    submenu especifico nao muda o mode da sessao inteira)."""
     mostrar_avancado = False
     while True:
-        cls()
-        _print_header()
+        _cls()
+        _print_header(cfg)
         fields_visiveis = _print_submenu_compact(
             title, desc, fields, cfg, extras,
             campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
@@ -1570,10 +2345,10 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
             r2 = _input("  Campo (N ou nome): ").strip()
             if r2.isdigit() and 1 <= int(r2) <= len(fields_visiveis):
                 _mostrar_ajuda(fields_visiveis[int(r2) - 1])
-            elif r2 in HELP_DB:
+            elif r2 in _HELP_DB:
                 _mostrar_ajuda(r2)
             else:
-                found = [k for k in HELP_DB if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
+                found = [k for k in _HELP_DB if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
                 _mostrar_ajuda(found[0]) if found else console.print(f"  [{PM}]{_t('invalido')}[/{PM}]")
         elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
             _editar_campo(cfg, fields_visiveis[int(raw) - 1])
@@ -1585,23 +2360,75 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
             _pause()
 
 
-def menu_projeto(cfg: Config) -> None:
+def _menu_project(cfg: Config) -> None:
     _loop_menu(_t("t_projeto"), _t("d_projeto"), ["pasta_dados", "pasta_saida", "tag"], cfg)
 
 
-def menu_dados(cfg: Config) -> None:
+_DIR_PERFIS_COMBINADOS = _USER_DIR / "perfis_matriz"
+
+
+def _salvar_perfil_combinado(cfg: Config) -> None:
+    """Funde `perfil_matriz` + `perfil_tecnica` (Agente 5B) e salva como
+    YAML de usuario, pronto pra reusar digitando o caminho no campo
+    `perfil_matriz` de uma proxima sessao."""
+    lang = _lang(); is_pt = lang == "PT"
+    nome_matriz = str(getattr(cfg, "matrix_profile", "") or "")
+    nome_tecnica = str(getattr(cfg, "acquisition_profile", "") or "")
+    if not nome_matriz:
+        console.print(f"  [{PR}]{'Defina o Perfil de matriz antes de combinar.' if is_pt else 'Set the matrix profile before combining.'}[/{PR}]")
+        _pause(); return
+    if not nome_tecnica:
+        console.print(f"  [{PR}]{'Defina o Perfil de tecnica de aquisicao antes de combinar.' if is_pt else 'Set the acquisition technique profile before combining.'}[/{PR}]")
+        _pause(); return
+
+    from guaraci.perfil_matriz import (UnknownProfileError, combine_profiles,
+                                        load_profile, save_profile)
+    try:
+        matriz = load_profile(nome_matriz)
+        tecnica = load_profile(nome_tecnica)
+    except UnknownProfileError as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]"); _pause(); return
+
+    nome_novo = _ask(
+        f"  [{PA}]{'Nome do perfil combinado (ex.: mel_celular)' if is_pt else 'Combined profile name (e.g. honey_phone)'}: [/{PA}]"
+    ).strip()
+    if not nome_novo:
+        console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
+    combinado = combine_profiles(nome_novo, matriz, tecnica)
+    caminho = _DIR_PERFIS_COMBINADOS / f"{nome_novo}.yaml"
+    try:
+        save_profile(combinado, str(caminho))
+    except OSError as e:
+        console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    msg = (f"✓ Perfil combinado salvo em {caminho}\n"
+           f"  Use digitando o caminho no campo 'Perfil de matriz' numa proxima sessao."
+           if is_pt else
+           f"✓ Combined profile saved to {caminho}\n"
+           f"  Use it by typing the path in the 'Matrix profile' field in a future session.")
+    console.print(f"  [g]{escape(msg)}[/g]")
+    _pause()
+
+
+def _menu_data(cfg: Config) -> None:
     # imagem_incluir_textura adicionado 2026-08-06: mesma classe de bug de
     # n_jobs_permutacao. So' relevante quando modo_entrada="imagem"
     # (prototipo de colorimetria digital, CLAUDE.md) -- vai em
     # campos_avancados por ser niche, nao por risco.
+    extra_lbl = ("Salvar perfil combinado (matriz + tecnica)" if _lang() == "PT"
+                 else "Save combined profile (matrix + technique)")
     _loop_menu(_t("t_dados"), _t("d_dados"),
-               ["modo_entrada", "arquivo_csv", "coluna_classe",
-                "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
+               ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
+                "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
                 "excluir_classes", "imagem_incluir_textura"], cfg,
-               campos_avancados={"imagem_incluir_textura"})
+               extras=[("C", extra_lbl)],
+               on_extra={"C": lambda: _salvar_perfil_combinado(cfg)},
+               campos_avancados={"perfil_tecnica", "imagem_incluir_textura"})
 
 
-def menu_preproc(cfg: Config) -> None:
+def _menu_preprocessing(cfg: Config) -> None:
     def _show_pipeline():
         preproc = str(_cfgv(cfg, "pre_processamento", "msc_sg_mc"))
         comps = {
@@ -1622,7 +2449,7 @@ def menu_preproc(cfg: Config) -> None:
 
     fields = ["pre_processamento", "comparar_pre_processamentos"]
     while True:
-        cls(); _print_header(); _show_pipeline()
+        _cls(); _print_header(cfg); _show_pipeline()
         _print_submenu_compact(_t("t_preproc"), _t("d_preproc"), fields, cfg)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0", "Q"):
@@ -1638,7 +2465,7 @@ def menu_preproc(cfg: Config) -> None:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
-def menu_modelagem(cfg: Config) -> None:
+def _menu_modeling(cfg: Config) -> None:
     # Essenciais p/ Iniciante: nivel (o que estou fazendo) + max_lvs (unico
     # numero que costuma precisar ajustar). Avancados: DD-SIMCA/OPLS-DA/
     # selecao de variaveis sao metodos extras, nao o caminho basico.
@@ -1649,16 +2476,17 @@ def menu_modelagem(cfg: Config) -> None:
     # fazem sentido com ele ligado -- todos em campos_avancados.
     _loop_menu(_t("t_modelagem"), _t("d_modelagem"),
                ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca",
-                "modo_ddsimca", "selecao_variaveis_etapa4",
-                "selecao_spa", "selecao_ag"], cfg,
+                "modo_ddsimca", "ddsimca_pcv", "selecao_variaveis_etapa4",
+                "selecao_spa", "selecao_ag", "selecao_cars", "selecao_uve"], cfg,
                campos_avancados={"objetivo", "opls_da", "ddsimca", "modo_ddsimca",
-                                  "selecao_variaveis_etapa4",
-                                  "selecao_spa", "selecao_ag"})
+                                  "ddsimca_pcv", "selecao_variaveis_etapa4",
+                                  "selecao_spa", "selecao_ag",
+                                  "selecao_cars", "selecao_uve"})
 
 
-def menu_validacao(cfg: Config) -> None:
+def _menu_validation(cfg: Config) -> None:
     # n_jobs_permutacao/teste_martens adicionados 2026-08-06: mesma classe de
-    # bug -- existiam no Config/_CONFIG_SPEC/HELP_DB, mas nunca tinham sido
+    # bug -- existiam no Config/_CONFIG_SPEC/_HELP_DB, mas nunca tinham sido
     # colocados em NENHUM menu (so' editaveis a mao no YAML).
     fields = ["holdout_fracao", "validacao_group_aware",
               "n_permutacoes", "n_jobs_permutacao", "teste_wold",
@@ -1672,12 +2500,12 @@ def menu_validacao(cfg: Config) -> None:
     # n_jobs_permutacao FORA de campos_avancados de proposito: nao muda
     # nenhum resultado (so' o tempo), e o proprio checklist de pre-execucao
     # (_checklist) sugere subir esse valor quando ha' muitas permutacoes
-    # sequenciais -- esconder atras do modo Avancado criaria uma dica que o
+    # sequenciais -- esconder atras do mode Avancado criaria uma dica que o
     # usuario Iniciante nao consegue seguir.
     campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova", "teste_martens"}
     mostrar_avancado = False
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
         ga = _cfgv(cfg, "validacao_group_aware", True)
         if not ga:
             console.print(Panel(
@@ -1703,13 +2531,13 @@ def menu_validacao(cfg: Config) -> None:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
-def menu_avancado(cfg: Config) -> None:
+def _menu_advanced(cfg: Config) -> None:
     # benchmark_regressao adicionado 2026-08-06: existia no Config/
-    # _CONFIG_SPEC/HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
+    # _CONFIG_SPEC/_HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
     fields = ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
               "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"]
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
         console.print(Panel(
             f"[{PR}]  ▲ Modulos pesados — verificar hardware em [H] antes de ativar.[/{PR}]",
             border_style=PR, box=rbox.SIMPLE, padding=(0, 1)
@@ -1731,9 +2559,9 @@ def menu_avancado(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # VISUALIZACAO — submenu especial com sub-handlers
 # ---------------------------------------------------------------------------
-def menu_visualizacao(cfg: Config) -> None:
+def _menu_visualization(cfg: Config) -> None:
     # figuras_detalhadas adicionado 2026-08-06: mesma classe de bug de
-    # n_jobs_permutacao -- existia no Config/_CONFIG_SPEC/HELP_DB, mas nunca
+    # n_jobs_permutacao -- existia no Config/_CONFIG_SPEC/_HELP_DB, mas nunca
     # tinha sido colocado em NENHUM menu.
     fields = ["figuras_detalhadas", "figuras_mostrar_marcadores",
               "figuras_mostrar_elipses", "formato_figura", "dpi",
@@ -1759,18 +2587,18 @@ def menu_visualizacao(cfg: Config) -> None:
         t.add_column("Nome", no_wrap=True, width=30)
         t.add_column("Desc", style=PM)
         atual = vcfg.get("paleta", "qualitativo")
-        for i, (pk, pd) in enumerate(PALETAS_COR.items(), 1):
+        for i, (pk, pd) in enumerate(_PALETAS_COR.items(), 1):
             nm = pd.get("nome", {}).get(_lang(), pk) if isinstance(pd.get("nome"), dict) else pk
             dsc = pd.get("desc", {}).get(_lang(), "") if isinstance(pd.get("desc"), dict) else ""
             mk = f"[{PA}]►[/{PA}]" if pk == atual else " "
             t.add_row(f"  [{PA}][{i}][/{PA}]", f"{mk} {escape(nm)}", escape(_trunc(dsc, 35)))
         console.print(Panel(t, title=f"[bold {PA}]{_t('viz_paleta')}[/bold {PA}]",
                             border_style=PA, box=rbox.ROUNDED, padding=(0, 1)))
-        r = _input(f"  [1-{len(PALETAS_COR)}] ou Enter: ")
+        r = _input(f"  [1-{len(_PALETAS_COR)}] ou Enter: ")
         if r.isdigit():
             idx = int(r) - 1
-            if 0 <= idx < len(PALETAS_COR):
-                vcfg["paleta"] = list(PALETAS_COR.keys())[idx]
+            if 0 <= idx < len(_PALETAS_COR):
+                vcfg["paleta"] = list(_PALETAS_COR.keys())[idx]
                 _salvar_visual_cfg(vcfg)
                 _lbl = "Paleta" if _lang() == "PT" else "Palette"
                 console.print(f"  [g]✓ {_lbl}: {vcfg['paleta']}[/g]")
@@ -1850,7 +2678,7 @@ def menu_visualizacao(cfg: Config) -> None:
             _salvar_visual_cfg(vcfg)
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
         _print_submenu_compact(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         if raw in ("0","Q"): break
@@ -1870,7 +2698,7 @@ def menu_visualizacao(cfg: Config) -> None:
 # TECNICA ANALITICA
 # ---------------------------------------------------------------------------
 # Agrupamento das tecnicas por categoria (segue o modelo do prompt GUARACI).
-# So inclui chaves presentes em TECNICAS; chaves ausentes sao ignoradas.
+# So inclui chaves presentes em _TECNICAS; chaves ausentes sao ignoradas.
 _TECNICA_CATEGORIAS = [
     ("Vibracional",          "Vibrational",        ["ft-nir", "nir", "mir", "raman", "uv-vis"]),
     ("Luminescencia",        "Luminescence",       ["fluorescencia"]),
@@ -1885,10 +2713,10 @@ def _tecnica_ordem() -> list:
     vistos = set()
     for _pt, _en, keys in _TECNICA_CATEGORIAS:
         for k in keys:
-            if k in TECNICAS and k not in vistos:
+            if k in _TECNICAS and k not in vistos:
                 ordem.append(k); vistos.add(k)
     # Acrescenta quaisquer tecnicas nao categorizadas, ao final
-    for k in TECNICAS:
+    for k in _TECNICAS:
         if k not in vistos:
             ordem.append(k); vistos.add(k)
     return ordem
@@ -1896,7 +2724,7 @@ def _tecnica_ordem() -> list:
 
 def _tecnica_detalhe(tk: str, lang: str) -> None:
     """Painel com detalhes completos de uma tecnica."""
-    td = TECNICAS.get(tk, {})
+    td = _TECNICAS.get(tk, {})
     tdl = td.get(lang, td.get("PT", {}))
     linhas = [
         f"[{PW}]{escape(tdl.get('desc',''))}[/{PW}]", "",
@@ -1905,7 +2733,7 @@ def _tecnica_detalhe(tk: str, lang: str) -> None:
         f"[{PA}]{'Pre-proc. recomendado' if lang=='PT' else 'Recommended preproc'}:[/{PA}] "
         f"[{PW}]{escape(str(tdl.get('preproc_rec', td.get('preproc','—'))))}[/{PW}]",
         f"[{PA}]{'Modo de entrada' if lang=='PT' else 'Input mode'}:[/{PA}] "
-        f"[{PW}]{escape(str(td.get('modo','dx')))}[/{PW}]",
+        f"[{PW}]{escape(str(td.get('mode','dx')))}[/{PW}]",
     ]
     console.print(Panel(
         Text.from_markup("\n".join(linhas)),
@@ -1915,32 +2743,32 @@ def _tecnica_detalhe(tk: str, lang: str) -> None:
     _pause()
 
 
-def menu_tecnica(cfg: Config) -> None:
+def _menu_technique(cfg: Config) -> None:
     """Tecnica analitica — agrupada por categoria (modelo GUARACI)."""
     lang = _lang()
 
     def _aplicar(tk_sel: str) -> None:
-        td_sel = TECNICAS.get(tk_sel, {})
+        td_sel = _TECNICAS.get(tk_sel, {})
         tdl = td_sel.get(lang, td_sel.get("PT", {}))
         try:
             nm_sel = tdl.get("nome", tk_sel)
             _TECNICA_SELECIONADA["key"]  = tk_sel
             _TECNICA_SELECIONADA["nome"] = tk_sel.upper()
             fmin = td_sel.get("faixa_min"); fmax = td_sel.get("faixa_max")
-            prep = td_sel.get("preproc", ""); modo = td_sel.get("modo", "dx")
+            prep = td_sel.get("preproc", ""); mode = td_sel.get("mode", "dx")
             if fmin is not None: _set_val(cfg, "faixa_min_cm", str(fmin))
             if fmax is not None: _set_val(cfg, "faixa_max_cm", str(fmax))
             if prep: _set_val(cfg, "pre_processamento", prep)
-            if modo: _set_val(cfg, "modo_entrada", modo)
+            if mode: _set_val(cfg, "modo_entrada", mode)
             fa_str = tdl.get("faixa", f"{fmin}-{fmax}")
             console.print(f"  [g]✓ {escape(_trunc(nm_sel, 44))} {'selecionado' if lang=='PT' else 'selected'}.[/g]")
             console.print(f"  [info]  {'Faixa' if lang=='PT' else 'Range'}: {escape(_trunc(str(fa_str), 44))}[/info]")
-            console.print(f"  [info]  Preproc.: {escape(str(prep))}  |  {'Modo' if lang=='PT' else 'Mode'}: {modo}[/info]")
-        except ValueError as e:   # _set_val: faixa/preproc/modo invalido p/ a tecnica
+            console.print(f"  [info]  Preproc.: {escape(str(prep))}  |  {'Modo' if lang=='PT' else 'Mode'}: {mode}[/info]")
+        except ValueError as e:   # _set_val: faixa/preproc/mode invalido p/ a tecnica
             console.print(f"  [err]{escape(str(e))}[/err]")
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
         lang = _lang()
         ordem = _tecnica_ordem()
         num = {tk: i for i, tk in enumerate(ordem, 1)}  # chave -> numero
@@ -1953,13 +2781,13 @@ def menu_tecnica(cfg: Config) -> None:
         t.add_column("Preproc.", style=PM, no_wrap=True)
 
         for cat_pt, cat_en, keys in _TECNICA_CATEGORIAS:
-            keys_presentes = [k for k in keys if k in TECNICAS]
+            keys_presentes = [k for k in keys if k in _TECNICAS]
             if not keys_presentes:
                 continue
             cat = cat_pt if lang == "PT" else cat_en
             t.add_row("", Text.from_markup(f"[{PF}]── {escape(cat)} ──[/{PF}]"), "", "")
             for tk in keys_presentes:
-                td = TECNICAS.get(tk, {})
+                td = _TECNICAS.get(tk, {})
                 tdl = td.get(lang, td.get("PT", {}))
                 nm = tdl.get("nome", tk)
                 fa = tdl.get("faixa", "—")
@@ -2005,7 +2833,7 @@ def menu_tecnica(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # CODIFICACAO DX
 # ---------------------------------------------------------------------------
-def menu_codificacao(cfg: Config) -> None:
+def _menu_encoding(cfg: Config) -> None:
     """Codificacao DX — explica o conceito e so lista os codigos sob demanda."""
     lang = _lang()
     CODIGOS_BASE = getattr(pq, "CODIGO_ESPECIE", {
@@ -2024,6 +2852,7 @@ def menu_codificacao(cfg: Config) -> None:
 
     def _salvar_cod(d: dict) -> bool:
         try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
             _CODIGOS_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
             return True
         except OSError as e:
@@ -2106,8 +2935,9 @@ def menu_codificacao(cfg: Config) -> None:
     def _exportar_csv() -> None:
         import csv as _csv
         cod_usr = _cod_usr()
-        destino = str(_BASE_DIR / "codigos_exportados.csv")
+        destino = str(_USER_DIR / "codigos_exportados.csv")
         try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
             with open(destino, "w", newline="", encoding="utf-8-sig") as fh:
                 w = _csv.writer(fh)
                 w.writerow(["codigo", "especie", "origem"])
@@ -2123,7 +2953,7 @@ def menu_codificacao(cfg: Config) -> None:
         _pause()
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
 
         # Painel explicativo — o que e, padrao de nome, como cadastrar/importar
         if lang == "PT":
@@ -2134,7 +2964,7 @@ def menu_codificacao(cfg: Config) -> None:
                 "[a]Padrao de nome dos arquivos:[/a]\n"
                 "  COD-DD-MM-AAAA_Tn.dx            (especie pura)\n"
                 "  COD-DD-MM-AAAA_AD-X-PP_Tn.dx    (adulterada)\n"
-                "  Ex.: AND-10-06-2020_T1.dx  ->  Andiroba pura, triplicata 1\n\n"
+                "  Ex.: AND-10-06-2099_T1.dx  ->  Andiroba pura, triplicata 1\n\n"
                 "[a]Como cadastrar:[/a]\n"
                 "  [A] um codigo por vez, ou [M] importar um CSV pronto\n"
                 "  (CSV com 2 colunas: codigo,especie — separador , ou ;)."
@@ -2147,7 +2977,7 @@ def menu_codificacao(cfg: Config) -> None:
                 "[a]File name pattern:[/a]\n"
                 "  COD-DD-MM-YYYY_Tn.dx            (pure species)\n"
                 "  COD-DD-MM-YYYY_AD-X-PP_Tn.dx    (adulterated)\n"
-                "  E.g.: AND-10-06-2020_T1.dx  ->  Andiroba pure, replicate 1\n\n"
+                "  E.g.: AND-10-06-2099_T1.dx  ->  Andiroba pure, replicate 1\n\n"
                 "[a]How to register:[/a]\n"
                 "  [A] one code at a time, or [M] import a ready CSV\n"
                 "  (CSV with 2 columns: code,species — separator , or ;)."
@@ -2197,7 +3027,7 @@ def menu_codificacao(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # HARDWARE — dashboard compacto com barras
 # ---------------------------------------------------------------------------
-def menu_hardware(cfg: Optional[Config] = None) -> None:
+def _menu_hardware(cfg: Optional[Config] = None) -> None:
     """Dashboard de hardware com diagnostico e recomendacoes por tier."""
     lang = _lang()
     try:
@@ -2252,7 +3082,7 @@ def menu_hardware(cfg: Optional[Config] = None) -> None:
         tier_perfil = ("Apenas Exploracao de Dados" if lang=="PT" else "Data Exploration Only")
         tier_mods = [
             ("Todos em [6]", "[err]Desativar tudo[/err]" if lang=="PT" else "[err]Disable all[/err]"),
-            ("Modo entrada",  "[warn]Usar modo sintetico[/warn]" if lang=="PT" else "[warn]Use synthetic mode[/warn]"),
+            ("Modo entrada",  "[warn]Usar mode sintetico[/warn]" if lang=="PT" else "[warn]Use synthetic mode[/warn]"),
             ("max_lvs",       "[warn]Reduzir para 15[/warn]" if lang=="PT" else "[warn]Reduce to 15[/warn]"),
         ]
 
@@ -2336,7 +3166,7 @@ def menu_hardware(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # PREDICAO EM LOTE — aplica modelo salvo (.joblib) a espectros novos (CSV)
 # ---------------------------------------------------------------------------
-def menu_predicao(cfg: Optional[Config] = None) -> None:
+def _menu_prediction(cfg: Optional[Config] = None) -> None:
     """Predicao em lote via terminal: aplica um modelo .joblib salvo a um
     CSV de espectros novos (colunas=numero de onda, sem coluna de classe).
 
@@ -2346,7 +3176,6 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
     """
     lang = _lang()
     is_pt = lang == "PT"
-    cls(); _print_header()
 
     intro = (
         "Aplica um modelo treinado (.joblib) a espectros novos e reporta "
@@ -2355,21 +3184,36 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
         "Applies a trained model (.joblib) to new spectra and reports "
         "predicted class + T2/Q diagnostics (applicability domain)."
     )
-    console.print(Panel(
-        Text.from_markup(f"  {intro}"),
-        title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
-        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
-    ))
-    console.print()
+
+    # Redesenha cabecalho + painel de contexto -- extraido p/ funcao local
+    # porque precisa ser chamado de novo apos fechar o assistente [G] (que
+    # limpa a tela), mantendo o mesmo padrao visual usado em todo o resto
+    # do CLI (rodape [G]/[0] logo abaixo do painel de intro).
+    def _intro() -> None:
+        _cls(); _print_header(cfg)
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        console.print()
+
+    _intro()
 
     lbl_modelo = "Caminho do modelo (.joblib)" if is_pt else "Model path (.joblib)"
     lbl_csv    = "Caminho do CSV de espectros novos" if is_pt else "New spectra CSV path"
     lbl_saida  = "Caminho de saida do CSV de resultados" if is_pt else "Output results CSV path"
     nao_encontrado = "Arquivo nao encontrado" if is_pt else "File not found"
 
-    cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
-    if not cam_modelo:
-        return
+    while True:
+        cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
+        if cam_modelo.upper() == "G":
+            _abrir_assistente(_t("t_predicao"), cfg)
+            _intro(); continue
+        if not cam_modelo or cam_modelo == "0":
+            return
+        break
     if not os.path.isfile(cam_modelo):
         console.print(f"  [{PR}]{nao_encontrado}: {escape(cam_modelo)}[/{PR}]")
         _pause(); return
@@ -2403,6 +3247,14 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
     if not cam_saida:
         cam_saida = padrao_saida
 
+    # Confirmacao antes de sobrescrever -- mesmo idioma s/n ja usado acima
+    # para o aviso de pickle (nao introduz um mecanismo novo).
+    if os.path.exists(cam_saida):
+        conf_sobre = ("Arquivo ja existe. Sobrescrever? (s/n)" if is_pt
+                      else "File already exists. Overwrite? (y/n)")
+        if _ask(f"  [{PA}]{conf_sobre}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
     try:
         import pandas as pd
         import guaraci.predicao as _pred
@@ -2410,10 +3262,47 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
                        else "Loading model and applying...")
         with console.status(f"[{PA}]{status_msg}[/{PA}]"):
             # confiar=True: o operador ja confirmou explicitamente acima.
-            pkg = _pred.carregar_modelo(cam_modelo, confiar=True)
-            _pred.validar_pacote_modelo(pkg)
-            X_new, wn_new, meta_df = _pred.carregar_csv_predicao(cam_csv)
-            df_res = _pred.predizer_amostras(pkg, X_new, wn_new)
+            pkg = _pred.load_model(cam_modelo, confiar=True)
+            _pred.validate_model_package(pkg)
+            X_new, wn_new, meta_df = _pred.load_prediction_csv(cam_csv)
+            # Bloco 9b (D6): estende a predicao existente com o fluxo
+            # completo Detectar -> Identificar -> Quantificar quando o
+            # pacote traz o ensemble de identificacao (modelos exportados
+            # antes do Bloco 9b nao tem essa chave -- cai no caminho
+            # anterior, sem quebrar).
+            if pkg.get("identification_ensemble"):
+                df_res, resultados_cego = _pred.predict_blind(pkg, X_new, wn_new)
+                df_res["detectado_puro_especie"] = [
+                    r.pureza.aceito for r in resultados_cego]
+                df_res["pureza_confiavel"] = [
+                    r.pureza.confiavel for r in resultados_cego]
+                df_res["classe_identificada"] = [
+                    r.identificacao.classe_identificada for r in resultados_cego]
+                df_res["identificacao_cobertura"] = [
+                    (r.identificacao.cobertura_status.value
+                     if r.identificacao.cobertura_status else None)
+                    for r in resultados_cego]
+                df_res["identificacao_alpha_alcancavel"] = [
+                    r.identificacao.alpha_alcancavel for r in resultados_cego]
+                df_res["identificacao_candidatos"] = [
+                    ", ".join(r.identificacao.candidatos_ambiguos)
+                    for r in resultados_cego]
+                df_res["teor_estimado"] = [
+                    r.quantificacao.teor_estimado for r in resultados_cego]
+                # Bloco 24: faixa de decisao ao lado do numero -- nunca so
+                # o teor cru, sem dizer se ele esta' abaixo do LOD (nao
+                # detectavel), na zona cinzenta (LOD-LOQ) ou quantificado
+                # com confianca (>=LOQ). Mesmos limiares do Bloco 12.
+                df_res["faixa_decisao"] = [
+                    r.quantificacao.faixa_decisao for r in resultados_cego]
+                df_res["lod"] = [r.quantificacao.lod for r in resultados_cego]
+                df_res["loq"] = [r.quantificacao.loq for r in resultados_cego]
+                df_res["quantificacao_motivo_bloqueio"] = [
+                    r.quantificacao.motivo_bloqueio for r in resultados_cego]
+                df_res["alpha_total"] = [
+                    r.alpha_total for r in resultados_cego]
+            else:
+                df_res = _pred.predict_samples(pkg, X_new, wn_new)
             if len(meta_df.columns) > 0 and len(meta_df) == len(df_res):
                 df_res = pd.concat([meta_df.reset_index(drop=True), df_res], axis=1)
             df_res.to_csv(cam_saida, index=False, sep=";", decimal=",")
@@ -2435,12 +3324,17 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
 
     resumo_txt = (
         f"  [{PG}]✔ {n_tot} amostras processadas[/{PG}]  |  "
-        f"[{PG}]{n_ac}[/{PG}] aceitas (ajuste ao modelo PLS-DA, T2/Q) / "
-        f"[{PR}]{n_tot - n_ac}[/{PR}] rejeitadas"
+        f"[{PG}]{n_ac}[/{PG}] amostras dentro do ajuste do modelo PLS-DA "
+        f"(T2 <= limite e resíduo Q <= limite -- ver 'criterio' no CSV) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] fora do ajuste (espectro atipico, "
+        f"tratar com cautela)"
         if is_pt else
         f"  [{PG}]✔ {n_tot} samples processed[/{PG}]  |  "
-        f"[{PG}]{n_ac}[/{PG}] accepted (PLS-DA model fit, T2/Q) / "
-        f"[{PR}]{n_tot - n_ac}[/{PR}] rejected"
+        f"[{PG}]{n_ac}[/{PG}] samples within the PLS-DA model fit "
+        f"(Hotelling T2 <= limit and Q-residual <= limit -- see 'criterio' "
+        f"in the CSV) / "
+        f"[{PR}]{n_tot - n_ac}[/{PR}] outside the fit (atypical spectrum, "
+        f"treat with caution)"
     )
     # Dominio de Aplicabilidade (PCA exploratorio, Jaworska et al. 2005) --
     # so' aparece se o pacote .joblib foi salvo por uma versao do pipeline
@@ -2451,14 +3345,161 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
             f"  [{PG}]🔎 Dominio de aplicabilidade:[/{PG}] "
             f"[{PG}]{n_ad_dentro}[/{PG}] dentro / "
             f"[{PR}]{n_tot - n_ad_dentro}[/{PR}] fora "
-            "(espectro atipico frente a calibracao)"
+            "(espectro parecido/nao-parecido com o que o modelo viu no "
+            "treino -- 'fora' NAO significa 'adulterado', so' 'diferente do "
+            "que foi calibrado')"
             if is_pt else
             f"  [{PG}]🔎 Applicability domain:[/{PG}] "
             f"[{PG}]{n_ad_dentro}[/{PG}] within / "
             f"[{PR}]{n_tot - n_ad_dentro}[/{PR}] outside "
-            "(atypical spectrum vs. calibration)"
+            "(similar/dissimilar to what the model saw during training -- "
+            "'outside' does NOT mean 'adulterated', only 'different from "
+            "what was calibrated')"
         )
         resumo_txt += "\n" + ad_txt
+
+        # Bloco 13b: sentinela de deriva -- persistida ao lado do MODELO
+        # (nao do CSV de saida), porque e' o modelo que fica fixo entre
+        # varias rodadas de predicao ao longo do tempo -- exatamente o
+        # uso continuo que a sentinela existe para acompanhar. Depende de
+        # AD_dentro_dominio (nao de identification_ensemble), por isso fica
+        # sob este if, nao sob o do fluxo cego abaixo.
+        try:
+            import guaraci.sentinela_deriva as _sent
+            cam_sentinela = cam_modelo + ".sentinela.json"
+            estado_sent = (_sent.load_state(cam_sentinela)
+                           if os.path.isfile(cam_sentinela)
+                           else _sent.SentinelState(alpha_nominal=0.05))
+            _sent.update_with_predictions(estado_sent, df_res)
+            _sent.save_state(estado_sent, cam_sentinela)
+            alerta_sent = _sent.check_drift(estado_sent)
+            cor_sent = PR if alerta_sent.alerta else PM
+            sent_txt = (
+                f"  [{cor_sent}]🛰 Sentinela de deriva (n={alerta_sent.n}):"
+                f"[/{cor_sent}] {escape(alerta_sent.mensagem)}"
+            )
+            resumo_txt += "\n" + sent_txt
+        except Exception as _e_sent:  # noqa: BLE001 -- diagnostico
+            # opcional; erro impresso, nao afeta a predicao ja gravada.
+            resumo_txt += (
+                f"\n  [{PM}]{'Sentinela de deriva indisponivel' if is_pt else 'Drift sentinel unavailable'}"
+                f": {escape(str(_e_sent))}[/{PM}]")
+
+    # Bloco 9b: fluxo cego completo (Detectar -> Identificar -> Quantificar)
+    # -- so' presente quando o pacote .joblib traz o ensemble de
+    # identificacao. Sem este bloco a saida seria so' uma tabela de colunas
+    # tecnicas (identificacao_cobertura, motivo_bloqueio, alpha_total) sem
+    # explicacao nenhuma -- o motivo original desta auditoria de veracidade
+    # (Agente 3, Passo 92).
+    if "classe_identificada" in df_res.columns:
+        n_pura = int(sum(1 for r in resultados_cego if r.pureza.aceito is True))
+        n_adulterada = int(sum(1 for r in resultados_cego if r.pureza.aceito is False))
+        n_pureza_indet = n_tot - n_pura - n_adulterada
+        n_identificado = int(sum(
+            1 for r in resultados_cego
+            if r.identificacao.classe_identificada is not None))
+        n_desconhecido = n_tot - n_identificado
+        n_quantificado = int(sum(
+            1 for r in resultados_cego if r.quantificacao.teor_estimado is not None))
+        n_bloqueado = n_tot - n_quantificado
+        # Bloco 24: faixa de decisao (LOD/LOQ, Bloco 12) -- so' conta entre
+        # as amostras que de fato tiveram um teor estimado (bloqueadas nao
+        # tem faixa nenhuma pra contar).
+        n_nao_detectavel = int(sum(
+            1 for r in resultados_cego
+            if r.quantificacao.faixa_decisao == "nao_detectavel"))
+        n_zona_cinzenta = int(sum(
+            1 for r in resultados_cego
+            if r.quantificacao.faixa_decisao == "zona_cinzenta"))
+        n_confiavel = int(sum(
+            1 for r in resultados_cego
+            if r.quantificacao.faixa_decisao == "quantificado_com_confianca"))
+        n_sem_lod_loq = n_quantificado - n_nao_detectavel - n_zona_cinzenta - n_confiavel
+
+        if is_pt:
+            fluxo_txt = (
+                "\n  [bold]Fluxo cego -- Detectar → Identificar → Quantificar "
+                "(Bloco 9b):[/bold]\n"
+                f"  🧪 Pureza (DD-SIMCA da espécie prevista): "
+                f"[{PG}]{n_pura}[/{PG}] detectada como pura / "
+                f"[{PR}]{n_adulterada}[/{PR}] detectada como adulterada"
+                + (f" / [{PM}]{n_pureza_indet}[/{PM}] indeterminada "
+                   "(sem modelo de pureza calibrado para a espécie prevista)"
+                   if n_pureza_indet else "") + "\n"
+                f"  🏷 Adulterante: "
+                f"[{PG}]{n_identificado}[/{PG}] identificado / "
+                f"[{PR}]{n_desconhecido}[/{PR}] DESCONHECIDO (nenhuma "
+                "combinação espécie×adulterante teve garantia estatística "
+                "suficiente E exclusiva para rotular esta amostra -- por "
+                "falta de garantia, ou por 2+ combinações validadas "
+                "empatando, o que também bloqueia o rótulo)\n"
+                f"  ⚖ Quantificação (teor de adulterante estimado -- mesma "
+                "unidade da coluna de referência usada no treino do modelo, "
+                f"tipicamente %m/m): [{PG}]{n_quantificado}[/{PG}] com "
+                f"número / [{PR}]{n_bloqueado}[/{PR}] BLOQUEADA "
+                "(quantificação recusada por não haver identificação "
+                "confiável do adulterante -- ver coluna "
+                "'quantificacao_motivo_bloqueio' no CSV)\n"
+                + (f"  📏 Faixa de decisão (LOD/LOQ, Bloco 12) entre as "
+                   f"{n_quantificado} quantificadas: "
+                   f"[{PR}]{n_nao_detectavel}[/{PR}] não detectável (< LOD) / "
+                   f"[{PM}]{n_zona_cinzenta}[/{PM}] zona cinzenta (LOD–LOQ) / "
+                   f"[{PG}]{n_confiavel}[/{PG}] quantificado com confiança (≥ LOQ)"
+                   + (f" / {n_sem_lod_loq} sem LOD/LOQ calculável" if n_sem_lod_loq else "")
+                   + "\n" if n_quantificado else "")
+                + f"  [{PM}]⚠ Um rótulo em 'classe_identificada' só existe "
+                "quando 'identificacao_cobertura'='validado' (garantia "
+                "estatística formal, calibrada com >=2 sessões de coleta "
+                "independentes) -- nunca há rótulo 'informativo' sem essa "
+                "garantia: nesse caso a amostra é DESCONHECIDA de propósito, "
+                "e a coluna 'identificacao_candidatos' traz só o palpite "
+                "mais próximo (SEM garantia nenhuma) para referência, nunca "
+                "como resultado a usar numa decisão de controle de "
+                f"qualidade sem confirmar por método de referência.[/{PM}]"
+            )
+        else:
+            fluxo_txt = (
+                "\n  [bold]Blind flow -- Detect → Identify → Quantify "
+                "(Bloco 9b):[/bold]\n"
+                f"  🧪 Purity (DD-SIMCA for the predicted species): "
+                f"[{PG}]{n_pura}[/{PG}] detected as pure / "
+                f"[{PR}]{n_adulterada}[/{PR}] detected as adulterated"
+                + (f" / [{PM}]{n_pureza_indet}[/{PM}] undetermined "
+                   "(no purity model calibrated for the predicted species)"
+                   if n_pureza_indet else "") + "\n"
+                f"  🏷 Adulterant: "
+                f"[{PG}]{n_identificado}[/{PG}] identified / "
+                f"[{PR}]{n_desconhecido}[/{PR}] UNKNOWN (no species x "
+                "adulterant combination had a statistical guarantee that "
+                "was both sufficient AND exclusive for this sample -- "
+                "either no guarantee, or 2+ validated combinations tied, "
+                "which also blocks the label)\n"
+                f"  ⚖ Quantification (estimated adulterant content -- same "
+                "unit as the reference column used to train the model, "
+                f"typically %w/w): [{PG}]{n_quantificado}[/{PG}] with a "
+                f"number / [{PR}]{n_bloqueado}[/{PR}] BLOCKED "
+                "(quantification refused because the adulterant was not "
+                "reliably identified -- see the 'quantificacao_motivo_"
+                "bloqueio' column in the CSV)\n"
+                + (f"  📏 Decision band (LOD/LOQ, Bloco 12) among the "
+                   f"{n_quantificado} quantified: "
+                   f"[{PR}]{n_nao_detectavel}[/{PR}] not detectable (< LOD) / "
+                   f"[{PM}]{n_zona_cinzenta}[/{PM}] gray zone (LOD-LOQ) / "
+                   f"[{PG}]{n_confiavel}[/{PG}] quantified with confidence (>= LOQ)"
+                   + (f" / {n_sem_lod_loq} without computable LOD/LOQ" if n_sem_lod_loq else "")
+                   + "\n" if n_quantificado else "")
+                + f"  [{PM}]⚠ A 'classe_identificada' label only ever exists "
+                "when 'identificacao_cobertura'='validado' (formal "
+                "statistical guarantee, calibrated with >=2 independent "
+                "collection sessions) -- there is no 'informational' label "
+                "without that guarantee: in that case the sample is "
+                "UNKNOWN on purpose, and the 'identificacao_candidatos' "
+                "column carries only the closest guess (with NO guarantee "
+                "at all) for reference, never as a result to act on for a "
+                "quality decision without confirming by a reference "
+                f"method.[/{PM}]"
+            )
+        resumo_txt += fluxo_txt
     console.print()
     console.print(Panel(
         Group(Text.from_markup(resumo_txt), Text(""), t_res),
@@ -2470,10 +3511,643 @@ def menu_predicao(cfg: Optional[Config] = None) -> None:
     _pause()
 
 
+# Aviso de maturidade da tela HSI (Passo 103 da
+# INSTRUCAO_HSI_ROBUSTEZ_E_VALIDACAO.md) -- fonte UNICA (nao frase solta
+# duplicada em varios lugares, mesmo padrao de _AVISO_PROTOTIPO_TITULO/
+# _AVISO_PROTOTIPO_CORPO em reports.py), descrevendo a limitacao REAL e
+# especifica, nao um rotulo generico "prototipo". Escolhido em vez do
+# carimbo formal "PROTOTYPE OUTPUT" (reports.py) porque aquele carimbo
+# tem um criterio objetivo DIFERENTE (ausencia de garantia de
+# agrupamento anti-vazamento) que NAO se aplica aqui -- o HSI TEM
+# garantia de agrupamento real (group_id por objeto fisico, Passo 97,
+# validada por teste de propriedade Hypothesis). A limitacao real do
+# HSI e' outra: cobertura de validacao ainda pequena. Atualizar este
+# texto sempre que a cobertura de validacao mudar (ver Passo 104).
+_AVISO_MATURIDADE_HSI_PT = (
+    "Validado em 1 fruta (Kaki) e 1 camera (VIS) do dataset publico "
+    "DeepHS Fruit, com desbalanceamento de classe nao corrigido -- ver "
+    "docs/VALIDACAO_PUBLICA.md secao 7 para os numeros completos."
+)
+_AVISO_MATURIDADE_HSI_EN = (
+    "Validated on 1 fruit (Kaki) and 1 camera (VIS) from the public "
+    "DeepHS Fruit dataset, with uncorrected class imbalance -- see "
+    "docs/VALIDACAO_PUBLICA.md section 7 for the full numbers."
+)
+
+
+def _menu_hsi(cfg: Optional[Config] = None) -> None:
+    """Imageamento hiperespectral (HSI, mode='hsi', prototipo "minimo
+    viavel" -- Passos 92-102 da INSTRUCAO_HSI_MINIMO_VIAVEL.md).
+
+    DISTINTO do mode "imagem" (colorimetria de foto comum, tecla [K] da
+    lista de fields de _menu_data): HSI opera POR PIXEL de um cubo
+    hiperespectral (ENVI .hdr+.bin), com quality gate, segmentacao,
+    classificacao por pixel + agregacao por objeto, explicabilidade
+    cruzada com banda quimica e validacao externa por dia de medicao --
+    fluxo orquestrado por `hsi_pipeline.run_hsi_pipeline`, nao pelo
+    `pipeline.executar()` usado pelos outros modes (forma de dado
+    diferente, ver docstring de hsi_pipeline.py).
+    """
+    if cfg is None:
+        cfg = Config()
+    # Setado JA' aqui (nao so' apos validar a pasta) -- e' o que faz
+    # _print_header/_print_status mostrarem "Tecnica: HSI" em vez do
+    # default global errado assim que a tela abre, nao so' depois de
+    # rodar o pipeline (achado do Passo 103).
+    cfg.mode = "hsi"
+    lang = _lang()
+    is_pt = lang == "PT"
+
+    intro = (
+        "Roda o pipeline HSI (leitura -> quality gate -> segmentacao -> "
+        "classificacao por pixel -> mapa espacial -> validacao) sobre "
+        "seus proprios cubos hiperespectrais (ENVI .hdr/.bin, 1 subpasta "
+        "por classe). Datasets publicos (DeepHS Fruit) sao usados so' "
+        "para os testes de validacao do projeto, nao sao necessarios "
+        "para uso normal. "
+        + _AVISO_MATURIDADE_HSI_PT
+        if is_pt else
+        "Runs the HSI pipeline (reading -> quality gate -> segmentation -> "
+        "per-pixel classification -> spatial map -> validation) over "
+        "your own hyperspectral cubes (ENVI .hdr/.bin, 1 subfolder per "
+        "class). Public datasets (DeepHS Fruit) are used only for the "
+        "project's own validation tests, not required for normal use. "
+        + _AVISO_MATURIDADE_HSI_EN
+    )
+
+    _cls(); _print_header(cfg)
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_hsi')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}][0][/{PM}] {_t('voltar')}")
+    console.print()
+
+    lbl_pasta = ("Pasta com seus cubos hiperespectrais (ou dataset publico "
+                "de validacao)" if is_pt else
+                "Folder with your hyperspectral cubes (or public "
+                "validation dataset)")
+    default_pasta = getattr(cfg, "hsi_dataset_folder", "") or ""
+    sufixo = f" [{default_pasta}]" if default_pasta else ""
+    pasta = _ask(f"  [{PA}]{lbl_pasta}{sufixo}:[/{PA}] ").strip().strip('"')
+    if pasta == "0":
+        return
+    if not pasta:
+        pasta = default_pasta
+    if not pasta or not os.path.isdir(pasta):
+        msg = (f"Pasta invalida: {pasta}" if is_pt
+              else f"Invalid folder: {pasta}")
+        console.print(f"  [{PR}]{msg}[/{PR}]")
+        _pause(); return
+
+    cfg.hsi_dataset_folder = pasta
+
+    from guaraci.hsi_pipeline import run_hsi_pipeline
+    console.print(f"  [{PM}]{'Rodando pipeline HSI...' if is_pt else 'Running HSI pipeline...'}[/{PM}]")
+    try:
+        resumo = run_hsi_pipeline(cfg)
+    except Exception as e:  # noqa: BLE001 -- reporta erro completo, nunca engole
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {e}[/{PR}]")
+        _pause(); return
+
+    linhas = [
+        f"  {'Gravacoes aceitas' if is_pt else 'Accepted recordings'}: "
+        f"{resumo['n_gravacoes_aceitas']}/{resumo['n_gravacoes_total']} "
+        f"({'rejeitadas pelo quality gate' if is_pt else 'rejected by quality gate'}: "
+        f"{resumo['n_gravacoes_rejeitadas']})",
+        f"  {'Variaveis latentes (Wold)' if is_pt else 'Latent variables (Wold)'}: "
+        f"{resumo['n_components']}",
+    ]
+    # Passo 111: dataset generico (sem manifest.json) so' tem validacao
+    # INTERNA (n_objetos_teste_externo=0, dicts *_externa vazios -- ver
+    # hsi_validation.run_internal_validation_group_aware) -- declarado
+    # aqui explicitamente, nunca escondido atras de um "0" sem explicacao.
+    val = resumo["validacao_externa"]
+    tem_externa = val.n_objetos_teste_externo > 0
+    if tem_externa:
+        linhas.append(
+            f"  {'Validacao externa' if is_pt else 'External validation'}: "
+            f"n_interno={val.n_objetos_teste_interno}, "
+            f"n_externo={val.n_objetos_teste_externo}")
+        for classe in val.classes:
+            linhas.append(
+                f"    {classe}: sens(int/ext)="
+                f"{val.sensibilidade_interna[classe]:.2f}/"
+                f"{val.sensibilidade_externa[classe]:.2f}")
+    else:
+        rotulo_val = ("Validacao (so interna -- sem particao externa "
+                      "neste dataset)" if is_pt else
+                      "Validation (internal only -- no external "
+                      "partition for this dataset)")
+        linhas.append(
+            f"  {rotulo_val}: n_interno={val.n_objetos_teste_interno}")
+        for classe in val.classes:
+            linhas.append(
+                f"    {classe}: sens(int)="
+                f"{val.sensibilidade_interna[classe]:.2f}")
+
+    # Confianca por objeto (Passo 107): heterogeneidade de pixel deixa de
+    # ser so' um numero interno -- resumo por faixa + objetos de baixa
+    # concordancia listados explicitamente (nunca escondidos).
+    conf = resumo.get("confianca_por_objeto", {})
+    if conf:
+        baixa = [(gid, r) for gid, r in conf.items()
+                if r.heterogeneidade > 0.30]
+        linhas.append("")
+        linhas.append(
+            f"  {'Confianca por objeto' if is_pt else 'Per-object confidence'}: "
+            f"{len(conf) - len(baixa)}/{len(conf)} "
+            f"{'com concordancia alta/moderada' if is_pt else 'high/moderate agreement'}")
+        if baixa:
+            linhas.append(
+                f"    [{PR}]{'baixa concordancia' if is_pt else 'low agreement'} "
+                f"({len(baixa)}): " +
+                ", ".join(f"{gid} ({r.heterogeneidade:.0%})" for gid, r in baixa[:5]) +
+                ("..." if len(baixa) > 5 else "") + f"[/{PR}]")
+
+    console.print(Panel(
+        "\n".join(linhas),
+        title=f"[bold {PG}]{'Resultado' if is_pt else 'Result'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
+                  f"{escape(cfg.output_folder)}")
+    _pause()
+
+
+def _menu_plan(cfg: Optional[Config] = None) -> None:
+    """Planejamento de coleta (Bloco 10): quantas amostras por classe
+    (`plano_amostral.py`) + como distribui-las entre sessoes e em que
+    ordem le-las (`plano_coleta.py`), evitando os dois confundimentos ja
+    documentados no projeto (classe x sessao, ordem de leitura x teor).
+    """
+    lang = _lang()
+    is_pt = lang == "PT"
+
+    intro = (
+        "Calcula quantas amostras coletar (gate conformal ou DD-SIMCA) e "
+        "gera um plano de sessoes + ordem de leitura aleatorizada, com "
+        "alertas de replica/branco."
+        if is_pt else
+        "Calculates how many samples to collect (conformal or DD-SIMCA "
+        "gate) and generates a session plan + randomized reading order, "
+        "with replicate/blank alerts."
+    )
+
+    # Ver _menu_prediction: mesmo padrao de redesenho apos fechar [G].
+    def _intro() -> None:
+        _cls(); _print_header(cfg)
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_planejamento')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        console.print()
+
+    _intro()
+
+    lbl_classes = "Classes (separadas por virgula)" if is_pt else "Classes (comma-separated)"
+    while True:
+        classes_raw = _ask(f"  [{PA}]{lbl_classes}:[/{PA}] ").strip()
+        if classes_raw.upper() == "G":
+            _abrir_assistente(_t("t_planejamento"), cfg)
+            _intro(); continue
+        break
+    if not classes_raw or classes_raw == "0":
+        return
+    classes = [c.strip() for c in classes_raw.split(",") if c.strip()]
+    if not classes:
+        return
+
+    lbl_sessoes = "Numero de sessoes de coleta" if is_pt else "Number of collection sessions"
+    sessoes_raw = _ask(f"  [{PA}]{lbl_sessoes}:[/{PA}] [{PM}](Enter = 2)[/{PM}] ")
+    try:
+        n_sessoes = int(sessoes_raw) if sessoes_raw else 2
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]")
+        _pause(); return
+    if n_sessoes < 1:
+        console.print(f"  [{PR}]{'Precisa de pelo menos 1 sessao' if is_pt else 'Needs at least 1 session'}[/{PR}]")
+        _pause(); return
+
+    lbl_alvo = (
+        "Alvo: (C)onformal (Identificar/agrupado) ou (D)D-SIMCA (pureza por especie)?"
+        if is_pt else
+        "Target: (C)onformal (Identify/pooled) or (D)D-SIMCA (per-species purity)?"
+    )
+    alvo = _ask(f"  [{PA}]{lbl_alvo}[/{PA}] ").strip().upper()
+    if alvo not in ("C", "D"):
+        console.print(f"  [{PR}]{'Opcao invalida' if is_pt else 'Invalid option'}[/{PR}]")
+        _pause(); return
+
+    if alvo == "C":
+        lbl_valor = "Alpha desejado (ex.: 0.05)" if is_pt else "Desired alpha (e.g., 0.05)"
+    else:
+        lbl_valor = "Cobertura-alvo (ex.: 0.90)" if is_pt else "Target coverage (e.g., 0.90)"
+    valor_raw = _ask(f"  [{PA}]{lbl_valor}:[/{PA}] ")
+    try:
+        valor = float(valor_raw)
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]")
+        _pause(); return
+
+    try:
+        import guaraci.plano_coleta as _plano
+        if alvo == "C":
+            plano, meta = _plano.plan_from_statistical_target(
+                classes, n_sessoes, alpha_conformal=valor)
+        else:
+            plano, meta = _plano.plan_from_statistical_target(
+                classes, n_sessoes, cobertura_ddsimca=valor)
+    except ValueError as e:
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    padrao_saida = str(Path.cwd() / "plano_coleta")
+    lbl_saida = "Prefixo dos arquivos de saida" if is_pt else "Output file prefix"
+    cam_saida = _ask(
+        f"  [{PA}]{lbl_saida}[/{PA}] [{PM}](Enter = {escape(padrao_saida)})[/{PM}]: "
+    ).strip().strip('"')
+    if not cam_saida:
+        cam_saida = padrao_saida
+
+    lbl_pdf = ("Gerar tambem PDF (opcional, alem de Markdown+Excel)? (s/N)"
+               if is_pt else
+               "Also generate PDF (optional, in addition to Markdown+Excel)? (y/N)")
+    quer_pdf = _ask(f"  [{PA}]{lbl_pdf}[/{PA}] ").strip().lower() in ("s", "y", "sim", "yes")
+
+    # Confirmacao antes de sobrescrever -- mesmo idioma s/n de _menu_prediction.
+    _existentes = [p for p in (cam_saida + ".md", cam_saida + ".xlsx",
+                                cam_saida + ".pdf" if quer_pdf else None)
+                   if p and os.path.exists(p)]
+    if _existentes:
+        conf_sobre = ("Arquivo(s) ja existem. Sobrescrever? (s/n)" if is_pt
+                      else "File(s) already exist. Overwrite? (y/n)")
+        if _ask(f"  [{PA}]{conf_sobre}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
+    try:
+        md = _plano.export_markdown(plano)
+        cam_md = cam_saida + ".md"
+        with open(cam_md, "w", encoding="utf-8") as f:
+            f.write(md)
+        cam_xlsx = cam_saida + ".xlsx"
+        _plano.export_excel(plano, cam_xlsx)
+        cam_pdf = None
+        if quer_pdf:
+            cam_pdf = cam_saida + ".pdf"
+            _plano.export_pdf(plano, cam_pdf)
+    except OSError as e:
+        console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    resumo_txt = (
+        f"  [{PG}]✔ n por classe:[/{PG}] [{PG}]{meta['n_por_classe']}[/{PG}]  |  "
+        f"[{PG}]origem:[/{PG}] {escape(meta['origem'])}  |  "
+        f"[{PG}]total de amostras:[/{PG}] {len(plano.itens)}"
+    )
+    console.print()
+    console.print(Panel(
+        Text.from_markup(resumo_txt),
+        title=f"[bold {PG}]{'Plano gerado' if is_pt else 'Plan generated'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Alertas' if is_pt else 'Alerts'}:[/{PM}]")
+    for a in plano.alertas:
+        console.print(f"    [{PA}]•[/{PA}] {escape(a)}")
+    console.print()
+    caminhos_salvos = [cam_md, cam_xlsx] + ([cam_pdf] if cam_pdf else [])
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
+                  f"{', '.join(escape(c) for c in caminhos_salvos)}")
+
+    # Bloco 25: refinamento por amostragem ativa -- opt-in, so' roda se o
+    # usuario tiver um modelo .joblib JA treinado com ensemble de
+    # identificacao calibrado (Bloco 9b). Nao substitui o plano acima
+    # (que so precisa das classes digitadas), so' reordena a prioridade
+    # ENTRE combinacoes especie x adulterante ja presentes no dataset de
+    # treino do modelo.
+    console.print()
+    lbl_refinar = ("Refinar com amostragem ativa (modelo .joblib ja "
+                   "treinado)? (s/n)" if is_pt else
+                   "Refine with active sampling (already-trained .joblib "
+                   "model)? (y/n)")
+    if _ask(f"  [{PA}]{lbl_refinar}[/{PA}] ").strip().lower() in ("s", "y", "sim", "yes"):
+        _refinar_plano_com_amostragem_ativa(is_pt)
+    _pause()
+
+
+def _refinar_plano_com_amostragem_ativa(is_pt: bool) -> None:
+    """Bloco 25: carrega um pacote de modelo .joblib e mostra a lista de
+    combinacoes especie x adulterante priorizadas por
+    `amostragem_ativa.priorizar_amostragem`, usando o ensemble de
+    identificacao ja calibrado no treino (`pkg["identification_
+    ensemble"]", Bloco 9b) -- nunca recalibra nada aqui, so' consome."""
+    lbl_modelo = "Caminho do modelo (.joblib)" if is_pt else "Model path (.joblib)"
+    cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
+    if not cam_modelo or not os.path.isfile(cam_modelo):
+        console.print(f"  [{PR}]{'Arquivo nao encontrado' if is_pt else 'File not found'}"
+                      f"[/{PR}]")
+        return
+
+    aviso_pickle = (
+        f"  [{PR}]⚠ '.joblib' executa codigo ao ser carregado (formato "
+        f"pickle). So confirme se voce mesmo treinou este modelo ou confia "
+        f"plenamente na origem.[/{PR}]" if is_pt else
+        f"  [{PR}]⚠ '.joblib' runs code when loaded (pickle format). Only "
+        f"confirm if you trained this model yourself or fully trust its "
+        f"source.[/{PR}]")
+    console.print(aviso_pickle)
+    conf_lbl = "Confirma o carregamento? (s/n)" if is_pt else "Confirm loading? (y/n)"
+    if _ask(f"  [{PA}]{conf_lbl}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+        console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); return
+
+    try:
+        import joblib
+        from guaraci.amostragem_ativa import priorizar_amostragem
+        pkg = joblib.load(cam_modelo)
+        ensemble = pkg.get("identification_ensemble")
+        if not ensemble:
+            console.print(
+                f"  [{PM}]{'Modelo sem ensemble de identificacao calibrado (Bloco 9b) -- nada a priorizar.' if is_pt else 'Model has no calibrated identification ensemble (Bloco 9b) -- nothing to prioritize.'}[/{PM}]")
+            return
+        lista = priorizar_amostragem(ensemble)
+    except Exception as e:  # noqa: BLE001 -- carregamento de pacote
+        # externo, mostrado ao usuario, nunca crasha o menu.
+        console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {escape(str(e))}[/{PR}]")
+        return
+
+    t_prior = Table(show_header=True, header_style=PM, box=rbox.SIMPLE, padding=(0, 1))
+    t_prior.add_column("Especie" if is_pt else "Species", style=PW)
+    t_prior.add_column("Adulterante" if is_pt else "Adulterant", style=PW)
+    t_prior.add_column("Sessoes" if is_pt else "Sessions")
+    t_prior.add_column("Faltam" if is_pt else "Missing")
+    t_prior.add_column("Status")
+    for r in lista[:15]:
+        cor = PG if r.prioridade == 0.0 else PA
+        t_prior.add_row(
+            escape(r.especie), escape(r.adulterante), str(r.n_sessoes_atual),
+            str(r.sessoes_faltantes),
+            f"[{cor}]{r.cobertura_status.value if r.cobertura_status else '-'}[/{cor}]")
+    console.print()
+    console.print(t_prior)
+    console.print(f"  [{PM}]{'Ordenado por prioridade -- topo = maior impacto esperado por sessao investida.' if is_pt else 'Sorted by priority -- top = highest expected impact per invested session.'}[/{PM}]")
+
+
+def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
+    """Selecao de amostras de calibracao/validacao (Bloco 10, Passo 87):
+    dado um CSV com espectros JA medidos (e opcionalmente uma coluna de
+    referencia/teor), escolhe QUAIS amostras vao para calibracao via
+    Kennard-Stone, Duplex ou SPXY (`dados_io.py`) -- mesmo fluxo de
+    planejamento experimental de `_menu_plan` (que decide QUANTAS
+    coletar), agora atuando sobre dados que ja existem.
+    """
+    lang = _lang(); is_pt = lang == "PT"
+
+    intro = (
+        "Escolhe quais amostras de um CSV vao para calibracao (cobertura "
+        "representativa do espaco espectral e/ou do teor) via Kennard-"
+        "Stone, Duplex ou SPXY -- so' separa/marca, nao altera o CSV "
+        "original."
+        if is_pt else
+        "Chooses which samples from a CSV go into the calibration set "
+        "(representative coverage of spectral space and/or target range) "
+        "via Kennard-Stone, Duplex or SPXY -- only splits/labels, never "
+        "alters the original CSV."
+    )
+
+    # Ver _menu_prediction: mesmo padrao de redesenho apos fechar [G].
+    def _intro() -> None:
+        _cls(); _print_header(cfg)
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_selecao_amostras')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        console.print()
+
+    _intro()
+
+    lbl_csv = ("Caminho do CSV com os espectros (1 amostra por linha)"
+               if is_pt else
+               "Path to the CSV with spectra (1 sample per row)")
+    while True:
+        caminho_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
+        if caminho_csv.upper() == "G":
+            _abrir_assistente(_t("t_selecao_amostras"), cfg)
+            _intro(); continue
+        break
+    if caminho_csv == "0":
+        return
+    if not caminho_csv or not os.path.isfile(caminho_csv):
+        console.print(f"  [{PR}]{'Arquivo nao encontrado' if is_pt else 'File not found'}[/{PR}]")
+        _pause(); return
+
+    import numpy as _np
+    import pandas as _pd
+    try:
+        df = _pd.read_csv(caminho_csv)
+    except (OSError, ValueError, UnicodeDecodeError) as e:
+        console.print(f"  [{PR}]{'Erro ao ler CSV' if is_pt else 'Error reading CSV'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    lbl_alvo = ("Coluna de referencia/teor (Enter = nenhuma -- so' habilita "
+                "Kennard-Stone/Duplex, nao SPXY)"
+                if is_pt else
+                "Reference/target column (Enter = none -- only enables "
+                "Kennard-Stone/Duplex, not SPXY)")
+    col_alvo = _ask(f"  [{PA}]{lbl_alvo}:[/{PA}] ").strip()
+    if col_alvo and col_alvo not in df.columns:
+        console.print(f"  [{PR}]{'Coluna nao encontrada' if is_pt else 'Column not found'}: {escape(col_alvo)}[/{PR}]")
+        _pause(); return
+
+    colunas_x = [c for c in df.columns if c != col_alvo]
+    df_x = df[colunas_x].select_dtypes(include=[_np.number])
+    if df_x.shape[1] == 0 or df_x.shape[0] < 2:
+        console.print(f"  [{PR}]{'CSV sem colunas numericas suficientes (pelo menos 2 amostras, 1 variavel)' if is_pt else 'CSV without enough numeric columns (at least 2 samples, 1 variable)'}[/{PR}]")
+        _pause(); return
+    X = df_x.to_numpy(dtype=float)
+
+    metodos = ["Kennard-Stone", "Duplex"] + (["SPXY"] if col_alvo else [])
+    lbl_metodo = "Metodo" if is_pt else "Method"
+    console.print(f"  [{PA}]{lbl_metodo}:[/{PA}]")
+    for i, m in enumerate(metodos, 1):
+        console.print(f"    ({i}) {m}")
+    escolha_m = _ask("  > ").strip()
+    if not escolha_m.isdigit() or not (1 <= int(escolha_m) <= len(metodos)):
+        console.print(f"  [{PR}]{'Opcao invalida' if is_pt else 'Invalid option'}[/{PR}]")
+        _pause(); return
+    metodo = metodos[int(escolha_m) - 1]
+
+    lbl_frac = "Fracao para calibracao (Enter = 0.7)" if is_pt else "Calibration fraction (Enter = 0.7)"
+    frac_raw = _ask(f"  [{PA}]{lbl_frac}:[/{PA}] ").strip()
+    try:
+        frac_cal = float(frac_raw) if frac_raw else 0.7
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]")
+        _pause(); return
+    if not (0.0 < frac_cal < 1.0):
+        console.print(f"  [{PR}]{'Fracao precisa estar entre 0 e 1' if is_pt else 'Fraction must be between 0 and 1'}[/{PR}]")
+        _pause(); return
+
+    from guaraci.dados_io import duplex_split, kennard_stone_split, spxy_split
+    # console.status: Kennard-Stone/Duplex/SPXY sao O(n^2) em distancias --
+    # sem isso a tela ficava parada sem nenhum sinal para datasets maiores
+    # (mesmo padrao ja usado em _menu_prediction para o carregamento do modelo).
+    status_msg = "Calculando particao..." if is_pt else "Computing split..."
+    with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+        if metodo == "Kennard-Stone":
+            idx_cal, idx_val = kennard_stone_split(X, frac_treino=frac_cal)
+        elif metodo == "Duplex":
+            idx_cal, idx_val = duplex_split(X, frac_treino=frac_cal)
+        else:
+            y = df[col_alvo].to_numpy(dtype=float)
+            idx_cal, idx_val = spxy_split(X, y, frac_treino=frac_cal)
+
+    df_saida = df.copy()
+    col_conjunto = "conjunto" if is_pt else "set"
+    df_saida[col_conjunto] = ""
+    df_saida.iloc[idx_cal, df_saida.columns.get_loc(col_conjunto)] = (
+        "calibracao" if is_pt else "calibration")
+    df_saida.iloc[idx_val, df_saida.columns.get_loc(col_conjunto)] = (
+        "validacao" if is_pt else "validation")
+
+    padrao_saida = str(Path.cwd() / "selecao_amostras.csv")
+    lbl_saida = "Arquivo de saida" if is_pt else "Output file"
+    cam_saida = _ask(
+        f"  [{PA}]{lbl_saida}[/{PA}] [{PM}](Enter = {escape(padrao_saida)})[/{PM}]: "
+    ).strip().strip('"')
+    if not cam_saida:
+        cam_saida = padrao_saida
+
+    # Confirmacao antes de sobrescrever -- mesmo idioma s/n de _menu_prediction.
+    if os.path.exists(cam_saida):
+        conf_sobre = ("Arquivo ja existe. Sobrescrever? (s/n)" if is_pt
+                      else "File already exists. Overwrite? (y/n)")
+        if _ask(f"  [{PA}]{conf_sobre}[/{PA}] ").strip().lower() not in ("s", "y", "sim", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+
+    try:
+        df_saida.to_csv(cam_saida, index=False)
+    except OSError as e:
+        console.print(f"  [{PR}]{'Erro ao salvar' if is_pt else 'Error saving'}: {escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    resumo_txt = (
+        f"  [{PG}]✔ {escape(metodo)}:[/{PG}] {len(idx_cal)} "
+        f"{'calibracao' if is_pt else 'calibration'} / {len(idx_val)} "
+        f"{'validacao' if is_pt else 'validation'} "
+        f"({'de' if is_pt else 'of'} {len(df)})"
+    )
+    console.print()
+    console.print(Panel(
+        Text.from_markup(resumo_txt),
+        title=f"[bold {PG}]{'Selecao gerada' if is_pt else 'Selection generated'}[/bold {PG}]",
+        border_style=PG, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] {escape(cam_saida)}")
+    _pause()
+
+
+# ---------------------------------------------------------------------------
+# AUDITORIA DE DELINEAMENTO — comando dedicado (Bloco 11)
+# ---------------------------------------------------------------------------
+def _menu_audit(cfg: Optional[Config] = None) -> None:
+    """Auditoria de delineamento (Bloco 11) isolada -- roda
+    `auditoria_delineamento.run_audit` sobre o dataset configurado (as
+    MESMAS checagens que ja rodam automaticamente em toda execucao e
+    aparecem no model card), sem exigir rodar classificacao/quantificacao
+    inteira. Reaproveita `load_data`/`validate_input` -- mesmo caminho de
+    dados que `pipeline.executar()` usa antes de chamar `run_audit`, nao
+    duplica logica."""
+    cfg = cfg or Config()
+    lang = _lang()
+    is_pt = lang == "PT"
+    _cls(); _print_header(cfg)
+
+    intro = (
+        "Roda so' a auditoria de delineamento (agrupamento, confundimento "
+        "classe x sessao, duplicatas, N insuficiente, faixa de validacao) "
+        "sobre o dataset configurado em [2] Dados -- sem rodar o pipeline "
+        "de classificacao/quantificacao inteiro."
+        if is_pt else
+        "Runs only the design audit (grouping, class x session "
+        "confounding, duplicates, insufficient N, validation range) over "
+        "the dataset configured in [2] Data -- without running the full "
+        "classification/quantification pipeline."
+    )
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_auditoria')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+    console.print()
+
+    from guaraci.config_io import _validar_pasta_dados
+    ok, msg = _validar_pasta_dados(cfg)
+    if not ok:
+        console.print(f"  [{PR}]{escape(msg)}[/{PR}]")
+        console.print(f"  [{PM}]{'Configure a fonte de dados em' if is_pt else 'Configure the data source in'} "
+                      f"[{PA}][2] {_t('t_dados')}[/{PA}].[/{PM}]")
+        _pause(); return
+    console.print(f"  [{PM}]{msg}[/{PM}]")
+
+    # Gate antes de carregar dados + rodar a auditoria (pode demorar em
+    # datasets grandes): unica forma desta tela de oferecer [G] Guaraci e
+    # [0] Voltar sem sair -- ate aqui a tela so' rodava direto, sem nenhum
+    # ponto de escape ou ajuda contextual (mesmo padrao [G]/[0] usado em
+    # _menu_hardware/_menu_prediction).
+    gate_lbl = "[Enter] Rodar auditoria" if is_pt else "[Enter] Run audit"
+    raw_gate = _ask(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}"
+                     f"   [{PM}]{gate_lbl}[/{PM}]: ").strip().upper()
+    if raw_gate in ("0", "Q"):
+        return
+    if raw_gate == "G":
+        _abrir_assistente(_t("t_auditoria"), cfg)
+        return
+
+    status_msg = "Carregando dados e auditando..." if is_pt else "Loading data and auditing..."
+    try:
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            wavenumbers, X_raw, rotulos, conc, mae_id, _metadados = pq.load_data(cfg)
+            X_raw, wavenumbers, rotulos, conc, mae_id, _relatorio = pq.validate_input(
+                X_raw, wavenumbers, rotulos, conc, mae_id)
+            from guaraci.auditoria_delineamento import run_audit
+            achados = run_audit(X_raw, wavenumbers, rotulos, cfg, conc, mae_id)
+    except Exception as e:  # noqa: BLE001 -- dado externo pode falhar de
+        # varias formas (parsing, faixa espectral vazia, etc.) -- reportar
+        # a mensagem, nunca stack trace cru numa ferramenta interativa.
+        console.print(f"  [{PR}]{'Erro ao carregar dados' if is_pt else 'Error loading data'}: "
+                      f"{escape(str(e))}[/{PR}]")
+        _pause(); return
+
+    cores = {"ok": PG, "aviso": PA, "critico": PR, "silenciado": PM}
+    console.print()
+    for a in achados:
+        cor = cores.get(a.severidade, PW)
+        console.print(f"  [{cor}]{a.severidade.upper():>10}[/{cor}]  "
+                      f"[{PW}]{escape(a.nome)}[/{PW}]: {escape(a.mensagem)}")
+
+    n_criticos = sum(1 for a in achados if a.severidade == "critico")
+    n_avisos = sum(1 for a in achados if a.severidade == "aviso")
+    resumo_lbl = (f"{n_criticos} critico(s), {n_avisos} aviso(s) de {len(achados)} checagem(ns)."
+                  if is_pt else
+                  f"{n_criticos} critical, {n_avisos} warning(s) out of {len(achados)} check(s).")
+    cor_resumo = PR if n_criticos else (PA if n_avisos else PG)
+    console.print()
+    console.print(Panel(
+        Text.from_markup(f"  {resumo_lbl}"),
+        border_style=cor_resumo, box=rbox.ROUNDED, padding=(0, 2),
+    ))
+    _pause()
+
+
 # ---------------------------------------------------------------------------
 # PERFIS — cartoes compactos (2 por linha)
 # ---------------------------------------------------------------------------
-def menu_perfis(cfg: Config) -> None:
+def _menu_profiles(cfg: Config) -> None:
     """Perfis prontos — lista enxuta de 1 linha; detalhes so com [?]."""
     lang = _lang()
     # (nome_chave, tempo, cor, foco_curto). Foco curto = 1 linha, sem cortar.
@@ -2523,7 +4197,7 @@ def menu_perfis(cfg: Config) -> None:
                         "perfil '%s': campo '%s' nao aplicado: %s",
                         pname, k, _e_prof)
         paleta = pdata.get("_paleta")
-        if paleta and PALETAS_COR and paleta in PALETAS_COR:
+        if paleta and _PALETAS_COR and paleta in _PALETAS_COR:
             vcfg = _carregar_visual_cfg()
             vcfg["paleta"] = paleta
             _salvar_visual_cfg(vcfg); n += 1
@@ -2545,7 +4219,7 @@ def menu_perfis(cfg: Config) -> None:
         _pause()
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
 
         t = Table(box=None, show_header=True, header_style=PM, padding=(0, 1))
         t.add_column("N",      style=PA, width=4, no_wrap=True)
@@ -2639,7 +4313,7 @@ def _ler_citation() -> dict:
     return info
 
 
-def menu_sobre(cfg: Optional[Config] = None) -> None:
+def _menu_about(cfg: Optional[Config] = None) -> None:
     """Secao Sobre — proposito, autor, citacao em multiplos formatos e referencias."""
     # Dados fixos do projeto e do autor
     _AUTOR_NOME    = "Erley S. da Costa"
@@ -2654,9 +4328,9 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     _LIC           = "GPL-3.0-or-later"
 
     def _titulo(lang: str) -> str:
-        return ("Inteligencia Quimiometrica para Matrizes Amazonicas"
+        return ("Plataforma quimiometrica com validacao anti-vazamento por padrao"
                 if lang == "PT" else
-                "Chemometric Intelligence for Amazonian Matrices")
+                "Chemometrics platform with leakage-safe validation by default")
 
     def _painel_identidade(lang: str) -> None:
         """Painel principal: nome, proposito e links rapidos."""
@@ -2679,7 +4353,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             p2 = ("Oferece um ambiente confiavel, reproducivel e bilingue (PT/EN)"
                   " para classificacao, autenticacao e exploracao de matrizes complexas"
                   " — do FT-NIR ao GC-MS, sem escrever uma linha de codigo.")
-            p3 = ("Desenvolvido no ambito de uma pesquisa PIBIC/UFPA sobre oleos"
+            p3 = ("Desenvolvido no ambito de uma pesquisa sobre oleos"
                   " vegetais amazonicos, com metodologia generalizavel para"
                   " qualquer tecnica analitica com dados multivariados.")
         else:
@@ -2688,7 +4362,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
             p2 = ("Provides a reliable, reproducible and bilingual (PT/EN)"
                   " environment for classification, authentication and exploration"
                   " of complex matrices — from FT-NIR to GC-MS, without writing code.")
-            p3 = ("Developed within a PIBIC/UFPA research project on Amazonian"
+            p3 = ("Developed within a research project on Amazonian"
                   " vegetable oils, with a methodology generalized to any"
                   " analytical technique with multivariate data.")
         prop_lbl = "Proposito" if lang == "PT" else "Purpose"
@@ -2849,7 +4523,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
         t.add_column("Ref", style=PW, overflow="fold")
         achou = False
         for rk in fundamentais:
-            ref = (REFERENCIAS_GUARACI or {}).get(rk, {})
+            ref = (_REFERENCIAS_GUARACI or {}).get(rk, {})
             cit_txt = ref.get("cit")
             ctx     = ref.get("contexto", "")
             if cit_txt:
@@ -2870,7 +4544,7 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
     # Loop principal da secao Sobre
     while True:
         lang = _lang()
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
         _painel_identidade(lang)
 
         if lang == "PT":
@@ -2909,17 +4583,17 @@ def menu_sobre(cfg: Optional[Config] = None) -> None:
 # ---------------------------------------------------------------------------
 # AJUDA INTERATIVA
 # ---------------------------------------------------------------------------
-def menu_ajuda(cfg: Optional[Config] = None) -> None:
+def _menu_help(cfg: Optional[Config] = None) -> None:
     """Ajuda navegavel — lista todos os campos de cara; numero abre a ajuda."""
     lang = _lang()
     # Lista unificada a partir do _CONFIG_SPEC (todos os campos editaveis).
-    keys = [s["key"] for s in _CONFIG_SPEC] if _CONFIG_SPEC else list(HELP_DB.keys())
+    keys = [s["key"] for s in _CONFIG_SPEC] if _CONFIG_SPEC else list(_HELP_DB.keys())
     # Remove duplicatas mantendo ordem
     seen: set = set()
     keys = [k for k in keys if not (k in seen or seen.add(k))]
 
     while True:
-        cls(); _print_header()
+        _cls(); _print_header(cfg)
 
         t = Table(show_header=True, header_style=PM, box=rbox.SIMPLE, padding=(0, 1))
         t.add_column("N", style=PA, width=4, no_wrap=True)
@@ -2931,7 +4605,7 @@ def menu_ajuda(cfg: Optional[Config] = None) -> None:
             t.add_row(
                 str(i),
                 escape(_nome_campo(key)),
-                Text(_risco_icon(key) + " " + RISK_CLASS.get(key, "—"), style=r_hex),
+                Text(_risco_icon(key) + " " + _RISK_CLASS.get(key, "—"), style=r_hex),
                 escape(_desc_curta(key, 40)),
             )
 
@@ -2987,10 +4661,10 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     comprometendo 5 minutos ou 3 horas -- e a diferenca entre esses dois
     casos e' so' um campo de configuracao (n_jobs_permutacao).
 
-    Calibracao (medida em 2026-08-05 no dataset real do TCC: 1673 amostras
+    Calibracao (medida em 2026-08-05 num acervo de referencia interno
     x 2000 variaveis, CPython 3.12, 8 nucleos fisicos):
         - 1 ajuste PLS com 40 LVs .......... 3,5 s
-        - carga de 1741 arquivos .dx ....... 21 s
+        - carga de alguns milhares de .dx ... ~20 s
     O custo de um ajuste escala aproximadamente com (n_amostras x n_LVs),
     o que da a constante `_S_POR_AMOSTRA_LV` abaixo.
 
@@ -3002,8 +4676,8 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     if not n_amostras or n_amostras <= 0:
         return None
 
-    # 3,5 s / (1673 amostras * 40 LVs) — segundos por amostra por LV.
-    _S_POR_AMOSTRA_LV = 3.5 / (1673 * 40)
+    # Segundos por amostra por LV, da calibracao acima.
+    _S_POR_AMOSTRA_LV = 5.2e-5
 
     max_lvs = int(_cfgv(cfg, "max_lvs", 40) or 40)
     n_splits = int(_cfgv(cfg, "n_splits_cv", 5) or 5)
@@ -3019,7 +4693,7 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     t_perm = 0.0
     n_perm = int(_cfgv(cfg, "n_permutacoes", 0) or 0)
     if _cfgv(cfg, "teste_wold", False):
-        n_perm += int(_cfgv(cfg, "n_permutacoes_wold", 0) or 0)
+        n_perm += int(_cfgv(cfg, "n_permutations_wold", 0) or 0)
     if n_perm:
         n_jobs = max(1, int(_cfgv(cfg, "n_jobs_permutacao", 1) or 1))
         t_1perm = (max_lvs / 2.0) * n_splits * n_amostras * frac_treino * _S_POR_AMOSTRA_LV
@@ -3034,6 +4708,8 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     if _cfgv(cfg, "selecao_variaveis_etapa4", False): t_extra += 2.0 * t_cv
     if _cfgv(cfg, "selecao_ag", False):     t_extra += 10.0 * t_cv
     if _cfgv(cfg, "selecao_spa", False):    t_extra += 4.0 * t_cv
+    if _cfgv(cfg, "selecao_cars", False):   t_extra += 8.0 * t_cv
+    if _cfgv(cfg, "selecao_uve", False):    t_extra += 2.0 * t_cv
 
     total_s = t_cv + t_perm + t_extra
     if total_s < 90:
@@ -3052,12 +4728,12 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
 
     pasta = _cfgv(cfg, "pasta_dados", "dados")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _contar_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if pasta_ok else 0
 
     n_para_estimar = n_dx
     if pasta_ok and n_dx > 0:
         checks.append((True,  _t("chk_dados") + f" ({n_dx} .dx)"))
-        # Varredura barata dos cabecalhos (~0,3 s p/ 1741 arquivos): antecipa
+        # Varredura barata dos cabecalhos (decimos de segundo): antecipa
         # os dois efeitos que MUDAM O N da analise e que antes so' apareciam
         # no meio do log, depois de o usuario ja' ter iniciado a rodada.
         if _cfgv(cfg, "modo_entrada", "dx") == "dx":
@@ -3085,8 +4761,8 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
         checks.append((False, _t("chk_err_dados")))
         erros.append("pasta_dados")
 
-    modo = _cfgv(cfg, "modo_entrada", "dx")
-    if modo == "csv":
+    mode = _cfgv(cfg, "modo_entrada", "dx")
+    if mode == "csv":
         arq = _cfgv(cfg, "arquivo_csv", "")
         if arq and os.path.isfile(str(arq)):
             checks.append((True, _t("chk_csv")))
@@ -3094,7 +4770,7 @@ def _checklist(cfg: Config) -> Tuple[bool, List]:
             checks.append((False, _t("chk_err_csv")))
             erros.append("arquivo_csv")
     else:
-        checks.append((True, f"{_t('chk_modo')}: {modo}"))
+        checks.append((True, f"{_t('chk_modo')}: {mode}"))
 
     ga = _cfgv(cfg, "validacao_group_aware", True)
     if ga:
@@ -3210,40 +4886,61 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
                              plano_figuras: List[str]) -> Panel:
     """Monta o painel de acompanhamento ao vivo (auditoria jul/2026, item 5):
     objetivo cientifico, barra de progresso + rotulo da analise em
-    andamento (via app_logic.progresso_do_log), figuras ja concluidas
-    (app_logic.figuras_concluidas) contra o plano do modo (modos_analise.
-    descrever_plano), tempo decorrido/estimado restante e avisos nao-fatais
-    (app_logic.avisos_do_log). Extraida de _rodar_pipeline como funcao de
+    andamento (via app_logic.log_progress), figuras ja concluidas
+    (app_logic.figures_completed) contra o plano do mode (modos_analise.
+    describe_plan), tempo decorrido/estimado restante e avisos nao-fatais
+    (app_logic.log_warnings). Extraida de _rodar_pipeline como funcao de
     modulo para ser testavel isoladamente (ver test_guaraci_cli.py) sem
     precisar rodar o pipeline de verdade nem simular entrada interativa."""
-    frac, label = _progresso_do_log(texto_log)
-    figs = _figuras_concluidas(texto_log)
+    frac, label = _progresso_do_log(texto_log, len(plano_figuras) or None)
+    figs = _figures_completed(texto_log)
     avisos = _avisos_do_log(texto_log)
+
+    # LIMITE DE ALTURA (bug real, 2026-08-07: "tela preta").
+    # `figs` e `avisos` crescem sem teto durante a execucao. Numa corrida
+    # completa (26 figuras + varios avisos distintos) o painel passava de 35
+    # linhas num terminal de 24. O `Live` do Rich reposiciona o cursor para
+    # redesenhar; quando o bloco nao cabe na janela ele nao consegue e a tela
+    # fica preta com so' o cursor piscando -- exatamente o sintoma relatado.
+    # O calculo seguia rodando por baixo, so' o painel morria.
+    # Solucao: manter o painel com altura LIMITADA, mostrando os itens mais
+    # recentes (que e' o que interessa acompanhar) + um contador do resto.
+    MAX_AVISOS  = 4
+    MAX_FIG_LIN = 3      # linhas gastas com a lista de figuras
+    n_ocultos = max(0, len(avisos) - MAX_AVISOS)
+    avisos_vis = avisos[-MAX_AVISOS:]
 
     bar_w = 32
     preenchido = int(bar_w * frac)
     barra = "█" * preenchido + "░" * (bar_w - preenchido)
     eta_txt = "…"
     if frac > 0.05:
-        eta_txt = _fmt_tempo(max(0.0, elapsed / frac - elapsed))
+        eta_txt = _fmt_time(max(0.0, elapsed / frac - elapsed))
 
     partes = [
         Text.assemble(
             (f"{_t('exec_objetivo')}: ", PM), (objetivo_rotulo, f"bold {PA}")),
         Text(f"[{barra}] {frac * 100:5.1f}%  {label}", style=PA),
         Text(f"{_t('exec_eta')}: {eta_txt}   |   "
-             f"{_fmt_tempo(elapsed)}", style=PW),
+             f"{_fmt_time(elapsed)}", style=PW),
         Rule(style=PD),
         Text(f"{_t('exec_figuras')} ({len(figs)}/{len(plano_figuras)} "
              "planejadas):", style=f"bold {PM}"),
-        Text("  ".join(f"✓ {f}" for f in figs) if figs else "…",
-             style=PW),
+        # overflow="ellipsis" + no_wrap corta na largura; as figuras mais
+        # recentes ficam visiveis e a linha nunca cresce em altura.
+        Text("  ".join(f"✓ {f}" for f in figs[-MAX_FIG_LIN * 3:])
+             if figs else "…",
+             style=PW, overflow="ellipsis", no_wrap=False),
     ]
     if avisos:
+        cab = f"{_t('exec_avisos')} ({len(avisos)})"
+        if n_ocultos:
+            cab += f" — mostrando os {MAX_AVISOS} ultimos, +{n_ocultos} antes"
         partes += [
             Rule(style=PD),
-            Text(f"{_t('exec_avisos')} ({len(avisos)}):", style=f"bold {PR}"),
-            Text("\n".join(f"⚠ {a}" for a in avisos), style=PR),
+            Text(f"{cab}:", style=f"bold {PR}"),
+            Text("\n".join(f"⚠ {a[:110]}" for a in avisos_vis), style=PR,
+                 overflow="ellipsis"),
         ]
     return Panel(Group(*partes), border_style=PA, box=rbox.ROUNDED,
                  padding=(0, 1), title=f"  {_t('exec_inicio')}  ")
@@ -3251,7 +4948,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
 
 def _rodar_pipeline(cfg: Config) -> None:
     lang = _lang()
-    cls(); _print_header()
+    _cls(); _print_header(cfg)
 
     pode = _print_checklist(cfg)
     if not pode:
@@ -3291,15 +4988,11 @@ def _rodar_pipeline(cfg: Config) -> None:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         vcfg = _carregar_visual_cfg()
-        paleta = PALETAS_COR.get(vcfg.get("paleta", "qualitativo"), {})
-        try: plt.style.use(paleta.get("style", "default"))
-        except OSError:
-            pass   # nome de estilo matplotlib desconhecido -- mantem o default
-        cores = paleta.get("cores")
-        if cores: plt.rcParams["axes.prop_cycle"] = plt.cycler(color=cores)
-        cmap = paleta.get("cmap")
-        if cmap: plt.rcParams["image.cmap"] = cmap
-        fp = FONT_PRESETS.get(vcfg.get("tamanho_fonte","m"), {})
+        # Implementacao unica em cli_assistente.apply_palette (compartilhada
+        # com a aba Modelo do app web) -- e' ela que tambem ativa a paleta em
+        # `paleta_cores`, sem o que a escolha nao chegava as figuras.
+        _aplicar_paleta(vcfg.get("paleta", "qualitativo"))
+        fp = _FONT_PRESETS.get(vcfg.get("tamanho_fonte","m"), {})
         for k, v in fp.items(): plt.rcParams[k] = v
         if vcfg.get("grid_major", True):
             plt.rcParams["axes.grid"] = True
@@ -3317,7 +5010,22 @@ def _rodar_pipeline(cfg: Config) -> None:
 
     # Sincronizar DPI do visual_config antes de salvar
     _sincronizar_dpi(cfg)
-    salvar_config(cfg, str(_CFG_PATH))
+    try:
+        _USER_DIR.mkdir(parents=True, exist_ok=True)
+        _save_config(cfg, str(_CFG_PATH))
+    except OSError as _e_cfg_save:
+        # Achado do "checkup geral" de interface (2026-08-07): esta chamada
+        # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
+        # read-only, disco cheio) derrubava o CLI com traceback bem na hora
+        # de rodar a analise, no meio de uma sessao interativa. Config nao
+        # persistida so' significa que as escolhas desta sessao nao vao
+        # sobreviver ao proximo start -- nao pode impedir a corrida atual.
+        _msg = (f"[AVISO] config.yaml nao pode ser salvo ({_e_cfg_save}); "
+               f"as preferencias desta sessao nao serao lembradas."
+               if lang == "PT" else
+               f"[WARNING] config.yaml could not be saved ({_e_cfg_save}); "
+               f"this session's preferences will not be remembered.")
+        console.print(f"  [{PM}]{escape(_msg)}[/{PM}]")
 
     # Sugestao de cafe em execucoes longas
     if (_cfgv(cfg, "monte_carlo", False)
@@ -3332,8 +5040,8 @@ def _rodar_pipeline(cfg: Config) -> None:
     # da simulacao por tempo decorrido usada antes (etapas fixas avancando a
     # cada 15s, sem relacao real com o que o pipeline estava fazendo).
     objetivo_rotulo = pq.OBJETIVO_ROTULO.get(
-        pq.resolver_objetivo(cfg), cfg.nivel)
-    plano_figuras = pq.descrever_plano(cfg)
+        pq.resolve_objective(cfg), cfg.level)
+    plano_figuras = pq.describe_plan(cfg)
 
     _done: Dict[str, object] = {"ok": False, "error": None}
     _logger = _LogThreadSafe()
@@ -3342,7 +5050,7 @@ def _rodar_pipeline(cfg: Config) -> None:
         try:
             with contextlib.redirect_stdout(_logger), \
                  contextlib.redirect_stderr(_logger):
-                executar(cfg)
+                _executar(cfg)
         except KeyboardInterrupt:
             _done["error"] = _t("exec_interrompido")
         except Exception as e:  # noqa: BLE001 -- boundary de topo da thread de
@@ -3361,14 +5069,49 @@ def _rodar_pipeline(cfg: Config) -> None:
 
     console.print()
     t_ini = time.time()
+
+    # CAUSA RAIZ do bug da "tela preta" (2026-08-07/08): `console` (definido
+    # em guaraci_theme.py) e' construido SEM `file=`, entao `Console.file` e'
+    # uma property que resolve `sys.stdout` DINAMICAMENTE a cada escrita
+    # (rich/console.py: `self._file or sys.stdout`). `contextlib.redirect_
+    # stdout` troca `sys.stdout` GLOBALMENTE no processo -- nao por thread.
+    # Enquanto `_run()` (rodando em background) segura esse redirect durante
+    # TODA a execucao do pipeline, o `Live` deste thread principal tambem
+    # passa a escrever no MESMO buffer (`_logger`), nao no terminal de
+    # verdade. Medido isolado: 0 bytes chegavam ao "terminal", 100% ia pro
+    # buffer engolido. O painel nao travava nem estourava altura -- ele
+    # simplesmente escrevia no lugar errado o tempo todo, daí a tela ficar
+    # preta com so' o cursor. A correcao anterior (limitar altura do painel,
+    # vertical_overflow="crop") ficou valida mas nao atacava esta causa.
+    #
+    # Fix: capturar a referencia REAL de stdout/stderr ANTES do redirect
+    # comecar, e fixar `console._file` nela pela duracao do Live -- assim
+    # o Console para de resolver `sys.stdout` dinamicamente e continua
+    # escrevendo no terminal de verdade mesmo com o redirect global ativo
+    # na outra thread.
+    _stdout_real = sys.stdout
+    _file_original = console._file
+    console._file = _stdout_real
+
     thr = threading.Thread(target=_run, daemon=True)
     thr.start()
 
-    with Live(console=console, refresh_per_second=3) as live:
-        while not _done["ok"]:
+    try:
+        # vertical_overflow="crop": rede de seguranca complementar. Mesmo
+        # que o painel volte a crescer alem da janela, o Rich corta o
+        # excesso em vez de perder o controle do cursor.
+        with Live(console=console, refresh_per_second=3,
+                  vertical_overflow="crop") as live:
+            while not _done["ok"]:
+                live.update(_render_painel(time.time() - t_ini))
+                time.sleep(0.3)
             live.update(_render_painel(time.time() - t_ini))
-            time.sleep(0.3)
-        live.update(_render_painel(time.time() - t_ini))
+    finally:
+        # Restaura a resolucao dinamica de sys.stdout assim que o Live
+        # termina -- nao deixar o pin permanente afetaria qualquer outro
+        # uso de `console` depois desta tela (ex.: redirecionamento em
+        # outro comando da mesma sessao do CLI).
+        console._file = _file_original
 
     thr.join()
     console.print()
@@ -3409,7 +5152,7 @@ def _salvar_yaml(cfg: Config) -> None:
     _PERFIS_DIR.mkdir(parents=True, exist_ok=True)
     path = _PERFIS_DIR / f"{san}.yaml"
     try:
-        salvar_config(cfg, str(path))
+        _save_config(cfg, str(path))
         _lbl = "Salvo" if _lang() == "PT" else "Saved"
         console.print(f"  [g]✓ {_lbl}: {escape(str(path))}[/g]")
     except OSError as e:
@@ -3436,7 +5179,7 @@ def _carregar_yaml(cfg: Config) -> None:
     if raw.isdigit() and 1 <= int(raw) <= len(arquivos):
         path = arquivos[int(raw) - 1]
         try:
-            cfg2 = carregar_config(str(path))
+            cfg2 = _load_config(str(path))
             for k, v in vars(cfg2).items():
                 try: setattr(cfg, k, v)
                 except (AttributeError, TypeError) as _e_attr:
@@ -3575,36 +5318,36 @@ def _comando_demo() -> None:
 
     saida = Path.cwd() / "GUARACI_Demo"
     cfg = Config(
-        pasta_entrada=str(saida / "dados_dummy"),  # modo sintetico ignora isto
-        pasta_saida_raiz=str(saida),
-        modo="sintetico",
+        input_folder=str(saida / "dados_dummy"),  # mode sintetico ignora isto
+        output_root_folder=str(saida),
+        mode="sintetico",
         tag="demo",
-        nivel="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
-        objetivo="auto",
-        n_por_classe=15,
-        n_pontos_sint=300,
+        level="N2",       # DD-SIMCA (sensibilidade LOGO) — diferencial central do projeto
+        objective="auto",
+        n_per_class=15,
+        n_synthetic_points=300,
         wn_min=400.0,
         wn_max=4001.0,
-        sint_adulterantes=("S", "M", "A"),
+        synthetic_adulterants=("S", "M", "A"),
         max_lvs=15,
         n_splits_cv=3,
         n_repeats_cv=1,
-        n_permutacoes=50,
-        n_permutacoes_wold=50,
+        n_permutations=50,
+        n_permutations_wold=50,
         n_bootstrap_vip=10,
         n_bootstrap_bca=100,
         n_monte_carlo=20,
-        executar_benchmark=False,
-        executar_monte_carlo=False,
-        executar_shap=False,
-        executar_wold=False,
-        executar_cv_anova=False,
-        executar_opls=False,
+        run_benchmark=False,
+        run_monte_carlo=False,
+        run_shap=False,
+        run_wold=False,
+        run_cv_anova=False,
+        run_opls=False,
         executar_etapa4=False,
         comparar_pipelines=False,
-        comparar_hca_pipelines=False,
+        compare_hca_pipelines=False,
     )
-    os.makedirs(cfg.pasta_entrada, exist_ok=True)
+    os.makedirs(cfg.input_folder, exist_ok=True)
 
     try:
         pq.executar(cfg)
@@ -3632,10 +5375,20 @@ def _comando_demo() -> None:
     try:
         if sys.platform == "win32":
             os.startfile(str(pasta_run))  # noqa: S606 -- abre o explorador, caminho e nosso proprio output
-        elif sys.platform == "darwin":
-            os.system(f'open "{pasta_run}"')  # noqa: S605
         else:
-            os.system(f'xdg-open "{pasta_run}"')  # noqa: S605
+            # subprocess com lista de argumentos (achado de auditoria de
+            # seguranca, 2026-08-07): a versao anterior interpolava
+            # pasta_run direto numa string de shell (os.system(f'open
+            # "{pasta_run}"')) -- pasta_run e' sempre gerado internamente
+            # neste caminho (guaraci demo), entao nao era explora'vel HOJE,
+            # mas e' o mesmo PADRAO que seria uma injecao de comando real
+            # se algum dia alimentado por um caminho influenciado pelo
+            # usuario. Lista de argumentos nunca passa por um shell --
+            # elimina a classe de vulnerabilidade por completo, nao so'
+            # o caso de uso atual.
+            import subprocess
+            cmd = ["open"] if sys.platform == "darwin" else ["xdg-open"]
+            subprocess.run(cmd + [str(pasta_run)], check=False)
     except OSError as _e_open:
         logging.getLogger(__name__).debug("nao foi possivel abrir a pasta de saida: %s", _e_open)
 
@@ -3643,32 +5396,146 @@ def _comando_demo() -> None:
 # ===========================================================================
 # MAIN LOOP
 # ===========================================================================
-def main() -> None:
-    """Ponto de entrada GUARACI (versao unica em _VERSAO)."""
-    if len(sys.argv) > 1:
-        comando = sys.argv[1].strip().lower().lstrip("-")
+#: Texto de `--help`. Fonte unica: `--help`, `help` e a mensagem de
+#: argumento desconhecido leem daqui, para nunca divergirem entre si.
+_TEXTO_AJUDA = """Uso: guaraci [COMANDO] [OPCOES]
+
+Comandos:
+  (sem argumentos)  abre o assistente interativo
+  demo              roda o pipeline com dados sinteticos (nao precisa de dado)
+  doctor            diagnostica o ambiente (dependencias, RAM, CPU)
+  perfis            lista os perfis de matriz disponiveis
+  --version         mostra a versao instalada
+  --help            mostra esta ajuda
+
+Opcoes:
+  --perfil=NOME     perfil da matriz analisada (padrao: generico). Define
+                    faixa espectral, pre-processamento e o vocabulario da
+                    saida. `guaraci perfis` lista os nomes; tambem aceita o
+                    caminho de um YAML proprio.
+  --mode=MODO       'cego' (PADRAO) ou 'controle'.
+                    cego     : a quantificacao usa a classe PREDITA pelo
+                               classificador -- o unico mode que corresponde
+                               ao uso real, em que a classe da amostra e'
+                               desconhecida.
+                    controle : usa a classe VERDADEIRA. So' para diagnostico
+                               interno (separar erro de quantificacao de erro
+                               de classificacao). Os numeros obtidos assim
+                               NAO representam desempenho de uso, e a saida
+                               marca isso explicitamente.
+
+Codigos de saida: 0 sucesso | 1 erro de execucao | 2 uso incorreto."""
+
+#: Opcoes de linha de comando aplicadas ao Config depois de carrega-lo.
+_OPCOES_CLI: Dict[str, str] = {}
+
+
+def _extrair_opcoes(argv: List[str]) -> Tuple[Dict[str, str], List[str]]:
+    """Separa `--chave=valor` dos argumentos posicionais.
+
+    Aceita as opcoes em qualquer posicao (`guaraci --mode=controle demo` e
+    `guaraci demo --mode=controle` sao equivalentes) -- comportamento
+    previsivel importa mais aqui do que economizar codigo.
+    """
+    opcoes: Dict[str, str] = {}
+    restantes: List[str] = []
+    for arg in argv:
+        if arg.startswith("--") and "=" in arg:
+            chave, valor = arg[2:].split("=", 1)
+            opcoes[chave.strip().lower()] = valor.strip()
+        else:
+            restantes.append(arg)
+    return opcoes, restantes
+
+
+def _validar_opcoes(opcoes: Dict[str, str]) -> None:
+    """Valida ANTES de processar qualquer dado. Sai com codigo 2 (uso
+    incorreto), nunca 1 (erro de execucao) -- sao coisas diferentes para
+    quem chama o programa de um script."""
+    for chave in ("perfil", "mode"):
+        if chave in opcoes and not opcoes[chave]:
+            print(f"Erro: --{chave} exige um valor (ex.: --mode=cego).",
+                  file=sys.stderr)
+            raise SystemExit(2)
+    mode = opcoes.get("mode")
+    if mode is not None and mode not in ("cego", "controle"):
+        print(f"Erro: --mode={mode} invalido. Use 'cego' (padrao, usa a "
+              f"classe predita) ou 'controle' (usa a classe verdadeira, "
+              f"so' para diagnostico interno).", file=sys.stderr)
+        raise SystemExit(2)
+    if "perfil" in opcoes:
+        from guaraci.perfil_matriz import (UnknownProfileError,
+                                           load_profile)
+        try:
+            load_profile(opcoes["perfil"])
+        except UnknownProfileError as e:
+            print(f"Erro: {e}", file=sys.stderr)
+            raise SystemExit(2) from None
+
+
+def _listar_perfis() -> None:
+    from guaraci.perfil_matriz import DIR_PERFIS, load_profile
+    print("Perfis de matriz disponiveis:")
+    for arquivo in sorted(DIR_PERFIS.glob("*.yaml")):
+        perfil = load_profile(arquivo.stem)
+        print(f"  {perfil.nome:<14} {perfil.descricao}")
+    print("\nUse: guaraci --perfil=NOME  (ou o caminho de um YAML proprio)")
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    """Ponto de entrada GUARACI (versao unica em _VERSAO).
+
+    `argv` sao os argumentos SEM o nome do programa. O default lê de
+    `sys.argv`, que e' o caminho do entry point instalado. Chamadores
+    programaticos (testes, embutimento em outro app) devem passar a lista
+    explicitamente -- caso contrario herdam o `sys.argv` de quem os
+    hospeda, e desde que argumento desconhecido virou erro de uso isso
+    significaria sair com codigo 2 por causa das flags do pytest.
+    """
+    opcoes, restantes = _extrair_opcoes(
+        list(sys.argv[1:]) if argv is None else list(argv))
+    _validar_opcoes(opcoes)
+    _OPCOES_CLI.clear()
+    _OPCOES_CLI.update(opcoes)
+    sys.argv = [sys.argv[0]] + restantes
+
+    if restantes:
+        comando = restantes[0].strip().lower().lstrip("-")
         if comando in ("version", "v"):
             _comando_versao(); return
         if comando == "demo":
             _comando_demo(); return
         if comando == "doctor":
             _comando_doctor(); return
+        if comando == "perfis":
+            _listar_perfis(); return
         if comando in ("help", "h"):
-            print("Uso: guaraci [demo|doctor|--version]\n"
-                  "  (sem argumentos)  abre o assistente interativo\n"
-                  "  demo              roda o pipeline com dados sinteticos\n"
-                  "  doctor            diagnostica o ambiente (deps, RAM, CPU)\n"
-                  "  --version         mostra a versao instalada")
+            print(_TEXTO_AJUDA)
             return
+        print(f"Erro: comando desconhecido '{sys.argv[1]}'.\n",
+              file=sys.stderr)
+        print(_TEXTO_AJUDA, file=sys.stderr)
+        raise SystemExit(2)
+
+    # Migra estado gravado pela versao anterior (dentro do pacote instalado)
+    # para _USER_DIR, se aplicavel -- ver docstring de _migrar_estado_legado.
+    _migrar_estado_legado()
 
     # Carregar config
     cfg = Config()
     if _CFG_PATH.exists():
         try:
-            cfg = carregar_config(str(_CFG_PATH))
+            cfg = _load_config(str(_CFG_PATH))
         except (RuntimeError, FileNotFoundError, ValueError) as _e_cfg:
             logging.getLogger(__name__).debug(
                 "config.yaml nao carregado no boot, usando defaults: %s", _e_cfg)
+
+    # Opcoes de linha de comando vencem o config.yaml: quem digitou a flag
+    # agora quer ela agora. Ja' validadas em _validar_opcoes (saida 2).
+    if "perfil" in _OPCOES_CLI:
+        cfg.matrix_profile = _OPCOES_CLI["perfil"]
+    if "mode" in _OPCOES_CLI:
+        cfg.label_mode = _OPCOES_CLI["mode"]
 
     # Recuperar idioma salvo
     try:
@@ -3682,8 +5549,8 @@ def main() -> None:
     _exibir_boas_vindas()
 
     while True:
-        cls()
-        _print_header()
+        _cls()
+        _print_header(cfg)
         _print_status(cfg)
         console.print()
         _print_main_menu()
@@ -3692,27 +5559,47 @@ def main() -> None:
         console.print()
 
         try:
-            raw = _input(f"  {_t('opcao')}: ")
+            # input() direto (nao _input()): _input() engole EOFError/
+            # KeyboardInterrupt internamente e devolve "" -- com isso o
+            # except abaixo NUNCA disparava em EOF real (stdin fechado/
+            # redirecionado de arquivo vazio/pipe encerrado). "" nao bate
+            # com nenhuma opcao do menu, cai no ramo "invalida" + _pause()
+            # (tambem EOF-safe), e o loop volta a chamar _cls() (spawna
+            # subprocesso via os.system) e ler de novo -- SEMPRE "" de novo
+            # em EOF permanente -- girando para sempre, sem sair, gastando
+            # CPU (achado 2026-08-07, "checkup geral" de interface:
+            # reproduzido com stdin vazio, >350 redesenhos em 8s sem
+            # terminar). input() aqui deixa o EOFError propagar ate o
+            # except que ja existe para tratar exatamente este caso.
+            raw = input(f"  {_t('opcao')}: ").strip()
             escolha = "?" if raw == "?" else raw.upper().strip()
         except (EOFError, KeyboardInterrupt):
             _exibir_despedida()
             break
 
-        if escolha == "1": menu_projeto(cfg)
-        elif escolha == "2": menu_dados(cfg)
-        elif escolha == "3": menu_preproc(cfg)
-        elif escolha == "4": menu_modelagem(cfg)
-        elif escolha == "5": menu_validacao(cfg)
-        elif escolha == "6": menu_avancado(cfg)
-        elif escolha == "7": menu_visualizacao(cfg)
-        elif escolha == "8": menu_tecnica(cfg)
-        elif escolha == "9": menu_codificacao(cfg)
+        if escolha == "1": _menu_project(cfg)
+        elif escolha == "2": _menu_data(cfg)
+        elif escolha == "3": _menu_preprocessing(cfg)
+        elif escolha == "4": _menu_modeling(cfg)
+        elif escolha == "5": _menu_validation(cfg)
+        elif escolha == "6": _menu_advanced(cfg)
+        elif escolha == "7": _menu_visualization(cfg)
+        elif escolha == "8": _menu_technique(cfg)
+        elif escolha == "9": _menu_encoding(cfg)
         elif escolha == "H":
-            cls(); _print_header(); menu_hardware(cfg)
+            _cls(); _print_header(cfg); _menu_hardware(cfg)
         elif escolha == "B":
-            menu_predicao(cfg)
+            _menu_prediction(cfg)
+        elif escolha == "X":
+            _menu_hsi(cfg)
+        elif escolha == "J":
+            _menu_plan(cfg)
+        elif escolha == "U":
+            _menu_audit(cfg)
+        elif escolha == "K":
+            _menu_selecao_amostras(cfg)
         elif escolha == "P":
-            menu_perfis(cfg)
+            _menu_profiles(cfg)
         elif escolha == "G":
             _abrir_assistente("menu principal", cfg)
         elif escolha == "M":
@@ -3743,9 +5630,9 @@ def main() -> None:
                 cfg.tag = san; console.print(f"  [g]✓ ID: {escape(san)}[/g]")
             _pause()
         elif escolha == "A":
-            menu_sobre(cfg)
+            _menu_about(cfg)
         elif escolha == "?":
-            menu_ajuda(cfg)
+            _menu_help(cfg)
         elif escolha == "Q":
             _exibir_despedida()
             break

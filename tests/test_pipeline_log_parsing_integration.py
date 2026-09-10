@@ -16,35 +16,35 @@ import os
 
 import pytest
 
-from guaraci.app_logic import progresso_do_log, figuras_concluidas
+from guaraci.app_logic import log_progress, figures_completed
 
 
 @pytest.mark.slow
 def test_stdout_real_do_executar_ainda_casa_com_regex_do_painel(pq, tmp_path):
     cfg = pq.Config(
-        pasta_entrada=str(tmp_path / "dados"),
-        pasta_saida_raiz=str(tmp_path / "saida"),
-        modo="sintetico",
-        n_por_classe=8,
-        n_pontos_sint=50,
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico",
+        n_per_class=8,
+        n_synthetic_points=50,
         wn_min=400.0,
         wn_max=4001.0,
         n_splits_cv=2,
         n_repeats_cv=1,
-        n_permutacoes=5,
-        n_permutacoes_wold=5,
+        n_permutations=5,
+        n_permutations_wold=5,
         n_bootstrap_vip=3,
         n_bootstrap_bca=20,
         n_monte_carlo=3,
-        executar_benchmark=False,
-        executar_monte_carlo=False,
-        executar_shap=False,
-        executar_wold=False,
-        executar_cv_anova=False,
-        executar_opls=False,
+        run_benchmark=False,
+        run_monte_carlo=False,
+        run_shap=False,
+        run_wold=False,
+        run_cv_anova=False,
+        run_opls=False,
         executar_etapa4=False,
         comparar_pipelines=False,
-        comparar_hca_pipelines=False,
+        compare_hca_pipelines=False,
         max_lvs=5,
     )
     os.makedirs(str(tmp_path / "dados"), exist_ok=True)
@@ -55,14 +55,14 @@ def test_stdout_real_do_executar_ainda_casa_com_regex_do_painel(pq, tmp_path):
     texto = buf.getvalue()
 
     # 1) marcadores de etapa "[N/7]" -- sempre presentes em qualquer run
-    frac, _nome = progresso_do_log(texto)
+    frac, _nome = log_progress(texto)
     assert frac > 0.0, (
         "Nenhum marcador '[N/7]' encontrado no stdout real -- o painel de "
         "progresso (CLI e app web) ficaria travado em 'Starting...' para "
         "sempre. Verificar se print()->logging preservou o texto exato.")
 
     # 2) linha "-> <arquivo>.png" apos salvar figura -- sempre ha' >=1 figura
-    figs = figuras_concluidas(texto)
+    figs = figures_completed(texto)
     assert len(figs) > 0, (
         "Nenhuma figura detectada no stdout real via '-> arquivo.png' -- "
         "o painel de figuras concluidas ficaria sempre vazio.")

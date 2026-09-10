@@ -14,6 +14,28 @@ _SRC = os.path.join(os.path.dirname(__file__), "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
+# Profile do Hypothesis (Bloco 13d, Frente 2): busca aleatoria SOZINHA (so'
+# `max_examples`, sem `@example` fixo) mostrou-se pouco confiavel para achar
+# bug conhecido (achado real, Passo 85 -- 80 exemplos passaram raso por cima
+# de tres bugs reais de config.yaml sem achar nenhum). A correcao estrutural
+# e' dupla: (1) SEMPRE fixar `@example` para o caso adversarial conhecido
+# (nao depender so' do profile), (2) rodar com orcamento MAIOR na CI do que
+# localmente -- mais exemplos aleatorios aumentam a chance de achar um caso
+# novo que ninguem fixou ainda, sem deixar o ciclo local lento.
+# `CI=true` e' setado automaticamente pelo GitHub Actions (nenhuma mudanca
+# necessaria em test.yml); localmente cai no profile "dev" a nao ser que
+# HYPOTHESIS_PROFILE seja setado explicitamente.
+try:
+    from hypothesis import settings as _hypothesis_settings
+
+    _hypothesis_settings.register_profile("dev", max_examples=50, deadline=None)
+    _hypothesis_settings.register_profile("ci", max_examples=300, deadline=None)
+    _perfil_padrao = "ci" if os.environ.get("CI") else "dev"
+    _hypothesis_settings.load_profile(
+        os.environ.get("HYPOTHESIS_PROFILE", _perfil_padrao))
+except ImportError:
+    pass   # hypothesis e' dependencia de DEV (extra [dev]) -- ausente e' valido
+
 
 @pytest.fixture(scope="session")
 def pq():
@@ -25,7 +47,7 @@ def pq():
 def achar_pastas_run(pasta_saida_raiz):
     """Localiza as pastas de EXECUCAO (folha) sob pasta_saida_raiz.
 
-    Desde a auditoria jul/2026 (item 4), gerar_nome_saida aninha a saida em
+    Desde a auditoria jul/2026 (item 4), generate_output_name aninha a saida em
     pasta_saida_raiz/<Amostra>/<Modo>/<execucao>/ em vez de uma pasta direta
     em pasta_saida_raiz/<execucao>/. Esta funcao encontra as pastas-folha
     (identificadas pelo prefixo "PLSDA_OE_") em qualquer profundidade, para

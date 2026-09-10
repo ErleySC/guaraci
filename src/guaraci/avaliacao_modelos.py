@@ -5,7 +5,7 @@ Monte Carlo CV (IC95%), curvas DET e SHAP (TreeExplainer).
 
 Extraido de pipeline.py (Fase H). Usa modulos ja extraidos (preprocessamento,
 figuras, paleta_cores, hardware); Config so em type hint (TYPE_CHECKING).
-pipeline.py reexporta (executar() chama benchmark_classificadores/
+pipeline.py reexporta (executar() chama benchmark_classifiers/
 monte_carlo_cv/fig_det_curvas/fig_shap_benchmark).
 """
 from __future__ import annotations
@@ -24,21 +24,31 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import balanced_accuracy_score
 
-from guaraci.preprocessamento import construir_preprocessador
-from guaraci.figuras import salvar, cor
+from guaraci.preprocessamento import build_preprocessor
+from guaraci.figuras import save, color
 from guaraci.hardware import _verificar_ram
 from guaraci.dados_io import kennard_stone_split_group_aware
 from guaraci.config import NOME_TABELAS
-from guaraci.chemometric_stats import rmse_flat
-from guaraci.model_registry import construir_lista_benchmark
+from guaraci.chemometric_stats import rmse_flat, expandir_binario_um_quente
+from guaraci.model_registry import build_benchmark_list
 
 log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from guaraci.pipeline import Config
 
-
-
+__all__ = [
+    "PLSDAClassifier",
+    "fig_benchmark_classifiers",
+    "benchmark_classifiers",
+    "fig_monte_carlo_distribution",
+    "monte_carlo_cv",
+    "interpolar_det",
+    "fig_det_curvas",
+    "fig_shap_benchmark",
+    "fig_benchmark_regressors",
+    "benchmark_regression_by_species",
+]
 
 # =========================================================================
 #  Auto-Benchmark — v27: PLS-DA vs SVM vs RF vs XGBoost
@@ -57,9 +67,7 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         self._lb = _LB()
         Y_bin: np.ndarray = np.asarray(self._lb.fit_transform(y))  # ensure ndarray (not spmatrix)
         # Binary: LabelBinarizer returns (n,1) — expand to (n,2)
-        if Y_bin.ndim == 1 or Y_bin.shape[1] == 1:
-            Y_bin = np.hstack([1 - Y_bin.reshape(-1, 1),
-                                   Y_bin.reshape(-1, 1)])
+        Y_bin = expandir_binario_um_quente(Y_bin)
         n_comp = min(self.n_components, X.shape[1], X.shape[0] - 1)
         self._pls = PLSRegression(n_components=n_comp, scale=False)
         self._pls.fit(X, Y_bin)
@@ -82,7 +90,7 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         return E / E.sum(axis=1, keepdims=True)
 
 
-def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
+def fig_benchmark_classifiers(scores_por_clf: Dict[str, np.ndarray],
                                    n_splits: int,
                                    n_classes: int,
                                    cfg: "Config", pasta: str) -> None:
@@ -90,7 +98,7 @@ def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
     nomes  = list(scores_por_clf.keys())
     dados  = [scores_por_clf[n] for n in nomes]
     chance = 1.0 / max(n_classes, 1)
-    cores  = [cor(i) for i in range(len(nomes))]
+    cores  = [color(i) for i in range(len(nomes))]
 
     fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
                            constrained_layout=True)
@@ -103,8 +111,12 @@ def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    # Pontos individuais (um por fold) com jitter reprodutivel
-    rng = np.random.default_rng(42)
+    # Pontos individuais (um por fold) com jitter reprodutivel. Usa
+    # cfg.seed (nao um 42 fixo): duas execucoes com seeds diferentes devem
+    # diferir em TUDO que e' aleatorio, inclusive no jitter da figura --
+    # caso contrario a figura sugere uma reprodutibilidade que o resto da
+    # execucao nao tem.
+    rng = np.random.default_rng(cfg.seed)
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         jitter = rng.uniform(-0.14, 0.14, len(dado))
         ax.scatter(np.full(len(dado), i) + jitter, dado,
@@ -120,16 +132,16 @@ def fig_benchmark_classificadores(scores_por_clf: Dict[str, np.ndarray],
     ax.set_ylabel("Balanced Accuracy (CV fold)")
     ax.set_title(
         f"Auto-Benchmark — {n_splits}-fold GroupKFold (anti-leakage de replicas)\n"
-        f"Preprocessamento: {cfg.preprocessamento_padrao}",
+        f"Preprocessamento: {cfg.default_preprocessing}",
         fontsize=8.5, loc="left")
     ax.legend(fontsize=8); ax.set_ylim(0, 1.05)
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_benchmark_classificadores", pasta, cfg)
+    save(fig, "fig_benchmark_classifiers", pasta, cfg)
     plt.close(fig)
 
 
-def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
+def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
                                grupos_cv: Optional[np.ndarray],
                                lb: "LabelBinarizer",
                                n_opt: int, cfg: "Config", pasta: str,
@@ -154,10 +166,10 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
                    int(pd.Series(y_int).value_counts().min()))
     n_splits  = max(n_splits, 2)
     n_classes = len(lb.classes_)
-    preproc   = construir_preprocessador(cfg)
+    preproc   = build_preprocessor(cfg)
 
     # ── Classifiers (fonte unica: guaraci.model_registry, item 20) ────────
-    clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
+    clfs: List[Tuple[str, Any]] = build_benchmark_list(
         n_opt, cfg, incluir_opcionais=True)
 
     cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True,
@@ -207,12 +219,12 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
             scores_por_clf[nome] = ba
             oof_probas[nome]     = proba_oof
             resultados.append({
-                "Classificador":      nome,
-                "Bal.Acc media":      round(float(ba.mean()), 4),
+                "Classifier":      nome,
+                "Bal.Acc mean":      round(float(ba.mean()), 4),
                 "Bal.Acc std":        round(float(ba.std()),  4),
-                "F1 macro media":     round(float(f1.mean()), 4),
+                "F1 macro mean":     round(float(f1.mean()), 4),
                 "F1 macro std":       round(float(f1.std()),  4),
-                "Tempo total (s)":    round(elapsed, 2),
+                "Total time (s)":    round(elapsed, 2),
             })
             print(f"bal.acc={ba.mean():.4f} ± {ba.std():.4f}  [{elapsed:.1f}s]")
         except Exception as _e:  # noqa: BLE001 -- 1 classificador do
@@ -224,7 +236,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     # ── Wilcoxon vs PLS-DA ────────────────────────────────────────────────
     ref = scores_por_clf.get("PLS-DA")
     for r in resultados:
-        nome_r = r["Classificador"]
+        nome_r = r["Classifier"]
         if nome_r == "PLS-DA" or ref is None:
             r["p Wilcoxon (vs PLS-DA)"] = "-"
         else:
@@ -244,13 +256,13 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
     df_bench = pd.DataFrame(resultados)
 
     # ── Salvar CSV ────────────────────────────────────────────────────────
-    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classificadores.csv")
+    cam_csv = os.path.join(pasta, NOME_TABELAS, "benchmark_classifiers.csv")
     df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
     print(f"  -> {cam_csv}")
 
     # ── Figura boxplot ────────────────────────────────────────────────────
     if scores_por_clf:
-        fig_benchmark_classificadores(scores_por_clf, n_splits, n_classes, cfg, pasta)
+        fig_benchmark_classifiers(scores_por_clf, n_splits, n_classes, cfg, pasta)
 
     # ── Curvas DET (OOF coletados no loop principal — sem re-execucao) ───
     if len(oof_probas) >= 2:
@@ -262,7 +274,7 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
             print(f"\n  [AVISO] DET curves falhou: {_e_det}")
 
     # ── SHAP values (opcional) ────────────────────────────────────────────
-    if cfg.executar_shap:
+    if cfg.run_shap:
         # Guard: RF multiclass (14 classes × 500 samples × n_feat) ~600 MB
         if _verificar_ram(3.0, "SHAP TreeExplainer (RF multiclasse 14 classes)"):
             fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers)
@@ -274,12 +286,12 @@ def benchmark_classificadores(X_raw: np.ndarray, y_int: np.ndarray,
 #  v28: Monte Carlo CV — IC95% por percentil
 # =========================================================================
 
-def fig_monte_carlo_distribuicao(scores_mc: Dict[str, List[float]],
+def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
                                   cfg: "Config", pasta: str) -> None:
     """Violin + IC95% percentil das distribuicoes Monte Carlo CV."""
     nomes = list(scores_mc.keys())
     dados = [np.array(scores_mc[n]) for n in nomes]
-    cores = [cor(i) for i in range(len(nomes))]
+    cores = [color(i) for i in range(len(nomes))]
 
     fig, ax = plt.subplots(figsize=(max(5.5, len(nomes) * 1.9), 5.0),
                            constrained_layout=True)
@@ -306,13 +318,13 @@ def fig_monte_carlo_distribuicao(scores_mc: Dict[str, List[float]],
     ax.set_ylabel("Balanced Accuracy")
     ax.set_title(
         f"Monte Carlo CV ({n_iter} iteracoes, test={cfg.monte_carlo_test_size:.0%})\n"
-        f"IC95% percentil — pre-processamento: {cfg.preprocessamento_padrao}",
+        f"IC95% percentil — pre-processamento: {cfg.default_preprocessing}",
         fontsize=8.5, loc="left")
     ax.set_ylim(0, 1.08)
     ax.grid(axis="y", color="0.93", lw=0.5)
     ax.set_axisbelow(True)
 
-    salvar(fig, "fig_monte_carlo_cv", pasta, cfg)
+    save(fig, "fig_monte_carlo_cv", pasta, cfg)
     plt.close(fig)
 
 
@@ -357,7 +369,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     Monte Carlo CV com split estratificado por grupo (N repeticoes).
     Gera distribuicao empirica de Balanced Accuracy com IC95% por percentil.
 
-    Se cfg.monte_carlo_incluir_todos=True, roda tambem SVM RBF, RF e XGBoost
+    Se cfg.monte_carlo_include_all=True, roda tambem SVM RBF, RF e XGBoost
     (mesmos hiperparametros do benchmark, via guaraci.model_registry — item
     20 da auditoria: fonte unica, antes duplicada e divergente aqui: este
     Grad. Boost. nao tinha subsample=0.8 como o do benchmark); caso
@@ -371,14 +383,31 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 
     n_iter  = cfg.n_monte_carlo
     test_sz = cfg.monte_carlo_test_size
-    preproc = construir_preprocessador(cfg)
+    preproc = build_preprocessor(cfg)
 
     # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
-    mc_clfs: List[Tuple[str, Any]] = construir_lista_benchmark(
-        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_incluir_todos)
+    mc_clfs: List[Tuple[str, Any]] = build_benchmark_list(
+        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_include_all)
 
     # Gerar splits estratificados por grupo (risco 3 resolvido)
     if grupos_cv is not None:
+        # `StratifiedShuffleSplit` (usado por grupo dentro do helper) exige
+        # n_grupos_teste >= n_classes. Com poucos grupos de replica por
+        # classe a condicao falha e o helper levanta ValueError -- achado
+        # B2-1b da auditoria de 2026-08-16. Sem esta guarda, o Monte Carlo
+        # CV inteiro morre e o usuario so' ve a mensagem generica do except
+        # amplo do pipeline, sem saber que a causa e' "poucos grupos".
+        n_grupos_tot = int(len(np.unique(grupos_cv)))
+        n_classes_tot = int(len(lb.classes_))
+        n_grupos_teste = int(round(test_sz * n_grupos_tot))
+        if n_grupos_teste < n_classes_tot:
+            print(f"  [AVISO] Monte Carlo CV PULADO: {n_grupos_tot} grupos "
+                  f"de replica geram apenas {n_grupos_teste} grupos de teste "
+                  f"(test_size={test_sz:.0%}), menos que as {n_classes_tot} "
+                  f"classes — split estratificado por grupo impossivel. "
+                  f"Reduza n_classes, aumente test_size, ou colete mais "
+                  f"amostras fisicas independentes.")
+            return pd.DataFrame()
         splits = _stratified_group_shuffle_splits(
             y_int, grupos_cv, n_iter, test_sz, cfg.seed)
     else:
@@ -418,7 +447,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
                         float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
             except (ValueError, np.linalg.LinAlgError) as _e_mc:
                 # Iteracao Monte Carlo degenerada -- NAO silenciosa: a
-                # contagem de falhas aparece em "Iteracoes validas" no CSV.
+                # contagem de falhas aparece em "Valid iterations" no CSV.
                 log.debug("Monte Carlo CV: iteracao descartada p/ %s: %s",
                          nome, _e_mc)
 
@@ -432,17 +461,17 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
         print(f"media={np.nanmean(arr_ba):.4f}  IC95%=[{ci_lo:.4f},{ci_hi:.4f}]"
               f"  [{elapsed:.1f}s]")
         resultados_mc.append({
-            "Classificador":    nome,
-            "Iteracoes validas": len(ba_list),
-            "Media BA":         round(float(np.nanmean(arr_ba)), 4),
-            "Mediana BA":       round(float(np.nanmedian(arr_ba)), 4),
+            "Classifier":    nome,
+            "Valid iterations": len(ba_list),
+            "Mean BA":         round(float(np.nanmean(arr_ba)), 4),
+            "Median BA":       round(float(np.nanmedian(arr_ba)), 4),
             "Std BA":           round(float(np.nanstd(arr_ba)), 4),
-            "IC95% inf":        round(ci_lo, 4),
-            "IC95% sup":        round(ci_hi, 4),
-            "Media F1 macro":   round(float(np.nanmean(arr_f1)), 4),
-            "IC95% F1 inf":     round(float(np.nanpercentile(arr_f1, 2.5)), 4),
-            "IC95% F1 sup":     round(float(np.nanpercentile(arr_f1, 97.5)), 4),
-            "Fracao teste":     test_sz,
+            "CI95% inf":        round(ci_lo, 4),
+            "CI95% sup":        round(ci_hi, 4),
+            "Mean F1 macro":   round(float(np.nanmean(arr_f1)), 4),
+            "CI95% F1 inf":     round(float(np.nanpercentile(arr_f1, 2.5)), 4),
+            "CI95% F1 sup":     round(float(np.nanpercentile(arr_f1, 97.5)), 4),
+            "Test fraction":     test_sz,
         })
 
     print(f"  [MC CV total: {time.time()-t0_total:.1f}s]")
@@ -455,7 +484,7 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
     # Figura violin — apenas modelos com >= 5 iteracoes validas
     scores_plot = {n: v for n, v in scores_mc.items() if len(v) >= 5}
     if scores_plot:
-        fig_monte_carlo_distribuicao(scores_plot, cfg, pasta)
+        fig_monte_carlo_distribution(scores_plot, cfg, pasta)
 
     return df_mc
 
@@ -463,6 +492,30 @@ def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
 # =========================================================================
 #  v28: Curvas DET — Detection Error Tradeoff
 # =========================================================================
+
+def interpolar_det(fmr: np.ndarray, fnmr: np.ndarray,
+                   fmr_grid: np.ndarray) -> np.ndarray:
+    """Reamostra uma curva DET (fmr, fnmr) sobre `fmr_grid`.
+
+    Extraida como funcao PURA (testavel sem renderizar figura) apos um bug
+    real: `sklearn.metrics.det_curve` devolve os pontos em ordem de limiar
+    CRESCENTE, o que deixa `fmr` DECRESCENTE. `np.interp` exige `xp`
+    crescente e nao ordena por conta propria -- passar `fmr` na ordem
+    original fazia a interpolacao degenerar e devolver `fnmr[-1]` constante
+    para todo FMR > 0. O resultado era uma RETA HORIZONTAL no lugar da
+    curva, em toda figura DET gerada ate 2026-08-07.
+
+    Invertendo os dois arrays juntos, `xp` fica crescente e cada fmr segue
+    pareado com o seu fnmr.
+    """
+    fmr = np.asarray(fmr, dtype=float)
+    fnmr = np.asarray(fnmr, dtype=float)
+    if fmr.size == 0:
+        return np.full(len(fmr_grid), np.nan)
+    if fmr.size > 1 and fmr[0] > fmr[-1]:      # ordem decrescente (o caso
+        fmr, fnmr = fmr[::-1], fnmr[::-1]      # devolvido por det_curve)
+    return np.interp(fmr_grid, fmr, fnmr)
+
 
 def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                    y_int: np.ndarray,
@@ -482,7 +535,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
         return
 
     nomes = list(oof_probas.keys())
-    cores = [cor(i) for i in range(len(nomes))]
+    cores = [color(i) for i in range(len(nomes))]
 
     y_bin: np.ndarray = np.asarray(label_binarize(y_int, classes=range(n_classes)))
     if n_classes == 2:
@@ -510,8 +563,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
                     continue
                 try:
                     fmr, fnmr, _ = det_curve(y_k, proba[:, k])
-                    fnmr_acum += np.interp(fmr_grid_frac, fmr, fnmr,
-                                           left=fnmr[0], right=fnmr[-1])
+                    fnmr_acum += interpolar_det(fmr, fnmr, fmr_grid_frac)
                     n_valid += 1
                 except ValueError as _e_det:
                     # Classe k degenerada p/ det_curve -- so' afeta a media
@@ -521,11 +573,23 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
             if n_valid == 0:
                 continue
             fnmr_media = fnmr_acum / n_valid
+            # EER = ponto onde FMR == FNMR (cruzamento com a diagonal y=x).
+            # Resumir a curva num numero torna a figura comparavel entre
+            # classificadores sem precisar medir no olho.
+            dif = fnmr_media - fmr_grid_frac
+            i_eer = int(np.argmin(np.abs(dif)))
+            eer_pct = float((fnmr_media[i_eer] + fmr_grid_frac[i_eer]) / 2 * 100)
             ax.plot(fmr_grid_pct, fnmr_media * 100,
-                    lw=1.8, color=c, label=nome, alpha=0.85)
+                    lw=1.8, color=c, label=f"{nome} (EER {eer_pct:.1f}%)",
+                    alpha=0.85)
 
+        # A diagonal y=x nao e' a linha do acaso: e' o lugar geometrico onde
+        # FMR == FNMR, isto e', onde se le o EER. Rotular como "referencia"
+        # generica induzia a leitura errada de que a curva deveria "seguir" a
+        # diagonal -- ela deve ficar o mais LONGE possivel dela, no canto
+        # inferior esquerdo.
         ax.plot([lo, hi], [lo, hi], "k--", lw=0.8, alpha=0.35,
-                label="Ref. diagonal")
+                label="EER (FMR = FNMR)")
         ax.set_xlabel("False Match Rate — FMR (%)")
         ax.set_ylabel("False Non-Match Rate — FNMR (%)")
         escala_str = "log" if log_scale else "linear"
@@ -540,7 +604,7 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
         ax.grid(color="0.93", lw=0.5, which="both"); ax.set_axisbelow(True)
 
         sufixo = "_log" if log_scale else ""
-        salvar(fig, f"fig_det_curvas{sufixo}", pasta, cfg)
+        save(fig, f"fig_det_curvas{sufixo}", pasta, cfg)
         plt.close(fig)
 
 
@@ -566,14 +630,14 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
     from sklearn.base import clone
     from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
-    preproc   = construir_preprocessador(cfg)
+    preproc   = build_preprocessor(cfg)
     X_proc    = clone(preproc).fit(X_raw).transform(X_raw)
     feat_names = ([f"{w:.0f}" for w in wavenumbers]
                   if wavenumbers is not None
                   else [f"X{i}" for i in range(X_proc.shape[1])])
 
     # Memory cap: random subsample of shap_max_amostras samples for TreeExplainer
-    n_max = cfg.shap_max_amostras
+    n_max = cfg.shap_max_samples
     if X_proc.shape[0] > n_max:
         rng_shap = np.random.default_rng(cfg.seed)
         idx_shap = rng_shap.choice(X_proc.shape[0], n_max, replace=False)
@@ -646,24 +710,24 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 # ── Barplot de importancia SHAP ───────────────────────────
                 fig, ax = plt.subplots(figsize=(7.0, 5.5), constrained_layout=True)
                 ax.barh(range(top_n), top_imp[::-1],
-                        color=cor(idx), alpha=0.76, edgecolor="white", lw=0.5)
+                        color=color(idx), alpha=0.76, edgecolor="white", lw=0.5)
                 ax.set_yticks(range(top_n))
                 ax.set_yticklabels(top_lbl[::-1], fontsize=8)
                 ax.set_xlabel("Mean |SHAP value|")
                 ax.set_title(
                     f"SHAP — {nome} (top-{top_n} bandas espectrais)\n"
-                    f"Unidade: cm⁻¹  |  pre-proc: {cfg.preprocessamento_padrao}"
+                    f"Unidade: cm⁻¹  |  pre-proc: {cfg.default_preprocessing}"
                     f"  |  n={len(X_shap)}",
                     fontsize=8.5, loc="left")
                 ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
                 tag = nome.lower().replace(" ", "_").replace(".", "").replace("/", "_")
-                salvar(fig, f"fig_shap_{tag}", pasta, cfg)
+                save(fig, f"fig_shap_{tag}", pasta, cfg)
                 plt.close(fig)
 
                 # ── Dependence plots: top-3 features × classe ─────────────
                 n_dep = min(3, top_n)
                 unique_cls = np.unique(y_shap)
-                cores_dep  = [cor(c) for c in unique_cls]
+                cores_dep  = [color(c) for c in unique_cls]
                 for rank, feat_i in enumerate(top_idx[:n_dep]):
                     feat_vals = X_shap[:, feat_i]
                     # Para multiclass, usar shap medio sobre classes
@@ -695,7 +759,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                     if len(unique_cls) <= 10:
                         ax2.legend(fontsize=6.5, ncol=2, markerscale=1.2)
                     ax2.grid(color="0.93", lw=0.5); ax2.set_axisbelow(True)
-                    salvar(fig2, f"fig_shap_dep_{tag}_feat{rank+1}", pasta, cfg)
+                    save(fig2, f"fig_shap_dep_{tag}_feat{rank+1}", pasta, cfg)
                     plt.close(fig2)
 
                 print("salvo.")
@@ -709,7 +773,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
 #  Auto-Benchmark de REGRESSAO (N2/N3) -- PLS-R vs Ridge/Lasso/EN/SVR/RF
 # =========================================================================
 
-def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
+def fig_benchmark_regressors(rmsep_por_modelo: Dict[str, np.ndarray],
                                n_especies: int,
                                cfg: "Config", pasta: str) -> None:
     """Boxplot de RMSEP por especie para cada modelo de regressao -- ao
@@ -717,7 +781,7 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
     MENOR e melhor."""
     nomes = list(rmsep_por_modelo.keys())
     dados = [rmsep_por_modelo[n] for n in nomes]
-    cores = [cor(i) for i in range(len(nomes))]
+    cores = [color(i) for i in range(len(nomes))]
 
     fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
                            constrained_layout=True)
@@ -730,7 +794,7 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
     for patch, c in zip(bp["boxes"], cores):
         patch.set_facecolor(c); patch.set_alpha(0.70)
 
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(cfg.seed)   # ver nota em fig_benchmark_classifiers
     for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
         if len(dado) == 0:
             continue
@@ -744,39 +808,39 @@ def fig_benchmark_regressores(rmsep_por_modelo: Dict[str, np.ndarray],
     ax.set_ylabel("RMSEP por especie (menor = melhor)")
     ax.set_title(
         f"Auto-Benchmark de regressao -- {n_especies} especies\n"
-        f"Pre-processamento: {cfg.preprocessamento_padrao}",
+        f"Pre-processamento: {cfg.default_preprocessing}",
         fontsize=8.5, loc="left")
     ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
 
-    salvar(fig, "fig_benchmark_regressores", pasta, cfg)
+    save(fig, "fig_benchmark_regressors", pasta, cfg)
     plt.close(fig)
 
 
-def benchmark_regressao_por_especie(
+def benchmark_regression_by_species(
         X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
         mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
         cfg: "Config", pasta: str,
         reg_esp_pls: Dict[str, Any],
         min_amostras_adult: int = 6) -> Optional[pd.DataFrame]:
     """
-    Compara PLS-R (baseline, ja calibrado por `pls_regressao_por_especie` --
+    Compara PLS-R (baseline, ja calibrado por `pls_regression_by_species` --
     reaproveitado SEM refit) vs Ridge / Lasso / Elastic Net / SVR (RBF) /
     Random Forest Regressor, calibrando UM MODELO POR ESPECIE (mesma
     arquitetura da quantificacao do pipeline: calibracao separada evita que
     a variacao inter-especies confunda o sinal de adulteracao).
 
     Cada modelo usa O MESMO split cal/val por especie (reproduzido
-    deterministicamente com o mesmo cfg.seed/cfg.divisao_cal_val do PLS-R
+    deterministicamente com o mesmo cfg.seed/cfg.cal_val_split do PLS-R
     ja calculado) e o mesmo pre-processamento dentro de um sklearn Pipeline
     (sem vazamento entre cal/val) -- comparacao honesta apples-to-apples.
 
     Hiperparametros por heuristica de literatura (sem tuning por CV interna,
-    mesmo padrao de benchmark_classificadores/PLS-DA -- ver nota
-    metodologica em pipeline.salvar_resumo_modelo). Ref: Hastie, Tibshirani
+    mesmo padrao de benchmark_classifiers/PLS-DA -- ver nota
+    metodologica em pipeline.save_model_summary). Ref: Hastie, Tibshirani
     & Friedman (2009), The Elements of Statistical Learning, 2nd ed.
 
     Retorna None se nenhuma especie tiver dados suficientes (mesmo criterio
-    de `pls_regressao_por_especie`: min_amostras_adult adulteradas e
+    de `pls_regression_by_species`: min_amostras_adult adulteradas e
     variancia de teor > 0).
     """
     from sklearn.linear_model import Ridge, Lasso, ElasticNet
@@ -822,11 +886,11 @@ def benchmark_regressao_por_especie(
         mae_c = mae_id[idx] if mae_id is not None else None
         Y_c = conc_c.reshape(-1, 1)
 
-        # MESMO split (deterministico) usado em pls_regressao_por_especie --
+        # MESMO split (deterministico) usado em pls_regression_by_species --
         # mesma logica de decisao, reproduzida aqui p/ evitar acoplamento
         # circular com pipeline.py (que importaria de volta este modulo).
         try:
-            if cfg.divisao_cal_val == "kennard_stone":
+            if cfg.cal_val_split == "kennard_stone":
                 ic, iv = kennard_stone_split_group_aware(
                     X_c, mae_c, cfg.frac_cal)
             elif mae_c is not None and len(np.unique(mae_c)) >= 4:
@@ -850,7 +914,7 @@ def benchmark_regressao_por_especie(
         for nome, modelo in modelos:
             try:
                 pipe = _SKPipeline([
-                    ("preproc", clone(construir_preprocessador(cfg))),
+                    ("preproc", clone(build_preprocessor(cfg))),
                     ("reg", clone(modelo)),
                 ])
                 with warnings.catch_warnings():
@@ -877,11 +941,11 @@ def benchmark_regressao_por_especie(
         if np.isfinite(t.get("rmsep", np.nan))
     ]
     linhas.append({
-        "Modelo":         "PLS-R",
+        "Model":         "PLS-R",
         "RMSEP (pooled)": round(float(reg_esp_pls["rmsep"]), 3),
         "R2val (pooled)": round(float(reg_esp_pls["r2v"]), 4),
-        "N especies":     int(reg_esp_pls["n_especies"]),
-        "RMSEP std (entre especies)": (
+        "N species":     int(reg_esp_pls["n_especies"]),
+        "RMSEP std (between species)": (
             round(float(np.std(rmsep_pls_por_especie)), 3)
             if rmsep_pls_por_especie else float("nan")),
     })
@@ -898,11 +962,11 @@ def benchmark_regressao_por_especie(
         r2_pooled = (float(r2_score(Yv_p, Yvh_p))
                     if len(np.unique(Yv_p)) > 1 else float("nan"))
         linhas.append({
-            "Modelo":         nome,
+            "Model":         nome,
             "RMSEP (pooled)": round(rmsep_pooled, 3),
             "R2val (pooled)": round(r2_pooled, 4),
-            "N especies":     len(rmsep_por_especie[nome]),
-            "RMSEP std (entre especies)": round(
+            "N species":     len(rmsep_por_especie[nome]),
+            "RMSEP std (between species)": round(
                 float(np.std(rmsep_por_especie[nome])), 3),
         })
         rmsep_boxplot[nome] = np.array(rmsep_por_especie[nome])
@@ -914,6 +978,6 @@ def benchmark_regressao_por_especie(
     print(f"  -> {cam_csv}")
 
     if rmsep_boxplot:
-        fig_benchmark_regressores(rmsep_boxplot, n_especies_ok, cfg, pasta)
+        fig_benchmark_regressors(rmsep_boxplot, n_especies_ok, cfg, pasta)
 
     return df_bench

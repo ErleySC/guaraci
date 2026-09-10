@@ -1,10 +1,11 @@
 ---
-title: 'GUARACI: An open, reproducible multi-technique chemometrics platform with leakage-safe validation'
+title: 'GUARACI: Chemometrics platform with leakage-safe validation by default'
 tags:
   - Python
   - chemometrics
   - spectroscopy
   - FT-NIR
+  - hyperspectral imaging
   - PLS-DA
   - SIMCA
   - food authentication
@@ -14,7 +15,7 @@ authors:
     orcid: "0009-0005-9655-6349"
     affiliation: 1
 affiliations:
-  - name: Grupo de Espectroscopia Analítica Aplicada (GEAAp), Universidade Federal do Pará (UFPA), Brazil
+  - name: Independent Researcher, Brazil
     index: 1
 date: 12 July 2026
 bibliography: paper.bib
@@ -25,7 +26,9 @@ bibliography: paper.bib
 `GUARACI` is an open-source Python platform for chemometric classification,
 authentication, and quantification of complex sample matrices. It targets
 vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
-(HPLC, GC-MS), and resonance (NMR, IMS) data, and implements the standard
+(HPLC, GC-MS), resonance (NMR, IMS), and hyperspectral-imaging (ENVI cubes,
+per-pixel classification with physical-object aggregation) data, and
+implements the standard
 multivariate toolkit used in analytical chemistry — PLS-DA, OPLS-DA
 [@TryggWold2002], PLS regression, PCA, hierarchical clustering, and DD-SIMCA
 one-class modelling [@PomerantsevRodionova2014] — together with the
@@ -40,9 +43,12 @@ application and a Streamlit web app — expose the full pipeline without
 requiring the user to write code, while a shared Python package
 (`src/guaraci`) keeps the scientific logic identical across both.
 
-`GUARACI` was originally developed for an undergraduate thesis on the FT-NIR
-authentication of Amazonian vegetable oils, and has since been generalised
-into a matrix- and technique-agnostic platform.
+Matrix-specific knowledge is externalised into **matrix profiles** (YAML):
+spectral range and unit, default preprocessing, expected working range, and
+the vocabulary used in reports. Switching from one matrix to another is a
+configuration change, not a code change, and a matrix with no registered
+profile raises an error before any data is loaded rather than predicting
+under another matrix's assumptions.
 
 # State of the field
 
@@ -53,7 +59,17 @@ cross-validation splitting strategy are left entirely to the user's script,
 and there is no distinct interface layer for users who do not write code.
 `hyperSpec` [@BeleitesSergo] targets a narrower problem: representing and
 manipulating hyperspectral data structures in R, without a built-in
-modelling or validation layer. `pyChemometrics` [@Correia] implements
+modelling or validation layer. `GUARACI`'s hyperspectral-imaging (HSI)
+mode addresses that gap directly: a generic ENVI-cube reader (no public
+dataset required — any folder of the user's own cubes, organised one
+subfolder per class, works offline), the same physical-group leakage
+protection as the platform's other modes, per-pixel PLS-DA with
+object-level aggregation, and a spatial classification map. Reported
+performance on it is modest in places, honestly, on the public fixture
+used for the project's own validation — a matrix-agnostic engine is an
+architectural property, not a validation result; a profile or dataset
+a user brings is untested until they test it.
+`pyChemometrics` [@Correia] implements
 PCA, PLS and PLS-DA for NMR and mass-spectrometry metabolomics in Python,
 but is a research codebase without a packaged CLI or web interface, and,
 like `mdatools`, does not surface a first-class, guided option to keep
@@ -68,6 +84,23 @@ packages document group-aware splitting as a default or a guided setting.
 protection, together with the accompanying chemometric diagnostics (VIP,
 Selectivity Ratio, Hotelling T²/Q-residuals, DD-SIMCA sensitivity), the
 default path for a user who does not write code.
+
+A second default follows the same logic. In the surveyed packages, per-class
+quantification calibrates on the analyst's known class labels, because that
+is the natural thing to write in a script. But an end user submitting an
+unknown sample does not know its class — so a figure of merit obtained with
+the true label describes a situation the user will never be in, and silently
+folds classification error out of the reported quantification error.
+`GUARACI` calibrates on the *predicted* class by default; the label-aware
+path exists, is reached only through an explicit `--modo=controle` flag, and
+is marked as such in every artifact it produces. The same blind-prediction
+path also drives an open-set identification step: an unknown sample's
+adulterant is matched against a conformal-calibrated ensemble of
+species-by-adulterant combinations, and quantification is only produced —
+never a bare number — for a combination whose coverage guarantee was
+actually validated on the training groups; an unmatched or statistically
+unvalidated combination blocks the quantification step and reports why,
+instead of returning a number with no error-rate guarantee behind it.
 
 # Statement of need
 
@@ -109,20 +142,62 @@ quality-control laboratories that need the same rigor with an auditable
 trail. Its input/output layer is deliberately generic (JCAMP-DX and tabular
 formats), so it applies to matrices and analytical techniques beyond the one
 that motivated it, without code changes. The codebase is covered by an
-automated test suite (550+ tests) and continuous integration (linting,
-coverage gate), and each implemented method is checked against a reference
-implementation or a closed-form analytical property (documented in
-`docs/VALIDATION.md`), so contributions and future chemometric methods can
-be added without regressing existing behaviour. Beyond internal validation,
-the preprocessing and PLS regression engine has been benchmarked against
-Tecator, a public NIR dataset unrelated to the authors' own data
-[@Thodberg1996], reproducing RMSEP/R² in the range reported in the
-chemometrics literature for this dataset (`docs/BENCHMARK_TECATOR.md`).
+automated test suite (1000+ tests, including Hypothesis property tests for
+the invariants most exposed to regression — grouped-validation leakage,
+configuration-file round-tripping, blind-mode label handling) and
+continuous integration (linting, type-checking, coverage gate) across
+Linux, Windows and macOS on Python 3.10–3.13. Each implemented method is
+checked against a reference implementation or a closed-form analytical
+property (documented in `docs/VALIDATION.md`), so contributions and future
+chemometric methods can be added without regressing existing behaviour.
+Beyond the core modelling loop, `GUARACI` also covers the surrounding
+workflow: experimental-design guidance and an automated audit that flags
+class/session confounding before it inflates a metric, formal linearity
+(lack-of-fit F-test [@DraperSmith1998]) and a robustness protocol
+reporting result variation under perturbation as an interval rather than
+a pass/fail verdict, and calibration transfer (Direct/Piecewise Direct
+Standardization [@WangVeltkampKowalski1991]) alongside calibration-set
+selection (Kennard-Stone, Duplex [@Snee1977], SPXY [@Galvao2005]) for
+moving a model between instruments or picking a representative measured
+subset. A drift sentinel accumulates the applicability-domain rejection
+rate across successive batch-prediction runs and formally tests, via an
+exact binomial test, whether that rate is rising above the nominal alpha —
+the question that matters for continuous production use, as opposed to
+flagging any single out-of-domain sample, which the nominal alpha already
+allows for. A prototype image mode extends the same modelling and
+diagnostic machinery to digital colorimetry (RGB/HSV/Lab statistics,
+optionally GLCM texture) by treating each photograph as one spectrum-like
+row, auto-detecting which replicate-grouping guarantee the data folder
+supports and declaring it explicitly rather than assuming one.
+
+Performance claims rest exclusively on **public datasets**. On the
+Eigenvector *Corn* set (80 samples, 700 channels, 1100–2498 nm), `GUARACI`
+predicts protein content with RMSEP = 0.144 %w/w, within the 0.1–0.2 range
+reported in the literature for PLS on this benchmark; this runs as a
+continuous-integration job, so the build fails if the engine stops
+reproducing it. The preprocessing engine has additionally been benchmarked
+against Tecator [@Thodberg1996], reproducing RMSEP/R² in the published range
+(`docs/BENCHMARK_TECATOR.md`). Quantification output never reports a bare
+RMSEP: SEP, RPD and RER accompany it, with RPD carrying its published
+interpretation band, and LOD/LOQ return `N/A` rather than a number when
+physical replicates are insufficient to estimate instrumental noise.
+
+A related design decision concerns data provenance. Spectroscopic file
+formats routinely embed operator name, site and instrument serial numbers in
+their headers — information that is irrelevant to the analysis but travels
+with the file. `GUARACI`'s parser reads only the numeric and label fields it
+needs, never the audit-trail block, and strips sample identifiers from
+exported metadata, replacing them with anonymous replicate-group labels that
+preserve group-aware auditability. A test suite scans every generated
+artifact, including serialised model bytes, and fails if such a field
+leaks.
 
 # Acknowledgements
 
-The author thanks the Grupo de Espectroscopia Analítica Aplicada (GEAAp) at
-Universidade Federal do Pará (UFPA) for the FT-NIR data and infrastructure
-that motivated this work.
+The author thanks those who provided samples, instrument access and
+spectral acquisition during the development of this software; see
+`ACKNOWLEDGMENTS.md` in the repository. The author also thanks the
+maintainers of the public datasets used for validation, and the maintainers
+of the scientific Python stack on which `GUARACI` is built.
 
 # References

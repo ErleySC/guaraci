@@ -4,16 +4,27 @@ perceptual para gráficos quimiométricos (classes/espécies).
 
 Extraído de pipeline.py como parte da modularização (Fase H). Funções PURAS:
 dependem só de matplotlib.colors/pyplot, sem acoplamento a Config. pipeline.py
-reexporta estes nomes, então `pipeline.cor(...)`, `pipeline.PALETA` etc.
+reexporta estes nomes, então `pipeline.color(...)`, `pipeline.PALETA` etc.
 continuam funcionando sem alteração.
 """
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+
+__all__ = [
+    "PALETA",
+    "MARCADORES",
+    "get_edge_color",
+    "color",
+    "map_class_colors",
+    "map_class_markers",
+    "set_active_palette",
+    "get_active_palette",
+]
 
 # MAXIMUM PERCEPTUAL DISTINCTIVENESS palette (base: Trubetskoy "20 distinct
 # colors" + Glasbey). Ordered by contrast on white background: strong/
@@ -48,17 +59,42 @@ MARCADORES = ["o", "s", "^", "D", "v", "P", "X", "*",
               "<", ">", "h", "p", "8", "d"]
 
 
+# ── Paleta ATIVA escolhida pelo usuario (CLI menu Visualizacao / seletor da
+# aba Modelo no app web) ────────────────────────────────────────────────────
+# Ate' 2026-09-08 a escolha de paleta so' mexia em `plt.rcParams
+# ["axes.prop_cycle"]` (guaraci.py, antes de rodar o pipeline) -- e NENHUMA
+# figura do pipeline usa o ciclo padrao do matplotlib: todas passam
+# `color=color(i)` / `map_class_colors()` explicitamente. Ou seja: o menu de
+# paleta existia, confirmava a escolha e nao mudava cor nenhuma nas figuras.
+# Registrar a escolha AQUI e' o que faz a paleta chegar de fato ao grafico.
+#
+# `None` (padrao) = comportamento historico intacto: PALETA de maxima
+# distintividade. Nenhuma figura muda de cor sem escolha explicita.
+_ATIVA: Optional[List[str]] = None
+
+
+def set_active_palette(cores: Optional[Sequence[str]]) -> None:
+    """Define a paleta ativa das figuras. `None` volta ao padrao (PALETA)."""
+    global _ATIVA
+    _ATIVA = list(cores) if cores else None
+
+
+def get_active_palette() -> Optional[List[str]]:
+    """Paleta ativa (copia), ou `None` se o padrao esta' em uso."""
+    return list(_ATIVA) if _ATIVA else None
+
+
 def _paleta_externa(n: int) -> Optional[List[str]]:
     """Tries to generate a max-distinctiveness palette via optional libs (glasbey,
     colorcet). Returns a list of hex colors or None if none available."""
     try:
-        import glasbey as _gb  # type: ignore
+        import glasbey as _gb
         return list(_gb.create_palette(palette_size=n))
     except Exception as _e_gb:  # noqa: BLE001 -- lib opcional (nao no
         # requirements.txt padrao); caller cai p/ a PALETA fixa abaixo.
         logging.getLogger(__name__).debug("glasbey indisponivel: %s", _e_gb)
     try:
-        import colorcet as _cc  # type: ignore
+        import colorcet as _cc
         base = _cc.glasbey_category10
         return [base[i % len(base)] for i in range(n)]
     except Exception as _e_cc:  # noqa: BLE001 -- mesma logica de fallback.
@@ -72,15 +108,22 @@ def _luminancia(hex_cor: str) -> float:
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def edge_para_cor(hex_cor: str) -> str:
+def get_edge_color(hex_cor: str) -> str:
     """Smart edge color: dark gray for light fills (visible on white
     background), white for dark fills."""
     return "0.25" if _luminancia(hex_cor) > 0.65 else "white"
 
 
-def cor(i: int) -> str:
+def color(i: int) -> str:
     """Color i from the maximum-distinctiveness palette. Beyond palette size,
-    uses external lib (if available) or cycles with slight luminance variation via HSV."""
+    uses external lib (if available) or cycles with slight luminance variation via HSV.
+
+    Com uma paleta ativa escolhida pelo usuario (`set_active_palette`), os
+    indices que ela cobre vem dela; alem do tamanho dela, cai no caminho
+    padrao abaixo em vez de repetir cor (duas series com a MESMA cor num
+    grafico cientifico e' pior que fugir da paleta escolhida)."""
+    if _ATIVA is not None and i < len(_ATIVA):
+        return _ATIVA[i]
     if i < len(PALETA):
         return PALETA[i]
     ext = _paleta_externa(i + 1)
@@ -91,24 +134,38 @@ def cor(i: int) -> str:
     return mcolors.to_hex(cmap(((i - len(PALETA)) % 20) / 20))
 
 
-def mapear_cores_classes(classes) -> Dict[str, str]:
+def map_class_colors(classes) -> Dict[str, str]:
     """Assigns color in alphabetical order from the maximum-distinctiveness
     palette. SEQUENTIAL (non-hash) assignment ensures adjacent classes
     receive well-separated colors — the palette is already ordered to
-    maximize contrast between neighboring indices. Deterministic."""
+    maximize contrast between neighboring indices. Deterministic.
+
+    Paleta ativa (`set_active_palette`) com MENOS cores que classes e'
+    RECUSADA (volta ao padrao, com aviso no log): a alternativa seria duas
+    especies com a mesma cor na mesma figura — um grafico que mente.
+    """
     classes_sorted = sorted({str(c) for c in classes})
     n = len(classes_sorted)
+    ativa = _ATIVA
+    if ativa is not None and n > len(ativa):
+        logging.getLogger(__name__).warning(
+            "paleta escolhida tem %d cores para %d classes -- usando a paleta "
+            "padrao de maxima distintividade para nao repetir cor entre "
+            "classes", len(ativa), n)
+        ativa = None
+    if ativa is not None:
+        return {cls: ativa[idx] for idx, cls in enumerate(classes_sorted)}
     externa = _paleta_externa(n) if n > len(PALETA) else None
     mapa: Dict[str, str] = {}
     for idx, cls in enumerate(classes_sorted):
         if externa is not None:
             mapa[cls] = mcolors.to_hex(externa[idx])
         else:
-            mapa[cls] = cor(idx)
+            mapa[cls] = PALETA[idx] if idx < len(PALETA) else color(idx)
     return mapa
 
 
-def mapear_marcadores_classes(classes) -> Dict[str, str]:
+def map_class_markers(classes) -> Dict[str, str]:
     """Assigns marker shape per class (secondary channel). Combined
     with color, ensures distinctiveness even in B&W/colorblindness and high density."""
     classes_sorted = sorted({str(c) for c in classes})

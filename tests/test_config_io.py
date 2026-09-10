@@ -4,7 +4,7 @@ Config é user-facing e crítica: uma regressão em coerção/validação corrom
 SILENCIOSAMENTE os parâmetros de toda corrida (ou faz o pipeline quebrar tarde,
 depois de minutos processando). Estes testes travam o comportamento de
 _coagir_valor / _checar_faixa / _validar_semantico / _fmt_yaml e o roundtrip
-salvar_config↔carregar_config.
+save_config↔load_config.
 """
 import pytest
 
@@ -133,7 +133,7 @@ def test_fmt_yaml_lista():
 
 def test_fmt_yaml_caminho_windows_usa_aspas_simples():
     # backslash literal exige aspas SIMPLES em YAML (senão \\U vira escape)
-    out = cio._fmt_yaml(r"C:\Users\erley\dados")
+    out = cio._fmt_yaml(r"C:\dados\exemplo")
     assert out.startswith("'") and out.endswith("'")
     assert "\\U" not in out.replace("'", "") or "C:\\Users" in out
 
@@ -166,34 +166,86 @@ def test_validar_semantico_holdout_fora_de_faixa():
     assert any("holdout" in e.lower() for e in erros)
 
 
-# ── roundtrip salvar_config ↔ carregar_config ────────────────────────────────
+# ── roundtrip save_config ↔ load_config ────────────────────────────────
 def test_roundtrip_preserva_valores(tmp_path):
     cfg = Config()
-    cfg.nivel = "N2"
+    cfg.level = "N2"
     cfg.max_lvs = 25
     cfg.frac_holdout = 0.15
-    cfg.preprocessamento_padrao = "snv_sg_mc"
+    cfg.default_preprocessing = "snv_sg_mc"
     caminho = str(tmp_path / "config.yaml")
 
-    cio.salvar_config(cfg, caminho)
-    lido = cio.carregar_config(caminho)
+    cio.save_config(cfg, caminho)
+    lido = cio.load_config(caminho)
 
-    assert lido.nivel == "N2"
+    assert lido.level == "N2"
     assert lido.max_lvs == 25
     assert lido.frac_holdout == 0.15
-    assert lido.preprocessamento_padrao == "snv_sg_mc"
+    assert lido.default_preprocessing == "snv_sg_mc"
+
+
+def test_roundtrip_preserva_as_duas_dimensoes_de_perfil(tmp_path):
+    """Contrato do Agente 5B: matrix_profile (matriz) e acquisition_profile
+    (tecnica de aquisicao) sao campos independentes -- salvar/carregar
+    precisa preservar os dois ao mesmo tempo, sem um pisar no outro."""
+    cfg = Config()
+    cfg.matrix_profile = "mel_vis_nir"
+    cfg.acquisition_profile = "celular"
+    caminho = str(tmp_path / "config.yaml")
+
+    cio.save_config(cfg, caminho)
+    lido = cio.load_config(caminho)
+
+    assert lido.matrix_profile == "mel_vis_nir"
+    assert lido.acquisition_profile == "celular"
+
+
+def test_roundtrip_aceita_caminho_de_perfil_de_usuario(tmp_path):
+    """perfil_matriz/perfil_tecnica tem `opcoes` (lista de perfis embutidos,
+    pro picker numerado da CLI/selectbox do Streamlit), mas o campo TAMBEM
+    aceita o caminho de um YAML proprio (load_profile() ja documenta e
+    valida isso) -- _coagir_valor nao pode travar um valor fora da lista
+    pra estes 2 campos, ou quebraria qualquer config.yaml existente com um
+    perfil de usuario (achado ao ligar a validacao de `choice`, 2026-09-01)."""
+    cfg = Config()
+    cfg.matrix_profile = "/caminho/qualquer/meu_perfil.yaml"
+    caminho = str(tmp_path / "config.yaml")
+
+    cio.save_config(cfg, caminho)
+    lido = cio.load_config(caminho)
+
+    assert lido.matrix_profile == "/caminho/qualquer/meu_perfil.yaml"
 
 
 def test_carregar_config_inexistente_levanta(tmp_path):
     with pytest.raises(FileNotFoundError):
-        cio.carregar_config(str(tmp_path / "nao_existe.yaml"))
+        cio.load_config(str(tmp_path / "nao_existe.yaml"))
 
 
-def test_carregar_config_ignora_chave_desconhecida(tmp_path):
+def test_carregar_config_falha_em_chave_desconhecida(tmp_path):
+    """Ate' 2026-08-20 esta chave era ignorada em SILENCIO -- um campo
+    digitado errado fazia o pipeline rodar com o default daquele campo,
+    sem aviso nenhum. Para um pipeline cientifico isso e' pior que crash:
+    produz resultado plausivel e errado. Achado na verificacao
+    independente do Passo 24c.
+
+    Contra-prova de que a correcao muda o comportamento de verdade (nao so'
+    que o novo codigo passa): o nome deste teste ate' 2026-08-20 era
+    `test_carregar_config_ignora_chave_desconhecida` e afirmava o oposto do
+    que ele afirma agora -- rodar essa versao antiga contra o codigo
+    corrigido reprova."""
     caminho = tmp_path / "c.yaml"
     caminho.write_text("chave_inexistente: 123\nnivel: N1\n", encoding="utf-8")
-    cfg = cio.carregar_config(str(caminho))
-    assert cfg.nivel == "N1"
+    with pytest.raises(ValueError, match="chave_inexistente.*chave desconhecida"):
+        cio.load_config(str(caminho))
+
+
+def test_carregar_config_sugere_chave_parecida_em_erro_de_digitacao(tmp_path):
+    caminho = tmp_path / "c.yaml"
+    # 'nivel' com 'l' trocado por 'I' maiusculo -- erro de digitacao plausivel
+    caminho.write_text("nivl: N1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"voce quis dizer 'nivel'"):
+        cio.load_config(str(caminho))
 
 
 def test_carregar_config_valor_invalido_reune_erro(tmp_path):
@@ -201,25 +253,25 @@ def test_carregar_config_valor_invalido_reune_erro(tmp_path):
     # holdout_fracao tem faixa 0..0.5; 2.0 deve ser rejeitado na coerção
     caminho.write_text("holdout_fracao: 2.0\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Problemas no config"):
-        cio.carregar_config(str(caminho))
+        cio.load_config(str(caminho))
 
 
 # ── _validar_pasta_dados ─────────────────────────────────────────────────────
 def test_validar_pasta_sintetico_sempre_ok():
-    ok, msg = cio._validar_pasta_dados(Config(modo="sintetico"))
+    ok, msg = cio._validar_pasta_dados(Config(mode="sintetico"))
     assert ok and "sintetico" in msg
 
 
 def test_validar_pasta_csv_inexistente():
-    cfg = Config(modo="csv")
-    cfg.arquivo_csv = "/caminho/que/nao/existe.csv"
+    cfg = Config(mode="csv")
+    cfg.csv_file = "/caminho/que/nao/existe.csv"
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
 
 def test_validar_pasta_dx_inexistente():
-    cfg = Config(modo="dx")
-    cfg.pasta_entrada = "/pasta/que/nao/existe"
+    cfg = Config(mode="dx")
+    cfg.input_folder = "/pasta/que/nao/existe"
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
@@ -227,15 +279,15 @@ def test_validar_pasta_dx_inexistente():
 def test_validar_pasta_dx_conta_arquivos(tmp_path):
     (tmp_path / "a.dx").write_text("x")
     (tmp_path / "b.dx").write_text("x")
-    cfg = Config(modo="dx")
-    cfg.pasta_entrada = str(tmp_path)
+    cfg = Config(mode="dx")
+    cfg.input_folder = str(tmp_path)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "2" in msg
 
 
 def test_validar_pasta_dx_pasta_vazia_falha(tmp_path):
-    cfg = Config(modo="dx")
-    cfg.pasta_entrada = str(tmp_path)  # existe mas sem .dx
+    cfg = Config(mode="dx")
+    cfg.input_folder = str(tmp_path)  # existe mas sem .dx
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
@@ -243,8 +295,8 @@ def test_validar_pasta_dx_pasta_vazia_falha(tmp_path):
 def test_validar_pasta_csv_existente_ok(tmp_path):
     csv = tmp_path / "dados.csv"
     csv.write_text("a,b\n1,2\n")
-    cfg = Config(modo="csv")
-    cfg.arquivo_csv = str(csv)
+    cfg = Config(mode="csv")
+    cfg.csv_file = str(csv)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "dados.csv" in msg
 
@@ -252,16 +304,16 @@ def test_validar_pasta_csv_existente_ok(tmp_path):
 def test_validar_pasta_imagem_conta_imagens(tmp_path):
     (tmp_path / "a.png").write_text("x")
     (tmp_path / "b.jpg").write_text("x")
-    cfg = Config(modo="imagem")
-    cfg.pasta_entrada = str(tmp_path)
+    cfg = Config(mode="imagem")
+    cfg.input_folder = str(tmp_path)
     ok, msg = cio._validar_pasta_dados(cfg)
     assert ok and "2" in msg
 
 
 def test_validar_pasta_imagem_sem_imagens_falha(tmp_path):
     (tmp_path / "leiame.txt").write_text("x")
-    cfg = Config(modo="imagem")
-    cfg.pasta_entrada = str(tmp_path)
+    cfg = Config(mode="imagem")
+    cfg.input_folder = str(tmp_path)
     ok, _ = cio._validar_pasta_dados(cfg)
     assert not ok
 
