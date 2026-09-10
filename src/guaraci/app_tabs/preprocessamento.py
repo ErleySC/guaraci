@@ -1,4 +1,4 @@
-"""app_tabs/preprocessamento.py — Aba 3 (Preprocessing): preset espectral +
+"""app_tabs/preprocessamento.py — Tela (Preprocessing): preset espectral +
 prévia antes/depois. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations

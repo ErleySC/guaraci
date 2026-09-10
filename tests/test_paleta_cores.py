@@ -88,3 +88,88 @@ def test_mapear_marcadores_classes_ciclo(pc):
     ordenadas = sorted(classes)
     assert mapa[ordenadas[0]] == pc.MARCADORES[0]
     assert mapa[ordenadas[len(pc.MARCADORES)]] == pc.MARCADORES[0]
+
+
+# ── Paleta ATIVA (escolha do usuario chega de fato a figura) ───────────────
+# REGRESSAO (2026-09-08): escolher uma paleta so' mexia em
+# `rcParams["axes.prop_cycle"]`, e NENHUMA figura do pipeline usa o ciclo
+# padrao do matplotlib (todas passam `color=color(i)`/`map_class_colors()`).
+# O menu confirmava a escolha e nao mudava cor nenhuma. Estes testes fixam o
+# contrato oposto.
+
+@pytest.fixture
+def paleta_limpa(pc):
+    """Garante que cada teste comeca e termina sem paleta ativa (estado de
+    modulo global)."""
+    pc.set_active_palette(None)
+    yield pc
+    pc.set_active_palette(None)
+
+
+def test_sem_paleta_ativa_comportamento_historico_intacto(paleta_limpa):
+    pc = paleta_limpa
+    assert pc.get_active_palette() is None
+    assert pc.color(0) == pc.PALETA[0]
+    assert pc.map_class_colors(["a", "b"])["a"] == pc.PALETA[0]
+
+
+def test_paleta_ativa_muda_cor_de_color_e_map_class_colors(paleta_limpa):
+    pc = paleta_limpa
+    pc.set_active_palette(["#111111", "#222222", "#333333"])
+    assert pc.get_active_palette() == ["#111111", "#222222", "#333333"]
+    assert pc.color(0) == "#111111"
+    assert pc.map_class_colors(["b", "a"]) == {"a": "#111111", "b": "#222222"}
+
+
+def test_paleta_ativa_menor_que_n_classes_e_recusada_sem_repetir_cor(
+        paleta_limpa, caplog):
+    """Duas especies com a MESMA cor na mesma figura e' um grafico que mente
+    -- prefere-se abandonar a paleta escolhida e avisar."""
+    pc = paleta_limpa
+    pc.set_active_palette(["#111111", "#222222"])
+    classes = ["a", "b", "c", "d"]
+    with caplog.at_level("WARNING"):
+        mapa = pc.map_class_colors(classes)
+    assert len(set(mapa.values())) == len(classes)      # nenhuma cor repetida
+    assert "#111111" not in mapa.values()               # nao usou a escolhida
+    assert any("paleta escolhida" in r.message for r in caplog.records)
+
+
+def test_set_active_palette_none_volta_ao_padrao(paleta_limpa):
+    pc = paleta_limpa
+    pc.set_active_palette(["#111111"])
+    pc.set_active_palette(None)
+    assert pc.get_active_palette() is None
+    assert pc.color(0) == pc.PALETA[0]
+
+
+def test_apply_palette_do_catalogo_ativa_as_cores_reais(paleta_limpa):
+    """`apply_palette` e' a implementacao UNICA usada pela CLI e pelo app
+    web; tem que ativar as cores do catalogo, nao so' mexer em rcParams."""
+    pc = paleta_limpa
+    from guaraci.cli_assistente import PALETAS_COR, apply_palette
+
+    apply_palette("daltonismo_safe")
+    assert pc.get_active_palette() == PALETAS_COR["daltonismo_safe"]["cores"]
+    assert pc.color(1) == PALETAS_COR["daltonismo_safe"]["cores"][1]
+
+    apply_palette("qualitativo")     # entrada sem lista de cores fixa
+    assert pc.get_active_palette() is None
+    assert pc.color(0) == pc.PALETA[0]
+
+
+def test_apply_palette_nome_desconhecido_nao_explode(paleta_limpa):
+    from guaraci.cli_assistente import apply_palette
+    apply_palette("nao_existe_essa_paleta")
+    assert paleta_limpa.get_active_palette() is None
+
+
+def test_cli_e_web_usam_a_mesma_funcao_de_paleta():
+    """Anti-duplicacao: a CLI (guaraci.py) e a aba Modelo do app web tem que
+    apontar para o MESMO `apply_palette`, nunca cada uma com sua copia."""
+    import guaraci.cli_assistente as cli
+    import guaraci.guaraci as cli_menu
+    from guaraci.app_tabs import modelo as aba_modelo
+
+    assert cli_menu._aplicar_paleta is cli.apply_palette
+    assert aba_modelo.apply_palette is cli.apply_palette

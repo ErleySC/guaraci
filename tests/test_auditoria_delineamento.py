@@ -226,3 +226,27 @@ def test_menu_audit_cli_sem_fonte_de_dados_nao_quebra(monkeypatch):
 
     cfg = Config(mode="dx", input_folder="/caminho/que/nao/existe/nunca")
     guaraci_mod._menu_audit(cfg)   # nao deve lancar excecao
+
+
+# ── Persistencia dos achados em JSON (consumida pelo painel de status) ─────
+
+def test_achados_persistidos_em_json_voltam_estruturados(tmp_path):
+    """O model card ja' traz os achados em prosa; o JSON existe para as
+    interfaces mostrarem severidade por checagem sem reparsear Markdown."""
+    from guaraci.resultados_io import load_design_audit, save_design_audit
+
+    achados = [{"nome": "agrupamento", "severidade": "ok", "mensagem": "ok"},
+               {"nome": "duplicatas", "severidade": "aviso", "mensagem": "3 pares"}]
+    save_design_audit(str(tmp_path), achados)
+    assert load_design_audit(str(tmp_path)) == achados
+
+
+def test_pasta_sem_json_devolve_vazio_e_nao_afirma_ausencia_de_problema(tmp_path):
+    """Vazio significa "nao ha' registro", nunca "nenhum problema" -- quem
+    exibe tem que dizer isso ao usuario."""
+    from guaraci.resultados_io import load_design_audit
+
+    assert load_design_audit(str(tmp_path)) == []
+    (tmp_path / "auditoria_delineamento.json").write_text("{ nao e json",
+                                                          encoding="utf-8")
+    assert load_design_audit(str(tmp_path)) == []

@@ -1,3 +1,574 @@
+# PROGRESSO — Passos 177-185: vault como rede de conhecimento (2026-09-07)
+
+Pedido do usuário (`INSTRUCAO_VAULT_REDE_NEURAL.md`): expandir o vault
+(Passos 166-176) em três frentes -- identidade do projeto, granularidade
+de função individual, e densificação de ligações (todo link explica por
+que existe) -- fundamentado em Zettelkasten (atomicidade + conexão
+explicada) e Diátaxis (referência vs. explicação). **Correção de
+numeração antes de começar**: a instrução chegou rotulada "PASSO 176" a
+"PASSO 184", mas o Passo 176 real já existe (acima, mesma sessão
+anterior) -- renumerado para 177-185 aqui para não colidir.
+
+## Passo 177 — Fundamentar o método no README-VAULT.md
+
+`gerar_readme_vault()` ganhou uma seção "Método" com duas frases por
+ideia (Zettelkasten: atomicidade + link sempre com a relação explícita;
+Diátaxis: `referência` vs. `explicação` por categoria, sem reestruturar
+pasta). Nenhuma pasta existente mudou de lugar — Diátaxis entra só como
+campo `modo:` de frontmatter (Passo 181).
+
+## Passo 178 — Nova categoria: Identidade do Projeto (`05-Identidade/`)
+
+5 notas (`Missao.md`, `Identidade-Visual.md`, `Mascote.md`,
+`Tom-de-Voz.md`, `MOC-Identidade.md`), todas com fonte real:
+
+- **Missao.md**: não existe, no repositório, um documento "Plano de
+  Evolução" (verificado por busca de texto antes de escrever) — os 3
+  compromissos citados pela instrução original são mantidos verbatim
+  (vêm da própria instrução desta auditoria), mas cada um ancorado a
+  uma nota real já existente em vez de repetir texto: vazamento →
+  `retratacao-metodologica-interna-antes-de-publicar-qualquer-numero`;
+  validação bloqueada → `decisao-nenhum-dataset-hplc-compativel-...`;
+  resultado negativo → `achado-real-negativo-registrado-honesto`.
+- **Identidade-Visual.md**: paleta e regras de uso lidas por parser
+  (`parse_paleta_mascote`/`parse_regras_uso_cor`/`parse_tipografia_design`)
+  de `docs/DESIGN.md` §1/1.2/2 -- nenhum hex escrito no gerador. Registra
+  que o caminho A (paleta da mascote como paleta oficial) já foi
+  aprovado e implementado (`docs/DESIGN.md`, atualização 2026-09-01),
+  não é mais proposta.
+- **Mascote.md**: descrição confirmada por inspeção visual direta de
+  `assets/guaraci_icon.png` (não só a partir do texto de `docs/DESIGN.md`).
+- **Tom-de-Voz.md**: 2 citações reais extraídas de `docs/VALIDACAO_PUBLICA.md`
+  (abertura + fechamento da tabela consolidada) via
+  `parse_tom_de_voz_evidencias()`.
+- **Achado real, medido nesta rodada**: o parser de seção markdown
+  (`_secao_markdown`) inicial usava `.*$` com `re.S`+`re.M` juntos, que é
+  ambíguo (DOTALL deixa `.` cruzar linha, e o backtracking de `$` some) —
+  sempre retornava vazio. Corrigido para `[^\n]*` na linha do cabeçalho.
+  Sem esse fix, `Identidade-Visual.md` teria ficado sem paleta
+  silenciosamente (o aviso "tabela não encontrada" pegou isso antes de
+  virar nota incompleta despercebida).
+- **Achado real #2**: `parse_regras_uso_cor()` inicial só pegava a
+  primeira linha de cada bullet (`docs/DESIGN.md` quebra bullet em 2+
+  linhas) — corrigido para juntar linha de continuação.
+
+## Passo 179 — Nova granularidade: `25-Funcoes/`
+
+**Decisão tomada com o usuário (pausa exigida pela própria instrução,
+regra (a)):** a instrução original pedia 1 nota por nome de `__all__`
+que fosse função — medido antes de gerar: **290 funções públicas em 65
+módulos** (`figuras.py` sozinho: 38). Volume muito maior que o esperado
+pela granularidade proposta. Opções apresentadas ao usuário: todas as
+290; só a função de entrada por módulo (~65); ou outro corte. Escolhido:
+**só a função de entrada por módulo**. Critério de escolha: a PRIMEIRA
+função de `__all__` que é, de fato, uma função top-level, na ordem
+declarada pelo próprio módulo -- verificável no código-fonte, não
+suposição de "qual é a mais importante" (61/65 módulos têm ao menos uma
+função pública; 4 só exportam classe/constante). Nenhuma colisão de
+nome entre módulos (verificado antes de gerar).
+
+Cada nota: assinatura completa via `ast.unparse` (nunca `inspect`/import
+do módulo descrito), primeiro parágrafo da docstring, localização
+`arquivo:linha`, "testada por" com busca real de chamada direta em
+`tests/test_*.py` (não suposição — 1 achado real: várias funções não
+têm chamada direta, texto explícito em vez de fingir cobertura).
+Frontmatter: `modulo:` (wikilink) e `assinatura:` (string), ambos
+citados no corpo do próprio Passo 180.
+
+## Passo 180 — Densificar a rede: todo link explica a si mesmo
+
+`_wikilink()`/`_wikilink_titulo()` ganharam parâmetro `relacao` opcional
+(`[[Nota]] — relação`), aplicado na GERAÇÃO (não editado depois à mão)
+em: `10-Tecnicas` (pré-processamento, conceito, módulo/validação
+relacionados), `20-Modulos` (depende de/usado por/implementa/função de
+entrada), `30-Conceitos` (implementado em/aplicável a), MOCs (relação
+por categoria). Autolink de menção em prosa (`_autolinkar_modulos`)
+mantido sem relação de propósito -- a frase ao redor já dá o contexto,
+adicionar relação ali duplicaria informação.
+
+Teste de densidade de grafo novo
+(`tests/test_proveniencia_e_densidade_vault.py`): grau de saída médio
+por categoria (relatório impresso, não bloqueante por nota individual —
+regra explícita da instrução: "sinalizar, não necessariamente
+bloquear") + assert duro só se uma categoria INTEIRA de conteúdo ficar
+com grau médio zero. 2 notas legitimamente órfãs de entrada encontradas
+e documentadas no README-VAULT.md (não corrigidas, porque não fazem
+sentido linkadas): `MOC-Guaraci.md` (ponto de entrada) e
+`README-VAULT.md` (documentação sobre o vault). Também: teste de piso
+(≥60% dos links de lista carregam relação explícita) para sinalizar
+regressão sem exigir 100% cego em autolinks de prosa.
+
+**Achado real, medido nesta rodada**: a própria seção nova do
+README-VAULT.md que descreve a convenção de link com relação usava
+colchete duplo literal na prosa — exatamente o bug já corrigido uma vez
+nesta auditoria (commit `b30b732`, achado de `docs/PROGRESSO.md`
+descrevendo a sintaxe de wikilink em prosa). Pego pelo teste de
+wikilink quebrado já existente antes de qualquer commit; reescrito sem
+colchete duplo literal.
+
+## Passo 181 — Dimensão Diátaxis: campo `modo:`
+
+Pós-processamento centralizado (`_aplicar_modo_diataxis`, roda 1x sobre
+o plano inteiro em `montar_plano()`) em vez de espalhar o cálculo em
+cada função geradora: `10-Tecnicas`/`20-Modulos`/`25-Funcoes`/
+`40-Validacoes` → `referencia`; `30-Conceitos`/`50-Decisoes`/
+`05-Identidade`/`06-Autoria-e-Seguranca` → `explicacao`; `60-Achados` →
+`explicacao`, exceto tag `passo` → `referencia`. Extensão não coberta
+pela instrução original (escrita antes de `06-Autoria` existir): MOCs
+(`00-MOC/` e os das categorias novas) tratados como `referencia`, mesma
+natureza de consulta rápida de `20-Modulos`/`40-Validacoes` — decisão
+documentada aqui, não silenciosa.
+
+## Passo 182 — Regenerar, verificar, documentar
+
+Gerador rodado 2x seguidas (`--check` e escrita real) para confirmar
+idempotência; guarda de privacidade limpa nas duas categorias novas
+(1 achado real durante a escrita: a nota `Seguranca-de-Dados.md`
+descrevia o PADRÃO de caminho absoluto usando um exemplo literal que a
+própria guarda reconheceu como vazamento — corrigido para descrever o
+padrão em prosa, sem reproduzir o literal); teste de link quebrado
+estendido automaticamente (já é genérico, cobre categoria nova sem
+mudança); `README-VAULT.md` final documenta contagens novas, o método
+(Passo 177) e a convenção de link com relação.
+
+## Passo 183 — Nova categoria: Autoria e Segurança de Dados (`06-Autoria-e-Seguranca/`)
+
+4 notas (`Autoria.md`, `Proveniencia.md`, `Seguranca-de-Dados.md`,
+`MOC-Autoria-Seguranca.md`), fonte real via `parse_citation_cff()`
+(`CITATION.cff` por `yaml.safe_load`, dependência já existente do
+projeto) + `git log --format=%an <%ae>`.
+
+**Pausa exigida pela própria instrução, decidida com o usuário**: o
+texto original pedia afiliação institucional e orientação acadêmica —
+checado, `CITATION.cff` não tem campo de afiliação e `git log` só tem
+nome/e-mail do autor, sem orientador(a). Em vez de preencher com a
+afiliação institucional já registrada em memória de sessões anteriores
+(UFPA/GEAAp — não é a fonte que a instrução pedia), reportado ao
+usuário; resposta: **projeto pessoal, idealizado e desenvolvido
+inteiramente por ele, sem vínculo institucional ou orientação acadêmica
+associada ao código deste repositório.** Registrado em `Autoria.md`
+com essa atribuição explícita (declaração direta do autor,
+2026-09-06), não como suposição.
+
+**Correção de premissa**: a instrução presumia "decisão de
+dual-licensing com CLA já registrada em `50-Decisoes/`" — checado por
+grep: nenhuma menção a CLA em nenhum `.md` do repositório, e nenhum
+parágrafo `**Decisão**` sobre isso nas duas fontes que alimentam
+`50-Decisoes/`. O que existe de fato (`docs/COMMERCIAL.md`, `README.md`):
+dual licensing simples (GPLv3 + licença comercial separada, copyright
+integral retido pelo autor), sem CLA. `Autoria.md` registra essa
+correção explicitamente em vez de inventar a peça que faltava.
+
+`Proveniencia.md` e `Seguranca-de-Dados.md` ambas trazem a ressalva
+"prova de proveniência informacional, não parecer jurídico" pedida pela
+instrução, e citam contra-prova real (`tests/test_gerador_vault_obsidian.py`,
+`tests/test_sem_identificador_real.py`) em vez de só descrever a regra.
+
+## Passo 184 — Campo `autor:` universal (proveniência de toda nota)
+
+`_frontmatter()`/`_nota()` ganharam parâmetro `autor` (padrão
+`"[[Autoria]]"`), aplicado a toda nota gerada por `_nota()` sem precisar
+tocar cada função geradora individualmente. Duas exceções, ambas
+explícitas no código: `06-Autoria-e-Seguranca/Autoria.md` (autorreferência
+sem sentido, `autor=None`) e `README-VAULT.md` (não usa `_nota()` — é
+documentação sobre o vault, não conteúdo do grafo). Teste de contrato
+novo (`tests/test_proveniencia_e_densidade_vault.py`): toda nota `.md`
+fora dessas 2 exceções tem `autor: "[[Autoria]]"`; `Autoria.md`
+especificamente NÃO tem o campo; `README-VAULT.md` especificamente não
+tem o campo.
+
+## Passo 185 — Regenerar e fechar
+
+Categorias novas incluídas na contagem do gerador (`05-Identidade`,
+`25-Funcoes`, `06-Autoria-e-Seguranca`), tabela de proveniência de
+`README-VAULT.md` estendida (linha `modo:` por pasta). Whitelist de
+prefixo em `test_plano_real_tem_as_categorias_esperadas` (já existente)
+estendida para as 3 pastas novas. `ruff`/`mypy` limpos em
+`scripts/gerar_vault_obsidian.py` e nos 2 arquivos de teste
+novos/alterados. Suíte completa rodada por último, antes do commit.
+
+# PROGRESSO — Passo 176: modalidades fora do catálogo TECNICAS no vault (2026-09-06)
+
+## Passo 176 — HSI e Imagem (colorimetria digital) faltavam em 10-Tecnicas/
+
+Pedido do usuário depois de abrir o vault no Obsidian: garantir que
+"todas as informações e técnicas, além do HSI e etc" estivessem
+representadas. Auditoria confirmou uma lacuna real: `10-Tecnicas/` só
+cobria as 11 chaves de `cli_assistente.TECNICAS`, mas `Config.mode`
+(`src/guaraci/config.py`) declara 5 modalidades de entrada —
+`"dx" | "csv" | "imagem" | "sintetico" | "hsi"`. `imagem` (colorimetria
+digital, `dados_imagem.py`) e `hsi` (imageamento hiperespectral,
+`hsi_pipeline.py` + 13 módulos `hsi_*.py`) são tecnicamente reais —
+`hsi` inclusive já tem dataset público validado (DeepHS Fruit/Kaki,
+§7 de `docs/VALIDACAO_PUBLICA.md`) — mas nunca apareceriam em
+`10-Tecnicas/` porque não estão no dicionário `TECNICAS` do menu.
+
+`sintetico` foi verificada e **excluída de propósito**: é dado simulado
+para teste/demonstração (`docs/MANUAL.md`: "Para testes/demonstração"),
+não uma técnica analítica — incluí-la seria o tipo de afirmação que a
+regra "evidência ou silêncio" desta auditoria proíbe.
+
+Corrigido em `scripts/gerar_vault_obsidian.py`: `MODOS_FORA_DO_CATALOGO`
+(lista de 2 itens, módulo-fonte real verificado em tempo de geração) +
+`gerar_tecnicas_fora_do_catalogo()`, que produz 2 notas novas em
+`10-Tecnicas/` (tags `tecnica`, `fora-do-catalogo`, e `pendente` para
+`imagem` — sem dataset público validado ainda) a partir da docstring do
+módulo principal, dos módulos relacionados, e — quando existe — um link
+real para a nota de `40-Validacoes/` correspondente (achado por busca
+de substring "deephs", não hardcoded). `10-Tecnicas/` foi de 11 para 13
+notas. `MOC-Tecnicas.md` e `Estado-Atual`/`README-VAULT.md` atualizados
+para refletir a contagem dinamicamente (nenhum "11" ficou hardcoded
+sobrando em lugar nenhum — verificado por grep).
+
+Testes de cobertura (`tests/test_cobertura_vault_obsidian.py`,
+`tests/test_gerador_vault_obsidian.py`) e o comando `--cobertura` de
+`scripts/consultar_vault.py` atualizados para a contagem nova (13, não
+11) — todos calculam o esperado a partir de
+`len(TECNICAS) + len(MODOS_FORA_DO_CATALOGO)`, nunca um literal, para
+não voltar a ficar desatualizados se um item for adicionado/removido.
+
+Suíte completa + `ruff`/`mypy` limpos. Cobertura final:
+**65/65 módulos, 13/13 técnicas, 88/88 passos, 14/14 datasets — completa.**
+Consulta manual confirmada: "HSI" retorna a técnica, os 13 módulos
+`hsi_*.py`, a validação DeepHS, 4 conceitos relacionados (domínio de
+aplicabilidade, quality gate, propagação de incerteza, multiway/PARAFAC)
+e ~20 passos/achados do histórico real de implementação.
+
+# PROGRESSO — Passos 172-175: auditoria de cobertura + motor de consulta por grafo (2026-09-06)
+
+## Passo 172 — Commit pendente e auditoria de cobertura do vault
+
+Commit `2d83d17` (trabalho dos Passos 166-171) e push feitos primeiro,
+como pedido. Depois, `tests/test_cobertura_vault_obsidian.py` (7 testes)
+comparando a lista REAL de módulos/técnicas/passos/datasets contra o que
+o gerador coloca no plano — cada teste recalcula sua própria fonte da
+verdade (grep direto, glob de `src/guaraci/*.py`) em vez de confiar na
+lógica interna do gerador, para não ser tautológico.
+
+**Achado real ao rodar a auditoria pela primeira vez**: `docs/PROGRESSO.md`
+tem 84 blocos `## Passo`, mas antes desta rodada só ~30 caíam dentro de
+algum parágrafo marcado (`**Achado**`/`**Decisão**`/`**RETRATAÇÃO**`) —
+os outros ~54 passos não tinham NENHUMA nota no vault. Isso é exatamente
+o tipo de lacuna que a instrução pediu para voltar ao gerador, não
+compensar no motor de consulta. Corrigido em `gerar_achados_e_decisoes()`
+(`scripts/gerar_vault_obsidian.py`): todo `## Passo` sem parágrafo
+marcado dentro do seu range de linhas ganha uma nota-resumo mínima em
+`60-Achados/` com tag `passo` (não `achado` — não finge ser um achado
+real, só garante rastreabilidade). `60-Achados/` foi de 30 para 91 notas.
+
+Cobertura final confirmada por comando direto
+(`python scripts/consultar_vault.py --cobertura`, ver Passo 175):
+**65/65 módulos, 11/11 técnicas, 84/84 passos, 14/14 datasets — completa.**
+
+**Achado colateral (privacidade)**: `tests/test_gerador_vault_obsidian.py`
+tinha 2 identificadores sintéticos com ano REAL (2020) escritos como
+literal — pego pela própria `tests/test_sem_identificador_real.py` assim
+que o arquivo foi commitado (`git ls-files` só enxerga arquivo rastreado;
+antes do commit a varredura não o via, por isso passou despercebido na
+primeira rodada). Corrigido com a mesma técnica de `_id()` do teste
+original: identificador montado em runtime por f-string, nunca como
+literal no código-fonte.
+
+## Passo 173 — Motor de consulta por grafo
+
+`scripts/consultar_vault.py`: carrega toda nota do vault (exceto
+`70-Notas-Pessoais/`/`99-Arquivo/` — mesma fronteira de privacidade do
+gerador), monta o grafo de wikilinks (`links_saida`/`links_entrada`,
+backlinks calculados depois de carregar tudo), e para uma consulta
+devolve a nota mais relevante (nome exato > título exato > substring em
+título/tag/corpo) + os vizinhos a N saltos, cada um com resumo de 1
+linha.
+
+**Achado durante a implementação**: navegação PURA por wikilink não
+bastava para o exemplo da própria instrução ("MCR-ALS" deve trazer
+módulo + decisão + achado + conceito) — os parágrafos extraídos de
+`docs/PROGRESSO.md` mencionam `` `mcr_als.py` `` como texto corrido, sem
+link real para o módulo. Corrigido no GERADOR (não no motor de
+consulta, para não inventar relação que a fonte não afirma):
+`_autolinkar_modulos()` troca a crase (`` `nome.py` ``) por um wikilink
+para a nota do módulo sempre que `nome` é um módulo real de
+`src/guaraci/` — aplicado a docstring de
+módulo/conceito e a todo parágrafo extraído de achado/decisão/passo.
+Isso transforma menção em texto corrido (que a própria fonte já escreve
+entre crases) em aresta real do grafo, sem fabricar associação nenhuma.
+Com isso, consultar "MCR-ALS" devolve as 3 notas de passo
+(125/131/136), a nota de conceito e o módulo, todos conectados.
+
+## Passo 174 — Alerta de desatualização
+
+Antes de formatar a resposta, o motor compara o `commit:` do frontmatter
+das notas envolvidas contra `git rev-parse --short HEAD` do repositório
+atual — se divergir, a resposta abre com um aviso explícito
+("`gerado no commit X, repositório está em Y`"), nunca responde em
+silêncio como se o vault estivesse necessariamente atual. Testado com
+nota sintética de commit fabricado (não muta o git real).
+
+## Passo 175 — Verificação de cobertura sob demanda
+
+`python scripts/consultar_vault.py --cobertura` roda a mesma auditoria
+do Passo 172 contra o vault REALMENTE em disco (não o plano em memória
+que o gerador produziria) — detecta tanto módulo/passo faltando quanto
+vault desatualizado em relação às fontes atuais (mesmo alerta do Passo
+174). Saída: contagem por categoria + "Cobertura COMPLETA"/"INCOMPLETA".
+
+`tests/test_consultar_vault.py` (11 testes): 4 consultas representativas
+(técnica, módulo com dependentes reais, decisão, o exemplo MCR-ALS),
+consulta sem correspondência (evidência ou silêncio: não inventa nada),
+alerta de desatualização (dispara/não dispara/sem HEAD conhecido),
+cobertura completa no vault real + cobertura incompleta simulada
+(remove 1 nota e confirma que o comando acusa).
+
+Guarda de privacidade (Passo 169) reaproveitada no motor de consulta:
+toda resposta passa por `checar_conteudos_ou_falhar` antes de ser
+impressa — se algo vazar, a resposta é suprimida, não impressa mesmo
+que incompleta.
+
+Suíte completa (1344+ testes) + `ruff` limpo em todos os arquivos novos
++ `mypy` limpo nos 3 módulos de `scripts/` (fora do escopo oficial do
+gate de CI, que cobre só `src/guaraci/*.py` puro — checado por
+iniciativa própria, sem custo).
+
+
+## Passo 166/167 — Estrutura do vault e gerador escritos
+
+Vault criado em `~/GuaraciVault/` (confirmado com o usuário antes de
+gerar; variável `GUARACI_VAULT_DIR` sobrepõe o padrão). Estrutura:
+`00-MOC/`, `10-Tecnicas/`, `20-Modulos/`, `30-Conceitos/`,
+`40-Validacoes/`, `50-Decisoes/`, `60-Achados/`, `70-Notas-Pessoais/`
+(protegida — o gerador nunca lê nem escreve nela), `90-Canvas/`,
+`99-Arquivo/` (destino de nota removida da fonte — arquivar, não
+apagar).
+
+`scripts/gerar_vault_obsidian.py`, versionado no repositório (o script é
+do projeto; o vault gerado fica fora dele). Fontes lidas por AST/regex
+sobre o arquivo real, nunca por `import`/`exec` do módulo (evita efeito
+colateral de importar `cli_assistente.py`): `src/guaraci/cli_assistente.py`
+(`TECNICAS` via `ast.literal_eval`), `src/guaraci/*.py` (docstring de
+módulo + `__all__` + imports internos, por módulo — não-recursivo,
+65 arquivos hoje), `docs/PROGRESSO.md` (tabela "Fechamento honesto do
+estado final das 11 técnicas", Passo 160 — mesma ordem de `TECNICAS`,
+usada para o status por técnica), `docs/VALIDACAO_PUBLICA.md` (tabela
+consolidada §1, 1 nota por linha) e `docs/COMPATIBILITY.md` ("Casos
+especiais documentados").
+
+Nenhum número (RMSEP, balanced accuracy, contagem de teste) é literal no
+gerador — todos vêm de uma leitura de arquivo real no momento da
+execução. `gerado_em`/`commit` no frontmatter de cada nota vêm do commit
+HEAD (não do relógio da execução) precisamente para que rodar o gerador
+duas vezes sem o repositório mudar produza bytes idênticos — verificado
+por teste (`test_escrever_vault_e_idempotente`).
+
+## Passo 168 — Conteúdo mínimo por categoria
+
+- **10-Tecnicas/** (11 notas — as 11 chaves de `cli_assistente.TECNICAS`,
+  incluindo "Genérico"): faixa, pré-processamento recomendado, status de
+  validação (da tabela do Passo 160), dataset, métrica, link para
+  `preprocessamento.py` e para conceito aplicável quando existe (Raman →
+  Portão de aceite; NIR → Transferência de calibração).
+- **20-Modulos/** (65 notas): docstring, `__all__`, "depende de"/"usado
+  por" calculados por regex sobre `from guaraci.X import`/`from .X
+  import` (grafo bidirecional).
+- **30-Conceitos/** (15 notas): 15 conceitos metodológicos mapeados a
+  módulo(s) real(is) neste script — se um módulo mapeado deixar de
+  existir, a nota é omitida com aviso em stderr, nunca escrita com dado
+  velho.
+- **40-Validacoes/** (14 notas — 1 por linha da tabela consolidada).
+- **50-Decisoes/** (9 notas) e **60-Achados/** (28 notas): extraídas de
+  parágrafos que já seguem uma convenção própria da documentação
+  (`**Decisão...**`, `**Achado...**`, `**RETRATAÇÃO...**`,
+  `**Bug real...**`) em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md`,
+  mais os "Casos especiais documentados" de `docs/COMPATIBILITY.md`.
+  Cobertura depende de quão consistentemente a fonte já marca essas
+  frases — deliberadamente conservador (evidência ou silêncio) em vez de
+  minerar prosa livre com risco de falso positivo.
+
+**Achado durante a implementação**: a primeira versão deduplicava
+achados/decisões pelo texto do MARCADOR (“**Decisão**”, “**Achado**”).
+Como vários parágrafos completamente diferentes usam o mesmo marcador
+genérico, isso colapsava decisões distintas (HPLC, IMS, expansão de
+módulo) numa única nota "decisao.md", descartando conteúdo real em nome
+de uma deduplicação que não deveria ter disparado. Corrigido: a chave de
+dedup agora é o texto do PARÁGRAFO inteiro (primeiros 200 caracteres),
+e o título da nota completa o marcador genérico com as primeiras
+palavras do que vem depois dele quando o marcador sozinho tem menos de
+4 palavras.
+
+## Passo 169 — Guarda de privacidade
+
+A regex de identificador de amostra (`tests/test_sem_identificador_real.py`)
+foi extraída para `scripts/privacidade_amostras.py` para que o gerador
+reaproveite a MESMA regra em vez de duplicá-la — `test_sem_identificador_real.py`
+agora importa de lá (`_PADRAO`/`_ANO_SENTINELA`), sem mudança de
+comportamento (suíte confirmada verde após o refactor). Adicionado a
+essa mesma varredura: padrão de caminho absoluto de máquina (Windows
+`C:\Users\alguem\...` e Unix `/home/alguem/...` `/Users/alguem/...`), porque o vault vive
+fora do repositório e pode vazar o caminho da máquina que o gerou.
+
+O gerador monta o plano de escrita inteiro EM MEMÓRIA primeiro, roda a
+guarda sobre esse plano, e só grava em disco se a guarda passar — se
+algo vazar, nada é escrito (nem parcialmente). Contra-prova em
+`tests/test_gerador_vault_obsidian.py`: cenário sintético com
+identificador de ano real e com caminho absoluto, ambos devem falhar a
+guarda; o ano sentinela 2099 e conteúdo legítimo (versão, ISO-8601,
+RMSEP) não devem disparar falso positivo.
+
+## Passo 170 — Canvas curados
+
+3 arquivos `.canvas` (JSON, gerados programaticamente, validados por
+`json.load` nesta rodada): `Fluxo-Cego.canvas` (Detectar → Identificar →
+Quantificar com os 2 gates: cobertura não-validável e faixa de decisão
+contra LOD/LOQ), `Arquitetura-Geral.canvas` (entrada → pré-processamento
+→ modelagem → validação → saída, por módulo real) e
+`Mapa-Tecnicas.canvas` (11 técnicas agrupadas em 4 famílias, cor por
+status do Passo 160).
+
+## Passo 171 — Testes, documentação e verificação
+
+`tests/test_gerador_vault_obsidian.py` (12 testes): guarda de
+privacidade (5), integração do plano real do gerador (2), escrita em
+disco — idempotência, pasta protegida nunca tocada, arquivamento em vez
+de apagar, manifesto válido (5). Suíte completa + `ruff` + `mypy` sobre
+os arquivos novos confirmados limpos nesta rodada.
+
+`README-VAULT.md` é GERADO dentro do próprio vault (não escrito à mão)
+— documenta a pasta protegida, quando regenerar, e de onde vem cada
+categoria; contagens da última geração ficam no rodapé do próprio
+arquivo.
+
+
+## Passo 161 — `docs/INDICE_PROJETO.md` criado
+
+Listados por comando direto (`git ls-files "*.md"`) os 25 arquivos `.md`
+rastreados pelo repositório (excluídos worktrees de agentes, `.venv`,
+saídas de execução e `docs/_*.md` — confirmados no `.gitignore` como
+rascunho local deliberadamente fora do controle de versão). Organizado
+em 7 categorias (Visão geral, Estado de desenvolvimento, Validação
+científica, Compatibilidade e contrato, Uso, Dados, Segurança) + uma
+categoria extra para `docs/RASCUNHOS_CONTATO.md`.
+
+**Achado ao verificar a nota sugerida pela instrução** ("dados de
+terceiro e rascunhos de contato ficam fora do repositório, em
+`~/.guaraci_local/`"): parcialmente imprecisa. `~/.guaraci_local/`
+existe de fato (CLAUDE.md/PROGRESSO.md privados + CSVs de dados do TCC
++ pasta `auditoria_privada/`), mas `docs/RASCUNHOS_CONTATO.md` — que É
+um rascunho de contato — está no repositório, rastreado, e isso está
+correto: seu conteúdo (dúvida de licença para autor de dataset público)
+não tem dado pessoal, diferente do que fica isolado em
+`~/.guaraci_local/`. A nota no índice foi escrita refletindo o estado
+real verificado, não a frase da instrução ao pé da letra.
+
+Referenciado a partir de `README.md`/`README.pt-br.md` (linha logo
+antes do primeiro separador).
+
+## Passo 162 — Auditoria de linguagem expositiva/redundante
+
+Varredura por padrões clássicos de linguagem expositiva ("descobrimos
+que", "após investigação cuidadosa", "vale destacar", "é importante
+ressaltar" etc., com e sem acento) em `README.md`, `README.pt-br.md`,
+`docs/MANUAL.md`, `docs/COMPATIBILITY.md`, `docs/VALIDATION.md`,
+`docs/BENCHMARK_TECATOR.md`, `docs/index.md`: **zero ocorrências** —
+rodadas de auditoria anteriores desta sessão de trabalho já
+estabeleceram um estilo direto/factual nesses documentos.
+
+Checado também redundância entre documentos: `docs/VALIDATION.md`
+(validação NUMÉRICA interna, fórmulas vs. referência) e
+`docs/BENCHMARK_TECATOR.md` (primeiro benchmark externo, histórico) já
+seguem o padrão correto de resumir e linkar a partir de
+`docs/VALIDACAO_PUBLICA.md`, não duplicar conteúdo. Nenhuma seção
+obsoleta substituída por versão posterior no mesmo arquivo foi
+encontrada nos documentos de usuário final auditados. `docs/PROGRESSO.md`
+mantém seu estilo de diário de bordo intencionalmente (não é
+documentação de usuário final) — retratações (RMN, DS) preservadas como
+histórico, não removidas.
+
+**Relatório**: nenhum corte de linguagem expositiva foi necessário
+nesta rodada — a varredura confirma que o padrão já estava limpo, não
+que não havia nada para achar.
+
+## Passo 163 — Auditoria de atualidade: 2 discrepâncias reais encontradas e corrigidas
+
+Verificação por comando direto de: versão (`__version__ = "31.9.0"` em
+`config.py` bate com o badge do README — OK), contagem de testes citada
+fora de VALIDACAO_PUBLICA/PROGRESSO (nenhuma encontrada — OK), testes
+citados em `docs/VALIDATION.md` (10 nomes conferidos, todos existem no
+código atual — OK).
+
+**Discrepância 1 (corrigida)**: a tabela "Status of all 11 analytical
+techniques" em `README.md`/README.pt-br.md ainda mostrava HPLC e IMS
+como "Supportable, not validated"/"adiado formalmente" — desatualizada
+em relação aos Passos 157-159 (fechados nesta mesma sessão, um passo
+antes desta auditoria). Corrigida para refletir o estado real: HPLC
+funcional (validado), IMS funcional com sinal nulo (validado,
+resultado negativo honesto). Data "fechado em" atualizada de
+2026-09-04 para 2026-09-05.
+
+**Discrepância 2 (corrigida)**: a seção "Known limitations"/"Limitações
+conhecidas" de ambos os READMEs afirmava "Validated on three public
+datasets so far (corn NIR, Tecator NIT, Mendeley ctgg7k4m5g)" — número
+que ficou obsoleto há várias rodadas (o projeto integrou desde então
+RMN, Fluorescência simples+EEM, GC-MS, UV-Vis, HPLC, GC-IMS, DeepHS
+Fruit). Corrigido para não hardcodar uma contagem que expira a cada
+nova técnica fechada: agora aponta para `docs/VALIDACAO_PUBLICA.md`
+como fonte única e atual, explicitando que a lista muda e este não é o
+lugar de mantê-la sincronizada — mesma lição do RMN aplicada
+preventivamente aqui.
+
+**Checado e considerado não-discrepância real**: `docs/PROGRESSO.md`
+tem uma entrada antiga (Passo ~125-era) dizendo "validação de MCR-ALS
+contra dataset real de óleo... ainda está pendente", resolvida por uma
+entrada CRONOLOGICAMENTE MAIS RECENTE (Passo posterior, mais acima no
+arquivo por ser reverso-cronológico) que já contém a retratação
+explícita ("Passo 125 registrou isso como limitação de ambiente — não
+era"). Como o arquivo é lido do topo (mais recente) para baixo, um
+leitor encontra a correção antes da nota antiga — não é uma contradição
+ativa, é um artefato normal de log append-only. Não editado (evita
+reescrever histórico por um caso já autorresolvido na ordem de
+leitura).
+
+## Passo 164 — Telas de ajuda: 2 achados de excesso de detalhe de auditoria corrigidos
+
+Varredura em `guaraci.py`, `cli_assistente.py` e `app_tabs/*.py` por
+data específica (`AAAA-MM-DD`), referência a "Passo N", contagem
+`n=N`, p-valor, ou instrução "antes de usar para resultado publicável"
+dentro de string literal (não comentário/docstring).
+
+**Achado 1** (o exemplo da própria instrução): `_AVISO_MATURIDADE_HSI_PT/EN`
+(`guaraci.py`) citava "(overripe n=12, unripe n=2)" e terminava com
+"antes de usar para resultado publicável". Reescrito para citar a
+limitação (Kaki/VIS, desbalanceamento) sem os números, com o link para
+`docs/VALIDACAO_PUBLICA.md` seção 7 bastando para quem quiser o
+detalhe completo.
+
+**Achado 2** (novo, mesmo padrão, não citado na instrução): o
+`preproc_rec` do Raman em `cli_assistente.TECNICAS` embutia "aprovado
+no portão de aceite contra dataset público Raman, 2026-09-04" — data e
+metodologia de auditoria dentro do texto de configuração de
+pré-processamento. Encurtado para só a recomendação prática.
+
+Nenhum outro caso do mesmo padrão encontrado nas outras técnicas ou na
+aba "Sobre" do app Streamlit (que só lista tipos de matriz suportados,
+sem alegação de validação).
+
+Teste de contrato novo: `tests/test_catalogo_tecnicas_texto.py` —
+verifica por regex que nenhuma entrada de `TECNICAS` nem o aviso do
+HSI contém data/Passo-N/n=N/p-valor/instrução-de-publicação.
+
+## Passo 165 — Catálogo de técnicas do menu atualizado
+
+As 11 entradas de `cli_assistente.TECNICAS` ganharam uma frase curta de
+maturidade (sem número, sem metodologia, só link):
+FT-NIR/NIR Dispersivo/MIR/Raman/UV-Vis/HPLC → "Validado com dataset
+público real"; RMN → mesmo + "resultado forte"; Fluorescência → mesmo +
+"(sinal fraco em parte dos dados, documentado)"; GC-MS →
+"Alinhamento de retenção validado..." (nuance: mecanismo, não
+classificação); IMS → "Validado...; resultado negativo documentado".
+"Genérico" confirmado como fallback, sem alegação de validação própria
+(teste de contrato garante isso não regredir).
+
+Suíte completa, ruff/mypy (gate) limpos, commit, push.
+
+---
+
 # PROGRESSO — Passos 157-160: HPLC e IMS fechados com dataset real (2026-09-05)
 
 ## Passo 157/159 — HPLC: candidato encontrado e integrado (Zenodo `21245912`)
@@ -1391,9 +1962,9 @@ novo.
 meu, não ausência de dado. Eu tinha verificado só a pasta `dados/` do
 repo (vazia de propósito — `.gitignore`, dado de terceiro nunca
 versionado) e concluído "acervo indisponível" sem checar
-`config.yaml` (`pasta_dados:`), que já apontava para
-`C:\Users\erley\OneDrive\Documentos\ERLEY\dados oleos\Por óleos` — 1741
-arquivos `.dx` reais, organizados por espécie, com adulterante e teor
+`config.yaml` (`pasta_dados:`), que já apontava para a pasta local do
+acervo (fora do repositório; caminho absoluto omitido de propósito desde
+a rodada multiagente de 2026-09-10) — 1741 arquivos `.dx` reais, organizados por espécie, com adulterante e teor
 declarado no nome (padrão `COD-DD-MM-AAAA-AD-X-teor%-T_N.dx`, ex.
 `AND-10-02-2099-AD-S-1,1%-T_1.dx`), o mesmo acervo que
 `scripts/run_benchmark_tcc.py` já referencia diretamente. Confirmado com
@@ -3051,3 +3622,312 @@ concorrente tem") — mais uma nota explícita ao lado da tabela dizendo
 que Kennard-Stone/transferência de calibração NÃO são reivindicados
 como diferenciais, para que a mudança não pareça contradizer a decisão
 anterior sobre esses dois itens especificamente.
+
+---
+
+# PROGRESSO — Passos 188-193: mockup web v3 implementado no app real (2026-09-08)
+
+Pedido do usuário: pegar o que tem valor real nos mockups HTML/SVG
+(`guaraci_web_mockup_v3.html`) e implementar **dentro** da arquitetura
+Streamlit já em produção — 8 abas sequenciais, `design_tokens.py`, tema
+nativo — sem sidebar, sem accordion e sem CSS `!important` sobre widget
+nativo (tentativa anterior quebrou ao trocar de tema; hoje a cor vem de
+`st.context.theme`). Regra permanente da sessão: **evidência ou silêncio**
+— nenhum número exibido pode ser fixo no código, como os "934 espectros"
+fictícios do mockup.
+
+## Passo 188 — Faixa de decisão (LOD/LOQ) na aba Predição
+
+Achado ao ler o código antes de escrever: a faixa de decisão do Bloco 24
+**já era calculada** (`QuantificationResult.faixa_decisao`, contra o
+LOD/LOQ do Bloco 12) e **já saía na CLI** (`guaraci.py:_menu_prediction`,
+colunas `faixa_decisao`/`lod`/`loq`) — mas a aba Predição do app web
+montava a tabela sem essas 3 colunas. Duas interfaces, dois resultados
+para a MESMA predição. Nada foi recalculado: só o *wiring* que faltava.
+
+Na web: coluna `faixa_decisao` colorida pelos design tokens (3 estados) e
+um resumo com a contagem por faixa (`st.progress` por zona), a partir dos
+mesmos objetos `resultados_cego` que a CLI usa. Quando não há LOD/LOQ
+persistido, o painel **diz isso** em vez de contar zero.
+
+Contrato novo: `tests/test_paridade_predicao_cli_web.py` compara por AST o
+conjunto de colunas `df_res[...]` da CLI e da web — a web pode apresentar
+como quiser, mas não pode omitir campo que a CLI entrega.
+
+## Passo 189 — A paleta de cores não chegava às figuras (bug real)
+
+Medido antes de implementar o seletor pedido pelo mockup: `grep -rn
+"prop_cycle" src/` retorna **uma** ocorrência (`guaraci.py:4998`), e
+**nenhuma** figura do pipeline usa o ciclo padrão do matplotlib — todas
+passam `color=color(i)`/`map_class_colors()` explicitamente
+(`figuras.py`). Ou seja: o menu Visualização → Paleta da CLI confirmava a
+escolha, gravava em `visual_config.json`, e as figuras saíam **idênticas**.
+Expor esse mecanismo na web como estava seria vender um botão que não faz
+nada.
+
+Correção: `paleta_cores` ganhou paleta ATIVA (`set_active_palette`/
+`get_active_palette`), consultada por `color()`/`map_class_colors()`.
+Default `None` = comportamento histórico intacto (nenhuma figura muda de
+cor sem escolha explícita). Paleta com **menos cores que classes** é
+recusada com aviso no log — duas espécies com a mesma cor é um gráfico que
+mente, pior que ignorar a escolha.
+
+Anti-duplicação: `cli_assistente.apply_palette(nome)` é a implementação
+ÚNICA (ativa a paleta + rcParams), usada pela CLI e pela web; a leitura/
+escrita da preferência saiu para `preferencias_visuais.py`, para as duas
+interfaces lerem o MESMO `~/.guaraci/visual_config.json` (a CLI não podia
+ser importada pela web: 5 mil linhas + rich).
+
+Na web: seletor na aba Modelo → 🖼️ Figures, com amostra das cores reais do
+catálogo. Decisão de UX registrada: a paleta vale para a **próxima
+execução** — recolorir figura já gravada exigiria rodar o pipeline de novo,
+então não há "pré-visualização instantânea" do gráfico real (a amostra de
+cor é instantânea; a figura, não).
+
+## Passo 190 — Painel de status no topo da aba Projeto
+
+Decisão de posicionamento: **não** é uma 9ª aba, e não é dashboard sempre
+visível. Fica no topo da aba Projeto (que já é a primeira do fluxo), e só
+popula quando existe estado real. Sem dado: uma linha dizendo para começar
+pela aba Dados — nunca cartão vazio.
+
+Fontes, todas reais: contagens de `resumo_modelo.txt` da execução
+(`resumo_parse.parse_dataset_counts`, tolerante às chaves em PT dos runs
+antigos) ou da prévia da aba Dados (agora guardada em
+`st.session_state["previa_dados"]`); matriz/técnica do perfil ativo
+cruzada com a tabela consolidada de `docs/VALIDACAO_PUBLICA.md`; e os
+achados da auditoria de delineamento **daquela execução**.
+
+Dois suportes criados para isso, ambos evitando duplicação:
+- `validacao_publica.py` — o parser da tabela consolidada saiu de
+  `scripts/gerar_vault_obsidian.py` (que agora importa de lá; teste de
+  paridade garante saída idêntica).
+- `resultados_io.save_design_audit`/`load_design_audit` — os achados do
+  Bloco 11, que já iam em prosa para o model card, passam a ser gravados
+  também como `auditoria_delineamento.json`; extrair de volta do Markdown
+  seria reparsear texto já serializado uma vez.
+
+Ausência de registro é exibida como "auditoria indisponível", nunca como
+"nenhum problema encontrado".
+
+## Passo 191 — Legenda de agrupamento das 8 abas
+
+Uma linha de `st.caption` acima da barra: ① Preparar · ② Executar ·
+③ Analisar · ④ Referência. Sem CSS sobre o widget nativo, sem trocar
+`st.tabs` por outra coisa — só nomear em voz alta a sequência que as abas
+já seguem.
+
+## Passo 192 — Bug real achado pelo teste do painel: aba Relatórios
+
+Com **exatamente 2** pastas de execução armazenadas, a limpeza de
+resultados montava `st.slider(min_value=1, max_value=1)` — e o Streamlit
+**lança** nesse caso, derrubando a aba Relatórios inteira (nenhum download
+acessível). Nada a ver com o painel; apareceu porque o teste novo criou o
+segundo diretório. Corrigido (sem slider quando só há uma escolha
+possível) + regressão em `tests/test_reports.py`.
+
+## Passo 193 — Logo nova: BLOQUEADO, arquivo não recebido *(resolvido no Passo 194, mesmo dia)*
+
+A instrução dizia "arquivo já enviado nesta conversa". Não havia anexo de
+imagem na conversa, e uma varredura em `~/Downloads` não achou nenhum
+candidato (só o mockup HTML e documentos). `assets/` segue com
+`guaraci_icon.png` (jul/2026) e `guaraci_icon.ico`. Nada foi trocado nem
+arquivado — sem o arquivo novo, "atualizar a logo" só poderia ser
+inventar uma. Pendência aberta, aguardando o arquivo.
+
+## Passo 194 — Logo nova instalada, medida e propagada à documentação
+
+O arquivo chegou (imagem colada na conversa; localizada em disco como
+`OneDrive/Imagens/Screenshots/Captura de tela 2026-09-08 024758.png`,
+461×478 RGBA). Marca nova: silhueta de Erlenmeyer contendo o sol e a cabeça
+do cão, moléculas na base, cocar de nós e folhas em gradiente laranja→verde.
+
+**Tratamento da imagem, com motivo medido.** O arquivo veio com fundo branco
+opaco (`#FDFDFD`, alpha 255 em toda a imagem), enquanto o ícone anterior era
+transparente (25% dos pixels com alpha 0). Convertido para transparente por
+preenchimento a partir da borda (só o branco CONECTADO À BORDA vira alpha 0 —
+os vazados internos do desenho, inclusive o miolo do sol, continuam opacos),
+com descontaminação da borda anti-aliased para não deixar halo claro sobre
+fundo escuro. Recortado ao conteúdo, centralizado em quadrado com 8% de
+respiro e reamostrado para 512×512 (o anterior era 256×256; 512 rende melhor
+na moldura de 96 px em tela de alta densidade). `.ico` regerado com os
+mesmos 6 tamanhos do anterior (16→256).
+
+Arquivos antigos **arquivados, não apagados**: `assets/legado/
+guaraci_icon_2026-07.png` e `.ico` (via `git mv`, histórico preservado).
+
+**Contraste medido, e a decisão que veio dele.** A tinta mais escura da marca
+(`#0E3724`, base do frasco) tem contraste **1,40:1** contra o fundo do tema
+escuro (`#0F1613`) — abaixo do mínimo de 3:1 para elemento gráfico (WCAG
+1.4.11), ou seja: some. Contra o fundo claro (`#F7F9FB`) dá 12,41:1. Decisão:
+manter o PNG transparente (flexível) e dar **fundo claro fixo** (`#FDFDFD`)
+à moldura `.gua-logo-frame` do cabeçalho — que é elemento NOSSO, não widget
+nativo do Streamlit, então não repete a regressão do CSS `!important`. Mesma
+convenção já usada nas figuras científicas ("papel" branco, intencional em
+qualquer tema). Verificado no app rodando, nos dois temas.
+
+**Paleta reamostrada (o documento afirmava proveniência que deixou de valer).**
+`docs/DESIGN.md` §1 diz que a paleta vem de amostragem de pixel da mascote —
+com a mascote trocada, a afirmação ficaria falsa. Reamostrado com o MESMO
+método (agrupamento por matiz HSV, moda + média dos 200 tons mais frequentes):
+
+| Papel | Marca 2026-07 | Marca 2026-09 |
+|---|---|---|
+| Laranja | `#FF6400` | `#D5672C` |
+| Dourado | `#FFC100` | `#F9A233` |
+| Verde | `#46A41C` | `#19824E` |
+| Escuro | `#181E21` (grafite neutro) | `#1E4935` (verde escuro) |
+| Claro | `#FFFBD4` (creme) | `#FFFFFF` (branco) |
+
+A marca nova **não tem neutro escuro** — o mais escuro dela é verde. Os
+tokens de `design_tokens.py`/`guaraci_theme.py` **não** foram alterados: mudar
+a cor de CLI, web e cabeçalhos de uma vez é decisão de produto, não
+consequência automática de trocar um arquivo de imagem. Registrado como
+pendência explícita em `docs/DESIGN.md` §1.4 (realinhar os tokens à marca
+nova, ou assumir a paleta do produto como independente da mascote).
+
+**Documentação propagada a partir do vault.** `docs/DESIGN.md` §1/§1.3/§1.4
+atualizados; a descrição da mascote em `scripts/gerar_vault_obsidian.py`
+(que era texto fixo descrevendo a marca ANTIGA — cachorro de jaleco com
+notebook) reescrita por inspeção direta da imagem nova; a nota de Identidade
+Visual agora declara a divergência tokens×marca em vez de afirmar que a
+paleta implementada é a da imagem atual. Vault regerado: 366 notas escritas.
+
+## Passo 195 — Reestruturação da interface web: barra lateral no lugar das 8 abas
+
+Mockup v4 pedido "à risca". **Reversão explícita de duas decisões
+anteriores** (registrada aqui porque contradiz o que o próprio PROGRESSO
+dizia): o Passo 191 tinha fixado "abas horizontais, sem sidebar" e havia a
+regra "não pintar widget nativo do Streamlit" — o mockup novo pede as duas
+coisas. Ambas revertidas a pedido, com salvaguardas:
+
+- O degradê da barra lateral é montado a partir dos tokens do tema
+  **ativo** (`design_tokens` lidos de `st.context.theme`), então ele se
+  redesenha ao trocar claro/escuro em vez de ficar preso a um tema — foi
+  exatamente esse acoplamento que quebrou a tentativa antiga.
+- Nenhum `!important`: o CSS complementa o widget, não briga com ele.
+
+`src/guaraci/app_nav.py` (novo) é dado puro de navegação, **sem importar
+Streamlit**: `PAGINAS_FIXAS` (Início, Visualização), `GRUPOS` (① Preparar ·
+② Executar · ③ Analisar · ④ Referência) e as consultas. As 8 telas antigas
+continuam todas alcançáveis; `st.tabs` virou roteador
+`st.session_state["pagina"]` + `st.rerun()`, com fallback que volta ao
+Início se a chave for desconhecida (em vez de renderizar página em branco).
+
+Dois contratos novos em `tests/test_app_nav.py`: (1) por AST, toda tela
+declarada no menu tem ramo no roteador — sem isso o item existiria e não
+desenharia nada; (2) cada uma das 10 telas abre sem exceção
+(parametrizado). Selos ao lado dos itens (`Dados 934` no mockup) só
+aparecem com número real: espectros da prévia, `cego`, `✓`.
+
+## Passo 196 — Tela Início (`app_tabs/inicio.py`)
+
+O painel de status saiu do topo da aba Projeto e virou tela própria: faixa
+de **próxima ação sugerida** (de `app_logic.next_action`) + quatro cartões
+(dados carregados · espectros médios por classe · resultado da predição ·
+faixa de decisão/teor).
+
+O mockup mostra "934 espectros", "97,3% Andiroba" e uma faixa de decisão
+desenhada. Nada disso foi copiado: sem dado real o cartão mostra `—` e diz
+o que falta. A barra de três zonas só é desenhada quando LOD e LOQ são
+finitos naquele resultado; sem eles a tela diz isso em vez de desenhar uma
+escala inventada. Contratos em `tests/test_painel_status_projeto.py`
+(inclusive a contra-prova `">934<" not in textos`).
+
+## Passo 197 — Tela Visualização (`app_tabs/visualizacao.py`)
+
+Consolida a personalização de cor, que estava dentro de Modelo → Figures.
+Três esquemas (padrão · daltonismo · **alto contraste**, catalogado agora
+em `cli_assistente.PALETAS_COR`), cor por classe e pré-visualização.
+
+O ponto que importa: a pré-visualização **não é uma simulação**. Ela chama
+`spectra_preview.plot_mean_spectra`, que passou a colorir via
+`paleta_cores.map_class_colors` em vez de um `tab10` fixo — é a mesma
+função que o pipeline usa. Provado em `tests/test_seletor_paleta_web.py`:
+trocar o esquema muda as cores efetivamente desenhadas nas linhas do eixo,
+e as cores por classe chegam à figura.
+
+## Passo 198 — Dois defeitos só visíveis no tema CLARO
+
+Verificação em navegador real nos dois temas (o escuro passou de primeira):
+
+1. **Grupo ① invisível.** A regra `background: transparent` valia só para
+   o `<details>` do expander; no tema claro o `<summary>` vem branco por
+   padrão e o rótulo (branco, para contrastar com o degradê) sumia dentro
+   dele — o grupo aparecia como uma caixa branca vazia. Corrigido
+   estendendo a regra a `summary` e `stExpanderDetails`.
+2. **Barra superior cortada.** `padding-top: 2.2rem` no `.block-container`
+   deixava a primeira linha (título + tema + ações) atrás da barra fixa do
+   Streamlit (Deploy / ⋮). Para 3,4rem.
+
+Nenhum dos dois aparecia no tema escuro — daí a verificação nos dois.
+
+## Passo 199 — Documentação da reestruturação
+
+`docs/MANUAL.md` §6 reescrita (navegação lateral, selos, barra superior),
+§6.1 agora descreve a tela Início e §6.2 a tela Visualização; a tabela do
+§1 não diz mais "8 abas guiadas". CHANGELOG e vault do Obsidian
+regenerados — `35-Telas-e-Fluxos/` é gerado dos docstrings de
+`app_tabs/*.py`, então as duas telas novas entram por ali.
+
+**Limitação registrada, não contornada:** o mockup traz um interruptor
+Claro/Escuro funcional. O Streamlit **não expõe API para trocar o tema por
+código** (`st.context.theme` é somente leitura, e forçar por CSS foi o que
+quebrou antes). A barra superior mostra o estado real do tema e o caminho
+⋮ → *Settings* → *Theme*, em vez de um botão que não funcionaria.
+
+---
+
+# PROGRESSO — Passo 200 (2026-09-10)
+
+## Passo 200 — Rodada multiagente: estado, segurança, técnicas e mercado
+
+Relatório completo: `docs/RELATORIO_MULTIAGENTE_2026-09-10.md`. Vault
+regenerado antes da pesquisa (estava em `fe1223d`), cobertura COMPLETA.
+
+**Correções aplicadas (Agente 1):**
+
+- `02d65fe` — CI vermelho em todo push desde 2026-09-05 por dois defeitos
+  do workflow: (1) `\n` literal na lista do mypy (`8b784de`), que o bash
+  reduz a `n` → `Cannot read file 'n'`; (2) job `validacao-publica-eem-zenodo`
+  sem o extra `[multiway]` → `ModuleNotFoundError: tensorly` desde
+  `7396666`. `eem_multiway.py` entrou no gate (50 arquivos, limpo).
+- `676e9c4` — a guarda `PADRAO_CAMINHO_ABSOLUTO` (Passo 169) só varria o
+  vault; um caminho real de máquina entrou aqui no Passo 131 e foi
+  publicado. Agora a varredura cobre todo arquivo versionado, com usuário
+  sentinela `alguem` como única exceção. O caminho continua no histórico
+  git (decisão do autor).
+
+**Estado medido:** 1460 passed / 42 skipped / 0 failed (linha de base);
+ruff e mypy limpos; pip-audit (OSV) sem vulnerabilidade conhecida em 139
+pacotes; nenhuma ocorrência de `eval`/`exec`/`pickle.loads`/`yaml.load`
+em código de produção.
+
+**Reportado, não corrigido:** falhas intermitentes do Zenodo (504/timeout)
+em 3 jobs de validação sem retry; `consultar_vault.py` casa substring em
+siglas ("EPO" → "tempo"); 3 inconsistências de documentação (intervalo de
+predição citado em `hsi_uncertainty.py` e inexistente; PQN recomendado e
+inexistente; mensagem fixa em `check_external_validation`).
+
+**Achado científico que exige decisão (Agente 3, reconferido no código):**
+CV e holdout agrupam por `mae_id`, mas `session_from_mae_id` documenta que
+o `mae_id` adulterado é um por nível de teor; `bootstrap_bca_ci` não aceita
+grupos; métricas de CV da classificação vêm dos mesmos folds que escolhem
+`n_opt`; a Etapa 4 recebe `X_processed` ajustado no treino inteiro. Nenhum
+teve o efeito medido. Nada foi alterado — toca lógica já validada.
+
+**Propostas (Agentes 2–4), não implementadas:** 10 técnicas priorizadas com
+DOI conferido (conformal para regressão, EPO/GLSW, ASCA+, correção por
+QC/brancos, di-PLS, PQN, Ledoit-Wolf, espectro+delineamento, MCR-ALS com
+restrição de correlação, LWR); 21 de 31 candidatas já estavam registradas.
+
+**Concorrência (Agente 4):** o comparativo do README tem afirmações
+contraditas ou sem sustentação na documentação dos concorrentes (L23-24 e
+L56: PLS_Toolbox/Solo e Unscrambler têm CV por grupo configurável; L57
+"❌ Reproducible" sem evidência; L27 ignora que o modelo é `.joblib`;
+L62-66 é suposição) — reescrita proposta, não aplicada. Concorrentes à
+frente em: intervalo de predição por amostra, fusão multibloco, leitores
+de formato, exportação portátil do modelo, monitoramento em linha,
+execução não interativa pela CLI.
+
+**Suíte após as correções:** 1462 passed / 42 skipped / 0 failed.

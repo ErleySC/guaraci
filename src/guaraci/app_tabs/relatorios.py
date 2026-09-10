@@ -1,4 +1,4 @@
-"""app_tabs/relatorios.py — Aba 7 (Reports): downloads (ZIP/PDF/Word/Excel/
+"""app_tabs/relatorios.py — Tela (Reports): downloads (ZIP/PDF/Word/Excel/
 LaTeX/PPTX), limpeza de execuções antigas, Model Card, resumo e galeria de
 figuras. Extraído de app_quimiometria.py (item 18).
 
@@ -200,10 +200,18 @@ def render(pq, modo_analise_rotulo: Dict[str, str],
         st.caption(T("Results folder: `{pasta}`  ({n} runs stored)").format(
             pasta=_pasta_base_lim, n=n_pastas))
         if n_pastas > 1:
-            _manter = st.slider(
-                T("Keep N most recent runs"),
-                min_value=1, max_value=max(1, n_pastas - 1),
-                value=min(3, n_pastas - 1), key="lim_manter")
+            # Com exatamente 2 execucoes so' existe uma escolha possivel
+            # (manter 1), e `st.slider` LANCA StreamlitAPIException quando
+            # min_value == max_value -- a aba Relatorios inteira quebrava
+            # nesse caso (achado por teste, 2026-09-08). Sem slider, entao.
+            if n_pastas == 2:
+                _manter = 1
+                st.caption(T("Keep N most recent runs") + ": 1")
+            else:
+                _manter = st.slider(
+                    T("Keep N most recent runs"),
+                    min_value=1, max_value=n_pastas - 1,
+                    value=min(3, n_pastas - 1), key="lim_manter")
             _n_remover = n_pastas - _manter
             _tam_est = sum(
                 _tamanho_pasta_mb(p.path)

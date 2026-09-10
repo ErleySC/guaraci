@@ -1,4 +1,4 @@
-"""app_tabs/validacao.py — Aba 5 (Validation): figuras e métricas da última
+"""app_tabs/validacao.py — Tela (Validation): figuras e métricas da última
 execução. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations

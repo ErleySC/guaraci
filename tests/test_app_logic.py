@@ -260,3 +260,58 @@ def test_caminho_upload_temp_usa_gettempdir_por_padrao():
     assert "pq_uploads" in p.parts
     assert "sessao1" in p.parts
     assert p.name == "x.csv"
+
+
+# ── Próxima ação sugerida (faixa do topo da tela Início) ──────────────────
+# A tela só desenha o que esta função decide; a ordem das perguntas é a
+# ordem do fluxo de trabalho, e o primeiro obstáculo é o que se sugere.
+
+def test_proxima_acao_sem_dado_manda_para_a_tela_dados():
+    from guaraci.app_logic import next_action
+    acao = next_action(tem_dados=False, tem_execucao=False)
+    assert acao.destino == "dados"
+    assert acao.severidade == "info"
+
+
+def test_proxima_acao_com_dado_sem_execucao_manda_rodar():
+    from guaraci.app_logic import next_action
+    acao = next_action(tem_dados=True, tem_execucao=False)
+    assert acao.destino == "modelo"
+
+
+def test_achado_critico_tem_prioridade_sobre_aviso_e_sobre_predicao():
+    """Um crítico é o obstáculo mais grave: aparece antes de sugerir
+    predição ou relatório, mesmo que o resto do fluxo esteja completo."""
+    from guaraci.app_logic import next_action
+    achados = [{"nome": "a", "severidade": "aviso", "mensagem": "cuidado"},
+               {"nome": "b", "severidade": "critico", "mensagem": "grave"}]
+    acao = next_action(tem_dados=True, tem_execucao=True,
+                       achados_auditoria=achados, tem_predicao=True)
+    assert acao.severidade == "critico"
+    assert "grave" in acao.detalhe
+
+
+def test_aviso_aparece_quando_nao_ha_critico():
+    from guaraci.app_logic import next_action
+    achados = [{"nome": "a", "severidade": "aviso", "mensagem": "1 sessão só"},
+               {"nome": "b", "severidade": "ok", "mensagem": "tudo bem"}]
+    acao = next_action(tem_dados=True, tem_execucao=True,
+                       achados_auditoria=achados)
+    assert acao.severidade == "aviso"
+    assert "1 alerta(s)" in acao.titulo
+
+
+def test_fluxo_completo_sem_achado_sugere_relatorio():
+    from guaraci.app_logic import next_action
+    acao = next_action(tem_dados=True, tem_execucao=True,
+                       achados_auditoria=[{"nome": "x", "severidade": "ok",
+                                           "mensagem": ""}],
+                       tem_predicao=True)
+    assert acao.destino == "relatorios"
+    assert acao.severidade == "ok"
+
+
+def test_proxima_acao_traduz_para_ingles():
+    from guaraci.app_logic import next_action
+    acao = next_action(tem_dados=False, tem_execucao=False, pt=False)
+    assert "Load the spectra" in acao.titulo

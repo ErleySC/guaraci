@@ -1,4 +1,4 @@
-"""app_tabs/sobre.py — Aba 8 (About): identidade do projeto, diferenciais,
+"""app_tabs/sobre.py — Tela (About): identidade do projeto, diferenciais,
 licença e como citar. Fonte da versão/licença: `pq.__version__` (config.py,
 fonte única) — nunca hardcoded, para não repetir o drift de versão já
 corrigido no resto do projeto (ver roadmap_mercado).

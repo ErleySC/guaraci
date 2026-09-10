@@ -42,6 +42,9 @@ acionável em vez de predizer**.
 **Validado exclusivamente em datasets públicos.** Ver [Validação](#validação)
 — é a única base de evidência sobre a qual este repositório faz afirmações.
 
+**Índice completo da documentação:** [`docs/INDICE_PROJETO.md`](docs/INDICE_PROJETO.md)
+lista todo documento deste repositório com uma descrição de uma linha.
+
 ---
 
 ## Por que este projeto existe
@@ -330,16 +333,15 @@ como limitação honesta em
 **Estado das 11 técnicas analíticas do menu** (detalhe completo, números
 e comandos de reprodução em
 [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md); fechado em
-2026-09-04):
+2026-09-05):
 
 | Técnica | Estado |
 |---|---|
-| FT-NIR, MIR, Raman, UV-Vis, GC-MS, Genérico | **Funcional, validado** contra dado público real |
+| FT-NIR, MIR, Raman, UV-Vis, GC-MS, HPLC, Genérico | **Funcional, validado** contra dado público real |
 | NIR Dispersivo | **Funcional, validado** — os próprios instrumentos do dataset Corn (FOSS NIRSystems) são dispersivos, não FT; reclassificado em vez de precisar de dataset novo |
 | RMN | **Funcional, validado, forte** — uma leitura anterior de "exatamente o acaso" era um bug real de classificação (codificação one-hot de alvo binário), achado e corrigido; retratação documentada por completo |
 | Fluorescência | **Funcional** — espectro de emissão 1D validado (sinal fraco, n pequeno, documentado como tal) mais um dataset EEM (matriz excitação-emissão) real validado ponta-a-ponta via decomposição PARAFAC |
-| IMS | Suportável, não validado — 2 datasets públicos reais identificados, mas de 5-7 GB cada e sem rótulo de referência incluído; adiado formalmente, não tentado |
-| HPLC | Suportável, não validado — nenhum dataset público encontrado com tabela de picos pronta no formato amostra×alvo deste projeto (candidato mais próximo é um dataset de resolução de curva, uma alegação diferente) |
+| IMS (GC-IMS) | **Funcional, sinal nulo** — validado contra tabela de picos pública real já processada (VOCs de urina, câncer colorretal vs. controle); resultado é exatamente o acaso, registrado honesto (n clínico pequeno, não é bug do pipeline) — os 2 datasets brutos maiores achados antes continuam adiados por tamanho |
 
 Quantificação nunca reporta um RMSEP nu: **SEP, RPD e RER** acompanham,
 com o RPD carregando sua faixa de interpretação publicada (Williams 2014;
@@ -422,10 +424,12 @@ depois de exportado.
 
 ## Limitações conhecidas (honestidade científica)
 
-- **Validado em três datasets públicos até agora** (milho NIR, Tecator NIT,
-  óleos comestíveis Mendeley `ctgg7k4m5g` NIR). O motor é agnóstico de
-  matriz, mas "agnóstico" é propriedade de arquitetura, não resultado de
-  validação — um perfil que você escreve para uma matriz nova está por
+- **Validado em datasets públicos, técnica por técnica** — ver
+  [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md) para a lista
+  atual e completa (ela muda conforme técnicas são fechadas; esta página
+  não é o lugar de manter uma contagem sincronizada). O motor é agnóstico
+  de matriz, mas "agnóstico" é propriedade de arquitetura, não resultado
+  de validação — um perfil que você escreve para uma matriz nova está por
   testar até que você o teste.
 - **`mel_vis_nir` está declarado, não validado** — a origem do dataset de
   mel foi identificada (Downey, Fouratier & Kelly 2003), mas não existe

@@ -1,4 +1,4 @@
-"""app_tabs/modelo.py — Aba 4 (Model): parâmetros avançados + execução do
+"""app_tabs/modelo.py — Tela (Model): parâmetros avançados + execução do
 pipeline com progresso ao vivo. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations
@@ -15,6 +15,8 @@ import streamlit as st
 
 from guaraci.app_logic import collect_config, fmt_time, log_progress
 from guaraci.app_logic import LogThreadSafe as _LogThreadSafe
+from guaraci.cli_assistente import apply_palette
+from guaraci.preferencias_visuais import load_visual_config
 
 
 def _ram_mb() -> Optional[float]:
@@ -25,6 +27,13 @@ def _ram_mb() -> Optional[float]:
         # (psutil ausente ou probe falha por variacao de SO/permissao);
         # None e' o fallback documentado pelo tipo de retorno Optional.
         return None
+
+
+def _paleta_escolhida() -> str:
+    """Paleta ativa do usuario, vinda do MESMO arquivo de preferencias que a
+    CLI grava (`~/.guaraci/visual_config.json`) — sem estado de cor paralelo
+    só da web."""
+    return str(load_visual_config().get("paleta", "qualitativo"))
 
 
 def _rodar_worker(pq, cfg, logger: _LogThreadSafe, estado: Dict):
@@ -176,6 +185,12 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
             if s is None: continue
             with cols_f[i % 2]:
                 valores[k] = widget_para_campo(s, pq._attr_para_yaml(s, cfg_base))
+        st.divider()
+        # A escolha de paleta mora na tela Visualização (mockup de
+        # 2026-09-08) — aqui fica só o lembrete de qual está ativa, para
+        # não haver dois lugares disputando a mesma preferência.
+        st.caption(T("Figure colour palette: **{p}** — change it on the "
+                     "Visualisation screen.").format(p=_paleta_escolhida()))
 
     st.divider()
 
@@ -240,6 +255,11 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
                 "Não foi possível gravar config.yaml — a análise continua com "
                 f"os valores atuais, mas 'Reload config.yaml' pode restaurar uma "
                 f"versão antiga. Detalhe: {_e_cfg}")
+
+        # Paleta escolhida vale a partir daqui: aplicada ANTES de executar()
+        # (mesmo ponto e mesma funcao que a CLI usa em `_rodar_pipeline`), o
+        # que faz as figuras desta execucao sairem com a cor escolhida.
+        apply_palette(_paleta_escolhida())
 
         logger = _LogThreadSafe(tee=sys.__stdout__)
         estado: Dict = {"fim": False, "erro": None, "pasta": None}

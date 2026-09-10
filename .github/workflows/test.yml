@@ -95,7 +95,11 @@ jobs:
             src/guaraci/importadores_proprietarios.py \
             src/guaraci/portao_correcao_sinal.py \
             src/guaraci/amostragem_ativa.py \
-            src/guaraci/politica_pooled_local.py
+            src/guaraci/politica_pooled_local.py \
+            src/guaraci/validacao_publica.py \
+            src/guaraci/preferencias_visuais.py \
+            src/guaraci/app_nav.py \
+            src/guaraci/eem_multiway.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console
@@ -296,8 +300,12 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      # [multiway] traz o tensorly: o PARAFAC de eem_multiway.py importa a
+      # lib, e sem o extra os 2 testes de PARAFAC deste job falhavam com
+      # ModuleNotFoundError em todo push desde 2026-09-05 (o job `test`
+      # passava porque instala requirements.txt, que ja' lista tensorly).
       - name: Instalar
-        run: pip install -e . && pip install pytest
+        run: pip install -e .[multiway] && pip install pytest
       - name: Baixar dataset publico (Zenodo 19755088, EEM azeite)
         env:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos

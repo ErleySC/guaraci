@@ -42,6 +42,9 @@ of predicting**.
 [Validation](#validation) — that is the only evidence base this repository
 makes claims from.
 
+**Full documentation index:** [`docs/INDICE_PROJETO.md`](docs/INDICE_PROJETO.md)
+lists every document in this repository with a one-line description.
+
 ---
 
 ## Why it exists
@@ -281,16 +284,15 @@ documented as an honest limitation in
 **Status of all 11 analytical techniques in the menu** (full detail,
 numbers and reproduction commands in
 [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md); closed out
-2026-09-04):
+2026-09-05):
 
 | Technique | Status |
 |---|---|
-| FT-NIR, MIR, Raman, UV-Vis, GC-MS, Generic | **Functional, validated** against real public data |
+| FT-NIR, MIR, Raman, UV-Vis, GC-MS, HPLC, Generic | **Functional, validated** against real public data |
 | NIR Dispersive | **Functional, validated** — the Corn dataset's own instruments (FOSS NIRSystems) are dispersive, not FT; reclassified rather than needing a new dataset |
 | NMR | **Functional, validated, strong** — an earlier "exactly chance" reading was a real classification bug (binary-target one-hot encoding), found and fixed; retraction documented in full |
 | Fluorescence | **Functional** — 1D emission spectra validated (weak signal, small n, documented as such) plus a real EEM (excitation-emission matrix) dataset validated end-to-end through the PARAFAC decomposition |
-| IMS | Supportable, not validated — two real public datasets identified but 5–7 GB each with no bundled ground-truth labels; formally deferred, not attempted |
-| HPLC | Supportable, not validated — no public dataset found with a ready peak table matching this project's sample×target format (closest candidate is a curve-resolution dataset, a different kind of claim) |
+| IMS (GC-IMS) | **Functional, null signal** — validated against a real, already-processed public peak table (urine VOCs, colorectal cancer vs. control); result is exactly chance, honestly reported (small clinical n, not a pipeline bug) — the two larger raw-spectra datasets found earlier remain deferred by size |
 
 Quantification never reports a bare RMSEP: **SEP, RPD and RER** ship
 alongside it, with RPD carrying its published interpretation band
@@ -370,10 +372,12 @@ after export.
 
 ## Known limitations
 
-- **Validated on three public datasets so far** (corn NIR, Tecator NIT,
-  Mendeley `ctgg7k4m5g` edible oils NIR). The engine is matrix-agnostic,
-  but "agnostic" is an architectural property, not a validation result —
-  a profile you write for a new matrix is untested until you test it.
+- **Validated on public datasets, technique by technique** — see
+  [`docs/VALIDACAO_PUBLICA.md`](docs/VALIDACAO_PUBLICA.md) for the current,
+  complete list (it changes as techniques get closed out; this page is not
+  the place to keep a count in sync). The engine is matrix-agnostic, but
+  "agnostic" is an architectural property, not a validation result — a
+  profile you write for a new matrix is untested until you test it.
 - **`mel_vis_nir` is declared, not validated** — the honey dataset's
   origin was identified (Downey, Fouratier & Kelly 2003) but no public
   repository for it exists; actively re-searched 2026-08-27, still not

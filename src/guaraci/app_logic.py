@@ -13,7 +13,7 @@ import re
 import tempfile
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from guaraci.config import NOME_RELATORIOS
 
@@ -189,6 +189,82 @@ def fmt_time(seg) -> str:
     return f"{s}s"
 
 
+class NextAction(NamedTuple):
+    """Sugestão de próximo passo mostrada no topo da tela Início.
+
+    `destino` é a chave de tela de `app_nav` para onde o botão leva (ou
+    `None` quando não há para onde ir).
+    """
+    titulo: str
+    detalhe: str
+    destino: Optional[str]
+    severidade: str      # "info" | "aviso" | "critico" | "ok"
+
+
+def next_action(*, tem_dados: bool, tem_execucao: bool,
+                achados_auditoria: Optional[List[Dict[str, str]]] = None,
+                tem_predicao: bool = False, pt: bool = True) -> NextAction:
+    """Deriva a próxima ação sugerida a partir do estado REAL da sessão.
+
+    Lógica pura (sem Streamlit) para ser testável: a tela só desenha o que
+    esta função decide. A ordem das perguntas é a ordem do fluxo de trabalho
+    -- dado, execução, achados da auditoria, predição -- e o primeiro
+    obstáculo encontrado é o que se sugere resolver.
+    """
+    achados = achados_auditoria or []
+    if not tem_dados and not tem_execucao:
+        return NextAction(
+            "Carregue os espectros para começar" if pt
+            else "Load the spectra to get started",
+            "Aponte a pasta de espectros ou envie um CSV na tela Dados."
+            if pt else
+            "Point to the spectra folder or upload a CSV on the Data screen.",
+            "dados", "info")
+
+    if not tem_execucao:
+        return NextAction(
+            "Rode o pipeline para gerar resultados" if pt
+            else "Run the pipeline to produce results",
+            "Os dados estão carregados; falta escolher o modo de análise e "
+            "executar." if pt else
+            "The data is loaded; choose the analysis mode and run.",
+            "modelo", "info")
+
+    criticos = [a for a in achados if a.get("severidade") == "critico"]
+    avisos = [a for a in achados if a.get("severidade") == "aviso"]
+    if criticos:
+        return NextAction(
+            (f"Próxima ação sugerida: resolver {len(criticos)} achado(s) "
+             f"crítico(s) da auditoria de delineamento") if pt else
+            (f"Suggested next step: resolve {len(criticos)} critical "
+             f"design-audit finding(s)"),
+            criticos[0].get("mensagem", ""), "projeto", "critico")
+    if avisos:
+        return NextAction(
+            (f"Próxima ação sugerida: revisar {len(avisos)} alerta(s) da "
+             f"auditoria de delineamento") if pt else
+            (f"Suggested next step: review {len(avisos)} design-audit "
+             f"warning(s)"),
+            avisos[0].get("mensagem", ""), "projeto", "aviso")
+
+    if not tem_predicao:
+        return NextAction(
+            "Próxima ação sugerida: aplicar o modelo a amostras novas" if pt
+            else "Suggested next step: apply the model to new samples",
+            "A execução terminou sem achados críticos. A tela Predição usa o "
+            "modelo salvo em amostras desconhecidas." if pt else
+            "The run finished with no critical findings. The Prediction "
+            "screen applies the saved model to unknown samples.",
+            "predicao", "ok")
+
+    return NextAction(
+        "Próxima ação sugerida: baixar o relatório da execução" if pt
+        else "Suggested next step: download the run report",
+        "Dados, execução e predição concluídos sem achado crítico." if pt
+        else "Data, run and prediction completed with no critical findings.",
+        "relatorios", "ok")
+
+
 def collect_config(cfg_base, valores: Dict):
     """Aplica os valores dos widgets a uma cópia profunda de Config.
 
@@ -285,4 +361,4 @@ def load_model_card(pasta: str) -> Optional[str]:
 __all__ = ["log_progress", "fmt_time", "collect_config",
            "list_figures", "load_summary", "load_model_card",
            "LogThreadSafe", "figures_completed", "log_warnings",
-           "temp_upload_path"]
+           "temp_upload_path", "next_action", "NextAction"]

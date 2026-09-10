@@ -1,4 +1,4 @@
-"""app_tabs/predicao.py — Aba 6 (Prediction): aplica um modelo `.joblib`
+"""app_tabs/predicao.py — Tela (Prediction): aplica um modelo `.joblib`
 salvo a amostras novas. Extraído de app_quimiometria.py (item 18).
 """
 from __future__ import annotations
@@ -9,6 +9,11 @@ from typing import Callable, Dict, List
 import pandas as pd
 import streamlit as st
 
+from guaraci.chemometric_stats import (
+    FAIXA_NAO_DETECTAVEL,
+    FAIXA_QUANTIFICADO,
+    FAIXA_ZONA_CINZENTA,
+)
 from guaraci.predicao import (
     predict_samples as _predizer,
     predict_blind as _predizer_cego,
@@ -196,6 +201,17 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                             for r in resultados_cego]
                         df_res["teor_estimado"] = [
                             r.quantificacao.teor_estimado for r in resultados_cego]
+                        # Bloco 24: a faixa de decisao (LOD/LOQ) ja vinha
+                        # calculada em QuantificationResult e ja era exposta
+                        # pela CLI (guaraci.py:_menu_prediction), mas nunca
+                        # chegava a tabela do app web -- so' o teor cru, sem
+                        # dizer se ele esta' abaixo do LOD, na zona cinzenta
+                        # ou quantificado com confianca. Mesmos limiares do
+                        # Bloco 12, nada recalculado aqui.
+                        df_res["faixa_decisao"] = [
+                            r.quantificacao.faixa_decisao for r in resultados_cego]
+                        df_res["lod"] = [r.quantificacao.lod for r in resultados_cego]
+                        df_res["loq"] = [r.quantificacao.loq for r in resultados_cego]
                         df_res["quantificacao_motivo_bloqueio"] = [
                             r.quantificacao.motivo_bloqueio for r in resultados_cego]
                         df_res["alpha_total"] = [
@@ -232,13 +248,27 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                         f" color:{_tkp['error']}")
             return ""
 
+        # Faixa de decisao (Bloco 24): mesmo tratamento visual dos booleanos
+        # acima -- 3 estados, 3 cores do tema (nunca hex fixo).
+        def _colorir_faixa(val):
+            if val == FAIXA_NAO_DETECTAVEL:
+                return f"background-color:{_tkp['error_bg']}; color:{_tkp['error']}"
+            if val == FAIXA_ZONA_CINZENTA:
+                return f"background-color:{_tkp['warn_bg']}; color:{_tkp['warn']}"
+            if val == FAIXA_QUANTIFICADO:
+                return (f"background-color:{_tkp['success_bg']};"
+                        f" color:{_tkp['success']}")
+            return ""
+
         cols_bool_colorir = [c for c in ("aceito", "AD_dentro_dominio")
                              if c in df_show.columns]
-        if cols_bool_colorir:
-            st.dataframe(
-                df_show.style.map(_colorir_aceito, subset=cols_bool_colorir),
-                use_container_width=True,
-            )
+        if cols_bool_colorir or "faixa_decisao" in df_show.columns:
+            _estilo = df_show.style
+            if cols_bool_colorir:
+                _estilo = _estilo.map(_colorir_aceito, subset=cols_bool_colorir)
+            if "faixa_decisao" in df_show.columns:
+                _estilo = _estilo.map(_colorir_faixa, subset=["faixa_decisao"])
+            st.dataframe(_estilo, use_container_width=True)
         else:
             st.dataframe(df_show, use_container_width=True)
 
@@ -322,6 +352,55 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                     "Blocked = quantification refused because the "
                     "adulterant was not reliably identified — see "
                     "'quantificacao_motivo_bloqueio' in the table above."))
+            # ── Faixa de decisao (Bloco 24) — 3 estados ────────────────
+            # Reaproveita `r.quantificacao.faixa_decisao`, ja calculado
+            # contra o LOD/LOQ do Bloco 12 (mesmos numeros da CLI, ver
+            # guaraci.py:_menu_prediction). Nada e' recalculado aqui.
+            _n_nao_det = sum(1 for r in resultados_cego
+                             if r.quantificacao.faixa_decisao == FAIXA_NAO_DETECTAVEL)
+            _n_cinza = sum(1 for r in resultados_cego
+                           if r.quantificacao.faixa_decisao == FAIXA_ZONA_CINZENTA)
+            _n_conf = sum(1 for r in resultados_cego
+                          if r.quantificacao.faixa_decisao == FAIXA_QUANTIFICADO)
+            _n_com_faixa = _n_nao_det + _n_cinza + _n_conf
+
+            st.markdown(T("**Decision range (LOD / LOQ)**"))
+            if _n_com_faixa == 0:
+                # Nunca mostra "0 abaixo do LOD" como se fosse resultado: sem
+                # LOD/LOQ persistido nao ha' faixa nenhuma a declarar.
+                st.info(T(
+                    "No LOD/LOQ available for the species models used — either "
+                    "the package predates the decision-range feature, or the "
+                    "limits are not computable (not enough physical replicates "
+                    "to estimate instrument noise). No decision range is shown "
+                    "rather than one without backing."))
+            else:
+                for _rot, _n, _ajuda in (
+                    (T("Below LOD (not detectable)"), _n_nao_det,
+                     T("Estimated content below the detection limit — the "
+                       "method cannot distinguish it from noise.")),
+                    (T("Grey zone (LOD–LOQ)"), _n_cinza,
+                     T("Detection is possible, but quantification is not "
+                       "reliable in this range — report as 'detected, not "
+                       "quantifiable'.")),
+                    (T("Quantified with confidence (≥ LOQ)"), _n_conf,
+                     T("At or above the quantification limit — the numeric "
+                       "value can be reported as a measurement.")),
+                ):
+                    st.progress(_n / _n_com_faixa,
+                                text=f"{_rot} — {_n}/{_n_com_faixa}")
+                    st.caption(_ajuda)
+                if n_quantificado > _n_com_faixa:
+                    st.caption(T(
+                        "{n} quantified sample(s) have no decision range: the "
+                        "species model used has no persisted LOD/LOQ.").format(
+                            n=n_quantificado - _n_com_faixa))
+                st.caption(T(
+                    "Limits from the analytical figures of merit of the "
+                    "per-species regression (Valderrama, Braga & Poppi 2009), "
+                    "computed during the run — see `lod`/`loq` in the table "
+                    "above."))
+
             st.warning(T(
                 "⚠ 'classe_identificada' only ever exists when "
                 "'identificacao_cobertura'='validado' (formal statistical "
