@@ -20,11 +20,12 @@
 A **free and open** alternative to paid chemometrics suites (MATLAB/PLS_Toolbox,
 The Unscrambler, SIMCA): a reproducible **multi-technique chemometrics platform**
 for **classification, authentication and exploration** of complex matrices, with
-**replicate-leakage-safe (group-aware) validation** — the project's
-methodological differentiator.
+**replicate-leakage-safe (group-aware) validation enabled by default** —
+including on the external holdout, not just cross-validation.
 
 **Mission:** democratize high-end chemometrics — give researchers the rigor of
-commercial software, at zero license cost and with no closed-format lock-in.
+commercial software, at zero license cost. Source code and input formats are
+open; see the comparison table below for what that does and does not cover.
 
 It supports vibrational (**FT-NIR, NIR, MIR, Raman, UV-Vis**), luminescence
 (**fluorescence**), chromatographic (**HPLC, GC-MS**) and resonance (**NMR,
@@ -53,27 +54,32 @@ lists every document in this repository with a one-line description.
 |---|---|---|---|
 | Cost | Free | Paid, closed | **Free, open** |
 | Chemometric diagnostics (VIP, SR, Hotelling T², Q-residuals, DD-SIMCA, OPLS-DA) | ❌ DIY | ✅ | ✅ |
-| Group-aware validation (T1/T2/T3 replicates never leak) | ❌ manual | ⚠️ limited | ✅ **by default** |
-| Reproducible (fixed seeds, versioned output) | ⚠️ | ❌ | ✅ |
+| Group-aware validation (T1/T2/T3 replicates never leak) | ❌ manual | ✅ available, user-configured (not the default partition) | ✅ **by default**, incl. holdout |
+| Reproducible (fixed seeds, versioned output) | ⚠️ | ⚠️ possible via scripting (PLS_Toolbox/MATLAB, SIMCA-Q), not the default GUI workflow | ✅ |
 | Usable **without coding** (YAML + menu + web) | ❌ | ✅ (paid GUI) | ✅ |
 | Sample-size planning + automated class/session-confounding audit + conformal-calibrated open-set identification, integrated in one flow | ❌ | ❌ (not found in public docs as of 2026-08) | ✅ |
+| Model file is an open, portable format | — | ✅ (Eigenvector Model Exporter: .py/.m/XML) | ❌ (`.joblib`/pickle, tied to the Python/scikit-learn version) |
 
 It fills the gap between low-level libraries and paid closed GUIs: **Q1-grade
 rigor + reproducibility + accessibility, at no license cost.** (Kennard-Stone
 sample selection and calibration transfer, which `GUARACI` also implements,
 are *not* claimed as differentiators here — Unscrambler already ships
 Kennard-Stone, and calibration transfer is a standard chemometrics
-technique reasonably assumed present in mature commercial suites.)
+technique we have not independently verified as present in every
+commercial suite, but expect it to be.)
 
 ---
 
-## Methodological differentiator: group-aware validation
+## Group-aware validation, enabled by default
 
 Each sample is measured in **triplicate** (T1/T2/T3). Letting those replicates
 fall on both sides of a train/test split inflates accuracy (data leakage). A
 `mae_id` group key keeps the three replicates on the **same side**
 (`StratifiedGroupKFold` / `GroupShuffleSplit`), in both cross-validation and the
 external hold-out. That is what separates an honest metric from an artifact.
+Competing tools can be configured to do this too (e.g. PLS_Toolbox's `cvi`
+group vector, Unscrambler's manual segment guidance); here it is the default,
+including on the hold-out, not an option the user has to know to turn on.
 
 ---
 

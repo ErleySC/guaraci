@@ -255,7 +255,10 @@ def append_regression_summary(
         for t in tabela_especie:
             linhas.append(
                 f"    {str(t.get('especie', ''))[:18]:<18s} "
-                f"{int(t.get('n_lv', 0) or 0):>3d} "
+                f"{int(t.get('n_lv', 0) or 0):>3d} "  # type: ignore[call-overload]
+                # ^ t: Dict[str, object]; .get() devolve object, sem
+                # overload de int() compativel -- typing solto de proposito
+                # (dado heterogeneo por especie), nao vale apertar aqui.
                 f"{_fmt(t.get('rmsep'), 2):>7s} {_fmt(t.get('r2val'), 3):>6s} "
                 f"{_fmt(t.get('lod'), 2):>7s} {_fmt(t.get('loq'), 2):>7s} "
                 f"{_fmt(t.get('sensibilidade'), 3):>7s} "
@@ -264,9 +267,9 @@ def append_regression_summary(
             # 2014, ver chemometric_stats.regression_figures_of_merit) +
             # faixa/desvio-padrao do conjunto de VALIDACAO logo abaixo.
             if t.get("lod_ic_baixo") is not None and t.get("lod") is not None \
-                    and np.isfinite(t.get("lod", float("nan"))):
+                    and np.isfinite(t.get("lod", float("nan"))):  # type: ignore[call-overload]
                 _conf = t.get("lod_ic_confianca")
-                _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"
+                _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"  # type: ignore[operator]
                 linhas.append(
                     f"      IC({_conf_txt}): LOD "
                     f"[{_fmt(t.get('lod_ic_baixo'), 2)}-"
@@ -305,10 +308,10 @@ def append_heatmap_summary(pasta: str, resultado: Dict[str, object]) -> None:
     """
     caminho = os.path.join(pasta, "resumo_modelo.txt")
     limiar   = float(resultado.get("limiar_r2", 0.70))   # type: ignore[arg-type]
-    n_falhas = int(resultado.get("n_falhas", 0))          # type: ignore[arg-type]
-    n_ok     = int(resultado.get("n_ok", 0))              # type: ignore[arg-type]
-    n_na     = int(resultado.get("n_na", 0))              # type: ignore[arg-type]
-    n_total  = int(resultado.get("n_total", 0))           # type: ignore[arg-type]
+    n_falhas = int(resultado.get("n_falhas", 0))          # type: ignore[call-overload]
+    n_ok     = int(resultado.get("n_ok", 0))              # type: ignore[call-overload]
+    n_na     = int(resultado.get("n_na", 0))              # type: ignore[call-overload]
+    n_total  = int(resultado.get("n_total", 0))           # type: ignore[call-overload]
     matriz   = resultado.get("matriz", {}) or {}
     linhas: List[str] = [
         "", "=" * 60,
@@ -323,7 +326,7 @@ def append_heatmap_summary(pasta: str, resultado: Dict[str, object]) -> None:
         abaixo = []
         for (esp, ad), r2 in matriz.items():
             try:
-                fr = float(r2)  # type: ignore[arg-type]
+                fr = float(r2)
             except (TypeError, ValueError):
                 continue
             if np.isfinite(fr) and fr < limiar:
@@ -535,7 +538,7 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
     # justificativa anexada na propria mensagem -- nunca some do
     # relatorio so' por ter sido silenciado.
     _achados_audit = resumo.get("auditoria_delineamento")
-    if _achados_audit:
+    if isinstance(_achados_audit, list) and _achados_audit:
         _icone_sev = {"ok": "OK", "aviso": "AVISO", "critico": "CRITICO",
                       "silenciado": "SILENCIADO"}
         linhas += [

@@ -78,7 +78,7 @@ class PLSDAClassifier(BaseEstimator, ClassifierMixin):
         # Use argmax on raw PLS scores instead of LabelBinarizer.inverse_transform,
         # which expects binary {0,1} input. PLS output is continuous and can be
         # negative or >1, making LB.inverse_transform undefined for 13+ classes.
-        return self._lb.classes_[np.argmax(  # type: ignore[return-value]
+        return self._lb.classes_[np.argmax(
             np.asarray(self._pls.predict(X), float), axis=1)]
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -245,7 +245,7 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
                 if alt is not None and len(alt) == len(ref):
                     _, pval = wilcoxon(ref, alt, alternative="two-sided",
                                        zero_method="wilcox")
-                    r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), 4)  # type: ignore[arg-type]
+                    r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), 4)
                 else:
                     r["p Wilcoxon (vs PLS-DA)"] = "n/a"
             except ValueError:
@@ -297,7 +297,12 @@ def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
                            constrained_layout=True)
     parts = ax.violinplot(dados, positions=range(1, len(nomes) + 1),
                           showmedians=True, showextrema=False)
-    for pc, c in zip(parts["bodies"], cores):  # type: ignore[arg-type]
+    # O stub do matplotlib tipa `parts["bodies"]` como `Collection` (sem
+    # sobrecarga de `zip` compativel) -- gap do stub, nao do nosso codigo.
+    # Achado R2 (Passo 201): o ignore anterior citava `arg-type`, mas a
+    # mensagem real do mypy e' `call-overload` -- reconferir a cada bump
+    # de mypy/matplotlib-stubs (`warn_unused_ignores` acusa se sobrar).
+    for pc, c in zip(parts["bodies"], cores):  # type: ignore[call-overload]
         pc.set_facecolor(c); pc.set_alpha(0.50)
     parts["cmedians"].set_color("black"); parts["cmedians"].set_linewidth(2.0)
 
@@ -622,7 +627,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
     Ref: Lundberg & Lee (2017) NeurIPS — SHAP (SHapley Additive exPlanations).
     """
     try:
-        import shap  # type: ignore
+        import shap
     except ImportError:
         print("  [AVISO] shap nao instalado — pip install shap. SHAP pulado.")
         return
@@ -663,7 +668,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                                         max_depth=3, random_state=cfg.seed))
         )
     try:
-        from xgboost import XGBClassifier  # type: ignore
+        from xgboost import XGBClassifier
         tree_clfs.append(("XGBoost",
                            XGBClassifier(n_estimators=300, learning_rate=0.05,
                                          max_depth=4, subsample=0.8,

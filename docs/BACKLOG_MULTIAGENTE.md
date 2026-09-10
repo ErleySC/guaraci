@@ -18,7 +18,8 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | # | Item | Status | Nota |
 |---|---|---|---|
 | R1 | Retry com backoff em `baixar_zenodo_*` | _preenchido na Fase 2_ | |
-| R2 | Módulos fora do gate mypy com erro real (`hsi_pipeline.py`, `resultados_io.py`, `avaliacao_modelos.py`) | _preenchido na Fase 2_ | |
+| R2 | `avaliacao_modelos.py` (6 erros) e `resultados_io.py` (13 erros) | **corrigido (Passo 202)** — ambos `type: ignore` obsoletos (código de erro do mypy mudou de versão para versão) mais narrowing real com `isinstance` em 1 ponto; suíte de ambos os módulos passando | |
+| R2 | `hsi_pipeline.py` (31 erros) | **backlog — esforço maior**, não corrigido nesta rodada. Raiz sistêmica: um valor `object` (de config/manifesto lido de forma solta) se propaga por ~10 chamadas de função tipadas ao longo do módulo (`build_pixel_dataset`, `run_internal_validation_group_aware`, `run_external_validation_by_day`, `PLSDAClassifier`, `enrich_object_results`). Corrigir de verdade exige anotar o tipo na ORIGEM da leitura, não remendar cada call site — risco de introduzir tipo sutilmente errado num módulo científico sem tempo para validar cada ponto. | |
 | R3 | `consultar_vault.py` casa substring em sigla (`"EPO"` → "tempo") | _preenchido na Fase 2_ | |
 | R4 | 5 PRs do Dependabot abertas, nunca revisadas | _preenchido na Fase 2_ | |
 | R5a | Docstring de `hsi_uncertainty.py` alega intervalo de predição inexistente | _preenchido na Fase 2_ | |

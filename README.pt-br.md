@@ -21,11 +21,13 @@ Uma alternativa **livre e aberta** aos softwares pagos de quimiometria
 (MATLAB/PLS_Toolbox, The Unscrambler, SIMCA): plataforma reprodutível de
 **quimiometria multitécnica** para **classificação, autenticação e exploração**
 de matrizes complexas, com **validação robusta a vazamento de réplicas**
-(*group-aware*) — o diferencial metodológico do projeto.
+(*group-aware*) **ligada por padrão** — inclusive no *holdout* externo, não
+só na validação cruzada.
 
 **Missão:** democratizar a quimiometria de alto nível — entregar a pesquisadores
-o rigor de um software comercial, sem custo de licença e sem prender ninguém a
-um formato fechado.
+o rigor de um software comercial, sem custo de licença. O código-fonte e os
+formatos de entrada são abertos; a tabela comparativa abaixo detalha o que
+isso cobre e o que não cobre.
 
 Suporta dados vibracionais (**FT-NIR, NIR, MIR, Raman, UV-Vis**), de luminescência
 (**fluorescência**), cromatográficos (**HPLC, GC-MS**) e de ressonância (**NMR,
@@ -55,21 +57,23 @@ As ferramentas de quimiometria hoje se dividem em dois grupos:
 |---|---|---|---|
 | Custo | Grátis | Pago, licença fechada | **Grátis, aberto** |
 | Diagnósticos quimiométricos (VIP, SR, Hotelling T², Q-resíduos, DD-SIMCA, OPLS-DA) | ❌ (você implementa) | ✅ | ✅ |
-| Validação *group-aware* (réplicas T1/T2/T3 nunca vazam entre treino/teste) | ❌ (manual) | ⚠️ limitado | ✅ **por padrão** |
-| Reprodutível (sementes fixas, saída versionada) | ⚠️ | ❌ | ✅ |
+| Validação *group-aware* (réplicas T1/T2/T3 nunca vazam entre treino/teste) | ❌ (manual) | ✅ disponível, configurada pelo usuário (não é a partição padrão) | ✅ **por padrão**, incl. *holdout* |
+| Reprodutível (sementes fixas, saída versionada) | ⚠️ | ⚠️ possível via script (PLS_Toolbox/MATLAB, SIMCA-Q), não é o fluxo padrão da GUI | ✅ |
 | Usável **sem programar** (YAML + menu + web) | ❌ | ✅ (GUI paga) | ✅ |
 | Planejamento de tamanho amostral + auditoria automática de confundimento classe×sessão + identificação de conjunto aberto calibrada por predição conforme, num único fluxo | ❌ | ❌ (não encontrado em documentação pública até 2026-08) | ✅ |
+| Arquivo de modelo em formato aberto e portátil | — | ✅ (Eigenvector Model Exporter: .py/.m/XML) | ❌ (`.joblib`/pickle, preso à versão de Python/scikit-learn) |
 
 **A lacuna preenchida:** rigor de publicação (Q1) + reprodutibilidade +
 acessibilidade, sem custo de licença. (Seleção de amostras por Kennard-Stone
 e transferência de calibração, que o GUARACI também implementa, NÃO são
 reivindicadas como diferenciais aqui — o Unscrambler já traz Kennard-Stone,
-e transferência de calibração é técnica clássica de quimiometria,
-razoavelmente presumida presente em suites comerciais maduras.)
+e transferência de calibração é técnica clássica de quimiometria que não
+verificamos de forma independente em toda suite comercial, mas esperamos
+que exista.)
 
 ---
 
-## Diferencial metodológico: validação *group-aware*
+## Validação *group-aware*, ligada por padrão
 
 Cada amostra é medida em **triplicata** (T1/T2/T3). Se essas réplicas forem
 distribuídas livremente entre treino e teste, o modelo "decora" a amostra e a
@@ -77,6 +81,10 @@ acurácia fica **inflada** (vazamento de dados). Aqui, o identificador `mae_id`
 mantém as três réplicas **sempre no mesmo lado** da partição
 (`StratifiedGroupKFold` / `GroupShuffleSplit`), tanto na validação cruzada
 quanto no *holdout* externo. É o que separa um número honesto de um artefato.
+Ferramentas concorrentes também podem ser configuradas para isso (ex.: o
+vetor de grupos `cvi` do PLS_Toolbox, a orientação manual de segmento do
+Unscrambler); aqui é o padrão, inclusive no *holdout* — não uma opção que o
+usuário precisa saber que existe para ligar.
 
 ---
 
