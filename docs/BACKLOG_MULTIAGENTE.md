@@ -65,7 +65,7 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | T1 | Predição conforme para regressão | **implementado (Passo 203)** — `conformal.conformal_margin_regression`, wired em `pls_regression_by_species`/`quantify_sample`/`predict_blind` (alpha_total). Fecha #10 e o achado R5a. |
 | T2 | EPO / GLSW | **implementado (Passo 205)** — `epo_glsw.py` (EPO + GLSW + `build_difference_matrix`). Não é um transformer de Pipeline padrão (recebe matriz de diferenças pronta, ver docstring). Não se aplica ao dataset próprio (ordem×teor colinear). |
 | T3 | ASCA (+) | **implementado (Passo 204)** — `asca.py`, decomposição marginal (Smilde et al. 2005) + permutação por unidade experimental. Escopo honesto: NÃO é a extensão "+" completa (Thiel et al. 2017) para fatores correlacionados; `ss_desbalanco` sinaliza quando ela seria necessária. |
-| T4 | Correção de deriva por QC/brancos | _preenchido na Fase 4_ |
+| T4 | Correção de deriva por QC/brancos | **implementado (Passo 207)** — `deriva_qc.corrigir_deriva_por_qc` (QC-RLSC). Pré-requisito de dado (QC com ordem de aquisição) não satisfeito hoje — função utilizável só com dado fornecido pelo chamador, não ligada a fluxo automático. |
 | T5 | di-PLS | **backlog — não priorizado nesta rodada** (instrução determina registrar, não implementar) |
 | T6 | PQN | _preenchido na Fase 4_ |
 | T7 | Ledoit-Wolf / LDA com encolhimento | _preenchido na Fase 4_ |

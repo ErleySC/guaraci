@@ -1556,6 +1556,12 @@
         "forma": "funcao"
       }
     },
+    "deriva_qc": {
+      "corrigir_deriva_por_qc": {
+        "assinatura": "(X_amostras: 'np.ndarray', ordem_amostras: 'np.ndarray', X_qc: 'np.ndarray', ordem_qc: 'np.ndarray', *, suavizacao: 'Optional[float]' = None) -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
     "design_tokens": {
       "TOKENS": {
         "forma": "constante",

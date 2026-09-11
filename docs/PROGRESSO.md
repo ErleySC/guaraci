@@ -4244,3 +4244,44 @@ rodada e foram corrigidas aqui; a 3ª (cobertura do vault) reproduziu
 limpa e sozinha depois — artefato de leitura concorrente com edição de
 arquivo em andamento, não bug real. `ruff`/`mypy` (gate de 52 módulos)
 limpos.
+
+---
+
+# PROGRESSO — Passo 207 (2026-09-10)
+
+## Passo 207 — Fase 4 (T4, fecha a Fase 4): correção de deriva por QC/brancos intercalados
+
+Novo módulo `deriva_qc.py`: `corrigir_deriva_por_qc` implementa QC-RLSC
+(Dunn et al. 2011, Nature Protocols 6:1060-1083, DOI
+10.1038/nprot.2011.335) — ajusta uma curva SUAVE (spline) do sinal de QC
+contra a ordem de aquisição, canal a canal, e corrige as amostras
+dividindo pelo valor da curva no ponto da sua própria ordem
+(renormalizado pela média geral do QC). A deriva é estimada SÓ pelos QCs,
+que não carregam informação de teor — é a única via de correção
+compatível com o achado de que a ordem de leitura confunde o teor no
+dataset próprio (P12): qualquer correção que olhasse para o teor
+reintroduziria a colinearidade no próprio mecanismo de correção.
+
+**Pré-requisito de dado, não contornado**: exige QC/branco com ORDEM (ou
+timestamp) de aquisição conhecida. O dataset privado não tem isso (parser
+DX não expõe o `##AUDIT TRAIL`); o candidato público (GC-IMS Zenodo
+19209004, 14 QCs) tem a ordem de injeção **não confirmada** disponível.
+Função utilizável só com dado que o chamador forneça — não ligada a
+nenhum fluxo automático enquanto o pré-requisito não for satisfeito.
+
+**Achado real durante os testes** (não hipotético): sem tratamento, uma
+amostra com ordem de aquisição FORA do intervalo coberto pelos QCs fazia
+a spline EXTRAPOLAR para um valor absurdo (dezenas de vezes o esperado) —
+corrigido com um clamp explícito (amostra fora do intervalo usa o valor
+do extremo mais próximo, nunca uma extrapolação livre).
+
+7 testes: reduz a correlação norma×ordem mantendo a amplitude relativa
+entre amostras, preserva forma, recusa com <4 QCs em ordens distintas ou
+canais incompatíveis, QC ~constante não altera as amostras, amostra fora
+do intervalo de QC não explode (achado acima). Módulo puro, adicionado ao
+gate de tipos (53 módulos). `ruff`/`mypy` limpos. Contrato de API pública
+regravado (mudança aditiva).
+
+**Fase 4 fechada**: T1, T2, T3, T4, T6, T7, T9 implementados e testados;
+T5/T8/T10 seguem no backlog, não priorizados nesta rodada (instrução
+explícita).
