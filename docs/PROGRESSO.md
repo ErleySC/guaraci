@@ -4454,3 +4454,53 @@ tratamento do Bloco 13d): `docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` novo.
 `docs/BACKLOG_MULTIAGENTE.md` (linhas R4, P4, P5) atualizado com os
 resultados. Nenhum código de aplicação mudou neste passo (só
 `docs/*.md`); `ruff`/`mypy`/suíte não afetados.
+
+---
+
+# PROGRESSO — Passo 211 (2026-09-10)
+
+## Passo 211 — Medição replicada do achado #12: RETRATAÇÃO do Passo 202
+
+Item 2 da instrução de 2026-09-10. A medição do Passo 202 (CV aninhada
+vs. seleção atual de nº de VLs) foi **1 única execução** — a própria
+nota já registrava isso como insuficiente para decidir. Esta rodada
+replica a MESMA comparação em 10 seeds independentes de split +
+Wilcoxon pareado, mesmo padrão já usado em
+`comparar_npls_pixelwise_mango.py` (N-PLS vs. PLS-DA por pixel).
+
+**Custo reportado ANTES de rodar** (regra da instrução): estimativa
+~2250s (~38 min) com base no tempo medido no Passo 202 para 1 execução
+(48s naive + 177s aninhada). Custo real: **2445s (~40,7 min)** para as
+10 seeds — smoke test com 1 seed rodado antes para validar o script
+(255s, incluído no total).
+
+Script novo: `scripts/medicoes/medir_vieses_selecao_lv_replicado.py`
+(reusa `_fabrica`/`_escolher_n_opt_por_rmsecv` de
+`medir_vieses_selecao_lv.py`, sem duplicar lógica).
+
+**Resultado — RETRATA o Passo 202, direção inverte e vira consistente**:
+em 10/10 seeds, a metodologia NAIVE (atual) teve `balanced_accuracy`
+MAIOR que a ANINHADA (nested) — médias 0,9183 (naive) vs. 0,8756
+(aninhada), delta médio **+0,0427**, `scipy.stats.wilcoxon`
+**p=0,0020**. O Passo 202 (1 seed) tinha visto o OPOSTO (aninhada maior,
+0,8499 vs. 0,8299) e concluíra "direção oposta à hipótese, decisão
+adiada" — esse número era artefato de 1 split específico, não um efeito
+real. Com 10 réplicas, o resultado agora está NA DIREÇÃO da hipótese
+original do relatório multiagente (#12): a seleção atual de `n_opt`
+(mesmo dado escolhe o modelo e avalia a métrica reportada) infla
+`balanced_accuracy` de forma real e estatisticamente consistente.
+
+**Decisão pré-aprovada da instrução** ("só propor propagar se resultado
+for consistente/significativo nas réplicas") **está satisfeita** — mas
+por instrução explícita, **NÃO propagado ao pipeline nesta rodada**
+mesmo assim; fica registrado como proposta para aprovação do autor:
+trocar a seleção de `n_opt` por CV aninhada em `pipeline.py` custaria
+~4,4× o tempo de CV (média medida nas 10 seeds, atualiza a estimativa de
+3,7× de 1 única execução do Passo 202) em troca de remover um viés
+otimista real da métrica principal reportada.
+
+`docs/BACKLOG_MULTIAGENTE.md` (#12, #14) atualizado, substituindo a nota
+de medição única. Nenhuma mudança em `pipeline.py` ou qualquer módulo de
+produção — só o script de medição novo (`scripts/medicoes/`, fora do
+gate de tipos/pacote instalável, mesma convenção dos outros scripts da
+pasta).
