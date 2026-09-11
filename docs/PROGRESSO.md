@@ -4285,3 +4285,75 @@ regravado (mudança aditiva).
 **Fase 4 fechada**: T1, T2, T3, T4, T6, T7, T9 implementados e testados;
 T5/T8/T10 seguem no backlog, não priorizados nesta rodada (instrução
 explícita).
+
+---
+
+# PROGRESSO — Passo 208 (2026-09-10)
+
+## Passo 208 — Fase 5: lacunas de produto (Agente 4)
+
+### P1 — Execução não interativa pela CLI: IMPLEMENTADO
+
+`guaraci run [CONFIG]` (novo comando em `guaraci.py`): carrega um
+`config.yaml` (padrão: `./config.yaml`), chama `pipeline.executar(cfg)` e
+sai — sem abrir o assistente. Mesmo contrato de código de saída já
+documentado em `--help` (0 sucesso, 1 erro de execução, 2 uso incorreto).
+Não abre o explorador de arquivos nem depende de sessão gráfica/input
+(diferente de `demo`) — é o caminho headless para automação/CI, fechando
+a lacuna frente a PLS_Toolbox/MATLAB e SIMCA-Q (scriptáveis) apontada
+pelo Agente 4. A API Python (`guaraci.pipeline.executar(cfg)`) continua
+sendo o caminho mais rico para uso programático.
+
+10 testes novos: arquivo/config inválido é erro de uso (2), falha de
+execução é erro 1, sucesso não chama `os.startfile` nem `input()`, usa
+`./config.yaml` do diretório de trabalho quando nenhum argumento é
+passado, comando documentado em `--help`, `main()` despacha corretamente.
+
+### P2 — Exportação portátil de modelo: AVALIADO, não implementado
+
+O que `.joblib` persiste hoje (`pipeline.py`, `pacote_modelo`) **não é um
+modelo único** — é um grafo Python profundamente aninhado: pipelines
+sklearn (pré-processador + PLS/PLS-DA) por espécie, PCA por espécie
+(DD-SIMCA: `pca`, `var_t`, `h0`, `q0`, `Nh`, `Nq`, `f_crit`), o ensemble
+de identificação de conjunto aberto, margens conformais (T1) e as
+classes próprias `DDSimca`/`ConformalOneClass`/`MCRALSResultado`.
+
+- **ONNX** (via `skl2onnx`) e **PMML** (via `sklearn2pmml`) exportam **um
+  modelo sklearn por vez** — não têm como representar essa estrutura com
+  várias sub-análises por espécie e classes customizadas sem reescrever
+  cada peça como um grafo ONNX/PMML separado e recompor a lógica de
+  despacho (qual espécie, qual portão) FORA do formato — o que efetivamente
+  recria a mesma superfície de código que hoje vive em `predicao.py`, só
+  que com o modelo espalhado em N arquivos.
+- **`skops`** (biblioteca da comunidade scikit-learn, `skops.io`) evita
+  a execução arbitrária de código do pickle para objetos sklearn/numpy
+  nativos, mas exige que toda classe customizada (`DDSimca`,
+  `ConformalOneClass`, `MCRALSResultado` e as demais) seja registrada
+  explicitamente na lista de tipos confiáveis e testada individualmente
+  — não é um `joblib.dump`→`skops.dump` de uma linha.
+
+**Recomendação**: não é correção pontual — é um projeto de migração de
+formato de persistência que toca o caminho central de salvar/carregar
+modelo (risco de reprodutibilidade do próprio projeto, como o relatório
+já advertia). Fica registrado no backlog como item de escopo próprio, não
+iniciado nesta rodada.
+
+### P3 — Mais leitores de formato: AVALIADO, não implementado
+
+Formatos já lidos: JCAMP-DX/ASDF, OPUS (Bruker, via `brukeropus`),
+ANDI-MS (GC-MS), ENVI (HSI), CSV. Comparado à lista de ~35 leitores do
+PLS_Toolbox (Agente 4, §5.1): os dois formatos de maior demanda genérica
+ainda não lidos são **SPC** (Galactic/Thermo GRAMS — o formato binário
+mais usado como *interchange* em FT-IR/NIR/Raman, exportável por
+instrumentos de múltiplos fabricantes, especificação pública) e
+**PerkinElmer `.sp`**. Ambos exigiriam um parser binário novo (mesmo
+padrão de esforço do parser OPUS já existente) — não iniciado nesta
+rodada; registrado como candidato priorizado para quando houver
+instrução dedicada a formatos de importação.
+
+### P4/P5 — Fusão multibloco e monitoramento em linha: registrados no
+backlog como itens de escopo grande (ver `docs/BACKLOG_MULTIAGENTE.md`),
+não iniciados — mesma instrução que pediu isso explicitamente.
+
+10 testes novos (P1), suíte completa e `ruff`/`mypy` limpos (`guaraci.py`
+não entra no gate de tipos, por design — UI/orquestração).

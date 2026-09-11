@@ -77,9 +77,9 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 
 | # | Lacuna | Status |
 |---|---|---|
-| P1 | Execução não interativa pela CLI (`guaraci run config.yaml`) | _avaliado na Fase 5_ |
-| P2 | Exportação portátil do modelo (alternativa ao `.joblib` puro) | _avaliado na Fase 5_ |
-| P3 | Mais leitores de formato de instrumento | _avaliado na Fase 5_ |
+| P1 | Execução não interativa pela CLI (`guaraci run config.yaml`) | **implementado (Passo 208)** — comando `run`, 10 testes |
+| P2 | Exportação portátil do modelo (alternativa ao `.joblib` puro) | **avaliado (Passo 208), não implementado** — ONNX/PMML exportam 1 modelo por vez (não cabe a estrutura multi-espécie/classes customizadas); `skops` exigiria registrar cada classe própria. Projeto de migração próprio, fora desta rodada. |
+| P3 | Mais leitores de formato de instrumento | **avaliado (Passo 208), não implementado** — candidatos priorizados: SPC (Galactic/Thermo) e PerkinElmer `.sp`, maior demanda genérica frente aos ~35 do PLS_Toolbox. Não iniciado. |
 | P4 | Fusão multibloco | **backlog — escopo grande, não iniciar sem instrução própria** |
 | P5 | Monitoramento em linha / MSPC | **backlog — escopo grande, não iniciar sem instrução própria** |
 | P6 | Intervalo de predição por amostra (Unscrambler) | = T1 (mesma lacuna, ver D) |

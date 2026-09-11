@@ -1061,3 +1061,91 @@ def test_codigos_usuario_lidos_do_mesmo_arquivo_que_o_menu_grava(
 
     alvo.unlink()
     assert guaraci_mod._carregar_codigos_usuario() == {}
+
+
+# ── `guaraci run` (P1, rodada multiagente 2026-09-10, lacuna de produto) ──
+# Execucao nao-interativa a partir de um config.yaml, sem abrir o menu --
+# antes so' existia a API Python para isso.
+
+def test_comando_run_arquivo_inexistente_e_erro_de_uso(guaraci_mod, tmp_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        guaraci_mod._comando_run(str(tmp_path / "nao_existe.yaml"))
+    assert exc.value.code == 2
+    assert "nao encontrado" in capsys.readouterr().err.lower()
+
+
+def test_comando_run_config_invalido_e_erro_de_uso(guaraci_mod, tmp_path):
+    caminho = tmp_path / "config.yaml"
+    caminho.write_text("chave_desconhecida: 123\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        guaraci_mod._comando_run(str(caminho))
+    assert exc.value.code == 2
+
+
+def test_comando_run_falha_de_execucao_e_erro_1(guaraci_mod, tmp_path, monkeypatch):
+    caminho = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(guaraci_mod.Config(), str(caminho))
+
+    def _executar_falha(cfg):
+        raise RuntimeError("falha simulada do pipeline")
+
+    monkeypatch.setattr(guaraci_mod.pq, "executar", _executar_falha)
+    with pytest.raises(SystemExit) as exc:
+        guaraci_mod._comando_run(str(caminho))
+    assert exc.value.code == 1
+
+
+def test_comando_run_sucesso_nao_abre_explorador_nem_pede_input(
+        guaraci_mod, tmp_path, monkeypatch, capsys):
+    """`run` e' o caminho NAO-interativo -- ao contrario de `demo`, nao
+    pode chamar os.startfile/xdg-open nem qualquer coisa que dependa de
+    sessao grafica ou input do usuario."""
+    caminho = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(guaraci_mod.Config(), str(caminho))
+
+    chamado = {"executar": False}
+
+    def _executar_ok(cfg):
+        chamado["executar"] = True
+        cfg.output_folder = str(tmp_path / "saida_fake")
+
+    def _startfile_nao_pode_ser_chamado(*_a, **_kw):
+        raise AssertionError("run nao pode abrir o explorador de arquivos")
+
+    monkeypatch.setattr(guaraci_mod.pq, "executar", _executar_ok)
+    monkeypatch.setattr(guaraci_mod.os, "startfile", _startfile_nao_pode_ser_chamado,
+                         raising=False)
+    monkeypatch.setattr("builtins.input",
+                         lambda *_a, **_kw: (_ for _ in ()).throw(
+                             AssertionError("run nao pode pedir input")))
+
+    guaraci_mod._comando_run(str(caminho))
+    assert chamado["executar"] is True
+    assert "saida_fake" in capsys.readouterr().out
+
+
+def test_comando_run_sem_argumento_usa_config_yaml_do_cwd(
+        guaraci_mod, tmp_path, monkeypatch):
+    """Sem argumento, `run` procura `./config.yaml` no diretorio de
+    trabalho atual -- o mesmo arquivo que o cabecalho de config.yaml
+    (`Para rodar: python pipeline.py --rodar`) ja descreve."""
+    caminho = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(guaraci_mod.Config(), str(caminho))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(guaraci_mod.pq, "executar", lambda cfg: None)
+
+    guaraci_mod._comando_run(None)   # nao levanta -- achou ./config.yaml
+
+
+def test_run_esta_documentado_na_ajuda(guaraci_mod):
+    assert "run" in guaraci_mod._TEXTO_AJUDA.lower()
+
+
+def test_main_despacha_comando_run(guaraci_mod, tmp_path, monkeypatch):
+    caminho = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(guaraci_mod.Config(), str(caminho))
+    chamado = {}
+    monkeypatch.setattr(guaraci_mod, "_comando_run",
+                         lambda c: chamado.setdefault("caminho", c))
+    guaraci_mod.main(["run", str(caminho)])
+    assert chamado["caminho"] == str(caminho)

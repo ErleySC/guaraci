@@ -5308,6 +5308,49 @@ def _comando_doctor() -> None:
         console.print(f"  [err]Nao foi possivel salvar o relatorio: {escape(str(e))}[/err]")
 
 
+def _comando_run(caminho_config: Optional[str]) -> None:
+    """Executa o pipeline uma vez a partir de um `config.yaml`, sem abrir
+    o assistente interativo, e sai (0 sucesso, 1 erro de execução, 2 uso
+    incorreto -- mesmo contrato documentado em `_TEXTO_AJUDA`).
+
+    Proposta P1 da rodada multiagente de 2026-09-10 (lacuna de produto
+    frente a concorrentes com linha de comando não interativa, ex.
+    PLS_Toolbox/MATLAB, SIMCA-Q): antes, a única forma de rodar sem o
+    menu era a API Python (`guaraci.pipeline.executar(cfg)`) -- isso
+    continua valendo para uso programático mais rico; `run` cobre o caso
+    comum de automação/CI (`guaraci run config.yaml`).
+
+    NÃO abre o explorador de arquivos ao final (diferente de `demo`) --
+    uso não-interativo/em script não deve depender de sessão gráfica.
+    `caminho_config` omitido usa `./config.yaml` (diretório de trabalho
+    atual), o mesmo arquivo que o comentário de cabeçalho de
+    `config.yaml` já descreve como o jeito de rodar."""
+    caminho = Path(caminho_config) if caminho_config else Path.cwd() / "config.yaml"
+    if not caminho.is_file():
+        print(f"Erro: arquivo de config nao encontrado: {caminho}\n",
+              file=sys.stderr)
+        print(_TEXTO_AJUDA, file=sys.stderr)
+        raise SystemExit(2)
+
+    try:
+        cfg = _load_config(str(caminho))
+    except (RuntimeError, FileNotFoundError, ValueError) as e:
+        print(f"Erro: config invalido em {caminho}: {e}\n", file=sys.stderr)
+        raise SystemExit(2) from e
+
+    print(f"[GUARACI] Executando com {caminho} ...")
+    try:
+        pq.executar(cfg)
+    except Exception as e:  # noqa: BLE001 -- `run` e' o caminho nao-interativo/
+        # script: precisa devolver uma mensagem legivel + codigo de saida
+        # 1, nunca um stack trace cru estourando pro chamador (mesmo
+        # padrao de _comando_demo acima).
+        print(f"Erro: a execucao falhou: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
+
+    print(f"[GUARACI] Concluido. Saida em: {cfg.output_folder}")
+
+
 def _comando_demo() -> None:
     """Roda o pipeline completo com dados sinteticos, sem exigir dado do
     usuario. Fluxo dos 5 minutos: pip install -> guaraci demo -> figuras."""
@@ -5402,6 +5445,8 @@ _TEXTO_AJUDA = """Uso: guaraci [COMANDO] [OPCOES]
 
 Comandos:
   (sem argumentos)  abre o assistente interativo
+  run [CONFIG]      executa o pipeline uma vez a partir de CONFIG (padrao:
+                    ./config.yaml) e sai -- sem menu, p/ automacao/CI
   demo              roda o pipeline com dados sinteticos (nao precisa de dado)
   doctor            diagnostica o ambiente (dependencias, RAM, CPU)
   perfis            lista os perfis de matriz disponiveis
@@ -5505,6 +5550,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             _comando_versao(); return
         if comando == "demo":
             _comando_demo(); return
+        if comando == "run":
+            _comando_run(restantes[1] if len(restantes) > 1 else None); return
         if comando == "doctor":
             _comando_doctor(); return
         if comando == "perfis":
