@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "guaraci-chemometrics"
-version = "31.9.0"
+version = "1.0.0"
 description = "GUARACI — chemometrics platform with leakage-safe validation by default"
 readme = "README.md"
 license = { file = "LICENSE" }

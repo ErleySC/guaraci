@@ -4,7 +4,7 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
   <img alt="Licença: GPLv3" src="https://img.shields.io/badge/Licen%C3%A7a-GPLv3-3D8B57">
   <img alt="Licença comercial disponível" src="https://img.shields.io/badge/comercial-licen%C3%A7a%20dispon%C3%ADvel-B8963E">
-  <img alt="Version" src="https://img.shields.io/badge/version-31.9.0-B8963E">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-B8963E">
   <img alt="Interface" src="https://img.shields.io/badge/UI-Rich%20CLI%20%2B%20Streamlit-4A9E5C">
   <img alt="Idiomas" src="https://img.shields.io/badge/i18n-PT%20%2F%20EN-686868">
   <img alt="Status" src="https://img.shields.io/badge/status-ativo-55B06A">
@@ -525,13 +525,13 @@ seja feito.
 **ABNT (NBR 6023:2018)**
 
 > COSTA, E. S. da. **GUARACI: Plataforma quimiométrica com validação anti-vazamento por padrão**.
-> Versão 31.9.0. 2026. Disponível em:
+> Versão 1.0.0. 2026. Disponível em:
 > <https://github.com/ErleySC/guaraci>.
 
 **APA**
 
 > Costa, E. S. da. (2026). *GUARACI: Chemometrics platform with leakage-safe validation by default*
-> (v31.9.0) [Software].
+> (v1.0.0) [Software].
 > https://github.com/ErleySC/guaraci
 
 **BibTeX**
@@ -540,7 +540,7 @@ seja feito.
 @software{guaraci_2026,
   author      = {Costa, Erley S. da},
   title       = {{GUARACI: Plataforma quimiométrica com validação anti-vazamento por padrão}},
-  version     = {31.9.0},
+  version     = {1.0.0},
   year        = {2026},
   url         = {https://github.com/ErleySC/guaraci},
   license     = {GPL-3.0-or-later}

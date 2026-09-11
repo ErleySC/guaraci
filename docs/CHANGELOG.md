@@ -5,6 +5,38 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 
 > Ordem histórica original preservada como estava no código-fonte.
 
+## v1.0.0 — 2026-09-11
+
+Primeiro release coberto de verdade pela política de SemVer (ver
+`docs/COMPATIBILITY.md`, "O que o SemVer cobre a partir da v1.0.0"): a
+partir daqui, mudar assinatura de função pública/formato de dataclass
+de resultado/esquema de `config.yaml`/nome de coluna de saída de forma
+incompatível exige bump de major (ou minor com depreciação). Antes da
+v1.0.0 o projeto usava uma numeração própria (v31.x) sem essa garantia
+formal — os 31 blocos "NAO LANCADO (pos-v31.9.0)" abaixo (2026-08-05 a
+2026-09-08) e os Passos 200-213 de `docs/PROGRESSO.md` (2026-09-10/11,
+rodada multiagente + preparação para v1.0) estão todos incluídos neste
+release.
+
+**Correção científica destacada desta versão** (Passo 213, achado #12):
+`selecao_lv_cv_aninhada=True` passa a ser o padrão — a métrica de CV
+reportada (`Balanced accuracy`, `Q2`, ROC AUC, CV-ANOVA) agora vem de
+CV aninhada honesta em vez de reusar os mesmos folds para escolher o
+número de variáveis latentes E avaliar o modelo (medido: 10 seeds
+independentes, Wilcoxon p=0,0020, dataset privado — ver
+`docs/VALIDACAO_PUBLICA.md` §10). Configurável
+(`selecao_lv_cv_aninhada: false`) para quem precisa de iteração rápida.
+
+Outras capacidades acumuladas neste release (detalhe completo nos blocos
+"NAO LANCADO" abaixo e em `docs/PROGRESSO.md`): HSI (imageamento
+hiperespectral, classificação por pixel com agregação por objeto físico),
+14 validações públicas multitécnica (FT-NIR, MIR, Raman, UV-Vis, EEM,
+GC-MS, HPLC, GC-IMS, RMN), DD-SIMCA/OPLS-DA, PARAFAC/N-PLS multiway,
+MCR-ALS com restrição de correlação, ASCA, EPO/GLSW, PQN, correção de
+deriva por QC (QC-RLSC), predição conforme para regressão, execução não-
+interativa via CLI (`guaraci run`), navegação web em barra lateral, e a
+política de compatibilidade formal que esta versão inaugura.
+
 ```
 NAO LANCADO (pos-v31.9.0) — 2026-09-08 — web/navegacao: as 8 abas horizontais
              viraram BARRA LATERAL com duas telas fixas (Inicio,

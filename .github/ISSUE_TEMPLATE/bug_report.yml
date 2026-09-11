@@ -16,7 +16,7 @@ body:
     attributes:
       label: GUARACI version
       description: Output of `guaraci --version`
-      placeholder: "31.9.0"
+      placeholder: "1.0.0"
     validations:
       required: true
 
