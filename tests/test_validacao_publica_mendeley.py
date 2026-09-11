@@ -51,12 +51,26 @@ import pandas as pd
 import pytest
 
 #: Balanced accuracy minima para a classificacao de especies nao ser
-#: degenerada (pior que sempre prever a classe majoritaria). NAO e' um
-#: alvo de literatura -- e' so' o piso "o modelo aprendeu algo", dado que
-#: n=62 amostras de treino / 8 classes / ~11500 variaveis e' um regime
-#: genuinamente dificil (balanced_accuracy medida em 2026-08-27: CV
-#: 0.35, holdout 0.475 -- ambos acima do chance ~0.125, mas modestos).
-BAL_ACC_MINIMA = 0.25
+#: degenerada (pior que sempre prever a classe majoritaria -- balanced
+#: accuracy de um classificador que so' acerta 1 classe e' exatamente
+#: 1/n_classes = 0.125 aqui, independente do desbalanceamento). NAO e'
+#: um alvo de literatura -- e' so' o piso "o modelo aprendeu algo", dado
+#: que n=62 amostras de treino / 8 classes / ~11500 variaveis e' um
+#: regime genuinamente dificil.
+#:
+#: RECALIBRADO no Passo 213 (2026-09-11, achado #12): `selecao_lv_cv_
+#: aninhada=True` virou o padrao -- a CV que "0.35" (medido 2026-08-27)
+#: vinha de reusava os mesmos folds pra' escolher n_opt E avaliar, o que
+#: infla a metrica (ver docs/VALIDACAO_PUBLICA.md secao 10). Com CV
+#: aninhada honesta, a mesma execucao mede balanced_accuracy=0.244 --
+#: ainda quase 2x o chance (0.125), mas MARGINAL, nao mais "modesto e
+#: confortavel" como a nota anterior dizia. O piso de 0.25 tinha sido
+#: calibrado literalmente em torno do 0.35 antigo (ver git blame) -- se
+#: mantido, o proprio numero honesto que a correcao do #12 produz falha
+#: o teste. Recalibrado para 0.20 (~1,6x chance): ainda pega um modelo
+#: genuinamente quebrado (bal_acc perto de 0.125), sem penalizar a
+#: metrica agora HONESTA por ser menor que a antiga, que era otimista.
+BAL_ACC_MINIMA = 0.20
 
 #: Classes com pelo menos este numero de amostras entram na classificacao
 #: -- classes com 1-2 amostras nao sustentam nenhuma divisao treino/teste

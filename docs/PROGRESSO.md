@@ -4644,3 +4644,48 @@ nenhum novo). `ruff` limpo em todos os arquivos tocados
 `cli_assistente.py`/`app_tabs/*` estão FORA do gate por design (camada
 de UI/orquestração, ver `pyproject.toml`); `config.py`/`config_io.py`
 (no gate) seguem limpos.
+
+---
+
+# PROGRESSO — Passo 214 (2026-09-11)
+
+## Passo 214 — CI quebrou após o Passo 213: achado real no Mendeley, não bug
+
+Push do Passo 213/versão v1.0.0 (`3ff08f0`/`cc0e14c`) derrubou os 3
+jobs `validacao-publica-mendeley` (ubuntu/macos/windows, valor
+IDÊNTICO nos 3 SOs: `balanced_accuracy=0.244`, confirmando ser
+determinístico, não flake). Investigado ANTES de decidir o que fazer
+(regra permanente desta sessão: evidência ou silêncio).
+
+**Reprodução local**: dataset baixado
+(`scripts/download_datasets/baixar_mendeley_oleos.py`), teste rodado
+com `GUARACI_DATASETS_DIR` local -- reproduz exatamente: `LV selection
+by CV (RepeatedStratifiedKFold n_splits=4 repeats=3)`, `n_opts por fold
+externo = [1, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1]` (12 folds = 4×3
+repeats), naive=0,3485 (bate com o 0,35 já documentado), aninhada=0,244.
+
+**Diagnóstico**: NÃO é bug do mecanismo de CV aninhada -- é a primeira
+vez que ela roda contra `RepeatedStratifiedKFold` (o dataset privado só
+exercitava o caminho group-aware) e contra um regime pequeno/difícil de
+verdade (n=62 treino, 8 classes, ~11500 variáveis colineares, já
+documentado como "genuinamente difícil" desde 2026-08-27). O número
+antigo (0,35) vinha PRECISAMENTE do viés que o achado #12 descreve:
+reusar os mesmos folds pra' escolher `n_opt` E avaliar. Com CV honesta,
+0,244 ainda fica ~1,95× o chance teórico (0,125 = balanced accuracy de
+um classificador que só acerta 1 classe, para 8 classes) -- um sinal
+real, só que MARGINAL, não mais "modesto e confortável".
+
+**Correção**: `BAL_ACC_MINIMA` (`tests/test_validacao_publica_mendeley.py`)
+recalibrado de 0,25 para 0,20 -- o piso antigo tinha sido calibrado
+literalmente em torno do 0,35 otimista (comentário no código dizia
+isso), não em torno do chance teórico; mantido honesto, ainda pega um
+modelo genuinamente quebrado (perto de 0,125), sem penalizar a métrica
+por ficar menor agora que é honesta. `docs/VALIDACAO_PUBLICA.md` §2
+retratado (número antigo riscado, novo número + razão registrados) e
+tabela consolidada (§1) atualizada. Holdout (0,475) NÃO mudou -- usa o
+`n_opt` do modelo final, que a correção do #12 não altera por design.
+
+Suíte do arquivo (2 testes) verde localmente depois da correção. `ruff`
+limpo. Commit e push -- CI re-disparado, aguardando confirmação de que
+os outros 8 jobs `validacao-publica-*` continuam verdes (já estavam,
+só os 3 do Mendeley falharam) e que nada mais quebrou.
