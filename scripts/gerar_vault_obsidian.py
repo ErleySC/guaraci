@@ -1732,6 +1732,12 @@ _CATALOGO_DOCUMENTOS: list[dict[str, Any]] = [
      "deriva_para": [("MOC-Validacoes", "complementar a VALIDACAO_PUBLICA.md")]},
     {"rel": "docs/index.md", "para_quem": "visitante da página do projeto (GitHub Pages)",
      "deriva_para": [("MOC-Guaraci", "página de entrada equivalente")]},
+    {"rel": "docs/RELATORIO_MULTIAGENTE_2026-09-10.md",
+     "para_quem": "o autor — decisão conjunta sobre as 4 frentes da rodada multiagente",
+     "deriva_para": [("MOC-Decisoes", "achados e propostas consolidados das 4 frentes")]},
+    {"rel": "docs/BACKLOG_MULTIAGENTE.md",
+     "para_quem": "o autor / uma sessão futura — rastreamento item a item do relatório acima",
+     "deriva_para": [("MOC-Decisoes", "status final de cada achado/proposta")]},
 ]
 
 _PADRAO_LINHA_RUIDO_DOC = re.compile(r"^(<|\[!\[)")
