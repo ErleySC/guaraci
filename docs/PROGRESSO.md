@@ -4159,3 +4159,43 @@ permutação por unidade dá distribuição nula mais realista que por
 amostra, p-valor nunca sai 0 (correção +1/+1, Davison & Hinkley 1997).
 Módulo puro, adicionado ao gate de tipos (51 módulos). `ruff`/`mypy`
 limpos.
+
+---
+
+# PROGRESSO — Passo 205 (2026-09-10)
+
+## Passo 205 — Fase 4 (T2): EPO/GLSW, remoção de fator de perturbação conhecido
+
+Novo módulo `epo_glsw.py`: EPO (Roger, Chauchard & Bellon-Maurel 2003,
+Chemom. Intell. Lab. Syst. 66:191-204, DOI 10.1016/S0169-7439(03)00051-0)
+remove por completo, GLSW (Martens, Høy, Wise, Bro & Brockhoff 2003, J.
+Chemometrics 17:153-165, DOI 10.1002/cem.780) atenua proporcionalmente, as
+direções que explicam a variação de um fator de perturbação CONHECIDO
+(espécie-hospedeira, rodada de sessão, instrumento) — estimadas de uma
+matriz de espectros DIFERENÇA entre pares que compartilham a mesma
+condição de interesse mas diferem só no fator de perturbação
+(`build_difference_matrix`).
+
+Diferença para o que já existe: o OSC remove variação ortogonal ao alvo
+(y) — rejeitado no óleo (Passo 134). EMSC remove interferentes conhecidos
+a priori. EPO/GLSW usam o RÓTULO do fator de perturbação, não o espectro
+do interferente nem o alvo.
+
+**Por que não é um transformer de Pipeline padrão** (documentado na
+docstring do módulo): `Pipeline.fit(X, y)` só encaminha o alvo de
+classificação/regressão, não o rótulo do fator de perturbação, e o ajuste
+precisa de uma matriz de DIFERENÇAS, não de X direto — `fit` recebe essa
+matriz já pronta; `build_difference_matrix` deve ser chamada só com o
+TREINO de cada fold de CV, para não vazar a estrutura do fator.
+
+**Limite de escopo, testado com dados sintéticos representando o cenário
+do EEM Zenodo (marca de azeite como hospedeira), NÃO no dataset próprio
+de óleo**: lá a ordem de leitura é colinear com o teor (achado já
+registrado) — remover essa direção removeria o próprio sinal a
+quantificar.
+
+8 testes: recupera a direção real do fator sintético, EPO remove quase
+por completo mantendo o sinal de interesse, GLSW atenua sem zerar (alpha
+grande ≈ identidade), matriz de diferença vazia levanta erro explícito.
+Módulo puro, adicionado ao gate de tipos (52 módulos). `ruff`/`mypy`
+limpos.
