@@ -65,6 +65,8 @@ __all__ = [
     "MCRALSResultado",
     "mcr_als",
     "avaliar_incerteza_rotacional",
+    "MCRALSResultadoSupervisionado",
+    "mcr_als_com_restricao_correlacao",
 ]
 
 AVISO_AMBIGUIDADE_ROTACIONAL = (
@@ -228,6 +230,147 @@ def mcr_als(D: np.ndarray, n_componentes: int, *,
     return MCRALSResultado(C=C, S=S, lof_percent=historico_lof[-1],
                             n_iter=it, convergiu=convergiu,
                             historico_lof=historico_lof)
+
+
+@dataclass
+class MCRALSResultadoSupervisionado(MCRALSResultado):
+    """Resultado de `mcr_als_com_restricao_correlacao` -- mesmos campos de
+    `MCRALSResultado`, mais o ajuste linear que ancorou o componente alvo
+    à referência conhecida.
+
+    `coef_regressao`: `(a, b)` de `C[calibracao, alvo] = a + b*y_referencia`
+    na ÚLTIMA iteração (a mesma reta usada para prever `y` de uma amostra
+    nova a partir do `C` que o MCR-ALS lhe atribuir: `y_pred = (c - a)/b`).
+    `correlacao_calibracao`: correlação de Pearson entre o perfil do
+    componente alvo e `y_referencia` nas amostras de calibração, no `C`
+    FINAL -- por construção, próxima de 1 quando a restrição convergiu
+    (não é evidência de que o componente seja quimicamente o analito
+    certo, só de que a restrição foi imposta com sucesso).
+    """
+    coef_regressao: "tuple[float, float]" = (0.0, 1.0)
+    correlacao_calibracao: float = float("nan")
+
+
+def mcr_als_com_restricao_correlacao(
+        D: np.ndarray, n_componentes: int, *,
+        indice_componente_alvo: int,
+        y_referencia: np.ndarray,
+        indices_calibracao: np.ndarray,
+        nao_negativo_c: bool = True, nao_negativo_s: bool = True,
+        normalizacao: str = "soma_unitaria",
+        unimodal_c: bool = False,
+        c_inicial: Optional[np.ndarray] = None,
+        s_inicial: Optional[np.ndarray] = None,
+        max_iter: int = 200, tol: float = 1e-6
+        ) -> MCRALSResultadoSupervisionado:
+    """MCR-ALS com restrição de correlação (Bayat, Marín-García, Ghasemi &
+    Tauler, *Anal. Chim. Acta* 1113:52-65, 2020, DOI
+    10.1016/j.aca.2020.03.057) -- proposta T9 da rodada multiagente de
+    2026-09-10.
+
+    A CADA iteração, depois do passo usual de atualização de `C`, o perfil
+    do componente `indice_componente_alvo` nas amostras de
+    `indices_calibracao` é SUBSTITUÍDO pela predição de uma regressão
+    linear simples contra `y_referencia` (valores de referência
+    conhecidos, ex. teor declarado) -- ancora esse componente ao valor
+    conhecido, sem impor a mesma restrição aos DEMAIS componentes nem às
+    amostras SEM referência (ex. um conjunto de validação/predição, cujo
+    `C` continua livre, sujeito só às restrições usuais de
+    não-negatividade/normalização).
+
+    MOTIVAÇÃO (achado #`mcr-als-aviso-de-escopo`, ver módulo): a versão
+    NÃO supervisionada foi testada contra o acervo real de óleo e NÃO
+    recuperou o adulterante minoritário (Passos 131/136, `|r|` de 0,17 e
+    0,09). Esta variante NUNCA foi testada contra esse mesmo caso — é uma
+    proposta nova, não uma correção do achado negativo anterior. Retorno
+    esperado é INTERPRETATIVO (espectro do adulterante com âncora no teor
+    conhecido), não um substituto do PLS-R para quantificação
+    (`pipeline.pls_regressao_pooled`/`pls_regression_by_species`) — usar
+    com a mesma ressalva de escopo do `mcr_als` não supervisionado.
+
+    `indices_calibracao` NÃO deve incluir amostras de um grupo de
+    validação usado para medir desempenho (a restrição usa `y_referencia`
+    diretamente -- avaliar nas mesmas amostras seria circular).
+    """
+    D = np.asarray(D, dtype=float)
+    if D.ndim != 2:
+        raise ValueError("D precisa ser 2D (n_amostras, n_variaveis)")
+    if n_componentes < 1:
+        raise ValueError("n_componentes precisa ser >= 1")
+    if not (0 <= indice_componente_alvo < n_componentes):
+        raise ValueError(
+            f"indice_componente_alvo={indice_componente_alvo} fora do "
+            f"intervalo [0, {n_componentes})")
+
+    y_referencia = np.asarray(y_referencia, dtype=float)
+    indices_calibracao = np.asarray(indices_calibracao, dtype=int)
+    if len(y_referencia) != len(indices_calibracao):
+        raise ValueError(
+            f"y_referencia ({len(y_referencia)}) e indices_calibracao "
+            f"({len(indices_calibracao)}) precisam do mesmo comprimento.")
+    if len(indices_calibracao) < 2:
+        raise ValueError(
+            "Precisa de >=2 amostras de calibracao para ajustar a reta "
+            "de restricao de correlacao.")
+
+    norma_D = float(np.linalg.norm(D))
+    if norma_D < 1e-300:
+        raise ValueError("D e' (quase) todo zero -- nada para resolver")
+
+    if s_inicial is not None:
+        S = np.asarray(s_inicial, dtype=float).copy()
+        C = _passo_minimos_quadrados(D.T, S.T, nao_negativo_c).T
+    else:
+        C = (np.asarray(c_inicial, dtype=float).copy() if c_inicial is not None
+             else _init_variaveis_puras(D, n_componentes))
+        S = _passo_minimos_quadrados(D, C, nao_negativo_s)
+
+    def _restringir(C_atual: np.ndarray) -> "tuple[np.ndarray, tuple[float, float]]":
+        c_calib = C_atual[indices_calibracao, indice_componente_alvo]
+        # np.polyfit(x, y, 1) -> [inclinacao, intercepto], ambos p/ y ~= b*x + a
+        b, a = np.polyfit(y_referencia, c_calib, deg=1)
+        c_calib_ancorado = a + b * y_referencia
+        if nao_negativo_c:
+            # a restricao de correlacao nao pode reintroduzir concentracao
+            # negativa -- mesma disciplina de nao-negatividade do resto
+            # do ALS.
+            c_calib_ancorado = np.clip(c_calib_ancorado, 0.0, None)
+        C_novo = C_atual.copy()
+        C_novo[indices_calibracao, indice_componente_alvo] = c_calib_ancorado
+        return C_novo, (float(a), float(b))
+
+    historico_lof: List[float] = []
+    lof_prev = np.inf
+    convergiu = False
+    coef_regressao = (0.0, 1.0)
+    it = 0
+    for it in range(1, max_iter + 1):
+        S = _passo_minimos_quadrados(D, C, nao_negativo_s)
+        if unimodal_c:
+            C = _aplicar_unimodalidade(C)
+        C_r, S_r = _normalizar_S(S, C, normalizacao)
+        C, S = C_r, S_r
+        C = _passo_minimos_quadrados(D.T, S.T, nao_negativo_c).T
+        C, coef_regressao = _restringir(C)
+
+        residuo = D - C @ S
+        lof = 100.0 * float(np.linalg.norm(residuo)) / norma_D
+        historico_lof.append(lof)
+        if lof_prev - lof < tol and it > 1:
+            convergiu = True
+            break
+        lof_prev = lof
+
+    c_calib_final = C[indices_calibracao, indice_componente_alvo]
+    if np.std(c_calib_final) > 1e-300 and np.std(y_referencia) > 1e-300:
+        correlacao = float(np.corrcoef(c_calib_final, y_referencia)[0, 1])
+    else:
+        correlacao = float("nan")
+
+    return MCRALSResultadoSupervisionado(
+        C=C, S=S, lof_percent=historico_lof[-1], n_iter=it,
+        convergiu=convergiu, historico_lof=historico_lof,
+        coef_regressao=coef_regressao, correlacao_calibracao=correlacao)
 
 
 def _alinhar_componentes(referencia: np.ndarray, alvo: np.ndarray) -> np.ndarray:

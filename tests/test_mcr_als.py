@@ -10,7 +10,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from guaraci.mcr_als import mcr_als, avaliar_incerteza_rotacional
+from guaraci.mcr_als import (
+    mcr_als,
+    avaliar_incerteza_rotacional,
+    mcr_als_com_restricao_correlacao,
+)
 
 
 def _mistura_sintetica(seed=0, n=30, p=60, ruido=0.002):
@@ -134,3 +138,96 @@ def test_avaliar_incerteza_rotacional_baixa_para_mistura_bem_separada():
     D, _, _ = _mistura_sintetica(seed=8, n=25, p=60, ruido=0.001)
     diag = avaliar_incerteza_rotacional(D, n_componentes=3, n_inicializacoes=5, seed=1)
     assert diag["desvio_padrao_medio"] < 0.15
+
+
+# ── mcr_als_com_restricao_correlacao (T9, rodada multiagente 2026-09-10) ──
+
+def test_restricao_correlacao_ancora_componente_na_calibracao():
+    D, C_true, _S_true = _mistura_sintetica(seed=10, n=30, p=60)
+    y_ref = C_true[:, 0]   # teor "de referencia" do componente 0
+    idx_calib = np.arange(len(y_ref))
+
+    res = mcr_als_com_restricao_correlacao(
+        D, n_componentes=3, indice_componente_alvo=0,
+        y_referencia=y_ref, indices_calibracao=idx_calib)
+
+    assert res.correlacao_calibracao == pytest.approx(1.0, abs=0.05)
+    assert np.isfinite(res.coef_regressao[0])
+    assert np.isfinite(res.coef_regressao[1])
+
+
+def test_restricao_correlacao_predicao_a_partir_da_reta():
+    """A reta ancorada (a, b) tem que servir para PREVER y de uma amostra
+    fora da calibracao a partir do C que o MCR-ALS lhe atribuir --
+    y_pred = (c - a) / b deve ficar perto do y verdadeiro."""
+    D, C_true, _S_true = _mistura_sintetica(seed=11, n=40, p=60)
+    idx_calib = np.arange(30)          # 30 primeiras p/ calibracao
+    idx_teste = np.arange(30, 40)      # 10 restantes, fora da restricao
+    y_ref_calib = C_true[idx_calib, 0]
+
+    res = mcr_als_com_restricao_correlacao(
+        D, n_componentes=3, indice_componente_alvo=0,
+        y_referencia=y_ref_calib, indices_calibracao=idx_calib)
+
+    a, b = res.coef_regressao
+    c_teste = res.C[idx_teste, 0]
+    y_pred = (c_teste - a) / b
+    y_true = C_true[idx_teste, 0]
+    erro = np.abs(y_pred - y_true)
+    assert erro.mean() < 0.15   # tolerancia generosa (mistura sintetica com ruido)
+
+
+def test_restricao_correlacao_nao_forca_os_demais_componentes():
+    """So o componente ALVO e' ancorado -- os outros dois continuam livres
+    (nao ficam artificialmente correlacionados com y_ref por construcao)."""
+    D, C_true, _S_true = _mistura_sintetica(seed=12, n=30, p=60)
+    y_ref = C_true[:, 0]
+    idx_calib = np.arange(len(y_ref))
+
+    res = mcr_als_com_restricao_correlacao(
+        D, n_componentes=3, indice_componente_alvo=0,
+        y_referencia=y_ref, indices_calibracao=idx_calib)
+
+    # componentes 1 e 2 nao precisam estar perfeitamente correlacionados
+    # com y_ref (que e' o teor do componente 0) -- diferente do alvo.
+    corr_outro = abs(float(np.corrcoef(res.C[:, 1], y_ref)[0, 1]))
+    assert corr_outro < 0.999   # nao e' 1.0 "de graca" como o alvo e'
+
+
+def test_restricao_correlacao_respeita_nao_negatividade():
+    D, C_true, _S_true = _mistura_sintetica(seed=13, n=30, p=60)
+    y_ref = C_true[:, 0]
+    idx_calib = np.arange(len(y_ref))
+    res = mcr_als_com_restricao_correlacao(
+        D, n_componentes=3, indice_componente_alvo=0,
+        y_referencia=y_ref, indices_calibracao=idx_calib,
+        nao_negativo_c=True)
+    assert (res.C >= -1e-9).all()
+
+
+def test_restricao_correlacao_indice_alvo_fora_do_intervalo():
+    D, _, _ = _mistura_sintetica(seed=14, n=10, p=20)
+    with pytest.raises(ValueError, match="indice_componente_alvo"):
+        mcr_als_com_restricao_correlacao(
+            D, n_componentes=3, indice_componente_alvo=5,
+            y_referencia=np.zeros(10), indices_calibracao=np.arange(10))
+
+
+def test_restricao_correlacao_exige_mesmo_comprimento():
+    D, _, _ = _mistura_sintetica(seed=15, n=10, p=20)
+    with pytest.raises(ValueError, match="comprimento"):
+        mcr_als_com_restricao_correlacao(
+            D, n_componentes=3, indice_componente_alvo=0,
+            y_referencia=np.zeros(5), indices_calibracao=np.arange(10))
+
+
+def test_restricao_correlacao_resultado_carrega_aviso_de_ambiguidade():
+    """A variante supervisionada NAO fica isenta do aviso de ambiguidade
+    rotacional -- ancorar 1 componente nao resolve a ambiguidade dos
+    outros n_componentes-1."""
+    D, C_true, _S_true = _mistura_sintetica(seed=16, n=20, p=40)
+    y_ref = C_true[:, 0]
+    res = mcr_als_com_restricao_correlacao(
+        D, n_componentes=3, indice_componente_alvo=0,
+        y_referencia=y_ref, indices_calibracao=np.arange(20))
+    assert "nao tem solucao unica" in res.aviso_ambiguidade_rotacional.lower()

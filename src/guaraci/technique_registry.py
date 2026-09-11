@@ -116,6 +116,23 @@ REGISTRY: List[TechniqueEntry] = [
             "especie rara, o modelo daquela especie fica subdimensionado "
             "ou nem chega a treinar."),
     ),
+    TechniqueEntry(
+        id="conformal_regressao",
+        categoria="quantificacao",
+        nome="Predicao conformal (regressao)",
+        referencia="guaraci.conformal.conformal_margin_regression",
+        quando_usar=(
+            "Da' um INTERVALO de predicao (nao so' o teor pontual) para "
+            "Quantificar, com garantia de cobertura calibravel (alpha) --"
+            " group-aware por construcao (mesmo motivo do conformal "
+            "one-class): reamostra GRUPOS fisicos inteiros, nunca "
+            "espectros individuais."),
+        limitacao=(
+            "Mesmo limite duro do conformal one-class: alpha minimo "
+            "garantivel e' 1/(n_grupos+1) -- com poucos grupos de "
+            "validacao (<19), alpha=0.05 nao e' alcancavel e o intervalo "
+            "sai NAO_VALIDADO em vez de um numero fabricado."),
+    ),
     # ---- Identificacao de conjunto aberto (Detectar->Identificar->Quantificar) --
     TechniqueEntry(
         id="identificacao_conjunto_aberto",
@@ -335,7 +352,7 @@ MODULOS_COBERTURA_TOTAL = {
                      "ddsimca_pcv_sensitivity"},
     },
     "guaraci.conformal": {
-        "incluir": {"ConformalOneClass"},
+        "incluir": {"ConformalOneClass", "conformal_margin_regression"},
         "excecoes": {"achievable_alpha", "n_minimum_for_alpha",
                      "conformal_threshold"},
     },

@@ -549,6 +549,16 @@
         "forma": "funcao"
       }
     },
+    "asca": {
+      "asca_decompose": {
+        "assinatura": "(X: 'np.ndarray', fatores: 'Dict[str, np.ndarray]', n_componentes: 'int' = 2) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "asca_permutation_test": {
+        "assinatura": "(X: 'np.ndarray', fatores: 'Dict[str, np.ndarray]', unidade_permutacao: 'Optional[np.ndarray]' = None, n_perm: 'int' = 200, seed: 'int' = 42) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      }
+    },
     "auditoria_delineamento": {
       "AuditFinding": {
         "campos": [
@@ -1623,6 +1633,36 @@
       },
       "parafac_eem": {
         "assinatura": "(tensor: 'np.ndarray', n_componentes: 'int', *, max_iter: 'int' = 200, seed: 'int' = 0) -> 'ParafacEEMResultado'",
+        "forma": "funcao"
+      }
+    },
+    "epo_glsw": {
+      "EPO": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, n_componentes: 'int' = 1)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "GLSW": {
+        "bases": [
+          "BaseEstimator",
+          "TransformerMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, alpha: 'float' = 0.001)",
+        "metodos_publicos": [
+          "fit",
+          "transform"
+        ]
+      },
+      "build_difference_matrix": {
+        "assinatura": "(X: 'np.ndarray', grupo_interesse: 'np.ndarray', fator_incomodo: 'np.ndarray') -> 'np.ndarray'",
         "forma": "funcao"
       }
     },
@@ -3147,12 +3187,66 @@
         ],
         "forma": "dataclass"
       },
+      "MCRALSResultadoSupervisionado": {
+        "campos": [
+          {
+            "nome": "C",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "S",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "lof_percent",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_iter",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "convergiu",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "historico_lof",
+            "tem_default": true,
+            "tipo": "List[float]"
+          },
+          {
+            "nome": "aviso_ambiguidade_rotacional",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "coef_regressao",
+            "tem_default": true,
+            "tipo": "'tuple[float, float]'"
+          },
+          {
+            "nome": "correlacao_calibracao",
+            "tem_default": true,
+            "tipo": "float"
+          }
+        ],
+        "forma": "dataclass"
+      },
       "avaliar_incerteza_rotacional": {
         "assinatura": "(D: 'np.ndarray', n_componentes: 'int', *, n_inicializacoes: 'int' = 5, seed: 'int' = 0, **kwargs_mcr_als) -> 'dict'",
         "forma": "funcao"
       },
       "mcr_als": {
         "assinatura": "(D: 'np.ndarray', n_componentes: 'int', *, nao_negativo_c: 'bool' = True, nao_negativo_s: 'bool' = True, normalizacao: 'str' = 'soma_unitaria', unimodal_c: 'bool' = False, c_inicial: 'Optional[np.ndarray]' = None, s_inicial: 'Optional[np.ndarray]' = None, max_iter: 'int' = 200, tol: 'float' = 1e-06) -> 'MCRALSResultado'",
+        "forma": "funcao"
+      },
+      "mcr_als_com_restricao_correlacao": {
+        "assinatura": "(D: 'np.ndarray', n_componentes: 'int', *, indice_componente_alvo: 'int', y_referencia: 'np.ndarray', indices_calibracao: 'np.ndarray', nao_negativo_c: 'bool' = True, nao_negativo_s: 'bool' = True, normalizacao: 'str' = 'soma_unitaria', unimodal_c: 'bool' = False, c_inicial: 'Optional[np.ndarray]' = None, s_inicial: 'Optional[np.ndarray]' = None, max_iter: 'int' = 200, tol: 'float' = 1e-06) -> 'MCRALSResultadoSupervisionado'",
         "forma": "funcao"
       }
     },

@@ -70,7 +70,7 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | T6 | PQN | _preenchido na Fase 4_ |
 | T7 | Ledoit-Wolf / LDA com encolhimento | _preenchido na Fase 4_ |
 | T8 | Espectro + variável de delineamento | **backlog — não priorizado** (sobrepõe-se a T2, instrução manda registrar) |
-| T9 | MCR-ALS com restrição de correlação | _preenchido na Fase 4_ |
+| T9 | MCR-ALS com restrição de correlação | **implementado (Passo 206)** — `mcr_als_com_restricao_correlacao`. Nunca testada contra o acervo real (proposta nova, não correção do achado negativo da versão não supervisionada). |
 | T10 | LWR (PLS local por vizinhança) | **backlog — não priorizado** (sobrepõe-se a T8/Passo 139) |
 
 ## E. Lacunas de produto — Agente 4 (§5.2 do relatório, Fase 5)

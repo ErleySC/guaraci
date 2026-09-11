@@ -4199,3 +4199,48 @@ por completo mantendo o sinal de interesse, GLSW atenua sem zerar (alpha
 grande ≈ identidade), matriz de diferença vazia levanta erro explícito.
 Módulo puro, adicionado ao gate de tipos (52 módulos). `ruff`/`mypy`
 limpos.
+
+---
+
+# PROGRESSO — Passo 206 (2026-09-10)
+
+## Passo 206 — Fase 4 (T9): MCR-ALS com restrição de correlação (supervisionado)
+
+`mcr_als.py` ganha `mcr_als_com_restricao_correlacao` (Bayat, Marín-García,
+Ghasemi & Tauler 2020, Anal. Chim. Acta 1113:52-65, DOI
+10.1016/j.aca.2020.03.057): a cada iteração do ALS, o perfil do
+componente ALVO nas amostras de CALIBRAÇÃO é substituído pela predição de
+uma regressão linear simples contra `y_referencia` (teor conhecido) —
+ancora esse componente ao valor de referência, sem restringir os demais
+componentes nem as amostras sem referência (validação/predição, cujo `C`
+continua livre). Não-negatividade preservada (a âncora é truncada em 0).
+`MCRALSResultadoSupervisionado` guarda a reta ajustada (`coef_regressao`)
+e a correlação final — usável para prever `y` de uma amostra nova a
+partir do `C` que o MCR-ALS lhe atribuir.
+
+**Honestidade de escopo**: esta variante NUNCA foi testada contra o
+acervo real de óleo — é proposta nova, não correção do achado NEGATIVO já
+registrado da versão não supervisionada (Passos 131/136, `|r|` de 0,17 e
+0,09). Retorno esperado é INTERPRETATIVO, não substituto do PLS-R para
+quantificação com garantia estatística.
+
+7 testes: ancora corretamente na calibração (correlação ≈1 por
+construção), a reta prevê razoavelmente amostras FORA da calibração,
+componentes não-alvo continuam livres, não-negatividade preservada,
+validações de argumento (índice fora do intervalo, comprimentos
+incompatíveis), aviso de ambiguidade rotacional continua presente (âncora
+não resolve a ambiguidade dos demais componentes).
+
+Achado colateral fechado: `test_technique_registry.py` acusou
+`conformal_margin_regression` (T1) sem entrada no catálogo —
+`TechniqueEntry` nova (categoria "quantificacao") registrada. Contrato de
+API pública regravado (mudança aditiva: `asca`, `epo_glsw`,
+`MCRALSResultadoSupervisionado`, `mcr_als_com_restricao_correlacao`).
+
+Suíte completa (rodada isolada de checagem): 1500 passed / 42 skipped
+antes desta correção, com 3 falhas transitórias — 2 delas (golden de API
+e catálogo) já eram esperadas por edição concorrente de arquivo durante a
+rodada e foram corrigidas aqui; a 3ª (cobertura do vault) reproduziu
+limpa e sozinha depois — artefato de leitura concorrente com edição de
+arquivo em andamento, não bug real. `ruff`/`mypy` (gate de 52 módulos)
+limpos.
