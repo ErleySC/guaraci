@@ -102,6 +102,10 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "max_lvs", "attr": "max_lvs", "tipo": "int",
      "desc": "Numero maximo de variaveis latentes (LVs) testadas", "opcoes": None,
      "min": 1, "max": 200},
+    {"key": "selecao_lv_cv_aninhada", "attr": "selecao_lv_cv_aninhada", "tipo": "bool",
+     "desc": "CV aninhada p/ escolher n_opt (corrige metrica de CV "
+             "otimista, achado #12) -- default True (v1.0), ~4-5x mais "
+             "lento nesta etapa; desligue p/ iteracao rapida", "opcoes": None},
     {"key": "holdout_fracao", "attr": "frac_holdout", "tipo": "float",
      "desc": "Fracao reservada para teste externo (0 a 0.5)", "opcoes": None,
      "min": 0.0, "max": 0.5},

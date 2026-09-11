@@ -26,7 +26,7 @@ __all__ = [
 # importável por qualquer módulo — pipeline.py e guaraci/__init__.py a
 # reexportam, então `pipeline.__version__` e `from guaraci import __version__`
 # seguem funcionando. Fonte ÚNICA: nunca duplicar um literal "vXX.Y".
-__version__ = "31.9.0"
+__version__ = "1.0.0"
 
 # Nome amigavel de cada nivel de analise (valor interno N1/N2/N3 inalterado).
 _NIVEL_NOME = {
@@ -214,6 +214,20 @@ class Config:
     # nao existia -- so' com default_preprocessing='custom' (mesmo padrao
     # de apply_emsc/apply_osc/apply_airpls acima).
     apply_pqn: bool = False
+
+    # CV aninhada p/ selecao do numero de variaveis latentes (correcao do
+    # achado #12, rodada multiagente 2026-09-10 -- ver docs/BACKLOG_
+    # MULTIAGENTE.md #12 e Passo 211/213 de PROGRESSO.md). Sem isso, a
+    # metrica de CV reportada e o n_opt sao escolhidos com os MESMOS folds,
+    # o que infla a metrica de forma otimista -- medido: 10 seeds
+    # replicadas, naive > aninhada em 10/10, Wilcoxon p=0,0020. Default True
+    # a partir da v1.0 (metrica honesta passa a ser o padrao); custa ~4-5x
+    # mais tempo na etapa de selecao de LVs -- desligue p/ iteracao rapida
+    # se o custo for proibitivo (aceita a metrica otimista conhecida).
+    # NAO afeta o `n_opt` do modelo final implantado (continua escolhido
+    # pela CV externa sobre todo o dado -- CV aninhada e' avaliacao, nao
+    # selecao de hiperparametro de um unico modelo).
+    selecao_lv_cv_aninhada: bool = True
 
     max_lvs: int = 40
     n_pcs_pca: int = 10

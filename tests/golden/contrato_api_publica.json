@@ -305,6 +305,13 @@
       "opcoes": null,
       "tipo": "bool"
     },
+    "selecao_lv_cv_aninhada": {
+      "attr": "selecao_lv_cv_aninhada",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "bool"
+    },
     "selecao_spa": {
       "attr": "run_spa",
       "max": null,
@@ -1084,6 +1091,11 @@
           },
           {
             "nome": "apply_pqn",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "selecao_lv_cv_aninhada",
             "tem_default": true,
             "tipo": "bool"
           },
@@ -2066,6 +2078,11 @@
           },
           {
             "nome": "apply_pqn",
+            "tem_default": true,
+            "tipo": "bool"
+          },
+          {
+            "nome": "selecao_lv_cv_aninhada",
             "tem_default": true,
             "tipo": "bool"
           },

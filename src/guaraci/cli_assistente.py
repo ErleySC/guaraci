@@ -76,6 +76,7 @@ RISK_CLASS: Dict[str, str] = {
     "comparar_pre_processamentos": "ANALITICO",
     "validacao_group_aware": "ANALITICO", "teste_wold": "ANALITICO",
     "teste_cv_anova": "ANALITICO", "teste_martens": "ANALITICO",
+    "selecao_lv_cv_aninhada": "ANALITICO",
     "pasta_dados": "ANALITICO",
     "pasta_saida": "ANALITICO", "modo_entrada": "ANALITICO",
     "perfil_matriz": "ANALITICO",
@@ -119,6 +120,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "selecao_uve":                  {"PT": "UVE",                     "EN": "UVE"},
     "holdout_fracao":               {"PT": "Fracao holdout",          "EN": "Holdout fraction"},
     "validacao_group_aware":        {"PT": "Validacao group-aware",   "EN": "Group-aware CV"},
+    "selecao_lv_cv_aninhada":       {"PT": "CV aninhada (n. de LVs)", "EN": "Nested CV (LV count)"},
     "n_permutacoes":                {"PT": "N. permutacoes",          "EN": "N permutations"},
     "n_jobs_permutacao":            {"PT": "Processos paralelos",     "EN": "Parallel processes"},
     "teste_wold":                   {"PT": "Teste de Wold",           "EN": "Wold test"},
@@ -876,6 +878,31 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": True, "range": "true | false",
     },
+    "selecao_lv_cv_aninhada": {
+        "PT": {
+            "desc": "CV aninhada para escolher o numero de LVs: cada fold externo "
+                    "escolhe n_opt so' com o proprio treino (nunca vendo a validacao "
+                    "daquele fold), em vez de reusar os mesmos folds pra' escolher "
+                    "E avaliar -- corrige uma metrica de CV otimista (achado #12).",
+            "impacto": "ANALITICO — muda a metrica de CV reportada (balanced accuracy, "
+                       "Q2, ROC AUC etc.); NAO muda o n_opt do modelo final. Custa "
+                       "~4-5x mais tempo na etapa de selecao de LVs.",
+            "exemplos": {"true": "Metrica honesta (recomendado, default v1.0)",
+                         "false": "Iteracao rapida, aceita metrica otimista conhecida"},
+        },
+        "EN": {
+            "desc": "Nested CV to choose the number of LVs: each outer fold picks "
+                    "n_opt using only its own training data (never seeing that "
+                    "fold's validation), instead of reusing the same folds to both "
+                    "pick and evaluate -- fixes an optimistic CV metric (finding #12).",
+            "impacto": "ANALYTICAL — changes the reported CV metric (balanced "
+                       "accuracy, Q2, ROC AUC etc.); does NOT change the final "
+                       "model's n_opt. Costs ~4-5x more time in the LV-selection step.",
+            "exemplos": {"true": "Honest metric (recommended, v1.0 default)",
+                         "false": "Fast iteration, accepts known optimistic metric"},
+        },
+        "default": True, "range": "true | false",
+    },
     "teste_cv_anova": {
         "PT": {
             "desc": "Executa CV-ANOVA (Eriksson et al. 2008) para testar a significancia estatistica do modelo.",
@@ -1490,7 +1517,8 @@ MENU_FIELDS: Dict[str, list] = {
                "ddsimca_pcv",
                "selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
                "selecao_cars", "selecao_uve"],
-    "validacao": ["holdout_fracao", "validacao_group_aware", "n_permutacoes",
+    "validacao": ["holdout_fracao", "validacao_group_aware",
+                  "selecao_lv_cv_aninhada", "n_permutacoes",
                   "teste_wold", "teste_cv_anova", "teste_martens", "n_jobs_permutacao"],
     "avancado": ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
                  "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"],

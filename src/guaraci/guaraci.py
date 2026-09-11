@@ -1,5 +1,5 @@
 """
-guaraci.py v31.9.0 — Interface profissional GUARACI para o pipeline quimiometrico
+guaraci.py v1.0.0 — Interface profissional GUARACI para o pipeline quimiometrico
 ☀  GUARACI — Plataforma quimiometrica com validacao anti-vazamento por padrao
 Quimiometria • Machine Learning • Espectroscopia multitecnica
 
@@ -2489,6 +2489,7 @@ def _menu_validation(cfg: Config) -> None:
     # bug -- existiam no Config/_CONFIG_SPEC/_HELP_DB, mas nunca tinham sido
     # colocados em NENHUM menu (so' editaveis a mao no YAML).
     fields = ["holdout_fracao", "validacao_group_aware",
+              "selecao_lv_cv_aninhada",
               "n_permutacoes", "n_jobs_permutacao", "teste_wold",
               "teste_cv_anova", "teste_martens"]
     # Essenciais p/ Iniciante: holdout_fracao (facil de entender: quanto fica
@@ -2502,7 +2503,8 @@ def _menu_validation(cfg: Config) -> None:
     # (_checklist) sugere subir esse valor quando ha' muitas permutacoes
     # sequenciais -- esconder atras do mode Avancado criaria uma dica que o
     # usuario Iniciante nao consegue seguir.
-    campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova", "teste_martens"}
+    campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova",
+                         "teste_martens", "selecao_lv_cv_aninhada"}
     mostrar_avancado = False
     while True:
         _cls(); _print_header(cfg)

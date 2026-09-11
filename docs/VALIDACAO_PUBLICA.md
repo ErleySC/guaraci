@@ -1371,3 +1371,45 @@ ver linha 1-5 — mas resumido para contexto): EMSC aprovado (RMSEP
 4,70→4,39, p=0,002), OSC **rejeitado** (4,70→4,99, piorou, p=0,002) na
 quantificação pooled de teor de adulterante. Resultado real em
 `docs/PROGRESSO.md`, Passo 134.
+
+## 10. Correção de v1.0: CV aninhada para seleção do nº de variáveis latentes (achado #12)
+
+**A partir da v1.0, `selecao_lv_cv_aninhada=True` é o padrão** — muda
+como a métrica de CV reportada (`Balanced accuracy`, `Accuracy (CV)`,
+`Q2`, `ROC AUC macro (OvR)`, matriz de confusão, CV-ANOVA) é calculada
+para TODA execução de `pipeline.executar()`, incluindo os 14 datasets
+públicos desta página. Afeta qualquer número específico de CV citado
+nas seções acima que tenha sido medido antes desta correção (2026-09-11)
+— os números ficam registrados como estavam no momento da medição, não
+retroativamente corrigidos aqui; reexecute antes de citar um valor
+exato (mesmo aviso já em vigor para `Q2`/versão do scikit-learn e para
+a mudança de particionador estável de 2026-08-05, ver
+`docs/BACKLOG_MULTIAGENTE.md`).
+
+**O que muda, e por quê.** Até a v0.x, o número de variáveis latentes
+(`n_opt`) era escolhido pelo critério de parcimônia de Wold sobre os
+MESMOS folds de CV cuja predição virava a métrica reportada — o mesmo
+dado escolhia o modelo E o avaliava, um viés de seleção clássico que
+tende a inflar a métrica. Medido (Passo 211, 10 seeds independentes +
+Wilcoxon pareado, `scripts/medicoes/medir_vieses_selecao_lv_replicado.py`):
+a metodologia antiga (naive) teve `balanced_accuracy` maior que a
+aninhada em **10/10 seeds** no dataset privado (médias 0,9183 vs.
+0,8756, p=0,0020) — direção consistente com o viés clássico da
+literatura. Contra-prova de integração no pipeline real (não só no
+script de medição, dataset privado, `level=N1`, holdout habilitado):
+naive=0,9154 vs. aninhada=0,9173 (delta pequeno nesta execução
+específica — variância esperada entre execuções, é exatamente por isso
+que a decisão usou 10 seeds, não 1).
+
+**O que NÃO muda**: o `n_opt` do modelo final implantado (`pls_final`,
+VIP, T2/Q, scores) continua escolhido pela CV externa sobre TODO o
+dado, como sempre foi — CV aninhada é técnica de AVALIAÇÃO honesta, não
+de seleção de hiperparâmetro de um único modelo implantado (não existe
+"n_opt aninhado" para 1 modelo só).
+
+**Custo**: ~2,4-4,4× mais tempo na etapa de seleção de LVs (medido: 2,4×
+na contra-prova reduzida acima, 4,4× no script de medição dedicado com
+config completa). Configurável: `selecao_lv_cv_aninhada: false` no
+`config.yaml` desativa (aceita a métrica otimista conhecida, iteração
+mais rápida) — ver `docs/COMPATIBILITY.md` e `_CONFIG_SPEC`
+(`config_io.py`).

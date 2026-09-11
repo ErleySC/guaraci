@@ -29,6 +29,7 @@ from guaraci.config import (   # noqa: F401,E402
 import logging
 import os
 import glob
+import time
 import warnings
 from datetime import datetime
 from typing import Optional, Tuple, Dict, List, Callable, cast, Any
@@ -1396,6 +1397,68 @@ def pls_regressao_pooled(
     return resultado_pooled
 
 
+def _selecionar_n_opt_wold(fabrica_pipeline: Callable[[int], Pipeline],
+                            X: np.ndarray, Y_bin: np.ndarray,
+                            cv_indices: List[Tuple[np.ndarray, np.ndarray]],
+                            max_lvs: int) -> Tuple[int, np.ndarray]:
+    """Escolhe `n_opt` pelo criterio de parcimonia de Wold (1978) sobre
+    `cv_indices` -- extraido do corpo de `executar()` (Passo 213, correcao
+    do achado #12/Passo 211) para ser reusado tanto na CV EXTERNA (n_opt do
+    modelo final, como sempre foi) quanto, quando `cfg.selecao_lv_cv_
+    aninhada=True`, na CV INTERNA de cada fold externo (nunca vendo a
+    validacao daquele fold -- e' isso que remove o vies de reusar o mesmo
+    dado pra' escolher `n_opt` E avaliar a metrica reportada).
+
+    `max_lvs` e' sempre limitado pelo menor fold de treino em `cv_indices`
+    (mesmo padrao de `hsi_classification.select_n_components_wold`,
+    `X.shape[0] - 1`) -- achado real ao aplicar isso na CV INTERNA (um
+    subconjunto ja' reduzido do treino externo): `PLSRegression` levanta
+    `ValueError` se `n_components` exceder `min(n_amostras, n_variaveis)`
+    do fold, algo que o treino externo (maior) tolerava mas um fold interno
+    pequeno nao."""
+    min_tr = min(len(tr) for tr, _ in cv_indices)
+    max_lvs_viavel = max(1, min(max_lvs, X.shape[1], min_tr - 1))
+    erros: List[float] = []
+    preds: Dict[int, np.ndarray] = {}
+    for n in range(1, max_lvs_viavel + 1):
+        y_hat = np.zeros_like(Y_bin)
+        contador = np.zeros(len(Y_bin), dtype=int)
+        for tr, va in cv_indices:
+            pipe = fabrica_pipeline(n)
+            pipe.fit(X[tr], Y_bin[tr])
+            y_hat[va] += pipe.predict(X[va])
+            contador[va] += 1
+        contador[contador == 0] = 1
+        y_hat = y_hat / contador[:, None]
+        erros.append(rmse_flat(Y_bin, y_hat))
+        preds[n] = y_hat
+    erros_arr = np.array(erros)
+    tol = erros_arr.min() * 1.02
+    n_opt = int(np.where(erros_arr <= tol)[0][0]) + 1
+    return n_opt, preds[n_opt]
+
+
+def _construir_cv_interno(y_int_sub: np.ndarray, grupos_sub: Optional[np.ndarray],
+                           usar_grupos: bool, n_splits_alvo: int, seed: int):
+    """CV interna de 1 fold externo, para a selecao aninhada de `n_opt`
+    (Passo 213). Mesma logica de ajuste de `n_splits` por contagem minima de
+    classe/grupo que a CV externa (`executar()`, bloco "2. LV selection"),
+    aplicada ao subconjunto de treino do fold externo -- sempre 1 passada
+    (nunca `RepeatedStratifiedKFold`: repeticoes sao uma tecnica de
+    ESTABILIDADE da estimativa externa, nao fazem sentido pra' escolher um
+    hiperparametro dentro de 1 fold ja' interno, e multiplicariam ainda mais
+    o custo computacional, ja' ~4x maior so' com 1 passada)."""
+    classes_sub, contagem_sub = np.unique(y_int_sub, return_counts=True)
+    n_splits = min(n_splits_alvo, int(contagem_sub.min()))
+    if usar_grupos and grupos_sub is not None:
+        n_grupos_por_classe = [int(len(np.unique(grupos_sub[y_int_sub == c])))
+                                for c in classes_sub]
+        n_splits = min(n_splits, min(n_grupos_por_classe))
+        return StableStratifiedGroupKFold(n_splits=max(n_splits, 2), seed=seed)
+    return StratifiedKFold(n_splits=max(n_splits, 2), shuffle=True,
+                            random_state=seed)
+
+
 def executar(cfg: Config):
     from guaraci.log import configurar as _configurar_log
     # Chamado aqui (nao em nivel de modulo) para rodar DENTRO de qualquer
@@ -1820,6 +1883,83 @@ def executar(cfg: Config):
         log.info(f"  LVs otimas: {n_opt}")
 
     Y_cv  = preds_por_lv[n_opt]
+
+    # --- 3b. CV aninhada (correcao do achado #12/Passo 211, opt-out) -------
+    # A selecao acima (Wold) e a metrica de CV acima (Y_cv) usam os MESMOS
+    # folds: o mesmo dado escolhe n_opt E avalia a metrica reportada, o que
+    # infla a metrica de forma otimista (medido, 10 seeds replicadas,
+    # Wilcoxon p=0,0020 -- ver docs/BACKLOG_MULTIAGENTE.md #12). A correcao
+    # NAO muda `n_opt` do modelo final (`pls_final` abaixo continua com o
+    # `n_opt` escolhido acima, sobre TODO o dado -- e' a escolha certa pra'
+    # UM modelo a ser implantado; nao existe "n_opt aninhado" pra' um unico
+    # modelo, CV aninhada e' tecnica de AVALIACAO honesta, nao de selecao de
+    # hiperparametro do artefato final). O que muda e' de ONDE vem a metrica
+    # REPORTADA (`Y_cv`/`pred_lab`, usados por Q2, classification_metrics,
+    # ROC AUC, CV-ANOVA, matriz de confusao, bootstrap CI, resumo/model
+    # card): quando ativada, `Y_cv` passa a vir de predicoes onde `n_opt` de
+    # cada fold externo foi escolhido SO' com o treino daquele fold (CV
+    # interna, `_construir_cv_interno`), nunca vendo a propria validacao.
+    metricas_cv_naive = metricas_por_lv[n_opt - 1]
+    if cfg.selecao_lv_cv_aninhada:
+        log.info("  [INFO] CV aninhada ativada (selecao_lv_cv_aninhada="
+                 "True, default a partir da v1.0 -- corrige o vies de "
+                 "reusar o mesmo dado p/ escolher n_opt e avaliar a "
+                 "metrica reportada, achado #12/Passo 211). Pode levar "
+                 "~4-5x mais tempo nesta etapa; desative no config.yaml "
+                 "(selecao_lv_cv_aninhada: false) p/ iteracao rapida, "
+                 "aceitando a metrica otimista.")
+        t0_aninhada = time.time()
+        Y_cv_aninhado = np.zeros_like(Y_bin)
+        n_opts_aninhado = []
+        for tr, va in cv_indices:
+            grupos_tr = grupos_cv[tr] if grupos_cv is not None else None
+            y_tr = y_int[tr]
+            classes_tr = np.unique(y_tr)
+            if usar_grupos and grupos_tr is not None:
+                min_disponivel = min(
+                    int(len(np.unique(grupos_tr[y_tr == c]))) for c in classes_tr)
+            else:
+                min_disponivel = int(np.unique(y_tr, return_counts=True)[1].min())
+            if min_disponivel < 2:
+                # Treino do fold externo pequeno demais p/ sustentar uma CV
+                # interna de verdade (< 2 grupos/amostras da classe minoritaria
+                # -- forcar `max(n_splits, 2)` aqui produziria um fold interno
+                # com uma classe VAZIA, e dai' um X vazio chegando no
+                # pre-processador -- achado real, LAPACK crashava em
+                # savgol_filter num fixture sintetico de 12 amostras). Honesto
+                # cai de volta pro n_opt global (naive) so' NESTE fold, em vez
+                # de forcar um split degenerado ou quebrar.
+                n_opt_i = n_opt
+            else:
+                cv_interna = _construir_cv_interno(
+                    y_tr, grupos_tr, usar_grupos, n_splits, cfg.seed)
+                cv_idx_interna = list(
+                    cv_interna.split(X_raw[tr], y_tr, groups=grupos_tr))
+                n_opt_i, _ = _selecionar_n_opt_wold(
+                    fabrica_pipeline, X_raw[tr], Y_bin[tr], cv_idx_interna,
+                    cfg.max_lvs)
+            n_opts_aninhado.append(n_opt_i)
+            pipe_i = fabrica_pipeline(n_opt_i)
+            pipe_i.fit(X_raw[tr], Y_bin[tr])
+            Y_cv_aninhado[va] = pipe_i.predict(X_raw[va])
+        metricas_cv_aninhada = classification_metrics(
+            y_int, np.argmax(Y_cv_aninhado, axis=1), np.arange(len(classes_unicas)))
+        log.info(f"  CV aninhada: n_opts por fold externo = {n_opts_aninhado}"
+                 f"  ({time.time() - t0_aninhada:.0f}s)")
+        log.info(f"  Balanced accuracy  NAIVE (n_opt={n_opt} fixo, "
+                 f"reportada ate' v1.0)      = "
+                 f"{metricas_cv_naive['balanced_accuracy']:.4f}")
+        log.info(f"  Balanced accuracy  ANINHADA (n_opt por fold, honesta, "
+                 f"reportada a partir da v1.0) = "
+                 f"{metricas_cv_aninhada['balanced_accuracy']:.4f}")
+        Y_cv = Y_cv_aninhado
+    else:
+        log.info(f"  [AVISO] CV aninhada DESATIVADA (selecao_lv_cv_aninhada="
+                 f"False) -- a metrica de CV reportada abaixo pode estar "
+                 f"otimisticamente enviesada (achado #12/Passo 211, "
+                 f"Wilcoxon p=0,0020 no dataset privado). Balanced accuracy "
+                 f"naive = {metricas_cv_naive['balanced_accuracy']:.4f}.")
+
     pred_lab = lb.classes_[np.argmax(Y_cv, axis=1)]
     lvs_no_teto = (n_opt >= cfg.max_lvs)
     if lvs_no_teto:

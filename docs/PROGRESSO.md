@@ -3712,6 +3712,10 @@ Ausência de registro é exibida como "auditoria indisponível", nunca como
 
 ## Passo 191 — Legenda de agrupamento das 8 abas
 
+[**REVERTIDO no Passo 195** (2026-09-08): "abas, sem sidebar" e "sem CSS
+sobre o widget nativo" foram ambos revertidos explicitamente — ver Passo
+195 antes de tratar a decisão abaixo como vigente.]
+
 Uma linha de `st.caption` acima da barra: ① Preparar · ② Executar ·
 ③ Analisar · ④ Referência. Sem CSS sobre o widget nativo, sem trocar
 `st.tabs` por outra coisa — só nomear em voz alta a sequência que as abas
@@ -4043,7 +4047,10 @@ placeholder "efeito de nenhum foi medido".
   `groups=_mae_id_holdout`.
 
 - **#12 (viés de seleção de nº de VLs): MEDIDO — direção OPOSTA à
-  hipótese, decisão adiada.** Script
+  hipótese, decisão adiada.** [**RETRATADO no Passo 211** (2026-09-10):
+  esta medição foi 1 única execução; replicada em 10 seeds, a direção
+  INVERTE (naive > aninhada em 10/10, p=0,0020) — ver Passo 211 antes de
+  citar este número.] Script
   `scripts/medicoes/medir_vieses_selecao_lv.py` compara a metodologia
   atual (n_opt escolhido pela parcimônia de Wold nos MESMOS 5 folds
   externos cuja predição vira a métrica reportada) contra uma versão
@@ -4555,3 +4562,85 @@ exportado em `hsi_pipeline.py`.
 
 `docs/BACKLOG_MULTIAGENTE.md` (R2) atualizado. Fecha os 4 itens da
 instrução de 2026-09-10 (Passos 210-212 + merges do Dependabot).
+
+---
+
+# PROGRESSO — Passo 213 (2026-09-11)
+
+## Passo 213 — Fase B: propaga a correção do achado #12 (CV aninhada p/ nº de LVs)
+
+Instrução de 2026-09-11 ("levantamento final, correção de pendências, e
+preparação para v1.0.0"), Fase B, autoriza explicitamente propagar a
+correção do #12 (Passo 211 confirmou o achado com 10 seeds + Wilcoxon
+p=0,0020, critério pré-aprovado satisfeito).
+
+**Mudança**: `Config.selecao_lv_cv_aninhada: bool = True` (novo,
+default). Em `pipeline.executar()`, depois de `n_opt` ser escolhido
+(inalterado -- CV externa sobre TODO o dado, usado pelo modelo final/
+VIP/T2/Q/permutação), a métrica de CV REPORTADA (`Y_cv`/`pred_lab`, e
+tudo que deriva dela -- `balanced_accuracy`, `Accuracy (CV)`, `Q2`, ROC
+AUC, CV-ANOVA, matriz de confusão, bootstrap CI, resumo/model card)
+passa a vir, quando o flag está ligado, de uma CV aninhada honesta: cada
+fold externo escolhe seu próprio `n_opt` usando só o treino daquele
+fold (`_selecionar_n_opt_wold`/`_construir_cv_interno`, novos, extraídos
+do padrão já usado em `medir_vieses_selecao_lv.py`), nunca vendo a
+validação. **Decisão de design deliberada**: CV aninhada é técnica de
+AVALIAÇÃO, não de seleção de hiperparâmetro de 1 modelo implantado --
+não existe "n_opt aninhado" para o `pls_final` único que o usuário leva
+para casa, então ele continua com o `n_opt` de sempre.
+
+**2 bugs reais achados e corrigidos durante a integração** (não
+apareciam na medição isolada do Passo 211, só ao rodar dentro de
+`executar()` contra fixtures sintéticos pequenos da suíte):
+
+1. Fold de treino pequeno demais (< 2 grupos/amostras da classe
+   minoritária) forçava `max(n_splits, 2)` a produzir um split interno
+   com uma classe VAZIA -- `X` vazio chegando no pré-processador,
+   `savgol_filter` levantando `ValueError: Internal LAPACK errors` num
+   fixture de 12 amostras (`test_sanitizacao_metadados.py`). Corrigido:
+   quando o fold externo não sustenta uma CV interna de verdade, cai de
+   volta pro `n_opt` global (naive) SÓ NAQUELE fold, honesto, em vez de
+   forçar um split degenerado.
+2. `max_lvs` passado à CV interna não era limitado pelo tamanho do fold
+   (menor que o externo) -- `PLSRegression` levantava `ValueError:
+   n_components upper bound is 2. Got 3` num fixture de 9 amostras
+   (`test_aceitacao_adaptabilidade.py`). Corrigido: `_selecionar_n_opt_
+   wold` agora limita `max_lvs` pelo menor fold de treino em
+   `cv_indices` (mesmo padrão de `hsi_classification.select_n_
+   components_wold`, `X.shape[0] - 1`).
+
+**Contra-prova de integração** (dataset privado real, não só a medição
+isolada): `level=N1`, permutação/bootstrap reduzidos p/ velocidade,
+`selecao_lv_cv_aninhada` alternado True/False -- `Balanced accuracy`
+mudou de 0,9154 (naive) para 0,9173 (aninhada), custo 2,39× nesta
+config reduzida (~4,4× medido no Passo 211 com config completa). A
+métrica MUDOU, confirmando que a integração está correta (delta
+pequeno/direção diferente do Passo 211 é variância esperada de 1 única
+execução -- exatamente por isso a decisão usou 10 seeds, não 1).
+
+**4 registros de contrato exigidos pela própria mudança**:
+- `tests/golden/contrato_api_publica.json` regravado -- campo novo em
+  `_CONFIG_SPEC` muda `config_yaml_schema` (aditivo).
+- `docs/COMPATIBILITY.md`: nova entrada em "Casos especiais
+  documentados" registrando a decisão de regravar o golden do achado R2
+  (`hsi_pipeline.py`, Passo 212) -- não estava documentada lá, só no
+  histórico de commit (achado da Fase B desta instrução).
+- `docs/VALIDACAO_PUBLICA.md` §10 nova: nota formal de correção de v1.0,
+  avisando que qualquer número de CV citado nas 14 validações públicas
+  antes de 2026-09-11 pode ter sido medido com a metodologia antiga.
+- Campo alcançável nas 2 interfaces interativas, não só a mão no YAML
+  -- 2 testes de completude de menu que JÁ EXISTIAM pegaram o gap
+  (`test_guaraci_cli.py::test_todo_campo_do_spec_e_alcancavel_por_
+  algum_menu`, `test_interfaces_configuraveis.py` ×2): `cli_assistente.
+  MENU_FIELDS`/`RISK_CLASS`/`FIELD_NAMES`/`HELP_DB` (PT/EN), `guaraci.
+  _menu_validation`, `app_tabs/modelo.py::_MODELO_KEYS_VALID`.
+
+Suíte completa **1529+ passed, 0 failed, 42 skipped** (rodada limpa
+depois dos 2 fixes -- a 1ª rodada, iniciada antes dos fixes estarem
+prontos, mostrou exatamente os mesmos 5 sintomas já descritos aqui,
+nenhum novo). `ruff` limpo em todos os arquivos tocados
+(`pipeline.py`, `config.py`, `config_io.py`, `cli_assistente.py`,
+`guaraci.py`, `app_tabs/modelo.py`). `mypy`: `pipeline.py`/`guaraci.py`/
+`cli_assistente.py`/`app_tabs/*` estão FORA do gate por design (camada
+de UI/orquestração, ver `pyproject.toml`); `config.py`/`config_io.py`
+(no gate) seguem limpos.

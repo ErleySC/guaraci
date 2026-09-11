@@ -82,7 +82,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict, T: Callable[[str], str],
     _MODELO_KEYS_ANALISE  = ["nivel", "objetivo", "max_lvs", "holdout_fracao",
                               "validacao_group_aware"]
     _MODELO_KEYS_VALID    = ["n_permutacoes", "teste_wold", "teste_cv_anova",
-                              "teste_martens", "n_jobs_permutacao"]
+                              "teste_martens", "n_jobs_permutacao",
+                              "selecao_lv_cv_aninhada"]
     _MODELO_KEYS_EXTRAS   = ["selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
                               "selecao_cars", "selecao_uve",
                               "ddsimca", "modo_ddsimca", "ddsimca_pcv", "opls_da",

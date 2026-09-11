@@ -94,6 +94,21 @@ por `tests/test_fachada_reexport.py`.
   `bootstrap_vip_stratified`) sem nenhum chamador restante no pacote —
   mantida pública precisamente por ser o primeiro caso real de
   depreciação do projeto; serve de modelo para o mecanismo abaixo.
+- **`apply_quality_gate_and_segment`/`fit_predict_pixel_plsda`** (Passo
+  212, 2026-09-10): o tipo de retorno mudou de `Dict[str, object]` para
+  `TypedDict` (`QualityGateResult`/`PixelPLSDAResult`) — correção da
+  raiz de uma dívida de tipo (`object` solto se propagava por ~10 call
+  sites de `hsi_pipeline.py`/`hsi_validation.py`, exigindo `cast()`
+  local em cada um). `tests/test_contrato_api_publica.py` acusou a
+  mudança (assinatura textual mudou); **decisão explícita do autor**:
+  regravar o golden, aceitando como mudança ADITIVA/não-quebradora em
+  runtime (`TypedDict` é só anotação de tipo — não existe em runtime,
+  `dict.__getitem__`/`.keys()`/etc. continuam idênticos para qualquer
+  chamador) **sem decidir bump de versão correspondente** — a v1.0.0
+  (Passo 213/214) é o primeiro marco onde o SemVer desta política passa
+  a valer de fato; este caso pré-1.0 fica registrado aqui como o
+  precedente do que conta como "aditivo" quando a política acima
+  (`Assinatura de função pública`) entrar em vigor de verdade.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 
