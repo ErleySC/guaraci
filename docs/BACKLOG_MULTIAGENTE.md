@@ -64,7 +64,7 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 |---|---|---|
 | T1 | Predição conforme para regressão | **implementado (Passo 203)** — `conformal.conformal_margin_regression`, wired em `pls_regression_by_species`/`quantify_sample`/`predict_blind` (alpha_total). Fecha #10 e o achado R5a. |
 | T2 | EPO / GLSW | _preenchido na Fase 4_ |
-| T3 | ASCA+ | _preenchido na Fase 4_ |
+| T3 | ASCA (+) | **implementado (Passo 204)** — `asca.py`, decomposição marginal (Smilde et al. 2005) + permutação por unidade experimental. Escopo honesto: NÃO é a extensão "+" completa (Thiel et al. 2017) para fatores correlacionados; `ss_desbalanco` sinaliza quando ela seria necessária. |
 | T4 | Correção de deriva por QC/brancos | _preenchido na Fase 4_ |
 | T5 | di-PLS | **backlog — não priorizado nesta rodada** (instrução determina registrar, não implementar) |
 | T6 | PQN | _preenchido na Fase 4_ |

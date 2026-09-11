@@ -4125,3 +4125,37 @@ com a margem (quando alcançável) ou "NAO_VALIDADO" com o nº de grupos
 `test_pipeline_core.py`); contrato de API pública regravado (mudança
 aditiva). Suíte completa: 305 testes do escopo afetado, todos passando;
 `ruff`/`mypy` (gate de 50 arquivos) limpos.
+
+---
+
+# PROGRESSO — Passo 204 (2026-09-10)
+
+## Passo 204 — Fase 4 (T3): ASCA para partição simultânea de variância por fator
+
+Novo módulo `asca.py` (ANOVA-Simultaneous Component Analysis, Smilde et
+al. 2005, Bioinformatics 21:3043-3048, DOI 10.1093/bioinformatics/bti476).
+Formaliza como função de produto o que só existia como script de medição
+pontual (`scripts/medicoes/medir_especie_vs_adulterante_permanova.py`, R²
+one-way, um fator por vez) — `asca_decompose` decompõe a matriz espectral
+SIMULTANEAMENTE por vários fatores do delineamento (ex.: espécie,
+adulterante, sessão), e `asca_permutation_test` testa a significância de
+cada um por permutação **por unidade experimental** (grupo de réplica
+física) quando `unidade_permutacao` é passado — nunca por espectro
+individual, mesma disciplina anti-pseudo-replicação de
+`validacao_estatistica._gerar_permutacoes_rotulo`.
+
+**Limite documentado, não escondido**: a decomposição é por efeito
+MARGINAL (média do próprio nível do fator menos a média geral) — exata
+para fatores ORTOGONAIS (delineamento balanceado). Com fatores
+correlacionados, `ss_desbalanco` (retornado explicitamente) deixa de ser
+~0, sinalizando quando a extensão ASCA+ (Thiel, Féraud & Govaerts 2017,
+J. Chemometrics 31:e2895, DOI 10.1002/cem.2895, que corrige isso via
+modelo linear geral) passaria a ser necessária — **não implementada
+aqui**, registrada como extensão futura condicional.
+
+9 testes: recupera fator dominante vs. fator nulo, aditividade exata sob
+ortogonalidade, `ss_desbalanco` cresce com fatores confundidos,
+permutação por unidade dá distribuição nula mais realista que por
+amostra, p-valor nunca sai 0 (correção +1/+1, Davison & Hinkley 1997).
+Módulo puro, adicionado ao gate de tipos (51 módulos). `ruff`/`mypy`
+limpos.
