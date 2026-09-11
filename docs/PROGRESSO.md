@@ -4357,3 +4357,52 @@ não iniciados — mesma instrução que pediu isso explicitamente.
 
 10 testes novos (P1), suíte completa e `ruff`/`mypy` limpos (`guaraci.py`
 não entra no gate de tipos, por design — UI/orquestração).
+
+---
+
+# PROGRESSO — Passo 209 (2026-09-10)
+
+## Passo 209 — Fase 6 (consolidação final): fecha a instrução "implementar todos os achados"
+
+Fecha a instrução de 2026-09-10 que pediu para registrar e implementar
+todos os achados de `docs/RELATORIO_MULTIAGENTE_2026-09-10.md` (Passo
+200). Rastreamento completo, item a item, em
+`docs/BACKLOG_MULTIAGENTE.md` — atualizado com o status final de cada um
+(nenhum ficou sem status).
+
+**Vault**: `_CATALOGO_DOCUMENTOS` (`gerar_vault_obsidian.py`) é uma lista
+manual — os 2 documentos novos da rodada (`RELATORIO_MULTIAGENTE...md`,
+`BACKLOG_MULTIAGENTE.md`) estavam linkados em `INDICE_PROJETO.md` mas não
+apareciam no vault até entrarem explicitamente nessa lista (achado ao
+fechar esta fase, corrigido). Vault regenerado: 71 módulos (3 novos:
+`asca.py`, `epo_glsw.py`, `deriva_qc.py`), cobertura COMPLETA (71/71
+módulos, 13/13 técnicas, 119/119 Passos, 14/14 datasets).
+
+**`docs/VALIDACAO_PUBLICA.md` e `README.md`/`README.pt-br.md`**:
+`VALIDACAO_PUBLICA.md` não precisou de nenhuma correção (confirmado na
+Fase 1 — nenhum dos 14 datasets públicos usa `mae_id`). O README já foi
+corrigido na Fase 2 (C1-C4); nenhuma mudança adicional necessária aqui.
+
+### Resumo do que a instrução pediu vs. o que saiu
+
+| Fase | Pedido | Resultado |
+|---|---|---|
+| 0 | Backlog rastreável | `docs/BACKLOG_MULTIAGENTE.md` |
+| 1 (bloqueante) | Medir `mae_id` vs. sessão | Medido: impossibilidade estrutural (8/13 espécies com 1 sessão), não uma correção de código. Não propagado. Pendência real para o autor: conferir relatório PIBIC (M4). |
+| 2 | Correções de baixo risco | R1/R3/R5a/R5b/R5c corrigidos; R2 corrigido em 2/3 módulos (`hsi_pipeline.py` fica no backlog, esforço maior); R4 revisado (merge bloqueado pela permissão do ambiente); C1-C4 do README corrigidos |
+| 3 | Correções científicas | #13 (BCa group-aware) corrigido e medido (+30% de largura de IC); #12 (viés de VLs) medido com resultado NA DIREÇÃO OPOSTA à hipótese, decisão adiada; #14/#15 avaliados e documentados como computacionalmente proibitivos |
+| 4 | T1/T6/T7/T3/T2/T9/T4 | Todos os 7 implementados e testados (69 testes novos ao todo); T5/T8/T10 no backlog, por instrução explícita |
+| 5 | Lacunas de produto | P1 implementado (`guaraci run`); P2/P3 avaliados (não implementados, com razão técnica); P4/P5/P7 no backlog |
+| 6 | Consolidação | Este passo |
+
+**O que NÃO foi feito, com a razão, sem exceção velada**: `hsi_pipeline.py`
+(R2, esforço maior — risco de tipo sutilmente errado); propagação de M1
+(exige coleta futura, fora de escopo de código); correção do viés de
+seleção de VLs #12 (resultado inesperado, precisa de mais réplicas);
+#14/#15 (custo computacional proibitivo, ~150-200×); T5/T8/T10, P4/P5/P7
+(instrução explícita para backlog); mais leitores de formato e
+exportação portátil de modelo (avaliados, são projetos próprios).
+
+15 commits nesta instrução (`02d65fe`..`d633f07`), suíte completa
+(1527 passed / 42 skipped / 0 failed na última rodada isolada), `ruff` e
+`mypy` (gate de 53 módulos) limpos em cada commit.

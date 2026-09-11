@@ -8,8 +8,9 @@ um status:
 - `medido, decisão pendente` — número já existe, falta decisão do autor.
 - `backlog — não priorizado ainda` — registrado, nada mudou.
 
-Atualizado pela última vez no fechamento da instrução de 2026-09-10
-("IMPLEMENTAR TODOS OS ACHADOS"), Passos 201+.
+Atualizado pela última vez no fechamento da Fase 6 (consolidação final)
+da instrução "IMPLEMENTAR TODOS OS ACHADOS" de 2026-09-10, Passos
+201–208. Nenhum item do relatório original ficou sem status.
 
 ---
 
@@ -17,14 +18,14 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 
 | # | Item | Status | Nota |
 |---|---|---|---|
-| R1 | Retry com backoff em `baixar_zenodo_*` | _preenchido na Fase 2_ | |
+| R1 | Retry com backoff em `baixar_zenodo_*` | **corrigido (Passo 202, commit `2d85345`)** — `scripts/download_datasets/_http_retry.py`, backoff exponencial, HTTP 4xx não retentado, falha após esgotar tentativas continua sendo falha real | |
 | R2 | `avaliacao_modelos.py` (6 erros) e `resultados_io.py` (13 erros) | **corrigido (Passo 202)** — ambos `type: ignore` obsoletos (código de erro do mypy mudou de versão para versão) mais narrowing real com `isinstance` em 1 ponto; suíte de ambos os módulos passando | |
 | R2 | `hsi_pipeline.py` (31 erros) | **backlog — esforço maior**, não corrigido nesta rodada. Raiz sistêmica: um valor `object` (de config/manifesto lido de forma solta) se propaga por ~10 chamadas de função tipadas ao longo do módulo (`build_pixel_dataset`, `run_internal_validation_group_aware`, `run_external_validation_by_day`, `PLSDAClassifier`, `enrich_object_results`). Corrigir de verdade exige anotar o tipo na ORIGEM da leitura, não remendar cada call site — risco de introduzir tipo sutilmente errado num módulo científico sem tempo para validar cada ponto. | |
-| R3 | `consultar_vault.py` casa substring em sigla (`"EPO"` → "tempo") | _preenchido na Fase 2_ | |
+| R3 | `consultar_vault.py` casa substring em sigla (`"EPO"` → "tempo") | **corrigido (Passo 202, commit `2d85345`)** — sigla curta (maiúscula/dígito/hífen, até 6 chars) exige fronteira de palavra; termo comum continua com substring simples | |
 | R4 | 5 PRs do Dependabot abertas, nunca revisadas | **revisadas (Passo 202); merge bloqueado — decisão do autor** | Todas as 5 são bumps mecânicos, sem código de aplicação tocado: #8 `upload-artifact` v4→v7 (só `draft-pdf.yml`), #9 `setup-python` v6→v7, #10 `deploy-pages` v4→v5, #11 `upload-pages-artifact` v3→v5 (as 3 só em `docs.yml`), #20 22 atualizações de patch/minor em `requirements-lock.txt` (numpy/scikit-learn permanecem dentro dos tetos do `pyproject.toml`). Os 5 branches foram atualizados contra o `master` já com as correções de CI (02d65fe); #8 e #9 fecharam 100% verdes. Nenhuma exige revisão cuidadosa além da rotina. **Não mergeadas**: `gh pr merge` foi bloqueado pela permissão do ambiente (ação consequente em repositório público) — aguarda o autor mergear ou autorizar explicitamente. |
-| R5a | Docstring de `hsi_uncertainty.py` alega intervalo de predição inexistente | _preenchido na Fase 2_ | |
-| R5b | `cli_assistente.py` recomenda PQN para RMN sem implementação | _preenchido na Fase 2_ | vinculado a T6 |
-| R5c | `auditoria_delineamento.check_external_validation` com mensagem fixa desatualizada | _preenchido na Fase 2_ | |
+| R5a | Docstring de `hsi_uncertainty.py` alega intervalo de predição inexistente | **fechado (Passo 203, T1)** — deixou de ser inconsistência: T1 implementou o intervalo, a frase agora descreve algo real; nota datada explica a mudança de status aspiracional → real | |
+| R5b | `cli_assistente.py` recomenda PQN para RMN sem implementação | **fechado (Passo 202, T6)** — PQN implementado, a recomendação passou a ser verdadeira | vinculado a T6 |
+| R5c | `auditoria_delineamento.check_external_validation` com mensagem fixa desatualizada | **corrigido (Passo 201, commit `9f5fe01`)** — mensagem distingue PLS-DA (14 datasets públicos) de DD-SIMCA/OPLS-DA (ainda sem benchmark externo) | |
 
 ## B. Medição crítica (Agente 3 #1, Fase 1 — bloqueante)
 
@@ -67,8 +68,8 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | T3 | ASCA (+) | **implementado (Passo 204)** — `asca.py`, decomposição marginal (Smilde et al. 2005) + permutação por unidade experimental. Escopo honesto: NÃO é a extensão "+" completa (Thiel et al. 2017) para fatores correlacionados; `ss_desbalanco` sinaliza quando ela seria necessária. |
 | T4 | Correção de deriva por QC/brancos | **implementado (Passo 207)** — `deriva_qc.corrigir_deriva_por_qc` (QC-RLSC). Pré-requisito de dado (QC com ordem de aquisição) não satisfeito hoje — função utilizável só com dado fornecido pelo chamador, não ligada a fluxo automático. |
 | T5 | di-PLS | **backlog — não priorizado nesta rodada** (instrução determina registrar, não implementar) |
-| T6 | PQN | _preenchido na Fase 4_ |
-| T7 | Ledoit-Wolf / LDA com encolhimento | _preenchido na Fase 4_ |
+| T6 | PQN | **implementado (Passo 202)** — `preprocessamento.PQN` + `cfg.apply_pqn` (preset custom). Fecha R5b. |
+| T7 | Ledoit-Wolf / LDA com encolhimento | **implementado (Passo 202)** — `chemometric_stats.mahalanobis_distance_shrinkage` (`estimador='shrinkage'`/`'raw'` lado a lado). Ganho diagnóstico, não promete resgatar separação real. |
 | T8 | Espectro + variável de delineamento | **backlog — não priorizado** (sobrepõe-se a T2, instrução manda registrar) |
 | T9 | MCR-ALS com restrição de correlação | **implementado (Passo 206)** — `mcr_als_com_restricao_correlacao`. Nunca testada contra o acervo real (proposta nova, não correção do achado negativo da versão não supervisionada). |
 | T10 | LWR (PLS local por vizinhança) | **backlog — não priorizado** (sobrepõe-se a T8/Passo 139) |
@@ -89,10 +90,10 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 
 | # | Linha do README | Status |
 |---|---|---|
-| C1 | L23-24 / L56 — "methodological differentiator" / "Group-aware … ⚠️ limited" | _preenchido na Fase 2_ |
-| C2 | L57 — "Reproducible … ❌" sem evidência | _preenchido na Fase 2_ |
-| C3 | L27 — "no closed-format lock-in" sem qualificar o `.joblib` | _preenchido na Fase 2_ |
-| C4 | L62-66 — transferência de calibração "reasonably assumed present" | _preenchido na Fase 2_ |
+| C1 | L23-24 / L56 — "methodological differentiator" / "Group-aware … ⚠️ limited" | **corrigido (Passo 202, commit `0338132`)** — título/prosa trocados para "enabled by default"; tabela: concorrente "✅ disponível, configurado pelo usuário" vs. "✅ por padrão, incl. holdout". Aplicado em README.md e README.pt-br.md. |
+| C2 | L57 — "Reproducible … ❌" sem evidência | **corrigido (Passo 202)** — trocado por "possível via script (PLS_Toolbox/MATLAB, SIMCA-Q), não é o fluxo padrão da GUI" |
+| C3 | L27 — "no closed-format lock-in" sem qualificar o `.joblib` | **corrigido (Passo 202)** — mission statement reescrito; linha nova na tabela: modelo é `.joblib`/pickle preso à versão, concorrente exporta `.py`/`.m`/XML (mesmo achado do P2) |
+| C4 | L62-66 — transferência de calibração "reasonably assumed present" | **corrigido (Passo 202)** — reescrito sem apresentar suposição como fato verificado |
 | C5 | L59 / L55 — nada contradiz, mantidos sem mudança | não se aplica (confirmado correto) |
 
 ---
