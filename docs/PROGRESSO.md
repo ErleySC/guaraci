@@ -4504,3 +4504,54 @@ de medição única. Nenhuma mudança em `pipeline.py` ou qualquer módulo de
 produção — só o script de medição novo (`scripts/medicoes/`, fora do
 gate de tipos/pacote instalável, mesma convenção dos outros scripts da
 pasta).
+
+---
+
+# PROGRESSO — Passo 212 (2026-09-10)
+
+## Passo 212 — Dívida de tipo do hsi_pipeline.py corrigida na origem
+
+Item 4 da instrução de 2026-09-10. Raiz sistêmica (Passo 202, R2): um
+valor `object` se originava em 2 funções (`apply_quality_gate_and_segment`
+em `hsi_pipeline.py`, `fit_predict_pixel_plsda` em `hsi_classification.py`)
+e se propagava por ~10 chamadas tipadas em `hsi_pipeline.py`/
+`hsi_validation.py`/`hsi_multiway.py`, forçando 3 `cast()` locais e 1
+`# type: ignore`.
+
+**Correção**: 2 `TypedDict` novos (`QualityGateResult`,
+`PixelPLSDAResult`) substituem `Dict[str, object]` nas 2 funções de
+origem — o tipo certo entra ali, não em cada ponto de uso. Os 3
+`cast(Dict[str, ObjectAggregationResult], ...)` de `hsi_validation.py` e
+o `# type: ignore[assignment]` de `hsi_multiway.py` ficaram
+redundantes e foram removidos (eram só para contornar o `object` solto).
+
+**Teste de paridade** (exigido pela instrução antes de aceitar como
+concluído, mesmo padrão de `chemometric_stats.expandir_binario_um_quente`):
+`TypedDict` e `cast()` são no-ops em tempo de execução — nenhuma linha
+de LÓGICA mudou, só anotação. Confirmado por inspeção (nenhum `return`/
+corpo de função alterado) e pela suíte completa: **1534 passed / 42
+skipped / 0 failed**, incluindo os testes reais do HSI contra dataset
+público (`test_validacao_publica_deephs_fruit.py`, roda na CI com o
+dataset baixado — local fica `skipped` sem `GUARACI_DATASETS_DIR`, como
+sempre). `mypy` limpo nos 54 módulos do gate + `hsi_pipeline.py` (antes:
+31 erros, agora 0) — `hsi_pipeline.py` **incluído no gate mypy da CI**
+(`.github/workflows/test.yml`), só depois da suíte de paridade confirmar
+zero mudança de comportamento, como a instrução exigia. `ruff` limpo.
+
+**Achado ao investigar a origem** (reportado antes de prosseguir, como a
+instrução pedia): o retorno das 2 funções já é público (`__all__` de
+cada módulo), então mudar a assinatura de `Dict[str, object]` para
+`TypedDict` reprovava `tests/test_contrato_api_publica.py` (guarda de
+compatibilidade de API, `docs/COMPATIBILITY.md`) — que pede um bump de
+versão correspondente antes de regravar o golden, o que esbarrava na
+diretriz em vigor de não mexer em versionamento antes de fechar as
+pendências 3/6/7. **Decisão do autor (pergunta feita, 2026-09-10)**:
+regravar o golden agora, aceitando a mudança como aditiva/não-quebradora
+em runtime (TypedDict/cast não existem em runtime — nenhum chamador
+quebra), sem decidir bump de versão (fica para quando a versão for
+destravada). `PixelPLSDAResult` também entrou em `__all__` de
+`hsi_classification.py`, por consistência com `QualityGateResult` já
+exportado em `hsi_pipeline.py`.
+
+`docs/BACKLOG_MULTIAGENTE.md` (R2) atualizado. Fecha os 4 itens da
+instrução de 2026-09-10 (Passos 210-212 + merges do Dependabot).

@@ -82,6 +82,7 @@ jobs:
             src/guaraci/hsi_identification.py \
             src/guaraci/hsi_uncertainty.py \
             src/guaraci/hsi_applicability.py \
+            src/guaraci/hsi_pipeline.py \
             src/guaraci/config_io.py \
             src/guaraci/perfil_matriz.py \
             src/guaraci/plano_coleta.py \

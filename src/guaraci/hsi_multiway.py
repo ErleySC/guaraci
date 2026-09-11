@@ -345,7 +345,7 @@ def comparar_npls_vs_pixelwise(
         resultado_px = fit_predict_pixel_plsda(
             X_treino, y_treino_px, g_treino_px, X_teste, g_teste_px, seed=seed)
         predicoes_objeto_px: Dict[str, ObjectAggregationResult] = \
-            resultado_px["predicoes_objeto"]  # type: ignore[assignment]
+            resultado_px["predicoes_objeto"]
         y_real_objeto_px = {gid: y_teste_px[list(g_teste_px).index(gid)]
                             for gid in np.unique(g_teste_px)}
         objetos_teste_px = sorted(predicoes_objeto_px)

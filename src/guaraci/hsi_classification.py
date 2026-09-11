@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, TypedDict
 
 import numpy as np
 from sklearn.metrics import balanced_accuracy_score
@@ -26,6 +26,7 @@ from guaraci.validacao_estatistica import StableStratifiedGroupKFold
 
 __all__ = [
     "ObjectAggregationResult",
+    "PixelPLSDAResult",
     "select_n_components_wold",
     "aggregate_predictions_by_object",
     "fit_predict_pixel_plsda",
@@ -92,12 +93,23 @@ def aggregate_predictions_by_object(
     return resultado
 
 
+class PixelPLSDAResult(TypedDict):
+    """Formato devolvido por `fit_predict_pixel_plsda` -- substitui o
+    `Dict[str, object]` genérico que antes obrigava cada chamador a fazer
+    `cast()` local (achado R2 da rodada multiagente 2026-09-10, Passo 202:
+    o tipo solto se originava aqui e se propagava por ~10 call sites em
+    `hsi_pipeline.py`/`hsi_validation.py`)."""
+    n_components: int
+    predicoes_pixel: np.ndarray
+    predicoes_objeto: Dict[str, ObjectAggregationResult]
+
+
 def fit_predict_pixel_plsda(
         X_treino: np.ndarray, y_treino: np.ndarray, groups_treino: np.ndarray,
         X_teste: np.ndarray, groups_teste: np.ndarray, *,
         n_components: Optional[int] = None, max_lvs: int = 10,
         n_splits_wold: int = 3, seed: int = 42,
-        ) -> Dict[str, object]:
+        ) -> PixelPLSDAResult:
     """Treina PLS-DA por-pixel (com selecao de LVs por Wold se
     `n_components` nao for fornecido) e devolve predicoes agregadas por
     objeto para `X_teste`/`groups_teste`.

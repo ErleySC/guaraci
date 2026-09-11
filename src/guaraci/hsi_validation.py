@@ -19,14 +19,13 @@ esconderia queda de desempenho no externo.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, cast
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, precision_score, recall_score
 
 from guaraci.figuras import specificity_by_class
-from guaraci.hsi_classification import (ObjectAggregationResult,
-                                        fit_predict_pixel_plsda)
+from guaraci.hsi_classification import fit_predict_pixel_plsda
 from guaraci.hsi_pixels import build_pixel_dataset
 
 __all__ = ["ExternalValidationReport", "run_external_validation_by_day",
@@ -139,17 +138,15 @@ def run_external_validation_by_day(
         pg_dev[~mascara_teste_interno],
         X_ext, pg_ext,   # predicoes no conjunto EXTERNO
         max_lvs=max_lvs, n_splits_wold=n_splits_wold, seed=seed)
-    predicoes_externo = cast(Dict[str, ObjectAggregationResult],
-                             resultado["predicoes_objeto"])
-    n_components = cast(int, resultado["n_components"])
+    predicoes_externo = resultado["predicoes_objeto"]
+    n_components = resultado["n_components"]
 
     resultado_interno = fit_predict_pixel_plsda(
         X_dev[~mascara_teste_interno], y_dev[~mascara_teste_interno],
         pg_dev[~mascara_teste_interno],
         X_dev[mascara_teste_interno], pg_dev[mascara_teste_interno],
         n_components=n_components)   # MESMO n_components do modelo externo
-    predicoes_interno = cast(Dict[str, ObjectAggregationResult],
-                             resultado_interno["predicoes_objeto"])
+    predicoes_interno = resultado_interno["predicoes_objeto"]
 
     classes = sorted(set(rotulos))
     y_real_interno = {g: y_dev[pg_dev == g][0] for g in objetos_teste_interno}
@@ -230,8 +227,7 @@ def run_internal_validation_group_aware(
         X[~mascara_teste], y[~mascara_teste], pg[~mascara_teste],
         X[mascara_teste], pg[mascara_teste],
         max_lvs=max_lvs, n_splits_wold=n_splits_wold, seed=seed)
-    predicoes = cast(Dict[str, ObjectAggregationResult],
-                     resultado["predicoes_objeto"])
+    predicoes = resultado["predicoes_objeto"]
 
     classes = sorted(set(rotulos))
     y_real = {g: y[pg == g][0] for g in objetos_teste}

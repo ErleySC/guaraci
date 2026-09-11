@@ -40,7 +40,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, TypedDict
 
 import numpy as np
 
@@ -59,13 +59,28 @@ from guaraci.hsi_validation import (run_external_validation_by_day,
 if TYPE_CHECKING:
     from guaraci.config import Config
 
-__all__ = ["apply_quality_gate_and_segment", "run_hsi_pipeline"]
+__all__ = ["QualityGateResult", "apply_quality_gate_and_segment", "run_hsi_pipeline"]
+
+
+class QualityGateResult(TypedDict):
+    """Formato devolvido por `apply_quality_gate_and_segment` -- substitui
+    o `Dict[str, object]` genérico que antes se propagava, sem tipo real,
+    por ~10 call sites deste módulo (achado R2 da rodada multiagente
+    2026-09-10, Passo 202: a raiz do tipo `object` solto estava aqui, não
+    nos pontos de uso)."""
+    cubos: List[np.ndarray]
+    mascaras: List[np.ndarray]
+    group_ids: List[str]
+    rotulos: List[str]
+    dias: List[str]
+    n_rejeitados: int
+    motivos_rejeicao: List[str]
 
 
 def apply_quality_gate_and_segment(
         cubos: List[np.ndarray], group_ids: List[str], rotulos: List[str],
         dias: List[str],
-        ) -> Dict[str, object]:
+        ) -> QualityGateResult:
     """Aplica o quality gate (Passo 95) a cada gravacao e segmenta
     (Passo 96) as que passam -- extraido de `run_hsi_pipeline` (Passo
     104) para ser reaproveitado tambem pela validacao contra outras
