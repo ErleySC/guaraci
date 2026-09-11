@@ -90,6 +90,7 @@ __all__ = [
     "achievable_alpha",
     "n_minimum_for_alpha",
     "conformal_threshold",
+    "conformal_margin_regression",
     "ConformalOneClass",
 ]
 
@@ -174,6 +175,51 @@ def conformal_threshold(scores_calib: np.ndarray, alpha: float = 0.05
             f"e' fragil: qualquer amostra a menos derruba o alpha "
             f"alcancavel para {achievable_alpha(n - 1):.3g}.")
     return res
+
+
+def conformal_margin_regression(y_true: np.ndarray, y_pred: np.ndarray,
+                                 groups: Optional[np.ndarray] = None,
+                                 alpha: float = 0.05) -> Dict[str, Any]:
+    """Margem de predição conforme (split/inductive conformal, Lei, G'Sell,
+    Rinaldo, Tibshirani & Wasserman 2018, *J. Am. Stat. Assoc.* 113:1094-1111,
+    DOI 10.1080/01621459.2017.1307116) para REGRESSÃO -- proposta T1 da
+    rodada multiagente de 2026-09-10, fecha a lacuna #10 (Quantificação sem
+    intervalo por amostra).
+
+    O escore de não-conformidade é o resíduo absoluto `|y - y_hat|` no
+    conjunto de CALIBRAÇÃO (aqui, o split de validação já usado para medir
+    RMSEP/R² em `pipeline.pls_regression_by_species` -- nunca visto pelo
+    ajuste do modelo, exatamente o requisito de split-conformal).
+
+    GROUP-AWARE por construção, mesmo motivo de `ConformalOneClass`: réplicas
+    físicas (T1/T2/T3) não são permutáveis entre si. Com `groups`, cada grupo
+    colapsa ao MAIOR resíduo absoluto entre suas réplicas (pior caso do
+    grupo) -- o `n` que entra em `conformal_threshold`/`achievable_alpha` é o
+    número de GRUPOS, não de espectros. Com <19 grupos, alpha=0.05 não é
+    alcançável (mesma aritmética de `achievable_alpha`); o resultado volta
+    com `alcancavel=False`, nunca um intervalo fabricado.
+
+    Intervalo de predição para uma amostra nova com estimativa pontual
+    `y_hat_novo`: `[y_hat_novo - margem, y_hat_novo + margem]`, onde
+    `margem = resultado["limiar"]`.
+
+    Returns: o mesmo dict de `conformal_threshold` (a margem é a chave
+    `"limiar"`), mais `"n_grupos"` (nº de grupos ou de amostras, se
+    `groups` não for passado).
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+    residuos = np.abs(y_true - y_pred)
+    if groups is not None:
+        groups = np.asarray(groups)
+        gid_unicos = np.unique(groups)
+        scores = np.array([float(residuos[groups == g].max())
+                            for g in gid_unicos])
+    else:
+        scores = residuos
+    resultado = conformal_threshold(scores, alpha=alpha)
+    resultado["n_grupos"] = int(len(scores))
+    return resultado
 
 
 class ConformalOneClass:

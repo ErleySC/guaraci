@@ -428,3 +428,74 @@ def test_quantify_sample_bloqueada_nao_tem_faixa_decisao():
     assert r.motivo_bloqueio is not None
     assert r.teor_estimado is None
     assert r.faixa_decisao is None
+
+
+# ── T1 (rodada multiagente 2026-09-10): intervalo de predicao conforme ──
+
+def test_quantify_sample_com_conformal_alcancavel_da_intervalo():
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {
+            "pipeline": _PipelineFalso(7.0), "lod": 1.0, "loq": 2.0,
+            "conformal": {"alcancavel": True, "limiar": 1.5,
+                          "alpha_nominal": 0.05, "n_grupos": 25},
+        }}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.teor_estimado == pytest.approx(7.0)
+    assert r.intervalo_alcancavel is True
+    assert r.intervalo_baixo == pytest.approx(5.5)
+    assert r.intervalo_alto == pytest.approx(8.5)
+    assert r.intervalo_alpha_nominal == pytest.approx(0.05)
+
+
+def test_quantify_sample_intervalo_nao_fica_negativo():
+    """Teor de adulterante nao e' negativo -- o limite inferior do
+    intervalo e' truncado em 0, nunca um numero fisicamente impossivel."""
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {
+            "pipeline": _PipelineFalso(1.0), "lod": 1.0, "loq": 2.0,
+            "conformal": {"alcancavel": True, "limiar": 5.0,
+                          "alpha_nominal": 0.05, "n_grupos": 25},
+        }}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.intervalo_baixo == 0.0
+    assert r.intervalo_alto == pytest.approx(6.0)
+
+
+def test_quantify_sample_com_conformal_nao_alcancavel_nao_fabrica_intervalo():
+    """Especie com poucos grupos de validacao (<19): NAO_VALIDADO, sem
+    limites -- mesma disciplina de ConformalOneClass."""
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {
+            "pipeline": _PipelineFalso(7.0), "lod": 1.0, "loq": 2.0,
+            "conformal": {"alcancavel": False, "limiar": float("nan"),
+                          "alpha_nominal": None, "n_grupos": 5},
+        }}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.teor_estimado == pytest.approx(7.0)   # o teor ainda e' reportado
+    assert r.intervalo_alcancavel is False
+    assert r.intervalo_baixo is None
+    assert r.intervalo_alto is None
+    assert r.intervalo_alpha_nominal is None
+
+
+def test_quantify_sample_pacote_antigo_sem_conformal_nao_quebra():
+    """Pacote salvo ANTES do Passo 202 (T1) nao tem a chave 'conformal' --
+    .get() devolve None, intervalo fica None, sem excecao."""
+    pkg = {"regressao_por_especie": {
+        "Andiroba": {"pipeline": _PipelineFalso(7.0), "lod": 1.0, "loq": 2.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Andiroba"))
+    assert r.teor_estimado == pytest.approx(7.0)
+    assert r.intervalo_alcancavel is None
+    assert r.intervalo_baixo is None and r.intervalo_alto is None
+
+
+def test_predict_blind_inclui_alpha_da_quantificacao_no_alpha_total():
+    """alpha_total colapsa para None quando a Quantificacao nao tem
+    intervalo alcancavel -- mesma disciplina ja aplicada a Deteccao/
+    Identificacao (nenhum portao sem lastro estatistico entra na soma
+    sem derrubar o total)."""
+    from guaraci.identificacao import combine_alpha_bonferroni
+    total_com_quant_ok = combine_alpha_bonferroni(0.05, 0.05, 0.05, 0.05)
+    total_sem_quant_ok = combine_alpha_bonferroni(0.05, 0.05, 0.05, None)
+    assert total_com_quant_ok == pytest.approx(0.20)
+    assert total_sem_quant_ok is None

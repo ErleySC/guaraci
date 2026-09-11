@@ -1515,6 +1515,35 @@ def test_anexar_regressao_resumo_inclui_ic_e_faixa_de_validacao(pq, tmp_path):
     assert "40.0" in txt                            # teto da faixa de validacao
 
 
+def test_anexar_regressao_resumo_inclui_intervalo_conforme(pq, tmp_path):
+    """T1 (rodada multiagente 2026-09-10, Passo 202): o intervalo de
+    predicao conforme por especie tem que aparecer no resumo_modelo.txt,
+    tanto quando alcancavel quanto quando NAO_VALIDADO (nunca omitido em
+    silencio)."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
+                "rmsep": 1.8, "bias": -0.1},
+        tabela_especie=[
+            {"especie": "Coco", "n_lv": 4, "rmsep": 1.7, "r2val": 0.94,
+             "lod": 2.1, "loq": 6.4, "sensibilidade": 0.033,
+             "seletividade_media": 0.71,
+             "conformal_alcancavel": True, "conformal_margem": 3.25,
+             "conformal_n_grupos": 25},
+            {"especie": "Babacu", "n_lv": 3, "rmsep": 2.2, "r2val": 0.88,
+             "lod": 1.0, "loq": 2.0, "sensibilidade": 0.02,
+             "seletividade_media": 0.6,
+             "conformal_alcancavel": False, "conformal_n_grupos": 5},
+        ])
+    txt = open(pasta + "/resumo_modelo.txt", encoding="utf-8").read()
+    assert "3.25" in txt                              # margem do Coco
+    assert "25 grupos" in txt
+    assert "NAO_VALIDADO" in txt                       # Babacu, so' 5 grupos
+    assert "5 grupo" in txt
+
+
 def test_anexar_regressao_model_card_inclui_ic_e_faixa_de_validacao(pq, tmp_path):
     pasta = str(tmp_path)
     with open(pasta + "/model_card.md", "w", encoding="utf-8") as f:

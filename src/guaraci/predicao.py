@@ -532,6 +532,16 @@ class QuantificationResult:
     faixa_decisao: Optional[str] = None
     lod: Optional[float] = None
     loq: Optional[float] = None
+    # T1 (rodada multiagente 2026-09-10): intervalo de predicao conforme
+    # (split-conformal, Lei et al. 2018) em torno de `teor_estimado`.
+    # `intervalo_alcancavel=False` quando a especie tem menos de 19 grupos
+    # de validacao (achievable_alpha) -- os limites ficam `None`, NUNCA um
+    # intervalo fabricado sem garantia estatistica (mesma disciplina de
+    # `ConformalOneClass`/`IdentificationResult`).
+    intervalo_baixo: Optional[float] = None
+    intervalo_alto: Optional[float] = None
+    intervalo_alcancavel: Optional[bool] = None
+    intervalo_alpha_nominal: Optional[float] = None
 
 
 @dataclass
@@ -653,9 +663,25 @@ def quantify_sample(pkg: Dict[str, Any], X_interp_amostra: np.ndarray,
     faixa = (_faixa_decisao(teor, lod, loq)
              if lod is not None and loq is not None else None)
 
+    # T1: intervalo de predicao conforme, persistido por especie em
+    # pipeline.pls_regression_by_species. Sem base solida (`alcancavel`
+    # False), os limites ficam None -- nunca um intervalo sem garantia.
+    intervalo_baixo = intervalo_alto = None
+    intervalo_alpha = None
+    conf = info.get("conformal")
+    intervalo_alcancavel = bool(conf["alcancavel"]) if conf is not None else None
+    if conf is not None and conf["alcancavel"]:
+        margem = float(conf["limiar"])
+        intervalo_baixo = max(0.0, teor - margem)   # teor de adulterante nao e' negativo
+        intervalo_alto = teor + margem
+        intervalo_alpha = conf["alpha_nominal"]
+
     return QuantificationResult(
         teor_estimado=teor, especie_usada=especie,
-        faixa_decisao=faixa, lod=lod, loq=loq)
+        faixa_decisao=faixa, lod=lod, loq=loq,
+        intervalo_baixo=intervalo_baixo, intervalo_alto=intervalo_alto,
+        intervalo_alcancavel=intervalo_alcancavel,
+        intervalo_alpha_nominal=intervalo_alpha)
 
 
 def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
@@ -677,12 +703,16 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
       (D4) -- nunca forca especie/numero.
     - `alpha_total`: limite de uniao (Bonferroni) sobre os alpha NOMINAIS
       declarados de cada portao com base solida -- AD (0,05, quando
-      disponivel), DD-SIMCA de pureza (0,05, so' quando `confiavel`) e
-      `alpha_alcancavel` do Identificar. Um portao sem alpha confiavel
-      (`None`) faz a soma inteira virar `None` (`combine_alpha_bonferroni`)
-      -- nunca um numero inflado por um portao sem lastro estatistico. A
-      Quantificacao (regressao PLS) nao tem um alpha de cobertura proprio
-      neste design -- nao entra na soma.
+      disponivel), DD-SIMCA de pureza (0,05, so' quando `confiavel`),
+      `alpha_alcancavel` do Identificar e, DESDE a rodada multiagente de
+      2026-09-10 (T1), `intervalo_alpha_nominal` da Quantificacao (so'
+      quando `intervalo_alcancavel` -- especie com >=19 grupos de
+      validacao). Um portao sem alpha confiavel (`None`) faz a soma
+      inteira virar `None` (`combine_alpha_bonferroni`) -- nunca um numero
+      inflado por um portao sem lastro estatistico. DECISAO ANTERIOR
+      REVERTIDA: ate' o Passo 202, a Quantificacao nao tinha intervalo de
+      predicao proprio e por isso nao entrava na soma -- ver
+      `conformal.conformal_margin_regression` para o mecanismo novo.
 
     Retorna (DataFrame de `predict_samples` com as colunas ja existentes,
     lista de `BlindPredictionResult` -- uma por amostra, na mesma ordem).
@@ -717,7 +747,8 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
 
         quant = quantify_sample(pkg, X_interp[i], ident)
         alpha_total = combine_alpha_bonferroni(
-            alpha_detectar, alpha_pureza, ident.alpha_alcancavel)
+            alpha_detectar, alpha_pureza, ident.alpha_alcancavel,
+            quant.intervalo_alpha_nominal)
 
         resultados.append(BlindPredictionResult(
             detectado_no_dominio=detectado, pureza=pureza,

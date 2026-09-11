@@ -4084,3 +4084,44 @@ placeholder "efeito de nenhum foi medido".
 
 Suíte completa após #13: 1468 passed, 42 skipped (mais o teste corrigido
 de `test_isolamento_datasets.py`), `ruff`/`mypy` limpos.
+
+---
+
+# PROGRESSO — Passo 203 (2026-09-10)
+
+## Passo 203 — Fase 4 (T1): predição conforme para regressão, fecha a lacuna #10
+
+`conformal.py` ganha `conformal_margin_regression(y_true, y_pred, groups,
+alpha)` — split-conformal (Lei et al. 2018, JASA 113:1094-1111, DOI
+10.1080/01621459.2017.1307116), mesma disciplina group-aware de
+`ConformalOneClass`: o escore de não-conformidade é o resíduo absoluto, e
+com `groups` cada grupo colapsa ao PIOR resíduo (nunca a média) — o `n`
+que entra em `achievable_alpha` é o nº de grupos, não de espectros.
+
+Wiring: `pipeline.pls_regression_by_species` calcula a margem usando o
+split de VALIDAÇÃO (nunca visto pelo ajuste do modelo — exatamente o
+conjunto de calibração que split-conformal exige) e persiste em
+`pipelines_especie[especie]["conformal"]`. `predicao.quantify_sample` lê
+essa margem e preenche 4 campos novos em `QuantificationResult`
+(`intervalo_baixo`, `intervalo_alto`, `intervalo_alcancavel`,
+`intervalo_alpha_nominal`) — sem base sólida (<19 grupos de validação),
+os limites ficam `None`, nunca um intervalo fabricado. O limite inferior
+é truncado em 0 (teor de adulterante não é negativo).
+
+**Decisão anterior revertida** (`predict_blind`, docstring atualizada): a
+Quantificação agora entra na soma de Bonferroni (`alpha_total`) — antes
+não tinha alpha de cobertura próprio, agora tem.
+
+Achado R5a fechado: a docstring de `hsi_uncertainty.py` que citava
+"Quantificar (intervalo de predição)" como se já existisse no fluxo
+tabular — agora é verdade; nota datada explica a mudança de status
+aspiracional → real.
+
+Reportado em `resultados_io.append_regression_summary`: linha por espécie
+com a margem (quando alcançável) ou "NAO_VALIDADO" com o nº de grupos
+(quando não).
+
+13 testes novos (`test_conformal.py`, `test_predicao.py`,
+`test_pipeline_core.py`); contrato de API pública regravado (mudança
+aditiva). Suíte completa: 305 testes do escopo afetado, todos passando;
+`ruff`/`mypy` (gate de 50 arquivos) limpos.

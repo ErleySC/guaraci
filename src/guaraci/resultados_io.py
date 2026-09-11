@@ -279,6 +279,21 @@ def append_regression_summary(
                     f"validacao: [{_fmt(t.get('validacao_teor_min'), 2)}, "
                     f"{_fmt(t.get('validacao_teor_max'), 2)}]% "
                     f"DP={_fmt(t.get('validacao_teor_dp'), 2)}%")
+            # T1 (rodada multiagente 2026-09-10, Passo 202): margem de
+            # predicao conforme por especie (conformal.conformal_margin_
+            # regression) -- so' reporta numero quando alcancavel; senao
+            # diz explicitamente por que nao (NAO_VALIDADO, mesma
+            # disciplina do IC de LOD/LOQ acima).
+            if t.get("conformal_alcancavel") is True:
+                linhas.append(
+                    f"      Intervalo de predicao (conforme, 95%): "
+                    f"+/-{_fmt(t.get('conformal_margem'), 2)}% "
+                    f"({t.get('conformal_n_grupos')} grupos de validacao)")
+            elif t.get("conformal_alcancavel") is False:
+                linhas.append(
+                    f"      Intervalo de predicao: NAO_VALIDADO "
+                    f"({t.get('conformal_n_grupos')} grupo(s) de validacao, "
+                    f"minimo 19 p/ alpha=0.05)")
     if fom_pooled is not None:
         linhas.append("")
         linhas.append("  Figures of merit (single pooled model):")

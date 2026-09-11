@@ -1425,6 +1425,10 @@
         "assinatura": "(n: 'int') -> 'float'",
         "forma": "funcao"
       },
+      "conformal_margin_regression": {
+        "assinatura": "(y_true: 'np.ndarray', y_pred: 'np.ndarray', groups: 'Optional[np.ndarray]' = None, alpha: 'float' = 0.05) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
       "conformal_threshold": {
         "assinatura": "(scores_calib: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, Any]'",
         "forma": "funcao"
@@ -3797,6 +3801,26 @@
           },
           {
             "nome": "loq",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "intervalo_baixo",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "intervalo_alto",
+            "tem_default": true,
+            "tipo": "Optional[float]"
+          },
+          {
+            "nome": "intervalo_alcancavel",
+            "tem_default": true,
+            "tipo": "Optional[bool]"
+          },
+          {
+            "nome": "intervalo_alpha_nominal",
             "tem_default": true,
             "tipo": "Optional[float]"
           }

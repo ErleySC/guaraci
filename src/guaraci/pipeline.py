@@ -346,6 +346,7 @@ from guaraci.identificacao import (   # noqa: E402
     combine_alpha_bonferroni,
     train_identification_ensemble,
 )
+from guaraci.conformal import conformal_margin_regression  # noqa: E402
 def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
                      mae_id: Optional[np.ndarray] = None,
@@ -1124,6 +1125,17 @@ def pls_regression_by_species(
         _fom = regression_figures_of_merit(
             pipe_final.named_steps["pls"], _X_cal_proc, _grupos_rep)
 
+        # T1 (rodada multiagente 2026-09-10): margem de predicao conforme
+        # para o teor de adulterante, fechando a lacuna #10 (Quantificacao
+        # sem intervalo por amostra). O split de VALIDACAO (Xv/Yv/Yv_hat)
+        # nunca foi visto pelo ajuste do modelo -- e' exatamente o
+        # conjunto de calibracao que split-conformal exige (Lei et al.
+        # 2018). Group-aware: cada mae_id colapsa ao PIOR residuo entre
+        # replicas (ver conformal.conformal_margin_regression).
+        _grupos_val = mae_c[iv] if mae_c is not None else None
+        _conformal_reg = conformal_margin_regression(
+            Yv.flatten(), Yv_hat, groups=_grupos_val, alpha=0.05)
+
         Yc_all.append(np.asarray(Yc).flatten())
         Ych_all.append(Yc_hat)
         Yv_all.append(np.asarray(Yv).flatten())
@@ -1150,6 +1162,9 @@ def pls_regression_by_species(
             "validacao_teor_min": float(_Yv_flat.min()),
             "validacao_teor_max": float(_Yv_flat.max()),
             "validacao_teor_dp": float(_Yv_flat.std(ddof=1)) if len(_Yv_flat) > 1 else float("nan"),
+            "conformal_alcancavel": _conformal_reg["alcancavel"],
+            "conformal_margem": _conformal_reg["limiar"],
+            "conformal_n_grupos": _conformal_reg["n_grupos"],
         })
         pipelines_especie[str(cls)] = {
             "pipeline": pipe_final, "n_lv": n_opt_reg,
@@ -1159,6 +1174,10 @@ def pls_regression_by_species(
             # recebe UMA amostra nova, sem dado de calibracao/replicas) nao
             # teria como categorizar o teor predito em faixa de decisao.
             "lod": _fom["lod"], "loq": _fom["loq"],
+            # T1: margem de predicao conforme persistida junto com o
+            # pipeline -- `quantify_sample` so' recebe UMA amostra nova,
+            # sem dado de calibracao, entao a margem precisa vir pronta.
+            "conformal": _conformal_reg,
         }
 
         # keep the RMSECV curve of the species with most samples (for panel a)

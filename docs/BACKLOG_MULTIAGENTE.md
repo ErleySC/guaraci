@@ -48,7 +48,7 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 | 7 | Seleção de variáveis com vazamento | R | já resolvido antes desta rodada; nenhuma ação |
 | 8 | Pré-processamento ajustado antes do split (Etapa 4) | RP | backlog — magnitude do vazamento de MSC não medida |
 | 9 | Caixa-preta sem atribuição química | RP | backlog — tabela de bandas NIR/MIR/Raman de óleos não existe |
-| 10 | Quantificação sem intervalo por amostra | NR | _preenchido na Fase 4 (T1)_ |
+| 10 | Quantificação sem intervalo por amostra | NR | **resolvido (Passo 203, T1)** — ver acima |
 | 11 | Classificação sem incerteza | RP | já parcialmente resolvido (conformal one-class); backlog o resto |
 | 12 | Nº de VLs escolhido de forma otimista | RP | **medido (Passo 202), decisão adiada** — `scripts/medicoes/medir_vieses_selecao_lv.py`: CV aninhada deu balanced_accuracy MAIOR (0,8499) que a atual (0,8299), direção oposta à hipótese do relatório. Custo 3,7× por execução. Não propagado — precisa de mais réplicas antes de mudar a seleção de modelo central. |
 | 13 | Métricas infladas / IC ingênuo | RP | **corrigido e medido (Passo 202)** — `bootstrap_bca_ci(groups=...)`, retrocompatível; largura do IC de balanced_accuracy sobe de 0,0316 para 0,0411 (+30%) no dataset privado; propagado a `pipeline.py` (CV e holdout) |
@@ -62,7 +62,7 @@ Atualizado pela última vez no fechamento da instrução de 2026-09-10
 
 | # | Técnica | Status |
 |---|---|---|
-| T1 | Predição conforme para regressão | _preenchido na Fase 4_ |
+| T1 | Predição conforme para regressão | **implementado (Passo 203)** — `conformal.conformal_margin_regression`, wired em `pls_regression_by_species`/`quantify_sample`/`predict_blind` (alpha_total). Fecha #10 e o achado R5a. |
 | T2 | EPO / GLSW | _preenchido na Fase 4_ |
 | T3 | ASCA+ | _preenchido na Fase 4_ |
 | T4 | Correção de deriva por QC/brancos | _preenchido na Fase 4_ |

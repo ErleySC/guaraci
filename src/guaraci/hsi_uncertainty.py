@@ -30,6 +30,14 @@ uma etapa de QUANTIFICACAO formal com intervalo de predicao proprio
 (ex.: prever teor de acucar por pixel/objeto com um alpha proprio),
 Bonferroni entre Identificacao e essa nova etapa passaria a fazer
 sentido, espelhando o fluxo tabular -- nao antes disso.
+
+NOTA (achado R5a, rodada multiagente 2026-09-10, Passo 202): quando este
+docstring foi escrito, "Quantificar (intervalo de predicao)" no fluxo
+TABULAR era ASPIRACIONAL -- `predicao.QuantificationResult` nao tinha
+intervalo nenhum, so' o teor pontual. Isso foi implementado no Passo 202
+(T1, `conformal.conformal_margin_regression` + `predicao.quantify_sample`)
+-- a frase acima agora descreve algo que EXISTE de fato, nao mais uma
+lacuna com o texto escrito como se ja' estivesse fechada.
 """
 from __future__ import annotations
 

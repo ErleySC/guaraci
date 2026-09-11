@@ -12,6 +12,7 @@ import pytest
 from guaraci.conformal import (
     ConformalOneClass,
     achievable_alpha,
+    conformal_margin_regression,
     conformal_threshold,
     n_minimum_for_alpha,
 )
@@ -130,3 +131,61 @@ def test_predict_aceita_abaixo_do_limiar_quando_valido():
     assert pred[0] is np.True_ or bool(pred[0])
     assert bool(pred[1])            # <= e' inclusivo
     assert not bool(pred[2])
+
+
+# ── conformal_margin_regression (T1, rodada multiagente 2026-09-10) ─────
+
+def test_margem_regressao_cobre_o_valor_verdadeiro_por_amostra():
+    """Contra-prova estatistica: com n grande e alpha=0.10, o intervalo
+    [y_hat +- margem] cobre o y verdadeiro em pelo menos ~90% das amostras
+    de um lote NOVO calibrado com o mesmo gerador (checagem de sanidade,
+    nao um teste de cobertura exata assintotica)."""
+    rng = np.random.default_rng(0)
+    n = 300
+    y_true_cal = rng.normal(size=n)
+    y_pred_cal = y_true_cal + rng.normal(scale=0.5, size=n)
+    r = conformal_margin_regression(y_true_cal, y_pred_cal, alpha=0.10)
+    assert r["alcancavel"]
+    margem = r["limiar"]
+
+    y_true_novo = rng.normal(size=2000)
+    y_pred_novo = y_true_novo + rng.normal(scale=0.5, size=2000)
+    dentro = np.abs(y_true_novo - y_pred_novo) <= margem
+    assert dentro.mean() >= 0.85   # folga sob 0.90 nominal, e' amostra finita
+
+
+def test_margem_regressao_recusa_com_poucos_grupos():
+    """Mesma disciplina de ConformalOneClass: <19 grupos e' insuficiente
+    p/ alpha=0.05 -- NAO fabrica margem."""
+    y_true = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    y_pred = np.array([1.1, 2.2, 2.8, 4.3, 4.9])
+    grupos = np.array(["g1", "g2", "g3", "g4", "g5"])
+    r = conformal_margin_regression(y_true, y_pred, groups=grupos, alpha=0.05)
+    assert r["alcancavel"] is False
+    assert np.isnan(r["limiar"])
+    assert r["n_grupos"] == 5
+
+
+def test_margem_regressao_colapsa_por_grupo_com_pior_caso():
+    """Replicas do mesmo mae_id colapsam ao MAIOR residuo absoluto (pior
+    caso do grupo), nao a media -- uma replica ruim nao pode ficar
+    escondida atras de replicas boas do mesmo grupo."""
+    y_true = np.array([1.0, 1.0, 1.0])
+    y_pred = np.array([1.0, 1.0, 5.0])   # 3a replica com residuo grande
+    grupos = np.array(["g1", "g1", "g1"])
+    r = conformal_margin_regression(y_true, y_pred, groups=grupos, alpha=0.5)
+    assert r["n_grupos"] == 1
+    assert r["limiar"] == pytest.approx(4.0)   # o pior caso do grupo, nao 0 nem a media
+
+
+def test_margem_regressao_grupos_e_sem_grupos_dao_n_diferente():
+    """Sem `groups`, o n e' o de ESPECTROS; com `groups`, o n e' o de
+    GRUPOS -- exatamente a distincao que evita contar replica como
+    amostra independente."""
+    y_true = np.tile([1.0, 2.0, 3.0], 3)      # 3 grupos, 3 replicas cada
+    y_pred = y_true + 0.1
+    grupos = np.repeat(["g1", "g2", "g3"], 3)
+    sem_grupo = conformal_margin_regression(y_true, y_pred, alpha=0.3)
+    com_grupo = conformal_margin_regression(y_true, y_pred, groups=grupos, alpha=0.3)
+    assert sem_grupo["n_grupos"] == 9
+    assert com_grupo["n_grupos"] == 3
