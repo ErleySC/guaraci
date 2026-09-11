@@ -4689,3 +4689,60 @@ Suíte do arquivo (2 testes) verde localmente depois da correção. `ruff`
 limpo. Commit e push -- CI re-disparado, aguardando confirmação de que
 os outros 8 jobs `validacao-publica-*` continuam verdes (já estavam,
 só os 3 do Mendeley falharam) e que nada mais quebrou.
+
+**Confirmado**: CI (`16788ce`, run `34638155175`) 100% verde -- 20/20
+jobs (matriz completa 3 SOs × Python 3.10-3.13 + lint + typecheck + 9
+jobs `validacao-publica-*`, incluindo os 3 do Mendeley que falhavam).
+
+---
+
+# PROGRESSO — Passo 215 (2026-09-11)
+
+## Passo 215 — Fase D: procedimento de duplicação preparado e testado
+
+Fase D da instrução de 2026-09-11 (mecânica, sem executar a parte
+pública). Decisão da Fase C já tomada pelo autor: **histórico
+filtrado** (`git filter-repo --replace-text`) para o repositório novo.
+
+Documento novo: `docs/PROCEDIMENTO_NOVO_REPOSITORIO.md` -- procedimento
+completo, testado em rehearsal sobre clone descartável (nunca o
+repositório real):
+
+- **Filtro de histórico testado**: 4 commits antigos (`22b5511`,
+  `676e9c4`, `dd09c41`, `338c45f`) traziam `C:\Users\erley\...` (caminho
+  de máquina do autor); `git filter-repo --replace-text` com regra
+  `C:\Users\erley==>C:\Users\REDACTED` removeu as 4 ocorrências
+  (verificado: 0 depois do filtro), preservou as 320 commits e as 11
+  tags (`pibic-2026-08`, `v31.0.0`..`v31.9.0`, remapeadas
+  automaticamente para os novos hashes), conteúdo ao redor do texto
+  redigido intacto (verificado lendo o diff pós-filtro).
+- **Portabilidade**: `ErleySC/guaraci` aparece em 11 arquivos -- 3
+  strings de exibição em código (`app_tabs/sobre.py`, `guaraci.py`,
+  `resultados_io.py`, nenhuma é URL que o código busca em runtime) + 8
+  em docs/config (READMEs, `pyproject.toml`, `mkdocs.yml`, `docs/
+  index.md`, templates do GitHub). Nenhum acoplamento escondido --
+  find-and-replace mecânico quando o nome do repo novo for decidido.
+- **Scripts do vault confirmados** (não presumidos, leitura direta):
+  `gerar_vault_obsidian.py`/`consultar_vault.py` usam `git rev-parse
+  --short HEAD`, nenhuma URL hardcoded.
+- **Mensagem da tag `v1.0.0`** preparada (sincronizada com a entrada do
+  `CHANGELOG.md`), não criada.
+- **Simulação de instalação limpa**: clone fresco de `origin/master`
+  (`16788ce`) + venv novo (Python 3.12.10) em caminho fora de qualquer
+  estrutura de projeto existente. Achado real registrado no
+  procedimento: a 1ª tentativa (venv dentro do scratchpad desta sessão,
+  caminho profundamente aninhado) falhou por `OSError` instalando
+  `lxml` -- Windows MAX_PATH (260 char) excedido, não suporte a
+  caminho longo habilitado no SO (não é bug do projeto). Resolvido com
+  caminho curto (`C:\gtmp\...`). `pip install -r requirements.txt` +
+  `pip install -e .[dev]` (o `.[dev]` faltou na 1ª tentativa --
+  `hypothesis` ausente, 3 módulos de teste falharam ao coletar; 2ª
+  tentativa com o comando certo, igual ao que a CI usa, funcionou).
+  `guaraci --version` → `GUARACI v1.0.0`; `import guaraci` limpo;
+  **suíte completa 1533 passed / 0 failed / 43 skipped em 526,9s**
+  (~8,8 min), zero cache/estado residual da máquina de desenvolvimento.
+
+**Nada executado além do rehearsal** (clone/venv descartáveis, fora do
+repositório real): nenhum repositório novo criado, nenhum push pra'
+remoto novo, nenhuma tag `v1.0.0` criada. Aguarda autorização explícita
+do autor para a próxima instrução, especificamente para essa ação.
