@@ -4406,3 +4406,51 @@ exportação portátil de modelo (avaliados, são projetos próprios).
 15 commits nesta instrução (`02d65fe`..`d633f07`), suíte completa
 (1527 passed / 42 skipped / 0 failed na última rodada isolada), `ruff` e
 `mypy` (gate de 53 módulos) limpos em cada commit.
+
+---
+
+# PROGRESSO — Passo 210 (2026-09-10)
+
+## Passo 210 — Dependabot (5/5 mergeadas) e escopo de fusão multibloco/MSPC
+
+Instrução com 4 itens independentes ("Dependabot, medição replicada do
+#12, escopo de produto grande, e dívida de tipo do hsi_pipeline").
+Fecha os itens 1 e 3; itens 2 (medição replicada #12) e 4 (dívida de
+tipo do `hsi_pipeline.py`) registrados em passos separados (2 ainda
+rodando no momento deste commit; 4 pausado numa decisão do autor).
+
+**Item 1 — Dependabot**: as 5 PRs (`#8`/`#9`/`#10`/`#11`/`#20`)
+reconfirmadas contra o `master` avançado (16 commits desde a última
+revisão, Passo 202) — mesma classificação já feita (bumps mecânicos,
+sem código de aplicação tocado). `#8`/`#9`/`#10`/`#20` com CI 100%
+verde de imediato, mergeadas via `gh pr merge --squash --delete-branch`.
+`#11` teve 1 check (`validacao-publica`) falho por infraestrutura
+(`curl: Failed to connect to eigenvector.com`, timeout de rede no
+runner ao baixar `corn.mat` — não relacionado ao bump, que só toca
+`docs.yml`); `gh run rerun --failed` confirmou ser flake (100% verde na
+2ª tentativa), mergeada em seguida. **5/5 mergeadas** — a permissão do
+ambiente que bloqueou o Passo 202 não bloqueou desta vez.
+
+**Item 3 — Escopo de produto grande** (planejamento, não código, mesmo
+tratamento do Bloco 13d): `docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` novo.
+
+- **Fusão multibloco**: candidato de prova de conceito identificado —
+  Mendeley `10.17632/ctgg7k4m5g.2` (óleos comestíveis, já integrado
+  parcialmente, ver `VALIDACAO_PUBLICA.md` §2/2b) tem as MESMAS amostras
+  medidas por NIR 8mm (já usado) e MIR 50µm/Raman/NIR 24mm (arquivos-
+  irmãos, nunca baixados) para o mesmo alvo (índice de peróxido) — o
+  único par real disponível hoje sem baixar dataset novo. Esforço
+  estimado comparável a `eem_multiway.py` (Passo 149) + 1 técnica de
+  integração nova (padrão GC-MS/Passo 150). HSI e EEM descartados como
+  candidatos (são 1 técnica multidimensional, não 2 blocos).
+- **Monitoramento em linha/MSPC**: extensão natural de
+  `sentinela_deriva.py` (núcleo estatístico já existe, Bloco 13b) — falta
+  orquestração, não algoritmo. "Em linha" reinterpretado com realismo
+  para um projeto local-first sem servidor: execução agendada via
+  `guaraci run` (Passo 208) a cada lote, não um daemon/dashboard
+  contínuo. Esforço estimado menor que a fusão (1 campo de `Config` + 1
+  chamada condicional nos pontos de predição já existentes).
+
+`docs/BACKLOG_MULTIAGENTE.md` (linhas R4, P4, P5) atualizado com os
+resultados. Nenhum código de aplicação mudou neste passo (só
+`docs/*.md`); `ruff`/`mypy`/suíte não afetados.
