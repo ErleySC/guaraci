@@ -124,6 +124,61 @@ def test_predict_sem_limiar_rejeita_tudo_em_vez_de_aceitar_tudo():
     assert not pred.any()
 
 
+def test_predict_sem_fit_e_fail_safe_mesmo_com_info_incompleto():
+    """Mutation testing (cosmic-ray, 2026-09-11) achou que o default de
+    `self.info_.get("alcancavel", False)` em `predict()` pode virar
+    `True` sem NENHUM teste existente notar -- porque em todo caminho
+    alcancavel via `.fit()` a chave sempre esta' presente (conformal_
+    threshold() sempre a inclui), e no caso "nunca chamou fit()" o
+    `limiar_` continua NaN e `s <= nan` da' False de qualquer forma,
+    mascarando a diferenca.
+
+    O cenario ONDE a diferenca importa de verdade e' um modelo salvo
+    (`.joblib`) por uma versao ANTIGA do codigo, de antes de `info_`
+    ganhar a chave `alcancavel` -- ao desserializar, `limiar_` e' um
+    numero real (o modelo FOI calibrado), mas `info_` nao tem a chave.
+    Simula exatamente isso, sem passar por fit(), para travar o default
+    fail-safe (recusa) mesmo neste estado incompleto -- nunca fail-open
+    (aceitar tudo)."""
+    cc = ConformalOneClass(alpha=0.05)
+    cc.info_ = {"n_calibracao": 50}          # sem "alcancavel", estilo legado
+    cc.limiar_ = 2.5                         # limiar real, como se ja calibrado
+    pred = cc.predict(np.array([0.0, 1.0, 2.5, 10.0]))
+    assert pred.dtype == bool
+    assert not pred.any(), (
+        "fail-open: info_ incompleto aceitou amostras sem garantia de "
+        "cobertura -- deveria recusar tudo (fail-safe), igual ao caso "
+        "alcancavel=False explicito.")
+
+
+def test_fit_loga_aviso_apenas_quando_nao_alcancavel(caplog):
+    """Mutation testing achou que invertendo `if not self.info_[
+    "alcancavel"]:` em fit() (remover o `not`) nenhum teste falhava --
+    ou seja, nada verificava que o aviso e' logado SO' quando o limiar
+    NAO e' alcancavel, nunca quando e'."""
+    import logging
+    caplog.set_level(logging.WARNING, logger="guaraci.conformal")
+
+    # mae_id sempre passado (1 grupo por escore, sem replica): isola o
+    # aviso de achievability do aviso, nao-relacionado, de "mae_id ausente".
+    caplog.clear()
+    ConformalOneClass(alpha=0.05).fit(
+        np.array([1.0]), mae_id=np.array(["g0"]))     # n=1, NAO alcancavel
+    assert any("Conformal" in r.message or "conformal" in r.message.lower()
+               for r in caplog.records), (
+        "esperava aviso logado quando o limiar NAO e' alcancavel")
+
+    caplog.clear()
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=100)
+    ConformalOneClass(alpha=0.10).fit(
+        x, mae_id=np.array([f"g{i}" for i in range(100)]))  # alcancavel, sem fragilidade
+    assert not caplog.records, (
+        "nao deveria logar aviso quando o limiar E' alcancavel e nao fragil "
+        "-- se este teste falhar com o aviso presente, o mutante que remove "
+        "o `not` da condicao de fit() teria sobrevivido de novo")
+
+
 def test_predict_aceita_abaixo_do_limiar_quando_valido():
     rng = np.random.default_rng(3)
     cc = ConformalOneClass(alpha=0.10).fit(rng.normal(size=100))
