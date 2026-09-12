@@ -4297,24 +4297,6 @@ def _menu_profiles(cfg: Config) -> None:
 # ---------------------------------------------------------------------------
 # SOBRE — identidade, citacao e referencias (para publicacao)
 # ---------------------------------------------------------------------------
-def _ler_citation() -> dict:
-    """Le campos basicos do CITATION.cff (parser leve, sem dependencia YAML)."""
-    info: Dict[str, str] = {}
-    p = _BASE_DIR / "CITATION.cff"
-    if not p.exists():
-        return info
-    try:
-        for linha in p.read_text(encoding="utf-8").splitlines():
-            if ":" in linha and not linha.lstrip().startswith("-"):
-                chave, _, val = linha.partition(":")
-                val = val.strip().strip('"').strip()
-                if val:
-                    info[chave.strip()] = val
-    except OSError:
-        pass
-    return info
-
-
 def _menu_about(cfg: Optional[Config] = None) -> None:
     """Secao Sobre — proposito, autor, citacao em multiplos formatos e referencias."""
     # Dados fixos do projeto e do autor

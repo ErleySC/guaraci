@@ -48,21 +48,27 @@ Objetivo: um usuário com qualquer um destes equipamentos consegue usar o dado b
 
 ---
 
-## GRUPO 3 — Performance, leveza e limpeza (nunca medido até agora)
+## GRUPO 3 — Performance, leveza e limpeza (MEDIDO em 2026-09-11)
 
-Esta é a lacuna que nenhuma instrução anterior tocou.
+Medido por instrução dedicada (ver scripts versionados em `scripts/medicoes/`). Metodologia e limiares: Nielsen/Miller — 0,1s instantâneo, 1,0s fluxo de pensamento preservado, 10s limite de atenção (acima disso, indicação de progresso obrigatória).
 
-| Item | Estado |
+| Item | Resultado medido |
 |---|---|
-| Tempo de inicialização (CLI) | Não medido |
-| Tempo de inicialização (Streamlit) | Não medido |
-| Uso de memória com dataset grande (cubo HSI, GC-IMS bruto) | Não medido |
-| Peso total de dependências (contagem, tamanho de instalação) | Não medido — lista cresceu bastante (sklearn, scipy, streamlit, hypothesis, fpdf2, tensorly, brukeropus, netCDF4, matplotlib, pandas e mais) |
-| Custo da CV aninhada (2,4-3,7× medido) vs. expectativa de UX aceitável | Medido em isolamento, nunca comparado contra tolerância real de espera do usuário |
-| Código morto / import não usado / função duplicada | Nunca varrido — só documentação recebeu esse tipo de auditoria |
-| Tamanho do pacote publicável (`pyproject.toml`, o que entra no build) | Confirmado uma vez, não revalidado desde então com todo o código novo |
+| Tempo de inicialização (CLI) | Média 3,89s ± 0,11s (10 execuções cold start) — tolerável p/ Nielsen, mas **1,0s é um `time.sleep(1.0)` fixo** na mensagem de boas-vindas ([guaraci.py:976](../src/guaraci/guaraci.py)), não computação real. Import (`-X importtime`) responde por ~2,0-2,4s (sklearn ~1,0s, scipy ~0,5s, pandas ~0,4s, matplotlib ~0,3s); nenhuma dependência pesada opcional (streamlit/tensorly/brukeropus/shap/xgboost) é importada no boot — já corretamente isolada. |
+| Tempo de inicialização (Streamlit) | Boot até aceitar TCP: 1,24s ± 0,22s (5 execuções). Até 1ª resposta HTTP 200: 1,54s ± 0,61s. **Limitação declarada**: mede o shell estático, não o render completo pós-websocket (exigiria Playwright — deliberadamente não adicionado só para esta medição). |
+| Uso de memória com dataset grande | HSI sintético (64×64×224, 60 gravações, ~210MB de dado bruto — 64×64 é a resolução REAL do dataset público DeepHS Kaki/VIS): **pico de 1,27GB de RSS**, ~6× o tamanho do dado bruto. Tabular sintético na escala do maior dataset público integrado (Mendeley NIR 8mm, n=100×11500 canais, também a ordem de grandeza do dataset privado do autor por achado #12): **pico de 1,04GB de RSS** — ~37-110× o tamanho do dado bruto (a ordem de grandeza de p²×8 bytes = 1,06GB para p=11500 é suspeita e aponta para uma estrutura O(p²) em algum ponto do pipeline; não isolada nesta rodada, ver candidato a investigação abaixo). GC-IMS bruto: **N/A, sem leitor implementado** (Grupo 1). |
+| Peso total de dependências | Ambiente limpo `pip install -e .[dev]`: **28 pacotes, 415MB**. `pip install -e .[all]`: **79 pacotes, 877MB** — top 5 em disco: llvmlite 119MB (via `shap`, extra `benchmark`), scipy 118MB (core), pyarrow 90MB (via `streamlit`, extra `web`), pandas 69MB (core), xgboost 58MB (extra `benchmark`). Todas as dependências pesadas e de uso raro (shap/xgboost/tensorly/brukeropus/prcv/scikit-image/streamlit) **já estão corretamente isoladas como extras opcionais** em `pyproject.toml` e confirmadas ausentes do import padrão do CLI — nenhum candidato a lazy-import pendente. |
+| Custo da CV aninhada (`selecao_lv_cv_aninhada`, default `True` desde v1.0) | Com parâmetros REAIS (`n_splits_cv=5, n_repeats_cv=3, max_lvs=40`, escala Mendeley NIR 8mm): **sem** CV aninhada 271,7s, **com** 979,6s → **razão 3,61×**, compatível com a estimativa de "~4-5×" já documentada em `config.py`. Ambos os tempos absolutos (4,5min e 16,3min) estão MUITO acima do limite de atenção de Nielsen (10s). **Achado de UX confirmado**: não há NENHUMA indicação de progresso dentro do laço de CV aninhada ([pipeline.py:1911-1948](../src/guaraci/pipeline.py)) — só um log antes ("CV aninhada ativada...") e um depois; até 16 minutos de silêncio total. *(Nota de retratação: a 1ª rodada, com parâmetros reduzidos p/ velocidade, mediu razão ~1× e contradizia a estimativa do código — descartada e substituída por esta, documentada no próprio script.)* |
+| Código morto / import não usado / função duplicada | `vulture` sobre `src/guaraci/` + `app_quimiometria.py`: 89 candidatos brutos → **86 falsos positivos confirmados por busca de uso real** (campos de dataclass/NamedTuple que são API pública de resultado, `render()` chamado só de `app_quimiometria.py` fora do escopo do scan, atributos write-only de terceiro — python-docx/openpyxl/fpdf2 —, callbacks `header`/`footer` do FPDF, contrato de interface do sklearn `get_n_splits`, campo `dwLength` de struct ctypes do Windows, atributos `_train_`/`T_` estilo sklearn) → **3 confirmados mortos e removidos** com suíte completa antes/depois (1533 passados, 0 regressão): `_ler_citation()` órfã em `guaraci.py`, `_tem_imagem_direta_ou_em_subpasta()` e `_subpasta_e_grupo_de_amostras()` órfãs em `dados_imagem.py`. Duplicação: varredura leve (blocos ≥8 linhas) em `guaraci.py`/`figuras.py`/`pipeline.py` achou **1 duplicação real de ~30 linhas** (carregar dados → validar → `run_audit` → renderizar achados → painel de resumo) entre `_guaraci_diagnosticar` ([guaraci.py:1128](../src/guaraci/guaraci.py)) e o menu de Auditoria de Delineamento ([guaraci.py:4113](../src/guaraci/guaraci.py)) — não consolidada nesta rodada (risco de comportamento, fora do escopo de uma medição). |
+| Cobertura de novos módulos no gate mypy | `ruff check .` e os 7 módulos do gate mypy: **limpos** (ruff pegou 3 erros nos scripts novos desta própria rodada, corrigidos). |
+| Tamanho do pacote publicável | `python -m build`: wheel 615KB comprimido / 1,83MB descomprimido (96 arquivos, só `guaraci/` + dist-info — **limpo**, nada de teste/scratch/dataset). sdist 944KB (226 arquivos: `src/`+`tests/`, decisão legítima de incluir testes no sdist — **também limpo**, sem vazamento). |
+| Teste de mutação no núcleo científico crítico | `cosmic-ray` (mutmut não roda nativo no Windows). **conformal.py**: 230 mutantes, 57 sobreviventes (24,8%) — achado mais preocupante: em `ConformalOneClass`, o valor-padrão do fallback `.get("alcancavel", False)` pode virar `True` sem nenhum teste notar (inverte a semântica fail-safe→fail-open quando a chave está ausente, caminho real de código, não hipotético). **classificadores.py**: 1064 mutantes, 392 sobreviventes (36,8%) — achados mais preocupantes: as guardas de convergência/degenerescência do NIPALS PLS1 e do ajuste OPLS-DA (`if nt < 1e-12`, `if nto < 1e-12`, critério de tolerância) sobrevivem a inversão por `not` sem nenhum teste falhar — a lógica de parada por degenerescência numérica do algoritmo central está descoberta. **chemometric_stats.py**: 2527 mutantes — **medição parcial, interrompida em 528/2527 (20,9%) por custo de tempo** (suíte relevante ~18s/mutante × 2527 ≈ várias horas); 149 sobreviventes (28,2%) nos 528 rodados. Retomável (`cosmic-ray exec` reaproveita o progresso salvo em `cr_chemometric.sqlite`), não incluída no total abaixo. Taxa zero não era esperada em nenhum dos três — confirmado. |
 
-**Ação sugerida:** este grupo precisa de medição antes de qualquer otimização — não presumir que está pesado ou leve sem medir.
+**Achado colateral (não investigado nesta rodada, registrado para não se perder):** `scripts/download_datasets/baixar_deephs_fruit_todas.py` depende de um sidecar `_deephs_fruit_todas_pins.json` que **não existe no repositório** — o script quebra com `RuntimeError` antes de baixar qualquer coisa. Por isso a medição de memória do HSI usou cubo sintético em vez do dataset público real.
+
+**Candidato a investigação futura (não confirmado):** o pico de RSS do caso tabular (1,04GB para ~9-28MB de dado bruto em p=11500 variáveis) tem ordem de grandeza compatível com uma matriz p×p (11500² × 8 bytes ≈ 1,06GB) formada em algum ponto do pipeline — não isolado nesta rodada; profiling por `cProfile` aponta `chemometric_stats.training_applicability_domain`/`q_residuals_loo` como a etapa dominante em tempo (~60% do total), candidata natural a investigar primeiro.
+
+**Scripts versionados desta medição:** `scripts/medicoes/medir_tempo_inicializacao.py`, `scripts/medicoes/medir_uso_memoria.py`, `scripts/medicoes/medir_custo_cv_aninhada.py`.
 
 ---
 
@@ -102,9 +108,9 @@ Deep learning geral, fusão multimodal dependente de sensor caro fora de alcance
 
 ## ORDEM DE IMPLEMENTAÇÃO PROPOSTA
 
-1. Grupo 3 primeiro (medição de performance) — rápido, não muda comportamento, informa decisão nos outros grupos.
+1. ~~Grupo 3 primeiro (medição de performance)~~ — **MEDIDO em 2026-09-11** (ver tabela acima). Pendências residuais dentro do próprio grupo: teste de mutação de `chemometric_stats.py` incompleto (528/2527, retomável); decisão sobre os 2 achados de UX (sleep de 1s no boot do CLI, ausência de progresso na CV aninhada) e sobre o achado de possível O(p²) no caso tabular — nenhum corrigido ainda, aguardando decisão do autor (risco de mudar comportamento testado).
 2. Grupo 1 (leitores de formato) — SPC e `.sp` primeiro; RMN/GC-IMS/EEM brutos depois.
-3. Grupo 4 (testes) — em paralelo aos Grupos 1 e 2, mais uma rodada dedicada de teste de mutação no núcleo científico existente.
+3. Grupo 4 (testes) — em paralelo aos Grupos 1 e 2; completar a rodada de mutação de `chemometric_stats.py` iniciada no Grupo 3.
 4. Grupo 2 (análises) — conjunto de predição multiclasse primeiro; fusão multibloco e MSPC depois.
 5. Grupo 5 — consequência natural de fechar 1, 2 e 3; revisar o comparativo do README ao final.
 

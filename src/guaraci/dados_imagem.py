@@ -238,20 +238,12 @@ def _listar_arquivos_imagem(pasta: str) -> List[str]:
     return _ap.listar_arquivos_por_extensao(pasta, _EXTENSOES_IMAGEM)
 
 
-def _tem_imagem_direta_ou_em_subpasta(caminho: str) -> bool:
-    return _ap.tem_arquivo_direto_ou_em_subpasta(caminho, _EXTENSOES_IMAGEM)
-
-
 def _detectar_subpastas_imagem(raiz: str) -> List[str]:
     """Subpastas (1 por classe) que contem >=1 arquivo de imagem, direto ou
     dentro de subpasta de amostra (nivel "high") — mesma convencao do mode
     .dx (`_detectar_subpastas_classe` em dados_io.py) generalizada para 1
     nivel extra opcional."""
     return _ap.detectar_subpastas_por_extensao(raiz, _EXTENSOES_IMAGEM)
-
-
-def _subpasta_e_grupo_de_amostras(caminho_classe: str) -> bool:
-    return _ap.subpasta_e_grupo_de_amostras(caminho_classe, _EXTENSOES_IMAGEM)
 
 
 def _detectar_nivel_high(subpastas_classe: List[str]
