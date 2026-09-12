@@ -36,7 +36,37 @@ e verificado no codigo-fonte da biblioteca (`brukeropus.file.data.Data.x`/
 `.y`, `OPUSFile.data_keys`/`.is_opus`), via double de teste que reproduz
 essa forma exatamente -- nao contra um binario OPUS de verdade. Cobertura
 fim-a-fim com instrumento real fica pendente ate' haver um arquivo de
-exemplo genuino."""
+exemplo genuino.
+
+SPC (Galactic/Thermo -- Grupo 1 do mapa de completude): via `spcfile`
+(Nikolaj Langemark, LGPL-3.0 -- compativel com GPL-3.0-or-later deste
+projeto: LGPL e' uma licenca permissiva de biblioteca desenhada
+especificamente para uso por programas sob licenca mais restritiva,
+incluindo GPL; verificado no LICENSE do repositorio, nao so' no README).
+Repositorio criado e ativo em 2026 (39 commits, ultimo push 2026-01-25),
+mas SEM release no PyPI ainda -- so' instalavel via
+`pip install git+https://github.com/kogens/spcfile.git` (ver extra
+opcional `[spc]` em `pyproject.toml`). ATENCAO PyPI: se este pacote
+(`guaraci-chemometrics`) for publicado no PyPI antes de `spcfile` ganhar
+um release proprio la', o extra `[spc]` com URL git direta sera' REJEITADO
+pelo upload do Warehouse (PyPI nao aceita `Requires-Dist` com referencia
+direta de URL) -- trocar para o nome do pacote puro assim que houver
+release, ou documentar `[spc]` como "instale manualmente" no README nesse
+cenario.
+Avaliado ANTES: `specio` (BSD-3, tambem le SPC) e `spc_spectra`/
+`rohanisaac/spc` (GPL-3.0, tambem compativel) foram descartados como
+DEPENDENCIA porque ambos pararam de ser lancados em 2018 (specio 0.1.0,
+2018-02-09; spc_spectra 0.4.0, 2018-05-03) -- exatamente o padrao que o
+Bloco 18/Grupo 1 pede para tratar como sinal de alternativa, nao para
+depender as cegas.
+TESTADO COM ARQUIVO REAL (nao sintetico): `spectra.spc` (Raman, do
+dataset de exemplo do pacote `specio`, BSD-3, baixado publicamente) e
+`nir.spc` (NIR multi-subfile com 20 espectros, do `test_data/` de
+`rohanisaac/spc`, GPL-3.0, baixado publicamente) -- ver
+`tests/fixtures/spc/`. Multi-subfile: so' o primeiro subarquivo e'
+retornado (mesma logica de "um espectro por arquivo" do resto deste
+modulo -- ficheiros com repeticoes fisicas ja tem seu proprio mecanismo
+de pasta/mae_id em `dados_io.load_dx`)."""
 from __future__ import annotations
 
 from typing import Tuple
@@ -45,6 +75,7 @@ import numpy as np
 
 __all__ = [
     "parse_opus",
+    "parse_spc",
 ]
 
 # Ordem de preferencia: absorbancia (o que a maioria dos fluxos deste
@@ -94,5 +125,51 @@ def parse_opus(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     if X.shape != Y.shape or X.size == 0:
         raise ValueError(
             f"{filepath}: bloco '{chave}' com eixo/intensidade "
+            f"inconsistentes (x={X.shape}, y={Y.shape})")
+    return X, Y
+
+
+def parse_spc(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
+    """Le um arquivo binario SPC (Galactic/Thermo GRAMS) e retorna `(X, Y)`
+    -- mesmo contrato de `dados_io.parse_dx`/`dados_io.parse_spectrum`.
+
+    Arquivos SPC multi-subarquivo (medidas repetidas num unico arquivo,
+    flag `TMULTI`) retornam so' o PRIMEIRO subarquivo -- repeticoes fisicas
+    ja tem seu proprio mecanismo de pasta/mae_id no restante do pipeline
+    (ver nota do modulo); ler as demais exigiria um contrato de retorno
+    diferente (lista de `(X, Y)` por arquivo), fora do escopo aqui.
+
+    Levanta `ValueError` se o arquivo nao for SPC valido (versao de
+    cabecalho desconhecida, ou eixo/intensidade do primeiro subarquivo
+    inconsistentes).
+
+    Requer o pacote opcional `spcfile` (`pip install
+    'spcfile @ git+https://github.com/kogens/spcfile.git'`, ou
+    `guaraci-chemometrics[spc]` -- ver ATENCAO PyPI na docstring do
+    modulo) -- import LAZY, so' ao chamar esta funcao."""
+    try:
+        from spcfile import SPCFile
+    except ImportError as e:
+        raise ImportError(
+            "Pacote opcional 'spcfile' nao instalado -- leitura de "
+            "arquivos SPC indisponivel (pip install "
+            "'spcfile @ git+https://github.com/kogens/spcfile.git')."
+        ) from e
+
+    try:
+        spc_file = SPCFile(filepath)
+    except ValueError as e:
+        raise ValueError(f"{filepath}: nao reconhecido como arquivo SPC valido ({e})") from e
+
+    try:
+        subarquivo = spc_file[0]
+    except (IndexError, KeyError) as e:
+        raise ValueError(f"{filepath}: arquivo SPC sem nenhum subarquivo de dados") from e
+
+    X = np.asarray(subarquivo.x, dtype=float)
+    Y = np.asarray(subarquivo.y, dtype=float)
+    if X.shape != Y.shape or X.size == 0:
+        raise ValueError(
+            f"{filepath}: subarquivo 0 com eixo/intensidade "
             f"inconsistentes (x={X.shape}, y={Y.shape})")
     return X, Y

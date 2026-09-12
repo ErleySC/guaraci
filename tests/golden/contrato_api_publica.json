@@ -3084,6 +3084,10 @@
       "parse_opus": {
         "assinatura": "(filepath: 'str') -> 'Tuple[np.ndarray, np.ndarray]'",
         "forma": "funcao"
+      },
+      "parse_spc": {
+        "assinatura": "(filepath: 'str') -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
       }
     },
     "io_registry": {

@@ -18,7 +18,7 @@ Objetivo: um usuário com qualquer um destes equipamentos consegue usar o dado b
 | NetCDF/ANDI-MS (GC-MS) | Implementado, parser próprio | — |
 | ENVI (HSI) | Implementado, genérico (aceita dado do usuário) | — |
 | Imagem colorimétrica (JPG/PNG) | Implementado, 3 níveis de agrupamento | — |
-| SPC (Galactic/Thermo) | Não lido | Prioridade alta — formato muito comum em espectroscopia comercial |
+| SPC (Galactic/Thermo) | **Implementado** (`parse_spc`, extra opcional `[spc]`) | — |
 | PerkinElmer `.sp` | Não lido | Prioridade alta |
 | RMN bruto (Bruker/Varian, FID/espectro processado nativo) | Só aceita dado já binado de terceiro | Sem isso, RMN só serve para reanalisar dataset público, não para uso de laboratório real |
 | GC-IMS bruto (`.mea`) | Só aceita tabela de pico já extraída | Formato do instrumento nunca lido diretamente |
@@ -26,7 +26,9 @@ Objetivo: um usuário com qualquer um destes equipamentos consegue usar o dado b
 | HPLC cromatograma bruto | Só aceita tabela de pico já extraída | Sem leitor de cromatograma bruto (nenhum formato de instrumento) |
 | UV-Vis bruto de equipamento comercial | Só CSV genérico testado | Formato proprietário (ex.: Agilent, Shimadzu) não avaliado |
 
-**Prioridade sugerida dentro do grupo:** SPC e `.sp` primeiro (maior demanda genérica, formato bem documentado, bibliotecas Python maduras já identificadas). RMN bruto e GC-IMS bruto depois (formato mais fechado, exige mais engenharia reversa ou biblioteca de terceiro com licença a confirmar).
+**SPC fechado nesta rodada (2026-09-12)** — testado com arquivo binário REAL de instrumento (não sintético; ver `tests/fixtures/spc/PROVENANCIA.md`): via `spcfile` (Nikolaj Langemark, LGPL-3.0 — compatível com GPL-3.0-or-later; repo criado e ativo em 2026, mas AINDA SEM release no PyPI, só instalável via `pip install git+...` — ver aviso de risco de publicação em `pyproject.toml`/docstring do módulo). Alternativas descartadas como dependência (`specio` BSD-3, `spc_spectra`/`rohanisaac/spc` GPL-3.0): ambas paradas desde 2018, exatamente o sinal de risco que a instrução pediu para vigiar. Ver `src/guaraci/importadores_proprietarios.py` (docstring do módulo) para o raciocínio completo.
+
+**Prioridade sugerida dentro do grupo:** `.sp` a seguir (formato bem documentado, ver Bloco 18 original). RMN bruto e GC-IMS bruto depois (formato mais fechado, exige mais engenharia reversa ou biblioteca de terceiro com licença a confirmar).
 
 ---
 
@@ -109,7 +111,7 @@ Deep learning geral, fusão multimodal dependente de sensor caro fora de alcance
 ## ORDEM DE IMPLEMENTAÇÃO PROPOSTA
 
 1. ~~Grupo 3 primeiro (medição de performance)~~ — **CONCLUÍDO em 2026-09-11/12** (ver tabela acima): os 3 arquivos do núcleo científico crítico passaram por mutation testing; os furos críticos de `conformal.py` e `classificadores.py` corrigidos com contra-prova; `chemometric_stats.py` concluído e reportado (48,9% de sobrevivência, 5 achados mais preocupantes documentados — correção fica para uma rodada dedicada, ver Grupo 4); hipótese de memória O(p²) investigada e refutada; progresso na CV aninhada implementado (CLI + app web); sleep artificial reduzido. Nenhuma pendência bloqueante.
-2. Grupo 1 (leitores de formato) — SPC e `.sp` primeiro; RMN/GC-IMS/EEM brutos depois.
+2. Grupo 1 (leitores de formato) — SPC **CONCLUÍDO em 2026-09-12** (`parse_spc`, testado com arquivo real de instrumento, ver tabela acima). `.sp` a seguir; RMN/GC-IMS/EEM brutos depois.
 3. Grupo 4 (testes) — em paralelo aos Grupos 1 e 2; próxima rodada de mutation testing deveria corrigir os 5 achados de `chemometric_stats.py` registrados no Grupo 3 (martens_uncertainty_test com scale incoerente, laços que aceitam zero iterações sem avisar, guarda de q_residuals_limit sem teste de fronteira, keepdims errado no cálculo de LOD/LOQ, fracao_dentro não distingue caso vazio).
 4. Grupo 2 (análises) — conjunto de predição multiclasse primeiro; fusão multibloco e MSPC depois.
 5. Grupo 5 — consequência natural de fechar 1, 2 e 3; revisar o comparativo do README ao final.

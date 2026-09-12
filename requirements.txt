@@ -55,6 +55,19 @@ prcv>=1.2,<2.0
 # real de parse_opus, so' o de "pacote ausente".
 brukeropus>=1.4,<2.0
 
+# ── Importador SPC (extra [spc]) ─────────────────────────────────────────────
+# Le arquivos binarios proprietarios Galactic/Thermo (importadores_
+# proprietarios.py, parse_spc). Mesmo motivo do brukeropus acima -- e aqui
+# ainda mais importante: ha arquivo .spc REAL em tests/fixtures/spc/, entao
+# sem esta linha o CI nunca rodaria esse teste contra dado genuino. Ainda
+# sem release no PyPI (ver AVISO no pyproject.toml) -- instalavel so' via
+# git.
+spcfile @ git+https://github.com/kogens/spcfile.git
+
+# ── PARAFAC / decomposicao tensorial (extra [multiway]) ──────────────────────
+# hsi_multiway.py. Mesmo motivo do brukeropus acima.
+tensorly>=0.8,<1.0
+
 # ── PARAFAC / decomposicao tensorial (extra [multiway]) ──────────────────────
 # hsi_multiway.py. Mesmo motivo do brukeropus acima.
 tensorly>=0.8,<1.0

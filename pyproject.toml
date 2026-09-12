@@ -65,11 +65,20 @@ robusto = ["prcv>=1.2,<2.0"]
 # GPL-3.0-or-later deste projeto, verificado no classifier do pacote em
 # 2026-09-04). Ver importadores_proprietarios.py.
 opus = ["brukeropus>=1.4,<2.0"]
+# Leitor de arquivos SPC (Galactic/Thermo GRAMS) -- LGPL-3.0 (compativel
+# com GPL-3.0-or-later; ver importadores_proprietarios.py). AVISO: `spcfile`
+# ainda nao tem release no PyPI (repo ativo, mas so' instalavel via git) --
+# se `guaraci-chemometrics` for publicado no PyPI antes disso, o upload
+# sera' REJEITADO por causa desta dependencia com URL direta (Warehouse nao
+# aceita `Requires-Dist` com referencia de URL). Remover este extra do
+# `pyproject.toml` antes de publicar, ou trocar por um release PyPI real se
+# ja existir nessa altura.
+spc = ["spcfile @ git+https://github.com/kogens/spcfile.git"]
 # PARAFAC (decomposicao tensorial N-way) -- hsi_multiway.py. BSD,
 # compativel com GPL-3.0-or-later. N-PLS (mesmo modulo) e' implementacao
 # propria (sem lib madura equivalente) e nao precisa deste extra.
 multiway = ["tensorly>=0.8,<1.0"]
-all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,multiway]"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,multiway]"]
 # Dev-only -- NUNCA em requirements.txt (manifesto de deploy do Streamlit
 # Cloud): hypothesis gera casos de teste, nao roda em producao.
 dev = ["hypothesis>=6.100,<7.0"]

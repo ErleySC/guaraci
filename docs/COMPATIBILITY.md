@@ -110,6 +110,15 @@ por `tests/test_fachada_reexport.py`.
   precedente do que conta como "aditivo" quando a política acima
   (`Assinatura de função pública`) entrar em vigor de verdade.
 
+- **`parse_spc`** (`importadores_proprietarios.py`, Grupo 1 do mapa de
+  completude, 2026-09-12): função pública nova (leitor de formato SPC),
+  mesmo padrão aditivo de `parse_opus` já existente.
+  `tests/test_contrato_api_publica.py` acusou a mudança (símbolo novo no
+  módulo); golden regravado — aditivo puro, sem bump de versão
+  correspondente decidido (mesmo precedente do caso
+  `apply_quality_gate_and_segment` acima: pré-v1.0.0, a política de SemVer
+  ainda não está em vigor de fato).
+
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 
 1. Uma função/campo/parâmetro público a remover ou renomear é marcado
