@@ -65,8 +65,13 @@ from privacidade_amostras import (  # noqa: E402
 )
 
 #: Extensoes que nao sao texto -- lidas em mode binario dariam ruido.
+#: `.sp`/`.spc` adicionados (Grupo 1, 2026-09-12): fixtures binarias reais
+#: de instrumento em tests/fixtures/sp/ e tests/fixtures/spc/ (ver
+#: PROVENANCIA.md em cada pasta) -- nao sao UTF-8, mesma categoria de
+#: `.joblib`/`.pdf` acima.
 _BINARIO = {".png", ".ico", ".jpg", ".jpeg", ".gif", ".pdf", ".joblib",
-            ".xlsx", ".docx", ".pptx", ".woff", ".woff2", ".zip", ".gz"}
+            ".xlsx", ".docx", ".pptx", ".woff", ".woff2", ".zip", ".gz",
+            ".sp", ".spc"}
 
 
 def _arquivos_versionados() -> list[Path]:
