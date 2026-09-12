@@ -728,7 +728,18 @@ def regression_figures_of_merit(modelo: PLSRegression, X_cal: np.ndarray,
         grupo = np.asarray(grupo, dtype=float)
         if grupo.shape[0] < 2:
             continue
-        d = grupo - grupo.mean(axis=0, keepdims=True)
+        # `keepdims` aqui e' inerte, nao cosmetico: achado 4 da rodada de
+        # mutation testing (2026-09-11) apontou a mutacao keepdims=True->
+        # False como sobrevivente; investigado e CONFIRMADO mutante
+        # equivalente -- para `grupo` 2D (n_replicas, n_variaveis), a
+        # regra de broadcasting do numpy alinha (p,) e (1,p) de forma
+        # IDENTICA contra (n,p) (verificado por prova e empiricamente,
+        # `np.array_equal` em 4 formas distintas). So' importaria se
+        # `grupo` deixasse de ser 2D -- nao acontece aqui:
+        # `_agrupar_replicas_processadas` (pipeline.py) so' produz
+        # arrays 2D. `keepdims` removido por ser sempre um no-op, nao
+        # porque mudasse algum resultado.
+        d = grupo - grupo.mean(axis=0)
         ss = np.sum(d ** 2, axis=0)
         soma_ss = ss if soma_ss is None else soma_ss + ss
         soma_df += (grupo.shape[0] - 1)

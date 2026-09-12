@@ -346,6 +346,102 @@ def test_martens_poucos_folds_validos_retorna_nan_sem_quebrar(pq):
     assert not np.any(res["significativo"])
 
 
+def test_martens_usa_scale_false_consistente_com_convencao_do_pipeline(pq):
+    """Achado 1 da rodada de mutation testing (chemometric_stats.py,
+    2026-09-11): a mutacao `scale=False`->`scale=True` no refit por fold
+    (linha ~213) sobrevivia -- nenhum teste distinguia as duas convencoes.
+    `scale=False` e' a UNICA convencao usada em todo `pipeline.py` (10
+    instancias de PLSRegression, nenhuma com scale=True) -- o modelo
+    principal (`pls_final`, pipeline.py:1984) e' sempre ajustado sem
+    escala, entao o refit por fold do jackknife PRECISA usar a mesma
+    convencao, senao os coeficientes por fold e o coef_completo vivem em
+    escalas diferentes e a estatistica t fica sem sentido.
+
+    X aqui tem variancias MUITO heterogeneas entre colunas (1e-3 a 1e4) --
+    exatamente o regime em que scale=False/True produzem coeficientes PLS
+    numericamente bem diferentes (com colunas homogeneas o efeito seria
+    pequeno demais para o teste discriminar de forma confiavel -- ver
+    docstring do Passo para a verificacao empirica desta premissa)."""
+    from sklearn.model_selection import KFold
+    rng = np.random.default_rng(7)
+    n = 60
+    escalas = np.array([1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0, 1000.0, 1e4])
+    X = rng.normal(size=(n, len(escalas))) * escalas
+    y = (X[:, 0] / escalas[0]) * 5.0 + rng.normal(scale=0.3, size=n)
+    Y = y.reshape(-1, 1)
+    cv = list(KFold(n_splits=6, shuffle=True, random_state=7).split(X))
+
+    modelo_sem_escala = PLSRegression(n_components=1, scale=False).fit(X, Y)
+    res_sem_escala = pq.martens_uncertainty_test(
+        X, Y, 1, cv, modelo_sem_escala.coef_)
+
+    # Oraculo independente: reproduz o MESMO algoritmo a mao, mas fitando
+    # cada fold com scale=True -- se a funcao usasse scale=True
+    # internamente (o mutante scale=False->True), o resultado bateria com
+    # este oraculo em vez do resultado real da funcao (scale=False).
+    coef_completo = np.asarray(modelo_sem_escala.coef_, dtype=float)
+    coefs_fold_com_escala = [
+        np.asarray(PLSRegression(n_components=1, scale=True)
+                   .fit(X[tr], Y[tr]).coef_, dtype=float)
+        for tr, _va in cv]
+    B = np.stack(coefs_fold_com_escala, axis=0)
+    b_bar = B.mean(axis=0)
+    n_folds = len(coefs_fold_com_escala)
+    var_jk = ((n_folds - 1) / n_folds) * np.sum((B - b_bar) ** 2, axis=0)
+    se_jk = np.sqrt(var_jk)
+    t_oraculo_com_escala = (coef_completo
+                             / np.where(se_jk < 1e-12, 1.0, se_jk))[0]
+
+    assert not np.allclose(res_sem_escala["t_valores"], t_oraculo_com_escala,
+                            rtol=0.2, atol=0.5), (
+        "resultado com scale=False deveria divergir claramente do oraculo "
+        "scale=True -- se bateram, a funcao pode estar usando scale=True "
+        "por baixo dos panos")
+
+
+def test_martens_com_folds_reais_nao_e_equivalente_a_zero_folds(pq):
+    """Achado 2 da rodada de mutation testing (2026-09-11): o laco `for
+    tr, _va in cv_indices` rodando ZERO vezes (mutante
+    core/ZeroIterationForLoop, linha ~211) sobrevivia -- nenhum teste
+    exercitava `cv_indices` com folds REAIS (>=3) e conferia que o
+    resultado e' numericamente distinto do caso degenerado de zero
+    folds. Zero folds e' um caso VALIDO (mesmo espirito de
+    `test_martens_poucos_folds_validos_retorna_nan_sem_quebrar`, so' que
+    no limite cv_indices=[] em vez de 1-2 folds) -- retorno bem definido
+    (NaN/0 folds), nao excecao."""
+    from sklearn.model_selection import KFold
+    X, y = _dados_regressao_1_variavel_preditiva(seed=21)
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = list(KFold(n_splits=8, shuffle=True, random_state=21).split(X))
+
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+    res_zero_folds = pq.martens_uncertainty_test(
+        X, y.reshape(-1, 1), 1, [], modelo.coef_)
+
+    assert int(res["n_folds_validos"]) == 8
+    assert not np.all(np.isnan(res["t_valores"]))
+    assert res["p_valores"][0] < 0.05
+
+    assert int(res_zero_folds["n_folds_validos"]) == 0
+    assert np.all(np.isnan(res_zero_folds["t_valores"]))
+    assert not np.any(res_zero_folds["significativo"])
+
+
+def test_selectivity_ratio_com_1_lv_identifica_variavel_preditiva(pq):
+    """Achado 2 (mesmo padrao, `compute_selectivity_ratio`): o laco `for k
+    in range(n_saidas)` rodando ZERO vezes (mutante
+    core/ZeroIterationForLoop, linha ~143) tambem sobrevivia com Y de 1
+    coluna (n_saidas=1, uma unica iteracao do laco) -- sem um teste que
+    force esse caso e confira um SR NAO-TRIVIAL (nao so' o formato/sinal
+    ja cobertos por outros testes, que passariam mesmo com SR = zeros)."""
+    rng = np.random.default_rng(22)
+    X = rng.normal(size=(50, 10))
+    y = X[:, 0] * 5.0 + rng.normal(scale=0.1, size=50)
+    m = PLSRegression(n_components=1, scale=False).fit(X, y)
+    sr = pq.compute_selectivity_ratio(m, X)
+    assert sr[0] > 1.0, "variavel realmente preditiva deveria ter SR alto"
+
+
 def test_hotelling_limite_positivo_e_monotonico(pq):
     """T2 UCL: positivo e MAIOR quando alpha é menor (limite mais rígido)."""
     l05 = pq.hotelling_t2_limit(50, 3, 0.05)
@@ -711,6 +807,22 @@ def test_q_residuos_limite_bate_com_formula_jackson_mudholkar(pq):
     esperado = g * chi2.ppf(0.95, h)
     obtido = pq.q_residuals_limit(q, alpha=0.05)
     assert obtido == pytest.approx(esperado, rel=1e-12)
+
+
+def test_q_residuos_limite_fronteira_media_exatamente_zero_cai_no_percentil(pq):
+    """Achado 3 da rodada de mutation testing (2026-09-11): a guarda
+    `if var<=0 or media<=0` (linha ~410) sobrevivia tanto a trocar
+    `or`->`and` quanto a inverter com `not` -- o teste existente
+    (`test_q_residuos_limite_variancia_zero_cai_no_percentil`) so' cobre
+    var<=0 COM media>0; nenhum teste isolava media<=0 com var>0 (a outra
+    metade da guarda). Aqui, media EXATAMENTE 0 (fronteira, mesmo padrao
+    ja usado em LOD/LOQ) com var>0 tem que cair no fallback de percentil
+    -- se a guarda virar `and` ou for negada, o codigo tenta
+    g=var/(2*media) com media=0.0 e explode (ZeroDivisionError) em vez de
+    devolver o percentil."""
+    q = np.array([-5.0, 5.0])   # media=0.0 exato (fronteira), var=25.0>0
+    limite = pq.q_residuals_limit(q, alpha=0.05)
+    assert limite == pytest.approx(float(np.percentile(q, 95.0)))
 
 
 # ── explained_variance: X com variância total zero ─────────────────────────
@@ -1728,6 +1840,60 @@ def test_dominio_aplicabilidade_treino_var_t_tem_tamanho_n_componentes(pq):
     treino = pq.training_applicability_domain(pca, X)
     assert treino["var_t"].shape == (3,)
     assert treino["t2_limite"] > 0 and treino["q_limite"] > 0
+
+
+class _PCADuckType:
+    """Reproduz so' a API que `applicability_domain_new_samples` usa
+    (`.transform()`, `.components_`, `.mean_`) SEM a validacao de entrada
+    do sklearn (que recusa X com 0 amostras antes mesmo de chegar no
+    codigo deste modulo) -- necessario para exercitar `dentro.size==0`
+    (achado 5 abaixo), que um `sklearn.decomposition.PCA` de verdade
+    nunca deixa alcancar. A docstring de `applicability_domain_new_samples`
+    so' promete "precisa de .transform()/.components_/.mean_" -- qualquer
+    objeto que cumpra esse contrato tem que ser tratado com seguranca,
+    nao so' o sklearn especificamente."""
+
+    def __init__(self, pca_ajustado):
+        self.components_ = pca_ajustado.components_
+        self.mean_ = pca_ajustado.mean_
+
+    def transform(self, X):
+        return (np.asarray(X, dtype=float) - self.mean_) @ self.components_.T
+
+
+def test_fracao_dentro_com_zero_amostras_novas_e_nan_nao_erro(pq):
+    """Achado 5 da rodada de mutation testing (2026-09-11): a condicional
+    que decide `fracao_dentro` (`float(np.mean(dentro)) if dentro.size
+    else float("nan")`, linha ~942) conforme `dentro.size` sobrevivia --
+    nenhum teste exercitava `X_new` com ZERO amostras, o unico caso em que
+    o ramo NaN e' de fato alcancado (com qualquer numero de amostras >=1,
+    os dois ramos so' diferem no VALOR, nao no formato). Com X_new vazio,
+    `dentro.size==0` -- tem que devolver NaN de forma limpa (sem
+    RuntimeWarning de dividir por zero disfarcado), nunca 0.0 (que
+    pareceria "nenhuma amostra dentro do dominio", uma alegacao FALSA
+    quando na verdade nao ha amostra nenhuma pra avaliar).
+
+    Usa `_PCADuckType` em vez de um PCA sklearn de verdade: o sklearn
+    recusa `X_new` com 0 amostras ANTES de chegar no codigo deste modulo
+    (`ValueError: Found array with 0 sample(s)`), entao um teste com PCA
+    real nunca alcancaria `dentro.size==0` -- o duck type isola o
+    comportamento deste modulo do comportamento (mais restritivo) do
+    sklearn."""
+    rng = np.random.default_rng(23)
+    from sklearn.decomposition import PCA
+    X_train = rng.normal(size=(40, 6))
+    pca_real = PCA(n_components=2).fit(X_train)
+    treino = pq.training_applicability_domain(pca_real, X_train)
+    pca = _PCADuckType(pca_real)
+    X_new_vazio = np.empty((0, 6))
+
+    resultado = pq.applicability_domain_new_samples(
+        pca, X_new_vazio, treino["var_t"], treino["h0"], treino["q0"],
+        treino["Nh"], treino["Nq"], treino["f_crit"])
+
+    assert resultado["t2"].shape == (0,)
+    assert resultado["dentro_dominio"].shape == (0,)
+    assert np.isnan(float(resultado["fracao_dentro"]))
 
 
 # ── Kennard-Stone: selecao representativa de amostras ────────────────────────
