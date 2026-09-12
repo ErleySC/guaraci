@@ -246,6 +246,57 @@ def test_oplsda_alvo_binario_usa_a_propria_coluna():
     np.testing.assert_allclose(y, y_col - y_col.mean(), rtol=1e-9)
 
 
+def test_oplsda_rank1_nao_extrai_componente_ortogonal_espurio():
+    """Mutation testing (cosmic-ray, 2026-09-11) achou 2 mutantes
+    sobreviventes no ternario `T_orth_train if T_orth_train else
+    np.zeros((n, 1))` de `fit()` (linha ~648) -- nenhum teste existente
+    forcava o ramo ELSE (lista vazia).
+
+    Cenario REAL onde isso acontece: X de posto 1 (toda a variacao numa
+    unica direcao, ja capturada pelo componente PREDITIVO) + pedido de
+    componente(s) ORTOGONAL(is) que simplesmente nao existem nos dados --
+    nao e' hipotetico, e' o que acontece quando `n_ortho` no config.yaml
+    e' otimista demais para o dataset real. O guard de norma
+    (`no < 1e-10`, linha 611) tem que interromper no 1o componente, sem
+    NaN/excecao, e `t_orth_train_`/`transform()` tem que degradar para
+    zero (nenhuma variacao ortogonal a reportar), nunca inventar uma.
+
+    (Nota: os mutantes das guardas `nt<1e-12`/tolerancia de convergencia
+    dentro de `_nipals_pls1`, e o `nto<1e-12` do proprio `fit()`, NAO
+    foram atacados aqui -- investigados a fundo nesta sessao [busca
+    aleatoria de 2000 casos + construcao deliberada de dados quase-
+    singulares, ver docs/MAPA_COMPLETUDE_V1.md Grupo 3] e sao muito
+    provavelmente mutantes EQUIVALENTES para PLS1 de 1 y: prova-se que,
+    com w construido como normalize(X.T@u), sempre que w e' numericamente
+    significativo o score resultante tambem e' -- as duas quantidades sao
+    governadas pela mesma estrutura de dados, entao a guarda contra
+    "score praticamente zero com peso significativo" nao e' alcancavel
+    por dado legitimo. Forcar um teste artificial so' para "matar" esses
+    mutantes seria testar um caminho que a propria matematica do
+    algoritmo impede de existir -- documentado em vez de simulado.)
+    """
+    rng = np.random.default_rng(0)
+    n = 20
+    t = rng.normal(size=n)
+    v = rng.normal(size=6)
+    v /= np.linalg.norm(v)
+    X = np.outer(t, v)                       # posto EXATO 1
+    y = (t + 0.001 * rng.normal(size=n)).reshape(-1, 1)
+
+    opls = OPLSDAWrapper(n_ortho=2).fit(X, y)   # pede 2, so' ha' variacao p/ 0
+
+    assert opls.n_ortho_fitted_ == 0
+    assert opls.W_orth_ == []
+    assert opls.t_orth_train_.shape == (n, 1)
+    assert np.all(opls.t_orth_train_ == 0.0)
+    assert np.all(np.isfinite(opls.t_pred_train_))  # o preditivo continua valido
+
+    t_pred, t_orth = opls.transform(X)
+    assert t_orth.shape == (n, 1)
+    assert np.all(t_orth == 0.0)
+    assert np.all(np.isfinite(t_pred))
+
+
 def test_nipals_pls1_com_x_todo_zero_nao_diverge():
     """X todo zero (caso degenerado extremo) faz w=X.T@u ter norma ~0 no
     1o passo -- deve interromper o loop (break) em vez de dividir por zero

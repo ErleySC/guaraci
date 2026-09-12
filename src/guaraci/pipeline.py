@@ -1911,7 +1911,8 @@ def executar(cfg: Config):
         t0_aninhada = time.time()
         Y_cv_aninhado = np.zeros_like(Y_bin)
         n_opts_aninhado = []
-        for tr, va in cv_indices:
+        n_folds_aninhado = len(cv_indices)
+        for _i_fold_aninhado, (tr, va) in enumerate(cv_indices):
             grupos_tr = grupos_cv[tr] if grupos_cv is not None else None
             y_tr = y_int[tr]
             classes_tr = np.unique(y_tr)
@@ -1942,6 +1943,18 @@ def executar(cfg: Config):
             pipe_i = fabrica_pipeline(n_opt_i)
             pipe_i.fit(X_raw[tr], Y_bin[tr])
             Y_cv_aninhado[va] = pipe_i.predict(X_raw[va])
+            # Indicacao de progresso (Grupo 3 do MAPA_COMPLETUDE_V1.md,
+            # 2026-09-11): sem isto, esta etapa fica ate' ~16min em
+            # silencio total entre o log de "ativada" e o de resultado
+            # final -- medido, nao estimado (scripts/medicoes/
+            # medir_custo_cv_aninhada.py). "[2b/7]" segue a mesma
+            # convencao de sub-passo ja usada em "[6b/7]"/"[6c/7]"
+            # (ver app_logic.log_progress); o total de folds vai
+            # embutido na propria linha para o parser nao precisar de
+            # um parametro novo, ao contrario do bonus de "[6/7]".
+            log.info(f"  [2b/7] CV aninhada: fold externo "
+                     f"{_i_fold_aninhado + 1}/{n_folds_aninhado} concluido "
+                     f"({time.time() - t0_aninhada:.0f}s)")
         metricas_cv_aninhada = classification_metrics(
             y_int, np.argmax(Y_cv_aninhado, axis=1), np.arange(len(classes_unicas)))
         log.info(f"  CV aninhada: n_opts por fold externo = {n_opts_aninhado}"

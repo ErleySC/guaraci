@@ -104,6 +104,67 @@ def test_progresso_etapa6_nao_afeta_outras_etapas():
         assert frac_sem == frac_com == pytest.approx(min(0.99, n / 7.0))
 
 
+# ── log_progress: CV aninhada sem indicacao de progresso (Grupo 3, 2026-09-11) ─
+# `pipeline.executar()` mediu ate' 16 minutos de silencio total na etapa
+# "[2/7]" enquanto a CV aninhada de selecao de LVs roda (scripts/medicoes/
+# medir_custo_cv_aninhada.py) -- mesma familia de bug de "[6/7]" acima, so'
+# que sem NENHUM marcador intermediario (nem os 2 opcionais que "[6/7]" ja
+# tinha). Estes testes travam a correcao: um log por fold externo
+# ("[2b/7] ... fold externo K/N concluido") agora avanca a fracao.
+
+def test_progresso_etapa2_sem_fold_concluido_fica_no_valor_base():
+    """Sem nenhuma linha de fold (comportamento antes da correcao / etapa
+    2 mal comecou): fracao e' exatamente 2/7, igual a qualquer outra
+    etapa sem sub-passo."""
+    frac, _ = log_progress("[2/7] LV selection by CV\n[INFO] CV aninhada ativada")
+    assert frac == pytest.approx(2 / 7.0)
+
+
+def test_progresso_etapa2_avanca_a_cada_fold_aninhado_concluido():
+    """Ao menos uma atualizacao POR FOLD -- nao so' inicio/fim: a fracao
+    sobe estritamente a cada fold externo reportado como concluido, nunca
+    regride, nunca ultrapassa o teto 0.99."""
+    base = "[2/7] LV selection by CV\n[INFO] CV aninhada ativada\n"
+    fracoes = []
+    for k in range(1, 6):
+        txt = base + "\n".join(
+            f"  [2b/7] CV aninhada: fold externo {i}/5 concluido"
+            for i in range(1, k + 1))
+        frac, nome = log_progress(txt)
+        fracoes.append(frac)
+        assert "Nested CV" in nome or "LV" in nome
+    assert fracoes == sorted(fracoes)          # nunca regride
+    assert len(set(fracoes)) == 5              # os 5 folds dao 5 valores DISTINTOS
+    assert fracoes[0] > 2 / 7.0                 # 1o fold ja avanca alem do valor base
+    assert fracoes[-1] <= 0.99
+
+
+def test_progresso_etapa2_usa_o_maior_fold_visto_nunca_regride():
+    """Mesmo principio do resto de log_progress: usa o MAIOR progresso ja
+    visto no log, mesmo que uma linha de fold MAIOR apareca ANTES de uma
+    de fold menor (buffering/ordem de escrita nao ideal) -- nao regride
+    so' porque a ULTIMA linha do texto e' de um fold anterior."""
+    txt = ("[2/7] etapa\n"
+           "  [2b/7] CV aninhada: fold externo 4/5 concluido\n"
+           "  [2b/7] CV aninhada: fold externo 2/5 concluido\n")  # fora de ordem
+    frac, _ = log_progress(txt)
+    assert frac == pytest.approx((2 + 4 / 5) / 7.0)
+
+
+def test_progresso_etapa2_nao_afeta_outras_etapas():
+    """A linha de fold da CV aninhada so' importa quando a etapa atual e'
+    a 2 -- um marcador "[2b/7]" perdido no log de uma etapa POSTERIOR nao
+    muda o resultado (mesmo padrao de test_progresso_etapa6_nao_afeta_
+    outras_etapas). n < 2 fica de fora de proposito: "[2b/7]" contem "2"
+    e legitimamente viraria a MAIOR etapa vista nesse caso -- nao e' o
+    comportamento sob teste aqui."""
+    for n in (3, 4, 5, 6, 7):
+        txt = (f"[{n}/7] etapa\n"
+               f"  [2b/7] CV aninhada: fold externo 1/5 concluido")
+        frac, _ = log_progress(txt)
+        assert frac == pytest.approx(min(0.99, n / 7.0))
+
+
 def test_progresso_etapa6_total_zero_nao_quebra():
     """total_figuras_planejadas=0 (plano vazio, caso degenerado) não deve
     causar ZeroDivisionError -- cai no comportamento sem bônus."""

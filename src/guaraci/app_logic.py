@@ -67,6 +67,14 @@ class LogThreadSafe:
 _RE_ARQUIVO_SALVO = re.compile(
     r"^\s*->\s*.*[\\/]([\w\-]+)\.(?:png|jpg|jpeg|pdf|svg)\s*$", re.MULTILINE)
 _RE_AVISO = re.compile(r"^\s*\[AVISO\]\s*(.+)$", re.MULTILINE)
+# "[2b/7] CV aninhada: fold externo K/N concluido" (pipeline.py, ~linha 1925)
+# -- mesma logica de "figura completada" acima, mas para os folds externos da
+# CV aninhada de selecao de LVs (Grupo 3 do MAPA_COMPLETUDE_V1.md, 2026-09-11:
+# essa etapa, sem isto, fica ate' ~16min em silencio total entre o log de
+# ativacao e o resultado final). N vem embutido na propria linha (nao precisa
+# de parametro externo como o bonus de figuras em "[6/7]").
+_RE_FOLD_ANINHADO = re.compile(
+    r"\[2b/7\].*?fold externo (\d+)/(\d+) concluido")
 
 
 def figures_completed(txt: str) -> List[str]:
@@ -111,6 +119,7 @@ _ETAPA_NOMES: Dict[int, str] = {
 # durante eles. Ver `log_progress` para o bug de fundo que isso ajuda
 # a mitigar.
 _ETAPA_SUBSTEP: Dict[str, Tuple[int, str]] = {
+    "[2b/7]": (2, "Nested CV for LV selection (honest metric)..."),
     "[6b/7]": (6, "Comparing preprocessing pipelines..."),
     "[6c/7]": (6, "External holdout evaluation..."),
     "[7b/7]": (7, "Auto-Benchmark (SVM / RF / XGBoost vs PLS-DA)..."),
@@ -162,6 +171,19 @@ def log_progress(txt: str,
         n_feitas = len(figures_completed(txt))
         bonus = min(0.99, n_feitas / total_figuras_planejadas)
         n_efetivo = n + bonus
+    elif n == 2:
+        # CV aninhada (achado do Grupo 3, 2026-09-11): ao contrario do
+        # bonus de "[6/7]", o total de folds ja vem embutido em cada
+        # linha do proprio log. Usa o MAIOR k/total ja visto (nao so' o
+        # ULTIMO da posicao no texto) -- mesmo principio de nunca
+        # regredir do resto desta funcao (max() no achado da etapa).
+        matches_fold = _RE_FOLD_ANINHADO.findall(txt)
+        if matches_fold:
+            bonus = max(
+                (min(0.99, int(k) / int(total_folds))
+                 for k, total_folds in matches_fold if int(total_folds) > 0),
+                default=0.0)
+            n_efetivo = n + bonus
 
     return min(0.99, n_efetivo / 7.0), nome
 

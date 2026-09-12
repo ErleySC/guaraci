@@ -964,7 +964,16 @@ _PAUSAS_CAFE = {
 }
 
 def _exibir_boas_vindas() -> None:
-    """Exibe mensagem aleatoria de boas-vindas (apenas na inicializacao)."""
+    """Exibe mensagem aleatoria de boas-vindas (apenas na inicializacao).
+
+    A pausa apos exibir e' puramente estetica (da' tempo de ler a
+    mensagem antes do menu redesenhar por cima) -- sem motivo funcional,
+    confirmado por `git log -S "time.sleep(1.0)"` (presente desde o
+    commit original v31.0.0, nunca documentada, nenhuma dependencia de
+    inicializacao paralela). Medido no Grupo 3 do MAPA_COMPLETUDE_V1.md
+    (2026-09-11): 1,0s inteiro do tempo de boot do CLI (3,89s medios) era
+    so' este sleep. Reduzido para 0,4s -- ainda perceptivel, bem abaixo
+    do limiar de "fluxo de pensamento preservado" de Nielsen (1,0s)."""
     import random
     import time as _time
     msg = random.choice(_BOAS_VINDAS[_lang()])
@@ -973,7 +982,7 @@ def _exibir_boas_vindas() -> None:
         Align.center(Text(f"\n  {msg}\n", style=f"italic {PA}")),
         border_style=PF, box=rbox.ROUNDED, padding=(0, 2), width=_W()
     ))
-    _time.sleep(1.0)
+    _time.sleep(0.4)
 
 def _exibir_despedida() -> None:
     """Exibe mensagem de despedida ao sair do programa."""
