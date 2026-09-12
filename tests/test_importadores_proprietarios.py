@@ -14,9 +14,9 @@ de OPUS abaixo cobrem duas coisas SEPARADAS:
      `OPUSFile`: atributos `is_opus`/`data_keys` + um atributo por chave
      de `data_keys`) -- NAO um binario OPUS de verdade.
 
-Ja os testes de `parse_spc` (ver mais abaixo) rodam contra ARQUIVOS REAIS
-(nao sinteticos, nao doubles) em `tests/fixtures/spc/` -- ver
-`PROVENANCIA.md` na pasta.
+Ja os testes de `parse_spc` e `parse_sp` (ver mais abaixo) rodam contra
+ARQUIVOS REAIS (nao sinteticos, nao doubles) em `tests/fixtures/spc/` e
+`tests/fixtures/sp/` -- ver `PROVENANCIA.md` em cada pasta.
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from guaraci.importadores_proprietarios import parse_opus, parse_spc
+from guaraci.importadores_proprietarios import parse_opus, parse_sp, parse_spc
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -153,3 +153,38 @@ def test_parse_spc_arquivo_nao_spc_levanta_valueerror(tmp_path):
     arquivo_ruim.write_bytes(b"isto nao e um SPC binario" * 20)
     with pytest.raises(ValueError, match="SPC valido"):
         parse_spc(str(arquivo_ruim))
+
+
+# ---------------------------------------------------------------------------
+# PerkinElmer .sp -- testado com arquivo REAL, ver
+# tests/fixtures/sp/PROVENANCIA.md. Sem dependencia opcional (struct puro).
+# ---------------------------------------------------------------------------
+
+
+def test_parse_sp_arquivo_real():
+    X, Y = parse_sp(str(_FIXTURES / "sp" / "spectra.sp"))
+    assert isinstance(X, np.ndarray) and X.ndim == 1
+    assert isinstance(Y, np.ndarray) and Y.ndim == 1
+    assert X.shape == Y.shape
+    assert X.size == 3301
+    # conferido contra o docstring publicado de specio.plugins.sp:
+    # spectra.wavelength -> [4000, 3999, 3998, ..., 702, 701, 700]
+    # spectra.amplitudes -> [0.03723936, 0.03718614, 0.03713289, ...]
+    np.testing.assert_allclose(X[:3], [4000.0, 3999.0, 3998.0])
+    np.testing.assert_allclose(X[-3:], [702.0, 701.0, 700.0])
+    np.testing.assert_allclose(Y[:3], [0.03723936, 0.03718614, 0.03713289], atol=1e-8)
+
+
+def test_parse_sp_sem_assinatura_pepe_levanta_valueerror(tmp_path):
+    arquivo_ruim = tmp_path / "nao_e_sp.txt"
+    arquivo_ruim.write_bytes(b"XXXX" + b"\x00" * 100)
+    with pytest.raises(ValueError, match="PEPE"):
+        parse_sp(str(arquivo_ruim))
+
+
+def test_parse_sp_truncado_apos_assinatura_levanta_valueerror(tmp_path):
+    arquivo_truncado = tmp_path / "truncado.sp"
+    conteudo_real = (_FIXTURES / "sp" / "spectra.sp").read_bytes()
+    arquivo_truncado.write_bytes(conteudo_real[:60])
+    with pytest.raises(ValueError, match="truncado ou corrompido"):
+        parse_sp(str(arquivo_truncado))

@@ -19,16 +19,31 @@ Objetivo: um usuário com qualquer um destes equipamentos consegue usar o dado b
 | ENVI (HSI) | Implementado, genérico (aceita dado do usuário) | — |
 | Imagem colorimétrica (JPG/PNG) | Implementado, 3 níveis de agrupamento | — |
 | SPC (Galactic/Thermo) | **Implementado** (`parse_spc`, extra opcional `[spc]`) | — |
-| PerkinElmer `.sp` | Não lido | Prioridade alta |
-| RMN bruto (Bruker/Varian, FID/espectro processado nativo) | Só aceita dado já binado de terceiro | Sem isso, RMN só serve para reanalisar dataset público, não para uso de laboratório real |
-| GC-IMS bruto (`.mea`) | Só aceita tabela de pico já extraída | Formato do instrumento nunca lido diretamente |
-| Fluorescência EEM bruta | Só aceita formato específico de 1 dataset público | Sem parser genérico de matriz excitação-emissão |
-| HPLC cromatograma bruto | Só aceita tabela de pico já extraída | Sem leitor de cromatograma bruto (nenhum formato de instrumento) |
-| UV-Vis bruto de equipamento comercial | Só CSV genérico testado | Formato proprietário (ex.: Agilent, Shimadzu) não avaliado |
+| PerkinElmer `.sp` | **Implementado** (`parse_sp`, sem dependência nova) | — |
+| RMN bruto (Bruker/Varian, FID/espectro processado nativo) | Só aceita dado já binado de terceiro | Biblioteca madura e ATIVA identificada (`nmrglue`) — ver avaliação abaixo. Não implementado nesta rodada |
+| GC-IMS bruto (`.mea`) | Só aceita tabela de pico já extraída | Formato do instrumento nunca lido diretamente — reconfirmado sem mudança (ver avaliação abaixo) |
+| Fluorescência EEM bruta | Só aceita formato específico de 1 dataset público | Candidato de generalização identificado (`eempy`) — ver avaliação abaixo. Não implementado nesta rodada |
+| HPLC cromatograma bruto | Só aceita tabela de pico já extraída | Duas rotas viáveis identificadas (reaproveitar `scipy.io.netcdf_file` já usado no GC-MS + `rainbow-api`) — ver avaliação abaixo. Não implementado nesta rodada |
+| UV-Vis bruto de equipamento comercial | Só CSV genérico testado | Parcialmente coberto por `rainbow-api` (Agilent/Waters); Shimadzu segue sem biblioteca identificada — ver avaliação abaixo |
 
-**SPC fechado nesta rodada (2026-09-12)** — testado com arquivo binário REAL de instrumento (não sintético; ver `tests/fixtures/spc/PROVENANCIA.md`): via `spcfile` (Nikolaj Langemark, LGPL-3.0 — compatível com GPL-3.0-or-later; repo criado e ativo em 2026, mas AINDA SEM release no PyPI, só instalável via `pip install git+...` — ver aviso de risco de publicação em `pyproject.toml`/docstring do módulo). Alternativas descartadas como dependência (`specio` BSD-3, `spc_spectra`/`rohanisaac/spc` GPL-3.0): ambas paradas desde 2018, exatamente o sinal de risco que a instrução pediu para vigiar. Ver `src/guaraci/importadores_proprietarios.py` (docstring do módulo) para o raciocínio completo.
+**SPC e `.sp` fechados nesta rodada (2026-09-12)** — ambos testados com arquivo binário REAL de instrumento (não sintético; ver `tests/fixtures/spc/` e `tests/fixtures/sp/`, cada um com `PROVENANCIA.md`):
 
-**Prioridade sugerida dentro do grupo:** `.sp` a seguir (formato bem documentado, ver Bloco 18 original). RMN bruto e GC-IMS bruto depois (formato mais fechado, exige mais engenharia reversa ou biblioteca de terceiro com licença a confirmar).
+- **SPC**: via `spcfile` (Nikolaj Langemark, LGPL-3.0 — compatível com GPL-3.0-or-later; repo criado e ativo em 2026, mas AINDA SEM release no PyPI, só instalável via `pip install git+...` — ver aviso de risco de publicação em `pyproject.toml`/docstring do módulo). Alternativas descartadas como dependência (`specio` BSD-3, `spc_spectra`/`rohanisaac/spc` GPL-3.0): ambas paradas desde 2018, exatamente o sinal de risco que a instrução pediu para vigiar.
+- **PerkinElmer `.sp`**: NENHUMA biblioteca madura e ATIVA encontrada (`spectrochempy` lê `.sp` mas usa licença CeCILL-B, confirmada INCOMPATÍVEL com GPL na lista oficial da FSF; `specio` é compatível de licença mas parado desde 2018). Resolvido adaptando a lógica de leitura já publicada do plugin `specio.plugins.sp` (BSD-3-Clause, com atribuição) para dentro do próprio módulo, sem depender do pacote abandonado em tempo de execução — sem dependência nova.
+
+Ver `src/guaraci/importadores_proprietarios.py` (docstring do módulo) para o raciocínio completo de licença/manutenção por trás de cada decisão.
+
+**Avaliação de viabilidade dos 5 formatos restantes (2026-09-12, sem implementação nesta rodada):**
+
+| Formato | Biblioteca candidata | Licença | Atividade (verificado 2026-09-12) | Veredito |
+|---|---|---|---|---|
+| RMN bruto (Bruker/Varian FID) | `nmrglue` | BSD-3-Clause (compatível) | Release mais recente 2026-08-16, push 2026-08-16, 275 estrelas, não arquivado | **Viável, esforço moderado** — biblioteca madura, ativa, com leitores dedicados Bruker (`ser`/`fid`) e Agilent/Varian (`fid`/`procpar`) já prontos; o trabalho seria só o wrapper de conversão para o contrato `(X, Y)`, análogo a este mesmo módulo |
+| GC-IMS bruto (`.mea`) | `gc-ims-tools` | BSD-3-Clause (compatível) | Push 2026-06-30, não arquivado — **reconfirmado sem mudança** desde a rodada anterior | Mesma ressalva já registrada: datasets grandes e sem rótulo público — esforço de integração maior que licença/manutenção sozinhas sugerem |
+| Fluorescência EEM bruta (generalização) | `eempy` | MIT (compatível) | Push 2026-04-23, 9 estrelas, não arquivado | **Candidato viável, não aprofundado** — comunidade pequena; generalizar além do parser de 1 dataset já existente exigiria avaliar quais formatos de exportação de fluorímetro (Horiba/Cary/Shimadzu) o pacote de fato cobre antes de decidir por dependência vs. adaptação (mesmo padrão do `.sp` acima) |
+| HPLC cromatograma bruto | (a) `scipy.io.netcdf_file` (já dependência via `gcms_io.py`) para ANDI/AIA-Chrom; (b) `rainbow-api` para binário de fabricante | (a) N/A, zero dependência nova; (b) LGPL-3.0 (compatível) | (b) push 2026-09-10 (2 dias antes desta avaliação), 66 estrelas, no PyPI, não arquivado | **Viável, duas rotas** — ANDI/AIA-Chrom é a MESMA família de formato netCDF do ANDI-MS já implementado (`gcms_io.py`), só variáveis diferentes (`ordinate_values` etc.) — reaproveito quase direto; `rainbow-api` cobre Agilent `.D`/`.dx` e Waters `.raw` nativos para quem não exporta ANDI |
+| UV-Vis bruto comercial | `rainbow-api` (mesma lib do item acima, lê `.uv`/`.ch` Agilent e `FUNC` Waters) | LGPL-3.0 (compatível) | Idem acima | **Parcialmente viável** — cobre Agilent (ChemStation/OpenLab) e Waters; Shimadzu segue SEM biblioteca madura identificada nesta busca — CSV genérico continua sendo o caminho prático para Shimadzu até achar/confirmar alternativa |
+
+**Prioridade sugerida dentro do grupo (atualizada):** SPC e `.sp` — **concluídos**. Próximos por viabilidade já confirmada e esforço estimado: HPLC/UV-Vis via reaproveitamento do `netCDF` existente (menor esforço, zero dependência nova) e RMN via `nmrglue` (biblioteca madura pronta); EEM (generalização) e GC-IMS (dataset grande/sem rótulo) depois, por exigirem mais avaliação antes de implementar.
 
 ---
 
@@ -111,7 +126,7 @@ Deep learning geral, fusão multimodal dependente de sensor caro fora de alcance
 ## ORDEM DE IMPLEMENTAÇÃO PROPOSTA
 
 1. ~~Grupo 3 primeiro (medição de performance)~~ — **CONCLUÍDO em 2026-09-11/12** (ver tabela acima): os 3 arquivos do núcleo científico crítico passaram por mutation testing; os furos críticos de `conformal.py` e `classificadores.py` corrigidos com contra-prova; `chemometric_stats.py` concluído e reportado (48,9% de sobrevivência, 5 achados mais preocupantes documentados — correção fica para uma rodada dedicada, ver Grupo 4); hipótese de memória O(p²) investigada e refutada; progresso na CV aninhada implementado (CLI + app web); sleep artificial reduzido. Nenhuma pendência bloqueante.
-2. Grupo 1 (leitores de formato) — SPC **CONCLUÍDO em 2026-09-12** (`parse_spc`, testado com arquivo real de instrumento, ver tabela acima). `.sp` a seguir; RMN/GC-IMS/EEM brutos depois.
+2. Grupo 1 (leitores de formato) — SPC e `.sp` **CONCLUÍDOS em 2026-09-12** (`parse_spc`/`parse_sp`, ambos testados com arquivo real de instrumento, ver tabela acima). Restam RMN (`nmrglue`, viável), HPLC/UV-Vis (`scipy.io.netcdf_file` + `rainbow-api`, viáveis), EEM (`eempy`, candidato a aprofundar) e GC-IMS (mesma ressalva de dataset grande/sem rótulo) — todos com viabilidade já avaliada, nenhum implementado ainda.
 3. Grupo 4 (testes) — em paralelo aos Grupos 1 e 2; próxima rodada de mutation testing deveria corrigir os 5 achados de `chemometric_stats.py` registrados no Grupo 3 (martens_uncertainty_test com scale incoerente, laços que aceitam zero iterações sem avisar, guarda de q_residuals_limit sem teste de fronteira, keepdims errado no cálculo de LOD/LOQ, fracao_dentro não distingue caso vazio).
 4. Grupo 2 (análises) — conjunto de predição multiclasse primeiro; fusão multibloco e MSPC depois.
 5. Grupo 5 — consequência natural de fechar 1, 2 e 3; revisar o comparativo do README ao final.

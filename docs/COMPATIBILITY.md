@@ -110,12 +110,12 @@ por `tests/test_fachada_reexport.py`.
   precedente do que conta como "aditivo" quando a política acima
   (`Assinatura de função pública`) entrar em vigor de verdade.
 
-- **`parse_spc`** (`importadores_proprietarios.py`, Grupo 1 do mapa de
-  completude, 2026-09-12): função pública nova (leitor de formato SPC),
-  mesmo padrão aditivo de `parse_opus` já existente.
-  `tests/test_contrato_api_publica.py` acusou a mudança (símbolo novo no
-  módulo); golden regravado — aditivo puro, sem bump de versão
-  correspondente decidido (mesmo precedente do caso
+- **`parse_spc`/`parse_sp`** (`importadores_proprietarios.py`, Grupo 1 do
+  mapa de completude, 2026-09-12): duas funções públicas novas (leitores
+  de formato SPC/PerkinElmer .sp), mesmo padrão aditivo de `parse_opus`
+  já existente. `tests/test_contrato_api_publica.py` acusou a mudança
+  (dois símbolos novos no módulo); golden regravado — aditivo puro, sem
+  bump de versão correspondente decidido (mesmo precedente do caso
   `apply_quality_gate_and_segment` acima: pré-v1.0.0, a política de SemVer
   ainda não está em vigor de fato).
 
