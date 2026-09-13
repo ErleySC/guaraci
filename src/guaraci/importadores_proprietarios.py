@@ -98,7 +98,34 @@ TESTADO COM ARQUIVO REAL (nao sintetico): `spectra.sp` (FT-IR, do dataset
 de exemplo do pacote `specio`, BSD-3, baixado publicamente) -- ver
 `tests/fixtures/sp/`. Saida conferida byte-a-byte contra o docstring
 publicado do `specio` (`spectra.wavelength`/`spectra.amplitudes`, mesmos
-5 primeiros valores)."""
+5 primeiros valores).
+
+RMN bruto Bruker (Grupo 1, fechamento final): via `nmrglue` (Jonathan J.
+Helmus, BSD-3-Clause -- confirmado no LICENSE.txt do repositorio, nao so'
+no classifier do PyPI -- compativel com GPL-3.0-or-later). `Requires:
+numpy, scipy` -- AMBOS ja' dependencia base deste projeto, entao o extra
+opcional `[rmn]` acrescenta ZERO dependencia transitiva nova (ver medicao
+no `docs/MAPA_COMPLETUDE_V1.md`, Grupo 3).
+ESCOPO DELIBERADO -- so' o ESPECTRO JA PROCESSADO, nao o FID bruto: um
+experimento Bruker TopSpin grava tanto o FID (dominio do tempo, sinal
+complexo) quanto o espectro ja' processado pelo proprio instrumento em
+`pdata/<N>/1r` (FFT + correcao de fase JA aplicadas pelo TopSpin -- isso
+e' o fluxo real de qualquer laboratorio, o software do espectrometro
+sempre processa e grava o `pdata` automaticamente). Ler o FID cru
+(`ng.bruker.read`, tambem suportado pelo `nmrglue` e viavel) exigiria
+este modulo implementar sua PROPRIA FFT + correcao de fase -- isso e'
+processamento de sinal, nao leitura de formato, e fica fora do escopo
+deste modulo (mesmo raciocinio de escopo do cabecalho do arquivo).
+Registrado como extensao futura possivel, nao como lacuna de biblioteca.
+TESTADO COM ARQUIVO REAL (nao sintetico, nao um dataset publico
+pre-processado por terceiro): diretorio `pdata/1/` de um experimento
+Bruker BioSpin real (PRESS, 300MHz, TopSpin) do repositorio publico
+`CIC-methods/FID-A` (dados via Git LFS, baixados pelo endpoint de midia
+do GitHub) -- ver `tests/fixtures/rmn_bruker/PROVENANCIA.md`. Eixo ppm
+construido via `ng.bruker.guess_udic`/`ng.fileiobase.uc_from_udic` (API
+propria do `nmrglue` para essa conversao, nao uma formula derivada por
+este modulo) -- decrescente, convencao padrao de RMN (mesmo principio de
+nao forcar ordem crescente ja' aplicado a OPUS/SPC/`.sp` acima)."""
 from __future__ import annotations
 
 import struct
@@ -110,6 +137,7 @@ __all__ = [
     "parse_opus",
     "parse_spc",
     "parse_sp",
+    "parse_rmn_bruker",
 ]
 
 # Ordem de preferencia: absorbancia (o que a maioria dos fluxos deste
@@ -353,5 +381,60 @@ def parse_sp(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     if X.shape != Y.shape or X.size == 0:
         raise ValueError(
             f"{filepath}: eixo/intensidade inconsistentes "
+            f"(x={X.shape}, y={Y.shape})")
+    return X, Y
+
+
+def parse_rmn_bruker(pasta: str) -> Tuple[np.ndarray, np.ndarray]:
+    """Le o ESPECTRO RMN Bruker JA PROCESSADO (`pdata/<N>/1r`, gravado
+    pelo proprio TopSpin apos FFT + correcao de fase) e retorna `(X, Y)`
+    -- mesmo contrato de `dados_io.parse_dx`/`dados_io.parse_spectrum`:
+    eixo em ppm (decrescente, convencao padrao de RMN -- nao reordenado)
+    e intensidade (parte real).
+
+    `pasta` deve apontar DIRETO para o diretorio `pdata/<N>/` (mesmo
+    contrato de `nmrglue.bruker.read_pdata`) -- nao para a raiz do
+    experimento nem para o diretorio que contem o `fid` bruto.
+
+    ESCOPO DELIBERADO: le so' o espectro JA PROCESSADO pelo instrumento,
+    nao o FID bruto (dominio do tempo) -- ver docstring do modulo para o
+    raciocinio completo (processar o FID do zero exigiria este modulo
+    implementar FFT + fase propria, fora do escopo de um leitor de
+    formato).
+
+    Levanta `ValueError` se o diretorio nao existir, nao tiver o binario
+    `pdata` esperado, ou faltar algum dos parametros de eixo (`SW_p`,
+    `SF`, `OFFSET` em `procs`) necessarios para construir o eixo ppm.
+
+    Requer o pacote opcional `nmrglue` (`pip install
+    guaraci-chemometrics[rmn]`) -- import LAZY, so' ao chamar esta
+    funcao."""
+    try:
+        import nmrglue as ng
+    except ImportError as e:
+        raise ImportError(
+            "Pacote opcional 'nmrglue' nao instalado -- leitura de "
+            "espectro RMN Bruker indisponivel (pip install "
+            "guaraci-chemometrics[rmn])."
+        ) from e
+
+    try:
+        dic, dados = ng.bruker.read_pdata(pasta)
+    except OSError as e:
+        raise ValueError(f"{pasta}: nao reconhecido como pdata Bruker valido ({e})") from e
+
+    try:
+        udic = ng.bruker.guess_udic(dic, dados)
+        uc = ng.fileiobase.uc_from_udic(udic)
+        X = np.asarray(uc.ppm_scale(), dtype=float)
+    except (KeyError, ZeroDivisionError) as e:
+        raise ValueError(
+            f"{pasta}: parametros de eixo ppm ausentes/invalidos em "
+            f"'procs' ({e})") from e
+
+    Y = np.asarray(dados, dtype=float)
+    if X.shape != Y.shape or X.size == 0:
+        raise ValueError(
+            f"{pasta}: eixo/intensidade inconsistentes "
             f"(x={X.shape}, y={Y.shape})")
     return X, Y

@@ -64,6 +64,14 @@ brukeropus>=1.4,<2.0
 # git.
 spcfile @ git+https://github.com/kogens/spcfile.git
 
+# ── Importador RMN Bruker processado (extra [rmn]) ───────────────────────────
+# Le pdata/<N>/1r de experimento Bruker TopSpin (importadores_
+# proprietarios.py, parse_rmn_bruker). Ha diretorio real em
+# tests/fixtures/rmn_bruker/ -- mesmo motivo de sempre: sem esta linha o CI
+# nunca exercitaria esse teste contra dado genuino. requires numpy+scipy,
+# ambos ja base do projeto -- zero dependencia transitiva nova.
+nmrglue>=0.11,<1.0
+
 # ── PARAFAC / decomposicao tensorial (extra [multiway]) ──────────────────────
 # hsi_multiway.py. Mesmo motivo do brukeropus acima.
 tensorly>=0.8,<1.0

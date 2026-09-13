@@ -14,9 +14,9 @@ de OPUS abaixo cobrem duas coisas SEPARADAS:
      `OPUSFile`: atributos `is_opus`/`data_keys` + um atributo por chave
      de `data_keys`) -- NAO um binario OPUS de verdade.
 
-Ja os testes de `parse_spc` e `parse_sp` (ver mais abaixo) rodam contra
-ARQUIVOS REAIS (nao sinteticos, nao doubles) em `tests/fixtures/spc/` e
-`tests/fixtures/sp/` -- ver `PROVENANCIA.md` em cada pasta.
+Ja os testes de `parse_spc`/`parse_sp`/`parse_rmn_bruker` (ver mais
+abaixo) rodam contra ARQUIVOS REAIS (nao sinteticos, nao doubles) em
+`tests/fixtures/` -- ver `PROVENANCIA.md` em cada subpasta.
 """
 from __future__ import annotations
 
@@ -27,7 +27,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from guaraci.importadores_proprietarios import parse_opus, parse_sp, parse_spc
+from guaraci.importadores_proprietarios import (
+    parse_opus,
+    parse_rmn_bruker,
+    parse_sp,
+    parse_spc,
+)
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -188,3 +193,39 @@ def test_parse_sp_truncado_apos_assinatura_levanta_valueerror(tmp_path):
     arquivo_truncado.write_bytes(conteudo_real[:60])
     with pytest.raises(ValueError, match="truncado ou corrompido"):
         parse_sp(str(arquivo_truncado))
+
+
+# ---------------------------------------------------------------------------
+# RMN bruto Bruker (espectro ja processado, pdata/<N>/1r) -- testado com
+# diretorio REAL de experimento, ver tests/fixtures/rmn_bruker/PROVENANCIA.md.
+# ---------------------------------------------------------------------------
+
+
+def test_parse_rmn_bruker_sem_nmrglue_instalado_da_importerror_claro(monkeypatch):
+    monkeypatch.setitem(sys.modules, "nmrglue", None)
+    with pytest.raises(ImportError, match="nmrglue"):
+        parse_rmn_bruker(str(_FIXTURES / "rmn_bruker" / "pdata" / "1"))
+
+
+def test_parse_rmn_bruker_arquivo_real():
+    X, Y = parse_rmn_bruker(str(_FIXTURES / "rmn_bruker" / "pdata" / "1"))
+    assert isinstance(X, np.ndarray) and X.ndim == 1
+    assert isinstance(Y, np.ndarray) and Y.ndim == 1
+    assert X.shape == Y.shape
+    assert X.size == 2048
+    # eixo ppm decrescente (convencao padrao de RMN, nao reordenado)
+    assert X[0] > X[-1]
+    assert X[0] == pytest.approx(6.6705429, abs=1e-5)
+    # sinal real, nao degenerado (amplitude maxima ~7.96e6 no dado original)
+    assert np.max(np.abs(Y)) > 1e6
+
+
+def test_parse_rmn_bruker_diretorio_inexistente_levanta_valueerror(tmp_path):
+    with pytest.raises(ValueError, match="pdata Bruker valido"):
+        parse_rmn_bruker(str(tmp_path / "nao_existe"))
+
+
+def test_parse_rmn_bruker_diretorio_sem_pdata_levanta_valueerror(tmp_path):
+    (tmp_path / "vazio").mkdir()
+    with pytest.raises(ValueError, match="pdata Bruker valido"):
+        parse_rmn_bruker(str(tmp_path / "vazio"))

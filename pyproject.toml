@@ -74,11 +74,17 @@ opus = ["brukeropus>=1.4,<2.0"]
 # `pyproject.toml` antes de publicar, ou trocar por um release PyPI real se
 # ja existir nessa altura.
 spc = ["spcfile @ git+https://github.com/kogens/spcfile.git"]
+# Leitor de espectro RMN Bruker ja processado (pdata/<N>/1r) -- BSD-3
+# (compativel com GPL-3.0-or-later, verificado no LICENSE.txt do
+# repositorio em 2026-09-12). requires numpy+scipy, ambos ja base do
+# projeto -- zero dependencia transitiva nova. Ver importadores_
+# proprietarios.py.
+rmn = ["nmrglue>=0.11,<1.0"]
 # PARAFAC (decomposicao tensorial N-way) -- hsi_multiway.py. BSD,
 # compativel com GPL-3.0-or-later. N-PLS (mesmo modulo) e' implementacao
 # propria (sem lib madura equivalente) e nao precisa deste extra.
 multiway = ["tensorly>=0.8,<1.0"]
-all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,multiway]"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,rmn,multiway]"]
 # Dev-only -- NUNCA em requirements.txt (manifesto de deploy do Streamlit
 # Cloud): hypothesis gera casos de teste, nao roda em producao.
 dev = ["hypothesis>=6.100,<7.0"]
