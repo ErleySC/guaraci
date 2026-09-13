@@ -118,6 +118,11 @@ por `tests/test_fachada_reexport.py`.
   bump de versão correspondente decidido (mesmo precedente do caso
   `apply_quality_gate_and_segment` acima: pré-v1.0.0, a política de SemVer
   ainda não está em vigor de fato).
+- **`parse_rmn_bruker`/`parse_cromatograma_hplc`** (`importadores_
+  proprietarios.py`, fechamento final do Grupo 1, 2026-09-12): duas
+  funções públicas novas (leitor de espectro RMN Bruker processado e de
+  cromatograma HPLC/GC Agilent/Waters), mesmo padrão aditivo acima.
+  Golden regravado — mesmo precedente, aditivo puro, sem bump de versão.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 

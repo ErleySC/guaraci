@@ -3081,8 +3081,16 @@
       }
     },
     "importadores_proprietarios": {
+      "parse_cromatograma_hplc": {
+        "assinatura": "(pasta: 'str', detector: 'str' = 'UV') -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
       "parse_opus": {
         "assinatura": "(filepath: 'str') -> 'Tuple[np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "parse_rmn_bruker": {
+        "assinatura": "(pasta: 'str') -> 'Tuple[np.ndarray, np.ndarray]'",
         "forma": "funcao"
       },
       "parse_sp": {

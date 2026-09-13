@@ -69,9 +69,21 @@ from privacidade_amostras import (  # noqa: E402
 #: de instrumento em tests/fixtures/sp/ e tests/fixtures/spc/ (ver
 #: PROVENANCIA.md em cada pasta) -- nao sao UTF-8, mesma categoria de
 #: `.joblib`/`.pdf` acima.
+#: `.ch` (Agilent ChemStation, canal de detector UV/FID binario --
+#: tests/fixtures/hplc_agilent/, Grupo 1, 2026-09-12) adicionado junto.
 _BINARIO = {".png", ".ico", ".jpg", ".jpeg", ".gif", ".pdf", ".joblib",
             ".xlsx", ".docx", ".pptx", ".woff", ".woff2", ".zip", ".gz",
-            ".sp", ".spc"}
+            ".sp", ".spc", ".ch"}
+
+#: Convencao de nomes do formato Bruker NAO usa extensao -- `fid`/`1r`/`1i`
+#: sao dados binarios reais (int32/float64), diferente de `acqus`/`procs`/
+#: `pulseprogram`/`method` (que sao texto JCAMP-DX-like e DEVEM continuar
+#: sendo varridos normalmente). So' os basenames exatos abaixo, nao a pasta
+#: inteira -- adicionar so' `tests/fixtures/rmn_bruker/` a `_BINARIO`
+#: esconderia um identificador real que por acaso aparecesse num arquivo de
+#: texto novo dentro dela no futuro. Ver tests/fixtures/rmn_bruker/
+#: PROVENANCIA.md (Grupo 1, 2026-09-12).
+_BINARIO_NOMES_SEM_EXTENSAO = {"fid", "ser", "1r", "1i", "2rr", "2ii"}
 
 
 def _arquivos_versionados() -> list[Path]:
@@ -93,7 +105,9 @@ def _ocorrencias() -> list[tuple[str, int, str]]:
         for m in _PADRAO.finditer(rel):
             if not m.group(0).endswith(_ANO_SENTINELA):
                 achados.append((rel, 0, m.group(0)))
-        if caminho.suffix.lower() in _BINARIO or not caminho.is_file():
+        if (caminho.suffix.lower() in _BINARIO
+                or caminho.name in _BINARIO_NOMES_SEM_EXTENSAO
+                or not caminho.is_file()):
             continue
         try:
             texto = caminho.read_text(encoding="utf-8")
@@ -207,7 +221,9 @@ def _caminhos_absolutos_versionados() -> list[tuple[str, int, str]]:
         for cam in caminhos_absolutos_em_texto(rel):
             if _usuario_do_caminho(cam) != _USUARIO_SENTINELA:
                 achados.append((rel, 0, cam))
-        if caminho.suffix.lower() in _BINARIO or not caminho.is_file():
+        if (caminho.suffix.lower() in _BINARIO
+                or caminho.name in _BINARIO_NOMES_SEM_EXTENSAO
+                or not caminho.is_file()):
             continue
         try:
             texto = caminho.read_text(encoding="utf-8")
