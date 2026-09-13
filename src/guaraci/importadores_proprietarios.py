@@ -125,7 +125,35 @@ do GitHub) -- ver `tests/fixtures/rmn_bruker/PROVENANCIA.md`. Eixo ppm
 construido via `ng.bruker.guess_udic`/`ng.fileiobase.uc_from_udic` (API
 propria do `nmrglue` para essa conversao, nao uma formula derivada por
 este modulo) -- decrescente, convencao padrao de RMN (mesmo principio de
-nao forcar ordem crescente ja' aplicado a OPUS/SPC/`.sp` acima)."""
+nao forcar ordem crescente ja' aplicado a OPUS/SPC/`.sp` acima).
+
+HPLC cromatograma bruto / UV-Vis comercial (Grupo 1, fechamento final):
+via `rainbow-api` (Evan Shi e Eugene Kwan, LGPL-3.0-or-later -- verificado
+no `COPYING.LESSER` do wheel instalado, nao so' no classifier -- mesmo
+padrao ja' aplicado a `spcfile`; compativel com GPL-3.0-or-later).
+Dependencia transitiva NOVA: `lxml` (BSD-3-Clause, compativel) -- unico
+extra deste modulo que acrescenta peso nao-trivial (~14MB, ver medicao em
+`docs/MAPA_COMPLETUDE_V1.md`, Grupo 3; ainda assim bem abaixo do maior
+extra ja' medido, xgboost 58MB).
+ESCOPO: `rainbow-api` le' diretorios NATIVOS de fabricante -- Agilent
+(`.D`/`.dx`: canais `.uv`/`.ch`, UV/DAD e tambem FID de GC quando o
+detector e' `FID`) e Waters (`.raw`) -- NAO o formato aberto ANDI/AIA
+netCDF (ASTM E1947, especifico de cromatografia, primo do ANDI-MS/E1948
+ja' lido por `gcms_io.py` via `scipy.io.netcdf_file`). Avaliado
+explicitamente ANTES de escrever qualquer coisa: nenhum arquivo `.CDF`
+ANDI-E1947 (cromatografia pura, canal unico) real e publicamente
+disponivel foi encontrado nesta busca -- os datasets ANDI publicos
+achados (ex.: `faahKO`/Bioconductor) sao todos ANDI-**MS** (E1948, mesmo
+formato ja' coberto), nao ANDI-Chrom. Como `rainbow-api` cobre o caso
+real de uso (dado de fabricante, o que um laboratorio de fato tem) com
+biblioteca madura, licenca compativel e arquivo real disponivel, a rota
+ANDI-Chrom por `scipy.io.netcdf_file` fica registrada como extensao
+futura possivel (nao descartada por incompatibilidade, so' sem arquivo
+real disponivel agora) -- ver `docs/MAPA_COMPLETUDE_V1.md`, Grupo 1.
+TESTADO COM ARQUIVO REAL (nao sintetico): diretorio `pink.D` (2 canais UV
+de comprimento de onda unico, 210nm e 230nm, 9000 pontos cada) da propria
+suite de testes do `rainbow-api` -- ver
+`tests/fixtures/hplc_agilent/PROVENANCIA.md`."""
 from __future__ import annotations
 
 import struct
@@ -138,6 +166,7 @@ __all__ = [
     "parse_spc",
     "parse_sp",
     "parse_rmn_bruker",
+    "parse_cromatograma_hplc",
 ]
 
 # Ordem de preferencia: absorbancia (o que a maioria dos fluxos deste
@@ -433,6 +462,60 @@ def parse_rmn_bruker(pasta: str) -> Tuple[np.ndarray, np.ndarray]:
             f"'procs' ({e})") from e
 
     Y = np.asarray(dados, dtype=float)
+    if X.shape != Y.shape or X.size == 0:
+        raise ValueError(
+            f"{pasta}: eixo/intensidade inconsistentes "
+            f"(x={X.shape}, y={Y.shape})")
+    return X, Y
+
+
+def parse_cromatograma_hplc(pasta: str, detector: str = "UV") -> Tuple[np.ndarray, np.ndarray]:
+    """Le um diretorio de cromatograma bruto de fabricante -- Agilent
+    (`.D`/`.dx`) ou Waters (`.raw`), formato detectado automaticamente
+    pelo sufixo do diretorio -- e retorna `(X, Y)`: tempo de retencao
+    (minutos) e intensidade de UM canal do `detector` pedido.
+
+    `detector` seleciona o TIPO de detector (`"UV"` para UV/DAD -- o
+    default e o caso de uso mais comum de HPLC --, `"FID"` para GC-FID,
+    outros conforme `rainbow.DataDirectory.detectors`); se o diretorio
+    tiver MAIS DE UM canal desse tipo (ex.: varios comprimentos de onda
+    de UV), retorna so' o PRIMEIRO -- mesma logica de "um espectro por
+    arquivo" ja' aplicada a SPC multi-subarquivo acima (ler os demais
+    exigiria um contrato de retorno diferente, fora do escopo aqui).
+
+    Levanta `ValueError` se o diretorio nao for reconhecido pelo
+    `rainbow-api` (formato invalido/nao suportado) ou se o `detector`
+    pedido nao existir no diretorio.
+
+    Requer o pacote opcional `rainbow-api` (`pip install
+    guaraci-chemometrics[hplc]`) -- import LAZY, so' ao chamar esta
+    funcao."""
+    try:
+        import rainbow as rb
+    except ImportError as e:
+        raise ImportError(
+            "Pacote opcional 'rainbow-api' nao instalado -- leitura de "
+            "cromatograma HPLC/GC de fabricante indisponivel (pip "
+            "install guaraci-chemometrics[hplc])."
+        ) from e
+
+    try:
+        diretorio = rb.read(pasta)
+    except Exception as e:
+        raise ValueError(
+            f"{pasta}: nao reconhecido como diretorio Agilent/Waters "
+            f"valido ({e})") from e
+
+    arquivos = diretorio.by_detector.get(detector)
+    if not arquivos:
+        disponiveis = sorted(diretorio.detectors)
+        raise ValueError(
+            f"{pasta}: detector '{detector}' nao encontrado -- "
+            f"disponiveis: {disponiveis}")
+
+    arquivo = arquivos[0]
+    X = np.asarray(arquivo.xlabels, dtype=float)
+    Y = np.asarray(arquivo.data[:, 0], dtype=float)
     if X.shape != Y.shape or X.size == 0:
         raise ValueError(
             f"{pasta}: eixo/intensidade inconsistentes "

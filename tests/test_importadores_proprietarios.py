@@ -28,6 +28,7 @@ import numpy as np
 import pytest
 
 from guaraci.importadores_proprietarios import (
+    parse_cromatograma_hplc,
     parse_opus,
     parse_rmn_bruker,
     parse_sp,
@@ -229,3 +230,38 @@ def test_parse_rmn_bruker_diretorio_sem_pdata_levanta_valueerror(tmp_path):
     (tmp_path / "vazio").mkdir()
     with pytest.raises(ValueError, match="pdata Bruker valido"):
         parse_rmn_bruker(str(tmp_path / "vazio"))
+
+
+# ---------------------------------------------------------------------------
+# HPLC/GC cromatograma bruto de fabricante (Agilent/Waters, via
+# rainbow-api) -- testado com diretorio REAL, ver
+# tests/fixtures/hplc_agilent/PROVENANCIA.md.
+# ---------------------------------------------------------------------------
+
+
+def test_parse_cromatograma_hplc_sem_rainbow_instalado_da_importerror_claro(monkeypatch):
+    monkeypatch.setitem(sys.modules, "rainbow", None)
+    with pytest.raises(ImportError, match="rainbow-api"):
+        parse_cromatograma_hplc(str(_FIXTURES / "hplc_agilent" / "pink.D"))
+
+
+def test_parse_cromatograma_hplc_arquivo_real_primeiro_canal_uv():
+    X, Y = parse_cromatograma_hplc(str(_FIXTURES / "hplc_agilent" / "pink.D"))
+    assert isinstance(X, np.ndarray) and X.ndim == 1
+    assert isinstance(Y, np.ndarray) and Y.ndim == 1
+    assert X.shape == Y.shape
+    assert X.size == 9000
+    # tempo de retencao em minutos, crescente, 0 a 60min
+    assert X[0] == pytest.approx(0.0, abs=0.01)
+    assert X[-1] == pytest.approx(60.0, abs=0.01)
+
+
+def test_parse_cromatograma_hplc_detector_inexistente_levanta_valueerror():
+    with pytest.raises(ValueError, match="detector 'FID' nao encontrado"):
+        parse_cromatograma_hplc(
+            str(_FIXTURES / "hplc_agilent" / "pink.D"), detector="FID")
+
+
+def test_parse_cromatograma_hplc_diretorio_invalido_levanta_valueerror(tmp_path):
+    with pytest.raises(ValueError, match="Agilent/Waters valido"):
+        parse_cromatograma_hplc(str(tmp_path / "nao_existe.D"))

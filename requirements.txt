@@ -72,6 +72,12 @@ spcfile @ git+https://github.com/kogens/spcfile.git
 # ambos ja base do projeto -- zero dependencia transitiva nova.
 nmrglue>=0.11,<1.0
 
+# ── Importador HPLC/GC de fabricante (extra [hplc]) ──────────────────────────
+# Le diretorios Agilent .D/.dx e Waters .raw (importadores_proprietarios.py,
+# parse_cromatograma_hplc). Ha diretorio real em tests/fixtures/hplc_agilent/
+# -- mesmo motivo de sempre.
+rainbow-api>=1.5,<2.0
+
 # ── PARAFAC / decomposicao tensorial (extra [multiway]) ──────────────────────
 # hsi_multiway.py. Mesmo motivo do brukeropus acima.
 tensorly>=0.8,<1.0

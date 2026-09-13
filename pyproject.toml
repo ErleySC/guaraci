@@ -80,11 +80,18 @@ spc = ["spcfile @ git+https://github.com/kogens/spcfile.git"]
 # projeto -- zero dependencia transitiva nova. Ver importadores_
 # proprietarios.py.
 rmn = ["nmrglue>=0.11,<1.0"]
+# Leitor de cromatograma HPLC/GC bruto de fabricante (Agilent .D/.dx,
+# Waters .raw) -- LGPL-3.0-or-later (compativel com GPL-3.0-or-later,
+# verificado no COPYING.LESSER do wheel instalado em 2026-09-12). Puxa
+# `lxml` (BSD-3, compativel) como dependencia transitiva -- unico extra
+# deste grupo com peso nao-trivial (~14MB, ver docs/MAPA_COMPLETUDE_V1.md
+# Grupo 3). Ver importadores_proprietarios.py.
+hplc = ["rainbow-api>=1.5,<2.0"]
 # PARAFAC (decomposicao tensorial N-way) -- hsi_multiway.py. BSD,
 # compativel com GPL-3.0-or-later. N-PLS (mesmo modulo) e' implementacao
 # propria (sem lib madura equivalente) e nao precisa deste extra.
 multiway = ["tensorly>=0.8,<1.0"]
-all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,rmn,multiway]"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,rmn,hplc,multiway]"]
 # Dev-only -- NUNCA em requirements.txt (manifesto de deploy do Streamlit
 # Cloud): hypothesis gera casos de teste, nao roda em producao.
 dev = ["hypothesis>=6.100,<7.0"]
