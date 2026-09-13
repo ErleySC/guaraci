@@ -30,7 +30,24 @@ exatamente `1 + n_excitacao` campos numericos parseaveis -- nunca
 completa com zero nem interpola. `carregar_dataset_eem_azeite` agrega
 esses contadores por amostra e no total, para a taxa de linhas
 utilizaveis vs. descartadas poder ser reportada honestamente (medida
-real neste dataset: ver `docs/VALIDACAO_PUBLICA.md` secao 2h)."""
+real neste dataset: ver `docs/VALIDACAO_PUBLICA.md` secao 2h).
+
+GENERALIZACAO CONFIRMADA (Grupo 1, fechamento final, 2026-09-12):
+`parse_eem_dat` foi escrito so' para o dataset Zenodo acima, mas a mesma
+convencao de layout (3 linhas de cabecalho -- titulo+excitacao, unidade,
+fator de normalizacao -- seguidas de linhas `emissao<TAB>valores...`)
+tambem e' o formato de exportacao "PEM" do Horiba Aqualog (fluorimetro
+comercial), confirmado lendo um arquivo REAL desse instrumento (nao
+suposto, nao sintetico -- ver `tests/fixtures/eem_horiba_aqualog/
+PROVENANCIA.md`, arquivo de teste do pacote `eempy`, MIT). `parse_eem_dat`
+leu esse segundo arquivo, de instrumento e grade espectral totalmente
+diferentes (106 excitacoes x 500 emissoes, vs. 35x270 do Zenodo), SEM
+NENHUMA modificacao de codigo -- 0 linhas descartadas. Avaliado (mas nao
+adotado como dependencia) o pacote `eempy` (MIT, ativo em 2026-04)
+especificamente para este teste: usado so' como fonte do arquivo de
+teste, nao como biblioteca -- o parser proprio ja existente cobre este
+formato tambem, entao nao ha razao para depender de um pacote externo
+so' para reler algo que o codigo do projeto ja le corretamente."""
 from __future__ import annotations
 
 import re
