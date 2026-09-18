@@ -4746,3 +4746,180 @@ repositório real):
 repositório real): nenhum repositório novo criado, nenhum push pra'
 remoto novo, nenhuma tag `v1.0.0` criada. Aguarda autorização explícita
 do autor para a próxima instrução, especificamente para essa ação.
+
+---
+
+# PROGRESSO — Passo 217 (2026-09-18)
+
+## Passo 217 — Fechamento do Grupo 2: análises e capacidades faltantes
+
+Fecha `docs/MAPA_COMPLETUDE_V1.md` Grupo 2 (10/10 itens), mesmo padrão
+de fechamento formal dos Grupos 1 e 3.
+
+**Conjunto de predição conforme para classificação** (`conformal.
+conformal_margin_classification`/`conformal_prediction_set`, LAC —
+Sadinle, Lei & Wasserman 2019, *JASA* 114:223-234): analogo
+classificatório do T1 de regressão. Calibrado no holdout externo
+(nunca visto pelo ajuste de `pls_final`), group-aware por construção.
+Wiring: `pipeline.executar()` persiste `conformal_classificacao` no
+pacote de modelo; `predicao.predict_samples` expõe
+`classes_plausiveis`/`conjunto_cobertura_nominal` (ou `NAO_VALIDADO`).
+CLI e app web mostram o resumo.
+
+**Fusão multibloco** (`fusao_multibloco.py`, nível 1 — concatenação de
+baixo nível, cada bloco pré-processado SEPARADAMENTE, guarda
+`BlockMismatchError` contra desalinhamento). Prova de conceito Mendeley
+NIR8mm+MIR (alinhamento confirmado por inspeção direta). **Resultado
+NEGATIVO medido em 3 seeds**: a fusão não supera o MIR sozinho — o
+bloco NIR (3,4× mais variáveis, sinal mais fraco) domina a decomposição
+PLS por contagem. Reportado honestamente em `docs/VALIDACAO_PUBLICA.md`
+§2l, não escondido.
+
+**Monitoramento em linha / MSPC**: achado de auditoria — já havia
+implementação parcial desde 2026-08-26/09-01 (hook manual no menu CLI),
+o mapa de completude estava desatualizado dizendo "zero código".
+Fechado com `sentinela_deriva.hook_apos_predicao` (orquestração única),
+agora chamada dos DOIS pontos de predição (CLI **e** aba web — antes só
+CLI, gap de paridade fechado).
+
+**ASCA+ (Thiel et al. 2017)**: referência confirmada via busca
+(Wiley/JChemometrics, DOI 10.1002/cem.2895). Avaliado como esforço
+MAIOR (soma de quadrados Tipo III via GLM, risco real de implementação
+sutilmente errada sem referência externa para contra-prova) —
+**backlog reafirmado com estimativa**, não implementado.
+
+**Explicabilidade fora do treino**: `avaliacao_modelos.
+benchmark_classifiers`/`fig_shap_benchmark` ganham `X_holdout_raw`/
+`y_holdout_int` opcionais (retrocompatíveis) — SHAP explica o holdout
+quando existe, nunca visto pelas árvores no ajuste; figura declara
+`avaliado em: holdout` ou `treino (subamostra, otimista)`.
+
+**di-PLS (T5) / PLS local por vizinhança (T10)**: backlog reafirmado,
+confirmado NÃO redundantes com EPO/GLSW (razões próprias registradas em
+`docs/BACKLOG_MULTIAGENTE.md`).
+
+**T8 (espécie como variável de delineamento)**: **resolvido por
+redundância** — `epo_glsw.build_difference_matrix` já é genérica no
+fator de perturbação (docstring já cita "espécie-hospedeira"), já
+validada em dado real. Zero código novo.
+
+**Exportação portátil de modelo** (`model_export.py`, novo): JSON puro,
+sem pickle/joblib — elimina a classe de risco de RCE para este arquivo.
+Cobre só o caminho de predição PRINCIPAL (pré-proc SNV/MSC/SavGol/
+StandardScaler + PLS `scale=False` + classes); recusa (`Unsupported
+ModelError`) presets/config não suportados em vez de exportar
+incompleto. Exatidão numérica confirmada contra `sklearn.
+cross_decomposition._pls._PLS.predict` e contra `predicao.
+predict_samples` num modelo real (diff < 1e-9).
+`pipeline.executar()` grava `<modelo>.portatil.json` automaticamente.
+
+**`guaraci run` (execução scriptável)**: já implementado (Passo 208);
+os 8 testes existentes mocavam `pq.executar`. 3 testes novos rodam o
+pipeline REAL (sintético) através de `main(["run", ...])`, sem mock
+científico algum — produção de modelo usável, ausência de
+`input()`/`os.startfile`, e wiring do conjunto conforme confirmados
+pelo fluxo real de usuário.
+
+**Achados metodológicos desta rodada:**
+1. Chaves de `resumo` MUITO longas (>40 chars) alargam a formatação de
+   TODO o `resumo_modelo.txt` (`save_model_summary` calcula a largura
+   da coluna a partir da MAIOR chave presente) — quebrou
+   `test_dados_imagem.py` até as chaves novas serem encurtadas
+   (`Conformal classif. *`, não `Conjunto conforme (classificacao) *`).
+2. `docs/COMPATIBILITY.md` registra uma inconsistência real: os dois
+   últimos fechamentos do Grupo 1 (`parse_spc`/`parse_sp`,
+   `parse_rmn_bruker`/`parse_cromatograma_hplc`) foram adicionados DEPOIS
+   da tag `v1.0.0` mas tratados como "pré-v1.0.0, política ainda não
+   vale" — cronologicamente incorreto. Os 3 símbolos novos desta rodada
+   seguem o MESMO precedente (golden regravado, sem bump de minor), com
+   a inconsistência documentada explicitamente em vez de silenciada —
+   reconciliação (bump retroativo ou emenda de política) fica para
+   decisão do autor.
+
+**Contra-prova**: 74 testes novos (`test_conformal.py` +10,
+`test_predicao.py` +5, `test_sentinela_deriva.py` +4,
+`test_fusao_multibloco.py` novo (6), `test_model_export.py` novo (10),
+`test_guaraci_cli.py` +3, `test_avaliacao_modelos.py` +1, mais ajustes
+de golden/tradução/registro). Suíte completa: **1596 passed / 44
+skipped / 0 failed** (1 falha remanescente é PRÉ-EXISTENTE e NÃO
+relacionada — `test_sem_identificador_real.py`, caminhos de máquina em
+`docs/PROCEDIMENTO_NOVO_REPOSITORIO.md`/`PROGRESSO.md` antigos,
+delegada para sessão própria). `ruff check .` limpo; `mypy` (gate de 57
+arquivos, +`fusao_multibloco.py`/`model_export.py`) limpo. Contrato de
+API pública e de colunas de saída regravados (mudanças aditivas).
+
+**Fechamento**: 6 itens implementados com contra-prova real (conjunto
+conforme multiclasse, fusão multibloco nível 1, MSPC com paridade,
+explicabilidade fora do treino, exportação portátil, `guaraci run`
+testado), 3 em backlog com razão registrada (ASCA+, di-PLS, PLS local
+por vizinhança), 1 resolvido por redundância (T8). **Grupo 2
+formalmente fechado.**
+
+---
+
+# PROGRESSO — Passo 218 (2026-09-18)
+
+## Passo 218 — Validação real do MSPC em 2 camadas (Grupo 2, complemento ao Passo 217)
+
+O Passo 217 fechou o MSPC pela ORQUESTRAÇÃO (paridade CLI/web), mas
+nunca tinha validado o MECANISMO estatístico de detecção contra deriva
+de verdade (nem sintética controlada, nem real). Esta rodada fecha essa
+lacuna com 2 camadas de evidência, mais uma 3ª avaliada e conscientemente
+descartada.
+
+**Camada 1 (obrigatória) — injeção sintética de deriva**
+(`tests/test_mspc_validacao_deriva.py`, 3 testes novos). Diferença para
+os testes originais de `sentinela_deriva.py`: aqueles usam booleanos
+sorteados direto na taxa desejada, nunca passando pelo Domínio de
+Aplicabilidade real (PCA + distância combinada T2/Q). Aqui, espectros
+sintéticos com deriva progressiva genuína (deslocamento espectral
+crescente por "sessão") são processados pelo AD de verdade. **Medido**:
+sem alerta nas 2 primeiras sessões (deriva nula/mínima); alerta a partir
+de delta≈0,03, permanece disparado com deriva persistente; 0% de falso
+alarme em 200 execuções de processo estável; janela deslizante detecta
+deriva abrupta recente mesmo após histórico estável longo.
+
+**Camada 2 — deriva real já documentada (Corn multi-instrumento)**
+(`tests/test_mspc_validacao_corn.py`, 2 testes novos, `@requer_corn`).
+Reaproveita a MESMA base do Corn (§9 de `docs/VALIDACAO_PUBLICA.md`) já
+usada para validar PDS/DS: as 80 amostras físicas medidas em m5/mp5/mp6.
+AD calibrado em m5 só com `n_components=2` -- escolha JUSTIFICADA pela
+variância explicada (PC1 sozinho = 99,3%, PC1+PC2 = 99,86%), não
+arbitrária: testado com mais componentes (3/5/10) e a taxa de falso
+alarme em controle sobe para 20-30% (overfitting do PCA em regime
+n≪p -- achado registrado, não escondido). Aplicado sequencialmente:
+m5-holdout (em controle) depois mp5 (mesmas amostras físicas, degradação
+de RMSEP já documentada de ~0,15 para ~0,5-0,9 sem correção). **Medido,
+replicado em 30 splits aleatórios independentes**: detecção 30/30
+(100%), sempre no 1º lote pós-troca (atraso≈0); falso alarme em
+controle ~7-10% (acima do nominal 5%, reportado honestamente). Não é o
+mesmo problema estrutural da fusão multibloco -- lá o efeito nunca
+aparecia; aqui aparece sempre, com clareza esmagadora (p~1e-4 a
+1e-32), só a margem do alarme em repouso que pede calibração mais fina.
+
+**Camada 3 (TEP) — avaliada, não implementada.** Confirmado via busca:
+domínio público (CC0, Rieth et al. 2017, Harvard Dataverse DOI
+10.7910/DVN/6C3JR1), compatível em princípio (PCA/T2-Q sobre variáveis
+de processo é uso clássico na literatura de MSPC para o TEP). Decisão:
+não buscar -- Camadas 1+2 já dão evidência real e complementar; TEP é
+domínio de sensores industriais (não espectroscopia), esforço de
+conversão de formato sem ganho de confiança proporcional dado o que já
+foi medido.
+
+**CI**: `.github/workflows/test.yml` -- job `validacao-publica` ganha um
+passo novo rodando `tests/test_mspc_validacao_corn.py` com o mesmo
+`corn.mat` já baixado para o Corn.
+
+**Contra-prova**: 5 testes novos (`test_mspc_validacao_deriva.py` (3) +
+`test_mspc_validacao_corn.py` (2)). Suíte completa com AMBOS os
+datasets externos presentes (Mendeley + Corn, não só skip): **1617
+passed / 28 skipped / 1 failed** (a mesma falha pré-existente e sem
+relação do Passo 217, ainda delegada). `ruff check .` limpo; `mypy`
+limpo.
+
+**Fechamento**: MSPC agora validado em 2 camadas de evidência real
+(sintética controlada + deriva real de instrumento), Camada 3 decidida
+com evidência e não implementada por falta de necessidade. Os 5 itens
+menores do Grupo 2 (Passo 217) reconfirmados intactos por comando
+direto nesta rodada. **Grupo 2 permanece formalmente fechado, agora com
+o MSPC genuinamente validado, não só orquestrado.**

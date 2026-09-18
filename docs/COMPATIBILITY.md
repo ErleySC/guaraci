@@ -123,6 +123,45 @@ por `tests/test_fachada_reexport.py`.
   funções públicas novas (leitor de espectro RMN Bruker processado e de
   cromatograma HPLC/GC Agilent/Waters), mesmo padrão aditivo acima.
   Golden regravado — mesmo precedente, aditivo puro, sem bump de versão.
+- **`model_export.py`** (modulo inteiro, novo -- fechamento do Grupo 2,
+  exportacao portatil de modelo em JSON puro, sem pickle/joblib):
+  `export_portable_json`, `save_portable_json`, `load_portable_json`,
+  `predict_portable`, `UnsupportedModelError`. Mesmo padrao aditivo e
+  mesma nota de honestidade dos itens abaixo (pos-v1.0.0).
+- **`benchmark_classifiers`/`fig_shap_benchmark`** (`avaliacao_modelos.py`,
+  fechamento do Grupo 2 -- explicabilidade fora do treino): dois
+  parametros OPCIONAIS novos em cada uma (`X_holdout_raw`/
+  `y_holdout_int`, default `None`) -- assinatura antiga continua valendo
+  sem mudanca (chamador que nao passa os dois novos cai no comportamento
+  ANTERIOR, explicar uma subamostra do treino). Mesmo padrao aditivo e
+  mesma nota de honestidade dos itens abaixo (pos-v1.0.0).
+- **`fusao_multibloco.py`** (modulo inteiro, novo -- fechamento do Grupo 2,
+  fusao multibloco de nivel 1): `build_multiblock_dataset`,
+  `fit_evaluate_pls_regression`, `RegressionFitResult`,
+  `BlockMismatchError`. Mesmo padrao aditivo (modulo novo, nenhum
+  simbolo existente mudou) e mesma nota de honestidade do item logo
+  abaixo (pos-v1.0.0).
+- **`conformal_margin_classification`/`conformal_prediction_set`**
+  (`conformal.py`) e **`hook_apos_predicao`** (`sentinela_deriva.py`),
+  fechamento do Grupo 2 (conjunto de predição conforme para classificação
+  multiclasse + orquestração compartilhada CLI/web da sentinela de
+  deriva): três funções públicas novas, mesmo padrão aditivo (nenhuma
+  assinatura existente mudou). Golden regravado — **nota de honestidade,
+  diferente dos dois casos acima**: estes três símbolos foram adicionados
+  DEPOIS da tag `v1.0.0` (`cc0e14c`, 2026-09-11), quando a política de
+  SemVer descrita no topo deste documento já estava, pela própria data,
+  em vigor — o precedente "pré-v1.0.0, política ainda não vale" citado
+  pelos dois itens de Grupo 1 acima (`parse_spc`/`parse_sp`,
+  `parse_rmn_bruker`/`parse_cromatograma_hplc`, ambos também datados de
+  2026-09-12) não se sustenta cronologicamente para nenhum dos três: a
+  prática real do projeto, desde a tag v1.0.0, tem sido regravar o golden
+  como aditivo sem decidir um bump de minor correspondente, em vez de
+  seguir a própria regra escrita acima ("mudar assinatura pública... exige
+  bump de major/minor"). Registrado aqui em vez de silenciado; a
+  reconciliação (bump de minor retroativo cobrindo todas as adições
+  aditivas pós-v1.0.0, ou uma emenda explícita à política permitindo
+  adição pura de símbolo sem bump) fica para decisão do autor, não
+  presumida por esta rodada.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 

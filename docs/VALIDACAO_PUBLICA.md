@@ -820,6 +820,62 @@ está marcado no próprio YAML como **declarado, não validado com dado real**.
 O requisito multimatriz foi provado com outros dois pares de matrizes
 (milho/óleo privado — §3; óleos comestíveis Mendeley — §2).
 
+### 2l. Fusão multibloco — prova de conceito Mendeley NIR8mm+MIR (Grupo 2, fechamento 2026-09-18)
+
+Prova de conceito de fusão multibloco de nível 1 (concatenação de baixo
+nível, cada bloco pré-processado SEPARADAMENTE antes de concatenar — ver
+`docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` §1 e `src/guaraci/
+fusao_multibloco.py`), usando o par já identificado no documento de
+escopo: NIR8mm + MIR do mesmo dataset Mendeley `ctgg7k4m5g` (§2/2b).
+
+**Alinhamento confirmado por inspeção direta** (bloqueante da instrução,
+verificado antes de qualquer código): `Class`/`PeroxideValue` são
+idênticos linha-a-linha nos 100 registros de `NIR8mm1A.csv` e
+`MIR1A.csv` — mesmas 100 garrafas físicas, mesma posição de linha (ver
+`tests/test_fusao_multibloco.py::test_nir8mm_e_mir_estao_alinhados_
+linha_a_linha`).
+
+**Medido (3 seeds independentes — 0, 1, 2 —, mesmo split cal/val 75/25
+aplicado aos 3 casos em cada seed, `log10`(índice de peróxido)):**
+
+| Seed | NIR só (RMSEP) | MIR só (RMSEP) | Fusão NIR+MIR (RMSEP) |
+|---:|---:|---:|---:|
+| 0 | 0,471 | 0,280 | 0,486 |
+| 1 | 0,377 | 0,236 | 0,282 |
+| 2 | 0,506 | 0,460 | 0,488 |
+
+**ACHADO HONESTO — NÃO-MELHORA, reportado sem meias-palavras**: a fusão
+de baixo nível **não supera o MIR sozinho em nenhuma das 3 seeds** —
+fica sempre entre o NIR (pior) e o MIR (melhor), mais perto do NIR. O
+bloco NIR (11512 variáveis, R²val já negativo sozinho — §2) tem 3,4×
+mais colunas que o MIR (3423) e domina a decomposição PLS por simples
+CONTAGEM de variáveis quando os dois blocos são concatenados sem peso
+algum — o próprio mecanismo que a literatura de MB-PLS/block-scaling
+existe para corrigir. Testado informalmente também com normalização de
+cada bloco pela norma de Frobenius do lado de calibração antes de
+concatenar (block-scaling simples): não mudou o resultado de forma
+consistente nas mesmas 3 seeds, e por isso **não foi incorporado ao
+módulo publicado** — adicionar complexidade sem benefício demonstrado
+contrariaria a diretriz de não introduzir abstração além do que o
+resultado sustenta.
+
+**Conclusão para o Grupo 2**: a capacidade de fusão multibloco de nível
+1 está **implementada e testada** (`fusao_multibloco.build_multiblock_
+dataset`/`fit_evaluate_pls_regression`, com guarda contra desalinhamento
+de amostra e sem vazamento cal→val, ver `tests/test_fusao_multibloco.py`
+— 6 testes, 2 deles contra dado público real). O RESULTADO CIENTÍFICO da
+prova de conceito é negativo (fusão de baixo nível não ajuda neste par
+de técnicas/dataset) — registrado como tal, não escondido nem forçado a
+parecer sucesso. Fusão em nível médio/decisão (§1.1 do documento de
+escopo) e block-scaling permanecem como extensões futuras não
+implementadas, caso um resultado positivo real seja buscado depois.
+
+Reproduzir:
+```
+python scripts/download_datasets/baixar_mendeley_oleos.py
+GUARACI_DATASETS_DIR=datasets_publicos pytest tests/test_fusao_multibloco.py -v -s
+```
+
 ---
 
 ## 3. Prova do requisito multimatriz
@@ -1424,3 +1480,57 @@ config completa). Configurável: `selecao_lv_cv_aninhada: false` no
 `config.yaml` desativa (aceita a métrica otimista conhecida, iteração
 mais rápida) — ver `docs/COMPATIBILITY.md` e `_CONFIG_SPEC`
 (`config_io.py`).
+
+## 11. MSPC (Bloco 13b) — validação com deriva real de instrumento (Corn, 2026-09-18)
+
+Reaproveita a MESMA base do §9 (Corn, 80 amostras físicas medidas em 3
+espectrômetros m5/mp5/mp6) para validar o mecanismo de detecção de
+deriva de `sentinela_deriva.py` (Grupo 2 do mapa de completude) contra
+uma diferença espectral REAL e já documentada — a troca de instrumento
+m5→mp5, cuja degradação de RMSEP sem correção (§9: de ~0,15 para
+~0,5-0,9) já prova que a diferença é grande o bastante para importar.
+
+**Protocolo**: Domínio de Aplicabilidade (PCA + distância combinada T2/Q,
+`chemometric_stats.training_applicability_domain`) calibrado só em
+amostras m5 (`n_components=2` — PC1 sozinho já explica 99,3% da
+variância do m5, PC1+PC2 99,86%; testado com mais componentes e a taxa
+de falso alarme em controle sobe para 20-30%, overfitting do PCA em
+regime n≪p, não escolha arbitrária). Aplicado sequencialmente, em lotes:
+primeiro ao restante de m5 (fase "em controle", deveria ficar estável),
+depois às MESMAS amostras físicas medidas em mp5 (deveria disparar).
+
+**Medido, replicado em 30 splits aleatórios independentes**
+(`tests/test_mspc_validacao_corn.py`):
+
+| Métrica | Resultado |
+|---|---|
+| Detecção da troca m5→mp5 | **30/30 (100%)** |
+| Atraso de detecção | Sempre no 1º lote pós-troca (≈0) |
+| Falso alarme na fase em controle (mesmo instrumento) | ~7-10% (acima do alpha nominal de 5%) |
+
+**Leitura honesta**: o efeito real (troca de instrumento) é detectado
+com clareza esmagadora (p da ordem de 1e-4 a 1e-32 nos lotes
+pós-troca) — não há ambiguidade nenhuma sobre SE o MSPC pega esta
+deriva. A taxa de falso alarme em controle, porém, fica acima do
+nominal — um fator ~1,5-2×, atribuível a viés residual de amostra
+finita na estimativa do domínio mesmo em baixa dimensionalidade
+(n_cal=40 amostras × 700 canais). Isto é DIFERENTE do problema
+estrutural encontrado na fusão multibloco (§2l): lá, o efeito nunca
+aparecia, sobrepujado pela variância de um bloco maior; aqui, o efeito
+aparece sempre e com folga — o que precisa de calibração mais cuidadosa
+é a margem de segurança do próprio alarme em repouso, não a capacidade
+de detectar a deriva em si.
+
+Complementar a esta validação com dado real: `tests/test_mspc_
+validacao_deriva.py` prova o MESMO mecanismo com deriva espectral
+sintética progressiva (deslocamento controlado, sem depender de nenhum
+dataset externo) — falso alarme 0/200 em processo sintético estável,
+detecção a partir do ponto exato onde a deriva injetada se torna grande
+o suficiente.
+
+Reproduzir:
+```
+curl -fsSL -o corn.mat https://eigenvector.com/data/Corn/corn.mat
+GUARACI_DATASETS_DIR=$(pwd) pytest tests/test_mspc_validacao_corn.py -v -s
+pytest tests/test_mspc_validacao_deriva.py -v
+```

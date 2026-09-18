@@ -1,3 +1,20 @@
+> **STATUS (2026-09-18): AMBOS IMPLEMENTADOS E VALIDADOS.** Fusão
+> multibloco (nível 1, §1 abaixo) em `src/guaraci/fusao_multibloco.py` —
+> prova de conceito Mendeley NIR8mm+MIR medida, resultado NEGATIVO
+> (fusão não supera o MIR sozinho), reportado em
+> `docs/VALIDACAO_PUBLICA.md` §2l. MSPC (§2 abaixo) já estava
+> parcialmente implementado desde 2026-08-26 (achado de auditoria —
+> este documento de escopo estava desatualizado); fechado com
+> `sentinela_deriva.hook_apos_predicao`, chamado agora dos DOIS pontos
+> de predição (CLI e app web, antes só CLI), e **validado em 2 camadas
+> de evidência real** (`tests/test_mspc_validacao_deriva.py` — injeção
+> sintética de deriva; `tests/test_mspc_validacao_corn.py` — deriva
+> real de troca de instrumento no dataset Corn, detecção 100%/30 seeds,
+> atraso ≈0; Camada 3/TEP avaliada e conscientemente não implementada).
+> Ver `docs/MAPA_COMPLETUDE_V1.md`, Grupo 2, para o fechamento e a
+> validação completos. Este documento permanece como registro do
+> PLANEJAMENTO original, não reescrito.
+
 # Escopo — Fusão multibloco e Monitoramento em linha (MSPC)
 
 > Documento de ESCOPO (Item 3 da instrução de 2026-09-10, "Dependabot,

@@ -68,22 +68,22 @@ da instrução "IMPLEMENTAR TODOS OS ACHADOS" de 2026-09-10, Passos
 | T2 | EPO / GLSW | **implementado (Passo 205)** — `epo_glsw.py` (EPO + GLSW + `build_difference_matrix`). Não é um transformer de Pipeline padrão (recebe matriz de diferenças pronta, ver docstring). Não se aplica ao dataset próprio (ordem×teor colinear). |
 | T3 | ASCA (+) | **implementado (Passo 204)** — `asca.py`, decomposição marginal (Smilde et al. 2005) + permutação por unidade experimental. Escopo honesto: NÃO é a extensão "+" completa (Thiel et al. 2017) para fatores correlacionados; `ss_desbalanco` sinaliza quando ela seria necessária. |
 | T4 | Correção de deriva por QC/brancos | **implementado (Passo 207)** — `deriva_qc.corrigir_deriva_por_qc` (QC-RLSC). Pré-requisito de dado (QC com ordem de aquisição) não satisfeito hoje — função utilizável só com dado fornecido pelo chamador, não ligada a fluxo automático. |
-| T5 | di-PLS | **backlog — não priorizado nesta rodada** (instrução determina registrar, não implementar) |
+| T5 | di-PLS | **backlog reafirmado (2026-09-18)** — confirmado NÃO redundante com T2/EPO-GLSW (di-PLS adapta a um domínio novo SEM rótulo, via objetivo de PLS modificado; EPO/GLSW exigem rótulo do fator + estrutura de pares na própria calibração); esforço maior (nova rotina de otimização), ver `docs/MAPA_COMPLETUDE_V1.md` Grupo 2. |
 | T6 | PQN | **implementado (Passo 202)** — `preprocessamento.PQN` + `cfg.apply_pqn` (preset custom). Fecha R5b. |
 | T7 | Ledoit-Wolf / LDA com encolhimento | **implementado (Passo 202)** — `chemometric_stats.mahalanobis_distance_shrinkage` (`estimador='shrinkage'`/`'raw'` lado a lado). Ganho diagnóstico, não promete resgatar separação real. |
-| T8 | Espectro + variável de delineamento | **backlog — não priorizado** (sobrepõe-se a T2, instrução manda registrar) |
+| T8 | Espectro + variável de delineamento | **resolvido por redundância (2026-09-18)** — confirmado por inspeção direta: `epo_glsw.build_difference_matrix(X, grupo_interesse, fator_incomodo)` já é genérica no rótulo do fator (docstring já cita "espécie-hospedeira" como exemplo), já validada contra dado real (EEM Zenodo). Usar `fator_incomodo=especie` já É T8 — zero código novo. Ver `docs/MAPA_COMPLETUDE_V1.md` Grupo 2. |
 | T9 | MCR-ALS com restrição de correlação | **implementado (Passo 206)** — `mcr_als_com_restricao_correlacao`. Nunca testada contra o acervo real (proposta nova, não correção do achado negativo da versão não supervisionada). |
-| T10 | LWR (PLS local por vizinhança) | **backlog — não priorizado** (sobrepõe-se a T8/Passo 139) |
+| T10 | LWR (PLS local por vizinhança) | **backlog reafirmado (2026-09-18)** — muda a ARQUITETURA de predição (modelo local por amostra nova em vez de modelo global fixo; o pacote exportado teria que carregar a calibração inteira, não só coeficientes), escopo maior que qualquer outro item do Grupo 2; ver `docs/MAPA_COMPLETUDE_V1.md`. |
 
 ## E. Lacunas de produto — Agente 4 (§5.2 do relatório, Fase 5)
 
 | # | Lacuna | Status |
 |---|---|---|
 | P1 | Execução não interativa pela CLI (`guaraci run config.yaml`) | **implementado (Passo 208)** — comando `run`, 10 testes |
-| P2 | Exportação portátil do modelo (alternativa ao `.joblib` puro) | **avaliado (Passo 208), não implementado** — ONNX/PMML exportam 1 modelo por vez (não cabe a estrutura multi-espécie/classes customizadas); `skops` exigiria registrar cada classe própria. Projeto de migração próprio, fora desta rodada. |
+| P2 | Exportação portátil do modelo (alternativa ao `.joblib` puro) | **implementado, escopo reduzido (2026-09-18)** — ONNX/PMML seguem rejeitados (avaliação do Passo 208 mantida); `model_export.py` (JSON puro, sem pickle) cobre o caminho de predição PRINCIPAL (pré-proc+PLS-DA+classes), não o pacote inteiro. Ver `docs/MAPA_COMPLETUDE_V1.md` Grupo 2. |
 | P3 | Mais leitores de formato de instrumento | **avaliado (Passo 208), não implementado** — candidatos priorizados: SPC (Galactic/Thermo) e PerkinElmer `.sp`, maior demanda genérica frente aos ~35 do PLS_Toolbox. Não iniciado. |
-| P4 | Fusão multibloco | **escopo registrado (2026-09-10)** — `docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` §1: candidato de prova de conceito identificado (Mendeley `ctgg7k4m5g.2`, NIR8mm+MIR50µm nas MESMAS amostras, já parcialmente integrado), esforço estimado comparável a `eem_multiway.py` (Passo 149) + 1 técnica de integração nova. Não iniciar sem instrução própria. |
-| P5 | Monitoramento em linha / MSPC | **escopo registrado (2026-09-10)** — `docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` §2: extensão de `sentinela_deriva.py` (núcleo estatístico já existe), "em linha" reinterpretado como execução agendada via `guaraci run` (local-first, sem servidor/daemon novo). Esforço estimado menor que P4. Não iniciar sem instrução própria. |
+| P4 | Fusão multibloco | **implementado, prova de conceito (2026-09-18)** — `fusao_multibloco.py` (nível 1), medido no par Mendeley NIR8mm+MIR: resultado NEGATIVO (fusão não supera o MIR sozinho), reportado honestamente (`docs/VALIDACAO_PUBLICA.md` §2l). Ver `docs/MAPA_COMPLETUDE_V1.md` Grupo 2. |
+| P5 | Monitoramento em linha / MSPC | **implementado (2026-09-18)** — achado: já havia implementação parcial desde 2026-08-26 (hook manual no menu CLI), este documento estava desatualizado. Fechado com `sentinela_deriva.hook_apos_predicao`, agora chamado também da aba web (antes só CLI). Ver `docs/MAPA_COMPLETUDE_V1.md` Grupo 2. |
 | P6 | Intervalo de predição por amostra (Unscrambler) | = T1 (mesma lacuna, ver D) |
 | P7 | Maturidade de interface/suporte/treinamento | **backlog — fato de estrutura, não é item de engenharia** |
 

@@ -949,10 +949,17 @@ suficiente.
 **Persistência e integração:** `save_state`/`load_state` (JSON)
 permitem que a sentinela sobreviva entre execuções — uso real (LIMS
 chamando o pipeline ao longo de dias/semanas) não mantém um processo
-Python vivo o tempo todo. CLI — menu `[B]` *Predição em Lote* atualiza
-automaticamente a sentinela persistida ao lado do modelo
-(`<modelo>.joblib.sentinela.json`) a cada rodada, quando o pacote tem
-artefatos de domínio de aplicabilidade, e mostra o status no resumo.
+Python vivo o tempo todo. Orquestração unificada em
+`sentinela_deriva.hook_apos_predicao` (carregar → registrar → salvar →
+checar deriva), chamada dos DOIS pontos de predição — CLI (menu `[B]`
+*Predição em Lote*) **e a aba web Predição** (fechado em 2026-09-18; antes
+só o CLI atualizava a sentinela) — atualizam automaticamente a sentinela
+persistida ao lado do modelo (`<modelo>.joblib.sentinela.json`) a cada
+rodada, quando o pacote tem artefatos de domínio de aplicabilidade, e
+mostram o status/alerta no resumo. Na aba web, um modelo carregado por
+caminho local usa esse caminho; um modelo enviado por upload usa um
+caminho estável POR SESSÃO do navegador (a sentinela acumula entre
+predições repetidas na mesma sessão).
 
 **Figura de mérito analítica dedicada (Quantificação):**
 `figS3_merito_regressao.png` — dois painéis lado a lado: LOD/LOQ por espécie
@@ -977,6 +984,41 @@ metodológicas (as mesmas do `resumo_modelo.txt`, fonte única). Em
 Quantificação, ganha um adendo com as figuras de mérito de regressão.
 Aparece na aba **Relatórios** do aplicativo (prévia e download `.md`
 próprio) e em `Relatorios/` de toda execução (CLI e aplicativo).
+
+### 2.6 Conjunto conforme de classificação, exportação portátil e explicabilidade fora do treino (fechamento do Grupo 2, 2026-09-18)
+
+**Conjunto de predição conforme para classificação** (`conformal.
+conformal_margin_classification`/`conformal_prediction_set`, LAC —
+Sadinle, Lei & Wasserman 2019): até aqui, classificação era argmax
+pontual, sem nenhuma noção de incerteza por classe — inconsistente com
+o rigor já aplicado à Quantificação (T1 acima). Agora, quando o holdout
+externo tem grupos independentes suficientes (>=19 para *alpha*=0,05),
+a predição em lote (CLI e aba web) traz também o CONJUNTO de classes
+plausíveis para cada amostra (coluna `classes_plausiveis` no CSV),
+calibrado no mesmo holdout nunca visto pelo ajuste do modelo — pode
+conter mais de uma classe (ambiguidade real) ou nenhuma (quando nem a
+classe mais provável atinge a cobertura pedida). Sem grupos suficientes,
+a coluna traz `NAO_VALIDADO`, nunca um conjunto fabricado.
+
+**Explicabilidade fora do treino**: quando o holdout existe, o SHAP
+(Auto-Benchmark) passa a explicar o HOLDOUT em vez de uma subamostra do
+próprio treino — a figura declara `avaliado em: holdout` ou `avaliado
+em: treino (subamostra, otimista)`, nunca omitindo qual dos dois foi
+usado.
+
+**Exportação portátil de modelo** (`model_export.py`): ao lado do
+`<modelo>.joblib`, a execução grava automaticamente
+`<modelo>.portatil.json` — formato JSON puro, SEM pickle, para os
+presets de pré-processamento suportados (`snv_sg_mc`/`msc_sg_mc`/`mc`/
+`autoscaling`). Ao contrário do `.joblib` (que executa código
+arbitrário ao carregar — risco já tratado em outros pontos do produto,
+ver seção de Segurança), o JSON não executa nada ao ser lido, e um
+consumidor externo mínimo (outra linguagem, sem `scikit-learn`/
+`joblib`) consegue reaplicar o modelo a partir só dos números do
+arquivo. Escopo deliberadamente menor que o `.joblib` completo: cobre
+só pré-processamento + PLS-DA/PLS-R + classes, não DD-SIMCA por
+espécie/ensemble de identificação/domínio de aplicabilidade/conjunto
+conforme (esses continuam só no `.joblib`).
 
 ---
 
