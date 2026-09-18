@@ -23,6 +23,7 @@ from guaraci.sentinela_deriva import (
     load_state,
     check_drift,
     save_state,
+    hook_apos_predicao,
 )
 
 
@@ -193,3 +194,54 @@ def test_continuar_registrando_apos_carregar(tmp_path):
     estado2.registrar(False)
     assert estado2.n == 11
     assert estado2.n_fora_do_dominio == 1
+
+
+# ── hook_apos_predicao: orquestracao compartilhada CLI/web (Grupo 2) ───
+# Extraida de guaraci.py (menu CLI) para que a aba web
+# (app_tabs/predicao.py) chame a MESMA logica em vez de duplicar
+# carregar->atualizar->salvar->checar -- fecha o gap de paridade achado
+# na auditoria do Grupo 2 (a sentinela so' rodava no CLI ate' agora).
+
+def test_hook_sem_coluna_ad_devolve_none_sem_lancar(tmp_path):
+    df = pd.DataFrame({"classe_pred": ["A", "B"]})
+    caminho = str(tmp_path / "modelo.joblib")
+    assert hook_apos_predicao(caminho, df) is None
+    assert not (tmp_path / "modelo.joblib.sentinela.json").exists()
+
+
+def test_hook_cria_e_persiste_estado_ao_lado_do_modelo(tmp_path):
+    caminho_modelo = str(tmp_path / "modelo.joblib")
+    df = pd.DataFrame({"AD_dentro_dominio": [True, True, False]})
+    alerta = hook_apos_predicao(caminho_modelo, df)
+    assert alerta is not None
+    assert alerta.n == 3
+    caminho_estado = caminho_modelo + ".sentinela.json"
+    assert (tmp_path / "modelo.joblib.sentinela.json").is_file()
+    estado = load_state(caminho_estado)
+    assert estado.n == 3
+    assert estado.n_fora_do_dominio == 1
+
+
+def test_hook_acumula_entre_chamadas_sucessivas(tmp_path):
+    """MESMO comportamento fim-a-fim ja' travado para o menu CLI em
+    `test_predicao.py::test_menu_predicao_alimenta_a_sentinela_de_deriva_
+    entre_chamadas`, agora testado diretamente na funcao compartilhada."""
+    caminho_modelo = str(tmp_path / "modelo.joblib")
+    df1 = pd.DataFrame({"AD_dentro_dominio": [True] * 5})
+    hook_apos_predicao(caminho_modelo, df1)
+    df2 = pd.DataFrame({"AD_dentro_dominio": [True] * 5})
+    alerta2 = hook_apos_predicao(caminho_modelo, df2)
+    assert alerta2.n == 10, "nao acumulou entre chamadas -- resetou o estado"
+
+
+def test_hook_dispara_alerta_quando_taxa_de_rejeicao_e_alta(tmp_path):
+    caminho_modelo = str(tmp_path / "modelo.joblib")
+    n_min = n_minimum_for_alpha(0.05)
+    # taxa de rejeicao bem acima do nominal (0.05), com n suficiente p/
+    # poder estatistico -- mesmo regime de `test_deriva_real_com_n_
+    # suficiente_dispara_alerta` acima, agora passando pelo hook completo.
+    n = max(n_min, 30)
+    dentro = [False if i % 3 == 0 else True for i in range(n)]
+    df = pd.DataFrame({"AD_dentro_dominio": dentro})
+    alerta = hook_apos_predicao(caminho_modelo, df)
+    assert alerta.alerta is True

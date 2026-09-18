@@ -347,7 +347,10 @@ from guaraci.identificacao import (   # noqa: E402
     combine_alpha_bonferroni,
     train_identification_ensemble,
 )
-from guaraci.conformal import conformal_margin_regression  # noqa: E402
+from guaraci.conformal import (  # noqa: E402
+    conformal_margin_classification,
+    conformal_margin_regression,
+)
 def validate_input(X: np.ndarray, wavenumbers: np.ndarray,
                      rotulos: np.ndarray, conc: Optional[np.ndarray] = None,
                      mae_id: Optional[np.ndarray] = None,
@@ -2479,6 +2482,7 @@ def executar(cfg: Config):
     # --- 8b. Avaliacao em holdout independente ----------------------------
     metricas_holdout: Optional[Dict[str, float]] = None
     bca_holdout:      Optional[Dict[str, Tuple[float, float, float]]] = None
+    conformal_classificacao: Optional[Dict[str, Any]] = None
     if (X_holdout is not None and rotulos_holdout is not None
             and should_generate(cfg, "holdout")):
         rot_ho: np.ndarray = rotulos_holdout
@@ -2504,6 +2508,24 @@ def executar(cfg: Config):
                     n_boot=cfg.n_bootstrap_bca, alpha=0.05,
                     seed=cfg.seed + 1, groups=_mae_id_holdout)
                 bca_holdout[nome] = (lo, hi, obs)
+            # Conjunto de predicao conforme p/ classificacao (fechamento do
+            # Grupo 2 -- analogo classificatorio do T1 de regressao):
+            # mesmo softmax-like clip+normalize de `predicao.predict_
+            # samples`, calibrado no HOLDOUT (nunca visto pelo ajuste de
+            # `pls_final`, exatamente o requisito de split-conformal). Sem
+            # `_mae_id_holdout`, cada espectro do holdout conta como
+            # amostra independente -- so' correto se nao houver replicas
+            # (mesmo aviso de `conformal_margin_regression`/
+            # `ConformalOneClass`).
+            _Yho_clip = np.clip(np.asarray(Y_holdout_hat, dtype=float), 0.0, 1.0)
+            _Yho_tot = _Yho_clip.sum(axis=1, keepdims=True)
+            _Yho_tot[_Yho_tot < 1e-12] = 1.0
+            Y_norm_holdout = _Yho_clip / _Yho_tot
+            conformal_classificacao = conformal_margin_classification(
+                rot_ho, Y_norm_holdout, lb.classes_,
+                groups=_mae_id_holdout, alpha=0.05)
+            if not conformal_classificacao["alcancavel"]:
+                log.info(f"  [AVISO] {conformal_classificacao['aviso']}")
         except Exception as e:  # noqa: BLE001 -- avaliacao externa opcional;
             # erro impresso, metricas_holdout fica None e some do resumo
             # (nunca um valor inventado); metricas de CV (resultado central)
@@ -2641,6 +2663,19 @@ def executar(cfg: Config):
         if bca_holdout is not None:
             resumo["BCa Holdout Accuracy"] = _ci_str(bca_holdout.get("accuracy"))
             resumo["BCa Holdout Bal.acc"]  = _ci_str(bca_holdout.get("balanced_accuracy"))
+        if conformal_classificacao is not None:
+            # Nomes de chave curtos DE PROPOSITO: `save_model_summary`
+            # calcula a largura da coluna de TODO o resumo a partir da
+            # MAIOR chave presente -- uma chave longa aqui alargaria a
+            # formatacao do arquivo inteiro (achado real desta rodada,
+            # ver test_dados_imagem.py).
+            resumo["Conformal classif. alcancavel"] = bool(
+                conformal_classificacao["alcancavel"])
+            if conformal_classificacao["alcancavel"]:
+                resumo["Conformal classif. cobertura"] = (
+                    f"{1 - conformal_classificacao['alpha_nominal']:.0%}")
+            resumo["Conformal classif. n_grupos"] = int(
+                conformal_classificacao["n_grupos"])
     # Sprint 3 — append to summary after dict already exists
     if cfg.run_ddsimca and ddsimca_res is not None:
         resumo["DD-SIMCA n_components"]    = int(cfg.ddsimca_n_components)
@@ -2745,9 +2780,18 @@ def executar(cfg: Config):
         # Guarda: ~1.2 GB pico (SVM kernel matrix + OOF proba)
         if _verificar_ram(1.2, "Auto-Benchmark"):
             try:
+                # Explicabilidade fora do treino (Grupo 2): quando o
+                # holdout existe, SHAP explica ELE (nunca visto no ajuste
+                # das arvores) em vez de uma subamostra do proprio treino
+                # -- ver docstring de avaliacao_modelos.fig_shap_benchmark.
+                _y_holdout_int = (
+                    np.argmax(lb.transform(rotulos_holdout), axis=1)
+                    if X_holdout is not None and rotulos_holdout is not None
+                    else None)
                 bench_df = benchmark_classifiers(
                     X_raw, y_int, grupos_cv, lb, n_opt, cfg, pasta,
-                    wavenumbers=wavenumbers)
+                    wavenumbers=wavenumbers,
+                    X_holdout_raw=X_holdout, y_holdout_int=_y_holdout_int)
                 log.info(bench_df.to_string(index=False))
             except Exception as _e_bench:  # noqa: BLE001 -- modulo opcional
                 # (comparacao com outros classificadores); erro impresso,
@@ -2796,6 +2840,12 @@ def executar(cfg: Config):
             # aviso, indistinguivel de dado real no manifesto/model card.
             "dados_sinteticos": bool(cfg.mode == "sintetico"),
         }
+        # Conjunto de predicao conforme p/ classificacao (Grupo 2): so'
+        # persistido quando o holdout calibrou (pode ser None se o holdout
+        # falhou ou nao foi gerado -- predicao.predict_samples cai no
+        # comportamento antigo, argmax puro, sem esta chave).
+        if conformal_classificacao is not None:
+            pacote_modelo["conformal_classificacao"] = conformal_classificacao
         # Parametros da distancia combinada NO ESPACO PLS. Sem eles,
         # predict_samples() decidia "aceito" pela regra RETANGULAR
         # (T2<=lim E Q<=lim, alpha independente por eixo) -- a mesma ja
@@ -2933,6 +2983,21 @@ def executar(cfg: Config):
         # para detectar arquivo trocado/corrompido ANTES de executar o pickle.
         cam_manifesto = save_manifest(cam_modelo, pacote_modelo)
         log.info(f"  -> {cam_manifesto}")
+        # Exportacao portatil (Grupo 2, JSON puro sem pickle/joblib --
+        # ver model_export.py): sidecar OPCIONAL ao lado do .joblib,
+        # so' quando o preset/config do modelo e' suportado (silenciosa
+        # p/ os que nao sao ainda -- ex.: preset 'custom'/'airpls_sg_mc'
+        # -- comportamento IDENTICO ao anterior, so' sem o arquivo extra).
+        try:
+            from guaraci.model_export import save_portable_json
+            cam_portatil = cam_modelo.replace(".joblib", ".portatil.json")
+            save_portable_json(pacote_modelo, cam_portatil)
+            log.info(f"  -> {cam_portatil} (formato portatil, sem pickle)")
+        except Exception as _e_port:  # noqa: BLE001 -- conveniencia
+            # opcional; preset ainda nao suportado ou qualquer outra
+            # falha nao afeta o .joblib (resultado principal) ja salvo.
+            log.info(f"  [INFO] Exportacao portatil (JSON) nao gerada: "
+                      f"{_e_port}")
     except Exception as _e_mod:  # noqa: BLE001 -- exportacao opcional
         # (predicao em amostra nova); erro impresso, nao afeta as figuras/
         # relatorios ja gerados desta corrida.

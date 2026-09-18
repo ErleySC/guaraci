@@ -109,6 +109,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                  use_container_width=True):
         erros_pred: List[str] = []
         pkg_pred = None
+        cam_modelo_efetivo: str = ""
 
         # Load model
         try:
@@ -134,8 +135,15 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                 with open(tmp_jbl, "wb") as f:
                     f.write(upld_jbl.getvalue())
                 pkg_pred = _load_model(str(tmp_jbl), confiar=True)
+                # Caminho estavel POR SESSAO (mesmo uuid a cada novo upload
+                # dentro da mesma sessao do navegador) -- a sentinela de
+                # deriva (Bloco 13b) acumula entre predicoes repetidas na
+                # mesma sessao, mesmo padrao ja aceito por
+                # `temp_upload_path` para isolamento entre sessoes.
+                cam_modelo_efetivo = str(tmp_jbl)
             elif cam_jbl and os.path.exists(cam_jbl):
                 pkg_pred = _load_model(cam_jbl, confiar=True)
+                cam_modelo_efetivo = cam_jbl
             # NOTE: this is STRUCTURE validation only — it runs AFTER the model
             # is loaded, so it does NOT prevent RCE from a malicious pickle
             # (the code already ran during load). The real mitigation is the
@@ -225,6 +233,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                             [meta_df.reset_index(drop=True), df_res], axis=1)
                 st.session_state["pred_resultados"] = df_res
                 st.session_state["pred_resultados_cego"] = resultados_cego
+                st.session_state["pred_modelo_caminho"] = cam_modelo_efetivo
                 st.success(T("Prediction complete: {n} samples.").format(n=len(df_res)))
             except Exception as e_pred:  # noqa: BLE001 -- multi-etapa
                 # (predizer + concat de metadados); erro exibido ao usuario.
@@ -312,6 +321,47 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                     "set as a whole — a broader, less strict screen than "
                     "the PLS-DA fit above. 'Outside' flags a spectrum "
                     "unlike anything the model was calibrated on."))
+
+            # Bloco 13b: sentinela de deriva -- MESMA logica do menu do
+            # CLI (`guaraci.py`, `sentinela_deriva.hook_apos_predicao`),
+            # nunca duplicada. Fica sob este `if` (depende de
+            # AD_dentro_dominio), nao do fluxo cego abaixo.
+            cam_modelo_sent = st.session_state.get("pred_modelo_caminho")
+            if cam_modelo_sent:
+                try:
+                    import guaraci.sentinela_deriva as _sent
+                    alerta_sent = _sent.hook_apos_predicao(
+                        cam_modelo_sent, df_show)
+                    if alerta_sent is not None:
+                        _msg_sent = T("🛰 Drift sentinel (n={n}): {msg}").format(
+                            n=alerta_sent.n, msg=alerta_sent.mensagem)
+                        st.warning(_msg_sent) if alerta_sent.alerta \
+                            else st.caption(_msg_sent)
+                except Exception as _e_sent:  # noqa: BLE001 -- diagnostico
+                    # opcional; nao afeta a predicao ja exibida.
+                    st.caption(T("Drift sentinel unavailable: {e}").format(
+                        e=_e_sent))
+
+        # Conjunto de predicao conforme p/ classificacao (Grupo 2, analogo
+        # classificatorio do T1 de regressao) -- so' presente se o pacote
+        # foi salvo por uma versao do pipeline que calibrou no holdout.
+        if "classes_plausiveis" in df_show.columns:
+            cobertura_col = df_show.get("conjunto_cobertura_nominal")
+            cobertura = (cobertura_col.iloc[0]
+                         if cobertura_col is not None and len(cobertura_col) else None)
+            if cobertura is not None:
+                n_ambig = int(df_show["classes_plausiveis"].str.contains(
+                    r"\|", regex=True).sum())
+                n_vazio = int((df_show["classes_plausiveis"] == "").sum())
+                st.caption(T(
+                    "🎯 Plausible class set (conformal, {cov:.0%} coverage): "
+                    "{amb} sample(s) with more than 1 plausible class, "
+                    "{vaz} with none — see 'classes_plausiveis' column."
+                ).format(cov=float(cobertura), amb=n_ambig, vaz=n_vazio))
+            else:
+                st.caption(T(
+                    "🎯 Plausible class set: NOT VALIDATED (holdout lacked "
+                    "enough independent groups for alpha=0.05)."))
 
         # Bloco 9b -- Fluxo cego (Detectar->Identificar->Quantificar).
         # Mesmos numeros/regras do resumo do CLI (_menu_prediction), so'

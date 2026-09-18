@@ -145,7 +145,10 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
                                grupos_cv: Optional[np.ndarray],
                                lb: "LabelBinarizer",
                                n_opt: int, cfg: "Config", pasta: str,
-                               wavenumbers: Optional[np.ndarray] = None) -> pd.DataFrame:
+                               wavenumbers: Optional[np.ndarray] = None,
+                               X_holdout_raw: Optional[np.ndarray] = None,
+                               y_holdout_int: Optional[np.ndarray] = None
+                               ) -> pd.DataFrame:
     """
     Compara PLS-DA (n_opt LVs) vs SVM RBF vs Random Forest vs XGBoost
     usando a mesma CV group-aware e o mesmo pre-processamento do pipeline.
@@ -277,7 +280,9 @@ def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
     if cfg.run_shap:
         # Guard: RF multiclass (14 classes × 500 samples × n_feat) ~600 MB
         if _verificar_ram(3.0, "SHAP TreeExplainer (RF multiclasse 14 classes)"):
-            fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers)
+            fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers,
+                                X_holdout_raw=X_holdout_raw,
+                                y_holdout_int=y_holdout_int)
 
     return df_bench
 
@@ -619,10 +624,25 @@ def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
 
 def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                         n_opt: int, cfg: "Config", pasta: str,
-                        wavenumbers: Optional[np.ndarray] = None) -> None:
+                        wavenumbers: Optional[np.ndarray] = None,
+                        X_holdout_raw: Optional[np.ndarray] = None,
+                        y_holdout_int: Optional[np.ndarray] = None) -> None:
     """
     SHAP TreeExplainer para RF, GBM e XGBoost (se disponivel).
     Plota barplot horizontal dos top-20 wavenumbers por mean |SHAP|.
+
+    Explicabilidade fora do treino (Grupo 2, fechamento 2026-09-18): os
+    modelos-arvore sao sempre AJUSTADOS em `X_raw`/`y_int` (treino), mas a
+    explicacao (`shap_values`) roda em `X_holdout_raw`/`y_holdout_int`
+    quando fornecidos -- nunca amostras que o modelo ja viu no ajuste, a
+    mesma disciplina de honestidade ja aplicada ao resto do pipeline
+    (holdout externo p/ metricas, split-conformal p/ intervalo). Sem
+    holdout (`None`, retrocompativel com chamadas antigas e com
+    `frac_holdout=0`), cai no comportamento ANTERIOR -- explica uma
+    subamostra do proprio TREINO, reconhecidamente otimista (a
+    importancia pode refletir memorizacao, nao generalizacao) e agora
+    ROTULADO como tal no titulo da figura, nunca apresentado sem essa
+    ressalva.
 
     Ref: Lundberg & Lee (2017) NeurIPS — SHAP (SHapley Additive exPlanations).
     """
@@ -636,21 +656,35 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
     from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
     preproc   = build_preprocessor(cfg)
-    X_proc    = clone(preproc).fit(X_raw).transform(X_raw)
+    preproc_ajustado = clone(preproc).fit(X_raw)
+    X_proc    = preproc_ajustado.transform(X_raw)
     feat_names = ([f"{w:.0f}" for w in wavenumbers]
                   if wavenumbers is not None
                   else [f"X{i}" for i in range(X_proc.shape[1])])
 
+    if X_holdout_raw is not None and y_holdout_int is not None:
+        # Explicar fora do treino: transforma o holdout com o MESMO
+        # pre-processador ja ajustado em X_raw (nunca reajustado com o
+        # holdout -- vazaria a mesma informacao que o holdout existe para
+        # nao ver).
+        X_explicar = np.asarray(preproc_ajustado.transform(X_holdout_raw))
+        y_explicar = np.asarray(y_holdout_int)
+        origem = "holdout"
+    else:
+        X_explicar = X_proc
+        y_explicar = y_int
+        origem = "treino (subamostra, otimista)"
+
     # Memory cap: random subsample of shap_max_amostras samples for TreeExplainer
     n_max = cfg.shap_max_samples
-    if X_proc.shape[0] > n_max:
+    if X_explicar.shape[0] > n_max:
         rng_shap = np.random.default_rng(cfg.seed)
-        idx_shap = rng_shap.choice(X_proc.shape[0], n_max, replace=False)
-        X_shap = X_proc[idx_shap]
-        y_shap = y_int[idx_shap]
+        idx_shap = rng_shap.choice(X_explicar.shape[0], n_max, replace=False)
+        X_shap = X_explicar[idx_shap]
+        y_shap = y_explicar[idx_shap]
     else:
-        X_shap = X_proc
-        y_shap = y_int
+        X_shap = X_explicar
+        y_shap = y_explicar
 
     n_classes_shap = len(np.unique(y_int))
     tree_clfs: List[Tuple[str, Any]] = [
@@ -722,7 +756,7 @@ def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
                 ax.set_title(
                     f"SHAP — {nome} (top-{top_n} bandas espectrais)\n"
                     f"Unidade: cm⁻¹  |  pre-proc: {cfg.default_preprocessing}"
-                    f"  |  n={len(X_shap)}",
+                    f"  |  n={len(X_shap)}  |  avaliado em: {origem}",
                     fontsize=8.5, loc="left")
                 ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
                 tag = nome.lower().replace(" ", "_").replace(".", "").replace("/", "_")

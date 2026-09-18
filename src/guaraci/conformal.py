@@ -80,7 +80,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -91,6 +91,8 @@ __all__ = [
     "n_minimum_for_alpha",
     "conformal_threshold",
     "conformal_margin_regression",
+    "conformal_margin_classification",
+    "conformal_prediction_set",
     "ConformalOneClass",
 ]
 
@@ -220,6 +222,74 @@ def conformal_margin_regression(y_true: np.ndarray, y_pred: np.ndarray,
     resultado = conformal_threshold(scores, alpha=alpha)
     resultado["n_grupos"] = int(len(scores))
     return resultado
+
+
+def conformal_margin_classification(y_true: np.ndarray, Y_norm: np.ndarray,
+                                     classes: np.ndarray,
+                                     groups: Optional[np.ndarray] = None,
+                                     alpha: float = 0.05) -> Dict[str, Any]:
+    """Limiar conforme para CONJUNTO de classes plausiveis (classificacao
+    multiclasse) -- analogo classificatorio de `conformal_margin_regression`
+    (T1): fecha a lacuna companheira de Quantificacao, onde a classificacao
+    hoje e' argmax pontual, sem nenhum intervalo por classe.
+
+    Escore de nao-conformidade (LAC -- *least ambiguous set-valued
+    classifier*, Sadinle, Lei & Wasserman 2019, *J. Am. Stat. Assoc.*
+    114(525):223-234, DOI 10.1080/01621459.2017.1395341): para cada amostra
+    de CALIBRACAO, `1 - Y_norm[classe_verdadeira]` -- quanto menor a
+    probabilidade normalizada que o modelo atribui a' classe CERTA, maior o
+    escore de nao-conformidade. `Y_norm` e' a mesma matriz softmax-like
+    (scores PLS-DA clipados e normalizados por linha) ja calculada em
+    `predicao.predict_samples`, nunca uma `predict_proba` nova.
+
+    GROUP-AWARE por construcao, mesmo motivo de `conformal_margin_
+    regression`: replicas fisicas nao sao permutaveis entre si. Com
+    `groups`, cada grupo colapsa ao PIOR escore (maior, isto e', a replica
+    onde o modelo menos confiou na classe certa) -- o `n` que entra em
+    `conformal_threshold`/`achievable_alpha` e' o numero de GRUPOS.
+
+    O limiar resultante define o conjunto de predicao para uma amostra
+    nova: inclui a classe `c` sse `Y_norm_novo[c] >= 1 - limiar` (ver
+    `conformal_prediction_set`). Por construcao (Sadinle et al. 2019,
+    Thm. 1) a cobertura marginal do conjunto e' >= `1-alpha`; o conjunto
+    pode, em casos raros, sair vazio (nem a propria classe predita por
+    argmax atinge o limiar de confianca exigido) -- isso e' esperado do
+    metodo, nao um bug, e e' informativo por si (amostra em que nenhuma
+    classe e' plausivel com a cobertura pedida).
+
+    Returns: o mesmo dict de `conformal_threshold`, mais `"n_grupos"`.
+    """
+    y_true = np.asarray(y_true)
+    Y_norm = np.asarray(Y_norm, dtype=float)
+    classes = np.asarray(classes)
+    idx_classe = np.array(
+        [int(np.where(classes == y)[0][0]) for y in y_true])
+    scores = 1.0 - Y_norm[np.arange(len(y_true)), idx_classe]
+    if groups is not None:
+        groups = np.asarray(groups)
+        gid_unicos = np.unique(groups)
+        scores = np.array([float(scores[groups == g].max())
+                            for g in gid_unicos])
+    resultado = conformal_threshold(scores, alpha=alpha)
+    resultado["n_grupos"] = int(len(scores))
+    return resultado
+
+
+def conformal_prediction_set(Y_norm: np.ndarray, classes: np.ndarray,
+                              limiar: float) -> List[List[str]]:
+    """Conjunto de classes plausiveis por amostra, dado o limiar conforme
+    ja calibrado por `conformal_margin_classification`.
+
+    Inclui a classe `c` sse `Y_norm[:, c] >= 1 - limiar`. O CHAMADOR deve
+    checar `alcancavel` (do dict devolvido por `conformal_margin_
+    classification`) antes de chamar esta funcao -- com `limiar=nan`
+    (alpha nao alcancavel) o resultado nao teria garantia nenhuma, mesma
+    disciplina de `ConformalOneClass.predict`.
+    """
+    Y_norm = np.asarray(Y_norm, dtype=float)
+    classes = np.asarray(classes)
+    corte = 1.0 - float(limiar)
+    return [[str(c) for c in classes[row >= corte]] for row in Y_norm]
 
 
 class ConformalOneClass:

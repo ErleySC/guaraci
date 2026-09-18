@@ -114,6 +114,39 @@ def test_fig_shap_benchmark_gera_figura(pq, tmp_path):
     assert glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_shap_*.png"))
 
 
+@pytest.mark.slow
+def test_fig_shap_benchmark_com_holdout_explica_o_holdout_nao_o_treino(
+        pq, tmp_path, capsys):
+    """Explicabilidade fora do treino (Grupo 2, fechamento 2026-09-18):
+    quando `X_holdout_raw`/`y_holdout_int` sao passados, o TreeExplainer
+    tem que rodar sobre o HOLDOUT, nao sobre uma subamostra do treino --
+    confirmado pelo `n=` impresso no console (linha 'SHAP {nome} (N
+    amostras)'), que so' teria o tamanho do holdout (bem diferente do
+    treino/subamostra aqui de proposito) se o wiring estiver correto."""
+    X_treino, y_treino, _grupos, _lb = _dados_benchmark(seed=4, p=30, n_per_class=15)
+    # Holdout deliberadamente MENOR e com um tamanho que nao bate com
+    # nenhum subconjunto plausivel do treino (15*3=45 amostras) -- se o
+    # 'n=' impresso for 45 (ou shap_max_samples=100 truncando 45), a
+    # explicacao ainda estaria rodando no treino, nao no holdout.
+    X_holdout, y_holdout, _g2, _lb2 = _dados_benchmark(seed=5, p=30, n_per_class=4)
+    cfg = pq.Config(shap_max_samples=100, seed=4)
+    pasta = str(tmp_path)
+    wavenumbers = np.linspace(4000, 400, X_treino.shape[1])
+
+    pq.fig_shap_benchmark(X_treino, y_treino, n_opt=2, cfg=cfg, pasta=pasta,
+                           wavenumbers=wavenumbers,
+                           X_holdout_raw=X_holdout, y_holdout_int=y_holdout)
+
+    saida = capsys.readouterr().out
+    assert f"({len(X_holdout)} amostras)" in saida, (
+        f"esperava SHAP explicando {len(X_holdout)} amostras (o holdout), "
+        f"saida real:\n{saida}")
+    assert f"({len(X_treino)} amostras)" not in saida
+
+    figuras = glob.glob(os.path.join(pasta, pq.NOME_GRAFICOS, "fig_shap_*.png"))
+    assert figuras
+
+
 # ── Auto-Benchmark de regressao (Ridge/Lasso/EN/SVR/RF vs PLS-R) ───────────
 
 def _dados_regressao_multi_especie(seed=0, n_por_especie=24, p=30,

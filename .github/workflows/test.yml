@@ -103,7 +103,9 @@ jobs:
             src/guaraci/eem_multiway.py \
             src/guaraci/asca.py \
             src/guaraci/epo_glsw.py \
-            src/guaraci/deriva_qc.py
+            src/guaraci/deriva_qc.py \
+            src/guaraci/fusao_multibloco.py \
+            src/guaraci/model_export.py
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console

@@ -3377,24 +3377,53 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
         # sob este if, nao sob o do fluxo cego abaixo.
         try:
             import guaraci.sentinela_deriva as _sent
-            cam_sentinela = cam_modelo + ".sentinela.json"
-            estado_sent = (_sent.load_state(cam_sentinela)
-                           if os.path.isfile(cam_sentinela)
-                           else _sent.SentinelState(alpha_nominal=0.05))
-            _sent.update_with_predictions(estado_sent, df_res)
-            _sent.save_state(estado_sent, cam_sentinela)
-            alerta_sent = _sent.check_drift(estado_sent)
-            cor_sent = PR if alerta_sent.alerta else PM
-            sent_txt = (
-                f"  [{cor_sent}]🛰 Sentinela de deriva (n={alerta_sent.n}):"
-                f"[/{cor_sent}] {escape(alerta_sent.mensagem)}"
-            )
-            resumo_txt += "\n" + sent_txt
+            alerta_sent = _sent.hook_apos_predicao(cam_modelo, df_res)
+            if alerta_sent is not None:
+                cor_sent = PR if alerta_sent.alerta else PM
+                sent_txt = (
+                    f"  [{cor_sent}]🛰 Sentinela de deriva (n={alerta_sent.n}):"
+                    f"[/{cor_sent}] {escape(alerta_sent.mensagem)}"
+                )
+                resumo_txt += "\n" + sent_txt
         except Exception as _e_sent:  # noqa: BLE001 -- diagnostico
             # opcional; erro impresso, nao afeta a predicao ja gravada.
             resumo_txt += (
                 f"\n  [{PM}]{'Sentinela de deriva indisponivel' if is_pt else 'Drift sentinel unavailable'}"
                 f": {escape(str(_e_sent))}[/{PM}]")
+
+    # Conjunto de predicao conforme p/ classificacao (Grupo 2, analogo
+    # classificatorio do T1 de regressao) -- so' aparece se o pacote foi
+    # salvo por uma versao do pipeline que calibrou no holdout.
+    if "classes_plausiveis" in df_res.columns:
+        _cobertura = df_res["conjunto_cobertura_nominal"].iloc[0] \
+            if "conjunto_cobertura_nominal" in df_res.columns else None
+        if _cobertura is not None:
+            n_ambiguo = int((df_res["classes_plausiveis"].str.contains(
+                r"\|", regex=True)).sum())
+            n_vazio = int((df_res["classes_plausiveis"] == "").sum())
+            conj_txt = (
+                f"  [{PG}]🎯 Conjunto de classes plausiveis "
+                f"(conforme, {_cobertura:.0%}):[/{PG}] {n_ambiguo} "
+                f"amostra(s) com mais de 1 classe plausivel, {n_vazio} "
+                "com nenhuma (nenhuma classe atinge a cobertura pedida) "
+                "-- ver coluna 'classes_plausiveis' no CSV"
+                if is_pt else
+                f"  [{PG}]🎯 Plausible class set "
+                f"(conformal, {_cobertura:.0%} coverage):[/{PG}] {n_ambiguo} "
+                f"sample(s) with more than 1 plausible class, {n_vazio} "
+                "with none (no class reaches the requested coverage) -- "
+                "see 'classes_plausiveis' column in the CSV"
+            )
+        else:
+            conj_txt = (
+                "  [{c}]🎯 Conjunto de classes plausiveis: NAO_VALIDADO "
+                "(holdout sem grupos independentes suficientes p/ "
+                "alpha=0.05)[/{c}]".format(c=PM) if is_pt else
+                "  [{c}]🎯 Plausible class set: NOT VALIDATED "
+                "(holdout lacked enough independent groups for "
+                "alpha=0.05)[/{c}]".format(c=PM)
+            )
+        resumo_txt += "\n" + conj_txt
 
     # Bloco 9b: fluxo cego completo (Detectar -> Identificar -> Quantificar)
     # -- so' presente quando o pacote .joblib traz o ensemble de

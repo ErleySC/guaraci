@@ -25,6 +25,7 @@ from guaraci.chemometric_stats import (
     combined_distance,
     faixa_decisao as _faixa_decisao,
 )
+from guaraci.conformal import conformal_prediction_set
 from guaraci.config import __version__ as _guaraci_version
 from guaraci.identificacao import (
     CoverageStatus,
@@ -500,6 +501,25 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
         resultado["AD_f"] = np.round(ad["f"], 3)
         resultado["AD_f_crit"] = round(float(ad["f_crit"]), 3)
         resultado["AD_dentro_dominio"] = ad["dentro_dominio"]
+
+    # Conjunto de predicao conforme p/ classificacao (Grupo 2, analogo
+    # classificatorio do T1 de regressao -- ver conformal.conformal_margin_
+    # classification): so' aparece se o pacote foi salvo por uma versao do
+    # pipeline que calibrou no holdout (retrocompativel, mesmo padrao das
+    # colunas AD_* acima). "NAO_VALIDADO" (nunca um conjunto fabricado)
+    # quando o holdout nao tinha grupos suficientes p/ alpha=0.05 -- mesma
+    # disciplina de `resultados_io.py` p/ o intervalo de regressao.
+    _conf_cls = pkg.get("conformal_classificacao")
+    if _conf_cls is not None:
+        if _conf_cls.get("alcancavel"):
+            conjuntos = conformal_prediction_set(
+                Y_norm, np.asarray(classes), _conf_cls["limiar"])
+            resultado["classes_plausiveis"] = ["|".join(c) for c in conjuntos]
+            resultado["conjunto_cobertura_nominal"] = round(
+                1.0 - float(_conf_cls["alpha_nominal"]), 4)
+        else:
+            resultado["classes_plausiveis"] = "NAO_VALIDADO"
+            resultado["conjunto_cobertura_nominal"] = None
 
     return resultado
 

@@ -12,7 +12,9 @@ import pytest
 from guaraci.conformal import (
     ConformalOneClass,
     achievable_alpha,
+    conformal_margin_classification,
     conformal_margin_regression,
+    conformal_prediction_set,
     conformal_threshold,
     n_minimum_for_alpha,
 )
@@ -244,3 +246,107 @@ def test_margem_regressao_grupos_e_sem_grupos_dao_n_diferente():
     com_grupo = conformal_margin_regression(y_true, y_pred, groups=grupos, alpha=0.3)
     assert sem_grupo["n_grupos"] == 9
     assert com_grupo["n_grupos"] == 3
+
+
+# ── conformal_margin_classification / conformal_prediction_set ─────────
+# (conjunto de predicao para classificacao multiclasse, fechamento do
+# Grupo 2 -- analogo classificatorio do T1 de regressao acima)
+
+def _softmax_por_linha(logits: np.ndarray) -> np.ndarray:
+    ex = np.exp(logits - logits.max(axis=1, keepdims=True))
+    return ex / ex.sum(axis=1, keepdims=True)
+
+
+def _gerar_dataset_classificacao(rng, n, classes, sinal=2.5, ruido=1.0):
+    """Y_norm sintetico, softmax-like (mesma forma da saida real de
+    `predicao.predict_samples`): cada linha soma 1, a classe verdadeira
+    recebe em media mais massa, mas com ruido -- nao e' um oraculo
+    perfeito, para que a cobertura empirica seja um teste nao-trivial."""
+    y_idx = rng.integers(0, len(classes), size=n)
+    logits = rng.normal(scale=ruido, size=(n, len(classes)))
+    logits[np.arange(n), y_idx] += sinal
+    Y_norm = _softmax_por_linha(logits)
+    return classes[y_idx], Y_norm
+
+
+def test_margem_classificacao_conjunto_cobre_a_classe_verdadeira():
+    """Mesma contra-prova de cobertura empirica do T1 (regressao), agora
+    para o CONJUNTO de classes plausiveis: calibra num lote, mede a fracao
+    de amostras NOVAS cuja classe verdadeira cai dentro do conjunto
+    devolvido -- tem que bater com >= 1-alpha (LAC, Sadinle, Lei &
+    Wasserman 2019)."""
+    rng = np.random.default_rng(11)
+    classes = np.array(["A", "B", "C"])
+    y_cal, Y_cal = _gerar_dataset_classificacao(rng, 300, classes)
+    r = conformal_margin_classification(y_cal, Y_cal, classes, alpha=0.10)
+    assert r["alcancavel"] is True
+
+    y_novo, Y_novo = _gerar_dataset_classificacao(rng, 2000, classes)
+    conjuntos = conformal_prediction_set(Y_novo, classes, r["limiar"])
+    cobertura = float(np.mean(
+        [y in s for y, s in zip(y_novo, conjuntos)]))
+    assert cobertura >= 0.85, f"cobertura {cobertura:.3f} abaixo do nominal 0.90"
+
+
+def test_margem_classificacao_recusa_com_poucos_grupos():
+    """Mesma disciplina de `conformal_margin_regression`: <19 grupos e'
+    insuficiente p/ alpha=0.05 -- NAO fabrica um conjunto sem garantia."""
+    classes = np.array(["A", "B"])
+    y_true = np.array(["A", "B", "A", "B", "A"])
+    Y_norm = np.array([[0.9, 0.1], [0.1, 0.9], [0.9, 0.1],
+                        [0.1, 0.9], [0.9, 0.1]])
+    grupos = np.array(["g1", "g2", "g3", "g4", "g5"])
+    r = conformal_margin_classification(
+        y_true, Y_norm, classes, groups=grupos, alpha=0.05)
+    assert r["alcancavel"] is False
+    assert np.isnan(r["limiar"])
+    assert r["n_grupos"] == 5
+
+
+def test_margem_classificacao_colapsa_por_grupo_com_pior_caso():
+    """Replicas do mesmo mae_id colapsam ao PIOR escore (menor confianca na
+    classe certa) -- uma replica ruim nao pode ficar escondida atras de
+    replicas boas do mesmo grupo fisico."""
+    classes = np.array(["A", "B"])
+    y_true = np.array(["A", "A", "A"])
+    Y_norm = np.array([
+        [0.9, 0.1],
+        [0.9, 0.1],
+        [0.2, 0.8],   # replica ruim: so' 0.2 de confianca na classe certa
+    ])
+    grupos = np.array(["g1", "g1", "g1"])
+    r = conformal_margin_classification(
+        y_true, Y_norm, classes, groups=grupos, alpha=0.5)
+    assert r["n_grupos"] == 1
+    assert r["limiar"] == pytest.approx(0.8)   # 1 - 0.2, o pior caso
+
+
+def test_margem_classificacao_grupos_e_sem_grupos_dao_n_diferente():
+    classes = np.array(["A", "B"])
+    y_true = np.tile(["A", "B"], 3)
+    Y_norm = np.tile([[0.9, 0.1], [0.1, 0.9]], (3, 1))
+    grupos = np.repeat(["g1", "g2", "g3"], 2)
+    sem_grupo = conformal_margin_classification(
+        y_true, Y_norm, classes, alpha=0.3)
+    com_grupo = conformal_margin_classification(
+        y_true, Y_norm, classes, groups=grupos, alpha=0.3)
+    assert sem_grupo["n_grupos"] == 6
+    assert com_grupo["n_grupos"] == 3
+
+
+def test_conjunto_predicao_inclui_classes_acima_do_corte():
+    classes = np.array(["A", "B", "C"])
+    Y_norm = np.array([[0.7, 0.25, 0.05], [0.4, 0.35, 0.25]])
+    conjuntos = conformal_prediction_set(Y_norm, classes, limiar=0.4)
+    assert conjuntos[0] == ["A"]        # so' A >= 1-0.4=0.6
+    assert conjuntos[1] == []           # nenhuma classe atinge 0.6
+
+
+def test_conjunto_predicao_pode_incluir_mais_de_uma_classe():
+    """Ambiguidade real (2 classes proximas) produz um conjunto com mais
+    de 1 elemento -- e' o proprio ponto do metodo: dizer "nao sei entre A
+    e B" em vez de forcar um argmax que a confianca nao sustenta."""
+    classes = np.array(["A", "B", "C"])
+    Y_norm = np.array([[0.5, 0.45, 0.05]])
+    conjuntos = conformal_prediction_set(Y_norm, classes, limiar=0.6)
+    assert set(conjuntos[0]) == {"A", "B"}

@@ -126,6 +126,81 @@ def test_predizer_amostras_espectro_de_treino_e_aceito(modelo_e_dados):
     assert isinstance(bool(df["aceito"].iloc[0]), bool)  # nao lanca, e' bool valido
 
 
+# ── Conjunto de predicao conforme para classificacao (Grupo 2) ─────────────
+# Analogo classificatorio do T1 de regressao (ver secao "conformal_margem"
+# abaixo) -- mesma disciplina: NAO_VALIDADO quando o holdout nao tem grupos
+# suficientes, conjunto real quando tem.
+
+def test_pacote_real_tem_conformal_classificacao_quando_holdout_roda(modelo_e_dados):
+    """`modelo_e_dados` roda com frac_holdout=0.2 (default) -- o pipeline
+    tem que ter calibrado (ou tentado calibrar, mesmo que nao-alcancavel)
+    o conjunto conforme de classificacao no holdout."""
+    pkg, _X, _wn = modelo_e_dados
+    assert "conformal_classificacao" in pkg
+    info = pkg["conformal_classificacao"]
+    assert {"alcancavel", "limiar", "n_calibracao", "alpha_nominal",
+            "n_grupos"}.issubset(info.keys())
+
+
+def test_predizer_amostras_inclui_classes_plausiveis_quando_alcancavel(
+        modelo_e_dados):
+    """limiar=1.0 -> corte=1-1.0=0.0 -- toda classe tem Y_norm>=0, entao o
+    conjunto plausivel de CADA amostra tem que conter TODAS as classes de
+    treino. Escolha deliberada de limiar extremo para o teste ser
+    deterministico sem depender dos scores reais do modelo."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = dict(pkg)
+    pkg2["conformal_classificacao"] = {
+        "alcancavel": True, "limiar": 1.0, "alpha_nominal": 0.05,
+        "n_calibracao": 25, "n_grupos": 25}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert "classes_plausiveis" in df.columns
+    assert "conjunto_cobertura_nominal" in df.columns
+    classes_treino = set(pkg["label_binarizer"].classes_)
+    for txt in df["classes_plausiveis"]:
+        conjunto = set(txt.split("|")) if txt else set()
+        assert conjunto == classes_treino
+    assert np.allclose(df["conjunto_cobertura_nominal"].astype(float), 0.95)
+
+
+def test_predizer_amostras_classes_plausiveis_pode_ficar_vazio(modelo_e_dados):
+    """limiar=-1.0 -> corte=1-(-1)=2.0 -- nenhuma classe tem Y_norm>=2.0
+    (Y_norm e' sempre <=1), entao o conjunto fica vazio em toda amostra.
+    Comportamento esperado do LAC (Sadinle, Lei & Wasserman 2019), nao um
+    bug -- ver docstring de `conformal.conformal_margin_classification`."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = dict(pkg)
+    pkg2["conformal_classificacao"] = {
+        "alcancavel": True, "limiar": -1.0, "alpha_nominal": 0.05,
+        "n_calibracao": 25, "n_grupos": 25}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert (df["classes_plausiveis"] == "").all()
+
+
+def test_predizer_amostras_classes_plausiveis_nao_alcancavel_e_nao_validado(
+        modelo_e_dados):
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = dict(pkg)
+    pkg2["conformal_classificacao"] = {
+        "alcancavel": False, "limiar": float("nan"), "alpha_nominal": 0.05,
+        "n_calibracao": 5, "n_grupos": 5, "aviso": "n insuficiente"}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert (df["classes_plausiveis"] == "NAO_VALIDADO").all()
+    assert df["conjunto_cobertura_nominal"].isna().all()
+
+
+def test_predizer_amostras_pacote_sem_conformal_classificacao_nao_gera_coluna(
+        modelo_e_dados):
+    """Retrocompatibilidade: pacote salvo ANTES desta rodada (ou com
+    holdout desativado, `frac_holdout=0`) nao tem a chave -- predicao
+    continua funcionando normalmente, so' sem a coluna nova."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = {k: v for k, v in pkg.items() if k != "conformal_classificacao"}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert "classes_plausiveis" not in df.columns
+    assert "classe_pred" in df.columns
+
+
 def test_carregar_csv_predicao_detecta_colunas_numericas(tmp_path, modelo_e_dados):
     _pkg, X_novos, wn = modelo_e_dados
     df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])

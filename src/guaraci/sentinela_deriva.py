@@ -37,6 +37,7 @@ USO TIPICO
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -49,6 +50,7 @@ __all__ = [
     "check_drift",
     "save_state",
     "load_state",
+    "hook_apos_predicao",
 ]
 
 
@@ -200,3 +202,32 @@ def load_state(caminho: str) -> SentinelState:
         alpha_nominal=float(dados["alpha_nominal"]),
         janela=dados.get("janela"),
         historico=[bool(v) for v in dados.get("historico", [])])
+
+
+def hook_apos_predicao(caminho_modelo: str, df_predicoes: Any
+                        ) -> Optional[DriftAlert]:
+    """Orquestra a sentinela junto de UMA rodada de predicao -- carrega o
+    estado persistido (ou cria um novo), registra o lote, salva de volta,
+    e devolve o alerta de deriva. MESMA logica para o menu do CLI
+    (`guaraci.py`, Bloco 13b) e a aba do app web (`app_tabs/predicao.py`)
+    -- extraida para as duas superficies chamarem UMA funcao em vez de
+    duplicar o fluxo carregar->atualizar->salvar->checar (mesmo padrao ja'
+    usado por `app_logic.log_progress` para a barra de progresso).
+
+    "Em linha" aqui significa execucao POR LOTE de predicao (nao um
+    servidor continuo -- ver `docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` §2.2):
+    cada chamada desta funcao e' 1 lote processado, o estado acumula entre
+    chamadas via o arquivo `<caminho_modelo>.sentinela.json`.
+
+    Devolve `None` (sem lancar) quando `df_predicoes` nao tem a coluna
+    `AD_dentro_dominio` -- pacote de modelo antigo, sem Dominio de
+    Aplicabilidade, simplesmente nao alimenta a sentinela.
+    """
+    if "AD_dentro_dominio" not in getattr(df_predicoes, "columns", []):
+        return None
+    caminho_estado = str(caminho_modelo) + ".sentinela.json"
+    estado = (load_state(caminho_estado) if os.path.isfile(caminho_estado)
+              else SentinelState(alpha_nominal=0.05))
+    update_with_predictions(estado, df_predicoes)
+    save_state(estado, caminho_estado)
+    return check_drift(estado)
