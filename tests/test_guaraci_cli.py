@@ -1149,3 +1149,116 @@ def test_main_despacha_comando_run(guaraci_mod, tmp_path, monkeypatch):
                          lambda c: chamado.setdefault("caminho", c))
     guaraci_mod.main(["run", str(caminho)])
     assert chamado["caminho"] == str(caminho)
+
+
+# ── `guaraci run` maturidade real (Grupo 2, fechamento 2026-09-18) ────────
+# Os 8 testes acima cobrem contrato de codigo de saida/despacho, mas TODOS
+# mocam pq.executar -- nenhum exercita o pipeline cientifico real de ponta
+# a ponta atraves do comando nao-interativo (achado da auditoria do Grupo
+# 2, docs/MAPA_COMPLETUDE_V1.md: "recente, pouco testado em uso real").
+# Os 3 testes abaixo rodam pq.executar() DE VERDADE (dado sintetico,
+# parametros pequenos p/ velocidade) atraves de `main(["run", ...])`/
+# `_comando_run`, sem nenhum mock cientifico.
+
+def _config_sintetico_rapido(tmp_path, nome_saida: str, **overrides):
+    import guaraci.guaraci as guaraci_mod
+    base = dict(
+        mode="sintetico", n_per_class=8, n_synthetic_points=40,
+        wn_min=400.0, wn_max=2001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=3,
+        n_permutations_wold=3, n_bootstrap_vip=2, n_bootstrap_bca=5,
+        n_monte_carlo=2, max_lvs=4,
+        output_root_folder=str(tmp_path / nome_saida),
+        run_benchmark=False, run_monte_carlo=False, run_shap=False,
+        run_wold=False, run_cv_anova=False, run_opls=False,
+        executar_etapa4=False, show_plots=False,
+    )
+    base.update(overrides)
+    return guaraci_mod.Config(**base)
+
+
+def test_comando_run_executa_pipeline_real_e_produz_modelo_usavel(
+        guaraci_mod, tmp_path, capsys):
+    """Ponta a ponta real: escreve config.yaml, roda `guaraci run` via
+    `main` (o mesmo ponto de entrada que um script externo chamaria),
+    confirma saida de sucesso E que o modelo produzido e' de fato
+    carregavel/utilizavel para predicao -- nao so' 'terminou sem
+    excecao'."""
+    import os
+    import joblib
+    import numpy as np
+    import guaraci.predicao as pr
+    from conftest import achar_pastas_run
+
+    cfg = _config_sintetico_rapido(tmp_path, "saida_run1", frac_holdout=0.2)
+    caminho_cfg = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(cfg, str(caminho_cfg))
+
+    guaraci_mod.main(["run", str(caminho_cfg)])   # nao deve lancar SystemExit
+
+    assert "[GUARACI] Concluido." in capsys.readouterr().out
+
+    runs = achar_pastas_run(cfg.output_root_folder)
+    assert runs, "guaraci run nao produziu pasta de saida"
+    cam_modelo = os.path.join(
+        runs[0], guaraci_mod.pq.NOME_MODELOS, "modelo_plsda.joblib")
+    assert os.path.isfile(cam_modelo), (
+        "guaraci run nao produziu modelo_plsda.joblib")
+
+    pkg = joblib.load(cam_modelo)
+    pr.validate_model_package(pkg)   # modelo de verdade, utilizavel
+
+    wn = np.asarray(pkg["wavenumbers"], dtype=float)
+    rng = np.random.default_rng(0)
+    X_novos = rng.normal(loc=0.5, scale=0.05, size=(3, len(wn)))
+    df = pr.predict_samples(pkg, X_novos, wn)
+    assert "classe_pred" in df.columns and len(df) == 3
+
+
+def test_comando_run_real_nunca_pede_input_nem_abre_explorador(
+        guaraci_mod, tmp_path, monkeypatch):
+    """MESMA garantia de `test_comando_run_sucesso_nao_abre_explorador_
+    nem_pede_input` acima, agora com o pipeline CIENTIFICO real por baixo
+    (nao mocado) -- confirma que nenhum caminho de codigo dentro do
+    proprio `pq.executar()` tenta abrir o explorador ou pedir input,
+    nao so' o comando `run` isoladamente."""
+    cfg = _config_sintetico_rapido(tmp_path, "saida_run2", frac_holdout=0.0)
+    caminho_cfg = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(cfg, str(caminho_cfg))
+
+    monkeypatch.setattr(
+        guaraci_mod.os, "startfile",
+        lambda *_a, **_kw: (_ for _ in ()).throw(
+            AssertionError("run real nao pode abrir o explorador")),
+        raising=False)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda *_a, **_kw: (_ for _ in ()).throw(
+            AssertionError("run real nao pode pedir input")))
+
+    guaraci_mod._comando_run(str(caminho_cfg))   # nao deve lancar nem travar
+
+
+def test_comando_run_holdout_zero_nao_gera_conformal_classificacao(
+        guaraci_mod, tmp_path):
+    """Regressao dedicada do wiring do Grupo 2 (conjunto conforme de
+    classificacao, `conformal.py`/`pipeline.py`) atraves do fluxo REAL de
+    usuario (`guaraci run`, nao um pkg construido a mao em
+    test_predicao.py): com holdout desativado no config.yaml, o modelo
+    nao pode ter a chave 'conformal_classificacao' -- nunca fabricar
+    calibracao sem holdout nenhum."""
+    import os
+    import joblib
+    from conftest import achar_pastas_run
+
+    cfg = _config_sintetico_rapido(tmp_path, "saida_run3", frac_holdout=0.0)
+    caminho_cfg = tmp_path / "config.yaml"
+    guaraci_mod.pq.save_config(cfg, str(caminho_cfg))
+    guaraci_mod._comando_run(str(caminho_cfg))
+
+    runs = achar_pastas_run(cfg.output_root_folder)
+    assert runs
+    cam_modelo = os.path.join(
+        runs[0], guaraci_mod.pq.NOME_MODELOS, "modelo_plsda.joblib")
+    pkg = joblib.load(cam_modelo)
+    assert "conformal_classificacao" not in pkg
