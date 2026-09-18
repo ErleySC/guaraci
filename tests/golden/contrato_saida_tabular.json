@@ -134,7 +134,9 @@
     "AD_Q",
     "AD_f",
     "AD_f_crit",
-    "AD_dentro_dominio"
+    "AD_dentro_dominio",
+    "classes_plausiveis",
+    "conjunto_cobertura_nominal"
   ],
   "selecao_amostras_csv": [
     "canal_0",

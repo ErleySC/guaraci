@@ -631,7 +631,7 @@
         ]
       },
       "benchmark_classifiers": {
-        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', grupos_cv: 'Optional[np.ndarray]', lb: \"'LabelBinarizer'\", n_opt: 'int', cfg: \"'Config'\", pasta: 'str', wavenumbers: 'Optional[np.ndarray]' = None) -> 'pd.DataFrame'",
+        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', grupos_cv: 'Optional[np.ndarray]', lb: \"'LabelBinarizer'\", n_opt: 'int', cfg: \"'Config'\", pasta: 'str', wavenumbers: 'Optional[np.ndarray]' = None, X_holdout_raw: 'Optional[np.ndarray]' = None, y_holdout_int: 'Optional[np.ndarray]' = None) -> 'pd.DataFrame'",
         "forma": "funcao"
       },
       "benchmark_regression_by_species": {
@@ -655,7 +655,7 @@
         "forma": "funcao"
       },
       "fig_shap_benchmark": {
-        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', n_opt: 'int', cfg: \"'Config'\", pasta: 'str', wavenumbers: 'Optional[np.ndarray]' = None) -> 'None'",
+        "assinatura": "(X_raw: 'np.ndarray', y_int: 'np.ndarray', n_opt: 'int', cfg: \"'Config'\", pasta: 'str', wavenumbers: 'Optional[np.ndarray]' = None, X_holdout_raw: 'Optional[np.ndarray]' = None, y_holdout_int: 'Optional[np.ndarray]' = None) -> 'None'",
         "forma": "funcao"
       },
       "interpolar_det": {
@@ -1447,8 +1447,16 @@
         "assinatura": "(n: 'int') -> 'float'",
         "forma": "funcao"
       },
+      "conformal_margin_classification": {
+        "assinatura": "(y_true: 'np.ndarray', Y_norm: 'np.ndarray', classes: 'np.ndarray', groups: 'Optional[np.ndarray]' = None, alpha: 'float' = 0.05) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
       "conformal_margin_regression": {
         "assinatura": "(y_true: 'np.ndarray', y_pred: 'np.ndarray', groups: 'Optional[np.ndarray]' = None, alpha: 'float' = 0.05) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "conformal_prediction_set": {
+        "assinatura": "(Y_norm: 'np.ndarray', classes: 'np.ndarray', limiar: 'float') -> 'List[List[str]]'",
         "forma": "funcao"
       },
       "conformal_threshold": {
@@ -1835,6 +1843,59 @@
       },
       "spread_labels": {
         "assinatura": "(pos: 'np.ndarray', sep_x: 'float', sep_y: 'float') -> 'np.ndarray'",
+        "forma": "funcao"
+      }
+    },
+    "fusao_multibloco": {
+      "BlockMismatchError": {
+        "bases": [
+          "ValueError"
+        ],
+        "forma": "classe",
+        "init": null,
+        "metodos_publicos": []
+      },
+      "RegressionFitResult": {
+        "campos": [
+          {
+            "nome": "n_lv",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "rmsep",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "r2cal",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "r2val",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "n_cal",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "n_val",
+            "tem_default": false,
+            "tipo": "int"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "build_multiblock_dataset": {
+        "assinatura": "(blocos: 'Dict[str, np.ndarray]', cfg_por_bloco: 'Optional[Dict[str, Config]]' = None, indices_ajuste: 'Optional[np.ndarray]' = None) -> 'Tuple[np.ndarray, Dict[str, Any], Dict[str, Tuple[int, int]]]'",
+        "forma": "funcao"
+      },
+      "fit_evaluate_pls_regression": {
+        "assinatura": "(X_cal: 'np.ndarray', y_cal: 'np.ndarray', X_val: 'np.ndarray', y_val: 'np.ndarray', max_lvs: 'int' = 15, n_splits_cv: 'int' = 5, seed: 'int' = 0) -> 'RegressionFitResult'",
         "forma": "funcao"
       }
     },
@@ -3305,6 +3366,32 @@
         "forma": "funcao"
       }
     },
+    "model_export": {
+      "UnsupportedModelError": {
+        "bases": [
+          "ValueError"
+        ],
+        "forma": "classe",
+        "init": null,
+        "metodos_publicos": []
+      },
+      "export_portable_json": {
+        "assinatura": "(pkg: 'Dict[str, Any]') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "load_portable_json": {
+        "assinatura": "(caminho: 'str') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "predict_portable": {
+        "assinatura": "(portable: 'Dict[str, Any]', X_new_raw: 'np.ndarray', wn_new: 'np.ndarray') -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "save_portable_json": {
+        "assinatura": "(pkg: 'Dict[str, Any]', caminho: 'str') -> 'str'",
+        "forma": "funcao"
+      }
+    },
     "model_registry": {
       "Construtor": {
         "forma": "constante",
@@ -4410,6 +4497,10 @@
       },
       "check_drift": {
         "assinatura": "(estado: 'SentinelState', significancia: 'float' = 0.05, n_minimo: 'Optional[int]' = None) -> 'DriftAlert'",
+        "forma": "funcao"
+      },
+      "hook_apos_predicao": {
+        "assinatura": "(caminho_modelo: 'str', df_predicoes: 'Any') -> 'Optional[DriftAlert]'",
         "forma": "funcao"
       },
       "load_state": {

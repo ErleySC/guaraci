@@ -133,6 +133,26 @@ REGISTRY: List[TechniqueEntry] = [
             "validacao (<19), alpha=0.05 nao e' alcancavel e o intervalo "
             "sai NAO_VALIDADO em vez de um numero fabricado."),
     ),
+    TechniqueEntry(
+        id="conformal_classificacao",
+        categoria="classificacao_deteccao",
+        nome="Conjunto de predicao conformal (classificacao)",
+        referencia="guaraci.conformal.conformal_margin_classification",
+        quando_usar=(
+            "Da' um CONJUNTO de classes plausiveis (nao so' o argmax "
+            "pontual) para classificacao multiclasse, com garantia de "
+            "cobertura calibravel (alpha) -- LAC (Sadinle, Lei & "
+            "Wasserman 2019). Calibrado no holdout externo, group-aware "
+            "por construcao (mesmo motivo do conformal de regressao/"
+            "one-class)."),
+        limitacao=(
+            "Mesmo limite duro dos outros gates conformal: alpha minimo "
+            "garantivel e' 1/(n_grupos+1) -- com poucos grupos de "
+            "holdout (<19), alpha=0.05 nao e' alcancavel e o conjunto "
+            "sai NAO_VALIDADO em vez de um conjunto fabricado. O "
+            "conjunto pode sair VAZIO (nem a classe mais provavel "
+            "atinge a cobertura pedida) -- esperado do metodo, nao bug."),
+    ),
     # ---- Identificacao de conjunto aberto (Detectar->Identificar->Quantificar) --
     TechniqueEntry(
         id="identificacao_conjunto_aberto",
@@ -352,9 +372,10 @@ MODULOS_COBERTURA_TOTAL = {
                      "ddsimca_pcv_sensitivity"},
     },
     "guaraci.conformal": {
-        "incluir": {"ConformalOneClass", "conformal_margin_regression"},
+        "incluir": {"ConformalOneClass", "conformal_margin_regression",
+                    "conformal_margin_classification"},
         "excecoes": {"achievable_alpha", "n_minimum_for_alpha",
-                     "conformal_threshold"},
+                     "conformal_threshold", "conformal_prediction_set"},
     },
     "guaraci.transferencia_calibracao": {
         "incluir": {"direct_standardization", "piecewise_direct_standardization"},
