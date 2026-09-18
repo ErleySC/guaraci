@@ -231,6 +231,10 @@ jobs:
         run: |
           export GUARACI_DATASETS_DIR="$HOME/datasets_publicos"
           pytest tests/test_validacao_publica.py -v
+      - name: Rodar validacao do MSPC (Camada 2 -- deriva real de instrumento)
+        run: |
+          export GUARACI_DATASETS_DIR="$HOME/datasets_publicos"
+          pytest tests/test_mspc_validacao_corn.py -v
 
   # ── Validacao contra dataset PUBLICO Mendeley (oleos comestiveis) ─────────
   # Matriz de 3 SOs (Passo 82): download em Python (script versionado, nao
