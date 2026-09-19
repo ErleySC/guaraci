@@ -574,3 +574,153 @@ def test_predict_blind_inclui_alpha_da_quantificacao_no_alpha_total():
     total_sem_quant_ok = combine_alpha_bonferroni(0.05, 0.05, 0.05, None)
     assert total_com_quant_ok == pytest.approx(0.20)
     assert total_sem_quant_ok is None
+
+
+# ── Contra-prova de mutation testing (AGENTE 3, escopo reduzido, 2026-09-19)
+#    cosmic-ray em _interpolate_to_reference/predict_samples/quantify_sample
+#    (195 mutantes candidatos na faixa de linhas das 3 funcoes; execucao
+#    parcial interrompida por orcamento de tempo, ver docs/PROGRESSO.md).
+#    Os testes abaixo fecham os sobreviventes REAIS achados ate' a
+#    interrupcao -- nao cosmeticos (arredondamento de coluna de exibicao),
+#    nem o ramo legado pre-2026-08-17 (fica registrado como backlog).
+
+def test_predizer_amostras_t2_bate_com_formula_hotelling_independente(
+        modelo_e_dados):
+    """Mutantes sobreviventes: `T_new ** 2` -> `T_new ** 3` (NumberReplacer)
+    e `ddof=1` -> `ddof=0` na variancia de treino -- nenhum teste existente
+    comparava a coluna `T2` contra um oraculo numerico independente, so'
+    contra o UCL (insensivel a mudanca de escala/expoente em muitos casos).
+    Reimplementa a formula (mesma formula documentada em `predict_samples`,
+    "Hotelling T2 -- mesma formula do pipeline") por fora de `predicao.py`,
+    com os MESMOS artefatos do pacote."""
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+
+    preproc = pkg["preprocessador"]
+    pls = pkg["pls_final"]
+    X_interp = pr._interpolate_to_reference(pkg, X_novos, wn)
+    X_proc = preproc.transform(X_interp)
+    T_new_oraculo = np.asarray(pls.transform(X_proc), dtype=float)
+    T_train = np.asarray(pls.x_scores_, dtype=float)
+    var_t_oraculo = T_train.var(axis=0, ddof=1)
+    var_t_oraculo[var_t_oraculo == 0] = 1.0
+    T2_oraculo = np.sum((T_new_oraculo ** 2) / var_t_oraculo, axis=1)
+
+    np.testing.assert_allclose(df["T2"].to_numpy(),
+                                np.round(T2_oraculo, 3), rtol=0, atol=1e-9)
+
+
+def test_predizer_amostras_var_t_zero_nao_gera_divisao_por_zero(modelo_e_dados):
+    """Mutante sobrevivente: `var_t[var_t == 0] = 1.0` -> `!=`/`>` (nenhum
+    dado sintetico real produz uma componente PLS com variancia de treino
+    EXATAMENTE zero, entao o guard nunca era exercitado por nenhum teste
+    existente). Fabrica esse caso degenerado com um `pls` fake mínimo
+    (mesmo padrao de `_PipelineFalso` acima -- nao e' mock do calculo
+    cientifico, e' a UNICA forma de alcancar essa fronteira numerica)."""
+    class _PLSFalsoVarianciaZero:
+        # 2 amostras de treino com o MESMO score na 1a componente (var=0)
+        # e scores distintos na 2a (var>0).
+        x_scores_ = np.array([[1.0, 0.0], [1.0, 2.0]])
+        x_loadings_ = np.eye(2)
+
+        def transform(self, X):
+            return np.asarray(X, dtype=float)[:, :2]
+
+        def predict(self, X):
+            n = np.asarray(X).shape[0]
+            return np.tile([0.6, 0.4], (n, 1))
+
+    class _PreprocIdentidade:
+        def transform(self, X):
+            return np.asarray(X, dtype=float)
+
+    pkg = {
+        "preprocessador": _PreprocIdentidade(),
+        "pls_final": _PLSFalsoVarianciaZero(),
+        "label_binarizer": type("LB", (), {"classes_": ["A", "B"]})(),
+        "wavenumbers": np.array([1.0, 2.0]),
+        "q_ucl": 1e6,
+    }
+    X_new = np.array([[1.0, 0.0]])
+    wn_new = np.array([1.0, 2.0])
+
+    df = pr.predict_samples(pkg, X_new, wn_new)
+    # Sem o guard (ou com o guard invertido), a divisao por var_t[0]==0
+    # produziria +inf/NaN em T2 -- com o guard correto, a 1a componente
+    # (var=0 -> tratada como 1.0) contribui 1.0**2/1.0 = 1.0 e a 2a
+    # (var=2.0) contribui 0.0**2/2.0 = 0.0.
+    assert np.isfinite(df["T2"].iloc[0])
+    assert df["T2"].iloc[0] == pytest.approx(1.0)
+
+
+def test_predizer_amostras_confianca_bate_com_softmax_normalizado_independente(
+        modelo_e_dados):
+    """Mutante sobrevivente: `np.clip(Y_soft, 0.0, 1.0)` -> `np.clip(Y_soft,
+    0.0, 0.0)` (zera toda predicao) -- nenhum teste existente comparava
+    `confianca_%`/`classe_pred` contra um oraculo numerico, so' contra
+    limites soltos (0-100%, "pertence ao treino"), que uma predicao
+    degenerada (tudo 0%, sempre a 1a classe) ainda satisfaz trivialmente."""
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+
+    preproc = pkg["preprocessador"]
+    pls = pkg["pls_final"]
+    lb = pkg["label_binarizer"]
+    X_interp = pr._interpolate_to_reference(pkg, X_novos, wn)
+    X_proc = preproc.transform(X_interp)
+    Y_soft = np.asarray(pls.predict(X_proc), dtype=float)
+    Y_clip = np.clip(Y_soft, 0.0, 1.0)
+    totais = Y_clip.sum(axis=1, keepdims=True)
+    totais[totais < 1e-12] = 1.0
+    Y_norm = Y_clip / totais
+    classes = list(lb.classes_)
+    idx_pred = Y_norm.argmax(axis=1)
+    classe_pred_oraculo = [classes[i] for i in idx_pred]
+    confianca_oraculo = Y_norm.max(axis=1)
+
+    assert list(df["classe_pred"]) == classe_pred_oraculo
+    np.testing.assert_allclose(df["confianca_%"].to_numpy(),
+                                np.round(confianca_oraculo * 100, 1),
+                                rtol=0, atol=1e-9)
+    # A predicao degenerada do mutante zera Y_clip inteiro -> confianca
+    # sempre 0%; com dado sintetico real e separavel a confianca observada
+    # e' bem maior que isso.
+    assert df["confianca_%"].max() > 5.0
+
+
+def test_quantify_sample_identificacao_ambigua_exige_dois_candidatos(modelo_e_dados):
+    """Mutante sobrevivente: `len(candidatos_ambiguos) >= 2` -> `>= 1`
+    (NumberReplacer) -- fronteira exata em 1 candidato nao tinha teste."""
+    from guaraci.identificacao import CoverageStatus, IdentificationResult
+    ident_um_candidato = IdentificationResult(
+        classe_identificada=None, candidatos_ambiguos=["Andiroba|S"],
+        cobertura_status=CoverageStatus.VALIDATED, alpha_alcancavel=0.05,
+        escores={})
+    r = pr.quantify_sample({}, np.zeros((1, 10)), ident_um_candidato)
+    assert r.motivo_bloqueio == "identificacao_desconhecida"
+
+    ident_dois_candidatos = IdentificationResult(
+        classe_identificada=None,
+        candidatos_ambiguos=["Andiroba|S", "Copaiba|S"],
+        cobertura_status=CoverageStatus.VALIDATED, alpha_alcancavel=0.05,
+        escores={})
+    r2 = pr.quantify_sample({}, np.zeros((1, 10)), ident_dois_candidatos)
+    assert r2.motivo_bloqueio == "identificacao_ambigua"
+
+
+def test_predizer_amostras_referencia_cv_da_sentinela_aparece_quando_presente(
+        modelo_e_dados):
+    """Mutante sobrevivente: `"ad_cv_rejeitadas" in pkg and "ad_cv_n" in pkg`
+    -> `not "ad_cv_rejeitadas" in pkg and "ad_cv_n" in pkg` (AddNot) -- com
+    as DUAS chaves presentes (caso normal, Passo 220), o mutante passa a
+    NAO adicionar as colunas de referencia; nenhum teste existente checava
+    o conteudo dessas colunas quando as chaves estao presentes."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg_com_ref = dict(pkg)
+    pkg_com_ref["ad_cv_rejeitadas"] = 3
+    pkg_com_ref["ad_cv_n"] = 60
+    df = pr.predict_samples(pkg_com_ref, X_novos, wn)
+    assert "AD_ref_cv_rejeitadas" in df.columns
+    assert "AD_ref_cv_n" in df.columns
+    assert (df["AD_ref_cv_rejeitadas"] == 3).all()
+    assert (df["AD_ref_cv_n"] == 60).all()
