@@ -42,6 +42,7 @@ from privacidade_amostras import (  # noqa: E402
 _PASTAS_EXCLUIDAS = {gvo._PASTA_PROTEGIDA, "99-Arquivo"}
 _PADRAO_WIKILINK = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 _PADRAO_FONTE_PROGRESSO = re.compile(r"docs/PROGRESSO\.md:(\d+)")
+_PADRAO_FONTE_DOC_LINHA = re.compile(r"(docs/[A-Za-z_0-9]+[.]md):([0-9]+)")
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -308,6 +309,25 @@ def checar_cobertura_do_vault(notas: dict[str, Nota]) -> str:
     linhas.append(f"- **Passos de PROGRESSO.md**: {len(blocos) - len(sem_rastro)}/{len(blocos)} "
                    + ("OK" if ok_passos else
                       f"SEM RASTRO: {sem_rastro[:5]}{' ...' if len(sem_rastro) > 5 else ''}"))
+
+    # Auditoria cruzada (2026-09-19): todo item de pendencia/limitacao/backlog
+    # de MAPA_COMPLETUDE_V1.md e BACKLOG_MULTIAGENTE.md precisa ter nota
+    # propria em 50-Decisoes/ ou 60-Achados/ (fonte "<arquivo>:<linha>").
+    citadas: set[tuple[str, int]] = set()
+    for n in notas.values():
+        if n.rel.startswith(("60-Achados/", "50-Decisoes/")):
+            for f in n.fonte:
+                for m in _PADRAO_FONTE_DOC_LINHA.finditer(f):
+                    citadas.add((m.group(1), int(m.group(2))))
+    itens_pend = gvo.parse_pendencias()
+    sem_nota = [f"{i.arquivo}:{i.linha}" for i in itens_pend
+                if (i.arquivo, i.linha) not in citadas]
+    ok_pend = not sem_nota
+    completa &= ok_pend
+    linhas.append(f"- **Pendências/limitações/backlog (MAPA_COMPLETUDE + BACKLOG_MULTIAGENTE)**: "
+                   f"{len(itens_pend) - len(sem_nota)}/{len(itens_pend)} "
+                   + ("OK" if ok_pend else
+                      f"SEM NOTA: {sem_nota[:5]}{' ...' if len(sem_nota) > 5 else ''}"))
 
     tabela = gvo.parse_tabela_consolidada()
     n_validacoes_vault = sum(1 for n in notas.values() if n.rel.startswith("40-Validacoes/"))

@@ -264,3 +264,74 @@ def test_identidade_visual_le_paleta_real_de_design_md(plano):
     conteudo = plano["05-Identidade/Identidade-Visual.md"]
     for cor in paleta:
         assert cor["hex_moda"] in conteudo, f"hex {cor['hex_moda']} não apareceu na nota"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+#  Pendências / limitações / backlog de MAPA_COMPLETUDE e BACKLOG_MULTIAGENTE
+#  (auditoria cruzada de 2026-09-19)
+# ─────────────────────────────────────────────────────────────────────────
+
+_ARQ_PEND = ("docs/MAPA_COMPLETUDE_V1.md", "docs/BACKLOG_MULTIAGENTE.md")
+# Oraculo INDEPENDENTE do gerador (subconjunto do padrao dele, escrito de
+# novo aqui): se o gerador deixar passar uma linha de tabela marcada, este
+# teste acusa.
+_PEND_ORACULO = re.compile(
+    r"backlog|pendente|pendência|pendencia|limitação|limitacao|"
+    r"não implementad|nao implementad|não priorizad|nao priorizad|"
+    r"aguarda|extensão futura|extensao futura|em aberto", re.I)
+
+
+def _linhas_de_tabela_marcadas(rel: str) -> list[int]:
+    linhas = (_RAIZ / rel).read_text(encoding="utf-8").splitlines()
+    out = []
+    for i, ln in enumerate(linhas, 1):
+        if not ln.startswith("|") or re.match(r"^[|][\s:|-]+$", ln):
+            continue
+        proxima = linhas[i] if i < len(linhas) else ""
+        if re.match(r"^[|][\s:|-]+$", proxima):
+            continue   # cabecalho da tabela
+        if _PEND_ORACULO.search(ln):
+            out.append(i)
+    return out
+
+
+def _citadas(plano: dict[str, str], rel_doc: str) -> set[int]:
+    citadas = set()
+    for rel, conteudo in plano.items():
+        if rel.startswith(("50-Decisoes/", "60-Achados/")):
+            for m in re.finditer(re.escape(rel_doc) + r":(\d+)", conteudo):
+                citadas.add(int(m.group(1)))
+    return citadas
+
+
+@pytest.mark.parametrize("rel_doc", _ARQ_PEND)
+def test_toda_linha_de_tabela_marcada_como_pendencia_tem_nota(plano, rel_doc):
+    esperadas = _linhas_de_tabela_marcadas(rel_doc)
+    assert esperadas, f"oraculo nao achou nenhuma pendencia em {rel_doc}"
+    sem_nota = sorted(set(esperadas) - _citadas(plano, rel_doc))
+    assert not sem_nota, (
+        f"{rel_doc}: linha(s) de tabela marcada(s) como pendencia/"
+        f"limitacao/backlog SEM nota em 50-Decisoes/ ou 60-Achados/: {sem_nota}")
+
+
+def test_itens_conhecidos_do_backlog_e_do_mapa_tem_nota_com_o_texto_real(plano):
+    """Ancoras nominais: itens que o usuario cobrou explicitamente."""
+    def _nota_com(termo: str, doc: str) -> bool:
+        return any(rel.startswith(("50-Decisoes/", "60-Achados/"))
+                   and doc in c and termo in c for rel, c in plano.items())
+    assert _nota_com("di-PLS", "docs/BACKLOG_MULTIAGENTE.md")
+    assert _nota_com("PLS local", "docs/MAPA_COMPLETUDE_V1.md")
+    assert _nota_com("ASCA+", "docs/MAPA_COMPLETUDE_V1.md")
+    assert _nota_com("GC-IMS", "docs/MAPA_COMPLETUDE_V1.md")
+    assert _nota_com("MSPC", "docs/MAPA_COMPLETUDE_V1.md")
+
+
+def test_notas_de_pendencia_tem_tag_e_pasta_coerentes(plano):
+    pend = {rel: c for rel, c in plano.items()
+            if "tags: [pendencia]" in c or "tags: [limitacao]" in c}
+    assert pend, "nenhuma nota de pendencia/limitacao gerada"
+    for rel, c in pend.items():
+        if "tags: [pendencia]" in c:
+            assert rel.startswith("50-Decisoes/"), rel
+        else:
+            assert rel.startswith("60-Achados/"), rel

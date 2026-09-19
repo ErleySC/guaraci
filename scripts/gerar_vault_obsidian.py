@@ -872,6 +872,136 @@ def gerar_achados_e_decisoes(modulos_conhecidos: set[str]) -> tuple[dict[str, st
         if rel in achados:
             rel = f"60-Achados/{_slug(bloco.titulo)}-{bloco.linha_inicio}.md"
         achados[rel] = conteudo
+    pend_achados, pend_decisoes = gerar_pendencias(modulos_conhecidos)
+    for rel, conteudo in pend_achados.items():
+        achados.setdefault(rel, conteudo)
+    for rel, conteudo in pend_decisoes.items():
+        decisoes.setdefault(rel, conteudo)
+    return achados, decisoes
+
+
+# ═════════════════════════════════════════════════════════════════════════
+#  Pendências, limitações e backlog de MAPA_COMPLETUDE / BACKLOG_MULTIAGENTE
+#  (auditoria cruzada de 2026-09-19)
+# ═════════════════════════════════════════════════════════════════════════
+# Antes, esses dois documentos eram só indexados como `08-Documentos/` (1 nota
+# cada) -- um item marcado "backlog", "pendente" ou "limitação" ali existia
+# SÓ no markdown, sem nota própria no vault. Agora cada item detectado vira
+# uma nota em `50-Decisoes/` (pendência/backlog) ou `60-Achados/` (limitação),
+# com `fonte: <arquivo>:<linha>`, e `consultar_vault.py --cobertura` confere
+# que NENHUM item ficou sem nota (mesma técnica do rastro de Passos).
+
+_ARQUIVOS_PENDENCIAS = {
+    "docs/MAPA_COMPLETUDE_V1.md": "MAPA",
+    "docs/BACKLOG_MULTIAGENTE.md": "BACKLOG",
+}
+_PADRAO_PENDENCIA = re.compile(
+    r"backlog|pendent|pend[eê]ncia|limita[cç][aã]o|n[aã]o implementad|"
+    r"n[aã]o priorizad|n[aã]o obtido|aguarda|extens[aã]o futura|em aberto|"
+    r"n[aã]o validad", re.I)
+_PADRAO_PENDENCIA_ABERTA = re.compile(
+    r"backlog|pendent|pend[eê]ncia|n[aã]o implementad|n[aã]o priorizad|"
+    r"aguarda|extens[aã]o futura|em aberto", re.I)
+_PADRAO_SEPARADOR_TABELA = re.compile(r"^\|[\s\-:|]+\|?\s*$")
+_LIMITE_CELULA = 900
+
+
+@dataclass
+class ItemPendencia:
+    arquivo: str
+    linha: int  # 1-based
+    titulo: str
+    texto: str
+    tipo: str  # tabela | heading | bullet | paragrafo
+
+
+def _limpar_md_curto(t: str) -> str:
+    t = re.sub(r"[*`~]", "", t)
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _celulas(linha: str) -> list[str]:
+    return [c.strip() for c in linha.strip().strip("|").split("|")]
+
+
+def parse_pendencias() -> list[ItemPendencia]:
+    """Itens de pendência/limitação/backlog de `_ARQUIVOS_PENDENCIAS`:
+    linhas de TABELA (texto da linha inteira casa o padrão), títulos
+    (`#`), e bullets/parágrafos em negrito (primeiros 250 caracteres)."""
+    itens: list[ItemPendencia] = []
+    for arquivo in _ARQUIVOS_PENDENCIAS:
+        linhas = _ler(arquivo).splitlines()
+        cabecalho: list[str] = []
+        for i, ln in enumerate(linhas, 1):
+            if ln.startswith("|"):
+                if _PADRAO_SEPARADOR_TABELA.match(ln):
+                    cabecalho = _celulas(linhas[i - 2]) if i >= 2 else []
+                    continue
+                proxima = linhas[i] if i < len(linhas) else ""
+                if _PADRAO_SEPARADOR_TABELA.match(proxima):
+                    continue  # linha de cabeçalho da tabela
+                if not _PADRAO_PENDENCIA.search(ln):
+                    continue
+                cels = _celulas(ln)
+                nao_vazias = [c for c in cels if c]
+                if not nao_vazias:
+                    continue
+                if len(cels) >= 2 and cels[0] and len(_limpar_md_curto(cels[0])) <= 6 and cels[1]:
+                    titulo = f"{_limpar_md_curto(cels[0])} — {_limpar_md_curto(cels[1])}"
+                else:
+                    titulo = _limpar_md_curto(nao_vazias[0])
+                partes = []
+                for k, c in enumerate(cels):
+                    if not c:
+                        continue
+                    rot = _limpar_md_curto(cabecalho[k]) if k < len(cabecalho) and cabecalho[k] else f"coluna {k + 1}"
+                    c = c if len(c) <= _LIMITE_CELULA else c[:_LIMITE_CELULA] + f" […texto integral em {arquivo}:{i}]"
+                    partes.append(f"- **{rot}**: {c}")
+                itens.append(ItemPendencia(arquivo, i, titulo[:90], "\n".join(partes), "tabela"))
+            elif ln.startswith("#"):
+                if _PADRAO_PENDENCIA.search(ln):
+                    tit = _limpar_md_curto(ln.lstrip("# "))
+                    corpo = []
+                    for j in range(i, min(i + 6, len(linhas))):
+                        if linhas[j].startswith("#"):
+                            break
+                        corpo.append(linhas[j])
+                    txt = "\n".join(corpo).strip()
+                    txt = txt if len(txt) <= 1500 else txt[:1500] + f" […texto integral em {arquivo}:{i}]"
+                    itens.append(ItemPendencia(arquivo, i, tit[:90], txt or tit, "heading"))
+            elif re.match(r"^\s*(-|\d+\.)\s+\*\*", ln) or ln.startswith("**"):
+                if _PADRAO_PENDENCIA.search(ln[:250]):
+                    txt = ln.strip()
+                    txt = txt if len(txt) <= 1500 else txt[:1500] + f" […texto integral em {arquivo}:{i}]"
+                    itens.append(ItemPendencia(
+                        arquivo, i, _limpar_md_curto(ln)[:90],
+                        txt, "bullet" if ln.lstrip().startswith(("-", "1", "2", "3", "4", "5", "6", "7", "8", "9")) else "paragrafo"))
+    return itens
+
+
+def gerar_pendencias(modulos_conhecidos: set[str]) -> tuple[dict[str, str], dict[str, str]]:
+    """Retorna `(achados, decisoes)` com 1 nota por item de `parse_pendencias`:
+    pendência/backlog -> `50-Decisoes/` (tag `pendencia`); limitação (sem
+    marca de backlog) -> `60-Achados/` (tag `limitacao`)."""
+    achados: dict[str, str] = {}
+    decisoes: dict[str, str] = {}
+    for it in parse_pendencias():
+        rotulo = _ARQUIVOS_PENDENCIAS[it.arquivo]
+        aberta = bool(_PADRAO_PENDENCIA_ABERTA.search(it.texto)) or bool(
+            _PADRAO_PENDENCIA_ABERTA.search(it.titulo))
+        pasta, tag, destino = (("50-Decisoes", "pendencia", decisoes) if aberta
+                                else ("60-Achados", "limitacao", achados))
+        titulo = f"[{rotulo}] {it.titulo}"
+        conteudo = _nota(
+            titulo=titulo, tags=[tag],
+            fonte=f"{it.arquivo}:{it.linha}",
+            corpo=_autolinkar_modulos(it.texto, modulos_conhecidos),
+        )
+        rel = f"{pasta}/{_slug(titulo)}.md"
+        if rel in destino or f"{pasta}/{_slug(titulo)}.md" in decisoes or rel in achados:
+            rel = f"{pasta}/{_slug(titulo)}-{it.linha}.md"
+        destino[rel] = conteudo
     return achados, decisoes
 
 
