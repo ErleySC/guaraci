@@ -121,6 +121,110 @@ def test_fit_evaluate_pls_regression_recupera_sinal_linear_simples():
     assert r.rmsep < 0.5
 
 
+def _oraculo_pls(X_cal, y_cal, X_val, y_val, max_lvs, n_splits_cv, seed):
+    """Reimplementacao independente (KFold manual, sem cross_val_predict)."""
+    from sklearn.cross_decomposition import PLSRegression
+    from sklearn.model_selection import KFold
+    yc = np.asarray(y_cal, float).ravel()
+    lv_max = min(max_lvs, max(2, X_cal.shape[0] // 5))
+    kf = KFold(n_splits=n_splits_cv, shuffle=True, random_state=seed)
+    rm = []
+    for n_lv in range(1, lv_max + 1):
+        pred = np.zeros(len(yc))
+        for tr, va in kf.split(X_cal):
+            m = PLSRegression(n_components=n_lv, scale=False).fit(X_cal[tr], yc[tr])
+            pred[va] = m.predict(X_cal[va]).ravel()
+        rm.append(float(np.sqrt(np.mean((yc - pred) ** 2))))
+    n_opt = int(np.argmin(rm)) + 1
+    m = PLSRegression(n_components=n_opt, scale=False).fit(X_cal, yc)
+    yv = np.asarray(y_val, float).ravel()
+    pv = m.predict(X_val).ravel()
+    pc = m.predict(X_cal).ravel()
+
+    def r2(a, b):
+        return 1 - np.sum((a - b) ** 2) / np.sum((a - a.mean()) ** 2)
+    return n_opt, float(np.sqrt(np.mean((yv - pv) ** 2))), r2(yc, pc), r2(yv, pv)
+
+
+def _dados_pls(n_cal, n_val, p=12, seed=0):
+    rng = np.random.default_rng(seed)
+    W = rng.normal(size=(4, p))
+
+    def gera(n):
+        T = rng.normal(size=(n, 4))
+        X = T @ W + rng.normal(scale=0.3, size=(n, p))
+        y = T @ np.array([2.0, -1.0, 0.5, 0.2]) + rng.normal(scale=0.3, size=n)
+        return X, y
+    return (*gera(n_cal), *gera(n_val))
+
+
+@pytest.mark.parametrize("n_cal,max_lvs,n_splits_cv,seed", [
+    (60, 15, 5, 0),     # lv_max limitado por n_cal // 5 = 12
+    (60, 3, 5, 1),      # lv_max limitado por max_lvs
+    (60, 15, 3, 2),     # n_splits_cv diferente do default
+    (8, 15, 2, 0),      # n_cal // 5 = 1 -> piso de 2 LVs
+])
+def test_fit_evaluate_pls_regression_bate_com_oraculo_independente(
+        n_cal, max_lvs, n_splits_cv, seed):
+    """Achado da mutacao (Passo 219): 44/110 mutantes sobreviviam porque so'
+    um teste com sinal facil cobria a funcao. Aqui TODAS as saidas (n_lv,
+    RMSEP, R2cal, R2val, contagens) sao comparadas com uma reimplementacao
+    independente, e a formula de `lv_max` e' exercitada nos 3 regimes."""
+    Xc, yc, Xv, yv = _dados_pls(n_cal, 20)
+    r = fit_evaluate_pls_regression(Xc, yc, Xv, yv, max_lvs=max_lvs,
+                                    n_splits_cv=n_splits_cv, seed=seed)
+    n_opt, rmsep, r2c, r2v = _oraculo_pls(Xc, yc, Xv, yv, max_lvs, n_splits_cv, seed)
+    assert r.n_lv == n_opt
+    assert r.rmsep == pytest.approx(rmsep)
+    assert r.r2cal == pytest.approx(r2c)
+    assert r.r2val == pytest.approx(r2v)
+    assert (r.n_cal, r.n_val) == (n_cal, 20)
+    assert 1 <= r.n_lv <= min(max_lvs, max(2, n_cal // 5))
+
+
+def test_fit_evaluate_pls_regression_defaults_documentados():
+    import inspect
+    p = inspect.signature(fit_evaluate_pls_regression).parameters
+    assert (p["max_lvs"].default, p["n_splits_cv"].default, p["seed"].default) == (15, 5, 0)
+
+
+def test_seed_do_cv_chega_ao_kfold():
+    """`random_state=seed` chega ao KFold -- confere pelo oraculo em 2 seeds."""
+    Xc, yc, Xv, yv = _dados_pls(40, 15, seed=5)
+    for s in (0, 7):
+        r = fit_evaluate_pls_regression(Xc, yc, Xv, yv, max_lvs=8, seed=s)
+        assert r.n_lv == _oraculo_pls(Xc, yc, Xv, yv, 8, 5, s)[0]
+
+
+def test_lv_max_e_um_quinto_das_amostras_e_y_1d_de_tamanho_impar():
+    """Sinal de posto 20 sem ruido: o RMSECV cai ate' o limite de LVs, entao
+    o n_lv escolhido == lv_max == n_cal // 5 (61 // 5 = 12, nao 15 nem 10).
+    Tamanhos IMPARES (61 cal / 21 val) com y 1-D: o reshape(-1, 1) nao pode
+    virar outra forma."""
+    rng = np.random.default_rng(0)
+    n, nv, p = 61, 21, 40
+    T = rng.normal(size=(n + nv, 20))
+    X = T @ rng.normal(size=(20, p))
+    y = T @ rng.normal(size=20)
+    r = fit_evaluate_pls_regression(X[:n], y[:n], X[n:], y[n:], max_lvs=15)
+    assert r.n_lv == 12
+    assert (r.n_cal, r.n_val) == (61, 21)
+
+
+@pytest.mark.parametrize("posto", [2, 4])
+def test_piso_de_2_lvs_com_poucas_amostras(posto):
+    """n_cal=8 => n_cal // 5 = 1, mas o piso e' 2: com sinal de posto 2 ou 4
+    (sem ruido) o modelo escolhido tem SEMPRE 2 LVs (nem 1, nem 3)."""
+    rng = np.random.default_rng(0)
+    n, nv, p = 8, 6, 10
+    T = rng.normal(size=(n + nv, posto))
+    X = T @ rng.normal(size=(posto, p))
+    y = T @ rng.normal(size=posto)
+    r = fit_evaluate_pls_regression(X[:n], y[:n], X[n:], y[n:], max_lvs=15,
+                                    n_splits_cv=4)
+    assert r.n_lv == 2
+
+
 # ── Prova de conceito real: Mendeley NIR8mm + MIR ───────────────────────
 
 

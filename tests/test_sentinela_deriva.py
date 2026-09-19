@@ -245,3 +245,43 @@ def test_hook_dispara_alerta_quando_taxa_de_rejeicao_e_alta(tmp_path):
     df = pd.DataFrame({"AD_dentro_dominio": dentro})
     alerta = hook_apos_predicao(caminho_modelo, df)
     assert alerta.alerta is True
+
+
+# ── Fronteiras (achados da mutacao) ─────────────────────────────────
+
+def test_alpha_nominal_default_e_5_por_cento():
+    assert SentinelState().alpha_nominal == 0.05
+    assert SentinelState().janela is None
+
+
+def test_update_devolve_so_as_linhas_novas_com_historico_previo():
+    """Retorno = n_depois - n_antes (nao a soma): com historico previo."""
+    estado = SentinelState()
+    for _ in range(3):
+        estado.registrar(True)
+    df = pd.DataFrame({"AD_dentro_dominio": [True, False, True]})
+    assert update_with_predictions(estado, df) == 3   # 6-3 (nao 6^3, nao 6+3)
+    assert estado.n == 6
+
+
+def test_n_exatamente_no_minimo_ja_testa():
+    """`n < n_minimo` e' estrito: com n == n_minimo o teste RODA."""
+    estado = SentinelState(alpha_nominal=0.05)
+    n_min = n_minimum_for_alpha(0.05)
+    for _ in range(n_min):
+        estado.registrar(False)          # 100 % fora: p muito pequeno
+    r = check_drift(estado)
+    assert r.n == n_min
+    assert not np.isnan(r.p_valor)
+    assert r.alerta is True
+
+
+def test_significancia_igual_ao_p_valor_nao_alerta():
+    """`p < significancia` e' estrito: p == significancia NAO alerta."""
+    estado = SentinelState(alpha_nominal=0.05)
+    for i in range(30):
+        estado.registrar(i >= 4)         # 4 fora em 30
+    p = check_drift(estado, significancia=1.0).p_valor
+    assert 0.0 < p < 1.0
+    assert check_drift(estado, significancia=p).alerta is False
+    assert check_drift(estado, significancia=p * 1.0001).alerta is True

@@ -298,3 +298,166 @@ def test_combine_alpha_bonferroni_satura_em_um_com_aviso(caplog):
 
 def test_combine_alpha_bonferroni_sem_argumentos_e_zero():
     assert combine_alpha_bonferroni() == pytest.approx(0.0)
+
+
+# =========================================================================
+#  Lacunas achadas por mutacao (cosmic-ray, auditoria 2026-09-19)
+#  identificacao.py: 40/196 mutantes sobreviveram na 1a rodada -- os
+#  testes acima checavam estrutura (status/cobertura), nunca os NUMEROS
+#  do escore nem as guardas de filtragem por especie/teor. Cada teste
+#  abaixo fecha um grupo de sobreviventes reais.
+# =========================================================================
+
+def _mais_amostras(X, rotulos, conc, mae_id, extras):
+    """Anexa amostras (espectro, especie, teor, mae_id) a um dataset."""
+    for x, esp, teor, mid in extras:
+        X = np.vstack([X, x])
+        rotulos = np.append(rotulos, esp)
+        conc = np.append(conc, teor)
+        mae_id = np.append(mae_id, mid)
+    return X, rotulos, conc, mae_id
+
+
+def test_teor_ausente_nan_nao_conta_como_amostra_adulterada():
+    """NaN de teor = amostra pura (mesma convencao do resto do projeto).
+    Um mae_id COM token de adulterante mas teor NaN nao pode entrar no
+    combo -- mutante `0.0 -> 1.0` no np.where(isnan) o fazia entrar."""
+    rng = np.random.default_rng(10)
+    X, rot, conc, mae, _ = _monta_dataset(
+        rng, ["Andiroba"], {("Andiroba", "S"): 3})
+    X, rot, conc, mae = _mais_amostras(
+        X, rot, conc, mae,
+        [(X[0], "Andiroba", np.nan, "AND-099-S05.00")])
+    pca, var_t = _pca_e_var_t(X)
+    ens = train_identification_ensemble(pca, var_t, X, rot, conc, mae)
+    assert ens[("Andiroba", "soja")]["n_amostras"] == 3
+
+
+def test_teor_zero_fica_fora_e_teor_fracionario_entra():
+    """Fronteira exata do filtro `conc > 0.0`: teor 0.0 fica FORA (pura),
+    teor 0.5 (entre 0 e 1) entra -- mutantes `>=`, `> 1.0` e `> -1.0`."""
+    rng = np.random.default_rng(11)
+    X, rot, conc, mae, _ = _monta_dataset(
+        rng, ["Andiroba"], {("Andiroba", "S"): 3})
+    X, rot, conc, mae = _mais_amostras(
+        X, rot, conc, mae,
+        [(X[0], "Andiroba", 0.0, "AND-098-S05.00"),
+         (X[1], "Andiroba", 0.5, "AND-097-S05.00")])
+    pca, var_t = _pca_e_var_t(X)
+    ens = train_identification_ensemble(pca, var_t, X, rot, conc, mae)
+    assert ens[("Andiroba", "soja")]["n_amostras"] == 4   # 3 + o de 0.5, sem o de 0.0
+
+
+def test_especies_diferentes_nunca_se_misturam_no_mesmo_combo():
+    """Combo (Andiroba, milho) NAO pode existir quando so' Castanha foi
+    adulterada com milho -- o filtro de especie e' igualdade estrita
+    (mutante `==` -> `>=` deixava especies alfabeticamente posteriores
+    vazarem para o combo)."""
+    rng = np.random.default_rng(12)
+    combos = {("Andiroba", "S"): 3, ("Castanha", "M"): 3}
+    X, rot, conc, mae, _ = _monta_dataset(rng, ["Andiroba", "Castanha"], combos)
+    pca, var_t = _pca_e_var_t(X)
+    ens = train_identification_ensemble(pca, var_t, X, rot, conc, mae)
+    assert set(ens) == {("Andiroba", "soja"), ("Castanha", "milho")}
+    assert ens[("Andiroba", "soja")]["n_amostras"] == 3
+    assert ens[("Castanha", "milho")]["n_amostras"] == 3
+
+
+class _PcaIdentidade:
+    """Duplo de PCA que devolve o proprio espectro -- score conhecido de
+    cabeca, sem depender de ajuste numerico."""
+
+    def transform(self, X):
+        return np.asarray(X, dtype=float)
+
+
+def _combo(centroide, status=CoverageStatus.VALIDATED, alpha=0.05,
+           limiar_scores=(0.1, 0.2, 0.3, 0.4)):
+    from guaraci.conformal import ConformalOneClass
+    cc = ConformalOneClass(alpha=0.25).fit(
+        np.array(limiar_scores),
+        mae_id=np.array([f"g{i}" for i in range(len(limiar_scores))]))
+    return {"centroide": np.asarray(centroide, dtype=float), "conformal": cc,
+            "n_grupos": len(limiar_scores), "n_amostras": len(limiar_scores),
+            "cobertura_status": status, "alpha_alcancavel": alpha}
+
+
+def test_escore_e_a_distancia_t2_normalizada_exata():
+    """Oraculo independente: score = sum((t - c)^2 / var_t). Antes desta
+    asserção, 8 mutantes aritmeticos (/ -> + * - ** // %) da linha do
+    escore sobreviviam -- nenhum teste olhava o NUMERO."""
+    ens = {("A", "x"): _combo([1.0, 2.0], status=CoverageStatus.NOT_VALIDATED_N1)}
+    var_t = np.array([4.0, 0.3])
+    # valores com resto fracionario: divisao inteira (//) daria outro numero
+    res = identify_sample(ens, _PcaIdentidade(), var_t, np.array([3.5, 3.0]))
+    esperado = (3.5 - 1.0) ** 2 / 4.0 + (3.0 - 2.0) ** 2 / 0.3   # 1,5625 + 3,3333
+    assert res.escores["A|x"] == pytest.approx(esperado)
+
+
+def test_amostra_com_numero_impar_de_variaveis_e_aceita_como_vetor_1d():
+    ens = {("A", "x"): _combo([0.0, 0.0, 0.0])}
+    res = identify_sample(ens, _PcaIdentidade(), np.ones(3), np.zeros(3))
+    assert res.escores["A|x"] == pytest.approx(0.0)
+
+
+def test_exatamente_duas_combinacoes_aceitas_sao_ambiguas_e_listadas():
+    """Caminho `len(aceitos) > 1` com EXATAMENTE 2 (o teste antigo aceitava
+    qualquer desfecho). Ambas com limiar folgado e centroide na amostra:
+    as duas aceitam; a resposta e' ambigua, ordenada, com o MENOR alpha."""
+    ens = {("A", "x"): _combo([0.0, 0.0], alpha=0.05),
+           ("B", "y"): _combo([0.0, 0.0], alpha=0.02)}
+    res = identify_sample(ens, _PcaIdentidade(), np.ones(2), np.zeros(2))
+    assert res.classe_identificada is None
+    assert res.candidatos_ambiguos == ["A|x", "B|y"]
+    assert res.cobertura_status == CoverageStatus.VALIDATED
+    assert res.alpha_alcancavel == pytest.approx(0.02)
+
+
+def test_uma_unica_combinacao_aceita_e_identificada_com_seu_alpha():
+    ens = {("A", "x"): _combo([0.0, 0.0], alpha=0.05),
+           ("B", "y"): _combo([50.0, 50.0], alpha=0.02)}
+    res = identify_sample(ens, _PcaIdentidade(), np.ones(2), np.zeros(2))
+    assert res.classe_identificada == "A|x"
+    assert res.candidatos_ambiguos == []
+    assert res.alpha_alcancavel == pytest.approx(0.05)
+
+
+def test_numero_de_candidatos_default_e_tres_e_e_respeitado():
+    ens = {(f"E{i}", "x"): _combo([float(10 * i)] * 2,
+                                  status=CoverageStatus.NOT_VALIDATED_N1)
+           for i in range(6)}
+    var_t = np.ones(2)
+    res = identify_sample(ens, _PcaIdentidade(), var_t, np.zeros(2))
+    assert res.candidatos_ambiguos == ["E0|x", "E1|x", "E2|x"]        # default 3
+    res2 = identify_sample(ens, _PcaIdentidade(), var_t, np.zeros(2),
+                           n_candidatos=2)
+    assert res2.candidatos_ambiguos == ["E0|x", "E1|x"]
+
+
+def test_combinacao_nao_validada_nunca_e_aceita_mesmo_com_conformal_calibrado():
+    """`cobertura_status` != VALIDATED bloqueia a aceitacao mesmo que o
+    ConformalOneClass exista e o escore caia dentro do limiar."""
+    ens = {("A", "x"): _combo([0.0, 0.0],
+                              status=CoverageStatus.NOT_VALIDATED_N2_WEAK)}
+    res = identify_sample(ens, _PcaIdentidade(), np.ones(2), np.zeros(2))
+    assert res.classe_identificada is None
+
+
+def test_bonferroni_no_limite_exato_de_um_loga_aviso_e_devolve_um(caplog):
+    with caplog.at_level(logging.WARNING):
+        total = combine_alpha_bonferroni(0.5, 0.5)
+    assert total == pytest.approx(1.0)
+    assert "deixou de ser informativo" in caplog.text
+
+
+def test_teor_negativo_nunca_conta_como_adulterado():
+    """Fronteira `conc > 0.0` (nao `!= 0`): teor negativo (dado corrompido)
+    fica FORA do combo."""
+    rng = np.random.default_rng(13)
+    X, rot, conc, mae, _ = _monta_dataset(
+        rng, ["Andiroba"], {("Andiroba", "S"): 3})
+    X, rot, conc, mae = _mais_amostras(
+        X, rot, conc, mae, [(X[0], "Andiroba", -5.0, "AND-096-S05.00")])
+    pca, var_t = _pca_e_var_t(X)
+    ens = train_identification_ensemble(pca, var_t, X, rot, conc, mae)
+    assert ens[("Andiroba", "soja")]["n_amostras"] == 3
