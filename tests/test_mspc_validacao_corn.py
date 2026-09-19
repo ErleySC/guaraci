@@ -132,57 +132,57 @@ def test_mspc_detecta_troca_de_instrumento_no_corn():
 
 @requer_corn
 @pytest.mark.slow
-def test_mspc_corn_r2_deteccao_em_ate_1_lote_e_falso_alarme_calibrado_30_seeds():
-    """Contra-prova replicada do MSPC com R2 aplicado (Passo 220): 30
-    splits aleatorios independentes de calibracao/holdout.
+def test_mspc_corn_r2_200_splits_com_intervalo_de_confianca():
+    """Contra-prova do MSPC com R2 em 200 splits (sementes 0..199) e
+    INTERVALO DE CONFIANCA, nao ponto unico (Passo 221): a leitura de 30
+    seeds dava 3%, outra rodada pequena 9,3% -- ruido de amostra pequena,
+    nao bug (IC binomial de 30 splits vai de ~1% a ~17%).
 
-    Historico (medido, nao apagado): o teste LEGADO (binomial contra 5%)
-    dava ~21% de falso alarme em controle (1500 splits; a leitura anterior
-    de "~7-10%" era 3/30 seeds e foi RETRATADA no Passo 219). Causa raiz:
-    a calibracao com n_cal=40 rejeita ~6,5% em controle e esse valor varia
-    entre calibracoes (efeito de estimacao de parametros da Fase I,
-    Jensen et al. 2006, DOI 10.1080/00224065.2006.11918623) -- a hipotese
-    nula "taxa = 5%" era falsa. R2 compara contra a taxa da PROPRIA
-    calibracao em validacao cruzada. Medido (`scripts/medicoes/
-    medir_mspc_r2_corn.py`, codigo de producao): ver `docs/
-    VALIDACAO_PUBLICA.md` §11 para os numeros com 300 splits.
+    Medido (`scripts/medicoes/medir_mspc_r2_corn.py 200 0`, deterministico
+    dada a semente): falso alarme 7/200 = 3,5% (Wilson 95% [1,7%; 7,0%]),
+    deteccao 200/200 (Wilson [98,1%; 100%]). Com 1000 splits NOVOS
+    (sementes 1000..1999): 27/1000 = 2,7% (Wilson [1,9%; 3,9%]), deteccao
+    1000/1000. Ver `docs/VALIDACAO_PUBLICA.md` §11.
 
-    Aqui, com 30 seeds: deteccao 100% em ate' 1-2 lotes, e falso
-    alarme <= 15% (<= 4/30; sob os ~3% medidos, P(>=5/30) < 0,3%) -- teto
-    de regressao, nao afirmacao de que vale exatamente 3%.
+    Aqui: deteccao 100% em <= 1-2 lotes; falso alarme com Clopper-Pearson
+    inferior < 5% (o intervalo nao esta' "sistematicamente acima" da meta) e
+    ponto <= 7% (14/200; margem sobre os 3,5% medidos para diferenca
+    numerica entre plataformas).
     """
+    from scipy.stats import binomtest
+
     X_m5, X_mp5 = _carregar_instrumentos()
-    n_seeds = 30
-    n_falso_alarme = 0
-    n_detectado = 0
+    n_splits = 200
+    n_fa = 0
     atrasos = []
-    for seed in range(n_seeds):
-        alarme_fase1, lote_deteccao = _rodar_cenario(X_m5, X_mp5, seed=seed)
-        if alarme_fase1:
-            n_falso_alarme += 1
-        if lote_deteccao is not None:
-            n_detectado += 1
-            atrasos.append(lote_deteccao)
+    for seed in range(n_splits):
+        alarme_fase1, lote = _rodar_cenario(X_m5, X_mp5, seed=seed)
+        n_fa += bool(alarme_fase1)
+        if lote is not None:
+            atrasos.append(lote)
 
-    taxa_deteccao = n_detectado / n_seeds
-    taxa_falso_alarme = n_falso_alarme / n_seeds
-    print(f"\n[MSPC/Corn R2] deteccao={taxa_deteccao:.2f} "
-          f"falso_alarme_fase1={taxa_falso_alarme:.2f} "
-          f"atraso_medio(lotes)={np.mean(atrasos) if atrasos else float('nan'):.2f}")
+    ic_fa = binomtest(n_fa, n_splits).proportion_ci(
+        confidence_level=0.95, method="exact")
+    ic_det = binomtest(len(atrasos), n_splits).proportion_ci(
+        confidence_level=0.95, method="exact")
+    print(f"\n[MSPC/Corn R2, {n_splits} splits] falso alarme "
+          f"{n_fa}/{n_splits}={n_fa / n_splits:.3f} "
+          f"IC95(CP) [{ic_fa.low:.3f}, {ic_fa.high:.3f}] | deteccao "
+          f"{len(atrasos)}/{n_splits} IC95(CP) [{ic_det.low:.3f}, "
+          f"{ic_det.high:.3f}] | atraso medio "
+          f"{np.mean(atrasos):.2f} lote")
 
-    assert taxa_deteccao == 1.0, (
-        f"deteccao da troca de instrumento caiu para {taxa_deteccao:.2f} "
-        "-- deveria ser 100% dado o tamanho real da diferenca espectral")
-    # R2 detecta no 1o OU no 2o lote pos-troca (medido em 300 splits: 177 no
-    # lote 0, 123 no lote 1, nenhum depois; o teste legado era sempre no
-    # lote 0). E' o custo medido de comparar contra a referencia de CV em
-    # vez do 5% nominal -- ver docs/VALIDACAO_PUBLICA.md.
+    assert len(atrasos) == n_splits, (
+        f"deteccao {len(atrasos)}/{n_splits}: a troca de instrumento deixou "
+        "de ser detectada em algum split")
     assert max(atrasos) <= 2 and np.mean(atrasos) < 1.0, (
-        f"atraso de deteccao com R2 subiu (max={max(atrasos)}, "
+        f"atraso de deteccao subiu (max={max(atrasos)}, "
         f"medio={np.mean(atrasos):.2f} lotes; esperado <= 1 lote)")
-    assert taxa_falso_alarme <= 0.15, (
-        f"falso alarme {taxa_falso_alarme:.2f} com R2 -- esperado ~3% "
-        "(medido em 300 splits); investigar antes de aceitar")
+    assert ic_fa.low < 0.05, (
+        f"IC do falso alarme [{ic_fa.low:.3f}, {ic_fa.high:.3f}] esta' "
+        "inteiramente acima da meta de 5%")
+    assert n_fa / n_splits <= 0.07, (
+        f"falso alarme {n_fa / n_splits:.3f} com R2 (esperado ~3%)")
 
 
 @requer_corn

@@ -958,8 +958,8 @@ teria taxa de falso alarme dependente de `n` sem justificativa formal.
 Verificado por simulação e com dado real (não só "não quebra"): 200
 repetições sintéticas com calibração nova a cada repetição (falso alarme
 2,5% com R2 contra 25,5% do teste antigo, em processo de caudas pesadas) e o
-Corn real com troca de instrumento m5→mp5 (300 splits: falso alarme 3,0%,
-detecção 100%) — ver `docs/VALIDACAO_PUBLICA.md` §11.
+Corn real com troca de instrumento m5→mp5 (1200 splits: falso alarme 2,8%,
+IC 95% [2,0%; 3,9%]; detecção 1200/1200) — ver `docs/VALIDACAO_PUBLICA.md` §11.
 
 **Persistência e integração:** `save_state`/`load_state` (JSON)
 permitem que a sentinela sobreviva entre execuções — uso real (LIMS

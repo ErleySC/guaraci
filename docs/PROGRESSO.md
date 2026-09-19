@@ -5030,3 +5030,48 @@ Decisão do autor: aplicar R2 (não R3, não manter). Bloqueio de publicação p
 Execução completa final (`GUARACI_DATASETS_DIR` apontando para a pasta com `corn.mat` e `mendeley_ctgg7k4m5g/` com NIR8mm, MIR, Raman e a chave de classes), sobre o código e os documentos do commit deste passo: **1752 passed, 28 skipped, 0 failed** (28 min 08 s). Uma execução anterior no mesmo código, antes das edições de documentação, deu o mesmo 1752/28/0. `ruff check .` limpo; `mypy` limpo em 84 arquivos com `check_untyped_defs` ligado.
 
 **Os 28 skips NÃO são zero e não são do MSPC**: 10 datasets públicos que não estão nesta máquina (DeepHS Fruit — 14 testes; Figshare NMR azeite; Zenodo EEM azeite; Mendeley GC-MS lavanda; Zenodo GC-IMS urina; Zenodo HPLC azeite; Mendeley fluorescência; ERIC/Eawag) e 2 módulos opcionais de cores (`glasbey`, `colorcet`). Corn e Mendeley (NIR/MIR/Raman), que a instrução pedia, rodaram. Não baixei os outros: cada um exigiria download de terceiros sem autorização explícita nesta rodada. Antes da 1ª publicação, rodar com todos eles é um item do procedimento de publicação (`docs/MAPA_COMPLETUDE_V1.md`).
+
+
+---
+
+# PROGRESSO — Passo 221 (2026-09-19)
+
+## Passo 221 — MSPC revalidado com 200 réplicas e intervalo de confiança; checagem de prontidão
+
+Bloqueio de publicação permanece em vigor.
+
+### Parte A — MSPC com IC
+
+**Achado sobre a instrução**: a "segunda medição de 9,3%" citada não consta nos meus registros — as medições que fiz foram 3,0% (300 splits, código de produção) e 1/30 no teste de 30 seeds. Não a reproduzi em nenhuma execução desta rodada; tratei-a como uma leitura pequena de origem desconhecida, compatível com a mesma taxa verdadeira (um IC binomial de 30 splits a 3% vai de ~0,1% a ~17%).
+
+Protocolo do Passo 220 mantido (`scripts/medicoes/medir_mspc_r2_corn.py`, agora com Wilson e Clopper-Pearson): 40 amostras m5 de calibração, 40 de holdout, lotes de 8, referência de CV.
+
+| Execução | Falso alarme R2 | Wilson 95% | Clopper-Pearson 95% | Detecção R2 | Wilson 95% |
+|---|---|---|---|---|---|
+| 200 splits (sementes 0–199) | 7/200 = 3,5% | [1,7%; 7,0%] | [1,4%; 7,1%] | 200/200 | [98,1%; 100%] |
+| 1000 splits novos (sementes 1000–1999) | 27/1000 = 2,7% | [1,9%; 3,9%] | [1,8%; 3,9%] | 1000/1000 | [99,6%; 100%] |
+| **Soma, 1200 splits** | **34/1200 = 2,8%** | **[2,0%; 3,9%]** | **[2,0%; 3,9%]** | **1200/1200** | **[99,7%; 100%]** |
+
+- **Os 200 splits sozinhos não bastam**: o IC ([1,7%; 7,0%]) atravessa os 5% porque 200 réplicas não separam 3% de 5%. Rodei 1000 splits NOVOS (além do pedido) em vez de repetir o mesmo protocolo até dar certo; o centro não mudou (3,5% → 2,7%) e o intervalo estreitou para [1,9%; 3,9%].
+- **Decisão: R2 aceito**, "falso alarme 2,8% (IC 95%: [2,0%; 3,9%], n=1200 splits)"; a pausa prevista (IC sistematicamente acima de 5%) não ocorreu. Ressalva: os splits sorteiam de um único conjunto de 80 amostras físicas, então o IC binomial é levemente otimista.
+- **Atraso** (custo já medido, confirmado): 200 splits — 1º lote 119, 2º lote 81; 1000 splits — 1º lote 636, 2º lote 364; nada depois do 2º lote.
+- O teste lento `test_mspc_corn_r2_200_splits_com_intervalo_de_confianca` roda os 200 splits (7 min) e falha se o IC ficar inteiramente acima de 5%, se a detecção cair de 100% ou se o atraso passar de 1–2 lotes; reproduziu exatamente 7/200.
+- `docs/VALIDACAO_PUBLICA.md` §11, `docs/MAPA_COMPLETUDE_V1.md`, `docs/MANUAL.md` e `docs/ESCOPO_FUSAO_MULTIBLOCO_E_MSPC.md` trocaram os pontos únicos pelo intervalo.
+
+### Parte B — Prontidão
+
+- **Suíte completa, ruff, mypy**: ver "Contra-prova geral" no fim.
+- **Dependências**: `pip-audit` (OSV) sobre as 166 dependências instaladas no ambiente (inclui `nmrglue` 0.12, `brukeropus` 1.4.3, `lxml` 6.1.1, `pillow` 12.3.0, `scipy` 1.18.0) — **nenhuma vulnerabilidade conhecida**; idem sobre `requirements-lock.txt`. **Limitação**: `spcfile` (extra `[spc]`) vem de uma URL git sem versão fixada e não tem entrada em bases de CVE — o `pip-audit` não o audita; o risco dele é de cadeia de suprimentos (commit não fixado), não de CVE conhecida.
+- **Privacidade**: `tests/test_sem_identificador_real.py` varre TODOS os arquivos versionados do repositório atrás de identificador de amostra real e a guarda de caminho absoluto — passam na suíte completa; o gerador do vault roda a mesma regra sobre o vault.
+- **Vault**: `consultar_vault.py --cobertura` após regenerar no commit final (resultado no fim).
+- **CI**: no commit `c603609`, 10 jobs `test` verdes (ubuntu 3.10/3.11/3.12/3.13, windows 3.10/3.11/3.12/3.13, macOS 3.10/3.13) + `lint`, `typecheck`, `seguranca` e 8 jobs de validação pública, todos verdes. **A matriz não é 3 SOs × todas as versões**: macOS só roda 3.10 e 3.13 (redução deliberada documentada no `test.yml`). O CI do commit desta rodada só pode ser conferido depois do push.
+- **mypy**: o gate da CI (`mypy src/guaraci/ app_quimiometria.py`, 85 arquivos) está limpo. **Fora do gate**: `scripts/` tem 39 erros em 13 arquivos (medição/download, inclui 2 do meu `medir_mspc_falso_alarme_corn.py`) e `tests/` 51 erros em 16 — não corrigidos (registrados no mapa como limitação). Um falso alarme local: rodar mypy depois de trocar `--platform` dá 11 erros de cache antigo; `--no-incremental` confirma limpo.
+- **`.git/worktrees` órfão**: RESOLVIDO. As 9 pastas sem diretório de trabalho (`mut`…`mut4` e 5 de agentes) foram removidas (o `git worktree prune` em si continuava recusado pelo OneDrive; removi as mesmas pastas que ele listava, pelo PowerShell); `git worktree prune` limpo e `git fsck` sem erro. Sobraram as 3 worktrees vivas de agentes e a `hotfix`.
+
+### Parte C — Mapa de completude
+
+**Não declarei o mapa completo, porque não está.** A condição da instrução ("se os Grupos 1, 3, 4 e 5 já estavam fechados") é falsa para o Grupo 4 (usabilidade real nunca feita; `@example` determinístico nas técnicas recentes; teste de carga com dataset genuinamente grande) e o Grupo 5 não é um checklist fechável. Os Grupos 1, 2 e 3 estão fechados. O mapa ganhou a seção "FECHAMENTO FORMAL" com a data, a base verificada e a lista exata do que falta; a linha do Grupo 4 sobre mutação (que dizia "nunca rodado") e a do gate mypy foram corrigidas para o estado real.
+
+### Contra-prova geral
+
+Suíte completa com `GUARACI_DATASETS_DIR` apontando para `corn.mat` e `mendeley_ctgg7k4m5g/`, sobre o código final deste passo: **1752 passed, 28 skipped, 0 failed** (33 min 36 s; o teste lento novo de 200 splits do Corn está incluído). Os 28 skips são os mesmos do Passo 220 — 10 datasets públicos não baixados e 2 módulos opcionais de cor (`glasbey`, `colorcet`); nenhum é do MSPC. `ruff check .` limpo; `mypy src/guaraci/ app_quimiometria.py` limpo (85 arquivos, `check_untyped_defs` ligado); `bandit -ll` limpo; `vulture` (≥80%) sem achados.

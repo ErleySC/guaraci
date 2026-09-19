@@ -1506,27 +1506,55 @@ Aplicabilidade em validação cruzada da calibração**, guardada no pacote de m
 antigo (binomial contra o 5% nominal) só permanece como fallback avisado para
 modelos salvos antes do Passo 220.
 
-**Resultado final, código de PRODUÇÃO, Corn real** (`scripts/medicoes/
-medir_mspc_r2_corn.py`, 300 splits independentes de calibração — 40 amostras m5 —
-e holdout, lotes de 8; a fase em controle é o resto de m5, a fase de deriva são as
-MESMAS amostras medidas em mp5):
+**Resultado final, código de PRODUÇÃO, Corn real, com intervalo de confiança**
+(`scripts/medicoes/medir_mspc_r2_corn.py`; cada split sorteia 40 amostras m5 de
+calibração e usa as outras 40 como holdout, em lotes de 8; a fase em controle é o
+resto de m5, a fase de deriva são as MESMAS amostras medidas em mp5). Duas execuções
+independentes, com sementes que não se sobrepõem, mais a soma:
 
-| Métrica | Teste antigo (binomial vs 5%) | **R2 (final)** |
+| Execução | Falso alarme em controle (R2) | IC 95% (Wilson) | IC 95% (Clopper-Pearson) | Detecção da troca m5→mp5 (R2) | IC 95% (Wilson) |
+|---|---|---|---|---|---|
+| 200 splits (sementes 0–199, protocolo pedido) | 7/200 = **3,5%** | [1,7%; 7,0%] | [1,4%; 7,1%] | 200/200 = 100% | [98,1%; 100%] |
+| 1000 splits novos (sementes 1000–1999) | 27/1000 = **2,7%** | [1,9%; 3,9%] | [1,8%; 3,9%] | 1000/1000 = 100% | [99,6%; 100%] |
+| **Soma, 1200 splits** | 34/1200 = **2,8%** | **[2,0%; 3,9%]** | **[2,0%; 3,9%]** | **1200/1200 = 100%** | **[99,7%; 100%]** |
+
+**Decisão (evidência, não ponto único): R2 aceito.** O falso alarme é **2,8% (IC 95%:
+[2,0%; 3,9%], n=1200 splits)** — o intervalo inteiro fica ABAIXO da meta de 5%. Com
+apenas os 200 splits o intervalo ([1,7%; 7,0%]) atravessa os 5% porque 200 réplicas não
+têm precisão para separar 3% de 5% (a largura do IC a 3% com n=200 é ~±2,5 pontos);
+por isso foram rodados 1000 splits novos, que estreitaram o intervalo sem mudar o
+centro. A detecção é 1200/1200, com limite inferior de 99,7%.
+
+**Os "pontos únicos" anteriores (3,0% em 300 splits; 1/30 = 3,3% no teste de 30 seeds;
+e a leitura de 9,3% relatada em outra execução pequena) são substituídos por este
+intervalo.** A leitura de 9,3% não foi reproduzida em nenhuma execução desta rodada
+(blocos de 200 e de 1000 splits: 3,5% e 2,7%) e não tenho o protocolo dela; um IC
+binomial de 30 splits a 3% vai de ~0,1% a ~17%, então leituras de 3% e ~9% em
+execuções pequenas são compatíveis com a MESMA taxa verdadeira (~3%) — variância de
+amostra pequena, não bug. **Ressalva metodológica**: os splits sorteiam de um único
+conjunto de 80 amostras físicas, então não são independentes no sentido estrito; o IC
+binomial assume independência e é, por isso, um pouco otimista. O que sustenta a
+conclusão é a estabilidade entre os dois blocos com sementes disjuntas (3,5% e 2,7%).
+
+| Métrica (300 splits, sementes 0–299, execução anterior) | Teste antigo (binomial vs 5%) | R2 |
 |---|---|---|
-| Falso alarme em controle | 20,0% | **3,0%** |
-| Detecção da troca m5→mp5 | 300/300 (100%) | **300/300 (100%)** |
-| Atraso de detecção | sempre no 1º lote pós-troca | **1º lote em 177/300; 2º lote em 123/300; nenhum depois** (média 0,41 lote ≈ 3 amostras) |
+| Falso alarme em controle | 20,0% (com 200 splits: 17,0%, IC [12,4%; 22,8%]) | 3,0% |
+| Atraso de detecção | sempre no 1º lote | 1º lote 177/300; 2º lote 123/300 |
 
-O atraso é o **custo medido** de R2 e não foi reportado antes: comparar contra a
-referência de CV (~6,9% em média) em vez de 5% exige um pouco mais de evidência
-para alarmar. A detecção continua 100% e no máximo 1 lote (8 amostras) depois.
+**Atraso de detecção com R2** (custo medido, dado da 1ª medição confirmado pelas
+novas): 200 splits — 1º lote 119, 2º lote 81 (média 0,41); 1000 splits — 1º lote 636,
+2º lote 364 (média 0,36); nenhum depois do 2º lote. O teste antigo detectava sempre no
+1º lote. Comparar contra a referência de CV (~6,9% em média) em vez de 5% exige um pouco
+mais de evidência para alarmar; a detecção continua 100% e em no máximo 1 lote (8
+amostras) depois.
 
 Antes de aplicar R2, a medição exploratória do Passo 219 (reimplementação em
 `medir_mspc_falso_alarme_corn.py`, mesma semente) foi **reproduzida exatamente**
 (300 splits): binomial vs 5% = 20,0%, R3 (tolerância 10%) = 5,7%, R2 = 3,0%, poder
 100% em todas — e o R2 do código de produção deu os mesmos 3,0% / 100%. Nos testes
-automáticos (`tests/test_mspc_validacao_corn.py`, 30 seeds): detecção 30/30, falso
-alarme 1/30 (3%), atraso médio 0,27 lote.
+automáticos (`tests/test_mspc_validacao_corn.py`): o teste lento roda os 200 splits
+com IC e falha se o IC ficar inteiramente acima de 5%, se a detecção cair de 100% ou
+se o atraso passar de 1–2 lotes.
 
 **Camada 1 — sintética, calibração NOVA a cada repetição** (é o que expõe a variância
 de calibração da Fase I; o teste de 1 calibração fixa não expõe):
@@ -1615,7 +1643,8 @@ Reproduzir:
 curl -fsSL -o corn.mat https://eigenvector.com/data/Corn/corn.mat
 GUARACI_DATASETS_DIR=$(pwd) pytest tests/test_mspc_validacao_corn.py -v -s -m "slow or not slow"
 pytest tests/test_mspc_validacao_deriva.py tests/test_sentinela_r2.py -v -m "slow or not slow"
-GUARACI_DATASETS_DIR=$(pwd) python scripts/medicoes/medir_mspc_r2_corn.py 300
+GUARACI_DATASETS_DIR=$(pwd) python scripts/medicoes/medir_mspc_r2_corn.py 200 0        # 200 splits com IC
+GUARACI_DATASETS_DIR=$(pwd) python scripts/medicoes/medir_mspc_r2_corn.py 1000 1000 r2   # 1000 splits novos
 python scripts/medicoes/medir_mspc_r2_sintetico.py 200
 python scripts/medicoes/medir_mspc_r2_deriva_sutil.py 200
 ```
