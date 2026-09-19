@@ -69,6 +69,35 @@ class SavGol(BaseEstimator, TransformerMixin):
                              deriv=self.deriv, axis=1)
 
 
+def _msc_aplicar(X, ref) -> np.ndarray:
+    """MSC com referencia `ref` ja ajustada -- FONTE UNICA da formula, usada
+    por `MSC.transform` e por `model_export` (que reaplica o modelo sem
+    sklearn). Antes eram duas copias identicas, guardadas so' por um teste
+    de igualdade numerica (achado da varredura de duplicacao, 2026-09-19)."""
+    X = np.asarray(X, dtype=float)
+    ref = np.asarray(ref, dtype=float)
+    x_mean = float(ref.mean())
+    xc = ref - x_mean
+    var_x = float(xc @ xc)
+
+    y_mean = X.mean(axis=1)                  # (n,)
+    if var_x < 1e-12:
+        # Referencia degenerada (variancia ~0) -- ver docstring de MSC: sem
+        # regressao possivel, so' centra pela media de cada amostra.
+        return X - y_mean[:, None]
+
+    Yc = X - y_mean[:, None]                 # (n, p)
+    b = (Yc @ xc) / var_x                     # (n,) -- Cov(ref, X_i)/Var(ref)
+    a = y_mean - b * x_mean                   # (n,)
+
+    b_seguro = np.where(np.abs(b) > 1e-12, b, 1.0)
+    out = (X - a[:, None]) / b_seguro[:, None]
+    b_quase_zero = np.abs(b) <= 1e-12
+    if b_quase_zero.any():
+        out[b_quase_zero] = (X - a[:, None])[b_quase_zero]
+    return out
+
+
 class MSC(BaseEstimator, TransformerMixin):
     """Multiplicative Scatter Correction. Uses mean training spectrum as
     reference; for each sample estimates (a, b) such that X_i ~ a + b * ref and
@@ -103,28 +132,7 @@ class MSC(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        X = np.asarray(X, dtype=float)
-        ref = self.ref_
-        x_mean = float(ref.mean())
-        xc = ref - x_mean
-        var_x = float(xc @ xc)
-
-        y_mean = X.mean(axis=1)                  # (n,)
-        if var_x < 1e-12:
-            # Referencia degenerada (variancia ~0) -- ver docstring: sem
-            # regressao possivel, so' centra pela media de cada amostra.
-            return X - y_mean[:, None]
-
-        Yc = X - y_mean[:, None]                 # (n, p)
-        b = (Yc @ xc) / var_x                     # (n,) -- Cov(ref, X_i)/Var(ref)
-        a = y_mean - b * x_mean                   # (n,)
-
-        b_seguro = np.where(np.abs(b) > 1e-12, b, 1.0)
-        out = (X - a[:, None]) / b_seguro[:, None]
-        b_quase_zero = np.abs(b) <= 1e-12
-        if b_quase_zero.any():
-            out[b_quase_zero] = (X - a[:, None])[b_quase_zero]
-        return out
+        return _msc_aplicar(X, self.ref_)
 
 
 class PQN(BaseEstimator, TransformerMixin):

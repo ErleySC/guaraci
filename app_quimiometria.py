@@ -132,7 +132,7 @@ def _carregar_motor():
     de módulo falhar e deixar o pacote parcialmente carregado.
     """
     try:
-        import guaraci.pipeline as _pq  # type: ignore[import]
+        import guaraci.pipeline as _pq
     except Exception as exc:
         raise RuntimeError(
             f"Failed to import pipeline engine:\n"
@@ -581,14 +581,14 @@ def _widget_para_campo(s: Dict, valor_atual, prefixo: str = "w_"):
             min_value=int(_lo) if _lo is not None else None,
             max_value=int(_hi) if _hi is not None else None)
     if t == "float":
-        _lo = s.get("min"); _hi = s.get("max")
-        _v = float(valor_atual)
-        if _lo is not None: _v = max(_v, float(_lo))
-        if _hi is not None: _v = min(_v, float(_hi))
+        _flo = s.get("min"); _fhi = s.get("max")
+        _fv = float(valor_atual)
+        if _flo is not None: _fv = max(_fv, float(_flo))
+        if _fhi is not None: _fv = min(_fv, float(_fhi))
         return st.number_input(
-            rotulo, value=_v, help=ajuda, key=chave, format="%.4f",
-            min_value=float(_lo) if _lo is not None else None,
-            max_value=float(_hi) if _hi is not None else None)
+            rotulo, value=_fv, help=ajuda, key=chave, format="%.4f",
+            min_value=float(_flo) if _flo is not None else None,
+            max_value=float(_fhi) if _fhi is not None else None)
     if t == "list":
         txt = ", ".join(str(x) for x in (valor_atual or ()))
         return st.text_input(rotulo + " (comma-separated)", value=txt,

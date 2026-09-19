@@ -719,6 +719,7 @@ from guaraci.dados_io import (   # noqa: E402
     kennard_stone,
     kennard_stone_split,
     kennard_stone_split_group_aware,
+    _split_cal_val_por_especie,
     duplex_split,
     duplex_split_group_aware,
     spxy_split,
@@ -1060,23 +1061,10 @@ def pls_regression_by_species(
         Y_c = conc_c.reshape(-1, 1)
 
         # group-aware cal/val split (replicates never split)
-        try:
-            if cfg.cal_val_split == "kennard_stone":
-                ic, iv = kennard_stone_split_group_aware(
-                    X_c, mae_c, cfg.frac_cal)
-            elif mae_c is not None and len(np.unique(mae_c)) >= 4:
-                gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
-                                        random_state=cfg.seed)
-                ic, iv = next(gss.split(X_c, Y_c, groups=mae_c))
-            else:
-                rng = np.random.default_rng(cfg.seed)
-                perm = rng.permutation(len(conc_c))
-                ncal = max(2, int(cfg.frac_cal * len(conc_c)))
-                ic, iv = perm[:ncal], perm[ncal:]
-        except (ValueError, IndexError):
-            continue   # especie com amostras/grupos insuficientes p/ o split
-        if len(ic) < 4 or len(iv) < 2:
-            continue
+        _split = _split_cal_val_por_especie(X_c, Y_c, mae_c, cfg)
+        if _split is None:
+            continue   # especie sem amostras/grupos suficientes p/ o split
+        ic, iv = _split
 
         Xc, Yc = X_c[ic], Y_c[ic]
         Xv, Yv = X_c[iv], Y_c[iv]
@@ -1822,7 +1810,10 @@ def executar(cfg: Config):
     # encarece a CV e da' ao modelo espaco para ajustar ruido. E' um AVISO,
     # nunca um corte automatico: mudar a faixa muda o resultado, e essa
     # decisao e' do usuario.
-    diag_faixa = diagnose_spectral_range(X_processed, wavenumbers)
+    # cast: o retorno e' Dict[str, object] (valores heterogeneos por chave);
+    # os tipos concretos sao garantidos na construcao do dict.
+    diag_faixa = cast(Dict[str, Any],
+                      diagnose_spectral_range(X_processed, wavenumbers))
     if diag_faixa.get("faixa_sugerida") and diag_faixa["frac_util"] < 0.95:
         _fu = float(diag_faixa["frac_util"])
         _sug = diag_faixa["faixa_sugerida"]
@@ -2186,8 +2177,9 @@ def executar(cfg: Config):
     # acima, na nomenclatura/escala que usuarios de SIMCA-P/Unscrambler
     # esperam. Nao gera figura nova (seria redundante com o painel T2/Q
     # acima); reportado no resumo/console/model card.
-    _dmodx_res = dmodx(Q, n_variaveis=X_processed.shape[1],
-                        n_componentes=n_opt, n_amostras=X_processed.shape[0])
+    _dmodx_res = cast(Dict[str, Any], dmodx(
+        Q, n_variaveis=X_processed.shape[1],
+        n_componentes=n_opt, n_amostras=X_processed.shape[0]))
     if should_generate(cfg, "confusao"):
         fig4_confusao(cm_mat, lb.classes_, rotulos, pred_lab, cfg, pasta)
     if should_generate(cfg, "roc"):
@@ -2771,7 +2763,9 @@ def executar(cfg: Config):
     # ja calculados na etapa [0/7]): o painel de status da aba Projeto mostra
     # severidade por checagem, e ler isso de volta do Markdown seria
     # reparsear um texto que ja' foi serializado uma vez.
-    save_design_audit(pasta_logs, resumo["auditoria_delineamento"])
+    save_design_audit(
+        pasta_logs,
+        cast(List[Dict[str, str]], resumo["auditoria_delineamento"]))
     log.info(f"  -> {os.path.join(pasta_logs, 'auditoria_delineamento.json')}")
 
     # --- 9a. Auto-Benchmark (opcional) ─────────────────────────────────────
@@ -2876,7 +2870,8 @@ def executar(cfg: Config):
         # 2026-08-07): a decisao dentro/fora usa a distancia combinada do
         # DD-SIMCA, nao mais o teste retangular por eixo.
         try:
-            _ad_treino = training_applicability_domain(pca, X_processed, alpha=0.05)
+            _ad_treino = cast(Dict[str, Any], training_applicability_domain(
+                pca, X_processed, alpha=0.05))
             pacote_modelo["pca"] = pca
             pacote_modelo["ad_var_t"] = _ad_treino["var_t"]
             pacote_modelo["ad_h0"] = _ad_treino["h0"]

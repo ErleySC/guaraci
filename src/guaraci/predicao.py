@@ -55,6 +55,7 @@ __all__ = [
     "BlindPredictionResult",
     "quantify_sample",
     "predict_blind",
+    "anexar_colunas_fluxo_cego",
 ]
 
 
@@ -776,3 +777,42 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
             alpha_total=alpha_total))
 
     return df, resultados
+
+
+def anexar_colunas_fluxo_cego(df_res: pd.DataFrame,
+                               resultados_cego: List[BlindPredictionResult]
+                               ) -> pd.DataFrame:
+    """Anexa a `df_res` (saida de `predict_blind`) as colunas do fluxo cego
+    Detectar->Identificar->Quantificar. FONTE UNICA para o menu do CLI
+    (`guaraci.py`) e a aba web (`app_tabs/predicao.py`): antes cada
+    superficie montava as MESMAS 12 colunas por conta propria (a varredura
+    de duplicacao de 2026-09-19 achou ~30 linhas identicas) -- a paridade
+    CLI/web dependia de duas copias ficarem iguais para sempre. Devolve o
+    proprio `df_res` (modificado in place) por conveniencia."""
+    df_res["detectado_puro_especie"] = [
+        r.pureza.aceito for r in resultados_cego]
+    df_res["pureza_confiavel"] = [
+        r.pureza.confiavel for r in resultados_cego]
+    df_res["classe_identificada"] = [
+        r.identificacao.classe_identificada for r in resultados_cego]
+    df_res["identificacao_cobertura"] = [
+        (r.identificacao.cobertura_status.value
+         if r.identificacao.cobertura_status else None)
+        for r in resultados_cego]
+    df_res["identificacao_alpha_alcancavel"] = [
+        r.identificacao.alpha_alcancavel for r in resultados_cego]
+    df_res["identificacao_candidatos"] = [
+        ", ".join(r.identificacao.candidatos_ambiguos)
+        for r in resultados_cego]
+    df_res["teor_estimado"] = [
+        r.quantificacao.teor_estimado for r in resultados_cego]
+    # Bloco 24: faixa de decisao (LOD/LOQ, Bloco 12) ao lado do numero --
+    # nunca so' o teor cru.
+    df_res["faixa_decisao"] = [
+        r.quantificacao.faixa_decisao for r in resultados_cego]
+    df_res["lod"] = [r.quantificacao.lod for r in resultados_cego]
+    df_res["loq"] = [r.quantificacao.loq for r in resultados_cego]
+    df_res["quantificacao_motivo_bloqueio"] = [
+        r.quantificacao.motivo_bloqueio for r in resultados_cego]
+    df_res["alpha_total"] = [r.alpha_total for r in resultados_cego]
+    return df_res

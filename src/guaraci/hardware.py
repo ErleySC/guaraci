@@ -109,7 +109,7 @@ def hardware_probe() -> Dict[str, Any]:
                              ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
             ms = _MEMSTATUS()
             ms.dwLength = ctypes.sizeof(ms)
-            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms))  # type: ignore
+            getattr(ctypes, "windll").kernel32.GlobalMemoryStatusEx(ctypes.byref(ms))
             info["ram_total_gb"] = round(ms.ullTotalPhys / 1024**3, 1)
             info["ram_livre_gb"] = round(ms.ullAvailPhys / 1024**3, 1)
         except Exception as _e_win:  # noqa: BLE001 -- fallback Windows

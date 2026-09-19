@@ -22,7 +22,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # ---------------------------------------------------------------------------
 # UTF-8 no Windows antes de qualquer import rich
@@ -30,8 +30,11 @@ from typing import Any, Dict, List, Optional, Tuple
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
         try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+            # getattr (nao `.reconfigure` direto): o tipo de sys.stdout e'
+            # TextIO, que nao declara `reconfigure` -- evita um `type: ignore`
+            # cuja necessidade varia com a plataforma/versao do mypy.
+            getattr(sys.stdout, "reconfigure")(encoding="utf-8", errors="replace")
+            getattr(sys.stderr, "reconfigure")(encoding="utf-8", errors="replace")
         except (OSError, ValueError):
             pass   # stdout/stderr redirecionado p/ algo sem reconfigure util
     try:
@@ -779,7 +782,8 @@ def _risco_icon(key: str) -> str:
 # Utilitarios
 # ---------------------------------------------------------------------------
 def _cls() -> None:
-    os.system("cls" if os.name == "nt" else "clear")
+    # Limpa a tela: string constante, nenhum dado do usuario chega aqui.
+    os.system("cls" if os.name == "nt" else "clear")  # nosec B605
 
 def _input(msg: str = "", default: str = "") -> str:
     try:
@@ -2300,7 +2304,7 @@ def _mostrar_ajuda(key: str) -> None:
         for ek, ev in list(exemplos.items())[:4]:
             info.add_row(f"  {ek}", Text(str(ev), style=PM))
 
-    parts = [info]
+    parts: List[Any] = [info]
 
     # Dica unica do Guaraci (diferente da descricao)
     if tip:
@@ -3150,10 +3154,8 @@ def _menu_hardware(cfg: Optional[Config] = None) -> None:
         rec.add_row(escape(modulo), Text.from_markup(rec_str))
 
     cap_lbl = "Capacidade" if lang=="PT" else "Capacity"
-    per_lbl = "Perfil indicado" if lang=="PT" else "Recommended profile"
     cap_txt = Text.from_markup(f"  [{tcor}]{tier}[/{tcor}]  |  [{PA}]{escape(tier_perfil)}[/{PA}]")
 
-    tit_hw   = "Recursos do Sistema" if lang=="PT" else "System Resources"
     tit_rec  = "Recomendacoes por Modulo" if lang=="PT" else "Per-Module Recommendations"
 
     console.print(Panel(
@@ -3283,35 +3285,7 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
             # anterior, sem quebrar).
             if pkg.get("identification_ensemble"):
                 df_res, resultados_cego = _pred.predict_blind(pkg, X_new, wn_new)
-                df_res["detectado_puro_especie"] = [
-                    r.pureza.aceito for r in resultados_cego]
-                df_res["pureza_confiavel"] = [
-                    r.pureza.confiavel for r in resultados_cego]
-                df_res["classe_identificada"] = [
-                    r.identificacao.classe_identificada for r in resultados_cego]
-                df_res["identificacao_cobertura"] = [
-                    (r.identificacao.cobertura_status.value
-                     if r.identificacao.cobertura_status else None)
-                    for r in resultados_cego]
-                df_res["identificacao_alpha_alcancavel"] = [
-                    r.identificacao.alpha_alcancavel for r in resultados_cego]
-                df_res["identificacao_candidatos"] = [
-                    ", ".join(r.identificacao.candidatos_ambiguos)
-                    for r in resultados_cego]
-                df_res["teor_estimado"] = [
-                    r.quantificacao.teor_estimado for r in resultados_cego]
-                # Bloco 24: faixa de decisao ao lado do numero -- nunca so
-                # o teor cru, sem dizer se ele esta' abaixo do LOD (nao
-                # detectavel), na zona cinzenta (LOD-LOQ) ou quantificado
-                # com confianca (>=LOQ). Mesmos limiares do Bloco 12.
-                df_res["faixa_decisao"] = [
-                    r.quantificacao.faixa_decisao for r in resultados_cego]
-                df_res["lod"] = [r.quantificacao.lod for r in resultados_cego]
-                df_res["loq"] = [r.quantificacao.loq for r in resultados_cego]
-                df_res["quantificacao_motivo_bloqueio"] = [
-                    r.quantificacao.motivo_bloqueio for r in resultados_cego]
-                df_res["alpha_total"] = [
-                    r.alpha_total for r in resultados_cego]
+                _pred.anexar_colunas_fluxo_cego(df_res, resultados_cego)
             else:
                 df_res = _pred.predict_samples(pkg, X_new, wn_new)
             if len(meta_df.columns) > 0 and len(meta_df) == len(df_res):
@@ -3646,7 +3620,9 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
     from guaraci.hsi_pipeline import run_hsi_pipeline
     console.print(f"  [{PM}]{'Rodando pipeline HSI...' if is_pt else 'Running HSI pipeline...'}[/{PM}]")
     try:
-        resumo = run_hsi_pipeline(cfg)
+        # cast: run_hsi_pipeline devolve Dict[str, object] (valores
+        # heterogeneos por chave); tipos concretos garantidos na construcao.
+        resumo = cast(Dict[str, Any], run_hsi_pipeline(cfg))
     except Exception as e:  # noqa: BLE001 -- reporta erro completo, nunca engole
         console.print(f"  [{PR}]{'Erro' if is_pt else 'Error'}: {e}[/{PR}]")
         _pause(); return
@@ -3904,9 +3880,14 @@ def _refinar_plano_com_amostragem_ativa(is_pt: bool) -> None:
         console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); return
 
     try:
-        import joblib
+        import guaraci.predicao as _pred_amo
         from guaraci.amostragem_ativa import priorizar_amostragem
-        pkg = joblib.load(cam_modelo)
+        # load_model (nao joblib.load cru): confere o SHA-256 do manifesto
+        # ANTES de executar o pickle -- o joblib.load direto que havia
+        # aqui contornava essa protecao (achado da auditoria de
+        # seguranca de 2026-09-19); confiar=True porque o operador
+        # ja confirmou acima.
+        pkg = _pred_amo.load_model(cam_modelo, confiar=True)
         ensemble = pkg.get("identification_ensemble")
         if not ensemble:
             console.print(
@@ -4611,8 +4592,7 @@ def _menu_help(cfg: Optional[Config] = None) -> None:
     # Lista unificada a partir do _CONFIG_SPEC (todos os campos editaveis).
     keys = [s["key"] for s in _CONFIG_SPEC] if _CONFIG_SPEC else list(_HELP_DB.keys())
     # Remove duplicatas mantendo ordem
-    seen: set = set()
-    keys = [k for k in keys if not (k in seen or seen.add(k))]
+    keys = list(dict.fromkeys(keys))
 
     while True:
         _cls(); _print_header(cfg)
@@ -4655,8 +4635,11 @@ def _menu_help(cfg: Optional[Config] = None) -> None:
         elif raw.lower().startswith("help "):
             campo = raw[5:].strip()
             found = [k for k in keys if campo.lower() in k.lower() or campo.lower() in _nome_campo(k).lower()]
-            (_mostrar_ajuda(found[0]) if found
-             else (console.print(f"  [{PM}]{'Nao encontrado.' if lang=='PT' else 'Not found.'}[/{PM}]"), _pause()))
+            if found:
+                _mostrar_ajuda(found[0])
+            else:
+                console.print(f"  [{PM}]{'Nao encontrado.' if lang=='PT' else 'Not found.'}[/{PM}]")
+                _pause()
         elif raw.isdigit():
             idx = int(raw) - 1
             if 0 <= idx < len(keys):
@@ -4744,7 +4727,7 @@ def _estimar_tempo(cfg: Config, n_amostras: int) -> Optional[str]:
     return f"~{lo / 60.0:.1f}-{hi / 60.0:.1f} h"
 
 
-def _checklist(cfg: Config) -> Tuple[bool, List]:
+def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool], str]]]:
     lang = _lang()
     checks = []; erros = []
 
@@ -4939,7 +4922,7 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     if frac > 0.05:
         eta_txt = _fmt_time(max(0.0, elapsed / frac - elapsed))
 
-    partes = [
+    partes: List[Any] = [
         Text.assemble(
             (f"{_t('exec_objetivo')}: ", PM), (objetivo_rotulo, f"bold {PA}")),
         Text(f"[{barra}] {frac * 100:5.1f}%  {label}", style=PA),
@@ -4991,7 +4974,6 @@ def _rodar_pipeline(cfg: Config) -> None:
         cfg.tag = san; console.print(f"  [g]✓ ID: {escape(san)}[/g]")
 
     console.print()
-    conf_str = _t("confirmar").replace("(s/n)", "(s/n)").replace("(y/n)","(y/n)")
     iniciar = _ask(f"  [{PA}]► {_t('rodar')}?[/{PA}] (s/n) ")
     if iniciar.lower() not in ("s","y","sim","yes"):
         console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
@@ -5022,8 +5004,13 @@ def _rodar_pipeline(cfg: Config) -> None:
             plt.rcParams["grid.alpha"] = float(vcfg.get("grid_alpha", 0.4))
         else:
             plt.rcParams["axes.grid"] = False
-        alpha_map = {"baixo":0.9,"medio":0.65,"alto":0.35}
-        plt.rcParams["lines.alpha"] = alpha_map.get(vcfg.get("alpha_pontos","medio"), 0.65)
+        # `alpha_pontos` (opacidade dos pontos) NAO tem efeito hoje: a linha
+        # que havia aqui gravava `plt.rcParams["lines.alpha"]`, chave que NAO
+        # EXISTE no matplotlib (KeyError engolido pelo except abaixo -- a
+        # preferencia do menu nunca chegou a nenhuma figura). Roteia-la de
+        # verdade exige passar o alfa por cada `ax.scatter` de figuras.py
+        # (21 chamadas com alpha fixo) -- backlog registrado, achado da
+        # auditoria de confiabilidade de 2026-09-19.
     except Exception as _e_vis:  # noqa: BLE001 -- configuracao visual
         # cosmetica (paleta/fonte/grid); um erro aqui nunca deve impedir a
         # corrida de acontecer, so' os defaults do matplotlib ficam em uso.

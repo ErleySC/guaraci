@@ -17,6 +17,7 @@ from guaraci.chemometric_stats import (
 from guaraci.predicao import (
     predict_samples as _predizer,
     predict_blind as _predizer_cego,
+    anexar_colunas_fluxo_cego as _anexar_colunas_cego,
     validate_model_package as _validar_pacote_modelo,
     load_prediction_csv as _carregar_csv_predicao,
 )
@@ -192,38 +193,7 @@ def render(upload_bloqueado: bool, tok: Callable[[], Dict[str, str]],
                     if pkg_pred.get("identification_ensemble"):
                         df_res, resultados_cego = _predizer_cego(
                             pkg_pred, X_pred_raw, wn_pred)
-                        df_res["detectado_puro_especie"] = [
-                            r.pureza.aceito for r in resultados_cego]
-                        df_res["pureza_confiavel"] = [
-                            r.pureza.confiavel for r in resultados_cego]
-                        df_res["classe_identificada"] = [
-                            r.identificacao.classe_identificada for r in resultados_cego]
-                        df_res["identificacao_cobertura"] = [
-                            (r.identificacao.cobertura_status.value
-                             if r.identificacao.cobertura_status else None)
-                            for r in resultados_cego]
-                        df_res["identificacao_alpha_alcancavel"] = [
-                            r.identificacao.alpha_alcancavel for r in resultados_cego]
-                        df_res["identificacao_candidatos"] = [
-                            ", ".join(r.identificacao.candidatos_ambiguos)
-                            for r in resultados_cego]
-                        df_res["teor_estimado"] = [
-                            r.quantificacao.teor_estimado for r in resultados_cego]
-                        # Bloco 24: a faixa de decisao (LOD/LOQ) ja vinha
-                        # calculada em QuantificationResult e ja era exposta
-                        # pela CLI (guaraci.py:_menu_prediction), mas nunca
-                        # chegava a tabela do app web -- so' o teor cru, sem
-                        # dizer se ele esta' abaixo do LOD, na zona cinzenta
-                        # ou quantificado com confianca. Mesmos limiares do
-                        # Bloco 12, nada recalculado aqui.
-                        df_res["faixa_decisao"] = [
-                            r.quantificacao.faixa_decisao for r in resultados_cego]
-                        df_res["lod"] = [r.quantificacao.lod for r in resultados_cego]
-                        df_res["loq"] = [r.quantificacao.loq for r in resultados_cego]
-                        df_res["quantificacao_motivo_bloqueio"] = [
-                            r.quantificacao.motivo_bloqueio for r in resultados_cego]
-                        df_res["alpha_total"] = [
-                            r.alpha_total for r in resultados_cego]
+                        _anexar_colunas_cego(df_res, resultados_cego)
                     else:
                         df_res = _predizer(pkg_pred, X_pred_raw, wn_pred)
                     # Re-attach metadata (sample names) if available

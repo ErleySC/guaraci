@@ -327,6 +327,39 @@ def test_refinar_plano_com_amostragem_ativa_sem_ensemble_nao_quebra(monkeypatch,
     guaraci_mod._refinar_plano_com_amostragem_ativa(is_pt=True)
 
 
+def test_refinar_plano_com_amostragem_ativa_bloqueia_modelo_adulterado_antes_do_pickle(
+        monkeypatch, tmp_path, capsys):
+    """Achado da auditoria de seguranca de 2026-09-19: este menu chamava
+    `joblib.load` cru, contornando a conferencia de SHA-256 do manifesto
+    que `predicao.load_model` faz ANTES de executar o pickle. Prova: um
+    modelo com manifesto e' ADULTERADO depois; o pickle malicioso NAO pode
+    executar (o payload criaria um arquivo-sentinela)."""
+    import joblib
+    import guaraci.guaraci as guaraci_mod
+    import guaraci.predicao as pr
+
+    cam_modelo = str(tmp_path / "modelo.joblib")
+    joblib.dump({"identification_ensemble": {}}, cam_modelo)
+    pr.save_manifest(cam_modelo, {"classes": []})   # hash do arquivo ORIGINAL
+
+    sentinela = tmp_path / "EXECUTOU.txt"
+
+    class _Payload:
+        def __reduce__(self):
+            return (open, (str(sentinela), "w"))
+
+    joblib.dump(_Payload(), cam_modelo)          # troca o conteudo -> hash nao bate
+
+    respostas = iter([cam_modelo, "s"])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod._refinar_plano_com_amostragem_ativa(is_pt=True)
+
+    assert not sentinela.exists(), (
+        "o pickle adulterado EXECUTOU -- a checagem de manifesto foi "
+        "contornada de novo")
+    assert "Integridade" in capsys.readouterr().out
+
+
 def test_menu_plan_dispatch_refinar_amostragem_ativa(monkeypatch, tmp_path):
     """Responder 's' na pergunta de refinamento chama de fato a funcao
     nova -- nao so' mostra o texto sem acao."""

@@ -302,9 +302,11 @@ def parse_title(title: str) -> Optional[Dict[str, Any]]:
     data = m.group("data")
     trip = int(m.group("trip"))
     am   = _RE_ADULT.match(m.group("adulteracao"))
-    adulterante: Optional[str]      = None
-    teor:        Optional[float]    = None
-    adulterante_nome: Optional[str] = None
+    # sem anotacao: os 3 nomes ja foram tipados no ramo das correcoes
+    # conhecidas acima (mypy no-redef); aqui so' recebem None/valor.
+    adulterante = None
+    teor = None
+    adulterante_nome = None
     if am:
         adulterante = str(am.group(1))
         teor = float(str(am.group(2)).replace(",", "."))
@@ -446,6 +448,42 @@ def kennard_stone_split_group_aware(
         mask_treino = np.isin(mae_subset, list(grupos_treino))
         return np.where(mask_treino)[0], np.where(~mask_treino)[0]
     return kennard_stone_split(X, frac_treino=frac_cal)
+
+
+def _split_cal_val_por_especie(
+        X_c: np.ndarray, Y_c: np.ndarray, mae_c: Optional[np.ndarray],
+        cfg: Any) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """Split calibracao/validacao (group-aware) de UMA especie -- FONTE
+    UNICA da decisao, usada por `pipeline.pls_regression_by_species` e por
+    `avaliacao_modelos.benchmark_regression_by_species` (as duas copias
+    inline, ~36 linhas identicas, foram achadas pela varredura de
+    duplicacao de 2026-09-19; a divergencia entre elas quebraria a
+    comparacao apples-to-apples PLS-R x benchmark sem nenhum aviso).
+
+    Regra: Kennard-Stone group-aware (`cfg.cal_val_split ==
+    "kennard_stone"`); senao GroupShuffleSplit por `mae_id` (>=4 grupos);
+    senao permutacao simples com `cfg.seed`. Devolve `None` quando a
+    especie nao sustenta o split (ValueError/IndexError do splitter, ou
+    menos de 4 amostras de calibracao / 2 de validacao) -- o chamador
+    pula a especie."""
+    from sklearn.model_selection import GroupShuffleSplit
+    try:
+        if cfg.cal_val_split == "kennard_stone":
+            ic, iv = kennard_stone_split_group_aware(X_c, mae_c, cfg.frac_cal)
+        elif mae_c is not None and len(np.unique(mae_c)) >= 4:
+            gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
+                                    random_state=cfg.seed)
+            ic, iv = next(gss.split(X_c, Y_c, groups=mae_c))
+        else:
+            rng = np.random.default_rng(cfg.seed)
+            perm = rng.permutation(len(Y_c))
+            ncal = max(2, int(cfg.frac_cal * len(Y_c)))
+            ic, iv = perm[:ncal], perm[ncal:]
+    except (ValueError, IndexError):
+        return None   # especie com amostras/grupos insuficientes p/ o split
+    if len(ic) < 4 or len(iv) < 2:
+        return None
+    return ic, iv
 
 
 def duplex_split(X: np.ndarray, frac_treino: float = 0.5
@@ -719,7 +757,8 @@ def _decodificar_linha_asdf(s: str, SQZ: dict, DIF: dict, DUP: dict
     x_check = float(x_str)
 
     y_raw: List[float] = []
-    sign, digits, is_dif = 0, [], False
+    sign, is_dif = 0, False
+    digits: List[int] = []
     while i < n:
         ch = s[i]; i += 1
         if ch in SQZ:
@@ -1159,7 +1198,6 @@ def load_dx(pasta: str, class_part: int = 0,
     meta_rows: List[Dict[str, Any]] = []
     n_falhos = 0
     n_title_falhos = 0
-    n_pureza_indeterminada = 0
     cods_desconhecidos: set = set()
 
     for arq, subpasta_nome in arquivos:
@@ -1186,7 +1224,6 @@ def load_dx(pasta: str, class_part: int = 0,
             # contaminaria o treino one-class. Excluida com aviso nominal,
             # nunca em silencio. Ver `_TITLES_PUREZA_INDETERMINADA`.
             if title and title.strip() in _TITLES_PUREZA_INDETERMINADA:
-                n_pureza_indeterminada += 1
                 print(f"  [WARNING] {os.path.basename(arq)} EXCLUIDO — "
                       f"{_TITLES_PUREZA_INDETERMINADA[title.strip()]}")
                 continue

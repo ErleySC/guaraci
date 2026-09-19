@@ -27,7 +27,7 @@ from sklearn.metrics import balanced_accuracy_score
 from guaraci.preprocessamento import build_preprocessor
 from guaraci.figuras import save, color
 from guaraci.hardware import _verificar_ram
-from guaraci.dados_io import kennard_stone_split_group_aware
+from guaraci.dados_io import _split_cal_val_por_especie
 from guaraci.config import NOME_TABELAS
 from guaraci.chemometric_stats import rmse_flat, expandir_binario_um_quente
 from guaraci.model_registry import build_benchmark_list
@@ -885,7 +885,6 @@ def benchmark_regression_by_species(
     from sklearn.linear_model import Ridge, Lasso, ElasticNet
     from sklearn.svm import SVR
     from sklearn.ensemble import RandomForestRegressor
-    from sklearn.model_selection import GroupShuffleSplit
     from sklearn.base import clone
     from sklearn.pipeline import Pipeline as _SKPipeline
     from sklearn.metrics import r2_score
@@ -928,23 +927,10 @@ def benchmark_regression_by_species(
         # MESMO split (deterministico) usado em pls_regression_by_species --
         # mesma logica de decisao, reproduzida aqui p/ evitar acoplamento
         # circular com pipeline.py (que importaria de volta este modulo).
-        try:
-            if cfg.cal_val_split == "kennard_stone":
-                ic, iv = kennard_stone_split_group_aware(
-                    X_c, mae_c, cfg.frac_cal)
-            elif mae_c is not None and len(np.unique(mae_c)) >= 4:
-                gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
-                                        random_state=cfg.seed)
-                ic, iv = next(gss.split(X_c, Y_c, groups=mae_c))
-            else:
-                rng = np.random.default_rng(cfg.seed)
-                perm = rng.permutation(len(conc_c))
-                ncal = max(2, int(cfg.frac_cal * len(conc_c)))
-                ic, iv = perm[:ncal], perm[ncal:]
-        except (ValueError, IndexError):
-            continue   # especie com amostras/grupos insuficientes p/ o split
-        if len(ic) < 4 or len(iv) < 2:
-            continue
+        _split = _split_cal_val_por_especie(X_c, Y_c, mae_c, cfg)
+        if _split is None:
+            continue   # especie sem amostras/grupos suficientes p/ o split
+        ic, iv = _split
 
         Xc, Yc = X_c[ic], Y_c[ic].ravel()
         Xv, Yv = X_c[iv], Y_c[iv].ravel()

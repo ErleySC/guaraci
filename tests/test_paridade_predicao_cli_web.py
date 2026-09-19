@@ -11,6 +11,13 @@ interfaces, dois resultados diferentes para a MESMA predicao.
 O contrato aqui e' de paridade de COLUNAS, nao de layout: a web pode
 apresentar como quiser (metricas, barras, cores), mas nao pode omitir um
 campo que a CLI entrega.
+
+ATUALIZADO (2026-09-19, varredura de duplicacao): as ~12 colunas eram
+montadas por DUAS copias identicas (CLI e web), e este teste comparava as
+duas por AST. Agora ha' UMA fonte (`predicao.anexar_colunas_fluxo_cego`) e
+a paridade vale POR CONSTRUCAO -- o teste passa a garantir que as duas
+interfaces de fato a CHAMAM (nenhuma volta a montar colunas por conta
+propria) e que a fonte unica contem a faixa de decisao.
 """
 from __future__ import annotations
 
@@ -40,17 +47,36 @@ def _colunas_df_res(arquivo: Path) -> Set[str]:
     return nomes
 
 
-def test_web_expoe_todas_as_colunas_do_fluxo_cego_que_a_cli_expoe():
-    faltando = _colunas_df_res(_CLI) - _colunas_df_res(_WEB)
-    assert not faltando, (
-        "a aba Predicao do app web nao expoe coluna(s) que a CLI entrega "
-        f"na mesma predicao: {sorted(faltando)}")
+def _chama(arquivo: Path, nome: str) -> bool:
+    """O arquivo referencia `nome` (chamada direta, atributo ou alias de
+    import) -- `anexar_colunas_fluxo_cego` ou o alias da web."""
+    texto = arquivo.read_text(encoding="utf-8")
+    return nome in texto
 
 
-def test_faixa_de_decisao_esta_nas_duas_interfaces():
+_PRED = _RAIZ / "src" / "guaraci" / "predicao.py"
+
+
+def test_as_duas_interfaces_usam_a_fonte_unica_das_colunas_do_fluxo_cego():
+    assert _chama(_CLI, "anexar_colunas_fluxo_cego")
+    assert _chama(_WEB, "anexar_colunas_fluxo_cego")
+
+
+def test_nenhuma_interface_monta_de_novo_as_colunas_do_fluxo_cego():
+    """Regressao da duplicacao: `classe_identificada`/`faixa_decisao` etc.
+    so' podem ser ATRIBUIDAS em `predicao.py` -- reaparecer em `guaraci.py`
+    ou na aba web significa uma segunda copia nascendo."""
+    cobertas = {"classe_identificada", "faixa_decisao", "teor_estimado",
+                "identificacao_cobertura", "alpha_total"}
+    for arquivo in (_CLI, _WEB):
+        duplicadas = _colunas_df_res(arquivo) & cobertas
+        assert not duplicadas, (
+            f"{arquivo.name} voltou a montar coluna(s) do fluxo cego por "
+            f"conta propria: {sorted(duplicadas)} -- use "
+            "predicao.anexar_colunas_fluxo_cego")
+
+
+def test_faixa_de_decisao_esta_na_fonte_unica():
     """Ancora explicita do Bloco 24 -- o teor nunca deve aparecer sozinho,
     sem dizer em que faixa de decisao ele cai."""
-    for arquivo in (_CLI, _WEB):
-        colunas = _colunas_df_res(arquivo)
-        assert {"teor_estimado", "faixa_decisao", "lod", "loq"} <= colunas, (
-            f"{arquivo.name} nao expoe a faixa de decisao junto do teor")
+    assert {"teor_estimado", "faixa_decisao", "lod", "loq"} <= _colunas_df_res(_PRED)

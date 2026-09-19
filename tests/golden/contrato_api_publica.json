@@ -4071,6 +4071,10 @@
         "init": null,
         "metodos_publicos": []
       },
+      "anexar_colunas_fluxo_cego": {
+        "assinatura": "(df_res: 'pd.DataFrame', resultados_cego: 'List[BlindPredictionResult]') -> 'pd.DataFrame'",
+        "forma": "funcao"
+      },
       "detect_purity": {
         "assinatura": "(pkg: 'Dict[str, Any]', especie: 'Optional[str]', X_proc_amostra: 'np.ndarray') -> 'PurityResult'",
         "forma": "funcao"

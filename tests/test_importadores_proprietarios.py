@@ -265,3 +265,51 @@ def test_parse_cromatograma_hplc_detector_inexistente_levanta_valueerror():
 def test_parse_cromatograma_hplc_diretorio_invalido_levanta_valueerror(tmp_path):
     with pytest.raises(ValueError, match="Agilent/Waters valido"):
         parse_cromatograma_hplc(str(tmp_path / "nao_existe.D"))
+
+
+# --- Endurecimento de parse_sp (auditoria de seguranca 2026-09-19) ---------
+
+def _sp_real_com_n_pontos(n_novo: int) -> bytes:
+    """Bytes do `.sp` REAL com o campo `n_points` (u32 dentro do bloco de
+    id 35701) reescrito para `n_novo` -- simula um arquivo malicioso de
+    poucas centenas de bytes que declara um eixo gigante."""
+    import struct
+    bruto = (_FIXTURES / "sp" / "spectra.sp").read_bytes()
+    cab = struct.pack("<H", 35701)
+    achados = [i for i in range(len(bruto) - 12)
+               if bruto[i:i + 2] == cab
+               and struct.unpack("<H", bruto[i + 6:i + 8])[0] == 29995]
+    assert achados, "bloco n_points nao encontrado no .sp real"
+    i = achados[0] + 6 + 2
+    return bruto[:i] + struct.pack("<I", n_novo) + bruto[i + 4:]
+
+
+def test_parse_sp_recusa_n_points_gigante_sem_alocar_o_eixo(tmp_path):
+    """`n_points` vem do arquivo (u32). Antes do endurecimento, um .sp
+    malicioso pedia `np.linspace(..., 4294967295)` (~34 GB) -> MemoryError
+    (ou travamento), nao o ValueError do contrato."""
+    alvo = tmp_path / "malicioso.sp"
+    alvo.write_bytes(_sp_real_com_n_pontos(2**32 - 1))
+    with pytest.raises(ValueError, match="n_points"):
+        parse_sp(str(alvo))
+
+
+def test_parse_sp_arquivo_real_intacto_continua_lendo():
+    X, Y = parse_sp(str(_FIXTURES / "sp" / "spectra.sp"))
+    assert X.shape == Y.shape and X.size > 0
+
+
+def test_parse_sp_malformado_sempre_levanta_valueerror_nunca_typeerror(tmp_path):
+    """Corrompe o miolo do arquivo real de todas as formas de 1 byte
+    (varredura) -- o contrato e' ValueError (ou sucesso), NUNCA
+    TypeError/IndexError vazando."""
+    bruto = (_FIXTURES / "sp" / "spectra.sp").read_bytes()
+    alvo = tmp_path / "fuzz.sp"
+    for pos in range(4, min(len(bruto), 400)):
+        b = bytearray(bruto)
+        b[pos] = (b[pos] + 117) % 256   # inclui o marcador 117 do ramo de recuo
+        alvo.write_bytes(bytes(b))
+        try:
+            parse_sp(str(alvo))
+        except ValueError:
+            pass

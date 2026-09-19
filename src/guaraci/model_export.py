@@ -55,6 +55,8 @@ from typing import Any, Dict
 import numpy as np
 from scipy.signal import savgol_filter
 
+from guaraci.preprocessamento import _msc_aplicar
+
 __all__ = [
     "UnsupportedModelError",
     "export_portable_json",
@@ -113,28 +115,7 @@ def _aplicar_passo(passo: Dict[str, Any], X: np.ndarray) -> np.ndarray:
         sd = np.where(sd == 0, 1.0, sd)
         return (X - mu) / sd
     if tipo == "MSC":
-        # Replica EXATAMENTE `preprocessamento.MSC.transform` (mesmos
-        # limiares 1e-12) -- ver docstring do modulo sobre exatidao
-        # numerica, confirmado em tests/test_model_export.py.
-        ref = np.asarray(passo["ref"], dtype=float)
-        x_mean = float(ref.mean())
-        xc = ref - x_mean
-        var_x = float(xc @ xc)
-
-        y_mean = X.mean(axis=1)
-        if var_x < 1e-12:
-            return X - y_mean[:, None]
-
-        Yc = X - y_mean[:, None]
-        b = (Yc @ xc) / var_x
-        a = y_mean - b * x_mean
-
-        b_seguro = np.where(np.abs(b) > 1e-12, b, 1.0)
-        out = (X - a[:, None]) / b_seguro[:, None]
-        b_quase_zero = np.abs(b) <= 1e-12
-        if b_quase_zero.any():
-            out[b_quase_zero] = (X - a[:, None])[b_quase_zero]
-        return out
+        return _msc_aplicar(X, np.asarray(passo["ref"], dtype=float))
     if tipo == "SavGol":
         return savgol_filter(X, window_length=passo["window_length"],
                               polyorder=passo["polyorder"],

@@ -13,7 +13,7 @@ existe.
 from __future__ import annotations
 
 import os
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -273,7 +273,7 @@ def _agrupamento(resumo: str, tk: Dict[str, str], T: Callable[[str], str]) -> st
     return "—"
 
 
-def _desenhar_faixa(card, dados: Dict[str, object], tk: Dict[str, str],
+def _desenhar_faixa(card, dados: Dict[str, Any], tk: Dict[str, str],
                     T: Callable[[str], str]) -> None:
     """Barra de 3 zonas (< LOD | zona cinzenta | quantificável) com o marcador
     na posição real do teor estimado."""

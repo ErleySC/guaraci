@@ -397,7 +397,12 @@ def parse_sp(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
                 elif resultado is not None:
                     espectro = resultado
             pos += tamanho_bloco
-    except (struct.error, IndexError, ValueError) as e:
+    except (struct.error, IndexError, ValueError, TypeError) as e:
+        # TypeError: o ramo de recuo de aninhamento portado de `specio`
+        # (ver LIMITACAO HONESTA em _sp_percorrer_diretorio_de_blocos)
+        # reatribui lista->escalar e estoura TypeError num arquivo
+        # malformado -- sem isto o contrato "levanta ValueError" vazava
+        # (achado da auditoria de seguranca de 2026-09-19).
         raise ValueError(f"{filepath}: arquivo .sp truncado ou corrompido ({e})") from e
 
     if espectro is None or "min_wavelength" not in meta or "n_points" not in meta:
@@ -405,6 +410,15 @@ def parse_sp(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
             f"{filepath}: blocos obrigatorios de eixo/espectro nao "
             f"encontrados no arquivo .sp")
 
+    # Checa ANTES de alocar o eixo: `n_points` vem do arquivo (u32, ate'
+    # ~4,3 bilhoes) -- um `.sp` malicioso de poucas centenas de bytes pedia
+    # um `np.linspace` de ~34 GB (negacao de servico por alocacao; achado da
+    # auditoria de seguranca de 2026-09-19).
+    if meta["n_points"] != espectro.size:
+        raise ValueError(
+            f"{filepath}: n_points declarado ({meta['n_points']}) difere do "
+            f"tamanho real do espectro ({espectro.size}) -- arquivo .sp "
+            f"corrompido ou malformado")
     X = np.linspace(meta["min_wavelength"], meta["max_wavelength"], meta["n_points"])
     Y = np.asarray(espectro, dtype=float)
     if X.shape != Y.shape or X.size == 0:

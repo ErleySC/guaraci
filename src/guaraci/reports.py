@@ -13,7 +13,7 @@ import io
 import logging
 import os
 import time
-from typing import Dict, List
+from typing import Any, Dict, List, cast
 
 import pandas as pd
 
@@ -355,10 +355,10 @@ def generate_word_report(pasta: str, projeto: Dict,
 
     # ── Heading styles ──
     for i, (level, size) in enumerate([(0, 20), (1, 16), (2, 13)]):
-        style = doc.styles[f"Heading {i + 1}"]
-        style.font.size = Pt(size)           # type: ignore[union-attr]
-        style.font.color.rgb = RGBColor(30, 80, 140)  # type: ignore[union-attr]
-        style.font.bold = True               # type: ignore[union-attr]
+        style = cast(Any, doc.styles[f"Heading {i + 1}"])
+        style.font.size = Pt(size)
+        style.font.color.rgb = RGBColor(30, 80, 140)
+        style.font.bold = True
 
     # ── COVER ──────────────────────────────────────────────────────────────
     doc.add_heading("Chemometrics Platform", 0)
