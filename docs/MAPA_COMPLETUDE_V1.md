@@ -78,6 +78,8 @@ Ver `src/guaraci/importadores_proprietarios.py` (docstring do módulo) para o ra
 | di-PLS (domínio novo sem rótulo) | Registrado, não implementado (T5) | **Backlog reafirmado** — ver nota abaixo |
 | Espectro + variável de delineamento (T8) | **Resolvido por redundância** — já coberto por EPO/GLSW | — |
 | PLS local por vizinhança (T10) | Registrado, não implementado | **Backlog reafirmado** — ver nota abaixo |
+| Aumento de dados espectral por VRM (Vicinal Risk Minimization) | Não implementado — candidato novo (Agente 1, varredura final 2026-09-19) | **Pendente de decisão do usuário** — ver nota abaixo |
+| Dual-sPLS (PLS esparso via norma dual) | Não implementado — candidato novo (Agente 1, varredura final 2026-09-19) | **Pendente de decisão do usuário** — ver nota abaixo |
 | Exportação portátil de modelo | **Implementado, escopo reduzido** (`model_export.py`, JSON puro) | Só o caminho de predição PRINCIPAL (pré-proc+PLS-DA+classes) — DD-SIMCA/ensemble/AD/conforme continuam só em `.joblib`, registrado como extensão futura |
 | Execução scriptável rica | `guaraci run config.yaml` existe | **Testado de ponta a ponta com pipeline real** (3 testes novos, zero mock científico) |
 
@@ -117,6 +119,15 @@ Nenhum dos dois é redundante com EPO/GLSW (ver T8 abaixo) nem de baixo esforço
 
 - **di-PLS** (domain-invariant PLS, Nikzad-Langerodi et al.) resolve um problema estruturalmente diferente de EPO/GLSW: adapta o modelo a um domínio NOVO sem rótulo nenhum, via um objetivo de PLS modificado (regularização que alinha o espaço latente fonte/alvo) — EPO/GLSW exigem o RÓTULO do fator de perturbação e uma estrutura de pares de diferença dentro da PRÓPRIA calibração, não servem para "amostra de um domínio nunca visto, sem rótulo". Implementar exigiria uma nova rotina de otimização (não é uma transformação de pré-processamento encaixável no `Pipeline` existente). Backlog mantido, razão inalterada.
 - **PLS local por vizinhança (T10, LW-PLS)** muda a ARQUITETURA de predição: em vez de um modelo global fixo carregado do `.joblib`, cada amostra nova exigiria ajustar um PLS local sobre os `k` vizinhos mais próximos da CALIBRAÇÃO INTEIRA (não só os coeficientes já ajustados) — o pacote de modelo teria que passar a carregar o dataset de calibração completo, não só um modelo ajustado, mudança de escopo maior que qualquer outro item desta rodada. Baixa prioridade mantida (já registrada), backlog sem mudança.
+
+### Aumento de dados (VRM) e Dual-sPLS — candidatos novos, pendentes de decisão do usuário (Agente 1, varredura final 2026-09-19)
+
+Levantados numa busca de técnicas ausentes desta varredura, nenhum dos dois foi implementado nem decidido — registrados aqui só para não se perderem, à espera de decisão do autor sobre priorização:
+
+- **Candidato 1 (prioridade mais alta): aumento de dados espectral por Vicinal Risk Minimization (VRM)** — Tumoine, Metz, Abdelghafour, Esteve, Grotus, Bendoula & Roger (2026), *Chemometrics and Intelligent Laboratory Systems*, DOI 10.1016/j.chemolab.2026.105769. Ataca a lacuna de n pequeno/sinal fraco (nenhuma técnica de aumento de dados espectral existe hoje no projeto — `consultar_vault.py "aumento de dados"`/`"data augmentation"` não acham nota). Esforço estimado: M.
+- **Candidato 2: Dual-sPLS (PLS esparso via norma dual)** — Alsouki, Duval, Marteau, El Haddad & Wahl (2023), DOI 10.1016/j.chemolab.2023.104813. Esforço estimado: L (sem biblioteca Python madura conhecida, só R/CRAN — portar exigiria reimplementar o algoritmo, não só empacotar).
+- **Ressalva metodológica**: os dois DOIs foram confirmados por triangulação de múltiplas fontes via busca na web, **não** por consulta direta à API do Crossref (`api.crossref.org` estava bloqueado pela política de egress da sessão desta rodada) — registrar como limitação de verificação, não como confirmação Crossref completa, até que alguém com acesso à API confirme diretamente.
+- Nenhum código foi escrito para nenhum dos dois. Ambos ficam de fora do critério de publicação do Grupo 2 até o autor decidir se e quando priorizá-los — não são bloqueantes por si só (nenhuma funcionalidade existente depende deles).
 
 ### Espectro + variável de delineamento (T8) — resolvido por redundância (2026-09-18)
 
