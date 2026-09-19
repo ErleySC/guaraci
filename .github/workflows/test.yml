@@ -29,11 +29,17 @@ jobs:
       - name: Ruff (lint)
         run: ruff check --output-format=github .
 
-  # ── Type-check dos módulos de cálculo puro ────────────────────────────────
-  # Escopo estreito de propósito (ver [tool.mypy] em pyproject.toml): só os
-  # módulos sem I/O/UI/estado global. Rodar mypy na base inteira geraria ruído
-  # de bibliotecas sem stub (streamlit, rich) sem pegar bug de cálculo.
-  # Ao criar um módulo puro novo, adicionar à lista abaixo.
+  # ── Type-check de 100% do pacote (2026-09-19) ─────────────────────────────
+  # Antes (ate' 2026-09-18) o gate cobria so' ~57 modulos "puros" listados a
+  # mao -- guaraci.py, pipeline.py, reports.py, hardware.py, app_tabs/* e
+  # app_quimiometria.py ficavam de fora, e 50 erros reais (inclusive uma
+  # assinatura de retorno errada e uma chave `rcParams` inexistente que
+  # silenciava uma preferencia do usuario) nunca foram vistos. Agora o gate
+  # e' o pacote inteiro: novo modulo entra sozinho, sem lista para lembrar.
+  # Instala os extras que os modulos de UI/relatorio importam (streamlit,
+  # python-docx etc.) para o mypy ver os tipos reais, nao Any.
+  # LIMITE DOCUMENTADO: `check_untyped_defs` continua desligado (decisao
+  # anterior do projeto) -- funcoes SEM anotacao nao tem o corpo verificado.
   typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -44,68 +50,29 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install mypy + deps de tipo
-        run: pip install mypy numpy scipy scikit-learn
+      - name: Install mypy + pacote com extras de UI/relatorio
+        run: pip install mypy -e ".[web,reports]"
 
-      - name: Mypy (módulos puros)
+      - name: Mypy (pacote inteiro)
+        run: mypy src/guaraci/ app_quimiometria.py
+
+  # ── Varredura de seguranca estatica (bandit) ──────────────────────────────
+  # Severidade media+ sobre src/. Achados intencionais levam `# nosec <ID>` com
+  # justificativa na linha de cima (ver guaraci.py:_cls).
+  seguranca:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Bandit (media+ severidade)
         run: |
-          mypy \
-            src/guaraci/preprocessamento.py \
-            src/guaraci/chemometric_stats.py \
-            src/guaraci/classificadores.py \
-            src/guaraci/validacao_estatistica.py \
-            src/guaraci/modos_analise.py \
-            src/guaraci/design_tokens.py \
-            src/guaraci/resumo_parse.py \
-            src/guaraci/transferencia_calibracao.py \
-            src/guaraci/linearity.py \
-            src/guaraci/robustness.py \
-            src/guaraci/conformal.py \
-            src/guaraci/config.py \
-            src/guaraci/plano_amostral.py \
-            src/guaraci/selecao_variaveis.py \
-            src/guaraci/sentinela_deriva.py \
-            src/guaraci/predicao.py \
-            src/guaraci/io_registry.py \
-            src/guaraci/agrupamento_pastas.py \
-            src/guaraci/hsi_io.py \
-            src/guaraci/eem_io.py \
-            src/guaraci/gcms_io.py \
-            src/guaraci/alinhamento_retencao.py \
-            src/guaraci/hsi_quality.py \
-            src/guaraci/hsi_segmentation.py \
-            src/guaraci/hsi_pixels.py \
-            src/guaraci/hsi_classification.py \
-            src/guaraci/hsi_chemistry.py \
-            src/guaraci/hsi_validation.py \
-            src/guaraci/hsi_resampling.py \
-            src/guaraci/hsi_identification.py \
-            src/guaraci/hsi_uncertainty.py \
-            src/guaraci/hsi_applicability.py \
-            src/guaraci/hsi_pipeline.py \
-            src/guaraci/config_io.py \
-            src/guaraci/perfil_matriz.py \
-            src/guaraci/plano_coleta.py \
-            src/guaraci/paleta_cores.py \
-            src/guaraci/auditoria_delineamento.py \
-            src/guaraci/identificacao.py \
-            src/guaraci/model_registry.py \
-            src/guaraci/technique_registry.py \
-            src/guaraci/mcr_als.py \
-            src/guaraci/hsi_multiway.py \
-            src/guaraci/importadores_proprietarios.py \
-            src/guaraci/portao_correcao_sinal.py \
-            src/guaraci/amostragem_ativa.py \
-            src/guaraci/politica_pooled_local.py \
-            src/guaraci/validacao_publica.py \
-            src/guaraci/preferencias_visuais.py \
-            src/guaraci/app_nav.py \
-            src/guaraci/eem_multiway.py \
-            src/guaraci/asca.py \
-            src/guaraci/epo_glsw.py \
-            src/guaraci/deriva_qc.py \
-            src/guaraci/fusao_multibloco.py \
-            src/guaraci/model_export.py
+          pip install bandit
+          bandit -r src -ll -q
 
   # ── Testes + cobertura ────────────────────────────────────────────────────
   # Matriz cruzada: o produto é Windows-first (código de encoding/console

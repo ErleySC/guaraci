@@ -4709,9 +4709,9 @@ completo, testado em rehearsal sobre clone descartável (nunca o
 repositório real):
 
 - **Filtro de histórico testado**: 4 commits antigos (`22b5511`,
-  `676e9c4`, `dd09c41`, `338c45f`) traziam `C:\Users\erley\...` (caminho
+  `676e9c4`, `dd09c41`, `338c45f`) traziam o caminho absoluto da home do autor (`<CAMINHO_REAL>`, omitido aqui pela guarda de privacidade) (caminho
   de máquina do autor); `git filter-repo --replace-text` com regra
-  `C:\Users\erley==>C:\Users\REDACTED` removeu as 4 ocorrências
+  `<CAMINHO_REAL>==><CAMINHO_ANONIMO>` removeu as 4 ocorrências
   (verificado: 0 depois do filtro), preservou as 320 commits e as 11
   tags (`pibic-2026-08`, `v31.0.0`..`v31.9.0`, remapeadas
   automaticamente para os novos hashes), conteúdo ao redor do texto
@@ -4892,7 +4892,7 @@ m5-holdout (em controle) depois mp5 (mesmas amostras físicas, degradação
 de RMSEP já documentada de ~0,15 para ~0,5-0,9 sem correção). **Medido,
 replicado em 30 splits aleatórios independentes**: detecção 30/30
 (100%), sempre no 1º lote pós-troca (atraso≈0); falso alarme em
-controle ~7-10% (acima do nominal 5%, reportado honestamente). Não é o
+controle ~7-10% [**RETRATADO no Passo 219**: era 3/30 seeds; com 1500 splits é ≈21%] (acima do nominal 5%, reportado honestamente). Não é o
 mesmo problema estrutural da fusão multibloco -- lá o efeito nunca
 aparecia; aqui aparece sempre, com clareza esmagadora (p~1e-4 a
 1e-32), só a margem do alarme em repouso que pede calibração mais fina.
@@ -4921,5 +4921,71 @@ limpo.
 (sintética controlada + deriva real de instrumento), Camada 3 decidida
 com evidência e não implementada por falta de necessidade. Os 5 itens
 menores do Grupo 2 (Passo 217) reconfirmados intactos por comando
-direto nesta rodada. **Grupo 2 permanece formalmente fechado, agora com
-o MSPC genuinamente validado, não só orquestrado.**
+direto nesta rodada. ~~Grupo 2 permanece formalmente fechado, agora com
+o MSPC genuinamente validado, não só orquestrado.~~ **[RETRATADO no
+Passo 219: a DETECÇÃO foi validada, a CALIBRAÇÃO do falso alarme em
+repouso não — ≈21% medido vs. 5% alvo; o fechamento formal ficou 9/10.]**
+
+
+---
+
+# PROGRESSO — Passo 219 (2026-09-19)
+
+## Passo 219 — Calibração do MSPC (diagnóstico), auditoria ampla de confiabilidade, vault sem pendência
+
+Instrução em três frentes. Bloqueio de publicação permanece em vigor.
+
+### Parte A — Falso alarme do MSPC: causa raiz achada, correção NÃO aplicada
+
+**Achado**: o falso alarme do sentinela em controle no Corn NÃO é ~7–10% (3 seeds), é **≈21%** (1500 splits independentes) contra 5% alvo. Isso RETRATA o número do Passo 218 (ver marcas `[RETRATADO no Passo 219]` acima).
+
+**Hipótese testada primeiro, e refutada**: inflação por teste sequencial repetido. Um nulo Bernoulli(0,05) com a MESMA agenda de looks dá só 5,9% de alarme em alguma rodada; alpha-spending/ARL deixaria 18%. O falso alarme já é 13–20% **por look isolado**. Calibrar por ARL não resolve — seria cosmético.
+
+**Causa raiz** (decomposição em `scripts/medicoes/medir_mspc_falso_alarme_corn.py`, `docs/VALIDACAO_PUBLICA.md` §11): o Domínio de Aplicabilidade calibrado com n=40 rejeita ~6,5% em controle (não 5%) e esse valor VARIA entre calibrações; a hipótese nula do sentinela (taxa = alpha nominal) é falsa para uma calibração finita. É o efeito da estimação de parâmetros da Fase I em SPC (Jensen et al. 2006, DOI 10.1080/00224065.2006.11918623, confirmado via Crossref). Portanto é um problema de metodologia, mais fundo que recalibrar um limiar.
+
+**Decisão pendente do usuário (regra de pausa (a): reportar antes de reescrever)**: R2 — teste de 2 amostras contra a taxa de rejeição em validação cruzada da própria calibração (falso alarme 3,0%, poder 100% no Corn, sem perda de sensibilidade sob deriva sutil sintética; **recomendada**); R3 — tolerância fixa de 10% (falso alarme 5,7%, mas perde poder sob deriva sutil); ou manter o teste atual com aviso explícito. Nada disso foi implementado: troca a semântica do alerta, é decisão de produto. Estado honesto do MSPC: **detecção validada (100%, atraso ≈ 0), calibração do falso alarme NÃO validada**.
+
+### Parte B — Auditoria de confiabilidade
+
+**Mutação (cosmic-ray, 1 módulo por vez, em worktree isolado; nenhuma fonte mutada foi commitada).** Seis módulos de maior criticidade ainda não mutados (antes: `conformal`, `classificadores`, `chemometric_stats`). Sobreviventes antes → depois de testes dirigidos, cada "depois" medido por re-mutação:
+
+| Módulo | Sobreviventes antes | Depois | O que resta |
+|---|---|---|---|
+| `identificacao.py` | 40 de 196 | 21 de 196 | equivalentes (reshape negativo, `[0]`≡`[-1]` em vetor de 1 elemento, `*`≡`&` em bool, `is`≡`==`, `<=`≡`<` sobre contagens ≥ 0) |
+| `portao_correcao_sinal.py` | 131 de 285 | 31 de 285 | equivalentes, ver abaixo |
+| `sentinela_deriva.py` | 13 de 94 | 4 de 94 | fronteiras `>`↔`>=` com fatia igual e `n == 0`↔`<= 0` |
+| `model_export.py` | 38 de 246 | 10 de 246 | `is`≡`==`, `*`≡`&`, `sd<=0`≡`sd==0`, guarda `2.0` no lugar de `1.0` com numerador 0 |
+| `fusao_multibloco.py` | 44 de 110 | 5 de 110 | `reshape(-2,…)`≡`reshape(-1,…)`, `len(set) > 1`≡`!= 1` |
+| `validacao_estatistica.StableStratifiedGroupKFold` | 23 de 72 | 4 de 72 | `is not` em inteiros pequenos, `~x` preserva ordem, valor inicial sobrescrito |
+
+Os buracos REAIS que a mutação achou (nenhum teste os notava) e que foram fechados, cada um com teste novo e re-mutação:
+
+- **Partição de CV congelada** (`StableStratifiedGroupKFold`): nenhum teste fixava a partição em si, só propriedades gerais — a promessa "mesmo (y, groups, n_splits, seed) ⇒ mesma partição em qualquer versão" estava **sem verificação**. Agora há partições literais (golden), hash `blake2b` congelado, fronteira `n_splits=2`, tamanhos de `y`/`groups` nos dois sentidos, e um caso onde o custo não é monótono nos folds (o mutante `<`→`!=` só morreu com ele). `tests/test_stable_group_kfold.py`.
+- **`fit_evaluate_pls_regression`** (fusão): só um teste com sinal fácil a cobria. Agora oráculo independente (KFold manual) compara n_lv/RMSEP/R2 em 4 regimes, a fórmula `lv_max = n_cal // 5` com piso 2 e tamanhos ímpares.
+- **`model_export.predict_portable`**: eixo recortado por `wn_min/wn_max`, `x_mean ≠ 0`, linha SNV constante, soma de probabilidades ≈ 0, passo desconhecido, `versao_formato`, JSON não-ASCII — nada disso era exercitado (`tests/test_model_export_fronteiras.py`, valores calculados à mão).
+- **`portao_correcao_sinal`**: RMSEP do CV sem oráculo independente, efeito exatamente zero com p significativo (o veredito tem que ser "neutro"), handler de `ValueError` do Wilcoxon, `n_componentes=1`.
+- **`identificacao`**: score fracionário e teor negativo.
+- **`sentinela_deriva`**: default `alpha=0,05`, contagem devolvida com histórico prévio, `n == n_minimo`, `p == significância`.
+
+**Equivalentes não provados formalmente**: a equivalência de `n_comp = len(treino)` com `len(treino) − 1` (6 dos 31 de `portao_correcao_sinal`) é argumento por posto deficiente do PLS, não prova. O `contador` do mesmo módulo é código morto funcional: cada amostra cai em exatamente 1 fold, então a média por contagem é um no-op (**Achado**: resto de CV repetida, não simplificado nesta rodada; 12 dos 31 sobreviventes vêm disso).
+
+**Não mutados nesta rodada (Backlog, com razão)**: `predicao.py`, `validacao_estatistica.py` fora do splitter, `pipeline.py`, `avaliacao_modelos.py` — a suíte por módulo custa caro (`pipeline.py` ≈ 114 s por mutante); precisa de um subconjunto de testes mais barato antes.
+
+**Segurança (bandit `-ll`, pip-audit, injeção/caminho/desserialização, sobre o código novo)**: pip-audit **0 vulnerabilidades conhecidas**; bandit `-ll` **limpo** e agora roda no CI (job `seguranca`). Dois furos REAIS achados e corrigidos, ambos com contra-prova:
+1. **Desserialização**: o menu de refinamento por amostragem ativa chamava `joblib.load` cru, contornando a conferência de SHA-256 do manifesto que `predicao.load_model` faz ANTES de executar o pickle. Corrigido para `load_model(..., confiar=True)`. Contra-prova: um modelo com manifesto é adulterado depois; o payload (que criaria um arquivo-sentinela) NÃO executa — `tests/test_plano_coleta.py`.
+2. **Negação de serviço por alocação**: `importadores_proprietarios.parse_sp` alocava `linspace` com o número de pontos DECLARADO no cabeçalho do arquivo; um `.sp` hostil pedia dezenas de GB. Agora `n_points` é checado contra o tamanho real do espectro antes de alocar. Contra-prova: o código antigo, no mesmo arquivo, tentou alocar ~34 GB e travou a máquina de teste.
+`os.system("cls")` no CLI ganhou `# nosec B605` justificado (comando constante, sem entrada do usuário).
+
+**Código morto (vulture ≥80%)**: limpo por comando direto. Removidas variáveis locais mortas em `guaraci.py`/`dados_io.py` e o `plt.rcParams["lines.alpha"]`, chave que não existe no matplotlib (**Achado**: `Config.alpha_pontos` nunca teve efeito visual; transparência real exigiria `alpha=` em cada scatter — **Backlog**).
+
+**Duplicação (pylint R0801, ≥25 linhas)**: 3 clusters removidos por helpers de fonte única (`dados_io._split_cal_val_por_especie`, `preprocessamento._msc_aplicar`, `predicao.anexar_colunas_fluxo_cego`); **zero clusters restantes** por comando direto.
+
+**Tipos (mypy)**: cobertura de **100% de `src/guaraci` (84 arquivos, 0 erros)**, e o job de CI agora checa o pacote inteiro com extras. **Limitação**: `check_untyped_defs` continua desligado — corpos de funções sem anotação não são checados (nota do próprio mypy). Não há exceção de módulo sem documentação; a limitação é global e está aqui.
+
+### Parte C — Vault
+
+Regenerado a partir do commit deste passo, com MSPC (estado real: detecção validada, calibração pendente), predição multiclasse, fusão multibloco (estado real: **implementada, desaconselhada pela própria evidência** — não melhora sobre o MIR sozinho), ASCA+ (marginal implementado; completo em backlog), SPC/RMN/HPLC e exportação portátil. O gerador ganhou a auditoria cruzada: **toda** linha de pendência/limitação/backlog de `docs/MAPA_COMPLETUDE_V1.md` e `docs/BACKLOG_MULTIAGENTE.md` vira nota em `60-Achados/` ou `50-Decisoes/`, e `consultar_vault.py --cobertura` falha se alguma ficar sem nota.
+
+### Contra-prova geral
+
+Suíte completa reexecutada ao fechar o passo (ver resultado no commit). `ruff check .` limpo; `mypy` limpo.

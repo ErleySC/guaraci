@@ -123,6 +123,12 @@ por `tests/test_fachada_reexport.py`.
   funções públicas novas (leitor de espectro RMN Bruker processado e de
   cromatograma HPLC/GC Agilent/Waters), mesmo padrão aditivo acima.
   Golden regravado — mesmo precedente, aditivo puro, sem bump de versão.
+- **`predicao.anexar_colunas_fluxo_cego`** (auditoria de confiabilidade de
+  2026-09-19, varredura de duplicacao): funcao publica nova que passa a ser
+  a FONTE UNICA das 12 colunas do fluxo cego (Detectar->Identificar->
+  Quantificar), antes montadas por duas copias identicas no menu do CLI e na
+  aba web. Nenhum nome de coluna mudou (contrato de saida tabular intacto);
+  aditivo, mesma nota de honestidade dos itens abaixo (pos-v1.0.0).
 - **`model_export.py`** (modulo inteiro, novo -- fechamento do Grupo 2,
   exportacao portatil de modelo em JSON puro, sem pickle/joblib):
   `export_portable_json`, `save_portable_json`, `load_portable_json`,

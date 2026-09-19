@@ -128,18 +128,23 @@ def test_mspc_corn_deteccao_e_falso_alarme_replicados_30_seeds():
     de `docs/VALIDACAO_PUBLICA.md` para achados que decidem algo): 30
     splits aleatorios independentes de calibracao/holdout.
 
-    Achado MEDIDO e reportado honestamente (nao escondido): deteccao
-    100% (30/30 seeds, sempre no primeiro lote pos-troca), mas a taxa de
-    falso alarme na fase 'em controle' (mesmo instrumento) fica em
-    ~7-10% -- ACIMA do alpha nominal de 5%, mesmo com n_components=2
-    escolhido pela variancia explicada (nao um erro de configuracao
-    obvio). Provavel causa: viés residual de amostra finita na
-    estimativa Q-residuos-LOO mesmo em baixa dimensionalidade, com
-    n_cal=40 << p=700. Nao e' o MESMO problema estrutural da fusao
-    multibloco (confusao dominando o efeito) -- aqui o efeito real
-    (troca de instrumento) e' detectado com clareza esmagadora
-    (p da ordem de 1e-4 a 1e-32), e a inflacao do falso alarme e' um
-    fator ~1.5-2x sobre o nominal, nao um mascaramento do sinal.
+    Achado MEDIDO e reportado honestamente: deteccao 100% (30/30 seeds,
+    sempre no primeiro lote pos-troca). A taxa de falso alarme na fase 'em
+    controle' (mesmo instrumento) NAO fica em "~7-10%" como reportado na
+    1a versao deste teste -- RETRATADO (2026-09-19): 30 seeds era amostra
+    pequena demais (3/30, IC95% ~2-27%); com 1500 splits a taxa e' ~21%
+    (`scripts/medicoes/medir_mspc_falso_alarme_corn.py`). Causa raiz
+    (decomposta, ver `docs/VALIDACAO_PUBLICA.md` §11): NAO e' inflacao por
+    teste sequencial repetido (o nulo Bernoulli(0.05) com esta agenda de
+    looks da' so' ~5,9%; alpha-spending nao corrige) -- e' que o Dominio de
+    Aplicabilidade calibrado com n_cal=40 rejeita ~6,5% em controle (nao
+    5%) e esse valor varia entre calibracoes, entao a hipotese nula do
+    sentinela (taxa = alpha nominal) e' falsa para uma calibracao finita.
+    Este teste NAO afirma calibracao de falso alarme: so' trava que a
+    deteccao continua imediata e que o falso alarme nao piora alem do
+    medido. A correcao (teste de 2 amostras contra a taxa de rejeicao em
+    validacao cruzada da calibracao) aguarda decisao -- achado de
+    metodologia, nao recalibracao de limiar.
     """
     X_m5, X_mp5 = _carregar_instrumentos()
     n_seeds = 30
@@ -166,7 +171,8 @@ def test_mspc_corn_deteccao_e_falso_alarme_replicados_30_seeds():
     assert np.mean(atrasos) < 1.0, (
         "atraso medio de deteccao subiu acima de ~1 lote -- investigar "
         "antes de aceitar como 'deteccao imediata'")
-    # Nao exige taxa de falso alarme <= 0.05: o achado MEDIDO (~0.07-0.10)
+    # Nao exige taxa de falso alarme <= 0.05: o achado MEDIDO (0.10 nestes
+    # 30 seeds; ~0.21 em 1500 splits -- ver docstring)
     # e' relatado como esta', nao forcado a bater com o nominal. So'
     # trava que nao vire algo MUITO pior (ex.: sempre alarme falso, que
     # tornaria o MSPC inutil na pratica).

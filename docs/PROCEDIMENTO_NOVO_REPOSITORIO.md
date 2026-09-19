@@ -13,7 +13,7 @@
 **Histórico filtrado** (`git filter-repo --replace-text`), não histórico
 completo nem squashed. Motivo: o repositório atual carrega, em 4
 commits antigos (`22b5511`, `676e9c4`, `dd09c41`, `338c45f`), o caminho
-absoluto de máquina do autor (`C:\Users\erley\...`) — corrigido no texto
+absoluto de máquina do autor (`<CAMINHO_REAL>`: o caminho absoluto da home do autor -- o nome real fica de fora deste documento por causa da guarda de privacidade) — corrigido no texto
 atual desde o Passo 200, mas ainda legível em `git log -p` desses 4
 commits. Um repositório novo não precisa herdar isso.
 
@@ -25,12 +25,13 @@ Feito e verificado, não é mais teórico:
 2. `pip install git-filter-repo` (não vem por padrão).
 3. Regra de substituição (`replacements.txt`, formato `--replace-text`):
    ```
-   C:\Users\erley==>C:\Users\REDACTED
+   <CAMINHO_REAL>==><CAMINHO_ANONIMO>
+   (troque <CAMINHO_REAL> pelo caminho real da home do autor ao montar o arquivo localmente)
    ```
 4. `git filter-repo --replace-text replacements.txt --force` no clone.
-5. **Verificado**: `git log --all -p -S "C:\Users\erley"` — **zero
+5. **Verificado**: `git log --all -p -S "<CAMINHO_REAL>"` — **zero
    ocorrências** depois do filtro (antes: 4 commits). Os 4 commits
-   afetados agora trazem `C:\Users\REDACTED\...` no lugar, conteúdo ao
+   afetados agora trazem `<CAMINHO_ANONIMO>` no lugar, conteúdo ao
    redor intacto (verificado lendo o diff de `docs/PROGRESSO.md` num
    desses commits pós-filtro).
 6. **Verificado**: as 320 commits do histórico continuam todas
@@ -63,7 +64,7 @@ printf 'C:\\Users\\erley==>C:\\Users\\REDACTED\n' > replacements.txt
 git filter-repo --replace-text replacements.txt --force
 
 # 2.3 Verificação pós-filtro (obrigatória antes de prosseguir)
-git log --all -p -S 'C:\Users\erley' | wc -l   # tem que dar 0
+git log --all -p -S '<CAMINHO_REAL>' | wc -l   # tem que dar 0
 git tag                                          # tem que listar as 11 tags
 git log --oneline | wc -l                        # tem que dar 320 (ou mais, se
                                                    # houver commits novos até lá)

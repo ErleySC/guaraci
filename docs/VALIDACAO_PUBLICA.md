@@ -1493,9 +1493,8 @@ m5→mp5, cuja degradação de RMSEP sem correção (§9: de ~0,15 para
 **Protocolo**: Domínio de Aplicabilidade (PCA + distância combinada T2/Q,
 `chemometric_stats.training_applicability_domain`) calibrado só em
 amostras m5 (`n_components=2` — PC1 sozinho já explica 99,3% da
-variância do m5, PC1+PC2 99,86%; testado com mais componentes e a taxa
-de falso alarme em controle sobe para 20-30%, overfitting do PCA em
-regime n≪p, não escolha arbitrária). Aplicado sequencialmente, em lotes:
+variância do m5, PC1+PC2 99,86%; com mais componentes a rejeição em
+controle sobe — ver varredura abaixo). Aplicado sequencialmente, em lotes:
 primeiro ao restante de m5 (fase "em controle", deveria ficar estável),
 depois às MESMAS amostras físicas medidas em mp5 (deveria disparar).
 
@@ -1506,25 +1505,83 @@ depois às MESMAS amostras físicas medidas em mp5 (deveria disparar).
 |---|---|
 | Detecção da troca m5→mp5 | **30/30 (100%)** |
 | Atraso de detecção | Sempre no 1º lote pós-troca (≈0) |
-| Falso alarme na fase em controle (mesmo instrumento) | ~7-10% (acima do alpha nominal de 5%) |
+| Falso alarme na fase em controle (mesmo instrumento), 30 seeds | 3/30 = 10% (IC95% ≈ 2–27% — amostra pequena demais para concluir) |
+| Falso alarme na fase em controle, **1500 splits** (medição que substitui a linha acima) | **≈21%** (por look de 13% a 20%) — **4× o nominal de 5%** |
 
-**Leitura honesta**: o efeito real (troca de instrumento) é detectado
-com clareza esmagadora (p da ordem de 1e-4 a 1e-32 nos lotes
-pós-troca) — não há ambiguidade nenhuma sobre SE o MSPC pega esta
-deriva. A taxa de falso alarme em controle, porém, fica acima do
-nominal — um fator ~1,5-2×, atribuível a viés residual de amostra
-finita na estimativa do domínio mesmo em baixa dimensionalidade
-(n_cal=40 amostras × 700 canais). Isto é DIFERENTE do problema
-estrutural encontrado na fusão multibloco (§2l): lá, o efeito nunca
-aparecia, sobrepujado pela variância de um bloco maior; aqui, o efeito
-aparece sempre e com folga — o que precisa de calibração mais cuidadosa
-é a margem de segurança do próprio alarme em repouso, não a capacidade
-de detectar a deriva em si.
+**O que continua valendo**: o efeito real (troca de instrumento) é detectado com clareza esmagadora (p da ordem de 1e-4 a 1e-32 nos lotes pós-troca), sem atraso, em 30/30 splits — não há ambiguidade sobre SE o MSPC pega esta deriva. O que estava errado era a CALIBRAÇÃO do alarme em repouso.
+
+**RETRATAÇÃO (2026-09-19) do "~7-10%" reportado antes**: era a leitura
+de 3/30 seeds, um IC largo demais; a mesma medição com 1500 splits dá
+≈21% (`scripts/medicoes/medir_mspc_falso_alarme_corn.py`). O texto
+anterior também atribuía o excesso a "viés residual de amostra finita"
+sem ter decomposto a causa — a decomposição abaixo mostra que o
+diagnóstico estava incompleto.
+
+**Causa raiz (hipótese de teste sequencial repetido NÃO confirmada).**
+Decomposição, 1500 splits de calibração (40 amostras) × holdout (40):
+
+| Componente | Medido |
+|---|---|
+| Nulo teórico Bernoulli(0,05), MESMA agenda de looks (n=24/32/40) | falso alarme 5,9% (por look 2–5%) — o teste sequencial repetido contribui só ~1 ponto |
+| Rejeição por amostra do AD em controle (nominal 5%) | **média 6,5%**, com dispersão entre calibrações (5–95%: 0 a 17,5%) |
+| Nulo Bernoulli(6,5%) com a mesma agenda | falso alarme 13,5% (um desvio de 1,5 pt na taxa basta) |
+| Observado | **21%** (o restante: heterogeneidade entre calibrações) |
+
+O falso alarme **por look isolado já é 13–20%**: nem mesmo UM teste está
+calibrado, logo calibrar por ARL/alpha-spending sobre os looks não pode
+corrigir (medido: alpha-spending que mantém 5% sob o nulo iid exige
+significância por look de 0,048 — praticamente a atual — e deixa 18% de
+falso alarme). O problema é a HIPÓTESE NULA do sentinela: `check_drift`
+testa "taxa de rejeição = alpha nominal (5%)", mas um Domínio de
+Aplicabilidade calibrado com n finito, em espectros reais (caudas mais
+pesadas que a normal), rejeita em controle uma taxa **diferente de 5% e
+diferente a cada calibração**. Efeito bem conhecido em CEP como "efeito
+da estimação de parâmetros da Fase I" (Jensen, Jones-Farmer, Champ &
+Woodall, *J. Qual. Technol.* 38(4):349–364, 2006, DOI 10.1080/00224065.2006.11918623 — confirmado no Crossref em 2026-09-19): o desempenho em
+controle da Fase II, condicional à amostra de calibração, é aleatório e
+em média pior que o nominal.
+
+Varredura n_cal × nº de componentes (300 splits cada; rejeição média em
+controle, nominal 5%): com k=2 PCs → 9,8% (n_cal=20), 7,7% (30), **6,5%
+(40)**, 5,6% (50), 4,8% (60), 4,0% (70); com k=3 → 11,5%, 9,1%, 8,6%,
+8,3%, 8,3%, 8,3% (não converge a 5% nem com n=70 — cauda não-gaussiana
+do 3º componente). O viés decai ~1/n_cal para k=2, mas não some com k
+maior: é finito-amostra **e** má-especificação da aproximação χ².
+
+**Correções candidatas avaliadas (nenhuma aplicada — achado de
+metodologia, aguardando decisão; 300 splits, n_cal=40):**
+
+| Correção | Falso alarme em controle | Poder na troca m5→mp5 |
+|---|---|---|
+| Atual (binomial vs 5%) | 20,0% | 100% |
+| R1 — alpha-spending sobre os looks | 18,0% | 100% |
+| R3 — binomial vs tolerância de 10% | 5,7% | 100% |
+| **R2 — teste de 2 amostras (Fisher) vs taxa de rejeição em VALIDAÇÃO CRUZADA da própria calibração** (α=0,05) | **3,0%** | 100% |
+| R2 (α=0,01) | 1,0% | 100% |
+
+Poder sob deriva SUTIL (sintético, 150 execuções por ponto, fração com
+alarme): δ=0,010 → atual 0,21 / R3 0,05 / **R2 0,24**; δ=0,015 → 0,64 /
+0,38 / **0,64**; δ=0,020 → 0,99 / 0,91 / **0,97**; falso alarme em δ=0:
+atual 0,01, R2 0,03. **R2 não perde sensibilidade em nenhuma das duas
+camadas; R3 perde** (precisa de deriva maior para disparar). A taxa em
+validação cruzada da calibração (média 6,85% no Corn) já reproduz o viés
+observado no holdout (6,5%) — é estimável NO TREINO, sem holdout.
+
+**Por que isto é achado de metodologia e não recalibração de limiar**:
+R2 muda a hipótese nula (de "taxa = 5%" para "taxa = taxa medida em
+validação cruzada na calibração, com sua incerteza") e exige que o
+pacote de modelo passe a guardar a referência de calibração (contagem de
+rejeições/n em CV) — mudança de esquema do `.joblib`, do
+`SentinelState` e de `check_drift`, com fallback explícito (aviso) para
+modelos antigos sem a referência. **Não implementado nesta rodada por
+regra de reporte** (pausar e reportar antes de reescrever); decisão do
+autor: R2 (recomendado pela evidência), R3, ou manter o teste atual com o
+aviso de falso alarme inflado registrado.
 
 Complementar a esta validação com dado real: `tests/test_mspc_
 validacao_deriva.py` prova o MESMO mecanismo com deriva espectral
 sintética progressiva (deslocamento controlado, sem depender de nenhum
-dataset externo) — falso alarme 0/200 em processo sintético estável,
+dataset externo) — falso alarme 0/200 em processo sintético estável (gate bem calibrado: gaussiano, n_cal=60, p=50 — o AD sintético NÃO reproduz o viés dos espectros reais),
 detecção a partir do ponto exato onde a deriva injetada se torna grande
 o suficiente.
 
