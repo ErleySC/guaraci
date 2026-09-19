@@ -926,9 +926,24 @@ julgada, com `janela` opcional (`None` = cumulativo sem limite, nunca
 descarta dado silenciosamente; um inteiro ativa janela deslizante para
 detectar deriva **recente** especificamente — o *trade-off* fica
 explícito ao chamador, não escondido atrás de um default mágico).
-`check_drift` testa **H0: taxa de rejeição = alpha nominal** contra
-**H1: taxa > alpha nominal** via **teste binomial exato** unilateral
-(`scipy.stats.binomtest`) — não um limiar cru tipo "2× o nominal", que
+`check_drift` testa **H0: a taxa de rejeição em produção é igual à taxa que a
+PRÓPRIA calibração rejeita em validação cruzada** contra **H1: maior**, via
+**teste exato de Fisher unilateral de duas amostras** (`scipy.stats.
+fisher_exact`) — teste R2, Passo 220. A referência
+(`ad_cv_rejeitadas`/`ad_cv_n`) é calculada no treino por
+`chemometric_stats.ad_rejection_rate_cv` (group-aware por `mae_id`), gravada
+no pacote de modelo e chega ao sentinela pelas colunas `AD_ref_cv_rejeitadas`/
+`AD_ref_cv_n` da predição. **Por que não comparar com o 5% nominal**: um domínio
+de aplicabilidade calibrado com n finito, em espectros reais, rejeita em
+controle uma taxa diferente de 5% e diferente a cada calibração (efeito da
+estimação de parâmetros da Fase I, Jensen et al. 2006, DOI
+10.1080/00224065.2006.11918623); o teste contra 5% dava ~20% de falso alarme
+no Corn, R2 dá ~3% (`docs/VALIDACAO_PUBLICA.md` §11). **Custo medido de R2**:
+a detecção da troca de instrumento no Corn é em até 1 lote (média 0,41 lote)
+em vez de sempre no 1º. **Modelos salvos antes do Passo 220** não têm a
+referência: o sentinela cai no teste binomial contra o nominal, com aviso
+`[teste LEGADO …]` na mensagem e `DriftAlert.teste == "binomial_nominal"` —
+retreinar grava a referência. Não é um limiar cru tipo "2× o nominal", que
 teria taxa de falso alarme dependente de `n` sem justificativa formal.
 
 **Defaults justificados, não escolhidos a dedo:**
@@ -940,11 +955,11 @@ teria taxa de falso alarme dependente de `n` sem justificativa formal.
   nominal usado em todo o projeto para os próprios gates (DD-SIMCA, AD,
   conformal).
 
-Verificado por simulação (não só "não quebra"): gerando exatamente na
-taxa nominal (H0 verdadeiro), a taxa de falso alarme observada em 300
-repetições Monte Carlo fica próxima do `significancia` declarado; uma
-deriva real (taxa de rejeição 6× o nominal) dispara o alerta com `n`
-suficiente.
+Verificado por simulação e com dado real (não só "não quebra"): 200
+repetições sintéticas com calibração nova a cada repetição (falso alarme
+2,5% com R2 contra 25,5% do teste antigo, em processo de caudas pesadas) e o
+Corn real com troca de instrumento m5→mp5 (300 splits: falso alarme 3,0%,
+detecção 100%) — ver `docs/VALIDACAO_PUBLICA.md` §11.
 
 **Persistência e integração:** `save_state`/`load_state` (JSON)
 permitem que a sentinela sobreviva entre execuções — uso real (LIMS

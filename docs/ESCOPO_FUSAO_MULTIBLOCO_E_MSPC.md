@@ -10,7 +10,7 @@
 > de evidência real** (`tests/test_mspc_validacao_deriva.py` — injeção
 > sintética de deriva; `tests/test_mspc_validacao_corn.py` — deriva
 > real de troca de instrumento no dataset Corn, detecção 100%/30 seeds,
-> atraso ≈0; Camada 3/TEP avaliada e conscientemente não implementada). **Revisão 2026-09-19:** o falso alarme em repouso, reportado como ~7-10%, é ≈21% com 1500 splits — causa raiz (hipótese nula do sentinela falsa para AD de calibração finita, não teste sequencial) e correção candidata em `docs/VALIDACAO_PUBLICA.md` §11, aguardando decisão.
+> atraso ≈0; Camada 3/TEP avaliada e conscientemente não implementada). **Revisão 2026-09-19:** o falso alarme em repouso, reportado como ~7-10%, era ≈21% com 1500 splits — causa raiz (hipótese nula do sentinela falsa para AD de calibração finita, não teste sequencial). **Corrigido no Passo 220 (teste R2: duas amostras contra a taxa de rejeição em CV da própria calibração)**: 3,0% de falso alarme e 100% de detecção no Corn (300 splits), detecção em até 1 lote — números finais em `docs/VALIDACAO_PUBLICA.md` §11.
 > Ver `docs/MAPA_COMPLETUDE_V1.md`, Grupo 2, para o fechamento e a
 > validação completos. Este documento permanece como registro do
 > PLANEJAMENTO original, não reescrito.

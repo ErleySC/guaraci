@@ -123,6 +123,20 @@ por `tests/test_fachada_reexport.py`.
   funções públicas novas (leitor de espectro RMN Bruker processado e de
   cromatograma HPLC/GC Agilent/Waters), mesmo padrão aditivo acima.
   Golden regravado — mesmo precedente, aditivo puro, sem bump de versão.
+- **Teste R2 do sentinela de deriva** (Passo 220, 2026-09-19): (a)
+  `chemometric_stats.ad_rejection_rate_cv` -- funcao publica nova; (b)
+  `SentinelState` ganha `ref_rejeitadas`/`ref_n` e `DriftAlert` ganha
+  `teste`/`taxa_referencia`, todos campos OPCIONAIS com default (estado
+  `.sentinela.json` antigo continua carregando); (c) `predict_samples`
+  ganha 2 colunas de saida (`AD_ref_cv_rejeitadas`/`AD_ref_cv_n`) so'
+  quando o pacote de modelo as tem. **Mudanca de COMPORTAMENTO
+  intencional e autorizada**: com a referencia, `check_drift` deixa de
+  testar contra o `alpha` nominal e passa a testar contra a taxa de
+  rejeicao da propria calibracao (Fisher, duas amostras) -- o teste antigo
+  dava ~21% de falso alarme no Corn. Modelos sem a referencia (salvos antes
+  do Passo 220) continuam no teste antigo, com aviso na mensagem e em
+  `DriftAlert.teste == "binomial_nominal"`. Golden regravado; aditivo na
+  assinatura, nao no comportamento do alerta.
 - **`predicao.anexar_colunas_fluxo_cego`** (auditoria de confiabilidade de
   2026-09-19, varredura de duplicacao): funcao publica nova que passa a ser
   a FONTE UNICA das 12 colunas do fluxo cego (Detectar->Identificar->

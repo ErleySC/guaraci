@@ -4943,7 +4943,7 @@ Instrução em três frentes. Bloqueio de publicação permanece em vigor.
 
 **Causa raiz** (decomposição em `scripts/medicoes/medir_mspc_falso_alarme_corn.py`, `docs/VALIDACAO_PUBLICA.md` §11): o Domínio de Aplicabilidade calibrado com n=40 rejeita ~6,5% em controle (não 5%) e esse valor VARIA entre calibrações; a hipótese nula do sentinela (taxa = alpha nominal) é falsa para uma calibração finita. É o efeito da estimação de parâmetros da Fase I em SPC (Jensen et al. 2006, DOI 10.1080/00224065.2006.11918623, confirmado via Crossref). Portanto é um problema de metodologia, mais fundo que recalibrar um limiar.
 
-**Decisão pendente do usuário (regra de pausa (a): reportar antes de reescrever)**: R2 — teste de 2 amostras contra a taxa de rejeição em validação cruzada da própria calibração (falso alarme 3,0%, poder 100% no Corn, sem perda de sensibilidade sob deriva sutil sintética; **recomendada**); R3 — tolerância fixa de 10% (falso alarme 5,7%, mas perde poder sob deriva sutil); ou manter o teste atual com aviso explícito. Nada disso foi implementado: troca a semântica do alerta, é decisão de produto. Estado honesto do MSPC: **detecção validada (100%, atraso ≈ 0), calibração do falso alarme NÃO validada**.
+**Decisão pendente do usuário (regra de pausa (a): reportar antes de reescrever)**: R2 — teste de 2 amostras contra a taxa de rejeição em validação cruzada da própria calibração (falso alarme 3,0%, poder 100% no Corn, sem perda de sensibilidade sob deriva sutil sintética; **recomendada**); R3 — tolerância fixa de 10% (falso alarme 5,7%, mas perde poder sob deriva sutil); ou manter o teste atual com aviso explícito. **[RESOLVIDO no Passo 220: o autor escolheu R2; aplicado e revalidado.]** Nada disso foi implementado: troca a semântica do alerta, é decisão de produto. Estado honesto do MSPC NAQUELA data: **detecção validada (100%, atraso ≈ 0), calibração do falso alarme NÃO validada** — superado pelo Passo 220.
 
 ### Parte B — Auditoria de confiabilidade
 
@@ -4989,3 +4989,44 @@ Regenerado a partir do commit deste passo, com MSPC (estado real: detecção val
 ### Contra-prova geral
 
 Suíte completa reexecutada ao fechar o passo (ver resultado no commit). `ruff check .` limpo; `mypy` limpo.
+
+
+---
+
+# PROGRESSO — Passo 220 (2026-09-19)
+
+## Passo 220 — R2 aplicado ao MSPC, revalidado nas duas camadas; suíte completa com datasets externos
+
+Decisão do autor: aplicar R2 (não R3, não manter). Bloqueio de publicação permanece em vigor.
+
+### O que mudou (semântica do alerta, autorizada)
+
+- `chemometric_stats.ad_rejection_rate_cv(X, n_components, alpha, groups, ...)` — nova. Taxa de rejeição do Domínio de Aplicabilidade em validação cruzada da própria calibração: leave-one-group-out até 60 grupos, 10 folds de grupos (`StableStratifiedGroupKFold`) acima, subconjunto determinístico de 300 grupos acima de 300 (referência levemente conservadora).
+- `pipeline.executar()` grava `ad_cv_rejeitadas`/`ad_cv_n` no pacote de modelo (falha ali não derruba o AD: o sentinela cai no teste antigo, avisado).
+- `predicao.predict_samples` expõe a referência nas colunas `AD_ref_cv_rejeitadas`/`AD_ref_cv_n` (mesmo padrão de `AD_f_crit`); o `hook_apos_predicao` lê dali — CLI e web ganham R2 sem mudar de chamada.
+- `sentinela_deriva.check_drift`: com referência, teste exato de Fisher unilateral de duas amostras contra a taxa da CV da calibração (era: binomial contra o 5% nominal). Sem referência (modelo antigo): teste antigo, com `DriftAlert.teste == "binomial_nominal"` e aviso `[teste LEGADO …]`. Recalibração sob o mesmo caminho zera o histórico. Jensen et al. (2006), DOI 10.1080/00224065.2006.11918623, citado no docstring do módulo e da função nova.
+- Golden `contrato_api_publica.json`/`contrato_saida_tabular.json` regravados (só adições: 26 linhas); `docs/COMPATIBILITY.md` registra a mudança de comportamento como intencional.
+
+### Revalidação (números finais em `docs/VALIDACAO_PUBLICA.md` §11)
+
+1. **Antes de aplicar**: a medição exploratória do Passo 219 foi REPRODUZIDA exatamente com a mesma semente (300 splits, Corn): binomial vs 5% = 20,0%, R3 = 5,7%, R2 = 3,0%, poder 100%.
+2. **Camada 2, Corn real, código de produção, 300 splits**: falso alarme **3,0%** (era 20,0%), detecção **300/300 = 100%**. **Achado novo, não reportado antes**: o atraso de detecção não é zero — 177/300 no 1º lote, 123/300 no 2º, nenhum depois (média 0,41 lote ≈ 3 amostras; o teste antigo era sempre no 1º lote). É o custo de R2; a detecção continua 100% e em no máximo 1 lote (8 amostras) depois.
+3. **Camada 1, sintética, 200 repetições com calibração NOVA a cada uma**: caudas pesadas — falso alarme legado 25,5% → R2 **2,5%**; gaussiano bem calibrado — 1,5% → 2,0%, poder em deriva sutil praticamente igual ao antigo (δ=0,010: 20,5% vs 21,0%; 0,015: 64,0% vs 65,5%; 0,020: 97,5% vs 99,5%). **Achado, contra a leitura do Passo 219**: no cenário de caudas pesadas R2 detecta deriva FRACA menos que o teste antigo (δ=0,10: 8% vs 38%), mas o teste antigo tem falso alarme 4–10× maior mesmo apertando a significância (0,005 → 12,5%; 0,001 → 9,5%, nunca chega a 2,5%). "Sem perda de poder" vale para o Corn e para o cenário bem calibrado, **não** como afirmação geral para deriva muito fraca com calibração ruim.
+
+### Testes novos e contra-prova de mutação
+
+- `tests/test_sentinela_r2.py` (36 testes, 1 slow): p-valor contra a hipergeométrica calculada por caminho independente; R2 não alarma onde o teste antigo alarmaria (calibração com 12% de rejeição, produção com 12,5%); fallback legado; persistência (estado antigo carrega); hook (referência do lote, recalibração zera histórico, referência NaN/0/parcial); `ad_rejection_rate_cv` (group-aware provado por espião, K folds, subconjunto determinístico, treino pequeno); ponta a ponta com `pipeline.executar()` real.
+- `tests/test_mspc_validacao_deriva.py` (+1, slow) e `tests/test_mspc_validacao_corn.py` (reescrito para R2, +1 comparação legado × R2 no mesmo split).
+- **cosmic-ray só neste trecho**: `ad_rejection_rate_cv` 108 mutantes, **108 mortos**; `sentinela_deriva.py` 229 mutantes → 164 mortos, 60 incompetentes, **5 sobreviventes, todos equivalentes** (`>`↔`>=` numa fatia de tamanho igual, `n == 0`↔`n <= 0`, `len == 0`↔`len <= 0`). A 1ª rodada achou 25 sobreviventes reais no código novo (`_referencia_do_lote` e a decisão de zerar histórico: NaN só em uma coluna, iloc[0], `ref_n = 1`, referência menor); fechados com testes de fronteira dirigidos e re-mutados.
+
+### Itens residuais
+
+- **`check_untyped_defs` LIGADO** (`pyproject.toml`): a estimativa da instrução ("pode ser grande") estava errada — eram 14 erros em 3 arquivos (`figuras.py`, `selecao_variaveis.py`, `pipeline.py`), corrigidos com anotações de tipo (nenhuma mudança de comportamento). mypy limpo em 84 arquivos, nas plataformas linux e win32.
+- **Mutação de `predicao.py`, `pipeline.py`, `avaliacao_modelos.py` e do resto de `validacao_estatistica.py`**: segue **Backlog** (registro do Passo 219 mantido).
+- **Limitação: metadata órfã em `.git/worktrees`** — as worktrees temporárias de mutação (`mut`…`mut4`) e três de agentes foram removidas do diretório e não aparecem em `git worktree list`, mas o Windows/OneDrive nega apagar a metadata em `.git/worktrees/` (Permission denied). Inofensivo; `git worktree prune` resolve quando o sistema liberar os arquivos.
+
+### Suíte completa REAL (com Corn e Mendeley)
+
+Execução completa final (`GUARACI_DATASETS_DIR` apontando para a pasta com `corn.mat` e `mendeley_ctgg7k4m5g/` com NIR8mm, MIR, Raman e a chave de classes), sobre o código e os documentos do commit deste passo: **1752 passed, 28 skipped, 0 failed** (28 min 08 s). Uma execução anterior no mesmo código, antes das edições de documentação, deu o mesmo 1752/28/0. `ruff check .` limpo; `mypy` limpo em 84 arquivos com `check_untyped_defs` ligado.
+
+**Os 28 skips NÃO são zero e não são do MSPC**: 10 datasets públicos que não estão nesta máquina (DeepHS Fruit — 14 testes; Figshare NMR azeite; Zenodo EEM azeite; Mendeley GC-MS lavanda; Zenodo GC-IMS urina; Zenodo HPLC azeite; Mendeley fluorescência; ERIC/Eawag) e 2 módulos opcionais de cores (`glasbey`, `colorcet`). Corn e Mendeley (NIR/MIR/Raman), que a instrução pedia, rodaram. Não baixei os outros: cada um exigiria download de terceiros sem autorização explícita nesta rodada. Antes da 1ª publicação, rodar com todos eles é um item do procedimento de publicação (`docs/MAPA_COMPLETUDE_V1.md`).

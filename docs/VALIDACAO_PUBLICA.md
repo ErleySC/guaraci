@@ -1498,96 +1498,124 @@ controle sobe — ver varredura abaixo). Aplicado sequencialmente, em lotes:
 primeiro ao restante de m5 (fase "em controle", deveria ficar estável),
 depois às MESMAS amostras físicas medidas em mp5 (deveria disparar).
 
-**Medido, replicado em 30 splits aleatórios independentes**
-(`tests/test_mspc_validacao_corn.py`):
+**Estado atual (Passo 220, 2026-09-19): o teste do sentinela é R2 — duas amostras
+(Fisher exato unilateral) contra a taxa de rejeição do PRÓPRIO Domínio de
+Aplicabilidade em validação cruzada da calibração**, guardada no pacote de modelo
+(`ad_cv_rejeitadas`/`ad_cv_n`, calculada por
+`chemometric_stats.ad_rejection_rate_cv`, group-aware por `mae_id`). O teste
+antigo (binomial contra o 5% nominal) só permanece como fallback avisado para
+modelos salvos antes do Passo 220.
 
-| Métrica | Resultado |
-|---|---|
-| Detecção da troca m5→mp5 | **30/30 (100%)** |
-| Atraso de detecção | Sempre no 1º lote pós-troca (≈0) |
-| Falso alarme na fase em controle (mesmo instrumento), 30 seeds | 3/30 = 10% (IC95% ≈ 2–27% — amostra pequena demais para concluir) |
-| Falso alarme na fase em controle, **1500 splits** (medição que substitui a linha acima) | **≈21%** (por look de 13% a 20%) — **4× o nominal de 5%** |
+**Resultado final, código de PRODUÇÃO, Corn real** (`scripts/medicoes/
+medir_mspc_r2_corn.py`, 300 splits independentes de calibração — 40 amostras m5 —
+e holdout, lotes de 8; a fase em controle é o resto de m5, a fase de deriva são as
+MESMAS amostras medidas em mp5):
 
-**O que continua valendo**: o efeito real (troca de instrumento) é detectado com clareza esmagadora (p da ordem de 1e-4 a 1e-32 nos lotes pós-troca), sem atraso, em 30/30 splits — não há ambiguidade sobre SE o MSPC pega esta deriva. O que estava errado era a CALIBRAÇÃO do alarme em repouso.
+| Métrica | Teste antigo (binomial vs 5%) | **R2 (final)** |
+|---|---|---|
+| Falso alarme em controle | 20,0% | **3,0%** |
+| Detecção da troca m5→mp5 | 300/300 (100%) | **300/300 (100%)** |
+| Atraso de detecção | sempre no 1º lote pós-troca | **1º lote em 177/300; 2º lote em 123/300; nenhum depois** (média 0,41 lote ≈ 3 amostras) |
 
-**RETRATAÇÃO (2026-09-19) do "~7-10%" reportado antes**: era a leitura
-de 3/30 seeds, um IC largo demais; a mesma medição com 1500 splits dá
-≈21% (`scripts/medicoes/medir_mspc_falso_alarme_corn.py`). O texto
-anterior também atribuía o excesso a "viés residual de amostra finita"
-sem ter decomposto a causa — a decomposição abaixo mostra que o
-diagnóstico estava incompleto.
+O atraso é o **custo medido** de R2 e não foi reportado antes: comparar contra a
+referência de CV (~6,9% em média) em vez de 5% exige um pouco mais de evidência
+para alarmar. A detecção continua 100% e no máximo 1 lote (8 amostras) depois.
 
-**Causa raiz (hipótese de teste sequencial repetido NÃO confirmada).**
-Decomposição, 1500 splits de calibração (40 amostras) × holdout (40):
+Antes de aplicar R2, a medição exploratória do Passo 219 (reimplementação em
+`medir_mspc_falso_alarme_corn.py`, mesma semente) foi **reproduzida exatamente**
+(300 splits): binomial vs 5% = 20,0%, R3 (tolerância 10%) = 5,7%, R2 = 3,0%, poder
+100% em todas — e o R2 do código de produção deu os mesmos 3,0% / 100%. Nos testes
+automáticos (`tests/test_mspc_validacao_corn.py`, 30 seeds): detecção 30/30, falso
+alarme 1/30 (3%), atraso médio 0,27 lote.
 
-| Componente | Medido |
-|---|---|
-| Nulo teórico Bernoulli(0,05), MESMA agenda de looks (n=24/32/40) | falso alarme 5,9% (por look 2–5%) — o teste sequencial repetido contribui só ~1 ponto |
-| Rejeição por amostra do AD em controle (nominal 5%) | **média 6,5%**, com dispersão entre calibrações (5–95%: 0 a 17,5%) |
-| Nulo Bernoulli(6,5%) com a mesma agenda | falso alarme 13,5% (um desvio de 1,5 pt na taxa basta) |
-| Observado | **21%** (o restante: heterogeneidade entre calibrações) |
+**Camada 1 — sintética, calibração NOVA a cada repetição** (é o que expõe a variância
+de calibração da Fase I; o teste de 1 calibração fixa não expõe):
 
-O falso alarme **por look isolado já é 13–20%**: nem mesmo UM teste está
-calibrado, logo calibrar por ARL/alpha-spending sobre os looks não pode
-corrigir (medido: alpha-spending que mantém 5% sob o nulo iid exige
-significância por look de 0,048 — praticamente a atual — e deixa 18% de
-falso alarme). O problema é a HIPÓTESE NULA do sentinela: `check_drift`
-testa "taxa de rejeição = alpha nominal (5%)", mas um Domínio de
-Aplicabilidade calibrado com n finito, em espectros reais (caudas mais
-pesadas que a normal), rejeita em controle uma taxa **diferente de 5% e
-diferente a cada calibração**. Efeito bem conhecido em CEP como "efeito
-da estimação de parâmetros da Fase I" (Jensen, Jones-Farmer, Champ &
-Woodall, *J. Qual. Technol.* 38(4):349–364, 2006, DOI 10.1080/00224065.2006.11918623 — confirmado no Crossref em 2026-09-19): o desempenho em
-controle da Fase II, condicional à amostra de calibração, é aleatório e
-em média pior que o nominal.
+| Cenário (200 repetições) | Falso alarme legado | Falso alarme R2 | Poder R2 |
+|---|---|---|---|
+| Caudas pesadas (t-Student df=4), n_cal=40, 2 PCs (`medir_mspc_r2_sintetico.py`) | 25,5% | **2,5%** | δ=0,10: 8%; δ=0,20: 34%; δ=0,40: 79% |
+| Gaussiano bem calibrado, n_cal=60, 5 PCs (`medir_mspc_r2_deriva_sutil.py`) | 1,5% | **2,0%** | δ=0,010: 20,5% (legado 21,0%); 0,015: 64,0% (65,5%); 0,020: 97,5% (99,5%); ≥0,030: 100% |
 
-Varredura n_cal × nº de componentes (300 splits cada; rejeição média em
-controle, nominal 5%): com k=2 PCs → 9,8% (n_cal=20), 7,7% (30), **6,5%
-(40)**, 5,6% (50), 4,8% (60), 4,0% (70); com k=3 → 11,5%, 9,1%, 8,6%,
-8,3%, 8,3%, 8,3% (não converge a 5% nem com n=70 — cauda não-gaussiana
-do 3º componente). O viés decai ~1/n_cal para k=2, mas não some com k
-maior: é finito-amostra **e** má-especificação da aproximação χ².
+Leitura honesta do poder: no cenário bem calibrado R2 é praticamente igual ao teste
+antigo (perda ≤ 2 pontos percentuais, dentro do erro de 200 repetições). No cenário
+de caudas pesadas o poder do teste antigo é MAIOR só porque ele alarma também em
+controle (25,5%); ver a comparação a tamanho igual abaixo. Onde R2 perde de fato é
+em deriva muito fraca frente à calibração ruim (δ=0,10 → 8%): um teste com falso
+alarme de 2,5% não pode detectar o que o próprio limiar de rejeição da calibração
+não separa.
 
-**Correções candidatas avaliadas (nenhuma aplicada — achado de
-metodologia, aguardando decisão; 300 splits, n_cal=40):**
+**Comparação a tamanho igual (cenário de caudas pesadas, 200 repetições)**: apertar
+a significância do teste ANTIGO não o conserta, porque o problema é a hipótese nula
+e não o limiar. Legado com significância 0,05 / 0,005 / 0,001 → falso alarme
+25,5% / 12,5% / 9,5% (nunca chega aos 2,5% de R2); poder em δ=0,10 / 0,20 / 0,40:
+38% / 64,5% / 92% → 18% / 49,5% / 88,5% → 14,5% / 44% / 84,5%; R2 (falso alarme
+2,5%): 8% / 34% / 79%. Ou seja: **nesse cenário R2 detecta deriva fraca menos que
+qualquer variante do teste antigo — mas todas elas têm 4 a 10 vezes mais falso
+alarme; R2 é o único ponto com falso alarme abaixo de 5%**. A afirmação "sem perda
+de poder" vale para o Corn real (100% em ≤ 1 lote) e para o cenário bem calibrado
+(perda ≤ 2 pontos); NÃO vale como afirmação geral para deriva muito fraca em
+calibração ruim.
+
+**Histórico superado (não apagado, por honestidade)**: a leitura inicial do Passo
+218 ("falso alarme ~7–10%", 3/30 seeds) foi retratada no Passo 219 (≈21% em 1500
+splits, 20,0% em 300); a hipótese de teste sequencial repetido foi testada e
+REFUTADA (nulo Bernoulli(0,05) com a mesma agenda de looks dá 5,9%; alpha-spending
+deixa 18%). Esses números descrevem o teste ANTIGO e não valem para o sentinela
+atual.
+
+**Causa raiz (que R2 ataca)**: o Domínio de Aplicabilidade calibrado com n=40 em
+espectros reais rejeita, em controle, **6,5% em média (não 5%), com dispersão entre
+calibrações de 0 a 17,5% (5–95%)**. Um teste "taxa = 5%" é falso para a maioria das
+calibrações: é o "efeito da estimação de parâmetros da Fase I" em CEP (Jensen,
+Jones-Farmer, Champ & Woodall, *J. Qual. Technol.* 38(4):349–364, 2006, DOI
+10.1080/00224065.2006.11918623 — confirmado no Crossref em 2026-09-19). Varredura
+n_cal × nº de componentes (300 splits; rejeição média em controle, nominal 5%): k=2
+→ 9,8% (n_cal=20), 7,7% (30), **6,5% (40)**, 5,6% (50), 4,8% (60), 4,0% (70); k=3 →
+11,5%, 9,1%, 8,6%, 8,3%, 8,3%, 8,3% (não converge a 5% nem com n=70 — cauda
+não-gaussiana do 3º componente). Como o viés decai ~1/n_cal para k=2 mas não some com
+k maior, a correção certa é medir a taxa DA calibração, não assumi-la (R2).
+
+**Correções candidatas avaliadas no Passo 219 (300 splits, n_cal=40; a R2 foi a
+escolhida)**:
 
 | Correção | Falso alarme em controle | Poder na troca m5→mp5 |
 |---|---|---|
-| Atual (binomial vs 5%) | 20,0% | 100% |
+| Antigo (binomial vs 5%) | 20,0% | 100% |
 | R1 — alpha-spending sobre os looks | 18,0% | 100% |
-| R3 — binomial vs tolerância de 10% | 5,7% | 100% |
-| **R2 — teste de 2 amostras (Fisher) vs taxa de rejeição em VALIDAÇÃO CRUZADA da própria calibração** (α=0,05) | **3,0%** | 100% |
-| R2 (α=0,01) | 1,0% | 100% |
+| R3 — binomial vs tolerância de 10% | 5,7% | 100% (perde poder sob deriva sutil) |
+| **R2 — Fisher vs CV da calibração (adotada)** | **3,0%** | **100%** |
 
-Poder sob deriva SUTIL (sintético, 150 execuções por ponto, fração com
-alarme): δ=0,010 → atual 0,21 / R3 0,05 / **R2 0,24**; δ=0,015 → 0,64 /
-0,38 / **0,64**; δ=0,020 → 0,99 / 0,91 / **0,97**; falso alarme em δ=0:
-atual 0,01, R2 0,03. **R2 não perde sensibilidade em nenhuma das duas
-camadas; R3 perde** (precisa de deriva maior para disparar). A taxa em
-validação cruzada da calibração (média 6,85% no Corn) já reproduz o viés
-observado no holdout (6,5%) — é estimável NO TREINO, sem holdout.
+**Custo de calcular a referência**: cada fold refaz o domínio inteiro (incluindo o Q
+leave-one-out). Medido: n=40, p=60 → 1,5 s; n=100, p=200 → 5,8 s; n=300, p=600 →
+14,7 s; n=1000, p=1500 → 70 s só o domínio e 252 s a CV de 5 folds. Por isso acima de
+300 grupos a referência usa um subconjunto determinístico de 300 (o viés decai com n,
+então a referência fica levemente CONSERVADORA: menos sensibilidade, nunca mais falso
+alarme). Folds: leave-one-group-out até 60 grupos (replicas de um `mae_id` sempre
+juntas); acima, 10 folds de grupos (`StableStratifiedGroupKFold`).
 
-**Por que isto é achado de metodologia e não recalibração de limiar**:
-R2 muda a hipótese nula (de "taxa = 5%" para "taxa = taxa medida em
-validação cruzada na calibração, com sua incerteza") e exige que o
-pacote de modelo passe a guardar a referência de calibração (contagem de
-rejeições/n em CV) — mudança de esquema do `.joblib`, do
-`SentinelState` e de `check_drift`, com fallback explícito (aviso) para
-modelos antigos sem a referência. **Não implementado nesta rodada por
-regra de reporte** (pausar e reportar antes de reescrever); decisão do
-autor: R2 (recomendado pela evidência), R3, ou manter o teste atual com o
-aviso de falso alarme inflado registrado.
+**Fallback para modelos antigos**: pacote salvo antes do Passo 220 não tem a
+referência; o sentinela usa o teste binomial antigo, `DriftAlert.teste ==
+"binomial_nominal"` e a mensagem traz o aviso `[teste LEGADO ...]`. Retreinar grava a
+referência. Quando um modelo é recalibrado sob o mesmo caminho (referência diferente
+da guardada no `.sentinela.json`), o histórico é zerado — rejeições julgadas por outra
+calibração não se comparam com a referência da nova.
 
-Complementar a esta validação com dado real: `tests/test_mspc_
-validacao_deriva.py` prova o MESMO mecanismo com deriva espectral
-sintética progressiva (deslocamento controlado, sem depender de nenhum
-dataset externo) — falso alarme 0/200 em processo sintético estável (gate bem calibrado: gaussiano, n_cal=60, p=50 — o AD sintético NÃO reproduz o viés dos espectros reais),
-detecção a partir do ponto exato onde a deriva injetada se torna grande
-o suficiente.
+Complementar a esta validação com dado real: `tests/test_mspc_validacao_deriva.py`
+prova o MESMO mecanismo com deriva espectral sintética progressiva (deslocamento
+controlado, sem depender de nenhum dataset externo) — falso alarme 0/200 em processo
+sintético estável com UMA calibração gaussiana (esse cenário NÃO reproduz o viés dos
+espectros reais; por isso há também o teste de calibração nova por repetição, com
+caudas pesadas), detecção a partir do ponto exato onde a deriva injetada se torna
+grande o suficiente. O teste unitário do teste R2 (p-valor contra a hipergeométrica
+independente, fronteiras, persistência, recalibração) está em
+`tests/test_sentinela_r2.py`.
 
 Reproduzir:
 ```
 curl -fsSL -o corn.mat https://eigenvector.com/data/Corn/corn.mat
-GUARACI_DATASETS_DIR=$(pwd) pytest tests/test_mspc_validacao_corn.py -v -s
-pytest tests/test_mspc_validacao_deriva.py -v
+GUARACI_DATASETS_DIR=$(pwd) pytest tests/test_mspc_validacao_corn.py -v -s -m "slow or not slow"
+pytest tests/test_mspc_validacao_deriva.py tests/test_sentinela_r2.py -v -m "slow or not slow"
+GUARACI_DATASETS_DIR=$(pwd) python scripts/medicoes/medir_mspc_r2_corn.py 300
+python scripts/medicoes/medir_mspc_r2_sintetico.py 200
+python scripts/medicoes/medir_mspc_r2_deriva_sutil.py 200
 ```
