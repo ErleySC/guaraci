@@ -34,6 +34,7 @@ import pytest
 from sklearn.decomposition import PCA
 
 from guaraci.chemometric_stats import (
+    ad_rejection_rate_cv,
     applicability_domain_new_samples,
     training_applicability_domain,
 )
@@ -65,12 +66,17 @@ def _carregar_instrumentos():
 
 
 def _rodar_cenario(X_m5, X_mp5, seed: int, tam_lote: int = 8,
-                    n_cal: int = 40, n_components: int = 2):
+                    n_cal: int = 40, n_components: int = 2,
+                    com_referencia: bool = True):
     """Calibra o Dominio de Aplicabilidade em `n_cal` amostras m5, depois
     processa o RESTANTE em lotes -- primeiro do proprio m5 (fase 'em
     controle'), depois as MESMAS amostras fisicas medidas em mp5 (fase
     'deriva real'). Retorna (alarme_disparou_na_fase_1,
-    lote_de_deteccao_na_fase_2_ou_None)."""
+    lote_de_deteccao_na_fase_2_ou_None).
+
+    `com_referencia=True` (padrao): o sentinela testa contra a taxa de
+    rejeicao em validacao cruzada da propria calibracao (R2, Passo 220 --
+    o que o modelo salvo carrega). `False`: teste legado contra 5%."""
     rng = np.random.default_rng(seed)
     idx = rng.permutation(80)
     idx_cal, idx_resto = idx[:n_cal], idx[n_cal:]
@@ -84,6 +90,9 @@ def _rodar_cenario(X_m5, X_mp5, seed: int, tam_lote: int = 8,
             art["Nh"], art["Nq"], art["f_crit"])["dentro_dominio"]
 
     estado = SentinelState(alpha_nominal=0.05)
+    if com_referencia:
+        estado.ref_rejeitadas, estado.ref_n = ad_rejection_rate_cv(
+            X_m5[idx_cal], n_components)
     alarme_fase1 = False
     for i in range(0, len(idx_resto), tam_lote):
         lote = idx_resto[i:i + tam_lote]
@@ -115,36 +124,32 @@ def test_mspc_detecta_troca_de_instrumento_no_corn():
         "MSPC nao detectou a troca de instrumento m5->mp5 -- deriva "
         "real e documentada (degradacao de RMSEP ja medida em "
         "test_validacao_publica.py) nao foi pega pelo sentinela")
-    assert lote_deteccao == 0, (
-        f"deteccao no lote {lote_deteccao} -- esperava deteccao "
-        "IMEDIATA (lote 0) dado o tamanho real da diferenca "
+    assert lote_deteccao <= 1, (
+        f"deteccao no lote {lote_deteccao} -- esperava deteccao em ate' "
+        "1 lote (8 amostras) dado o tamanho real da diferenca "
         "espectral entre m5 e mp5")
 
 
 @requer_corn
 @pytest.mark.slow
-def test_mspc_corn_deteccao_e_falso_alarme_replicados_30_seeds():
-    """Contra-prova replicada (nao 1 unica medicao -- mesma disciplina
-    de `docs/VALIDACAO_PUBLICA.md` para achados que decidem algo): 30
+def test_mspc_corn_r2_deteccao_em_ate_1_lote_e_falso_alarme_calibrado_30_seeds():
+    """Contra-prova replicada do MSPC com R2 aplicado (Passo 220): 30
     splits aleatorios independentes de calibracao/holdout.
 
-    Achado MEDIDO e reportado honestamente: deteccao 100% (30/30 seeds,
-    sempre no primeiro lote pos-troca). A taxa de falso alarme na fase 'em
-    controle' (mesmo instrumento) NAO fica em "~7-10%" como reportado na
-    1a versao deste teste -- RETRATADO (2026-09-19): 30 seeds era amostra
-    pequena demais (3/30, IC95% ~2-27%); com 1500 splits a taxa e' ~21%
-    (`scripts/medicoes/medir_mspc_falso_alarme_corn.py`). Causa raiz
-    (decomposta, ver `docs/VALIDACAO_PUBLICA.md` §11): NAO e' inflacao por
-    teste sequencial repetido (o nulo Bernoulli(0.05) com esta agenda de
-    looks da' so' ~5,9%; alpha-spending nao corrige) -- e' que o Dominio de
-    Aplicabilidade calibrado com n_cal=40 rejeita ~6,5% em controle (nao
-    5%) e esse valor varia entre calibracoes, entao a hipotese nula do
-    sentinela (taxa = alpha nominal) e' falsa para uma calibracao finita.
-    Este teste NAO afirma calibracao de falso alarme: so' trava que a
-    deteccao continua imediata e que o falso alarme nao piora alem do
-    medido. A correcao (teste de 2 amostras contra a taxa de rejeicao em
-    validacao cruzada da calibracao) aguarda decisao -- achado de
-    metodologia, nao recalibracao de limiar.
+    Historico (medido, nao apagado): o teste LEGADO (binomial contra 5%)
+    dava ~21% de falso alarme em controle (1500 splits; a leitura anterior
+    de "~7-10%" era 3/30 seeds e foi RETRATADA no Passo 219). Causa raiz:
+    a calibracao com n_cal=40 rejeita ~6,5% em controle e esse valor varia
+    entre calibracoes (efeito de estimacao de parametros da Fase I,
+    Jensen et al. 2006, DOI 10.1080/00224065.2006.11918623) -- a hipotese
+    nula "taxa = 5%" era falsa. R2 compara contra a taxa da PROPRIA
+    calibracao em validacao cruzada. Medido (`scripts/medicoes/
+    medir_mspc_r2_corn.py`, codigo de producao): ver `docs/
+    VALIDACAO_PUBLICA.md` §11 para os numeros com 300 splits.
+
+    Aqui, com 30 seeds: deteccao 100% em ate' 1-2 lotes, e falso
+    alarme <= 15% (<= 4/30; sob os ~3% medidos, P(>=5/30) < 0,3%) -- teto
+    de regressao, nao afirmacao de que vale exatamente 3%.
     """
     X_m5, X_mp5 = _carregar_instrumentos()
     n_seeds = 30
@@ -161,21 +166,37 @@ def test_mspc_corn_deteccao_e_falso_alarme_replicados_30_seeds():
 
     taxa_deteccao = n_detectado / n_seeds
     taxa_falso_alarme = n_falso_alarme / n_seeds
-    print(f"\n[MSPC/Corn] deteccao={taxa_deteccao:.2f} "
+    print(f"\n[MSPC/Corn R2] deteccao={taxa_deteccao:.2f} "
           f"falso_alarme_fase1={taxa_falso_alarme:.2f} "
           f"atraso_medio(lotes)={np.mean(atrasos) if atrasos else float('nan'):.2f}")
 
     assert taxa_deteccao == 1.0, (
         f"deteccao da troca de instrumento caiu para {taxa_deteccao:.2f} "
         "-- deveria ser 100% dado o tamanho real da diferenca espectral")
-    assert np.mean(atrasos) < 1.0, (
-        "atraso medio de deteccao subiu acima de ~1 lote -- investigar "
-        "antes de aceitar como 'deteccao imediata'")
-    # Nao exige taxa de falso alarme <= 0.05: o achado MEDIDO (0.10 nestes
-    # 30 seeds; ~0.21 em 1500 splits -- ver docstring)
-    # e' relatado como esta', nao forcado a bater com o nominal. So'
-    # trava que nao vire algo MUITO pior (ex.: sempre alarme falso, que
-    # tornaria o MSPC inutil na pratica).
-    assert taxa_falso_alarme <= 0.30, (
-        f"taxa de falso alarme {taxa_falso_alarme:.2f} bem acima do "
-        "medido nesta sessao -- investigar antes de aceitar")
+    # R2 detecta no 1o OU no 2o lote pos-troca (medido em 300 splits: 177 no
+    # lote 0, 123 no lote 1, nenhum depois; o teste legado era sempre no
+    # lote 0). E' o custo medido de comparar contra a referencia de CV em
+    # vez do 5% nominal -- ver docs/VALIDACAO_PUBLICA.md.
+    assert max(atrasos) <= 2 and np.mean(atrasos) < 1.0, (
+        f"atraso de deteccao com R2 subiu (max={max(atrasos)}, "
+        f"medio={np.mean(atrasos):.2f} lotes; esperado <= 1 lote)")
+    assert taxa_falso_alarme <= 0.15, (
+        f"falso alarme {taxa_falso_alarme:.2f} com R2 -- esperado ~3% "
+        "(medido em 300 splits); investigar antes de aceitar")
+
+
+@requer_corn
+def test_mspc_corn_teste_legado_e_r2_no_mesmo_split_o_legado_alarma_mais():
+    """Mesmo split, mesma sequencia de amostras: R2 nunca alarma MENOS em
+    deriva real (deteccao imediata nos dois) e o legado tem MAIS falso
+    alarme em controle somado sobre 12 splits (soma, nao por split, para
+    nao depender de um sorteio)."""
+    X_m5, X_mp5 = _carregar_instrumentos()
+    fa_leg = fa_r2 = 0
+    for seed in range(12):
+        f_l, d_l = _rodar_cenario(X_m5, X_mp5, seed, com_referencia=False)
+        f_r, d_r = _rodar_cenario(X_m5, X_mp5, seed, com_referencia=True)
+        assert d_l == 0 and d_r is not None and d_r <= 1
+        fa_leg += f_l
+        fa_r2 += f_r
+    assert fa_r2 <= fa_leg

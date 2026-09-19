@@ -135,6 +135,8 @@
     "AD_f",
     "AD_f_crit",
     "AD_dentro_dominio",
+    "AD_ref_cv_rejeitadas",
+    "AD_ref_cv_n",
     "classes_plausiveis",
     "conjunto_cobertura_nominal"
   ],

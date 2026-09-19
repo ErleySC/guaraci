@@ -820,7 +820,7 @@ def _anotar_bandas_vip(ax, wavenumbers, vip, limiar=2.0, janela=120.0,
     vmax = float(np.nanmax(vip))
 
     # 1. Collect annotatable bands (local VIP peak above threshold).
-    cand = []
+    cand: List[List[Any]] = []
     for centro, rotulo in _BANDAS_NIR:
         viz = np.abs(wavenumbers - centro) <= janela
         if not viz.any():

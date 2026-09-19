@@ -502,6 +502,12 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
         resultado["AD_f"] = np.round(ad["f"], 3)
         resultado["AD_f_crit"] = round(float(ad["f_crit"]), 3)
         resultado["AD_dentro_dominio"] = ad["dentro_dominio"]
+        # Referencia de CV da calibracao (Passo 220): constante por linha,
+        # mesmo padrao de AD_f_crit; so' em pacotes salvos a partir do
+        # Passo 220 -- o sentinela de deriva testa contra ela.
+        if "ad_cv_rejeitadas" in pkg and "ad_cv_n" in pkg:
+            resultado["AD_ref_cv_rejeitadas"] = int(pkg["ad_cv_rejeitadas"])
+            resultado["AD_ref_cv_n"] = int(pkg["ad_cv_n"])
 
     # Conjunto de predicao conforme p/ classificacao (Grupo 2, analogo
     # classificatorio do T1 de regressao -- ver conformal.conformal_margin_

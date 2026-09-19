@@ -301,6 +301,7 @@ from guaraci.chemometric_stats import (   # noqa: E402
     interpret_rpd,
     applicability_domain,
     training_applicability_domain,
+    ad_rejection_rate_cv,
     applicability_domain_new_samples,
     mean_and_dof_moments,
     rmse_flat,
@@ -690,8 +691,8 @@ def bootstrap_vip(X_processed, Y_bin, n_opt, n_boot, seed):
     if not vips:
         p = X_processed.shape[1]
         return np.zeros(p), np.zeros(p)
-    vips = np.asarray(vips)
-    return vips.mean(axis=0), vips.std(axis=0)
+    vips_arr = np.asarray(vips)
+    return vips_arr.mean(axis=0), vips_arr.std(axis=0)
 
 
 # Validacao estatistica (cross_val_predict manual, BCa, CV-ANOVA, teste de
@@ -2879,6 +2880,25 @@ def executar(cfg: Config):
             pacote_modelo["ad_Nh"] = _ad_treino["Nh"]
             pacote_modelo["ad_Nq"] = _ad_treino["Nq"]
             pacote_modelo["ad_f_crit"] = _ad_treino["f_crit"]
+            # Referencia do sentinela de deriva (Passo 220, correcao R2):
+            # quanto ESTA calibracao rejeita em dados que nao viu (CV
+            # group-aware por mae_id). O sentinela testa a taxa em producao
+            # contra isto, nao contra o alpha nominal -- ver
+            # sentinela_deriva.py. Falha aqui nao derruba o AD: o pacote so'
+            # perde a referencia e o sentinela cai no teste legado (avisado).
+            try:
+                _ref_r, _ref_n = ad_rejection_rate_cv(
+                    X_processed, int(pca.n_components_), alpha=0.05,
+                    groups=mae_id)
+                if _ref_n > 0:
+                    pacote_modelo["ad_cv_rejeitadas"] = int(_ref_r)
+                    pacote_modelo["ad_cv_n"] = int(_ref_n)
+                    resumo["AD taxa de rejeicao em CV (referencia do sentinela)"] = (
+                        f"{_ref_r}/{_ref_n} = {_ref_r / _ref_n:.3f}")
+            except Exception as _e_ref:  # noqa: BLE001 -- anexo opcional
+                log.info(f"  [AVISO] referencia de CV do dominio de "
+                         f"aplicabilidade nao calculada (sentinela usara o "
+                         f"teste legado): {_e_ref}")
         except Exception as _e_ad:  # noqa: BLE001 -- anexo opcional do
             # pacote de modelo; erro impresso, modelo principal (pls_final)
             # exportado normalmente logo abaixo mesmo sem o AD.

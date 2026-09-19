@@ -11,7 +11,7 @@ etapa4_selecao_variaveis).
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -1085,7 +1085,7 @@ def etapa4_selecao_variaveis(X_proc, Y_bin, y_int, wavenumbers,
           f"{', CARS' if cfg.run_cars else ''}"
           f"{', UVE' if cfg.run_uve else ''})...")
     p = X_proc.shape[1]
-    tabela = []
+    tabela: List[Dict[str, Any]] = []
 
     # 0) Baseline: all variables (no selection)
     full = _avaliar_subset_cv(X_proc, Y_bin, y_int, cv_indices, n_lv)

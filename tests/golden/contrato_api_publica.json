@@ -680,6 +680,10 @@
         "forma": "constante",
         "tipo": "str"
       },
+      "ad_rejection_rate_cv": {
+        "assinatura": "(X: 'np.ndarray', n_components: 'int', alpha: 'float' = 0.05, groups: 'Optional[np.ndarray]' = None, max_loo_groups: 'int' = 60, n_splits_grupos: 'int' = 10, max_grupos: 'int' = 300) -> 'Tuple[int, int]'",
+        "forma": "funcao"
+      },
       "applicability_domain": {
         "assinatura": "(pca, X_train: 'np.ndarray', X_new: 'np.ndarray', alpha: 'float' = 0.05) -> 'Dict[str, np.ndarray]'",
         "forma": "funcao"
@@ -4475,6 +4479,16 @@
             "nome": "mensagem",
             "tem_default": false,
             "tipo": "str"
+          },
+          {
+            "nome": "teste",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "taxa_referencia",
+            "tem_default": true,
+            "tipo": "Optional[float]"
           }
         ],
         "forma": "dataclass"
@@ -4495,6 +4509,16 @@
             "nome": "historico",
             "tem_default": true,
             "tipo": "List[bool]"
+          },
+          {
+            "nome": "ref_rejeitadas",
+            "tem_default": true,
+            "tipo": "Optional[int]"
+          },
+          {
+            "nome": "ref_n",
+            "tem_default": true,
+            "tipo": "Optional[int]"
           }
         ],
         "forma": "dataclass"

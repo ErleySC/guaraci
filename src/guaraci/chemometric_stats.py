@@ -12,7 +12,7 @@ Coberto por tests/test_pipeline_core.py.
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 from scipy.stats import f as f_dist, chi2, t as t_dist
@@ -46,6 +46,7 @@ __all__ = [
     "applicability_domain",
     "training_applicability_domain",
     "applicability_domain_new_samples",
+    "ad_rejection_rate_cv",
     "diagnose_spectral_range",
     "expandir_binario_um_quente",
 ]
@@ -953,6 +954,89 @@ def applicability_domain_new_samples(
             float(np.mean(dentro)) if dentro.size else float("nan"),
             dtype=float),
     }
+
+
+def ad_rejection_rate_cv(
+        X: np.ndarray, n_components: int, alpha: float = 0.05,
+        groups: Optional[np.ndarray] = None, max_loo_groups: int = 60,
+        n_splits_grupos: int = 10, max_grupos: int = 300
+        ) -> Tuple[int, int]:
+    """Taxa de rejeicao do Dominio de Aplicabilidade em VALIDACAO CRUZADA
+    da propria calibracao: `(n_rejeitadas, n_avaliadas)`.
+
+    Por que existe (MSPC, `sentinela_deriva`): o dominio calibrado com n
+    finito rejeita, em controle, uma taxa diferente do `alpha` nominal e
+    diferente a cada calibracao (medido no Corn: 6,5% em vez de 5%, com
+    n=40; falso alarme do sentinela ~21% ao testar contra 5%). E' o efeito
+    da estimacao de parametros da Fase I em CEP (Jensen, Jones-Farmer,
+    Champ & Woodall 2006, J. Qual. Technol. 38(4):349-364, DOI
+    10.1080/00224065.2006.11918623). A referencia correta para "a taxa em
+    producao mudou?" e' a taxa que ESTA calibracao rejeita em dados que
+    ela nao viu -- estimavel no treino, sem holdout: cada fold reajusta
+    PCA + parametros do dominio SO' no treino do fold e julga o fold de
+    fora.
+
+    Folds: leave-one-GROUP-out quando ha' ate' `max_loo_groups` grupos
+    (replicas do mesmo `groups`, ex. `mae_id`, ficam sempre juntas --
+    nunca vazam entre ajuste e julgamento); acima disso, `n_splits_grupos`
+    folds de grupos (`StableStratifiedGroupKFold`, deterministico), porque
+    o custo por fold inclui o Q leave-one-out do proprio dominio.
+    `groups=None` trata cada amostra como seu proprio grupo.
+
+    Custo: cada fold refaz o dominio inteiro (incluindo o Q
+    leave-one-out), ~3-4x o custo de `training_applicability_domain` por
+    conjunto de 5 folds (medido: n=1000, p=1500 -> 70 s so' o dominio,
+    252 s a CV de 5 folds). Por isso, acima de `max_grupos` grupos a
+    referencia e' estimada num subconjunto DETERMINISTICO de `max_grupos`
+    grupos (ordem por hash blake2b do id do grupo): a rejeicao em CV cai
+    com n (o vies de Fase I decai ~1/n), entao a referencia com n menor e'
+    levemente CONSERVADORA -- menos sensibilidade, nunca mais falso alarme.
+
+    Folds cujo treino e' pequeno demais para o PCA (< n_components + 2
+    amostras) sao ignorados -- `n_avaliadas` diz quantas entraram.
+    """
+    from sklearn.decomposition import PCA
+
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    g = np.arange(n) if groups is None else np.asarray(groups)
+    if g.shape[0] != n:
+        raise ValueError(
+            f"groups ({g.shape[0]}) e X ({n}) diferem em tamanho")
+    unicos = np.unique(g)
+    if len(unicos) > max_grupos:
+        from hashlib import blake2b
+        ordem = sorted(unicos.tolist(), key=lambda u: blake2b(
+            str(u).encode("utf-8"), digest_size=8).hexdigest())
+        manter = np.isin(g, np.asarray(ordem[:max_grupos], dtype=g.dtype))
+        X, g = X[manter], g[manter]
+        n = X.shape[0]
+        unicos = np.unique(g)
+    if len(unicos) <= max_loo_groups:
+        folds = [np.flatnonzero(g == u) for u in unicos]
+    else:
+        from guaraci.validacao_estatistica import StableStratifiedGroupKFold
+        k_folds = min(n_splits_grupos, len(unicos))
+        folds = [va for _, va in StableStratifiedGroupKFold(
+            n_splits=k_folds, seed=0).split(np.zeros(n), np.zeros(n), groups=g)]
+
+    rejeitadas = 0
+    avaliadas = 0
+    todos = np.arange(n)
+    for va in folds:
+        tr = np.setdiff1d(todos, va, assume_unique=True)
+        k = int(min(n_components, len(tr) - 1, X.shape[1]))
+        if len(tr) < n_components + 2 or k < 1:
+            continue
+        pca = PCA(n_components=k).fit(X[tr])
+        art = cast(Dict[str, Any], training_applicability_domain(
+            pca, X[tr], alpha=alpha))
+        dentro = applicability_domain_new_samples(
+            pca, X[va], art["var_t"], art["h0"], art["q0"], art["Nh"],
+            art["Nq"], art["f_crit"])["dentro_dominio"]
+        rejeitadas += int(np.sum(~dentro))
+        avaliadas += int(len(va))
+    return rejeitadas, avaliadas
 
 
 def diagnose_spectral_range(X: np.ndarray, wavenumbers: np.ndarray,
