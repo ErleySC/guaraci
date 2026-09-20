@@ -5153,3 +5153,93 @@ DECISÃO do autor (não de investigação adicional) — aumento de dados
 espectral por VRM e Dual-sPLS (Agente 1, Grupo 2 do mapa). Nenhum dos dois
 bloqueia publicação. Fora isso, nada de genuinamente novo e acionável foi
 encontrado nesta varredura.
+
+## Passo 224 — VRM e Dual-sPLS implementados e validados (2 agentes paralelos + integração)
+
+A pedido explícito do autor no dia seguinte ao Passo 223: "pesquisar e
+implementar VRM e Dual-sPLS, se viáveis e sem conflito". Antes de
+despachar qualquer implementação, reconfirmei os DOIs por WebSearch (sem
+retratação — título/autores/periódico batem de novo) e descobri que
+**nem o Corn público (`eigenvector.com`) nem o acervo privado
+(`GUARACI_DADOS_REAIS`) são acessíveis neste ambiente remoto** —
+tentativas diretas (curl) confirmaram bloqueio de política (403) também
+em `doi.org`, `sciencedirect.com`, `arxiv.org`, `lib.stat.cmu.edu`,
+`cran.r-project.org`, `zenodo.org`, `data.mendeley.com`,
+`dataverse.harvard.edu`, `openml.org`. Perguntei ao usuário como
+proceder (`AskUserQuestion`); resposta: "procure um dataset na
+literatura para fazer a validação". Encontrei que `raw.githubusercontent.com`
+e `pypi.org`/`files.pythonhosted.org` **funcionam** neste ambiente, e que
+o wheel PyPI `sktime==1.1.0` (BSD-3-Clause) empacota o dataset
+**Tecator real** (o mesmo já usado em `docs/BENCHMARK_TECATOR.md`, cuja
+fonte StatLib também está bloqueada aqui) como arquivo de texto simples
+— extraível via `zipfile` da stdlib sem instalar `sktime`. Checksums
+pinados e conferidos (ver `docs/VALIDACAO_PUBLICA.md` §12).
+
+Despachei 2 agentes em paralelo, cada um em `git worktree` isolado (para
+não conflitarem entre si nem com o repositório principal), com toda essa
+descoberta de rede/dataset já resolvida e passada como contexto —
+nenhum dos dois refez a mesma investigação de bloqueio de rede.
+
+**Parte A — VRM** (`src/guaraci/aumento_dados.py`, commit `441b99c` após
+rebase): aumento de dados espectral opcional (nunca default), inspirado
+em Tumoine et al. (2026) — texto completo do paper inacessível
+(ScienceDirect/arXiv/SSRN bloqueados), mecanismo geral (ganho
+multiplicativo + linha de base polinomial aditiva + ruído estruturado
+opcional) confirmado via resumos de terceiros, **não replicado
+literalmente** — ressalva explícita no docstring. Condição de segurança
+não-negociável (toda amostra aumentada herda o `group_id`/`mae_id` da
+original) provada por teste de propriedade via Hypothesis
+(`tests/test_aumento_dados_hypothesis.py`), com contra-prova confirmando
+que o teste PEGA uma quebra deliberada da herança (comentei a linha de
+herança, o teste falhou como esperado, revertido). Portão de aceite
+(`scripts/medicoes/portao_vrm_tecator.py`) contra Tecator real: **aprovado
+com efeito pequeno** (RMSEP 2,845→2,839, p=0,001); ruído estruturado
+ligado **rejeitado** (piora), por isso desligado por default.
+
+**Parte B — Dual-sPLS** (`src/guaraci/dual_spls.py`, commit `2f15123`
+após rebase): variante lasso da família de Alsouki et al. (2023). A
+diligência desta rodada superou a expectativa original — em vez de só
+"procurar um oráculo aproximado no paper", o agente encontrou o pacote R
+`dual.spls` preservado em `github.com/cran/dual.spls` (removido do CRAN
+em 2024-04-20, mas o mirror no GitHub não está bloqueado), instalou R
+4.3.3 no ambiente e rodou o código-fonte REAL do pacote para gerar dois
+oráculos numéricos exatos (preservados em
+`tests/fixtures/dual_spls_oracle/`). A validação bit-a-bit pegou e
+corrigiu um bug real de transcrição (triângulo errado zerado na
+reconstrução de coeficientes) que teria passado despercebido sem o
+oráculo. Integrado em `avaliacao_modelos.benchmark_regression_by_species`
+ao lado de Ridge/Lasso/Elastic Net. Portão de aceite
+(`scripts/benchmark_dual_spls_tecator.py`) contra Tecator real:
+**veredito misto** — aprovado em sparsity=0,5 (p=0,010), neutro em
+0,7/0,9. De passagem, o agente achou (e reportou via `spawn_task`, não
+corrigiu) um bug pré-existente não relacionado:
+`scripts/benchmark_tecator.py` usa um kwarg obsoleto de `Config`
+(`preprocessamento_padrao`, campo real é `default_preprocessing`).
+
+**Integração (Parte C)**: os dois agentes trabalharam em worktrees
+criados a partir de um commit 2 passos atrás do HEAD real (`ef92196`,
+não `5eaa3bf`) — não é erro deles, mas exigiu cherry-pick em vez de
+merge direto. `git cherry-pick` dos dois commits aplicou limpo (auto-merge
+sem conflito manual em `config.py`, único arquivo tocado pelos dois).
+`tests/test_integracao_vrm_dual_spls.py` (novo, 4 testes) prova que VRM
+alimentando Dual-sPLS no mesmo fluxo (augmentar só o fold de treino,
+ajustar no treino aumentado, prever no fold de validação original) não
+lança exceção, não vaza grupo, e não liga VRM por padrão em `Config`.
+`test_contrato_api_publica.py` acusou a mudança esperada (2 módulos
+públicos novos) — golden regravado, nota de honestidade em
+`docs/COMPATIBILITY.md` (mesmo padrão aditivo de `model_export.py`, sem
+bump de versão decidido). `test_epo_glsw.py`/`test_emsc_osc.py`/
+`test_portao_correcao_sinal.py` seguem verdes — confirmado por teste,
+não suposição, que os módulos novos não interferem com o portão de
+EPO/GLSW/PDS/DS (estágios diferentes do pipeline).
+
+`ruff check .` e `mypy src/guaraci/ app_quimiometria.py` (87 arquivos)
+limpos. Vault regenerado, `--cobertura` confirmada completa.
+`docs/MAPA_COMPLETUDE_V1.md` (Grupo 2) e `docs/VALIDACAO_PUBLICA.md`
+(§12, nova) atualizados com os vereditos reais.
+
+**Limitação honesta que permanece**: Tecator (172-215 amostras) não é o
+cenário de n pequeno do acervo privado que motivou as duas propostas
+originais — é a melhor alternativa real e verificável disponível neste
+ambiente remoto. A validação contra `GUARACI_DADOS_REAIS` continua
+pendente de execução local pelo usuário.

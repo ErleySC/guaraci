@@ -616,6 +616,52 @@
         "forma": "funcao"
       }
     },
+    "aumento_dados": {
+      "AumentoVRM": {
+        "campos": [
+          {
+            "nome": "n_aumentos",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "amplitude_multiplicativa",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "amplitude_baseline",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "amplitude_ruido_estruturado",
+            "tem_default": true,
+            "tipo": "float"
+          },
+          {
+            "nome": "ordem_polinomial_baseline",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "janela_suavizacao_ruido",
+            "tem_default": true,
+            "tipo": "int"
+          },
+          {
+            "nome": "seed",
+            "tem_default": true,
+            "tipo": "int"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "aumentar_vrm": {
+        "assinatura": "(X: 'np.ndarray', y: 'np.ndarray', grupos: 'np.ndarray', *, n_aumentos: 'int' = 1, amplitude_multiplicativa: 'float' = 0.01, amplitude_baseline: 'float' = 0.01, amplitude_ruido_estruturado: 'float' = 0.0, ordem_polinomial_baseline: 'int' = 2, janela_suavizacao_ruido: 'int' = 11, seed: 'int' = 0) -> 'Tuple[np.ndarray, np.ndarray, np.ndarray]'",
+        "forma": "funcao"
+      }
+    },
     "avaliacao_modelos": {
       "PLSDAClassifier": {
         "bases": [
@@ -1594,6 +1640,20 @@
       "tokens": {
         "assinatura": "(theme: 'str' = 'light') -> 'Dict[str, str]'",
         "forma": "funcao"
+      }
+    },
+    "dual_spls": {
+      "DualSPLS": {
+        "bases": [
+          "BaseEstimator",
+          "RegressorMixin"
+        ],
+        "forma": "classe",
+        "init": "(self, n_components: 'int' = 2, sparsity: 'float' = 0.9)",
+        "metodos_publicos": [
+          "fit",
+          "predict"
+        ]
       }
     },
     "eem_io": {

@@ -1648,3 +1648,71 @@ GUARACI_DATASETS_DIR=$(pwd) python scripts/medicoes/medir_mspc_r2_corn.py 1000 1
 python scripts/medicoes/medir_mspc_r2_sintetico.py 200
 python scripts/medicoes/medir_mspc_r2_deriva_sutil.py 200
 ```
+
+## 12. Portão de aceite (Bloco 20): VRM e Dual-sPLS no Tecator (2026-09-20)
+
+Implementação de dois candidatos do Grupo 2 do mapa de completude
+(`docs/MAPA_COMPLETUDE_V1.md`), a pedido explícito do autor. **Nem o
+Corn (`eigenvector.com` bloqueado) nem o acervo privado
+(`GUARACI_DADOS_REAIS` inexistente) estavam acessíveis no ambiente
+remoto desta rodada** — a validação usou o dataset público **Tecator**
+(215 amostras de carne, 100 canais NIR 850-1050nm, teor de gordura — o
+mesmo já citado em `docs/BENCHMARK_TECATOR.md`), obtido de uma fonte
+alternativa ao StatLib (também bloqueado aqui): o wheel PyPI
+`sktime==1.1.0` (BSD-3-Clause) empacota o Tecator real como arquivo de
+texto simples, extraído via `zipfile` da stdlib sem que `sktime` vire
+dependência do projeto. Checksums pinados e conferidos: whl
+`sha256:6af5430777aa56aa85b2a5c1c5363e7f4a468f666737aaf178ae3f941c3dd6c4`;
+`Tecator_TRAIN.ts sha256:e38de03007d2d6f29181b07a972fb2048c19ea67fe92df8cf43818f1dcb45f95`;
+`Tecator_TEST.ts sha256:3d06319c07274e6236d4b4d39e2d2a31e172a8a86510ab72ff50724463a22698`.
+Tecator não tem réplica física documentada (mesma ressalva de
+`docs/BENCHMARK_TECATOR.md`): a proteção group-aware por `mae_id` não é
+exercitada pelo dataset em si (cada amostra é 1 grupo), mas **é**
+exercitada pela augmentação VRM, cujos grupos herdados foram provados
+sem vazamento por teste de propriedade (Hypothesis) e por
+`tests/test_integracao_vrm_dual_spls.py`.
+
+| Técnica | Cenário | Métrica sem | Métrica com | p (Wilcoxon) | Veredito |
+|---|---|---:|---:|---:|---|
+| VRM (default: mult.+baseline, sem ruído) | Tecator, RMSEP (PLS-R, 10 LV) | 2,845 | 2,839 | 0,001 | ✅ aprovado (efeito pequeno, ~0,2%) |
+| VRM (ruído estruturado ligado) | Tecator, RMSEP | 2,845 | ~2,91 | 0,037 | ❌ rejeitado (piora ~2,4%) — por isso desligado por default |
+| Dual-sPLS (sparsity=0,5) | Tecator, RMSECV (10 seeds) | 2,943 | 2,919 | 0,010 | ✅ aprovado (efeito pequeno) |
+| Dual-sPLS (sparsity=0,7) | Tecator, RMSECV | 2,943 | 2,948 | 0,695 | ➖ neutro |
+| Dual-sPLS (sparsity=0,9) | Tecator, RMSECV | 2,943 | 2,948 | 0,625 | ➖ neutro |
+
+**VRM**: reproduzível via `scripts/medicoes/portao_vrm_tecator.py`.
+Efeito escala com a amplitude testada (~1,1% em amplitude 0,03, contra
+~0,2% no default 0,01) — não testado além dessa faixa. Mecanismo
+(`src/guaraci/aumento_dados.py`) é uma versão genérica e paramétrica
+inspirada no framework de Tumoine et al. (2026, DOI
+10.1016/j.chemolab.2026.105769), não uma replicação literal — o texto
+completo do artigo permanece inacessível (ScienceDirect/arXiv/SSRN
+bloqueados nesta sessão).
+
+**Dual-sPLS**: reproduzível via `scripts/benchmark_dual_spls_tecator.py`.
+Variante **lasso** apenas (Alsouki et al. 2023, DOI
+10.1016/j.chemolab.2023.104813), validada bit-a-bit contra dois oráculos
+numéricos gerados rodando o código-fonte REAL do pacote R `dual.spls`
+(preservado em `github.com/cran/dual.spls` após remoção do CRAN em
+2024-04-20; R 4.3.3 instalado no ambiente para gerar os oráculos,
+preservados em `tests/fixtures/dual_spls_oracle/`) — não uma
+reimplementação sem contra-prova. No split oficial 172/43 do Tecator,
+Dual-sPLS (RMSEP 3,478) bate Ridge (4,470)/Lasso (4,846)/Elastic Net
+(8,276), mas fica atrás do PLS-R denso (2,728).
+
+**Limitação honesta, sem minimizar**: Tecator não é o cenário de n
+pequeno do acervo privado (dezenas de amostras por classe) que motivou a
+proposta original de ambas as técnicas — é a melhor alternativa real e
+publicamente verificável disponível neste ambiente remoto. A validação
+contra `GUARACI_DADOS_REAIS` só pode ser rodada localmente pelo usuário
+(mesmo padrão já usado para EMSC/OSC, §9 acima e Passo 134 do
+`PROGRESSO.md`).
+
+Reproduzir:
+```
+python scripts/medicoes/portao_vrm_tecator.py
+python scripts/benchmark_dual_spls_tecator.py
+pytest tests/test_aumento_dados.py tests/test_aumento_dados_hypothesis.py \
+       tests/test_dual_spls.py tests/test_benchmark_dual_spls_tecator.py \
+       tests/test_integracao_vrm_dual_spls.py -v
+```

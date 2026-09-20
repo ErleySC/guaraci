@@ -182,6 +182,16 @@ por `tests/test_fachada_reexport.py`.
   aditivas pós-v1.0.0, ou uma emenda explícita à política permitindo
   adição pura de símbolo sem bump) fica para decisão do autor, não
   presumida por esta rodada.
+- **`aumento_dados.py`** (módulo inteiro, novo — VRM opcional, nunca
+  default) e **`dual_spls.py`** (módulo inteiro, novo — Dual-sPLS norma
+  lasso, opção de regularização ao lado de Ridge/Lasso/Elastic Net em
+  `benchmark_regression_by_species`): candidatos do Grupo 2 do mapa de
+  completude, implementados e validados via portão de aceite (Bloco 20)
+  contra o dataset público Tecator nesta rodada (varredura final,
+  2026-09-20). Mesmo padrão aditivo (módulos novos, nenhum símbolo
+  existente mudou de assinatura) e mesma nota de honestidade dos itens
+  acima (pós-v1.0.0): golden regravado sem bump de minor decidido,
+  reconciliação continua pendente de decisão do autor.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 
