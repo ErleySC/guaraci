@@ -37,6 +37,7 @@ transparência de processo.
 | [`docs/DESIGN.md`](DESIGN.md) | Proposta de identidade visual/navegação da interface — **não implementada**, exige aprovação explícita antes de qualquer mudança de UI. |
 | [`docs/COMMERCIAL.md`](COMMERCIAL.md) | Termos de licenciamento comercial (dual-license) do software. |
 | [`docs/RELATORIO_MULTIAGENTE_2026-09-10.md`](RELATORIO_MULTIAGENTE_2026-09-10.md) | Relatório de uma rodada de 4 agentes de pesquisa (estado/segurança, técnicas novas, problemas da área, concorrência) — Passo 200. |
+| [`docs/RELATORIO_MULTIAGENTE_2026-09-19.md`](RELATORIO_MULTIAGENTE_2026-09-19.md) | Relatório da varredura final de 4 agentes (técnicas ausentes, formatos de equipamento, testes/mutação/dataset, auditoria cruzada do vault) — Passos 222-223. Nenhuma técnica de peso implementada; 2 candidatos (VRM, Dual-sPLS) pendentes de decisão do autor. |
 | [`docs/BACKLOG_MULTIAGENTE.md`](BACKLOG_MULTIAGENTE.md) | Rastreamento item a item dos achados do relatório acima: o que foi implementado, o que foi medido e aguarda decisão, e o que ficou registrado como backlog. |
 | [`docs/MAPA_COMPLETUDE_V1.md`](MAPA_COMPLETUDE_V1.md) | Mapa permanente de tudo que falta, está parcial ou não tem garantia antes da publicação v1.0.0 — leitores de formato, análises, performance, testes e diferenciação competitiva. Fonte única de verdade sobre "o que falta"; consultar antes de declarar o projeto pronto. |
 

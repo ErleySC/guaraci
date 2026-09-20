@@ -5108,3 +5108,48 @@ Suíte afetada: `tests/test_predicao.py` (39→44 testes) + `tests/test_fluxo_ce
 - **Predição multiclasse**: não existe uma técnica separada com esse nome no vault nem no código (`consultar_vault.py "predição multiclasse"` não achou nota — evidência ou silêncio). Classificação multiclasse via PLS-DA é o núcleo histórico do projeto, já validada em quase todos os datasets públicos com >2 classes (Mendeley óleos, 8 classes; fluorescência, 3; HSI caqui, 3) — nenhuma lacuna de segundo dataset aqui.
 
 **Nenhum dataset novo foi buscado ou integrado nesta rodada** — a necessidade não estava estabelecida (a decisão sobre o candidato mais óbvio, TEP para MSPC, já tinha sido tomada no mesmo dia com razão registrada), e forçar uma busca sem necessidade clara violaria a mesma disciplina de "sem esforço desproporcional" que motivou a decisão original.
+
+## Passo 223 — Consolidação da varredura final (4 agentes) e achado de ambiente
+
+Fechamento da instrução de 4 frentes (Passos 222 e a auditoria cruzada do
+vault, Agente 4, commit `5d5d753`). Antes de consolidar, reproduzi por conta
+própria as alegações de cada agente em vez de aceitá-las por relato: `git
+log`/`git status` confirmaram os commits reais e a árvore limpa;
+`pytest tests/test_predicao.py -q` → 44 passed; `mypy
+src/guaraci/predicao.py` e `mypy src/guaraci/ app_quimiometria.py` (85
+arquivos) limpos; `ruff check .` limpo no projeto inteiro;
+`gerar_vault_obsidian.py` + `consultar_vault.py --cobertura` → COMPLETA no
+HEAD final (73/73 módulos, 13/13 técnicas, 132/132 Passos, 61/61
+pendências, 14/14 datasets).
+
+**Achado de ambiente, fora do escopo dos 4 agentes**: a suíte completa
+(`pytest -q -m "not slow"`, 1785 itens coletados) rodou pela primeira vez
+nesta sessão neste container e falhou em 6 testes
+(`tests/test_plano_coleta.py`, `tests/test_reports.py`) com
+`ModuleNotFoundError: No module named '_cffi_backend'` — o pacote `cffi`
+não estava instalado no ambiente, quebrando a cadeia de import
+`fpdf2 → cryptography` usada na geração de PDF (o `cryptography` puxado
+transitivamente pelo `fpdf2` importa `_serialization`/`hashes`, que
+carregam o binding Rust e falham em cascata sem `cffi` presente). Não é
+dependência declarada do projeto (`cffi` não aparece em
+`requirements-lock.txt`/`pyproject.toml`, nem precisa aparecer — é
+transitiva do `cryptography`, que por sua vez é transitiva do `fpdf2`) nem
+bug de código: instalar `cffi` no ambiente bastou. Confirmado isolando os 2
+arquivos afetados (`pytest tests/test_plano_coleta.py tests/test_reports.py`
+→ 43 passed) sem tocar em nenhum código do projeto.
+
+**Resultado final da suíte completa**: 1690 passed (execução original) + 43
+passed (os 2 arquivos reisolados após corrigir o ambiente) = efetivamente
+1733 passed, 22 skipped, 0 failed, 67 deselecionados (marcados `slow`).
+`ruff`/`mypy` limpos.
+
+Consolidei os 4 relatórios em
+[`docs/RELATORIO_MULTIAGENTE_2026-09-19.md`](RELATORIO_MULTIAGENTE_2026-09-19.md)
+(referenciado em `docs/INDICE_PROJETO.md`), sem redundância com os detalhes
+já registrados nos Passos 222/223 aqui e em `docs/MAPA_COMPLETUDE_V1.md`.
+
+**Estado do mapa de completude**: fechado, com 2 itens novos pendentes de
+DECISÃO do autor (não de investigação adicional) — aumento de dados
+espectral por VRM e Dual-sPLS (Agente 1, Grupo 2 do mapa). Nenhum dos dois
+bloqueia publicação. Fora isso, nada de genuinamente novo e acionável foi
+encontrado nesta varredura.
