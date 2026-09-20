@@ -3170,7 +3170,8 @@ def executar(cfg: Config):
                         # --- Auto-Benchmark de regressao (opcional) ------
                         if cfg.run_benchmark_regression:
                             log.info("\n[7b/7] Auto-Benchmark de regressao "
-                                  "(Ridge/Lasso/Elastic Net/SVR/RF vs PLS-R)...")
+                                  "(Ridge/Lasso/Elastic Net/Dual-sPLS/SVR/RF "
+                                  "vs PLS-R)...")
                             if _verificar_ram(0.6, "Auto-Benchmark de regressao"):
                                 try:
                                     bench_reg_df = benchmark_regression_by_species(

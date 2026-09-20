@@ -198,7 +198,7 @@ def test_benchmark_regressao_roda_e_gera_saidas(pq, tmp_path):
 
     assert df is not None
     modelos_esperados = {"PLS-R", "Ridge", "Lasso", "Elastic Net",
-                         "SVR (RBF)", "Random Forest"}
+                         "Dual-sPLS (lasso)", "SVR (RBF)", "Random Forest"}
     assert modelos_esperados.issubset(set(df["Model"]))
     assert (df["RMSEP (pooled)"] >= 0).all()
     assert os.path.exists(

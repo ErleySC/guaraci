@@ -889,6 +889,8 @@ def benchmark_regression_by_species(
     from sklearn.pipeline import Pipeline as _SKPipeline
     from sklearn.metrics import r2_score
 
+    from guaraci.dual_spls import DualSPLS
+
     modelos: List[Tuple[str, Any]] = [
         ("Ridge",
          Ridge(alpha=1.0, random_state=cfg.seed)),
@@ -897,6 +899,18 @@ def benchmark_regression_by_species(
         ("Elastic Net",
          ElasticNet(alpha=0.1, l1_ratio=0.5, random_state=cfg.seed,
                     max_iter=5000)),
+        # Dual-sPLS (norma lasso) -- Alsouki, Duval, Marteau, El Haddad &
+        # Wahl (2023), DOI 10.1016/j.chemolab.2023.104813. n_components=5
+        # segue a mesma ordem de grandeza usada pelo PLS-R do pipeline
+        # (baseline acima); sparsity=0.8 (80% das variaveis zeradas por
+        # componente) e' o meio da faixa explorada no paper -- sem tuning
+        # por CV interna, mesmo padrao "heuristica de literatura" dos
+        # demais modelos deste benchmark (ver docstring da funcao). Ver
+        # `src/guaraci/dual_spls.py` para a validacao numerica (oraculo R)
+        # e `scripts/benchmark_dual_spls_tecator.py` para o portao de
+        # aceite contra Tecator real.
+        ("Dual-sPLS (lasso)",
+         DualSPLS(n_components=5, sparsity=0.8)),
         ("SVR (RBF)",
          SVR(kernel="rbf", C=10.0, epsilon=0.1, gamma="scale")),
         ("Random Forest",

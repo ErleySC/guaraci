@@ -333,8 +333,9 @@ class Config:
     run_opls: bool = False
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components
     run_benchmark: bool = False    # v27: SVM / RF / XGBoost vs PLS-DA (same CV)
-    # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/SVR/RF vs
-    # PLS-R, por especie, mesmo split cal/val e pre-processamento (ver
+    # Auto-Benchmark de REGRESSAO (N2/N3): Ridge/Lasso/Elastic Net/
+    # Dual-sPLS/SVR/RF vs PLS-R, por especie, mesmo split cal/val e
+    # pre-processamento (ver
     # avaliacao_modelos.benchmark_regression_by_species). So' roda quando
     # ha regressao multi-especie (mesma condicao de pls_regression_by_species).
     run_benchmark_regression: bool = False
