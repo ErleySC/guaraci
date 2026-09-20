@@ -148,7 +148,7 @@ def rodar_benchmark(presets=("msc_sg_mc", "snv_sg_mc", "mc", "autoscaling"),
 
     resultados = {}
     for preset in presets:
-        cfg = Config(preprocessamento_padrao=preset, sg_window=15,
+        cfg = Config(default_preprocessing=preset, sg_window=15,
                      sg_polyorder=2, sg_deriv=1, max_lvs=max_lvs, seed=seed)
         lv_max = min(cfg.max_lvs, X_tr.shape[0] // 5)
         erros_cv = _rmsecv_por_lv(X_tr, y_tr, cfg, lv_max)

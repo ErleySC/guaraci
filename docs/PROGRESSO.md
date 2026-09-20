@@ -5243,3 +5243,67 @@ cenário de n pequeno do acervo privado que motivou as duas propostas
 originais — é a melhor alternativa real e verificável disponível neste
 ambiente remoto. A validação contra `GUARACI_DADOS_REAIS` continua
 pendente de execução local pelo usuário.
+
+## Passo 225 — Auditoria de organização/completude do vault e docs (pedido do usuário)
+
+Pedido explícito: "não achei o documento no Obsidian, abra ele lá e deixe
+tudo organizado e atualizando, acrescentando achados e coisas que ficaram
+de fora, da forma mais completa possível, não poupe trabalho".
+
+**Esclarecimento necessário antes de qualquer trabalho**: o vault Obsidian
+gerado por `scripts/gerar_vault_obsidian.py` vive em `~/GuaraciVault`
+**dentro deste container remoto e efêmero** — não no computador do usuário.
+Não é possível "abrir" esse vault no aplicativo Obsidian local do usuário
+a partir daqui; expliquei isso diretamente antes de prosseguir, e ofereci
+compactar e entregar o vault atual como arquivo (`SendUserFile`) para
+inspeção local, além de apontar que rodar o mesmo script no clone local
+do usuário geraria a cópia real que o Obsidian dele consegue abrir.
+
+**Auditoria de completude realizada** (checagem sistemática, não só
+regeneração): revisei `docs/BACKLOG_MULTIAGENTE.md` (escopo fechado da
+rodada de 2026-09-10, não relacionado — sem gap), `docs/INDICE_PROJETO.md`
+(indexa arquivos de documentação, não módulos individuais — sem gap para
+`aumento_dados.py`/`dual_spls.py`, mesmo padrão de `model_export.py`/
+`fusao_multibloco.py` que também não aparecem lá), `docs/MANUAL.md` (manual
+de navegação de UI, não documenta técnica por técnica — sem gap, mesmo
+padrão de EMSC/OSC/AirPLS/PQN que também não aparecem lá) e
+`docs/CHANGELOG.md` (congelado em v1.0.0 por design — o próprio
+`docs/COMPATIBILITY.md` já documenta essa reconciliação pendente pós-v1.0,
+não é lacuna nova).
+
+**Achado real, corrigido**: o bug em `scripts/benchmark_tecator.py`
+(`Config(preprocessamento_padrao=...)`, kwarg que não existe) que um dos
+agentes da Parte B só tinha reportado via `spawn_task` — um mecanismo que
+gera um cartão de sugestão para o usuário, mas não deixa rastro no
+repositório nem no vault. Corrigido (1 linha, `default_preprocessing`) e
+contra-provado com um teste novo (`tests/test_benchmark_tecator.py::
+test_rodar_benchmark_ponta_a_ponta_sem_rede`, mocka a rede com o gerador
+sintético já existente no arquivo) que falha com o `TypeError` exato antes
+da correção e passa depois — revertido e reaplicado para confirmar, mesma
+disciplina do resto da sessão. `ruff`/`mypy` limpos.
+
+**Achado registrado como backlog concreto, não implementado**: de
+passagem, encontrei que o TODO de 2026-09-01 em `scripts/benchmark_
+tecator.py` ("pinar SHA256 fica pra quem tiver acesso de rede pra medir o
+valor real") pode ser resolvido agora — esta sessão já mediu o checksum
+real de uma fonte alternativa (o wheel PyPI `sktime==1.1.0`, usado nesta
+mesma rodada para validar VRM/Dual-sPLS) que empacota o mesmo dataset
+Tecator. Não implementei o fallback porque exigiria um segundo parser
+(formato `.ts` do sktime, diferente do texto bruto do StatLib) e mudaria
+o que o docstring do script promete hoje — registrado em
+`docs/MAPA_COMPLETUDE_V1.md` como item pronto para decisão do autor, não
+implementado por conta própria.
+
+**Nota de rastreabilidade adicionada**: `docs/RELATORIO_MULTIAGENTE_
+2026-09-19.md` ganhou um aviso no topo apontando que VRM/Dual-sPLS, ali
+descritos como "nada implementado", foram implementados no dia seguinte
+(Passo 224) — o texto histórico do relatório foi preservado, não
+reescrito (mesma convenção de retratação já usada no projeto, ex. RMN
+Figshare `4307804`).
+
+Vault regenerado (estava desatualizado por 1 commit — o script
+`gerar_vault_obsidian.py` carimba o commit do momento da geração, que era
+anterior ao commit final da rodada anterior). `--cobertura` confirmada
+COMPLETA no HEAD atual. Conferi manualmente (não só pela contagem
+agregada) que `aumento_dados.py`, `dual_spls.py` e o Passo 224 aparecem
+corretamente indexados e ligados entre si nas notas do vault.

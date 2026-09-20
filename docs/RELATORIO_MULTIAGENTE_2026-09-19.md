@@ -1,5 +1,14 @@
 # Relatório multiagente — varredura final: técnicas, testes e vault (2026-09-19)
 
+> **Atualização (2026-09-20, Passo 224 de `docs/PROGRESSO.md`)**: os dois
+> candidatos do Agente 1 abaixo — VRM e Dual-sPLS — **foram implementados e
+> validados** no dia seguinte, a pedido do autor. O texto abaixo (incluindo
+> "nada implementado" e "acionável agora é a decisão do autor") reflete o
+> estado NA DATA deste relatório, preservado como histórico de investigação,
+> não reescrito. Estado atual: `docs/MAPA_COMPLETUDE_V1.md` (Grupo 2,
+> seção "Aumento de dados (VRM) e Dual-sPLS — implementados e validados") e
+> `docs/VALIDACAO_PUBLICA.md` §12.
+
 Rodada de quatro frentes com o objetivo de confirmar, com evidência, se ainda
 existe alguma técnica quimiométrica relevante fora do GUARACI, algum teste
 real faltando, e se o vault reflete tudo. Todos os quatro agentes rodaram

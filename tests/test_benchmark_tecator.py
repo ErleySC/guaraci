@@ -83,6 +83,34 @@ def test_parsear_tecator_split_train_test_extrapolation():
     assert (df["split_original"].iloc[215:] == "extrapolation").all()
 
 
+def test_rodar_benchmark_ponta_a_ponta_sem_rede(monkeypatch):
+    """`rodar_benchmark()` nunca era exercitado nos testes (so' o parser
+    isolado) -- foi assim que um bug real passou despercebido: `Config(
+    preprocessamento_padrao=...)` usava um kwarg que nao existe (o campo
+    real e' `default_preprocessing`), quebrando com TypeError toda vez que
+    alguem rodava o script (achado durante a implementacao de Dual-sPLS,
+    varredura de 2026-09-20 -- ver docs/MAPA_COMPLETUDE_V1.md). Este teste
+    mocka a rede (`_baixar_tecator_raw`) com o mesmo gerador de dado
+    sintetico ja usado acima, para rodar `rodar_benchmark()` de ponta a
+    ponta offline e pegar exatamente essa classe de erro no futuro."""
+    texto_fake = _texto_tecator_fake(215)  # 172 treino + 43 teste, sem extrapolacao
+
+    def _rede_fake() -> str:
+        return texto_fake
+
+    monkeypatch.setattr(bt, "_baixar_tecator_raw", _rede_fake)
+    monkeypatch.setattr(bt, "N_SAMPLES", 215)
+
+    resultados = bt.rodar_benchmark(presets=("mc",), max_lvs=3)
+
+    assert set(resultados) == {"mc"}
+    metricas = resultados["mc"]
+    assert set(metricas) == {"n_lv", "rmsecv", "rmsep", "r2_pred"}
+    assert 1 <= metricas["n_lv"] <= 3
+    assert metricas["rmsecv"] >= 0.0
+    assert metricas["rmsep"] >= 0.0
+
+
 def test_parsear_tecator_amostra_com_absorbancias_faltando_levanta_erro():
     """Amostra corrompida (menos de 100 absorbancias) deve falhar alto e
     claro, nao silenciosamente -- dado externo nao confiavel, corrupcao
