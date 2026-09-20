@@ -214,6 +214,25 @@ class Config:
     # nao existia -- so' com default_preprocessing='custom' (mesmo padrao
     # de apply_emsc/apply_osc/apply_airpls acima).
     apply_pqn: bool = False
+    # VRM (aumento de dados espectral, `guaraci.aumento_dados.AumentoVRM`,
+    # inspirado em Tumoine, Metz, Abdelghafour, Esteve, Grotus, Bendoula &
+    # Roger 2026, DOI 10.1016/j.chemolab.2026.105769 -- ver ressalva de
+    # fidelidade ao artigo no docstring do modulo) NAO tem flag `apply_*`
+    # aqui, ao contrario de EMSC/OSC/AirPLS/PQN acima: aqueles sao
+    # transformers que PRESERVAM o numero de linhas (encaixam no Pipeline
+    # de `build_preprocessor`); VRM e' um AUMENTO DE DADOS que MUDA o
+    # numero de linhas do treino (gera copias extras), entao nao se
+    # encaixa no mesmo mecanismo de toggle dentro de um unico Pipeline
+    # sklearn. Veredito do portao de aceite (Bloco 20, medido em
+    # 2026-09-20, `scripts/medicoes/portao_vrm_tecator.py`, Tecator real
+    # via sktime): APROVADO mas com efeito PEQUENO (RMSEP -0,2% a -1,1%
+    # dependendo da amplitude, p<0,05 -- ver docstring completo de
+    # `aumento_dados.py`), NAO um ganho do porte de EMSC. Disponivel para
+    # uso EXPERIMENTAL chamando `AumentoVRM`/`aumentar_vrm` diretamente
+    # sobre o fold de treino de uma CV group-aware (ver
+    # `scripts/medicoes/portao_vrm_tecator.py` para o padrao correto) --
+    # NAO integrado a nenhum caminho de treino automatico desta classe
+    # `Config` nesta rodada (Parte A do Bloco de aumento de dados).
 
     # CV aninhada p/ selecao do numero de variaveis latentes (correcao do
     # achado #12, rodada multiagente 2026-09-10 -- ver docs/BACKLOG_
