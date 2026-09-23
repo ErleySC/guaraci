@@ -5053,11 +5053,33 @@ def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool],
     checks = []; erros = []
 
     pasta = _cfgv(cfg, "pasta_dados", "dados")
+    modo_chk = _cfgv(cfg, "modo_entrada", "dx")
     pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _count_dx(pasta) if pasta_ok else 0
+    n_dx = _count_dx(pasta) if (pasta_ok and modo_chk == "dx") else 0
 
     n_para_estimar = n_dx
-    if pasta_ok and n_dx > 0:
+    if modo_chk in ("csv", "sintetico", "hsi"):
+        # Achado do roteiro de teste externo (2026-09-23): este bloco so'
+        # conhecia a pasta de arquivos .dx -- em modo csv um usuario novo
+        # (sem a pasta padrao `dados`) via "Pasta de dados nao encontrada" e
+        # a execucao era BLOQUEADA por um requisito que o modo csv nem usa.
+        # csv valida o arquivo mais abaixo; sintetico/hsi nao usam pasta_dados.
+        if modo_chk == "csv":
+            arq_csv = str(_cfgv(cfg, "arquivo_csv", "") or "")
+            if arq_csv and os.path.isfile(arq_csv):
+                try:
+                    with open(arq_csv, "rb") as _f:
+                        n_para_estimar = max(0, sum(1 for _ in _f) - 1)
+                except OSError:
+                    n_para_estimar = 0
+    elif modo_chk != "dx":
+        # Demais modos que leem uma pasta (imagem, opus, spc, sp, rmn, hplc,
+        # gcms, eem): mesma validacao por-modo do app web/`_menu_audit`.
+        ok_p, msg_p = pq._validar_pasta_dados(cfg)
+        checks.append((True if ok_p else False, msg_p))
+        if not ok_p:
+            erros.append("pasta_dados")
+    elif pasta_ok and n_dx > 0:
         checks.append((True,  _t("chk_dados") + f" ({n_dx} .dx)"))
         # Varredura barata dos cabecalhos (decimos de segundo): antecipa
         # os dois efeitos que MUDAM O N da analise e que antes so' apareciam

@@ -1848,7 +1848,19 @@ def executar(cfg: Config):
     grupos_cv = mae_id if usar_grupos else None
     cv_indices = list(cv.split(X_raw, y_int, groups=grupos_cv))
 
-    for n in range(1, cfg.max_lvs + 1):
+    # Achado real (1o uso de dado pequeno pelo roteiro de teste externo,
+    # 2026-09-23): com max_lvs=40 (default) e um fold de treino de 38
+    # amostras, PLSRegression(n_components=39) estourava "n_components
+    # upper bound is 38" e a execucao inteira falhava. O teto de LVs
+    # nunca pode passar do menor fold de treino - 1 (mesma defesa ja'
+    # existente em `_selecionar_n_opt_wold`, que esta etapa nao tinha).
+    _min_tr = min(len(tr) for tr, _ in cv_indices)
+    lv_cap = max(1, min(cfg.max_lvs, _min_tr - 1, X_raw.shape[1]))
+    if lv_cap < cfg.max_lvs:
+        log.info(f"  [INFO] max_lvs={cfg.max_lvs} limitado a {lv_cap} pelo "
+                 f"tamanho do menor fold de treino ({_min_tr} amostras).")
+
+    for n in range(1, lv_cap + 1):
         y_hat = np.zeros_like(Y_bin)
         contador = np.zeros(len(Y_bin), dtype=int)
         for tr, va in cv_indices:
@@ -1974,8 +1986,12 @@ def executar(cfg: Config):
                  f"naive = {metricas_cv_naive['balanced_accuracy']:.4f}.")
 
     pred_lab = lb.classes_[np.argmax(Y_cv, axis=1)]
-    lvs_no_teto = (n_opt >= cfg.max_lvs)
-    if lvs_no_teto:
+    lvs_no_teto = (n_opt >= lv_cap)
+    if lvs_no_teto and lv_cap < cfg.max_lvs:
+        log.info(f"  [ATENCAO] LVs otimas ({n_opt}) no teto imposto pelo "
+                 f"tamanho dos dados ({lv_cap}): poucas amostras para "
+                 f"mais componentes -- mais amostras ajudariam.")
+    elif lvs_no_teto:
         log.info(f"  [ATENCAO] LVs otimas ({n_opt}) == max_lvs ({cfg.max_lvs}): "
               f"RMSECV ainda nao atingiu plateau. Aumente max_lvs "
               f"(ex: {cfg.max_lvs + 10}) e rode novamente.")
@@ -2467,7 +2483,7 @@ def executar(cfg: Config):
     if cfg.comparar_pipelines and should_generate(cfg, "comparar_pipelines"):
         log.info("\n[6b/7] Comparacao de pipelines de pre-processamento...")
         comp = compare_pipelines(cfg, X_raw, Y_bin, y_int, cv_indices,
-                                    max_lv=cfg.max_lvs)
+                                    max_lv=lv_cap)
         fig_extra_comparacao_pipelines(comp, cfg, pasta)
         pd.DataFrame(comp).T.to_csv(
             os.path.join(pasta_dados, "comparacao_pipelines.csv"),

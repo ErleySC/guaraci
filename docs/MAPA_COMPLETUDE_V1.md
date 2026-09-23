@@ -14,7 +14,7 @@ Objetivo: um usuário com qualquer um destes equipamentos consegue usar o dado b
 |---|---|---|
 | JCAMP-DX (`.dx`) | Completo, núcleo histórico | — |
 | CSV genérico | Completo | — |
-| OPUS (Bruker FT-IR/FT-NIR) | Implementado (`brukeropus`) | Testado só estruturalmente em alguns pontos — confirmar cobertura real |
+| OPUS (Bruker FT-IR/FT-NIR) | Implementado (`brukeropus`) e, desde 2026-09-23, acessível via `modo_entrada=opus` | **Limitação declarada (resolvida a ambiguidade)**: nenhum arquivo OPUS binário real está disponível neste ambiente — o parser (`parse_opus`) e o carregador de dataset (`leitores_avancados`) são testados só contra um double que reproduz a forma documentada da biblioteca (`tests/test_importadores_proprietarios.py`, `tests/test_leitores_avancados.py`), nunca contra instrumento real. Deve ser tratado como NÃO validado com dado real até alguém fornecer um arquivo `.0` |
 | NetCDF/ANDI-MS (GC-MS) | Implementado, parser próprio | — |
 | ENVI (HSI) | Implementado, genérico (aceita dado do usuário) | — |
 | Imagem colorimétrica (JPG/PNG) | Implementado, 3 níveis de agrupamento | — |
@@ -302,6 +302,42 @@ Deep learning geral, fusão multimodal dependente de sensor caro fora de alcance
 **O que a verificação de 2026-09-19 confirmou sem regressão**: suíte completa (com Corn e Mendeley), `ruff` e `mypy` limpos, `pip-audit` sem vulnerabilidade nas 166 dependências instaladas e no `requirements-lock.txt`, `bandit -ll` limpo, guarda de privacidade e de caminho absoluto (`tests/test_sem_identificador_real.py`) passando, vault com cobertura completa, CI verde. Detalhes e números no Passo 221 de `docs/PROGRESSO.md`.
 
 ---
+
+## CAPACIDADES IMPLEMENTADAS SÓ VIA API (sem menu CLI/web) — inventário da auditoria de 2026-09-23
+
+Resultado da auditoria de acessibilidade (grafo de imports + busca de chamada funcional, ver Passo 226/227): depois de expor os 7 leitores, ASCA/EPO-GLSW/MCR-ALS/fusão multibloco e 3 extras HSI, sobram estas funções públicas (`__all__`) **sem nenhum caminho de menu/comando**. Cada uma com a razão específica; **nenhuma foi exposta por decisão minha — a classificação (a) "deveria ser exposta" vs (b) "só API por desenho" é do autor, e por isso ficam listadas como limitação conhecida à espera de aceite explícito.**
+
+| Capacidade (módulo.função) | Razão de não ter caminho de menu | Classificação proposta |
+|---|---|---|
+| VRM — `aumento_dados.aumentar_vrm`/`AumentoVRM` | Decisão documentada: aumento de dados muda o nº de linhas do treino, não cabe no toggle do `Config`; efeito medido pequeno (RMSEP −0,2% a −1,1%); ruído estruturado rejeitado | (b) experimental só via código |
+| Correção de deriva por QC — `deriva_qc.corrigir_deriva_por_qc` (T4) | Exige amostras de QC com ordem de aquisição, que nenhum leitor atual fornece; documentado como "não ligada a fluxo automático" | (b) até haver dado com QC |
+| Alinhamento por retenção COW — `alinhamento_retencao.cow` | Não catalogado em nenhum documento de completude; sem nenhum chamador | **indefinida — decisão do autor** (expor no `[T]`, ou registrar como utilitário interno) |
+| PARAFAC de EEM — `eem_multiway.parafac_eem`/`construir_tensor_eem` | O modo `eem` achata a matriz 2D em vetor 1D para caber no pipeline; a decomposição PARAFAC exige o tensor amostras×emissão×excitação, sem menu | **indefinida — decisão do autor** |
+| PARAFAC de HSI — `hsi_multiway.parafac_hsi`/`NPLS` diretos | Só a comparação N-PLS×PLS-DA (`[M]` no `[X]`) foi exposta | (b) exploratório |
+| Identificação fruta×câmera — `hsi_identification.*` | Só o DeepHS multi-fruta a alimenta, e o download dele está quebrado (`_deephs_fruit_todas_pins.json` ausente) — sem entrada real testável | (b) até o download ser consertado |
+| Predição a partir do JSON portátil — `model_export.load_portable_json`/`predict_portable` | O propósito do formato é ser consumido FORA do GUARACI (outra linguagem); a gravação é automática em `executar()` | (b) por desenho |
+| Distância de Mahalanobis com encolhimento — `chemometric_stats.mahalanobis_distance_shrinkage` (T7) | Ganho diagnóstico, sem chamador em nenhum fluxo | **indefinida — decisão do autor** |
+| Carregadores de dataset públicos específicos — `gcms_io.carregar_dataset_gcms`, `eem_io.carregar_dataset_eem_azeite` | Helpers dos benchmarks públicos (Mendeley lavanda, Zenodo EEM); o uso real passa pelos modos `gcms`/`eem` | (b) helpers de validação |
+| **Página web HSI** (o HSI inteiro, `[X]`) | Nunca existiu página web para HSI — só a tecla `[X]` da CLI e o campo da pasta na aba Dados | **paridade CLI/web inexistente — decisão do autor** |
+
+## DECLARAÇÃO DE PRONTIDÃO PARA O PRIMEIRO USUÁRIO EXTERNO (2026-09-23)
+
+**Data:** 2026-09-23. **Commit de referência:** ver `git log -1 -- docs/MAPA_COMPLETUDE_V1.md` (esta seção entra no commit de fechamento da rodada; base verificada: `59b083c` + as correções de primeiro uso listadas abaixo). CI verde na matriz completa no commit anterior (`34544fa`: 10 jobs `test`, `lint`, `typecheck`, `seguranca`, 8 de validação pública).
+
+**Os 5 grupos NÃO estão todos fechados — declarar isso seria falso:**
+
+| Grupo | Estado | Limitações/pendências exatas |
+|---|---|---|
+| 1 — Leitores | Fechado (com retratação de 2026-09-23: agora ACESSÍVEIS) | OPUS e GC-MS sem arquivo real de teste (double); backlog: GC-IMS `.mea`, RMN Varian/FID bruto, HPLC ANDI-Chrom; `eem` achatado em 1D |
+| 2 — Análises | Fechado, com limitações medidas | Backlog: ASCA+, di-PLS, PLS local; MSPC: atraso ≤1 lote, calibrado só no Corn; fusão multibloco desaconselhada pela evidência; VRM efeito pequeno; Dual-sPLS misto; inventário "só via API" acima |
+| 3 — Performance | Fechado | — |
+| 4 — Testes | **NÃO fechado** | **Teste de usabilidade com pessoa real: kit pronto (`ROTEIRO_TESTE_USABILIDADE.md`), ainda NÃO aplicado**; `@example` determinístico em MCR-ALS/EPO-GLSW/ASCA/T1–T9; teste de carga com dataset grande; mutação em `pipeline.py`/`avaliacao_modelos.py`/resto de `predicao.py`; `scripts/` e `tests/` fora do gate mypy |
+| 5 — Diferenciação | Não é checklist | Revisar o comparativo do README ao final |
+| Transversal | Aberto | Suíte com TODOS os datasets públicos (skips: datasets não baixados); `mypy` local do pacote inteiro bloqueado por `tifffile` 2026.7.31 (sintaxe 3.12 vs `python_version=3.10` — pré-existente, a CI `typecheck` passa); `pip-audit` local falhou por rede (o job `seguranca` da CI passou); decisões do autor pendentes: M4 do BACKLOG (relatório PIBIC), aceite do inventário "só via API", reconciliação de SemVer pós-v1.0 |
+
+**Correções de primeiro uso feitas nesta rodada (achadas por simular um usuário novo, pasta pessoal vazia):** (1) `max_lvs=40` quebrava com <~50 amostras (`n_components upper bound`) — teto limitado ao menor fold de treino; (2) o checklist pré-execução da CLI bloqueava quem só tinha CSV (exigia a pasta `dados`, só do modo `dx`); (3) execução sem `mae_id` (csv e os novos modos) declarava `grouping_guarantee=high` e a auditoria afirmava "mae_id confiável" — agora `none`; (4) 12 discrepâncias manual×código corrigidas (auditoria seção por seção).
+
+**O que NÃO foi possível verificar por comando direto:** comportamento de OPUS/GC-MS com arquivo real; `pip-audit` local; a aplicação do teste de usabilidade em si.
 
 ## CRITÉRIO DE PUBLICAÇÃO
 

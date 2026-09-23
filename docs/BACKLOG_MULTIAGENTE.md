@@ -45,7 +45,7 @@ da instrução "IMPLEMENTAR TODOS OS ACHADOS" de 2026-09-10, Passos
 | 3 | Efeito de lote/sessão não corrigido | DNC | backlog — ver T2/T4 |
 | 4 | Ordem de leitura confundida com o alvo | NR | backlog — pré-requisito de timestamp no parser DX, fora de escopo desta rodada |
 | 5 | Transferência entre instrumentos | RP | backlog — ver T5 |
-| 6 | Deriva de calibração não monitorada | DNC | backlog — carta de controle não implementada |
+| 6 | Deriva de calibração não monitorada | DNC | **resolvido (Passos 218-221)** — MSPC/sentinela de deriva (`sentinela_deriva.py`, teste R2), CLI e web; ver `docs/MAPA_COMPLETUDE_V1.md` Grupo 2 (limitações medidas lá). *(Linha estava desatualizada: dizia "não implementada".)* |
 | 7 | Seleção de variáveis com vazamento | R | já resolvido antes desta rodada; nenhuma ação |
 | 8 | Pré-processamento ajustado antes do split (Etapa 4) | RP | backlog — magnitude do vazamento de MSC não medida |
 | 9 | Caixa-preta sem atribuição química | RP | backlog — tabela de bandas NIR/MIR/Raman de óleos não existe |

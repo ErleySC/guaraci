@@ -5409,3 +5409,26 @@ DeepHS multi-fruta quebrado). HSI sem página web (pré-existente),
 registrado. Commit anterior `34544fa` já no `origin/master`; suíte
 completa desse commit: 1820 passed/47 skipped + 2 guard-tests de contagem
 atualizados (abas 19→20, modos do registry 4→11).
+
+## Passo 228 — Fechamento da preparação para o 1º usuário externo (Partes 2-6)
+
+Continuação do Passo 226/227. Vault regenerado (cobertura completa, guarda
+de privacidade limpa), manual reescrito com seção 0 "Primeiros passos" e
+auditado seção por seção contra o código, kit de teste criado
+(`ROTEIRO_TESTE_USABILIDADE.md`, `EXPECTATIVAS_TESTE_USABILIDADE.md`,
+`TEMPLATE_FEEDBACK_TESTE.md`, `scripts/gerar_dados_exemplo_teste.py`), e
+declaração de prontidão registrada no MAPA.
+
+**Achado real (simulação de usuário novo): `max_lvs=40` derrubava a execução com dataset pequeno.** Rodando o caminho do roteiro com o CSV de exemplo (60 amostras, folds de treino de 38), a etapa [2/7] tentava `PLSRegression(n_components=39)` e a execução falhava com "`n_components` upper bound is 38". Nenhum teste anterior usava `max_lvs` default com dado pequeno (todos passavam 4). Corrigido limitando o teto ao menor fold de treino − 1 (`pipeline.py`, também na comparação de pipelines); contra-prova: `tests/test_pipeline_dataset_pequeno.py` falha sem a correção e passa com ela.
+
+**Achado real (simulação de usuário novo): o checklist da CLI bloqueava quem só tinha um CSV.** Com pasta pessoal vazia e modo `csv`, o checklist pré-execução mostrava "Pasta de dados não encontrada" e bloqueava — exigia a pasta `dados`, que só o modo `dx` usa. Corrigido tornando o checklist ciente do modo (csv valida o arquivo; os demais modos usam `_validar_pasta_dados`). Testes: `tests/test_primeiro_uso_csv.py`.
+
+**Achado real (simulação de usuário novo): execução sem `mae_id` afirmava garantia de agrupamento.** Em modo `csv` (e nos 7 modos de instrumento) `grouping_guarantee` ficava no default `high` e a auditoria dizia "mae_id confiável para toda amostra" numa execução sem nenhum `mae_id` — alegação falsa sobre o diferencial central do projeto. Corrigido em `dados_io.load_data` (sem `mae_id` → `none`); o model card passa a exibir o aviso de garantia. Testes em `tests/test_primeiro_uso_csv.py`.
+
+**Achado (vault): bug de transcrição do Dual-sPLS pego pela validação contra o pacote R.** Ao portar a variante lasso do Dual-sPLS (Passo 224), a comparação com o oráculo numérico gerado pelo código R real do pacote `dual.spls` revelou um bug de transcrição (triângulo errado zerado na reconstrução de coeficientes), corrigido antes da integração; a implementação final bate os dois oráculos a 1e-6–1e-8. Registrado aqui para o vault (o texto original está no MAPA e no Passo 224).
+
+**Achado (vault): limitação do dataset de validação de VRM/Dual-sPLS.** O Tecator (172–215 amostras, obtido via wheel `sktime`) não é o cenário de n pequeno do acervo privado que motivou VRM; a validação contra `GUARACI_DADOS_REAIS` só pode ser rodada localmente pelo autor. Os vereditos (VRM: efeito pequeno; Dual-sPLS: misto) valem para o Tecator, não para o acervo.
+
+**Achado (manual): 12+ discrepâncias entre `docs/MANUAL.md` e o código,** achadas por auditoria seção por seção (agente de leitura independente + verificação mecânica): chaves de config citadas que não são chave do YAML (`cal_val_split`, `synthetic_adulterants`, `tag`, `image_crop`), nomes trocados (`hsi_dataset_folder`→`hsi_pasta_dataset`, `n_jobs_permutation`→`n_jobs_permutacao`, `detailed_figures`→`figuras_detalhadas`, função de domínio de aplicabilidade e nome de figura), um subcomando inexistente (`guaraci plan`), contagens (abas Excel, módulos `app_tabs`) e rodapé de revisão de 2026-08. Todas corrigidas.
+
+Não verificável por comando direto nesta sessão: `pip-audit` local (falha de rede; o job `seguranca` da CI passou no commit anterior); OPUS/GC-MS com arquivo real. `mypy` do pacote inteiro local segue bloqueado pelo `tifffile` (ambiente), a CI `typecheck` passa.

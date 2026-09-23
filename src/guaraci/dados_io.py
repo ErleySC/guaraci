@@ -1429,4 +1429,12 @@ def load_data(cfg: "Config"
         (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
     metadados_df is always None in 'sintetico'/'csv' mode; mae_id is None
     only in 'csv'/'imagem' mode (sem replicas fisicas conhecidas)."""
-    return get_reader(cfg.mode)(cfg)
+    resultado = get_reader(cfg.mode)(cfg)
+    # Achado do roteiro de teste externo (2026-09-23): csv (e qualquer leitor
+    # sem mae_id) deixava `grouping_guarantee` no default "high", e a
+    # auditoria/resumo afirmavam "mae_id confiavel para toda amostra" numa
+    # execucao SEM nenhum mae_id -- alegacao falsa sobre o diferencial
+    # central do projeto. Sem mae_id nao ha' garantia de agrupamento.
+    if resultado[4] is None and cfg.grouping_guarantee == "high":
+        cfg.grouping_guarantee = "none"
+    return resultado
