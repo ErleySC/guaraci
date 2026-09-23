@@ -444,6 +444,14 @@ para a matriz do usuário. Para baixar o fixture:
 `scripts/download_datasets/baixar_deephs_kaki.py` (só Kaki/VIS) ou
 `baixar_deephs_fruit_todas.py` (demais frutas/câmeras).
 
+Extras (2026-09-23), no fim da tela `[X]` (só CLI): `[D]` domínio de
+aplicabilidade (calibra em objetos de treino, avalia objetos de teste),
+`[R]` reamostragem de classes minoritárias (duplica objetos — equaliza
+pixels, não cria objetos novos) e `[M]` comparação N-PLS multiway ×
+PLS-DA por pixel (exploratória; precisa de ≥~5 objetos por classe). A
+identificação fruta×câmera (`hsi_identification`) não está exposta e o
+HSI não tem página no aplicativo web (ver seção 9).
+
 Acessível pela tecla **`[X]`** do menu principal da CLI. Orquestrado
 por `hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a
 forma de dado (por pixel, agregação por objeto) é fundamentalmente
@@ -1607,6 +1615,12 @@ re-executada nesta sessão).
   peróxido) — o bloco com mais variáveis domina a decomposição PLS por
   contagem de colunas, não por conteúdo informativo. Compare sempre
   contra cada bloco treinado isoladamente antes de adotar a fusão.
+
+- **HSI é só CLI** (tecla `[X]`): o aplicativo web não tem página HSI
+  (só o campo da pasta na aba Dados). Os extras HSI (domínio de
+  aplicabilidade, reamostragem, multiway) herdam isso; a identificação
+  fruta×câmera não está exposta (só o DeepHS multi-fruta a alimenta e o
+  download dele está quebrado).
 
 - **Leitores de instrumento novos (`opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/
   `eem`) não têm `mae_id` real** (nenhuma noção de réplica física

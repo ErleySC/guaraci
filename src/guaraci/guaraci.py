@@ -3695,7 +3695,57 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
     ))
     console.print(f"  [{PM}]{'Salvo em' if is_pt else 'Saved to'}:[/{PM}] "
                   f"{escape(cfg.output_folder)}")
-    _pause()
+    _menu_hsi_extras(pasta, is_pt)
+
+
+def _menu_hsi_extras(pasta: str, is_pt: bool) -> None:
+    """Extras HSI sobre a mesma pasta (dominio de aplicabilidade,
+    reamostragem, multiway) -- logica em `hsi_extras.py`. Enter sai (faz
+    o papel do antigo `_pause()` desta tela). So' CLI: o HSI inteiro nao
+    tem pagina web (limitacao registrada em docs/MAPA_COMPLETUDE_V1.md)."""
+    from guaraci.hsi_extras import (
+        preparar_dados_hsi, rodar_hsi_dominio_aplicabilidade,
+        rodar_hsi_multiway, rodar_hsi_reamostragem)
+    lbl = ("[D] Dominio de aplicabilidade  [R] Reamostragem de classes  "
+           "[M] Multiway N-PLS  [Enter] sair" if is_pt else
+           "[D] Applicability domain  [R] Class resampling  "
+           "[M] Multiway N-PLS  [Enter] exit")
+    dados = None
+    while True:
+        escolha = _ask(f"  [{PA}]{lbl}:[/{PA}] ").strip().upper()
+        if escolha not in ("D", "R", "M"):
+            return
+        try:
+            if dados is None:
+                with console.status(f"[{PA}]{'Carregando cubos...' if is_pt else 'Loading cubes...'}[/{PA}]"):
+                    dados = preparar_dados_hsi(pasta)
+            with console.status(f"[{PA}]{'Rodando...' if is_pt else 'Running...'}[/{PA}]"):
+                if escolha == "D":
+                    r = rodar_hsi_dominio_aplicabilidade(dados)
+                elif escolha == "R":
+                    r = rodar_hsi_reamostragem(dados)
+                else:
+                    r = rodar_hsi_multiway(dados)
+        except Exception as e:  # noqa: BLE001 -- dado externo; mensagem, nunca stack trace
+            console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
+            continue
+        if escolha == "D":
+            console.print(f"  [{PG}]✔[/{PG}] {'Dentro do dominio (objetos de teste)' if is_pt else 'Inside domain (test objects)'}: "
+                          f"{r['fracao_dentro']:.1%}  ({r['n_objetos_treino']} "
+                          f"{'objetos de treino' if is_pt else 'train objects'} / {r['n_objetos_teste']} "
+                          f"{'de teste' if is_pt else 'test'})")
+            for g, f in r["fracao_dentro_por_objeto"].items():
+                console.print(f"    {escape(g)}: {f:.1%}")
+        elif escolha == "R":
+            for c, ev in r["avaliabilidade"].items():
+                console.print(f"  {escape(c)}: {r['antes'][c]['pixels']} → {r['depois'][c]['pixels']} "
+                              f"pixels ({ev['n_grupos']} {'objetos distintos' if is_pt else 'distinct objects'})"
+                              + (f"  [{PA}]{escape(ev['nota'])}[/{PA}]" if ev["nota"] else ""))
+            console.print(f"  [{PM}]{'Duplica objetos (mesmo group_id) -- equaliza pixels, nao cria objetos novos; classe abaixo do minimo continua nao avaliavel' if is_pt else 'Duplicates objects (same group_id) -- equalizes pixels, creates no new objects; a class below the minimum stays non-evaluable'}[/{PM}]")
+        else:
+            console.print(f"  [{PW}]N-PLS bal.acc={r['balanced_accuracy_npls']:.3f}  "
+                          f"PLS-DA pixel bal.acc={r['balanced_accuracy_pixelwise']:.3f}[/{PW}]")
+            console.print(f"  [{PM}]{'Exploratorio -- poucos objetos por classe tornam esta comparacao instavel' if is_pt else 'Exploratory -- few objects per class make this comparison unstable'}[/{PM}]")
 
 
 def _menu_plan(cfg: Optional[Config] = None) -> None:

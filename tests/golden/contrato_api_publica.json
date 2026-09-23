@@ -2753,6 +2753,69 @@
         "forma": "funcao"
       }
     },
+    "hsi_extras": {
+      "HSIDadosPreparados": {
+        "campos": [
+          {
+            "nome": "cubos",
+            "tem_default": false,
+            "tipo": "List[np.ndarray]"
+          },
+          {
+            "nome": "mascaras",
+            "tem_default": false,
+            "tipo": "List[np.ndarray]"
+          },
+          {
+            "nome": "grupos",
+            "tem_default": false,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "rotulos",
+            "tem_default": false,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "X",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "y",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "pixel_groups",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "n_rejeitados",
+            "tem_default": false,
+            "tipo": "int"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "preparar_dados_hsi": {
+        "assinatura": "(pasta: 'str') -> 'HSIDadosPreparados'",
+        "forma": "funcao"
+      },
+      "rodar_hsi_dominio_aplicabilidade": {
+        "assinatura": "(dados: 'HSIDadosPreparados', *, fracao_teste: 'float' = 0.3, seed: 'int' = 42, n_components: 'int' = 5) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "rodar_hsi_multiway": {
+        "assinatura": "(dados: 'HSIDadosPreparados', *, n_componentes: 'int' = 2, n_splits: 'int' = 3, seed: 'int' = 42) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      },
+      "rodar_hsi_reamostragem": {
+        "assinatura": "(dados: 'HSIDadosPreparados', *, seed: 'int' = 42) -> 'Dict[str, Any]'",
+        "forma": "funcao"
+      }
+    },
     "hsi_figures": {
       "fig_hsi_classification_map": {
         "assinatura": "(mascara: 'np.ndarray', predicoes_pixel: 'np.ndarray', classes_ordenadas: 'Sequence[str]', cfg: \"'Config'\", pasta: 'str', nome: 'str' = 'hsi_mapa_classificacao') -> 'None'",

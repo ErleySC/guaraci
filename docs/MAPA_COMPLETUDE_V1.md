@@ -172,6 +172,12 @@ Design de entrada resolvido por leitura do código, não por suposição: ASCA/E
 
 **Testado de ponta a ponta, nas duas interfaces**: `tests/test_tecnicas_avancadas.py` (18 testes, orquestração pura), `tests/test_tecnicas_avancadas_cli.py` (9 testes, `builtins.input` mockado — exercita `_menu_tecnicas_avancadas` real), `tests/test_tecnicas_avancadas_web.py` (5 testes, `AppTest.from_function` — exercita `app_tabs/tecnicas.py` real, incluindo o clique através de 2+ reruns que expôs o achado acima).
 
+### Extras de HSI: acessibilidade (fechado em 2026-09-23, CLI apenas)
+
+Mesmo achado das técnicas acima, agora nos módulos HSI: `hsi_applicability`, `hsi_resampling` e `hsi_multiway` não tinham nenhuma chamada funcional real. Fechado com `hsi_extras.py` (orquestração testável) + submenu no fim da tela `[X]` (`_menu_hsi_extras`: `[D]` domínio de aplicabilidade — calibra em objetos de treino, avalia objetos de teste, split por objeto físico —, `[R]` reamostragem de classes minoritárias com relatório de avaliabilidade, `[M]` comparação N-PLS multiway × PLS-DA por pixel). 9 testes (`tests/test_hsi_extras.py`) sobre cubo sintético, incluindo o caminho CLI. **Achado real ao exercitar com entrada de usuário**: `comparar_npls_vs_pixelwise` estourava erro cru do scikit-learn ("0 sample(s)") com poucos objetos por classe (6 gravações falham, 10 funcionam) — agora vira mensagem acionável.
+
+**Limitações registradas, não corrigidas:** (1) `hsi_identification` (identificação fruta×câmera) **não foi exposta** — só o DeepHS multi-fruta/multi-câmera a alimenta e o script de download dele está quebrado (`_deephs_fruit_todas_pins.json` ausente), então não há entrada real para exercitar de ponta a ponta; (2) **o HSI inteiro não tem página web** (nem o pipeline base, só o campo `hsi_pasta_dataset` na aba Dados) — paridade CLI/web para HSI nunca existiu; os extras herdam isso. Decisão de criar uma página web HSI fica para o autor.
+
 ## AUDITORIA AMPLA DE CONFIABILIDADE (Passo 219, 2026-09-19)
 
 Mutação (cosmic-ray, um módulo por vez, worktree isolado), varredura de segurança, código morto, duplicação e tipos, sobre o código adicionado desde a última varredura completa. Detalhes em `docs/PROGRESSO.md` (Passo 219). Cada linha da tabela abaixo é pendência/limitação/backlog REAL, com a razão.

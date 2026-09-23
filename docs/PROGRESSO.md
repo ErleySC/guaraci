@@ -5397,3 +5397,15 @@ qualquer edição minha). Registrado como pendência de ambiente para
 (fixaria versão de dependência, decisão fora do escopo desta parte). Suíte
 completa rodando em background no momento deste registro; resultado a
 confirmar no próximo passo antes de declarar o bloco fechado.
+
+## Passo 227 — Extras de HSI expostos na CLI (continuação da Parte 1)
+
+Autorizado pelo usuário (proposta reportada antes): `hsi_extras.py` +
+submenu `[D]/[R]/[M]` no fim de `_menu_hsi`; testes em
+`tests/test_hsi_extras.py` (9). Achado real: multiway com <~10 gravações
+estourava erro cru do scikit-learn — agora mensagem acionável.
+`hsi_identification` NÃO exposta (sem entrada real testável: download do
+DeepHS multi-fruta quebrado). HSI sem página web (pré-existente),
+registrado. Commit anterior `34544fa` já no `origin/master`; suíte
+completa desse commit: 1820 passed/47 skipped + 2 guard-tests de contagem
+atualizados (abas 19→20, modos do registry 4→11).

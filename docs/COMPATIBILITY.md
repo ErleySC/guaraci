@@ -203,6 +203,9 @@ por `tests/test_fachada_reexport.py`.
   aditiva). Mesmo padrão aditivo e mesma nota de honestidade dos dois itens
   acima: golden regravado sem bump de minor decidido, reconciliação
   continua pendente de decisão do autor.
+- **`hsi_extras.py`** (módulo inteiro, novo — orquestração de domínio de
+  aplicabilidade/reamostragem/multiway HSI, 2026-09-23): mesmo padrão
+  aditivo e mesma nota de honestidade dos itens acima; golden regravado.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 
