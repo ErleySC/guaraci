@@ -59,6 +59,7 @@ from guaraci.app_tabs import preprocessamento as _tab_preprocessamento
 from guaraci.app_tabs import modelo as _tab_modelo
 from guaraci.app_tabs import validacao as _tab_validacao
 from guaraci.app_tabs import predicao as _tab_predicao
+from guaraci.app_tabs import tecnicas as _tab_tecnicas
 from guaraci.app_tabs import relatorios as _tab_relatorios
 from guaraci.app_tabs import sobre as _tab_sobre
 # Telas novas da reestruturacao de 2026-09-08 (mockup seguido a risca):
@@ -981,6 +982,8 @@ elif _pagina == "validacao":
     _tab_validacao.render(_T, _tok, _ler_resumo, _listar_figuras)
 elif _pagina == "predicao":
     _tab_predicao.render(_UPLOAD_MODELO_BLOQUEADO, _tok, _T)
+elif _pagina == "tecnicas":
+    _tab_tecnicas.render(pq, cfg_base, _T)
 elif _pagina == "relatorios":
     _tab_relatorios.render(pq, _MODO_ANALISE_ROTULO, _zip_da_pasta,
                           _pdf_bytes, _word_bytes, _excel_bytes,

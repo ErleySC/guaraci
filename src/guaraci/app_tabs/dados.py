@@ -124,7 +124,7 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     _DADOS_KEYS = ["modo_entrada", "perfil_matriz", "perfil_tecnica", "pasta_dados",
                    "arquivo_csv", "coluna_classe", "coluna_concentracao",
                    "pasta_saida", "excluir_classes", "imagem_incluir_textura",
-                   "hsi_pasta_dataset"]
+                   "hsi_pasta_dataset", "hplc_detector"]
 
     col_d1, col_d2 = st.columns(2)
     for i, k in enumerate(_DADOS_KEYS):

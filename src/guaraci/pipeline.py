@@ -96,6 +96,11 @@ from guaraci.dados_io import (   # noqa: E402
     sanitizar_metadados,
 )
 from guaraci.perfil_matriz import apply_profile, cfg_profile  # noqa: E402
+# Registra os leitores de formato de instrumento (opus/spc/sp/rmn/hplc/
+# gcms/eem) no io_registry -- import so' por efeito colateral (achado da
+# auditoria de acessibilidade CLI: os parsers existiam testados, mas nenhum
+# cfg.mode os alcancava). Ver docstring de leitores_avancados.py.
+from guaraci import leitores_avancados as _leitores_avancados  # noqa: E402,F401
 
 
 log = logging.getLogger(__name__)

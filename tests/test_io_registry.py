@@ -1,7 +1,8 @@
 """Testes de guaraci.io_registry (item 20: registry de leitores de dados).
 
 Verifica o registry em si (registrar/obter/listar) e que dados_io.py
-registrou corretamente os 4 leitores built-in (dx, csv, imagem, sintetico),
+registrou corretamente os 4 leitores built-in (dx, csv, imagem, sintetico) e
+leitores_avancados.py os 7 de instrumento (opus/spc/sp/rmn/hplc/gcms/eem),
 sem regressão no comportamento de load_data().
 """
 import pytest
@@ -11,7 +12,8 @@ from guaraci.io_registry import register_reader, get_reader, registered_modes
 
 def test_leitores_builtin_registrados():
     modos = registered_modes()
-    assert set(modos) == {"csv", "dx", "imagem", "sintetico"}
+    assert set(modos) == {"csv", "dx", "imagem", "sintetico", "opus", "spc",
+                          "sp", "rmn", "hplc", "gcms", "eem"}
 
 
 def test_obter_leitor_modo_desconhecido_da_erro_com_lista():

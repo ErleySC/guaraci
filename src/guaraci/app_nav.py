@@ -54,6 +54,7 @@ GRUPOS: List[Grupo] = [
     Grupo(3, "Analisar", "Analyse", [
         Pagina("validacao", "Validação", "Validation", "📊"),
         Pagina("predicao", "Predição", "Prediction", "🔮"),
+        Pagina("tecnicas", "Técnicas Avançadas", "Advanced Techniques", "🧪"),
         Pagina("relatorios", "Relatórios", "Reports", "📄"),
     ]),
     Grupo(4, "Referência", "Reference", [

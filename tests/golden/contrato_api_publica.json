@@ -130,6 +130,16 @@
       "opcoes": null,
       "tipo": "float"
     },
+    "hplc_detector": {
+      "attr": "hplc_detector",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "UV",
+        "FID"
+      ],
+      "tipo": "choice"
+    },
     "hsi_pasta_dataset": {
       "attr": "hsi_dataset_folder",
       "max": null,
@@ -170,6 +180,13 @@
         "csv",
         "imagem",
         "hsi",
+        "opus",
+        "spc",
+        "sp",
+        "rmn",
+        "hplc",
+        "gcms",
+        "eem",
         "sintetico"
       ],
       "tipo": "choice"
@@ -981,6 +998,11 @@
           },
           {
             "nome": "hsi_dataset_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
           },
@@ -2043,6 +2065,11 @@
           },
           {
             "nome": "hsi_dataset_folder",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
           },
@@ -3246,6 +3273,16 @@
       },
       "registered_modes": {
         "assinatura": "() -> 'Tuple[str, ...]'",
+        "forma": "funcao"
+      }
+    },
+    "leitores_avancados": {
+      "load_generic_file_dataset": {
+        "assinatura": "(pasta: 'str', parser: 'Parser1D', nome_formato: 'str', extensoes: 'Optional[Tuple[str, ...]]' = None) -> 'DadosCarregados'",
+        "forma": "funcao"
+      },
+      "load_generic_folder_dataset": {
+        "assinatura": "(pasta: 'str', parser: 'Parser1D', nome_formato: 'str', eh_amostra: 'Callable[[str], bool]', resolver: 'Callable[[str], str]') -> 'DadosCarregados'",
         "forma": "funcao"
       }
     },
@@ -4661,6 +4698,88 @@
           }
         ],
         "forma": "dataclass"
+      }
+    },
+    "tecnicas_avancadas": {
+      "AscaRelatorio": {
+        "campos": [
+          {
+            "nome": "decomposicao",
+            "tem_default": false,
+            "tipo": "Dict[str, Any]"
+          },
+          {
+            "nome": "permutacao",
+            "tem_default": false,
+            "tipo": "Optional[Dict[str, Any]]"
+          },
+          {
+            "nome": "fatores_usados",
+            "tem_default": false,
+            "tipo": "List[str]"
+          },
+          {
+            "nome": "group_aware",
+            "tem_default": false,
+            "tipo": "bool"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "EpoGlswRelatorio": {
+        "campos": [
+          {
+            "nome": "metodo",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "X_corrigido",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "n_pares_diferenca",
+            "tem_default": false,
+            "tipo": "int"
+          },
+          {
+            "nome": "variancia_removida_fracao",
+            "tem_default": false,
+            "tipo": "float"
+          },
+          {
+            "nome": "grupo_interesse_nome",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "fator_incomodo_nome",
+            "tem_default": false,
+            "tipo": "str"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "fatores_categoricos_disponiveis": {
+        "assinatura": "(rotulos: 'np.ndarray', metadados_df: 'Optional[pd.DataFrame]') -> 'Dict[str, np.ndarray]'",
+        "forma": "funcao"
+      },
+      "rodar_asca": {
+        "assinatura": "(X: 'np.ndarray', fatores: 'Dict[str, np.ndarray]', n_componentes: 'int' = 2, mae_id: 'Optional[np.ndarray]' = None, n_perm: 'int' = 200, seed: 'int' = 42, testar_significancia: 'bool' = True) -> 'AscaRelatorio'",
+        "forma": "funcao"
+      },
+      "rodar_epo_glsw": {
+        "assinatura": "(X: 'np.ndarray', grupo_interesse: 'np.ndarray', fator_incomodo: 'np.ndarray', grupo_interesse_nome: 'str', fator_incomodo_nome: 'str', metodo: 'str' = 'EPO', n_componentes: 'int' = 1, alpha: 'float' = 0.001) -> 'EpoGlswRelatorio'",
+        "forma": "funcao"
+      },
+      "rodar_fusao_multibloco": {
+        "assinatura": "(blocos: 'Dict[str, np.ndarray]', y: 'np.ndarray', *, frac_cal: 'float' = 0.7, seed: 'int' = 0, max_lvs: 'int' = 15) -> 'Tuple[RegressionFitResult, Dict[str, Tuple[int, int]]]'",
+        "forma": "funcao"
+      },
+      "rodar_mcr_als": {
+        "assinatura": "(X: 'np.ndarray', n_componentes: 'int', *, conc: 'Optional[np.ndarray]' = None, indice_componente_alvo: 'Optional[int]' = None, nao_negativo_c: 'bool' = True, nao_negativo_s: 'bool' = True, max_iter: 'int' = 200) -> \"'MCRALSResultado | MCRALSResultadoSupervisionado'\"",
+        "forma": "funcao"
       }
     },
     "transferencia_calibracao": {

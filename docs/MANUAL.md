@@ -318,6 +318,13 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 | `csv` | Tabela genérica (colunas espectrais + uma coluna de classe) | Qualquer dado tabular |
 | `imagem` | Colorimetria digital (protótipo só sem garantia de agrupamento — ver adiante) | Ver adiante |
 | `hsi` | Imageamento hiperespectral — aceita cubo próprio, offline (ver adiante) | Distinto de `imagem`: por pixel, não por foto |
+| `opus` | OPUS binário (Bruker FT-IR/FT-NIR) | Requer `pip install guaraci-chemometrics[opus]`; sem extensão fixa (tenta cada arquivo) |
+| `spc` | SPC (Galactic/Thermo GRAMS), `.spc` | Requer `[spc]`; multi-subarquivo usa só o 1º |
+| `sp` | PerkinElmer `.sp` | Sem dependência extra |
+| `rmn` | RMN Bruker, espectro já processado (`pdata/<N>`) | Requer `[rmn]`; 1 pasta de experimento = 1 amostra |
+| `hplc` | Cromatograma Agilent (`.D`)/Waters (`.raw`) | Requer `[hplc]`; ver `hplc_detector` (`UV`/`FID`) |
+| `gcms` | GC-MS ANDI-MS/netCDF (`.CDF`) | Sem dependência extra (via `scipy`) |
+| `eem` | Fluorescência excitação-emissão (`.dat`), achatada em vetor 1D | Perde a estrutura 2D — ver ressalva abaixo |
 | `sintetico` | Dados simulados | Para testes/demonstração |
 
 **Modo `imagem` (colorimetria digital):** extrai estatísticas de
@@ -451,6 +458,26 @@ investigação de 4 hipóteses que não resgatou a separabilidade de
 (§7, Passos 112/114). Rodar em cubo próprio funciona mecanicamente —
 como qualquer perfil/matriz nova, desempenho na SUA matriz é não
 testado até você testar.
+
+**Modos de instrumento (`opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/`eem`, fechados 2026-09-23):**
+convertem o formato binário/nativo de fabricante para o mesmo fluxo de
+`dx`/`csv` — pré-processamento, PLS-DA/PLS-R, DD-SIMCA, tudo funciona sem
+alteração. Convenção de pasta: uma subpasta por classe (mesma do mode `dx`),
+cada arquivo (`opus`/`spc`/`sp`/`gcms`) ou subpasta-amostra (`rmn`: pasta com
+`pdata/<N>/` dentro; `hplc`: pasta terminando em `.D`/`.raw`) é uma amostra;
+sem subpasta, tudo vira 1 classe só (nome da pasta raiz). Nenhum tem
+`mae_id` real (agrupamento por réplica física) — mesma situação honesta já
+documentada para `csv` genérico, `grouping_guarantee` não é elevado
+artificialmente. `eem` é a exceção estrutural: fluorescência
+excitação-emissão é uma MATRIZ 2D por amostra, achatada (flatten) em vetor
+1D para caber no mesmo contrato de pipeline — funciona, mas perde a
+estrutura espectral 2D explícita; quem quiser a decomposição PARAFAC de
+verdade (`eem_multiway.parafac_eem`) precisa chamá-la diretamente sobre a
+pasta, fora deste fluxo. Testado ponta a ponta contra arquivo/pasta REAL
+(`tests/fixtures/{spc,sp,rmn_bruker,hplc_agilent,eem_horiba_aqualog}/`) para
+5 dos 7 modos — `opus`/`gcms` seguem sem arquivo real disponível neste
+ambiente (mesma limitação já documentada para o parser de baixo nível em
+`importadores_proprietarios.py`), testados com um double controlado.
 
 ---
 
@@ -1035,6 +1062,50 @@ só pré-processamento + PLS-DA/PLS-R + classes, não DD-SIMCA por
 espécie/ensemble de identificação/domínio de aplicabilidade/conjunto
 conforme (esses continuam só no `.joblib`).
 
+### 2.7 Técnicas Avançadas (ASCA, EPO/GLSW, MCR-ALS, fusão multibloco — acessibilidade fechada 2026-09-23)
+
+Quatro técnicas exploratórias/diagnósticas, **não integradas ao pipeline de
+treino automático** (rodam à parte, sob demanda) — acessíveis pela tecla
+**`[T]`** da CLI ou pela página **Advanced Techniques** (grupo Analisar) do
+aplicativo web. ASCA/EPO-GLSW/MCR-ALS usam o dataset já configurado na
+aba/menu Dados; fusão multibloco pede 2 pastas/arquivos na hora (é a única
+que estruturalmente precisa de 2 datasets).
+
+- **ASCA** (ANOVA-Simultaneous Component Analysis, Smilde et al. 2005) —
+  decompõe os espectros por fatores do delineamento (espécie sempre
+  disponível; qualquer coluna de metadado categórica de baixa cardinalidade
+  quando o formato de entrada a fornece — ex.: sessão, adulterante) e testa
+  a significância de cada um por permutação, *group-aware* por `mae_id`
+  quando disponível. Escopo honesto: decomposição por efeito MARGINAL,
+  exata só para fatores ortogonais — `ss_desbalanco` grande sinaliza fatores
+  correlacionados demais (a extensão ASCA+ que corrigiria isso não está
+  implementada, ver seção 9).
+- **EPO / GLSW** (External Parameter Orthogonalisation / Generalized Least
+  Squares Weighting) — remove (EPO) ou atenua (GLSW) a variação de um fator
+  de perturbação CONHECIDO (sessão, espécie-hospedeira, instrumento),
+  estimada de espectros diferença entre amostras que compartilham a
+  condição a preservar mas diferem no fator a remover. Diagnóstico
+  exploratório: **não se aplica** quando o fator de perturbação é colinear
+  com o alvo científico (ver seção 9).
+- **MCR-ALS** (Multivariate Curve Resolution — Alternating Least Squares) —
+  resolve a matriz espectral em perfis puros de concentração/espectro.
+  Puro (sem referência) ou com **restrição de correlação** (Bayat et al.
+  2020) quando há teor/concentração conhecido em parte das amostras: ancora
+  um componente-alvo escolhido a esses valores de referência a cada
+  iteração. Interpretativo — **não substitui PLS-R** para quantificação com
+  garantia (ver seção 9: a versão não supervisionada não recuperou o
+  adulterante minoritário no acervo próprio).
+- **Fusão multibloco** — funde ≥2 blocos medidos na MESMA amostra física
+  (ex.: FT-NIR + MIR) numa única regressão PLS-R, cada bloco
+  pré-processado SEPARADAMENTE antes de concatenar (nunca a matriz já
+  concatenada — corromperia a fronteira espectral entre técnicas). Prova de
+  conceito (par público Mendeley NIR+MIR): a fusão **não superou** o melhor
+  bloco sozinho — compare sempre contra cada bloco treinado isoladamente
+  antes de adotar (ver seção 9).
+
+Lógica real (testável sem interface) em `tecnicas_avancadas.py` — fonte
+única entre CLI e web, mesmo padrão da auditoria de delineamento.
+
 ---
 
 ## 6 Fluxo típico na interface web
@@ -1047,7 +1118,7 @@ que refletem a ordem do trabalho:
 - **🎨 Visualização** — cores das figuras (seção 6.2).
 - **① Preparar** — Projeto · Dados · Pré-processamento
 - **② Executar** — Modelo
-- **③ Analisar** — Validação · Predição · Relatórios
+- **③ Analisar** — Validação · Predição · Técnicas Avançadas · Relatórios
 - **④ Referência** — Sobre
 
 O grupo que contém a tela aberta vem expandido; nas telas fixas abre-se o
@@ -1210,7 +1281,9 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `cli_logic.py` | Lógica pura da CLI de terminal (truncamento, validação de faixas, contagem de arquivos), testável sem *Rich* |
 | `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_model_metrics` e `parse_accuracy_by_class` |
 | `spectra_preview.py` | Carregamento/plotagem de amostra de espectros para prévia (abas Data e Preprocessing) |
-| `app_tabs/` | Um módulo por aba do aplicativo web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `relatorios`, `sobre`) |
+| `app_tabs/` | Um módulo por aba do aplicativo web (`projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `tecnicas`, `relatorios`, `sobre`) |
+| `tecnicas_avancadas.py` | Orquestração testável (sem Rich/Streamlit) de ASCA/EPO-GLSW/MCR-ALS/fusão multibloco — fonte única entre CLI (`[T]`) e web (`app_tabs/tecnicas.py`) |
+| `leitores_avancados.py` | Registra no `io_registry` os leitores de formato de instrumento (`opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/`eem`) |
 
 Os módulos acima vivem no pacote `src/guaraci/`. Interfaces de usuário:
 `app_quimiometria.py` (web — fica na **raiz**, é o ponto de entrada do
@@ -1505,6 +1578,43 @@ re-executada nesta sessão).
   de espectros descartados por faixa incompatível variam por dataset;
   confira o `resumo_modelo.txt` e a matriz de confusão da sua própria
   rodada.)*
+
+- **ASCA** decompõe por efeito MARGINAL (Smilde et al. 2005), exato só
+  para fatores ortogonais (delineamento balanceado). Com fatores
+  fortemente correlacionados ou muito desbalanceados, variância de um
+  fator pode "vazar" para outro — `ss_desbalanco` (exibido no resultado)
+  sinaliza quando isso é relevante. A extensão ASCA+ (Thiel, Féraud &
+  Govaerts 2017), que corrige isso via modelo linear geral, **não está
+  implementada** (esforço maior, avaliado e registrado como backlog).
+
+- **EPO/GLSW não se aplicam quando o fator de perturbação é colinear com
+  o alvo científico** — testado com sucesso no dataset público EEM
+  (marca de azeite como hospedeira), mas **não** se aplica ao acervo
+  próprio de óleos deste projeto (a ordem de leitura é colinear com o
+  teor, achado já registrado): remover essas direções removeria o
+  próprio sinal que se quer quantificar. Ferramenta exploratória, não
+  integrada ao pipeline de treino automático.
+
+- **MCR-ALS (sem restrição) não recuperou o adulterante minoritário no
+  acervo próprio** (`|r|` de 0,17 e 0,09 contra o teor real, rodada
+  anterior) — a variante com restrição de correlação nunca foi testada
+  contra esse mesmo caso (é proposta nova, não correção do achado
+  negativo). Interpretativo, não substitui PLS-R para quantificação com
+  garantia.
+
+- **Fusão multibloco (nível 1, concatenação) não superou o melhor bloco
+  sozinho** no único par de prova de conceito testado (Mendeley NIR+MIR,
+  peróxido) — o bloco com mais variáveis domina a decomposição PLS por
+  contagem de colunas, não por conteúdo informativo. Compare sempre
+  contra cada bloco treinado isoladamente antes de adotar a fusão.
+
+- **Leitores de instrumento novos (`opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/
+  `eem`) não têm `mae_id` real** (nenhuma noção de réplica física
+  conhecida a partir do nome/estrutura de arquivo) — mesma situação
+  honesta já documentada para `csv` genérico; `grouping_guarantee` não é
+  elevado artificialmente. `opus` e `gcms` não têm arquivo real de teste
+  disponível neste ambiente (testados com double controlado, mesma
+  limitação já documentada para o parser de baixo nível).
 
 ---
 

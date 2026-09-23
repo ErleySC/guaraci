@@ -232,18 +232,19 @@ def test_fluxo_decisao_resolver_mistura_sugere_mcr_als():
     assert "mcr_als" in opcao["tecnicas"]
 
 
-# ── _guaraci_navegar_secoes cobre as 19 abas reais (achado do Agente 6 +
-#    "X" de HSI, Passo 102) ──────────────────────────────────────────────
+# ── _guaraci_navegar_secoes cobre as 20 abas reais (achado do Agente 6 +
+#    "X" de HSI, Passo 102; "T" Tecnicas Avancadas, 2026-09-23) ──────────────────────────────────────────────
 
-def test_navegar_secoes_cobre_todas_as_19_abas_reais():
+def test_navegar_secoes_cobre_todas_as_20_abas_reais():
     """Lista confirmada pelo Agente 1 (auditoria funcional, nao suposta):
-    19 abas -- 1-9, H, B, X, J, U, K, P, G, ?, A ("X" = HSI, Passo 102).
+    20 abas -- 1-9, H, B, X, J, U, K, T, P, G, ?, A ("X" = HSI, Passo 102;
+    "T" = Tecnicas Avancadas, 2026-09-23).
     "G" fica fora do proprio indice (e' o assistente, navegar ate ele de
     dentro dele e' circular). Antes desta correcao, so' 8 apareciam aqui."""
     teclas_com_t_d = {k for k, _, _ in guaraci_mod._SECOES_NAVEGAVEIS}
     teclas_indice = teclas_com_t_d | {"A"}   # "A" (Sobre) e' adicionado a parte
     esperado = {"1", "2", "3", "4", "5", "6", "7", "8", "9",
-                "H", "B", "X", "J", "U", "K", "P", "?", "A"}
+                "H", "B", "X", "J", "U", "K", "T", "P", "?", "A"}
     assert teclas_indice == esperado
 
 

@@ -192,6 +192,17 @@ por `tests/test_fachada_reexport.py`.
   existente mudou de assinatura) e mesma nota de honestidade dos itens
   acima (pós-v1.0.0): golden regravado sem bump de minor decidido,
   reconciliação continua pendente de decisão do autor.
+- **`tecnicas_avancadas.py`** (módulo inteiro, novo — orquestração testável
+  de ASCA/EPO-GLSW/MCR-ALS/fusão multibloco) e **`leitores_avancados.py`**
+  (módulo inteiro, novo — registra 7 leitores de formato no `io_registry`:
+  `opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/`eem`): fecham a lacuna encontrada
+  na auditoria de acessibilidade CLI/web de 2026-09-23 (funções já
+  implementadas e testadas em isolamento, mas sem caminho de execução real
+  em nenhuma interface). `config.py` ganhou 1 campo novo (`hplc_detector`)
+  e o `mode` passou a aceitar 7 valores novos (mesmo campo, mudança
+  aditiva). Mesmo padrão aditivo e mesma nota de honestidade dos dois itens
+  acima: golden regravado sem bump de minor decidido, reconciliação
+  continua pendente de decisão do autor.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 

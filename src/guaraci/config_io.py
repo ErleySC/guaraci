@@ -41,8 +41,14 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "modo_entrada", "attr": "mode", "tipo": "choice",
      "desc": "Origem dos dados: dx (JCAMP-DX, FT-NIR) | csv (tabela generica) | "
              "imagem (colorimetria digital, prototipo) | hsi (imageamento "
-             "hiperespectral, prototipo minimo viavel) | sintetico (teste)",
-     "opcoes": ["dx", "csv", "imagem", "hsi", "sintetico"]},
+             "hiperespectral, prototipo minimo viavel) | opus (Bruker FT-IR/"
+             "FT-NIR) | spc (Galactic/Thermo) | sp (PerkinElmer) | rmn "
+             "(RMN Bruker, espectro ja processado) | hplc (cromatograma "
+             "Agilent/Waters, ver hplc_detector) | gcms (GC-MS ANDI-MS/"
+             "netCDF) | eem (fluorescencia excitacao-emissao, achatada em "
+             "vetor 1D) | sintetico (teste)",
+     "opcoes": ["dx", "csv", "imagem", "hsi", "opus", "spc", "sp", "rmn",
+                "hplc", "gcms", "eem", "sintetico"]},
     {"key": "perfil_matriz", "attr": "matrix_profile", "tipo": "choice",
      "desc": "Perfil da matriz analisada (faixa espectral, pre-processamento "
              "padrao e vocabulario da saida vem daqui, nao do codigo). "
@@ -68,6 +74,10 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "desc": "Pasta com o dataset HSI (manifest.json + arquivos ENVI .hdr/.bin; "
              "mode hsi) -- ver scripts/download_datasets/baixar_deephs_kaki.py",
      "opcoes": None},
+    {"key": "hplc_detector", "attr": "hplc_detector", "tipo": "choice",
+     "desc": "Tipo de detector a ler quando o diretorio HPLC/GC tiver mais "
+             "de um (mode hplc): UV (UV/DAD, caso mais comum) | FID (GC-FID)",
+     "opcoes": ["UV", "FID"]},
     {"key": "imagem_incluir_textura", "attr": "include_image_texture", "tipo": "bool",
      "desc": "Modo imagem: incluir features de textura (GLCM) alem de cor "
              "(media/desvio RGB+HSV+Lab) — requer 'pip install scikit-image'",
@@ -454,6 +464,49 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
         if n_img == 0:
             return False, f"nenhuma imagem em '{p_img}' (nem nas subpastas)"
         return True, f"OK — {n_img} imagens encontradas"
+    if mode in ("spc", "sp", "gcms"):
+        p = cfg.input_folder
+        if not p or not os.path.isdir(p):
+            return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
+        ext = {"spc": ".spc", "sp": ".sp", "gcms": ".cdf"}[mode]
+        n = len(glob.glob(os.path.join(p, "**", f"*{ext}"), recursive=True))
+        n += len(glob.glob(os.path.join(p, "**", f"*{ext.upper()}"), recursive=True))
+        if n == 0:
+            return False, f"nenhum arquivo {ext} em '{p}' (nem nas subpastas)"
+        return True, f"OK — {n} arquivos {ext} encontrados"
+    if mode == "opus":
+        p = cfg.input_folder
+        if not p or not os.path.isdir(p):
+            return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
+        if not os.listdir(p):
+            return False, f"pasta '{p}' vazia"
+        return True, (f"OK — pasta '{os.path.basename(p) or p}' com arquivos "
+                       f"(OPUS nao tem extensao fixa filtravel; validado no carregamento)")
+    if mode == "rmn":
+        p = cfg.input_folder
+        if not p or not os.path.isdir(p):
+            return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
+        n = len(glob.glob(os.path.join(p, "**", "pdata"), recursive=True))
+        if n == 0:
+            return False, f"nenhum diretorio 'pdata' em '{p}' (esperado por amostra RMN)"
+        return True, f"OK — {n} pasta(s)-amostra RMN (com 'pdata') encontrada(s)"
+    if mode == "hplc":
+        p = cfg.input_folder
+        if not p or not os.path.isdir(p):
+            return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
+        n = len([d for d in glob.glob(os.path.join(p, "**", "*"), recursive=True)
+                 if os.path.isdir(d) and d.lower().endswith((".d", ".raw"))])
+        if n == 0:
+            return False, f"nenhuma pasta '.D'/'.raw' em '{p}' (esperado por amostra HPLC/GC)"
+        return True, f"OK — {n} pasta(s)-amostra HPLC/GC encontrada(s)"
+    if mode == "eem":
+        p = cfg.input_folder
+        if not p or not os.path.isdir(p):
+            return False, f"pasta nao encontrada: '{p}' (confira o caminho)"
+        n = len(glob.glob(os.path.join(p, "*.dat")))
+        if n == 0:
+            return False, f"nenhum arquivo .dat em '{p}'"
+        return True, f"OK — {n} arquivos .dat (EEM) encontrados"
     # mode dx (padrao)
     p = cfg.input_folder
     if not p or not os.path.isdir(p):

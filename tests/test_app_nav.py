@@ -46,7 +46,7 @@ def test_grupos_seguem_a_ordem_do_mockup():
     assert [p.chave for p in app_nav.GRUPOS[0].paginas] == [
         "projeto", "dados", "preprocessamento"]
     assert [p.chave for p in app_nav.GRUPOS[2].paginas] == [
-        "validacao", "predicao", "relatorios"]
+        "validacao", "predicao", "tecnicas", "relatorios"]
 
 
 def test_toda_pagina_declarada_tem_ramo_no_roteamento():

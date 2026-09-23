@@ -5307,3 +5307,93 @@ anterior ao commit final da rodada anterior). `--cobertura` confirmada
 COMPLETA no HEAD atual. Conferi manualmente (não só pela contagem
 agregada) que `aumento_dados.py`, `dual_spls.py` e o Passo 224 aparecem
 corretamente indexados e ligados entre si nas notas do vault.
+
+## Passo 226 — Auditoria de acessibilidade CLI/web (preparação para o 1º usuário externo, Parte 1)
+
+Instrução do usuário: preparação final de 6 partes antes do primeiro uso
+por alguém externo ao autor. Comecei pela Parte 1 (auditoria de
+acessibilidade CLI/web, 100%, por introspecção real — AST/grafo de
+imports, não busca de texto).
+
+**Achado prévio, resolvido antes de auditar**: o texto da instrução citava
+"VRM"/"Dual-sPLS" como técnicas já presentes — busca confirmou que os
+commits existiam, mas só na branch remota não mesclada
+`origin/claude/varredura-final-tecnicas-vault-rdwedc` (ponta `93e9b7a`,
+2026-09-20, 6 commits à frente do `master` de então). Reportado ao usuário
+antes de agir; autorizado a mesclar — fast-forward limpo, suíte dos
+módulos novos (40 testes) verde antes de prosseguir.
+
+**Achado 1 (Grupo 1, retratação parcial)**: 7 leitores de formato
+(OPUS/SPC/`.sp`/RMN Bruker/HPLC-GC/GC-MS ANDI-MS/EEM), implementados e
+testados contra fixture real em rodadas anteriores, tinham **zero**
+caminho de carregamento via `cfg.mode` — nenhum registrado em
+`io_registry.register_reader` (só `sintetico`/`csv`/`dx`/`imagem`
+estavam). Corrigido com `leitores_avancados.py` (módulo novo, não toca em
+`dados_io.py`/`load_dx` — código já congelado, Bloco B, conforme aviso no
+docstring de `importadores_proprietarios.py`), registrando os 7 modos,
+expostos em `_CONFIG_SPEC` (CLI e web) com validação por-modo em
+`_validar_pasta_dados`. Testado ponta a ponta (`pq.load_data`+
+`pq.validate_input`, mesmo caminho real de `_guaraci_diagnosticar`/
+`_menu_audit`) contra fixture real para 5/7 modos; OPUS/GC-MS sem fixture
+real neste ambiente (mesma limitação já documentada), testados com double
+controlado. 14 testes novos (`tests/test_leitores_avancados.py`).
+
+**Achado 2 (Grupo 2)**: ASCA, EPO/GLSW, MCR-ALS (com/sem restrição de
+correlação) e fusão multibloco — implementados e testados em isolamento,
+mas sem NENHUMA chamada funcional real em `guaraci.py`/`cli_assistente.py`/
+`app_tabs/*`/`pipeline.py` (só menção em catálogo informativo consultivo,
+`_guaraci_tecnicas`/gating por objetivo — confirmado por busca de chamada
+real, não de string). Reportei ao usuário antes de agir (escopo grande,
+desenho de UX real); autorizado a implementar as 5 (Dual-sPLS já estava
+coberto via `benchmark_regression_by_species`, não fazia parte deste
+achado).
+
+Corrigido com `tecnicas_avancadas.py` (orquestração testável, sem Rich/
+Streamlit — fonte única entre as duas interfaces): nova aba `[T] Técnicas
+Avançadas` na CLI (`guaraci.py`, 19ª aba navegável) e nova página "Advanced
+Techniques" no app web (`app_tabs/tecnicas.py`, `app_nav.py`, grupo
+Analisar). Desenho de entrada resolvido por leitura do código (não por
+suposição, reportado antes de implementar quando não óbvio): ASCA/EPO-GLSW
+usam `fatores: Dict[str, np.ndarray]`, mapeado a `especie` (sempre
+disponível) + colunas categóricas de baixa cardinalidade de `metadados_df`
+(`tecnicas_avancadas.fatores_categoricos_disponiveis`) — nenhum arquivo de
+delineamento separado. MCR-ALS com restrição usa `conc` já carregado.
+Fusão multibloco (único caso que estruturalmente precisa de 2 datasets)
+pede 2 pastas/arquivos na hora, reaproveitando `io_registry`/`load_data`.
+
+**Achado real durante a implementação** (exercitado pela 1ª vez via
+`AppTest`, nunca visto antes): a aba web usava `if st.button("Load
+dataset"): ...` envolvendo todo o resto da UI — Streamlit só mantém esse
+bloco verdadeiro no MESMO rerun do clique; no rerun seguinte (multiselect/
+Run), o dataset carregado sumia e a UI regredia. Corrigido persistindo o
+dataset em `st.session_state` (mesmo padrão já usado em
+`app_tabs/predicao.py`).
+
+Testado de ponta a ponta nas duas interfaces: `tests/test_tecnicas_
+avancadas.py` (18 testes, orquestração), `tests/test_tecnicas_avancadas_
+cli.py` (9 testes, `builtins.input` mockado, exercita `_menu_tecnicas_
+avancadas` real), `tests/test_tecnicas_avancadas_web.py` (5 testes,
+`AppTest.from_function`, exercita `app_tabs/tecnicas.py` real — foi este
+que pegou o achado do `session_state` acima).
+
+**Contrato de API pública**: 2 módulos novos (`tecnicas_avancadas.py`,
+`leitores_avancados.py`) + 1 campo novo em `Config` (`hplc_detector`) +
+`mode` aceitando 7 valores novos — mudança aditiva, golden regravado
+(`GUARACI_REGRAVAR_GOLDEN=1`), nota de honestidade em
+`docs/COMPATIBILITY.md` (mesmo padrão dos itens anteriores: reconciliação
+de bump de minor pós-v1.0.0 pendente de decisão do autor).
+
+`docs/MAPA_COMPLETUDE_V1.md` e `docs/MANUAL.md` atualizados (seção 4 —
+formatos, e nova seção 2.7 — técnicas avançadas, com ressalvas na seção 9).
+`ruff check .` limpo no repositório inteiro. `mypy` limpo nos arquivos
+tocados isoladamente; o gate completo (`src/guaraci/` + `app_quimiometria.py`)
+está bloqueado por um achado de AMBIENTE não relacionado a esta rodada:
+`tifffile` 2026.7.31 (dependência transitiva de `scikit-image`, extra
+`[hsi]`) usa sintaxe `type X = ...` (Python 3.12+) que o mypy, alvejando
+`python_version=3.10`, rejeita ao seguir o import — confirmado que o erro
+já existia ANTES desta rodada (reproduzido no commit do merge, antes de
+qualquer edição minha). Registrado como pendência de ambiente para
+`docs/MAPA_COMPLETUDE_V1.md`/revisão de prontidão, não corrigido aqui
+(fixaria versão de dependência, decisão fora do escopo desta parte). Suíte
+completa rodando em background no momento deste registro; resultado a
+confirmar no próximo passo antes de declarar o bloco fechado.

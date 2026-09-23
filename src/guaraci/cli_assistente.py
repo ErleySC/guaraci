@@ -83,6 +83,7 @@ RISK_CLASS: Dict[str, str] = {
     "arquivo_csv": "ANALITICO", "coluna_classe": "ANALITICO",
     "coluna_concentracao": "ANALITICO", "imagem_incluir_textura": "ANALITICO",
     "hsi_pasta_dataset": "ANALITICO",
+    "hplc_detector": "ANALITICO",
     # AVANCADO
     "benchmark": "AVANCADO", "monte_carlo": "AVANCADO",
     "shap_benchmark": "AVANCADO", "n_monte_carlo": "AVANCADO",
@@ -96,6 +97,7 @@ FIELD_NAMES: Dict[str, Dict[str, str]] = {
     "tag":                          {"PT": "Sufixo da pasta saida",   "EN": "Output folder tag"},
     "modo_entrada":                 {"PT": "Modo de entrada",         "EN": "Input mode"},
     "hsi_pasta_dataset":            {"PT": "Pasta do dataset HSI",    "EN": "HSI dataset folder"},
+    "hplc_detector":                {"PT": "Detector HPLC/GC",        "EN": "HPLC/GC detector"},
     "perfil_matriz":                {"PT": "Perfil de matriz",        "EN": "Matrix profile"},
     "arquivo_csv":                  {"PT": "Arquivo CSV",             "EN": "CSV file"},
     "coluna_classe":                {"PT": "Coluna de classe",        "EN": "Class column"},
@@ -749,6 +751,21 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                          r"C:\datasets\deephs_kaki_vis": "Folder downloaded by the script"},
         },
         "default": "", "range": "Valid system path (or empty)",
+    },
+    "hplc_detector": {
+        "PT": {
+            "desc": "Tipo de detector a ler quando o diretorio HPLC/GC tem mais de um -- "
+                    "so' usado quando modo_entrada='hplc'. UV = UV/DAD (caso mais comum); FID = GC-FID.",
+            "impacto": "ANALITICO — define qual canal do cromatograma vira o vetor de cada amostra.",
+            "exemplos": {"UV": "UV/DAD (padrao)", "FID": "GC com detector de ionizacao de chama"},
+        },
+        "EN": {
+            "desc": "Detector type to read when the HPLC/GC directory has more than one -- "
+                    "only used when modo_entrada='hplc'. UV = UV/DAD (most common); FID = GC-FID.",
+            "impacto": "ANALYTICAL — defines which chromatogram channel becomes each sample's vector.",
+            "exemplos": {"UV": "UV/DAD (default)", "FID": "GC with flame ionization detector"},
+        },
+        "default": "UV", "range": "UV | FID",
     },
     "pasta_saida": {
         "PT": {
@@ -1511,7 +1528,8 @@ MENU_FIELDS: Dict[str, list] = {
     "projeto": ["pasta_dados", "pasta_saida", "nome_execucao"],
     "dados": ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
               "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
-              "excluir_classes", "imagem_incluir_textura", "hsi_pasta_dataset"],
+              "excluir_classes", "imagem_incluir_textura", "hsi_pasta_dataset",
+              "hplc_detector"],
     "preproc": ["pre_processamento", "comparar_pre_processamentos"],
     "modelo": ["nivel", "objetivo", "max_lvs", "opls_da", "ddsimca", "modo_ddsimca",
                "ddsimca_pcv",

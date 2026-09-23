@@ -356,6 +356,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_planejamento": "Planejamento de Coleta",
         "t_selecao_amostras": "Selecao de Amostras",
         "t_auditoria":  "Auditoria de Delineamento",
+        "t_tecnicas_avancadas": "Tecnicas Avancadas",
         "t_idioma":     "Idioma",
         "t_ajuda":      "Ajuda",
         # Descricoes de secao (curtas)
@@ -365,6 +366,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_modelagem":  "PLS-DA, OPLS-DA e DD-SIMCA.",
         "d_validacao":  "GroupKFold, holdout e permutacoes.",
         "d_avancado":   "Benchmark, Monte Carlo e SHAP.",
+        "d_tecnicas_avancadas": "ASCA, EPO/GLSW, MCR-ALS e fusao multibloco -- sobre o dado carregado.",
         "d_viz":        "DPI, formato, paleta e graficos extras.",
         "d_tecnica":    "Tecnica especifica com faixas automaticas.",
         "d_codigos":    "Nomenclatura JCAMP-DX e especies.",
@@ -524,6 +526,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "t_planejamento": "Collection Planning",
         "t_selecao_amostras": "Sample Selection",
         "t_auditoria":  "Design Audit",
+        "t_tecnicas_avancadas": "Advanced Techniques",
         "t_idioma":     "Language",
         "t_ajuda":      "Help",
         "d_projeto":    "Input and output folders.",
@@ -532,6 +535,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "d_modelagem":  "PLS-DA, OPLS-DA and DD-SIMCA.",
         "d_validacao":  "GroupKFold, holdout and permutations.",
         "d_avancado":   "Benchmark, Monte Carlo and SHAP.",
+        "d_tecnicas_avancadas": "ASCA, EPO/GLSW, MCR-ALS and multiblock fusion -- on the loaded dataset.",
         "d_viz":        "DPI, format, palette and extra plots.",
         "d_tecnica":    "Specific technique with automatic ranges.",
         "d_codigos":    "JCAMP-DX naming and species codes.",
@@ -1101,6 +1105,7 @@ _SECOES_NAVEGAVEIS: List[Tuple[str, str, str]] = [
     ("J", "t_planejamento", "d_planejamento"),
     ("U", "t_auditoria", "d_auditoria"),
     ("K", "t_selecao_amostras", "d_selecao_amostras"),
+    ("T", "t_tecnicas_avancadas", "d_tecnicas_avancadas"),
     ("P", "t_perfis", "d_perfis"),
     ("?", "t_ajuda", "d_ajuda"),
 ]
@@ -1845,7 +1850,7 @@ def _print_main_menu() -> None:
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_modelar"))), Text.from_markup(""))
     t.add_row(*row("4", _t("t_modelagem"),  "6", _t("t_avancado")))
-    t.add_row(*row("8", _t("t_tecnica")))
+    t.add_row(*row("8", _t("t_tecnica"),    "T", _t("t_tecnicas_avancadas")))
 
     t.add_row(Text.from_markup(""), Text.from_markup(""))
     t.add_row(Text.from_markup(_grp(_t("grp_validar"), cor=S)), Text.from_markup(""))
@@ -2435,10 +2440,11 @@ def _menu_data(cfg: Config) -> None:
     _loop_menu(_t("t_dados"), _t("d_dados"),
                ["modo_entrada", "perfil_matriz", "perfil_tecnica", "arquivo_csv",
                 "coluna_classe", "coluna_concentracao", "faixa_min_cm", "faixa_max_cm",
-                "excluir_classes", "imagem_incluir_textura"], cfg,
+                "excluir_classes", "imagem_incluir_textura", "hplc_detector"], cfg,
                extras=[("C", extra_lbl)],
                on_extra={"C": lambda: _salvar_perfil_combinado(cfg)},
-               campos_avancados={"perfil_tecnica", "imagem_incluir_textura"})
+               campos_avancados={"perfil_tecnica", "imagem_incluir_textura",
+                                 "hplc_detector"})
 
 
 def _menu_preprocessing(cfg: Config) -> None:
@@ -4073,6 +4079,271 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
 
 
 # ---------------------------------------------------------------------------
+# TECNICAS AVANCADAS — ASCA / EPO-GLSW / MCR-ALS / fusao multibloco
+# ---------------------------------------------------------------------------
+def _tecavan_carregar_dataset(cfg: Config, is_pt: bool):
+    """Carrega+valida o dataset configurado em [2] Dados -- mesmo caminho
+    de `pq.load_data`/`pq.validate_input` usado por `_menu_audit`/
+    `_guaraci_diagnosticar`. Devolve None em erro (ja' reportado ao
+    usuario)."""
+    status_msg = "Carregando dados..." if is_pt else "Loading data..."
+    try:
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            wn, X, rotulos, conc, mae_id, metadados = pq.load_data(cfg)
+            X, wn, rotulos, conc, mae_id, _rel = pq.validate_input(
+                X, wn, rotulos, conc, mae_id)
+    except Exception as e:  # noqa: BLE001 -- dado externo, mesma disciplina
+        # de _menu_audit/_guaraci_diagnosticar.
+        console.print(f"  [{PR}]{'Erro ao carregar dados' if is_pt else 'Error loading data'}: "
+                      f"{escape(str(e))}[/{PR}]")
+        _pause(); return None
+    return wn, X, rotulos, conc, mae_id, metadados
+
+
+def _tecavan_escolher_fatores(rotulos, metadados, is_pt: bool, max_fatores: int = 2):
+    """Lista fatores candidatos (`tecnicas_avancadas.fatores_categoricos_
+    disponiveis`) e deixa o usuario escolher 1 ou 2 por numero."""
+    from guaraci.tecnicas_avancadas import fatores_categoricos_disponiveis
+    disponiveis = fatores_categoricos_disponiveis(rotulos, metadados)
+    nomes = list(disponiveis)
+    console.print(f"  [{PA}]{'Fatores disponiveis' if is_pt else 'Available factors'}:[/{PA}]")
+    for i, nome in enumerate(nomes, 1):
+        n_niveis = len(set(disponiveis[nome].tolist()))
+        console.print(f"    ({i}) {nome} ({n_niveis} "
+                      f"{'niveis' if is_pt else 'levels'})")
+    lbl = (f"Escolha ate {max_fatores} (numeros separados por virgula)"
+           if is_pt else f"Choose up to {max_fatores} (comma-separated numbers)")
+    escolha = _ask(f"  [{PA}]{lbl}:[/{PA}] ").strip()
+    try:
+        idxs = [int(s) for s in escolha.split(",") if s.strip()]
+    except ValueError:
+        idxs = []
+    idxs = [i for i in idxs if 1 <= i <= len(nomes)][:max_fatores]
+    if not idxs:
+        console.print(f"  [{PR}]{'Nenhum fator valido escolhido' if is_pt else 'No valid factor chosen'}[/{PR}]")
+        return None
+    return {nomes[i - 1]: disponiveis[nomes[i - 1]] for i in idxs}
+
+
+def _menu_tec_asca(cfg: Config, is_pt: bool) -> None:
+    from guaraci.tecnicas_avancadas import rodar_asca
+    carregado = _tecavan_carregar_dataset(cfg, is_pt)
+    if carregado is None:
+        return
+    wn, X, rotulos, conc, mae_id, metadados = carregado
+    fatores = _tecavan_escolher_fatores(rotulos, metadados, is_pt)
+    if fatores is None:
+        _pause(); return
+    try:
+        rel = rodar_asca(X, fatores, mae_id=mae_id)
+    except ValueError as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]"); _pause(); return
+
+    console.print()
+    console.print(f"  [{PM}]{'Group-aware (mae_id)' if is_pt else 'Group-aware (mae_id)'}: "
+                  f"{'sim' if rel.group_aware else 'NAO'}[/{PM}]")
+    for nome, efeito in rel.decomposicao["efeitos"].items():
+        p_txt = ""
+        if rel.permutacao is not None:
+            p = rel.permutacao[nome]["p_value"]
+            p_txt = f", p={p:.4f}" + ("  [SIGNIFICATIVO]" if p < 0.05 else "")
+        console.print(f"  [{PW}]{nome}[/{PW}]: "
+                      f"{efeito['fracao_ss_total']*100:.1f}% "
+                      f"{'da variancia total' if is_pt else 'of total variance'}{p_txt}")
+    console.print(f"  [{PM}]ss_desbalanco: "
+                  f"{rel.decomposicao['ss_desbalanco']:.3g} "
+                  f"({'grande = fatores correlacionados, ver limite de escopo do modulo' if is_pt else 'large = correlated factors, see module scope limit'})[/{PM}]")
+    _pause()
+
+
+def _menu_tec_epo_glsw(cfg: Config, is_pt: bool) -> None:
+    from guaraci.tecnicas_avancadas import rodar_epo_glsw
+    carregado = _tecavan_carregar_dataset(cfg, is_pt)
+    if carregado is None:
+        return
+    wn, X, rotulos, conc, mae_id, metadados = carregado
+    console.print(f"  [{PM}]{'grupo_interesse = o que PRESERVAR; fator_incomodo = o que REMOVER' if is_pt else 'grupo_interesse = what to PRESERVE; fator_incomodo = what to REMOVE'}[/{PM}]")
+    console.print(f"  [{PA}]1) {'grupo_interesse' if is_pt else 'grupo_interesse'}:[/{PA}]")
+    f1 = _tecavan_escolher_fatores(rotulos, metadados, is_pt, max_fatores=1)
+    if f1 is None:
+        _pause(); return
+    console.print(f"  [{PA}]2) {'fator_incomodo' if is_pt else 'fator_incomodo'}:[/{PA}]")
+    f2 = _tecavan_escolher_fatores(rotulos, metadados, is_pt, max_fatores=1)
+    if f2 is None:
+        _pause(); return
+    (nome1, vals1), = f1.items()
+    (nome2, vals2), = f2.items()
+    if nome1 == nome2:
+        console.print(f"  [{PR}]{'Os dois fatores precisam ser diferentes' if is_pt else 'The two factors must be different'}[/{PR}]")
+        _pause(); return
+
+    metodo = _ask(f"  [{PA}]{'Metodo (1=EPO, 2=GLSW, Enter=EPO)' if is_pt else 'Method (1=EPO, 2=GLSW, Enter=EPO)'}:[/{PA}] ").strip()
+    metodo_nome = "GLSW" if metodo == "2" else "EPO"
+    try:
+        rel = rodar_epo_glsw(X, vals1, vals2, nome1, nome2, metodo=metodo_nome)
+    except ValueError as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]"); _pause(); return
+
+    console.print()
+    console.print(f"  [{PG}]✔ {rel.metodo}[/{PG}] ({rel.n_pares_diferenca} "
+                  f"{'pares de diferenca' if is_pt else 'difference pairs'})")
+    console.print(f"  [{PW}]{'Fracao de variancia total removida' if is_pt else 'Total variance fraction removed'}: "
+                  f"{rel.variancia_removida_fracao*100:.1f}%[/{PW}]")
+    console.print(f"  [{PM}]{'Diagnostico exploratorio -- NAO integrado ao pipeline de treino automatico (ver limite de escopo do modulo: nao se aplica quando o fator de perturbacao e colinear com o alvo cientifico)' if is_pt else 'Exploratory diagnostic -- NOT wired into the automatic training pipeline (see module scope limit: does not apply when the nuisance factor is collinear with the scientific target)'}[/{PM}]")
+    _pause()
+
+
+def _menu_tec_mcr_als(cfg: Config, is_pt: bool) -> None:
+    import numpy as np
+    from guaraci.tecnicas_avancadas import rodar_mcr_als
+    carregado = _tecavan_carregar_dataset(cfg, is_pt)
+    if carregado is None:
+        return
+    wn, X, rotulos, conc, mae_id, metadados = carregado
+    if np.any(X < 0):
+        console.print(f"  [{PA}]{'Aviso: X tem valores negativos -- nao-negatividade sera desligada (MCR-ALS assume concentracao/espectro >= 0)' if is_pt else 'Warning: X has negative values -- non-negativity will be off (MCR-ALS assumes concentration/spectrum >= 0)'}[/{PA}]")
+    n_comp_raw = _ask(f"  [{PA}]{'Numero de componentes (Enter=2)' if is_pt else 'Number of components (Enter=2)'}:[/{PA}] ").strip()
+    try:
+        n_comp = int(n_comp_raw) if n_comp_raw else 2
+    except ValueError:
+        console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]"); _pause(); return
+
+    usar_restricao = False
+    indice_alvo = None
+    if conc is not None and np.any(~np.isnan(conc)):
+        resp = _ask(f"  [{PA}]{'Usar restricao de correlacao com o teor/concentracao conhecido? (s/n, Enter=n)' if is_pt else 'Use correlation restriction with known content/concentration? (y/n, Enter=n)'}:[/{PA}] ").strip().lower()
+        usar_restricao = resp in ("s", "sim", "y", "yes")
+        if usar_restricao:
+            idx_raw = _ask(f"  [{PA}]{'Indice do componente-alvo (0-indexado, Enter=0)' if is_pt else 'Target component index (0-indexed, Enter=0)'}:[/{PA}] ").strip()
+            try:
+                indice_alvo = int(idx_raw) if idx_raw else 0
+            except ValueError:
+                console.print(f"  [{PR}]{'Numero invalido' if is_pt else 'Invalid number'}[/{PR}]"); _pause(); return
+
+    status_msg = "Rodando MCR-ALS..." if is_pt else "Running MCR-ALS..."
+    try:
+        with console.status(f"[{PA}]{status_msg}[/{PA}]"):
+            resultado = rodar_mcr_als(
+                np.clip(X, 0, None) if np.any(X < 0) else X, n_comp,
+                conc=conc if usar_restricao else None,
+                indice_componente_alvo=indice_alvo if usar_restricao else None,
+                nao_negativo_c=True, nao_negativo_s=True)
+    except ValueError as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]"); _pause(); return
+
+    console.print()
+    console.print(f"  [{PG}]✔ MCR-ALS[/{PG}] ({resultado.n_iter} "
+                  f"{'iteracoes' if is_pt else 'iterations'}, "
+                  f"{'convergiu' if resultado.convergiu else ('NAO convergiu' if is_pt else 'did NOT converge')})")
+    console.print(f"  [{PW}]lack-of-fit: {resultado.lof_percent:.2f}%[/{PW}]")
+    from guaraci.mcr_als import MCRALSResultadoSupervisionado
+    if isinstance(resultado, MCRALSResultadoSupervisionado):
+        console.print(f"  [{PW}]{'Correlacao componente-alvo x referencia (calibracao)' if is_pt else 'Target component x reference correlation (calibration)'}: "
+                      f"{resultado.correlacao_calibracao:.3f}[/{PW}]")
+    console.print(f"  [{PM}]{'Interpretativo -- NAO substitui PLS-R para quantificacao (ver docstring de mcr_als_com_restricao_correlacao)' if is_pt else 'Interpretive -- does NOT replace PLS-R for quantification (see mcr_als_com_restricao_correlacao docstring)'}[/{PM}]")
+    _pause()
+
+
+def _menu_tec_fusao_multibloco(cfg: Config, is_pt: bool) -> None:
+    import numpy as np
+    from guaraci.tecnicas_avancadas import rodar_fusao_multibloco
+    console.print(f"  [{PM}]{'Precisa de 2 pastas com a MESMA amostra fisica, MESMA ordem de linha' if is_pt else 'Needs 2 folders with the SAME physical sample, SAME row order'}[/{PM}]")
+    blocos: Dict[str, np.ndarray] = {}
+    y_bloco: Optional[np.ndarray] = None
+    for i in (1, 2):
+        nome = _ask(f"  [{PA}]{'Nome do bloco' if is_pt else 'Block name'} {i} "
+                    f"(ex: NIR):[/{PA}] ").strip() or f"bloco{i}"
+        modo = _ask(f"  [{PA}]{'Modo de entrada' if is_pt else 'Input mode'} "
+                    f"({nome}) (dx/csv/spc/sp/opus/rmn/hplc/gcms):[/{PA}] ").strip() or "dx"
+        pasta = _ask(f"  [{PA}]{'Pasta (ou arquivo CSV)' if is_pt else 'Folder (or CSV file)'} "
+                     f"({nome}):[/{PA}] ").strip().strip('"')
+        cfg_bloco = Config()
+        cfg_bloco.mode = modo
+        cfg_bloco.input_folder = pasta
+        cfg_bloco.csv_file = pasta
+        try:
+            with console.status(f"[{PA}]{'Carregando' if is_pt else 'Loading'} {nome}...[/{PA}]"):
+                wn_b, X_b, rot_b, conc_b, mae_b, meta_b = pq.load_data(cfg_bloco)
+        except Exception as e:  # noqa: BLE001 -- mesma disciplina de _tecavan_carregar_dataset
+            console.print(f"  [{PR}]{'Erro ao carregar' if is_pt else 'Error loading'} {nome}: {escape(str(e))}[/{PR}]")
+            _pause(); return
+        blocos[nome] = X_b
+        console.print(f"  [{PG}]✔ {nome}: {X_b.shape[0]} "
+                      f"{'amostras' if is_pt else 'samples'}, {X_b.shape[1]} "
+                      f"{'variaveis' if is_pt else 'variables'}[/{PG}]")
+        if y_bloco is None and conc_b is not None:
+            y_bloco = conc_b
+
+    if y_bloco is None:
+        console.print(f"  [{PR}]{'Nenhum dos dois blocos tem teor/concentracao (y) -- fusao multibloco aqui so suporta regressao' if is_pt else 'Neither block has content/concentration (y) -- multiblock fusion here only supports regression'}[/{PR}]")
+        _pause(); return
+
+    try:
+        resultado, fatias = rodar_fusao_multibloco(blocos, y_bloco)
+    except ValueError as e:   # BlockMismatchError e' subclasse de ValueError
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]"); _pause(); return
+
+    console.print()
+    console.print(f"  [{PG}]✔ {'Fusao multibloco' if is_pt else 'Multiblock fusion'} "
+                  f"({', '.join(fatias)})[/{PG}]")
+    console.print(f"  [{PW}]RMSEP={resultado.rmsep:.4g}  R2cal={resultado.r2cal:.3f}  "
+                  f"R2val={resultado.r2val:.3f}  n_lv={resultado.n_lv}  "
+                  f"({resultado.n_cal} cal / {resultado.n_val} val)[/{PW}]")
+    console.print(f"  [{PM}]{'PoC (Grupo 2): no par NIR+MIR do Mendeley a fusao NAO superou o melhor bloco sozinho -- compare este numero contra cada bloco treinado isoladamente antes de adotar' if is_pt else 'PoC (Group 2): on the Mendeley NIR+MIR pair, fusion did NOT beat the best single block -- compare this number against each block trained alone before adopting'}[/{PM}]")
+    _pause()
+
+
+def _menu_tecnicas_avancadas(cfg: Optional[Config] = None) -> None:
+    """[T] Tecnicas Avancadas -- ASCA, EPO/GLSW, MCR-ALS (com/sem restricao
+    de correlacao) e fusao multibloco: existiam implementadas e testadas em
+    isolamento, mas sem NENHUM caminho de execucao real em CLI/web (achado
+    da auditoria de acessibilidade, preparacao p/ o 1o usuario externo).
+    Cada tecnica roda sobre o dataset JA configurado em [2] Dados (ASCA/
+    EPO-GLSW/MCR-ALS) ou sobre 2 pastas apontadas na hora (fusao
+    multibloco, que por definicao precisa de 2 blocos). Logica real em
+    `tecnicas_avancadas.py` (testavel sem Rich) -- esta funcao so' coleta
+    entrada e formata saida, mesmo padrao de `_menu_audit`/`_menu_selecao_
+    amostras`."""
+    cfg = cfg or Config()
+    lang = _lang(); is_pt = lang == "PT"
+    _cls(); _print_header(cfg)
+
+    intro = (
+        "ASCA, EPO/GLSW, MCR-ALS e fusao multibloco -- tecnicas "
+        "exploratorias/diagnosticas, nao integradas ao pipeline de treino "
+        "automatico (ver ressalva de cada uma). ASCA/EPO-GLSW/MCR-ALS usam "
+        "o dataset configurado em [2] Dados; fusao multibloco pede 2 "
+        "pastas na hora."
+        if is_pt else
+        "ASCA, EPO/GLSW, MCR-ALS and multiblock fusion -- exploratory/"
+        "diagnostic techniques, not wired into the automatic training "
+        "pipeline (see each one's caveat). ASCA/EPO-GLSW/MCR-ALS use the "
+        "dataset configured in [2] Data; multiblock fusion asks for 2 "
+        "folders on the spot."
+    )
+    console.print(Panel(
+        Text.from_markup(f"  {intro}"),
+        title=f"[bold {PS}]{_t('t_tecnicas_avancadas')}[/bold {PS}]",
+        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+    ))
+
+    opcoes = [
+        ("1", "ASCA", _menu_tec_asca),
+        ("2", "EPO/GLSW", _menu_tec_epo_glsw),
+        ("3", "MCR-ALS", _menu_tec_mcr_als),
+        ("4", "Fusao multibloco" if is_pt else "Multiblock fusion", _menu_tec_fusao_multibloco),
+    ]
+    for k, nome, _fn in opcoes:
+        console.print(f"  [{PA}][{k}][/{PA}] {nome}")
+    console.print(f"  [{PM}][0][/{PM}] {_t('voltar')}")
+    escolha = _ask(f"  [{PA}]{'Opcao' if is_pt else 'Option'}:[/{PA}] ").strip()
+    for k, _nome, fn in opcoes:
+        if escolha == k:
+            fn(cfg, is_pt)
+            return
+
+
+# ---------------------------------------------------------------------------
 # AUDITORIA DE DELINEAMENTO — comando dedicado (Bloco 11)
 # ---------------------------------------------------------------------------
 def _menu_audit(cfg: Optional[Config] = None) -> None:
@@ -5654,6 +5925,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             _menu_audit(cfg)
         elif escolha == "K":
             _menu_selecao_amostras(cfg)
+        elif escolha == "T":
+            _menu_tecnicas_avancadas(cfg)
         elif escolha == "P":
             _menu_profiles(cfg)
         elif escolha == "G":
