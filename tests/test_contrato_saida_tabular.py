@@ -220,7 +220,7 @@ def _colunas_selecao_amostras_cli(pq, tmp_path, monkeypatch):
     df.to_csv(caminho_csv, index=False)
     caminho_saida = str(tmp_path / "saida_selecao.csv")
 
-    respostas = iter([caminho_csv, "", "1", "0.6", caminho_saida, ""])
+    respostas = iter([caminho_csv, "", "", "1", "0.6", caminho_saida, ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     guaraci_mod._menu_selecao_amostras(guaraci_mod.Config())
 

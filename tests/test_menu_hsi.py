@@ -154,7 +154,7 @@ def test_menu_hsi_roda_pipeline_generico_via_cli_sem_dataset_publico(
     cfg = guaraci_mod.Config(output_root_folder=str(tmp_path / "saida"))
     guaraci_mod._menu_hsi(cfg)
 
-    assert cfg.mode == "hsi"
+    assert cfg.mode == "dx"   # modo anterior restaurado ao sair (achado B1)
     assert cfg.hsi_dataset_folder == pasta_dataset
     assert cfg.output_folder != ""
     caminho_figura = (Path(cfg.output_folder) / "Graficos" / "hsi" /
@@ -174,9 +174,38 @@ def test_menu_hsi_roda_pipeline_completo_via_cli(monkeypatch, tmp_path):
     cfg = guaraci_mod.Config(output_root_folder=str(tmp_path))
     guaraci_mod._menu_hsi(cfg)
 
-    assert cfg.mode == "hsi"
+    assert cfg.mode == "dx"   # modo anterior restaurado ao sair (achado B1)
     assert cfg.hsi_dataset_folder == pasta_dataset
     assert cfg.output_folder != ""
     caminho_figura = (Path(cfg.output_folder) / "Graficos" / "hsi" /
                       "hsi_mapa_classificacao_amostra.png")
     assert caminho_figura.is_file()
+
+
+# ── Achado B1 (docs/AUDITORIA_UX_2026-09-24.md) ──
+
+def test_menu_hsi_sair_com_0_restaura_modo_anterior(monkeypatch):
+    """So' visitar [X] e voltar com [0] gravava mode='hsi' -- o [R] passava
+    a falhar com 'Modo de entrada desconhecido' (nao existe leitor 'hsi')."""
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "0")
+    cfg = guaraci_mod.Config(mode="csv")
+    guaraci_mod._menu_hsi(cfg)
+    assert cfg.mode == "csv"
+
+
+def test_menu_hsi_pasta_invalida_restaura_modo_anterior(monkeypatch, tmp_path):
+    respostas = iter([str(tmp_path / "nao_existe"), ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    cfg = guaraci_mod.Config(mode="dx")
+    guaraci_mod._menu_hsi(cfg)
+    assert cfg.mode == "dx"
+
+
+def test_checklist_bloqueia_modo_hsi_com_mensagem_clara():
+    """Segunda protecao: se mode='hsi' chegar ao [R] (ex.: YAML editado a
+    mao), o checklist bloqueia antes de executar() quebrar no loader."""
+    cfg = guaraci_mod.Config(mode="hsi")
+    ok, erros, checks = guaraci_mod._checklist(cfg)
+    assert not ok
+    assert "modo_entrada" in erros
+    assert any("[X]" in msg for _st, msg in checks)

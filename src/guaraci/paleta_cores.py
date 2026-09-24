@@ -84,6 +84,27 @@ def get_active_palette() -> Optional[List[str]]:
     return list(_ATIVA) if _ATIVA else None
 
 
+# Opacidade fixa dos pontos por classe (preferencia [7] > [A] da CLI).
+# `None` (padrao) = alfa automatico pela densidade de pontos
+# (`figuras.adaptive_scatter_parameters`), comportamento historico intacto.
+_ALPHA_PONTOS: Optional[float] = None
+
+# Preferencia salva -> opacidade. "medio" = automatico (None).
+ALPHA_PONTOS_PRESETS: Dict[str, Optional[float]] = {
+    "baixo": 0.9, "medio": None, "alto": 0.35}
+
+
+def set_point_alpha(valor: Optional[float]) -> None:
+    """Fixa a opacidade dos pontos das figuras; `None` volta ao automatico.
+    Valor fora de (0, 1] tambem volta ao automatico (nunca derruba figura)."""
+    global _ALPHA_PONTOS
+    _ALPHA_PONTOS = valor if valor is not None and 0.0 < valor <= 1.0 else None
+
+
+def get_point_alpha() -> Optional[float]:
+    return _ALPHA_PONTOS
+
+
 def _paleta_externa(n: int) -> Optional[List[str]]:
     """Tries to generate a max-distinctiveness palette via optional libs (glasbey,
     colorcet). Returns a list of hex colors or None if none available."""

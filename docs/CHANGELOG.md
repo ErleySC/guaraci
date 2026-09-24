@@ -5,6 +5,28 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 
 > Ordem histórica original preservada como estava no código-fonte.
 
+## Não lançado
+
+Correções da auditoria de UX de 2026-09-24 (`docs/AUDITORIA_UX_2026-09-24.md`):
+
+- **CLI `[K]` Seleção de Amostras** agora separa por amostra física: pede a
+  coluna de grupo (detecta `mae_id`/`amostra`/`grupo`/`sample_id`) e usa
+  as variantes `*_group_aware`; sem grupos suficientes, avisa. Também lê
+  CSV com `;` e vírgula decimal. (Antes, réplicas podiam ser divididas
+  entre calibração e validação.)
+- **CLI `[X]` HSI** não deixa mais o modo `hsi` gravado ao sair; o
+  checklist do `[R]` bloqueia o modo `hsi` com mensagem clara.
+- **`[?] Ajuda do campo`** passa a funcionar em Pré-processamento,
+  Validação, Métodos Avançados e Visualização; Enter vazio volta ao menu
+  em todas elas.
+- **Visualização:** transparência da grade validada (0–1; valor inválido já
+  salvo volta ao padrão); a transparência dos pontos passa a ter efeito.
+- **Perfis:** "Acessibilidade" só altera as figuras; perfis de rigor
+  desligam opções que ficariam inertes no nível atual; "Rodar agora?" tem
+  "Não" como padrão.
+- Ajuda: entradas para `perfil_tecnica` e `n_jobs_permutacao`; descrições
+  de SPA/AG/CARS/UVE começam pelo que o método é.
+
 ## v1.0.0 — 2026-09-11
 
 Primeiro release coberto de verdade pela política de SemVer (ver

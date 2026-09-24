@@ -557,7 +557,10 @@ Acessível pela tecla **`[X]`** do menu principal da CLI. Orquestrado
 por `hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a
 forma de dado (por pixel, agregação por objeto) é fundamentalmente
 diferente da matriz amostras×variáveis que os demais modes
-compartilham.
+compartilham. Por isso o modo `hsi` vale só enquanto a tela `[X]` está
+aberta: ao sair, o modo de entrada anterior volta, e `[R]` continua
+rodando os dados configurados em `[2]`. Até 2026-09-24 o modo ficava
+gravado e o `[R]` falhava depois de uma simples visita à tela.
 
 Desempenho no fixture público ainda é modesto em várias combinações
 fruta×câmera (desbalanceamento severo de classes) — números honestos
@@ -969,10 +972,19 @@ Hypothesis, `tests/test_propriedades_hypothesis.py`).
 
 **CLI** — menu principal, tecla `[K]` *Seleção de Amostras* (Bloco 10, ao
 lado do planejamento de coleta): pede um CSV com os espectros (1 amostra
-por linha), opcionalmente uma coluna de referência/teor (habilita SPXY),
-o método e a fração de calibração, e grava uma cópia do CSV com uma coluna
-extra marcando `calibracao`/`validacao` por amostra. Só separa/marca — o
-CSV original nunca é alterado.
+por linha; separador `,` ou `;` detectado sozinho — `;` implica vírgula
+decimal, como no Excel em português), opcionalmente uma coluna de
+referência/teor (habilita SPXY), a **coluna que identifica a amostra
+física** (Enter aceita a detectada: `mae_id`, `amostra`, `grupo`,
+`sample_id`...), o método e a fração de calibração, e grava uma cópia do
+CSV com uma coluna extra marcando `calibracao`/`validacao` por amostra. Só
+separa/marca — o CSV original nunca é alterado.
+
+A tela usa sempre as variantes `*_group_aware`: com a coluna de amostra
+física e pelo menos 4 amostras distintas, réplicas nunca são separadas
+entre calibração e validação. Sem essa coluna (ou com menos de 4 grupos) a
+tela **avisa** que réplicas podem ser separadas. Até 2026-09-24 a tela
+chamava as versões sem grupo (achado B3 de `docs/AUDITORIA_UX_2026-09-24.md`).
 
 ### 2.3 Planejamento de coleta (Bloco 10 — `plano_amostral.py`/`plano_coleta.py`)
 

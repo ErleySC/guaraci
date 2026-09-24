@@ -2332,6 +2332,40 @@ def _mostrar_ajuda(key: str) -> None:
 # MENUS DE CONFIGURACAO
 # ===========================================================================
 
+def _grid_alpha_valido(valor: Any, padrao: float = 0.4) -> float:
+    """Transparencia da grade dentro de (0, 1]; qualquer outra coisa (valor
+    antigo invalido ja' salvo em ~/.guaraci, texto) volta ao padrao."""
+    try:
+        v = float(valor)
+    except (TypeError, ValueError):
+        return padrao
+    return v if 0.0 < v <= 1.0 else padrao
+
+
+def _ajuda_de_campo(fields_visiveis: List[str]) -> None:
+    """Tecla [?] das telas de configuracao: pede o numero (ou nome) do
+    campo e abre a ajuda completa. Fonte unica -- antes so' `_loop_menu`
+    tratava o [?]; as telas [3]/[5]/[6]/[7] (loop proprio) mostravam
+    "[?] Ajuda do campo" no rodape mas a tecla caia em "invalido"
+    (achado B2 de docs/AUDITORIA_UX_2026-09-24.md)."""
+    r2 = _input("  Campo (N ou nome): " if _lang() == "PT"
+                else "  Field (N or name): ").strip()
+    if not r2:
+        return
+    if r2.isdigit() and 1 <= int(r2) <= len(fields_visiveis):
+        _mostrar_ajuda(fields_visiveis[int(r2) - 1])
+    elif r2 in _HELP_DB or r2 in _SPEC_BY_KEY:
+        _mostrar_ajuda(r2)
+    else:
+        found = [k for k in fields_visiveis
+                 if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
+        if found:
+            _mostrar_ajuda(found[0])
+        else:
+            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]")
+            _pause()
+
+
 def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
                extras: Optional[List[Tuple[str, str]]] = None,
                on_extra: Optional[Dict[str, Any]] = None,
@@ -2360,14 +2394,7 @@ def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
         elif raw == "G":
             _abrir_assistente(title, cfg)
         elif raw == "?":
-            r2 = _input("  Campo (N ou nome): ").strip()
-            if r2.isdigit() and 1 <= int(r2) <= len(fields_visiveis):
-                _mostrar_ajuda(fields_visiveis[int(r2) - 1])
-            elif r2 in _HELP_DB:
-                _mostrar_ajuda(r2)
-            else:
-                found = [k for k in _HELP_DB if r2.lower() in k.lower() or r2.lower() in _nome_campo(k).lower()]
-                _mostrar_ajuda(found[0]) if found else console.print(f"  [{PM}]{_t('invalido')}[/{PM}]")
+            _ajuda_de_campo(fields_visiveis)
         elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
             _editar_campo(cfg, fields_visiveis[int(raw) - 1])
             _pause()
@@ -2471,12 +2498,14 @@ def _menu_preprocessing(cfg: Config) -> None:
         _cls(); _print_header(cfg); _show_pipeline()
         _print_submenu_compact(_t("t_preproc"), _t("d_preproc"), fields, cfg)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q"):
+        if raw in ("0", "Q", ""):
             break
         elif raw == "I":
             _toggle_idioma()
         elif raw == "G":
             _abrir_assistente(_t("t_preproc"), cfg)
+        elif raw == "?":
+            _ajuda_de_campo(fields)
         elif raw.isdigit() and 1 <= int(raw) <= len(fields):
             _editar_campo(cfg, fields[int(raw) - 1])
             _pause()
@@ -2538,7 +2567,7 @@ def _menu_validation(cfg: Config) -> None:
             _t("t_validacao"), _t("d_validacao"), fields, cfg,
             campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q"):
+        if raw in ("0", "Q", ""):
             break
         elif raw == "V":
             mostrar_avancado = not mostrar_avancado
@@ -2546,6 +2575,8 @@ def _menu_validation(cfg: Config) -> None:
             _toggle_idioma()
         elif raw == "G":
             _abrir_assistente(_t("t_validacao"), cfg)
+        elif raw == "?":
+            _ajuda_de_campo(fields_visiveis)
         elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
             _editar_campo(cfg, fields_visiveis[int(raw) - 1]); _pause()
         else:
@@ -2565,12 +2596,14 @@ def _menu_advanced(cfg: Config) -> None:
         ))
         _print_submenu_compact(_t("t_avancado"), _t("d_avancado"), fields, cfg)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q"):
+        if raw in ("0", "Q", ""):
             break
         elif raw == "I":
             _toggle_idioma()
         elif raw == "G":
             _abrir_assistente(_t("t_avancado"), cfg)
+        elif raw == "?":
+            _ajuda_de_campo(fields)
         elif raw.isdigit() and 1 <= int(raw) <= len(fields):
             _editar_campo(cfg, fields[int(raw) - 1]); _pause()
         else:
@@ -2672,16 +2705,26 @@ def _menu_visualization(cfg: Config) -> None:
             ests = ["solid","dotted","dashed"]
             vcfg["grid_style"] = ests[(ests.index(gs)+1)%3] if gs in ests else "dotted"
         elif r == "4":
-            try: vcfg["grid_alpha"] = float(_input("  Valor [0.1-0.9]: "))
+            # Faixa checada ANTES de gravar: um valor fora de 0-1 ficava
+            # salvo em ~/.guaraci e toda figura das execucoes seguintes
+            # falhava com "alpha outside 0-1 range" (achado B4, 2026-09-24).
+            bruto = _input("  Valor [0.1-0.9]: ").strip().replace(",", ".")
+            try:
+                valor = float(bruto)
             except ValueError:
-                pass   # entrada nao-numerica -- mantem o valor anterior
+                valor = None
+            if valor is not None and 0.0 < valor <= 1.0:
+                vcfg["grid_alpha"] = valor
+            elif bruto:
+                console.print(f"  [err]{'Use um numero entre 0.1 e 0.9 (ex.: 0.4). Valor mantido.' if _lang() == 'PT' else 'Use a number between 0.1 and 0.9 (e.g. 0.4). Value kept.'}[/err]")
         _salvar_visual_cfg(vcfg)
 
     def _alpha():
         vcfg = _carregar_visual_cfg()
         ops = [
             ("baixo", "0.9 — Opacos" if _lang()=="PT" else "0.9 — Opaque"),
-            ("medio", "0.65 — Equilibrado (padrao)" if _lang()=="PT" else "0.65 — Balanced (default)"),
+            ("medio", "Automatico — ajusta a densidade de pontos (padrao)" if _lang()=="PT"
+                      else "Automatic — adapts to point density (default)"),
             ("alto",  "0.35 — Translucido" if _lang()=="PT" else "0.35 — Translucent"),
         ]
         t = Table(box=None, show_header=False, padding=(0, 1))
@@ -2702,9 +2745,10 @@ def _menu_visualization(cfg: Config) -> None:
         _cls(); _print_header(cfg)
         _print_submenu_compact(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt)
         raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0","Q"): break
+        if raw in ("0", "Q", ""): break
         elif raw == "I": _toggle_idioma()
         elif raw == "G": _abrir_assistente(_t("t_viz"), cfg)
+        elif raw == "?": _ajuda_de_campo(fields)
         elif raw == "P": _pal(); _pause()
         elif raw == "F": _fonte(); _pause()
         elif raw == "D": _grid(); _pause()
@@ -3570,11 +3614,21 @@ def _menu_hsi(cfg: Optional[Config] = None) -> None:
     """
     if cfg is None:
         cfg = Config()
-    # Setado JA' aqui (nao so' apos validar a pasta) -- e' o que faz
-    # _print_header/_print_status mostrarem "Tecnica: HSI" em vez do
-    # default global errado assim que a tela abre, nao so' depois de
-    # rodar o pipeline (achado do Passo 103).
+    # "hsi" vale SO' enquanto esta tela esta aberta: faz o cabecalho mostrar
+    # "Tecnica: HSI" (Passo 103), mas o modo anterior volta ao sair. Antes
+    # ficava gravado -- so' visitar [X] e voltar com [0] fazia o [R] falhar
+    # com "Modo de entrada desconhecido: 'hsi'" (nao ha' leitor 'hsi' no
+    # io_registry; HSI roda por hsi_pipeline, nao por executar()).
+    # Achado B1 de docs/AUDITORIA_UX_2026-09-24.md.
+    modo_anterior = cfg.mode
     cfg.mode = "hsi"
+    try:
+        _menu_hsi_corpo(cfg)
+    finally:
+        cfg.mode = modo_anterior
+
+
+def _menu_hsi_corpo(cfg: Config) -> None:
     lang = _lang()
     is_pt = lang == "PT"
 
@@ -3972,6 +4026,27 @@ def _refinar_plano_com_amostragem_ativa(is_pt: bool) -> None:
     console.print(f"  [{PM}]{'Ordenado por prioridade -- topo = maior impacto esperado por sessao investida.' if is_pt else 'Sorted by priority -- top = highest expected impact per invested session.'}[/{PM}]")
 
 
+# Nomes de coluna reconhecidos como "amostra fisica" na tela [K] (sugestao
+# padrao do prompt; o usuario pode digitar qualquer outra).
+_COLUNAS_GRUPO_CONHECIDAS = {"mae_id", "amostra", "amostra_fisica", "grupo",
+                             "group", "group_id", "sample", "sample_id"}
+
+
+def _ler_csv_detectando_separador(caminho: str):
+    """Le CSV com `,` ou `;`. `;` implica virgula decimal -- formato do
+    Excel em PT-BR e o mesmo que o proprio GUARACI grava em [B]. Antes a
+    tela [K] so' lia `,`: um CSV com `;` virava 1 coluna de texto e a
+    mensagem era "sem colunas numericas" (achado B11, 2026-09-24)."""
+    import pandas as _pd
+    with open(caminho, encoding="utf-8-sig", errors="replace") as fh:
+        primeira = fh.readline()
+    if primeira.count(";") > primeira.count(","):
+        return _pd.read_csv(caminho, sep=";", decimal=",", encoding="utf-8-sig")
+    if primeira.count("\t") > primeira.count(","):
+        return _pd.read_csv(caminho, sep="\t", encoding="utf-8-sig")
+    return _pd.read_csv(caminho, encoding="utf-8-sig")
+
+
 def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
     """Selecao de amostras de calibracao/validacao (Bloco 10, Passo 87):
     dado um CSV com espectros JA medidos (e opcionalmente uma coluna de
@@ -4023,12 +4098,13 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
         _pause(); return
 
     import numpy as _np
-    import pandas as _pd
     try:
-        df = _pd.read_csv(caminho_csv)
+        df = _ler_csv_detectando_separador(caminho_csv)
     except (OSError, ValueError, UnicodeDecodeError) as e:
         console.print(f"  [{PR}]{'Erro ao ler CSV' if is_pt else 'Error reading CSV'}: {escape(str(e))}[/{PR}]")
         _pause(); return
+    console.print(f"  [{PM}]{len(df)} {'linhas' if is_pt else 'rows'}, "
+                  f"{df.shape[1]} {'colunas' if is_pt else 'columns'}[/{PM}]")
 
     lbl_alvo = ("Coluna de referencia/teor (Enter = nenhuma -- so' habilita "
                 "Kennard-Stone/Duplex, nao SPXY)"
@@ -4040,7 +4116,27 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
         console.print(f"  [{PR}]{'Coluna nao encontrada' if is_pt else 'Column not found'}: {escape(col_alvo)}[/{PR}]")
         _pause(); return
 
-    colunas_x = [c for c in df.columns if c != col_alvo]
+    # Coluna de grupo (amostra fisica): sem ela, replicas T1/T2/T3 da MESMA
+    # amostra podiam cair uma na calibracao e outra na validacao -- o
+    # vazamento que o projeto existe para evitar. Antes esta tela chamava
+    # as versoes SEM grupo (achado B3, docs/AUDITORIA_UX_2026-09-24.md).
+    detectada = next((c for c in df.columns
+                      if str(c).strip().lower() in _COLUNAS_GRUPO_CONHECIDAS
+                      and c != col_alvo), "")
+    lbl_grupo = (f"Coluna que identifica a amostra fisica/replicas "
+                 f"(Enter = {detectada or 'nenhuma'})" if is_pt else
+                 f"Column identifying the physical sample/replicates "
+                 f"(Enter = {detectada or 'none'})")
+    col_grupo = _ask(f"  [{PA}]{escape(lbl_grupo)}:[/{PA}] ").strip() or detectada
+    if col_grupo and col_grupo not in df.columns:
+        console.print(f"  [{PR}]{'Coluna nao encontrada' if is_pt else 'Column not found'}: {escape(col_grupo)}[/{PR}]")
+        _pause(); return
+    grupos = df[col_grupo].astype(str).to_numpy() if col_grupo else None
+    if grupos is None or len(set(grupos)) < 4:
+        console.print(
+            f"  [{PA}]⚠ {'Sem grupos suficientes (minimo 4): replicas da mesma amostra podem ser separadas entre calibracao e validacao.' if is_pt else 'Not enough groups (minimum 4): replicates of the same sample may be split between calibration and validation.'}[/{PA}]")
+
+    colunas_x = [c for c in df.columns if c not in (col_alvo, col_grupo)]
     df_x = df[colunas_x].select_dtypes(include=[_np.number])
     if df_x.shape[1] == 0 or df_x.shape[0] < 2:
         console.print(f"  [{PR}]{'CSV sem colunas numericas suficientes (pelo menos 2 amostras, 1 variavel)' if is_pt else 'CSV without enough numeric columns (at least 2 samples, 1 variable)'}[/{PR}]")
@@ -4048,10 +4144,18 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
     X = df_x.to_numpy(dtype=float)
 
     metodos = ["Kennard-Stone", "Duplex"] + (["SPXY"] if col_alvo else [])
+    quando_usar = {
+        "Kennard-Stone": ("calibracao cobre os extremos do espectro (padrao)" if is_pt
+                          else "calibration covers the spectral extremes (default)"),
+        "Duplex": ("calibracao e validacao igualmente representativas" if is_pt
+                   else "calibration and validation equally representative"),
+        "SPXY": ("cobre espectro E faixa do teor ao mesmo tempo" if is_pt
+                 else "covers spectrum AND content range at once"),
+    }
     lbl_metodo = "Metodo" if is_pt else "Method"
     console.print(f"  [{PA}]{lbl_metodo}:[/{PA}]")
     for i, m in enumerate(metodos, 1):
-        console.print(f"    ({i}) {m}")
+        console.print(f"    ({i}) {m} [{PM}]— {quando_usar[m]}[/{PM}]")
     escolha_m = _ask("  > ").strip()
     if not escolha_m.isdigit() or not (1 <= int(escolha_m) <= len(metodos)):
         console.print(f"  [{PR}]{'Opcao invalida' if is_pt else 'Invalid option'}[/{PR}]")
@@ -4069,19 +4173,22 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
         console.print(f"  [{PR}]{'Fracao precisa estar entre 0 e 1' if is_pt else 'Fraction must be between 0 and 1'}[/{PR}]")
         _pause(); return
 
-    from guaraci.dados_io import duplex_split, kennard_stone_split, spxy_split
+    from guaraci.dados_io import (duplex_split_group_aware,
+                                  kennard_stone_split_group_aware,
+                                  spxy_split_group_aware)
     # console.status: Kennard-Stone/Duplex/SPXY sao O(n^2) em distancias --
     # sem isso a tela ficava parada sem nenhum sinal para datasets maiores
     # (mesmo padrao ja usado em _menu_prediction para o carregamento do modelo).
+    # *_group_aware com grupos=None (ou <4 grupos) cai no metodo por amostra.
     status_msg = "Calculando particao..." if is_pt else "Computing split..."
     with console.status(f"[{PA}]{status_msg}[/{PA}]"):
         if metodo == "Kennard-Stone":
-            idx_cal, idx_val = kennard_stone_split(X, frac_treino=frac_cal)
+            idx_cal, idx_val = kennard_stone_split_group_aware(X, grupos, frac_cal)
         elif metodo == "Duplex":
-            idx_cal, idx_val = duplex_split(X, frac_treino=frac_cal)
+            idx_cal, idx_val = duplex_split_group_aware(X, grupos, frac_cal)
         else:
             y = df[col_alvo].to_numpy(dtype=float)
-            idx_cal, idx_val = spxy_split(X, y, frac_treino=frac_cal)
+            idx_cal, idx_val = spxy_split_group_aware(X, y, grupos, frac_cal)
 
     df_saida = df.copy()
     col_conjunto = "conjunto" if is_pt else "set"
@@ -4407,7 +4514,6 @@ def _menu_audit(cfg: Optional[Config] = None) -> None:
     cfg = cfg or Config()
     lang = _lang()
     is_pt = lang == "PT"
-    _cls(); _print_header(cfg)
 
     intro = (
         "Roda so' a auditoria de delineamento (agrupamento, confundimento "
@@ -4420,35 +4526,36 @@ def _menu_audit(cfg: Optional[Config] = None) -> None:
         "the dataset configured in [2] Data -- without running the full "
         "classification/quantification pipeline."
     )
-    console.print(Panel(
-        Text.from_markup(f"  {intro}"),
-        title=f"[bold {PS}]{_t('t_auditoria')}[/bold {PS}]",
-        border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
-    ))
-    console.print()
-
     from guaraci.config_io import _validar_pasta_dados
-    ok, msg = _validar_pasta_dados(cfg)
-    if not ok:
-        console.print(f"  [{PR}]{escape(msg)}[/{PR}]")
-        console.print(f"  [{PM}]{'Configure a fonte de dados em' if is_pt else 'Configure the data source in'} "
-                      f"[{PA}][2] {_t('t_dados')}[/{PA}].[/{PM}]")
-        _pause(); return
-    console.print(f"  [{PM}]{msg}[/{PM}]")
 
     # Gate antes de carregar dados + rodar a auditoria (pode demorar em
-    # datasets grandes): unica forma desta tela de oferecer [G] Guaraci e
-    # [0] Voltar sem sair -- ate aqui a tela so' rodava direto, sem nenhum
-    # ponto de escape ou ajuda contextual (mesmo padrao [G]/[0] usado em
-    # _menu_hardware/_menu_prediction).
+    # datasets grandes): [G] Guaraci e [0] Voltar sem rodar. Depois do [G]
+    # a tela e' redesenhada e pergunta de novo -- antes saia da tela
+    # (achado B9, 2026-09-24; mesmo padrao de _menu_prediction/_menu_plan).
     gate_lbl = "[Enter] Rodar auditoria" if is_pt else "[Enter] Run audit"
-    raw_gate = _ask(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}"
-                     f"   [{PM}]{gate_lbl}[/{PM}]: ").strip().upper()
-    if raw_gate in ("0", "Q"):
-        return
-    if raw_gate == "G":
-        _abrir_assistente(_t("t_auditoria"), cfg)
-        return
+    while True:
+        _cls(); _print_header(cfg)
+        console.print(Panel(
+            Text.from_markup(f"  {intro}"),
+            title=f"[bold {PS}]{_t('t_auditoria')}[/bold {PS}]",
+            border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
+        ))
+        console.print()
+        ok, msg = _validar_pasta_dados(cfg)
+        if not ok:
+            console.print(f"  [{PR}]{escape(msg)}[/{PR}]")
+            console.print(f"  [{PM}]{'Configure a fonte de dados em' if is_pt else 'Configure the data source in'} "
+                          f"[{PA}][2] {_t('t_dados')}[/{PA}].[/{PM}]")
+            _pause(); return
+        console.print(f"  [{PM}]{msg}[/{PM}]")
+        raw_gate = _ask(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}"
+                         f"   [{PM}]{gate_lbl}[/{PM}]: ").strip().upper()
+        if raw_gate in ("0", "Q"):
+            return
+        if raw_gate == "G":
+            _abrir_assistente(_t("t_auditoria"), cfg)
+            continue
+        break
 
     status_msg = "Carregando dados e auditando..." if is_pt else "Loading data and auditing..."
     try:
@@ -4518,8 +4625,9 @@ def _menu_profiles(cfg: Config) -> None:
          "Monte Carlo + tudo (tese/dissertacao)" if lang=="PT" else "Monte Carlo + all (thesis)"),
         ("Benchmark Preprocessamento","~20-40 min", PS,
          "Comparar pre-processamentos" if lang=="PT" else "Compare preprocessings"),
-        ("Acessibilidade",            "~15-30 min", PM,
-         "Cores seguras p/ daltonismo" if lang=="PT" else "Colorblind-safe palette"),
+        ("Acessibilidade",            "—",          PM,
+         "Cores seguras p/ daltonismo (so' figuras)" if lang=="PT"
+         else "Colorblind-safe palette (figures only)"),
     ]
 
     def _aplicar(pname: str) -> int:
@@ -4618,14 +4726,21 @@ def _menu_profiles(cfg: Config) -> None:
             console.print(f"  [g]✓ {'Perfil' if lang=='PT' else 'Profile'} "
                           f"'{escape(pname)}' {'aplicado' if lang=='PT' else 'applied'} "
                           f"({n} {'campos' if lang=='PT' else 'fields'})[/g]")
+            # Perfis de rigor nao definem o nivel: um perfil que liga
+            # Benchmark/Monte Carlo/SHAP aplicado em Quantificacao deixava
+            # esses toggles "Sim" mas inertes. Mesma regra da edicao manual
+            # do campo nivel (achado B7, 2026-09-24).
+            ajustados = _ajustar_toggles_por_nivel(cfg)
+            if ajustados:
+                nomes = ", ".join(_nome_campo(k) for k in ajustados)
+                console.print(f"  [{PM}]{_t('ajuste_nivel', campos=nomes)}[/{PM}]")
             # "Rodar analise recomendada" (CLAUDE.md secao 6): aplicar +
-            # rodar num so' fluxo, sem precisar voltar ao menu principal e
-            # digitar R separadamente. Continua exigindo confirmacao (nunca
-            # roda sem o usuario decidir).
-            pergunta = ("  Rodar agora com essa configuracao? [S/n]: " if lang=="PT"
-                        else "  Run now with this configuration? [Y/n]: ")
+            # rodar num so' fluxo. Padrao = NAO: um Enter distraido nao pode
+            # disparar uma execucao de horas (achado B8, 2026-09-24).
+            pergunta = ("  Rodar agora com essa configuracao? [s/N]: " if lang=="PT"
+                        else "  Run now with this configuration? [y/N]: ")
             resp = _input(pergunta).strip().lower()
-            if resp in ("", "s", "y", "sim", "yes"):
+            if resp in ("s", "y", "sim", "yes"):
                 _rodar_pipeline(cfg)
             else:
                 _pause()
@@ -5058,12 +5173,20 @@ def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool],
     n_dx = _count_dx(pasta) if (pasta_ok and modo_chk == "dx") else 0
 
     n_para_estimar = n_dx
-    if modo_chk in ("csv", "sintetico", "hsi"):
+    if modo_chk == "hsi":
+        # HSI tem pipeline proprio (tela [X]); executar() nao tem leitor
+        # 'hsi' -- bloquear aqui com mensagem clara em vez de deixar o [R]
+        # falhar no meio do carregamento (achado B1, 2026-09-24).
+        checks.append((False, "Modo HSI roda pela tela [X] Imageamento Hiperespectral, nao por [R]"
+                       if lang == "PT" else
+                       "HSI mode runs from the [X] Hyperspectral Imaging screen, not from [R]"))
+        erros.append("modo_entrada")
+    elif modo_chk in ("csv", "sintetico"):
         # Achado do roteiro de teste externo (2026-09-23): este bloco so'
         # conhecia a pasta de arquivos .dx -- em modo csv um usuario novo
         # (sem a pasta padrao `dados`) via "Pasta de dados nao encontrada" e
         # a execucao era BLOQUEADA por um requisito que o modo csv nem usa.
-        # csv valida o arquivo mais abaixo; sintetico/hsi nao usam pasta_dados.
+        # csv valida o arquivo mais abaixo; sintetico nao usa pasta_dados.
         if modo_chk == "csv":
             arq_csv = str(_cfgv(cfg, "arquivo_csv", "") or "")
             if arq_csv and os.path.isfile(arq_csv):
@@ -5344,16 +5467,17 @@ def _rodar_pipeline(cfg: Config) -> None:
         if vcfg.get("grid_major", True):
             plt.rcParams["axes.grid"] = True
             plt.rcParams["grid.linestyle"] = vcfg.get("grid_style","dotted")
-            plt.rcParams["grid.alpha"] = float(vcfg.get("grid_alpha", 0.4))
+            plt.rcParams["grid.alpha"] = _grid_alpha_valido(vcfg.get("grid_alpha", 0.4))
         else:
             plt.rcParams["axes.grid"] = False
-        # `alpha_pontos` (opacidade dos pontos) NAO tem efeito hoje: a linha
-        # que havia aqui gravava `plt.rcParams["lines.alpha"]`, chave que NAO
-        # EXISTE no matplotlib (KeyError engolido pelo except abaixo -- a
-        # preferencia do menu nunca chegou a nenhuma figura). Roteia-la de
-        # verdade exige passar o alfa por cada `ax.scatter` de figuras.py
-        # (21 chamadas com alpha fixo) -- backlog registrado, achado da
-        # auditoria de confiabilidade de 2026-09-19.
+        # `alpha_pontos`: opacidade dos pontos por classe. Antes gravava
+        # `plt.rcParams["lines.alpha"]` (chave inexistente -- a preferencia
+        # nunca chegou a figura nenhuma, achado B5 de 2026-09-24). Agora
+        # passa por `figuras.adaptive_scatter_parameters`, o ponto unico
+        # dos graficos de pontos por classe; "medio" = automatico.
+        from guaraci.paleta_cores import ALPHA_PONTOS_PRESETS, set_point_alpha
+        set_point_alpha(ALPHA_PONTOS_PRESETS.get(
+            str(vcfg.get("alpha_pontos", "medio")), None))
     except Exception as _e_vis:  # noqa: BLE001 -- configuracao visual
         # cosmetica (paleta/fonte/grid); um erro aqui nunca deve impedir a
         # corrida de acontecer, so' os defaults do matplotlib ficam em uso.

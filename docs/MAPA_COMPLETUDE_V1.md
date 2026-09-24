@@ -193,7 +193,7 @@ Mutação (cosmic-ray, um módulo por vez, worktree isolado), varredura de segur
 | Checagem de tipos (`check_untyped_defs`) | **Ligado em 2026-09-19 (Passo 220)** | Eram 14 erros em 3 arquivos, corrigidos com anotações de tipo. mypy limpo em 84 arquivos (`src/guaraci`), plataformas linux e win32, `--check-untyped-defs` agora no `pyproject.toml` |
 | Suíte completa com TODOS os datasets públicos | **Pendência antes de publicar** | Com Corn e Mendeley (NIR/MIR/Raman) presentes: 1752 passed, 28 skipped, 0 failed. Os 28 skips são 10 datasets públicos não baixados nesta máquina (DeepHS Fruit ×14, Figshare NMR, Zenodo EEM/GC-IMS/HPLC, Mendeley GC-MS lavanda e fluorescência, ERIC/Eawag) mais 2 módulos opcionais de cores (`glasbey`, `colorcet`); nenhum é do MSPC. Rodar com todos exige downloads de terceiros, a autorizar |
 | Metadata órfã em `.git/worktrees` | **Resolvido em 2026-09-19 (Passo 221)** | As 9 pastas órfãs (`mut`…`mut4` e 5 de agentes, sem diretório de trabalho) foram removidas; `git worktree prune` limpo, `git fsck` sem erro. Restam só as 3 worktrees vivas de agentes em `.claude/worktrees/` e a `hotfix` em Temp, que não são minhas |
-| `Config.alpha_pontos` não tem efeito visual | **Achado, backlog** | O `plt.rcParams["lines.alpha"]` que a CLI tentava setar não existe no matplotlib (nunca funcionou); removido. Transparência real dos pontos exigiria passar `alpha=` em cada scatter |
+| `Config.alpha_pontos` não tem efeito visual | **Resolvido 2026-09-24** | Agora passa por `figuras.adaptive_scatter_parameters` (ponto único dos gráficos de pontos por classe) via `paleta_cores.set_point_alpha`; "medio" = automático pela densidade, comportamento anterior intacto. Teste: `tests/test_auditoria_ux_2026_09_24.py` |
 
 ---
 

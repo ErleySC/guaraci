@@ -32,7 +32,7 @@ from sklearn.metrics import (
 )
 
 from guaraci.paleta_cores import (
-    color, get_edge_color,
+    color, get_edge_color, get_point_alpha,
 )
 from guaraci.chemometric_stats import (
     hotelling_t2, hotelling_t2_limit, q_residuals, q_residuals_limit,
@@ -259,17 +259,22 @@ def convex_hull_contorno(ax, x, y, color, lw=1.4, alpha=0.85):
 
 def adaptive_scatter_parameters(n_total: int, n_classes: int
                                     ) -> Tuple[float, float, float]:
-    """Marker size, alpha and edge width as a function of point density."""
+    """Marker size, alpha and edge width as a function of point density.
+    Alpha is replaced by the user's fixed point opacity when one is set
+    (`paleta_cores.set_point_alpha`, CLI [7] > [A])."""
     n_pc = n_total / max(n_classes, 1)
     if n_pc < 12:
-        return 60.0, 0.92, 0.6
-    if n_pc < 40:
-        return 44.0, 0.82, 0.5
-    if n_pc < 100:
-        return 30.0, 0.65, 0.4
-    if n_pc < 250:
-        return 20.0, 0.50, 0.35
-    return 14.0, 0.40, 0.30
+        s, alpha, lw = 60.0, 0.92, 0.6
+    elif n_pc < 40:
+        s, alpha, lw = 44.0, 0.82, 0.5
+    elif n_pc < 100:
+        s, alpha, lw = 30.0, 0.65, 0.4
+    elif n_pc < 250:
+        s, alpha, lw = 20.0, 0.50, 0.35
+    else:
+        s, alpha, lw = 14.0, 0.40, 0.30
+    fixo = get_point_alpha()
+    return s, (fixo if fixo is not None else alpha), lw
 
 
 def _ticks_x_inteiros(ax, valores, limiar: int = 15, nbins: int = 10):

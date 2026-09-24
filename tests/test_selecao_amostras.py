@@ -194,6 +194,7 @@ def test_menu_selecao_amostras_cli_kennard_stone(monkeypatch, tmp_path):
     respostas = iter([
         caminho_csv,   # CSV
         "",            # coluna de referencia: nenhuma
+        "",            # coluna de grupo: nenhuma
         "1",           # metodo: Kennard-Stone
         "0.6",         # fracao de calibracao
         caminho_saida, # arquivo de saida
@@ -219,6 +220,7 @@ def test_menu_selecao_amostras_cli_spxy_com_coluna_alvo(monkeypatch, tmp_path):
     respostas = iter([
         caminho_csv,
         "teor",   # coluna de referencia -- habilita SPXY como opcao (3)
+        "",       # coluna de grupo: nenhuma
         "3",      # metodo: SPXY
         "0.7",
         caminho_saida,
@@ -248,3 +250,57 @@ def test_menu_selecao_amostras_cli_arquivo_ausente_nao_gera_saida(monkeypatch, t
     guaraci_mod._menu_selecao_amostras(guaraci_mod.Config())
 
     assert list(tmp_path.iterdir()) == []
+
+
+# ── Achados B3/B11 (docs/AUDITORIA_UX_2026-09-24.md) ──
+
+def _csv_com_replicas(caminho, n_amostras=8, n_rep=3, sep=",", decimal="."):
+    rng = np.random.default_rng(1)
+    linhas = []
+    for a in range(n_amostras):
+        base = rng.normal(size=6) * 5
+        for r in range(n_rep):
+            linhas.append({"mae_id": f"AMO{a:02d}",
+                           **{f"canal_{i}": base[i] + rng.normal(scale=0.01)
+                              for i in range(6)},
+                           "teor": float(a)})
+    df = pd.DataFrame(linhas)
+    df.to_csv(caminho, index=False, sep=sep, decimal=decimal)
+    return df
+
+
+@pytest.mark.parametrize("metodo,alvo", [("1", ""), ("2", ""), ("3", "teor")])
+def test_menu_selecao_amostras_nunca_separa_replicas(monkeypatch, tmp_path, metodo, alvo):
+    """B3: com a coluna mae_id (detectada automaticamente com Enter), as 3
+    replicas de cada amostra caem SEMPRE no mesmo conjunto."""
+    import guaraci.guaraci as guaraci_mod
+
+    caminho_csv = str(tmp_path / "replicas.csv")
+    _csv_com_replicas(caminho_csv)
+    caminho_saida = str(tmp_path / "saida.csv")
+    respostas = iter([caminho_csv, alvo, "", metodo, "0.5", caminho_saida, ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    guaraci_mod._menu_selecao_amostras(guaraci_mod.Config())
+
+    df_saida = pd.read_csv(caminho_saida)
+    conjuntos_por_amostra = df_saida.groupby("mae_id")["conjunto"].nunique()
+    assert (conjuntos_por_amostra == 1).all(), conjuntos_por_amostra
+    assert set(df_saida["conjunto"]) == {"calibracao", "validacao"}
+
+
+def test_menu_selecao_amostras_le_csv_com_ponto_e_virgula(monkeypatch, tmp_path):
+    """B11: CSV do Excel PT-BR (`;` + virgula decimal) antes virava 1
+    coluna de texto e a tela dizia 'sem colunas numericas'."""
+    import guaraci.guaraci as guaraci_mod
+
+    caminho_csv = str(tmp_path / "ptbr.csv")
+    _csv_com_replicas(caminho_csv, sep=";", decimal=",")
+    caminho_saida = str(tmp_path / "saida.csv")
+    respostas = iter([caminho_csv, "", "", "1", "0.5", caminho_saida, ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    guaraci_mod._menu_selecao_amostras(guaraci_mod.Config())
+
+    assert os.path.isfile(caminho_saida)
+    assert len(pd.read_csv(caminho_saida)) == 24

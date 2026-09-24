@@ -339,6 +339,42 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         },
         "default": 200, "range": "50-1000",
     },
+    "n_jobs_permutacao": {
+        "PT": {
+            "desc": "Processos em paralelo nos testes de permutacao/Wold. "
+                    "So' muda o tempo: o resultado e' identico com 1 ou com 8.",
+            "impacto": "ANALITICO (so' tempo) — medido: 4 processos deixam o "
+                       "pipeline completo ~2x mais rapido; acima disso o ganho cai.",
+            "exemplos": {"1": "Pouca RAM/CPU ou servidor gratuito",
+                         "4": "Computador comum (recomendado)"},
+        },
+        "EN": {
+            "desc": "Parallel processes for the permutation/Wold tests. "
+                    "Only changes time: the result is identical with 1 or 8.",
+            "impacto": "ANALYTICAL (time only) — measured: 4 processes make the "
+                       "full pipeline ~2x faster; gains fall off above that.",
+            "exemplos": {"1": "Low RAM/CPU or free-tier server",
+                         "4": "Typical computer (recommended)"},
+        },
+        "default": 1, "range": "1-64",
+    },
+    "perfil_tecnica": {
+        "PT": {
+            "desc": "Tecnica de aquisicao da imagem (so' no modo imagem): "
+                    "informa a resolucao esperada e os formatos aceitos.",
+            "impacto": "INFORMATIVO — nao muda o calculo; a garantia de "
+                       "agrupamento vem da organizacao real das pastas.",
+            "exemplos": {"(vazio)": "Nao declarado (padrao)"},
+        },
+        "EN": {
+            "desc": "Image acquisition technique (image mode only): states "
+                    "the expected resolution and accepted formats.",
+            "impacto": "INFORMATIONAL — does not change the computation; the "
+                       "grouping guarantee comes from the real folder layout.",
+            "exemplos": {"(empty)": "Not declared (default)"},
+        },
+        "default": "", "range": "ver lista de perfis de tecnica",
+    },
     "pre_processamento": {
         "PT": {
             "desc": "Pipeline de pre-processamento espectral aplicado antes da modelagem quimiometrica.",
@@ -626,8 +662,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "selecao_spa": {
         "PT": {
-            "desc": "Alem dos metodos acima, roda tambem SPA/APS (Algoritmo das "
-                    "Projecoes Sucessivas, Araujo et al. 2001) — constroi cadeias "
+            "desc": "SPA/APS — selecao de variaveis por Projecoes Sucessivas "
+                    "(Araujo et al. 2001): constroi cadeias "
                     "de variaveis com baixa colinearidade a partir de varios "
                     "pontos de partida do espectro.",
             "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
@@ -635,8 +671,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
         },
         "EN": {
-            "desc": "In addition to the methods above, also runs SPA (Successive "
-                    "Projections Algorithm, Araujo et al. 2001) — builds "
+            "desc": "SPA — variable selection by Successive Projections "
+                    "(Araujo et al. 2001): builds "
                     "low-collinearity variable chains from several spectral "
                     "starting points.",
             "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several CV "
@@ -647,16 +683,16 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "selecao_ag": {
         "PT": {
-            "desc": "Alem dos metodos acima, roda tambem AG (Algoritmo Genetico, "
-                    "GA-PLS) — populacao de subconjuntos de variaveis evoluida "
+            "desc": "AG — selecao de variaveis por Algoritmo Genetico "
+                    "(GA-PLS): populacao de subconjuntos de variaveis evoluida "
                     "por selecao/crossover/mutacao, fitness = acuracia via CV.",
             "impacto": "ANALITICO — o mais lento dos metodos de selecao "
                        "(populacao x geracoes avaliacoes de CV).",
             "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
         },
         "EN": {
-            "desc": "In addition to the methods above, also runs GA (Genetic "
-                    "Algorithm, GA-PLS) — a population of variable subsets "
+            "desc": "GA — variable selection by Genetic Algorithm "
+                    "(GA-PLS): a population of variable subsets "
                     "evolved via selection/crossover/mutation, fitness = CV "
                     "accuracy.",
             "impacto": "ANALYTICAL — the slowest selection method (population x "
@@ -667,8 +703,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "selecao_cars": {
         "PT": {
-            "desc": "Alem dos metodos acima, roda tambem CARS (Competitive "
-                    "Adaptive Reweighted Sampling, Li et al. 2009) — amostragem "
+            "desc": "CARS — selecao de variaveis por amostragem adaptativa "
+                    "(Competitive Adaptive Reweighted Sampling, Li et al. 2009): amostragem "
                     "Monte Carlo + funcao exponencial decrescente elimina "
                     "variaveis pouco informativas ao longo de varias iteracoes.",
             "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
@@ -676,9 +712,9 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
         },
         "EN": {
-            "desc": "In addition to the methods above, also runs CARS "
-                    "(Competitive Adaptive Reweighted Sampling, Li et al. 2009) "
-                    "— Monte Carlo sampling + exponentially decreasing function "
+            "desc": "CARS — variable selection by adaptive sampling "
+                    "(Competitive Adaptive Reweighted Sampling, Li et al. 2009): "
+                    "Monte Carlo sampling + exponentially decreasing function "
                     "eliminates uninformative variables over several iterations.",
             "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several CV "
                        "evaluations per iteration).",
@@ -688,8 +724,8 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
     },
     "selecao_uve": {
         "PT": {
-            "desc": "Alem dos metodos acima, roda tambem UVE (Uninformative "
-                    "Variable Elimination, Centner et al. 1996) — compara a "
+            "desc": "UVE — elimina variaveis sem informacao "
+                    "(Uninformative Variable Elimination, Centner et al. 1996): compara a "
                     "estabilidade do coeficiente PLS de cada variavel real "
                     "contra variaveis de ruido artificial.",
             "impacto": "ANALITICO — mais lento que iPLS/VIP/SR/sPLS-DA (varias "
@@ -697,9 +733,9 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
             "exemplos": {"false": "Exploracao rapida (recomendado)", "true": "Publicacao"},
         },
         "EN": {
-            "desc": "In addition to the methods above, also runs UVE "
-                    "(Uninformative Variable Elimination, Centner et al. 1996) "
-                    "— compares each real variable's PLS coefficient stability "
+            "desc": "UVE — removes uninformative variables "
+                    "(Uninformative Variable Elimination, Centner et al. 1996): "
+                    "compares each real variable's PLS coefficient stability "
                     "against artificial noise variables.",
             "impacto": "ANALYTICAL — slower than iPLS/VIP/SR/sPLS-DA (several "
                        "PLS evaluations per Monte Carlo repetition).",
@@ -1172,12 +1208,12 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
         "PT": {
             "desc": "Transparencia dos pontos nos graficos de dispersao (scatter).",
             "impacto": "VISUAL — alfa alto revela densidade de pontos sobrepostos.",
-            "exemplos": {"baixo": "0.9 — pontos opacos", "medio": "0.65 — equilibrado", "alto": "0.35 — translucido"},
+            "exemplos": {"baixo": "0.9 — pontos opacos", "medio": "automatico pela densidade (padrao)", "alto": "0.35 — translucido"},
         },
         "EN": {
             "desc": "Transparency of points in scatter plots.",
             "impacto": "VISUAL — high alpha reveals density of overlapping points.",
-            "exemplos": {"baixo": "0.9 — opaque points", "medio": "0.65 — balanced", "alto": "0.35 — translucent"},
+            "exemplos": {"baixo": "0.9 — opaque points", "medio": "automatic by density (default)", "alto": "0.35 — translucent"},
         },
         "default": "medio", "range": "baixo | medio | alto",
     },
@@ -1308,12 +1344,10 @@ PROFILES: Dict[str, Dict[str, Any]] = {
         "dpi": 300,
     },
     # 7 — acessibilidade para daltonismo (único com daltonismo_safe)
+    # So' campos VISUAIS: antes sobrescrevia 11 campos de analise (LVs,
+    # DD-SIMCA, OPLS-DA...) -- quem estava em Quantificar e so' queria
+    # cores seguras perdia a configuracao sem aviso (achado B6, 2026-09-24).
     "Acessibilidade": {
-        "max_lvs": 30, "n_permutacoes": 100,
-        "ddsimca": True, "modo_ddsimca": "puros", "opls_da": True,
-        "benchmark": False, "monte_carlo": False, "shap_benchmark": False,
-        "selecao_variaveis_etapa4": True, "comparar_pre_processamentos": False,
-        "dpi": 300, "figuras_mostrar_elipses": True,
         "figuras_mostrar_marcadores": True,
         "_paleta": "daltonismo_safe",
     },
@@ -1409,14 +1443,12 @@ PROFILE_DESC: Dict[str, Dict[str, str]] = {
                "    Estimated time: ~20-40 min."),
     },
     "Acessibilidade": {
-        "PT": ("Foco: figuras acessiveis para daltonismo. Analise padrao.\n"
+        "PT": ("So' muda as figuras; a configuracao da analise fica como esta.\n"
                "    Paleta Wong 2011 (daltonismo_safe): 8 cores para deuteranopia/protanopia.\n"
-               "    Marcadores de forma por classe alem da cor. DPI 300.\n"
-               "    Tempo estimado: ~15-30 min."),
-        "EN": ("Focus: accessible figures for color blindness. Standard analysis.\n"
+               "    Marcadores de forma por classe alem da cor."),
+        "EN": ("Only changes the figures; the analysis settings stay as they are.\n"
                "    Wong 2011 palette (colorblind_safe): 8 colors for deuteranopia/protanopia.\n"
-               "    Shape markers per class in addition to color. DPI 300.\n"
-               "    Estimated time: ~15-30 min."),
+               "    Shape markers per class in addition to color."),
     },
 }
 
@@ -1458,8 +1490,8 @@ PROFILE_KEY_SUMMARY: Dict[str, Dict[str, str]] = {
         "EN": "compare_pipelines=ON | LVs=30 | perm=100 | OPLS=OFF | DD-SIMCA=OFF",
     },
     "Acessibilidade": {
-        "PT": "LVs=30 | perm=100 | OPLS=ON | DD-SIMCA=ON | marcadores=ON | paleta=daltonismo_safe",
-        "EN": "LVs=30 | perm=100 | OPLS=ON | DD-SIMCA=ON | markers=ON | palette=colorblind_safe",
+        "PT": "marcadores=ON | paleta=daltonismo_safe (analise inalterada)",
+        "EN": "markers=ON | palette=colorblind_safe (analysis unchanged)",
     },
 }
 
