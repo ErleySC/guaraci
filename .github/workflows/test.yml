@@ -334,6 +334,28 @@ jobs:
           GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
         run: pytest tests/test_validacao_publica_hplc_azeite.py -v
 
+  # ── Oraculos externos em dados reais (sacurine, Thevenot et al. 2015) ─────
+  # PLS-DA/VIP/SR/OPLS-DA do GUARACI x saidas REAIS de mdatools/ropls
+  # gravadas em tests/fixtures/oraculo_dados_reais/. Dataset de ~250 KB
+  # baixado do mirror bioc/ropls num commit fixo (SHA256 pinado).
+  oraculo-dados-reais:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: pip install -e . && pip install pytest
+      - name: Baixar dataset publico (sacurine, ropls)
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: python scripts/download_datasets/baixar_ropls_sacurine.py
+      - name: Rodar contra-prova
+        env:
+          GUARACI_DATASETS_DIR: ${{ runner.temp }}/datasets_publicos
+        run: pytest tests/test_oraculo_dados_reais.py -v -rs
+
   # ── Validacao contra dataset PUBLICO Zenodo (GC-IMS, urina) ───────────────
   # Passo 158/159 (busca ampliada por IMS ja' pre-processado). So' a tabela
   # de picos e' baixada via HTTP Range (~150 KB) -- os 44 arquivos .mea

@@ -20,6 +20,11 @@ oráculos R mdatools 0.16.0 e ropls 1.45.0 em
   centrado, nada muda.
 - **OPLS-DA:** testes contra o ropls marcados `xfail(strict=True)` até a
   correção do `OPLSDAWrapper`.
+- **Dados reais publicados** (`tests/test_oraculo_dados_reais.py`): mesma
+  contra-prova em sacurine (Thévenot et al. 2015, LC-HRMS de urina, baixado
+  sob demanda com SHA256 pinado; job de CI `oraculo-dados-reais`) e iris
+  (Fisher 1936, embutido no scikit-learn). Só as saídas dos modelos de
+  referência são versionadas, não os dados.
 
 Correções da auditoria de UX de 2026-09-24 (`docs/AUDITORIA_UX_2026-09-24.md`):
 
