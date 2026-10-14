@@ -1141,7 +1141,7 @@ def diagnose_spectral_range(X: np.ndarray, wavenumbers: np.ndarray,
     mascara_util = snr >= limiar_snr
 
     # Amplitude do sinal (para distinguir "morta" de "ruidosa")
-    amp_rel = sd_sinal / max(float(sd_sinal.max()), 1e-12)
+    amp_rel = sd_sinal / max(float(np.max(sd_sinal)), 1e-12)
 
     regioes: List[Tuple[float, float, str]] = []
     ruim = ~mascara_util

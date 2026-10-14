@@ -470,8 +470,8 @@ def _check_balance(rotulos: np.ndarray, ratio_alvo: float = 5.0
                               ) -> Dict[str, object]:
     """Detects severe class imbalance."""
     cls_unicas, counts = np.unique(rotulos, return_counts=True)
-    n_max = int(counts.max())
-    n_min = int(counts.min())
+    n_max = int(np.max(counts))
+    n_min = int(np.min(counts))
     ratio = n_max / max(n_min, 1)
     rel: Dict[str, object] = {
         "imbalance_ratio": float(ratio),
@@ -1446,7 +1446,7 @@ def _construir_cv_interno(y_int_sub: np.ndarray, grupos_sub: Optional[np.ndarray
     hiperparametro dentro de 1 fold ja' interno, e multiplicariam ainda mais
     o custo computacional, ja' ~4x maior so' com 1 passada)."""
     classes_sub, contagem_sub = np.unique(y_int_sub, return_counts=True)
-    n_splits = min(n_splits_alvo, int(contagem_sub.min()))
+    n_splits = min(n_splits_alvo, int(np.min(contagem_sub)))
     if usar_grupos and grupos_sub is not None:
         n_grupos_por_classe = [int(len(np.unique(grupos_sub[y_int_sub == c])))
                                 for c in classes_sub]
@@ -1932,7 +1932,7 @@ def executar(cfg: Config):
                 min_disponivel = min(
                     int(len(np.unique(grupos_tr[y_tr == c]))) for c in classes_tr)
             else:
-                min_disponivel = int(np.unique(y_tr, return_counts=True)[1].min())
+                min_disponivel = int(np.min(np.unique(y_tr, return_counts=True)[1]))
             if min_disponivel < 2:
                 # Treino do fold externo pequeno demais p/ sustentar uma CV
                 # interna de verdade (< 2 grupos/amostras da classe minoritaria
