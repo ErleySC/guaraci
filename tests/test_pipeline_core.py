@@ -207,7 +207,10 @@ def test_selectivity_ratio_nao_negativo(pq):
 
 def _sr_referencia_univariado(modelo, X):
     """Formula publicada (Rajalahti et al. 2009, Sec. 2.2) para y de 1
-    coluna — usada como oráculo independente nos testes abaixo."""
+    coluna — usada como oráculo independente nos testes abaixo. X centrado
+    por coluna, como no `selratio` do mdatools (o b do PLS se aplica a X
+    centrado; ver tests/test_oraculo_referencias.py)."""
+    X = X - X.mean(axis=0)
     b = np.asarray(modelo.coef_, dtype=float).reshape(-1)
     w_tp = b / np.linalg.norm(b)
     t_tp = X @ w_tp

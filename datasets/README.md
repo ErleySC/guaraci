@@ -21,6 +21,7 @@ revisão, jamais foi commitado (ver `docs/VALIDACAO_PUBLICA.md` §8).
 | Mendeley `ctgg7k4m5g` (óleos comestíveis, Ottaway et al. 2021) | CC BY 4.0 | `scripts/download_datasets/baixar_mendeley_oleos.py` | `$GUARACI_DATASETS_DIR/mendeley_ctgg7k4m5g/` |
 | DeepHS Fruit / Kaki / câmera VIS (Varga, Makowski & Zell, IJCNN 2021) | não declarada formalmente (SPDX) no repositório — ver `docs/VALIDACAO_PUBLICA.md` §4, mesmo tratamento já dado ao Corn | `scripts/download_datasets/baixar_deephs_kaki.py` | `$GUARACI_DATASETS_DIR/deephs_kaki_vis/` |
 | DeepHS Fruit / Avocado+Kiwi+Mango+Papaya, todas as câmeras disponíveis (Passo 104) | mesma do Kaki acima | `scripts/download_datasets/baixar_deephs_fruit_todas.py` | `$GUARACI_DATASETS_DIR/deephs_fruit_all/` |
+| sacurine (Thévenot et al. 2015, J. Proteome Res.; exemplo do ropls) | CeCILL (pacote ropls) | `scripts/download_datasets/baixar_ropls_sacurine.py` | `$GUARACI_DATASETS_DIR/ropls_sacurine/` |
 
 Detalhes de cada dataset (n, técnica, referência, métricas obtidas) em
 `docs/VALIDACAO_PUBLICA.md`.

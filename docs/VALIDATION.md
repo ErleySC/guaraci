@@ -62,14 +62,54 @@ Consequência prática, já corrigida nesta revisão (ver `CHANGELOG`/commits):
 a sensibilidade do DD-SIMCA é estimada por **leave-one-group-out (LOGO)**
 em vez de re-substituição — ver a seção "Limitações" abaixo.
 
+## Oráculos externos (implementações de referência em R)
+
+Além das fórmulas fechadas da tabela acima, as contas centrais são
+comparadas **número a número** com pacotes de referência escritos por
+terceiros, rodados em R 4.3.3. Os scripts geradores (`gen_oracle.R`) e as
+saídas ficam em `tests/fixtures/oraculo_*/`. Tolerância relativa 1e-8 onde
+o algoritmo é o mesmo; 1e-4 onde os dois lados iteram (NIPALS).
+
+| Método | Referência externa | Dados | Teste |
+|---|---|---|---|
+| PLS-DA binário e multiclasse, VIP, SR | mdatools 0.16.0 (SIMPLS), ropls 1.45.0 (NIPALS) | sintéticos; sacurine (Thévenot et al. 2015); iris (Fisher 1936) | `test_oraculo_referencias.py`, `test_oraculo_dados_reais.py` |
+| OPLS / OPLS-DA (escores, predição) | ropls 1.45.0 | sintéticos; sacurine | idem |
+| DD-SIMCA (distâncias h e q, momentos, f, decisão) | mdatools 0.16.0 `ddsimca` | sintéticos; iris | idem |
+| SNV, MSC, EMSC (grau 2), PQN, Savitzky-Golay (derivadas 0–2, bordas incluídas) | mdatools `prep.norm`, `prep.emsc`, `prep.savgol` | espectros sintéticos | `test_oraculo_prep_limites.py` |
+| Limite T² de Hotelling | mdatools `hotelling.crit` | grade n × k × α | idem |
+| Limite Q (χ² por momentos) | `stats::qchisq` | Q sintético | idem |
+| IC bootstrap BCa | `boot` (Canty & Ripley) `bca.ci`, com as mesmas réplicas | AUC e acurácia | idem |
+
+Diferenças de **convenção** encontradas (não são bugs; os testes travam o
+fator exato):
+
+- **SNV:** o Guaraci divide pelo desvio com ddof=0; o mdatools usa ddof=1.
+  A diferença é o fator constante √((p−1)/p).
+- **PQN:** com a mesma referência, o mdatools normaliza por área antes, o
+  que dá o fator constante Σ|ref|. A referência padrão também difere: o
+  Guaraci usa o espectro mediano do treino, o mdatools a média dos
+  espectros normalizados por área.
+- **T²:** o Guaraci usa o limite de Fase II de Tracy, Young & Mason (1992);
+  o mdatools usa k(n−1)/(n−k)·F. A razão entre os dois é exatamente (n+1)/n.
+- **VIP:** o Guaraci e o ropls usam os pesos W (Wold); o mdatools usa os
+  pesos R = W(P'W)⁻¹ do SIMPLS. Os VIPs diferem por definição.
+- **DD-SIMCA:** o Guaraci calibra q₀/N_q com Q leave-one-out; o mdatools
+  usa o Q in-sample. As distâncias batem; os limites diferem por desenho.
+- **BCa:** z₀, a aceleração e os alfas ajustados batem com o `boot`. O
+  quantil final usa interpolação linear (`np.percentile`), e não a
+  `norm.inter` do `boot`. A diferença fica entre estatísticas de ordem
+  vizinhas.
+
+**Bug encontrado por esta comparação:** o SR (`compute_selectivity_ratio`)
+era calculado sobre X não centrado. O defeito foi corrigido em 2026-10-14.
+
 ## O que NÃO está validado aqui (limitações honestas)
 
-- **Sem comparação contra um pacote de referência de DD-SIMCA.** A
-  implementação canônica de Pomerantsev & Rodionova é um *toolbox* MATLAB
-  proprietário, sem equivalente open-source amplamente disponível para
-  *diff* numérico. A validação aqui é **contra as fórmulas fechadas** que
-  definem o método (Tracy-Young-Mason para T², χ² de Jackson-Mudholkar
-  para Q-resíduos) — não uma comparação pacote-a-pacote.
+- **DD-SIMCA comparado só com o mdatools.** A comparação cobre as
+  distâncias, os momentos e a decisão (ver "Oráculos externos"). O
+  *toolbox* MATLAB de Pomerantsev & Rodionova é proprietário e não entrou
+  na comparação. Os limites por eixo continuam validados contra as
+  fórmulas fechadas (Tracy-Young-Mason para T² e χ² por momentos para Q).
 - **Sensibilidade DD-SIMCA depende dos dados disponíveis.** Com um único
   grupo de réplica pura por classe (`mae_id`), a sensibilidade **não é
   validável por LOGO** (retorna `n/a`, nunca um número inflado por

@@ -7,6 +7,32 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 
 ## Não lançado
 
+Contra-prova contra software externo (`tests/test_oraculo_referencias.py`,
+oráculos R mdatools 0.16.0 e ropls 1.45.0 em
+`tests/fixtures/oraculo_referencias/`):
+
+- **PLS-DA, VIP e DD-SIMCA** batem com as referências (1e-8 nas contas
+  fechadas). O VIP segue Wold/ropls (pesos W); o `vipscores` do mdatools
+  usa pesos SIMPLS e dá outro número, diferença documentada no teste.
+- **Selectivity Ratio:** `compute_selectivity_ratio` agora centra X por
+  coluna. Com X não centrado (preset `custom` sem `apply_mc`, subconjunto
+  de treino na seleção de variáveis) o SR divergia do mdatools. Com X já
+  centrado, nada muda.
+- **OPLS-DA:** escores, `transform` e `predict` batem com o ropls depois da
+  correção abaixo.
+- **Dados reais publicados** (`tests/test_oraculo_dados_reais.py`): mesma
+  contra-prova em sacurine (Thévenot et al. 2015, LC-HRMS de urina, baixado
+  sob demanda com SHA256 pinado; job de CI `oraculo-dados-reais`) e iris
+  (Fisher 1936, embutido no scikit-learn). Só as saídas dos modelos de
+  referência são versionadas, não os dados.
+- **Pré-processamento, limites e BCa** (`tests/test_oraculo_prep_limites.py`):
+  SNV, MSC, EMSC, PQN e Savitzky-Golay (derivadas 0 a 2, bordas incluídas)
+  batem com o mdatools. O limite T² bate com `hotelling.crit` e o limite Q
+  com `qchisq`. O IC BCa bate com o pacote `boot` quando alimentado com as
+  mesmas réplicas. Diferenças de convenção (ddof do SNV, fator de área do
+  PQN, Fase II do T²) estão travadas nos testes e descritas em
+  `docs/VALIDATION.md`. Nenhum bug novo apareceu.
+
 Correção de método:
 
 - **OPLS-DA** (`OPLSDAWrapper`) agora segue Trygg & Wold (2002) sem o passo
