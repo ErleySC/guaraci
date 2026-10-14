@@ -775,7 +775,7 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                     "-- so' usada quando modo_entrada='hsi'. Ver "
                     "scripts/download_datasets/baixar_deephs_kaki.py para obter um dataset.",
             "impacto": "ANALITICO — define os dados de entrada do pipeline HSI.",
-            "exemplos": {"": "Nao configurado (mode hsi pede a pasta na tela [X])",
+            "exemplos": {"": "Nao configurado (mode hsi pede a pasta na tela Imageamento hiperespectral)",
                          r"C:\datasets\deephs_kaki_vis": "Pasta baixada pelo script"},
         },
         "EN": {
@@ -783,7 +783,7 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                     "only used when modo_entrada='hsi'. See "
                     "scripts/download_datasets/baixar_deephs_kaki.py to obtain a dataset.",
             "impacto": "ANALYTICAL — defines the HSI pipeline input data.",
-            "exemplos": {"": "Not configured (mode hsi asks for the folder in screen [X])",
+            "exemplos": {"": "Not configured (mode hsi asks for the folder in the Hyperspectral imaging screen)",
                          r"C:\datasets\deephs_kaki_vis": "Folder downloaded by the script"},
         },
         "default": "", "range": "Valid system path (or empty)",
@@ -1236,7 +1236,7 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                 "Loading arrows": "Top-8 variables with highest PC contribution",
             },
         },
-        "default": "N/A", "range": "menu [7] > [B]",
+        "default": "N/A", "range": "gerada em toda execucao ([R])",
     },
     "wavelength_importance": {
         "PT": {
@@ -1255,7 +1255,7 @@ HELP_DB: Dict[str, Dict[str, Any]] = {
                 "Top-10 regions": "Marked in red on the figure",
             },
         },
-        "default": "N/A", "range": "menu [7] > [V]",
+        "default": "N/A", "range": "gerada em toda execucao ([R])",
     },
 }
 

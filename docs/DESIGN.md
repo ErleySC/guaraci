@@ -231,6 +231,11 @@ dos tokens do tema **ativo**, e nenhum `!important`). O menu da **CLI** (18
 telas em 6 grupos, seção 4 acima) não mudou. Ver `docs/MANUAL.md` §6 e
 `docs/PROGRESSO.md` Passos 195-199.
 
+**Atualização 2026-10-14**: o menu da CLI descrito nesta seção (18 telas,
+todas as teclas na tela inicial) foi substituído pelo guia de design v2 —
+ver seção 7 no fim deste documento. Os atalhos de letra antigos continuam
+funcionando no menu principal, sem aparecer, como esta seção prometia.
+
 ---
 
 # GUARACI — Central de perfis (Agente 5B)
@@ -488,3 +493,62 @@ lógica nova para escrever — é *wiring* de algo que já existe.
 > extrapolação — `MatrixProfile.outside_working_range` existe e é usado
 > em `check_validation_use_range` (tempo de calibração), mas nunca é
 > chamado em `predict_samples`/`predict_blind` (tempo de predição).
+
+---
+
+# GUARACI — Guia de design v2 da CLI (implementado 2026-10-14)
+
+Pedido do Erley: a CLI tinha informação demais no primeiro contato
+(cabeçalho em moldura dupla, painel de status com hardware, 23 teclas
+misturando números e letras, caixa de execução com medidor de RAM). O
+rascunho dele foi conferido contra o código antes de implementar; as
+correções e as três decisões tomadas por padrão estão no próprio guia
+(entregue fora do repositório, `guia_design_cli_v2`).
+
+## 7.1 Onde está
+
+- **`src/guaraci/cli_nav.py`** — dado puro, sem Rich: teclas globais,
+  `interpretar()` (o que uma entrada significa num prompt de menu),
+  rodapé e linha de ações, a árvore de menus (`MENU`), atalhos legados e
+  a ajuda curta de cada tela (`AJUDA_TELAS`: o que faz / quando usar /
+  depois).
+- **`guaraci.py`** — desenha a partir dali: `_print_header` (uma linha +
+  régua, com trilha), `_print_status` (uma linha + próximo passo),
+  `_print_rodape`, `_tecla_global`, `_gate` (primeiro prompt das telas-
+  assistente), `_menu_grupo`, `_abrir_tela` (despacho único) e
+  `_loop_menu` (molde de toda tela de configuração).
+- **`tests/test_cli_nav.py`** — regras do guia como teste.
+
+## 7.2 Regras
+
+1. Números para itens e para ações locais (depois dos campos). Letras só
+   para as globais: `?` `G` `I` `V` `Q` `R` `M`.
+2. Teclas globais valem só em prompts de menu. Em prompts de valor, o que
+   se digita é valor (uma classe chamada `G` não abre o assistente). Nas
+   telas-assistente, o primeiro prompt aceita uma tecla global **sozinha**.
+3. O rodapé é gerado (`_print_rodape`), nunca escrito à mão — o teste
+   `test_nenhuma_tela_escreve_rodape_a_mao` barra a volta do padrão antigo.
+4. Avançados aparecem depois dos básicos, com `+`; o número de um item
+   básico não muda entre os modos. `M` vale para a sessão inteira e a
+   linha de ações mostra quantos itens estão ocultos.
+5. HSI aparece mesmo no Básico quando a técnica é HSI (tipo de dado, não
+   nível de experiência). A auditoria de delineamento é Básico.
+6. Nenhum texto cita tecla literal ("vá em [2]"): usa `nav.caminho()`.
+7. `?` = ajuda da tela; `?N` = ajuda do campo N. `G` abre o assistente
+   já no assunto da tela.
+
+## 7.3 Colisões resolvidas
+
+`V` revelava avançados (agora é Voltar; avançados = `M`). `M` importava
+CSV na Codificação DX, `R` abria Referências em Sobre e rodava extras do
+HSI, `?` limpava o nome da execução (agora `-`): todos viraram números ou
+outra tecla. Visualização (`P/F/D/A`), Perfis (`S/L`) e Sobre
+(`D/A/C/R`) passaram a números.
+
+## 7.4 Fora desta rodada
+
+- Descrições curtas próprias por campo (46 de 49 ainda aparecem cortadas
+  com "…" na lista; o texto completo continua no `?N`).
+- Tecla única sem Enter (exigiria trocar `input()` por uma biblioteca de
+  TUI, como Textual).
+
