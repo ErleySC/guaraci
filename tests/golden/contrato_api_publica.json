@@ -863,6 +863,7 @@
         "init": "(self, n_ortho: 'int' = 1)",
         "metodos_publicos": [
           "fit",
+          "predict",
           "transform"
         ]
       },
