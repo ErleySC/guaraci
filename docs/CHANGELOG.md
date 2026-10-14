@@ -7,6 +7,16 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 
 ## Não lançado
 
+Correção de método:
+
+- **OPLS-DA** (`OPLSDAWrapper`) agora segue Trygg & Wold (2002) sem o passo
+  de Gram-Schmidt que ortogonalizava `t_orth` contra o `t` intermediário do
+  PLS1 (não contra o `t_pred` final). Antes, `t_orth` não era ortogonal a
+  y, `transform(X_treino)` divergia dos escores do `fit` e as predições não
+  batiam com PLS(k+1). **Muda números:** os escores do gráfico OPLS e do
+  S-plot. X passa a ser centrado no `fit` (`x_mean_`) e há um `predict()`
+  novo. Testes: `test_oplsda_*` em `tests/test_classificadores.py`.
+
 Correções da auditoria de UX de 2026-09-24 (`docs/AUDITORIA_UX_2026-09-24.md`):
 
 - **CLI `[K]` Seleção de Amostras** agora separa por amostra física: pede a
