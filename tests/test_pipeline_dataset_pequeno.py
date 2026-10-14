@@ -44,3 +44,42 @@ def test_max_lvs_default_nao_estoura_em_dataset_pequeno(tmp_path):
         selecao_lv_cv_aninhada=False)
     assert cfg.max_lvs == 40          # o default e' o que quebrava
     executar(cfg)                      # nao deve levantar
+
+
+def test_etapa_opcional_que_falha_aparece_no_resumo_final(tmp_path, capsys,
+                                                           monkeypatch):
+    """Antes, uma etapa opcional que levantava excecao (ex.: OPLS-DA) virava
+    so' um "[ERRO]" em nivel INFO no meio do log e a corrida terminava com
+    "Pipeline concluido." -- o grafico simplesmente faltava sem aviso no
+    fim. Agora o resumo final lista a etapa e nao diz "concluido" sem
+    ressalva."""
+    import guaraci.pipeline as pq
+
+    class _OPLSQuebrado:
+        def __init__(self, *a, **k):
+            pass
+
+        def fit(self, *a, **k):
+            raise RuntimeError("falha simulada")
+
+    monkeypatch.setattr(pq, "OPLSDAWrapper", _OPLSQuebrado)
+    csv = tmp_path / "pequeno.csv"
+    _csv_pequeno(csv)
+    cfg = Config(
+        mode="csv", csv_file=str(csv), class_column="classe",
+        wn_min=4000.0, wn_max=9000.0,
+        output_root_folder=str(tmp_path / "saida"),
+        n_splits_cv=5, n_repeats_cv=1, n_permutations=3,
+        n_permutations_wold=3, n_bootstrap_vip=2, n_bootstrap_bca=5,
+        n_monte_carlo=2, run_benchmark=False, run_monte_carlo=False,
+        run_shap=False, run_wold=False, run_cv_anova=False, run_opls=True,
+        executar_etapa4=False, show_plots=False, max_lvs=4,
+        selecao_lv_cv_aninhada=False)
+    executar(cfg)
+
+    saida = capsys.readouterr().out
+    assert "ETAPA(S) OPCIONAL(IS) QUE FALHARAM" in saida
+    assert "OPLS-DA / S-Plot: RuntimeError: falha simulada" in saida
+    assert "Pipeline concluido." not in saida
+    assert pq.obter_falhas_etapas() == [
+        "OPLS-DA / S-Plot: RuntimeError: falha simulada"]

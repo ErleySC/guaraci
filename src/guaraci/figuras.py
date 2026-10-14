@@ -35,7 +35,7 @@ from guaraci.paleta_cores import (
     color, get_edge_color, get_point_alpha,
 )
 from guaraci.chemometric_stats import (
-    hotelling_t2, hotelling_t2_limit, q_residuals, q_residuals_limit,
+    hotelling_t2, hotelling_t2_limit_phase1, q_residuals, q_residuals_limit,
 )
 from guaraci.config import NOME_GRAFICOS
 
@@ -621,7 +621,9 @@ def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
     n = X_processed.shape[0]
     T2 = hotelling_t2(T_scores[:, :n_lv])
     Q  = q_residuals(X_processed, T_scores[:, :n_lv], P_loadings[:n_lv])
-    t2_lim = hotelling_t2_limit(n, n_lv)
+    # Amostras de TREINO -> limite de Fase I (Beta), nao o de Fase II (F),
+    # que e' para amostras novas (Tracy, Young & Mason 1992).
+    t2_lim = hotelling_t2_limit_phase1(n, n_lv)
     q_lim  = q_residuals_limit(Q)
 
     rotulos = np.asarray(rotulos, dtype=str)

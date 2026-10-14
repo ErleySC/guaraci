@@ -112,7 +112,10 @@ def carregar_vault(vault_dir: Path) -> dict[str, Nota]:
         notas[caminho.stem] = Nota(
             rel="/".join(partes), stem=caminho.stem, titulo=titulo,
             tags=[str(t) for t in (fm.get("tags") or [])], fonte=fonte,
-            commit=fm.get("commit"), gerado_em=fm.get("gerado_em"),
+            # str(): um hash curto so' de digitos (ex.: 7238521) vira int
+            # no YAML e quebrava o aviso de desatualizacao.
+            commit=(None if fm.get("commit") is None else str(fm["commit"])),
+            gerado_em=fm.get("gerado_em"),
             corpo=corpo, links_saida=links,
         )
     for nota in notas.values():

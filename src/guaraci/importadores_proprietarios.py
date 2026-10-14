@@ -43,16 +43,10 @@ SPC (Galactic/Thermo -- Grupo 1 do mapa de completude): via `spcfile`
 projeto: LGPL e' uma licenca permissiva de biblioteca desenhada
 especificamente para uso por programas sob licenca mais restritiva,
 incluindo GPL; verificado no LICENSE do repositorio, nao so' no README).
-Repositorio criado e ativo em 2026 (39 commits, ultimo push 2026-01-25),
-mas SEM release no PyPI ainda -- so' instalavel via
-`pip install git+https://github.com/kogens/spcfile.git` (ver extra
-opcional `[spc]` em `pyproject.toml`). ATENCAO PyPI: se este pacote
-(`guaraci-chemometrics`) for publicado no PyPI antes de `spcfile` ganhar
-um release proprio la', o extra `[spc]` com URL git direta sera' REJEITADO
-pelo upload do Warehouse (PyPI nao aceita `Requires-Dist` com referencia
-direta de URL) -- trocar para o nome do pacote puro assim que houver
-release, ou documentar `[spc]` como "instale manualmente" no README nesse
-cenario.
+Release 0.1.0 no PyPI (mesmo commit da tag v0.1.0 do repositorio);
+extra opcional `[spc]` em `pyproject.toml` (`pip install spcfile`).
+Antes de 2026-10 so' existia via `git+https://...` sem pin, o que
+impedia publicar `guaraci-chemometrics` no PyPI.
 Avaliado ANTES: `specio` (BSD-3, tambem le SPC) e `spc_spectra`/
 `rohanisaac/spc` (GPL-3.0, tambem compativel) foram descartados como
 DEPENDENCIA porque ambos pararam de ser lancados em 2018 (specio 0.1.0,
@@ -234,17 +228,15 @@ def parse_spc(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     cabecalho desconhecida, ou eixo/intensidade do primeiro subarquivo
     inconsistentes).
 
-    Requer o pacote opcional `spcfile` (`pip install
-    'spcfile @ git+https://github.com/kogens/spcfile.git'`, ou
-    `guaraci-chemometrics[spc]` -- ver ATENCAO PyPI na docstring do
-    modulo) -- import LAZY, so' ao chamar esta funcao."""
+    Requer o pacote opcional `spcfile` (`pip install spcfile`, ou
+    `guaraci-chemometrics[spc]`) -- import LAZY, so' ao chamar esta
+    funcao."""
     try:
         from spcfile import SPCFile
     except ImportError as e:
         raise ImportError(
             "Pacote opcional 'spcfile' nao instalado -- leitura de "
-            "arquivos SPC indisponivel (pip install "
-            "'spcfile @ git+https://github.com/kogens/spcfile.git')."
+            "arquivos SPC indisponivel (pip install spcfile)."
         ) from e
 
     try:

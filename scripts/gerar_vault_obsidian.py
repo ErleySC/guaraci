@@ -111,7 +111,7 @@ def _frontmatter(tags: list[str], fonte: str | list[str],
     else:
         linhas.append(f"fonte: {fonte}")
     linhas.append(f"gerado_em: {_HEAD_DATA}")
-    linhas.append(f"commit: {_HEAD_HASH}")
+    linhas.append(f'commit: "{_HEAD_HASH}"')  # aspas: hash so' de digitos nao vira int
     if autor is not None:
         linhas.append(f"autor: {autor}")
     for k, v in extra.items():

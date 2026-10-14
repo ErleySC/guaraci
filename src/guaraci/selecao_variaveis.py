@@ -327,7 +327,7 @@ def _cv_local(y_local: np.ndarray, seed: int,
                                   groups=grupos_local))
     from sklearn.model_selection import StratifiedKFold
     _classes, contagens = np.unique(y_local, return_counts=True)
-    n_splits_eff = max(2, min(n_splits, int(contagens.min())))
+    n_splits_eff = max(2, min(n_splits, int(np.min(contagens))))
     skf = StratifiedKFold(n_splits=n_splits_eff, shuffle=True, random_state=seed)
     return list(skf.split(np.zeros(len(y_local)), y_local))
 

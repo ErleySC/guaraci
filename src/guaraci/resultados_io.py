@@ -267,7 +267,7 @@ def append_regression_summary(
             # 2014, ver chemometric_stats.regression_figures_of_merit) +
             # faixa/desvio-padrao do conjunto de VALIDACAO logo abaixo.
             if t.get("lod_ic_baixo") is not None and t.get("lod") is not None \
-                    and np.isfinite(t.get("lod", float("nan"))):  # type: ignore[call-overload]
+                    and np.isfinite(t.get("lod", float("nan"))):  # type: ignore[call-overload,unused-ignore]
                 _conf = t.get("lod_ic_confianca")
                 _conf_txt = f"{_conf * 100:.0f}%" if _conf is not None else "?"  # type: ignore[operator]
                 linhas.append(

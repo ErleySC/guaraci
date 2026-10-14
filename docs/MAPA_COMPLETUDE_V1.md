@@ -34,7 +34,7 @@ Objetivo: um usuário com qualquer um destes equipamentos consegue usar o dado b
 
 Ambos testados com arquivo binário REAL de instrumento (não sintético; ver `tests/fixtures/spc/` e `tests/fixtures/sp/`, cada um com `PROVENANCIA.md`):
 
-- **SPC**: via `spcfile` (Nikolaj Langemark, LGPL-3.0 — compatível com GPL-3.0-or-later; repo criado e ativo em 2026, mas AINDA SEM release no PyPI, só instalável via `pip install git+...` — ver aviso de risco de publicação em `pyproject.toml`/docstring do módulo). Alternativas descartadas como dependência (`specio` BSD-3, `spc_spectra`/`rohanisaac/spc` GPL-3.0): ambas paradas desde 2018.
+- **SPC**: via `spcfile` (Nikolaj Langemark, LGPL-3.0 — compatível com GPL-3.0-or-later; repo criado e ativo em 2026; release 0.1.0 no PyPI usado desde 2026-10-14, antes só via `git+...` sem pin). Alternativas descartadas como dependência (`specio` BSD-3, `spc_spectra`/`rohanisaac/spc` GPL-3.0): ambas paradas desde 2018.
 - **PerkinElmer `.sp`**: NENHUMA biblioteca madura e ATIVA encontrada (`spectrochempy` lê `.sp` mas usa licença CeCILL-B, confirmada INCOMPATÍVEL com GPL na lista oficial da FSF; `specio` é compatível de licença mas parado desde 2018). Resolvido adaptando a lógica de leitura já publicada do plugin `specio.plugins.sp` (BSD-3-Clause, com atribuição) para dentro do próprio módulo — sem dependência nova.
 
 ### RMN bruto Bruker (fechado em 2026-09-12, rodada final)
