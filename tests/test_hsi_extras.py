@@ -122,8 +122,8 @@ def test_menu_hsi_extras_dominio_reamostragem_e_multiway_via_cli(
         monkeypatch, tmp_path, capsys):
     import guaraci.guaraci as guaraci_mod
     raiz = montar_dataset(tmp_path, n_amostras=6)
-    # pasta; depois D, R, M; Enter sai
-    respostas = iter([str(raiz), "D", "R", "M", ""])
+    # pasta; depois 1 (dominio), 2 (reamostragem), 3 (multiway); Enter sai
+    respostas = iter([str(raiz), "1", "2", "3", ""])
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     cfg = guaraci_mod.Config(output_root_folder=str(tmp_path / "saida"))
     guaraci_mod._menu_hsi(cfg)
@@ -137,7 +137,7 @@ def test_menu_hsi_extras_erro_de_multiway_vira_mensagem_nao_excecao(
         monkeypatch, tmp_path, capsys):
     import guaraci.guaraci as guaraci_mod
     raiz = montar_dataset(tmp_path, n_amostras=4)   # poucos objetos p/ multiway
-    respostas = iter([str(raiz), "M", ""])
+    respostas = iter([str(raiz), "3", ""])   # 3 = multiway
     monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
     cfg = guaraci_mod.Config(output_root_folder=str(tmp_path / "saida"))
     guaraci_mod._menu_hsi(cfg)   # nao deve levantar

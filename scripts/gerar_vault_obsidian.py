@@ -49,7 +49,7 @@ from privacidade_amostras import (  # noqa: E402
 if str(_RAIZ / "src") not in sys.path:
     sys.path.insert(0, str(_RAIZ / "src"))
 
-from guaraci import app_nav  # noqa: E402
+from guaraci import app_nav, cli_nav  # noqa: E402
 from guaraci.validacao_publica import parse_consolidated_table  # noqa: E402
 
 _MANIFESTO = ".vault_manifest.json"
@@ -1345,143 +1345,93 @@ def gerar_autoria_e_seguranca() -> dict[str, str]:
 # ═════════════════════════════════════════════════════════════════════════
 #  Geração de notas — 35-Telas-e-Fluxos (CLI + Web) — Passo 186
 #
-#  Fonte real do dispatch da CLI: `_SECOES_NAVEGAVEIS` (guaraci.py) -- lista
-#  de 17 teclas -> (chave t_, chave d_) usada pelo próprio assistente ([G] ->
-#  "navegar seções") desde o achado do Agente 6 (docstring de
-#  `_guaraci_navegar_secoes`: um dict estático anterior tinha só 8 das 18
-#  abas reais). "A" (Sobre) é tratada à parte no próprio código-fonte, sem
-#  chave t_/d_ própria -- reproduzido aqui do mesmo jeito. G/M/I/S/L/R/N são
-#  ações do loop de `main()` que NÃO aparecem nesses 17+1 -- ou porque não
-#  têm submenu navegável (G é o próprio assistente, circular) ou porque
-#  ficam fora dos 6 grupos visuais de `_print_main_menu` (S/L/R/N, achado
-#  desta auditoria do vault, Passo 186 -- ver nota de cada uma abaixo).
+#  Fonte real da árvore da CLI: `guaraci.cli_nav.MENU` (dado puro, sem Rich)
+#  -- a mesma estrutura que desenha o menu principal, os grupos, o rodapé e
+#  a ajuda de cada tela (guia de design v2, 2026-10-14). Antes era uma
+#  lista de teclas (`_SECOES_NAVEGAVEIS`) lida por `ast.literal_eval`; com
+#  o menu por etapas as teclas de letra viraram atalhos legados e a tela
+#  passou a ser identificada pelo id. A função que implementa cada tela vem
+#  do dispatch real `_abrir_tela` (guaraci.py), lido por AST -- nunca de
+#  uma tabela repetida aqui.
 # ═════════════════════════════════════════════════════════════════════════
 
-def parse_i18n_menu() -> dict[str, dict[str, str]]:
-    """Extrai `_I18N` (dict PT/EN de rótulos/descrições de menu) de
-    `guaraci.py` por AST -- mesma disciplina de `parse_tecnicas_catalog`:
-    nunca importar o módulo (evita efeitos de import de `guaraci.py`, que
-    carrega Rich/console)."""
-    fonte = _ler("src/guaraci/guaraci.py")
-    arvore = ast.parse(fonte)
-    for node in ast.walk(arvore):
-        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "_I18N":
-            return ast.literal_eval(node.value)
-        if isinstance(node, ast.Assign):
-            for t in node.targets:
-                if getattr(t, "id", None) == "_I18N":
-                    return ast.literal_eval(node.value)
-    raise RuntimeError("_I18N não encontrado em guaraci.py — fonte mudou de "
-                        "forma, gerador precisa ser ajustado.")
-
-
-def parse_secoes_navegaveis() -> list[tuple[str, str, str]]:
-    """Extrai `_SECOES_NAVEGAVEIS` (tecla, chave t_, chave d_) de
-    `guaraci.py` por AST -- a mesma fonte que já alimenta
-    `_guaraci_navegar_secoes` no assistente (tecla G)."""
-    fonte = _ler("src/guaraci/guaraci.py")
-    arvore = ast.parse(fonte)
-    for node in ast.walk(arvore):
-        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "_SECOES_NAVEGAVEIS":
-            return [tuple(x) for x in ast.literal_eval(node.value)]
-    raise RuntimeError("_SECOES_NAVEGAVEIS não encontrado em guaraci.py — "
-                        "fonte mudou de forma, gerador precisa ser ajustado.")
-
-
-#: tecla -> função `_menu_*` real que a implementa (verificado por leitura
-#: direta do dispatch de `main()`, guaraci.py — Passo 186). "A" não está em
-#: `_SECOES_NAVEGAVEIS` mas tem função própria (`_menu_about`).
-_FUNCAO_POR_TECLA: dict[str, str] = {
-    "1": "_menu_project", "2": "_menu_data", "3": "_menu_preprocessing",
-    "4": "_menu_modeling", "5": "_menu_validation", "6": "_menu_advanced",
-    "7": "_menu_visualization", "8": "_menu_technique", "9": "_menu_encoding",
-    "H": "_menu_hardware", "B": "_menu_prediction", "X": "_menu_hsi",
-    "J": "_menu_plan", "U": "_menu_audit", "K": "_menu_selecao_amostras",
-    "P": "_menu_profiles", "?": "_menu_help", "A": "_menu_about",
+#: Telas tratadas antes do dict de `_abrir_tela` (alternam estado em vez de
+#: abrir um submenu) -- lidas do mesmo trecho do dispatch.
+_FUNCAO_TELA_INLINE: dict[str, str] = {
+    "modo": "_alternar_modo", "idioma": "_toggle_idioma",
 }
 
-#: Grupos reais do painel principal (`_print_main_menu`, guaraci.py:
-#: ~1820-1856, docs/DESIGN.md seção 4) -- confirmado por leitura direta,
-#: não pela ordem do dispatch. Teclas que não aparecem nesse painel (S/L/R/N)
-#: ficam de fora deste dict de propósito -- ver `_ACOES_SEM_PAINEL`.
-_GRUPO_POR_TECLA: dict[str, str] = {
-    "2": "Preparar", "3": "Preparar", "9": "Preparar", "P": "Preparar",
-    "J": "Planejar", "K": "Planejar", "U": "Planejar",
-    "4": "Modelar", "6": "Modelar", "8": "Modelar",
-    "5": "Validar", "7": "Validar",
-    "B": "Prever", "X": "Prever",
-    "1": "Sistema", "H": "Sistema", "G": "Sistema", "M": "Sistema",
-    "I": "Sistema", "?": "Sistema", "A": "Sistema", "Q": "Sistema",
-}
 
-#: Só estas 3 teclas têm subseção própria em `docs/MANUAL.md` citando a
-#: tecla explicitamente ("CLI — menu principal, tecla [X]") -- verificado
+def parse_dispatch_telas() -> dict[str, str]:
+    """tela -> função real, lida do dict `handlers` de `_abrir_tela`
+    (guaraci.py) por AST: cada valor é `lambda: _menu_x(cfg)`."""
+    arvore = ast.parse(_ler("src/guaraci/guaraci.py"))
+    for node in ast.walk(arvore):
+        if isinstance(node, ast.FunctionDef) and node.name == "_abrir_tela":
+            for n in ast.walk(node):
+                if isinstance(n, ast.Dict) and n.keys:
+                    mapa: dict[str, str] = {}
+                    for k, v in zip(n.keys, n.values):
+                        if (isinstance(k, ast.Constant) and isinstance(v, ast.Lambda)
+                                and isinstance(v.body, ast.Call)
+                                and isinstance(v.body.func, ast.Name)):
+                            mapa[k.value] = v.body.func.id
+                    if mapa:
+                        return {**_FUNCAO_TELA_INLINE, **mapa}
+    raise RuntimeError("_abrir_tela não encontrado em guaraci.py — fonte "
+                        "mudou de forma, gerador precisa ser ajustado.")
+
+
+def telas_cli() -> list[tuple[Any, Any]]:
+    """(grupo, item) de toda tela real do menu, na ordem de `cli_nav.MENU`."""
+    return [(g, it) for g in cli_nav.MENU for it in g.itens]
+
+
+def _stem_tela_cli(item: Any) -> str:
+    return _slug(f"CLI {item.pt}")
+
+
+#: Só estas 3 telas têm subseção própria em `docs/MANUAL.md` -- verificado
 #: por leitura direta (Passo 186). O manual é organizado por tópico
-#: científico, não por tela; as ~23 entradas restantes não têm
-#: correspondência 1:1 confiável, então ficam sem este campo em vez de
-#: inventar uma seção (acionamento da regra "evidência ou silêncio").
-_SECAO_MANUAL_POR_TECLA: dict[str, str] = {
-    "J": "`docs/MANUAL.md` §2.3 — Planejamento de coleta",
-    "K": "`docs/MANUAL.md` §2.2c — Seleção de amostras de calibração",
-    "U": "`docs/MANUAL.md` §2.4 — Auditoria de delineamento",
+#: científico, não por tela; as demais não têm correspondência 1:1
+#: confiável, então ficam sem este campo em vez de inventar uma seção
+#: (acionamento da regra "evidência ou silêncio"). O mapa do menu inteiro
+#: está em §1.3.
+_SECAO_MANUAL_POR_TELA: dict[str, str] = {
+    "planejamento": "`docs/MANUAL.md` §2.3 — Planejamento de coleta",
+    "selecao_amostras": "`docs/MANUAL.md` §2.2c — Seleção de amostras de calibração",
+    "auditoria": "`docs/MANUAL.md` §2.4 — Auditoria de delineamento",
 }
 
-#: Teclas do dispatch de `main()` sem função `_menu_*` dedicada e sem par
-#: t_/d_ em `_SECOES_NAVEGAVEIS` -- cada uma descrita a partir de leitura
-#: direta do código (função real quando existe; senão, do bloco inline em
-#: `main()`). G/M/I ficam no grupo "Sistema" do painel principal mas
-#: chamam uma função de nome diferente do padrão `_menu_*`; S/L/R/N não
-#: aparecem em nenhum dos 6 grupos visuais (achado desta auditoria,
-#: registrado também em `Paridade-CLI-Web.md`).
+#: Teclas globais do rodapé sem tela própria no menu (`cli_nav`): cada uma
+#: descrita a partir de leitura direta da função real quando existe; senão,
+#: do bloco inline em `main()`.
 _ACOES_SEM_MENU_DEDICADO: dict[str, dict[str, Any]] = {
-    "G": {"titulo": "Assistente Guaraci", "funcao": "_abrir_assistente",
-          "grupo": "Sistema"},
-    "M": {"titulo": "Alternar Modo (Iniciante/Avançado)",
-          "funcao": "_toggle_modo_usuario", "grupo": "Sistema",
-          "resumo_extra": "Alterna globalmente entre os modos 'Iniciante' e "
-                           "'Avançado' -- controla se os submenus escondem "
-                           "campos avançados por padrão. Persistido em "
-                           "arquivo-flag próprio (mesmo padrão do idioma)."},
-    "I": {"titulo": "Alternar Idioma (PT/EN)", "funcao": "_toggle_idioma",
-          "grupo": "Sistema",
-          "resumo_extra": "Alterna a interface entre Português e Inglês, "
-                           "persistido em arquivo-flag."},
-    "S": {"titulo": "Salvar Configuração como Perfil", "funcao": "_salvar_yaml",
-          "grupo": None,
-          "resumo_extra": "Salva a configuração (`cfg`) atual como um perfil "
-                           "`.yaml` nomeado pelo usuário, em `_PERFIS_DIR` -- "
-                           "reaproveitável depois via `[L]`. Não aparece nos "
-                           "6 grupos do painel principal (achado desta "
-                           "auditoria do vault, Passo 186)."},
-    "L": {"titulo": "Carregar Configuração de Perfil", "funcao": "_carregar_yaml",
-          "grupo": None,
-          "resumo_extra": "Lista os perfis `.yaml` salvos em `_PERFIS_DIR` e "
-                           "carrega o escolhido na configuração ativa. Não "
-                           "aparece nos 6 grupos do painel principal (achado "
-                           "desta auditoria do vault, Passo 186)."},
-    "R": {"titulo": "Executar Pipeline", "funcao": "_rodar_pipeline",
-          "grupo": None,
-          "resumo_extra": "Roda o checklist pré-execução (faixa espectral "
-                           "incompatível, amostras sem `mae_id`, estimativa "
-                           "de tempo — `docs/MANUAL.md` §1.1) e, se os dados "
-                           "estiverem prontos, executa o pipeline "
-                           "(`pipeline.executar()`) com o painel de "
-                           "acompanhamento ao vivo (§1.2). Destacada em caixa "
-                           "própria (`_print_run_box`), não nos 6 grupos do "
-                           "painel principal (achado desta auditoria do "
-                           "vault, Passo 186)."},
-    "N": {"titulo": "Definir Tag/ID da Execução", "funcao": None, "grupo": None,
-          "resumo_extra": "Define um identificador (`cfg.tag`) usado para "
-                           "nomear a pasta de resultados da próxima "
-                           "execução, sanitizado para `[\\w\\-_]`. Ação "
-                           "inline no loop de `main()` (sem função própria) "
-                           "e sem entrada nos 6 grupos do painel principal "
-                           "(achado desta auditoria do vault, Passo 186)."},
-    "Q": {"titulo": "Sair", "funcao": None, "grupo": "Sistema",
-          "resumo_extra": "Encerra o assistente (`_exibir_despedida()` + "
-                           "`break` no loop de `main()`)."},
+    cli_nav.GUARACI: {
+        "titulo": "Assistente Guaraci", "funcao": "_abrir_assistente",
+        "resumo_extra": "Tecla global do rodapé, aceita em qualquer menu. "
+                         "Abre primeiro a ajuda da tela atual e depois o "
+                         "assistente com o contexto dela."},
+    cli_nav.AJUDA: {
+        "titulo": "Ajuda da tela", "funcao": "_ajuda_tela",
+        "resumo_extra": "Tecla global do rodapé: mostra o que a tela faz, "
+                         "quando usar e o que fazer depois; `?N` explica o "
+                         "item N."},
+    cli_nav.RODAR: {
+        "titulo": "Executar Pipeline", "funcao": "_rodar_pipeline",
+        "resumo_extra": "Roda o checklist pré-execução (faixa espectral "
+                         "incompatível, amostras sem `mae_id`, estimativa "
+                         "de tempo — `docs/MANUAL.md` §1.1) e, se os dados "
+                         "estiverem prontos, executa o pipeline "
+                         "(`pipeline.executar()`) com o painel de "
+                         "acompanhamento ao vivo (§1.2). Aparece na linha "
+                         "de ações do menu principal."},
+    cli_nav.SAIR: {
+        "titulo": "Sair", "funcao": "_confirmar_saida",
+        "resumo_extra": "Só no menu principal. Se a configuração mudou "
+                         "desde o último salvamento, pergunta se salva "
+                         "antes de sair."},
 }
-
 
 def _funcoes_de(fonte: str) -> dict[str, ast.FunctionDef]:
     arvore = ast.parse(fonte)
@@ -1524,25 +1474,26 @@ def gerar_telas_cli(modulos_conhecidos: set[str]) -> dict[str, str]:
     plano: dict[str, str] = {}
     fonte = _ler("src/guaraci/guaraci.py")
     funcoes = _funcoes_de(fonte)
-    i18n_pt = parse_i18n_menu()["PT"]
-    secoes = parse_secoes_navegaveis()
+    dispatch = parse_dispatch_telas()
+    legado_por_tela = {tela: tecla for tecla, tela in cli_nav.ATALHOS_LEGADOS.items()}
 
-    entradas: list[tuple[str, str, str]] = [
-        (tecla, i18n_pt[t_key], i18n_pt[d_key]) for tecla, t_key, d_key in secoes
-    ]
-    entradas.append(("A", "Sobre", i18n_pt["d_sobre"]))
-
-    for tecla, titulo, descricao in entradas:
-        nome_funcao = _FUNCAO_POR_TECLA.get(tecla)
+    for grupo, item in telas_cli():
+        nome_funcao = dispatch.get(item.id)
         node = funcoes.get(nome_funcao) if nome_funcao else None
-        corpo = [
-            f"**Tecla:** `[{tecla}]`  ·  **Grupo no painel principal:** "
-            f"{_GRUPO_POR_TECLA.get(tecla, '(não aparece nos 6 grupos — ver Paridade-CLI-Web)')}",
-            "", descricao,
-        ]
-        fonte_campos = ["src/guaraci/guaraci.py (_SECOES_NAVEGAVEIS)"]
+        avancado = item.avancado or grupo.avancado
+        cabecalho = (f"**Caminho no menu:** {cli_nav.caminho(item.id, 'PT')}  ·  "
+                     f"**Nível:** {'Avançado (`+`, aparece com `M`)' if avancado else 'Básico'}")
+        if item.id in legado_por_tela:
+            cabecalho += f"  ·  **Atalho legado:** `[{legado_por_tela[item.id]}]`"
+        corpo = [cabecalho]
+        ajuda = cli_nav.AJUDA_TELAS.get(item.id, {}).get("PT")
+        if ajuda:
+            faz, quando, depois = ajuda
+            corpo += ["", faz, "", f"**Quando usar:** {quando}",
+                      f"**Depois:** {depois}"]
+        fonte_campos = ["src/guaraci/cli_nav.py (MENU, AJUDA_TELAS)"]
         if node is not None:
-            fonte_campos = [f"src/guaraci/guaraci.py:{node.lineno} ({nome_funcao})"]
+            fonte_campos.append(f"src/guaraci/guaraci.py:{node.lineno} ({nome_funcao})")
             doc = ast.get_docstring(node)
             if doc:
                 corpo.append("\n## Detalhe (docstring real da função)\n" +
@@ -1555,29 +1506,24 @@ def gerar_telas_cli(modulos_conhecidos: set[str]) -> dict[str, str]:
             if mods:
                 corpo.append("\n## Chama\n" + "\n".join(
                     f"- {_wikilink(f'{m}.py', 'chamado por esta tela da CLI')}" for m in mods))
-        secao_manual = _SECAO_MANUAL_POR_TECLA.get(tecla)
+        secao_manual = _SECAO_MANUAL_POR_TELA.get(item.id)
         if secao_manual:
             corpo.append(f"\n## Documentação de referência\n{secao_manual}")
         corpo.append(
             "\n## Ver também\n"
             f"- {_wikilink('MOC-Telas-e-Fluxos', 'ponto de entrada de telas e fluxos')}\n"
             f"- {_wikilink('Paridade-CLI-Web', 'cobertura desta tela na interface web')}")
-        conteudo = _nota(titulo=f"CLI — {titulo}", tags=["tela", "cli"],
+        conteudo = _nota(titulo=f"CLI — {item.pt}", tags=["tela", "cli"],
                           fonte=fonte_campos, corpo="\n".join(corpo))
-        plano[f"35-Telas-e-Fluxos/{_slug(f'CLI {titulo}')}.md"] = conteudo
+        plano[f"35-Telas-e-Fluxos/{_stem_tela_cli(item)}.md"] = conteudo
 
     for tecla, info in _ACOES_SEM_MENU_DEDICADO.items():
         nome_funcao = info["funcao"]
         node = funcoes.get(nome_funcao) if nome_funcao else None
-        corpo = [
-            f"**Tecla:** `[{tecla}]`  ·  **Grupo no painel principal:** "
-            f"{info['grupo'] or '(não aparece nos 6 grupos — achado desta auditoria, ver Paridade-CLI-Web)'}",
-        ]
-        if info.get("resumo_extra"):
-            corpo += ["", info["resumo_extra"]]
-        fonte_campos = ["src/guaraci/guaraci.py::main() (ação inline)"]
+        corpo = [f"**Tecla global:** `[{tecla}]`", "", info["resumo_extra"]]
+        fonte_campos = ["src/guaraci/cli_nav.py (teclas globais)"]
         if node is not None:
-            fonte_campos = [f"src/guaraci/guaraci.py:{node.lineno} ({nome_funcao})"]
+            fonte_campos.append(f"src/guaraci/guaraci.py:{node.lineno} ({nome_funcao})")
             doc = ast.get_docstring(node)
             if doc:
                 corpo.append("\n## Detalhe (docstring real da função)\n" +
@@ -1692,24 +1638,24 @@ def gerar_abas_web(abas: list[dict[str, Any]]) -> dict[str, str]:
 #: Decisão do autor (2026-09-07, resposta direta a esta auditoria):
 #: limitação de escopo aceita, não pendência a abrir.
 _GAPS_CLI_ONLY: list[tuple[str, str]] = [
-    ("Planejamento de Coleta (`[J]`)",
+    ("Planejamento de Coleta (Preparar dados › Planejar coleta)",
      "tamanho amostral e distribuição de sessões de coleta; sem tela "
      "equivalente na web."),
-    ("Seleção de Amostras (`[K]`)",
+    ("Seleção de Amostras (Preparar dados › Selecionar amostras)",
      "divide um CSV em calibração/validação (Kennard-Stone/Duplex/SPXY); "
      "sem tela equivalente na web."),
-    ("Auditoria de Delineamento como tela dedicada (`[U]`)",
+    ("Auditoria de Delineamento como tela dedicada (Preparar dados › Verificar delineamento)",
      "a auditoria em si roda embutida em toda execução, CLI e web "
      "(`auditoria_delineamento.py`) — só a tela para rodá-la isoladamente, "
      "sem treinar o modelo inteiro, é exclusiva da CLI."),
-    ("HSI — Imageamento Hiperespectral (`[X]`)",
+    ("HSI — Imageamento Hiperespectral (grupo avançado do menu principal)",
      "a web só expõe o campo de configuração `hsi_pasta_dataset` (aba "
      "Dados), sem tela de resultado/classificação por pixel."),
-    ("Perfis Prontos (`[P]`)",
+    ("Perfis Prontos (Começar › Usar um perfil pronto)",
      "tela de listar/aplicar perfis de matriz/técnica prontos; a web usa "
      "perfis via `selectbox` dentro de cada campo, mas não tem esta tela "
      "de gestão dedicada."),
-    ("Codificação DX (`[9]`)",
+    ("Codificação DX (Preparar dados › Codificação DX)",
      "nomenclatura JCAMP-DX e códigos de espécie; sem tela equivalente na web."),
 ]
 
@@ -1717,7 +1663,7 @@ _GAPS_CLI_ONLY: list[tuple[str, str]] = [
 def gerar_paridade_cli_web(modulos_conhecidos: set[str]) -> dict[str, str]:
     corpo = [
         "Cruzamento entre as telas/fluxos reais da CLI "
-        "(`_SECOES_NAVEGAVEIS` + ações diretas de `main()`, `guaraci.py`) e "
+        "(`cli_nav.MENU` + teclas globais do rodapé) e "
         "as telas do aplicativo web (`app_quimiometria.py`, navegacao "
         "lateral desde 2026-09-08).",
         "",
@@ -1733,8 +1679,8 @@ def gerar_paridade_cli_web(modulos_conhecidos: set[str]) -> dict[str, str]:
         "## Fluxos com paridade real (presentes nas duas interfaces)",
         "Entrada de dados, pré-processamento, modelagem, validação, "
         "predição em amostras novas, relatórios e identificação do "
-        "projeto existem nas duas interfaces (menu `[1]`-`[8]`/`[B]` da "
-        "CLI ↔ as telas da web), compartilhando o mesmo motor "
+        "projeto existem nas duas interfaces (grupos Preparar dados, "
+        "Modelar e validar, Prever e Gráficos da CLI ↔ as telas da web), compartilhando o mesmo motor "
         f"({_wikilink('pipeline.py', 'motor único das duas interfaces') if 'pipeline' in modulos_conhecidos else '`pipeline.py`'}) "
         "e a mesma `Config`/`config.yaml`.",
         "",
@@ -1764,23 +1710,13 @@ def gerar_paridade_cli_web(modulos_conhecidos: set[str]) -> dict[str, str]:
     return {"35-Telas-e-Fluxos/Paridade-CLI-Web.md": conteudo}
 
 
-_GRUPOS_TELAS_FLUXOS = [
-    ("Preparar", ["Dados", "Pré-processamento", "Codificação DX", "Perfis Prontos"]),
-    ("Planejar", ["Planejamento de Coleta", "Seleção de Amostras",
-                  "Auditoria de Delineamento"]),
-    ("Modelar", ["Modelagem", "Métodos Avançados", "Técnica Analítica"]),
-    ("Validar", ["Validação", "Visualização"]),
-    ("Prever", ["Predição em Lote", "Imageamento Hiperespectral"]),
-]
-
-
 def gerar_moc_telas_fluxos(plano_cli: dict[str, str], plano_web: dict[str, str]) -> dict[str, str]:
     stems_cli = {Path(p).stem: p for p in plano_cli}
     corpo = [
         f"Ponto de entrada das {len(plano_cli)} telas/ações da CLI e das "
         f"{len(plano_web)} telas da web (Passo 186 desta auditoria do "
-        f"vault) — agrupadas pelo mesmo fluxo de trabalho já usado no "
-        "painel principal da CLI (`docs/DESIGN.md` seção 4).",
+        f"vault) — a CLI agrupada pelos mesmos grupos do menu principal "
+        "(`docs/DESIGN.md` §7, guia de design v2).",
         "",
         f"- {_wikilink('Paridade-CLI-Web', 'o que existe só numa interface, e por quê')}",
         "",
@@ -1788,21 +1724,22 @@ def gerar_moc_telas_fluxos(plano_cli: dict[str, str], plano_web: dict[str, str])
     ]
     corpo += [f"- {_wikilink(Path(p).stem, 'aba do aplicativo web')}" for p in sorted(
         plano_web, key=lambda p: Path(p).stem)]
-    corpo.append("\n## CLI, por grupo de fluxo de trabalho (painel principal)")
+    corpo.append("\n## CLI, por grupo do menu principal (`cli_nav.MENU`)")
     usados: set[str] = set()
-    for grupo, titulos in _GRUPOS_TELAS_FLUXOS:
+    for grupo in cli_nav.MENU:
         linhas_grupo = []
-        for titulo in titulos:
-            stem = _slug(f"CLI {titulo}")
+        for item in grupo.itens:
+            stem = _stem_tela_cli(item)
             if stem in stems_cli:
-                linhas_grupo.append(f"- {_wikilink(stem, f'tela do grupo {grupo}')}")
+                linhas_grupo.append(f"- {_wikilink(stem, f'tela do grupo {grupo.pt}')}")
                 usados.add(stems_cli[stem])
         if linhas_grupo:
-            corpo.append(f"\n### {grupo}\n" + "\n".join(linhas_grupo))
+            marca = " (avançado)" if grupo.avancado else ""
+            corpo.append(f"\n### {grupo.pt}{marca}\n" + "\n".join(linhas_grupo))
     restantes = sorted(set(plano_cli) - usados, key=lambda p: Path(p).stem)
     if restantes:
-        corpo.append("\n### Sistema / ações diretas\n" + "\n".join(
-            f"- {_wikilink(Path(p).stem, 'ação/tela de sistema da CLI')}" for p in restantes))
+        corpo.append("\n### Teclas globais do rodapé\n" + "\n".join(
+            f"- {_wikilink(Path(p).stem, 'ação global da CLI')}" for p in restantes))
     conteudo = _nota(
         "MOC — Telas e Fluxos", ["moc"],
         ["src/guaraci/guaraci.py", "app_quimiometria.py"], "\n".join(corpo))
@@ -2239,7 +2176,7 @@ Use-a para anotações pessoais, rascunhos, ligações manuais extras.
 | `50-Decisoes/` | parágrafos `**Decisão...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + `docs/COMPATIBILITY.md` (casos especiais) | `explicacao` |
 | `60-Achados/` | parágrafos `**Achado...**`/`**RETRATAÇÃO...**`/`**Bug real...**` em `docs/PROGRESSO.md`/`docs/VALIDACAO_PUBLICA.md` + 1 resumo mínimo (tag `passo`, não `achado`) por `## Passo` que não caiu em nenhum parágrafo marcado — garante que todo passo tenha alguma nota (Passo 172) | `explicacao` (`referencia` se tag `passo`) |
 | `06-Autoria-e-Seguranca/` | `CITATION.cff`, `git log`, `scripts/privacidade_amostras.py`, `docs/VALIDACAO_PUBLICA.md` | `explicacao` |
-| `35-Telas-e-Fluxos/` | `_SECOES_NAVEGAVEIS`/`_I18N`/dispatch de `main()` (`guaraci.py`) para a CLI + `app_nav.todas_paginas()` (ordem/nome) + docstring de módulo de `src/guaraci/app_tabs/*.py` (resumo) para a web -- 1 nota por tela/ação real, mais `Paridade-CLI-Web.md` (cruzamento das duas interfaces) | `referencia` (`explicacao` para `Paridade-CLI-Web.md`) |
+| `35-Telas-e-Fluxos/` | `cli_nav.MENU`/`AJUDA_TELAS` + dispatch `_abrir_tela` (`guaraci.py`) para a CLI + `app_nav.todas_paginas()` (ordem/nome) + docstring de módulo de `src/guaraci/app_tabs/*.py` (resumo) para a web -- 1 nota por tela/ação real, mais `Paridade-CLI-Web.md` (cruzamento das duas interfaces) | `referencia` (`explicacao` para `Paridade-CLI-Web.md`) |
 | `08-Documentos/` | 1 nota por documento real e VERSIONADO do projeto (`git ls-files` confirma no momento da geração); resumo = primeiro parágrafo real do arquivo | `referencia` |
 | `00-MOC/` + MOCs de categoria | gerados a partir dos planos acima | `referencia` |
 | `90-Canvas/` | gerados programaticamente a partir dos mesmos dados acima | — |
