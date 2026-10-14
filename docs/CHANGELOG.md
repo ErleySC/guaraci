@@ -18,13 +18,23 @@ oráculos R mdatools 0.16.0 e ropls 1.45.0 em
   coluna. Com X não centrado (preset `custom` sem `apply_mc`, subconjunto
   de treino na seleção de variáveis) o SR divergia do mdatools. Com X já
   centrado, nada muda.
-- **OPLS-DA:** testes contra o ropls marcados `xfail(strict=True)` até a
-  correção do `OPLSDAWrapper`.
+- **OPLS-DA:** escores, `transform` e `predict` batem com o ropls depois da
+  correção abaixo.
 - **Dados reais publicados** (`tests/test_oraculo_dados_reais.py`): mesma
   contra-prova em sacurine (Thévenot et al. 2015, LC-HRMS de urina, baixado
   sob demanda com SHA256 pinado; job de CI `oraculo-dados-reais`) e iris
   (Fisher 1936, embutido no scikit-learn). Só as saídas dos modelos de
   referência são versionadas, não os dados.
+
+Correção de método:
+
+- **OPLS-DA** (`OPLSDAWrapper`) agora segue Trygg & Wold (2002) sem o passo
+  de Gram-Schmidt que ortogonalizava `t_orth` contra o `t` intermediário do
+  PLS1 (não contra o `t_pred` final). Antes, `t_orth` não era ortogonal a
+  y, `transform(X_treino)` divergia dos escores do `fit` e as predições não
+  batiam com PLS(k+1). **Muda números:** os escores do gráfico OPLS e do
+  S-plot. X passa a ser centrado no `fit` (`x_mean_`) e há um `predict()`
+  novo. Testes: `test_oplsda_*` em `tests/test_classificadores.py`.
 
 Correções da auditoria de UX de 2026-09-24 (`docs/AUDITORIA_UX_2026-09-24.md`):
 

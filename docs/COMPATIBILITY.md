@@ -206,6 +206,12 @@ por `tests/test_fachada_reexport.py`.
 - **`hsi_extras.py`** (módulo inteiro, novo — orquestração de domínio de
   aplicabilidade/reamostragem/multiway HSI, 2026-09-23): mesmo padrão
   aditivo e mesma nota de honestidade dos itens acima; golden regravado.
+- **`OPLSDAWrapper.predict`** (`classificadores.py`, correção do OPLS-DA,
+  2026-10-14): método público novo (Ŷ contínuo, igual ao PLS1 com
+  `n_ortho + 1` componentes para y de 1 coluna); nenhuma assinatura
+  existente mudou. Mesmo padrão aditivo e mesma nota de honestidade dos
+  itens acima; golden regravado. A mudança de COMPORTAMENTO (escores
+  `t_pred`/`t_orth`) está registrada no `CHANGELOG.md`.
 
 ## Prazo e mecanismo de depreciação (política nova, a partir de agora)
 

@@ -113,7 +113,7 @@ def test_plsda_classifier_vs_sklearn_manual(pq):
 
 
 def test_opls_orthogonality_binary(pq):
-    """OPLS binary: t_orth ⊥ t_pred by Gram-Schmidt construction."""
+    """OPLS binary: t_orth ⊥ t_pred (t_pred comes from the filtered X)."""
     rng = np.random.default_rng(7)
     X = rng.normal(size=(80, 50))
     Y = np.zeros((80, 2)); Y[:40, 0] = 1; Y[40:, 1] = 1

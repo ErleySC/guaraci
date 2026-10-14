@@ -249,16 +249,8 @@ def test_ddsimca_calibracao_loo_diverge_do_mdatools_so_em_q():
 #     centrados, sem Gram-Schmidt) reproduz t_pred e t_orth do ropls a
 #     1e-13 -- ou seja, a tolerancia _ITERATIVO abaixo e' alcancavel.
 #
-# Hoje o `OPLSDAWrapper` NAO bate: erro maximo relativo em t_orth de 2,6x
-# a 12x com X nao centrado e de 30% a 72% mesmo com X centrado. A correcao
-# esta' no PR #26 (conferido: os 3 testes abaixo passam com o
-# classificadores.py daquele PR). Sao `xfail(strict=True)` para que passem a
-# FALHAR (XPASS) quando a correcao entrar -- sinal para remover o marcador.
-
-_OPLS_XFAIL = pytest.mark.xfail(
-    strict=True,
-    reason="OPLSDAWrapper diverge de Trygg & Wold 2002 (Gram-Schmidt extra "
-           "em t_orth e deflacao em X nao centrado); correcao em andamento")
+# Antes do PR #26 o `OPLSDAWrapper` NAO batia: erro maximo relativo em
+# t_orth de 2,6x a 12x com X nao centrado e de 30% a 72% com X centrado.
 
 
 def test_oraculo_opls_ropls_equivale_a_pls_k_mais_1():
@@ -272,7 +264,6 @@ def _opls_ajustado():
     return OPLSDAWrapper(n_ortho=2).fit(X, Y[:, 1:2]), X
 
 
-@_OPLS_XFAIL
 def test_opls_escores_bate_com_ropls():
     opls, _X = _opls_ajustado()
     tp_ref = _ler("opls_ropls_tpred.csv")
@@ -284,7 +275,6 @@ def test_opls_escores_bate_com_ropls():
         _alinhar_sinal(opls.t_orth_train_, to_ref), to_ref, **_ITERATIVO)
 
 
-@_OPLS_XFAIL
 def test_opls_transform_reproduz_escores_de_treino():
     opls, X = _opls_ajustado()
     t_pred, t_orth = opls.transform(X)
@@ -292,7 +282,6 @@ def test_opls_transform_reproduz_escores_de_treino():
     np.testing.assert_allclose(t_orth, opls.t_orth_train_, **_EXATO)
 
 
-@_OPLS_XFAIL
 def test_opls_predict_bate_com_ropls():
     """Valores ajustados do OPLS 1+2 (ropls) -- iguais aos de PLS(3)."""
     opls, X = _opls_ajustado()

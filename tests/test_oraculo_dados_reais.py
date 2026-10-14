@@ -109,14 +109,7 @@ def test_sacurine_plsda_vip_sr_batem_com_referencias():
                                _ler("sac_mda_sr.csv").max(axis=1), **_EXATO)
 
 
-_OPLS_XFAIL = pytest.mark.xfail(
-    strict=True,
-    reason="OPLSDAWrapper diverge de Trygg & Wold 2002 no master; correcao "
-           "no PR #26 (com ela este teste passa)")
-
-
 @requer_sacurine
-@_OPLS_XFAIL
 def test_sacurine_oplsda_bate_com_ropls():
     """Mesmo modelo da vinheta do ropls: autoescalado, 1 componente
     preditivo, numero de ortogonais escolhido pelo ropls (2)."""
