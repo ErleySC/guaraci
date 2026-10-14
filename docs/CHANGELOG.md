@@ -7,6 +7,20 @@ Histórico de versões do pipeline quimiométrico. Extraído do cabeçalho de
 
 ## Não lançado
 
+Contra-prova contra software externo (`tests/test_oraculo_referencias.py`,
+oráculos R mdatools 0.16.0 e ropls 1.45.0 em
+`tests/fixtures/oraculo_referencias/`):
+
+- **PLS-DA, VIP e DD-SIMCA** batem com as referências (1e-8 nas contas
+  fechadas). O VIP segue Wold/ropls (pesos W); o `vipscores` do mdatools
+  usa pesos SIMPLS e dá outro número, diferença documentada no teste.
+- **Selectivity Ratio:** `compute_selectivity_ratio` agora centra X por
+  coluna. Com X não centrado (preset `custom` sem `apply_mc`, subconjunto
+  de treino na seleção de variáveis) o SR divergia do mdatools. Com X já
+  centrado, nada muda.
+- **OPLS-DA:** testes contra o ropls marcados `xfail(strict=True)` até a
+  correção do `OPLSDAWrapper`.
+
 Correções da auditoria de UX de 2026-09-24 (`docs/AUDITORIA_UX_2026-09-24.md`):
 
 - **CLI `[K]` Seleção de Amostras** agora separa por amostra física: pede a

@@ -128,8 +128,17 @@ def compute_selectivity_ratio(modelo: PLSRegression,
     Complementa o VIP: SR e mais sensivel a variaveis com correlacao
     direcional com Y no componente preditivo; VIP integra todos os LVs.
     Concordancia entre VIP >= 1 e SR alto reforca a relevancia.
+
+    CORRIGIDO em 2026-10-14 (oraculo mdatools::selratio, ver
+    tests/test_oraculo_referencias.py): X e' centrado por coluna aqui
+    dentro. O PLS do sklearn centra X internamente, entao b se aplica a X
+    centrado; com X nao centrado (preset 'custom' sem apply_mc, subconjunto
+    de treino em selecao_variaveis) t_tp carregava o offset de X e o SR
+    divergia do mdatools (correlacao de postos ~0.58 no caso do teste).
+    Para X ja' centrado nada muda.
     """
     X = np.asarray(X, dtype=float)
+    X = X - X.mean(axis=0)
     p = X.shape[1]
     # .coef_ e' (n_targets, n_features) no sklearn atual; versoes antigas
     # usavam a convencao transposta -- normaliza pelo eixo que bate com p.
