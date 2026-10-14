@@ -795,6 +795,10 @@
         "assinatura": "(n: 'int', k: 'int', alpha: 'float' = 0.05) -> 'float'",
         "forma": "funcao"
       },
+      "hotelling_t2_limit_phase1": {
+        "assinatura": "(n: 'int', k: 'int', alpha: 'float' = 0.05) -> 'float'",
+        "forma": "funcao"
+      },
       "interpret_rpd": {
         "assinatura": "(rpd: 'float') -> 'str'",
         "forma": "funcao"

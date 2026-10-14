@@ -15,7 +15,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
-from scipy.stats import f as f_dist, chi2, t as t_dist
+from scipy.stats import beta as beta_dist, f as f_dist, chi2, t as t_dist
 from sklearn.cross_decomposition import PLSRegression
 
 log = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ __all__ = [
     "mahalanobis_distance_shrinkage",
     "hotelling_t2",
     "hotelling_t2_limit",
+    "hotelling_t2_limit_phase1",
     "q_residuals",
     "q_residuals_loo",
     "q_residuals_limit",
@@ -338,9 +339,11 @@ def hotelling_t2_limit(n: int, k: int, alpha: float = 0.05) -> float:
     (`training_applicability_domain`, `figuras.fig3_outliers`), o erro
     numerico medido (razao limite-F / limite-Beta) e' pequeno para os
     tamanhos de amostra tipicos do projeto (~1.01-1.03x com n~300; sobe a
-    ~2-3x so' com n<20) — ver scripts/medicoes/medir_achados.py. Nao
-    corrigido nesta rodada (impacto real medido como baixo); se usada com
-    n pequeno como limite de FASE I, considerar o limite Beta exato.
+    ~2-3x so' com n<20) — ver scripts/medicoes/medir_achados.py. Desde
+    2026-10-14 o grafico de outliers do treino (`figuras.fig3_outliers`)
+    usa `hotelling_t2_limit_phase1`; o retorno `t2_limite` de
+    `training_applicability_domain` continua em Fase II porque e' comparado
+    com amostras NOVAS na predicao.
     """
     if n - k <= 0:
         log.warning("Hotelling T2: n=%d too small for k=%d LVs.", n, k)
@@ -350,6 +353,29 @@ def hotelling_t2_limit(n: int, k: int, alpha: float = 0.05) -> float:
                     "(wide confidence interval).", n, 3 * k)
     return float(((k * (n - 1) * (n + 1)) / (n * (n - k)))
                   * f_dist.ppf(1 - alpha, k, n - k))
+
+
+def hotelling_t2_limit_phase1(n: int, k: int, alpha: float = 0.05) -> float:
+    """Hotelling T2 upper control limit for **Phase I** — the calibration
+    samples themselves (the ones that estimated the mean and covariance).
+    Tracy, Young & Mason (1992), Technometrics 34(1):46-53, Eq. 3:
+
+        T2_UCL = ((n - 1)^2 / n) * Beta_(1 - alpha; k/2, (n - k - 1)/2)
+
+    Use `hotelling_t2_limit` (Phase II, F distribution) for NEW samples.
+    A training T2 can never exceed (n - 1)^2 / n, which this limit
+    respects; the Phase II F limit does not and becomes very loose for
+    small n (e.g. ~2-3x larger with n < 20).
+    """
+    if n - k - 1 <= 0:
+        log.warning("Hotelling T2 (Phase I): n=%d too small for k=%d LVs.",
+                    n, k)
+        return float("inf")
+    if n < 3 * k:
+        log.warning("Hotelling T2 (Phase I): n=%d < 3k=%d. Limit may be "
+                    "imprecise (wide confidence interval).", n, 3 * k)
+    return float(((n - 1) ** 2 / n)
+                 * beta_dist.ppf(1 - alpha, k / 2, (n - k - 1) / 2))
 
 
 def q_residuals(X: np.ndarray, T: np.ndarray, P: np.ndarray) -> np.ndarray:

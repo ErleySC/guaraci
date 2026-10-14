@@ -451,6 +451,41 @@ def test_hotelling_limite_positivo_e_monotonico(pq):
     assert pq.hotelling_t2_limit(3, 3, 0.05) == float("inf")
 
 
+
+@pytest.mark.parametrize("n,k", [(12, 2), (20, 3), (60, 4)])
+def test_hotelling_limite_fase1_cobertura_monte_carlo(n, k):
+    """Oraculo independente da formula Beta de Fase I (Tracy, Young & Mason
+    1992): simula amostras normais, calcula o T2 de cada amostra contra a
+    media/covariancia estimadas no PROPRIO conjunto e mede a fracao acima do
+    limite. Tem que dar ~alpha. O limite de Fase II (F) da' bem menos que
+    alpha nesse uso -- e' o erro que motivou a funcao nova."""
+    from guaraci.chemometric_stats import (hotelling_t2_limit,
+                                           hotelling_t2_limit_phase1)
+    rng = np.random.default_rng(123)
+    alpha, reps = 0.05, 4000
+    lim1 = hotelling_t2_limit_phase1(n, k, alpha)
+    lim2 = hotelling_t2_limit(n, k, alpha)
+    acima1 = acima2 = 0
+    for _ in range(reps):
+        Z = rng.normal(size=(n, k))
+        Zc = Z - Z.mean(axis=0)
+        S_inv = np.linalg.inv(np.cov(Zc, rowvar=False, ddof=1))
+        t2 = np.einsum("ij,jk,ik->i", Zc, S_inv, Zc)
+        acima1 += int(np.sum(t2 > lim1))
+        acima2 += int(np.sum(t2 > lim2))
+    taxa1 = acima1 / (reps * n)
+    taxa2 = acima2 / (reps * n)
+    assert abs(taxa1 - alpha) < 0.006, f"Fase I: {taxa1:.4f} vs {alpha}"
+    assert taxa2 < taxa1
+    # T2 de treino nunca passa de (n-1)^2/n; o limite de Fase I respeita isso
+    assert lim1 < (n - 1) ** 2 / n
+
+
+def test_hotelling_limite_fase1_degenerado_e_alerta():
+    from guaraci.chemometric_stats import hotelling_t2_limit_phase1
+    assert hotelling_t2_limit_phase1(4, 3, 0.05) == float("inf")
+    assert hotelling_t2_limit_phase1(50, 3, 0.01) > hotelling_t2_limit_phase1(50, 3, 0.05) > 0
+
 # ── DModX / DModY (nomenclatura SIMCA-P/Unscrambler, mesmo Q-resíduo) ────────
 
 def test_dmodx_amostra_tipica_fica_proxima_de_1(pq):

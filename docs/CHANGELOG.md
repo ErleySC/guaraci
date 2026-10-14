@@ -16,6 +16,12 @@ Correção de método:
   batiam com PLS(k+1). **Muda números:** os escores do gráfico OPLS e do
   S-plot. X passa a ser centrado no `fit` (`x_mean_`) e há um `predict()`
   novo. Testes: `test_oplsda_*` em `tests/test_classificadores.py`.
+- **Limite de T² de Fase I** (`chemometric_stats.hotelling_t2_limit_phase1`,
+  distribuição Beta de Tracy, Young & Mason 1992): o gráfico de outliers do
+  treino (`fig3_outliers_T2_Q`) usava o limite de Fase II (F), feito para
+  amostras novas, que fica 2–3× mais frouxo com n<20 e escondia outliers.
+  **Muda números:** o limite e a contagem de outliers de T² do treino. O
+  limite de Fase II continua onde a comparação é com amostras novas.
 
 Correções da auditoria de UX de 2026-09-24 (`docs/AUDITORIA_UX_2026-09-24.md`):
 
