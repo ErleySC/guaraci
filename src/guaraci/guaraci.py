@@ -82,6 +82,7 @@ _load_config = pq.load_config
 # nao ha efeito colateral — o antigo carregamento por caminho (spec_from_file)
 # so existia porque os modulos eram scripts soltos na raiz.
 import guaraci.cli_assistente as _cli
+import guaraci.cli_nav as nav
 import guaraci.preferencias_visuais as _prefs_visuais
 
 def _try(name, fallback=None):
@@ -487,7 +488,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         # Nome de pasta
         "tag_atual":    "Identificador atual",
         "tag_auto":     "(automatico)",
-        "tag_novo":     "Novo identificador (Enter=manter, ?=limpar): ",
+        "tag_novo":     "Novo identificador (Enter=manter, -=limpar): ",
         "tag_limpo":    "Identificador removido — proximo run usa timestamp.",
         # Perfis
         "perf_tempo":   "Tempo",
@@ -642,7 +643,7 @@ _I18N: Dict[str, Dict[str, str]] = {
         "res_tag":      "Run ID",
         "tag_atual":    "Current ID",
         "tag_auto":     "(automatic)",
-        "tag_novo":     "New ID (Enter=keep, ?=clear): ",
+        "tag_novo":     "New ID (Enter=keep, -=clear): ",
         "tag_limpo":    "ID cleared — next run uses timestamp.",
         "perf_tempo":   "Time",
         "perf_uso":     "Best for",
@@ -1089,57 +1090,36 @@ def _guaraci_revisar_config(cfg: Config) -> None:
 #: As 18 abas reais do CLI (confirmado por auditoria funcional, Agente 1 --
 #: nao existe "0"), tecla -> (chave t_, chave d_). "G" fica de fora: e' o
 #: proprio assistente, nao uma secao pra' navegar ATE (circular).
-_SECOES_NAVEGAVEIS: List[Tuple[str, str, str]] = [
-    ("1", "t_projeto", "d_projeto"),
-    ("2", "t_dados", "d_dados"),
-    ("3", "t_preproc", "d_preproc"),
-    ("4", "t_modelagem", "d_modelagem"),
-    ("5", "t_validacao", "d_validacao"),
-    ("6", "t_avancado", "d_avancado"),
-    ("7", "t_viz", "d_viz"),
-    ("8", "t_tecnica", "d_tecnica"),
-    ("9", "t_codigos", "d_codigos"),
-    ("H", "t_hardware", "d_hardware"),
-    ("B", "t_predicao", "d_predicao"),
-    ("X", "t_hsi", "d_hsi"),
-    ("J", "t_planejamento", "d_planejamento"),
-    ("U", "t_auditoria", "d_auditoria"),
-    ("K", "t_selecao_amostras", "d_selecao_amostras"),
-    ("T", "t_tecnicas_avancadas", "d_tecnicas_avancadas"),
-    ("P", "t_perfis", "d_perfis"),
-    ("?", "t_ajuda", "d_ajuda"),
+# Telas listadas em "Informacoes sobre uma secao" do assistente: derivadas
+# da arvore de menus (`cli_nav.MENU`), a mesma fonte do menu e do `?` --
+# uma tela nova aparece aqui sem editar nada neste arquivo. Antes era uma
+# lista de teclas escrita a mao (que ja' tinha ficado sem 10 das 18 abas
+# uma vez -- achado do Agente 6, docs/DESIGN.md).
+_SECOES_NAVEGAVEIS: List[str] = [
+    it.id for g in nav.MENU for it in g.itens
+    if it.id not in ("modo", "idioma")
 ]
 
 
 def _guaraci_navegar_secoes(cfg: Config) -> None:
-    """Lista as 18 abas reais do CLI e exibe descricao quando selecionada.
-
-    Antes (achado do Agente 6, docs/DESIGN.md): dict estatico escrito a
-    mao com so' 8 secoes, faltando 10 das 18 abas reais (H/B/J/U/K/P/?/A
-    + a lista supunha existir uma aba "0" que nunca existiu). Agora deriva
-    de `_t()`/`d_*`, a MESMA fonte que ja alimenta o rodape/ajuda de cada
-    aba individual -- uma secao nova precisa so' de um par t_/d_ na tabela
-    de traducao pra' aparecer aqui tambem, nao de editar este dict.
-    """
+    """Lista todas as telas (caminho + o que faz); o numero abre a ajuda
+    completa da tela, inclusive das que estao ocultas no modo Basico."""
     lang = _lang()
-    secoes = {k: (_t(t_key), _t(d_key)) for k, t_key, d_key in _SECOES_NAVEGAVEIS}
-    secoes["A"] = ("Sobre" if lang == "PT" else "About", _t("d_sobre"))
     console.print()
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
     t.add_column("N", style=PA, width=4)
-    t.add_column("Secao", style=PW, width=22)
+    t.add_column("Secao", style=PW, width=34)
     t.add_column("Descricao", style=PM)
-    for k, (nome, desc) in secoes.items():
-        t.add_row(k, nome, desc)
+    for i, tela in enumerate(_SECOES_NAVEGAVEIS, 1):
+        textos = nav.ajuda_tela(tela, lang)
+        t.add_row(str(i), escape(nav.caminho(tela, lang)),
+                  escape(_truncar_desc_por_frase(textos[0], 70) if textos else ""))
     console.print(t)
-    raw = _ask(f"  [{PA}]Selecione ([0] voltar): [/{PA}]").strip()
-    if raw in secoes:
-        nome, desc = secoes[raw]
-        console.print(Panel(
-            f"[{PW}]{desc}[/{PW}]",
-            title=f"[{PA}]{nome}[/{PA}]",
-            border_style=PF, box=rbox.ROUNDED, padding=(0, 2), width=_W()
-        ))
+    raw = _ask(f"  [{PA}]{'Selecione (Enter = voltar)' if lang == 'PT' else 'Select (Enter = back)'}: [/{PA}]").strip()
+    if raw.isdigit() and 1 <= int(raw) <= len(_SECOES_NAVEGAVEIS):
+        painel = _painel_ajuda_tela(_SECOES_NAVEGAVEIS[int(raw) - 1])
+        if painel is not None:
+            console.print(painel)
         _pause()
 
 
@@ -1641,11 +1621,21 @@ def _guaraci_fluxo_decisao(cfg: Config) -> None:
     _pause()
 
 
-def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
-    """Abre o Assistente Guaraci (tecla G em qualquer tela)."""
+def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None,
+                      tela: str = "") -> None:
+    """Abre o Assistente Guaraci (tecla G em qualquer tela).
+
+    Com `tela`, abre direto no assunto daquela tela (o que faz / quando
+    usar / o que fazer depois) antes do menu geral -- antes o contexto so'
+    aparecia como "Chamado de: ..." e o usuario precisava navegar de novo
+    ate o assunto (guia v2, secao 5)."""
     lang = _lang()
-    _cls(); _print_header(cfg)
+    _cls(); _print_header(cfg, trilha="Guaraci")
     console.print()
+    if tela:
+        painel = _painel_ajuda_tela(tela)
+        if painel is not None:
+            console.print(painel)
 
     opcoes = [
         ("1", "Revisar configuracao atual" if lang=="PT" else "Review current configuration"),
@@ -1654,7 +1644,7 @@ def _abrir_assistente(contexto: str = "", cfg: Optional[Config] = None) -> None:
         ("4", "Tecnicas disponiveis" if lang=="PT" else "Available techniques"),
         ("5", "Perguntas frequentes" if lang=="PT" else "Frequently asked questions"),
         ("6", "O que voce precisa decidir?" if lang=="PT" else "What do you need to decide?"),
-        ("Q", "Fechar assistente"           if lang=="PT" else "Close assistant"),
+        ("V", "Fechar assistente"           if lang=="PT" else "Close assistant"),
     ]
     t = Table(show_header=False, box=rbox.SIMPLE, padding=(0, 1))
     t.add_column("Tecla", style=PA, width=6)
@@ -1707,259 +1697,345 @@ def _rotulo_tecnica_efetivo(cfg: Optional[Config]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# CABECALHO COMPACTO
+# CABECALHO, STATUS E RODAPE -- guia de design v2 (docs/DESIGN.md secao 7)
 # ---------------------------------------------------------------------------
-def _print_header(cfg: Optional[Config] = None) -> None:
-    # Titulo com icone solar flanqueando GUARACI
-    titulo = Text(justify="center")
-    titulo.append("  ", style=f"{PA}")
-    titulo.append("GUARACI", style=f"bold {PA}")
-    titulo.append("  ", style=f"{PA}")
+def _print_header(cfg: Optional[Config] = None, trilha: str = "") -> None:
+    """Cabecalho de uma linha + regua fina. Sem moldura dupla (guia v2,
+    secao 2.5): a moldura era redesenhada em toda tela e ocupava 5 linhas."""
+    is_pt = _lang() == "PT"
+    trilha = trilha or _STATE.get("trilha", "")
+    linha = Text()
+    linha.append("  GUARACI", style=f"bold {PA}")
+    if trilha:
+        linha.append(f"  ›  {trilha}", style=PW)
+    else:
+        linha.append("  ·  " + ("quimiometria com validação anti-vazamento" if is_pt
+                                else "chemometrics with leakage-safe validation"),
+                     style=PM)
+    tec = _rotulo_tecnica_efetivo(cfg)
+    linha.append(f"   ·  {'Tecnica' if is_pt else 'Technique'}: {tec}", style=PM)
+    console.print(linha)
+    console.print(Rule(style=PD))
 
-    # Tecnica ativa (atualizada dinamicamente, ajustada ao mode -- ver
-    # _rotulo_tecnica_efetivo)
-    tec_nome = _rotulo_tecnica_efetivo(cfg)
-    tec_str  = f"Tecnica: {tec_nome}" if _lang() == "PT" else f"Technique: {tec_nome}"
 
-    sub = Text(
-        "Plataforma quimiometrica com validacao anti-vazamento por padrao"
-        if _lang() == "PT" else
-        "Chemometrics platform with leakage-safe validation by default",
-        style=PS, justify="center"
-    )
-    rod_txt = f"Quimiometria  |  Machine Learning  |  {tec_str}"
-    rod = Text(rod_txt, style=PM, justify="center")
-    console.print(Panel(
-        Align.center(Group(titulo, sub, rod)),
-        border_style=PA, box=rbox.DOUBLE, padding=(0, 2)
-    ))
+def _dados_prontos(cfg: Config) -> Tuple[bool, str]:
+    """(ok, mensagem) da fonte de dados, ciente do modo de entrada (.dx,
+    CSV, imagem, sintetico...). Antes o "pronto" do menu contava so' .dx
+    (achado B1 de docs/AUDITORIA_UX_2026-09-24.md)."""
+    from guaraci.config_io import _validar_pasta_dados
+    try:
+        return _validar_pasta_dados(cfg)
+    except Exception as e:  # noqa: BLE001 -- status e' best-effort: nunca
+        # impede o menu de desenhar por causa de um caminho estranho.
+        return False, str(e)
 
-# ---------------------------------------------------------------------------
-# BARRA DE STATUS — compacta, 2 linhas
-# ---------------------------------------------------------------------------
+
+def _contexto_nav(cfg: Optional[Config]) -> frozenset:
+    """Condicoes que revelam itens avancados mesmo no modo Basico."""
+    if cfg is not None and getattr(cfg, "mode", None) == "hsi":
+        return frozenset({"hsi"})
+    return frozenset()
+
+
 def _print_status(cfg: Config) -> None:
-    lang = _lang()
-    pasta = _cfgv(cfg, "pasta_dados", "dados")
-    pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _count_dx(pasta) if pasta_ok else 0
-
-    if pasta_ok and n_dx > 0:
-        dados_str = f"[g]{_t('dados_ok', n=n_dx)}[/g]"
-    elif pasta_ok:
-        dados_str = f"[warn]{escape(str(pasta))}[/warn]"
+    """Status em uma linha + proximo passo (padrao `git status`). RAM,
+    hardware e "Extras" sairam da tela inicial: so' decidem algo no
+    checklist pre-execucao e em Sistema › Hardware."""
+    lang = _lang(); is_pt = lang == "PT"
+    ok, msg = _dados_prontos(cfg)
+    hsi = getattr(cfg, "mode", None) == "hsi"
+    if ok:
+        pasta = _cfgv(cfg, "pasta_dados", "")
+        n_dx = _count_dx(pasta) if pasta and os.path.isdir(str(pasta)) else 0
+        dados = (_t("dados_ok", n=n_dx) if n_dx
+                 else escape(msg.replace("OK — ", "")))
+        dados_txt = f"[{PG}]{dados}[/{PG}]"
     else:
-        dados_str = f"[err]{_t('dados_err')}[/err]"
-
-    preproc  = escape(str(_cfgv(cfg, "pre_processamento", "msc_sg_mc")))
-    # Barra de status compacta: usa so a palavra-chave do mode (Classificacao/
-    # Discriminacao/Quantificacao) — o rotulo completo estouraria as colunas.
-    _niv_raw  = str(_cfgv(cfg, "nivel", "N1"))
+        dados_txt = f"[{PM}]{'nenhum' if is_pt else 'none'}[/{PM}]"
+    _niv_raw = str(_cfgv(cfg, "nivel", "N1"))
     _niv_nome = pq._NIVEL_NOME.get(_niv_raw, "")
-    nivel    = escape(_niv_nome.split()[0] if _niv_nome else _niv_raw)
-    tag      = escape(str(getattr(cfg, "tag", "") or ""))
-    pasta_s  = escape(str(pasta))
+    nivel = escape(_niv_nome.split()[0] if _niv_nome else _niv_raw)
+    rot = "Dados" if is_pt else "Data"
+    rot_n = "Nivel" if is_pt else "Level"
+    console.print(Text.from_markup(
+        f"  [{PM}]{rot}:[/{PM}] {dados_txt}  [{PM}]·  {rot_n}:[/{PM}] "
+        f"[{PS}]{nivel}[/{PS}]"))
+    prox = nav.proximo_passo(lang, dados_ok=ok, hsi=hsi)
+    rot_p = "Próximo passo" if is_pt else "Next step"
+    console.print(Text.from_markup(
+        f"  [{PM}]{rot_p}:[/{PM}] [{PA}]{escape(prox)}[/{PA}]"))
 
-    try:
-        import psutil
-        ram_gb = psutil.virtual_memory().total / (1024**3)
-        hw_str = (
-            f"[g]{_t('hw_alto')}[/g]" if ram_gb >= 16 else
-            f"[warn]{_t('hw_medio')}[/warn]" if ram_gb >= 8 else
-            f"[warn]{_t('hw_basico')}[/warn]" if ram_gb >= 4 else
-            f"[err]{_t('hw_limitado')}[/err]"
-        )
-    except ImportError:
-        hw_str = "[m]N/A[/m]"
 
-    status_str = (
-        f"[g]{_t('status_ok')} ({_t('dados_ok', n=n_dx)})[/g]" if pasta_ok and n_dx > 0
-        else f"[err]{_t('status_erro')}[/err]"
-    )
+def _fmt_teclas(pares: List[Tuple[str, str]], sep: str = "   ") -> str:
+    return sep.join(f"[{PA}]{escape(k)}[/{PA}] {escape(lbl)}" for k, lbl in pares)
 
-    tec_nome = _rotulo_tecnica_efetivo(cfg)
 
+def _print_rodape(*, raiz: bool = False, rodar: bool = False,
+                  n_ocultos: Optional[int] = None) -> None:
+    """Linha de acoes (`R`/`M`, so' onde fazem efeito) + rodape fixo, ambos
+    gerados de `cli_nav` -- nenhuma tela escreve o proprio rodape."""
+    lang = _lang()
+    acoes = nav.linha_acoes(lang, rodar=rodar, n_ocultos=n_ocultos,
+                            modo_avancado=_modo_usuario() == "avancado")
+    console.print()
+    if acoes:
+        console.print(Text.from_markup(
+            "  " + "    ".join(f"[{PA}]\\[{escape(k)}][/{PA}] {escape(lbl)}"
+                               for k, lbl in acoes)))
+        console.print()
+    console.print(Text.from_markup("  " + _fmt_teclas(nav.rodape(lang, raiz=raiz))))
+
+
+def _alternar_modo() -> None:
+    novo = _toggle_modo_usuario()
+    is_pt = _lang() == "PT"
+    lbl = (("Básico" if novo == "iniciante" else "Avançado") if is_pt
+           else ("Basic" if novo == "iniciante" else "Advanced"))
+    console.print(f"  [g]✓ {'Modo' if is_pt else 'Mode'}: {lbl}[/g]")
+
+
+def _nome_tela(tela: str) -> str:
+    """Rotulo legivel de uma tela/grupo no idioma atual."""
+    lang = _lang()
+    if tela == "menu_principal":
+        return "Menu principal" if lang == "PT" else "Main menu"
+    g = nav.GRUPOS.get(tela)
+    if g is not None and not g.direto:
+        return g.rotulo(lang)
+    for gr in nav.MENU:
+        for it in gr.itens:
+            if it.id == tela:
+                return it.rotulo(lang) if not gr.direto else gr.rotulo(lang)
+    return tela
+
+
+def _painel_ajuda_tela(tela: str) -> Optional[Panel]:
+    """Painel 'o que faz / quando usar / depois' de uma tela, ou None."""
+    lang = _lang(); is_pt = lang == "PT"
+    textos = nav.ajuda_tela(tela, lang)
+    if textos is None:
+        return None
+    faz, quando, depois = textos
     t = Table(box=None, show_header=False, padding=(0, 1))
-    t.add_column("L1", style=PM, width=10, no_wrap=True)
-    t.add_column("V1", no_wrap=True, min_width=14)
-    t.add_column("L2", style=PM, width=10, no_wrap=True)
-    t.add_column("V2", no_wrap=True, min_width=14)
-    t.add_column("L3", style=PM, width=10, no_wrap=True)
-    t.add_column("V3", no_wrap=True)
-
-    proj_lbl  = "Dados" if lang == "PT" else "Data"
-    preproc_l = "Preproc."
-    hw_lbl    = "Hardware"
-    nivel_l   = "Nivel" if lang == "PT" else "Level"
-    tec_l     = "Tecnica" if lang == "PT" else "Technique"
-    status_l  = "Status"
-
-    t.add_row(
-        proj_lbl,  dados_str,
-        preproc_l, f"[info]{preproc}[/info]",
-        hw_lbl,    hw_str,
-    )
-    t.add_row(
-        tec_l,     f"[a]{escape(tec_nome)}[/a]",
-        nivel_l,   f"[a]{nivel}[/a]",
-        status_l,  status_str,
-    )
-
-    tit = "Status do Projeto" if lang == "PT" else "Project Status"
-    console.print(Panel(
-        t, title=f"[info]{tit}[/info]",
-        border_style=PS, box=rbox.ROUNDED, padding=(0, 1)
-    ))
-
-# ---------------------------------------------------------------------------
-# MENU PRINCIPAL — compacto, numeros adjacentes ao texto
-# ---------------------------------------------------------------------------
-def _print_main_menu() -> None:
-    lang = _lang()
-    is_pt = lang == "PT"
-    G, F, S, M = PA, PF, PS, PM
-
-    def _grp(label: str, cor: str = PA) -> str:
-        return f"[{cor}]{'─' * 3} {label} {'─' * 3}[/{cor}]"
-
-    # Cada par de opcoes em uma linha, sem separacao de colunas
-    t = Table(box=None, show_header=False, padding=(0, 0), expand=False)
-    t.add_column("a", no_wrap=True, min_width=26)
-    t.add_column("b", no_wrap=True, min_width=26)
-
-    G_k = f"{G}"  # amber para teclas
-
-    def row(k1, lbl1, k2="", lbl2="", style1=G_k, style2=G_k):
-        c1 = f"  [{style1}][{k1}][/{style1}] {lbl1}" if k1 else f"  {lbl1}"
-        c2 = f"  [{style2}][{k2}][/{style2}] {lbl2}" if k2 else (f"  {lbl2}" if lbl2 else "")
-        return Text.from_markup(c1), Text.from_markup(c2)
-
-    # Grupos (docs/DESIGN.md secao 4 -- Agente 5.2, aprovado 2026-09-01):
-    # 6 grupos alinhados ao fluxo real de trabalho, substituindo os 3 grupos
-    # antigos (config/analise/sistema). Atalho direto de cada tecla continua
-    # funcionando igual, digitado de qualquer lugar deste menu -- so' a
-    # organizacao visual mudou, o dispatch em main() nao foi tocado.
-    t.add_row(Text.from_markup(_grp(_t("grp_preparar"))), Text.from_markup(""))
-    t.add_row(*row("2", _t("t_dados"),      "3", _t("t_preproc")))
-    t.add_row(*row("9", _t("t_codigos"),    "P", _t("t_perfis")))
-
-    t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_planejar"))), Text.from_markup(""))
-    t.add_row(*row("J", _t("t_planejamento"), "K", _t("t_selecao_amostras")))
-    t.add_row(*row("U", _t("t_auditoria")))
-
-    t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_modelar"))), Text.from_markup(""))
-    t.add_row(*row("4", _t("t_modelagem"),  "6", _t("t_avancado")))
-    t.add_row(*row("8", _t("t_tecnica"),    "T", _t("t_tecnicas_avancadas")))
-
-    t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_validar"), cor=S)), Text.from_markup(""))
-    t.add_row(*row("5", _t("t_validacao"),  "7", _t("t_viz"), style1=S, style2=S))
-
-    t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_prever"), cor=S)), Text.from_markup(""))
-    t.add_row(*row("B", _t("t_predicao"), "X", _t("t_hsi"), style1=S, style2=S))
-
-    t.add_row(Text.from_markup(""), Text.from_markup(""))
-    t.add_row(Text.from_markup(_grp(_t("grp_sistema"), cor=S)), Text.from_markup(""))
-    modo_lbl = (f"Modo: {'Iniciante' if _modo_usuario()=='iniciante' else 'Avancado'}"
-                if is_pt else
-                f"Mode: {'Beginner' if _modo_usuario()=='iniciante' else 'Advanced'}")
-    t.add_row(*row("1", _t("t_projeto"), "H", _t("t_hardware"), style1=S, style2=S))
-    t.add_row(*row("G", "Guaraci ☀", "M", modo_lbl, style1=PA, style2=S))
-    t.add_row(*row("I", _t("t_idioma"),  "?", _t("t_ajuda"),  style1=S, style2=M))
-    sobre_lbl = "Sobre" if lang == "PT" else "About"
-    t.add_row(*row("A", sobre_lbl,       "Q", _t("sair"),     style1=S, style2=M))
-
-    tit_menu = "GUARACI — MENU PRINCIPAL" if lang == "PT" else "GUARACI — MAIN MENU"
-    console.print(Panel(
-        t,
-        title=f"[bold {PA}]  {tit_menu}  [/bold {PA}]",
-        border_style=PA,
-        box=rbox.DOUBLE,
-        padding=(0, 1),
-    ))
+    t.add_column("k", style=PA, no_wrap=True)
+    t.add_column("v", style=PW)
+    t.add_row("O que faz" if is_pt else "What it does", escape(faz))
+    t.add_row("Quando usar" if is_pt else "When to use", escape(quando))
+    t.add_row("Depois" if is_pt else "Next", escape(depois))
+    g = nav.GRUPOS.get(tela)
+    entradas: list = []
+    if tela == "menu_principal":
+        entradas = list(nav.MENU)
+    elif g is not None and not g.direto:
+        entradas = list(g.itens)
+    vis, _n = nav.ordenar_visiveis(entradas, _modo_usuario() == "avancado")
+    ocultos = [x for x in entradas if x.avancado and x not in vis]
+    if ocultos:
+        nomes = ", ".join(x.rotulo(lang) for x in ocultos)
+        t.add_row("", "")
+        t.add_row("+", escape((f"No modo avançado ([M]): {nomes}." if is_pt
+                               else f"In advanced mode ([M]): {nomes}.")))
+    return Panel(t, title=f"[bold {PA}]? {escape(_nome_tela(tela))}[/bold {PA}]",
+                 border_style=PF, box=rbox.ROUNDED, padding=(0, 1))
 
 
-# ---------------------------------------------------------------------------
-# CAIXA DE EXECUCAO — call-to-action destacado para iniciar a analise (R)
-# ---------------------------------------------------------------------------
-def _print_run_box(cfg: Config) -> None:
-    """Caixa de destaque para iniciar a analise.
-
-    Muda de cor conforme a prontidao (verde = pronto, cinza = falta config)
-    e exibe info complementar ao Status do Projeto: RAM livre (indicador de
-    3 niveis) e os modulos pesados ativos (Benchmark / Monte Carlo / SHAP).
-    """
-    lang = _lang()
-    is_pt = lang == "PT"
-
-    pasta = _cfgv(cfg, "pasta_dados", "dados")
-    pasta_ok = bool(pasta) and os.path.isdir(str(pasta))
-    n_dx = _count_dx(pasta) if pasta_ok else 0
-    pronto = pasta_ok and n_dx > 0
-
-    # RAM livre — indicador visual de 3 niveis
-    try:
-        import psutil
-        vm = psutil.virtual_memory()
-        ram_livre = vm.available / (1024 ** 3)
-        ram_total = vm.total / (1024 ** 3)
-        if ram_livre >= 8:
-            ram_cor, ram_ico = PG, "●●●"
-        elif ram_livre >= 4:
-            ram_cor, ram_ico = PA, "●●○"
+def _ajuda_tela(tela: str, campos: Optional[List[str]] = None,
+                n: Optional[int] = None) -> None:
+    """Tecla `?`: ajuda desta tela (o que faz / quando usar / depois) e,
+    em telas de configuracao, a ajuda de um campo. `?3` vai direto ao
+    campo 3."""
+    if n is not None and campos:
+        if 1 <= n <= len(campos):
+            _mostrar_ajuda(campos[n - 1])
         else:
-            ram_cor, ram_ico = PR, "●○○"
-        ram_txt = f"[{ram_cor}]{ram_ico}  RAM {ram_livre:.1f}/{ram_total:.0f} GB[/{ram_cor}]"
-    except Exception:  # noqa: BLE001 -- indicador visual best-effort (psutil
-        # ausente ou probe falha por variacao de SO); "N/A" e' o fallback
-        # documentado, nunca impede a tela de renderizar.
-        ram_txt = f"[{PM}]RAM N/A[/{PM}]"
-
-    # Prontidao + cor da chamada
-    if pronto:
-        cta_cor = PG
-        check = (f"[{PG}]✔ Pronto para executar[/{PG}]" if is_pt
-                 else f"[{PG}]✔ Ready to run[/{PG}]")
+            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+        return
+    painel = _painel_ajuda_tela(tela)
+    if painel is not None:
+        console.print(painel)
+    if campos:
+        _ajuda_de_campo(campos)
+    elif tela == "menu_principal":
+        is_pt = _lang() == "PT"
+        r = _input(("  1 = ajuda de todos os campos de configuração · Enter = voltar: "
+                    if is_pt else
+                    "  1 = help for every configuration field · Enter = back: ")).strip()
+        if r == "1":
+            _menu_help()
     else:
-        cta_cor = PM
-        check = (f"[{PR}]✖ {_t('status_erro')}[/{PR}]")
+        _pause()
 
-    # Modulos pesados ativos — definem o tempo de execucao e NAO aparecem
-    # no Status do Projeto (info complementar, nao redundante).
-    extras = []
-    if _cfgv(cfg, "benchmark", False):      extras.append("Benchmark")
-    if _cfgv(cfg, "monte_carlo", False):    extras.append("Monte Carlo")
-    if _cfgv(cfg, "shap_benchmark", False): extras.append("SHAP")
-    if extras:
-        extras_txt = f"[{PA}]" + " · ".join(extras) + f"[/{PA}]"
+
+def _tecla_global(acao: str, n: Optional[int], cfg: Optional[Config], tela: str,
+                  campos: Optional[List[str]] = None) -> bool:
+    """Trata as teclas globais de um prompt de menu. True = tratada (a
+    tela so' redesenha). `voltar`/`sair`/`item`/`outro` ficam com a tela."""
+    if acao == "ajuda":
+        _ajuda_tela(tela, campos, n)
+    elif acao == "guaraci":
+        _abrir_assistente(_nome_tela(tela), cfg, tela=tela)
+    elif acao == "idioma":
+        _toggle_idioma()
+    elif acao == "avancados":
+        _alternar_modo(); _pause()
+    elif acao == "rodar" and cfg is not None:
+        _rodar_pipeline(cfg)
     else:
-        extras_txt = f"[{PM}]" + ("nenhum" if is_pt else "none") + f"[/{PM}]"
-    ext_lbl = "Extras" if is_pt else "Extras"
+        return False
+    return True
 
-    big = "RODAR PIPELINE" if is_pt else "RUN PIPELINE"
-    sub = ("Pressione  [R]  e Enter para comecar a analise"
-           if is_pt else "Press  [R]  then Enter to start the analysis")
 
-    inner = Table(box=None, show_header=False, padding=(0, 1), expand=True)
-    inner.add_column("c", justify="center")
-    inner.add_row(Text.from_markup(
-        f"[bold {cta_cor}]▶   [{cta_cor}]\\[R][/{cta_cor}]   {big}   ◀[/bold {cta_cor}]"))
-    inner.add_row(Text.from_markup(f"[{PM}]{sub}[/{PM}]"))
-    inner.add_row(Text.from_markup(""))
-    inner.add_row(Text.from_markup(
-        f"{check}     {ram_txt}     "
-        f"[{PM}]{ext_lbl}:[/{PM}] {extras_txt}"))
+def _gate(raw: str, cfg: Optional[Config], tela: str) -> Optional[str]:
+    """Primeiro prompt de uma tela-assistente (pasta, caminho, classes).
+    E' um prompt de VALOR: so' uma tecla global SOZINHA conta, nunca um
+    texto que a contenha. Retorna "voltar", "redesenhar" ou None (o texto
+    e' um valor)."""
+    r = (raw or "").strip().upper()
+    if r in ("0", nav.VOLTAR):
+        return "voltar"
+    if r == nav.GUARACI:
+        _abrir_assistente(_nome_tela(tela), cfg, tela=tela); return "redesenhar"
+    if r == nav.AJUDA:
+        _ajuda_tela(tela); return "redesenhar"
+    if r == nav.IDIOMA:
+        _toggle_idioma(); return "redesenhar"
+    return None
 
-    tit = "  ☀  EXECUCAO  ☀  " if is_pt else "  ☀  EXECUTION  ☀  "
-    console.print(Panel(
-        Align.center(inner),
-        title=f"[bold {cta_cor}]{tit}[/bold {cta_cor}]",
-        border_style=cta_cor,
-        box=rbox.HEAVY,
-        padding=(0, 1),
-    ))
+
+# ---------------------------------------------------------------------------
+# MENU PRINCIPAL E GRUPOS
+# ---------------------------------------------------------------------------
+def _print_lista(entradas: list, n_basicos: int) -> None:
+    lang = _lang()
+    for i, e in enumerate(entradas, 1):
+        marca = f"[{PR}]+[/{PR}]" if e.avancado else " "
+        rot = e.rotulo(lang)
+        if isinstance(e, nav.Item) and e.id in ("modo", "idioma"):
+            rot += ": " + _valor_item_sistema(e.id)
+        console.print(Text.from_markup(
+            f"  [{PA}]{i:>2}[/{PA}] {marca} {escape(rot)}"))
+
+
+def _valor_item_sistema(tela: str) -> str:
+    is_pt = _lang() == "PT"
+    if tela == "modo":
+        av = _modo_usuario() == "avancado"
+        return ("Avançado" if av else "Básico") if is_pt else ("Advanced" if av else "Basic")
+    return "Português" if is_pt else "English"
+
+
+def _print_main_menu(cfg: Optional[Config] = None) -> list:
+    """Menu principal: so' as macroetapas. Retorna as entradas visiveis
+    (numeradas 1..N na tela)."""
+    visiveis, n_oc = nav.ordenar_visiveis(
+        nav.MENU, _modo_usuario() == "avancado", _contexto_nav(cfg))
+    console.print()
+    _print_lista(visiveis, 0)
+    _print_rodape(raiz=True, rodar=True, n_ocultos=n_oc if any(
+        g.avancado for g in nav.MENU) else None)
+    return visiveis
+
+
+def _menu_grupo(grupo: "nav.Grupo", cfg: Config) -> None:
+    """Submenu de um grupo do menu principal. Grupo de um item so' abre a
+    tela direto (sem submenu de uma linha)."""
+    if grupo.direto:
+        _abrir_tela(grupo.itens[0].id, cfg)
+        return
+    while True:
+        _cls()
+        _print_header(cfg, trilha=grupo.rotulo(_lang()))
+        visiveis, n_oc = nav.ordenar_visiveis(
+            grupo.itens, _modo_usuario() == "avancado", _contexto_nav(cfg))
+        console.print()
+        _print_lista(visiveis, 0)
+        tem_av = any(it.avancado for it in grupo.itens)
+        _print_rodape(rodar=grupo.rodar, n_ocultos=n_oc if tem_av else None)
+        acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
+        if acao == "voltar":
+            return
+        if acao == "item" and n is not None and 1 <= n <= len(visiveis):
+            _abrir_tela(visiveis[n - 1].id, cfg)
+        elif acao == "rodar" and not grupo.rodar:
+            _rodar_pipeline(cfg)
+        elif not _tecla_global(acao, n, cfg, grupo.id):
+            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+
+
+def _rodar_exemplo() -> None:
+    """Porta do menu para `guaraci demo` (antes so' existia como
+    subcomando). `_comando_demo` encerra com SystemExit em erro de
+    ambiente -- aqui isso volta ao menu em vez de fechar o programa."""
+    try:
+        _comando_demo()
+    except SystemExit:
+        pass
+    _pause()
+
+
+def _editar_nome_execucao(cfg: Config) -> None:
+    console.print()
+    tag_atual = getattr(cfg, "tag", "") or ""
+    console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or _t('tag_auto')}[/{PA}]")
+    novo = _input(f"  {_t('tag_novo')}")
+    if novo == "-":
+        cfg.tag = ""; console.print(f"  [{PM}]{_t('tag_limpo')}[/{PM}]")
+    elif novo:
+        san = _re.sub(r"[^\w\-_]", "_", novo)
+        cfg.tag = san; console.print(f"  [g]✓ ID: {escape(san)}[/g]")
+    _pause()
+
+
+def _menu_hardware_com_cabecalho(cfg: Config) -> None:
+    _cls()
+    _print_header(cfg)
+    _menu_hardware(cfg)
+
+
+def _abrir_tela(tela: str, cfg: Config) -> None:
+    """Despacho unico tela -> funcao. Toda tela alcancavel pelo menu passa
+    por aqui (grupos, atalhos legados e testes)."""
+    if tela == "modo":
+        _alternar_modo(); _pause(); return
+    if tela == "idioma":
+        _toggle_idioma(); return
+    handlers = {
+        "exemplo": lambda: _rodar_exemplo(),
+        "perfis": lambda: _menu_profiles(cfg),
+        "passo_a_passo": lambda: _guaraci_fluxo_decisao(cfg),
+        "projeto": lambda: _menu_project(cfg),
+        "dados": lambda: _menu_data(cfg),
+        "tecnica": lambda: _menu_technique(cfg),
+        "preproc": lambda: _menu_preprocessing(cfg),
+        "auditoria": lambda: _menu_audit(cfg),
+        "planejamento": lambda: _menu_plan(cfg),
+        "selecao_amostras": lambda: _menu_selecao_amostras(cfg),
+        "codificacao": lambda: _menu_encoding(cfg),
+        "objetivo_lvs": lambda: _menu_objetivo_lvs(cfg),
+        "validacao": lambda: _menu_validation(cfg),
+        "metodos_classe": lambda: _menu_metodos_classe(cfg),
+        "selecao_variaveis": lambda: _menu_selecao_variaveis(cfg),
+        "modulos_pesados": lambda: _menu_advanced(cfg),
+        "predicao": lambda: _menu_prediction(cfg),
+        "visualizacao": lambda: _menu_visualization(cfg),
+        "salvar": lambda: _salvar_yaml(cfg),
+        "carregar": lambda: _carregar_yaml(cfg),
+        "nome_execucao": lambda: _editar_nome_execucao(cfg),
+        "sobre": lambda: _menu_about(cfg),
+        "hardware": lambda: _menu_hardware_com_cabecalho(cfg),
+        "tecnicas_especiais": lambda: _menu_tecnicas_avancadas(cfg),
+        "hsi": lambda: _menu_hsi(cfg),
+    }
+    # Toda tela aberta daqui mostra o caminho no cabecalho (ex.:
+    # "Preparar dados › Dados"), mesmo as que chamam _print_header(cfg)
+    # sem trilha.
+    anterior = _STATE.get("trilha", "")
+    _STATE["trilha"] = nav.caminho(tela, _lang())
+    try:
+        handlers[tela]()
+    finally:
+        _STATE["trilha"] = anterior
+
 
 # ---------------------------------------------------------------------------
 # SUBMENU COMPACTO — campos com valor na mesma linha
@@ -1986,29 +2062,32 @@ def _print_submenu_compact(
     title: str, desc: str, fields: List[str], cfg: Config,
     extras: Optional[List[Tuple[str, str]]] = None,
     campos_avancados: Optional[set] = None,
-    mostrar_avancado: bool = True,
+    mostrar_avancado: bool = False,
+    rodar: bool = True,
 ) -> List[str]:
     """
-    Submenu compacto: [N] ICON Nome  Valor  Descricao-breve
+    Submenu compacto: N ICON Nome  Valor  Descricao-breve
     Exibe o valor atual e uma descricao curta na mesma linha.
 
-    `campos_avancados`: subconjunto de `fields` a ESCONDER quando o mode do
-    usuario e' Iniciante e `mostrar_avancado=False` (CLAUDE.md secao 6 /
-    auditoria 2026-07-12: reduzir a densidade de configuracao p/ quem so'
-    quer usar os defaults). Quando `None`, nenhum campo e' escondido --
-    comportamento identico ao de antes desta feature (compatibilidade com
-    chamadores que nao passam esse argumento).
+    `campos_avancados`: subconjunto de `fields` a ESCONDER no modo Basico
+    (a menos que `mostrar_avancado=True`). Avancados aparecem SEMPRE depois
+    dos basicos, com numeracao continua e a marca `+` -- o numero de um
+    campo basico nunca muda entre os modos (guia v2, secao 2.4).
+
+    `extras`: acoes locais da tela, numeradas DEPOIS dos campos (letras sao
+    reservadas as teclas globais -- guia v2, secao 2.1). O chamador mapeia
+    o numero digitado com `_numero_extra`.
 
     Retorna a lista de campos REALMENTE exibidos (numerados 1..N na tela),
-    que o chamador deve usar para indexar a escolha do usuario -- os
-    numeros na tela sempre correspondem a esta lista, nunca ao `fields`
-    original quando ha' campos escondidos.
+    que o chamador deve usar para indexar a escolha do usuario.
     """
     lang = _lang()
-    ocultos = (campos_avancados or set()) if (
-        campos_avancados and _modo_usuario() == "iniciante" and not mostrar_avancado
-    ) else set()
-    fields_visiveis = [f for f in fields if f not in ocultos]
+    avancados = [f for f in fields if f in (campos_avancados or set())]
+    basicos = [f for f in fields if f not in (campos_avancados or set())]
+    revela = mostrar_avancado or _modo_usuario() == "avancado"
+    fields_visiveis = basicos + (avancados if revela else [])
+
+    inertes = _campos_inertes(cfg)
 
     t = Table(box=None, show_header=False, padding=(0, 0), expand=True)
     t.add_column("N",    no_wrap=True, width=5)
@@ -2021,8 +2100,9 @@ def _print_submenu_compact(
         nome  = _nome_campo(key)
         val   = _get_val(cfg, key)
         r_hex = _risco_hex(key)
-        r_ico = _risco_icon(key)
+        r_ico = "+" if key in avancados else _risco_icon(key)
         breve = _desc_curta(key, 44)
+        inerte = inertes.get(key)
 
         # Formatar valor — sem hifenizacao
         if isinstance(val, bool):
@@ -2034,52 +2114,73 @@ def _print_submenu_compact(
             val_txt = Text(_trunc(str(val), 16), style=PS)
 
         t.add_row(
-            Text.from_markup(f"  [{r_hex}][{i}][/{r_hex}]"),
-            Text(r_ico, style=r_hex),
-            Text(f" {nome}", style=PW),
+            Text.from_markup(f"  [{r_hex}]{i:>2}[/{r_hex}]"),
+            Text(r_ico, style=PR if key in avancados else r_hex),
+            Text(f" {nome}", style=PM if inerte else PW),
             val_txt,
-            Text(breve, style=PM) if breve else Text(""),
+            Text(inerte or breve or "", style=PM),
         )
 
     if extras:
         t.add_row(Text(""), Text(""), Text(""), Text(""), Text(""))
-        for ek, ed in extras:
+        for j, (_ek, ed) in enumerate(extras, len(fields_visiveis) + 1):
             t.add_row(
-                Text.from_markup(f"  [{PA}][{ek}][/{PA}]"),
+                Text.from_markup(f"  [{PA}]{j:>2}[/{PA}]"),
                 Text(""),
                 Text(f" {ed}", style=PW),
                 Text(""),
                 Text(""),
             )
 
-    # Rodape: legenda de risco + comandos
-    n_ocultos = len(fields) - len(fields_visiveis)
-    aviso_ocultos = (
-        (f"  [{PR}][V][/{PR}] Mostrar opcoes avancadas ({n_ocultos} ocultas)\n"
-         if lang == "PT" else
-         f"  [{PR}][V][/{PR}] Show advanced options ({n_ocultos} hidden)\n")
-        if n_ocultos > 0 else ""
-    )
-    rodape = Text.from_markup(
-        f"{aviso_ocultos}"
+    legenda = Text.from_markup(
         f"  [{PF}]●[/{PF}] Visual  "
-        f"[{PA}]◆[/{PA}] Analitico  "
-        f"[{PR}]▲[/{PR}] Avancado  "
-        f"   [{PM}][0][/{PM}] {_t('voltar')}"
-        f"  [{PM}][?][/{PM}] Ajuda do campo"
-        f"  [{PA}][G][/{PA}] Guaraci"
-        f"  [{PM}][I][/{PM}] Idioma"
-    )
+        f"[{PA}]◆[/{PA}] {'Analitico' if lang == 'PT' else 'Analytical'}  "
+        f"[{PR}]▲[/{PR}] {'Avancado' if lang == 'PT' else 'Advanced'}")
 
     console.print(Panel(
-        Group(t, Rule(style=PD), rodape),
+        Group(t, Rule(style=PD), legenda),
         title=f"[bold {PA}]{escape(title)}[/bold {PA}]",
         subtitle=f"[{PM}]{escape(desc)}[/{PM}]",
         border_style=PA,
         box=rbox.ROUNDED,
         padding=(0, 1),
     ))
+    n_ocultos = len(fields) - len(fields_visiveis)
+    _print_rodape(rodar=rodar, n_ocultos=n_ocultos if avancados else None)
     return fields_visiveis
+
+
+def _numero_extra(n: int, fields_visiveis: List[str],
+                  extras: Optional[List[Tuple[str, str]]]) -> Optional[str]:
+    """Chave da acao local `extras` correspondente ao numero digitado
+    (numerada depois dos campos visiveis), ou None."""
+    if not extras:
+        return None
+    j = n - len(fields_visiveis) - 1
+    return extras[j][0] if 0 <= j < len(extras) else None
+
+
+def _campos_inertes(cfg: Config) -> Dict[str, str]:
+    """{campo: nota} dos toggles que nao fazem efeito no objetivo atual --
+    aparecem esmaecidos com a nota no lugar da descricao, em vez de
+    parecerem ligaveis (mesma regra de `_ajustar_toggles_por_nivel`)."""
+    try:
+        objetivo = pq.resolve_objective(cfg)
+    except Exception:  # noqa: BLE001 -- nota visual best-effort
+        return {}
+    is_pt = _lang() == "PT"
+    out: Dict[str, str] = {}
+    if objetivo != pq.CLASSIFICACAO:
+        nota = ("nao se aplica a este objetivo" if is_pt
+                else "does not apply to this goal")
+        for k in _TOGGLES_SO_CLASSIFICACAO:
+            out[k] = nota
+    if objetivo != pq.QUANTIFICACAO:
+        nota = ("so' em Quantificacao" if is_pt else "Quantification only")
+        for k in _TOGGLES_SO_QUANTIFICACAO:
+            out[k] = nota
+    return out
+
 
 # Toggles cuja utilidade depende do OBJETIVO cientifico resolvido (nao do
 # nivel em si) -- espelha 1:1 modos_analise._FIG_OBJETIVOS: fora do objetivo
@@ -2369,44 +2470,46 @@ def _ajuda_de_campo(fields_visiveis: List[str]) -> None:
 def _loop_menu(title: str, desc: str, fields: List[str], cfg: Config,
                extras: Optional[List[Tuple[str, str]]] = None,
                on_extra: Optional[Dict[str, Any]] = None,
-               campos_avancados: Optional[set] = None) -> None:
-    """Loop generico para submenus de configuracao.
+               campos_avancados: Optional[set] = None,
+               tela: str = "",
+               antes: Optional[Any] = None) -> None:
+    """Molde unico das telas de configuracao (guia v2, secao 6 passo 1).
 
-    `campos_avancados`: ver `_print_submenu_compact`. O reveal ("V") e'
-    local a esta visita ao menu -- sai e volta a entrar reseta p/ escondido
-    de novo quando o mode do usuario e' Iniciante (design: expandir um
-    submenu especifico nao muda o mode da sessao inteira)."""
-    mostrar_avancado = False
+    Cabecalho, lista de campos, linha de acoes e rodape saem daqui, e as
+    teclas globais sao tratadas num so' lugar (`_tecla_global`) -- antes
+    cada tela tinha laco e rodape proprios, e o `[?]` aparecia no rodape de
+    4 telas sem funcionar (achado B2 de docs/AUDITORIA_UX_2026-09-24.md).
+
+    `campos_avancados`: ver `_print_submenu_compact`. `M` alterna o modo da
+    sessao inteira (antes o `V` revelava so' nesta visita).
+    `extras`/`on_extra`: acoes locais, numeradas depois dos campos.
+    `antes`: funcao chamada antes da lista (ex.: aviso de vazamento)."""
     while True:
         _cls()
-        _print_header(cfg)
+        _print_header(cfg, trilha=_STATE.get("trilha") or title)
+        if antes is not None:
+            antes()
         fields_visiveis = _print_submenu_compact(
             title, desc, fields, cfg, extras,
-            campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
-        raw = _input(f"\n  {_t('opcao')}: ").upper()
+            campos_avancados=campos_avancados)
+        acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
 
-        if raw in ("0", "Q", ""):
+        if acao == "voltar":
             break
-        elif raw == "V" and campos_avancados:
-            mostrar_avancado = not mostrar_avancado
-        elif raw == "I":
-            _toggle_idioma()
-        elif raw == "G":
-            _abrir_assistente(title, cfg)
-        elif raw == "?":
-            _ajuda_de_campo(fields_visiveis)
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
-            _editar_campo(cfg, fields_visiveis[int(raw) - 1])
+        elif acao == "item" and n is not None and 1 <= n <= len(fields_visiveis):
+            _editar_campo(cfg, fields_visiveis[n - 1])
             _pause()
-        elif on_extra and raw in on_extra:
-            on_extra[raw]()
-        else:
+        elif acao == "item" and n is not None and on_extra and \
+                _numero_extra(n, fields_visiveis, extras) in on_extra:
+            on_extra[_numero_extra(n, fields_visiveis, extras)]()
+        elif not _tecla_global(acao, n, cfg, tela, campos=fields_visiveis):
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]")
             _pause()
 
 
 def _menu_project(cfg: Config) -> None:
-    _loop_menu(_t("t_projeto"), _t("d_projeto"), ["pasta_dados", "pasta_saida", "tag"], cfg)
+    _loop_menu(_t("t_projeto"), _t("d_projeto"), ["pasta_dados", "pasta_saida", "tag"], cfg,
+               tela="projeto")
 
 
 _DIR_PERFIS_COMBINADOS = _USER_DIR / "perfis_matriz"
@@ -2471,7 +2574,8 @@ def _menu_data(cfg: Config) -> None:
                extras=[("C", extra_lbl)],
                on_extra={"C": lambda: _salvar_perfil_combinado(cfg)},
                campos_avancados={"perfil_tecnica", "imagem_incluir_textura",
-                                 "hplc_detector"})
+                                 "hplc_detector"},
+               tela="dados")
 
 
 def _menu_preprocessing(cfg: Config) -> None:
@@ -2493,24 +2597,9 @@ def _menu_preprocessing(cfg: Config) -> None:
         console.print(Panel(t, title=f"[{PS}]{lbl}: [{PA}]{escape(preproc)}[/{PA}][/{PS}]",
                             border_style=PS, box=rbox.SIMPLE, padding=(0, 1)))
 
-    fields = ["pre_processamento", "comparar_pre_processamentos"]
-    while True:
-        _cls(); _print_header(cfg); _show_pipeline()
-        _print_submenu_compact(_t("t_preproc"), _t("d_preproc"), fields, cfg)
-        raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q", ""):
-            break
-        elif raw == "I":
-            _toggle_idioma()
-        elif raw == "G":
-            _abrir_assistente(_t("t_preproc"), cfg)
-        elif raw == "?":
-            _ajuda_de_campo(fields)
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields):
-            _editar_campo(cfg, fields[int(raw) - 1])
-            _pause()
-        else:
-            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+    _loop_menu(_t("t_preproc"), _t("d_preproc"),
+               ["pre_processamento", "comparar_pre_processamentos"], cfg,
+               tela="preproc", antes=_show_pipeline)
 
 
 def _menu_modeling(cfg: Config) -> None:
@@ -2529,7 +2618,34 @@ def _menu_modeling(cfg: Config) -> None:
                campos_avancados={"objetivo", "opls_da", "ddsimca", "modo_ddsimca",
                                   "ddsimca_pcv", "selecao_variaveis_etapa4",
                                   "selecao_spa", "selecao_ag",
-                                  "selecao_cars", "selecao_uve"})
+                                  "selecao_cars", "selecao_uve"},
+               tela="objetivo_lvs")
+
+
+def _menu_objetivo_lvs(cfg: Config) -> None:
+    """Modelar e validar › Objetivo e variaveis latentes: a primeira
+    decisao de modelagem. Divisao da antiga tela [4] por categoria (guia
+    v2, secao 3.4) -- os campos sao os mesmos, so' a organizacao mudou."""
+    _loop_menu(nav.GRUPOS["modelar"].itens[0].rotulo(_lang()), _t("d_modelagem"),
+               ["nivel", "max_lvs", "objetivo"], cfg,
+               campos_avancados={"objetivo"}, tela="objetivo_lvs")
+
+
+def _menu_metodos_classe(cfg: Config) -> None:
+    """Modelar e validar › Metodos de classe (avancado): DD-SIMCA e OPLS-DA."""
+    _loop_menu(_nome_tela("metodos_classe"), _t("d_modelagem"),
+               ["opls_da", "ddsimca", "modo_ddsimca", "ddsimca_pcv"], cfg,
+               tela="metodos_classe")
+
+
+def _menu_selecao_variaveis(cfg: Config) -> None:
+    """Modelar e validar › Selecao de variaveis (avancado). iPLS, VIP e SR
+    rodam juntos sob `selecao_variaveis_etapa4`; SPA/AG/CARS/UVE sao
+    sub-opcoes dele."""
+    _loop_menu(_nome_tela("selecao_variaveis"), _t("d_modelagem"),
+               ["selecao_variaveis_etapa4", "selecao_spa", "selecao_ag",
+                "selecao_cars", "selecao_uve"], cfg,
+               tela="selecao_variaveis")
 
 
 def _menu_validation(cfg: Config) -> None:
@@ -2553,34 +2669,21 @@ def _menu_validation(cfg: Config) -> None:
     # usuario Iniciante nao consegue seguir.
     campos_avancados = {"n_permutacoes", "teste_wold", "teste_cv_anova",
                          "teste_martens", "selecao_lv_cv_aninhada"}
-    mostrar_avancado = False
-    while True:
-        _cls(); _print_header(cfg)
-        ga = _cfgv(cfg, "validacao_group_aware", True)
-        if not ga:
+
+    def _aviso_vazamento() -> None:
+        if not _cfgv(cfg, "validacao_group_aware", True):
             console.print(Panel(
                 "[err]  GroupKFold DESATIVADO — risco de data leakage![/err]\n"
-                "[err]  Ative o campo [2] imediatamente.[/err]",
+                "[err]  Ative o campo 2 imediatamente.[/err]"
+                if _lang() == "PT" else
+                "[err]  GroupKFold DISABLED — data leakage risk![/err]\n"
+                "[err]  Turn field 2 back on right away.[/err]",
                 border_style=PR, box=rbox.HEAVY, padding=(0, 1)
             ))
-        fields_visiveis = _print_submenu_compact(
-            _t("t_validacao"), _t("d_validacao"), fields, cfg,
-            campos_avancados=campos_avancados, mostrar_avancado=mostrar_avancado)
-        raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q", ""):
-            break
-        elif raw == "V":
-            mostrar_avancado = not mostrar_avancado
-        elif raw == "I":
-            _toggle_idioma()
-        elif raw == "G":
-            _abrir_assistente(_t("t_validacao"), cfg)
-        elif raw == "?":
-            _ajuda_de_campo(fields_visiveis)
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields_visiveis):
-            _editar_campo(cfg, fields_visiveis[int(raw) - 1]); _pause()
-        else:
-            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+
+    _loop_menu(_t("t_validacao"), _t("d_validacao"), fields, cfg,
+               campos_avancados=campos_avancados, tela="validacao",
+               antes=_aviso_vazamento)
 
 
 def _menu_advanced(cfg: Config) -> None:
@@ -2588,26 +2691,17 @@ def _menu_advanced(cfg: Config) -> None:
     # _CONFIG_SPEC/_HELP_DB, mas nunca tinha sido colocado em NENHUM menu.
     fields = ["benchmark", "benchmark_regressao", "monte_carlo", "n_monte_carlo",
               "monte_carlo_incluir_todos", "shap_benchmark", "shap_max_amostras"]
-    while True:
-        _cls(); _print_header(cfg)
+    def _aviso_hardware() -> None:
+        aviso = (f"Modulos pesados — confira {nav.caminho('hardware', 'PT')} antes de ativar."
+                 if _lang() == "PT" else
+                 f"Heavy modules — check {nav.caminho('hardware', 'EN')} before enabling.")
         console.print(Panel(
-            f"[{PR}]  ▲ Modulos pesados — verificar hardware em [H] antes de ativar.[/{PR}]",
+            f"[{PR}]  ▲ {escape(aviso)}[/{PR}]",
             border_style=PR, box=rbox.SIMPLE, padding=(0, 1)
         ))
-        _print_submenu_compact(_t("t_avancado"), _t("d_avancado"), fields, cfg)
-        raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q", ""):
-            break
-        elif raw == "I":
-            _toggle_idioma()
-        elif raw == "G":
-            _abrir_assistente(_t("t_avancado"), cfg)
-        elif raw == "?":
-            _ajuda_de_campo(fields)
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields):
-            _editar_campo(cfg, fields[int(raw) - 1]); _pause()
-        else:
-            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+
+    _loop_menu(_t("t_avancado"), _t("d_avancado"), fields, cfg,
+               tela="modulos_pesados", antes=_aviso_hardware)
 
 
 # ---------------------------------------------------------------------------
@@ -2741,22 +2835,16 @@ def _menu_visualization(cfg: Config) -> None:
             vcfg["alpha_pontos"] = ops[int(r)-1][0]
             _salvar_visual_cfg(vcfg)
 
-    while True:
-        _cls(); _print_header(cfg)
-        _print_submenu_compact(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt)
-        raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0", "Q", ""): break
-        elif raw == "I": _toggle_idioma()
-        elif raw == "G": _abrir_assistente(_t("t_viz"), cfg)
-        elif raw == "?": _ajuda_de_campo(fields)
-        elif raw == "P": _pal(); _pause()
-        elif raw == "F": _fonte(); _pause()
-        elif raw == "D": _grid(); _pause()
-        elif raw == "A": _alpha(); _pause()
-        elif raw.isdigit() and 1 <= int(raw) <= len(fields):
-            _editar_campo(cfg, fields[int(raw)-1]); _pause()
-        else:
-            console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+    def _com_pausa(fn):
+        def _executa() -> None:
+            fn()
+            _pause()
+        return _executa
+
+    _loop_menu(_t("t_viz"), _t("d_viz"), fields, cfg, extras=extras_pt,
+               on_extra={"P": _com_pausa(_pal), "F": _com_pausa(_fonte),
+                         "D": _com_pausa(_grid), "A": _com_pausa(_alpha)},
+               tela="visualizacao")
 
 
 # ---------------------------------------------------------------------------
@@ -2865,32 +2953,32 @@ def _menu_technique(cfg: Config) -> None:
                     escape(_trunc(str(pr), 12)),
                 )
 
-        sub = ("Selecione o numero para aplicar. [?] N = detalhes."
-               if lang=="PT" else "Select the number to apply. [?] N = details.")
+        sub = ("Digite o numero para aplicar. ?N = detalhes (ex.: ?3)."
+               if lang=="PT" else "Type the number to apply. ?N = details (e.g. ?3).")
         console.print(Panel(
             t,
             title=f"[bold {PA}]{_t('t_tecnica')}[/bold {PA}]",
             subtitle=f"[{PM}]{sub}[/{PM}]",
             border_style=PA, box=rbox.ROUNDED, padding=(0, 1)
         ))
-        if lang == "PT":
-            console.print(f"  [{PA}][?][/{PA}] N detalhes   [{PA}][G][/{PA}] Guaraci"
-                          f"   [{PM}][I][/{PM}] Idioma   [{PM}][0][/{PM}] Voltar")
-        else:
-            console.print(f"  [{PA}][?][/{PA}] N details   [{PA}][G][/{PA}] Guaraci"
-                          f"   [{PM}][I][/{PM}] Language   [{PM}][0][/{PM}] Back")
+        _print_rodape()
 
-        raw = _input(f"\n  {_t('opcao')}: ").strip().upper()
-        if raw in ("0","Q",""): break
-        elif raw == "I": _toggle_idioma(); lang = _lang()
-        elif raw == "G": _abrir_assistente(_t("t_tecnica"), cfg)
-        elif raw == "?":
-            r2 = _input("  N: ").strip()
+        acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
+        if acao == "voltar": break
+        elif acao == "ajuda" and n is not None:
+            if 1 <= n <= len(ordem):
+                _tecnica_detalhe(ordem[n-1], lang)
+        elif acao == "ajuda":
+            console.print(_painel_ajuda_tela("tecnica"))
+            r2 = _input("  N (Enter = voltar): " if lang == "PT"
+                        else "  N (Enter = back): ").strip()
             if r2.isdigit() and 1 <= int(r2) <= len(ordem):
                 _tecnica_detalhe(ordem[int(r2)-1], lang)
-        elif raw.isdigit() and 1 <= int(raw) <= len(ordem):
-            _aplicar(ordem[int(raw)-1])
+        elif acao == "item" and n is not None and 1 <= n <= len(ordem):
+            _aplicar(ordem[n-1])
             _pause(); break
+        elif _tecla_global(acao, n, cfg, "tecnica"):
+            lang = _lang()
         else:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
@@ -3031,7 +3119,7 @@ def _menu_encoding(cfg: Config) -> None:
                 "  COD-DD-MM-AAAA_AD-X-PP_Tn.dx    (adulterada)\n"
                 "  Ex.: AND-10-06-2099_T1.dx  ->  Andiroba pura, triplicata 1\n\n"
                 "[a]Como cadastrar:[/a]\n"
-                "  [A] um codigo por vez, ou [M] importar um CSV pronto\n"
+                "  2 um codigo por vez, ou 3 importar um CSV pronto\n"
                 "  (CSV com 2 colunas: codigo,especie — separador , ou ;)."
             )
         else:
@@ -3044,7 +3132,7 @@ def _menu_encoding(cfg: Config) -> None:
                 "  COD-DD-MM-YYYY_AD-X-PP_Tn.dx    (adulterated)\n"
                 "  E.g.: AND-10-06-2099_T1.dx  ->  Andiroba pure, replicate 1\n\n"
                 "[a]How to register:[/a]\n"
-                "  [A] one code at a time, or [M] import a ready CSV\n"
+                "  2 one code at a time, or 3 import a ready CSV\n"
                 "  (CSV with 2 columns: code,species — separator , or ;)."
             )
         console.print(Panel(
@@ -3053,38 +3141,28 @@ def _menu_encoding(cfg: Config) -> None:
             border_style=PA, box=rbox.ROUNDED, padding=(0, 1)
         ))
 
-        # Botoes de acao (a lista so aparece ao pressionar [L])
+        # Acoes locais numeradas (letras sao reservadas as teclas globais;
+        # antes `M` = importar CSV colidia com `M` = modo avancado).
         n_usr = len(_cod_usr())
-        if lang == "PT":
-            acoes = (
-                f"  [{PA}][L][/{PA}] Listar codigos cadastrados"
-                f"   [{PA}][A][/{PA}] Adicionar codigo\n"
-                f"  [{PA}][M][/{PA}] Importar de CSV"
-                f"            [{PA}][X][/{PA}] Exportar para CSV\n"
-                f"  [{PA}][G][/{PA}] Guaraci   [{PM}][I][/{PM}] Idioma"
-                f"   [{PM}][0][/{PM}] Voltar"
-                f"   [{PM}]({n_usr} do usuario)[/{PM}]"
-            )
-        else:
-            acoes = (
-                f"  [{PA}][L][/{PA}] List registered codes"
-                f"   [{PA}][A][/{PA}] Add code\n"
-                f"  [{PA}][M][/{PA}] Import from CSV"
-                f"           [{PA}][X][/{PA}] Export to CSV\n"
-                f"  [{PA}][G][/{PA}] Guaraci   [{PM}][I][/{PM}] Language"
-                f"  [{PM}][0][/{PM}] Back"
-                f"   [{PM}]({n_usr} user)[/{PM}]"
-            )
-        console.print(Text.from_markup(acoes))
+        is_pt = lang == "PT"
+        acoes = [
+            ("Listar codigos cadastrados" if is_pt else "List registered codes", _listar),
+            ("Adicionar codigo" if is_pt else "Add code", _adicionar),
+            ("Importar de CSV" if is_pt else "Import from CSV", _importar_csv),
+            ("Exportar para CSV" if is_pt else "Export to CSV", _exportar_csv),
+        ]
+        for i, (lbl, _fn) in enumerate(acoes, 1):
+            console.print(Text.from_markup(f"  [{PA}]{i:>2}[/{PA}]   {escape(lbl)}"))
+        console.print(Text.from_markup(
+            f"  [{PM}]({n_usr} {'do usuario' if is_pt else 'user'})[/{PM}]"))
+        _print_rodape()
 
-        raw = _input(f"\n  {_t('opcao')}: ").upper()
-        if raw in ("0","Q"): break
-        elif raw == "I": _toggle_idioma(); lang = _lang()
-        elif raw == "G": _abrir_assistente(_t("t_codigos"), cfg)
-        elif raw == "L": _listar()
-        elif raw in ("A", "C"): _adicionar()
-        elif raw == "M": _importar_csv()
-        elif raw == "X": _exportar_csv()
+        acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
+        if acao == "voltar": break
+        elif acao == "item" and n is not None and 1 <= n <= len(acoes):
+            acoes[n - 1][1]()
+        elif _tecla_global(acao, n, cfg, "codificacao"):
+            lang = _lang()
         else:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
@@ -3137,16 +3215,16 @@ def _menu_hardware(cfg: Optional[Config] = None) -> None:
         tier_perfil = ("Pesquisa Exploratoria / Controle de Qualidade" if lang=="PT"
                        else "Exploratory Research / Quality Control")
         tier_mods = [
-            ("Benchmark",  "[err]Desativar em [6][/err]" if lang=="PT" else "[err]Disable in [6][/err]"),
-            ("Monte Carlo","[err]Desativar em [6][/err]" if lang=="PT" else "[err]Disable in [6][/err]"),
-            ("SHAP",       "[err]Desativar em [6][/err]" if lang=="PT" else "[err]Disable in [6][/err]"),
+            ("Benchmark",  "[err]Desativar (Modulos pesados)[/err]" if lang=="PT" else "[err]Disable (Heavy modules)[/err]"),
+            ("Monte Carlo","[err]Desativar (Modulos pesados)[/err]" if lang=="PT" else "[err]Disable (Heavy modules)[/err]"),
+            ("SHAP",       "[err]Desativar (Modulos pesados)[/err]" if lang=="PT" else "[err]Disable (Heavy modules)[/err]"),
             ("max_lvs",    "[warn]Reduzir para 20[/warn]" if lang=="PT" else "[warn]Reduce to 20[/warn]"),
         ]
     else:
         tier, tcor = ("Limitado" if lang=="PT" else "Limited"), PR
         tier_perfil = ("Apenas Exploracao de Dados" if lang=="PT" else "Data Exploration Only")
         tier_mods = [
-            ("Todos em [6]", "[err]Desativar tudo[/err]" if lang=="PT" else "[err]Disable all[/err]"),
+            ("Modulos pesados" if lang=="PT" else "Heavy modules", "[err]Desativar tudo[/err]" if lang=="PT" else "[err]Disable all[/err]"),
             ("Modo entrada",  "[warn]Usar mode sintetico[/warn]" if lang=="PT" else "[warn]Use synthetic mode[/warn]"),
             ("max_lvs",       "[warn]Reduzir para 15[/warn]" if lang=="PT" else "[warn]Reduce to 15[/warn]"),
         ]
@@ -3220,10 +3298,10 @@ def _menu_hardware(cfg: Optional[Config] = None) -> None:
         title=f"[bold {PS}]{_t('t_hardware')}[/bold {PS}]",
         border_style=PS, box=rbox.ROUNDED, padding=(0, 1)
     ))
-    console.print()
-    raw = _ask(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}: ").strip().upper()
-    if raw == "G":
-        _abrir_assistente(_t("t_hardware"), cfg)
+    _print_rodape()
+    acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
+    if acao != "voltar":
+        _tecla_global(acao, n, cfg, "hardware")
 
 
 # ---------------------------------------------------------------------------
@@ -3259,7 +3337,7 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
             title=f"[bold {PS}]{_t('t_predicao')}[/bold {PS}]",
             border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
         ))
-        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        _print_rodape()
         console.print()
 
     _intro()
@@ -3271,9 +3349,11 @@ def _menu_prediction(cfg: Optional[Config] = None) -> None:
 
     while True:
         cam_modelo = _ask(f"  [{PA}]{lbl_modelo}:[/{PA}] ").strip().strip('"')
-        if cam_modelo.upper() == "G":
-            _abrir_assistente(_t("t_predicao"), cfg)
+        _g = _gate(cam_modelo, cfg, "predicao")
+        if _g == "redesenhar":
             _intro(); continue
+        if _g == "voltar":
+            return
         if not cam_modelo or cam_modelo == "0":
             return
         break
@@ -3655,7 +3735,7 @@ def _menu_hsi_corpo(cfg: Config) -> None:
         title=f"[bold {PS}]{_t('t_hsi')}[/bold {PS}]",
         border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
     ))
-    console.print(f"  [{PM}][0][/{PM}] {_t('voltar')}")
+    _print_rodape()
     console.print()
 
     lbl_pasta = ("Pasta com seus cubos hiperespectrais (ou dataset publico "
@@ -3665,7 +3745,10 @@ def _menu_hsi_corpo(cfg: Config) -> None:
     default_pasta = getattr(cfg, "hsi_dataset_folder", "") or ""
     sufixo = f" [{default_pasta}]" if default_pasta else ""
     pasta = _ask(f"  [{PA}]{lbl_pasta}{sufixo}:[/{PA}] ").strip().strip('"')
-    if pasta == "0":
+    _g = _gate(pasta, cfg, "hsi")
+    if _g == "redesenhar":
+        return _menu_hsi_corpo(cfg)
+    if _g == "voltar":
         return
     if not pasta:
         pasta = default_pasta
@@ -3760,14 +3843,16 @@ def _menu_hsi_extras(pasta: str, is_pt: bool) -> None:
     from guaraci.hsi_extras import (
         preparar_dados_hsi, rodar_hsi_dominio_aplicabilidade,
         rodar_hsi_multiway, rodar_hsi_reamostragem)
-    lbl = ("[D] Dominio de aplicabilidade  [R] Reamostragem de classes  "
-           "[M] Multiway N-PLS  [Enter] sair" if is_pt else
-           "[D] Applicability domain  [R] Class resampling  "
-           "[M] Multiway N-PLS  [Enter] exit")
+    # Numeros, nao letras: `R` e `M` sao teclas globais (rodar / modo).
+    lbl = ("1 Dominio de aplicabilidade  2 Reamostragem de classes  "
+           "3 Multiway N-PLS  Enter sair" if is_pt else
+           "1 Applicability domain  2 Class resampling  "
+           "3 Multiway N-PLS  Enter exit")
     dados = None
     while True:
-        escolha = _ask(f"  [{PA}]{lbl}:[/{PA}] ").strip().upper()
-        if escolha not in ("D", "R", "M"):
+        escolha = {"1": "D", "2": "R", "3": "M"}.get(
+            _ask(f"  [{PA}]{escape(lbl)}:[/{PA}] ").strip())
+        if escolha is None:
             return
         try:
             if dados is None:
@@ -3829,7 +3914,7 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
             title=f"[bold {PS}]{_t('t_planejamento')}[/bold {PS}]",
             border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
         ))
-        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        _print_rodape()
         console.print()
 
     _intro()
@@ -3837,9 +3922,11 @@ def _menu_plan(cfg: Optional[Config] = None) -> None:
     lbl_classes = "Classes (separadas por virgula)" if is_pt else "Classes (comma-separated)"
     while True:
         classes_raw = _ask(f"  [{PA}]{lbl_classes}:[/{PA}] ").strip()
-        if classes_raw.upper() == "G":
-            _abrir_assistente(_t("t_planejamento"), cfg)
+        _g = _gate(classes_raw, cfg, "planejamento")
+        if _g == "redesenhar":
             _intro(); continue
+        if _g == "voltar":
+            return
         break
     if not classes_raw or classes_raw == "0":
         return
@@ -4077,7 +4164,7 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
             title=f"[bold {PS}]{_t('t_selecao_amostras')}[/bold {PS}]",
             border_style=PS, box=rbox.ROUNDED, padding=(1, 2),
         ))
-        console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}")
+        _print_rodape()
         console.print()
 
     _intro()
@@ -4087,9 +4174,11 @@ def _menu_selecao_amostras(cfg: Optional[Config] = None) -> None:
                "Path to the CSV with spectra (1 sample per row)")
     while True:
         caminho_csv = _ask(f"  [{PA}]{lbl_csv}:[/{PA}] ").strip().strip('"')
-        if caminho_csv.upper() == "G":
-            _abrir_assistente(_t("t_selecao_amostras"), cfg)
+        _g = _gate(caminho_csv, cfg, "selecao_amostras")
+        if _g == "redesenhar":
             _intro(); continue
+        if _g == "voltar":
+            return
         break
     if caminho_csv == "0":
         return
@@ -4469,14 +4558,14 @@ def _menu_tecnicas_avancadas(cfg: Optional[Config] = None) -> None:
         "ASCA, EPO/GLSW, MCR-ALS e fusao multibloco -- tecnicas "
         "exploratorias/diagnosticas, nao integradas ao pipeline de treino "
         "automatico (ver ressalva de cada uma). ASCA/EPO-GLSW/MCR-ALS usam "
-        "o dataset configurado em [2] Dados; fusao multibloco pede 2 "
-        "pastas na hora."
+        f"o dataset configurado em {nav.caminho('dados', 'PT')}; fusao "
+        "multibloco pede 2 pastas na hora."
         if is_pt else
         "ASCA, EPO/GLSW, MCR-ALS and multiblock fusion -- exploratory/"
         "diagnostic techniques, not wired into the automatic training "
         "pipeline (see each one's caveat). ASCA/EPO-GLSW/MCR-ALS use the "
-        "dataset configured in [2] Data; multiblock fusion asks for 2 "
-        "folders on the spot."
+        f"dataset configured in {nav.caminho('dados', 'EN')}; multiblock "
+        "fusion asks for 2 folders on the spot."
     )
     console.print(Panel(
         Text.from_markup(f"  {intro}"),
@@ -4491,13 +4580,13 @@ def _menu_tecnicas_avancadas(cfg: Optional[Config] = None) -> None:
         ("4", "Fusao multibloco" if is_pt else "Multiblock fusion", _menu_tec_fusao_multibloco),
     ]
     for k, nome, _fn in opcoes:
-        console.print(f"  [{PA}][{k}][/{PA}] {nome}")
-    console.print(f"  [{PM}][0][/{PM}] {_t('voltar')}")
-    escolha = _ask(f"  [{PA}]{'Opcao' if is_pt else 'Option'}:[/{PA}] ").strip()
-    for k, _nome, fn in opcoes:
-        if escolha == k:
-            fn(cfg, is_pt)
-            return
+        console.print(f"  [{PA}]{k:>2}[/{PA}]   {nome}")
+    _print_rodape()
+    acao, n = nav.interpretar(_ask(f"\n  [{PA}]{'Opcao' if is_pt else 'Option'}:[/{PA}] "))
+    if acao == "item" and n is not None and 1 <= n <= len(opcoes):
+        opcoes[n - 1][2](cfg, is_pt)
+    elif acao not in ("voltar", "item") and _tecla_global(acao, n, cfg, "tecnicas_especiais"):
+        _menu_tecnicas_avancadas(cfg)
 
 
 # ---------------------------------------------------------------------------
@@ -4518,13 +4607,13 @@ def _menu_audit(cfg: Optional[Config] = None) -> None:
     intro = (
         "Roda so' a auditoria de delineamento (agrupamento, confundimento "
         "classe x sessao, duplicatas, N insuficiente, faixa de validacao) "
-        "sobre o dataset configurado em [2] Dados -- sem rodar o pipeline "
-        "de classificacao/quantificacao inteiro."
+        f"sobre o dataset configurado em {nav.caminho('dados', 'PT')} -- sem "
+        "rodar o pipeline de classificacao/quantificacao inteiro."
         if is_pt else
         "Runs only the design audit (grouping, class x session "
         "confounding, duplicates, insufficient N, validation range) over "
-        "the dataset configured in [2] Data -- without running the full "
-        "classification/quantification pipeline."
+        f"the dataset configured in {nav.caminho('dados', 'EN')} -- without "
+        "running the full classification/quantification pipeline."
     )
     from guaraci.config_io import _validar_pasta_dados
 
@@ -4545,15 +4634,17 @@ def _menu_audit(cfg: Optional[Config] = None) -> None:
         if not ok:
             console.print(f"  [{PR}]{escape(msg)}[/{PR}]")
             console.print(f"  [{PM}]{'Configure a fonte de dados em' if is_pt else 'Configure the data source in'} "
-                          f"[{PA}][2] {_t('t_dados')}[/{PA}].[/{PM}]")
+                          f"[{PA}]{escape(nav.caminho('dados', _lang()))}[/{PA}].[/{PM}]")
             _pause(); return
         console.print(f"  [{PM}]{msg}[/{PM}]")
-        raw_gate = _ask(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][0][/{PM}] {_t('voltar')}"
-                         f"   [{PM}]{gate_lbl}[/{PM}]: ").strip().upper()
-        if raw_gate in ("0", "Q"):
+        _print_rodape()
+        raw_gate = _ask(f"\n  [{PM}]{gate_lbl}[/{PM}]: ").strip().upper()
+        if raw_gate == "Q":
             return
-        if raw_gate == "G":
-            _abrir_assistente(_t("t_auditoria"), cfg)
+        _g = _gate(raw_gate, cfg, "auditoria")
+        if _g == "voltar":
+            return
+        if _g == "redesenhar":
             continue
         break
 
@@ -4698,30 +4789,32 @@ def _menu_profiles(cfg: Config) -> None:
             sl += ", ".join(f.stem for f in salvos[:5])
             console.print(sl)
 
-        if lang == "PT":
-            rod = (f"  [{PA}][?][/{PA}] N detalhes   [{PA}][S][/{PA}] salvar config atual"
-                   f"   [{PA}][L][/{PA}] carregar salvo\n"
-                   f"  [{PA}][G][/{PA}] Guaraci   [{PM}][I][/{PM}] Idioma   [{PM}][0][/{PM}] Voltar")
-        else:
-            rod = (f"  [{PA}][?][/{PA}] N details   [{PA}][S][/{PA}] save current config"
-                   f"   [{PA}][L][/{PA}] load saved\n"
-                   f"  [{PA}][G][/{PA}] Guaraci   [{PM}][I][/{PM}] Language   [{PM}][0][/{PM}] Back")
-        console.print(Text.from_markup(rod))
+        # Salvar/carregar viram os numeros seguintes a lista (letras sao
+        # reservadas as teclas globais -- guia v2, secao 2.1).
+        n_salvar, n_carregar = len(perfis) + 1, len(perfis) + 2
+        console.print()
+        console.print(Text.from_markup(
+            f"  [{PA}]{n_salvar:>2}[/{PA}]   {'Salvar a configuracao atual' if lang=='PT' else 'Save current configuration'}\n"
+            f"  [{PA}]{n_carregar:>2}[/{PA}]   {'Carregar uma configuracao salva' if lang=='PT' else 'Load a saved configuration'}\n"
+            f"  [{PM}]{'?N = detalhes do perfil N (ex.: ?2)' if lang=='PT' else '?N = details of profile N (e.g. ?2)'}[/{PM}]"))
+        _print_rodape()
 
-        raw = _input(f"\n  [1-{len(perfis)}] / [?] / [S] / [L] / [0]: ").strip().upper()
-        if raw in ("0","Q",""): break
-        elif raw == "I": _toggle_idioma(); lang = _lang()
-        elif raw == "G": _abrir_assistente(_t("t_perfis"), cfg)
-        elif raw == "S":
+        acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
+        if acao == "voltar": break
+        elif acao == "item" and n == n_salvar:
             _salvar_yaml(cfg)
-        elif raw == "L":
+        elif acao == "item" and n == n_carregar:
             _carregar_yaml(cfg)
-        elif raw == "?":
-            r2 = _input("  N: ").strip()
+        elif acao == "ajuda" and n is not None:
+            if 1 <= n <= len(perfis):
+                _detalhe(perfis[n-1][0])
+        elif acao == "ajuda":
+            console.print(_painel_ajuda_tela("perfis"))
+            r2 = _input("  N (Enter = voltar): " if lang == "PT" else "  N (Enter = back): ").strip()
             if r2.isdigit() and 1 <= int(r2) <= len(perfis):
                 _detalhe(perfis[int(r2)-1][0])
-        elif raw.isdigit() and 1 <= int(raw) <= len(perfis):
-            pname = perfis[int(raw)-1][0]
+        elif acao == "item" and n is not None and 1 <= n <= len(perfis):
+            pname = perfis[n-1][0]
             n = _aplicar(pname)
             console.print(f"  [g]✓ {'Perfil' if lang=='PT' else 'Profile'} "
                           f"'{escape(pname)}' {'aplicado' if lang=='PT' else 'applied'} "
@@ -4745,6 +4838,8 @@ def _menu_profiles(cfg: Config) -> None:
             else:
                 _pause()
             break
+        elif _tecla_global(acao, n, cfg, "perfis"):
+            lang = _lang()
         else:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
@@ -4986,36 +5081,23 @@ def _menu_about(cfg: Optional[Config] = None) -> None:
         _cls(); _print_header(cfg)
         _painel_identidade(lang)
 
-        if lang == "PT":
-            console.print(
-                f"  [{PA}][D][/{PA}] Por que o GUARACI?"
-                f"   [{PA}][A][/{PA}] Autor / Contato"
-                f"   [{PA}][C][/{PA}] Como Citar"
-                f"   [{PA}][R][/{PA}] Referencias\n"
-                f"  [{PA}][G][/{PA}] Guaraci"
-                f"   [{PM}][I][/{PM}] Idioma"
-                f"   [{PM}][0][/{PM}] Voltar"
-            )
-        else:
-            console.print(
-                f"  [{PA}][D][/{PA}] Why GUARACI?"
-                f"   [{PA}][A][/{PA}] Author / Contact"
-                f"   [{PA}][C][/{PA}] How to Cite"
-                f"   [{PA}][R][/{PA}] References\n"
-                f"  [{PA}][G][/{PA}] Guaraci"
-                f"   [{PM}][I][/{PM}] Language"
-                f"   [{PM}][0][/{PM}] Back"
-            )
+        # Numeros, nao letras: `R` (Referencias) colidia com `R` = rodar.
+        is_pt = lang == "PT"
+        opcoes = [
+            ("Por que o GUARACI?" if is_pt else "Why GUARACI?", _painel_diferenciais),
+            ("Autor / Contato" if is_pt else "Author / Contact", _painel_autor),
+            ("Como citar" if is_pt else "How to cite", _painel_citar),
+            ("Referencias" if is_pt else "References", _painel_referencias),
+        ]
+        for i, (lbl, _fn) in enumerate(opcoes, 1):
+            console.print(Text.from_markup(f"  [{PA}]{i:>2}[/{PA}]   {escape(lbl)}"))
+        _print_rodape()
 
-        raw = _input(f"\n  {_t('opcao')}: ").strip().upper()
-        if raw in ("0", "Q", ""): break
-        elif raw == "I": _toggle_idioma()
-        elif raw == "G": _abrir_assistente("Sobre", cfg)
-        elif raw == "D": _painel_diferenciais(lang)
-        elif raw == "A": _painel_autor(lang)
-        elif raw == "C": _painel_citar(lang)
-        elif raw == "R": _painel_referencias(lang)
-        else:
+        acao, n = nav.interpretar(_input(f"\n  {_t('opcao')}: "))
+        if acao == "voltar": break
+        elif acao == "item" and n is not None and 1 <= n <= len(opcoes):
+            opcoes[n - 1][1](lang)
+        elif not _tecla_global(acao, n, cfg, "sobre"):
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
 
@@ -5056,13 +5138,10 @@ def _menu_help(cfg: Optional[Config] = None) -> None:
             subtitle=f"[{PM}]{sub}[/{PM}]",
             border_style=PA, box=rbox.ROUNDED, padding=(0, 1)
         ))
-        if lang == "PT":
-            console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][I][/{PM}] Idioma   [{PM}][0][/{PM}] Voltar")
-        else:
-            console.print(f"  [{PA}][G][/{PA}] Guaraci   [{PM}][I][/{PM}] Language   [{PM}][0][/{PM}] Back")
+        _print_rodape()
 
         raw = _input(f"\n  {_t('opcao')}: ").strip()
-        if raw in ("0","Q","q",""):
+        if raw in ("0","Q","q","","V","v"):
             break
         elif raw.upper() == "I":
             _toggle_idioma(); lang = _lang()
@@ -5177,9 +5256,9 @@ def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool],
         # HSI tem pipeline proprio (tela [X]); executar() nao tem leitor
         # 'hsi' -- bloquear aqui com mensagem clara em vez de deixar o [R]
         # falhar no meio do carregamento (achado B1, 2026-09-24).
-        checks.append((False, "Modo HSI roda pela tela [X] Imageamento Hiperespectral, nao por [R]"
+        checks.append((False, f"Modo HSI roda pela tela {nav.caminho('hsi', 'PT')}, nao por [R]"
                        if lang == "PT" else
-                       "HSI mode runs from the [X] Hyperspectral Imaging screen, not from [R]"))
+                       f"HSI mode runs from the {nav.caminho('hsi', 'EN')} screen, not from [R]"))
         erros.append("modo_entrada")
     elif modo_chk in ("csv", "sintetico"):
         # Achado do roteiro de teste externo (2026-09-23): este bloco so'
@@ -5433,7 +5512,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     tag_atual = getattr(cfg, "tag", "") or ""
     console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or _t('tag_auto')}[/{PA}]")
     novo = _input(f"  {_t('tag_novo')}")
-    if novo == "?":
+    if novo == "-":
         cfg.tag = ""; console.print(f"  [{PM}]{_t('tag_limpo')}[/{PM}]")
     elif novo:
         san = _re.sub(r"[^\w\-_]", "_", novo)
@@ -5489,6 +5568,7 @@ def _rodar_pipeline(cfg: Config) -> None:
     try:
         _USER_DIR.mkdir(parents=True, exist_ok=True)
         _save_config(cfg, str(_CFG_PATH))
+        _marcar_config_salva(cfg)
     except OSError as _e_cfg_save:
         # Achado do "checkup geral" de interface (2026-08-07): esta chamada
         # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
@@ -6071,98 +6151,84 @@ def main(argv: Optional[List[str]] = None) -> None:
     # Boas-vindas uma vez por sessao
     _exibir_boas_vindas()
 
+    # Foto da configuracao ja' salva: ao sair com `Q`, alteracoes que nao
+    # foram salvas nem usadas num [R] (que grava config.yaml) geram uma
+    # pergunta em vez de se perderem em silencio.
+    _marcar_config_salva(cfg)
+
     while True:
         _cls()
         _print_header(cfg)
         _print_status(cfg)
-        console.print()
-        _print_main_menu()
-        console.print()
-        _print_run_box(cfg)
-        console.print()
+        visiveis = _print_main_menu(cfg)
 
         try:
             # input() direto (nao _input()): _input() engole EOFError/
             # KeyboardInterrupt internamente e devolve "" -- com isso o
             # except abaixo NUNCA disparava em EOF real (stdin fechado/
-            # redirecionado de arquivo vazio/pipe encerrado). "" nao bate
-            # com nenhuma opcao do menu, cai no ramo "invalida" + _pause()
-            # (tambem EOF-safe), e o loop volta a chamar _cls() (spawna
-            # subprocesso via os.system) e ler de novo -- SEMPRE "" de novo
-            # em EOF permanente -- girando para sempre, sem sair, gastando
-            # CPU (achado 2026-08-07, "checkup geral" de interface:
-            # reproduzido com stdin vazio, >350 redesenhos em 8s sem
-            # terminar). input() aqui deixa o EOFError propagar ate o
-            # except que ja existe para tratar exatamente este caso.
-            raw = input(f"  {_t('opcao')}: ").strip()
-            escolha = "?" if raw == "?" else raw.upper().strip()
+            # redirecionado de arquivo vazio/pipe encerrado) e o laco
+            # girava para sempre redesenhando (achado 2026-08-07, "checkup
+            # geral" de interface: >350 redesenhos em 8s sem terminar).
+            # input() aqui deixa o EOFError propagar ate o except.
+            raw = input(f"\n  {_t('opcao')}: ").strip()
         except (EOFError, KeyboardInterrupt):
             _exibir_despedida()
             break
 
-        if escolha == "1": _menu_project(cfg)
-        elif escolha == "2": _menu_data(cfg)
-        elif escolha == "3": _menu_preprocessing(cfg)
-        elif escolha == "4": _menu_modeling(cfg)
-        elif escolha == "5": _menu_validation(cfg)
-        elif escolha == "6": _menu_advanced(cfg)
-        elif escolha == "7": _menu_visualization(cfg)
-        elif escolha == "8": _menu_technique(cfg)
-        elif escolha == "9": _menu_encoding(cfg)
-        elif escolha == "H":
-            _cls(); _print_header(cfg); _menu_hardware(cfg)
-        elif escolha == "B":
-            _menu_prediction(cfg)
-        elif escolha == "X":
-            _menu_hsi(cfg)
-        elif escolha == "J":
-            _menu_plan(cfg)
-        elif escolha == "U":
-            _menu_audit(cfg)
-        elif escolha == "K":
-            _menu_selecao_amostras(cfg)
-        elif escolha == "T":
-            _menu_tecnicas_avancadas(cfg)
-        elif escolha == "P":
-            _menu_profiles(cfg)
-        elif escolha == "G":
-            _abrir_assistente("menu principal", cfg)
-        elif escolha == "M":
-            novo_modo = _toggle_modo_usuario()
-            _lbl = ("Iniciante" if novo_modo == "iniciante" else "Avancado") \
-                if _lang() == "PT" else \
-                ("Beginner" if novo_modo == "iniciante" else "Advanced")
-            console.print(f"  [g]✓ Modo: {_lbl}[/g]" if _lang() == "PT"
-                         else f"  [g]✓ Mode: {_lbl}[/g]")
-            _pause()
-        elif escolha == "I":
-            _toggle_idioma()
-        elif escolha == "S":
-            _salvar_yaml(cfg)
-        elif escolha == "L":
-            _carregar_yaml(cfg)
-        elif escolha == "R":
-            _rodar_pipeline(cfg)
-        elif escolha == "N":
-            console.print()
-            tag_atual = getattr(cfg, "tag", "") or ""
-            console.print(f"  [{PM}]{_t('tag_atual')}:[/{PM}] [{PA}]{escape(tag_atual) or _t('tag_auto')}[/{PA}]")
-            novo = _input(f"  {_t('tag_novo')}")
-            if novo == "?":
-                cfg.tag = ""; console.print(f"  [{PM}]{_t('tag_limpo')}[/{PM}]")
-            elif novo:
-                san = _re.sub(r"[^\w\-_]", "_", novo)
-                cfg.tag = san; console.print(f"  [g]✓ ID: {escape(san)}[/g]")
-            _pause()
-        elif escolha == "A":
-            _menu_about(cfg)
-        elif escolha == "?":
-            _menu_help(cfg)
-        elif escolha == "Q":
-            _exibir_despedida()
-            break
-        else:
+        acao, n = nav.interpretar(raw, raiz=True)
+        if acao == "sair":
+            if _confirmar_saida(cfg):
+                _exibir_despedida()
+                break
+        elif acao == "nada":
+            continue
+        elif acao == "item" and n is not None and 1 <= n <= len(visiveis):
+            _menu_grupo(visiveis[n - 1], cfg)
+        elif acao == "outro" and raw.strip().upper() in nav.ATALHOS_LEGADOS:
+            # Atalhos do menu antigo (B, X, J, U...): continuam funcionando
+            # sem aparecer na tela, para quem ja' decorou.
+            _abrir_tela(nav.ATALHOS_LEGADOS[raw.strip().upper()], cfg)
+        elif not _tecla_global(acao, n, cfg, "menu_principal"):
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
+
+
+def _snapshot_config(cfg: Config) -> Any:
+    try:
+        return repr(vars(cfg))
+    except TypeError:
+        return None
+
+
+_CONFIG_SALVA: Dict[str, Any] = {"snap": None}
+
+
+def _marcar_config_salva(cfg: Config) -> None:
+    _CONFIG_SALVA["snap"] = _snapshot_config(cfg)
+
+
+def _confirmar_saida(cfg: Config) -> bool:
+    """`Q` no menu principal. Se a configuracao mudou desde o inicio da
+    sessao (ou desde o ultimo [R], que grava config.yaml), oferece salvar
+    antes de sair. True = pode sair."""
+    if _snapshot_config(cfg) == _CONFIG_SALVA["snap"]:
+        return True
+    is_pt = _lang() == "PT"
+    console.print()
+    console.print(f"  [{PA}]{'Ha alteracoes na configuracao que nao foram salvas.' if is_pt else 'The configuration has unsaved changes.'}[/{PA}]")
+    console.print(Text.from_markup(
+        f"  [{PA}] 1[/{PA}]   {'Salvar para a proxima sessao e sair' if is_pt else 'Save for the next session and quit'}\n"
+        f"  [{PA}] 2[/{PA}]   {'Sair sem salvar' if is_pt else 'Quit without saving'}\n"
+        f"  [{PM}]Enter   {'Voltar ao menu' if is_pt else 'Back to the menu'}[/{PM}]"))
+    r = _input("\n  > ").strip()
+    if r == "1":
+        try:
+            _USER_DIR.mkdir(parents=True, exist_ok=True)
+            _save_config(cfg, str(_CFG_PATH))
+        except OSError as e:
+            console.print(f"  [err]{escape(str(e))}[/err]"); _pause()
+            return False
+        return True
+    return r == "2"
 
 
 if __name__ == "__main__":

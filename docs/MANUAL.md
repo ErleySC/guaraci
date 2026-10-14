@@ -74,19 +74,29 @@ coluna de classe. Depois abra o assistente:
 guaraci
 ```
 
-No menu, digite **`2`** (Dados). A tela lista os campos, cada um com um
-número (os números podem mudar — vá pelo **nome**, não pelo número):
+No menu principal, digite **`2`** (Preparar dados) e depois **`2`**
+(Dados). A tela lista os campos, cada um com um número (vá pelo **nome**:
+campos avançados só aparecem no modo Avançado, tecla **`M`**):
 - **Modo de entrada**: `dx` (espectros `.dx` em pastas), `csv` (uma
   tabela), ou um dos formatos de instrumento (`opus`, `spc`, `sp`, `rmn`,
   `hplc`, `gcms`, `eem`);
 - para `csv`: **Arquivo CSV** (caminho do arquivo) e **Coluna de classe**
   (nome da coluna que diz a classe; padrão `classe`);
-- para os demais, a **pasta de entrada** está na tela **`[1]` Projeto**.
+- para os demais, a **pasta de entrada** está em **Preparar dados › Projeto**.
 
 Cada mudança pede confirmação (`s`) e um Enter para continuar. Se não tem
 dados próprios, gere um arquivo de exemplo (números **inventados**):
 `python scripts/gerar_dados_exemplo_teste.py` cria `dados_exemplo.csv`.
-Volte com **`0`** e digite **`R`** (rodar). O assistente mostra um checklist antes de começar e um painel de
+Volte com **`V`** (ou Enter) e digite **`R`** (rodar). Antes de rodar,
+vale abrir **Preparar dados › Verificar delineamento**: ela aponta, sem
+rodar o modelo, o que inflaria o resultado (réplicas da mesma amostra
+física, classe confundida com sessão, duplicatas).
+
+Em qualquer tela, o rodapé é o mesmo: **`?`** explica a tela (o que faz,
+quando usar, o que fazer depois) e, seguido de um número (`?3`), o campo;
+**`G`** abre o assistente Guaraci já no assunto da tela; **`I`** troca o
+idioma; **`V`** volta (no menu principal, **`Q`** sai). Nunca é preciso
+decorar tecla: o menu inteiro está na seção 1.3. O assistente mostra um checklist antes de começar e um painel de
 progresso durante. Para rodar sem menu, a partir de um arquivo `config.yaml`:
 `guaraci run config.yaml`. Prefere clicar? `streamlit run app_quimiometria.py`
 abre a versão visual, com as mesmas etapas na barra lateral (Projeto →
@@ -120,10 +130,11 @@ modelo faz, com o que não faz.
   não está em nenhum menu — só via código.
 - *Dual-sPLS*: aparece no benchmark de regressão; melhora em alguns
   ajustes e é neutro em outros — não é substituto automático do PLS.
-- *Técnicas avançadas (`[T]`)*: são ferramentas de exploração; resultados
+- *Técnicas especiais (menu principal, modo Avançado)*: são ferramentas de exploração; resultados
   delas ajudam a **entender** os dados, não substituem a validação do
   modelo principal.
-- *Imageamento hiperespectral (`[X]`)* é só no terminal e ainda é
+- *Imageamento hiperespectral (menu principal, modo Avançado — aparece
+  sozinho quando a técnica escolhida é HSI)* é só no terminal e ainda é
   protótipo.
 
 Detalhes de cada item estão nas seções seguintes e na seção 9.
@@ -181,6 +192,37 @@ a execução. O mesmo mecanismo de captura de log alimenta a barra de
 progresso do aplicativo web.
 
 ---
+
+### 1.3 Mapa do menu do terminal
+
+O menu principal mostra só as etapas do trabalho. Cada número abre um
+submenu; itens marcados com **`+`** só aparecem no modo **Avançado**
+(tecla **`M`**, vale para a sessão inteira e fica salvo). Os avançados vêm
+sempre depois dos básicos, então o número de um item básico não muda
+entre os modos. A árvore vive em `src/guaraci/cli_nav.py`.
+
+| Menu principal | Itens |
+|---|---|
+| **1 Começar** | 1 Rodar um exemplo (mesmo que `guaraci demo`) · 2 Usar um perfil pronto · 3 Passo a passo |
+| **2 Preparar dados** | 1 Projeto · 2 Dados · 3 Técnica analítica · 4 Pré-processamento · 5 Verificar delineamento · `+`6 Planejar coleta · `+`7 Selecionar amostras · `+`8 Codificação DX |
+| **3 Modelar e validar** | 1 Objetivo e variáveis latentes · 2 Validação · `+`3 Métodos de classe (DD-SIMCA, OPLS-DA) · `+`4 Seleção de variáveis · `+`5 Módulos pesados |
+| **4 Prever novas amostras** | abre direto a predição em lote |
+| **5 Gráficos** | abre direto a tela de figuras |
+| **6 Sistema** | 1 Salvar configuração · 2 Carregar configuração · 3 Nome da execução · 4 Modo · 5 Idioma · 6 Sobre · `+`7 Hardware |
+| **`+`7 Técnicas especiais** | ASCA, EPO/GLSW, MCR-ALS, fusão multibloco |
+| **`+`8 Imageamento hiperespectral** | aparece também no modo Básico quando a técnica é HSI |
+
+**Teclas globais** (só valem em prompts de menu; num prompt de valor —
+pasta, nome, classes — o que você digita é sempre o valor):
+`?` ajuda da tela (`?N` ajuda do campo N) · `G` assistente Guaraci ·
+`I` idioma · `V` ou Enter voltar · `Q` sair (menu principal) ·
+`R` rodar a análise · `M` mostrar/ocultar avançados.
+
+Quem já usava a versão anterior: as letras antigas do menu principal
+(`B`, `X`, `J`, `U`, `K`, `T`, `P`, `H`, `A`, `S`, `L`, `N`) continuam
+funcionando lá, sem aparecer na tela. Ao sair com `Q`, se a configuração
+mudou e não foi salva, o Guaraci pergunta se quer salvá-la para a próxima
+sessão.
 
 ## 2 Modos de análise e objetivo científico
 
@@ -371,7 +413,7 @@ conteúdo por categoria:
 ```
 
 - **`<Amostra>`** — identificador do conjunto de dados. Vem do rótulo livre
-  `tag` (campo de `Config`; na CLI, tecla `[N]`; não é chave do `config.yaml`) quando preenchido; senão é derivado
+  `tag` (campo de `Config`; na CLI, Sistema › Nome da execução; não é chave do `config.yaml`) quando preenchido; senão é derivado
   automaticamente do mode de entrada (nome do arquivo CSV, nome da pasta de
   espectros, ou `"sintetico"` para dados de teste).
 - **`<Modo>`** — rótulo amigável do objetivo científico resolvido:
@@ -545,19 +587,19 @@ para a matriz do usuário. Para baixar o fixture:
 `scripts/download_datasets/baixar_deephs_kaki.py` (só Kaki/VIS) ou
 `baixar_deephs_fruit_todas.py` (demais frutas/câmeras).
 
-Extras (2026-09-23), no fim da tela `[X]` (só CLI): `[D]` domínio de
+Extras (2026-09-23), no fim da tela Imageamento hiperespectral (só CLI): `1` domínio de
 aplicabilidade (calibra em objetos de treino, avalia objetos de teste),
 `[R]` reamostragem de classes minoritárias (duplica objetos — equaliza
-pixels, não cria objetos novos) e `[M]` comparação N-PLS multiway ×
+pixels, não cria objetos novos) e `3` comparação N-PLS multiway ×
 PLS-DA por pixel (exploratória; precisa de ≥~5 objetos por classe). A
 identificação fruta×câmera (`hsi_identification`) não está exposta e o
 HSI não tem página no aplicativo web (ver seção 9).
 
-Acessível pela tecla **`[X]`** do menu principal da CLI. Orquestrado
+Acessível pelo item **Imageamento hiperespectral** do menu principal da CLI (modo Avançado, ou automático com técnica HSI). Orquestrado
 por `hsi_pipeline.run_hsi_pipeline`, não por `pipeline.executar()` — a
 forma de dado (por pixel, agregação por objeto) é fundamentalmente
 diferente da matriz amostras×variáveis que os demais modes
-compartilham. Por isso o modo `hsi` vale só enquanto a tela `[X]` está
+compartilham. Por isso o modo `hsi` vale só enquanto a tela de HSI está
 aberta: ao sair, o modo de entrada anterior volta, e `[R]` continua
 rodando os dados configurados em `[2]`. Até 2026-09-24 o modo ficava
 gravado e o `[R]` falhava depois de uma simples visita à tela.
@@ -859,7 +901,7 @@ confiabilidade:
 Disponível em dois lugares, com a **mesma lógica científica**
 (`predicao.py`, compartilhado, sem duplicação):
 - **Aplicativo web** — aba 🔮 *Prediction*.
-- **CLI** — menu principal, tecla `[B]` *Predição em Lote*: pede o caminho
+- **CLI** — menu principal, *Prever novas amostras*: pede o caminho
   do modelo, do CSV de espectros novos e do CSV de saída (Enter = mesmo
   nome do CSV de entrada mais `_predicao.csv`), e imprime um resumo por
   classe mais os dois diagnósticos acima. Útil para automação/*scripts* e
@@ -970,7 +1012,7 @@ método, depois expande de volta — nenhum dos três separa réplica física
 entre calibração e validação (garantido por teste de propriedade
 Hypothesis, `tests/test_propriedades_hypothesis.py`).
 
-**CLI** — menu principal, tecla `[K]` *Seleção de Amostras* (Bloco 10, ao
+**CLI** — *Preparar dados › Selecionar amostras* (modo Avançado) (Bloco 10, ao
 lado do planejamento de coleta): pede um CSV com os espectros (1 amostra
 por linha; separador `,` ou `;` detectado sozinho — `;` implica vírgula
 decimal, como no Excel em português), opcionalmente uma coluna de
@@ -1018,7 +1060,7 @@ e **como** distribuir a coleta sem introduzir confundimentos evitáveis:
   (`export_pdf`, `fpdf2` — já dependência do projeto via `reports.py`,
   usa `FPDF.table()` nativo), mesmo conteúdo, layout imprimível para
   levar ao laboratório.
-- **CLI** — menu principal, tecla `[J]` *Planejamento de Coleta*: pede
+- **CLI** — *Preparar dados › Planejar coleta* (modo Avançado): pede
   classes, número de sessões, e o alvo estatístico (conformal ou
   DD-SIMCA); gera Markdown+Excel sempre, e pergunta se também quer PDF
   (opcional, `(s/N)`); mostra o resumo + alertas na tela.
@@ -1046,7 +1088,7 @@ não-vazia — a checagem silenciada continua aparecendo no relatório
 sem deixar rastro. Resultado integrado ao `model_card.md` (seção
 "Auditoria de Delineamento").
 
-**CLI** — menu principal, tecla `[U]` *Auditoria de Delineamento*: roda
+**CLI** — *Preparar dados › Verificar delineamento*: roda
 `run_audit` isoladamente sobre o dataset já configurado em `[2] Dados`,
 sem exigir rodar o pipeline de classificação/quantificação inteiro (ex.:
 auditar antes de decidir se vale a pena treinar). Reaproveita
@@ -1114,7 +1156,7 @@ permitem que a sentinela sobreviva entre execuções — uso real (LIMS
 chamando o pipeline ao longo de dias/semanas) não mantém um processo
 Python vivo o tempo todo. Orquestração unificada em
 `sentinela_deriva.hook_apos_predicao` (carregar → registrar → salvar →
-checar deriva), chamada dos DOIS pontos de predição — CLI (menu `[B]`
+checar deriva), chamada dos DOIS pontos de predição — CLI (*Prever novas amostras*
 *Predição em Lote*) **e a aba web Predição** (fechado em 2026-09-18; antes
 só o CLI atualizava a sentinela) — atualizam automaticamente a sentinela
 persistida ao lado do modelo (`<modelo>.joblib.sentinela.json`) a cada
@@ -1186,8 +1228,8 @@ conforme (esses continuam só no `.joblib`).
 ### 2.7 Técnicas Avançadas (ASCA, EPO/GLSW, MCR-ALS, fusão multibloco — acessibilidade fechada 2026-09-23)
 
 Quatro técnicas exploratórias/diagnósticas, **não integradas ao pipeline de
-treino automático** (rodam à parte, sob demanda) — acessíveis pela tecla
-**`[T]`** da CLI ou pela página **Advanced Techniques** (grupo Analisar) do
+treino automático** (rodam à parte, sob demanda) — acessíveis pelo item
+**Técnicas especiais** do menu principal da CLI (modo Avançado) ou pela página **Advanced Techniques** (grupo Analisar) do
 aplicativo web. ASCA/EPO-GLSW/MCR-ALS usam o dataset já configurado na
 aba/menu Dados; fusão multibloco pede 2 pastas/arquivos na hora (é a única
 que estruturalmente precisa de 2 datasets).
@@ -1403,7 +1445,7 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `resumo_parse.py` | *Parsing* puro do `resumo_modelo.txt`: `parse_model_metrics` e `parse_accuracy_by_class` |
 | `spectra_preview.py` | Carregamento/plotagem de amostra de espectros para prévia (abas Data e Preprocessing) |
 | `app_tabs/` | Um módulo por tela do aplicativo web (`inicio`, `visualizacao`, `projeto`, `dados`, `preprocessamento`, `modelo`, `validacao`, `predicao`, `tecnicas`, `relatorios`, `sobre`) |
-| `tecnicas_avancadas.py` | Orquestração testável (sem Rich/Streamlit) de ASCA/EPO-GLSW/MCR-ALS/fusão multibloco — fonte única entre CLI (`[T]`) e web (`app_tabs/tecnicas.py`) |
+| `tecnicas_avancadas.py` | Orquestração testável (sem Rich/Streamlit) de ASCA/EPO-GLSW/MCR-ALS/fusão multibloco — fonte única entre CLI (Técnicas especiais) e web (`app_tabs/tecnicas.py`) |
 | `leitores_avancados.py` | Registra no `io_registry` os leitores de formato de instrumento (`opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/`eem`) |
 
 Os módulos acima vivem no pacote `src/guaraci/`. Interfaces de usuário:
@@ -1729,7 +1771,7 @@ re-executada nesta sessão).
   contagem de colunas, não por conteúdo informativo. Compare sempre
   contra cada bloco treinado isoladamente antes de adotar a fusão.
 
-- **HSI é só CLI** (tecla `[X]`): o aplicativo web não tem página HSI
+- **HSI é só CLI** (item Imageamento hiperespectral): o aplicativo web não tem página HSI
   (só o campo da pasta na aba Dados). Os extras HSI (domínio de
   aplicabilidade, reamostragem, multiway) herdam isso; a identificação
   fruta×câmera não está exposta (só o DeepHS multi-fruta a alimenta e o
@@ -1795,4 +1837,4 @@ world**. New York: Springer, 2005.
 
 ---
 
-*Última revisão do manual: 2026-09-23 (auditoria de acessibilidade CLI/web: novos formatos de instrumento, técnicas avançadas `[T]`, extras HSI, seção 0 "Primeiros passos"; verificado contra o código, seção por seção). Histórico anterior de revisões: `docs/PROGRESSO.md`.*
+*Última revisão do manual: 2026-10-14 (guia de design v2 da CLI: menu por etapas, rodapé único, modo Básico/Avançado no menu principal, seção 1.3). Revisão anterior: 2026-09-23 (auditoria de acessibilidade CLI/web: novos formatos de instrumento, técnicas avançadas `[T]`, extras HSI, seção 0 "Primeiros passos"; verificado contra o código, seção por seção). Histórico anterior de revisões: `docs/PROGRESSO.md`.*

@@ -208,4 +208,6 @@ def test_checklist_bloqueia_modo_hsi_com_mensagem_clara():
     ok, erros, checks = guaraci_mod._checklist(cfg)
     assert not ok
     assert "modo_entrada" in erros
-    assert any("[X]" in msg for _st, msg in checks)
+    # A mensagem nomeia a tela pelo caminho, nao por uma tecla literal
+    # (guia de design v2: teclas mudam, caminhos sao estaveis).
+    assert any("Imageamento hiperespectral" in msg for _st, msg in checks)

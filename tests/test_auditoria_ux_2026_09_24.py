@@ -69,13 +69,13 @@ def test_descricoes_comecam_pelo_que_o_campo_e():
 # ── B4: transparencia da grade fora de 0-1 nao e' gravada ─────────────────
 
 def test_grade_rejeita_transparencia_fora_da_faixa(monkeypatch):
-    _entradas(monkeypatch, "D", "4", "5", "0")
+    _entradas(monkeypatch, "9", "4", "5", "0")   # 9 = Grade (6 campos + P/F/D/A)
     g._menu_visualization(g.Config())
     assert 0.0 < float(g._carregar_visual_cfg().get("grid_alpha", 0.4)) <= 1.0
 
 
 def test_grade_aceita_virgula_decimal(monkeypatch):
-    _entradas(monkeypatch, "D", "4", "0,6", "0")
+    _entradas(monkeypatch, "9", "4", "0,6", "0")
     g._menu_visualization(g.Config())
     assert g._carregar_visual_cfg()["grid_alpha"] == pytest.approx(0.6)
 

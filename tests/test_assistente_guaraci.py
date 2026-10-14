@@ -235,32 +235,25 @@ def test_fluxo_decisao_resolver_mistura_sugere_mcr_als():
 # ── _guaraci_navegar_secoes cobre as 20 abas reais (achado do Agente 6 +
 #    "X" de HSI, Passo 102; "T" Tecnicas Avancadas, 2026-09-23) ──────────────────────────────────────────────
 
-def test_navegar_secoes_cobre_todas_as_20_abas_reais():
-    """Lista confirmada pelo Agente 1 (auditoria funcional, nao suposta):
-    20 abas -- 1-9, H, B, X, J, U, K, T, P, G, ?, A ("X" = HSI, Passo 102;
-    "T" = Tecnicas Avancadas, 2026-09-23).
-    "G" fica fora do proprio indice (e' o assistente, navegar ate ele de
-    dentro dele e' circular). Antes desta correcao, so' 8 apareciam aqui."""
-    teclas_com_t_d = {k for k, _, _ in guaraci_mod._SECOES_NAVEGAVEIS}
-    teclas_indice = teclas_com_t_d | {"A"}   # "A" (Sobre) e' adicionado a parte
-    esperado = {"1", "2", "3", "4", "5", "6", "7", "8", "9",
-                "H", "B", "X", "J", "U", "K", "T", "P", "?", "A"}
-    assert teclas_indice == esperado
+def test_navegar_secoes_cobre_todas_as_telas_do_menu():
+    """Antes uma lista de teclas escrita a mao (que ja' tinha perdido 10
+    das 18 abas uma vez). Agora deriva de `cli_nav.MENU`: toda tela do
+    menu aparece, menos as que so' alternam um estado (modo, idioma)."""
+    import guaraci.cli_nav as nav
+    esperado = {it.id for g in nav.MENU for it in g.itens} - {"modo", "idioma"}
+    assert set(guaraci_mod._SECOES_NAVEGAVEIS) == esperado
 
 
-def test_navegar_secoes_toda_chave_t_e_d_resolve_para_texto_real():
-    """Nenhuma entrada de _SECOES_NAVEGAVEIS pode apontar pra uma chave
-    _t()/d_ inexistente (cairia no fallback = a propria chave crua, ex.
-    'd_predicao' aparecendo literal na tela em vez de uma descricao)."""
-    for _k, t_key, d_key in guaraci_mod._SECOES_NAVEGAVEIS:
-        for chave in (t_key, d_key):
-            nome = guaraci_mod._t(chave)
-            assert nome != chave, f"chave de traducao '{chave}' sem entrada real"
+def test_navegar_secoes_toda_tela_tem_ajuda_real():
+    import guaraci.cli_nav as nav
+    for tela in guaraci_mod._SECOES_NAVEGAVEIS:
+        for lang in ("PT", "EN"):
+            assert nav.ajuda_tela(tela, lang), f"tela '{tela}' sem ajuda em {lang}"
 
 
 def test_navegar_secoes_roda_sem_excecao_para_cada_aba(monkeypatch):
-    for tecla, _t_key, _d_key in guaraci_mod._SECOES_NAVEGAVEIS + [("A", "", "")]:
-        respostas = iter([tecla, ""])
+    for i in range(1, len(guaraci_mod._SECOES_NAVEGAVEIS) + 1):
+        respostas = iter([str(i), ""])
         monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
         guaraci_mod._guaraci_navegar_secoes(Config())
 
