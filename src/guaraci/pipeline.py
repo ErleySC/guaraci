@@ -1456,6 +1456,29 @@ def _construir_cv_interno(y_int_sub: np.ndarray, grupos_sub: Optional[np.ndarray
                             random_state=seed)
 
 
+# Etapas OPCIONAIS que falharam nesta corrida (figura, anexo do modelo,
+# benchmark...). Antes cada uma virava so' um log.info "[AVISO]" no meio de
+# centenas de linhas e o resumo final dizia "Pipeline concluido." -- o
+# resultado simplesmente sumia sem ninguem notar. A corrida continua (a
+# etapa e' opcional), mas o fim do log lista o que faltou, como ja' era
+# feito para as falhas de salvamento.
+_FALHAS_ETAPAS: List[str] = []
+
+
+def _falha_etapa_opcional(etapa: str, exc: BaseException) -> None:
+    """Registra a falha de uma etapa opcional: aviso curto no console,
+    traceback completo em nivel DEBUG (arquivo de log) e entrada no resumo
+    final de `executar()`."""
+    log.warning(f"  [AVISO] {etapa} falhou: {type(exc).__name__}: {exc}")
+    log.debug("Traceback de '%s':", etapa, exc_info=exc)
+    _FALHAS_ETAPAS.append(f"{etapa}: {type(exc).__name__}: {exc}")
+
+
+def obter_falhas_etapas() -> List[str]:
+    """Etapas opcionais que falharam na ultima `executar()`."""
+    return list(_FALHAS_ETAPAS)
+
+
 def executar(cfg: Config):
     from guaraci.log import configurar as _configurar_log
     # Chamado aqui (nao em nivel de modulo) para rodar DENTRO de qualquer
@@ -1467,6 +1490,7 @@ def executar(cfg: Config):
     # corrida -- ver resumo final, achado de auditoria sobre falha
     # silenciosa em pasta de saida profunda (MAX_PATH do Windows).
     resetar_falhas_salvamento()
+    _FALHAS_ETAPAS.clear()
 
     # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
     # Quantificacao). Decide quais figuras/relatorios serao gerados, para
@@ -1646,7 +1670,7 @@ def executar(cfg: Config):
                 log.info(f"  [AUDITORIA][AVISO] {_a.nome}: {_a.mensagem}")
     except Exception as _e_audit:  # noqa: BLE001 -- auditoria e' diagnostico
         # opcional; erro impresso, resto da execucao continua normalmente.
-        log.info(f"  [AVISO] Auditoria de delineamento falhou: {_e_audit}")
+        _falha_etapa_opcional("Auditoria de delineamento", _e_audit)
         _achados_auditoria = []
 
     # B1: mae_id is now synchronized INSIDE validate_input (same NaN/Inf
@@ -2209,7 +2233,7 @@ def executar(cfg: Config):
             aucs_roc = fig_roc_auc(Y_bin, Y_cv, lb.classes_, cfg, pasta)
         except Exception as _e_roc:  # noqa: BLE001 -- figura opcional (curva
             # ROC/AUC); erro impresso, resultado central da corrida intacto.
-            log.info(f"  [AVISO] ROC/AUC: {_e_roc}")
+            _falha_etapa_opcional("ROC/AUC", _e_roc)
     # fig4b_metricas_globais e fig5_vip removidas: a primeira e redundante com
     # resumo_modelo.txt; a segunda (VIP puro) esta contida em fig_sprint3_sr_vip,
     # que mostra VIP + Selectivity Ratio lado a lado (ver abaixo).
@@ -2436,7 +2460,7 @@ def executar(cfg: Config):
                     except Exception as _e_coom:  # noqa: BLE001 -- figura
                         # opcional (Cooman's Plot); erro impresso, DD-SIMCA
                         # ja calculado e reportado independentemente.
-                        log.info(f"  [AVISO] Cooman's Plot: {_e_coom}")
+                        _falha_etapa_opcional("Cooman's Plot", _e_coom)
 
     # OPLS-DA
     _opls_n_ortho: Optional[int] = None
@@ -2461,7 +2485,7 @@ def executar(cfg: Config):
                 # (OPLS-DA/S-Plot); erro impresso, _opls_n_ortho fica None e
                 # some do resumo em vez de exibir um valor inventado; PLS-DA
                 # (resultado central) ja calculado antes deste bloco.
-                log.info(f"  [ERRO] OPLS-DA: {_e_opls}")
+                _falha_etapa_opcional("OPLS-DA / S-Plot", _e_opls)
 
     # --- STAGE 4: Variable Selection ------------------------------------
     etapa4_res: Optional[Dict[str, Any]] = None
@@ -2478,7 +2502,7 @@ def executar(cfg: Config):
         except Exception as _e_e4:  # noqa: BLE001 -- modulo opcional (selecao
             # de variaveis); erro impresso, etapa4_res fica None e some do
             # resumo; PLS-DA (resultado central) ja calculado antes.
-            log.info(f"  [ERRO] Etapa 4: {_e_e4}")
+            _falha_etapa_opcional("Etapa 4 (selecao de variaveis)", _e_e4)
 
     if cfg.comparar_pipelines and should_generate(cfg, "comparar_pipelines"):
         log.info("\n[6b/7] Comparacao de pipelines de pre-processamento...")
@@ -2544,7 +2568,7 @@ def executar(cfg: Config):
             # erro impresso, metricas_holdout fica None e some do resumo
             # (nunca um valor inventado); metricas de CV (resultado central)
             # ja calculadas antes deste bloco.
-            log.info(f"  [ERRO] Avaliacao em holdout falhou: {e}")
+            _falha_etapa_opcional("Avaliacao em holdout", e)
             metricas_holdout = None
 
     # --- 9. Identificadores e resumo (separados dos graficos) --------------
@@ -2813,7 +2837,7 @@ def executar(cfg: Config):
                 # (comparacao com outros classificadores); erro impresso,
                 # bench_df so' usado neste bloco; PLS-DA (resultado central)
                 # ja calculado.
-                log.info(f"  [AVISO] Benchmark falhou: {_e_bench}")
+                _falha_etapa_opcional("Benchmark de classificadores", _e_bench)
 
     # --- 9a2. Monte Carlo CV (opcional) ────────────────────────────────────
     if cfg.run_monte_carlo and should_generate(cfg, "monte_carlo"):
@@ -2830,7 +2854,7 @@ def executar(cfg: Config):
                     log.info(mc_df.to_string(index=False))
             except Exception as _e_mc:  # noqa: BLE001 -- modulo opcional;
                 # erro impresso, mc_df so' usado neste bloco.
-                log.info(f"  [AVISO] Monte Carlo CV falhou: {_e_mc}")
+                _falha_etapa_opcional("Monte Carlo CV", _e_mc)
 
     # --- 9b. Exportar modelo final (modelos/) — joblib opcional -----------
     try:
@@ -2880,8 +2904,8 @@ def executar(cfg: Config):
                 _chi2.ppf(0.95, _Nh + _Nq))
         except Exception as _e_comb:  # noqa: BLE001 -- anexo opcional do
             # pacote; sem ele predicao.py cai na regra por eixo e avisa.
-            log.info(f"  [AVISO] parametros da distancia combinada no "
-                     f"espaco PLS nao exportados: {_e_comb}")
+            _falha_etapa_opcional(
+                "Distancia combinada no espaco PLS (anexo do modelo)", _e_comb)
         # Dominio de Aplicabilidade (Jaworska et al. 2005): reaproveita o PCA
         # exploratorio ja ajustado (fig1_pca_scores) para avisar, na predicao
         # em amostras novas, quando o espectro cai fora do espaco coberto pela
@@ -2917,14 +2941,14 @@ def executar(cfg: Config):
                     resumo["AD taxa de rejeicao em CV (referencia do sentinela)"] = (
                         f"{_ref_r}/{_ref_n} = {_ref_r / _ref_n:.3f}")
             except Exception as _e_ref:  # noqa: BLE001 -- anexo opcional
-                log.info(f"  [AVISO] referencia de CV do dominio de "
-                         f"aplicabilidade nao calculada (sentinela usara o "
-                         f"teste legado): {_e_ref}")
+                _falha_etapa_opcional(
+                    "Referencia de CV do dominio de aplicabilidade "
+                    "(sentinela usara o teste legado)", _e_ref)
         except Exception as _e_ad:  # noqa: BLE001 -- anexo opcional do
             # pacote de modelo; erro impresso, modelo principal (pls_final)
             # exportado normalmente logo abaixo mesmo sem o AD.
-            log.info(f"  [AVISO] Dominio de aplicabilidade nao pode ser "
-                  f"exportado: {_e_ad}")
+            _falha_etapa_opcional(
+                "Dominio de aplicabilidade (anexo do modelo)", _e_ad)
         # Ensemble de Identificacao especie x adulterante (Bloco 9b): reusa
         # o MESMO PCA/var_t do dominio de aplicabilidade acima -- ver
         # docstring de identificacao.py sobre por que nao ajusta um espaco
@@ -2962,8 +2986,8 @@ def executar(cfg: Config):
         except Exception as _e_ident:  # noqa: BLE001 -- anexo opcional;
             # sem ele, o mode cego (Identificar/Quantificar) simplesmente
             # nao fica disponivel na predicao, sem afetar N1/N2 exportados.
-            log.info(f"  [AVISO] Ensemble de identificacao nao pode ser "
-                  f"exportado: {_e_ident}")
+            _falha_etapa_opcional(
+                "Ensemble de identificacao (anexo do modelo)", _e_ident)
         # DD-SIMCA POR ESPECIE (purity gate, Bloco 9b -- fechando o gap do
         # Detectar): o dominio de aplicabilidade acima e' ajustado em TODA
         # a amostragem (pura + adulterada) -- responde "isto e' parecido
@@ -3009,8 +3033,8 @@ def executar(cfg: Config):
             append_purity_model_card(pasta_logs, _ddsimca_por_especie)
         except Exception as _e_dds:  # noqa: BLE001 -- anexo opcional; sem
             # ele, Detectar cai so' no AD (comportamento anterior).
-            log.info(f"  [AVISO] DD-SIMCA por especie nao pode ser "
-                  f"exportado para predicao: {_e_dds}")
+            _falha_etapa_opcional(
+                "DD-SIMCA por especie (anexo do modelo)", _e_dds)
         cam_modelo = os.path.join(pasta_modelos, "modelo_plsda.joblib")
         joblib.dump(pacote_modelo, cam_modelo)
         log.info(f"  -> {cam_modelo}")
@@ -3037,7 +3061,7 @@ def executar(cfg: Config):
     except Exception as _e_mod:  # noqa: BLE001 -- exportacao opcional
         # (predicao em amostra nova); erro impresso, nao afeta as figuras/
         # relatorios ja gerados desta corrida.
-        log.info(f"  [AVISO] Exportacao do modelo pulada: {_e_mod}")
+        _falha_etapa_opcional("Exportacao do modelo", _e_mod)
         registrar_falha_salvamento(f"modelo/manifesto ({cam_modelo}): {_e_mod}")
 
     if out_t2.size or out_q.size:
@@ -3138,10 +3162,9 @@ def executar(cfg: Config):
                             except Exception as _e_upd:  # noqa: BLE001 --
                                 # anexo opcional; N1/N2 exportados continuam
                                 # validos mesmo se esta atualizacao falhar.
-                                log.info(
-                                    f"  [AVISO] Nao foi possivel anexar "
-                                    f"regressao por especie ao pacote de "
-                                    f"modelo: {_e_upd}")
+                                _falha_etapa_opcional(
+                                    "Regressao por especie (anexo do "
+                                    "modelo)", _e_upd)
                         for t in reg_esp["tabela_especie"]:
                             log.info(f"    {t['especie']:18s} "
                                   f"LV={t['n_lv']:2d}  RMSEP={t['rmsep']:.2f}  "
@@ -3208,8 +3231,8 @@ def executar(cfg: Config):
                                     # modulo opcional (compara PLS-R com
                                     # outros regressores); erro impresso,
                                     # regressao principal (reg_esp) intacta.
-                                    log.info(f"  [AVISO] Benchmark de regressao "
-                                          f"falhou: {_e_bench_reg}")
+                                    _falha_etapa_opcional(
+                                        "Benchmark de regressao", _e_bench_reg)
                     else:
                         log.info("  [AVISO] Nenhuma especie com amostras "
                               "suficientes para regressao (>= 6 adulteradas "
@@ -3218,7 +3241,7 @@ def executar(cfg: Config):
                     # seguranca do bloco inteiro de regressao (multi-etapa:
                     # split + selecao de LV + fit + figuras); erro impresso,
                     # classificacao (resultado central, calculada antes) intacta.
-                    log.info(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+                    _falha_etapa_opcional("Regressao por especie", _e_reg_esp)
 
                 # Heatmap R2cv especie x adulterante: granularidade honesta da
                 # quantificacao. A regressao pooled por especie junta os
@@ -3242,7 +3265,7 @@ def executar(cfg: Config):
                     # opcional (o calculo R2cv em si ja tem tratamento
                     # granular por combinacao); erro impresso, resto da
                     # corrida intacto.
-                    log.info(f"  [AVISO] Heatmap especie x adulterante: {_e_hm}")
+                    _falha_etapa_opcional("Heatmap especie x adulterante", _e_hm)
                 _pls_reg_ok = False   # per-species path handled the figure
             else:
                 _pls_reg_ok = True
@@ -3272,7 +3295,13 @@ def executar(cfg: Config):
                     "espaco em disco/permissao, e se o caminho de saida "
                     "nao excede o limite do sistema operacional "
                     "(Windows: 260 caracteres sem prefixo \\\\?\\).")
-    else:
+    if _FALHAS_ETAPAS:
+        log.warning(f"  Pipeline concluido COM {len(_FALHAS_ETAPAS)} "
+                    "ETAPA(S) OPCIONAL(IS) QUE FALHARAM (resultado ausente "
+                    "desta corrida, nao calculado):")
+        for _f in _FALHAS_ETAPAS:
+            log.warning(f"    - {_f}")
+    if not _falhas_salvamento and not _FALHAS_ETAPAS:
         log.info("  Pipeline concluido.")
     log.info(f"  Resultados em: {pasta}")
     log.info(f"{'=' * 60}")
