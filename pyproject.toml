@@ -66,14 +66,12 @@ robusto = ["prcv>=1.2,<2.0"]
 # 2026-09-04). Ver importadores_proprietarios.py.
 opus = ["brukeropus>=1.4,<2.0"]
 # Leitor de arquivos SPC (Galactic/Thermo GRAMS) -- LGPL-3.0 (compativel
-# com GPL-3.0-or-later; ver importadores_proprietarios.py). AVISO: `spcfile`
-# ainda nao tem release no PyPI (repo ativo, mas so' instalavel via git) --
-# se `guaraci-chemometrics` for publicado no PyPI antes disso, o upload
-# sera' REJEITADO por causa desta dependencia com URL direta (Warehouse nao
-# aceita `Requires-Dist` com referencia de URL). Remover este extra do
-# `pyproject.toml` antes de publicar, ou trocar por um release PyPI real se
-# ja existir nessa altura.
-spc = ["spcfile @ git+https://github.com/kogens/spcfile.git"]
+# com GPL-3.0-or-later; ver importadores_proprietarios.py). Desde
+# 2026-10-14 vem do release 0.1.0 no PyPI (mesmo commit da tag v0.1.0 do
+# repositorio) em vez de `git+https://...` sem pin: a URL direta instalava
+# o que estivesse no HEAD naquele dia e bloqueava o upload no PyPI
+# (Warehouse nao aceita `Requires-Dist` com referencia de URL).
+spc = ["spcfile>=0.1,<0.2"]
 # Leitor de espectro RMN Bruker ja processado (pdata/<N>/1r) -- BSD-3
 # (compativel com GPL-3.0-or-later, verificado no LICENSE.txt do
 # repositorio em 2026-09-12). requires numpy+scipy, ambos ja base do
