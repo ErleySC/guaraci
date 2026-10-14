@@ -25,6 +25,13 @@ oráculos R mdatools 0.16.0 e ropls 1.45.0 em
   sob demanda com SHA256 pinado; job de CI `oraculo-dados-reais`) e iris
   (Fisher 1936, embutido no scikit-learn). Só as saídas dos modelos de
   referência são versionadas, não os dados.
+- **Pré-processamento, limites e BCa** (`tests/test_oraculo_prep_limites.py`):
+  SNV, MSC, EMSC, PQN e Savitzky-Golay (derivadas 0 a 2, bordas incluídas)
+  batem com o mdatools. O limite T² bate com `hotelling.crit` e o limite Q
+  com `qchisq`. O IC BCa bate com o pacote `boot` quando alimentado com as
+  mesmas réplicas. Diferenças de convenção (ddof do SNV, fator de área do
+  PQN, Fase II do T²) estão travadas nos testes e descritas em
+  `docs/VALIDATION.md`. Nenhum bug novo apareceu.
 
 Correção de método:
 
