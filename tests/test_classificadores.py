@@ -179,15 +179,63 @@ def test_compute_t2_ucl_metodo_desconhecido_cai_no_empirico():
 
 
 # ── OPLSDAWrapper ────────────────────────────────────────────────────────────
-def test_oplsda_fit_binario_gera_scores_ortogonais():
-    rng = np.random.default_rng(6)
-    Xa = _classe_compacta(rng, centro=0.0, n=20, k=6)
-    Xb = _classe_compacta(rng, centro=3.0, n=20, k=6)
-    X = np.vstack([Xa, Xb])
-    Y = np.array([0.0] * 20 + [1.0] * 20)
+def _dados_opls_com_variacao_ortogonal(rng, n=40, k=30):
+    """Duas classes + variacao sistematica nao correlacionada com y (tipo
+    deriva de linha de base), que o OPLS deve isolar em t_orth."""
+    y = np.array([0.0] * (n // 2) + [1.0] * (n - n // 2))
+    perfil_classe = rng.normal(size=k)
+    perfil_base = rng.normal(size=k)
+    deriva = rng.normal(scale=3.0, size=n)
+    X = (np.outer(y, perfil_classe) + np.outer(deriva, perfil_base)
+         + 0.1 * rng.normal(size=(n, k)))
+    return X, y.reshape(-1, 1)
 
-    opls = OPLSDAWrapper(n_ortho=1).fit(X, Y)
-    assert len(opls.W_orth_) >= 0  # pode convergir com 0 ou 1 componente ortogonal
+
+@pytest.mark.parametrize("n_ortho", [1, 2, 3])
+def test_oplsda_t_orth_ortogonal_a_y_e_a_t_pred(n_ortho):
+    """Trygg & Wold (2002): t_orth^T y = 0 por construcao (w_orth ⊥ w ∝ X^T y),
+    e t_orth ⊥ t_pred porque t_pred vem do X ja filtrado. A versao com
+    Gram-Schmidt extra contra o t intermediario quebrava t_orth ⊥ y."""
+    X, Y = _dados_opls_com_variacao_ortogonal(np.random.default_rng(6))
+    opls = OPLSDAWrapper(n_ortho=n_ortho).fit(X, Y)
+    assert opls.n_ortho_fitted_ == n_ortho
+
+    yc = Y[:, 0] - Y[:, 0].mean()
+    T_o = opls.t_orth_train_
+    escala = np.linalg.norm(T_o, axis=0) * np.linalg.norm(yc)
+    np.testing.assert_allclose(T_o.T @ yc / escala, 0.0, atol=1e-10)
+
+    t_p = opls.t_pred_train_
+    escala_p = np.linalg.norm(T_o, axis=0) * np.linalg.norm(t_p)
+    np.testing.assert_allclose(T_o.T @ t_p / escala_p, 0.0, atol=1e-10)
+
+
+@pytest.mark.parametrize("n_ortho", [1, 2])
+def test_oplsda_transform_no_treino_reproduz_escores_do_fit(n_ortho):
+    """transform(X_treino) tem que devolver exatamente os escores de fit():
+    mesma centragem e mesma deflacao (antes, fit deflacionava com o t_orth
+    corrigido e transform com o bruto)."""
+    X, Y = _dados_opls_com_variacao_ortogonal(np.random.default_rng(21))
+    opls = OPLSDAWrapper(n_ortho=n_ortho).fit(X, Y)
+    t_pred, t_orth = opls.transform(X)
+    np.testing.assert_allclose(t_pred, opls.t_pred_train_, rtol=1e-10, atol=1e-10)
+    np.testing.assert_allclose(t_orth, opls.t_orth_train_, rtol=1e-10, atol=1e-10)
+
+
+@pytest.mark.parametrize("n_ortho", [1, 2, 3])
+def test_oplsda_predicao_igual_pls1_com_k_mais_1_componentes(n_ortho):
+    """Equivalencia central do OPLS (Trygg & Wold 2002, sec. 3): para y de
+    1 coluna, OPLS com k componentes ortogonais + 1 preditivo da' os mesmos
+    valores ajustados que PLS1 com k+1 componentes -- inclusive em X novo."""
+    from sklearn.cross_decomposition import PLSRegression
+    rng = np.random.default_rng(33)
+    X, Y = _dados_opls_com_variacao_ortogonal(rng)
+    X_novo, _ = _dados_opls_com_variacao_ortogonal(rng, n=15)
+
+    opls = OPLSDAWrapper(n_ortho=n_ortho).fit(X, Y)
+    pls = PLSRegression(n_components=n_ortho + 1, scale=False).fit(X, Y)
+    np.testing.assert_allclose(opls.predict(X), pls.predict(X), atol=1e-8)
+    np.testing.assert_allclose(opls.predict(X_novo), pls.predict(X_novo), atol=1e-8)
 
 
 def test_oplsda_fit_multiclasse_usa_pls2_para_y_continuo():

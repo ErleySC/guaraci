@@ -1,6 +1,6 @@
 """
 classificadores.py — Classificadores quimiométricos avançados: DD-SIMCA
-(one-class por classe) e OPLS-DA (deflação ortogonal + Gram-Schmidt).
+(one-class por classe) e OPLS-DA (deflação ortogonal, Trygg & Wold 2002).
 
 Extraído de pipeline.py como parte da modularização (Fase H). Sem
 acoplamento a Config — dependem só de numpy/scipy/sklearn e de
@@ -491,18 +491,33 @@ class DDSimca:
 class OPLSDAWrapper(BaseEstimator):
     """OPLS-DA: orthogonal deflation + 1 predictive component.
 
-    Implements Algorithm 1 of Trygg & Wold (2002) with explicit Gram-Schmidt
-    orthogonalization to guarantee t_orth ⊥ t_pred by construction.
+    Implements Algorithm 1 of Trygg & Wold (2002) on mean-centred X.
 
-    Steps per orthogonal component:
-      1. NIPALS PLS1 on (X_r, y) → w (normalized), t = X_r @ w, p = X_r^T t / (t^T t)
-      2. w_orth = p − (p^T w) w   [part of p orthogonal to w, per Trygg 2002]
+    Steps per orthogonal component (X_r = deflated X, y = centred target):
+      1. NIPALS PLS1 on (X_r, y) → w ∝ X_r^T y (unit norm), t = X_r w,
+         p = X_r^T t / (t^T t)
+      2. w_orth = p − (p^T w) w   [part of p orthogonal to w, Eq. 3]
       3. w_orth /= ||w_orth||
-      4. t_orth_raw = X_r @ w_orth
-      5. Gram-Schmidt: t_orth = t_orth_raw − (t_orth_raw^T t)/(t^T t) * t
-         [explicit enforcement of t_orth ⊥ t_pred; required for valid S-Plots]
-      6. p_orth = X_r^T t_orth / (t_orth^T t_orth)
-      7. Deflate: X_r = X_r − t_orth p_orth^T
+      4. t_orth = X_r w_orth
+      5. p_orth = X_r^T t_orth / (t_orth^T t_orth)
+      6. Deflate: X_r = X_r − t_orth p_orth^T
+    Then 1 predictive PLS component is fitted on the filtered X_r.
+
+    No extra Gram-Schmidt step is needed (nor correct): the properties an
+    S-plot relies on hold by construction.
+      * t_orth ⊥ y: t_orth^T y = w_orth^T X_r^T y ∝ w_orth^T w = 0.
+      * t_orth ⊥ t_pred: t_orth^T X_r = 0 after its own deflation (and later
+        t_orth are ⊥ earlier ones), so every score computed from the final
+        filtered X_r -- in particular t_pred -- is orthogonal to all t_orth.
+      * For single-column y, the fitted values equal those of PLS1 with
+        n_ortho + 1 components (Trygg & Wold 2002, sec. 3).
+    The intermediate t of step 1 is NOT t_pred; orthogonalising t_orth
+    against it (as a previous version did) broke t_orth ⊥ y and made
+    transform(X_train) disagree with the scores computed in fit().
+
+    For multi-column Y (one-hot, K > 2 classes) the orthogonal filter is
+    computed against the continuous target of `_alvo_continuo` (1st PLS2
+    Y-score); t_orth ⊥ t_pred still holds, the PLS(k+1) equivalence does not.
 
     Outputs:
         t_pred  — predictive score (separates classes)
@@ -592,52 +607,39 @@ class OPLSDAWrapper(BaseEstimator):
     def fit(self, X: np.ndarray, Y: np.ndarray) -> "OPLSDAWrapper":
         X = np.asarray(X, dtype=float)
         Y = np.asarray(Y, dtype=float)
-        y = self._alvo_continuo(X, Y)
+        self.x_mean_ = X.mean(axis=0)
+        Xr = X - self.x_mean_
+        y = self._alvo_continuo(Xr, Y)
 
         n = X.shape[0]
-        Xr = X.copy()
         self.W_orth_ = []
         self.P_orth_ = []
         T_orth_train: List[np.ndarray] = []
 
         for _ in range(self.n_ortho):
-            w, t, p = self._nipals_pls1(Xr, y)
+            w, _t, p = self._nipals_pls1(Xr, y)
 
             # Step 2 (Trygg & Wold 2002, Eq. 3):
             # w_orth = part of p orthogonal to w (since ||w||=1, proj = p^T w)
-            proj = float(p @ w)
-            w_orth = p - proj * w
+            w_orth = p - float(p @ w) * w
             no = float(np.linalg.norm(w_orth))
             if no < 1e-10:
                 break
             w_orth /= no
 
-            # Step 4: raw orthogonal score
-            t_orth_raw = Xr @ w_orth
-
-            # Step 5 — Gram-Schmidt: remove predictive component from t_orth
-            # Guarantees t_orth ⊥ t_pred by construction (required for valid S-Plot).
-            # Without this, w_orth ⊥ w does NOT imply X@w_orth ⊥ X@w when X^T X ≠ I.
-            t_norm_sq = float(t @ t)
-            if t_norm_sq > 1e-12:
-                t_orth = t_orth_raw - (float(t_orth_raw @ t) / t_norm_sq) * t
-            else:
-                t_orth = t_orth_raw
-
+            t_orth = Xr @ w_orth
             nto = float(t_orth @ t_orth)
             if nto < 1e-12:
                 break
-
-            # Step 6: orthogonal loading from Gram-Schmidt-corrected t_orth
             p_orth = Xr.T @ t_orth / nto
             self.W_orth_.append(w_orth.copy())
             self.P_orth_.append(p_orth.copy())
             T_orth_train.append(t_orth.copy())
 
-            # Step 7: deflate X only (y is not deflated — single predictive LV)
+            # Deflate X only (y is not deflated -- t_orth ⊥ y already)
             Xr = Xr - np.outer(t_orth, p_orth)
 
-        # 1 predictive component on deflated X
+        # 1 predictive component on the filtered X
         self._pls_pred = PLSRegression(n_components=1, scale=False)
         self._pls_pred.fit(Xr, Y)
 
@@ -650,38 +652,32 @@ class OPLSDAWrapper(BaseEstimator):
         self.n_ortho_fitted_ = len(self.W_orth_)
         return self
 
-    def transform(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Returns (t_pred, t_orth) with t_orth ⊥ t_pred (Gram-Schmidt applied).
-
-        Deflation uses the raw w_orth/p_orth (consistent with fit), but the
-        returned t_orth vectors are Gram-Schmidt orthogonalized against t_pred
-        so that S-Plot covariance/correlation axes are rigorously orthogonal.
-        """
-        X = np.asarray(X, dtype=float)
-        Xr = X.copy()
-        T_orth_raw: List[np.ndarray] = []
+    def _filtrar(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Centres X with the training mean and removes the orthogonal
+        components exactly as fit() did. Returns (X filtered, T_orth)."""
+        Xr = np.asarray(X, dtype=float) - self.x_mean_
+        T_orth: List[np.ndarray] = []
         for w_o, p_o in zip(self.W_orth_, self.P_orth_):
-            t_o_raw = Xr @ w_o
-            T_orth_raw.append(t_o_raw)
-            Xr = Xr - np.outer(t_o_raw, p_o)   # deflation unchanged
+            t_o = Xr @ w_o
+            T_orth.append(t_o)
+            Xr = Xr - np.outer(t_o, p_o)
+        t_orth = (np.column_stack(T_orth)
+                  if T_orth else np.zeros((Xr.shape[0], 1)))
+        return Xr, t_orth
 
+    def transform(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns (t_pred, t_orth). On the training X these are identical
+        to `t_pred_train_`/`t_orth_train_` (same centring and deflation)."""
+        Xr, t_orth = self._filtrar(X)
         _t_new = self._pls_pred.transform(Xr)
         t_pred_arr = _t_new if isinstance(_t_new, np.ndarray) else _t_new[0]
-        t_pred = t_pred_arr[:, 0]
+        return t_pred_arr[:, 0], t_orth
 
-        # Gram-Schmidt: remove predictive component from each raw t_orth
-        t_pred_norm_sq = float(t_pred @ t_pred)
-        T_orth: List[np.ndarray] = []
-        for t_o_raw in T_orth_raw:
-            if t_pred_norm_sq > 1e-12:
-                t_o = t_o_raw - (float(t_o_raw @ t_pred) / t_pred_norm_sq) * t_pred
-            else:
-                t_o = t_o_raw
-            T_orth.append(t_o)
-
-        t_orth = (np.column_stack(T_orth)
-                  if T_orth else np.zeros((len(X), 1)))
-        return t_pred, t_orth
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Continuous Y-hat (same shape convention as PLSRegression.predict).
+        For single-column y this equals PLS1 with n_ortho_fitted_ + 1 LVs."""
+        Xr, _ = self._filtrar(X)
+        return self._pls_pred.predict(Xr)
 
 
 def ddsimca_logo_sensitivity(
