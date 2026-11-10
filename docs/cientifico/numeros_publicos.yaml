@@ -1,0 +1,7 @@
+# Contagens PROPRIAS do repositorio que os READMEs citam. Cobre exatamente uma chave:
+#   perfis_de_matriz_distribuidos -> numero de arquivos em src/guaraci/perfis_matriz/*.yaml
+#                                    ("8 shipped" no README.md, "8 distribuídos" no README.pt-BR.md).
+# Nao contem, nem deve conter, numero de desempenho nem qualquer numero derivado de conjunto de dados que nao
+# acompanha o programa.
+# `tests/test_numeros_publicos.py` confere esta chave contra a arvore e os READMEs, e falha se surgir outra.
+perfis_de_matriz_distribuidos: 8

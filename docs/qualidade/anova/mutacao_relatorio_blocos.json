@@ -1,0 +1,1032 @@
+{
+ "modulo": "src/guaraci/relatorio_blocos.py",
+ "total": 78,
+ "mortos_no_total": 78,
+ "contagem": {
+  "morto": 78
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_relatorio_blocos.py",
+  "tests/test_anova_cli_e2e.py",
+  "tests/test_vip_cli.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 19,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in (\"h1\", \"h2\", \"h3\"):",
+   "segundos": 8.7,
+   "no": 90,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 19,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_markdown_exato",
+   "trecho": "if b[0] in (\"h1\", \"h2\", \"h3\"):",
+   "segundos": 5.8,
+   "no": 219,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 19,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in (\"h1\", \"h2\", \"h3\"):",
+   "segundos": 8.7,
+   "no": 50,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 6.8,
+   "no": 226,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 7.6,
+   "no": 283,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 8.6,
+   "no": 91,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 5.9,
+   "no": 358,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 6.6,
+   "no": 661,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 6.1,
+   "no": 362,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 20,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"#\" * int(b[0][1]) + \" \" + b[1], \"\"]",
+   "segundos": 7.2,
+   "no": 592,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 21,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 8.2,
+   "no": 175,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 21,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 6.6,
+   "no": 287,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 21,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 8.2,
+   "no": 92,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 22,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [b[1], \"\"]",
+   "segundos": 8.2,
+   "no": 176,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 22,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [b[1], \"\"]",
+   "segundos": 6.4,
+   "no": 366,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 23,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 6.7,
+   "no": 235,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 23,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 6.5,
+   "no": 369,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 23,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 8.2,
+   "no": 177,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 24,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [f\"![{b[2]}]({b[1]})\", \"\"]",
+   "segundos": 7.0,
+   "no": 236,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 25,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 6.7,
+   "no": 299,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 25,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 6.3,
+   "no": 443,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 25,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 7.0,
+   "no": 237,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 26,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L.append(\"| \" + \" | \".join(b[1]) + \" |\")",
+   "segundos": 6.4,
+   "no": 446,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 26,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L.append(\"| \" + \" | \".join(b[1]) + \" |\")",
+   "segundos": 6.6,
+   "no": 516,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 26,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L.append(\"| \" + \" | \".join(b[1]) + \" |\")",
+   "segundos": 6.0,
+   "no": 714,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 27,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L.append(\"|\" + \"---|\" * len(b[1]))",
+   "segundos": 6.6,
+   "no": 448,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 27,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L.append(\"|\" + \"---|\" * len(b[1]))",
+   "segundos": 6.4,
+   "no": 523,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 27,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_tabela_com_tres_colunas_tem_tres_separadores_e_tres_l",
+   "trecho": "L.append(\"|\" + \"---|\" * len(b[1]))",
+   "segundos": 5.7,
+   "no": 718,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 28,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"| \" + \" | \".join(x.replace(\"|\", \"\\\\|\") for x in lin) + \" |\" for lin in b[2]]",
+   "segundos": 6.7,
+   "no": 450,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 28,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"| \" + \" | \".join(x.replace(\"|\", \"\\\\|\") for x in lin) + \" |\" for lin in b[2]]",
+   "segundos": 6.7,
+   "no": 524,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 28,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"| \" + \" | \".join(x.replace(\"|\", \"\\\\|\") for x in lin) + \" |\" for lin in b[2]]",
+   "segundos": 6.9,
+   "no": 302,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 28,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "L += [\"| \" + \" | \".join(x.replace(\"|\", \"\\\\|\") for x in lin) + \" |\" for lin in b[2]]",
+   "segundos": 7.1,
+   "no": 613,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 30,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return \"\\n\".join(L)",
+   "segundos": 8.7,
+   "no": 19,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in (\"h1\", \"h2\", \"h3\"):",
+   "segundos": 7.0,
+   "no": 106,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_html_escapa_e_tem_estrutura",
+   "trecho": "if b[0] in (\"h1\", \"h2\", \"h3\"):",
+   "segundos": 5.6,
+   "no": 241,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in (\"h1\", \"h2\", \"h3\"):",
+   "segundos": 8.7,
+   "no": 61,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 39,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 8.2,
+   "no": 191,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 39,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_html_escapa_e_tem_estrutura",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 5.7,
+   "no": 315,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 39,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 7.1,
+   "no": 108,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 41,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 7.6,
+   "no": 253,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 41,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 6.5,
+   "no": 395,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 41,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 8.2,
+   "no": 193,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 43,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_html_escapa_e_tem_estrutura",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 5.7,
+   "no": 323,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 43,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_html_escapa_e_tem_estrutura",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 5.6,
+   "no": 473,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 43,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_html_escapa_e_tem_estrutura",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 5.7,
+   "no": 255,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 44,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "cab = \"\".join(f\"<th>{e(c)}</th>\" for c in b[1])",
+   "segundos": 6.7,
+   "no": 686,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "corpo = \"\".join(\"<tr>\" + \"\".join(f\"<td>{e(x)}</td>\" for x in lin) + \"</tr>\" for lin in b[2])",
+   "segundos": 6.6,
+   "no": 549,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "corpo = \"\".join(\"<tr>\" + \"\".join(f\"<td>{e(x)}</td>\" for x in lin) + \"</tr>\" for lin in b[2])",
+   "segundos": 7.1,
+   "no": 632,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "corpo = \"\".join(\"<tr>\" + \"\".join(f\"<td>{e(x)}</td>\" for x in lin) + \"</tr>\" for lin in b[2])",
+   "segundos": 6.3,
+   "no": 693,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 47,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return (\"<!doctype html>\\n<html><head><meta charset=\\\"utf-8\\\"><meta name=\\\"viewport\\\" \"",
+   "segundos": 8.6,
+   "no": 62,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 47,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return (\"<!doctype html>\\n<html><head><meta charset=\\\"utf-8\\\"><meta name=\\\"viewport\\\" \"",
+   "segundos": 7.8,
+   "no": 109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 47,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return (\"<!doctype html>\\n<html><head><meta charset=\\\"utf-8\\\"><meta name=\\\"viewport\\\" \"",
+   "segundos": 8.5,
+   "no": 25,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 55,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return \"\".join(sub.get(c, c) for c in t)",
+   "segundos": 8.7,
+   "no": 29,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 64,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in cmd:",
+   "segundos": 8.0,
+   "no": 156,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 64,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in cmd:",
+   "segundos": 7.6,
+   "no": 266,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 64,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "if b[0] in cmd:",
+   "segundos": 8.7,
+   "no": 78,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 66,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 8.2,
+   "no": 209,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 66,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_latex_escapa_caracteres_especiais_e_monta_tabela_e_figura",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 5.6,
+   "no": 345,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 66,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"p\":",
+   "segundos": 7.8,
+   "no": 158,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 67,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P.append(esc(b[1]) + \"\\n\")",
+   "segundos": 6.9,
+   "no": 348,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 67,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P.append(esc(b[1]) + \"\\n\")",
+   "segundos": 6.7,
+   "no": 568,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 68,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 7.5,
+   "no": 275,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 68,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 6.5,
+   "no": 418,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 68,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"img\":",
+   "segundos": 8.2,
+   "no": 211,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 70,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 7.0,
+   "no": 353,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 70,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 6.6,
+   "no": 498,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 70,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "elif b[0] == \"table\":",
+   "segundos": 7.5,
+   "no": 277,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 71,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P.append(\"\\\\begin{center}\\\\begin{tabular}{\" + \"l\" * len(b[1]) + \"}\\\\hline\")",
+   "segundos": 6.4,
+   "no": 501,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 71,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P.append(\"\\\\begin{center}\\\\begin{tabular}{\" + \"l\" * len(b[1]) + \"}\\\\hline\")",
+   "segundos": 7.2,
+   "no": 575,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 71,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P.append(\"\\\\begin{center}\\\\begin{tabular}{\" + \"l\" * len(b[1]) + \"}\\\\hline\")",
+   "segundos": 6.9,
+   "no": 649,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 71,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_tabela_com_tres_colunas_tem_tres_separadores_e_tres_l",
+   "trecho": "P.append(\"\\\\begin{center}\\\\begin{tabular}{\" + \"l\" * len(b[1]) + \"}\\\\hline\")",
+   "segundos": 5.7,
+   "no": 757,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 72,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P.append(\" & \".join(esc(c) for c in b[1]) + r\" \\\\ \\hline\")",
+   "segundos": 6.5,
+   "no": 503,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 72,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_relatorio_blocos.py::test_latex_escapa_caracteres_especiais_e_monta_tabela_e_figura",
+   "trecho": "P.append(\" & \".join(esc(c) for c in b[1]) + r\" \\\\ \\hline\")",
+   "segundos": 5.7,
+   "no": 763,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 73,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P += [\" & \".join(esc(x) for x in lin) + r\" \\\\\" for lin in b[2]]",
+   "segundos": 6.5,
+   "no": 505,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 73,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P += [\" & \".join(esc(x) for x in lin) + r\" \\\\\" for lin in b[2]]",
+   "segundos": 7.0,
+   "no": 356,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 73,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "P += [\" & \".join(esc(x) for x in lin) + r\" \\\\\" for lin in b[2]]",
+   "segundos": 6.7,
+   "no": 657,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 76,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return \"\\n\".join(P) + \"\\n\"",
+   "segundos": 8.7,
+   "no": 80,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 76,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[tukey-Tukey]",
+   "trecho": "return \"\\n\".join(P) + \"\\n\"",
+   "segundos": 8.4,
+   "no": 37,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

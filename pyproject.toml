@@ -1,0 +1,232 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "guaraci-chemometrics"
+version = "1.0.0"
+description = "GUARACI — chemometrics platform with leakage-safe validation by default"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+# Texto da GPL e avisos de terceiros (BSD-3 do porte do leitor .sp) entram no wheel e no sdist
+# em *.dist-info/licenses/ (PEP 639).
+license-files = ["LICENSE", "LICENSES/*", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "Erley Silva da Costa" }]
+maintainers = [{ name = "Erley Silva da Costa" }]
+requires-python = ">=3.11"
+# Termos em ingles de proposito: sao o vetor de busca no PyPI
+# ("Guaraci" nao e' pesquisavel por quem nao conhece o projeto).
+keywords = [
+    "chemometrics", "spectroscopy", "NIR", "FT-NIR", "PLS-DA", "OPLS-DA",
+    "SIMCA", "DD-SIMCA", "PCA", "authentication", "adulteration-detection",
+    "food-authenticity", "group-aware-validation", "GroupKFold",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Natural Language :: Portuguese (Brazilian)",
+    "Natural Language :: English",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "numpy>=1.24,<3.0",
+    "pandas>=2.0,<4.0",
+    "scipy>=1.10,<2.0",
+    "scikit-learn>=1.5,<2.0",
+    "matplotlib>=3.7,<4.0",
+    "joblib>=1.3,<2.0",
+    "threadpoolctl>=3.1,<4.0",
+    "PyYAML>=6.0,<7.0",
+    "rich>=13.0,<16",
+    "Pillow>=13.0,<14",
+]
+
+[project.optional-dependencies]
+web = ["streamlit>=1.54,<2.0", "psutil>=5.9,<8.0"]
+reports = [
+    "fpdf2>=2.8.8,<3.0",
+    "python-docx>=1.1,<2.0",
+    "openpyxl>=3.1,<4.0",
+    "python-pptx>=1.0,<2.0",
+]
+benchmark = ["xgboost>=1.7,<5.0", "shap>=0.42,<0.53"]
+imagem = ["scikit-image>=0.19,<1.0"]  # features de textura (GLCM) no modo_entrada="imagem"
+# prcv: Procrustes Cross-Validation (Kucheryavskiy/Rodionova/Pomerantsev) --
+# gera um conjunto de validacao por reamostragem quando ha poucos grupos de
+# replica fisica para leave-one-group-out convencional. Ver
+# sensibilidade_ddsimca_pcv() em classificadores.py.
+robusto = ["prcv>=1.2,<2.0"]
+# Leitor de arquivos OPUS (Bruker FT-NIR/FT-MIR) -- MIT (compativel com
+# GPL-3.0-or-later deste projeto, verificado no classifier do pacote em
+# 2026-09-04). Ver importadores_proprietarios.py.
+opus = ["brukeropus>=1.4,<2.0"]
+# Leitor de arquivos SPC (Galactic/Thermo GRAMS) -- LGPL-3.0 (compativel
+# com GPL-3.0-or-later; ver importadores_proprietarios.py). Release 0.1.0 no
+# PyPI desde 2026-01-25 (conferido em 2026-10-04: mesmo repositorio, tag
+# v0.1.0 = o commit 1224e45 antes fixado por URL; codigo do wheel identico ao
+# instalado do git). Antes era dependencia por URL direta, que indice publico
+# nao deve aceitar (PEP 440, "Direct references").
+spc = ["spcfile>=0.1,<0.2"]
+# Leitor de espectro RMN Bruker ja processado (pdata/<N>/1r) -- BSD-3
+# (compativel com GPL-3.0-or-later, verificado no LICENSE.txt do
+# repositorio em 2026-09-12). requires numpy+scipy, ambos ja base do
+# projeto -- zero dependencia transitiva nova. Ver importadores_
+# proprietarios.py.
+rmn = ["nmrglue>=0.11,<1.0"]
+# Leitor de cromatograma HPLC/GC bruto de fabricante (Agilent .D/.dx,
+# Waters .raw) -- LGPL-3.0-or-later (compativel com GPL-3.0-or-later,
+# verificado no COPYING.LESSER do wheel instalado em 2026-09-12). Puxa
+# `lxml` (BSD-3, compativel) como dependencia transitiva -- unico extra
+# deste grupo com peso nao-trivial (~14MB). Ver importadores_proprietarios.py.
+# m-27: rainbow-api nao publica wheel para Python >= 3.14 e exige compilador C
+# para construir; o marcador evita que `.[all]` quebre nessas versoes (o leitor
+# HPLC avisa, na hora do uso, que o extra nao esta instalado).
+hplc = ["rainbow-api>=1.5,<2.0; python_version < '3.14'"]
+# PARAFAC (decomposicao tensorial N-way) -- hsi_multiway.py. BSD,
+# compativel com GPL-3.0-or-later. N-PLS (mesmo modulo) e' implementacao
+# propria (sem lib madura equivalente) e nao precisa deste extra.
+multiway = ["tensorly>=0.8,<1.0"]
+# Paletas de maxima distincao (paleta_cores.py); sem elas usa a paleta interna.
+cores = ["glasbey>=0.2", "colorcet>=3.0"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,rmn,hplc,multiway,cores]"]
+# Dev-only -- NUNCA em requirements.txt (manifesto de deploy do Streamlit
+# Cloud): nada disto roda em producao. Ferramentas de teste e dos gates da CI
+# (pytest, xdist, cobertura, hypothesis, ruff, mypy, bandit), com faixas
+# fechadas: `pip install -e ".[all,dev]"` reproduz o ambiente do CONTRIBUTING.
+# Faixas = as versoes verificadas (requirements-lock.txt) ate' a proxima menor.
+dev = [
+    "hypothesis>=6.100,<7.0",
+    "pytest>=9.1,<10",
+    "pytest-xdist>=3.8,<4",
+    "pytest-cov>=7.1,<8",
+    "ruff>=0.16.5,<0.17",
+    "mypy>=2.3.1,<2.5",
+    "bandit>=1.9.4,<2",
+    "build>=1.2,<2",            # testes que constroem o wheel/sdist de verdade (auditoria do pacote)
+    "pypdf>=6.21.4,<7",  # testes que leem o texto dos PDFs gerados (idioma dos relatorios); piso 6.21.4 = ultima correcao de seguranca apontada pelo pip-audit (2026-11-11)
+]
+
+[project.scripts]
+guaraci = "guaraci.guaraci:main"
+
+[project.urls]
+Homepage      = "https://github.com/ErleySC/guaraci"
+Repository    = "https://github.com/ErleySC/guaraci"
+Documentation = "https://erleysc.github.io/guaraci/"
+Issues        = "https://github.com/ErleySC/guaraci/issues"
+Discussions   = "https://github.com/ErleySC/guaraci/discussions"
+Security      = "https://github.com/ErleySC/guaraci/security/policy"
+Changelog     = "https://github.com/ErleySC/guaraci/blob/master/CHANGELOG.md"
+
+# Pacote real em src/guaraci/ (migração item 17). O corpo do app web mora no
+# pacote (guaraci/app_web.py, para `guaraci web` funcionar instalado por pip);
+# app_quimiometria.py na raiz e' so' um ponto de entrada fino (Streamlit Cloud,
+# Docker, CI, testes) e não faz parte do pacote instalável.
+#
+# `guaraci.app_tabs` PRECISA ser listado explicitamente: uma lista `packages`
+# explícita no setuptools NÃO inclui subpacotes automaticamente. Sem isso o
+# wheel sai sem as 8 abas do app web, e o bug fica invisível na CI porque
+# `pip install -e .` (editável) enxerga a árvore fonte inteira — só um wheel
+# real revela. Ao criar um subpacote novo, adicionar aqui.
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["guaraci", "guaraci.app_tabs"]
+
+# Os perfis de matriz sao DADOS do pacote, nao codigo: sem esta linha eles
+# ficam de fora da wheel e `guaraci perfis` lista zero perfis num ambiente
+# instalado por pip -- exatamente o cenario de quem nunca viu o projeto.
+# Achado testando instalacao limpa em 2026-08-18.
+[tool.setuptools.package-data]
+guaraci = ["perfis_matriz/*.yaml", "dados_docs/*.md", "assets/*.png"]
+
+# Type-checking APENAS nos módulos de cálculo puro (item de
+# qualidade de codigo). Escopo deliberadamente estreito: são os módulos sem I/O, sem UI e
+# sem estado global, onde a anotação de tipo tem valor real e o custo de manter
+# é baixo. As camadas de UI/orquestração (guaraci.py, pipeline.py, app_tabs)
+# ficam FORA de propósito — anotá-las hoje geraria centenas de erros de
+# bibliotecas sem stub (streamlit, rich) sem pegar nenhum bug de cálculo.
+# Rodar: mypy $(cat <lista abaixo>) — o passo da CI tem a lista canônica.
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true   # numpy/scipy/sklearn não têm stubs completos
+strict_optional = false
+warn_unused_ignores = true
+check_untyped_defs = true       # Passo 220: corpos de funcoes sem anotacao tambem sao checados
+# follow_imports=silent é o que TORNA o escopo estreito de fato: sem ele, o
+# mypy segue os imports e reporta erros dentro de guaraci.py/pipeline.py (as
+# camadas de UI/orquestração que este gate exclui de propósito). Sem a flag o
+# resultado ainda depende de o pacote estar instalado ou não no ambiente — o
+# gate passava local (editable install) e falhava na CI (pacote ausente).
+follow_imports = "silent"
+
+# m-19 (parecer de 2026-09-25): tifffile usa a sintaxe `type X = ...` (Python 3.12+); com
+# python_version=3.10 o mypy quebrava ao ler o pacote instalado por `.[all]`. Nao seguir
+# esse import: o guaraci so' o usa em leitores de imagem.
+[[tool.mypy.overrides]]
+module = "tifffile.*"
+follow_imports = "skip"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"
+markers   = [
+    "slow: testes >30s. Alvo RAPIDO: pytest -m \"not slow\" (<=10 min). Alvo COMPLETO: pytest (sem filtro).",
+]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning:sklearn",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Nao lintar dados de perfis (scripts pessoais gitignored ja ficam de fora: o ruff respeita o .gitignore).
+extend-exclude = [
+    "perfis", "__pycache__",
+]
+
+[tool.ruff.lint]
+# Pragmatico p/ codigo cientifico: pega bugs reais (pyflakes = F) + erros/avisos
+# de pycodestyle, ignorando estilo DELIBERADO (multiplos statements por linha,
+# nomes de 1 letra comuns em algebra/matematica, linhas longas com formulas).
+# BLE = blind except: trava a auditoria de except amplos --
+# todo `except Exception`/`except:` precisa capturar um tipo especifico OU
+# ter `# noqa: BLE001` com comentario justificando (best-effort documentado).
+select = ["E", "F", "W", "BLE"]
+ignore = [
+    "E501",                    # line too long (formulas cientificas)
+    "E701", "E702", "E703",    # multiple statements on one line (estilo do projeto)
+    "E741",                    # ambiguous variable name (l, I, O em algebra)
+    "E402",                    # import not at top (reexports pos-modularizacao)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# pipeline.py e uma FACHADA (Fase H): reexporta simbolos dos 10 modulos
+# extraidos, entao muitos imports sao "nao usados" de proposito — e o contrato
+# publico que guaraci/cli/app consomem via `pq.X`. Ver test_fachada_reexport.py.
+"src/guaraci/pipeline.py" = ["F401"]
+# Camada de UI (CLI/desktop/web): variaveis locais de rotulo/idioma calculadas
+# para clareza mas nem sempre usadas em todo ramo — tolera F841 aqui; o rigor
+# de "variavel nao usada" fica no nucleo cientifico (pipeline + modulos).
+"src/guaraci/guaraci.py" = ["F841"]
+"app_quimiometria.py" = ["F841"]
+"src/guaraci/app_web.py" = ["F841"]
+# reports.py (item 18): extraido verbatim de app_quimiometria.py — mesma
+# tolerancia (variaveis de layout/formatacao de documento calculadas mas nem
+# sempre usadas em todo ramo de geracao de relatorio).
+"src/guaraci/reports.py" = ["F841"]
+
+# Cobertura: os testes de ponta a ponta rodam `python -m guaraci ...` em SUBPROCESSO; sem isto o coverage nao ve esse codigo.
+[tool.coverage.run]
+branch = true
+patch = ["subprocess"]
+parallel = true

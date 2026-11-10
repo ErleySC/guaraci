@@ -1,0 +1,28 @@
+pergunta	lang	esperado
+meu modelo de calibração só funciona nas amostras que eu mesmo preparei	PT	duvida:overfitting|duvida:replicas_vazamento
+quantos fatores do PLS escolher sem ajustar demais?	PT	duvida:numero_lv
+o gráfico de scores mostra dois grupos por data de medição	PT	duvida:efeito_lote
+amostras novas de outra espécie aparecem como pertencentes à classe errada	PT	duvida:classe_nova
+posso confiar em um acerto de 100% com poucas amostras independentes?	PT	duvida:acuracia_perfeita
+como saber se uma amostra é anômala no espaço dos escores?	PT	duvida:outliers|duvida:t2_q_altos
+o que fazer quando o Q residual está muito alto?	PT	duvida:t2_q_altos
+os espectros não carregam no programa	PT	duvida:arquivo_nao_abre
+a análise de variância deu significativa mas as comparações aos pares não	PT	duvida:anova_sig_tukey_nao
+os grupos têm variâncias muito diferentes	PT	duvida:variancias_diferentes
+qual teste usar com 4 amostras por grupo?	PT	duvida:n_pequeno_qual_teste
+é suficiente ter VIP acima de 1 para manter a variável?	PT	duvida:vip_maior_que_1
+how do I know the preprocessing helped?	EN	duvida:escolha_preproc
+the holdout error is much larger than cross-validation error	EN	duvida:erro_previsao_alto
+can I reuse my calibration on another spectrometer?	EN	duvida:transferencia_calibracao
+one class has many more samples than the other	EN	duvida:desbalanceamento
+what should I check before publishing my results?	EN	duvida:pronto_para_publicar
+my spectra are rejected by their own class model	EN	duvida:ddsimca_rejeita_puros
+the permutation test p-value is high	EN	duvida:permutacao_nao_significativa
+which wavenumber range should I use?	EN	duvida:escolha_faixa
+quantos anos tem a Terra?	PT	nao_sei
+como configuro o roteador wifi?	PT	nao_sei
+what is the capital of Australia?	EN	nao_sei
+escreva um poema sobre espectroscopia	PT	nao_sei
+meu R2 não está alto, está 0.5	PT	nao_sei|termo:r2
+a janela do SG não é o problema, o problema é a derivada	PT	nao_sei|duvida:janela_sg|duvida:escolha_preproc
+o sentinela não disparou nenhum alarme	PT	nao_sei|duvida:deriva_sentinela

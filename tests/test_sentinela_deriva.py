@@ -1,0 +1,287 @@
+# -*- coding: utf-8 -*-
+"""Testes de guaraci.sentinela_deriva (Bloco 13b).
+
+O invariante central: o alerta de deriva e' um TESTE ESTATISTICO, nao um
+limiar cru -- prova-se isso em dois sentidos (1) uma sequencia GERADA
+exatamente na taxa nominal nao deve disparar alerta na maioria das vezes
+(taxa de falso alarme proxima do `significancia` declarado); (2) uma
+sequencia com taxa de rejeicao CLARAMENTE mais alta que o nominal, com n
+suficiente, dispara o alerta.
+"""
+from __future__ import annotations
+
+import json
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from guaraci.conformal import n_minimum_for_alpha
+from guaraci.sentinela_deriva import (
+    SentinelState,
+    update_with_predictions,
+    load_state,
+    check_drift,
+    save_state,
+    hook_apos_predicao,
+)
+
+
+# ── SentinelState: registro e janela ────────────────────────────────
+
+def test_registrar_acumula_historico():
+    estado = SentinelState(alpha_nominal=0.05)
+    for d in [True, True, False, True]:
+        estado.registrar(d)
+    assert estado.n == 4
+    assert estado.n_fora_do_dominio == 1
+    assert estado.taxa_rejeicao_observada == pytest.approx(0.25)
+
+
+def test_janela_deslizante_descarta_o_mais_antigo():
+    estado = SentinelState(alpha_nominal=0.05, janela=3)
+    for d in [True, True, True, False]:
+        estado.registrar(d)
+    assert estado.n == 3
+    # o primeiro True foi descartado; sobra [True, True, False]
+    assert estado.n_fora_do_dominio == 1
+
+
+def test_sem_janela_e_cumulativo_sem_limite():
+    estado = SentinelState(alpha_nominal=0.05, janela=None)
+    for _ in range(500):
+        estado.registrar(True)
+    assert estado.n == 500
+
+
+def test_taxa_rejeicao_vazia_e_nan():
+    estado = SentinelState()
+    assert np.isnan(estado.taxa_rejeicao_observada)
+
+
+# ── update_with_predictions ────────────────────────────────────────────
+
+def test_atualizar_com_predicoes_le_coluna_ad_dentro_dominio():
+    estado = SentinelState(alpha_nominal=0.05)
+    df = pd.DataFrame({"AD_dentro_dominio": [True, True, False, True, True]})
+    n_registrado = update_with_predictions(estado, df)
+    assert n_registrado == 5
+    assert estado.n == 5
+    assert estado.n_fora_do_dominio == 1
+
+
+def test_atualizar_com_predicoes_sem_coluna_nao_lanca_excecao():
+    estado = SentinelState(alpha_nominal=0.05)
+    df = pd.DataFrame({"classe_pred": ["A", "B"]})
+    n_registrado = update_with_predictions(estado, df)
+    assert n_registrado == 0
+    assert estado.n == 0
+
+
+# ── check_drift: poder estatistico e falso alarme ───────────────────
+
+def test_n_abaixo_do_minimo_nao_testa_e_nao_alerta():
+    estado = SentinelState(alpha_nominal=0.05)
+    for _ in range(5):
+        estado.registrar(False)   # 100% rejeicao, mas n so' 5
+    alerta = check_drift(estado)
+    assert alerta.alerta is False
+    assert np.isnan(alerta.p_valor)
+    assert "minimo" in alerta.mensagem
+
+
+def test_n_minimo_default_reaproveita_n_minimum_for_alpha():
+    """O n_minimo usado por padrao TEM que ser exatamente
+    conformal.n_minimum_for_alpha(alpha_nominal) -- reaproveitado, nao
+    escolhido a dedo para este modulo."""
+    estado = SentinelState(alpha_nominal=0.05)
+    n_esperado = n_minimum_for_alpha(0.05)
+    for _ in range(n_esperado - 1):
+        estado.registrar(True)
+    assert str(n_esperado) in check_drift(estado).mensagem
+
+
+def test_taxa_nominal_verdadeira_raramente_dispara_falso_alarme():
+    """Contra-prova de calibracao do teste: gerando exatamente na taxa
+    NOMINAL (H0 verdadeiro), a fracao de alertas disparados ao longo de
+    muitas repeticoes tem que ficar PROXIMA do `significancia` declarado
+    -- nao muito acima (o que indicaria um teste maldisenhado, alarmando
+    demais)."""
+    rng = np.random.default_rng(0)
+    alpha_nominal = 0.05
+    n_janela = 200
+    n_repeticoes = 300
+    alertas = 0
+    for _ in range(n_repeticoes):
+        estado = SentinelState(alpha_nominal=alpha_nominal)
+        amostras = rng.random(n_janela) >= alpha_nominal   # True = dentro
+        for d in amostras:
+            estado.registrar(bool(d))
+        if check_drift(estado, significancia=0.05).alerta:
+            alertas += 1
+    taxa_falso_alarme = alertas / n_repeticoes
+    # unilateral, alpha=0.05 -> esperado ~5%; tolerancia generosa para nao
+    # tornar o teste flaky (Monte Carlo com n_repeticoes finito).
+    assert taxa_falso_alarme < 0.12, (
+        f"taxa de falso alarme {taxa_falso_alarme:.3f} muito acima do "
+        "nominal 0.05 -- teste de deriva mal calibrado")
+
+
+def test_deriva_real_com_n_suficiente_dispara_alerta():
+    """Populacao com taxa de rejeicao MUITO acima do nominal (deriva real
+    e' forte, nao sutil) -- com n suficiente, o alerta TEM que disparar."""
+    rng = np.random.default_rng(1)
+    estado = SentinelState(alpha_nominal=0.05)
+    taxa_real_com_deriva = 0.30   # 6x o nominal
+    amostras = rng.random(200) >= taxa_real_com_deriva
+    for d in amostras:
+        estado.registrar(bool(d))
+    alerta = check_drift(estado)
+    assert alerta.alerta is True
+    assert alerta.p_valor < 0.05
+    assert "DERIVA PROVAVEL" in alerta.mensagem
+
+
+def test_alpha_nominal_customizado_e_respeitado():
+    estado = SentinelState(alpha_nominal=0.20)
+    rng = np.random.default_rng(2)
+    amostras = rng.random(100) >= 0.20   # taxa == nominal, H0 verdadeiro
+    for d in amostras:
+        estado.registrar(bool(d))
+    alerta = check_drift(estado)
+    assert alerta.alpha_nominal == pytest.approx(0.20)
+
+
+# ── Persistencia ────────────────────────────────────────────────────────
+
+def test_salvar_e_carregar_estado_preserva_historico(tmp_path):
+    estado = SentinelState(alpha_nominal=0.07, janela=50)
+    for d in [True, False, True, True, False]:
+        estado.registrar(d)
+    caminho = str(tmp_path / "sentinela.json")
+    save_state(estado, caminho)
+
+    recarregado = load_state(caminho)
+    assert recarregado.alpha_nominal == pytest.approx(0.07)
+    assert recarregado.janela == 50
+    assert recarregado.historico == estado.historico
+    assert recarregado.n == estado.n
+    assert recarregado.taxa_rejeicao_observada == pytest.approx(
+        estado.taxa_rejeicao_observada)
+
+
+def test_salvar_estado_grava_json_legivel(tmp_path):
+    estado = SentinelState(alpha_nominal=0.05)
+    estado.registrar(True)
+    caminho = str(tmp_path / "sentinela.json")
+    save_state(estado, caminho)
+    with open(caminho, encoding="utf-8") as f:
+        dados = json.load(f)
+    assert dados["alpha_nominal"] == pytest.approx(0.05)
+    assert dados["historico"] == [True]
+
+
+def test_continuar_registrando_apos_carregar(tmp_path):
+    """Simula o uso real: sentinela persistida entre execucoes do
+    pipeline, continua acumulando -- nao reseta ao recarregar."""
+    estado = SentinelState(alpha_nominal=0.05)
+    for _ in range(10):
+        estado.registrar(True)
+    caminho = str(tmp_path / "sentinela.json")
+    save_state(estado, caminho)
+
+    estado2 = load_state(caminho)
+    estado2.registrar(False)
+    assert estado2.n == 11
+    assert estado2.n_fora_do_dominio == 1
+
+
+# ── hook_apos_predicao: orquestracao compartilhada CLI/web (Grupo 2) ───
+# Extraida de guaraci.py (menu CLI) para que a aba web
+# (app_tabs/predicao.py) chame a MESMA logica em vez de duplicar
+# carregar->atualizar->salvar->checar -- fecha o gap de paridade achado
+# na auditoria do Grupo 2 (a sentinela so' rodava no CLI ate' agora).
+
+def test_hook_sem_coluna_ad_devolve_none_sem_lancar(tmp_path):
+    df = pd.DataFrame({"classe_pred": ["A", "B"]})
+    caminho = str(tmp_path / "modelo.joblib")
+    assert hook_apos_predicao(caminho, df) is None
+    assert not (tmp_path / "modelo.joblib.sentinela.json").exists()
+
+
+def test_hook_cria_e_persiste_estado_ao_lado_do_modelo(tmp_path):
+    caminho_modelo = str(tmp_path / "modelo.joblib")
+    df = pd.DataFrame({"AD_dentro_dominio": [True, True, False]})
+    alerta = hook_apos_predicao(caminho_modelo, df)
+    assert alerta is not None
+    assert alerta.n == 3
+    caminho_estado = caminho_modelo + ".sentinela.json"
+    assert (tmp_path / "modelo.joblib.sentinela.json").is_file()
+    estado = load_state(caminho_estado)
+    assert estado.n == 3
+    assert estado.n_fora_do_dominio == 1
+
+
+def test_hook_acumula_entre_chamadas_sucessivas(tmp_path):
+    """MESMO comportamento fim-a-fim ja' travado para o menu CLI em
+    `test_predicao.py::test_menu_predicao_alimenta_a_sentinela_de_deriva_
+    entre_chamadas`, agora testado diretamente na funcao compartilhada."""
+    caminho_modelo = str(tmp_path / "modelo.joblib")
+    df1 = pd.DataFrame({"AD_dentro_dominio": [True] * 5})
+    hook_apos_predicao(caminho_modelo, df1)
+    df2 = pd.DataFrame({"AD_dentro_dominio": [True] * 5})
+    alerta2 = hook_apos_predicao(caminho_modelo, df2)
+    assert alerta2.n == 10, "nao acumulou entre chamadas -- resetou o estado"
+
+
+def test_hook_dispara_alerta_quando_taxa_de_rejeicao_e_alta(tmp_path):
+    caminho_modelo = str(tmp_path / "modelo.joblib")
+    n_min = n_minimum_for_alpha(0.05)
+    # taxa de rejeicao bem acima do nominal (0.05), com n suficiente p/
+    # poder estatistico -- mesmo regime de `test_deriva_real_com_n_
+    # suficiente_dispara_alerta` acima, agora passando pelo hook completo.
+    n = max(n_min, 30)
+    dentro = [False if i % 3 == 0 else True for i in range(n)]
+    df = pd.DataFrame({"AD_dentro_dominio": dentro})
+    alerta = hook_apos_predicao(caminho_modelo, df)
+    assert alerta.alerta is True
+
+
+# ── Fronteiras (achados da mutacao) ─────────────────────────────────
+
+def test_alpha_nominal_default_e_5_por_cento():
+    assert SentinelState().alpha_nominal == 0.05
+    assert SentinelState().janela is None
+
+
+def test_update_devolve_so_as_linhas_novas_com_historico_previo():
+    """Retorno = n_depois - n_antes (nao a soma): com historico previo."""
+    estado = SentinelState()
+    for _ in range(3):
+        estado.registrar(True)
+    df = pd.DataFrame({"AD_dentro_dominio": [True, False, True]})
+    assert update_with_predictions(estado, df) == 3   # 6-3 (nao 6^3, nao 6+3)
+    assert estado.n == 6
+
+
+def test_n_exatamente_no_minimo_ja_testa():
+    """`n < n_minimo` e' estrito: com n == n_minimo o teste RODA."""
+    estado = SentinelState(alpha_nominal=0.05)
+    n_min = n_minimum_for_alpha(0.05)
+    for _ in range(n_min):
+        estado.registrar(False)          # 100 % fora: p muito pequeno
+    r = check_drift(estado)
+    assert r.n == n_min
+    assert not np.isnan(r.p_valor)
+    assert r.alerta is True
+
+
+def test_significancia_igual_ao_p_valor_nao_alerta():
+    """`p < significancia` e' estrito: p == significancia NAO alerta."""
+    estado = SentinelState(alpha_nominal=0.05)
+    for i in range(30):
+        estado.registrar(i >= 4)         # 4 fora em 30
+    p = check_drift(estado, significancia=1.0).p_valor
+    assert 0.0 < p < 1.0
+    assert check_drift(estado, significancia=p).alerta is False
+    assert check_drift(estado, significancia=p * 1.0001).alerta is True

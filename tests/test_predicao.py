@@ -1,0 +1,781 @@
+"""Testes de predicao.py (predicao em lote) — usados tanto pelo app quanto
+pelo CLI (guaraci.py, menu_prediction). Roda executar() sintetico UMA vez
+(fixture de sessao) para gerar um pacote de modelo .joblib REAL (mesma
+estrutura que o pipeline grava em producao), depois exercita a predicao
+sobre espectros novos sem mock nenhum do lado cientifico.
+"""
+import json
+import os
+from pathlib import Path
+
+import joblib
+import numpy as np
+import pandas as pd
+import pytest
+
+import guaraci.predicao as pr
+
+
+
+#  A fixture de sessao `modelo_e_dados` (pacote REAL de um executar() sintetico + espectros novos) mora no conftest.py.
+
+
+def test_validar_pacote_modelo_aceita_pacote_real(modelo_e_dados):
+    pkg, _X, _wn = modelo_e_dados
+    pr.validate_model_package(pkg)  # nao deve levantar
+
+
+def test_validar_pacote_modelo_rejeita_pacote_incompleto():
+    with pytest.raises(ValueError, match="Modelo invalido"):
+        pr.validate_model_package({"preprocessador": None})
+
+
+def test_predizer_amostras_retorna_colunas_esperadas(modelo_e_dados):
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+    esperado = {"amostra", "classe_pred", "confianca_%", "T2", "T2_ucl",
+                "Q", "Q_ucl", "T2_ok", "Q_ok", "aceito"}
+    assert esperado.issubset(df.columns)
+    assert len(df) == X_novos.shape[0]
+
+
+# ── Dominio de Aplicabilidade (AD) na predicao em lote ─────────────────────
+
+def test_pacote_real_exporta_artefatos_de_ad(modelo_e_dados):
+    """O pacote .joblib exportado por executar() (versao atual) sempre traz
+    os artefatos leves do Dominio de Aplicabilidade -- confirma o wiring em
+    pipeline.py (pacote_modelo), nao so' a existencia da funcao pura."""
+    pkg, _X, _wn = modelo_e_dados
+    for chave in ("pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh", "ad_Nq",
+                  "ad_f_crit"):
+        assert chave in pkg, f"pacote de modelo real nao tem '{chave}'"
+
+
+def test_predizer_amostras_inclui_colunas_ad(modelo_e_dados):
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+    esperado_ad = {"AD_T2", "AD_Q", "AD_f", "AD_f_crit", "AD_dentro_dominio"}
+    assert esperado_ad.issubset(df.columns)
+    assert df["AD_dentro_dominio"].dtype == bool
+
+
+def test_predizer_amostras_sem_artefatos_ad_nao_gera_colunas_ad(modelo_e_dados):
+    """Retrocompatibilidade: um pacote salvo por uma versao ANTIGA do
+    pipeline (sem pca/ad_*) continua predizendo normalmente -- so' sem as
+    colunas AD_*, sem lancar excecao."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg_antigo = {k: v for k, v in pkg.items()
+                  if k not in ("pca", "ad_var_t", "ad_h0", "ad_q0", "ad_Nh",
+                              "ad_Nq", "ad_f_crit")}
+    df = pr.predict_samples(pkg_antigo, X_novos, wn)
+    assert not any(c.startswith("AD_") for c in df.columns)
+    assert "classe_pred" in df.columns  # predicao principal nao foi afetada
+
+
+def test_predizer_amostras_classe_pred_pertence_ao_treino(modelo_e_dados):
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+    classes_treino = set(pkg["label_binarizer"].classes_)
+    assert set(df["classe_pred"]).issubset(classes_treino)
+
+
+def test_predizer_amostras_confianca_entre_0_e_100(modelo_e_dados):
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+    assert (df["confianca_%"] >= 0).all() and (df["confianca_%"] <= 100).all()
+
+
+def test_predizer_amostras_espectro_de_treino_e_aceito(modelo_e_dados):
+    """Um espectro que o PROPRIO treino gerou (dentro do dominio) deve ser
+    aceito pelo diagnostico T2/Q -- sanity check de que os limites nao sao
+    absurdamente apertados a ponto de rejeitar dados normais."""
+    pkg, _X_novos, wn = modelo_e_dados
+    # Reconstroi um "espectro medio" a partir do proprio pre-processador
+    # treinado (usa a media interna, sempre dentro do dominio de treino).
+    n = len(wn)
+    X_medio = np.tile(np.linspace(0.4, 0.6, n), (1, 1))
+    df = pr.predict_samples(pkg, X_medio, wn)
+    assert len(df) == 1
+    assert isinstance(bool(df["aceito"].iloc[0]), bool)  # nao lanca, e' bool valido
+
+
+# ── Conjunto de predicao conforme para classificacao (Grupo 2) ─────────────
+# Analogo classificatorio do T1 de regressao (ver secao "conformal_margem"
+# abaixo) -- mesma disciplina: NAO_VALIDADO quando o holdout nao tem grupos
+# suficientes, conjunto real quando tem.
+
+def test_pacote_real_tem_conformal_classificacao_quando_holdout_roda(modelo_e_dados):
+    """`modelo_e_dados` roda com frac_holdout=0.2 (default) -- o pipeline
+    tem que ter calibrado (ou tentado calibrar, mesmo que nao-alcancavel)
+    o conjunto conforme de classificacao no holdout."""
+    pkg, _X, _wn = modelo_e_dados
+    assert "conformal_classificacao" in pkg
+    info = pkg["conformal_classificacao"]
+    assert {"alcancavel", "limiar", "n_calibracao", "alpha_nominal",
+            "n_grupos"}.issubset(info.keys())
+
+
+def test_predizer_amostras_inclui_classes_plausiveis_quando_alcancavel(
+        modelo_e_dados):
+    """limiar=1.0 -> corte=1-1.0=0.0 -- toda classe tem Y_norm>=0, entao o
+    conjunto plausivel de CADA amostra tem que conter TODAS as classes de
+    treino. Escolha deliberada de limiar extremo para o teste ser
+    deterministico sem depender dos scores reais do modelo."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = dict(pkg)
+    pkg2["conformal_classificacao"] = {
+        "alcancavel": True, "limiar": 1.0, "alpha_nominal": 0.05,
+        "n_calibracao": 25, "n_grupos": 25}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert "classes_plausiveis" in df.columns
+    assert "conjunto_cobertura_nominal" in df.columns
+    classes_treino = set(pkg["label_binarizer"].classes_)
+    for txt in df["classes_plausiveis"]:
+        conjunto = set(txt.split("|")) if txt else set()
+        assert conjunto == classes_treino
+    assert np.allclose(df["conjunto_cobertura_nominal"].astype(float), 0.95)
+
+
+def test_predizer_amostras_classes_plausiveis_pode_ficar_vazio(modelo_e_dados):
+    """limiar=-1.0 -> corte=1-(-1)=2.0 -- nenhuma classe tem Y_norm>=2.0
+    (Y_norm e' sempre <=1), entao o conjunto fica vazio em toda amostra.
+    Comportamento esperado do LAC (Sadinle, Lei & Wasserman 2019), nao um
+    bug -- ver docstring de `conformal.conformal_margin_classification`."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = dict(pkg)
+    pkg2["conformal_classificacao"] = {
+        "alcancavel": True, "limiar": -1.0, "alpha_nominal": 0.05,
+        "n_calibracao": 25, "n_grupos": 25}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert (df["classes_plausiveis"] == "").all()
+
+
+def test_predizer_amostras_classes_plausiveis_nao_alcancavel_e_nao_validado(
+        modelo_e_dados):
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = dict(pkg)
+    pkg2["conformal_classificacao"] = {
+        "alcancavel": False, "limiar": float("nan"), "alpha_nominal": 0.05,
+        "n_calibracao": 5, "n_grupos": 5, "aviso": "n insuficiente"}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert (df["classes_plausiveis"] == "NAO_VALIDADO").all()
+    assert df["conjunto_cobertura_nominal"].isna().all()
+
+
+def test_predizer_amostras_pacote_sem_conformal_classificacao_nao_gera_coluna(
+        modelo_e_dados):
+    """Retrocompatibilidade: pacote salvo ANTES desta rodada (ou com
+    holdout desativado, `frac_holdout=0`) nao tem a chave -- predicao
+    continua funcionando normalmente, so' sem a coluna nova."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg2 = {k: v for k, v in pkg.items() if k != "conformal_classificacao"}
+    df = pr.predict_samples(pkg2, X_novos, wn)
+    assert "classes_plausiveis" not in df.columns
+    assert "classe_pred" in df.columns
+
+
+def test_carregar_csv_predicao_detecta_colunas_numericas(tmp_path, modelo_e_dados):
+    _pkg, X_novos, wn = modelo_e_dados
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    df_in.insert(0, "amostra_id", [f"A{i}" for i in range(len(df_in))])
+    caminho = tmp_path / "espectros_novos.csv"
+    df_in.to_csv(caminho, index=False, sep=";")
+
+    X_out, wn_out, meta = pr.load_prediction_csv(str(caminho))
+    assert X_out.shape == X_novos.shape
+    assert len(wn_out) == len(wn)
+    assert list(meta.columns) == ["amostra_id"]
+
+
+def test_carregar_csv_predicao_sem_colunas_numericas_leva_erro_claro(tmp_path):
+    caminho = tmp_path / "sem_espectro.csv"
+    pd.DataFrame({"nome": ["a", "b"], "classe": ["X", "Y"]}).to_csv(
+        caminho, index=False, sep=";")
+    with pytest.raises(ValueError, match="numero de onda"):
+        pr.load_prediction_csv(str(caminho))
+
+
+def test_carregar_csv_predicao_vazio_leva_erro_claro(tmp_path):
+    """Achado de auditoria (2026-09-01): antes vazava
+    'pandas.errors.EmptyDataError: No columns to parse from file' cru --
+    nao diz o que aconteceu nem o que fazer."""
+    caminho = tmp_path / "vazio.csv"
+    caminho.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="vazio"):
+        pr.load_prediction_csv(str(caminho))
+
+
+def test_carregar_csv_predicao_aceita_decimal_virgula_formato_br(tmp_path, modelo_e_dados):
+    """Achado de auditoria (2026-09-01): o proprio CSV de SAIDA do Guaraci
+    usa sep=';', decimal=',' (ver _menu_prediction em guaraci.py) -- mas a
+    ENTRADA rejeitava esse formato ('could not convert string to float:
+    0,001257...'), irônico: o pipeline nao aceitava o proprio formato que
+    ele produz. Confirma que agora aceita via fallback automatico."""
+    _pkg, X_novos, wn = modelo_e_dados
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    caminho = tmp_path / "espectros_br.csv"
+    df_in.to_csv(caminho, index=False, sep=";", decimal=",")
+
+    X_out, wn_out, _meta = pr.load_prediction_csv(str(caminho))
+    assert X_out.shape == X_novos.shape
+    assert len(wn_out) == len(wn)
+    np.testing.assert_allclose(X_out, X_novos, rtol=1e-4)
+
+
+def test_carregar_modelo_arquivo_corrompido_leva_erro_claro(tmp_path):
+    """Achado de auditoria (2026-09-01): antes vazava o erro cru do pickle
+    (ex.: 'ModuleNotFoundError: No module named ...') -- nao diz que o
+    arquivo esta corrompido nem o que fazer."""
+    caminho = tmp_path / "modelo_quebrado.joblib"
+    caminho.write_bytes(b"isto nao e um pickle valido -- bytes aleatorios 1234")
+    pr.assinar_modelo(str(caminho))   # manifesto valido: o erro e' do pickle
+    with pytest.raises(ValueError, match="corrompido"):
+        pr.load_model(str(caminho), confiar=True)
+
+
+# ── Integracao end-to-end via CLI (guaraci.py, menu_prediction) ──────────────
+
+@pytest.mark.slow
+def test_menu_predicao_cli_end_to_end(monkeypatch, tmp_path, modelo_e_dados):
+    """Simula a sessao completa do usuario no menu B (Predicao em Lote):
+    digita caminho do modelo, caminho do CSV, aceita a saida padrao (Enter),
+    e confirma que o CSV de resultados foi gravado com as colunas certas.
+    Sem mock de logica cientifica -- so' o input() do terminal e' simulado.
+    """
+    import guaraci.guaraci as guaraci_mod
+
+    pkg, X_novos, wn = modelo_e_dados
+    cam_modelo = tmp_path / "modelo_teste.joblib"
+    joblib.dump(pkg, cam_modelo)
+    pr.save_manifest(str(cam_modelo), pkg)
+
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    cam_csv = tmp_path / "novos.csv"
+    df_in.to_csv(cam_csv, index=False, sep=";")
+
+    # 2a resposta "s" = confirma o aviso de seguranca do .joblib (P5);
+    # 4a resposta "" = aceita a saida padrao; 5a "" = Enter no _pause() final
+    respostas = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
+
+    cam_saida_esperada = cam_csv.with_name(cam_csv.stem + "_predicao.csv")
+    assert cam_saida_esperada.is_file(), "CSV de resultados nao foi gravado"
+    df_res = pd.read_csv(cam_saida_esperada, sep=";", decimal=",")
+    assert "classe_pred" in df_res.columns
+    assert len(df_res) == X_novos.shape[0]
+
+
+def test_menu_predicao_alimenta_a_sentinela_de_deriva_entre_chamadas(
+        monkeypatch, tmp_path, modelo_e_dados):
+    """Bloco 13b: cada rodada do menu B tem que alimentar a sentinela de
+    deriva persistida ao lado do modelo -- e ACUMULAR entre chamadas
+    (nao resetar), que e' o uso real (LIMS chamando o pipeline varias
+    vezes ao longo do tempo, nao um processo Python vivo o tempo todo)."""
+    import guaraci.guaraci as guaraci_mod
+    import guaraci.sentinela_deriva as sent
+
+    pkg, X_novos, wn = modelo_e_dados
+    cam_modelo = tmp_path / "modelo_teste.joblib"
+    joblib.dump(pkg, cam_modelo)
+    pr.save_manifest(str(cam_modelo), pkg)
+    cam_sentinela = str(cam_modelo) + ".sentinela.json"
+
+    df_in = pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn])
+    cam_csv = tmp_path / "novos.csv"
+    df_in.to_csv(cam_csv, index=False, sep=";")
+
+    assert not os.path.isfile(cam_sentinela)
+
+    respostas1 = iter([str(cam_modelo), "s", str(cam_csv), "", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas1))
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
+
+    assert os.path.isfile(cam_sentinela), "sentinela nao foi persistida"
+    estado_apos_1 = sent.load_state(cam_sentinela)
+    assert estado_apos_1.n == X_novos.shape[0]
+
+    # 4a resposta "" reaceita a mesma saida padrao de antes -- dessa vez ela
+    # ja existe (gravada na 1a chamada), entao a confirmacao de sobrescrita
+    # (adicionada nesta auditoria) entra no meio: "s" confirma.
+    respostas2 = iter([str(cam_modelo), "s", str(cam_csv), "", "s", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas2))
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
+
+    estado_apos_2 = sent.load_state(cam_sentinela)
+    assert estado_apos_2.n == 2 * X_novos.shape[0], (
+        "sentinela nao acumulou entre as duas chamadas -- resetou")
+
+
+# ── Seguranca do carregamento de modelo (P5 -- CLAUDE.md) ──────────────────
+def test_carregar_modelo_sem_confiar_lanca_security_error(tmp_path, modelo_e_dados):
+    """load_model() NUNCA le o arquivo sem confiar=True explicito --
+    e' a unica protecao real contra RCE via pickle (nao ha' sandboxing
+    possivel para joblib.load)."""
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    with pytest.raises(pr.SecurityError, match="confiar=True"):
+        pr.load_model(str(cam))
+
+
+def test_carregar_modelo_com_confiar_funciona(tmp_path, modelo_e_dados):
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    pr.save_manifest(str(cam), pkg)
+    carregado = pr.load_model(str(cam), confiar=True)
+    assert set(carregado.keys()) == set(pkg.keys())
+
+
+def test_salvar_manifesto_grava_json_com_sha256_correto(tmp_path, modelo_e_dados):
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    cam_manifesto = pr.save_manifest(str(cam), pkg)
+
+    assert os.path.isfile(cam_manifesto)
+    with open(cam_manifesto, encoding="utf-8") as f:
+        manifesto = json.load(f)
+
+    import hashlib
+    sha_real = hashlib.sha256(cam.read_bytes()).hexdigest()
+    assert manifesto["sha256"] == sha_real
+    assert manifesto["guaraci_version"] == pr._guaraci_version
+    assert set(manifesto["classes"]) == set(str(c) for c in pkg["classes"])
+
+
+def test_carregar_modelo_bloqueia_arquivo_alterado_apos_manifesto(tmp_path, modelo_e_dados):
+    """VALIDACAO DE SEGURANCA: se o arquivo .joblib for trocado/corrompido
+    DEPOIS do manifesto ter sido gerado, load_model deve recusar --
+    ANTES de chamar joblib.load (a verificacao de hash nao executa pickle,
+    entao bloqueia antes do RCE poder acontecer, nao so' avisa depois)."""
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    pr.save_manifest(str(cam), pkg)
+
+    # Simula adulteracao: sobrescreve o .joblib com outro conteudo qualquer
+    # DEPOIS do manifesto existir -- o hash registrado fica desatualizado.
+    joblib.dump({"outra_coisa": 123}, cam)
+
+    with pytest.raises(pr.SecurityError, match="Integridade falhou"):
+        pr.load_model(str(cam), confiar=True)
+
+
+def _pickle_malicioso(tmp_path):
+    """Pickle com payload INOFENSIVO: cria um arquivo marcador se executado."""
+    marcador = tmp_path / "MARCADOR_EXECUTOU.txt"
+
+    class _Payload:
+        def __reduce__(self):
+            return (Path.write_text, (marcador, "executado"))
+
+    cam = tmp_path / "malicioso.joblib"
+    joblib.dump({"x": _Payload()}, cam)
+    return cam, marcador
+
+
+def test_manifesto_fail_closed_recusa_sem_manifesto(tmp_path):
+    """M-02 (parecer 2026-09-25, caso B): sem manifesto NAO carrega."""
+    cam, marcador = _pickle_malicioso(tmp_path)
+    with pytest.raises(pr.SecurityError, match="manifesto"):
+        pr.load_model(str(cam), confiar=True)
+    assert not marcador.exists()
+
+
+@pytest.mark.parametrize("conteudo", [
+    "{nao json",                       # caso E: ilegivel
+    json.dumps({"versao": "x"}),       # caso F: sem sha256
+    json.dumps([1, 2, 3]),             # nao e' objeto
+])
+def test_manifesto_fail_closed_recusa_manifesto_invalido(tmp_path, conteudo):
+    cam, marcador = _pickle_malicioso(tmp_path)
+    Path(str(cam) + ".manifest.json").write_text(conteudo, encoding="utf-8")
+    with pytest.raises(pr.SecurityError):
+        pr.load_model(str(cam), confiar=True)
+    assert not marcador.exists()
+
+
+def test_manifesto_forjado_com_hash_correto_e_recusado(tmp_path):
+    """Caso C do revisor: o atacante escreve o manifesto com o sha256 certo.
+    Sem a chave local, nao consegue produzir a assinatura -- recusado."""
+    import hashlib
+    cam, marcador = _pickle_malicioso(tmp_path)
+    Path(str(cam) + ".manifest.json").write_text(json.dumps(
+        {"sha256": hashlib.sha256(cam.read_bytes()).hexdigest()}), encoding="utf-8")
+    with pytest.raises(pr.SecurityError, match="assinado"):
+        pr.load_model(str(cam), confiar=True)
+    assert not marcador.exists()
+
+
+def test_manifesto_assinatura_de_outra_chave_e_recusada(tmp_path, monkeypatch, modelo_e_dados):
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "modelo.joblib"
+    joblib.dump(pkg, cam)
+    pr.save_manifest(str(cam), pkg)
+    # Outra instalacao (outra chave): o mesmo par arquivo+manifesto nao vale.
+    monkeypatch.setenv("GUARACI_MODEL_KEY_FILE", str(tmp_path / "outra.key"))
+    pr._chave_local(criar=True)
+    with pytest.raises(pr.SecurityError, match="invalida"):
+        pr.load_model(str(cam), confiar=True)
+
+
+def test_assinar_modelo_libera_o_carregamento_de_origem_externa(tmp_path, modelo_e_dados):
+    """Decisao humana explicita: assinar_modelo permite carregar um .joblib
+    de origem externa; sem ela, nada carrega."""
+    pkg, _X, _wn = modelo_e_dados
+    cam = tmp_path / "externo.joblib"
+    joblib.dump(pkg, cam)
+    with pytest.raises(pr.SecurityError):
+        pr.load_model(str(cam), confiar=True)
+    pr.assinar_modelo(str(cam))
+    assert "pls_final" in pr.load_model(str(cam), confiar=True)
+
+
+# ── Regra de decisao e limite de Q (auditoria mestre de 2026-08-17) ───────────
+
+def test_pacote_real_exporta_parametros_da_distancia_combinada(modelo_e_dados):
+    """O pacote precisa levar h0/q0/Nh/Nq/f_crit DO ESPACO PLS.
+
+    Sem eles, `predict_samples` decide "aceito" pela regra retangular
+    (T2<=lim E Q<=lim), com alpha independente por eixo -- alpha conjunto
+    efetivo ~0,0975 em vez dos 0,05 declarados. E' a mesma regra ja
+    corrigida no DD-SIMCA (2026-08-08) e no dominio de aplicabilidade
+    (achado A3); esta era a quarta copia da decisao, no caminho de producao.
+    """
+    pkg, _, _ = modelo_e_dados
+    for chave in ("pls_h0", "pls_q0", "pls_Nh", "pls_Nq", "pls_f_crit"):
+        assert chave in pkg, f"pacote de modelo sem '{chave}'"
+        assert np.isfinite(float(pkg[chave]))
+
+
+def test_predizer_amostras_usa_distancia_combinada_e_declara_o_criterio(
+        modelo_e_dados):
+    """`aceito` vem da distancia combinada, e a coluna `criterio` diz qual
+    regra foi aplicada -- um pacote antigo cai na regra por eixo, mas nunca
+    em silencio."""
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+    assert "criterio" in df.columns
+    assert "combinada" in str(df["criterio"].iloc[0])
+    assert np.array_equal(df["aceito"].values,
+                          (df["f"].values <= df["f_crit"].values))
+    # T2_ok/Q_ok continuam existindo como diagnostico por eixo
+    assert "T2_ok" in df.columns and "Q_ok" in df.columns
+
+
+def test_predizer_amostras_recusa_pacote_sem_q_ucl(modelo_e_dados):
+    """Sem `q_ucl` vindo do TREINO, a versao anterior derivava o limite das
+    PROPRIAS amostras julgadas (`percentile(Q_new, 99) * 1.5`): um lote
+    inteiro fora do dominio elevava o limite junto e era aceito. Agora
+    recusa com mensagem clara em vez de aplicar um criterio circular."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg_sem = {k: v for k, v in pkg.items() if k != "q_ucl"}
+    with pytest.raises(ValueError, match="q_ucl"):
+        pr.predict_samples(pkg_sem, X_novos, wn)
+
+
+# ── Bloco 24: faixa de decisao (LOD/LOQ) em quantify_sample ──────────────
+
+class _PipelineFalso:
+    """Fake sklearn-compativel: sempre prediz o mesmo teor, so pra testar
+    a categorizacao de faixa_decisao sem precisar de um pipeline PLS real."""
+    def __init__(self, teor):
+        self.teor = teor
+
+    def predict(self, X):
+        return np.full((len(X), 1), self.teor)
+
+
+def _identificacao_valida(especie: str, adulterante: str = "S"):
+    from guaraci.identificacao import CoverageStatus, IdentificationResult
+    return IdentificationResult(
+        classe_identificada=f"{especie}|{adulterante}",
+        candidatos_ambiguos=[], cobertura_status=CoverageStatus.VALIDATED,
+        alpha_alcancavel=0.05, escores={})
+
+
+def test_quantify_sample_categoriza_abaixo_do_lod():
+    pkg = {"regressao_por_especie": {
+        "Classe A": {"pipeline": _PipelineFalso(2.0), "lod": 5.0, "loq": 10.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.teor_estimado == pytest.approx(2.0)
+    assert r.faixa_decisao == "nao_detectavel"
+    assert r.lod == 5.0 and r.loq == 10.0
+
+
+def test_quantify_sample_categoriza_zona_cinzenta():
+    pkg = {"regressao_por_especie": {
+        "Classe A": {"pipeline": _PipelineFalso(7.0), "lod": 5.0, "loq": 10.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.faixa_decisao == "zona_cinzenta"
+
+
+def test_quantify_sample_categoriza_quantificado_com_confianca():
+    pkg = {"regressao_por_especie": {
+        "Classe A": {"pipeline": _PipelineFalso(15.0), "lod": 5.0, "loq": 10.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.faixa_decisao == "quantificado_com_confianca"
+
+
+def test_quantify_sample_pacote_antigo_sem_lod_loq_devolve_none_nao_quebra():
+    """Pacote salvo ANTES do Bloco 24 nao tem 'lod'/'loq' na entrada da
+    especie -- .get() devolve None, faixa_decisao fica None, sem excecao."""
+    pkg = {"regressao_por_especie": {
+        "Classe A": {"pipeline": _PipelineFalso(7.0)}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.teor_estimado == pytest.approx(7.0)
+    assert r.faixa_decisao is None
+    assert r.lod is None and r.loq is None
+
+
+def test_quantify_sample_bloqueada_nao_tem_faixa_decisao():
+    from guaraci.identificacao import IdentificationResult
+    ident_desconhecida = IdentificationResult(classe_identificada=None)
+    r = pr.quantify_sample({}, np.zeros((1, 10)), ident_desconhecida)
+    assert r.motivo_bloqueio is not None
+    assert r.teor_estimado is None
+    assert r.faixa_decisao is None
+
+
+# ── T1 (rodada multiagente 2026-09-10): intervalo de predicao conforme ──
+
+def test_quantify_sample_com_conformal_alcancavel_da_intervalo():
+    pkg = {"regressao_por_especie": {
+        "Classe A": {
+            "pipeline": _PipelineFalso(7.0), "lod": 1.0, "loq": 2.0,
+            "conformal": {"alcancavel": True, "limiar": 1.5,
+                          "alpha_nominal": 0.05, "n_grupos": 25},
+        }}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.teor_estimado == pytest.approx(7.0)
+    assert r.intervalo_alcancavel is True
+    assert r.intervalo_baixo == pytest.approx(5.5)
+    assert r.intervalo_alto == pytest.approx(8.5)
+    assert r.intervalo_alpha_nominal == pytest.approx(0.05)
+
+
+def test_quantify_sample_intervalo_nao_fica_negativo():
+    """Teor de adulterante nao e' negativo -- o limite inferior do
+    intervalo e' truncado em 0, nunca um numero fisicamente impossivel."""
+    pkg = {"regressao_por_especie": {
+        "Classe A": {
+            "pipeline": _PipelineFalso(1.0), "lod": 1.0, "loq": 2.0,
+            "conformal": {"alcancavel": True, "limiar": 5.0,
+                          "alpha_nominal": 0.05, "n_grupos": 25},
+        }}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.intervalo_baixo == 0.0
+    assert r.intervalo_alto == pytest.approx(6.0)
+
+
+def test_quantify_sample_com_conformal_nao_alcancavel_nao_fabrica_intervalo():
+    """Especie com poucos grupos de validacao (<19): NAO_VALIDADO, sem
+    limites -- mesma disciplina de ConformalOneClass."""
+    pkg = {"regressao_por_especie": {
+        "Classe A": {
+            "pipeline": _PipelineFalso(7.0), "lod": 1.0, "loq": 2.0,
+            "conformal": {"alcancavel": False, "limiar": float("nan"),
+                          "alpha_nominal": None, "n_grupos": 5},
+        }}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.teor_estimado == pytest.approx(7.0)   # o teor ainda e' reportado
+    assert r.intervalo_alcancavel is False
+    assert r.intervalo_baixo is None
+    assert r.intervalo_alto is None
+    assert r.intervalo_alpha_nominal is None
+
+
+def test_quantify_sample_pacote_antigo_sem_conformal_nao_quebra():
+    """Pacote salvo ANTES do Passo 202 (T1) nao tem a chave 'conformal' --
+    .get() devolve None, intervalo fica None, sem excecao."""
+    pkg = {"regressao_por_especie": {
+        "Classe A": {"pipeline": _PipelineFalso(7.0), "lod": 1.0, "loq": 2.0}}}
+    r = pr.quantify_sample(pkg, np.zeros((1, 10)), _identificacao_valida("Classe A"))
+    assert r.teor_estimado == pytest.approx(7.0)
+    assert r.intervalo_alcancavel is None
+    assert r.intervalo_baixo is None and r.intervalo_alto is None
+
+
+def test_predict_blind_inclui_alpha_da_quantificacao_no_alpha_total():
+    """alpha_total colapsa para None quando a Quantificacao nao tem
+    intervalo alcancavel -- mesma disciplina ja aplicada a Deteccao/
+    Identificacao (nenhum portao sem lastro estatistico entra na soma
+    sem derrubar o total)."""
+    from guaraci.identificacao import combine_alpha_bonferroni
+    total_com_quant_ok = combine_alpha_bonferroni(0.05, 0.05, 0.05, 0.05)
+    total_sem_quant_ok = combine_alpha_bonferroni(0.05, 0.05, 0.05, None)
+    assert total_com_quant_ok == pytest.approx(0.20)
+    assert total_sem_quant_ok is None
+
+
+# ── Contra-prova de mutation testing (AGENTE 3, escopo reduzido, 2026-09-19)
+#    cosmic-ray em _interpolate_to_reference/predict_samples/quantify_sample
+#    (195 mutantes candidatos na faixa de linhas das 3 funcoes; execucao
+#    parcial interrompida por orcamento de tempo).
+#    Os testes abaixo fecham os sobreviventes REAIS achados ate' a
+#    interrupcao -- nao cosmeticos (arredondamento de coluna de exibicao),
+#    nem o ramo legado pre-2026-08-17 (fica registrado como backlog).
+
+def test_predizer_amostras_t2_bate_com_formula_hotelling_independente(
+        modelo_e_dados):
+    """Mutantes sobreviventes: `T_new ** 2` -> `T_new ** 3` (NumberReplacer)
+    e `ddof=1` -> `ddof=0` na variancia de treino -- nenhum teste existente
+    comparava a coluna `T2` contra um oraculo numerico independente, so'
+    contra o UCL (insensivel a mudanca de escala/expoente em muitos casos).
+    Reimplementa a formula (mesma formula documentada em `predict_samples`,
+    "Hotelling T2 -- mesma formula do pipeline") por fora de `predicao.py`,
+    com os MESMOS artefatos do pacote."""
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+
+    preproc = pkg["preprocessador"]
+    pls = pkg["pls_final"]
+    X_interp = pr._interpolate_to_reference(pkg, X_novos, wn)
+    X_proc = preproc.transform(X_interp)
+    T_new_oraculo = np.asarray(pls.transform(X_proc), dtype=float)
+    T_train = np.asarray(pls.x_scores_, dtype=float)
+    var_t_oraculo = T_train.var(axis=0, ddof=1)
+    var_t_oraculo[var_t_oraculo == 0] = 1.0
+    T2_oraculo = np.sum((T_new_oraculo ** 2) / var_t_oraculo, axis=1)
+
+    np.testing.assert_allclose(df["T2"].to_numpy(),
+                                np.round(T2_oraculo, 3), rtol=0, atol=1e-9)
+
+
+def test_predizer_amostras_var_t_zero_nao_gera_divisao_por_zero(modelo_e_dados):
+    """Mutante sobrevivente: `var_t[var_t == 0] = 1.0` -> `!=`/`>` (nenhum
+    dado sintetico real produz uma componente PLS com variancia de treino
+    EXATAMENTE zero, entao o guard nunca era exercitado por nenhum teste
+    existente). Fabrica esse caso degenerado com um `pls` fake mínimo
+    (mesmo padrao de `_PipelineFalso` acima -- nao e' mock do calculo
+    cientifico, e' a UNICA forma de alcancar essa fronteira numerica)."""
+    class _PLSFalsoVarianciaZero:
+        # 2 amostras de treino com o MESMO score na 1a componente (var=0)
+        # e scores distintos na 2a (var>0).
+        x_scores_ = np.array([[1.0, 0.0], [1.0, 2.0]])
+        x_loadings_ = np.eye(2)
+
+        def transform(self, X):
+            return np.asarray(X, dtype=float)[:, :2]
+
+        def predict(self, X):
+            n = np.asarray(X).shape[0]
+            return np.tile([0.6, 0.4], (n, 1))
+
+    class _PreprocIdentidade:
+        def transform(self, X):
+            return np.asarray(X, dtype=float)
+
+    pkg = {
+        "preprocessador": _PreprocIdentidade(),
+        "pls_final": _PLSFalsoVarianciaZero(),
+        "label_binarizer": type("LB", (), {"classes_": ["A", "B"]})(),
+        "wavenumbers": np.array([1.0, 2.0]),
+        "q_ucl": 1e6,
+        "pls_q_centrado": True,        # pacote da versao atual (o antigo, sem a marca, e' recusado)
+    }
+    X_new = np.array([[1.0, 0.0]])
+    wn_new = np.array([1.0, 2.0])
+
+    df = pr.predict_samples(pkg, X_new, wn_new)
+    # Sem o guard (ou com o guard invertido), a divisao por var_t[0]==0
+    # produziria +inf/NaN em T2 -- com o guard correto, a 1a componente
+    # (var=0 -> tratada como 1.0) contribui 1.0**2/1.0 = 1.0 e a 2a
+    # (var=2.0) contribui 0.0**2/2.0 = 0.0.
+    assert np.isfinite(df["T2"].iloc[0])
+    assert df["T2"].iloc[0] == pytest.approx(1.0)
+
+
+def test_predizer_amostras_confianca_bate_com_softmax_normalizado_independente(
+        modelo_e_dados):
+    """Mutante sobrevivente: `np.clip(Y_soft, 0.0, 1.0)` -> `np.clip(Y_soft,
+    0.0, 0.0)` (zera toda predicao) -- nenhum teste existente comparava
+    `confianca_%`/`classe_pred` contra um oraculo numerico, so' contra
+    limites soltos (0-100%, "pertence ao treino"), que uma predicao
+    degenerada (tudo 0%, sempre a 1a classe) ainda satisfaz trivialmente."""
+    pkg, X_novos, wn = modelo_e_dados
+    df = pr.predict_samples(pkg, X_novos, wn)
+
+    preproc = pkg["preprocessador"]
+    pls = pkg["pls_final"]
+    lb = pkg["label_binarizer"]
+    X_interp = pr._interpolate_to_reference(pkg, X_novos, wn)
+    X_proc = preproc.transform(X_interp)
+    Y_soft = np.asarray(pls.predict(X_proc), dtype=float)
+    Y_clip = np.clip(Y_soft, 0.0, 1.0)
+    totais = Y_clip.sum(axis=1, keepdims=True)
+    totais[totais < 1e-12] = 1.0
+    Y_norm = Y_clip / totais
+    classes = list(lb.classes_)
+    idx_pred = Y_norm.argmax(axis=1)
+    classe_pred_oraculo = [classes[i] for i in idx_pred]
+    confianca_oraculo = Y_norm.max(axis=1)
+
+    assert list(df["classe_pred"]) == classe_pred_oraculo
+    np.testing.assert_allclose(df["confianca_%"].to_numpy(),
+                                np.round(confianca_oraculo * 100, 1),
+                                rtol=0, atol=1e-9)
+    # A predicao degenerada do mutante zera Y_clip inteiro -> confianca
+    # sempre 0%; com dado sintetico real e separavel a confianca observada
+    # e' bem maior que isso.
+    assert df["confianca_%"].max() > 5.0
+
+
+def test_quantify_sample_identificacao_ambigua_exige_dois_candidatos(modelo_e_dados):
+    """Mutante sobrevivente: `len(candidatos_ambiguos) >= 2` -> `>= 1`
+    (NumberReplacer) -- fronteira exata em 1 candidato nao tinha teste."""
+    from guaraci.identificacao import CoverageStatus, IdentificationResult
+    ident_um_candidato = IdentificationResult(
+        classe_identificada=None, candidatos_ambiguos=["Classe A|S"],
+        cobertura_status=CoverageStatus.VALIDATED, alpha_alcancavel=0.05,
+        escores={})
+    r = pr.quantify_sample({}, np.zeros((1, 10)), ident_um_candidato)
+    assert r.motivo_bloqueio == "identificacao_desconhecida"
+
+    ident_dois_candidatos = IdentificationResult(
+        classe_identificada=None,
+        candidatos_ambiguos=["Classe A|S", "Classe B|S"],
+        cobertura_status=CoverageStatus.VALIDATED, alpha_alcancavel=0.05,
+        escores={})
+    r2 = pr.quantify_sample({}, np.zeros((1, 10)), ident_dois_candidatos)
+    assert r2.motivo_bloqueio == "identificacao_ambigua"
+
+
+def test_predizer_amostras_referencia_cv_da_sentinela_aparece_quando_presente(
+        modelo_e_dados):
+    """Mutante sobrevivente: `"ad_cv_rejeitadas" in pkg and "ad_cv_n" in pkg`
+    -> `not "ad_cv_rejeitadas" in pkg and "ad_cv_n" in pkg` (AddNot) -- com
+    as DUAS chaves presentes (caso normal, Passo 220), o mutante passa a
+    NAO adicionar as colunas de referencia; nenhum teste existente checava
+    o conteudo dessas colunas quando as chaves estao presentes."""
+    pkg, X_novos, wn = modelo_e_dados
+    pkg_com_ref = dict(pkg)
+    pkg_com_ref["ad_cv_rejeitadas"] = 3
+    pkg_com_ref["ad_cv_n"] = 60
+    df = pr.predict_samples(pkg_com_ref, X_novos, wn)
+    assert "AD_ref_cv_rejeitadas" in df.columns
+    assert "AD_ref_cv_n" in df.columns
+    assert (df["AD_ref_cv_rejeitadas"] == 3).all()
+    assert (df["AD_ref_cv_n"] == 60).all()
+
+
+def test_menu_predicao_cli_oferece_assinar_modelo_de_origem_externa(
+        monkeypatch, tmp_path, modelo_e_dados):
+    """Modelo sem manifesto (veio de outra maquina): a CLI explica, pergunta
+    se o operador conferiu a origem e so' entao assina e carrega."""
+    import guaraci.guaraci as guaraci_mod
+    pkg, X_novos, wn = modelo_e_dados
+    cam_modelo = tmp_path / "externo.joblib"
+    joblib.dump(pkg, cam_modelo)   # sem manifesto
+    cam_csv = tmp_path / "novos.csv"
+    pd.DataFrame(X_novos, columns=[f"{w:.1f}" for w in wn]).to_csv(
+        cam_csv, index=False, sep=";")
+    # modelo, confia=s, csv, saida padrao, assinar=s, pause final
+    respostas = iter([str(cam_modelo), "s", str(cam_csv), "", "s", ""])
+    monkeypatch.setattr("builtins.input", lambda *a, **k: next(respostas))
+    guaraci_mod._menu_prediction(guaraci_mod.Config())
+    assert cam_csv.with_name(cam_csv.stem + "_predicao.csv").is_file()
+    assert os.path.isfile(str(cam_modelo) + ".manifest.json")

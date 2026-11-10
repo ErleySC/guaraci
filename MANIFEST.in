@@ -1,0 +1,5 @@
+# O sdist leva so' o produto: a validacao do mantenedor (dados de terceiros baixados por quem valida) e os relatorios gerados ficam de fora.
+prune validacao
+prune datasets_publicos
+prune docs/qualidade
+global-exclude *.pyc

@@ -1,0 +1,34 @@
+{
+ "modulo": "src/guaraci/pipeline.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_lacunas_pipeline_a.py",
+  "tests/test_lacunas_pipeline_b.py",
+  "tests/test_lacunas_pipeline_executar.py",
+  "tests/test_pipeline_core.py",
+  "tests/test_pipeline_smoke.py",
+  "tests/test_pipeline_dataset_pequeno.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 1741,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_quantificacao_com_extras_que_falham_vira_aviso_e_termina",
+   "trecho": "if reg_esp.get(\"pipelines_especie\"):",
+   "segundos": 144.9,
+   "no": 22244,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

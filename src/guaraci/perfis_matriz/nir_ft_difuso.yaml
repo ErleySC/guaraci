@@ -1,0 +1,18 @@
+# Perfil de TECNICA: FT-NIR de reflectancia difusa, numero de onda em cm-1.
+# A faixa [4000, 10000] cm-1 exclui as bordas de FFT do interferograma, onde a razao sinal/ruido do instrumento cai.
+# Perfil de partida: ajuste a faixa e o pre-processamento ao seu instrumento (copie este arquivo e passe o caminho em cfg.matrix_profile).
+descricao: "FT-NIR de reflectancia difusa (cm-1)"
+unidade_eixo: "cm-1"
+eixo_min: 4000.0
+eixo_max: 10000.0
+default_preprocessing: "msc_sg_mc"
+vocabulario:
+  classe: "classe"
+  classe_plural: "classes"
+  matriz: "a amostra"
+  alvo: "o teor do analito de interesse"
+  conforme: "dentro do esperado"
+  nao_conforme: "fora do esperado"
+codigos_classe: {}
+faixa_trabalho: null
+referencia: ""

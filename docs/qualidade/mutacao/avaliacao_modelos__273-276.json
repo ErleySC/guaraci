@@ -1,0 +1,30 @@
+{
+ "modulo": "src/guaraci/avaliacao_modelos.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_avaliacao_modelos.py",
+  "tests/test_lacunas_avaliacao_modelos.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 276,
+   "operador": "const 4",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_avaliacao_modelos.py::test_p_do_wilcoxon_contra_o_plsda_e_arredondado_a_4_casas",
+   "trecho": "r[\"p Wilcoxon (vs PLS-DA)\"] = round(float(pval), 4)",
+   "segundos": 3.6,
+   "no": 4526,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

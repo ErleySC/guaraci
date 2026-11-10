@@ -1,0 +1,32 @@
+{
+ "modulo": "src/guaraci/vip_cli.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.11.15",
+ "testes": [
+  "tests/test_vip_cli_mutacao.py",
+  "tests/test_vip_cli.py",
+  "tests/test_anova_vip_lacunas.py",
+  "tests/test_vip_estabilidade.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 214,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_argumento_desconhecido_e_tipo_invalido_dao_mensagem",
+   "trecho": "raise _Uso(_m(\"arg\", e=\"--componentes/--divisoes/--repeticoes/--semente/--limiar\")) from e",
+   "segundos": 7.6,
+   "no": 1004,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

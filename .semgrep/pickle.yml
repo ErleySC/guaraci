@@ -1,0 +1,19 @@
+rules:
+  - id: guaraci-pickle-so-em-load-model
+    message: >-
+      joblib.load / pickle.load executam codigo arbitrario. O UNICO ponto
+      permitido e' guaraci.predicao.load_model, que confere o manifesto
+      assinado (fail-closed) antes de carregar. Use load_model, ou o modelo
+      portatil JSON (model_export.load_portable_json).
+    severity: ERROR
+    languages: [python]
+    pattern-either:
+      - pattern: joblib.load(...)
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: dill.load(...)
+      - pattern: cloudpickle.load(...)
+    paths:
+      exclude:
+        - src/guaraci/predicao.py
+        - tests/

@@ -1,0 +1,472 @@
+"""catalogo_dados.py -- dados declarativos do catalogo (grupos, telas, tecnicas,
+graficos, evidencias, selos, cenarios, regras de contexto).
+
+As opcoes de configuracao ficam em `catalogo_opcoes.py`. Tudo e' dado: nao
+importa numpy/sklearn, entao CLI, web, ajuda e assistentes carregam rapido.
+ASCII por convencao do CLI. Descricoes dizem O QUE FAZ; evidencia de validacao
+vive so' em EVIDENCIAS/SELOS (assistente de confianca), nunca na descricao.
+"""
+from __future__ import annotations
+
+from typing import Any, Dict, Tuple
+
+# ---------------------------------------------------------------- grupos
+# (id, rotulo PT, rotulo EN, faz PT, faz EN). Ordem = ordem do menu.
+GRUPOS = (
+    ('comecar', 'Comecar', 'Start', 'Rodar uma analise, usar um perfil pronto ou ver um exemplo.', 'Run an analysis, use a ready profile or see an example.'),
+    ('dados', 'Planejar e preparar dados', 'Plan and prepare data', 'Planejar a coleta, apontar os dados, escolher amostras e auditar o delineamento.', 'Plan collection, point to the data, choose samples and audit the design.'),
+    ('explorar', 'Explorar', 'Explore', 'Ver a estrutura do dado e decompor misturas, cromatogramas e fluorescencia.', 'See the data structure and decompose mixtures, chromatograms and fluorescence.'),
+    ('modelar', 'Classificar ou quantificar', 'Classify or quantify', 'Configurar o modelo e a validacao, rodar e aplicar o modelo a amostras novas.', 'Configure the model and validation, run and apply the model to new samples.'),
+    ('classificar', 'Identificar e classificar', 'Identify and classify', 'Dizer a que classe uma amostra pertence ou se ela e autentica.', 'Say which class a sample belongs to or whether it is authentic.'),
+    ('quantificar', 'Quantificar', 'Quantify', 'Estimar o teor de um analito ou adulterante.', 'Estimate the content of an analyte or adulterant.'),
+    ('comparar', 'Comparar grupos', 'Compare groups', 'Testar se grupos diferem numa resposta, sobre a unidade independente.', 'Test whether groups differ on a response, over the independent unit.'),
+    ('monitorar', 'Monitorar processos', 'Monitor processes', 'Acompanhar deriva e controle estatistico de um processo.', 'Track drift and statistical control of a process.'),
+    ('imagens', 'Imagens', 'Images', 'Analisar fotos e cubos hiperespectrais.', 'Analyse photos and hyperspectral cubes.'),
+    ('graficos', 'Graficos e relatorios', 'Plots and reports', 'Escolher figuras, formato e relatorios.', 'Choose figures, format and reports.'),
+    ('confianca', 'Qualidade e confianca', 'Quality and trust', 'Auditar o delineamento e ver a evidencia de cada tecnica.', 'Audit the design and see the evidence behind each technique.'),
+    ('ajuda', 'Ajuda', 'Help', 'Ajuda, idioma, modo, hardware e informacoes do programa.', 'Help, language, mode, hardware and program information.'),
+)
+
+# ---------------------------------------------------------------- telas
+# id -> tecla, grupo, tipo (config|assistente|acao|info), nome, faz, precisa, nivel, handler
+# `handler` e' o nome da funcao em guaraci.guaraci; `campos` sai de OPCOES[...]["tela"].
+TELAS: Dict[str, Dict[str, Any]] = {
+    'rodar': dict(tecla='R', grupo='comecar', tipo='acao', nome=('Rodar analise', 'Run analysis'), nivel='basico', handler='_rodar_pipeline',
+        faz=('Executa o pipeline com a configuracao atual e grava os resultados.', 'Runs the pipeline with the current configuration and writes the results.'),
+        precisa=(('dados apontados', 'data pointed to'), ('um objetivo', 'an objective'))),
+    'exemplo': dict(tecla='1.1', grupo='comecar', tipo='acao', nome=('Exemplo guiado', 'Guided example'), nivel='basico', handler='_menu_exemplo',
+        faz=('Gera dados sinteticos pequenos e a configuracao pronta para um cenario.', 'Generates small synthetic data and the ready configuration for a scenario.'),
+        precisa=(('escolher um cenario', 'choosing a scenario'),)),
+    'perfis': dict(tecla='1.2', grupo='comecar', tipo='assistente', nome=('Perfis prontos', 'Ready profiles'), nivel='basico', handler='_menu_profiles',
+        faz=('Aplica uma configuracao pronta por objetivo e rigor.', 'Applies a ready configuration by objective and rigor.'),
+        precisa=(('saber o objetivo', 'knowing the objective'), ('escolher o rigor', 'choosing the rigour'))),
+    'assistente': dict(tecla='1.3', grupo='comecar', tipo='info', nome=('Assistente Guaraci', 'Guaraci assistant'), nivel='basico', handler='_abrir_assistente',
+        faz=('Responde duvidas e sugere o proximo passo, sem rede.', 'Answers questions and suggests the next step, offline.'),
+        precisa=()),
+    'salvar_config': dict(tecla='1.4', grupo='comecar', tipo='acao', nome=('Salvar configuracao', 'Save configuration'), nivel='basico', handler='_salvar_yaml',
+        faz=('Grava a configuracao atual num arquivo YAML para repetir a analise depois.', 'Writes the current configuration to a YAML file to repeat the analysis later.'),
+        precisa=()),
+    'carregar_config': dict(tecla='1.5', grupo='comecar', tipo='acao', nome=('Carregar configuracao', 'Load configuration'), nivel='basico', handler='_carregar_yaml',
+        faz=('Le uma configuracao YAML gravada antes e a torna a atual.', 'Reads a previously saved YAML configuration and makes it current.'),
+        precisa=(('um arquivo YAML salvo', 'a saved YAML file'),)),
+    'fluxo_planejamento': dict(tecla='2.1', grupo='dados', tipo='assistente', nome=('Planejar, selecionar e auditar', 'Plan, select and audit'), nivel='basico', handler='_menu_fluxo_planejamento',
+        faz=('Leva, em sequencia, do planejamento da coleta a escolha das amostras de calibracao e a auditoria do delineamento.', 'Takes you, in sequence, from planning the collection to choosing the calibration samples and auditing the design.'),
+        precisa=(('classes esperadas', 'expected classes'), ('arquivo de dados medidos', 'file of measured data'))),
+    'planejamento': dict(tecla='2.7', grupo='dados', tipo='assistente', nome=('Planejamento de coleta', 'Collection planning'), nivel='avancado', handler='_menu_plan',
+        faz=('Calcula quantas amostras fisicas coletar e como distribui-las.', 'Computes how many physical samples to collect and how to distribute them.'),
+        precisa=(('classes esperadas', 'expected classes'), ('nivel de confianca desejado', 'desired confidence level'))),
+    'projeto': dict(tecla='2.2', grupo='dados', tipo='config', nome=('Projeto', 'Project'), nivel='basico', handler='_menu_project',
+        faz=('Define as pastas de entrada e saida e o nome da execucao.', 'Sets the input and output folders and the run name.'),
+        precisa=()),
+    'dados': dict(tecla='2.3', grupo='dados', tipo='config', nome=('Dados', 'Data'), nivel='basico', handler='_menu_data',
+        faz=('Define o tipo de dado, o arquivo e as colunas de classe, concentracao e grupo.', 'Sets the data type, file and the class, concentration and group columns.'),
+        precisa=()),
+    'tecnica': dict(tecla='2.4', grupo='dados', tipo='config', nome=('Tecnica analitica', 'Analytical technique'), nivel='basico', handler='_menu_technique',
+        faz=('Declara o instrumento (FT-NIR, NIR, MIR, Raman...) e aplica os padroes dele.', 'Declares the instrument (FT-NIR, NIR, MIR, Raman...) and applies its defaults.'),
+        precisa=()),
+    'codificacao': dict(tecla='2.9', grupo='dados', tipo='config', nome=('Codificacao DX', 'DX coding'), nivel='avancado', handler='_menu_encoding',
+        faz=('Mostra e confere o padrao de nome dos arquivos .dx.', 'Shows and checks the .dx file-name pattern.'),
+        precisa=(('arquivos .dx', '.dx files'),)),
+    'preproc': dict(tecla='2.5', grupo='dados', tipo='config', nome=('Pre-processamento', 'Preprocessing'), nivel='basico', handler='_menu_preprocessing',
+        faz=('Escolhe as correcoes aplicadas aos espectros antes de modelar.', 'Chooses the corrections applied to spectra before modelling.'),
+        precisa=()),
+    'selecao_amostras': dict(tecla='2.8', grupo='dados', tipo='assistente', nome=('Selecao de amostras', 'Sample selection'), nivel='avancado', handler='_menu_selecao_amostras',
+        faz=('Escolhe amostras que cobrem a variacao do dado (Kennard-Stone, Duplex, SPXY).', 'Picks samples that cover the data variation (Kennard-Stone, Duplex, SPXY).'),
+        precisa=(('arquivo de dados', 'data file'), ('quantas amostras escolher', 'how many samples to choose'))),
+    'auditoria': dict(tecla='2.6', grupo='dados', tipo='assistente', nome=('Auditoria de delineamento', 'Design audit'), nivel='basico', handler='_menu_audit',
+        faz=('Confere se os grupos declarados sustentam uma validacao honesta.', 'Checks whether the declared groups support an honest validation.'),
+        precisa=(('arquivo de dados com coluna de grupo', 'data file with a group column'),)),
+    'tecnicas_avancadas': dict(tecla='3.5', grupo='explorar', tipo='assistente', nome=('Tecnicas especiais', 'Special techniques'), nivel='avancado', handler='_menu_tecnicas_avancadas',
+        faz=('Roda ASCA, EPO/GLSW, MCR-ALS, fusao multibloco, PARAFAC, COW, VIP com estabilidade e transferencia DS/PDS.', 'Runs ASCA, EPO/GLSW, MCR-ALS, multiblock fusion, PARAFAC, COW, VIP with stability and DS/PDS transfer.'),
+        precisa=(('dados carregados', 'loaded data'),)),
+    'modelo': dict(tecla='3.1', grupo='modelar', tipo='config', nome=('Modelagem', 'Modelling'), nivel='basico', handler='_menu_modeling',
+        faz=('Escolhe o nivel de analise, o numero de componentes e os metodos de classificacao.', 'Chooses the analysis level, number of components and classification methods.'),
+        precisa=()),
+    'validacao': dict(tecla='3.2', grupo='modelar', tipo='config', nome=('Validacao', 'Validation'), nivel='basico', handler='_menu_validation',
+        faz=('Define como o modelo e testado: holdout, grupos, permutacoes e testes de significancia.', 'Defines how the model is tested: holdout, groups, permutations and significance tests.'),
+        precisa=()),
+    'avancado': dict(tecla='3.4', grupo='modelar', tipo='config', nome=('Benchmark e Monte Carlo', 'Benchmark and Monte Carlo'), nivel='avancado', handler='_menu_advanced',
+        faz=('Liga a comparacao com outros classificadores, o Monte Carlo e o SHAP.', 'Turns on comparison with other classifiers, Monte Carlo and SHAP.'),
+        precisa=(('tempo de execucao longo', 'a long run time'),)),
+    'predicao': dict(tecla='3.3', grupo='modelar', tipo='assistente', nome=('Predicao em lote', 'Batch prediction'), nivel='basico', handler='_menu_prediction',
+        faz=('Aplica um modelo salvo a uma pasta de amostras novas e grava as predicoes.', 'Applies a saved model to a folder of new samples and writes the predictions.'),
+        precisa=(('modelo salvo', 'a saved model'), ('pasta de amostras novas', 'a folder of new samples'))),
+    'comparar': dict(tecla='4.1', grupo='comparar', tipo='assistente', nome=('Comparar grupos (ANOVA)', 'Compare groups (ANOVA)'), nivel='basico', handler='_menu_comparar',
+        faz=('Compara a media de uma resposta entre grupos por ANOVA, agregando antes pela unidade independente.', 'Compares the mean of a response between groups by ANOVA, first aggregating by the independent unit.'),
+        precisa=(('CSV com resposta, grupo e unidade', 'CSV with response, group and unit'),)),
+    'monitorar': dict(tecla='4.2', grupo='monitorar', tipo='assistente', nome=('Monitorar lotes', 'Monitor batches'), nivel='basico', handler='_menu_monitorar',
+        faz=('Calibra o dominio do processo em lotes de referencia e alarma os lotes novos que sairam dele.', 'Calibrates the process domain on reference batches and flags the new batches that left it.'),
+        precisa=(('CSV de lotes em controle', 'CSV of in-control batches'), ('CSV de lotes novos', 'CSV of new batches'), ('coluna de lote', 'batch column'))),
+    'hsi': dict(tecla='3.6', grupo='imagens', tipo='assistente', nome=('Imageamento hiperespectral', 'Hyperspectral imaging'), nivel='avancado', handler='_menu_hsi',
+        faz=('Le cubos ENVI, segmenta e classifica por pixel.', 'Reads ENVI cubes, segments and classifies per pixel.'),
+        precisa=(('pasta com manifesto e cubos ENVI', 'a folder with manifest and ENVI cubes'),)),
+    'visualizacao': dict(tecla='5.1', grupo='graficos', tipo='config', nome=('Visualizacao', 'Visualisation'), nivel='basico', handler='_menu_visualization',
+        faz=('Ajusta formato, resolucao, cores, fonte e quais figuras sao geradas.', 'Adjusts format, resolution, colours, font and which figures are generated.'),
+        precisa=()),
+    'relatorios': dict(tecla='5.2', grupo='graficos', tipo='assistente', nome=('Relatorios de uma execucao', 'Reports of a run'), nivel='basico', handler='_menu_relatorios',
+        faz=('Gera PDF, Word, Excel, LaTeX ou PowerPoint de uma execucao ja feita.', 'Produces PDF, Word, Excel, LaTeX or PowerPoint of a finished run.'),
+        precisa=(('pasta de uma execucao', 'folder of a run'),)),
+    'confianca': dict(tecla='6.1', grupo='confianca', tipo='info', nome=('Assistente de confianca', 'Trust assistant'), nivel='basico', handler='_abrir_confianca',
+        faz=('Mostra o selo, a evidencia, os limites e como reproduzir cada tecnica.', 'Shows the seal, evidence, limits and how to reproduce each technique.'),
+        precisa=()),
+    'ajuda': dict(tecla='6.2', grupo='ajuda', tipo='info', nome=('Ajuda', 'Help'), nivel='basico', handler='_menu_help',
+        faz=('Explica cada opcao do programa e abre o manual (0).', 'Explains each program option and opens the manual (0).'),
+        precisa=()),
+    'sobre': dict(tecla='6.3', grupo='ajuda', tipo='info', nome=('Sobre', 'About'), nivel='basico', handler='_menu_about',
+        faz=('Mostra versao, licenca e creditos.', 'Shows version, licence and credits.'),
+        precisa=()),
+    'hardware': dict(tecla='6.4', grupo='ajuda', tipo='info', nome=('Hardware', 'Hardware'), nivel='avancado', handler='_menu_hardware',
+        faz=('Mostra RAM e CPU, estima o tempo e checa as dependencias (1).', 'Shows RAM and CPU, estimates run time and checks dependencies (1).'),
+        precisa=()),
+    'checar': dict(tecla='6.5', grupo='confianca', tipo='assistente', nome=('Checar antes e depois', 'Check before and after'), nivel='avancado', handler='_menu_checar',
+        faz=('Aplica as regras do assistente a configuracao e aos dados e, dada uma execucao, le o resultado e grava a ficha anti-vazamento.',
+             'Applies the assistant rules to the configuration and the data and, given a run, reads the result and writes the leakage sheet.'),
+        precisa=(('dados apontados', 'data pointed to'),)),
+}
+# Ajuda de cada tela no gabarito do catalogo: "Use quando" e "Proximo passo"
+# completam o "Faz" (tecla ? da tela e assistente G aberto na tela).
+# id -> (use PT, use EN, proximo PT, proximo EN)
+_GUIA_TELAS: Dict[str, Tuple[str, str, str, str]] = {
+    'rodar': ('a configuracao estiver pronta e os dados apontados.', 'the configuration is ready and the data are pointed to.',
+              'Abra a pasta de resultados e leia primeiro o LEIA PRIMEIRO.', 'Open the results folder and read LEIA PRIMEIRO first.'),
+    'exemplo': ('for o primeiro contato com o programa ou quiser ver um cenario funcionando.', 'it is your first contact with the program or you want to see a scenario working.',
+                'Rode a analise com [R] e depois troque pelos seus dados em [2.3] Dados.', 'Run the analysis with [R], then switch to your data in [2.3] Data.'),
+    'perfis': ('souber o objetivo e quiser partir de uma configuracao pronta.', 'you know the objective and want to start from a ready configuration.',
+               'Aponte os dados em [2.3] Dados e confira a validacao em [3.2] Validacao.', 'Point to the data in [2.3] Data and check validation in [3.2] Validation.'),
+    'assistente': ('estiver em duvida sobre o que fazer ou o que uma opcao significa.', 'you are unsure what to do or what an option means.',
+                   'Volte a tela em que estava e aplique a sugestao.', 'Go back to the screen you were on and apply the suggestion.'),
+    'salvar_config': ('quiser repetir esta analise depois ou rodar sem menu com `guaraci run`.', 'you want to repeat this analysis later or run without the menu with `guaraci run`.',
+                      'Rode a analise com [R].', 'Run the analysis with [R].'),
+    'carregar_config': ('tiver uma configuracao salva de outra sessao ou de um colega.', 'you have a configuration saved in another session or by a colleague.',
+                        'Confira os dados em [2.3] Dados e rode com [R].', 'Check the data in [2.3] Data and run with [R].'),
+    'fluxo_planejamento': ('ainda for coletar amostras ou quiser conferir o delineamento antes de modelar.', 'you are still going to collect samples or want to check the design before modelling.',
+                           'Aponte os dados da coleta em [2.3] Dados.', 'Point to the measured data in [2.3] Data.'),
+    'planejamento': ('precisar decidir quantas amostras fisicas coletar.', 'you need to decide how many physical samples to collect.',
+                     'Colete e depois escolha as amostras de calibracao em [2.8].', 'Collect, then choose the calibration samples in [2.8].'),
+    'projeto': ('quiser mudar onde os resultados sao gravados ou o nome da execucao.', 'you want to change where results are written or the run name.',
+                'Aponte os dados em [2.3] Dados.', 'Point to the data in [2.3] Data.'),
+    'dados': ('trocar de conjunto de dados, de formato ou de colunas.', 'you change the data, their format or their columns.',
+              'Declare o instrumento em [2.4] e confira o delineamento em [2.6].', 'Declare the instrument in [2.4] and check the design in [2.6].'),
+    'tecnica': ('o instrumento de medida mudar ou o cabecalho mostrar a tecnica errada.', 'the measuring instrument changes or the header shows the wrong technique.',
+                'Confira o pre-processamento sugerido em [2.5].', 'Check the suggested preprocessing in [2.5].'),
+    'codificacao': ('os arquivos .dx tiverem um padrao de nome proprio.', 'the .dx files follow a naming pattern of their own.',
+                    'Volte a [2.3] Dados e confira a leitura.', 'Go back to [2.3] Data and check the reading.'),
+    'preproc': ('os espectros tiverem espalhamento, linha de base ou ruido a corrigir.', 'the spectra have scatter, baseline or noise to correct.',
+                'Escolha o objetivo e as variaveis latentes em [3.1] Modelagem.', 'Choose the objective and latent variables in [3.1] Modelling.'),
+    'selecao_amostras': ('tiver mais amostras medidas do que pode usar na calibracao.', 'you have more measured samples than you can use for calibration.',
+                         'Confira o delineamento em [2.6] antes de rodar.', 'Check the design in [2.6] before running.'),
+    'auditoria': ('antes de rodar, para saber se a validacao vai ser honesta com os seus grupos.', 'before running, to know whether validation will be honest with your groups.',
+                  'Corrija a coluna de grupo em [2.3] Dados, se preciso, e rode com [R].', 'Fix the group column in [2.3] Data if needed, then run with [R].'),
+    'tecnicas_avancadas': ('a pergunta pedir decomposicao, fatores de delineamento ou mais de um bloco de dados.', 'the question needs decomposition, design factors or more than one data block.',
+                           'Leia os resultados na pasta indicada ao final.', 'Read the results in the folder shown at the end.'),
+    'modelo': ('quiser mudar o tipo de pergunta ou o numero de componentes.', 'you want to change the kind of question or the number of components.',
+               'Confira como o modelo sera testado em [3.2] Validacao.', 'Check how the model will be tested in [3.2] Validation.'),
+    'validacao': ('sempre, antes de rodar: e aqui que se evita o vazamento entre treino e teste.', 'always, before running: this is where train/test leakage is avoided.',
+                  'Rode a analise com [R].', 'Run the analysis with [R].'),
+    'avancado': ('quiser comparar classificadores ou medir a estabilidade, e puder esperar mais.', 'you want to compare classifiers or measure stability and can wait longer.',
+                 'Confira o tempo estimado em [6.4] e rode com [R].', 'Check the estimated time in [6.4] and run with [R].'),
+    'predicao': ('ja tiver um modelo salvo e amostras novas para classificar ou quantificar.', 'you already have a saved model and new samples to classify or quantify.',
+                 'Leia o arquivo de predicoes e os avisos de dominio.', 'Read the predictions file and the domain warnings.'),
+    'comparar': ('a pergunta for se grupos diferem numa resposta, e nao classificar amostras.', 'the question is whether groups differ on a response, not classifying samples.',
+                 'Leia a tabela e o grafico gravados ao final.', 'Read the table and plot written at the end.'),
+    'monitorar': ('acompanhar lotes de producao contra uma referencia em controle.', 'tracking production batches against an in-control reference.',
+                  'Investigue os lotes marcados fora do dominio.', 'Investigate the batches flagged out of domain.'),
+    'hsi': ('os dados forem cubos hiperespectrais (ENVI) e a resposta for por pixel.', 'the data are hyperspectral cubes (ENVI) and the answer is per pixel.',
+            'Leia o mapa espacial e a validacao por objeto.', 'Read the spatial map and the per-object validation.'),
+    'visualizacao': ('quiser mudar formato, resolucao, cores ou quais figuras sao geradas.', 'you want to change format, resolution, colours or which figures are produced.',
+                     'Rode com [R] ou gere relatorios em [5.2].', 'Run with [R] or produce reports in [5.2].'),
+    'relatorios': ('uma execucao ja terminou e voce precisa do relatorio em outro formato.', 'a run has finished and you need the report in another format.',
+                   'Abra o arquivo gerado na pasta da execucao.', 'Open the generated file in the run folder.'),
+    'confianca': ('quiser saber o quanto confiar numa tecnica ou opcao antes de usa-la.', 'you want to know how much to trust a technique or option before using it.',
+                  'Volte a tela da opcao e decida com base no selo.', 'Go back to the option screen and decide based on the seal.'),
+    'ajuda': ('quiser entender uma opcao especifica do programa.', 'you want to understand a specific program option.',
+              'Abra a tela da opcao pela tecla indicada.', 'Open the option screen with the key shown.'),
+    'sobre': ('precisar da versao, da licenca ou de como citar o programa.', 'you need the version, the licence or how to cite the program.',
+              'Volte ao menu principal.', 'Go back to the main menu.'),
+    'hardware': ('for ligar modulos pesados ou o computador parecer lento.', 'you are about to turn on heavy modules or the computer seems slow.',
+                 'Ajuste os modulos pesados em [3.4].', 'Adjust the heavy modules in [3.4].'),
+    'checar': ('quiser saber, antes de rodar, se algo na configuracao ou nos dados invalida o resultado, ou revisar uma execucao feita.',
+               'you want to know, before running, whether something in the setup or the data invalidates the result, or to review a finished run.',
+               'Aplique o valor sugerido na tela da opcao e rode com [R].', 'Apply the suggested value on the option screen and run with [R].'),
+}
+for _tid, (_u_pt, _u_en, _p_pt, _p_en) in _GUIA_TELAS.items():
+    TELAS[_tid].update(use=(_u_pt, _u_en), proximo=(_p_pt, _p_en))
+
+# Descricao curta de cada tela (lista das pastas do menu da CLI): inteira, sem
+# reticencias, <= 44 caracteres. A completa continua em `faz`.
+_CURTA_TELAS: Dict[str, Tuple[str, str]] = {
+    'rodar': ('Executa a analise e grava os resultados', 'Runs the analysis and writes the results'),
+    'exemplo': ('Dados de exemplo prontos para rodar', 'Example data ready to run'),
+    'perfis': ('Configuracao pronta por objetivo e rigor', 'Ready setup by objective and rigour'),
+    'assistente': ('Duvidas e proximo passo, sem internet', 'Questions and next step, offline'),
+    'salvar_config': ('Grava a configuracao atual em YAML', 'Writes the current setup to YAML'),
+    'carregar_config': ('Le uma configuracao YAML salva', 'Reads a saved YAML setup'),
+    'fluxo_planejamento': ('Planejar, escolher amostras e auditar', 'Plan, pick samples and audit'),
+    'planejamento': ('Quantas amostras coletar e como', 'How many samples to collect and how'),
+    'projeto': ('Pastas de entrada e saida, nome da execucao', 'Input and output folders, run name'),
+    'dados': ('Arquivo, formato e colunas dos dados', 'Data file, format and columns'),
+    'tecnica': ('Instrumento de medida e seus padroes', 'Measuring instrument and its defaults'),
+    'codificacao': ('Padrao de nome dos arquivos .dx', 'Naming pattern of the .dx files'),
+    'preproc': ('Correcoes dos espectros antes do modelo', 'Spectral corrections before the model'),
+    'selecao_amostras': ('Kennard-Stone, Duplex e SPXY', 'Kennard-Stone, Duplex and SPXY'),
+    'auditoria': ('Os grupos sustentam uma validacao honesta?', 'Do the groups support honest validation?'),
+    'tecnicas_avancadas': ('ASCA, MCR-ALS, PARAFAC, fusao e outras', 'ASCA, MCR-ALS, PARAFAC, fusion and more'),
+    'modelo': ('Nivel de analise, componentes e metodos', 'Analysis level, components and methods'),
+    'validacao': ('Como o modelo e testado sem vazamento', 'How the model is tested without leakage'),
+    'avancado': ('Comparar classificadores, Monte Carlo, SHAP', 'Compare classifiers, Monte Carlo, SHAP'),
+    'predicao': ('Aplicar um modelo salvo a amostras novas', 'Apply a saved model to new samples'),
+    'comparar': ('ANOVA sobre a unidade independente', 'ANOVA over the independent unit'),
+    'monitorar': ('Lotes novos fora do dominio do processo', 'New batches outside the process domain'),
+    'hsi': ('Cubos ENVI: segmentar e classificar pixels', 'ENVI cubes: segment and classify pixels'),
+    'visualizacao': ('Formato, resolucao e quais figuras', 'Format, resolution and which figures'),
+    'relatorios': ('PDF, Word, Excel ou slides de uma execucao', 'PDF, Word, Excel or slides of a run'),
+    'confianca': ('Selo, evidencia e limites de cada tecnica', 'Seal, evidence and limits of each technique'),
+    'ajuda': ('O que cada opcao faz', 'What each option does'),
+    'sobre': ('Versao, licenca e como citar', 'Version, licence and how to cite'),
+    'hardware': ('RAM, CPU e tempo estimado', 'RAM, CPU and estimated time'),
+    'checar': ('Pre-voo e ficha anti-vazamento', 'Pre-flight and leakage sheet'),
+}
+for _tid, _c in _CURTA_TELAS.items():
+    TELAS[_tid]["curta"] = _c
+
+# Acoes de uma tecla so' no menu principal (sem tela propria).
+ACOES_MENU = {"M": "modo", "I": "idioma", "G": "assistente", "C": "confianca", "?": "ajuda", "Q": "sair"}
+
+# ------------------------------------------------------------- menu da CLI
+# Guia de design v2 (2026-10-14): a tela inicial mostra so' estes 6 grupos,
+# numerados; cada tela mora num deles e a tecla dela e' "grupo.item" (ex.: 2.3
+# Dados). Letras ficam so' para acoes fixas (R, M, I, G, C, ?, V, Q).
+# (numero, nome PT, nome EN, o que tem dentro PT, EN)
+GRUPOS_CLI = (
+    ('1', 'Comecar', 'Start', 'Exemplo, perfis, assistente', 'Example, profiles, assistant'),
+    ('2', 'Planejar e preparar dados', 'Plan and prepare data', 'Dados, tecnica, auditoria', 'Data, technique, audit'),
+    ('3', 'Explorar, classificar ou quantificar', 'Explore, classify or quantify', 'Modelo, validacao, predicao', 'Model, validation, prediction'),
+    ('4', 'Comparar grupos e monitorar processos', 'Compare groups and monitor processes', 'ANOVA e lotes', 'ANOVA and batches'),
+    ('5', 'Graficos e relatorios', 'Plots and reports', 'Figuras e relatorios', 'Figures and reports'),
+    ('6', 'Qualidade, confianca e sistema', 'Quality, trust and system', 'Confianca, ajuda, sobre', 'Trust, help, about'),
+)
+
+# Teclas do menu antes do guia v2 -> tela; a CLI diz onde a tela foi parar.
+TECLAS_ANTIGAS = {'E': 'exemplo', 'P': 'perfis', 'F': 'fluxo_planejamento', 'J': 'planejamento', 'K': 'selecao_amostras',
+                  'U': 'auditoria', 'T': 'tecnicas_avancadas', 'B': 'predicao', 'W': 'comparar', 'D': 'monitorar',
+                  'X': 'hsi', 'Z': 'relatorios', 'O': 'sobre', 'H': 'hardware', 'S': 'salvar_config',
+                  'L': 'carregar_config', 'N': 'projeto', '7': 'visualizacao', '8': 'tecnica', '9': 'codificacao'}
+
+# Subpastas das opcoes AVANCADAS das telas densas: as basicas continuam na
+# lista da tela (mesmo numero nos dois modos); as avancadas entram por pasta.
+# tela -> ((id, nome PT, nome EN, (opcoes...)), ...)
+SECOES_TELA: Dict[str, Tuple[Tuple[str, str, str, Tuple[str, ...], str, str], ...]] = {
+    # (id, nome PT, nome EN, opcoes, resumo PT, resumo EN): nome <= 22 caracteres
+    # (cabe na coluna de nomes, alinhado aos campos); o resumo diz o que tem dentro.
+    'dados': (
+        ('grupos', 'Grupos e correcoes', 'Groups and corrections', ('unidade_agrupamento', 'aplicar_correcoes_locais'),
+         'Unidade independente e correcoes locais', 'Independent unit and local corrections'),
+        ('leitura_dx', 'Leitura dos .dx', 'Reading .dx files', ('dx_ler_titulo', 'dx_parte_classe', 'dx_teor_no_nome'),
+         'Classe e teor lidos do nome ou titulo', 'Class and content read from name or title'),
+        ('eixo', 'Eixo e tecnica', 'Axis and technique', ('eixo_unidade', 'tecnica_analitica', 'saturacao'),
+         'Unidade do eixo, tecnica (tela [2.4]) e saturacao', 'Axis unit, technique (screen [2.4]) and saturation'),
+        ('imagem', 'Imagem e cromatografia', 'Imaging and HPLC/GC', ('perfil_tecnica', 'imagem_incluir_textura', 'imagem_recorte', 'imagem_referencia', 'imagem_segmentacao', 'hplc_detector', 'cromatografia_canal',
+                                                    'espectro_max_pontos', 'cromatograma_max_pontos'),
+         'Perfil de aquisicao, textura, recorte, cartao, segmentacao, detector', 'Acquisition profile, texture, crop, card, segmentation, detector'),
+        ('hsi', 'Imageamento HSI', 'HSI imaging', ('hsi_calibracao', 'hsi_referencia_branco', 'hsi_referencia_escuro', 'hsi_eixo_bandas', 'hsi_validacao', 'hsi_cv_dobras'),
+         'Calibracao branco/escuro, eixo de bandas, validacao por objeto', 'White/dark calibration, band axis, by-object validation'),
+        ('eem', 'Fluorescencia (EEM)', 'Fluorescence (EEM)', ('eem_espalhamento', 'eem_espalhamento_largura_nm', 'eem_raman', 'parafac_nao_negativo'),
+         'Espalhamento Rayleigh/Raman e PARAFAC', 'Rayleigh/Raman scatter and PARAFAC'),
+        ('icp', 'Elementos (ICP)', 'Elements (ICP)', ('icp_unidade', 'icp_coluna_amostra', 'icp_coluna_tipo', 'icp_coluna_sessao',
+                                                     'icp_padrao_interno', 'icp_politica_censura', 'icp_limiar_censura', 'icp_log'),
+         'Colunas, padrao interno, censura e log', 'Columns, internal standard, censoring, log'),
+        ('sintetico', 'Dados sinteticos', 'Synthetic data', ('sintetico_cenario', 'sintetico_n_por_classe', 'sintetico_n_pontos', 'sintetico_replicas', 'sintetico_adulterantes'),
+         'Tamanho do conjunto de demonstracao', 'Size of the demonstration set'),
+    ),
+    'modelo': (
+        ('exploracao', 'Objetivo, PCA e HCA', 'Objective, PCA, HCA', ('objetivo', 'pca_componentes', 'hca_componentes', 'comparar_hca'),
+         'Objetivo, PCA e dendrograma (HCA)', 'Objective, PCA and dendrogram (HCA)'),
+        ('classificadores', 'DD-SIMCA e OPLS-DA', 'DD-SIMCA and OPLS-DA', ('classificador', 'opls_da', 'opls_ortogonais', 'ddsimca', 'modo_ddsimca', 'ddsimca_pcv',
+                                                                          'ddsimca_componentes', 'ddsimca_limite'),
+         'Liga e ajusta os dois classificadores', 'Turns on and tunes both classifiers'),
+        ('selecao', 'Selecao de variaveis', 'Variable selection', ('selecao_variaveis_etapa4', 'selecao_spa', 'selecao_ag', 'selecao_cars', 'selecao_uve',
+                                                                 'ipls_intervalos', 'vip_limiar', 'sr_fracao', 'splsda_variaveis'),
+         'VIP, SR, iPLS, sPLS-DA, SPA, AG, CARS, UVE', 'VIP, SR, iPLS, sPLS-DA, SPA, GA, CARS, UVE'),
+        ('ajuste_selecao', 'Ajuste da selecao', 'Selection tuning',
+         ('spa_max_variaveis', 'spa_inicios', 'ag_populacao', 'ag_geracoes', 'ag_mutacao', 'ag_fracao_inicial',
+          'cars_iteracoes', 'cars_fracao', 'uve_repeticoes', 'uve_fracao'),
+         'Parametros finos de SPA, AG, CARS e UVE', 'Fine parameters of SPA, GA, CARS and UVE'),
+    ),
+    'validacao': (
+        ('divisao', 'Divisao e CV', 'Split and CV', ('holdout_estratificado', 'holdout_preservar_puras', 'semente_holdout',
+                                                    'selecao_lv_cv_aninhada', 'cv_dobras', 'cv_repeticoes', 'semente',
+                                                    'fracao_calibracao', 'divisao_calibracao', 'quantificacao_rotulo_treino'),
+         'Holdout, validacao cruzada, sementes', 'Holdout, cross-validation, seeds'),
+        ('testes', 'Testes estatisticos', 'Statistical tests', ('n_permutacoes', 'teste_wold', 'n_permutacoes_wold', 'teste_cv_anova',
+                                                                    'teste_martens', 'n_bootstrap_vip', 'n_bootstrap_bca'),
+         'Permutacao, Wold, CV-ANOVA, Martens, bootstrap', 'Permutation, Wold, CV-ANOVA, Martens, bootstrap'),
+    ),
+}
+
+
+# ------------------------------------------------------------- comandos
+# Comandos de `guaraci <comando>` (sem comando = telas interativas). Entram em
+# `guaraci --help`, agrupados pelos mesmos grupos do menu.
+COMANDOS: Dict[str, Dict[str, Any]] = {
+    "run": dict(grupo="comecar", uso="run [CONFIG]",
+                faz=("Executa o pipeline uma vez a partir de CONFIG (padrao: ./config.yaml) e sai, sem menu: para automacao e CI.",
+                     "Runs the pipeline once from CONFIG (default: ./config.yaml) and exits, no menu: for automation and CI.")),
+    "demo": dict(grupo="comecar", uso="demo",
+                 faz=("Roda o pipeline com dados sinteticos; nao precisa de dado seu.", "Runs the pipeline on synthetic data; needs no data of yours.")),
+    "exemplo": dict(grupo="comecar", uso="exemplo [CENARIO] [PASTA]",
+                    faz=("Gera dados sinteticos e a configuracao prontos para um cenario (sem argumento, lista os cenarios).",
+                         "Generates synthetic data and the ready configuration for a scenario (no argument lists the scenarios).")),
+    "web": dict(grupo="comecar", uso="web",
+                faz=("Abre a interface web local no navegador (127.0.0.1; so esta maquina).", "Opens the local web interface in the browser (127.0.0.1; this machine only).")),
+    "perfis": dict(grupo="dados", uso="perfis",
+                   faz=("Lista os perfis de tecnica disponiveis.", "Lists the available technique profiles.")),
+    "anova": dict(grupo="comparar", uso="anova TABELA.csv --resposta COL --grupo COL --unidade COL [--metodo M]",
+                  faz=("Compara grupos sobre a unidade independente (obrigatoria): ANOVA com Tukey ou Games-Howell, ou Kruskal-Wallis com Dunn; recusa sem --unidade.",
+                       "Compares groups over the independent unit (required): ANOVA with Tukey or Games-Howell, or Kruskal-Wallis with Dunn; refuses without --unidade.")),
+    "vip": dict(grupo="modelar", uso="vip TABELA.csv --classe COL --grupo COL [--componentes N]",
+                faz=("Calcula o VIP do PLS e mostra em quantas dobras agrupadas cada variavel passa do limiar; VIP > 1 e regra pratica, nao teste.",
+                     "Computes the PLS VIP and shows in how many grouped folds each variable passes the threshold; VIP > 1 is a rule of thumb, not a test.")),
+    "monitorar": dict(grupo="monitorar", uso="monitorar --referencia REF.csv --novos NOVOS.csv --lote COL",
+                      faz=("Calibra o dominio do processo em lotes de referencia e alarma os lotes novos que sairam dele.",
+                           "Calibrates the process domain on reference batches and flags the new batches that left it.")),
+    "transferir": dict(grupo="quantificar", uso="transferir --mestre M.csv --escravo E.csv --novos N.csv [--metodo ds|pds]",
+                       faz=("Converte espectros de um instrumento novo para o espaco do instrumento do modelo (DS ou PDS).",
+                            "Converts spectra from a new instrument to the space of the model's instrument (DS or PDS).")),
+    "relatorio": dict(grupo="graficos", uso="relatorio PASTA [--formato pdf,docx,xlsx,tex,pptx]",
+                      faz=("Gera os relatorios (PDF, Word, Excel, LaTeX, PowerPoint) de uma execucao ja feita.",
+                           "Produces the reports (PDF, Word, Excel, LaTeX, PowerPoint) of a finished run.")),
+    "assistente": dict(grupo="ajuda", uso="assistente [PERGUNTA]",
+                       faz=("Responde uma pergunta a partir do catalogo, sem rede (sem argumento, explica o uso; nas telas, tecla G).",
+                            "Answers a question from the catalogue, offline (no argument explains the usage; in the screens, key G).")),
+    "ajuda": dict(grupo="ajuda", uso="ajuda [TOPICO]",
+                  faz=("Explica uma opcao, tecnica, grafico, tela ou termo no mesmo gabarito (sem argumento, mostra o mapa de grupos).",
+                       "Explains an option, technique, plot, screen or term in the same template (no argument shows the group map).")),
+    "buscar": dict(grupo="ajuda", uso="buscar TERMO",
+                   faz=("Procura uma palavra em todo o catalogo (opcoes, tecnicas, graficos, termos, comandos).",
+                        "Searches a word across the whole catalogue (options, techniques, plots, terms, commands).")),
+    "manual": dict(grupo="ajuda", uso="manual [TOPICO|SECAO]",
+                   faz=("Mostra o manual e os documentos que acompanham o programa (sem argumento, lista os topicos; com numero, a secao).",
+                        "Shows the manual and the documents shipped with the program (no argument lists the topics; a number shows that section).")),
+    "checar": dict(grupo="confianca", uso="checar CONFIG [--dados] [--resultado PASTA] [--ficha]",
+                   faz=("Pre-voo do assistente sem as telas: regras de configuracao e, com --dados, de dados; --resultado le uma execucao. Sai 1 com achado critico.",
+                        "Assistant pre-flight without the screens: configuration rules and, with --dados, data rules; --resultado reads a run. Exits 1 on a critical finding.")),
+    "confianca": dict(grupo="confianca", uso="confianca [METODO]",
+                      faz=("Mostra selo, evidencia, limites e como reproduzir um metodo ou opcao.", "Shows the seal, evidence, limits and how to reproduce a method or option.")),
+    "doctor": dict(grupo="ajuda", uso="doctor [--instalar [--sim]]",
+                   faz=("Diagnostica o ambiente: dependencias, RAM e CPU. Com --instalar, instala o que falta (pede confirmacao; --sim nao pergunta).",
+                        "Diagnoses the environment: dependencies, RAM and CPU. With --instalar, installs what is missing (asks first; --sim does not ask).")),
+}
+
+
+# ------------------------------------------------------- modulos fora do CLI
+# Modulos de src/guaraci que o CLI nao alcanca (nem por import dentro de funcao),
+# com categoria e motivo. tests/test_alcance_modulos.py exige que todo o resto
+# seja alcancavel a partir de `python -m guaraci` e que esta lista nao cresca sem
+# justificativa (teto no teste).
+MODULOS_FORA_DO_CLI: Dict[str, Tuple[str, str]] = {
+    "__init__": ("pacote", "arquivo do pacote, sem funcao propria"),
+    "app_web": ("interface web", "corpo do app Streamlit; o comando `guaraci web` o inicia como arquivo (streamlit run), nao por import"),
+    "app_nav": ("interface web", "navegacao do Streamlit; a mesma funcionalidade esta nas telas do CLI"),
+    "app_tabs.__init__": ("interface web", "pacote das abas do Streamlit"),
+    "app_tabs.dados": ("interface web", "aba Dados do Streamlit (CLI: tela de dados)"),
+    "app_tabs.inicio": ("interface web", "aba Inicio do Streamlit (CLI: menu principal)"),
+    "app_tabs.modelo": ("interface web", "aba Modelo do Streamlit (CLI: telas de modelo, validacao e rodar)"),
+    "app_tabs.predicao": ("interface web", "aba Predicao do Streamlit (CLI: tela de predicao em lote)"),
+    "app_tabs.preprocessamento": ("interface web", "aba Pre-processamento do Streamlit (CLI: tela de pre-processamento)"),
+    "app_tabs.projeto": ("interface web", "aba Projeto do Streamlit (CLI: tela de projeto)"),
+    "app_tabs.relatorios": ("interface web", "aba Relatorios do Streamlit (CLI: tela [5.2] Relatorios)"),
+    "app_tabs.sobre": ("interface web", "aba Sobre do Streamlit (CLI: tela Sobre)"),
+    "app_tabs.tecnicas": ("interface web", "aba Tecnicas do Streamlit (CLI: tela de tecnicas especiais)"),
+    "app_tabs.validacao": ("interface web", "aba Validacao do Streamlit (CLI: tela de validacao)"),
+    "app_tabs.visualizacao": ("interface web", "aba Visualizacao do Streamlit (CLI: tela de visualizacao)"),
+    "web_seguranca": ("interface web", "sessoes e caminhos do servidor web; nao se aplica ao CLI local"),
+    "spectra_preview": ("interface web", "previa interativa de espectros; no CLI a execucao grava o grafico de espectros medios"),
+    "aumento_dados": ("biblioteca nao exposta", "aumento de dados VRM com efeito pequeno medido e que muda o numero de linhas do treino; "
+                      "integrar exige mexer na validacao cruzada (decisao do autor)"),
+    "deriva_qc": ("biblioteca nao exposta", "correcao de deriva por QC exige a ordem real de aquisicao; nenhum formato lido hoje "
+                  "garante essa ordem (supor a ordem das linhas seria arriscado)"),
+    "robpca": ("biblioteca nao exposta", "ROBPCA reimplementado e conferido contra o rrcov, mas ainda sem tela nem opcao: "
+               "ligar ao pipeline e' decisao do autor depois de ver os resultados em dados reais"),
+    "pcv_regressao": ("biblioteca nao exposta", "PCV para PLS reimplementado e conferido contra o pacote R pcv, mas ainda sem "
+                      "tela nem opcao: escolher componentes por ele e' decisao do autor (mede um cenario, nao ha vantagem provada)"),
+}
+
+
+# ------------------------------------------------------- perfis (objetivo x rigor)
+# Passo 1: o que responder; Passo 2: quanto rigor (tempo). Cada combinacao aplica as chaves
+# abaixo (objetivo e depois rigor) e mostra o resumo antes. Tempo: medido no exemplo sintetico
+# indicado (`exemplo`), por scripts/medir_perfis.py; vale como ordem de grandeza.
+PERFIS_OBJETIVO: Dict[str, Dict[str, Any]] = {
+    "explorar": dict(nome=("Explorar dados", "Explore data"), exemplo="explorar",
+        faz=("Primeiro olhar: PCA, agrupamento e espectros medios, sem treinar classificador.",
+             "First look: PCA, clustering and mean spectra, without training a classifier."),
+        cfg={"nivel": "N1", "objetivo": "exploratorio", "ddsimca": False}),
+    "autenticar": dict(nome=("Autenticar (puro x adulterado)", "Authenticate (pure vs adulterated)"), exemplo="quantificar",
+        faz=("Aprende cada classe pura e aceita ou rejeita amostras novas (DD-SIMCA).",
+             "Learns each pure class and accepts or rejects new samples (DD-SIMCA)."),
+        cfg={"nivel": "N2", "objetivo": "auto", "ddsimca": True, "modo_ddsimca": "puros"}),
+    "discriminar": dict(nome=("Discriminar classes (especie, origem)", "Discriminate classes (species, origin)"), exemplo="classificar",
+        faz=("Diz a que classe conhecida cada amostra pertence (PLS-DA com validacao por grupo).",
+             "Says which known class each sample belongs to (PLS-DA with group-aware validation)."),
+        cfg={"nivel": "N1", "objetivo": "classificacao", "ddsimca": False}),
+    "quantificar": dict(nome=("Quantificar teor", "Quantify content"), exemplo="quantificar",
+        faz=("Estima o teor de um analito ou adulterante por regressao PLS, com figuras de merito.",
+             "Estimates the content of an analyte or adulterant by PLS regression, with figures of merit."),
+        cfg={"nivel": "N3", "objetivo": "auto", "ddsimca": False}),
+    "imagem": dict(nome=("Analisar imagens (cor e textura)", "Analyse images (colour and texture)"), exemplo="imagem",
+        faz=("Extrai medidas de cor e textura de fotos e classifica; cubos hiperespectrais ficam na tela [3.6].",
+             "Extracts colour and texture measures from photos and classifies; hyperspectral cubes are on screen [3.6]."),
+        cfg={"modo_entrada": "imagem", "nivel": "N1", "objetivo": "classificacao", "ddsimca": False}),
+    "transferir": dict(nome=("Transferir entre instrumentos", "Transfer between instruments"), exemplo="transferir",
+        faz=("Converte espectros de um instrumento novo para o do modelo; e um comando, nao uma configuracao.",
+             "Converts spectra from a new instrument to the model's one; it is a command, not a configuration."),
+        cfg={}, comando="guaraci transferir --mestre M.csv --escravo E.csv --novos N.csv"),
+}
+PERFIS_RIGOR: Dict[str, Dict[str, Any]] = {
+    "rapido": dict(nome=("Rapido (teste)", "Quick (test)"),
+        faz=("Para conferir se os dados e a configuracao rodam: poucas permutacoes, sem extras.",
+             "To check that data and configuration run: few permutations, no extras."),
+        cfg={"n_permutacoes": 50, "max_lvs": 15, "selecao_lv_cv_aninhada": False, "opls_da": False, "benchmark": False,
+             "monte_carlo": False, "shap_benchmark": False, "selecao_variaveis_etapa4": False}),
+    "padrao": dict(nome=("Padrao (recomendado)", "Standard (recommended)"),
+        faz=("Validacao por grupo completa, 200 permutacoes e escolha de componentes sem otimismo.",
+             "Full group-aware validation, 200 permutations and optimism-free choice of components."),
+        cfg={"n_permutacoes": 200, "max_lvs": 30, "selecao_lv_cv_aninhada": True, "opls_da": False, "benchmark": False,
+             "monte_carlo": False, "shap_benchmark": False, "selecao_variaveis_etapa4": False}),
+    "publicacao": dict(nome=("Publicacao", "Publication"),
+        faz=("Padrao mais comparacao com outros modelos, SHAP, OPLS-DA, selecao de variaveis e figuras em 600 dpi.",
+             "Standard plus comparison with other models, SHAP, OPLS-DA, variable selection and 600 dpi figures."),
+        cfg={"n_permutacoes": 200, "max_lvs": 40, "selecao_lv_cv_aninhada": True, "opls_da": True, "benchmark": True,
+             "shap_benchmark": True, "monte_carlo": False, "selecao_variaveis_etapa4": True, "dpi": 600}),
+    "maximo": dict(nome=("Maximo", "Maximum"),
+        faz=("Publicacao mais Monte Carlo (200 repeticoes), 500 permutacoes e protocolo de robustez.",
+             "Publication plus Monte Carlo (200 repetitions), 500 permutations and the robustness protocol."),
+        cfg={"n_permutacoes": 500, "max_lvs": 40, "selecao_lv_cv_aninhada": True, "opls_da": True, "benchmark": True,
+             "shap_benchmark": True, "monte_carlo": True, "n_monte_carlo": 200, "selecao_variaveis_etapa4": True,
+             "dpi": 600, "formato_figura": "pdf", "protocolo_robustez": True}),
+}
+#: (objetivo, rigor) -> segundos medidos no exemplo sintetico do objetivo (scripts/medir_perfis.py)
+TEMPO_PERFIL: Dict[Tuple[str, str], float] = {
+    ('explorar', 'rapido'): 9,
+    ('explorar', 'padrao'): 13,
+    ('explorar', 'publicacao'): 15,
+    ('explorar', 'maximo'): 12,
+    ('autenticar', 'rapido'): 16,
+    ('autenticar', 'padrao'): 22,
+    ('autenticar', 'publicacao'): 37,
+    ('autenticar', 'maximo'): 36,
+    ('discriminar', 'rapido'): 17,
+    ('discriminar', 'padrao'): 25,
+    ('discriminar', 'publicacao'): 40,
+    ('discriminar', 'maximo'): 40,
+    ('quantificar', 'rapido'): 8,
+    ('quantificar', 'padrao'): 11,
+    ('quantificar', 'publicacao'): 10,
+    ('quantificar', 'maximo'): 9,
+    ('imagem', 'rapido'): 16,
+    ('imagem', 'padrao'): 19,
+    ('imagem', 'publicacao'): 29,
+    ('imagem', 'maximo'): 27,
+}
+TEMPO_PERFIL_MEDIDO_EM = '2026-10-03, Intel64 Family 6 Model 141 Stepping 1, GenuineIntel, 16 nucleos logicos'
+

@@ -1,0 +1,166 @@
+{
+ "_doc": "Registro de exclusoes de cobertura (scripts/cobertura_excecoes.py). Cada linha de src/guaraci que o coverage exclui (`# pragma: no cover`, `if TYPE_CHECKING:`, stub `...`) e cada omit/exclude_lines da configuracao de cobertura precisa de entrada aqui, com motivo e categoria (A coberto por teste, B inalcancavel, C plataforma ou dependencia opcional, D interface web sem teste possivel).",
+ "pragmas": [
+  {
+   "arquivo": "src/guaraci/__init__.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "ramo de ImportError durante um import parcial no bootstrap do pacote; so' ocorre com a ordem de importacao quebrada, que o interpretador de teste nao reproduz sem corromper o proprio pacote."
+  },
+  {
+   "arquivo": "src/guaraci/avaliacao_modelos.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/dados_io.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/figuras.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/hardware.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/hsi_figures.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/hsi_pipeline.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/hsi_uncertainty.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/io_registry.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/model_registry.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/modos_analise.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/perfil_matriz.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/preprocessamento.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/resultados_io.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/robustness.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  },
+  {
+   "arquivo": "src/guaraci/selecao_variaveis.py",
+   "funcao": "<modulo>",
+   "quantidade": 1,
+   "categoria": "C",
+   "motivo": "bloco `if TYPE_CHECKING:` (excluido pelo padrao do coverage) so' existe para o verificador de tipos; nunca executa em tempo de execucao."
+  }
+ ],
+ "exclusoes_pyproject": [],
+ "medicao_inicial": {
+  "_doc": "Medicao da suite completa (ramos) no inicio desta rodada, hash 8cd9d798f76b, com a mesma metodologia da verificacao final.",
+  "global": {
+   "linhas": 85.22,
+   "ramos": 75.95,
+   "combinada": 83.06
+  },
+  "nucleo": {
+   "linhas": 90.9,
+   "ramos": 82.0,
+   "combinada": 88.8
+  },
+  "web": {
+   "linhas": 61.1,
+   "ramos": 41.4,
+   "combinada": 56.4
+  },
+  "cli": {
+   "linhas": 65.3,
+   "ramos": 57.2,
+   "combinada": 63.4
+  },
+  "resto": {
+   "linhas": 91.6,
+   "ramos": 83.7,
+   "combinada": 89.8
+  }
+ },
+ "lacunas_aceitas": [
+  {
+   "arquivo": "app_tabs/predicao.py",
+   "funcao": "",
+   "categoria": "A (testavel, nao escrito)",
+   "motivo": "dois ramos de borda da aba Predicao: nomes de amostra de tamanho diferente do resultado (linha 228) e legenda 'sem faixa de decisao' quando ha mais quantificadas que faixas (linha 440); sao AppTest baratos, ficam para a v1.1"
+  },
+  {
+   "arquivo": "catalogo.py",
+   "funcao": "",
+   "categoria": "A (testavel, nao escrito)",
+   "motivo": "dois ramos do texto de limites de `confianca` (opcao sem 'nao use' / selo sem nota, linhas 256 e 258); a saida e' texto e o conteudo e' conferido por outro teste; ficam para a v1.1"
+  },
+  {
+   "arquivo": "reports.py",
+   "funcao": "",
+   "categoria": "A (testavel, nao escrito)",
+   "motivo": "dois ramos da planilha Benchmark do Excel em que so' um dos CSVs (benchmark ou Monte Carlo) existe (linhas 613 e 625); ficam para a v1.1"
+  }
+ ]
+}

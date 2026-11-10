@@ -1,0 +1,68 @@
+{
+ "modulo": "src/guaraci/chemometric_stats.py",
+ "total": 4,
+ "mortos_no_total": 4,
+ "contagem": {
+  "morto": 4
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_lacunas_estatistica_nucleo.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 1091,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_diagnostico_de_faixa_as_bordas_da_media_movel_repetem_o_valor_interno_mais_proximo",
+   "trecho": "snr[-borda:] = snr[-borda - 1]",
+   "segundos": 3.2,
+   "no": 2009,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1091,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_diagnostico_de_faixa_as_bordas_da_media_movel_repetem_o_valor_interno_mais_proximo",
+   "trecho": "snr[-borda:] = snr[-borda - 1]",
+   "segundos": 3.2,
+   "no": 3246,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1091,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_diagnostico_de_faixa_as_bordas_da_media_movel_repetem_o_valor_interno_mais_proximo",
+   "trecho": "snr[-borda:] = snr[-borda - 1]",
+   "segundos": 3.3,
+   "no": 3242,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1091,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_diagnostico_de_faixa_as_bordas_da_media_movel_repetem_o_valor_interno_mais_proximo",
+   "trecho": "snr[-borda:] = snr[-borda - 1]",
+   "segundos": 3.1,
+   "no": 3244,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

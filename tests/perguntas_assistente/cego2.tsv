@@ -1,0 +1,35 @@
+pergunta	lang	esperado
+o modelo acerta 100% mas só tenho 9 amostras, desconfio	PT	duvida:acuracia_perfeita
+quando devo preferir PLS-DA em vez de DD-SIMCA?	PT	duvida:plsda_vs_simca
+meus espectros puros estão sendo rejeitados pela própria classe	PT	duvida:ddsimca_rejeita_puros
+como identificar espectros anômalos antes de modelar?	PT	duvida:outliers
+as amostras de dias diferentes se separam no PCA	PT	duvida:efeito_lote
+tenho muito mais amostras de uma classe do que da outra	PT	duvida:desbalanceamento
+posso usar a calibração do equipamento antigo no novo?	PT	duvida:transferencia_calibracao
+o RMSEP do holdout está bem maior que o da validação	PT	duvida:erro_previsao_alto
+qual tamanho de janela do Savitzky-Golay devo escolher?	PT	duvida:janela_sg
+o programa não consegue ler a minha pasta de espectros	PT	duvida:arquivo_nao_abre
+o que devo conferir antes de submeter o artigo?	PT	duvida:pronto_para_publicar
+qual faixa de número de onda devo cortar?	PT	duvida:escolha_faixa
+vale a pena selecionar variáveis antes de ajustar o PLS?	PT	duvida:selecao_variaveis
+quantas variáveis latentes são demais?	PT	duvida:numero_lv
+tem como saber se o pré-processamento ajudou?	PT	duvida:escolha_preproc
+meu T2 de Hotelling passou do limite em várias amostras	PT	duvida:t2_q_altos
+o sentinela disparou alarme de deriva	PT	duvida:deriva_sentinela
+os dados são não normais, uso ANOVA mesmo assim?	PT	duvida:shapiro_rejeitou|duvida:quando_kruskal|duvida:anova_vs_tukey
+tenho valores abaixo do limite de quantificação no ICP	PT	duvida:censura_icp
+how many latent variables should I keep?	EN	duvida:numero_lv
+my model says 100% accuracy with very few samples	EN	duvida:acuracia_perfeita
+samples measured on different days cluster apart	EN	duvida:efeito_lote
+the program cannot open my spectra folder	EN	duvida:arquivo_nao_abre
+my replicates ended up in both training and test sets	EN	duvida:replicas_vazamento
+how do I cite this software in a paper?	EN	duvida:citar_guaraci
+should I use PLS-DA or DD-SIMCA?	EN	duvida:plsda_vs_simca
+meu Q2 é ótimo, 0.95, mas e o resto?	PT	nao_sei|termo:q2
+qual a melhor receita de bolo de cenoura?	PT	nao_sei
+como instalar o Windows 11?	PT	nao_sei
+who won the football world cup in 2014?	EN	nao_sei
+preciso de um modelo de deep learning para espectros	PT	nao_sei
+o Guaraci usa inteligência artificial para responder?	PT	nao_sei
+qual a cotação do dólar hoje?	PT	nao_sei
+meu desbalanceamento não é problema, tenho 30 e 28	PT	nao_sei|duvida:desbalanceamento

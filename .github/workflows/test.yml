@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+# Escopo minimo explicito: sem isto o workflow herda o padrao do
+# repositorio, que pode conceder write ao GITHUB_TOKEN sem necessidade.
+permissions:
+  contents: read
+
+jobs:
+  # ── Lint estático (rápido, falha cedo antes de rodar a suíte pesada) ───────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install "ruff==0.16.5"
+
+      - name: Ruff (lint)
+        run: ruff check --output-format=github .
+
+  # ── Type-check de 100% do pacote (2026-09-19) ─────────────────────────────
+  # Antes (ate' 2026-09-18) o gate cobria so' ~57 modulos "puros" listados a
+  # mao -- guaraci.py, pipeline.py, reports.py, hardware.py, app_tabs/* e
+  # app_quimiometria.py ficavam de fora, e 50 erros reais (inclusive uma
+  # assinatura de retorno errada e uma chave `rcParams` inexistente que
+  # silenciava uma preferencia do usuario) nunca foram vistos. Agora o gate
+  # e' o pacote inteiro: novo modulo entra sozinho, sem lista para lembrar.
+  # Instala os extras que os modulos de UI/relatorio importam (streamlit,
+  # python-docx etc.) para o mypy ver os tipos reais, nao Any.
+  # `check_untyped_defs = true` (pyproject.toml, Passo 220): funcoes sem
+  # anotacao tambem tem o corpo verificado.
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.11"
+
+      - name: Install mypy + pacote com extras de UI/relatorio
+        run: pip install "mypy==2.3.1" "numpy==2.4.6" -e ".[web,reports]"
+
+      - name: Mypy (pacote inteiro)
+        run: mypy src/guaraci/ app_quimiometria.py
+
+  # ── Varredura de seguranca estatica (bandit) ──────────────────────────────
+  # Severidade media+ sobre src/. Achados intencionais levam `# nosec <ID>` com
+  # justificativa na linha de cima (ver guaraci.py:_cls).
+  seguranca:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.11"
+
+      - name: Bandit (media+ severidade)
+        run: |
+          pip install "bandit==1.9.4"
+          bandit -r src -ll -q
+
+      # Pickle so' em predicao.load_model (manifesto assinado, fail-closed).
+      # Equivalente ao teste tests/test_pickle_so_em_load_model.py, mas pega
+      # tambem o que nao e' Python de producao que o teste varre.
+      - name: Semgrep (pickle fora de load_model)
+        run: |
+          pip install "semgrep==1.180.0"
+          semgrep --config .semgrep/pickle.yml --error --metrics=off src app_quimiometria.py scripts
+
+  # ── Dependencias vulneraveis: pisos declarados E lock ─────────────────────
+  # Audita os PISOS de versao (o menor que o pyproject admite), nao so' o
+  # lock: um usuario que instala com o piso nao pode receber CVE conhecido.
+  dependencias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.11"
+      - name: pip-audit nos pisos declarados
+        run: |
+          pip install "pip-audit==2.10.1"
+          python scripts/pisos_de_versao.py > /tmp/requirements-pisos.txt
+          pip-audit -r /tmp/requirements-pisos.txt --no-deps --disable-pip
+      - name: pip-audit no lock
+        run: pip-audit -r requirements-lock.txt --no-deps --disable-pip
+
+  # ── Testes + cobertura ────────────────────────────────────────────────────
+  # Matriz cruzada: o produto é Windows-first (código de encoding/console
+  # específico de win32 em guaraci.py/cli_assistente.py), então validamos em
+  # windows-latest além de ubuntu e macos, nas pontas da faixa suportada
+  # (3.11–3.13, requires-python em pyproject.toml).
+  #
+  # REDUZIDA em PR (2026-08-07, cota de minutos do Actions esgotada numa
+  # conta privada): o multiplicador de minutos do GitHub é 1x Linux / 2x
+  # Windows / 10x macOS — a matriz cheia (8 combinações, incl. 2 macOS)
+  # custava caro demais para rodar em CADA push de uma PR em iteração. Em
+  # `pull_request`, roda só 3 combinações (Ubuntu 3.11/3.13 nas pontas da
+  # faixa suportada + 1 Windows, sem macOS — ainda pega regressão de
+  # encoding/console win32, só não a cada iteração). A matriz CHEIA (8
+  # combinações, macOS incluso) só roda em `push` para master/main — ou
+  # seja, uma vez por merge, não uma vez por commit de PR. Se a cota
+  # voltar a sobrar, reverter é so' trocar `matrix.include` de volta pela
+  # combinação de `os`+`python-version` (ver historico do arquivo).
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ github.event_name == 'pull_request' && fromJSON('[{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.12"}]') || fromJSON('[{"os":"ubuntu-latest","python-version":"3.11"},{"os":"ubuntu-latest","python-version":"3.12"},{"os":"ubuntu-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.11"},{"os":"windows-latest","python-version":"3.12"},{"os":"windows-latest","python-version":"3.13"},{"os":"macos-latest","python-version":"3.11"},{"os":"macos-latest","python-version":"3.13"}]') }}
+
+    defaults:
+      run:
+        shell: bash   # Git Bash no Windows: mesma sintaxe de comando nos 2 SOs
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # xgboost (extra [benchmark]) linka contra libomp em runtime no macOS;
+      # macos-latest nao vem com o Homebrew OpenMP pre-instalado (ao contrario
+      # de ubuntu/windows, onde o wheel do xgboost ja embute o equivalente).
+      # Sem isso, todo teste que importa xgboost falha com dlopen "Library
+      # not loaded: @rpath/libomp.dylib" -- nao e' um bug do guaraci.
+      - name: Install libomp (macOS only, required by xgboost)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
+      - name: Cache pip
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pytest==9.1.1" "pytest-cov==7.1.0" "pytest-xdist==3.8.0"
+          pip install -e .[dev,imagem]   # valida o empacotamento (src/guaraci, entry point `guaraci`); [imagem] traz scikit-image (+ tifffile), unico extra fora do requirements.txt
+
+      - name: Run tests with coverage
+        # Suíte completa (inclui o end-to-end 'slow'): valida a integração dos
+        # módulos extraídos e dá cobertura real do caminho de execução, não só
+        # das funções puras.
+        # --cov-fail-under=75 é um PISO-CATRACA anti-regressão. O total local
+        # (--cov=src/guaraci, so' o pacote; com --cov=. os testes entravam na conta e o piso era inerte -- m-17 do parecer de 2026-09-25) esta' em ~83% após a extração de lógica pura das UIs e do
+        # núcleo (app_logic, cli_logic, resumo_parse, config_io, resultados_io);
+        # 60 deixa ~8 pts de margem p/ diferenças de plataforma/versão. Suba o
+        # número conforme cobrir mais UI/orquestrador.
+        run: pytest tests/ --cov=src/guaraci --cov-report=term-missing --cov-report=xml --cov-fail-under=75
+
+      # O piso de 75% acima é sobre o TOTAL do projeto — sozinho, ele deixaria
+      # o núcleo científico despencar de 97% para ~70% sem falhar nada, desde
+      # que a UI compensasse. Este passo é a trava que o CLAUDE.md (P4) afirma
+      # existir: os 4 módulos que produzem número publicável não podem cair
+      # abaixo de 95%. Usa os dados de cobertura já coletados no passo anterior.
+      - name: "Gate de cobertura do núcleo científico (>= 95%)"
+        run: |
+          coverage report \
+            --include="*/guaraci/chemometric_stats.py,*/guaraci/classificadores.py,*/guaraci/preprocessamento.py,*/guaraci/validacao_estatistica.py" \
+            --fail-under=95
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: coverage-xml-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
+
+  # A CI nao baixa dado de terceiros; o produto e a CI usam so' dado sintetico.
+
+  # ── Imagem Docker: constroi de verdade e sobe em MODO SERVIDOR ─────────────
+  # (parecer 2026-09-25, M-12b: o Dockerfile nunca tinha sido construido; o
+  # `spcfile` por git exigia `git` que a imagem slim nao tem.)
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: Build
+        run: docker build -t guaraci-ci .
+      - name: Sobe e confere saude + modo servidor
+        run: |
+          docker run -d --name guaraci_ci -p 8501:8501 guaraci-ci
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:8501/_stcore/health && break; sleep 3
+          done
+          curl -sf http://localhost:8501/_stcore/health
+          docker exec guaraci_ci python -c "from guaraci import web_seguranca as w; assert w.modo_servidor() and not w.pickle_permitido()"
+          docker exec guaraci_ci id -u | grep -v '^0$'

@@ -1,0 +1,6710 @@
+{
+ "modulo": "src/guaraci/anova_grupos.py",
+ "total": 500,
+ "mortos_no_total": 486,
+ "contagem": {
+  "morto": 486,
+  "sobrevivente": 14
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_anova_mutacao.py",
+  "tests/test_anova_grupos.py",
+  "tests/test_anova_nao_parametrico.py",
+  "tests/test_anova_vip_lacunas.py",
+  "tests/test_anova_blindagem.py",
+  "tests/test_anova_cli_e2e.py",
+  "tests/test_anova_cli.py",
+  "tests/test_anova_bloco_aditivo_exato.py"
+ ],
+ "deselecionados": [
+  "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_tukey_hsd_do_scipy",
+  "tests/test_anova_cli.py::test_pseudo_replicacao_infla_a_significancia_se_a_unidade_for_a_linha"
+ ],
+ "sobreviventes": [
+  {
+   "linha": 164,
+   "operador": "const 256",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "@lru_cache(maxsize=256)",
+   "segundos": 109.5,
+   "no": 1164,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "const 10",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "crit = _q_critico(k, round(float(gl[idx]), 10), 1 - alpha)",
+   "segundos": 66.7,
+   "no": 3620,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 201,
+   "operador": "const 1.0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "\"p_ajustado\": float(min(1.0, p[idx]))})",
+   "segundos": 72.0,
+   "no": 5583,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 275,
+   "operador": "Eq->NotEq",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "cols += [(b == bl).astype(float) for bl in blocos[1:]]",
+   "segundos": 70.1,
+   "no": 5661,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 106.5,
+   "no": 1438,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 115.2,
+   "no": 2625,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 66.3,
+   "no": 3922,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 317,
+   "operador": "const 1.0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "\"p_ajustado\": min(1.0, p_ij)})",
+   "segundos": 69.7,
+   "no": 5738,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 111.8,
+   "no": 1555,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Sub->Add",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 108.7,
+   "no": 2774,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "const 0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 111.1,
+   "no": 2776,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 385,
+   "operador": "Lt->LtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "variancias_iguais = {\"auto\": not (levene_p < alpha), \"iguais\": True, \"desiguais\": False}[variancias]",
+   "segundos": 65.2,
+   "no": 4064,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 399,
+   "operador": "Lt->LtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if shapiro_p < alpha:",
+   "segundos": 112.0,
+   "no": 1618,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 651,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "or [np.zeros(1)])",
+   "segundos": 67.9,
+   "no": 5466,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ],
+ "todos": [
+  {
+   "linha": 62,
+   "operador": "const 6",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "N_MINIMO_PODER = 6",
+   "segundos": 9.2,
+   "no": 57,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 68,
+   "operador": "const 4.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "RAZAO_VARIANCIA_LIMITE = 4.0",
+   "segundos": 10.6,
+   "no": 59,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 69,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "ASSIMETRIA_LIMITE = 1.0",
+   "segundos": 10.6,
+   "no": 61,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 70,
+   "operador": "const 3.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "CURTOSE_LIMITE = 3.0",
+   "segundos": 10.5,
+   "no": 63,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 128,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_sem_unidade_recusa_com_mensagem_acionavel",
+   "trecho": "return ValueError(",
+   "segundos": 19.3,
+   "no": 95,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if not (len(y) == len(g) == len(u)):",
+   "segundos": 8.7,
+   "no": 1117,
+   "variante": [
+    1,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if not (len(y) == len(g) == len(u)):",
+   "segundos": 8.9,
+   "no": 1117,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if not (len(y) == len(g) == len(u)):",
+   "segundos": 10.3,
+   "no": 102,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if not (len(y) == len(g) == len(u)):",
+   "segundos": 8.4,
+   "no": 453,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 145,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_tamanhos_diferentes_sao_erro",
+   "trecho": "raise ValueError(\"resposta, grupo e unidade precisam ter o mesmo tamanho\")",
+   "segundos": 33.7,
+   "no": 454,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 151,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "m = u == uid",
+   "segundos": 8.5,
+   "no": 1145,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 153,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(grupos_da_unidade) > 1:",
+   "segundos": 8.4,
+   "no": 1148,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 153,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "if len(grupos_da_unidade) > 1:",
+   "segundos": 14.8,
+   "no": 1148,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 153,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "if len(grupos_da_unidade) > 1:",
+   "segundos": 15.0,
+   "no": 2235,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 153,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(grupos_da_unidade) > 1:",
+   "segundos": 8.4,
+   "no": 467,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 154,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "raise ValueError(",
+   "segundos": 14.7,
+   "no": 1149,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 161,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return np.asarray(ys), np.asarray(gs, dtype=object), np.asarray(us, dtype=object), n_nan",
+   "segundos": 10.1,
+   "no": 108,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 164,
+   "operador": "const 256",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "@lru_cache(maxsize=256)",
+   "segundos": 109.5,
+   "no": 1164,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 168,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return float(stats.studentized_range.ppf(confianca, k, gl))",
+   "segundos": 8.4,
+   "no": 112,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 181,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "v = np.array([a.var(ddof=1) for a in amostras])",
+   "segundos": 11.3,
+   "no": 4726,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "gl_dentro = float(n.sum() - k)",
+   "segundos": 18.1,
+   "no": 1184,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 183,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "msw = float(((n - 1) * v).sum() / gl_dentro)",
+   "segundos": 18.0,
+   "no": 1187,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 183,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "msw = float(((n - 1) * v).sum() / gl_dentro)",
+   "segundos": 11.6,
+   "no": 4731,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 183,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "msw = float(((n - 1) * v).sum() / gl_dentro)",
+   "segundos": 11.5,
+   "no": 5527,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 183,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "msw = float(((n - 1) * v).sum() / gl_dentro)",
+   "segundos": 11.5,
+   "no": 6020,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 184,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "pares = [(i, j) for i in range(k) for j in range(i + 1, k)]",
+   "segundos": 14.2,
+   "no": 3582,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 184,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "pares = [(i, j) for i in range(k) for j in range(i + 1, k)]",
+   "segundos": 10.7,
+   "no": 4738,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 185,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "dif = np.array([m[i] - m[j] for i, j in pares])",
+   "segundos": 18.4,
+   "no": 2300,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 186,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "if variancias_iguais:",
+   "segundos": 18.4,
+   "no": 125,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.4,
+   "no": 5541,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.5,
+   "no": 5539,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.6,
+   "no": 6026,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.5,
+   "no": 6028,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.5,
+   "no": 4752,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.4,
+   "no": 6270,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.7,
+   "no": 6273,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "se = np.array([np.sqrt(msw / 2 * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 11.7,
+   "no": 6025,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 190,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "vi = v / n",
+   "segundos": 49.9,
+   "no": 1201,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 191,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "se = np.array([np.sqrt((vi[i] + vi[j]) / 2) for i, j in pares])",
+   "segundos": 13.5,
+   "no": 5548,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 191,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "se = np.array([np.sqrt((vi[i] + vi[j]) / 2) for i, j in pares])",
+   "segundos": 28.7,
+   "no": 4760,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 191,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "se = np.array([np.sqrt((vi[i] + vi[j]) / 2) for i, j in pares])",
+   "segundos": 30.5,
+   "no": 5550,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 12.8,
+   "no": 4766,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 36.8,
+   "no": 5555,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 45.6,
+   "no": 3607,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 41.4,
+   "no": 5558,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 58.1,
+   "no": 5560,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 29.4,
+   "no": 4764,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 87.6,
+   "no": 6043,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 122.9,
+   "no": 6040,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 30.7,
+   "no": 6042,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 29.7,
+   "no": 6045,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 13.5,
+   "no": 6293,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 13.4,
+   "no": 6299,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 89.3,
+   "no": 5557,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_scipy_em_casos_fixos[False]",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 31.8,
+   "no": 6290,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "gl = np.array([(vi[i] + vi[j]) ** 2 / (vi[i] ** 2 / (n[i] - 1) + vi[j] ** 2 / (n[j] - 1))",
+   "segundos": 233.1,
+   "no": 6296,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 194,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "q = np.abs(dif) / se       # se > 0: variancia dentro > 0 (recusada antes) e grupos sem variancia vao p/ a classica",
+   "segundos": 17.9,
+   "no": 509,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "crit = _q_critico(k, round(float(gl[idx]), 10), 1 - alpha)",
+   "segundos": 16.8,
+   "no": 2337,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "crit = _q_critico(k, round(float(gl[idx]), 10), 1 - alpha)",
+   "segundos": 10.7,
+   "no": 3621,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "const 10",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "crit = _q_critico(k, round(float(gl[idx]), 10), 1 - alpha)",
+   "segundos": 66.7,
+   "no": 3620,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "\"ic95\": (float(dif[idx] - crit * se[idx]), float(dif[idx] + crit * se[idx])),",
+   "segundos": 11.5,
+   "no": 5580,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "\"ic95\": (float(dif[idx] - crit * se[idx]), float(dif[idx] + crit * se[idx])),",
+   "segundos": 11.4,
+   "no": 6055,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "\"ic95\": (float(dif[idx] - crit * se[idx]), float(dif[idx] + crit * se[idx])),",
+   "segundos": 11.6,
+   "no": 6059,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "\"ic95\": (float(dif[idx] - crit * se[idx]), float(dif[idx] + crit * se[idx])),",
+   "segundos": 11.2,
+   "no": 5578,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 201,
+   "operador": "const 1.0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "\"p_ajustado\": float(min(1.0, p[idx]))})",
+   "segundos": 72.0,
+   "no": 5583,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 202,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "return out",
+   "segundos": 17.5,
+   "no": 130,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 209,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_entre = float(sum(len(a) * (a.mean() - media) ** 2 for a in amostras))",
+   "segundos": 5.7,
+   "no": 3648,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 209,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_entre = float(sum(len(a) * (a.mean() - media) ** 2 for a in amostras))",
+   "segundos": 5.8,
+   "no": 4792,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 209,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_entre = float(sum(len(a) * (a.mean() - media) ** 2 for a in amostras))",
+   "segundos": 5.7,
+   "no": 5587,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 209,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_entre = float(sum(len(a) * (a.mean() - media) ** 2 for a in amostras))",
+   "segundos": 5.8,
+   "no": 5589,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 210,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_dentro = float(sum(((a - a.mean()) ** 2).sum() for a in amostras))",
+   "segundos": 5.8,
+   "no": 5592,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 210,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_dentro = float(sum(((a - a.mean()) ** 2).sum() for a in amostras))",
+   "segundos": 5.8,
+   "no": 6069,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 210,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "sq_dentro = float(sum(((a - a.mean()) ** 2).sum() for a in amostras))",
+   "segundos": 5.8,
+   "no": 6071,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 211,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "gl_e, gl_d = k - 1, n - k",
+   "segundos": 9.1,
+   "no": 1251,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 211,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "gl_e, gl_d = k - 1, n - k",
+   "segundos": 9.3,
+   "no": 1252,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 211,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "gl_e, gl_d = k - 1, n - k",
+   "segundos": 8.5,
+   "no": 2368,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 212,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "qm_e, qm_d = sq_entre / gl_e, sq_dentro / gl_d",
+   "segundos": 9.5,
+   "no": 1258,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 212,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_independente_anova_feita_a_mao",
+   "trecho": "qm_e, qm_d = sq_entre / gl_e, sq_dentro / gl_d",
+   "segundos": 18.0,
+   "no": 1257,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 213,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_independente_anova_feita_a_mao",
+   "trecho": "F = qm_e / qm_d            # qm_d > 0: variancia dentro zero e' recusada em anova_uma_via",
+   "segundos": 17.7,
+   "no": 538,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 215,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return {",
+   "segundos": 8.8,
+   "no": 142,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 218,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "\"total\": {\"SQ\": sq_entre + sq_dentro, \"gl\": n - 1},",
+   "segundos": 9.1,
+   "no": 2405,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 218,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "\"total\": {\"SQ\": sq_entre + sq_dentro, \"gl\": n - 1},",
+   "segundos": 9.0,
+   "no": 2406,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 218,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "\"total\": {\"SQ\": sq_entre + sq_dentro, \"gl\": n - 1},",
+   "segundos": 5.8,
+   "no": 3678,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 227,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "v = np.array([a.var(ddof=1) for a in amostras])",
+   "segundos": 13.5,
+   "no": 4816,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 228,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "w = n / v",
+   "segundos": 28.8,
+   "no": 556,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 229,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "mw = (w * m).sum() / w.sum()",
+   "segundos": 30.9,
+   "no": 558,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 229,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "mw = (w * m).sum() / w.sum()",
+   "segundos": 20.1,
+   "no": 3701,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 34.5,
+   "no": 560,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 18.8,
+   "no": 3705,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 20.3,
+   "no": 4825,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 34.0,
+   "no": 1302,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 18.0,
+   "no": 5602,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 31.3,
+   "no": 2436,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 230,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "a = (w * (m - mw) ** 2).sum() / (k - 1)",
+   "segundos": 20.5,
+   "no": 5604,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 30.4,
+   "no": 2437,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 22.1,
+   "no": 5607,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 20.6,
+   "no": 3708,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 21.4,
+   "no": 3710,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 20.3,
+   "no": 4826,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 13.5,
+   "no": 4831,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 23.0,
+   "no": 5605,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "lam = ((1 - w / w.sum()) ** 2 / (n - 1)).sum()",
+   "segundos": 21.4,
+   "no": 4828,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 32.8,
+   "no": 564,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 31.9,
+   "no": 2439,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 33.2,
+   "no": 1308,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 6.7,
+   "no": 3711,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 22.4,
+   "no": 4835,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 23.2,
+   "no": 3713,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 20.2,
+   "no": 4834,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 31.7,
+   "no": 1306,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 21.7,
+   "no": 4837,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 21.8,
+   "no": 4832,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 23.7,
+   "no": 5611,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 232,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "b = 1 + 2 * (k - 2) / (k ** 2 - 1) * lam",
+   "segundos": 23.9,
+   "no": 5614,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 233,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "F = a / b",
+   "segundos": 35.6,
+   "no": 566,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 32.8,
+   "no": 568,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 33.8,
+   "no": 1316,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_k_grupos_confere_com_a_formula_de_welch[3]",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 35.7,
+   "no": 2444,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 33.2,
+   "no": 1314,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 33.7,
+   "no": 2446,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 18.8,
+   "no": 3717,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 234,
+   "operador": "const 3",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "gl2 = (k ** 2 - 1) / (3 * lam)",
+   "segundos": 31.7,
+   "no": 2447,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 235,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "return float(F), float(k - 1), float(gl2), float(stats.f.sf(F, k - 1, gl2))",
+   "segundos": 34.3,
+   "no": 2453,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 235,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "return float(F), float(k - 1), float(gl2), float(stats.f.sf(F, k - 1, gl2))",
+   "segundos": 19.4,
+   "no": 3730,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 235,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_welch_com_2_grupos_e_o_t_de_welch_ao_quadrado",
+   "trecho": "return float(F), float(k - 1), float(gl2), float(stats.f.sf(F, k - 1, gl2))",
+   "segundos": 19.9,
+   "no": 3724,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 235,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "return float(F), float(k - 1), float(gl2), float(stats.f.sf(F, k - 1, gl2))",
+   "segundos": 14.0,
+   "no": 4845,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 235,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "return float(F), float(k - 1), float(gl2), float(stats.f.sf(F, k - 1, gl2))",
+   "segundos": 10.8,
+   "no": 157,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 241,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "eta2 = t[\"entre\"][\"SQ\"] / sst      # sst >= SQ dentro > 0",
+   "segundos": 9.3,
+   "no": 577,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 242,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "omega2 = (t[\"entre\"][\"SQ\"] - t[\"entre\"][\"gl\"] * t[\"dentro\"][\"QM\"]) / (sst + t[\"dentro\"][\"QM\"])",
+   "segundos": 9.3,
+   "no": 1337,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 242,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "omega2 = (t[\"entre\"][\"SQ\"] - t[\"entre\"][\"gl\"] * t[\"dentro\"][\"QM\"]) / (sst + t[\"dentro\"][\"QM\"])",
+   "segundos": 9.2,
+   "no": 579,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 242,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "omega2 = (t[\"entre\"][\"SQ\"] - t[\"entre\"][\"gl\"] * t[\"dentro\"][\"QM\"]) / (sst + t[\"dentro\"][\"QM\"])",
+   "segundos": 9.4,
+   "no": 2472,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 242,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "omega2 = (t[\"entre\"][\"SQ\"] - t[\"entre\"][\"gl\"] * t[\"dentro\"][\"QM\"]) / (sst + t[\"dentro\"][\"QM\"])",
+   "segundos": 9.4,
+   "no": 1335,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 243,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return float(eta2), float(omega2)",
+   "segundos": 8.8,
+   "no": 164,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 251,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "re = [a[rng.integers(0, len(a), len(a))] for a in amostras]",
+   "segundos": 5.9,
+   "no": 4865,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 252,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((x - x.mean()) ** 2).sum() for x in re) == 0:",
+   "segundos": 9.3,
+   "no": 1358,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 252,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((x - x.mean()) ** 2).sum() for x in re) == 0:",
+   "segundos": 6.0,
+   "no": 6088,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 252,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((x - x.mean()) ** 2).sum() for x in re) == 0:",
+   "segundos": 6.1,
+   "no": 6323,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 252,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((x - x.mean()) ** 2).sum() for x in re) == 0:",
+   "segundos": 9.3,
+   "no": 2499,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 252,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((x - x.mean()) ** 2).sum() for x in re) == 0:",
+   "segundos": 5.9,
+   "no": 6325,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 252,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((x - x.mean()) ** 2).sum() for x in re) == 0:",
+   "segundos": 9.2,
+   "no": 593,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 253,
+   "operador": "Continue->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "continue",
+   "segundos": 9.4,
+   "no": 1359,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 257,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if not e:",
+   "segundos": 8.6,
+   "no": 171,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 257,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if not e:",
+   "segundos": 8.8,
+   "no": 597,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 258,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return (float(\"nan\"), float(\"nan\")), (float(\"nan\"), float(\"nan\"))",
+   "segundos": 8.6,
+   "no": 598,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 259,
+   "operador": "const 2.5",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos1]",
+   "trecho": "return (tuple(float(x) for x in np.percentile(e, [2.5, 97.5])),",
+   "segundos": 6.3,
+   "no": 6095,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 259,
+   "operador": "const 97.5",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos1]",
+   "trecho": "return (tuple(float(x) for x in np.percentile(e, [2.5, 97.5])),",
+   "segundos": 6.3,
+   "no": 6096,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 259,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "return (tuple(float(x) for x in np.percentile(e, [2.5, 97.5])),",
+   "segundos": 9.0,
+   "no": 172,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 260,
+   "operador": "const 2.5",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos1]",
+   "trecho": "tuple(float(x) for x in np.percentile(o, [2.5, 97.5])))",
+   "segundos": 6.1,
+   "no": 6101,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 260,
+   "operador": "const 97.5",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos1]",
+   "trecho": "tuple(float(x) for x in np.percentile(o, [2.5, 97.5])))",
+   "segundos": 6.2,
+   "no": 6102,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 272,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if com_fator:",
+   "segundos": 12.6,
+   "no": 611,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 273,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "cols += [(g == n).astype(float) for n in nomes[1:]]",
+   "segundos": 12.9,
+   "no": 1383,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 273,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "cols += [(g == n).astype(float) for n in nomes[1:]]",
+   "segundos": 11.3,
+   "no": 5654,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 273,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "cols += [(g == n).astype(float) for n in nomes[1:]]",
+   "segundos": 8.4,
+   "no": 6108,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 274,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if com_bloco:",
+   "segundos": 12.9,
+   "no": 612,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 275,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "cols += [(b == bl).astype(float) for bl in blocos[1:]]",
+   "segundos": 12.9,
+   "no": 1385,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 275,
+   "operador": "Eq->NotEq",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "cols += [(b == bl).astype(float) for bl in blocos[1:]]",
+   "segundos": 70.1,
+   "no": 5661,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 275,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "cols += [(b == bl).astype(float) for bl in blocos[1:]]",
+   "segundos": 8.4,
+   "no": 6113,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 276,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "return np.column_stack(cols)",
+   "segundos": 13.1,
+   "no": 613,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 279,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "r = y - X @ beta",
+   "segundos": 14.4,
+   "no": 1393,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 280,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "return float(r @ r), beta, np.linalg.matrix_rank(X)",
+   "segundos": 12.9,
+   "no": 618,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 281,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "sq_full, beta, rank_full = sq_res(matriz(True, True))",
+   "segundos": 13.1,
+   "no": 2566,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 281,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "sq_full, beta, rank_full = sq_res(matriz(True, True))",
+   "segundos": 12.8,
+   "no": 2567,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 282,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "sq_sem_fator, _, rank_b = sq_res(matriz(False, True))",
+   "segundos": 13.3,
+   "no": 2573,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 282,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "sq_sem_fator, _, rank_b = sq_res(matriz(False, True))",
+   "segundos": 13.2,
+   "no": 2574,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 283,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "sq_sem_bloco, _, rank_f = sq_res(matriz(True, False))",
+   "segundos": 13.6,
+   "no": 2581,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 283,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "sq_sem_bloco, _, rank_f = sq_res(matriz(True, False))",
+   "segundos": 13.2,
+   "no": 2580,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 284,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "gl_res = len(y) - rank_full",
+   "segundos": 12.8,
+   "no": 626,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 285,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "gl_f, gl_b = rank_full - rank_b, rank_full - rank_f",
+   "segundos": 13.1,
+   "no": 1420,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 285,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "gl_f, gl_b = rank_full - rank_b, rank_full - rank_f",
+   "segundos": 13.2,
+   "no": 1421,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_com_zero_gl_residual_mas_fator_estimavel_e_erro",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 34.6,
+   "no": 629,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 12.9,
+   "no": 1424,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 12.8,
+   "no": 1425,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_com_zero_gl_residual_mas_fator_estimavel_e_erro",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 33.8,
+   "no": 1424,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_confundido_com_o_grupo_e_erro_mesmo_com_gl_residual",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 38.8,
+   "no": 1425,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 13.3,
+   "no": 2595,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 13.5,
+   "no": 2598,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 286,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if gl_res <= 0 or gl_f <= 0:",
+   "segundos": 13.0,
+   "no": 184,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_sem_graus_de_liberdade_residuais_e_erro",
+   "trecho": "raise ValueError(\"delineamento com bloco sem graus de liberdade residuais \"",
+   "segundos": 36.7,
+   "no": 630,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 289,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "qm_res = sq_full / gl_res",
+   "segundos": 13.7,
+   "no": 632,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 290,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "sq_f, sq_b = sq_sem_fator - sq_full, sq_sem_bloco - sq_full",
+   "segundos": 16.8,
+   "no": 1434,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 290,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "sq_f, sq_b = sq_sem_fator - sq_full, sq_sem_bloco - sq_full",
+   "segundos": 16.9,
+   "no": 1435,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 17.3,
+   "no": 1439,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 17.1,
+   "no": 2614,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 106.5,
+   "no": 1438,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 16.9,
+   "no": 1438,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 17.1,
+   "no": 2613,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 291,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "F = (sq_f / gl_f) / qm_res if qm_res > 0 else float(\"inf\")",
+   "segundos": 16.5,
+   "no": 636,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 292,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_bloco_aditivo_exato.py::test_residuo_exatamente_zero_da_F_infinito_p_zero_e_comparacao_sem_erro_padrao",
+   "trecho": "p = float(stats.f.sf(F, gl_f, gl_res)) if np.isfinite(F) else 0.0",
+   "segundos": 106.0,
+   "no": 1444,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 292,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "p = float(stats.f.sf(F, gl_f, gl_res)) if np.isfinite(F) else 0.0",
+   "segundos": 16.9,
+   "no": 638,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_bloco_aditivo_exato.py::test_residuo_exatamente_zero_da_F_infinito_p_zero_e_comparacao_sem_erro_padrao",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 108.4,
+   "no": 1446,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 13.5,
+   "no": 1447,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 13.3,
+   "no": 2626,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_bloco_aditivo_exato.py::test_residuo_exatamente_zero_da_F_infinito_p_zero_e_comparacao_sem_erro_padrao",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 111.7,
+   "no": 2624,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 115.2,
+   "no": 2625,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 13.3,
+   "no": 2624,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 13.3,
+   "no": 2625,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 10.7,
+   "no": 3856,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_f_do_bloco_com_qm_pequeno_e_dois_blocos",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 22.9,
+   "no": 3859,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 293,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "Fb = (sq_b / gl_b) / qm_res if (qm_res > 0 and gl_b > 0) else float(\"nan\")",
+   "segundos": 13.1,
+   "no": 640,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 295,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_tabela_completa_e_ic_das_comparacoes",
+   "trecho": "\"entre\": {\"SQ\": sq_f, \"gl\": gl_f, \"QM\": sq_f / gl_f, \"F\": F, \"p\": p},",
+   "segundos": 39.7,
+   "no": 2638,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "\"bloco\": {\"SQ\": sq_b, \"gl\": gl_b, \"QM\": sq_b / gl_b if gl_b else float(\"nan\"),",
+   "segundos": 8.6,
+   "no": 3875,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "\"bloco\": {\"SQ\": sq_b, \"gl\": gl_b, \"QM\": sq_b / gl_b if gl_b else float(\"nan\"),",
+   "segundos": 13.4,
+   "no": 2648,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 297,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "\"F\": Fb, \"p\": float(stats.f.sf(Fb, gl_b, gl_res)) if np.isfinite(Fb) else float(\"nan\")},",
+   "segundos": 17.0,
+   "no": 2650,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 299,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_tabela_completa_e_ic_das_comparacoes",
+   "trecho": "\"total\": {\"SQ\": float(((y - y.mean()) ** 2).sum()), \"gl\": len(y) - 1},",
+   "segundos": 21.3,
+   "no": 5687,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 299,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_tabela_completa_e_ic_das_comparacoes",
+   "trecho": "\"total\": {\"SQ\": float(((y - y.mean()) ** 2).sum()), \"gl\": len(y) - 1},",
+   "segundos": 33.2,
+   "no": 2660,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 299,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_tabela_completa_e_ic_das_comparacoes",
+   "trecho": "\"total\": {\"SQ\": float(((y - y.mean()) ** 2).sum()), \"gl\": len(y) - 1},",
+   "segundos": 21.5,
+   "no": 6122,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 299,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_tabela_completa_e_ic_das_comparacoes",
+   "trecho": "\"total\": {\"SQ\": float(((y - y.mean()) ** 2).sum()), \"gl\": len(y) - 1},",
+   "segundos": 21.8,
+   "no": 3888,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 299,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_bloco_tabela_completa_e_ic_das_comparacoes",
+   "trecho": "\"total\": {\"SQ\": float(((y - y.mean()) ** 2).sum()), \"gl\": len(y) - 1},",
+   "segundos": 22.8,
+   "no": 6124,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 301,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_unico_nao_tem_f_de_bloco_e_o_qm_do_bloco_e_sq_sobre_gl",
+   "trecho": "X = matriz(True, True)",
+   "segundos": 12.9,
+   "no": 1460,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 301,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "X = matriz(True, True)",
+   "segundos": 16.7,
+   "no": 1461,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 302,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "cov = qm_res * np.linalg.pinv(X.T @ X)",
+   "segundos": 13.7,
+   "no": 646,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 304,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "efeitos = np.concatenate([[0.0], beta[1:k]])   # efeito do grupo relativo ao 1o",
+   "segundos": 8.9,
+   "no": 3895,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 304,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "efeitos = np.concatenate([[0.0], beta[1:k]])   # efeito do grupo relativo ao 1o",
+   "segundos": 8.6,
+   "no": 4952,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 306,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "var_ef[1:, 1:] = cov[1:k, 1:k]",
+   "segundos": 8.4,
+   "no": 3903,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 306,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "var_ef[1:, 1:] = cov[1:k, 1:k]",
+   "segundos": 8.6,
+   "no": 3904,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 306,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "var_ef[1:, 1:] = cov[1:k, 1:k]",
+   "segundos": 8.2,
+   "no": 3905,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 306,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "var_ef[1:, 1:] = cov[1:k, 1:k]",
+   "segundos": 8.2,
+   "no": 3907,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 309,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "for j in range(i + 1, k):",
+   "segundos": 17.7,
+   "no": 2689,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 309,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_desbalanceado_confere_f_p_e_comparacoes_com_minimos_quadrados_independentes",
+   "trecho": "for j in range(i + 1, k):",
+   "segundos": 9.6,
+   "no": 3912,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 310,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "d = efeitos[i] - efeitos[j]",
+   "segundos": 14.0,
+   "no": 2692,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 311,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "se = float(np.sqrt(var_ef[i, i] + var_ef[j, j] - 2 * var_ef[i, j]))",
+   "segundos": 9.3,
+   "no": 5700,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 311,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "se = float(np.sqrt(var_ef[i, i] + var_ef[j, j] - 2 * var_ef[i, j]))",
+   "segundos": 9.1,
+   "no": 5702,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 311,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "se = float(np.sqrt(var_ef[i, i] + var_ef[j, j] - 2 * var_ef[i, j]))",
+   "segundos": 9.8,
+   "no": 4965,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 311,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "se = float(np.sqrt(var_ef[i, i] + var_ef[j, j] - 2 * var_ef[i, j]))",
+   "segundos": 9.3,
+   "no": 6129,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 9.3,
+   "no": 4969,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 66.3,
+   "no": 3922,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 8.6,
+   "no": 3922,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 8.9,
+   "no": 3923,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 9.3,
+   "no": 4968,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 9.2,
+   "no": 5708,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 312,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "q = abs(d) / se * np.sqrt(2) if se > 0 else float(\"inf\")",
+   "segundos": 13.6,
+   "no": 2696,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 313,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_bloco_aditivo_exato.py::test_residuo_exatamente_zero_da_F_infinito_p_zero_e_comparacao_sem_erro_padrao",
+   "trecho": "p_ij = float(stats.studentized_range.sf(q, k, gl_res)) if np.isfinite(q) else 0.0",
+   "segundos": 67.6,
+   "no": 3928,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 313,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "p_ij = float(stats.studentized_range.sf(q, k, gl_res)) if np.isfinite(q) else 0.0",
+   "segundos": 14.0,
+   "no": 2698,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "crit = float(stats.studentized_range.ppf(1 - alpha, k, gl_res)) / np.sqrt(2)",
+   "segundos": 14.4,
+   "no": 2700,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "crit = float(stats.studentized_range.ppf(1 - alpha, k, gl_res)) / np.sqrt(2)",
+   "segundos": 8.5,
+   "no": 5720,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "crit = float(stats.studentized_range.ppf(1 - alpha, k, gl_res)) / np.sqrt(2)",
+   "segundos": 8.4,
+   "no": 6145,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "crit = float(stats.studentized_range.ppf(1 - alpha, k, gl_res)) / np.sqrt(2)",
+   "segundos": 9.5,
+   "no": 4981,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 316,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "\"ic95\": (float(d - crit * se), float(d + crit * se)),",
+   "segundos": 9.3,
+   "no": 6160,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 316,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "\"ic95\": (float(d - crit * se), float(d + crit * se)),",
+   "segundos": 9.1,
+   "no": 6357,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 316,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "\"ic95\": (float(d - crit * se), float(d + crit * se)),",
+   "segundos": 9.1,
+   "no": 6361,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 316,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_comparacoes_batem_com_o_modelo_aditivo_feito_a_mao",
+   "trecho": "\"ic95\": (float(d - crit * se), float(d + crit * se)),",
+   "segundos": 8.9,
+   "no": 6158,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 317,
+   "operador": "const 1.0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "\"p_ajustado\": min(1.0, p_ij)})",
+   "segundos": 69.7,
+   "no": 5738,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 318,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "return tabela, F, p, comps",
+   "segundos": 13.0,
+   "no": 199,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 326,
+   "operador": "const 0.05",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "alpha: float = 0.05,",
+   "segundos": 11.5,
+   "no": 677,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 327,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_valores_padrao_n_boot_2000_seed_0_e_sem_kruskal",
+   "trecho": "kruskal: bool = False,",
+   "segundos": 11.0,
+   "no": 678,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 329,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "calcular_pos_teste: bool = True,",
+   "segundos": 16.4,
+   "no": 680,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "const 2000",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_valores_padrao_n_boot_2000_seed_0_e_sem_kruskal",
+   "trecho": "n_boot: int = 2000,",
+   "segundos": 10.8,
+   "no": 681,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 331,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_valores_padrao_n_boot_2000_seed_0_e_sem_kruskal",
+   "trecho": "seed: int = 0) -> ResultadoANOVA:",
+   "segundos": 10.8,
+   "no": 682,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 339,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if variancias not in (\"auto\", \"iguais\", \"desiguais\"):",
+   "segundos": 8.8,
+   "no": 684,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 339,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if variancias not in (\"auto\", \"iguais\", \"desiguais\"):",
+   "segundos": 8.2,
+   "no": 203,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 340,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_variancias_forcadas_mudam_metodo_e_ficam_declaradas",
+   "trecho": "raise ValueError(f\"variancias deve ser 'auto', 'iguais' ou 'desiguais' (recebido {variancias!r})\")",
+   "segundos": 51.3,
+   "no": 685,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 341,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if origem in _ORIGENS_RECUSADAS:",
+   "segundos": 8.6,
+   "no": 686,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 341,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if origem in _ORIGENS_RECUSADAS:",
+   "segundos": 8.4,
+   "no": 204,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 342,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_dobras_de_cv_replicas_e_espectros_sao_recusados[dobras_cv]",
+   "trecho": "raise ValueError(f\"ANOVA recusada: {_ORIGENS_RECUSADAS[origem]}\")",
+   "segundos": 18.6,
+   "no": 687,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 344,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if unidade is None:",
+   "segundos": 8.5,
+   "no": 690,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 344,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if unidade is None:",
+   "segundos": 8.5,
+   "no": 206,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 345,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_sem_unidade_recusa_com_mensagem_acionavel",
+   "trecho": "raise _erro_unidade(len(g_bruto), g_bruto, \"unidade independente nao informada\")",
+   "segundos": 18.0,
+   "no": 691,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 347,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_unidade_vazia_em_alguma_linha_recusa",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 18.8,
+   "no": 2751,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 347,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 5.5,
+   "no": 3964,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 347,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 5.4,
+   "no": 3965,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 347,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 5.4,
+   "no": 3963,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 347,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 8.5,
+   "no": 208,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 349,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_unidade_vazia_em_alguma_linha_recusa",
+   "trecho": "raise _erro_unidade(len(g_bruto), g_bruto, \"ha' linha(s) sem id de unidade\")",
+   "segundos": 18.5,
+   "no": 695,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 353,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_nan_e_descartado_com_aviso",
+   "trecho": "if n_nan:",
+   "segundos": 18.2,
+   "no": 211,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 11.2,
+   "no": 705,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 11.0,
+   "no": 1554,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 111.8,
+   "no": 1555,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 11.3,
+   "no": 1555,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 11.2,
+   "no": 2773,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "Sub->Add",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 108.7,
+   "no": 2774,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "const 0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 111.1,
+   "no": 2776,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_linha_unica_aparece_mesmo_com_nan_e_some_com_replicas_e_nan",
+   "trecho": "if len(y_u) == n_linhas - n_nan and n_linhas - n_nan > 0:",
+   "segundos": 10.8,
+   "no": 213,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 361,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_grupo_com_uma_unidade_e_excluido_com_aviso",
+   "trecho": "contagem = {n: int((g_u == n).sum()) for n in nomes}",
+   "segundos": 11.7,
+   "no": 5029,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 362,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "unitarios = [n for n in nomes if contagem[n] < 2]",
+   "segundos": 8.6,
+   "no": 2790,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 362,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "unitarios = [n for n in nomes if contagem[n] < 2]",
+   "segundos": 9.3,
+   "no": 2790,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 362,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "unitarios = [n for n in nomes if contagem[n] < 2]",
+   "segundos": 5.8,
+   "no": 3998,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 363,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_grupo_com_uma_unidade_e_excluido_com_aviso",
+   "trecho": "if unitarios:",
+   "segundos": 18.2,
+   "no": 217,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 365,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_grupo_com_uma_unidade_e_excluido_com_aviso",
+   "trecho": "mant = np.isin(g_u, [n for n in nomes if n not in unitarios])",
+   "segundos": 11.7,
+   "no": 5040,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 367,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_grupo_com_uma_unidade_e_excluido_com_aviso",
+   "trecho": "nomes = [n for n in nomes if n not in unitarios]",
+   "segundos": 11.4,
+   "no": 4023,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 369,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 8.8,
+   "no": 719,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 369,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 8.4,
+   "no": 719,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 369,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 8.3,
+   "no": 1579,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 369,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 8.4,
+   "no": 218,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 370,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_um_grupo_so_e_erro",
+   "trecho": "raise ValueError(",
+   "segundos": 18.2,
+   "no": 720,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 374,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_tabela_total_tem_gl_n_menos_1_e_soma_dos_quadrados",
+   "trecho": "amostras = [y_u[g_u == n] for n in nomes]",
+   "segundos": 9.3,
+   "no": 2817,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 375,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if sum(((a - a.mean()) ** 2).sum() for a in amostras) == 0:",
+   "segundos": 8.4,
+   "no": 723,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 375,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((a - a.mean()) ** 2).sum() for a in amostras) == 0:",
+   "segundos": 6.0,
+   "no": 5770,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 375,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_grupos_constantes_variancia_zero_e_erro",
+   "trecho": "if sum(((a - a.mean()) ** 2).sum() for a in amostras) == 0:",
+   "segundos": 12.1,
+   "no": 6179,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 375,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((a - a.mean()) ** 2).sum() for a in amostras) == 0:",
+   "segundos": 9.5,
+   "no": 1586,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 375,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "if sum(((a - a.mean()) ** 2).sum() for a in amostras) == 0:",
+   "segundos": 5.9,
+   "no": 6181,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 375,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if sum(((a - a.mean()) ** 2).sum() for a in amostras) == 0:",
+   "segundos": 8.2,
+   "no": 220,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 376,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_grupos_constantes_variancia_zero_e_erro",
+   "trecho": "raise ValueError(\"ANOVA recusada: variancia dentro dos grupos e' zero \"",
+   "segundos": 18.1,
+   "no": 724,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 378,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "baixos = [n for n in nomes if contagem[n] < N_MINIMO_PODER]",
+   "segundos": 8.7,
+   "no": 2828,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 378,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "baixos = [n for n in nomes if contagem[n] < N_MINIMO_PODER]",
+   "segundos": 9.0,
+   "no": 2828,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 379,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if baixos:",
+   "segundos": 8.4,
+   "no": 222,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 385,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "variancias_iguais = {\"auto\": not (levene_p < alpha), \"iguais\": True, \"desiguais\": False}[variancias]",
+   "segundos": 11.8,
+   "no": 4064,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 385,
+   "operador": "Lt->LtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "variancias_iguais = {\"auto\": not (levene_p < alpha), \"iguais\": True, \"desiguais\": False}[variancias]",
+   "segundos": 65.2,
+   "no": 4064,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 385,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_variancias_forcadas_mudam_metodo_e_ficam_declaradas",
+   "trecho": "variancias_iguais = {\"auto\": not (levene_p < alpha), \"iguais\": True, \"desiguais\": False}[variancias]",
+   "segundos": 55.1,
+   "no": 2839,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 385,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_variancias_forcadas_mudam_metodo_e_ficam_declaradas",
+   "trecho": "variancias_iguais = {\"auto\": not (levene_p < alpha), \"iguais\": True, \"desiguais\": False}[variancias]",
+   "segundos": 53.5,
+   "no": 2838,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 385,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "variancias_iguais = {\"auto\": not (levene_p < alpha), \"iguais\": True, \"desiguais\": False}[variancias]",
+   "segundos": 18.8,
+   "no": 2837,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 386,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "sem_variancia = [n for n, a in zip(nomes, amostras) if np.ptp(a) == 0]",
+   "segundos": 18.1,
+   "no": 2844,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 386,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "sem_variancia = [n for n, a in zip(nomes, amostras) if np.ptp(a) == 0]",
+   "segundos": 13.4,
+   "no": 4073,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 387,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_variancias_desiguais_levam_a_welch_e_games_howell",
+   "trecho": "if not variancias_iguais and sem_variancia:",
+   "segundos": 18.7,
+   "no": 735,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 387,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_variancias_desiguais_levam_a_welch_e_games_howell",
+   "trecho": "if not variancias_iguais and sem_variancia:",
+   "segundos": 18.4,
+   "no": 226,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 387,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "if not variancias_iguais and sem_variancia:",
+   "segundos": 21.9,
+   "no": 1604,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 391,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_propriedades_basicas",
+   "trecho": "variancias_iguais = True",
+   "segundos": 21.8,
+   "no": 1607,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 395,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_shapiro_usa_os_residuos_e_avisa_so_quando_deve",
+   "trecho": "residuos = np.concatenate([a - a.mean() for a in amostras])",
+   "segundos": 38.8,
+   "no": 2853,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 397,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_shapiro_roda_em_escala_minuscula_e_nos_limites_de_5000_e_5001_unidades",
+   "trecho": "if len(residuos) <= 5000:      # residuos nao constantes: variancia dentro zero e' recusada antes",
+   "segundos": 11.7,
+   "no": 742,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 397,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_shapiro_roda_em_escala_minuscula_e_nos_limites_de_5000_e_5001_unidades",
+   "trecho": "if len(residuos) <= 5000:      # residuos nao constantes: variancia dentro zero e' recusada antes",
+   "segundos": 12.0,
+   "no": 742,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 397,
+   "operador": "const 5000",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_shapiro_roda_em_escala_minuscula_e_nos_limites_de_5000_e_5001_unidades",
+   "trecho": "if len(residuos) <= 5000:      # residuos nao constantes: variancia dentro zero e' recusada antes",
+   "segundos": 12.6,
+   "no": 1615,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 397,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_shapiro_roda_em_escala_minuscula_e_nos_limites_de_5000_e_5001_unidades",
+   "trecho": "if len(residuos) <= 5000:      # residuos nao constantes: variancia dentro zero e' recusada antes",
+   "segundos": 11.3,
+   "no": 229,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 399,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "if shapiro_p < alpha:",
+   "segundos": 12.9,
+   "no": 1618,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 399,
+   "operador": "Lt->LtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if shapiro_p < alpha:",
+   "segundos": 112.0,
+   "no": 1618,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 399,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "if shapiro_p < alpha:",
+   "segundos": 12.8,
+   "no": 744,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 402,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "elif len(residuos) < 20:",
+   "segundos": 13.2,
+   "no": 2864,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 402,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "elif len(residuos) < 20:",
+   "segundos": 12.7,
+   "no": 2864,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 402,
+   "operador": "const 20",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "elif len(residuos) < 20:",
+   "segundos": 7.8,
+   "no": 4097,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 402,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_aviso_de_shapiro_com_poucas_unidades_some_com_20",
+   "trecho": "elif len(residuos) < 20:",
+   "segundos": 13.0,
+   "no": 1620,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 406,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if bloco is not None:",
+   "segundos": 8.4,
+   "no": 745,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 406,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if bloco is not None:",
+   "segundos": 8.3,
+   "no": 230,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 412,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "if variancias_iguais:",
+   "segundos": 18.2,
+   "no": 750,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 415,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_desbalanceado_usa_tukey_kramer",
+   "trecho": "balanceado = len(set(contagem.values())) == 1 and not sem_variancia",
+   "segundos": 19.4,
+   "no": 2898,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 415,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "balanceado = len(set(contagem.values())) == 1 and not sem_variancia",
+   "segundos": 11.7,
+   "no": 4126,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 415,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "balanceado = len(set(contagem.values())) == 1 and not sem_variancia",
+   "segundos": 11.5,
+   "no": 5112,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 415,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "balanceado = len(set(contagem.values())) == 1 and not sem_variancia",
+   "segundos": 11.7,
+   "no": 4127,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 416,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "pos = \"Tukey\" if balanceado else \"Tukey-Kramer\"",
+   "segundos": 18.0,
+   "no": 2900,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 421,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_variancias_forcadas_mudam_metodo_e_ficam_declaradas",
+   "trecho": "avisos.append(f\"Levene rejeitou variancias iguais (p={levene_p:.3g}): \"",
+   "segundos": 31.7,
+   "no": 4148,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 422,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_variancias_forcadas_mudam_metodo_e_ficam_declaradas",
+   "trecho": "\"Welch ANOVA + Games-Howell\" if variancias == \"auto\"",
+   "segundos": 34.2,
+   "no": 5136,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 425,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "if not calcular_pos_teste:",
+   "segundos": 18.3,
+   "no": 752,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 425,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_oraculo_da_documentacao_do_scipy_tukey_hsd",
+   "trecho": "if not calcular_pos_teste:",
+   "segundos": 18.2,
+   "no": 1643,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 426,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_ic_bootstrap_reproduz_a_reamostragem_com_descarte_da_degenerada[grupos0]",
+   "trecho": "pos = pos + \" (nao calculado: calcular_pos_teste=False)\"",
+   "segundos": 9.0,
+   "no": 2912,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 433,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_valores_padrao_n_boot_2000_seed_0_e_sem_kruskal",
+   "trecho": "if kruskal:",
+   "segundos": 10.5,
+   "no": 234,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 439,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return ResultadoANOVA(",
+   "segundos": 8.6,
+   "no": 236,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 455,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "vals = set(b[u == uid])",
+   "segundos": 8.2,
+   "no": 4214,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 456,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if len(vals) > 1:",
+   "segundos": 12.7,
+   "no": 1706,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 456,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_unidade_em_dois_blocos_e_erro",
+   "trecho": "if len(vals) > 1:",
+   "segundos": 58.3,
+   "no": 1706,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 456,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_unidade_em_dois_blocos_e_erro",
+   "trecho": "if len(vals) > 1:",
+   "segundos": 53.8,
+   "no": 2983,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 456,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "if len(vals) > 1:",
+   "segundos": 13.0,
+   "no": 780,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 457,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_unidade_em_dois_blocos_e_erro",
+   "trecho": "raise ValueError(f\"unidade '{uid}' aparece em mais de um bloco ({sorted(vals)})\")",
+   "segundos": 55.2,
+   "no": 1707,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 459,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_bloco_com_um_grau_de_liberdade_residual_e_aceito",
+   "trecho": "return np.asarray(out, dtype=object)",
+   "segundos": 12.6,
+   "no": 243,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 475,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "if \"unidade\" in str(e) and \"nao informada\" in str(e):",
+   "segundos": 9.2,
+   "no": 4251,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 475,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "if \"unidade\" in str(e) and \"nao informada\" in str(e):",
+   "segundos": 9.1,
+   "no": 5206,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 475,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_varias_respostas_sem_unidade_propaga_a_recusa",
+   "trecho": "if \"unidade\" in str(e) and \"nao informada\" in str(e):",
+   "segundos": 12.5,
+   "no": 5205,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 475,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "if \"unidade\" in str(e) and \"nao informada\" in str(e):",
+   "segundos": 15.1,
+   "no": 3016,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 476,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_varias_respostas_sem_unidade_propaga_a_recusa",
+   "trecho": "raise",
+   "segundos": 12.6,
+   "no": 4252,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 478,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_varias_respostas_aplica_bh_entre_respostas",
+   "trecho": "if resultados:",
+   "segundos": 19.4,
+   "no": 250,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 483,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_unidade_em_dois_grupos_vira_resposta_recusada_e_nao_derruba_as_demais",
+   "trecho": "return {\"resultados\": resultados, \"recusadas\": recusadas,",
+   "segundos": 14.5,
+   "no": 251,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 516,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "if metodo == \"bh\":",
+   "segundos": 47.5,
+   "no": 849,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 516,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "if metodo == \"bh\":",
+   "segundos": 49.0,
+   "no": 274,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 517,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[bh-_bh_ingenuo]",
+   "trecho": "return np.asarray(stats.false_discovery_control(p, method=\"bh\"), dtype=float)",
+   "segundos": 52.4,
+   "no": 850,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 520,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "maximo = 0.0",
+   "segundos": 54.5,
+   "no": 856,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 522,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "maximo = max(maximo, (m - pos) * p[idx])",
+   "segundos": 48.1,
+   "no": 3079,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 522,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "maximo = max(maximo, (m - pos) * p[idx])",
+   "segundos": 28.7,
+   "no": 4291,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 523,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_propriedades_kw_dunn",
+   "trecho": "aj[idx] = min(1.0, maximo)",
+   "segundos": 52.6,
+   "no": 3084,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 524,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return aj",
+   "segundos": 8.8,
+   "no": 279,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 541,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "_, contagens = np.unique(todos, return_counts=True)",
+   "segundos": 8.5,
+   "no": 3106,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 32.1,
+   "no": 4308,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 46.4,
+   "no": 1842,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 46.9,
+   "no": 1844,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 44.7,
+   "no": 3107,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 46.8,
+   "no": 3112,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 32.1,
+   "no": 6213,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 48.5,
+   "no": 882,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 29.9,
+   "no": 4313,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 30.9,
+   "no": 5868,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 29.1,
+   "no": 5240,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 31.4,
+   "no": 5245,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "const 12",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 49.4,
+   "no": 3109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "const 12",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 30.9,
+   "no": 4311,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "const 3",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "var_base = N * (N + 1) / 12 - float((contagens ** 3 - contagens).sum()) / (12 * (N - 1))",
+   "segundos": 29.3,
+   "no": 6381,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 543,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "cortes = np.cumsum([0] + [len(a) for a in amostras])",
+   "segundos": 8.5,
+   "no": 1847,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 543,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "cortes = np.cumsum([0] + [len(a) for a in amostras])",
+   "segundos": 9.4,
+   "no": 4315,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 544,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "pm = [float(postos[cortes[i]:cortes[i + 1]].mean()) for i in range(len(amostras))]",
+   "segundos": 9.5,
+   "no": 6387,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 544,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "pm = [float(postos[cortes[i]:cortes[i + 1]].mean()) for i in range(len(amostras))]",
+   "segundos": 5.6,
+   "no": 6498,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 546,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "pares = [(i, j) for i in range(len(amostras)) for j in range(i + 1, len(amostras))]",
+   "segundos": 29.7,
+   "no": 4335,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 546,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "pares = [(i, j) for i in range(len(amostras)) for j in range(i + 1, len(amostras))]",
+   "segundos": 30.7,
+   "no": 5261,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 31.3,
+   "no": 5895,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 42.4,
+   "no": 3135,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 31.0,
+   "no": 6227,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 35.0,
+   "no": 6225,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 29.5,
+   "no": 5268,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 28.9,
+   "no": 4338,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 26.5,
+   "no": 6392,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 547,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "z = np.array([(pm[i] - pm[j]) / np.sqrt(var_base * (1 / n[i] + 1 / n[j])) for i, j in pares])",
+   "segundos": 28.0,
+   "no": 6389,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 548,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "p_bruto = 2 * stats.norm.sf(np.abs(z))",
+   "segundos": 49.9,
+   "no": 894,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 548,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_dunn_bate_com_oraculo_ingenuo_sem_e_com_empates[holm-_holm_ingenuo]",
+   "trecho": "p_bruto = 2 * stats.norm.sf(np.abs(z))",
+   "segundos": 51.1,
+   "no": 1862,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 550,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "return [{\"a\": nomes[i], \"b\": nomes[j], \"diferenca_postos\": pm[i] - pm[j], \"z\": float(z[k]),",
+   "segundos": 12.9,
+   "no": 3150,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 550,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "return [{\"a\": nomes[i], \"b\": nomes[j], \"diferenca_postos\": pm[i] - pm[j], \"z\": float(z[k]),",
+   "segundos": 14.8,
+   "no": 297,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 562,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if ajuste not in _REGRA_AJUSTE:",
+   "segundos": 8.6,
+   "no": 911,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 562,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if ajuste not in _REGRA_AJUSTE:",
+   "segundos": 8.3,
+   "no": 301,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 563,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_recusas_de_unidade_e_ajuste_invalido",
+   "trecho": "raise ValueError(f\"ajuste deve ser 'holm' ou 'bh' (recebido {ajuste!r})\")",
+   "segundos": 47.9,
+   "no": 912,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 564,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if origem in _ORIGENS_RECUSADAS:",
+   "segundos": 8.3,
+   "no": 913,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 564,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if origem in _ORIGENS_RECUSADAS:",
+   "segundos": 8.4,
+   "no": 302,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 565,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_recusas_de_unidade_e_ajuste_invalido",
+   "trecho": "raise ValueError(f\"Kruskal-Wallis recusado: {_ORIGENS_RECUSADAS[origem]}\")",
+   "segundos": 46.7,
+   "no": 914,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 567,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if unidade is None:",
+   "segundos": 8.5,
+   "no": 917,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 567,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if unidade is None:",
+   "segundos": 8.7,
+   "no": 304,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 568,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_recusas_de_unidade_e_ajuste_invalido",
+   "trecho": "raise _erro_unidade(len(g_bruto), g_bruto, \"unidade independente nao informada\")",
+   "segundos": 48.7,
+   "no": 918,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 570,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_recusas_de_unidade_e_ajuste_invalido",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 39.4,
+   "no": 3194,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 570,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 5.6,
+   "no": 4394,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 570,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 5.7,
+   "no": 4395,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 570,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 5.6,
+   "no": 4393,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 570,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if any(x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip() == \"\"",
+   "segundos": 8.7,
+   "no": 306,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 572,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_recusas_de_unidade_e_ajuste_invalido",
+   "trecho": "raise _erro_unidade(len(g_bruto), g_bruto, \"ha' linha(s) sem id de unidade\")",
+   "segundos": 52.4,
+   "no": 922,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 575,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_nan_descartado_com_aviso",
+   "trecho": "if n_nan:",
+   "segundos": 47.7,
+   "no": 309,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 578,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_grupo_de_2_unidades_e_mantido_no_kruskal_e_de_1_e_excluido",
+   "trecho": "contagem = {n: int((g_u == n).sum()) for n in nomes}",
+   "segundos": 9.1,
+   "no": 5332,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 579,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "unitarios = [n for n in nomes if contagem[n] < 2]",
+   "segundos": 7.5,
+   "no": 3223,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 579,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_grupo_de_2_unidades_e_mantido_no_kruskal_e_de_1_e_excluido",
+   "trecho": "unitarios = [n for n in nomes if contagem[n] < 2]",
+   "segundos": 12.3,
+   "no": 3223,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 579,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_grupo_de_2_unidades_e_mantido_no_kruskal_e_de_1_e_excluido",
+   "trecho": "unitarios = [n for n in nomes if contagem[n] < 2]",
+   "segundos": 9.5,
+   "no": 4418,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 580,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_grupo_de_2_unidades_e_mantido_no_kruskal_e_de_1_e_excluido",
+   "trecho": "if unitarios:",
+   "segundos": 14.6,
+   "no": 313,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 582,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_grupo_de_2_unidades_e_mantido_no_kruskal_e_de_1_e_excluido",
+   "trecho": "mant = np.isin(g_u, [n for n in nomes if n not in unitarios])",
+   "segundos": 9.2,
+   "no": 5343,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 584,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_grupo_de_2_unidades_e_mantido_no_kruskal_e_de_1_e_excluido",
+   "trecho": "nomes = [n for n in nomes if n not in unitarios]",
+   "segundos": 9.3,
+   "no": 4439,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 586,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 15.0,
+   "no": 942,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 586,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 9.1,
+   "no": 942,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 586,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 8.8,
+   "no": 1942,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 586,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if len(nomes) < 2:",
+   "segundos": 8.7,
+   "no": 314,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 587,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_n1_e_excluido_com_aviso_e_todos_n1_e_erro",
+   "trecho": "raise ValueError(",
+   "segundos": 51.6,
+   "no": 943,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 591,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "amostras = [y_u[g_u == n] for n in nomes]",
+   "segundos": 11.8,
+   "no": 3248,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 592,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if np.ptp(np.concatenate(amostras)) == 0:",
+   "segundos": 8.7,
+   "no": 946,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 592,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_todos_iguais_e_erro",
+   "trecho": "if np.ptp(np.concatenate(amostras)) == 0:",
+   "segundos": 47.7,
+   "no": 1949,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 592,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if np.ptp(np.concatenate(amostras)) == 0:",
+   "segundos": 8.6,
+   "no": 316,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 593,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_todos_iguais_e_erro",
+   "trecho": "raise ValueError(\"Kruskal-Wallis recusado: todos os valores sao iguais \"",
+   "segundos": 48.1,
+   "no": 947,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 595,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "baixos = [n for n in nomes if contagem[n] < N_MINIMO_PODER]",
+   "segundos": 7.0,
+   "no": 3259,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 595,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "baixos = [n for n in nomes if contagem[n] < N_MINIMO_PODER]",
+   "segundos": 7.2,
+   "no": 3259,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 596,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "if baixos:",
+   "segundos": 8.4,
+   "no": 318,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "cortes = np.cumsum([0] + [len(a) for a in amostras])",
+   "segundos": 8.7,
+   "no": 1967,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "cortes = np.cumsum([0] + [len(a) for a in amostras])",
+   "segundos": 9.3,
+   "no": 4484,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 604,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_posto_medio_e_diferenca_de_postos_do_dunn_batem_com_rankdata",
+   "trecho": "pm = {nm: float(postos[cortes[i]:cortes[i + 1]].mean()) for i, nm in enumerate(nomes)}",
+   "segundos": 9.3,
+   "no": 6402,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 604,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "pm = {nm: float(postos[cortes[i]:cortes[i + 1]].mean()) for i, nm in enumerate(nomes)}",
+   "segundos": 5.5,
+   "no": 6512,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 607,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_poucas_unidades_avisa_com_5_e_nao_com_6_por_grupo_no_anova_e_no_kruskal",
+   "trecho": "return ResultadoKruskal(",
+   "segundos": 8.6,
+   "no": 325,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_kw_bate_com_scipy_e_epsilon2_pela_formula",
+   "trecho": "gl=len(nomes) - 1, p=float(h.pvalue), epsilon2=float(h.statistic) / (n_tot - 1),",
+   "segundos": 35.4,
+   "no": 3296,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_kw_bate_com_scipy_e_epsilon2_pela_formula",
+   "trecho": "gl=len(nomes) - 1, p=float(h.pvalue), epsilon2=float(h.statistic) / (n_tot - 1),",
+   "segundos": 33.9,
+   "no": 3294,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_kw_bate_com_scipy_e_epsilon2_pela_formula",
+   "trecho": "gl=len(nomes) - 1, p=float(h.pvalue), epsilon2=float(h.statistic) / (n_tot - 1),",
+   "segundos": 29.5,
+   "no": 4516,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_kw_bate_com_scipy_e_epsilon2_pela_formula",
+   "trecho": "gl=len(nomes) - 1, p=float(h.pvalue), epsilon2=float(h.statistic) / (n_tot - 1),",
+   "segundos": 34.0,
+   "no": 4511,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_kw_bate_com_scipy_e_epsilon2_pela_formula",
+   "trecho": "gl=len(nomes) - 1, p=float(h.pvalue), epsilon2=float(h.statistic) / (n_tot - 1),",
+   "segundos": 30.0,
+   "no": 5400,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 620,
+   "operador": "const 0.05",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_recomendacao_para_cada_violacao_sintetica",
+   "trecho": "unidade: Sequence[Any], *, alpha: float = 0.05) -> Dict[str, Any]:",
+   "segundos": 49.9,
+   "no": 971,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "nomes = [n for n in todos if (g_u == n).sum() >= 2]",
+   "segundos": 9.4,
+   "no": 5964,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "GtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "nomes = [n for n in todos if (g_u == n).sum() >= 2]",
+   "segundos": 11.9,
+   "no": 3325,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "GtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "nomes = [n for n in todos if (g_u == n).sum() >= 2]",
+   "segundos": 11.4,
+   "no": 3325,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "nomes = [n for n in todos if (g_u == n).sum() >= 2]",
+   "segundos": 9.3,
+   "no": 4540,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 629,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "amostras = [y_u[g_u == n] for n in nomes]",
+   "segundos": 10.8,
+   "no": 3327,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 630,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "if len(amostras) < 2:",
+   "segundos": 14.5,
+   "no": 981,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 630,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "if len(amostras) < 2:",
+   "segundos": 14.5,
+   "no": 981,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 630,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "if len(amostras) < 2:",
+   "segundos": 14.8,
+   "no": 2014,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 630,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "if len(amostras) < 2:",
+   "segundos": 14.7,
+   "no": 333,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 631,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_recusas_e_variancia_zero",
+   "trecho": "raise ValueError(\"diagnostico recusado: menos de 2 grupos com >= 2 unidades independentes\")",
+   "segundos": 50.3,
+   "no": 982,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 632,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "res = np.concatenate([a - a.mean() for a in amostras])",
+   "segundos": 33.2,
+   "no": 3337,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "teoricos = stats.norm.ppf((np.arange(1, len(res) + 1) - 0.5) / len(res))",
+   "segundos": 31.6,
+   "no": 5422,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "teoricos = stats.norm.ppf((np.arange(1, len(res) + 1) - 0.5) / len(res))",
+   "segundos": 53.0,
+   "no": 2024,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "teoricos = stats.norm.ppf((np.arange(1, len(res) + 1) - 0.5) / len(res))",
+   "segundos": 33.5,
+   "no": 3344,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "const 0.5",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "teoricos = stats.norm.ppf((np.arange(1, len(res) + 1) - 0.5) / len(res))",
+   "segundos": 31.7,
+   "no": 4561,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "teoricos = stats.norm.ppf((np.arange(1, len(res) + 1) - 0.5) / len(res))",
+   "segundos": 31.9,
+   "no": 5421,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_calcula_residuos_qq_e_testes",
+   "trecho": "teoricos = stats.norm.ppf((np.arange(1, len(res) + 1) - 0.5) / len(res))",
+   "segundos": 32.6,
+   "no": 5972,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 635,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "var = {n: float(np.var(a, ddof=1)) for n, a in zip(nomes, amostras)}",
+   "segundos": 9.1,
+   "no": 5428,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 637,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "if maior == 0:",
+   "segundos": 14.8,
+   "no": 993,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 637,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_recusas_e_variancia_zero",
+   "trecho": "if maior == 0:",
+   "segundos": 54.8,
+   "no": 2037,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 637,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "if maior == 0:",
+   "segundos": 14.6,
+   "no": 339,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 638,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_recusas_e_variancia_zero",
+   "trecho": "razao = 1.0",
+   "segundos": 50.0,
+   "no": 2039,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 639,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "elif menor == 0:",
+   "segundos": 14.8,
+   "no": 2040,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 639,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_recusas_e_variancia_zero",
+   "trecho": "elif menor == 0:",
+   "segundos": 35.4,
+   "no": 3362,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 639,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "elif menor == 0:",
+   "segundos": 14.8,
+   "no": 995,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 642,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "razao = maior / menor",
+   "segundos": 9.5,
+   "no": 3366,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 643,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "constante = bool(np.ptp(res) == 0)",
+   "segundos": 15.4,
+   "no": 2045,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 643,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_diagnostico_recusas_e_variancia_zero",
+   "trecho": "constante = bool(np.ptp(res) == 0)",
+   "segundos": 33.5,
+   "no": 3370,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 644,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "shapiro_p = float(stats.shapiro(res).pvalue) if len(res) <= 5000 and not constante else None",
+   "segundos": 16.0,
+   "no": 2047,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 644,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "shapiro_p = float(stats.shapiro(res).pvalue) if len(res) <= 5000 and not constante else None",
+   "segundos": 9.8,
+   "no": 3372,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 644,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "shapiro_p = float(stats.shapiro(res).pvalue) if len(res) <= 5000 and not constante else None",
+   "segundos": 9.7,
+   "no": 3372,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 644,
+   "operador": "const 5000",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "shapiro_p = float(stats.shapiro(res).pvalue) if len(res) <= 5000 and not constante else None",
+   "segundos": 10.1,
+   "no": 4590,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 644,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "shapiro_p = float(stats.shapiro(res).pvalue) if len(res) <= 5000 and not constante else None",
+   "segundos": 15.4,
+   "no": 999,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 644,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_calcula_shapiro_com_5000_residuos_e_nao_com_5001",
+   "trecho": "shapiro_p = float(stats.shapiro(res).pvalue) if len(res) <= 5000 and not constante else None",
+   "segundos": 10.1,
+   "no": 3373,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 14.5,
+   "no": 2058,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 9.4,
+   "no": 4603,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 9.2,
+   "no": 5464,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 9.4,
+   "no": 5464,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 9.2,
+   "no": 5459,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 9.2,
+   "no": 5995,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 650,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "padronizados = np.concatenate([(a - a.mean()) / a.std(ddof=1) for a in amostras if np.ptp(a) > 0]",
+   "segundos": 9.4,
+   "no": 6260,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 651,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "or [np.zeros(1)])",
+   "segundos": 67.9,
+   "no": 5466,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 652,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "forma_constante = bool(np.ptp(padronizados) == 0)",
+   "segundos": 14.7,
+   "no": 2061,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 652,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "forma_constante = bool(np.ptp(padronizados) == 0)",
+   "segundos": 9.4,
+   "no": 3390,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 653,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "assim = 0.0 if forma_constante else float(stats.skew(padronizados))",
+   "segundos": 15.0,
+   "no": 2064,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 653,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "assim = 0.0 if forma_constante else float(stats.skew(padronizados))",
+   "segundos": 14.9,
+   "no": 1009,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 654,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_mantem_grupos_de_2_descarta_de_1_e_trata_tudo_constante",
+   "trecho": "curt = 0.0 if forma_constante else float(stats.kurtosis(padronizados))",
+   "segundos": 14.8,
+   "no": 2068,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 654,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "curt = 0.0 if forma_constante else float(stats.kurtosis(padronizados))",
+   "segundos": 15.1,
+   "no": 1011,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 656,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "return {\"grupos\": nomes, \"residuos\": res, \"qq_teorico\": teoricos, \"qq_amostral\": ordenado,",
+   "segundos": 14.5,
+   "no": 349,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 661,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_diagnostico_com_n_desigual_usa_variancia_amostral_e_forma_padronizada_por_grupo",
+   "trecho": "\"razao_n\": float(max(n_por) / min(n_por)), \"alpha\": alpha,",
+   "segundos": 9.3,
+   "no": 3416,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 671,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if abs(diag[\"assimetria\"]) > ASSIMETRIA_LIMITE or diag[\"curtose_excesso\"] > CURTOSE_LIMITE:",
+   "segundos": 8.8,
+   "no": 1020,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 671,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if abs(diag[\"assimetria\"]) > ASSIMETRIA_LIMITE or diag[\"curtose_excesso\"] > CURTOSE_LIMITE:",
+   "segundos": 8.7,
+   "no": 2109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 671,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if abs(diag[\"assimetria\"]) > ASSIMETRIA_LIMITE or diag[\"curtose_excesso\"] > CURTOSE_LIMITE:",
+   "segundos": 9.1,
+   "no": 2110,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 671,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if abs(diag[\"assimetria\"]) > ASSIMETRIA_LIMITE or diag[\"curtose_excesso\"] > CURTOSE_LIMITE:",
+   "segundos": 9.1,
+   "no": 2109,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 671,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if abs(diag[\"assimetria\"]) > ASSIMETRIA_LIMITE or diag[\"curtose_excesso\"] > CURTOSE_LIMITE:",
+   "segundos": 8.9,
+   "no": 2110,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 671,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if abs(diag[\"assimetria\"]) > ASSIMETRIA_LIMITE or diag[\"curtose_excesso\"] > CURTOSE_LIMITE:",
+   "segundos": 8.5,
+   "no": 353,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 674,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "return {\"metodo\": \"kruskal-dunn\", \"razao\": motivo}",
+   "segundos": 8.9,
+   "no": 1022,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 675,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if diag[\"razao_variancias\"] > RAZAO_VARIANCIA_LIMITE or diag[\"brown_forsythe_p\"] < diag[\"alpha\"]:",
+   "segundos": 9.0,
+   "no": 1023,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 675,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if diag[\"razao_variancias\"] > RAZAO_VARIANCIA_LIMITE or diag[\"brown_forsythe_p\"] < diag[\"alpha\"]:",
+   "segundos": 9.0,
+   "no": 2115,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 675,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if diag[\"razao_variancias\"] > RAZAO_VARIANCIA_LIMITE or diag[\"brown_forsythe_p\"] < diag[\"alpha\"]:",
+   "segundos": 9.0,
+   "no": 2115,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 675,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if diag[\"razao_variancias\"] > RAZAO_VARIANCIA_LIMITE or diag[\"brown_forsythe_p\"] < diag[\"alpha\"]:",
+   "segundos": 9.1,
+   "no": 2116,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 675,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_nao_parametrico.py::test_assimetria_negativa_tambem_conta_e_borda_do_brown_forsythe",
+   "trecho": "if diag[\"razao_variancias\"] > RAZAO_VARIANCIA_LIMITE or diag[\"brown_forsythe_p\"] < diag[\"alpha\"]:",
+   "segundos": 49.7,
+   "no": 2116,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 675,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "if diag[\"razao_variancias\"] > RAZAO_VARIANCIA_LIMITE or diag[\"brown_forsythe_p\"] < diag[\"alpha\"]:",
+   "segundos": 8.6,
+   "no": 354,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 678,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "return {\"metodo\": \"games-howell\", \"razao\": motivo}",
+   "segundos": 8.9,
+   "no": 1025,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 679,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_mutacao.py::test_limiares_da_recomendacao_sao_4_1_e_3_literais",
+   "trecho": "return {\"metodo\": \"tukey\", \"razao\": \"sem desvio relevante de premissas -> ANOVA/Tukey\"}",
+   "segundos": 8.8,
+   "no": 355,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

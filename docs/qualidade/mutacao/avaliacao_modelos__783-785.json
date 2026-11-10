@@ -1,0 +1,30 @@
+{
+ "modulo": "src/guaraci/avaliacao_modelos.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_avaliacao_modelos.py",
+  "tests/test_lacunas_avaliacao_modelos.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 785,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_avaliacao_modelos.py::test_shap_binario_inclui_gradient_boosting_valores_2d_e_muitas_classes_dispensam_legenda",
+   "trecho": "importance = np.abs(sv_arr).mean(axis=0)",
+   "segundos": 6.6,
+   "no": 6613,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

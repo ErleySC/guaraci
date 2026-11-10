@@ -1,0 +1,2505 @@
+{
+ "modulo": "src/guaraci/vip_estabilidade.py",
+ "total": 177,
+ "mortos_no_total": 163,
+ "contagem": {
+  "morto": 163,
+  "sobrevivente": 14
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_vip_mutacao.py",
+  "tests/test_vip_estabilidade.py",
+  "tests/test_vip_cli.py",
+  "tests/test_vip_cli_mutacao.py",
+  "tests/test_anova_vip_lacunas.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [
+  {
+   "linha": 76,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return yv.reshape(-1, 1), np.searchsorted(cortes, yv, side=\"right\")",
+   "segundos": 30.2,
+   "no": 945,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 82,
+   "operador": "Sub->Add",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return Xtr - media",
+   "segundos": 34.7,
+   "no": 317,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "dp = Xtr.std(axis=0, ddof=1)",
+   "segundos": 34.9,
+   "no": 613,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 84,
+   "operador": "const 1.0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "dp[dp == 0] = 1.0",
+   "segundos": 33.9,
+   "no": 151,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "Sub->Add",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return (Xtr - media) / dp",
+   "segundos": 35.0,
+   "no": 325,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "const 2",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 35.3,
+   "no": 853,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 193,
+   "operador": "const 0.8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "fmt=\"none\", ecolor=\"#333333\", elinewidth=0.8, capsize=2, zorder=3)",
+   "segundos": 30.2,
+   "no": 1168,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 193,
+   "operador": "const 2",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "fmt=\"none\", ecolor=\"#333333\", elinewidth=0.8, capsize=2, zorder=3)",
+   "segundos": 26.7,
+   "no": 1169,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 193,
+   "operador": "const 3",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "fmt=\"none\", ecolor=\"#333333\", elinewidth=0.8, capsize=2, zorder=3)",
+   "segundos": 23.0,
+   "no": 1170,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 196,
+   "operador": "const 7",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ha=\"right\", fontsize=7)",
+   "segundos": 22.6,
+   "no": 1181,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 197,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.axhline(res[\"limiar\"], color=\"#C44E52\", lw=1, ls=\"--\", zorder=4)",
+   "segundos": 35.1,
+   "no": 878,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 197,
+   "operador": "const 4",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.axhline(res[\"limiar\"], color=\"#C44E52\", lw=1, ls=\"--\", zorder=4)",
+   "segundos": 35.2,
+   "no": 880,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_ylabel(\"VIP (media das dobras)\", fontsize=9)",
+   "segundos": 35.2,
+   "no": 883,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "f\"em >= {int(FREQ_ESTAVEL * 100)}% das dobras; laranja = instavel)\", fontsize=9)",
+   "segundos": 30.6,
+   "no": 893,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ],
+ "todos": [
+  {
+   "linha": 42,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "LIMIAR_PADRAO = 1.0",
+   "segundos": 8.4,
+   "no": 36,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "const 0.8",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_classes_de_estabilidade_nas_bordas_de_80_e_20_por_cento",
+   "trecho": "FREQ_ESTAVEL = 0.8",
+   "segundos": 8.7,
+   "no": 38,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 46,
+   "operador": "const 0.2",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_classes_de_estabilidade_nas_bordas_de_80_e_20_por_cento",
+   "trecho": "FREQ_INSTAVEL = 0.2",
+   "segundos": 8.6,
+   "no": 40,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 63,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if tarefa == \"classificacao\":",
+   "segundos": 7.5,
+   "no": 127,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 63,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if tarefa == \"classificacao\":",
+   "segundos": 8.1,
+   "no": 46,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 64,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_classificacao_pls_da_acha_a_variavel_que_separa_as_classes",
+   "trecho": "classes, idx = np.unique(arr.astype(str), return_inverse=True)",
+   "segundos": 11.8,
+   "no": 909,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 65,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_classificacao_pls_da_acha_a_variavel_que_separa_as_classes",
+   "trecho": "if len(classes) < 2:",
+   "segundos": 11.7,
+   "no": 286,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 65,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_mais_de_20_variaveis_e_idioma_por_ambiente",
+   "trecho": "if len(classes) < 2:",
+   "segundos": 33.9,
+   "no": 286,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 65,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_mais_de_20_variaveis_e_idioma_por_ambiente",
+   "trecho": "if len(classes) < 2:",
+   "segundos": 34.1,
+   "no": 565,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 65,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_classificacao_pls_da_acha_a_variavel_que_separa_as_classes",
+   "trecho": "if len(classes) < 2:",
+   "segundos": 12.5,
+   "no": 129,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 66,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_dados_ruins_recusam",
+   "trecho": "raise ValueError(\"VIP recusado: a coluna de classe tem menos de 2 classes\")",
+   "segundos": 12.5,
+   "no": 287,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 68,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_estratos_da_regressao_sao_tercos_e_o_alvo_da_classificacao_e_one_hot",
+   "trecho": "Y[np.arange(len(arr)), idx] = 1.0",
+   "segundos": 13.1,
+   "no": 291,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 69,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_classificacao_pls_da_acha_a_variavel_que_separa_as_classes",
+   "trecho": "return Y, idx",
+   "segundos": 12.4,
+   "no": 132,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 71,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not np.all(np.isfinite(yv)):",
+   "segundos": 8.5,
+   "no": 48,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 71,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not np.all(np.isfinite(yv)):",
+   "segundos": 6.8,
+   "no": 135,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 72,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_dados_ruins_recusam",
+   "trecho": "raise ValueError(\"VIP recusado: a resposta numerica tem NaN/inf; remova ou impute antes\")",
+   "segundos": 13.4,
+   "no": 136,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 73,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if np.ptp(yv) == 0:",
+   "segundos": 6.7,
+   "no": 137,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 73,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_dados_ruins_recusam",
+   "trecho": "if np.ptp(yv) == 0:",
+   "segundos": 12.4,
+   "no": 301,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 73,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if np.ptp(yv) == 0:",
+   "segundos": 8.5,
+   "no": 49,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 74,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_dados_ruins_recusam",
+   "trecho": "raise ValueError(\"VIP recusado: a resposta numerica e' constante\")",
+   "segundos": 13.8,
+   "no": 138,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 75,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "cortes = np.quantile(yv, [1 / 3, 2 / 3])",
+   "segundos": 5.7,
+   "no": 590,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 75,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "cortes = np.quantile(yv, [1 / 3, 2 / 3])",
+   "segundos": 5.9,
+   "no": 591,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 75,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "cortes = np.quantile(yv, [1 / 3, 2 / 3])",
+   "segundos": 6.5,
+   "no": 936,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 75,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_estratos_da_regressao_sao_tercos_e_o_alvo_da_classificacao_e_one_hot",
+   "trecho": "cortes = np.quantile(yv, [1 / 3, 2 / 3])",
+   "segundos": 12.9,
+   "no": 939,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 75,
+   "operador": "const 3",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_estratos_da_regressao_sao_tercos_e_o_alvo_da_classificacao_e_one_hot",
+   "trecho": "cortes = np.quantile(yv, [1 / 3, 2 / 3])",
+   "segundos": 13.0,
+   "no": 938,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 75,
+   "operador": "const 3",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_estratos_da_regressao_sao_tercos_e_o_alvo_da_classificacao_e_one_hot",
+   "trecho": "cortes = np.quantile(yv, [1 / 3, 2 / 3])",
+   "segundos": 13.1,
+   "no": 941,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 76,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return yv.reshape(-1, 1), np.searchsorted(cortes, yv, side=\"right\")",
+   "segundos": 6.2,
+   "no": 595,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 76,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return yv.reshape(-1, 1), np.searchsorted(cortes, yv, side=\"right\")",
+   "segundos": 30.2,
+   "no": 945,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 76,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return yv.reshape(-1, 1), np.searchsorted(cortes, yv, side=\"right\")",
+   "segundos": 5.6,
+   "no": 594,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 76,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return yv.reshape(-1, 1), np.searchsorted(cortes, yv, side=\"right\")",
+   "segundos": 8.5,
+   "no": 51,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 80,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "media = Xtr.mean(axis=0)",
+   "segundos": 6.3,
+   "no": 605,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 81,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not autoescalar:",
+   "segundos": 8.4,
+   "no": 54,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 81,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not autoescalar:",
+   "segundos": 6.4,
+   "no": 146,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 82,
+   "operador": "Sub->Add",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return Xtr - media",
+   "segundos": 34.7,
+   "no": 317,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 82,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return Xtr - media",
+   "segundos": 6.7,
+   "no": 147,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "dp = Xtr.std(axis=0, ddof=1)",
+   "segundos": 6.3,
+   "no": 612,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "dp = Xtr.std(axis=0, ddof=1)",
+   "segundos": 34.9,
+   "no": 613,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 84,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "dp[dp == 0] = 1.0",
+   "segundos": 5.8,
+   "no": 323,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 84,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_sem_autoescala_e_coluna_constante_com_autoescala",
+   "trecho": "dp[dp == 0] = 1.0",
+   "segundos": 34.0,
+   "no": 617,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 84,
+   "operador": "const 1.0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "dp[dp == 0] = 1.0",
+   "segundos": 33.9,
+   "no": 151,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return (Xtr - media) / dp",
+   "segundos": 5.7,
+   "no": 152,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "Sub->Add",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return (Xtr - media) / dp",
+   "segundos": 35.0,
+   "no": 325,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return (Xtr - media) / dp",
+   "segundos": 8.5,
+   "no": 57,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 90,
+   "operador": "const 10",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "n_divisoes: int = 5, n_repeticoes: int = 10,",
+   "segundos": 6.8,
+   "no": 168,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 90,
+   "operador": "const 5",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "n_divisoes: int = 5, n_repeticoes: int = 10,",
+   "segundos": 6.4,
+   "no": 167,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 91,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "limiar: float = LIMIAR_PADRAO, seed: int = 0,",
+   "segundos": 6.8,
+   "no": 170,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 93,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "autoescalar: bool = True) -> Dict[str, Any]:",
+   "segundos": 6.3,
+   "no": 172,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 100,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if tarefa not in (\"classificacao\", \"regressao\"):",
+   "segundos": 6.5,
+   "no": 174,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 100,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if tarefa not in (\"classificacao\", \"regressao\"):",
+   "segundos": 8.5,
+   "no": 61,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 101,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_entradas_invalidas_recusam[kw0-tarefa]",
+   "trecho": "raise ValueError(f\"tarefa deve ser 'classificacao' ou 'regressao' (recebido {tarefa!r})\")",
+   "segundos": 12.8,
+   "no": 175,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 6.5,
+   "no": 178,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 6.0,
+   "no": 351,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 6.4,
+   "no": 351,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 5.5,
+   "no": 350,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 11.3,
+   "no": 975,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 6.1,
+   "no": 650,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "const 4",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 6.7,
+   "no": 653,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 103,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if X.ndim != 2 or X.shape[0] < 4:",
+   "segundos": 8.4,
+   "no": 63,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 104,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "raise ValueError(\"VIP recusado: X precisa ser uma matriz amostras x variaveis com >= 4 linhas\")",
+   "segundos": 6.5,
+   "no": 179,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 105,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not np.all(np.isfinite(X)):",
+   "segundos": 8.4,
+   "no": 64,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 105,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not np.all(np.isfinite(X)):",
+   "segundos": 6.0,
+   "no": 180,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 106,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_nan_em_x_e_recusado_pela_propria_funcao_e_nao_pelo_sklearn",
+   "trecho": "raise ValueError(\"VIP recusado: X tem NaN/inf; remova ou impute antes\")",
+   "segundos": 6.6,
+   "no": 181,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if len(y) != n:",
+   "segundos": 6.4,
+   "no": 184,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if len(y) != n:",
+   "segundos": 6.6,
+   "no": 66,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 109,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_dados_ruins_recusam",
+   "trecho": "raise ValueError(f\"VIP recusado: y tem {len(y)} linhas e X tem {n}\")",
+   "segundos": 13.0,
+   "no": 185,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 5.8,
+   "no": 366,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 5.9,
+   "no": 366,
+   "variante": [
+    1,
+    1
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 5.8,
+   "no": 366,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 6.3,
+   "no": 366,
+   "variante": [
+    1,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 6.2,
+   "no": 992,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 6.2,
+   "no": 668,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 6.3,
+   "no": 1229,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 6.6,
+   "no": 67,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not 1 <= n_componentes <= min(n - 1, p):",
+   "segundos": 6.3,
+   "no": 186,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 111,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "raise ValueError(f\"VIP recusado: n_componentes={n_componentes} fora de 1..{min(n - 1, p)}\")",
+   "segundos": 7.1,
+   "no": 187,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 6.9,
+   "no": 188,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 5.9,
+   "no": 369,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 5.9,
+   "no": 370,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 6.3,
+   "no": 369,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 5.9,
+   "no": 370,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 6.1,
+   "no": 680,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 6.6,
+   "no": 677,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 112,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if n_divisoes < 2 or n_repeticoes < 1:",
+   "segundos": 7.4,
+   "no": 68,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 113,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_borda_de_linhas_componentes_divisoes_e_grupos",
+   "trecho": "raise ValueError(\"VIP recusado: n_divisoes >= 2 e n_repeticoes >= 1\")",
+   "segundos": 7.0,
+   "no": 189,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 116,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dois_grupos_bastam_e_grupos_igual_a_divisoes_nao_gera_aviso_de_reducao",
+   "trecho": "if grupos is None:",
+   "segundos": 6.9,
+   "no": 195,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 116,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dois_grupos_bastam_e_grupos_igual_a_divisoes_nao_gera_aviso_de_reducao",
+   "trecho": "if grupos is None:",
+   "segundos": 7.9,
+   "no": 71,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 122,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if len(g) != n:",
+   "segundos": 6.0,
+   "no": 391,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 122,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if len(g) != n:",
+   "segundos": 5.5,
+   "no": 199,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 123,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_dados_ruins_recusam",
+   "trecho": "raise ValueError(f\"VIP recusado: grupos tem {len(g)} linhas e X tem {n}\")",
+   "segundos": 12.3,
+   "no": 392,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 124,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_sem_grupos_avisa_e_garantia_baixa_avisa",
+   "trecho": "if grouping_guarantee in (\"none\", \"medium\"):",
+   "segundos": 12.2,
+   "no": 200,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 124,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_sem_grupos_avisa_e_garantia_baixa_avisa",
+   "trecho": "if grouping_guarantee in (\"none\", \"medium\"):",
+   "segundos": 14.4,
+   "no": 72,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 129,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "if n_grupos < div:",
+   "segundos": 7.7,
+   "no": 206,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 129,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dois_grupos_bastam_e_grupos_igual_a_divisoes_nao_gera_aviso_de_reducao",
+   "trecho": "if n_grupos < div:",
+   "segundos": 6.4,
+   "no": 206,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 129,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_valores_padrao_n_repeticoes_10_seed_0_limiar_1",
+   "trecho": "if n_grupos < div:",
+   "segundos": 8.3,
+   "no": 75,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 130,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_poucos_grupos_reduz_as_divisoes_e_um_grupo_e_erro",
+   "trecho": "if n_grupos < 2:",
+   "segundos": 12.3,
+   "no": 405,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 130,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dois_grupos_com_cinco_divisoes_reduz_para_dois_e_roda",
+   "trecho": "if n_grupos < 2:",
+   "segundos": 13.0,
+   "no": 405,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 130,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dois_grupos_com_cinco_divisoes_reduz_para_dois_e_roda",
+   "trecho": "if n_grupos < 2:",
+   "segundos": 12.7,
+   "no": 716,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 130,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_poucos_grupos_reduz_as_divisoes_e_um_grupo_e_erro",
+   "trecho": "if n_grupos < 2:",
+   "segundos": 13.0,
+   "no": 207,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 131,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_poucos_grupos_reduz_as_divisoes_e_um_grupo_e_erro",
+   "trecho": "raise ValueError(\"VIP recusado: menos de 2 grupos independentes; a estabilidade nao e' definida\")",
+   "segundos": 12.4,
+   "no": 406,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 137,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "pls = PLSRegression(n_components=n_componentes, scale=False)",
+   "segundos": 5.6,
+   "no": 1042,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 139,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return vip_scores(pls)",
+   "segundos": 6.4,
+   "no": 214,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 143,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "n_falhos = 0",
+   "segundos": 6.7,
+   "no": 222,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 145,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_informativas_tem_vip_alto_e_estavel_e_ruido_nao",
+   "trecho": "cv = StableStratifiedGroupKFold(n_splits=div, seed=seed + r)",
+   "segundos": 12.1,
+   "no": 1057,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 150,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "n_falhos += 1",
+   "segundos": 6.8,
+   "no": 1068,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 150,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "n_falhos += 1",
+   "segundos": 6.4,
+   "no": 1274,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 151,
+   "operador": "Continue->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "continue",
+   "segundos": 6.5,
+   "no": 1069,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 152,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if np.all(np.isfinite(v)):",
+   "segundos": 6.0,
+   "no": 436,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 155,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "n_falhos += 1",
+   "segundos": 6.2,
+   "no": 760,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 155,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "n_falhos += 1",
+   "segundos": 6.9,
+   "no": 1075,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 156,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not vips:",
+   "segundos": 7.5,
+   "no": 81,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 156,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "if not vips:",
+   "segundos": 6.3,
+   "no": 227,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 157,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_nenhum_ajuste_de_dobra_converge_e_erro",
+   "trecho": "raise ValueError(\"VIP recusado: nenhum ajuste das dobras convergiu; reduza n_componentes\")",
+   "segundos": 34.3,
+   "no": 228,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 158,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_contagem_exata_de_ajustes_que_falharam",
+   "trecho": "if n_falhos:",
+   "segundos": 7.8,
+   "no": 82,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 161,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_vip_exatamente_no_limiar_nao_conta_como_acima",
+   "trecho": "freq = (arr > limiar).mean(axis=0)",
+   "segundos": 12.9,
+   "no": 769,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 161,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_limiar_muda_a_frequencia",
+   "trecho": "freq = (arr > limiar).mean(axis=0)",
+   "segundos": 6.3,
+   "no": 769,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 161,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "freq = (arr > limiar).mean(axis=0)",
+   "segundos": 6.4,
+   "no": 771,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "GtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_classes_de_estabilidade_nas_bordas_de_80_e_20_por_cento",
+   "trecho": "classe = np.where(freq >= FREQ_ESTAVEL, \"estavel_acima\",",
+   "segundos": 6.4,
+   "no": 450,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "GtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_classes_de_estabilidade_nas_bordas_de_80_e_20_por_cento",
+   "trecho": "classe = np.where(freq >= FREQ_ESTAVEL, \"estavel_acima\",",
+   "segundos": 6.4,
+   "no": 450,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 163,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_classes_de_estabilidade_nas_bordas_de_80_e_20_por_cento",
+   "trecho": "np.where(freq <= FREQ_INSTAVEL, \"estavel_abaixo\", \"instavel\"))",
+   "segundos": 6.4,
+   "no": 778,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 163,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_classes_de_estabilidade_nas_bordas_de_80_e_20_por_cento",
+   "trecho": "np.where(freq <= FREQ_INSTAVEL, \"estavel_abaixo\", \"instavel\"))",
+   "segundos": 6.4,
+   "no": 778,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 164,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "return {\"vip\": completo, \"media\": arr.mean(axis=0),",
+   "segundos": 6.6,
+   "no": 1097,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 164,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_sem_autoescala_o_vip_e_o_do_pls1_sobre_x_apenas_centrado",
+   "trecho": "return {\"vip\": completo, \"media\": arr.mean(axis=0),",
+   "segundos": 7.5,
+   "no": 86,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 165,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dp_com_dois_ajustes_e_com_um_so",
+   "trecho": "\"dp\": arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(p),",
+   "segundos": 12.8,
+   "no": 784,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 165,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"dp\": arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(p),",
+   "segundos": 6.0,
+   "no": 784,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 165,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"dp\": arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(p),",
+   "segundos": 6.5,
+   "no": 1295,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 165,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"dp\": arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(p),",
+   "segundos": 6.3,
+   "no": 1296,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 165,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_dp_com_dois_ajustes_e_com_um_so",
+   "trecho": "\"dp\": arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(p),",
+   "segundos": 10.5,
+   "no": 1100,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 165,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"dp\": arr.std(axis=0, ddof=1) if len(arr) > 1 else np.zeros(p),",
+   "segundos": 6.1,
+   "no": 473,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 166,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"ic95_inf\": np.percentile(arr, 2.5, axis=0), \"ic95_sup\": np.percentile(arr, 97.5, axis=0),",
+   "segundos": 6.6,
+   "no": 1109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 166,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"ic95_inf\": np.percentile(arr, 2.5, axis=0), \"ic95_sup\": np.percentile(arr, 97.5, axis=0),",
+   "segundos": 7.0,
+   "no": 1113,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 166,
+   "operador": "const 2.5",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"ic95_inf\": np.percentile(arr, 2.5, axis=0), \"ic95_sup\": np.percentile(arr, 97.5, axis=0),",
+   "segundos": 6.3,
+   "no": 789,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 166,
+   "operador": "const 97.5",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_estatisticas_das_dobras_sao_media_dp_amostral_e_percentis_2_5_e_97_5",
+   "trecho": "\"ic95_inf\": np.percentile(arr, 2.5, axis=0), \"ic95_sup\": np.percentile(arr, 97.5, axis=0),",
+   "segundos": 6.3,
+   "no": 793,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 170,
+   "operador": "Pow->Mult",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_informativas_tem_vip_alto_e_estavel_e_ruido_nao",
+   "trecho": "\"soma_vip2\": float((completo ** 2).sum()), \"tarefa\": tarefa,",
+   "segundos": 11.8,
+   "no": 1304,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 170,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_estabilidade.py::test_informativas_tem_vip_alto_e_estavel_e_ruido_nao",
+   "trecho": "\"soma_vip2\": float((completo ** 2).sum()), \"tarefa\": tarefa,",
+   "segundos": 12.2,
+   "no": 1401,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 175,
+   "operador": "const 60",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[61-10.0]",
+   "trecho": "nomes: Optional[Sequence[str]] = None, *, max_barras: int = 60) -> str:",
+   "segundos": 10.1,
+   "no": 245,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[30-11.4]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 7.9,
+   "no": 1457,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 7.8,
+   "no": 1310,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[60-14.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 9.1,
+   "no": 1310,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[30-11.4]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 8.2,
+   "no": 1478,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "const 0.28",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 7.3,
+   "no": 1495,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "const 10.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[61-10.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 9.7,
+   "no": 1312,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "const 14.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[40-14.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 8.4,
+   "no": 1456,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "const 3",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 7.5,
+   "no": 1480,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "const 4.2",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 8.4,
+   "no": 1140,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "const 7.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 7.7,
+   "no": 1406,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig = Figure(figsize=(max(7.0, min(14.0, 0.28 * p + 3)) if p <= max_barras else 10.0, 4.2))",
+   "segundos": 8.5,
+   "no": 1139,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 184,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "ax = fig.add_subplot(1, 1, 1)",
+   "segundos": 7.8,
+   "no": 510,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 184,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax = fig.add_subplot(1, 1, 1)",
+   "segundos": 10.4,
+   "no": 508,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 184,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax = fig.add_subplot(1, 1, 1)",
+   "segundos": 10.9,
+   "no": 509,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 186,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "cores = np.where(res[\"classe\"] == \"estavel_acima\", \"#4C72B0\",",
+   "segundos": 11.7,
+   "no": 516,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 187,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "np.where(res[\"classe\"] == \"instavel\", \"#DD8452\", \"#BBBBBB\"))",
+   "segundos": 11.4,
+   "no": 842,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 10.9,
+   "no": 1155,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 11.3,
+   "no": 1155,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "const 0.8",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 11.1,
+   "no": 1156,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 11.1,
+   "no": 1157,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "const 2",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 35.3,
+   "no": 853,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax.bar(x, res[\"media\"], width=0.8 if p <= max_barras else 1.0, color=cores, zorder=2)",
+   "segundos": 10.7,
+   "no": 851,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 189,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "if p <= max_barras:",
+   "segundos": 10.6,
+   "no": 262,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 189,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "if p <= max_barras:",
+   "segundos": 9.7,
+   "no": 262,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 189,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "if p <= max_barras:",
+   "segundos": 13.0,
+   "no": 99,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 191,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "ax.errorbar(x, res[\"media\"], yerr=[np.maximum(res[\"media\"] - res[\"ic95_inf\"], 0.0),",
+   "segundos": 11.5,
+   "no": 1412,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 191,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "ax.errorbar(x, res[\"media\"], yerr=[np.maximum(res[\"media\"] - res[\"ic95_inf\"], 0.0),",
+   "segundos": 11.4,
+   "no": 1413,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "np.maximum(res[\"ic95_sup\"] - res[\"media\"], 0.0)],",
+   "segundos": 11.4,
+   "no": 1415,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 192,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_cores_por_classe_rotulos_e_erros_das_barras",
+   "trecho": "np.maximum(res[\"ic95_sup\"] - res[\"media\"], 0.0)],",
+   "segundos": 11.4,
+   "no": 1416,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 193,
+   "operador": "const 0.8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "fmt=\"none\", ecolor=\"#333333\", elinewidth=0.8, capsize=2, zorder=3)",
+   "segundos": 30.2,
+   "no": 1168,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 193,
+   "operador": "const 2",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "fmt=\"none\", ecolor=\"#333333\", elinewidth=0.8, capsize=2, zorder=3)",
+   "segundos": 26.7,
+   "no": 1169,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 193,
+   "operador": "const 3",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "fmt=\"none\", ecolor=\"#333333\", elinewidth=0.8, capsize=2, zorder=3)",
+   "segundos": 23.0,
+   "no": 1170,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "ax.set_xticklabels(list(nomes) if nomes is not None else [str(i) for i in x], rotation=60,",
+   "segundos": 7.5,
+   "no": 1176,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "const 60",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_barras_ate_60_tem_erros_e_rotulos_e_acima_de_60_nao",
+   "trecho": "ax.set_xticklabels(list(nomes) if nomes is not None else [str(i) for i in x], rotation=60,",
+   "segundos": 10.8,
+   "no": 1179,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "ax.set_xticklabels(list(nomes) if nomes is not None else [str(i) for i in x], rotation=60,",
+   "segundos": 7.2,
+   "no": 868,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 196,
+   "operador": "const 7",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ha=\"right\", fontsize=7)",
+   "segundos": 22.6,
+   "no": 1181,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 197,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.axhline(res[\"limiar\"], color=\"#C44E52\", lw=1, ls=\"--\", zorder=4)",
+   "segundos": 35.1,
+   "no": 878,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 197,
+   "operador": "const 4",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.axhline(res[\"limiar\"], color=\"#C44E52\", lw=1, ls=\"--\", zorder=4)",
+   "segundos": 35.2,
+   "no": 880,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_ylabel(\"VIP (media das dobras)\", fontsize=9)",
+   "segundos": 35.2,
+   "no": 883,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "f\"em >= {int(FREQ_ESTAVEL * 100)}% das dobras; laranja = instavel)\", fontsize=9)",
+   "segundos": 30.6,
+   "no": 893,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 202,
+   "operador": "const 150",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "fig.savefig(caminho, dpi=150)",
+   "segundos": 7.8,
+   "no": 899,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 203,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_mutacao.py::test_tamanho_da_figura_150_dpi_depende_do_numero_de_variaveis[12-7.0]",
+   "trecho": "return caminho",
+   "segundos": 9.1,
+   "no": 105,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

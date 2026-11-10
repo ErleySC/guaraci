@@ -1,0 +1,17 @@
+# Perfil de TECNICA: NIR dispersivo (transmitancia ou reflectancia), comprimento de onda em nm, 1100-2498 nm.
+# Perfil de partida: ajuste a faixa e o pre-processamento ao seu instrumento.
+descricao: "NIR dispersivo, 1100-2498 nm"
+unidade_eixo: "nm"
+eixo_min: 1100.0
+eixo_max: 2498.0
+default_preprocessing: "msc_sg_mc"
+vocabulario:
+  classe: "classe"
+  classe_plural: "classes"
+  matriz: "a amostra"
+  alvo: "o teor do analito de interesse"
+  conforme: "dentro da especificacao"
+  nao_conforme: "fora da especificacao"
+codigos_classe: {}
+faixa_trabalho: null
+referencia: ""

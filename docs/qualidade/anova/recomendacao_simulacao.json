@@ -1,0 +1,183 @@
+{
+  "repeticoes": 2000,
+  "alfa": 0.05,
+  "delta": 1.5,
+  "cenarios": {
+    "normal, variancias iguais, n=10": {
+      "descricao": "bem comportado",
+      "metodo_correto": "tukey",
+      "acerto": 0.869,
+      "recomendacao": {
+        "tukey": 0.869,
+        "games-howell": 0.1285,
+        "kruskal-dunn": 0.0025
+      },
+      "fwer": {
+        "tukey": 0.0495,
+        "games-howell": 0.048,
+        "kruskal-dunn": 0.0385,
+        "recomendado": 0.051
+      },
+      "poder": {
+        "tukey": 0.7985,
+        "games-howell": 0.7675,
+        "kruskal-dunn": 0.7235,
+        "recomendado": 0.794
+      }
+    },
+    "normal, variancias iguais, n=4": {
+      "descricao": "n minimo",
+      "metodo_correto": "tukey",
+      "acerto": 0.488,
+      "recomendacao": {
+        "tukey": 0.488,
+        "games-howell": 0.5115,
+        "kruskal-dunn": 0.0005
+      },
+      "fwer": {
+        "tukey": 0.053,
+        "games-howell": 0.045,
+        "kruskal-dunn": 0.031,
+        "recomendado": 0.055
+      },
+      "poder": {
+        "tukey": 0.33,
+        "games-howell": 0.2305,
+        "kruskal-dunn": 0.1695,
+        "recomendado": 0.272
+      }
+    },
+    "normal, variancias iguais, n desigual 5/10/25": {
+      "descricao": "desbalanceado",
+      "metodo_correto": "tukey",
+      "acerto": 0.821,
+      "recomendacao": {
+        "tukey": 0.821,
+        "games-howell": 0.1775,
+        "kruskal-dunn": 0.0015
+      },
+      "fwer": {
+        "tukey": 0.053,
+        "games-howell": 0.061,
+        "kruskal-dunn": 0.042,
+        "recomendado": 0.072
+      },
+      "poder": {
+        "tukey": 0.733,
+        "games-howell": 0.579,
+        "kruskal-dunn": 0.6595,
+        "recomendado": 0.7295
+      }
+    },
+    "normal, variancia 2:1, n=10": {
+      "descricao": "razao 2 (leve)",
+      "metodo_correto": "tukey",
+      "acerto": 0.703,
+      "recomendacao": {
+        "tukey": 0.703,
+        "games-howell": 0.2945,
+        "kruskal-dunn": 0.0025
+      },
+      "fwer": {
+        "tukey": 0.0525,
+        "games-howell": 0.0475,
+        "kruskal-dunn": 0.04,
+        "recomendado": 0.053
+      },
+      "poder": {
+        "tukey": 0.6425,
+        "games-howell": 0.5625,
+        "kruskal-dunn": 0.521,
+        "recomendado": 0.6035
+      }
+    },
+    "normal, variancias 1:10, n=10": {
+      "descricao": "razao 10",
+      "metodo_correto": "games-howell",
+      "acerto": 0.92,
+      "recomendacao": {
+        "tukey": 0.0775,
+        "games-howell": 0.92,
+        "kruskal-dunn": 0.0025
+      },
+      "fwer": {
+        "tukey": 0.065,
+        "games-howell": 0.0485,
+        "kruskal-dunn": 0.046,
+        "recomendado": 0.0485
+      },
+      "poder": {
+        "tukey": 0.21,
+        "games-howell": 0.1305,
+        "kruskal-dunn": 0.1325,
+        "recomendado": 0.1315
+      }
+    },
+    "normal, variancias 1:10, n desigual (grupo de maior variancia tem n=5)": {
+      "descricao": "caso classicamente liberal p/ Tukey",
+      "metodo_correto": "games-howell",
+      "acerto": 0.877,
+      "recomendacao": {
+        "tukey": 0.1215,
+        "games-howell": 0.877,
+        "kruskal-dunn": 0.0015
+      },
+      "fwer": {
+        "tukey": 0.2565,
+        "games-howell": 0.0605,
+        "kruskal-dunn": 0.1135,
+        "recomendado": 0.0895
+      },
+      "poder": {
+        "tukey": 0.4215,
+        "games-howell": 0.0735,
+        "kruskal-dunn": 0.2495,
+        "recomendado": 0.11
+      }
+    },
+    "t com 3 gl (caudas pesadas), n=15": {
+      "descricao": "caudas pesadas",
+      "metodo_correto": "kruskal-dunn",
+      "acerto": 0.1385,
+      "recomendacao": {
+        "tukey": 0.608,
+        "games-howell": 0.2535,
+        "kruskal-dunn": 0.1385
+      },
+      "fwer": {
+        "tukey": 0.0395,
+        "games-howell": 0.035,
+        "kruskal-dunn": 0.0355,
+        "recomendado": 0.046
+      },
+      "poder": {
+        "tukey": 0.9385,
+        "games-howell": 0.928,
+        "kruskal-dunn": 0.9905,
+        "recomendado": 0.9595
+      }
+    },
+    "lognormal (assimetrica), n=15": {
+      "descricao": "assimetria forte",
+      "metodo_correto": "kruskal-dunn",
+      "acerto": 0.923,
+      "recomendacao": {
+        "tukey": 0.04,
+        "games-howell": 0.037,
+        "kruskal-dunn": 0.923
+      },
+      "fwer": {
+        "tukey": 0.034,
+        "games-howell": 0.0265,
+        "kruskal-dunn": 0.046,
+        "recomendado": 0.0475
+      },
+      "poder": {
+        "tukey": 0.9155,
+        "games-howell": 0.909,
+        "kruskal-dunn": 0.997,
+        "recomendado": 0.997
+      }
+    }
+  }
+}

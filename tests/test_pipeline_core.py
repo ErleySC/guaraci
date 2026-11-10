@@ -1,0 +1,2547 @@
+"""Rede de segurança de testes unitários do núcleo do pipeline.
+
+Cobre as FRONTEIRAS DE MÓDULO que a modularização (Fase H) vai separar —
+pré-processamento, estatística quimiométrica, DD-SIMCA, métricas, parsing
+JCAMP-DX e IO de configuração. Foi escrito ANTES de mover qualquer código,
+para travar o comportamento atual e detectar regressões durante o corte.
+
+Usa a fixture `pq` (sessão) do conftest.py.
+"""
+import re
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+from sklearn.cross_decomposition import PLSRegression
+
+from conftest import achar_pastas_run
+from tests._resumo import canonico
+
+
+# ── Pré-processamento (futuro: guaraci/preprocessing.py) ──────────────────────
+
+def test_snv_normaliza_por_amostra(pq):
+    """SNV: cada espectro fica com média ~0 e desvio ~1 (por linha)."""
+    rng = np.random.default_rng(0)
+    X = rng.normal(loc=5.0, scale=3.0, size=(20, 60))
+    Z = pq.SNV().fit_transform(X)
+    assert Z.shape == X.shape
+    np.testing.assert_allclose(Z.mean(axis=1), 0.0, atol=1e-9)
+    np.testing.assert_allclose(Z.std(axis=1), 1.0, atol=1e-9)
+
+
+def test_snv_linha_constante_nao_estoura(pq):
+    """SNV: espectro constante (desvio 0) não deve gerar NaN/inf (sd→1)."""
+    X = np.full((3, 40), 7.0)
+    Z = pq.SNV().fit_transform(X)
+    assert np.all(np.isfinite(Z))
+
+
+def test_snv_invariante_a_escala_e_offset(pq):
+    """VALIDACAO (Barnes, Dhanoa & Lister, 1989): o SNV DEVE anular uma
+    transformacao afim por-espectro  x -> a + b*x  (b>0), pois e' exatamente
+    o efeito de espalhamento (caminho optico) que ele existe para corrigir.
+    Se SNV(a + b*x) != SNV(x), o metodo nao esta cumprindo sua definicao."""
+    rng = np.random.default_rng(0)
+    X = rng.normal(loc=5.0, scale=3.0, size=(15, 80))
+    # Cada espectro recebe seu proprio ganho b>0 e offset a (espalhamento real).
+    b = rng.uniform(0.5, 4.0, size=(15, 1))
+    a = rng.uniform(-2.0, 2.0, size=(15, 1))
+    X_afim = a + b * X
+    Z_orig = pq.SNV().fit_transform(X)
+    Z_afim = pq.SNV().fit_transform(X_afim)
+    np.testing.assert_allclose(Z_orig, Z_afim, atol=1e-10)
+
+
+# ── MSC: forma fechada vetorizada (achado 2026-08-07) ────────────────────────
+# transform() resolvia, por amostra, uma regressao de 2 parametros
+# (a, b) via np.linalg.lstsq num loop Python. Vetorizado usando a forma
+# fechada da regressao linear simples (b=Cov(ref,X_i)/Var(ref),
+# a=mean(X_i)-b*mean(ref)). Estes testes travam a EQUIVALENCIA com o
+# lstsq original (oraculo independente) e o comportamento do caso
+# degenerado (referencia de variancia ~0).
+
+def _msc_lstsq_por_amostra(X, ref):
+    """Oraculo independente: a MESMA logica que MSC.transform() usava antes
+    da vetorizacao (1 np.linalg.lstsq por amostra) -- usada so' nos testes,
+    para verificar que a forma fechada reproduz exatamente esse resultado."""
+    A = np.column_stack([np.ones_like(ref), ref])
+    out = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        sol, *_ = np.linalg.lstsq(A, X[i], rcond=None)
+        a, b = float(sol[0]), float(sol[1])
+        out[i] = (X[i] - a) / b if abs(b) > 1e-12 else X[i] - a
+    return out
+
+
+def test_msc_forma_fechada_bate_com_lstsq_por_amostra(pq):
+    """A regressao vetorizada (forma fechada) tem que reproduzir EXATAMENTE
+    o resultado de resolver a mesma regressao (a + b*ref) via lstsq
+    amostra-por-amostra -- e' a mesma matematica, so' mais rapida."""
+    rng = np.random.default_rng(7)
+    X_train = rng.normal(size=(40, 60)) * rng.uniform(0.5, 5) + rng.uniform(-2, 2)
+    msc = pq.MSC().fit(X_train)
+
+    for seed in range(5):
+        rng2 = np.random.default_rng(seed + 100)
+        X_new = rng2.normal(size=(15, 60)) * rng2.uniform(0.5, 5)
+        esperado = _msc_lstsq_por_amostra(X_new, msc.ref_)
+        obtido = msc.transform(X_new)
+        np.testing.assert_allclose(obtido, esperado, atol=1e-8)
+
+
+def test_msc_recupera_coeficientes_conhecidos(pq):
+    """Caso estruturado com a/b conhecidos por construcao: X_i = a_i + b_i*ref
+    -- MSC deve reconstruir exatamente ref (a menos de arredondamento)."""
+    rng = np.random.default_rng(3)
+    ref = rng.normal(size=50)
+    a_verdadeiro = np.array([5.0, -3.0, 0.0])
+    b_verdadeiro = np.array([2.0, 0.5, 1.0])
+    X = a_verdadeiro[:, None] + b_verdadeiro[:, None] * ref[None, :]
+
+    msc = pq.MSC()
+    msc.ref_ = ref   # simula fit() num treino cuja media e' `ref`
+    out = msc.transform(X)
+    for i in range(3):
+        np.testing.assert_allclose(out[i], ref, atol=1e-8)
+
+
+def test_msc_referencia_degenerada_nao_gera_nan(pq):
+    """Referencia de treino com variancia ~0 (caso degenerado, nao ocorre
+    com dado espectral real) -- a regressao fica mal-posta; MSC cai no
+    fallback documentado (so' subtrai a media da amostra), nunca NaN/Inf."""
+    ref_const = np.full(30, 3.0)
+    rng = np.random.default_rng(9)
+    X = rng.normal(size=(5, 30))
+
+    msc = pq.MSC()
+    msc.ref_ = ref_const
+    out = msc.transform(X)
+    assert np.all(np.isfinite(out))
+    np.testing.assert_allclose(out, X - X.mean(axis=1, keepdims=True), atol=1e-10)
+
+
+def test_savgol_preserva_shape(pq):
+    """SavGol: preserva o shape; suaviza (não retorna o mesmo array)."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(10, 80))
+    Y = pq.SavGol(window_length=25, polyorder=2, deriv=0).transform(X)
+    assert Y.shape == X.shape
+
+
+def test_construir_preprocessador_presets(pq):
+    """build_preprocessor: cada preset monta as etapas esperadas."""
+    cfg = pq.Config()
+    cfg.default_preprocessing = "snv_sg_mc"
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
+    cfg.default_preprocessing = "msc_sg_mc"
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["msc", "sg", "mc"]
+    cfg.default_preprocessing = "mc"
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
+    cfg.default_preprocessing = "autoscaling"
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["auto"]
+
+
+def test_construir_preprocessador_custom_combina_flags_individuais(pq):
+    """preset='custom' honra apply_snv/apply_sg/apply_mc individualmente
+    -- nunca testado antes (só os 4 presets nomeados tinham teste)."""
+    cfg = pq.Config()
+    cfg.default_preprocessing = "custom"
+
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = True, True, True
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "sg", "mc"]
+
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = True, False, False
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv"]
+
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = False, True, False
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["sg"]
+
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = False, False, True
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
+
+
+def test_construir_preprocessador_custom_sem_flags_cai_no_mc(pq):
+    """Nenhuma flag marcada seria um Pipeline VAZIO (quebraria .fit()) --
+    fallback de seguranca: usa mean-centering sozinho."""
+    cfg = pq.Config()
+    cfg.default_preprocessing = "custom"
+    cfg.apply_snv = cfg.apply_sg = cfg.apply_mc = False
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["mc"]
+
+
+def test_construir_preprocessador_preset_desconhecido_cai_no_custom(pq):
+    """Qualquer preset nao reconhecido cai no ramo custom (mesmo
+    comportamento de 'custom', usando as flags individuais)."""
+    cfg = pq.Config()
+    cfg.default_preprocessing = "isto_nao_existe"
+    cfg.apply_snv, cfg.apply_sg, cfg.apply_mc = True, False, True
+    assert list(pq.build_preprocessor(cfg).named_steps) == ["snv", "mc"]
+
+
+# ── Estatística quimiométrica (futuro: guaraci/diagnostics.py) ────────────────
+
+def _pls_ajustado(seed=0, n=60, p=30, n_comp=3):
+    rng = np.random.default_rng(seed)
+    X = rng.normal(size=(n, p))
+    Y = np.zeros((n, 2)); Y[: n // 2, 0] = 1; Y[n // 2:, 1] = 1
+    return PLSRegression(n_components=n_comp, scale=False).fit(X, Y), X
+
+
+def test_vip_propriedade_soma_igual_p(pq):
+    """VIP: propriedade de Chong & Jun — sum_j VIP_j^2 = p (média de VIP^2 = 1)."""
+    modelo, _ = _pls_ajustado()
+    vip = pq.vip_scores(modelo)
+    assert vip.shape == (30,)
+    assert np.all(vip >= 0)
+    assert np.mean(vip ** 2) == pytest.approx(1.0, rel=1e-6)
+
+
+def test_selectivity_ratio_nao_negativo(pq):
+    """SR: razão de variâncias — sempre >= 0, um valor por variável."""
+    modelo, X = _pls_ajustado()
+    sr = pq.compute_selectivity_ratio(modelo, X)
+    assert sr.shape == (X.shape[1],)
+    assert np.all(sr >= 0)
+
+
+def _sr_referencia_univariado(modelo, X):
+    """Formula publicada (Rajalahti et al. 2009, Sec. 2.2) para y de 1
+    coluna — usada como oráculo independente nos testes abaixo. O metodo
+    e' definido sobre X CENTRADO na media (auditoria de 2026-11-10: a versao
+    anterior deste oraculo repetia a ausencia de centragem do codigo)."""
+    X = X - X.mean(axis=0)
+    b = np.asarray(modelo.coef_, dtype=float).reshape(-1)
+    w_tp = b / np.linalg.norm(b)
+    t_tp = X @ w_tp
+    tt = float(t_tp @ t_tp)
+    p_tp = (t_tp @ X) / tt
+    X_tp = np.outer(t_tp, p_tp)
+    X_res = X - X_tp
+    var_res = X_res.var(axis=0, ddof=1)
+    var_res[var_res < 1e-12] = 1e-12
+    return X_tp.var(axis=0, ddof=1) / var_res
+
+
+def test_selectivity_ratio_bate_com_formula_de_referencia_qualquer_lv(pq):
+    """Achado A2 da auditoria 2026-08-07: SR deve bater com a formula
+    publicada (b/||b||) para QUALQUER numero de LVs — a versao anterior,
+    baseada no peso w1, so coincidia com a referencia quando o modelo
+    tinha 1 LV (com >=2 LVs corr(t_tp, y_hat) caia para ~0.92, quando
+    deveria ser 1.0 exato)."""
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(50, 12))
+    y = X[:, :3] @ rng.normal(size=3) + rng.normal(scale=0.1, size=50)
+    for n_lv in (1, 2, 4):
+        m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
+        sr = pq.compute_selectivity_ratio(m, X)
+        sr_ref = _sr_referencia_univariado(m, X)
+        np.testing.assert_allclose(sr, sr_ref, rtol=1e-9)
+
+
+def test_selectivity_ratio_projecao_alvo_proporcional_a_predicao(pq):
+    """Propriedade que DEFINE o metodo (Rajalahti et al. 2009): o escore de
+    projecao-alvo t_tp = X @ (b/||b||) e' proporcional ao vetor de valores
+    preditos y_hat, para qualquer numero de LVs."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(60, 15))
+    y = X[:, :4] @ rng.normal(size=4) + rng.normal(scale=0.1, size=60)
+    for n_lv in (1, 2, 3, 5):
+        m = PLSRegression(n_components=n_lv, scale=False).fit(X, y)
+        b = np.asarray(m.coef_, dtype=float).reshape(-1)
+        t_tp = X @ (b / np.linalg.norm(b))
+        yhat = m.predict(X).ravel()
+        corr = np.corrcoef(t_tp, yhat)[0, 1]
+        assert corr == pytest.approx(1.0, abs=1e-9)
+
+
+def test_selectivity_ratio_multiclasse_agrega_por_maximo(pq):
+    """Y one-hot multiclasse (K colunas): SR aplica a formula publicada a
+    cada classe (one-vs-rest) independentemente e agrega por MAXIMO entre
+    classes — shape correto, nao-negativo, finito."""
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(60, 10))
+    y_int = rng.integers(0, 4, size=60)
+    Y_bin = np.eye(4)[y_int]
+    m = PLSRegression(n_components=3, scale=False).fit(X, Y_bin)
+    sr = pq.compute_selectivity_ratio(m, X)
+    assert sr.shape == (10,)
+    assert np.all(sr >= 0)
+    assert np.all(np.isfinite(sr))
+
+
+# ── Teste de incerteza de Martens (jackknifing dos coeficientes PLS) ──────────
+
+def _dados_regressao_1_variavel_preditiva(seed=0, n=80, p=20):
+    """y depende SO' da variavel 0 (coeficiente forte); as outras 19 sao
+    ruido puro, sem relacao com y -- permite verificar se Martens separa
+    corretamente sinal de ruido (nao e' so' 'nao quebrou')."""
+    rng = np.random.default_rng(seed)
+    X = rng.normal(size=(n, p))
+    y = 5.0 * X[:, 0] + rng.normal(scale=0.3, size=n)
+    return X, y
+
+
+def test_martens_identifica_variavel_preditiva_como_significativa(pq):
+    """A variavel realmente preditiva (0) deve ter p-valor < 0.05."""
+    from sklearn.model_selection import KFold
+    X, y = _dados_regressao_1_variavel_preditiva()
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = list(KFold(n_splits=8, shuffle=True, random_state=0).split(X))
+
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+
+    assert res["n_folds_validos"] == 8
+    assert res["p_valores"][0] < 0.05
+    assert bool(res["significativo"][0])
+
+
+def test_martens_maioria_das_variaveis_de_ruido_nao_significativa(pq):
+    """Das 19 variaveis SEM relacao com y, a maioria (>= 15) deve ficar
+    nao-significativa -- alpha=0.05 permite alguns falsos positivos por
+    acaso, mas nao deveria marcar quase todas como 'significativas'."""
+    from sklearn.model_selection import KFold
+    X, y = _dados_regressao_1_variavel_preditiva(seed=1)
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = list(KFold(n_splits=8, shuffle=True, random_state=1).split(X))
+
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+
+    n_sig_ruido = int(np.sum(res["significativo"][1:]))
+    assert n_sig_ruido <= 4, (
+        f"{n_sig_ruido}/19 variaveis de ruido marcadas como significativas "
+        "(esperado poucos falsos positivos)")
+
+
+def test_martens_multiclasse_agrega_por_maximo_entre_classes(pq):
+    """Com Y_bin multiclasse (coef_ como matriz k x p), o resultado agrega
+    corretamente por MAXIMO |t| entre classes -- shapes batem, sem erro."""
+    from sklearn.model_selection import StratifiedKFold
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(90, 15))
+    y_int = np.repeat([0, 1, 2], 30)
+    Y_bin = np.zeros((90, 3))
+    Y_bin[np.arange(90), y_int] = 1.0
+    modelo = PLSRegression(n_components=2, scale=False).fit(X, Y_bin)
+    cv = list(StratifiedKFold(n_splits=5, shuffle=True,
+                              random_state=2).split(X, y_int))
+
+    res = pq.martens_uncertainty_test(X, Y_bin, 2, cv, modelo.coef_)
+
+    assert res["t_valores"].shape == (15,)
+    assert res["p_valores"].shape == (15,)
+    assert res["significativo"].shape == (15,)
+    assert np.all(res["p_valores"][~np.isnan(res["p_valores"])] >= 0)
+    assert np.all(res["p_valores"][~np.isnan(res["p_valores"])] <= 1)
+
+
+def test_martens_poucos_folds_validos_retorna_nan_sem_quebrar(pq):
+    """Com menos de 3 folds validos, retorna NaN/False (nao ha como
+    estimar variancia jackknife com sentido), sem lancar excecao."""
+    X, y = _dados_regressao_1_variavel_preditiva(seed=3, n=10)
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = [(np.arange(8), np.arange(8, 10))]   # so' 1 fold
+
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+
+    assert int(res["n_folds_validos"]) == 1
+    assert np.all(np.isnan(res["p_valores"]))
+    assert not np.any(res["significativo"])
+
+
+def test_martens_usa_scale_false_consistente_com_convencao_do_pipeline(pq):
+    """Achado 1 da rodada de mutation testing (chemometric_stats.py,
+    2026-09-11): a mutacao `scale=False`->`scale=True` no refit por fold
+    (linha ~213) sobrevivia -- nenhum teste distinguia as duas convencoes.
+    `scale=False` e' a UNICA convencao usada em todo `pipeline.py` (10
+    instancias de PLSRegression, nenhuma com scale=True) -- o modelo
+    principal (`pls_final`, pipeline.py:1984) e' sempre ajustado sem
+    escala, entao o refit por fold do jackknife PRECISA usar a mesma
+    convencao, senao os coeficientes por fold e o coef_completo vivem em
+    escalas diferentes e a estatistica t fica sem sentido.
+
+    X aqui tem variancias MUITO heterogeneas entre colunas (1e-3 a 1e4) --
+    exatamente o regime em que scale=False/True produzem coeficientes PLS
+    numericamente bem diferentes (com colunas homogeneas o efeito seria
+    pequeno demais para o teste discriminar de forma confiavel -- ver
+    docstring do Passo para a verificacao empirica desta premissa)."""
+    from sklearn.model_selection import KFold
+    rng = np.random.default_rng(7)
+    n = 60
+    escalas = np.array([1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0, 1000.0, 1e4])
+    X = rng.normal(size=(n, len(escalas))) * escalas
+    y = (X[:, 0] / escalas[0]) * 5.0 + rng.normal(scale=0.3, size=n)
+    Y = y.reshape(-1, 1)
+    cv = list(KFold(n_splits=6, shuffle=True, random_state=7).split(X))
+
+    modelo_sem_escala = PLSRegression(n_components=1, scale=False).fit(X, Y)
+    res_sem_escala = pq.martens_uncertainty_test(
+        X, Y, 1, cv, modelo_sem_escala.coef_)
+
+    # Oraculo independente: reproduz o MESMO algoritmo a mao, mas fitando
+    # cada fold com scale=True -- se a funcao usasse scale=True
+    # internamente (o mutante scale=False->True), o resultado bateria com
+    # este oraculo em vez do resultado real da funcao (scale=False).
+    coef_completo = np.asarray(modelo_sem_escala.coef_, dtype=float)
+    coefs_fold_com_escala = [
+        np.asarray(PLSRegression(n_components=1, scale=True)
+                   .fit(X[tr], Y[tr]).coef_, dtype=float)
+        for tr, _va in cv]
+    B = np.stack(coefs_fold_com_escala, axis=0)
+    b_bar = B.mean(axis=0)
+    n_folds = len(coefs_fold_com_escala)
+    var_jk = ((n_folds - 1) / n_folds) * np.sum((B - b_bar) ** 2, axis=0)
+    se_jk = np.sqrt(var_jk)
+    t_oraculo_com_escala = (coef_completo
+                             / np.where(se_jk < 1e-12, 1.0, se_jk))[0]
+
+    assert not np.allclose(res_sem_escala["t_valores"], t_oraculo_com_escala,
+                            rtol=0.2, atol=0.5), (
+        "resultado com scale=False deveria divergir claramente do oraculo "
+        "scale=True -- se bateram, a funcao pode estar usando scale=True "
+        "por baixo dos panos")
+
+
+def test_martens_com_folds_reais_nao_e_equivalente_a_zero_folds(pq):
+    """Achado 2 da rodada de mutation testing (2026-09-11): o laco `for
+    tr, _va in cv_indices` rodando ZERO vezes (mutante
+    core/ZeroIterationForLoop, linha ~211) sobrevivia -- nenhum teste
+    exercitava `cv_indices` com folds REAIS (>=3) e conferia que o
+    resultado e' numericamente distinto do caso degenerado de zero
+    folds. Zero folds e' um caso VALIDO (mesmo espirito de
+    `test_martens_poucos_folds_validos_retorna_nan_sem_quebrar`, so' que
+    no limite cv_indices=[] em vez de 1-2 folds) -- retorno bem definido
+    (NaN/0 folds), nao excecao."""
+    from sklearn.model_selection import KFold
+    X, y = _dados_regressao_1_variavel_preditiva(seed=21)
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y.reshape(-1, 1))
+    cv = list(KFold(n_splits=8, shuffle=True, random_state=21).split(X))
+
+    res = pq.martens_uncertainty_test(X, y.reshape(-1, 1), 1, cv, modelo.coef_)
+    res_zero_folds = pq.martens_uncertainty_test(
+        X, y.reshape(-1, 1), 1, [], modelo.coef_)
+
+    assert int(res["n_folds_validos"]) == 8
+    assert not np.all(np.isnan(res["t_valores"]))
+    assert res["p_valores"][0] < 0.05
+
+    assert int(res_zero_folds["n_folds_validos"]) == 0
+    assert np.all(np.isnan(res_zero_folds["t_valores"]))
+    assert not np.any(res_zero_folds["significativo"])
+
+
+def test_selectivity_ratio_com_1_lv_identifica_variavel_preditiva(pq):
+    """Achado 2 (mesmo padrao, `compute_selectivity_ratio`): o laco `for k
+    in range(n_saidas)` rodando ZERO vezes (mutante
+    core/ZeroIterationForLoop, linha ~143) tambem sobrevivia com Y de 1
+    coluna (n_saidas=1, uma unica iteracao do laco) -- sem um teste que
+    force esse caso e confira um SR NAO-TRIVIAL (nao so' o formato/sinal
+    ja cobertos por outros testes, que passariam mesmo com SR = zeros)."""
+    rng = np.random.default_rng(22)
+    X = rng.normal(size=(50, 10))
+    y = X[:, 0] * 5.0 + rng.normal(scale=0.1, size=50)
+    m = PLSRegression(n_components=1, scale=False).fit(X, y)
+    sr = pq.compute_selectivity_ratio(m, X)
+    assert sr[0] > 1.0, "variavel realmente preditiva deveria ter SR alto"
+
+
+def test_hotelling_limite_positivo_e_monotonico(pq):
+    """T2 UCL: positivo e MAIOR quando alpha é menor (limite mais rígido)."""
+    l05 = pq.hotelling_t2_limit(50, 3, 0.05)
+    l01 = pq.hotelling_t2_limit(50, 3, 0.01)
+    assert l05 > 0 and l01 > l05
+    # n <= k é degenerado → infinito (sem falso outlier silencioso)
+    assert pq.hotelling_t2_limit(3, 3, 0.05) == float("inf")
+
+
+# ── DModX / DModY (nomenclatura SIMCA-P/Unscrambler, mesmo Q-resíduo) ────────
+
+def test_dmodx_amostra_tipica_fica_proxima_de_1(pq):
+    """Residuos Q homogeneos (nenhum outlier real) -> DModX normalizado
+    fica perto de 1 para a maioria das amostras (por definicao: e' o
+    residuo relativo a MEDIA do proprio conjunto)."""
+    rng = np.random.default_rng(0)
+    Q = rng.chisquare(df=5, size=200) * 0.01   # residuos "tipicos", sem outlier
+    res = pq.dmodx(Q, n_variaveis=50, n_componentes=3, n_amostras=200)
+    assert 0.5 <= float(np.median(res["dmodx"])) <= 1.5
+    assert res["dmodx_crit"] > 0
+
+
+def test_dmodx_outlier_fica_acima_do_critico(pq):
+    """Uma amostra com Q MUITO maior que as demais (outlier real) deve
+    ficar acima do DModX critico -- sinalizada como fora do modelo."""
+    rng = np.random.default_rng(1)
+    Q = rng.chisquare(df=5, size=100) * 0.01
+    Q[0] = Q.max() * 50   # outlier flagrante
+    res = pq.dmodx(Q, n_variaveis=50, n_componentes=3, n_amostras=100)
+    assert res["dmodx"][0] > res["dmodx_crit"]
+    assert bool(res["fora_do_modelo"][0])
+    assert res["n_fora_do_modelo"] >= 1
+
+
+def test_dmody_residuo_pequeno_fica_dentro_do_critico(pq):
+    """Residuos de predicao pequenos e homogeneos (modelo bem ajustado)
+    ficam dentro do limite critico -- nenhum falso alarme."""
+    rng = np.random.default_rng(2)
+    residuo = rng.normal(scale=0.1, size=60)
+    res = pq.dmody(residuo, n_componentes=2, n_amostras=60)
+    assert res["n_fora_do_modelo"] <= 3   # poucos falsos positivos (alpha=0.05)
+
+
+def test_dmody_outlier_de_predicao_e_sinalizado(pq):
+    """Uma amostra cuja predicao erra MUITO mais que as demais deve ficar
+    acima do DModY critico."""
+    rng = np.random.default_rng(3)
+    residuo = rng.normal(scale=0.1, size=60)
+    residuo[0] = 10.0   # erro de predicao flagrante
+    res = pq.dmody(residuo, n_componentes=2, n_amostras=60)
+    assert res["dmody"][0] > res["dmody_crit"]
+    assert bool(res["fora_do_modelo"][0])
+
+
+def test_q_residuos_zero_quando_reconstrucao_exata(pq):
+    """Q-resíduos: se X = T@P exatamente, o resíduo é ~0."""
+    rng = np.random.default_rng(2)
+    T = rng.normal(size=(25, 3)); P = rng.normal(size=(3, 40))
+    X = T @ P
+    q = pq.q_residuals(X, T, P)
+    assert q.shape == (25,)
+    np.testing.assert_allclose(q, 0.0, atol=1e-18)
+
+
+def test_variancia_explicada_range(pq):
+    """Variância explicada (%): não-negativa e um valor por componente."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(50, 20))
+    T = X[:, :3]  # 3 "componentes" quaisquer
+    ve = pq.explained_variance(X, T)
+    assert ve.shape == (3,)
+    assert np.all(ve >= 0)
+
+
+# ── Figuras de mérito (Valderrama, Braga & Poppi, 2009) ───────────────────────
+
+def _modelo_e_replicas_conhecidos(seed=0, n=60, p=25, ruido_replica=0.02):
+    """PLS com direção verdadeira conhecida + grupos de réplicas com ruído
+    de magnitude CONHECIDA — permite verificar se delta_x é recuperado
+    corretamente (não é só "não quebrou", é "dá o número certo")."""
+    rng = np.random.default_rng(seed)
+    w_true = rng.normal(size=p); w_true /= np.linalg.norm(w_true)
+    X = rng.normal(size=(n, p))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=n)
+    modelo = PLSRegression(n_components=3, scale=False)
+    modelo.fit(X, y.reshape(-1, 1))
+    grupos = []
+    for _ in range(8):
+        base = X[rng.integers(0, n)]
+        grupos.append(base + rng.normal(scale=ruido_replica, size=(3, p)))
+    return modelo, X, grupos, ruido_replica
+
+
+def test_figuras_merito_recupera_ruido_injetado(pq):
+    """delta_x estimado (via variância pooled das réplicas) deve bater com o
+    ruído REALMENTE injetado nas réplicas sintéticas (não é chute)."""
+    modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos()
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
+    assert fom["n_grupos_replicas"] == 8
+
+
+def test_figuras_merito_razao_loq_lod_e_exata(pq):
+    """LOQ/LOD = 10/3.3 por definição (mesmo delta_x e SEN cancelam)."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=7)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert fom["loq"] / fom["lod"] == pytest.approx(10.0 / 3.3, rel=1e-9)
+
+
+def test_figuras_merito_sensibilidade_e_inverso_da_norma_de_b(pq):
+    """SEN = 1/||b|| — checagem direta contra o vetor de regressão do modelo."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=1)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    norm_b = np.linalg.norm(np.asarray(modelo.coef_).reshape(-1))
+    assert fom["sensibilidade"] == pytest.approx(1.0 / norm_b, rel=1e-9)
+
+
+def test_figuras_merito_seletividade_entre_0_e_1(pq):
+    """SEL_i é um cosseno (|.|) — sempre em [0, 1]; a média reportada também."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=2)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert 0.0 <= fom["seletividade_media"] <= 1.0
+
+
+def test_figuras_merito_sem_replicas_nao_quebra(pq):
+    """Sem réplicas físicas não há como estimar ruído — NaN, não crash nem 0."""
+    modelo, X, _grupos, _ = _modelo_e_replicas_conhecidos(seed=3)
+    fom = pq.regression_figures_of_merit(modelo, X, [])
+    assert fom["n_grupos_replicas"] == 0
+    assert np.isnan(fom["lod"]) and np.isnan(fom["loq"])
+    assert np.isnan(fom["sensibilidade_analitica"])
+    # SEN/SEL não dependem de réplicas — continuam calculáveis
+    assert np.isfinite(fom["sensibilidade"])
+
+
+def test_figuras_merito_modelo_degenerado_b_zero(pq):
+    """Vetor de regressão nulo (modelo sem poder preditivo) -> tudo NaN,
+    nunca ZeroDivisionError/inf silencioso. `n_grupos_replicas` e os
+    campos de METADADO do IC (Bloco 12: confiança pedida, graus de
+    liberdade) não são "estimados" -- ficam de fora do invariante NaN."""
+    class _ModeloNulo:
+        coef_ = np.zeros((1, 10))
+    fom = pq.regression_figures_of_merit(
+        _ModeloNulo(), np.random.default_rng(0).normal(size=(20, 10)), [])
+    chaves_metadado = {"n_grupos_replicas", "lod_ic_confianca",
+                       "lod_ic_graus_liberdade"}
+    assert all(np.isnan(v) for k, v in fom.items() if k not in chaves_metadado)
+
+
+def test_figuras_merito_grupo_com_1_amostra_e_ignorado(pq):
+    """Um grupo de réplicas com só 1 amostra não tem variância intra-grupo
+    calculável (graus de liberdade = 0) — deve ser IGNORADO no cálculo de
+    delta_x, não contar como grupo válido nem quebrar a soma pooled."""
+    modelo, X, grupos, ruido = _modelo_e_replicas_conhecidos(seed=9)
+    grupos_com_singleton = grupos + [np.array([X[0]])]  # grupo de 1 amostra so'
+    fom = pq.regression_figures_of_merit(modelo, X, grupos_com_singleton)
+    # o singleton nao conta: mesmo numero de grupos validos que sem ele
+    assert fom["n_grupos_replicas"] == len(grupos)
+    assert fom["delta_x_ruido"] == pytest.approx(ruido, rel=0.25)
+
+
+# ── LOD/LOQ como intervalo (Bloco 12, Allegrini & Olivieri 2014) ─────────
+
+def test_ic_lod_loq_contem_o_ponto_estimado(pq):
+    """O ponto (lod/loq) tem que cair DENTRO do proprio intervalo -- e' o
+    minimo que um IC bem formado tem que satisfazer."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=11)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert fom["lod_ic_baixo"] <= fom["lod"] <= fom["lod_ic_alto"]
+    assert fom["loq_ic_baixo"] <= fom["loq"] <= fom["loq_ic_alto"]
+    assert fom["delta_x_ruido_ic_baixo"] <= fom["delta_x_ruido"] <= fom["delta_x_ruido_ic_alto"]
+
+
+def test_ic_lod_loq_mantem_a_razao_10_sobre_3_3(pq):
+    """LOD/LOQ sao ambos 3.3x/10x delta_x -- os limites do IC tem que
+    manter a mesma razao exata que o ponto (mesmo delta_x_ruido_ic_* em
+    ambos, so' o multiplicador muda)."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=12)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    assert fom["loq_ic_baixo"] / fom["lod_ic_baixo"] == pytest.approx(10.0 / 3.3, rel=1e-9)
+    assert fom["loq_ic_alto"] / fom["lod_ic_alto"] == pytest.approx(10.0 / 3.3, rel=1e-9)
+
+
+def test_ic_confianca_e_graus_de_liberdade_reportados(pq):
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=13)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos, alpha_ic=0.10)
+    assert fom["lod_ic_confianca"] == pytest.approx(0.90)
+    # 8 grupos de 3 replicas cada -> soma_df = 8*(3-1) = 16
+    assert fom["lod_ic_graus_liberdade"] == pytest.approx(16.0)
+
+
+def test_ic_mais_grupos_de_replicas_estreita_o_intervalo(pq):
+    """Mais graus de liberdade (mais sessoes de replica) -> IC mais
+    estreito -- a incerteza sobre delta_x_ruido tem que diminuir com mais
+    evidencia, nao ficar igual nem aumentar."""
+    rng = np.random.default_rng(20)
+    p = 25
+    w_true = rng.normal(size=p); w_true /= np.linalg.norm(w_true)
+    n = 80
+    X = rng.normal(size=(n, p))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=n)
+    modelo = PLSRegression(n_components=3, scale=False).fit(X, y.reshape(-1, 1))
+
+    def _grupos(n_grupos):
+        return [X[rng.integers(0, n)] + rng.normal(scale=0.02, size=(3, p))
+                for _ in range(n_grupos)]
+
+    fom_poucos = pq.regression_figures_of_merit(modelo, X, _grupos(3))
+    fom_muitos = pq.regression_figures_of_merit(modelo, X, _grupos(30))
+
+    largura_poucos = fom_poucos["lod_ic_alto"] - fom_poucos["lod_ic_baixo"]
+    largura_muitos = fom_muitos["lod_ic_alto"] - fom_muitos["lod_ic_baixo"]
+    # compara a largura RELATIVA ao ponto (nao a largura absoluta, que
+    # tambem depende do delta_x sorteado em cada chamada) -- com mais df
+    # a largura relativa do IC tem que cair.
+    largura_relativa_poucos = largura_poucos / fom_poucos["lod"]
+    largura_relativa_muitos = largura_muitos / fom_muitos["lod"]
+    assert largura_relativa_muitos < largura_relativa_poucos
+
+
+def test_ic_sem_replicas_fica_nan_como_o_ponto(pq):
+    modelo, X, _grupos, _ = _modelo_e_replicas_conhecidos(seed=14)
+    fom = pq.regression_figures_of_merit(modelo, X, [])
+    assert np.isnan(fom["lod_ic_baixo"]) and np.isnan(fom["lod_ic_alto"])
+    assert np.isnan(fom["loq_ic_baixo"]) and np.isnan(fom["loq_ic_alto"])
+    assert fom["lod_ic_graus_liberdade"] == 0.0
+
+
+# ── Faixa de decisao (Bloco 24) -- MESMOS limiares de LOD/LOQ do Bloco 12 ──
+
+def test_faixa_decisao_usa_exatamente_o_lod_loq_ja_validado(pq):
+    """Nao pode recalcular limiar nenhum -- so' categoriza contra o
+    lod/loq que `regression_figures_of_merit` (Bloco 12) ja devolveu."""
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=15)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos)
+    lod, loq = fom["lod"], fom["loq"]
+
+    assert pq.faixa_decisao(lod - 1e-9, lod, loq) == "nao_detectavel"
+    assert pq.faixa_decisao((lod + loq) / 2, lod, loq) == "zona_cinzenta"
+    assert pq.faixa_decisao(loq + 1e-9, lod, loq) == "quantificado_com_confianca"
+
+
+def test_faixa_decisao_limite_do_lod_e_zona_cinzenta_nao_nao_detectavel():
+    """Fronteira: valor == LOD entra na zona cinzenta (>= LOD), nao em
+    'nao detectavel' (< LOD, estritamente menor)."""
+    from guaraci.chemometric_stats import faixa_decisao
+    assert faixa_decisao(5.0, lod=5.0, loq=10.0) == "zona_cinzenta"
+
+
+def test_faixa_decisao_limite_do_loq_e_quantificado():
+    from guaraci.chemometric_stats import faixa_decisao
+    assert faixa_decisao(10.0, lod=5.0, loq=10.0) == "quantificado_com_confianca"
+
+
+def test_faixa_decisao_sem_lod_loq_computavel_devolve_none_nao_fabrica_faixa():
+    """LOD/LOQ NaN (sem replicas suficientes, ver Bloco 12) -> None, NUNCA
+    'nao_detectavel' por omissao -- categorizar contra um limiar
+    inexistente fabricaria confianca que os dados nao sustentam."""
+    from guaraci.chemometric_stats import faixa_decisao
+    assert faixa_decisao(3.0, lod=float("nan"), loq=10.0) is None
+    assert faixa_decisao(3.0, lod=5.0, loq=float("nan")) is None
+    assert faixa_decisao(3.0, lod=float("nan"), loq=float("nan")) is None
+
+
+def test_ic_bate_com_calculo_manual_qui_quadrado(pq):
+    """Contra-prova numerica direta: reproduz a formula do IC de
+    variancia (df*S^2/chi2) manualmente, com scipy.stats.chi2, e compara
+    com o que a funcao devolve -- nao so' 'parece razoavel'."""
+    from scipy.stats import chi2 as chi2_dist
+    modelo, X, grupos, _ = _modelo_e_replicas_conhecidos(seed=15)
+    fom = pq.regression_figures_of_merit(modelo, X, grupos, alpha_ic=0.05)
+
+    df = fom["lod_ic_graus_liberdade"]
+    var_media = fom["delta_x_ruido"] ** 2
+    chi2_baixo = chi2_dist.ppf(0.025, df)
+    chi2_alto = chi2_dist.ppf(0.975, df)
+    sigma_baixo_esperado = np.sqrt(df * var_media / chi2_alto)
+    sigma_alto_esperado = np.sqrt(df * var_media / chi2_baixo)
+
+    assert fom["delta_x_ruido_ic_baixo"] == pytest.approx(sigma_baixo_esperado, rel=1e-9)
+    assert fom["delta_x_ruido_ic_alto"] == pytest.approx(sigma_alto_esperado, rel=1e-9)
+
+
+# ── pls_model_metrics: R2X/R2Y/Q2 (sem teste dedicado ate' agora) ─────────
+
+def test_metricas_modelo_pls_bom_ajuste_da_r2_alto(pq):
+    """Y fortemente correlacionado com X: R2X/R2Y/Q2 devem ficar altos
+    (proximos de 1), nao zero nem negativos."""
+    rng = np.random.default_rng(0)
+    w_true = rng.normal(size=8); w_true /= np.linalg.norm(w_true)
+    X = rng.normal(size=(50, 8))
+    y = (X @ w_true) * 5.0 + rng.normal(scale=0.05, size=50)
+    modelo = PLSRegression(n_components=2, scale=False).fit(X, y.reshape(-1, 1))
+    Y_cv = modelo.predict(X)  # CV "perfeita" simulada p/ o teste
+    r2x, r2y, q2 = pq.pls_model_metrics(modelo, X, y.reshape(-1, 1), Y_cv)
+    assert 0.0 < r2x <= 1.0
+    assert 0.9 < r2y <= 1.0
+    assert 0.9 < q2 <= 1.0
+
+
+def test_metricas_modelo_pls_y_constante_retorna_zeros(pq):
+    """Y sem variancia nenhuma (constante) -> ss_total=0 -> R2Y/Q2 nao
+    calculaveis, funcao devolve 0.0 em vez de dividir por zero."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(20, 5))
+    y = np.full((20, 1), 3.0)  # Y constante
+    modelo = PLSRegression(n_components=1, scale=False).fit(X, y)
+    r2x, r2y, q2 = pq.pls_model_metrics(modelo, X, y, y.copy())
+    assert r2y == 0.0 and q2 == 0.0
+
+
+# ── Selectivity Ratio: casos degenerados (peso/projeção nulos) ──────────────
+
+def test_selectivity_ratio_vetor_regressao_nulo_retorna_zeros(pq):
+    """Se o vetor de regressao b e' todo zero (modelo degenerado/patológico),
+    compute_selectivity_ratio não deve dividir por zero — retorna vetor de
+    zeros (SR indefinido = sem seletividade nenhuma), nunca NaN/inf silencioso."""
+    class _ModeloCoefZero:
+        coef_ = np.zeros((1, 10))
+    sr = pq.compute_selectivity_ratio(_ModeloCoefZero(),
+                                        np.random.default_rng(0).normal(size=(15, 10)))
+    assert np.array_equal(sr, np.zeros(10))
+
+
+def test_selectivity_ratio_projecao_ortogonal_a_X_retorna_zeros(pq):
+    """Se X é ortogonal ao vetor de regressao b (projeção target tem norma
+    ~0), o SR também não pode ser calculado -- mesmo fallback de zeros."""
+    class _ModeloCoefOrtogonal:
+        coef_ = np.array([[1.0, 0.0]])  # so' a 1a variavel pesa
+    # X com a 1a coluna sempre zero -> t_tp = X @ b_unit = 0 para todas as amostras
+    X = np.zeros((10, 2))
+    X[:, 1] = np.random.default_rng(1).normal(size=10)
+    sr = pq.compute_selectivity_ratio(_ModeloCoefOrtogonal(), X)
+    assert np.array_equal(sr, np.zeros(2))
+
+
+# ── q_residuals_limit: fallback quando variância/média não-positivas ────────
+
+def test_q_residuos_limite_variancia_zero_cai_no_percentil(pq):
+    """Q-residuals todos iguais (variância = 0) inviabiliza a aproximação
+    chi2 de Jackson & Mudholkar (g=var/2*media seria 0) -- cai no percentil
+    empírico em vez de gerar limite 0/NaN."""
+    q = np.full(20, 5.0)
+    limite = pq.q_residuals_limit(q, alpha=0.05)
+    assert limite == pytest.approx(5.0)
+
+
+def test_q_residuos_limite_array_vazio_retorna_zero(pq):
+    limite = pq.q_residuals_limit(np.array([]), alpha=0.05)
+    assert limite == 0.0
+
+
+def test_q_residuos_limite_bate_com_formula_jackson_mudholkar(pq):
+    """VALIDACAO (Jackson & Mudholkar, 1979): no regime normal (var>0, media>0)
+    o limite de Q e' a aproximacao g*chi2(1-alpha, h), com
+    g = var/(2*media) e h = 2*media^2/var. Recomputa a formula de referencia
+    de forma independente e compara com a implementacao."""
+    from scipy.stats import chi2
+    rng = np.random.default_rng(7)
+    q = rng.gamma(shape=3.0, scale=2.0, size=500)   # positivo, var>0, media>0
+    media = float(q.mean()); var = float(q.var())
+    g = var / (2.0 * media); h = 2.0 * media ** 2 / var
+    esperado = g * chi2.ppf(0.95, h)
+    obtido = pq.q_residuals_limit(q, alpha=0.05)
+    assert obtido == pytest.approx(esperado, rel=1e-12)
+
+
+def test_q_residuos_limite_fronteira_media_exatamente_zero_cai_no_percentil(pq):
+    """Achado 3 da rodada de mutation testing (2026-09-11): a guarda
+    `if var<=0 or media<=0` (linha ~410) sobrevivia tanto a trocar
+    `or`->`and` quanto a inverter com `not` -- o teste existente
+    (`test_q_residuos_limite_variancia_zero_cai_no_percentil`) so' cobre
+    var<=0 COM media>0; nenhum teste isolava media<=0 com var>0 (a outra
+    metade da guarda). Aqui, media EXATAMENTE 0 (fronteira, mesmo padrao
+    ja usado em LOD/LOQ) com var>0 tem que cair no fallback de percentil
+    -- se a guarda virar `and` ou for negada, o codigo tenta
+    g=var/(2*media) com media=0.0 e explode (ZeroDivisionError) em vez de
+    devolver o percentil."""
+    q = np.array([-5.0, 5.0])   # media=0.0 exato (fronteira), var=25.0>0
+    limite = pq.q_residuals_limit(q, alpha=0.05)
+    assert limite == pytest.approx(float(np.percentile(q, 95.0)))
+
+
+# ── explained_variance: X com variância total zero ─────────────────────────
+
+def test_variancia_explicada_x_constante_retorna_zeros(pq):
+    """X sem variância nenhuma (todas as amostras idênticas) não tem % de
+    variância explicada calculável -- retorna zeros, não divide por zero."""
+    X = np.ones((10, 5))          # variancia total = 0
+    T = np.random.default_rng(0).normal(size=(10, 3))
+    ve = pq.explained_variance(X, T)
+    assert np.array_equal(ve, np.zeros(3))
+
+
+# ── DD-SIMCA (futuro: guaraci/models/ddsimca.py) ──────────────────────────────
+
+def test_ddsimca_aceita_maioria_do_proprio_treino(pq):
+    """DD-SIMCA: a maioria das amostras de treino de uma classe e' aceita
+    pelo proprio modelo (T2_norm e Q_norm <= 1), mas NAO 100%: a UCL
+    empirica e' o quantil (1-alpha) do treino, entao uma fracao proxima de
+    alpha cai fora por definicao. Exigir 100% (o invariante antigo deste
+    teste) e' a negacao de alpha>0 -- era exatamente o efeito do clamp de
+    UCL que forcava o limite ate max(treino), removido por anular alpha de
+    fato (achado de auditoria adversarial, 2026-07-19)."""
+    rng = np.random.default_rng(4)
+    n = 40
+    X = np.vstack([rng.normal(loc=0.0, size=(n, 30)),
+                   rng.normal(loc=5.0, size=(n, 30))])
+    y = np.array(["A"] * n + ["B"] * n)
+    dd = pq.DDSimca(n_components=3, alpha=0.05, ucl_method="empirical").fit(X, y)
+    res = dd.score_matrix(X)
+    for cls, sl in (("A", slice(0, n)), ("B", slice(n, 2 * n))):
+        aceito = ((res[cls]["T2_norm"][sl] <= 1.0)
+                  & (res[cls]["Q_norm"][sl] <= 1.0))
+        assert aceito.mean() > 0.70
+        assert aceito.mean() < 1.0
+
+
+# ── Métricas (futuro: guaraci/metrics.py) ─────────────────────────────────────
+
+def test_metricas_classificacao_perfeita(pq):
+    """Predição perfeita → todas as métricas = 1.0."""
+    y = np.array([0, 0, 1, 1, 2, 2])
+    m = pq.classification_metrics(y, y, [0, 1, 2])
+    for k in ("accuracy", "balanced_accuracy", "cohen_kappa",
+              "f1_macro", "precision_macro", "recall_macro"):
+        assert m[k] == pytest.approx(1.0)
+
+
+def test_executar_classificacao_binaria_nao_colapsa_em_uma_classe_so(pq, tmp_path):
+    """Achado do Passo 148 (auditoria RMN, 2026-09-04): para EXATAMENTE 2
+    classes, `sklearn.preprocessing.LabelBinarizer.fit_transform` ja'
+    devolve shape (n, 1) -- ndim=2, NAO 1. O codigo antigo em
+    `executar()` so' checava `Y_bin.ndim == 1` (nunca disparava) para
+    decidir se reconstruia a 2a coluna -- Y_bin ficava com 1 SO' coluna,
+    `np.argmax(Y_bin, axis=1)` e' SEMPRE 0, e toda predicao downstream
+    colapsava na PRIMEIRA classe (`lb.classes_[0]`) -- balanced_accuracy
+    travado em exatamente 0.5 para QUALQUER dataset binario, disfarcado de
+    "acaso genuino". Descoberto validando RMN com duas classes -- a mesma checagem correta
+    (`ndim == 1 or shape[1] == 1`) ja existia em
+    `avaliacao_modelos.PLSDAClassifier.fit`/`hsi_multiway.NPLSClassifier.
+    fit`/`portao_correcao_sinal` havia MUITO tempo; so' este caminho
+    principal (usado por toda execucao N1/N2) tinha ficado pra tras.
+
+    Contra-prova: 2 classes SINTETICAS, BEM separadas (deslocamento
+    grande, ruido pequeno) -- se o bug estivesse de volta, a predicao
+    colapsaria numa classe so' e balanced_accuracy cairia para ~0.5
+    mesmo com sinal obviamente aprendivel."""
+    rng = np.random.default_rng(0)
+    n_por_classe = 30
+    p = 20
+    X0 = rng.normal(0.0, 1.0, size=(n_por_classe, p))
+    X1 = rng.normal(6.0, 1.0, size=(n_por_classe, p))   # bem separado
+    X = np.vstack([X0, X1])
+    rot = np.array(["A"] * n_por_classe + ["B"] * n_por_classe)
+
+    df = pd.DataFrame(X, columns=[str(float(i)) for i in range(p)])
+    df.insert(0, "classe", rot)
+    csv = tmp_path / "binario.csv"
+    df.to_csv(csv, index=False)
+
+    cfg = pq.Config(
+        mode="csv", csv_file=str(csv),
+        class_column="classe", conc_column="",
+        matrix_profile="generico", wn_min=0.0, wn_max=float(p - 1),
+        objective="classificacao", level="N1",
+        output_root_folder=str(tmp_path / "saida"),
+        group_by_mae_id=False, show_plots=False,
+        run_benchmark=False, run_monte_carlo=False, run_shap=False,
+        run_wold=False, run_cv_anova=False, run_opls=False,
+        run_ddsimca=False, executar_etapa4=False,
+        n_permutations=5, frac_holdout=0.2, seed=0, max_lvs=5,
+        default_preprocessing="mc",
+    )
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(cfg.output_root_folder)
+    assert runs, "executar() nao criou saida"
+    resumo = canonico((Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    achado = re.search(r"Balanced accuracy\s*\.*:\s*([\d.]+)", resumo)
+    assert achado, f"Balanced accuracy nao encontrada no resumo:\n{resumo[:600]}"
+    bal_acc = float(achado.group(1))
+    assert bal_acc > 0.9, (
+        f"balanced_accuracy={bal_acc:.3f} -- classes bem separadas "
+        f"deveriam classificar quase perfeitamente. Um valor proximo de "
+        f"0.5 aqui e' o sintoma exato do bug do Passo 148 (colapso na "
+        f"1a classe) voltando.")
+
+    # Contra-prova direta: as duas classes precisam aparecer nas predicoes
+    # (nao so' na tabela de rotulos verdadeiros) -- e' a evidencia mais
+    # literal de que o colapso-em-uma-classe-so' nao voltou.
+    tabela = (Path(runs[0]) / "Tabelas" / "amostras_identificadores.csv")
+    if tabela.is_file():
+        tdf = pd.read_csv(tabela)
+        col_pred = [c for c in tdf.columns if "pred" in c.lower()]
+        if col_pred:
+            preditas = set(tdf[col_pred[0]].astype(str).unique())
+            assert len(preditas) >= 2, (
+                f"predicoes colapsaram numa classe so': {preditas}")
+
+
+def test_expandir_binario_um_quente_extraida_bate_com_padrao_antigo():
+    """Passo 156: a checagem `ndim == 1 or shape[1] == 1` + reconstrucao
+    da 2a coluna one-hot estava duplicada A MAO em 4 lugares
+    (`avaliacao_modelos.PLSDAClassifier.fit`,
+    `hsi_multiway.NPLSClassifier.fit`, `portao_correcao_sinal.py` e
+    `pipeline.py` -- este ultimo o que tinha ficado pra tras no Passo
+    148). Extraida para `chemometric_stats.expandir_binario_um_quente`
+    -- este teste confirma que a funcao unica reproduz EXATAMENTE o
+    padrao antigo (`np.hstack([1 - Y.reshape(-1,1), Y.reshape(-1,1)])`)
+    nos 3 formatos de entrada relevantes: vetor 1D, coluna unica (n,1)
+    -- o caso real de LabelBinarizer com 2 classes -- e passthrough
+    quando ja' multi-classe (nao deve alterar nada). Os 4 call sites
+    continuam cobertos individualmente por `test_pipeline_smoke.py`
+    (PLSDAClassifier binario), `test_hsi_multiway.py` (NPLSClassifier
+    binario), `test_portao_correcao_sinal.py` e o teste acima
+    (pipeline.executar()) -- rodar a suite completa e' a contra-prova de
+    que o comportamento nos 4 lugares nao mudou."""
+    from guaraci.chemometric_stats import expandir_binario_um_quente
+
+    casos = [
+        np.array([0, 1, 0, 1, 1]),
+        np.array([[0.0], [1.0], [0.0], [1.0]]),
+        np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]]),
+    ]
+    for Y in casos:
+        if Y.ndim == 1 or Y.shape[1] == 1:
+            esperado = np.hstack([1 - Y.reshape(-1, 1), Y.reshape(-1, 1)])
+        else:
+            esperado = Y
+        obtido = expandir_binario_um_quente(Y)
+        assert np.array_equal(obtido, esperado), (Y.shape, obtido, esperado)
+
+
+def test_especificidade_por_classe_valores_conhecidos(pq):
+    """Especificidade one-vs-rest a partir de uma matriz de confusão conhecida."""
+    cm = np.array([[5, 0], [1, 4]])
+    spec = pq.specificity_by_class(cm)
+    # classe 0: TN=4, FP=1 → 0.8 ; classe 1: TN=5, FP=0 → 1.0
+    np.testing.assert_allclose(spec, [0.8, 1.0], atol=1e-12)
+
+
+# ── Parsing JCAMP-DX e nomeação (futuro: guaraci/io/jcamp.py) ─────────────────
+
+def test_parse_title_puro(pq):
+    """TITLE de amostra pura: espécie resolvida, puro=True, mae_id sem teor."""
+    info = pq.parse_title("ESB-03-01-2099-T1")
+    assert info is not None
+    assert info["cod"] == "ESB"
+    assert info["especie"] == "Classe D"
+    assert info["puro"] is True
+    assert info["triplicata"] == 1
+    assert info["mae_id"] == "ESB-03-01-2099"
+
+
+def test_parse_title_adulterado(pq):
+    """TITLE adulterado: adulterante/teor extraídos; réplicas compartilham mae_id."""
+    t1 = pq.parse_title("ESA-04-01-2099-AD-S-4.13%-T1")
+    t2 = pq.parse_title("ESA-04-01-2099-AD-S-4.13%-T2")
+    assert t1 is not None and t2 is not None
+    assert t1["puro"] is False
+    assert t1["adulterante"] == "S"
+    assert t1["adulterante_nome"] == "adulterante S"
+    assert t1["teor"] == pytest.approx(4.13)
+    # Triplicatas do mesmo ponto -> mesmo mae_id (anti-vazamento no GroupKFold)
+    assert t1["mae_id"] == t2["mae_id"]
+
+
+def test_parse_title_invalido(pq):
+    """String fora do padrão retorna None (não quebra o carregamento)."""
+    assert pq.parse_title("isto nao e um title") is None
+
+
+def test_parse_title_teor_zero_e_invalido(pq):
+    """Teor de adulteração = 0 não faz sentido (adulterado com 0% == puro,
+    mal rotulado) — parse_title rejeita em vez de aceitar um dado incoerente.
+    (o regex de adulteração não aceita sinal negativo, então 0 é o único
+    valor não-positivo alcançável por esse caminho.)"""
+    assert pq.parse_title("ESA-04-01-2099-AD-S-0.00%-T1") is None
+
+
+def test_parse_title_correcoes_carregadas_de_arquivo_externo(pq, monkeypatch):
+    """Achado A2-2: TITLEs com erro de digitação (vírgula extra, dígito
+    cortado, dígito duplicado) quebravam o regex e caíam no fallback por
+    nome de arquivo, que também falhava em extrair o teor -- o espectro
+    entrava como PURO (conc=0.0) quando é ADULTERADO, contaminando o
+    treino "puros" do DD-SIMCA.
+
+    A tabela de correções vive FORA do repositório
+    (`~/.guaraci_local/correcoes_titulo.csv`) porque é metadado de amostra
+    de dataset de terceiro e este repo é público -- ver BLOCO B da
+    auditoria de 2026-08-17. Este teste usa identificadores SINTÉTICOS
+    para exercitar a mesma lógica sem embutir dados reais."""
+    from guaraci import dados_io
+
+    # Título sintético com a mesma patologia do caso real: vírgula extra
+    # antes do "%", que quebra _RE_ADULT.
+    titulo_quebrado = "ZZZ_01-02-2099_AD-S-9,99,%-T_1"
+    assert pq.parse_title(titulo_quebrado) is None   # sem correção: não parseia
+
+    monkeypatch.setattr(dados_io, "_CORRECOES_TITLE_CONHECIDAS", {
+        titulo_quebrado: dict(cod="ZZZ", data="01-02-2099",
+                              adulterante="S", teor=9.99, trip=1),
+    })
+    info = pq.parse_title(titulo_quebrado)
+    assert info is not None
+    assert info["puro"] is False        # o achado: isto tinha virado True
+    assert info["adulterante"] == "S"
+    assert info["teor"] == pytest.approx(9.99)
+    assert info["triplicata"] == 1
+
+
+def test_correcoes_ausentes_nao_quebram_o_parser(pq, monkeypatch):
+    """Sem o arquivo local (outra máquina, outro dataset), o parser tem de
+    seguir funcionando -- só não aplica os casos particulares."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_CORRECOES_TITLE_CONHECIDAS", {})
+    monkeypatch.setattr(dados_io, "_ALIAS_MAE_ID", {})
+    info = pq.parse_title("ZZZ-01-02-2099-T1")
+    assert info is not None and info["cod"] == "ZZZ"
+
+
+def test_csv_local_malformado_levanta_erro_claro(tmp_path, monkeypatch):
+    """Arquivo AUSENTE é legítimo e silencioso; arquivo PRESENTE mas
+    malformado tem de abortar com mensagem clara. Aplicar uma correção de
+    rótulo pela metade produziria amostra com pureza errada -- exatamente
+    o que o achado A2-2 corrigiu."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_DIR_LOCAL", tmp_path)
+
+    assert dados_io._ler_csv_local("nao_existe.csv", 2) == []   # ausente: ok
+
+    (tmp_path / "meio.csv").write_text("so;duas\ntres;colunas;aqui\n",
+                                       encoding="utf-8")
+    with pytest.raises(RuntimeError, match="colunas"):
+        dados_io._ler_csv_local("meio.csv", 2)
+
+
+def test_alias_mae_id_unifica_replicas_separadas_por_data(pq, monkeypatch):
+    """Achado A2-1: a regra `mae_id = cod + data` separa em grupos distintos
+    réplicas da mesma amostra física lidas em datas diferentes -- o
+    GroupKFold então as trata como independentes, que é o vazamento que o
+    projeto existe para impedir.
+
+    Identificadores sintéticos: a tabela real de alias vive fora do repo
+    (`~/.guaraci_local/alias_mae_id.csv`), pela mesma razão do teste
+    acima."""
+    from guaraci import dados_io
+    monkeypatch.setattr(dados_io, "_ALIAS_MAE_ID",
+                        {"ZZZ-01-02-2099": "ZZZ-05-06-2099"})
+
+    t1 = pq.parse_title("ZZZ-01-02-2099-T1")
+    t2 = pq.parse_title("ZZZ-05-06-2099-T2")
+    assert t1["mae_id"] == t2["mae_id"] == "ZZZ-05-06-2099"
+
+    # O alias é da amostra PURA -- não pode capturar a ADULTERADA da mesma
+    # data (mae_id diferente por incluir adulterante+teor).
+    adult = pq.parse_title("ZZZ-01-02-2099-AD-S-4.13%-T1")
+    assert adult is not None
+    assert adult["mae_id"] == "ZZZ-01-02-2099-S4.13"   # intocado pelo alias
+
+
+def test_gerar_nome_saida_contem_nivel_e_preproc(pq):
+    """Caminho de saída embute o slug amigável do nível (não N1/N2/N3 cru,
+    correção de 2026-07-13 — P8 residual) e o pré-processamento (rastreável)."""
+    cfg = pq.Config()
+    cfg.level = "N1"
+    cfg.default_preprocessing = "msc_sg_mc"
+    nome = pq.generate_output_name(cfg, n_classes=13, n_amostras=100)
+    base = nome.replace("\\", "/").split("/")[-1]
+    assert base.startswith("PLSDA_OE_" + pq._NIVEL_SLUG_PASTA["N1"])
+    assert "N1" not in base
+    assert "MSC" in base
+
+
+def test_gerar_nome_saida_custom_declara_emsc_airpls_osc(pq):
+    """Achado do Passo 147 (validacao publica UV-Vis): com
+    `default_preprocessing="custom"`, o nome da pasta de saida omitia
+    EMSC/AirPLS/OSC do rotulo de preprocessamento (so' checava
+    apply_snv/apply_sg/apply_mc) -- a pasta mentia sobre o que de fato
+    rodou sempre que uma dessas 3 correcoes era usada (ex.: qualquer
+    execucao do portao de aceite com EMSC/OSC, ou Raman com AirPLS).
+    Corrigido para declarar as 3, na mesma ordem em que
+    `preprocessamento.build_preprocessor` as aplica."""
+    cfg = pq.Config()
+    cfg.default_preprocessing = "custom"
+    cfg.apply_snv = False
+    cfg.apply_sg = False
+    cfg.apply_mc = True
+    cfg.apply_emsc = True
+    nome = pq.generate_output_name(cfg, n_classes=2, n_amostras=50)
+    base = nome.replace("\\", "/").split("/")[-1]
+    assert "EMSC" in base
+    assert "SNV" not in base
+
+    cfg2 = pq.Config()
+    cfg2.default_preprocessing = "custom"
+    cfg2.apply_airpls = True
+    cfg2.apply_snv = False
+    cfg2.apply_sg = False
+    cfg2.apply_mc = True
+    cfg2.apply_osc = True
+    base2 = pq.generate_output_name(cfg2, n_classes=2, n_amostras=50).replace("\\", "/").split("/")[-1]
+    assert "AirPLS" in base2
+    assert "OSC" in base2
+    # Ordem: AirPLS antes de MC antes de OSC, espelhando build_preprocessor.
+    assert base2.index("AirPLS") < base2.index("MC") < base2.index("OSC")
+
+
+# ── IO de configuração (futuro: guaraci/config.py) ────────────────────────────
+
+def test_config_roundtrip_preserva_valores(pq, tmp_path):
+    """save_config → load_config preserva os valores editados."""
+    cfg = pq.Config()
+    cfg.level = "N2"
+    cfg.max_lvs = 17
+    cfg.frac_holdout = 0.3
+    cfg.wn_min = 900.0
+    cfg.wn_max = 1800.0
+    caminho = str(tmp_path / "config.yaml")
+    pq.save_config(cfg, caminho)
+    lido = pq.load_config(caminho)
+    assert lido.level == "N2"
+    assert lido.max_lvs == 17
+    assert lido.frac_holdout == pytest.approx(0.3)
+    assert lido.wn_min == pytest.approx(900.0)
+    assert lido.wn_max == pytest.approx(1800.0)
+
+
+def test_validar_semantico_faixa_invertida(pq):
+    """Faixa espectral invertida (início >= fim) é sinalizada cedo."""
+    cfg = pq.Config()
+    cfg.wn_min, cfg.wn_max = 10000.0, 4000.0
+    erros = pq._validar_semantico(cfg)
+    assert any("Faixa espectral" in e for e in erros)
+
+
+def test_validar_semantico_config_padrao_ok(pq):
+    """Config padrão não gera erros semânticos."""
+    assert pq._validar_semantico(pq.Config()) == []
+
+
+# ── SPA/APS e AG — seleção de variáveis (futuro: já em selecao_variaveis.py) ──
+
+def _dados_classificacao_sinteticos(seed=0, n=80, p=40, vars_informativas=(5, 6, 7, 20, 21)):
+    """2 classes separáveis SÓ em `vars_informativas` — permite checar se um
+    método de seleção de fato prioriza as variáveis que carregam sinal."""
+    rng = np.random.default_rng(seed)
+    classes = rng.integers(0, 2, size=n)
+    X = rng.normal(size=(n, p))
+    for i in range(n):
+        if classes[i] == 1:
+            X[i, list(vars_informativas)] += 3.0
+    Y_bin = np.zeros((n, 2))
+    for i, c in enumerate(classes):
+        Y_bin[i, c] = 1
+    from sklearn.model_selection import StratifiedKFold
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=seed)
+    cv_indices = list(cv.split(X, classes))
+    return X, Y_bin, classes, cv_indices
+
+
+def test_spa_cadeia_deflaciona_colunas_duplicadas(pq):
+    """SPA: uma coluna DUPLICADA da já selecionada deve ficar com norma ~0
+    após a projeção (colinear = sem informação nova) — não deve ser
+    escolhida logo em seguida, propriedade central do algoritmo (Araújo
+    et al. 2001: minimizar colinearidade entre variáveis selecionadas)."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(30, 6))
+    X[:, 1] = X[:, 0]           # coluna 1 é DUPLICATA exata da coluna 0
+    X[:, 2] = X[:, 0] * 2.0     # coluna 2 é colinear (múltiplo escalar) da 0
+    cadeia = pq._spa_cadeia(X, idx_inicial=0, n_vars_max=4)
+    # as colunas 1 e 2 (colineares com a 0) devem vir DEPOIS das genuinamente
+    # novas (3, 4, 5) na ordem de seleção, pois sua norma residual é ~0
+    pos = {int(idx): pos for pos, idx in enumerate(cadeia)}
+    assert pos[0] == 0  # a de partida sempre entra primeiro
+    novas = [pos[j] for j in (3, 4, 5) if j in pos]
+    colineares = [pos[j] for j in (1, 2) if j in pos]
+    if novas and colineares:
+        assert min(novas) < min(colineares)
+
+
+def test_selecao_spa_retorna_mascara_valida(pq):
+    """SPA: roda sem crash, mask tem >=2 variáveis, uma avaliação por início."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos()
+    resultados, mask = pq.selecao_spa(X, Y_bin, y_int, cv_indices, n_lv=2,
+                                       n_vars_max=8, n_starts=10, seed=0)
+    assert mask.sum() >= 2
+    assert len(resultados) <= 10
+    assert all("balanced_accuracy" in r for r in resultados)
+
+
+def test_ga_selection_fitness_nao_decresce_por_elitismo(pq):
+    """AG: com elitismo, o melhor fitness da geração NUNCA piora ao longo das
+    gerações (o melhor cromossomo sempre sobrevive) — propriedade de design,
+    não coincidência estatística."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=2)
+    historico, mask = pq.ga_selection(X, Y_bin, y_int, cv_indices, n_lv=2,
+                                     tam_populacao=10, n_geracoes=6,
+                                     prob_mutacao=0.05, frac_inicial=0.15, seed=2)
+    assert len(historico) == 6
+    melhores = [h["melhor_fitness"] for h in historico]
+    assert all(b2 >= b1 - 1e-12 for b1, b2 in zip(melhores, melhores[1:]))
+    assert mask.sum() >= 2
+
+
+def test_ga_selection_recupera_variaveis_informativas(pq):
+    """AG: com sinal forte e claro, a máscara final deve conter pelo menos
+    parte das variáveis genuinamente informativas (não é seleção ao acaso)."""
+    informativas = (5, 6, 7, 20, 21)
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(
+        seed=3, vars_informativas=informativas)
+    _historico, mask = pq.ga_selection(X, Y_bin, y_int, cv_indices, n_lv=2,
+                                      tam_populacao=12, n_geracoes=8,
+                                      prob_mutacao=0.05, frac_inicial=0.15, seed=3)
+    selecionadas = set(np.where(mask)[0].tolist())
+    assert len(selecionadas & set(informativas)) >= 2
+
+
+def test_mask_vip_threshold_depende_so_do_fold_recebido(pq):
+    """`_mask_vip_threshold` deve ser pura em relacao ao fold: chamada com
+    2 conjuntos de treino DIFERENTES (metades disjuntas dos mesmos dados)
+    produz mascaras que nao sao obrigatoriamente identicas -- prova de que
+    a funcao olha so' para o argumento recebido, nao um estado global/
+    dataset inteiro precalculado (a propria correcao do vies de selecao)."""
+    informativas = (5, 6, 7, 20, 21)
+    X, Y_bin, _y_int, _cv = _dados_classificacao_sinteticos(
+        seed=6, n=60, vars_informativas=informativas)
+    metade1 = pq._mask_vip_threshold(X[:30], Y_bin[:30], n_lv=2, threshold=1.0)
+    metade2 = pq._mask_vip_threshold(X[30:], Y_bin[30:], n_lv=2, threshold=1.0)
+    assert metade1.shape == (X.shape[1],)
+    assert metade2.shape == (X.shape[1],)
+    # cada metade, isoladamente, deve recuperar ao menos parte do sinal
+    # (nao e' selecao ao acaso), mesmo vendo so' 30 das 60 amostras
+    assert len(set(np.where(metade1)[0]) & set(informativas)) >= 1
+    assert len(set(np.where(metade2)[0]) & set(informativas)) >= 1
+
+
+def test_avaliar_subset_nested_cv_recomputa_selecao_por_fold(pq):
+    """`_avaliar_subset_nested_cv` deve retornar n_vars_min/n_vars_max (prova
+    de que a selecao foi refeita fold a fold, nao um n_vars fixo calculado
+    uma unica vez no dataset inteiro como na versao com vies)."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=7)
+    resultado = pq._avaliar_subset_nested_cv(
+        X, Y_bin, y_int, cv_indices, n_lv=2,
+        selecionar_fn=lambda Xtr, Ytr, nlv: pq._mask_vip_threshold(Xtr, Ytr, nlv, 1.0))
+    assert "n_vars_min" in resultado and "n_vars_max" in resultado
+    assert resultado["n_vars_min"] <= resultado["n_vars"] <= resultado["n_vars_max"]
+    assert 0.0 <= resultado["balanced_accuracy"] <= 1.0
+
+
+def test_etapa4_selecao_variaveis_sem_vip_sr_precomputado(pq):
+    """Assinatura atual de `etapa4_selecao_variaveis` NAO recebe mais vip/sr
+    pre-calculados (correcao do vies de selecao, auditoria 2026-07-12) --
+    a tabela final ainda deve conter as linhas VIP/SR/sPLS-DA, agora com
+    mascara recalculada por fold internamente."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=8, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+    cfg = pq.Config(seed=8)
+    with tempfile.TemporaryDirectory() as pasta:
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta)
+    metodos = {t["metodo"] for t in resumo["tabela"]}
+    assert any(m.startswith("VIP") for m in metodos)
+    assert any(m.startswith("SR") for m in metodos)
+    assert "sPLS-DA" in metodos
+
+
+def test_cv_local_folds_cobrem_todos_os_indices_locais(pq):
+    """`_cv_local` deve devolver folds cujos indices de validacao, unidos,
+    cobrem 0..len(y)-1 exatamente uma vez (particao valida), reindexados
+    localmente (nao nos indices globais do fold externo)."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 1, 0, 1])
+    folds = pq._cv_local(y_local, seed=1, n_splits=3)
+    todos_va = np.concatenate([va for _tr, va in folds])
+    assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_cv_local_group_aware_nao_separa_replicas(pq):
+    """Achado B1-3 (auditoria 2026-08-16): a CV INTERNA que guia as buscas
+    SPA/AG usava sempre StratifiedKFold, entao replicas do mesmo mae_id
+    caiam em treino e validacao da particao que escolhe as VARIAVEIS. O
+    numero reportado seguia honesto (fold externo group-aware), mas o
+    produto cientifico da Etapa 4 -- o conjunto de variaveis selecionadas --
+    era escolhido por um criterio com vazamento de replica.
+
+    Com `grupos_local`, nenhum grupo pode aparecer nos dois lados de um
+    mesmo fold interno."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1])
+    grupos = np.array(["g1"] * 3 + ["g2"] * 3 + ["g3"] * 3 + ["g4"] * 3)
+    folds = pq._cv_local(y_local, seed=1, grupos_local=grupos, n_splits=2)
+    assert folds, "deveria produzir pelo menos um fold"
+    for tr, va in folds:
+        assert not (set(grupos[tr]) & set(grupos[va])), (
+            "grupo de replica apareceu em treino E validacao do mesmo fold")
+    # continua sendo uma particao valida
+    todos_va = np.concatenate([va for _tr, va in folds])
+    assert sorted(todos_va.tolist()) == list(range(len(y_local)))
+
+
+def test_cv_local_sem_grupos_preserva_comportamento_anterior(pq):
+    """Sem `grupos_local` (ex.: mode sem identificador de replica), o
+    comportamento antigo e' preservado -- o fix do B1-3 nao pode quebrar o
+    caminho em que mae_id nao existe."""
+    y_local = np.array([0, 0, 0, 1, 1, 1, 0, 1, 0, 1])
+    folds_a = pq._cv_local(y_local, seed=7, n_splits=3)
+    folds_b = pq._cv_local(y_local, seed=7, grupos_local=None, n_splits=3)
+    assert len(folds_a) == len(folds_b)
+    for (tr_a, va_a), (tr_b, va_b) in zip(folds_a, folds_b):
+        assert tr_a.tolist() == tr_b.tolist()
+        assert va_a.tolist() == va_b.tolist()
+
+
+def test_splsda_usa_soft_threshold_da_referencia(pq):
+    """Achado B1-2: `sparse_plsda_mask` fazia truncamento DURO (top-k por
+    |w|, sem encolher as sobreviventes) enquanto a docstring a chamava de
+    "soft-selection" -- divergindo de Le Cao et al. (2008), que define a
+    esparsidade por soft-thresholding `w_j <- sign(w_j)*(|w_j|-lambda)_+`.
+
+    Propriedades que travam a implementacao correta:
+      1. cardinalidade -- exatamente `keep` nao-nulas por componente;
+      2. ENCOLHIMENTO -- com 1 componente, os pesos sobreviventes tem de
+         ser estritamente menores em modulo que os do truncamento duro
+         (antes da normalizacao, `|w|-lambda < |w|`). E' isso que
+         distingue soft de hard e o que muda a deflacao dos componentes
+         seguintes."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(60, 200))
+    Y = np.zeros((60, 3))
+    Y[np.arange(60), rng.integers(0, 3, 60)] = 1
+
+    # (1) cardinalidade exata com 1 componente
+    for keep in (5, 15, 40):
+        mask = pq.sparse_plsda_mask(X, Y, 1, keep)
+        assert int(mask.sum()) == keep
+
+    # (2) o conjunto de 1 componente coincide com o top-k por |w| (soft e
+    #     hard selecionam as MESMAS variaveis no 1o componente -- a
+    #     divergencia so' aparece a partir do 2o, via deflacao)
+    Xr = X - X.mean(axis=0)
+    Yc = Y - Y.mean(axis=0)
+    U, _S, _Vt = np.linalg.svd(Xr.T @ Yc, full_matrices=False)
+    w = U[:, 0]
+    top10 = set(np.argsort(np.abs(w))[::-1][:10].tolist())
+    assert set(np.flatnonzero(pq.sparse_plsda_mask(X, Y, 1, 10)).tolist()) == top10
+
+    # (3) com mais componentes a mascara cresce, mas nunca alem de keep*n_comp
+    for n_comp in (2, 3, 4):
+        mask = pq.sparse_plsda_mask(X, Y, n_comp, 15)
+        assert 15 <= int(mask.sum()) <= 15 * n_comp
+
+
+def test_ipls_usa_nested_cv_e_reporta_n_vars_por_fold(pq):
+    """Achado B1-1 (auditoria 2026-08-16): o bal.acc do iPLS era o MAXIMO de
+    n_intervalos avaliacoes feitas na MESMA particao que depois reportava o
+    numero (vies medido: +0,070 bal.acc, positivo em 12/12 seeds), enquanto
+    todos os outros metodos da tabela ja passavam por nested-CV -- a
+    comparacao misturava reguas diferentes, com o vies 7x maior que o
+    criterio de 1% usado para eleger o metodo mais parcimonioso.
+
+    Depois da correcao o iPLS usa `_avaliar_subset_nested_cv` como os
+    demais, o que se verifica pela presenca de n_vars_min/n_vars_max (so'
+    a avaliacao aninhada reporta faixa por fold; a antiga tinha n_vars
+    fixo)."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=11, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+    cfg = pq.Config(seed=11)
+    with tempfile.TemporaryDirectory() as pasta:
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta)
+    linha_ipls = next(t for t in resumo["tabela"]
+                      if t["metodo"].startswith("iPLS"))
+    assert "n_vars_min" in linha_ipls and "n_vars_max" in linha_ipls
+    assert 0.0 <= linha_ipls["balanced_accuracy"] <= 1.0
+
+
+def test_avaliar_busca_nested_cv_nao_reveniza_fold_de_teste(pq):
+    """`_avaliar_busca_nested_cv` deve chamar `buscar_fn` SO' com os dados de
+    TREINO de cada fold externo (nunca o de teste) -- verificado por um
+    buscar_fn espiao que registra o tamanho de cada chamada."""
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=9)
+    tamanhos_treino_vistos = []
+
+    def _buscar_espiao(Xtr, _Ytr, _ytr, _cv_interna):
+        tamanhos_treino_vistos.append(Xtr.shape[0])
+        mask = np.zeros(Xtr.shape[1], dtype=bool)
+        mask[:5] = True
+        return mask
+
+    resultado = pq._avaliar_busca_nested_cv(
+        X, Y_bin, y_int, cv_indices, n_lv=2,
+        buscar_fn=_buscar_espiao, seed=9)
+    # 1 chamada por fold externo, cada uma vendo so' o tamanho do TREINO
+    # daquele fold (estritamente menor que o dataset inteiro)
+    assert len(tamanhos_treino_vistos) == len(cv_indices)
+    assert all(t < len(X) for t in tamanhos_treino_vistos)
+    assert resultado["n_vars_min"] == resultado["n_vars_max"] == 5
+    assert 0.0 <= resultado["balanced_accuracy"] <= 1.0
+
+
+def test_config_spec_spa_ag_opt_in_por_padrao(pq):
+    """SPA/AG são opt-in (default False) — mais lentos que os métodos
+    sempre-ligados; não devem rodar sem o usuário pedir explicitamente."""
+    cfg = pq.Config()
+    assert cfg.run_spa is False
+    assert cfg.executar_ag is False
+    chaves = {s["key"] for s in pq._CONFIG_SPEC}
+    assert "selecao_spa" in chaves and "selecao_ag" in chaves
+
+
+def test_etapa4_integra_spa_e_ag_quando_ligados(pq):
+    """Integração: com run_spa/executar_ag=True, a tabela final da
+    Etapa 4 inclui as linhas 'SPA (APS)' e 'AG (Genetico)' ao lado dos
+    métodos sempre-ligados (Full/iPLS/VIP/SR/sPLS-DA)."""
+    import tempfile
+    X, Y_bin, y_int, cv_indices = _dados_classificacao_sinteticos(seed=4, p=30)
+    wavenumbers = np.linspace(4000, 400, X.shape[1])
+
+    cfg = pq.Config(run_spa=True, executar_ag=True,
+                     spa_n_vars_max=6, spa_n_starts=6,
+                     ag_tam_populacao=8, ag_n_geracoes=3, seed=4)
+    with tempfile.TemporaryDirectory() as pasta:
+        pasta_dados = pasta
+        resumo = pq.etapa4_selecao_variaveis(
+            X, Y_bin, y_int, wavenumbers, cv_indices, n_lv=2,
+            cfg=cfg, pasta=pasta, pasta_dados=pasta_dados)
+    metodos = {t["metodo"] for t in resumo["tabela"]}
+    assert "SPA (APS)" in metodos
+    assert "AG (Genetico)" in metodos
+
+
+# ── Hardware (probe + auto-ajuste) ────────────────────────────────────────────
+
+def test_hardware_probe_retorna_campos_esperados(pq):
+    """hardware_probe(): dict com as chaves esperadas, RAM/CPU positivos —
+    roda de verdade (psutil real, sem mock), nunca lança exceção."""
+    hw = pq.hardware_probe()
+    for chave in ("ram_total_gb", "ram_livre_gb", "cpu_logicos", "cpu_fisicos",
+                  "disco_livre_gb", "psutil_ok"):
+        assert chave in hw
+    assert hw["ram_total_gb"] > 0
+    assert hw["cpu_logicos"] >= 1
+    assert isinstance(hw["psutil_ok"], bool)
+
+
+def test_auto_ajustar_config_hardware_ram_critica_desliga_extras(pq):
+    """RAM < 2 GB: desliga SHAP/benchmark/monte_carlo. NAO reduz n_splits_cv
+    (M-03 do parecer de 2026-09-25: o hardware nao altera a ciencia)."""
+    cfg = pq.Config(run_shap=True, run_benchmark=True,
+                     run_monte_carlo=True, n_splits_cv=10)
+    avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 1.5})
+    assert cfg.run_shap is False
+    assert cfg.run_benchmark is False
+    assert cfg.run_monte_carlo is False
+    assert cfg.n_splits_cv == 10
+    assert len(avisos) == 4         # 3 extras + dpi das figuras (600 -> 300)
+
+
+def test_auto_ajustar_config_hardware_ram_farta_nao_mexe(pq):
+    """RAM >= 8 GB: nenhum ajuste, nenhum aviso — não deve mexer em nada
+    desnecessariamente quando há recurso de sobra."""
+    cfg = pq.Config(run_shap=True, shap_max_samples=500,
+                     run_benchmark=True, n_monte_carlo=200)
+    avisos = pq.auto_adjust_hardware_config(cfg, {"ram_livre_gb": 16.0})
+    assert avisos == []
+    assert cfg.run_shap is True
+    assert cfg.shap_max_samples == 500
+
+
+def test_verificar_ram_limite_impossivel_retorna_false(pq):
+    """_verificar_ram: pedir uma quantidade astronomicamente alta de RAM
+    livre deve sempre falhar (determinístico, não depende da máquina real)."""
+    assert pq._verificar_ram(10_000_000.0, "operacao_teste") is False
+
+
+def test_verificar_ram_limite_trivial_retorna_true(pq):
+    """_verificar_ram: pedir uma quantidade trivial de RAM (bem abaixo de
+    qualquer máquina real) deve sempre passar."""
+    assert pq._verificar_ram(0.001, "operacao_teste") is True
+
+
+# ── Paleta de cores: fallback além da paleta base (>20 classes) ───────────────
+
+def test_cor_alem_da_paleta_base_usa_fallback_sem_crash(pq):
+    """color(i) para i >= 20 (tamanho da paleta base): sem glasbey/colorcet
+    instalados, cai no fallback tab20 — nunca lança exceção, sempre um hex
+    válido."""
+    c = pq.color(25)
+    assert isinstance(c, str) and c.startswith("#")
+
+
+def test_mapear_cores_classes_mais_de_20_classes(pq):
+    """map_class_colors com > 20 classes exercita o mesmo fallback e
+    ainda assim devolve uma cor distinta por classe."""
+    classes = [f"Classe_{i:02d}" for i in range(25)]
+    mapa = pq.map_class_colors(classes)
+    assert len(mapa) == 25
+    assert all(v.startswith("#") for v in mapa.values())
+
+
+def test_paleta_externa_sem_libs_opcionais_retorna_none(pq):
+    """_paleta_externa: sem glasbey/colorcet instalados (ambiente padrão do
+    projeto), retorna None de forma graciosa — não é um erro, é o caminho
+    normal quando as libs opcionais de paleta não estão presentes."""
+    resultado = pq._paleta_externa(30)
+    assert resultado is None or isinstance(resultado, list)
+
+
+# ── FOM no resumo: append_regression_summary (unidade, rapido) ─────────────────
+
+def test_anexar_regressao_resumo_escreve_bloco(pq, tmp_path, monkeypatch):
+    """append_regression_summary grava o bloco de figuras de merito no
+    resumo_modelo.txt (append), com valores formatados e NaN -> 'n/a'."""
+    monkeypatch.setenv("GUARACI_IDIOMA", "en")   # bloco conferido pelos textos em ingles
+    pasta = str(tmp_path)
+    with open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8") as f:
+        f.write("HEADER PREEXISTENTE\n")
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
+                "rmsep": 1.8, "bias": -0.1},
+        tabela_especie=[
+            {"especie": "Classe H", "n_lv": 4, "rmsep": 1.7, "r2val": 0.94,
+             "lod": 2.1, "loq": 6.4, "sensibilidade": 0.033,
+             "seletividade_media": 0.71},
+            {"especie": "Classe G", "n_lv": 3, "rmsep": 2.2, "r2val": 0.88,
+             "lod": float("nan"), "loq": float("nan"),
+             "sensibilidade": float("nan"), "seletividade_media": 0.6},
+        ])
+    txt = canonico(pasta + "/resumo_modelo.txt")
+    assert "HEADER PREEXISTENTE" in txt          # nao sobrescreve
+    assert "Analytical Figures of Merit" in txt
+    assert "Per-species figures of merit" in txt
+    assert "Classe H" in txt and "Classe G" in txt
+    assert "n/a" in txt                          # NaN da especie 2 -> n/a
+    assert "2.10" in txt                         # LOD do Classe H formatado
+
+
+def test_anexar_regressao_resumo_valor_nao_numerico_vira_na(pq, tmp_path):
+    """Valor genuinamente NAO conversivel p/ float (nao so' NaN) tambem cai
+    no fallback 'n/a', sem lancar TypeError/ValueError pro chamador."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": "indisponivel", "r2v": 0.9, "rmsec": 1.0,
+                "rmsecv": 1.1, "rmsep": 1.3, "bias": 0.0})
+    txt = canonico(pasta + "/resumo_modelo.txt")
+    assert "n/a" in txt
+
+
+def test_anexar_regressao_resumo_inclui_ic_e_faixa_de_validacao(pq, tmp_path):
+    """Bloco 12: LOD/LOQ nunca isolado -- o IC (Allegrini & Olivieri 2014)
+    e a faixa/desvio-padrao do conjunto de VALIDACAO tem que aparecer no
+    resumo_modelo.txt junto do LOD/LOQ pontual, nao so' estar disponivel
+    na funcao que calcula."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
+                "rmsep": 1.8, "bias": -0.1},
+        tabela_especie=[{
+            "especie": "Classe H", "n_lv": 4, "rmsep": 1.7, "r2val": 0.94,
+            "lod": 2.10, "loq": 6.40, "sensibilidade": 0.033,
+            "seletividade_media": 0.71,
+            "lod_ic_baixo": 1.80, "lod_ic_alto": 2.60,
+            "loq_ic_baixo": 5.45, "loq_ic_alto": 7.88,
+            "lod_ic_confianca": 0.95,
+            "validacao_teor_min": 0.0, "validacao_teor_max": 40.0,
+            "validacao_teor_dp": 11.5,
+        }])
+    txt = canonico(pasta + "/resumo_modelo.txt")
+    assert "1.80" in txt and "2.60" in txt          # IC do LOD
+    assert "5.45" in txt and "7.88" in txt          # IC do LOQ
+    assert "95%" in txt                             # confianca do IC
+    assert "11.5" in txt                            # DP da validacao
+    assert "40.0" in txt                            # teto da faixa de validacao
+
+
+def test_anexar_regressao_resumo_inclui_intervalo_conforme(pq, tmp_path):
+    """T1 (rodada multiagente 2026-09-10, Passo 202): o intervalo de
+    predicao conforme por especie tem que aparecer no resumo_modelo.txt,
+    tanto quando alcancavel quanto quando NAO_VALIDADO (nunca omitido em
+    silencio)."""
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": 0.95, "r2v": 0.90, "rmsec": 1.2, "rmsecv": 1.5,
+                "rmsep": 1.8, "bias": -0.1},
+        tabela_especie=[
+            {"especie": "Classe H", "n_lv": 4, "rmsep": 1.7, "r2val": 0.94,
+             "lod": 2.1, "loq": 6.4, "sensibilidade": 0.033,
+             "seletividade_media": 0.71,
+             "conformal_alcancavel": True, "conformal_margem": 3.25,
+             "conformal_n_grupos": 25},
+            {"especie": "Classe G", "n_lv": 3, "rmsep": 2.2, "r2val": 0.88,
+             "lod": 1.0, "loq": 2.0, "sensibilidade": 0.02,
+             "seletividade_media": 0.6,
+             "conformal_alcancavel": False, "conformal_n_grupos": 5},
+        ])
+    txt = canonico(pasta + "/resumo_modelo.txt")
+    assert "3.25" in txt                              # margem do Classe H
+    assert "25 grupos" in txt
+    assert "NAO_VALIDADO" in txt                       # Classe G, so' 5 grupos
+    assert "5 grupo" in txt
+
+
+def test_anexar_regressao_model_card_inclui_ic_e_faixa_de_validacao(pq, tmp_path):
+    pasta = str(tmp_path)
+    with open(pasta + "/model_card.md", "w", encoding="utf-8") as f:
+        f.write("# Model Card\n")
+    pq.append_regression_model_card(
+        pasta,
+        pooled={"rmsep": 1.8, "r2v": 0.90},
+        tabela_especie=[{
+            "especie": "Classe H", "rmsep": 1.7,
+            "lod": 2.10, "loq": 6.40,
+            "lod_ic_baixo": 1.80, "lod_ic_alto": 2.60,
+            "loq_ic_baixo": 5.45, "loq_ic_alto": 7.88,
+            "lod_ic_confianca": 0.95,
+            "validacao_teor_min": 0.0, "validacao_teor_max": 40.0,
+            "validacao_teor_dp": 11.5,
+        }])
+    md = open(pasta + "/model_card.md", encoding="utf-8").read()
+    assert "Allegrini" in md
+    assert "1.80" in md and "2.60" in md
+    assert "11.5" in md
+
+
+def test_anexar_regressao_resumo_fom_pooled(pq, tmp_path, monkeypatch):
+    """Caminho de modelo pooled unico (fom_pooled) tambem grava LOD/LOQ/SEN."""
+    monkeypatch.setenv("GUARACI_IDIOMA", "en")   # bloco conferido pelos textos em ingles
+    pasta = str(tmp_path)
+    open(pasta + "/resumo_modelo.txt", "w", encoding="utf-8").close()
+    pq.append_regression_summary(
+        pasta,
+        pooled={"r2c": 0.9, "r2v": 0.8, "rmsec": 1.0, "rmsecv": 1.1,
+                "rmsep": 1.3, "bias": 0.0},
+        fom_pooled={"lod": 3.0, "loq": 9.1, "sensibilidade": 0.05,
+                    "sensibilidade_analitica": 12.3, "seletividade_media": 0.8,
+                    "delta_x_ruido": 0.001})
+    txt = canonico(pasta + "/resumo_modelo.txt")
+    assert "single pooled model" in txt
+    assert "LOD" in txt and "LOQ" in txt
+
+
+# ── Dominio de Aplicabilidade (Applicability Domain) ─────────────────────────
+
+def test_dominio_aplicabilidade_treino_majoritariamente_dentro(pq):
+    """Amostras do proprio treino caem dentro do dominio em ~(1-alpha) dos
+    casos — o limite e um teste de 95%, entao a fracao dentro deve ser alta."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(120, 30))
+    pca = PCA(n_components=5).fit(X)
+    ad = pq.applicability_domain(pca, X, X, alpha=0.05)
+    assert 0.80 <= float(ad["fracao_dentro"]) <= 1.0
+    assert ad["dentro_dominio"].shape == (120,)
+    assert float(ad["f_crit"]) > 0
+
+
+def test_dominio_aplicabilidade_nao_rejeita_treino_no_regime_n_menor_que_p(pq):
+    """Regime REAL deste projeto (n << p: poucas amostras, milhares de canais
+    espectrais) -- o unico em que o vies in-sample de Q aparece.
+
+    Os demais testes de AD usam n=80..200 com p=15..30 (n >> p), onde a PCA
+    NAO reconstroi o proprio treino de graca e o vies e' pequeno; por isso o
+    defeito passou despercebido. Com n < p a PCA reconstroi cada amostra de
+    treino quase exatamente (a amostra ajudou a definir o subespaco que
+    depois a reconstroi), Q_train colapsa perto de zero, e o limite derivado
+    dele rejeita amostras da PROPRIA distribuicao de treino.
+
+    E' a MESMA classe de defeito ja corrigida no DD-SIMCA em 2026-07-19
+    (`DDSimca._q_residuals_loo`, CLAUDE.md P1) -- que nao tinha sido
+    propagada para o dominio de aplicabilidade, o caminho que roda em
+    producao em predicao.py (colunas AD_*).
+
+    Medido antes da correcao (simulacao do mantenedor, script nao versionado):
+    aceitacao de 0.14 a 0.57 conforme n/p, contra 0.95 nominal.
+    """
+    import numpy as np
+    from sklearn.decomposition import PCA
+    fracoes = []
+    for seed in range(3):
+        rng = np.random.default_rng(4000 + seed)
+        X_tr = rng.normal(size=(40, 800))
+        X_novo = rng.normal(size=(200, 800))    # mesma distribuicao => H0
+        pca = PCA(n_components=3).fit(X_tr)
+        art = pq.training_applicability_domain(pca, X_tr, alpha=0.05)
+        r = pq.applicability_domain_new_samples(
+            pca, X_novo, art["var_t"], art["h0"], art["q0"],
+            art["Nh"], art["Nq"], art["f_crit"])
+        fracoes.append(float(np.mean(r["dentro_dominio"])))
+    media = float(np.mean(fracoes))
+    assert media >= 0.85, (
+        f"AD aceitou apenas {media:.3f} das amostras da propria distribuicao "
+        "de treino (alpha=0.05 => esperado ~0.95). Q de treino calculado "
+        "in-sample com n < p: use residuo leave-one-out (q_residuals_loo).")
+
+
+def test_dominio_aplicabilidade_amostra_distante_fica_fora(pq):
+    """Uma amostra espectralmente muito distante do treino (deslocada em
+    varias ordens de grandeza) e sinalizada FORA do dominio."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(100, 20))
+    pca = PCA(n_components=4).fit(X)
+    X_out = X[:5] + 50.0            # empurra 5 amostras para longe do plano
+    ad = pq.applicability_domain(pca, X, X_out, alpha=0.05)
+    # Todas as 5 deslocadas devem estar fora (T2 e/ou Q estourados).
+    assert not ad["dentro_dominio"].any()
+
+
+def test_dominio_aplicabilidade_retorno_consistente(pq):
+    """Vetores t2/q/f tem o mesmo tamanho de X_new; dentro_dominio =
+    (f <= f_crit) -- a distancia COMBINADA (achado A3 da auditoria
+    2026-08-07), nao mais o teste retangular T2<=lim E Q<=lim."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(80, 15))
+    Xn = rng.normal(size=(12, 15))
+    pca = PCA(n_components=3).fit(X)
+    ad = pq.applicability_domain(pca, X, Xn)
+    assert ad["t2"].shape == (12,) and ad["q"].shape == (12,)
+    assert ad["f"].shape == (12,)
+    assert np.array_equal(ad["dentro_dominio"], ad["f"] <= ad["f_crit"])
+
+
+def test_dominio_aplicabilidade_calibrada_melhor_que_regra_retangular(pq):
+    """Achado A3: a regra retangular (T2<=lim E Q<=lim, alpha=0.05 por
+    eixo) rejeitava ~11.6% de amostras da MESMA distribuicao do treino
+    (contra 5% nominal). A distancia combinada deve ficar muito mais perto
+    do alpha nominal. Nao trava um valor exato (variabilidade de Monte
+    Carlo com 1 unica amostra de treino) -- so' que fica bem abaixo do
+    patamar da regra retangular (~9.75% no caso ingenuo, medido 11.6%)."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rejeicoes = []
+    for seed in range(15):
+        rng = np.random.default_rng(100 + seed)
+        Xtr = rng.normal(0, 1, (200, 30))
+        Xnew = rng.normal(0, 1, (500, 30))   # mesma distribuicao => H0
+        pca = PCA(n_components=3).fit(Xtr)
+        ad = pq.applicability_domain(pca, Xtr, Xnew, alpha=0.05)
+        rejeicoes.append(1.0 - float(ad["fracao_dentro"]))
+    taxa_media = float(np.mean(rejeicoes))
+    assert taxa_media < 0.09, (
+        f"taxa de rejeicao {taxa_media:.3f} proxima demais do patamar da "
+        "regra retangular (~0.10-0.12) -- distancia combinada nao "
+        "parece estar em uso")
+
+
+def test_dominio_aplicabilidade_split_treino_amostras_novas_equivale_ao_combinado(pq):
+    """training_applicability_domain + applicability_domain_new_samples
+    (usadas por predicao.py para nao precisar reexportar X_train inteiro no
+    pacote .joblib) devem produzir EXATAMENTE o mesmo resultado que a funcao
+    combinada applicability_domain -- e' a mesma matematica, so' partida
+    em 2 etapas (treino gera artefatos leves; predicao os consome)."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(90, 12))
+    Xn = rng.normal(size=(10, 12)) + 0.5
+    pca = PCA(n_components=4).fit(X)
+
+    combinado = pq.applicability_domain(pca, X, Xn, alpha=0.05)
+    treino = pq.training_applicability_domain(pca, X, alpha=0.05)
+    split = pq.applicability_domain_new_samples(
+        pca, Xn, treino["var_t"], treino["h0"], treino["q0"],
+        treino["Nh"], treino["Nq"], treino["f_crit"])
+
+    assert np.allclose(combinado["t2"], split["t2"])
+    assert np.allclose(combinado["q"], split["q"])
+    assert np.allclose(combinado["f"], split["f"])
+    assert np.array_equal(combinado["dentro_dominio"], split["dentro_dominio"])
+    assert float(combinado["f_crit"]) == pytest.approx(treino["f_crit"])
+
+
+def test_dominio_aplicabilidade_treino_var_t_tem_tamanho_n_componentes(pq):
+    """var_t (variancia dos scores) tem 1 valor por componente PCA -- e' o
+    artefato leve que substitui reexportar X_train inteiro no pacote."""
+    import numpy as np
+    from sklearn.decomposition import PCA
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(60, 10))
+    pca = PCA(n_components=3).fit(X)
+    treino = pq.training_applicability_domain(pca, X)
+    assert treino["var_t"].shape == (3,)
+    assert treino["t2_limite"] > 0 and treino["q_limite"] > 0
+
+
+class _PCADuckType:
+    """Reproduz so' a API que `applicability_domain_new_samples` usa
+    (`.transform()`, `.components_`, `.mean_`) SEM a validacao de entrada
+    do sklearn (que recusa X com 0 amostras antes mesmo de chegar no
+    codigo deste modulo) -- necessario para exercitar `dentro.size==0`
+    (achado 5 abaixo), que um `sklearn.decomposition.PCA` de verdade
+    nunca deixa alcancar. A docstring de `applicability_domain_new_samples`
+    so' promete "precisa de .transform()/.components_/.mean_" -- qualquer
+    objeto que cumpra esse contrato tem que ser tratado com seguranca,
+    nao so' o sklearn especificamente."""
+
+    def __init__(self, pca_ajustado):
+        self.components_ = pca_ajustado.components_
+        self.mean_ = pca_ajustado.mean_
+
+    def transform(self, X):
+        return (np.asarray(X, dtype=float) - self.mean_) @ self.components_.T
+
+
+def test_fracao_dentro_com_zero_amostras_novas_e_nan_nao_erro(pq):
+    """Achado 5 da rodada de mutation testing (2026-09-11): a condicional
+    que decide `fracao_dentro` (`float(np.mean(dentro)) if dentro.size
+    else float("nan")`, linha ~942) conforme `dentro.size` sobrevivia --
+    nenhum teste exercitava `X_new` com ZERO amostras, o unico caso em que
+    o ramo NaN e' de fato alcancado (com qualquer numero de amostras >=1,
+    os dois ramos so' diferem no VALOR, nao no formato). Com X_new vazio,
+    `dentro.size==0` -- tem que devolver NaN de forma limpa (sem
+    RuntimeWarning de dividir por zero disfarcado), nunca 0.0 (que
+    pareceria "nenhuma amostra dentro do dominio", uma alegacao FALSA
+    quando na verdade nao ha amostra nenhuma pra avaliar).
+
+    Usa `_PCADuckType` em vez de um PCA sklearn de verdade: o sklearn
+    recusa `X_new` com 0 amostras ANTES de chegar no codigo deste modulo
+    (`ValueError: Found array with 0 sample(s)`), entao um teste com PCA
+    real nunca alcancaria `dentro.size==0` -- o duck type isola o
+    comportamento deste modulo do comportamento (mais restritivo) do
+    sklearn."""
+    rng = np.random.default_rng(23)
+    from sklearn.decomposition import PCA
+    X_train = rng.normal(size=(40, 6))
+    pca_real = PCA(n_components=2).fit(X_train)
+    treino = pq.training_applicability_domain(pca_real, X_train)
+    pca = _PCADuckType(pca_real)
+    X_new_vazio = np.empty((0, 6))
+
+    resultado = pq.applicability_domain_new_samples(
+        pca, X_new_vazio, treino["var_t"], treino["h0"], treino["q0"],
+        treino["Nh"], treino["Nq"], treino["f_crit"])
+
+    assert resultado["t2"].shape == (0,)
+    assert resultado["dentro_dominio"].shape == (0,)
+    assert np.isnan(float(resultado["fracao_dentro"]))
+
+
+# ── Kennard-Stone: selecao representativa de amostras ────────────────────────
+
+def test_kennard_stone_seleciona_extremos_primeiro(pq):
+    """KS deve escolher amostras nas bordas do espaco antes das centrais.
+    Com pontos 1D em [0..10], os dois primeiros selecionados sao os extremos."""
+    import numpy as np
+    X = np.linspace(0, 10, 11).reshape(-1, 1)   # 0,1,...,10
+    ordem = pq.kennard_stone(X, 3)
+    assert set(ordem[:2].tolist()) == {0, 10}   # extremos primeiro
+    assert len(ordem) == 3 and len(set(ordem.tolist())) == 3
+
+
+def test_kennard_stone_pede_mais_que_n_devolve_n(pq):
+    """Pedir mais amostras do que existem devolve todas, sem repetir indice."""
+    import numpy as np
+    X = np.random.default_rng(0).normal(size=(8, 4))
+    ordem = pq.kennard_stone(X, 50)
+    assert len(ordem) == 8 and len(set(ordem.tolist())) == 8
+
+
+def test_kennard_stone_split_particiona_sem_overlap(pq):
+    """kennard_stone_split devolve treino/val disjuntos que cobrem todo o n."""
+    import numpy as np
+    X = np.random.default_rng(1).normal(size=(40, 6))
+    tr, val = pq.kennard_stone_split(X, frac_treino=0.75)
+    assert len(tr) == 30 and len(val) == 10
+    assert set(tr.tolist()).isdisjoint(val.tolist())
+    assert set(tr.tolist()) | set(val.tolist()) == set(range(40))
+
+
+# ── Kennard-Stone group-aware (usado no split cal/val da regressao) ─────────
+
+def test_ks_group_aware_nunca_separa_replicas(pq):
+    """Com mae_id (>=4 grupos), kennard_stone_split_group_aware nunca deixa
+    replicas do MESMO grupo em lados diferentes (o invariante central do
+    projeto: T1/T2/T3 sempre juntas entre cal/val)."""
+    import numpy as np
+    rng = np.random.default_rng(5)
+    grupos = np.repeat([f"G{i:02d}" for i in range(10)], 3)   # 10 grupos x 3 replicas
+    X = rng.normal(size=(30, 5))
+    ic, iv = pq.kennard_stone_split_group_aware(X, grupos, frac_cal=0.7)
+    grupos_ic = set(grupos[ic].tolist())
+    grupos_iv = set(grupos[iv].tolist())
+    assert grupos_ic.isdisjoint(grupos_iv), (
+        "replicas do mesmo grupo (mae_id) apareceram em cal E val")
+    assert set(ic.tolist()) | set(iv.tolist()) == set(range(30))
+
+
+def test_ks_group_aware_sem_mae_id_roda_por_amostra(pq):
+    """Sem mae_id, cai no KS direto por amostra (kennard_stone_split)."""
+    import numpy as np
+    X = np.random.default_rng(6).normal(size=(20, 4))
+    ic, iv = pq.kennard_stone_split_group_aware(X, None, frac_cal=0.7)
+    assert len(ic) == 14 and len(iv) == 6
+    assert set(ic.tolist()).isdisjoint(iv.tolist())
+
+
+def test_ks_group_aware_poucos_grupos_cai_no_split_por_amostra(pq):
+    """Com menos de 4 grupos unicos, o colapso por grupo nao compensa (dados
+    de menos) -- cai no KS direto por amostra, sem quebrar."""
+    import numpy as np
+    grupos = np.array(["G1", "G1", "G2", "G2", "G3"])
+    X = np.random.default_rng(7).normal(size=(5, 3))
+    ic, iv = pq.kennard_stone_split_group_aware(X, grupos, frac_cal=0.6)
+    assert set(ic.tolist()) | set(iv.tolist()) == set(range(5))
+
+
+@pytest.mark.slow
+def test_regressao_pooled_com_kennard_stone_roda_sem_erro(pq, tmp_path):
+    """Integracao real: executar() em N3 sintetico com
+    cal_val_split='kennard_stone' completa sem erro e gera o resumo com
+    o bloco de figuras de merito (mesmo caminho da regressao, so' o metodo
+    de split cal/val muda)."""
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N3",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        cal_val_split="kennard_stone",
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    resumo = Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"
+    assert resumo.is_file()
+    txt = canonico(resumo)
+    assert "Analytical Figures of Merit" in txt
+
+
+@pytest.mark.slow
+def test_executar_com_martens_gera_csv_e_resumo(pq, tmp_path):
+    """Integracao real: executar() com run_martens=True gera
+    dados/teste_martens.csv e as chaves 'Martens n_*' aparecem no
+    resumo_modelo.txt e no model_card.md (via _NOTAS_METODOLOGICAS/filtro
+    de metricas ja existentes)."""
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=3, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        run_martens=True,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    run_dir = Path(runs[0])
+
+    cam_csv = run_dir / pq.NOME_TABELAS / "teste_martens.csv"
+    assert cam_csv.is_file(), "teste_martens.csv nao foi gerado"
+    df = pd.read_csv(cam_csv, sep=";", decimal=",")
+    assert {"wavenumber", "t_valor", "p_valor", "significativo"}.issubset(df.columns)
+
+    resumo_txt = canonico((run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    assert "Martens n_significativas" in resumo_txt
+
+    card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
+    assert "Martens: variaveis significativas" in card_txt   # rotulo do resumo traduzido no model card
+
+
+@pytest.mark.slow
+def test_wold_e_cv_anova_pulados_fora_de_classificacao(pq, tmp_path):
+    """Achado em 2026-08-06: teste_wold/teste_cv_anova rodavam SEM checar o
+    objetivo (diferente do teste de permutacao, que ja tinha esse guard) --
+    em N3 (Quantificacao), refaziam n_permutations_wold refits de CV usando
+    rotulos de CLASSE (Y_bin one-hot) para um run que nao classifica nada, e
+    escreviam "Wold R2Y/Q2Y intercept"/"CV-ANOVA F" no resumo sem sentido
+    nenhum nesse contexto. Trava que, com os dois toggles LIGADOS num run
+    N3, nenhuma das duas chaves aparece no resumo -- e que a mensagem de
+    PULADO e' emitida (nao um silencio sem explicacao).
+
+    Usa contextlib.redirect_stdout (nao caplog): o logger "guaraci" tem
+    propagate=False de proposito (guaraci/log.py, p/ funcionar com o painel
+    de progresso do CLI/app web que faz parsing do stdout capturado) --
+    registros de "guaraci.pipeline" NUNCA chegam no logger raiz, entao
+    caplog fica sempre vazio aqui. E' o mesmo padrao ja usado em
+    test_pipeline_log_parsing_integration.py."""
+    import contextlib
+    import io
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N3",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        run_wold=True, run_cv_anova=True,
+        # o ajuste automatico (contexto.py) ja desliga os dois testes fora de
+        # classificacao; aqui se testa o guard do PROPRIO motor, sem o ajuste.
+        auto_adjust=False,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    resumo_txt = canonico((Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    # Ancorado no ":" do formato de linha de dado (`f"  {k:<N}: {v}"`, ver
+    # resultados_io.save_model_summary) -- NAO usar so' "CV-ANOVA F" como
+    # substring: a secao de notas metodologicas do resumo tem o cabecalho
+    # estatico "[CV-ANOVA F-test]" (documentacao do metodo, sempre presente),
+    # que contem "CV-ANOVA F" como prefixo e daria falso-negativo no teste.
+    assert not re.search(r"Wold R2Y intercept\s*:", resumo_txt)
+    assert not re.search(r"Wold Q2Y intercept\s*:", resumo_txt)
+    assert not re.search(r"CV-ANOVA F\s*:", resumo_txt)
+
+    log_txt = buf.getvalue()
+    assert "Teste de Wold — PULADO" in log_txt
+    assert "CV-ANOVA — PULADO" in log_txt
+
+
+@pytest.mark.slow
+def test_wold_e_cv_anova_rodam_normalmente_em_classificacao(pq, tmp_path):
+    """Contraparte positiva do teste acima: em objective=Classificacao (N1/N2),
+    onde os dois testes SAO pertinentes, o guard novo (objetivo ==
+    CLASSIFICACAO) nao pode bloquear o caminho que sempre funcionou."""
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N1",
+        n_per_class=10, n_synthetic_points=60,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+        run_wold=True, run_cv_anova=True,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    resumo_txt = canonico((Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    assert "Wold R2Y intercept" in resumo_txt
+    assert "Wold Q2Y intercept" in resumo_txt
+    assert "CV-ANOVA F" in resumo_txt
+
+
+@pytest.mark.slow
+def test_executar_gera_dmodx_sempre_e_dmody_em_n3(pq, tmp_path):
+    """DModX (classificacao) aparece SEMPRE no resumo/model card, em
+    qualquer nivel -- e' calculado junto com o T2/Q ja existentes. DModY
+    (regressao) so' aparece quando ha regressao (N3)."""
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N3",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    run_dir = Path(runs[0])
+
+    resumo_txt = canonico((run_dir / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    assert "DModX critical (SIMCA)" in resumo_txt
+    assert "N samples outside DModX" in resumo_txt
+
+    card_txt = (run_dir / pq.NOME_RELATORIOS / "model_card.md").read_text(encoding="utf-8")
+    assert "DModX critico (SIMCA)" in card_txt   # rotulo do resumo traduzido no model card
+    assert "DModY critico (SIMCA)" in card_txt   # addendum de regressao, N3
+
+
+# ── DD-SIMCA bloqueado em N1 (nao agrega a identificacao de especie) ────────
+
+@pytest.mark.slow
+def test_ddsimca_ignorado_em_n1_mesmo_com_toggle_ligado(pq, tmp_path):
+    """DD-SIMCA e' um diagnostico de autenticacao de PUREZA (conceito N2).
+    Ligar o toggle manualmente com level=N1 (identificacao de especie) nao
+    deve gerar nenhuma figura de DD-SIMCA -- o pipeline ignora o toggle
+    (com aviso), pois o grafico nao agrega aquele tipo de analise."""
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N1",
+        n_per_class=8, n_synthetic_points=50,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1,
+        n_permutations=5, n_permutations_wold=5,
+        n_bootstrap_vip=3, n_bootstrap_bca=20, n_monte_carlo=3,
+        run_benchmark=False, run_monte_carlo=False,
+        run_shap=False, run_wold=False, run_cv_anova=False,
+        run_opls=False, executar_etapa4=False, comparar_pipelines=False,
+        compare_hca_pipelines=False, max_lvs=5,
+        run_ddsimca=True,          # ligado manualmente, propositalmente
+    )
+    os.makedirs(str(tmp_path / "dados"), exist_ok=True)
+    pq.executar(cfg)
+
+    runs = achar_pastas_run(tmp_path / "saida")
+    assert runs, "executar() nao criou pasta de saida"
+    figbase = Path(runs[0]) / pq.NOME_GRAFICOS
+    nomes_pngs = {p.name for p in figbase.rglob("*.png")} if figbase.exists() else set()
+    ddsimca_figs = {n for n in nomes_pngs if "ddsimca" in n.lower()
+                    or "cooman" in n.lower()}
+    assert not ddsimca_figs, (
+        f"Figuras de DD-SIMCA foram geradas em level=N1: {ddsimca_figs} "
+        "(deveriam ser ignoradas)")
+
+
+def test_ddsimca_permitido_em_n2_com_toggle_ligado(pq):
+    """Confirma que o bloqueio e' especifico de N1 -- em N2 (onde
+    executar() ja forca run_ddsimca=True), o toggle continua
+    funcionando normalmente (regressao no bloqueio, nao remocao da feature)."""
+    cfg = pq.Config(level="N2", run_ddsimca=False)
+    # Simula so' o trecho de decisao (sem rodar o pipeline inteiro): a
+    # condicao de bloqueio e' `cfg.run_ddsimca and cfg.level == "N1"`,
+    # entao em N2 ela nunca dispara, independente do toggle.
+    bloqueado = cfg.run_ddsimca and cfg.level == "N1"
+    assert not bloqueado
+
+
+# ── Model Card (Mitchell et al. 2019) -- teste unitario, sem rodar executar() ─
+
+def _resumo_minimo() -> dict:
+    """Dict `resumo` minimo, so' com as chaves que generate_model_card le --
+    testa a MONTAGEM do card isoladamente, sem depender de um pipeline
+    completo (esse caminho ja e' coberto por
+    test_figuras_regressao.test_model_card_gerado_com_addendum_de_regressao)."""
+    return {
+        "Total samples": 100, "Total variables": 50,
+        "Total classes": 2, "Pre-processamento": "MSC -> SG -> MC",
+        "Faixa espectral (cm-1)": "[4000, 10000]", "Tag": "-",
+        "Group-aware (mae_id)": "sim", "N grupos mae_id": 30,
+        "Imbalance ratio": 1.0,
+        "Accuracy (CV)": 0.95, "Balanced accuracy": 0.94,
+        "F1 (macro)": 0.93, "Cohen's kappa": 0.90,
+        "R2X": 0.98, "R2Y": 0.97, "Q2": 0.95,
+        "Permutation p-value": 0.02, "Hotelling T2 (95%)": 12.0,
+        "Q-residual (95%)": 0.001,
+        "NaN integrity": 0, "Integridade Inf": 0,
+        "Constant variables": 0, "Exact duplicates": 0,
+        "  Acc Esp_A": 0.96, "  Acc Esp_B": 0.94,
+    }
+
+
+def test_gerar_model_card_cria_arquivo_com_secoes_esperadas(pq, tmp_path):
+    cfg = pq.Config(level="N1")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    classes = ["Esp_A", "Esp_B"]
+
+    pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, classes)
+
+    card = tmp_path / "model_card.md"
+    assert card.is_file()
+    txt = card.read_text(encoding="utf-8")
+    assert "# Model Card -- GUARACI v" in txt
+    assert "Esp_A, Esp_B" in txt
+    assert "0.9500" in txt  # Accuracy (CV) formatado com 4 casas
+    assert "parcimonia" in txt and "regra pratica" in txt.lower()
+    assert "## 9. Addendum" not in txt  # sem regressao ainda
+
+
+def test_anexar_regressao_model_card_adiciona_secao_9(pq, tmp_path):
+    cfg = pq.Config(level="N3")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+
+    pq.append_regression_model_card(
+        str(tmp_path),
+        pooled={"rmsep": 3.21, "r2v": 0.88},
+        tabela_especie=[{"especie": "Esp_A", "rmsep": 3.21,
+                         "lod": 1.5, "loq": 4.5}])
+
+    txt = (tmp_path / "model_card.md").read_text(encoding="utf-8")
+    assert "## 9. Addendum -- Quantificacao (N2/N3, PLS-R)" in txt
+    assert "3.210" in txt
+    assert "LOD=1.50 " in txt and "LOD=1.50%" not in txt   # a unidade e' a do teor de referencia, nao "%"
+
+
+def test_anexar_regressao_model_card_sem_arquivo_previo_nao_quebra(pq, tmp_path):
+    """Se model_card.md nao existe (ex.: generate_model_card falhou antes),
+    append_regression_model_card nao deve lancar excecao -- so' nao faz nada."""
+    pq.append_regression_model_card(str(tmp_path), pooled={"rmsep": 1.0})
+    assert not (tmp_path / "model_card.md").exists()
+
+
+def test_anexar_regressao_model_card_nan_vira_na_e_fom_pooled(pq, tmp_path):
+    """Valor NaN/nao-numerico em tabela_especie vira 'n/a' (nunca 'nan' cru
+    no documento); fom_pooled (modelo unico, sem tabela por especie) tambem
+    e' escrito."""
+    cfg = pq.Config(level="N3")
+    hw = {"ram_total_gb": 16.0, "cpu_fisicos": 8, "cpu_logicos": 16}
+    pq.generate_model_card(str(tmp_path), cfg, _resumo_minimo(), hw, ["Esp_A"])
+
+    pq.append_regression_model_card(
+        str(tmp_path),
+        pooled={"rmsep": 3.21, "r2v": 0.88},
+        tabela_especie=[{"especie": "Esp_A", "rmsep": float("nan"),
+                         "lod": float("nan"), "loq": 4.5}],
+        fom_pooled={"lod": 2.0, "loq": 6.0, "sensibilidade": 0.04})
+
+    txt = (tmp_path / "model_card.md").read_text(encoding="utf-8")
+    secao9 = txt[txt.index("## 9. Addendum"):]
+    assert "n/a" in secao9
+    assert "nan" not in secao9.lower()  # nunca "nan" cru (sempre formatado como n/a)
+    assert "LOD" in secao9 and "LOQ" in secao9 and "Sensibilidade" in secao9
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico de faixa espectral (achado 2026-08-07)
+# ---------------------------------------------------------------------------
+def _espectros(wn, gen, n=200, seed=0):
+    rng = np.random.default_rng(seed)
+    return np.array([gen(rng) for _ in range(n)])
+
+
+def test_diagnostico_detecta_regiao_morta_e_sugere_faixa():
+    """Faixa larga demais (o caso real: 4000-10000 cm-1 com sinal so' abaixo
+    de ~6200) tem que ser detectada e reportada com faixa sugerida."""
+    from guaraci.chemometric_stats import diagnose_spectral_range
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 5900) / 70) ** 2)
+        + (0.8 + 0.3 * r.normal()) * np.exp(-((wn - 4450) / 55) ** 2)
+        + r.normal(scale=0.01, size=wn.size)))
+    d = diagnose_spectral_range(X, wn)
+
+    assert d["frac_util"] < 0.5
+    assert d["faixa_sugerida"] is not None
+    lo, hi = d["faixa_sugerida"]
+    assert hi < 6500, f"faixa sugerida ({lo:.0f}-{hi:.0f}) nao cortou a zona morta"
+    tipos = {t for _a, _b, t in d["regioes_ruins"]}
+    assert "morta" in tipos, f"zona sem sinal classificada como {tipos}"
+
+
+def test_diagnostico_nao_da_falso_positivo_em_espectro_todo_util():
+    """Se a faixa inteira carrega sinal, nao pode sugerir corte — um
+    diagnostico que sempre acusa problema e' ruido, nao informacao."""
+    from guaraci.chemometric_stats import diagnose_spectral_range
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 7000) / 2500) ** 2)
+        + r.normal(scale=0.005, size=wn.size)))
+    d = diagnose_spectral_range(X, wn)
+    assert d["frac_util"] > 0.95
+    assert d["faixa_sugerida"] is None
+    assert d["regioes_ruins"] == []
+
+
+def test_diagnostico_separa_ruidosa_de_morta():
+    """Regiao com MUITA variacao de alta frequencia e' 'ruidosa', nao
+    'morta' — sao defeitos diferentes e pedem acoes diferentes."""
+    from guaraci.chemometric_stats import diagnose_spectral_range
+    wn = np.linspace(4000, 10000, 759)
+    X = _espectros(wn, lambda r: (
+        (1 + 0.3 * r.normal()) * np.exp(-((wn - 5000) / 700) ** 2)
+        + r.normal(scale=0.005, size=wn.size)
+        + np.where(wn > 8000, r.normal(scale=0.3, size=wn.size), 0.0)))
+    d = diagnose_spectral_range(X, wn)
+    tipos = {t for _a, _b, t in d["regioes_ruins"]}
+    assert "ruidosa" in tipos, f"regiao de ruido alto classificada como {tipos}"
+
+
+def test_diagnostico_entrada_degenerada_nao_quebra():
+    from guaraci.chemometric_stats import diagnose_spectral_range
+    d = diagnose_spectral_range(np.zeros((2, 3)), np.array([1., 2., 3.]))
+    assert d["faixa_sugerida"] is None
+    assert bool(np.all(d["mascara_util"]))
+
+
+# ---------------------------------------------------------------------------
+# Diagnostico PCV (Procrustes Cross-Validation) opt-in -- adicionado 2026-08-08
+# ---------------------------------------------------------------------------
+def test_ddsimca_pcv_desligado_por_padrao_nao_aparece_no_resumo(pq, tmp_path):
+    """Com cfg.ddsimca_pcv=False (default), o resumo nao ganha os campos
+    extras de PCV -- feature opt-in, nao muda o comportamento padrao."""
+    pytest.importorskip("prcv")
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5, level="N2", detailed_figures=False,
+        run_ddsimca=True, run_opls=False, executar_etapa4=False,
+        run_wold=False, comparar_pipelines=False,
+        run_cv_anova=False, run_benchmark=False,
+        run_monte_carlo=False, run_shap=False,
+        ddsimca_pcv=False,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+    runs = achar_pastas_run(cfg.output_root_folder)
+    resumo = canonico((Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    assert "sens(PCV" not in resumo
+
+
+def test_ddsimca_pcv_ligado_aparece_no_resumo_ao_lado_do_logo(pq, tmp_path):
+    """Com cfg.ddsimca_pcv=True e pacote 'prcv' instalado, o resumo ganha
+    linhas "sens(PCV, exploratorio)" ALEM das de LOGO (nunca em vez delas)."""
+    pytest.importorskip("prcv")
+    import os
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "in"), output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", n_per_class=10, n_synthetic_points=60,
+        n_synthetic_replicates=3, wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5, level="N2", detailed_figures=False,
+        run_ddsimca=True, run_opls=False, executar_etapa4=False,
+        run_wold=False, comparar_pipelines=False,
+        run_cv_anova=False, run_benchmark=False,
+        run_monte_carlo=False, run_shap=False,
+        ddsimca_pcv=True,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    pq.executar(cfg)
+    runs = achar_pastas_run(cfg.output_root_folder)
+    resumo = canonico((Path(runs[0]) / pq.NOME_RELATORIOS / "resumo_modelo.txt"))
+    assert "sens(PCV, exploratorio)" in resumo
+    assert "sens(LOGO)" in resumo   # PCV e' complementar, LOGO continua ali
+
+
+def test_metricas_classificacao_marca_conjunto_de_uma_classe(pq):
+    """Com uma unica classe, accuracy=1.0 nao e' desempenho -- e' aritmetica.
+
+    Medido rodando o pipeline sobre dados de classe unica: a saida reportava `Accuracy (CV) = 1.0000` e o model card
+    repetia o numero, sem nenhuma marca de que era degenerado (auditoria
+    mestre de 2026-08-17, sec. 1.6).
+    """
+    import numpy as np
+    y = np.array(["classe"] * 20)
+    m = pq.classification_metrics(y, y.copy(), ["classe"])
+    assert m.get("degenerada_uma_classe") == 1.0
+
+    y2 = np.array(["a"] * 10 + ["b"] * 10)
+    m2 = pq.classification_metrics(y2, y2.copy(), ["a", "b"])
+    assert "degenerada_uma_classe" not in m2
+
+
+# ── RPD / RER (figuras de merito de quantificacao) ───────────────────────────
+
+def test_rpd_rer_reproduz_a_definicao(pq):
+    """RPD = SD(y_ref)/SEP e RER = amplitude/SEP, com SEP corrigido pelo bias.
+
+    Usar RMSEP no lugar de SEP e' o erro comum -- infla o RPD sempre que ha'
+    bias, porque o bias sai da conta do SEP mas nao da do RMSEP.
+    """
+    import numpy as np
+    rng = np.random.default_rng(11)
+    y = rng.uniform(0.0, 20.0, 200)
+    y_hat = y + 2.0 + rng.normal(0, 1.0, y.size)      # bias +2, ruido sd~1
+
+    r = pq.rpd_rer(y, y_hat)
+    residuos = y_hat - y
+    bias_esperado = float(np.mean(residuos))
+    sep_esperado = float(np.std(residuos - bias_esperado, ddof=1))
+    assert r["bias"] == pytest.approx(bias_esperado)
+    assert r["sep"] == pytest.approx(sep_esperado)
+    assert r["rpd"] == pytest.approx(np.std(y, ddof=1) / sep_esperado)
+    assert r["rer"] == pytest.approx((y.max() - y.min()) / sep_esperado)
+
+    # O ponto do SEP: com bias grande, RMSEP >> SEP, e usar RMSEP daria um
+    # RPD MENOR. A conta correta nao e' penalizada duas vezes pelo bias --
+    # ele e' reportado a parte.
+    rmsep = float(np.sqrt(np.mean(residuos ** 2)))
+    assert rmsep > sep_esperado
+
+
+def test_rpd_degenerado_nao_vira_infinito(pq):
+    """Predicao perfeita ou referencia constante devolve NaN, nunca um
+    infinito que o relatorio imprimiria como desempenho excelente."""
+    import numpy as np
+    y = np.linspace(0, 10, 20)
+    assert not np.isfinite(pq.rpd_rer(y, y.copy())["rpd"])      # SEP = 0
+    const = np.full(20, 5.0)
+    assert not np.isfinite(pq.rpd_rer(const, const + 0.1)["rpd"])  # SD = 0
+    assert not np.isfinite(pq.rpd_rer(np.array([1.0]), np.array([1.0]))["rpd"])
+
+
+def test_interpretar_rpd_cobre_as_faixas_publicadas(pq):
+    """As faixas vem de Williams (2014) / AACC 39-00.01 -- um RPD nu vira
+    alegacao exagerada em texto, entao o numero nunca sai sozinho."""
+    assert pq.interpret_rpd(1.5) == "nao utilizavel"
+    assert pq.interpret_rpd(2.2) == "triagem grosseira"
+    assert pq.interpret_rpd(2.7) == "triagem"
+    assert pq.interpret_rpd(4.0) == "controle de qualidade"
+    assert pq.interpret_rpd(7.0).startswith("controle de processo")
+    assert pq.interpret_rpd(float("nan")) == "nao estimavel"
+
+
+def test_falha_de_salvamento_de_figura_aparece_no_resumo_final(pq, tmp_path, monkeypatch):
+    """Achado de auditoria funcional (2026-09-01): em pasta de saida muito
+    profunda (MAX_PATH do Windows), ate 3 arquivos falhavam ao salvar em
+    silencio -- o pipeline terminava dizendo "Pipeline concluido" do mesmo
+    jeito, um "[ERROR]" perdido em centenas de linhas de log. Forca UMA
+    falha real de fig.savefig() (monkeypatch de `save`, nao do disco) e
+    confirma que o resumo final AVISA, em vez de dizer "concluido" liso."""
+    import contextlib
+    import io
+    import os
+
+    # As funcoes fig_* (definidas em figuras.py) chamam `save` resolvido do
+    # PROPRIO namespace de figuras.py -- monkeypatch em pq.save (a copia
+    # re-exportada pela fachada) nao teria efeito nenhum aqui, confirmado
+    # rodando de verdade antes de escrever o teste assim.
+    import guaraci.figuras as figuras_mod
+    chamadas = {"n": 0}
+    _save_original = figuras_mod.save
+
+    def _save_com_1_falha(fig, nome, pasta, cfg, subpasta=""):
+        chamadas["n"] += 1
+        if chamadas["n"] == 1:
+            fig.savefig = lambda *a, **kw: (_ for _ in ()).throw(
+                OSError("caminho excede o limite do sistema operacional"))
+        return _save_original(fig, nome, pasta, cfg, subpasta)
+
+    monkeypatch.setattr(figuras_mod, "save", _save_com_1_falha)
+
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N1",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pq.executar(cfg)
+
+    saida = buf.getvalue()
+    assert "FALHA(S) DE SALVAMENTO" in saida
+    assert "Pipeline concluido." not in saida   # nunca "concluido" liso com falha
+    assert chamadas["n"] >= 1
+
+
+def test_pipeline_sem_falha_de_salvamento_reporta_concluido_liso(pq, tmp_path):
+    """Contra-prova inversa: corrida normal, sem nenhuma falha, continua
+    dizendo "Pipeline concluido." sem ressalva -- o acumulador nao pode
+    vazar falha de uma corrida anterior pra' esta (reset no inicio de
+    executar())."""
+    import contextlib
+    import io
+    import os
+
+    cfg = pq.Config(
+        input_folder=str(tmp_path / "dados"),
+        output_root_folder=str(tmp_path / "saida"),
+        mode="sintetico", level="N1",
+        n_per_class=10, n_synthetic_points=60, n_synthetic_replicates=3,
+        wn_min=400.0, wn_max=4001.0,
+        n_splits_cv=2, n_repeats_cv=1, n_permutations=5,
+        n_permutations_wold=5, n_bootstrap_vip=3, n_bootstrap_bca=20,
+        n_monte_carlo=3, max_lvs=5,
+    )
+    os.makedirs(cfg.input_folder, exist_ok=True)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pq.executar(cfg)
+
+    saida = buf.getvalue()
+    assert "FALHA(S) DE SALVAMENTO" not in saida
+    assert "Pipeline concluido." in saida

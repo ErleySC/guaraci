@@ -1,0 +1,21 @@
+# Perfil de tecnica de imagem: camera de bancada / controle de laboratorio
+# (iluminacao e enquadramento fixos, camera montada, distancia constante).
+descricao: "Colorimetria digital via camera de bancada (aquisicao controlada)"
+unidade_eixo: "indice"
+default_preprocessing: "autoscaling"
+vocabulario:
+  classe: "classe"
+  classe_plural: "classes"
+  matriz: "a amostra fotografada"
+  alvo: "o teor do analito de interesse"
+  conforme: "conforme"
+  nao_conforme: "nao conforme"
+codigos_classe: {}
+faixa_trabalho: null
+referencia: ""
+resolucao_esperada: "1024x768 ou superior"
+formatos_aceitos: [".jpg", ".jpeg", ".png", ".tif", ".tiff"]
+# Fluxo controlado sustenta nivel "high" com esforco minimo (basta manter a
+# convencao de 1 subpasta por amostra fisica) -- mas o nivel REAL depende
+# sempre da estrutura de dados fornecida, nunca deste campo.
+nivel_agrupamento_tipico: "high"

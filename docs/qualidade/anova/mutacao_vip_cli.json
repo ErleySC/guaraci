@@ -1,0 +1,1958 @@
+{
+ "modulo": "src/guaraci/vip_cli.py",
+ "total": 147,
+ "mortos_no_total": 145,
+ "contagem": {
+  "morto": 145,
+  "sobrevivente": 2
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_vip_cli_mutacao.py",
+  "tests/test_vip_cli.py",
+  "tests/test_anova_vip_lacunas.py",
+  "tests/test_vip_estabilidade.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [
+  {
+   "linha": 144,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 18.7,
+   "no": 2555,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 214,
+   "operador": "raise->pass",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "raise _Uso(_m(\"arg\", e=\"--componentes/--divisoes/--repeticoes/--semente/--limiar\")) from e",
+   "segundos": 18.8,
+   "no": 1004,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ],
+ "todos": [
+  {
+   "linha": 82,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "t = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 7.5,
+   "no": 487,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 82,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "t = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 7.4,
+   "no": 779,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 82,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "t = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 7.6,
+   "no": 776,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 82,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "t = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 7.8,
+   "no": 208,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return t.format(**kw) if kw else t",
+   "segundos": 7.9,
+   "no": 209,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return t.format(**kw) if kw else t",
+   "segundos": 8.0,
+   "no": 51,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 92,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "if _ESTADO[\"lang\"] == \"en\":",
+   "segundos": 7.8,
+   "no": 216,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 92,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "if _ESTADO[\"lang\"] == \"en\":",
+   "segundos": 9.0,
+   "no": 57,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 94,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "if trecho in msg:",
+   "segundos": 7.9,
+   "no": 795,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 94,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "if trecho in msg:",
+   "segundos": 7.2,
+   "no": 502,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 95,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "return _Uso(en)",
+   "segundos": 7.8,
+   "no": 796,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 96,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_erro_do_nucleo_desconhecido_em_ingles",
+   "trecho": "return _Uso(_m(\"recusa\", m=msg))",
+   "segundos": 26.3,
+   "no": 218,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 97,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "return _Uso(msg)",
+   "segundos": 9.1,
+   "no": 58,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 101,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "p = argparse.ArgumentParser(prog=\"guaraci vip\", add_help=False, exit_on_error=False)",
+   "segundos": 6.4,
+   "no": 804,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 101,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_tipo_invalido_sai_com_a_mensagem_do_programa_e_sem_o_uso_do_argparse",
+   "trecho": "p = argparse.ArgumentParser(prog=\"guaraci vip\", add_help=False, exit_on_error=False)",
+   "segundos": 6.0,
+   "no": 805,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 107,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "p.add_argument(\"--componentes\", type=int, default=2)",
+   "segundos": 8.6,
+   "no": 820,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "p.add_argument(\"--limiar\", type=float, default=1.0)",
+   "segundos": 7.5,
+   "no": 824,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 109,
+   "operador": "const 5",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "p.add_argument(\"--divisoes\", type=int, default=5)",
+   "segundos": 8.7,
+   "no": 828,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 110,
+   "operador": "const 10",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "p.add_argument(\"--repeticoes\", type=int, default=10)",
+   "segundos": 8.8,
+   "no": 832,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 111,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "p.add_argument(\"--semente\", type=int, default=0)",
+   "segundos": 8.8,
+   "no": 836,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 116,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return p",
+   "segundos": 7.5,
+   "no": 76,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_idioma_de",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 9.5,
+   "no": 1218,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 7.2,
+   "no": 565,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 7.7,
+   "no": 858,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 7.7,
+   "no": 859,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_idioma_de",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 11.0,
+   "no": 859,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 7.4,
+   "no": 1595,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 141,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 7.7,
+   "no": 245,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 142,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[en-provide",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 7.2,
+   "no": 2478,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 142,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 7.4,
+   "no": 2552,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 142,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 7.5,
+   "no": 860,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 142,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 7.6,
+   "no": 566,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 143,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if a.startswith(\"--idioma=\"):",
+   "segundos": 6.6,
+   "no": 246,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_idioma_de",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 9.4,
+   "no": 2481,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 18.7,
+   "no": 2555,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_idioma_de",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 10.7,
+   "no": 863,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 144,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_idioma_de",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 10.6,
+   "no": 568,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 145,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return \"en\" if os.environ.get(\"GUARACI_IDIOMA\", \"\").lower().startswith(\"en\") else \"pt\"",
+   "segundos": 7.8,
+   "no": 247,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 145,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_mais_de_20_variaveis_e_idioma_por_ambiente",
+   "trecho": "return \"en\" if os.environ.get(\"GUARACI_IDIOMA\", \"\").lower().startswith(\"en\") else \"pt\"",
+   "segundos": 26.5,
+   "no": 84,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 149,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if nome not in df.columns:",
+   "segundos": 6.6,
+   "no": 252,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 149,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if nome not in df.columns:",
+   "segundos": 7.5,
+   "no": 87,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 150,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "raise _Uso(_m(\"coluna\", papel=papel, nome=nome, cols=\", \".join(map(str, df.columns))))",
+   "segundos": 8.2,
+   "no": 253,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 151,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return df[nome]",
+   "segundos": 7.3,
+   "no": 88,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 158,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "for i, v in enumerate(df[c], start=2):",
+   "segundos": 6.1,
+   "no": 1251,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 160,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "X[i - 2, j] = float(str(v).strip().replace(\",\", \".\"))",
+   "segundos": 6.0,
+   "no": 1950,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 160,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "X[i - 2, j] = float(str(v).strip().replace(\",\", \".\"))",
+   "segundos": 7.7,
+   "no": 2198,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "raise _Uso(_m(\"nao_numerico\", nome=c, i=i, v=str(v))) from None",
+   "segundos": 7.8,
+   "no": 1255,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 163,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return X",
+   "segundos": 7.3,
+   "no": 93,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 167,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return _m(\"cls_\" + c)",
+   "segundos": 7.5,
+   "no": 596,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 167,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return _m(\"cls_\" + c)",
+   "segundos": 8.9,
+   "no": 95,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 171,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_resumo_nomeia_o_modelo_e_lista_as_estaveis_em_ordem_decrescente_de_vip",
+   "trecho": "L = [_m(\"cab\", t=(\"PLS-DA\" if res[\"tarefa\"] == \"classificacao\" else \"PLS\"), p=res[\"n_variaveis\"], n=n,",
+   "segundos": 8.3,
+   "no": 1624,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 171,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_resumo_nomeia_o_modelo_e_lista_as_estaveis_em_ordem_decrescente_de_vip",
+   "trecho": "L = [_m(\"cab\", t=(\"PLS-DA\" if res[\"tarefa\"] == \"classificacao\" else \"PLS\"), p=res[\"n_variaveis\"], n=n,",
+   "segundos": 8.3,
+   "no": 1265,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 175,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_resumo_nomeia_o_modelo_e_lista_as_estaveis_em_ordem_decrescente_de_vip",
+   "trecho": "idx = [i for i in range(len(nomes)) if res[\"classe\"][i] == cls]",
+   "segundos": 8.4,
+   "no": 1279,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 176,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_lista_de_estaveis_corta_em_15_com_reticencias[16-True]",
+   "trecho": "idx.sort(key=lambda i: -res[\"media\"][i])",
+   "segundos": 8.6,
+   "no": 1659,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 177,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if idx:",
+   "segundos": 7.8,
+   "no": 277,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 178,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "L.append(_m(chave, n=len(idx), l=res[\"limiar\"], v=\", \".join(nomes[i] for i in idx[:15])",
+   "segundos": 7.4,
+   "no": 1985,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 178,
+   "operador": "const 15",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_lista_de_estaveis_corta_em_15_com_reticencias[16-True]",
+   "trecho": "L.append(_m(chave, n=len(idx), l=res[\"limiar\"], v=\", \".join(nomes[i] for i in idx[:15])",
+   "segundos": 7.2,
+   "no": 2619,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 179,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_lista_de_estaveis_corta_em_15_com_reticencias[15-False]",
+   "trecho": "+ (\" ...\" if len(idx) > 15 else \"\")))",
+   "segundos": 9.0,
+   "no": 2392,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 179,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_lista_de_estaveis_corta_em_15_com_reticencias[16-True]",
+   "trecho": "+ (\" ...\" if len(idx) > 15 else \"\")))",
+   "segundos": 8.8,
+   "no": 2392,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 179,
+   "operador": "const 15",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_lista_de_estaveis_corta_em_15_com_reticencias[16-True]",
+   "trecho": "+ (\" ...\" if len(idx) > 15 else \"\")))",
+   "segundos": 8.3,
+   "no": 2499,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 179,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_lista_de_estaveis_corta_em_15_com_reticencias[15-False]",
+   "trecho": "+ (\" ...\" if len(idx) > 15 else \"\")))",
+   "segundos": 8.8,
+   "no": 2227,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return L",
+   "segundos": 8.9,
+   "no": 101,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "B += [(\"p\", t) for t in _resumo(res, nomes, args, n)]",
+   "segundos": 8.8,
+   "no": 105,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 189,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_resumo_nomeia_o_modelo_e_lista_as_estaveis_em_ordem_decrescente_de_vip",
+   "trecho": "ordem = sorted(range(len(nomes)), key=lambda i: -res[\"media\"][i])",
+   "segundos": 8.6,
+   "no": 1312,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 194,
+   "operador": "const 20",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_tabela_do_relatorio_mostra_20_linhas_e_avisa_quando_ha_mais[21-True]",
+   "trecho": "_classe_pt(res[\"classe\"][i])] for i in ordem[:20]]))",
+   "segundos": 9.7,
+   "no": 2249,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_tabela_do_relatorio_mostra_20_linhas_e_avisa_quando_ha_mais[20-False]",
+   "trecho": "if len(nomes) > 20:",
+   "segundos": 9.9,
+   "no": 300,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_mais_de_20_variaveis_e_idioma_por_ambiente",
+   "trecho": "if len(nomes) > 20:",
+   "segundos": 26.2,
+   "no": 300,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "const 20",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_tabela_do_relatorio_mostra_20_linhas_e_avisa_quando_ha_mais[21-True]",
+   "trecho": "if len(nomes) > 20:",
+   "segundos": 10.9,
+   "no": 648,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_mais_de_20_variaveis_e_idioma_por_ambiente",
+   "trecho": "if len(nomes) > 20:",
+   "segundos": 26.9,
+   "no": 109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 197,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if figura:",
+   "segundos": 7.6,
+   "no": 110,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 198,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "B.append((\"img\", \"../figuras/\" + os.path.basename(figura), _m(\"figura\")))",
+   "segundos": 8.0,
+   "no": 1336,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 200,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return B",
+   "segundos": 7.9,
+   "no": 112,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 206,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "args_l = list(sys.argv[1:] if argv is None else argv)",
+   "segundos": 6.0,
+   "no": 993,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 206,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_sem_argv_explicito_le_sys_argv_e_o_uso_vem_no_idioma_certo",
+   "trecho": "args_l = list(sys.argv[1:] if argv is None else argv)",
+   "segundos": 9.5,
+   "no": 1721,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 206,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "args_l = list(sys.argv[1:] if argv is None else argv)",
+   "segundos": 6.3,
+   "no": 660,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 212,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_arquivo_vazio_argumento_ruim_e_sem_variaveis",
+   "trecho": "raise _Uso(_m(\"arg\", e=e)) from e",
+   "segundos": 26.1,
+   "no": 1002,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 214,
+   "operador": "raise->pass",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "raise _Uso(_m(\"arg\", e=\"--componentes/--divisoes/--repeticoes/--semente/--limiar\")) from e",
+   "segundos": 18.8,
+   "no": 1004,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 215,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if args.ajuda:",
+   "segundos": 6.5,
+   "no": 318,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 216,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "print(_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO)",
+   "segundos": 7.8,
+   "no": 1733,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 216,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "print(_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO)",
+   "segundos": 8.1,
+   "no": 1366,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 217,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "return 0",
+   "segundos": 8.1,
+   "no": 1008,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 217,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "return 0",
+   "segundos": 7.5,
+   "no": 671,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 218,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.tabela:",
+   "segundos": 6.5,
+   "no": 319,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 218,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.tabela:",
+   "segundos": 6.1,
+   "no": 672,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 219,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 8.1,
+   "no": 1370,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 219,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 7.6,
+   "no": 1738,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 219,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_sem_argv_explicito_le_sys_argv_e_o_uso_vem_no_idioma_certo",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 9.6,
+   "no": 2034,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 219,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_sem_argv_explicito_le_sys_argv_e_o_uso_vem_no_idioma_certo",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 9.6,
+   "no": 1740,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 219,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 7.2,
+   "no": 673,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 220,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.classe and not args.resposta:",
+   "segundos": 5.7,
+   "no": 674,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 220,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.classe and not args.resposta:",
+   "segundos": 6.5,
+   "no": 320,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 220,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.classe and not args.resposta:",
+   "segundos": 6.2,
+   "no": 1013,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 220,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_regressao_e_sem_figuras_e_sem_grupo_avisa",
+   "trecho": "if not args.classe and not args.resposta:",
+   "segundos": 7.0,
+   "no": 1014,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 221,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "raise _Uso(_m(\"alvo\"))",
+   "segundos": 7.4,
+   "no": 675,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 222,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if args.classe and args.resposta:",
+   "segundos": 6.1,
+   "no": 676,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 222,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if args.classe and args.resposta:",
+   "segundos": 6.1,
+   "no": 321,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 223,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra0-nao",
+   "trecho": "raise _Uso(_m(\"alvo_dois\"))",
+   "segundos": 7.5,
+   "no": 677,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra1-inteiros",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 7.6,
+   "no": 678,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_limites_numericos_1_aceito_e_0_recusado",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 9.9,
+   "no": 1387,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 6.2,
+   "no": 1387,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 6.0,
+   "no": 1021,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_tabela_do_relatorio_mostra_20_linhas_e_avisa_quando_ha_mais[20-False]",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 9.8,
+   "no": 1021,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 6.7,
+   "no": 1759,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_tabela_do_relatorio_mostra_20_linhas_e_avisa_quando_ha_mais[20-False]",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 8.7,
+   "no": 1385,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 6.2,
+   "no": 322,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 224,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if min(args.componentes, args.divisoes, args.repeticoes) < 1 or not args.limiar > 0:",
+   "segundos": 6.0,
+   "no": 1022,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 225,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra1-inteiros",
+   "trecho": "raise _Uso(_m(\"numeros\"))",
+   "segundos": 7.7,
+   "no": 679,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 226,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not os.path.isfile(args.tabela):",
+   "segundos": 6.3,
+   "no": 323,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 226,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not os.path.isfile(args.tabela):",
+   "segundos": 6.1,
+   "no": 680,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 227,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_ajuda_arquivo_ausente_e_despacho_pelo_main",
+   "trecho": "raise _Uso(_m(\"arquivo\", c=args.tabela))",
+   "segundos": 7.4,
+   "no": 681,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 231,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_celula_vazia_na_variavel_e_erro_e_rotulos_de_coluna_dizem_o_papel",
+   "trecho": "keep_default_na=False)",
+   "segundos": 9.6,
+   "no": 1779,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 233,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_arquivo_vazio_argumento_ruim_e_sem_variaveis",
+   "trecho": "raise _Uso(_m(\"leitura\", c=args.tabela, e=f\"{type(e).__name__}: {e}\")) from e",
+   "segundos": 25.8,
+   "no": 1030,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 235,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "alvo_nome = args.classe or args.resposta",
+   "segundos": 6.2,
+   "no": 688,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 236,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_celula_vazia_na_variavel_e_erro_e_rotulos_de_coluna_dizem_o_papel",
+   "trecho": "alvo = np.asarray(_coluna(df, alvo_nome, \"classe\" if args.classe else \"resposta\").astype(str).str.strip(),",
+   "segundos": 9.0,
+   "no": 2529,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 238,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_regressao_e_sem_figuras_e_sem_grupo_avisa",
+   "trecho": "grupos = (list(np.asarray(_coluna(df, args.grupo, \"grupo\").astype(str).str.strip(), dtype=object))",
+   "segundos": 7.5,
+   "no": 692,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 240,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if args.variaveis:",
+   "segundos": 7.5,
+   "no": 330,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 243,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_celula_vazia_na_variavel_e_erro_e_rotulos_de_coluna_dizem_o_papel",
+   "trecho": "_coluna(df, v, \"variavel\" if _ESTADO[\"lang\"] == \"pt\" else \"variable\")",
+   "segundos": 10.1,
+   "no": 2082,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 243,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_celula_vazia_na_variavel_e_erro_e_rotulos_de_coluna_dizem_o_papel",
+   "trecho": "_coluna(df, v, \"variavel\" if _ESTADO[\"lang\"] == \"pt\" else \"variable\")",
+   "segundos": 9.7,
+   "no": 1806,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 246,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "nomes = [c for c in df.columns if c not in usadas]",
+   "segundos": 7.6,
+   "no": 1813,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 247,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not nomes:",
+   "segundos": 6.2,
+   "no": 331,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 247,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not nomes:",
+   "segundos": 6.2,
+   "no": 698,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 248,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_vip_cli_arquivo_vazio_argumento_ruim_e_sem_variaveis",
+   "trecho": "raise _Uso(_m(\"sem_variaveis\"))",
+   "segundos": 25.5,
+   "no": 699,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 251,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if args.resposta:",
+   "segundos": 6.4,
+   "no": 334,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 256,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "tarefa=\"classificacao\" if args.classe else \"regressao\",",
+   "segundos": 6.3,
+   "no": 1825,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 260,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_opcoes_invalidas[extra2-n_componentes|fora-range]",
+   "trecho": "raise _erro_nucleo(e) from e",
+   "segundos": 7.5,
+   "no": 1075,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 263,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "os.makedirs(os.path.join(pasta, sub), exist_ok=True)",
+   "segundos": 7.9,
+   "no": 1838,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 269,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": ").to_csv(t, index=False, sep=\";\", decimal=\",\")",
+   "segundos": 7.6,
+   "no": 1469,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 272,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.sem_figuras:",
+   "segundos": 6.5,
+   "no": 344,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 272,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "if not args.sem_figuras:",
+   "segundos": 6.5,
+   "no": 726,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 273,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_valores_padrao_e_tabela_alinhada_com_a_chamada_direta",
+   "trecho": "os.makedirs(os.path.join(pasta, \"figuras\"), exist_ok=True)",
+   "segundos": 7.8,
+   "no": 1850,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 277,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "texto = \"\\n\".join(linhas + [\"\", res[\"texto\"]])",
+   "segundos": 7.4,
+   "no": 1119,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 280,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "fh.write(texto + \"\\n\")",
+   "segundos": 7.9,
+   "no": 1509,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 7.9,
+   "no": 1568,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 7.6,
+   "no": 1919,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 7.9,
+   "no": 2172,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_config_efetiva_lista_ate_50_variaveis[50-False]",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 9.7,
+   "no": 2355,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_config_efetiva_lista_ate_50_variaveis[51-True]",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 9.5,
+   "no": 2355,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "const 50",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_config_efetiva_lista_ate_50_variaveis[51-True]",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 9.6,
+   "no": 2473,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "const 50",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_config_efetiva_lista_ate_50_variaveis[51-True]",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 7.9,
+   "no": 2591,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 296,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli_mutacao.py::test_config_efetiva_lista_ate_50_variaveis[50-False]",
+   "trecho": "fh.write(\"variaveis: [\" + \", \".join(nomes[:50]) + (\", ...\" if len(nomes) > 50 else \"\") + \"]\\n\")",
+   "segundos": 9.8,
+   "no": 2174,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 299,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "print(\"\\n\" + _m(\"arquivos\"))",
+   "segundos": 7.5,
+   "no": 1167,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 302,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return 0",
+   "segundos": 7.4,
+   "no": 760,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 302,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_classificacao_gera_tabela_figura_relatorios_e_texto_honesto",
+   "trecho": "return 0",
+   "segundos": 7.5,
+   "no": 358,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 304,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "print(f\"Erro: {e}\" if _ESTADO[\"lang\"] == \"pt\" else f\"Error: {e}\", file=sys.stderr)",
+   "segundos": 7.4,
+   "no": 1929,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 304,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "print(f\"Erro: {e}\" if _ESTADO[\"lang\"] == \"pt\" else f\"Error: {e}\", file=sys.stderr)",
+   "segundos": 7.6,
+   "no": 1581,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 305,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "return 2",
+   "segundos": 7.6,
+   "no": 1173,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 305,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_vip_cli.py::test_erros_em_pt_e_en[pt-informe",
+   "trecho": "return 2",
+   "segundos": 7.5,
+   "no": 763,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

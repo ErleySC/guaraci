@@ -1,0 +1,23 @@
+# Dependabot — atualizações automáticas de dependências.
+# Abre PRs semanais quando há versões novas (agrupadas para reduzir ruído).
+version: 2
+updates:
+  # Dependências Python (requirements.txt + pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-deps:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Ações do GitHub Actions usadas nos workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"

@@ -1,0 +1,305 @@
+{
+ "modulo": "src/guaraci/docs_pacote.py",
+ "total": 22,
+ "mortos_no_total": 22,
+ "contagem": {
+  "morto": 22
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_documentos_no_pacote.py",
+  "tests/test_lacunas_modulos_pequenos_final_2.py"
+ ],
+ "deselecionados": [
+  "tests/test_documentos_no_pacote.py::test_copias_do_pacote_estao_em_dia_com_as_fontes"
+ ],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 31,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "arquivo = TOPICOS[topico][0]",
+   "segundos": 4.5,
+   "no": 119,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 32,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "return (resources.files(\"guaraci\") / \"dados_docs\" / arquivo).read_text(encoding=\"utf-8\")",
+   "segundos": 2.9,
+   "no": 162,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 32,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "return (resources.files(\"guaraci\") / \"dados_docs\" / arquivo).read_text(encoding=\"utf-8\")",
+   "segundos": 3.0,
+   "no": 200,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 32,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "return (resources.files(\"guaraci\") / \"dados_docs\" / arquivo).read_text(encoding=\"utf-8\")",
+   "segundos": 3.0,
+   "no": 28,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 40,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "if m and m.group(2) == numero:",
+   "segundos": 3.0,
+   "no": 133,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 40,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_referencia_a_arquivo_do_repositorio_em_texto_de_execucao_e_apontada",
+   "trecho": "if m and m.group(2) == numero:",
+   "segundos": 4.5,
+   "no": 177,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 40,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "if m and m.group(2) == numero:",
+   "segundos": 3.0,
+   "no": 246,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 40,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "if m and m.group(2) == numero:",
+   "segundos": 3.0,
+   "no": 79,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 41,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_modulos_pequenos_final_2.py::test_secao_do_manual_vai_ate_o_proximo_titulo_de_nivel_igual_ou_maior",
+   "trecho": "nivel = len(m.group(1))",
+   "segundos": 4.6,
+   "no": 250,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 43,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_secao_vai_do_titulo_ao_proximo_titulo_de_mesmo_nivel_ou_maior",
+   "trecho": "for j in range(i + 1, len(linhas)):",
+   "segundos": 4.4,
+   "no": 220,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 43,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_modulos_pequenos_final_2.py::test_secao_do_manual_vai_ate_o_proximo_titulo_de_nivel_igual_ou_maior",
+   "trecho": "for j in range(i + 1, len(linhas)):",
+   "segundos": 4.6,
+   "no": 256,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 44,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_modulos_pequenos_final_2.py::test_secao_do_manual_vai_ate_o_proximo_titulo_de_nivel_igual_ou_maior",
+   "trecho": "k = _TITULO.match(linhas[j]) or re.match(r\"^(#{1,4})\\s\", linhas[j])",
+   "segundos": 4.5,
+   "no": 223,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "if k and len(k.group(1)) <= nivel:",
+   "segundos": 3.0,
+   "no": 224,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_secao_vai_do_titulo_ao_proximo_titulo_de_mesmo_nivel_ou_maior",
+   "trecho": "if k and len(k.group(1)) <= nivel:",
+   "segundos": 4.6,
+   "no": 265,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_secao_vai_do_titulo_ao_proximo_titulo_de_mesmo_nivel_ou_maior",
+   "trecho": "if k and len(k.group(1)) <= nivel:",
+   "segundos": 4.5,
+   "no": 265,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "if k and len(k.group(1)) <= nivel:",
+   "segundos": 2.9,
+   "no": 326,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_modulos_pequenos_final_2.py::test_secao_do_manual_vai_ate_o_proximo_titulo_de_nivel_igual_ou_maior",
+   "trecho": "if k and len(k.group(1)) <= nivel:",
+   "segundos": 4.6,
+   "no": 185,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 47,
+   "operador": "Break->pass",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_secao_vai_do_titulo_ao_proximo_titulo_de_mesmo_nivel_ou_maior",
+   "trecho": "break",
+   "segundos": 4.4,
+   "no": 226,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 48,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "return \"\\n\".join(linhas[i:fim]).rstrip() + \"\\n\"",
+   "segundos": 3.0,
+   "no": 186,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 48,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_nenhuma_referencia_de_execucao_aponta_para_fora_do_pacote",
+   "trecho": "return \"\\n\".join(linhas[i:fim]).rstrip() + \"\\n\"",
+   "segundos": 4.5,
+   "no": 137,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 57,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_manual_sem_argumento_lista_os_topicos",
+   "trecho": "L += [\"\", \"Uma secao do manual: guaraci manual 2.8   (numero da secao, como em 'secao 2.8')\"]",
+   "segundos": 4.5,
+   "no": 40,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 58,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_documentos_no_pacote.py::test_manual_sem_argumento_lista_os_topicos",
+   "trecho": "return \"\\n\".join(L)",
+   "segundos": 4.5,
+   "no": 41,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

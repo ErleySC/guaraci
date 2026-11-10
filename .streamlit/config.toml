@@ -1,0 +1,42 @@
+[server]
+# Aumenta o limite de upload para espectros NIR grandes (DX, CSV)
+maxUploadSize = 50           # MB -- teto do modo servidor, igual ao Dockerfile (A1-04); `guaraci web` (local) passa 500 na linha de comando
+headless = true              # produção: sem abertura automática do browser
+enableXsrfProtection = true  # CORS fica implicitamente true (exigido pelo XSRF)
+
+[client]
+# Modo servidor (A1-03): o visitante nunca ve traceback nem tipo de excecao;
+# o detalhe fica so' no log do servidor. `guaraci web` (local) passa "full".
+showErrorDetails = "none"
+
+[browser]
+gatherUsageStats = false     # privacidade: não envia telemetria para a Streamlit
+
+[runner]
+# Evita re-run acidental em máquinas lentas (útil em hardware com <8 GB RAM)
+fastReruns = false
+
+[theme]
+# Tema CLARO (padrão) — espelha os design tokens "light" de design_tokens.py.
+# primaryColor precisa ser mantido em sincronia manual com TOKENS["light"]["primary"]:
+# o Streamlit lê este TOML no boot do processo, antes de qualquer import Python
+# rodar -- nao ha' como o config.toml importar design_tokens.py de volta.
+base = "light"
+primaryColor       = "#C24A00"   # Laranja (mascote) — cor de marca GUARACI; branco 4,9:1 (WCAG AA)
+backgroundColor    = "#F7F9FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor          = "#1A2B22"
+font               = "sans serif"
+baseRadius         = "0.6rem"    # Cantos arredondados (aspecto moderno)
+
+[theme.dark]
+# Tema ESCURO — espelha os design tokens "dark". O Streamlit troca entre este e
+# o claro pelo menu Settings/sistema; st.context.theme.type informa ao Python
+# qual está ativo (para figuras e tabelas coloridas).
+primaryColor       = "#C24A00"   # Laranja (mascote); #FF8A3D dava 2,35:1 com texto branco do botao
+backgroundColor    = "#0F1613"
+secondaryBackgroundColor = "#18211C"
+textColor          = "#E6EDE8"
+
+[logger]
+level = "warning"            # suprime mensagens INFO do Streamlit no terminal

@@ -1,0 +1,82 @@
+{
+ "modulo": "src/guaraci/dados_io.py",
+ "total": 5,
+ "mortos_no_total": 5,
+ "contagem": {
+  "morto": 5
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_dados_io_parsing.py",
+  "tests/test_dados_io_jcamp.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 1183,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_parse_spectrum_recusa_binario_bomem_por_qualquer_das_duas_marcas_com_a_instrucao_de_exportar[Bomem",
+   "trecho": "if \"Bomem\" in head_text or \"Horizon\" in head_text:",
+   "segundos": 2.8,
+   "no": 1397,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1183,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_parse_spectrum_espaco_como_separador",
+   "trecho": "if \"Bomem\" in head_text or \"Horizon\" in head_text:",
+   "segundos": 2.8,
+   "no": 2968,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1183,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_parse_spectrum_espaco_como_separador",
+   "trecho": "if \"Bomem\" in head_text or \"Horizon\" in head_text:",
+   "segundos": 2.4,
+   "no": 2969,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1183,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_parse_spectrum_espaco_como_separador",
+   "trecho": "if \"Bomem\" in head_text or \"Horizon\" in head_text:",
+   "segundos": 2.8,
+   "no": 460,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1184,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_parse_spectrum_recusa_binario_bomem_por_qualquer_das_duas_marcas_com_a_instrucao_de_exportar[Bomem",
+   "trecho": "raise ValueError(",
+   "segundos": 2.9,
+   "no": 1398,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

@@ -1,0 +1,82 @@
+"""io_registry.py — Registry de leitores de dados (item 20 da auditoria).
+
+Formaliza o despacho por `cfg.mode` que antes era um if/elif fixo dentro de
+`dados_io.load_data()`. Cada leitor e' um `Callable[[Config], DadosCarregados]`
+registrado sob uma chave `mode` (ex.: "dx", "csv", "imagem", "sintetico").
+
+Adicionar um novo formato de entrada (uma nova tecnica analitica, um novo
+layout de arquivo) passa a ser: escrever a funcao de leitura e chamar
+`register_reader("meu_modo", minha_funcao)` — de qualquer modulo, inclusive
+fora do pacote guaraci — sem editar o dispatch de `load_data()` nem
+tocar em if/elif espalhados pelo nucleo cientifico.
+
+Contrato do leitor (o mesmo que `load_data()` sempre devolveu):
+    (wavenumbers, X, rotulos, conc, mae_id, metadados_df)
+    - wavenumbers: eixo espectral/variavel (1D)
+    - X:           matriz de amostras x variaveis (2D)
+    - rotulos:     classe/especie de cada amostra (1D, string)
+    - conc:        concentracao/teor do adulterante, se aplicavel (ou None)
+    - mae_id:      chave de agrupamento anti-vazamento (replicas fisicas),
+                   None se o formato nao tiver essa nocao (ex.: CSV generico)
+    - metadados_df: colunas extras nao-espectrais, se houver (ou None)
+"""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+
+if TYPE_CHECKING:
+    from guaraci.pipeline import Config
+
+DadosCarregados = Tuple[
+    np.ndarray, np.ndarray, np.ndarray,
+    Optional[np.ndarray], Optional[np.ndarray], Optional[pd.DataFrame],
+]
+LeitorDados = Callable[["Config"], DadosCarregados]
+
+_LEITORES: Dict[str, LeitorDados] = {}
+
+
+def register_reader(mode: str, leitor: LeitorDados) -> None:
+    """Registra (ou substitui) o leitor de dados para `cfg.mode == mode`.
+
+    Chamar de novo com o mesmo `mode` SUBSTITUI o leitor anterior (util para
+    testes ou para trocar a implementacao de um mode built-in).
+    """
+    _LEITORES[mode] = leitor
+
+
+def _garantir_leitores_builtin() -> None:
+    """Os leitores built-in se registram ao importar `dados_io` e
+    `leitores_avancados`; antes so' `import guaraci.pipeline` fazia isso."""
+    import guaraci.dados_io  # noqa: F401
+    import guaraci.leitores_avancados  # noqa: F401
+    import guaraci.icp_multielementar  # noqa: F401
+
+
+def get_reader(mode: str) -> LeitorDados:
+    """Devolve o leitor registrado para `mode`.
+
+    Levanta ValueError com a lista de modos disponiveis se `mode` nao foi
+    registrado — mensagem de erro acionavel em vez de um KeyError cru.
+    """
+    _garantir_leitores_builtin()
+    try:
+        return _LEITORES[mode]
+    except KeyError:
+        disponiveis = ", ".join(registered_modes()) or "(nenhum registrado)"
+        raise ValueError(
+            f"Modo de entrada desconhecido: '{mode}'. "
+            f"Modos disponiveis: {disponiveis}.") from None
+
+
+def registered_modes() -> Tuple[str, ...]:
+    """Lista (ordenada) dos modos atualmente registrados."""
+    _garantir_leitores_builtin()
+    return tuple(sorted(_LEITORES))
+
+
+__all__ = ["DadosCarregados", "LeitorDados", "register_reader",
+           "get_reader", "registered_modes"]

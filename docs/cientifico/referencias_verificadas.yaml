@@ -1,0 +1,695 @@
+# Registro de referencias verificadas (B6/m-01 do parecer de 2026-09-25).
+# Regra: nenhum DOI entra no repositorio sem constar aqui, e cada entrada e'
+# re-conferida contra o registro oficial (Crossref/DataCite) por
+# `python scripts/verificar_citacoes.py`. `conferido` registra QUANDO um humano
+# leu o contexto de uso ao lado dos metadados oficiais. `conhecidos_incorretos`
+# lista DOIs que ja foram citados erradamente: so' podem aparecer em docs/ (como
+# registro do erro), nunca em codigo ou texto de interface.
+referencias:
+- doi: 10.1002/(sici)1099-128x(199601)10:1<47::aid-cem400>3.0.co;2-c
+  autor1: Bro
+  ano: 1996
+  titulo: multiway calibration multilinear pls
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1006
+  autor1: Bylesjö
+  ano: 2006
+  titulo: opls discriminant analysis combining the strengths
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1147
+  autor1: Pomerantsev
+  ano: 2008
+  titulo: acceptance areas for multivariate classification derived
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1187
+  autor1: Eriksson
+  ano: 2008
+  titulo: cv anova for significance testing of
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1225
+  autor1: Filzmoser
+  ano: 2009
+  titulo: repeated double cross validation
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1248
+  autor1: Andersson
+  ano: 2009
+  titulo: a comparison of nine pls1 algorithms
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1290
+  autor1: Consonni
+  ano: 2010
+  titulo: evaluation of model predictive ability by
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1310
+  autor1: Esbensen
+  ano: 2010
+  titulo: principles of proper validation use and
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.1400
+  autor1: Zwanenburg
+  ano: 2011
+  titulo: anova principal component analysis and anova
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.2506
+  autor1: Pomerantsev
+  ano: 2013
+  titulo: concept and role of extreme objects
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.2609
+  autor1: Brereton
+  ano: 2014
+  titulo: partial least squares discriminant analysis taking
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.2895
+  autor1: Thiel
+  ano: 2017
+  titulo: asca and apca extensions of asca
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.3250
+  autor1: Pomerantsev
+  ano: 2020
+  titulo: popular decision rules in simca critical
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.3556
+  autor1: Kucheryavskiy
+  ano: 2024
+  titulo: comprehensive tutorial on
+  conferido: 2026-10-12 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em paper/paper.bib e src/guaraci/chemometric_stats.py)
+- doi: 10.1002/cem.695
+  autor1: Trygg
+  ano: 2002
+  titulo: orthogonal projections to latent structures o
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.70036
+  autor1: Ezenarro
+  ano: 2025
+  titulo: how are chemometric models validated a
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.780
+  autor1: Martens
+  ano: 2003
+  titulo: pre whitening of data by covariance
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/cem.890
+  autor1: Jørgensen
+  ano: 2004
+  titulo: a comparison of methods for analysing
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1002/mrc.4566
+  autor1: Lamanna
+  ano: 2017
+  titulo: territorial origin of olive oil representing
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1007/s00216-010-4366-4
+  autor1: de la Mata-Espinosa
+  ano: 2010
+  titulo: discriminating olive and non olive oils
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1007/s11306-006-0037-z
+  autor1: Broadhurst
+  ano: 2006
+  titulo: statistical strategies for avoiding false discoveries
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1007/s11306-007-0099-6
+  autor1: Westerhuis
+  ano: 2008
+  titulo: assessment of plsda cross validation
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1007/s11306-016-1015-8
+  autor1: Wehrens
+  ano: 2016
+  titulo: improved batch correction in untargeted ms
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/0003-2670(86)80028-9
+  autor1: Geladi
+  ano: 1986
+  titulo: partial least squares regression a tutorial
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/0003-4916(58)90049-6
+  autor1: Mason
+  ano: 1958
+  titulo: mobility of gaseous lons in weak
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/0169-7439(95)00047-x
+  autor1: Tauler
+  ano: 1995
+  titulo: multivariate curve resolution applied to second
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/0169-7439(95)80036-9
+  autor1: Kourti
+  ano: 1995
+  titulo: process analysis monitoring and diagnosis using
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/0731-7085(91)80188-f
+  autor1: Martens
+  ano: 1991
+  titulo: extended multiplicative signal correction and spectral
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.aca.2009.06.046
+  autor1: Li
+  ano: 2009
+  titulo: key wavelengths screening using competitive adaptive
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.aca.2015.06.056
+  autor1: Westad
+  ano: 2015
+  titulo: validation of chemometric models a tutorial
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.aca.2020.03.057
+  autor1: Bayat
+  ano: 2020
+  titulo: application of the area correlation constraint
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.chemolab.2004.12.011
+  autor1: Chong
+  ano: 2005
+  titulo: performance of some variable selection methods
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.chemolab.2008.08.004
+  autor1: Rajalahti
+  ano: 2009
+  titulo: biomarker discovery in mass spectral profiles
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.chemolab.2012.07.010
+  autor1: Mehmood
+  ano: 2012
+  titulo: a review of variable selection methods
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.chemolab.2020.103937
+  autor1: Kucheryavskiy
+  ano: 2020
+  titulo: mdatools r package for chemometrics
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.chemolab.2023.104813
+  autor1: Alsouki
+  ano: 2023
+  titulo: dual spls a family of dual
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.chemolab.2026.105769
+  autor1: Tumoine
+  ano: 2026
+  titulo: a new framework for spectral data
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.foodres.2022.111779
+  autor1: Christmann
+  ano: 2022
+  titulo: finding features variable extraction strategies for
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.jmr.2009.11.012
+  autor1: Savorani
+  ano: 2010
+  titulo: icoshift a versatile tool for the
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.patter.2023.100804
+  autor1: Kapoor
+  ano: 2023
+  titulo: leakage and the reproducibility crisis in
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.talanta.2005.03.025
+  autor1: GALVAO
+  ano: 2005
+  titulo: a method for calibration and validation
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.talanta.2011.03.049
+  autor1: de la Mata-Espinosa
+  ano: 2011
+  titulo: olive oil quantification of edible vegetable
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.trac.2006.10.005
+  autor1: Brereton
+  ano: 2006
+  titulo: consequences of sample size variable selection
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.trac.2009.07.007
+  autor1: Rinnan
+  ano: 2009
+  titulo: review of the most common pre
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/j.trac.2016.01.010
+  autor1: Rodionova
+  ano: 2016
+  titulo: discriminant analysis is an inappropriate method
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0021-9673(98)00021-1
+  autor1: Nielsen
+  ano: 1998
+  titulo: aligning of single and multiple wavelength
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0047-259x(03)00096-4
+  autor1: Ledoit
+  ano: 2004
+  titulo: a well conditioned estimator for large
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(00)00122-2
+  autor1: Xu
+  ano: 2001
+  titulo: monte carlo cross validation
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(01)00119-8
+  autor1: Araújo
+  ano: 2001
+  titulo: the successive projections algorithm for variable selection
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(01)00155-1
+  autor1: Wold
+  ano: 2001
+  titulo: pls regression a basic tool of chemometrics
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(02)00085-0
+  autor1: Feudale
+  ano: 2002
+  titulo: transfer of multivariate calibration models a
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(03)00051-0
+  autor1: Roger
+  ano: 2003
+  titulo: epo pls external parameter orthogonalisation of
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(97)00032-4
+  autor1: Bro
+  ano: 1997
+  titulo: parafac tutorial and applications
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0169-7439(98)00109-9
+  autor1: Wold
+  ano: 1998
+  titulo: orthogonal signal correction of near infrared
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s0950-3293(99)00039-7
+  autor1: Martens
+  ano: 2000
+  titulo: modified jack knife estimation of parameter
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1016/s1044-0305(99)00047-1
+  autor1: Stein
+  ano: 1999
+  titulo: an integrated method for spectrum extraction
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/ac00023a016
+  autor1: Wang
+  ano: 1991
+  titulo: multivariate instrument standardization
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/ac00206a003
+  autor1: Naes
+  ano: 1990
+  titulo: locally weighted regression and scatter correction
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/ac051632c
+  autor1: Dieterle
+  ano: 2006
+  titulo: probabilistic quotient normalization as robust method
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/ac60214a047
+  autor1: Savitzky
+  ano: 1964
+  titulo: smoothing and differentiation of data by
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/ac802514y
+  autor1: Rajalahti
+  ano: 2009
+  titulo: discriminating variable test and selectivity ratio
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/ac960321m
+  autor1: Centner
+  ano: 1996
+  titulo: elimination of uninformative variables for multivariate
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1021/acs.analchem.8b00498
+  autor1: Nikzad-Langerodi
+  ano: 2018
+  titulo: domain invariant partial least squares regression
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1023/b:stco.0000035301.49549.88
+  autor1: Smola
+  ano: 2004
+  titulo: a tutorial on support vector regression
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1038/nprot.2011.335
+  autor1: The Human Serum Metabolome (HUSERMET) Consortium
+  ano: 2011
+  titulo: procedures for large scale metabolic profiling
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1038/nrg2825
+  autor1: Leek
+  ano: 2010
+  titulo: tackling the widespread and critical impact
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1038/s41597-025-05459-x
+  autor1: Lechevallier
+  ano: 2025
+  titulo: dataset on wastewater quality monitoring with
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1038/s42256-019-0048-x
+  autor1: Rudin
+  ano: 2019
+  titulo: stop explaining black box machine learning
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1039/b922045c
+  autor1: Zhang
+  ano: 2010
+  titulo: baseline correction using adaptive iteratively reweighted
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1039/c4an01061b
+  autor1: Baek
+  ano: 2015
+  titulo: baseline correction using asymmetrically reweighted penalized least squares
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1073/pnas.102102699
+  autor1: Ambroise
+  ano: 2002
+  titulo: selection bias in gene extraction on
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/00224065.1992.12015232
+  autor1: Tracy
+  ano: 1992
+  titulo: multivariate control charts for individual observations
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/00224065.2006.11918623
+  autor1: Jensen
+  ano: 2006
+  titulo: effects of parameter estimation on control
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/00401706.1964.10490181
+  autor1: Dunn
+  ano: 1964
+  titulo: multiple comparisons using rank sums
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/00401706.1977.10489581
+  autor1: Snee
+  ano: 1977
+  titulo: validation of regression models methods and
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/00401706.1978.10489693
+  autor1: Wold
+  ano: 1978
+  titulo: cross validatory estimation of the number
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/01621459.1954.10501232
+  autor1: Anderson
+  ano: 1954
+  titulo: a test of goodness of fit
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/01621459.2017.1307116
+  autor1: Lei
+  ano: 2018
+  titulo: distribution free predictive inference for regression
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/01621459.2017.1395341
+  autor1: Sadinle
+  ano: 2018
+  titulo: least ambiguous set valued classifiers with
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1080/05704928.2016.1266493
+  autor1: Rohman
+  ano: 2017
+  titulo: the use of infrared spectroscopy in
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+  nota: vol. 52(7) e' de 2017; Crossref indexa a versao online de 2016
+- doi: 10.1093/bioinformatics/bti476
+  autor1: Smilde
+  ano: 2005
+  titulo: anova simultaneous component analysis asca a
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1093/biostatistics/kxj037
+  autor1: Johnson
+  ano: 2006
+  titulo: adjusting batch effects in microarray expression
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1098/rspa.1937.0109
+  autor1: Bartlett
+  ano: 1937
+  titulo: properties of sufficiency and statistical tests
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1109/tit.1967.1053964
+  autor1: Cover
+  ano: 1967
+  titulo: nearest neighbor pattern classification
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1145/3287560.3287596
+  autor1: Mitchell
+  ano: 2019
+  titulo: model cards for model reporting
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1177/0003702817736064
+  autor1: Workman
+  ano: 2017
+  titulo: a review of calibration transfer practices
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1177/0003702821994500
+  autor1: Ottaway
+  ano: 2021
+  titulo: comparison of spectroscopic techniques for determining
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1186/1471-2105-7-91
+  autor1: Varma
+  ano: 2006
+  titulo: bias in error estimation when using
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1186/1471-2288-12-81
+  autor1: Rochon
+  ano: 2012
+  titulo: to test or not to test preliminary assessment of normality
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1186/s12864-019-6413-7
+  autor1: Chicco
+  ano: 2020
+  titulo: the advantages of the matthews correlation
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1201/9781420018301.ch11
+  autor1: Tauler
+  ano: 2006
+  titulo: multivariate curve resolution
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1255/nirn.1419
+  autor1: Williams
+  ano: 2014
+  titulo: the i rpd i statistic a
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+  ano_oficial: 2010
+  nota: NIR news 25(1):22-26 e' de 2014; o Crossref indexa 2010
+- doi: 10.1255/nirn.1462
+  autor1: Esbensen
+  ano: 2014
+  titulo: myth
+  conferido: 2026-10-11 contra Crossref (The RPD Myth..., NIR news 25(5):24-28; titulo/autor/ano lidos junto ao contexto de uso)
+- doi: 10.1351/pac200678030633
+  autor1: Olivieri
+  ano: 2006
+  titulo: uncertainty estimation and figures of merit
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1366/0003702001949500
+  autor1: Nørgaard
+  ano: 2000
+  titulo: interval partial least squares regression
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1366/0003702854248656
+  autor1: Geladi
+  ano: 1985
+  titulo: linearization and scatter correction for near
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1366/0003702894202201
+  autor1: Barnes
+  ano: 1989
+  titulo: standard normal variate transformation and de
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1371/journal.pone.0341850
+  autor1: Rashedi
+  ano: 2026
+  titulo: regularized regression in ultra small chemometric
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.21105/joss.00980
+  autor1: Tomic
+  ano: 2019
+  titulo: hoggorm a python library for explorative
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.21105/joss.06802
+  autor1: Lopez
+  ano: 2024
+  titulo: chemotools a python package that integrates
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.2307/3001469
+  autor1: Kramer
+  ano: 1956
+  titulo: extension of multiple range tests to
+  conferido: 2026-10-03 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.2307/3001913
+  autor1: Tukey
+  ano: 1949
+  titulo: comparing individual means in the analysis
+  conferido: 2026-10-03 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.3102/10769986001002113
+  autor1: Games
+  ano: 1976
+  titulo: pairwise multiple comparison procedures with unequal
+  conferido: 2026-10-03 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.3390/s22020658
+  autor1: Digman
+  ano: 2022
+  titulo: the relative performance of a benchtop
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.21105/joss.01190
+  autor1: Baum
+  ano: 2019
+  titulo: multiblock pls block dependent prediction
+  conferido: 2026-09-25 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+- doi: 10.1023/a:1024068626366
+  autor1: Nadeau
+  ano: 2003
+  titulo: inference for the generalization error
+  conferido: 2026-09-26 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de cada uso)
+
+- doi: 10.1016/j.aca.2015.09.030
+  autor1: Amigo
+  ano: 2015
+  titulo: hyperspectral image analysis. a tutorial
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1145/2523813
+  autor1: Gama
+  ano: 2014
+  titulo: survey on concept drift adaptation
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1002/env.966
+  autor1: Filzmoser
+  ano: 2009
+  titulo: principal component analysis for compositional data with outliers
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1016/j.aca.2012.12.029
+  autor1: Palarea-Albaladejo
+  ano: 2013
+  titulo: values below detection limit in compositional chemical data
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1366/0003702884428734
+  autor1: McDonald
+  ano: 1988
+  titulo: "jcamp-dx a standard form for exchange of infrared spectra"
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1038/sdata.2016.18
+  autor1: Wilkinson
+  ano: 2016
+  titulo: fair guiding principles
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1016/j.chemolab.2018.07.008
+  autor1: Cui
+  ano: 2018
+  titulo: modern practical convolutional neural networks for multivariate regression
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1016/j.chemolab.2012.03.004
+  autor1: Afseth
+  ano: 2012
+  titulo: extended multiplicative signal correction in vibrational spectroscopy
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1016/j.trac.2013.04.015
+  autor1: Engel
+  ano: 2013
+  titulo: breaking with trends in pre-processing
+  conferido: 2026-10-06 contra Crossref (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.48550/arxiv.2107.07511
+  autor1: Angelopoulos
+  ano: 2021
+  titulo: gentle introduction to conformal prediction
+  conferido: 2026-10-06 contra DataCite (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.48550/arxiv.2006.02544
+  autor1: Romano
+  ano: 2020
+  titulo: classification with valid and adaptive coverage
+  conferido: 2026-10-06 contra DataCite (titulo/autor/ano do registro oficial lidos junto ao contexto de uso em docs/projeto/roteiro_v1_1.md)
+- doi: 10.1080/00401706.1969.10490666
+  autor1: Kennard
+  ano: 1969
+  titulo: computer aided design of experiments
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1186/1471-2105-12-253
+  autor1: Lê Cao
+  ano: 2011
+  titulo: sparse pls discriminant analysis biologically relevant
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1080/01621459.1987.10478410
+  autor1: Efron
+  ano: 1987
+  titulo: better bootstrap confidence intervals
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1080/01621459.1952.10483441
+  autor1: Kruskal
+  ano: 1952
+  titulo: use of ranks in one-criterion variance
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1111/j.2517-6161.1995.tb02031.x
+  autor1: Benjamini
+  ano: 1995
+  titulo: controlling the false discovery rate a
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1093/biomet/52.3-4.591
+  autor1: SHAPIRO
+  ano: 1965
+  titulo: an analysis of variance test for
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1080/01621459.1974.10482955
+  autor1: Brown
+  ano: 1974
+  titulo: robust tests for the equality of
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.48550/arxiv.1705.07874
+  autor1: Lundberg
+  ano: 2017
+  titulo: a unified approach to interpreting model
+  conferido: 2026-10-15 contra DataCite via api.datacite.org (titulo/autor/ano lidos)
+- doi: 10.1016/j.aca.2015.01.017
+  autor1: Olivieri
+  ano: 2015
+  titulo: practical guidelines for reporting results in
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1016/s0731-7085(00)00529-x
+  autor1: Vander Heyden
+  ano: 2001
+  titulo: guidance for robustness/ruggedness tests in method
+  conferido: 2026-10-15 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1002/cem.1346
+  autor1: Kjeldahl
+  ano: 2010
+  titulo: some common misunderstandings in chemometrics
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1002/cem.773
+  autor1: Bro
+  ano: 2003
+  titulo: centering and scaling in component analysis
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1016/j.aca.2012.11.007
+  autor1: Beleites
+  ano: 2013
+  titulo: sample size planning for classification models
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1039/c7ay01363a
+  autor1: Guo
+  ano: 2017
+  titulo: common mistakes in cross-validating classification models
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1214/ss/1009213286
+  autor1: Brown
+  ano: 2001
+  titulo: interval estimation for a binomial proportion
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1016/j.chemolab.2018.06.009
+  autor1: Whitaker
+  ano: 2018
+  titulo: a simple algorithm for despiking raman spectra
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1016/j.aca.2023.341096
+  autor1: Kucheryavskiy
+  ano: 2023
+  titulo: procrustes cross validation of multivariate regression models
+  conferido: 2026-10-16 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1561/1500000019
+  autor1: Robertson
+  ano: 2009
+  titulo: the probabilistic relevance framework bm25 and beyond
+  conferido: 2026-11-05 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+- doi: 10.1021/acs.analchem.0c02175
+  autor1: Kucheryavskiy
+  ano: 2020
+  titulo: procrustes cross validation a bridge between cross validation and independent validation sets
+  conferido: 2026-11-05 contra Crossref via api.crossref.org (titulo/autor/ano lidos)
+conhecidos_incorretos:
+- 10.1016/j.aca.2011.11.026
+- 10.1016/j.foodchem.2022.135181

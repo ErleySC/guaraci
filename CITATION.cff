@@ -1,0 +1,78 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "GUARACI — Chemometrics platform with leakage-safe validation by default"
+abstract: >
+  GUARACI is an open, reproducible multi-technique chemometrics platform for
+  classification, authentication and exploration of complex matrices. It supports
+  vibrational (FT-NIR, NIR, MIR, Raman, UV-Vis), luminescence, chromatographic
+  (HPLC, GC-MS), resonance (NMR, IMS) and hyperspectral-imaging (HSI, ENVI
+  cubes, per-pixel classification with physical-object aggregation) data. It
+  implements PLS-DA, OPLS-DA, DD-SIMCA, VIP, SHAP and Monte Carlo CV with
+  anti-leakage group-aware validation, and offers a Rich-based bilingual
+  terminal interface (GUARACI) plus a Streamlit web app. The methodology is
+  general and applies to any analytical technique with multivariate data.
+authors:
+  - family-names: "Costa"
+    name-particle: "da"
+    given-names: "Erley Silva"
+    orcid: "https://orcid.org/0009-0005-9655-6349"
+repository-code: "https://github.com/ErleySC/guaraci"
+url: "https://github.com/ErleySC/guaraci"
+license: GPL-3.0-or-later
+version: "1.0.0"
+date-released: "2026-11-10"
+keywords:
+  - chemometrics
+  - spectroscopy
+  - vibrational spectroscopy
+  - FT-NIR
+  - NIR
+  - MIR
+  - FTIR
+  - Raman
+  - UV-Vis
+  - hyperspectral imaging
+  - HSI
+  - multivariate analysis
+  - PLS-DA
+  - OPLS-DA
+  - PLS regression
+  - DD-SIMCA
+  - SIMCA
+  - PCA
+  - HCA
+  - VIP
+  - SHAP
+  - variable selection
+  - Monte Carlo cross-validation
+  - bootstrap
+  - group-aware validation
+  - anti-leakage validation
+  - machine learning
+  - artificial intelligence
+  - classification
+  - regression
+  - food authentication
+  - food fraud detection
+  - adulteration detection
+  - quality control
+  - authentication of complex matrices
+  - analytical chemistry
+  - open-science
+  - FAIR
+  - reproducible research
+  - Python
+  - scikit-learn
+  - Streamlit
+preferred-citation:
+  type: software
+  title: "GUARACI — Chemometrics platform with leakage-safe validation by default"
+  authors:
+    - family-names: "Costa"
+      name-particle: "da"
+      given-names: "Erley Silva"
+      orcid: "https://orcid.org/0009-0005-9655-6349"
+  version: "1.0.0"
+  year: 2026
+  url: "https://github.com/ErleySC/guaraci"

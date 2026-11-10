@@ -1,0 +1,1166 @@
+"""
+avaliacao_modelos.py — Comparacao de classificadores e interpretabilidade:
+PLS-DA sklearn-compativel, Auto-Benchmark (PLS-DA vs SVM/RF/GBM/XGBoost),
+Monte Carlo CV (IC95%), curvas DET e SHAP (TreeExplainer).
+
+Extraido de pipeline.py (Fase H). Usa modulos ja extraidos (preprocessamento,
+figuras, paleta_cores, hardware); Config so em type hint (TYPE_CHECKING).
+pipeline.py reexporta (executar() chama benchmark_classifiers/
+monte_carlo_cv/fig_det_curvas/fig_shap_benchmark).
+"""
+from __future__ import annotations
+
+import logging
+import os
+import time
+import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.metrics import balanced_accuracy_score
+
+from guaraci.preprocessamento import build_preprocessor
+from guaraci.figuras import save, color
+from guaraci.hardware import _verificar_ram
+from guaraci.dados_io import _split_cal_val_por_especie
+from guaraci.config import NOME_TABELAS, pasta_execucao
+from guaraci.eixo_espectral import rotulo_do_eixo, unidade_do_eixo
+from guaraci.chemometric_stats import rmse_flat, expandir_binario_um_quente
+from guaraci.model_registry import (
+    _ERROS_DEPENDENCIA_OPCIONAL, _e_dependencia_indisponivel, _motivo_indisponivel,
+    build_benchmark_list)
+
+log = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from guaraci.pipeline import Config
+
+__all__ = [
+    "PLSDAClassifier",
+    "fig_benchmark_classifiers",
+    "benchmark_classifiers",
+    "t_corrigido_nadeau_bengio",
+    "fig_monte_carlo_distribution",
+    "monte_carlo_cv",
+    "interpolar_det",
+    "fig_det_curvas",
+    "fig_shap_benchmark",
+    "fig_benchmark_regressors",
+    "benchmark_regression_by_species",
+]
+
+# =========================================================================
+#  Auto-Benchmark — v27: PLS-DA vs SVM vs RF vs XGBoost
+# =========================================================================
+
+class PLSDAClassifier(BaseEstimator, ClassifierMixin):
+    """Wrapper sklearn para PLS-DA.
+    Permite uso transparente em cross_validate e Pipeline.sklearn.
+    Normaliza scores por softmax para predict_proba.
+    """
+    def __init__(self, n_components: int = 2):
+        self.n_components = n_components
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        from sklearn.preprocessing import LabelBinarizer as _LB
+        self._lb = _LB()
+        Y_bin: np.ndarray = np.asarray(self._lb.fit_transform(y))  # ensure ndarray (not spmatrix)
+        # Binary: LabelBinarizer returns (n,1) — expand to (n,2)
+        Y_bin = expandir_binario_um_quente(Y_bin)
+        n_comp = min(self.n_components, X.shape[1], X.shape[0] - 1)
+        self._pls = PLSRegression(n_components=n_comp, scale=False)
+        self._pls.fit(X, Y_bin)
+        self.classes_ = self._lb.classes_
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        # Use argmax on raw PLS scores instead of LabelBinarizer.inverse_transform,
+        # which expects binary {0,1} input. PLS output is continuous and can be
+        # negative or >1, making LB.inverse_transform undefined for 13+ classes.
+        return self._lb.classes_[np.argmax(
+            np.asarray(self._pls.predict(X), float), axis=1)]
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        # Softmax numericamente estavel — garante distribuicao valida mesmo
+        # para valores negativos (frequentes em PLSRegression).
+        Y = np.asarray(self._pls.predict(X), float)
+        Y -= Y.max(axis=1, keepdims=True)   # shift para estabilidade
+        E  = np.exp(Y)
+        return E / E.sum(axis=1, keepdims=True)
+
+
+def fig_benchmark_classifiers(scores_por_clf: Dict[str, np.ndarray],
+                                   n_splits: int,
+                                   n_classes: int,
+                                   cfg: "Config", pasta: str) -> None:
+    """Boxplot + swarmplot de balanced accuracy por fold para cada classificador."""
+    nomes  = list(scores_por_clf.keys())
+    dados  = [scores_por_clf[n] for n in nomes]
+    chance = 1.0 / max(n_classes, 1)
+    cores  = [color(i) for i in range(len(nomes))]
+
+    fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
+                           constrained_layout=True)
+
+    bp = ax.boxplot(dados, patch_artist=True, notch=False, widths=0.45,
+                    medianprops=dict(color="black", lw=2.0),
+                    whiskerprops=dict(lw=1.2, color="0.3"),
+                    capprops=dict(lw=1.2, color="0.3"),
+                    flierprops=dict(marker="x", ms=5, color="0.5", lw=0.8))
+    for patch, c in zip(bp["boxes"], cores):
+        patch.set_facecolor(c); patch.set_alpha(0.70)
+
+    # Pontos individuais (um por fold) com jitter reprodutivel. Usa
+    # cfg.seed (nao um 42 fixo): duas execucoes com seeds diferentes devem
+    # diferir em TUDO que e' aleatorio, inclusive no jitter da figura --
+    # caso contrario a figura sugere uma reprodutibilidade que o resto da
+    # execucao nao tem.
+    rng = np.random.default_rng(cfg.seed)
+    for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
+        jitter = rng.uniform(-0.14, 0.14, len(dado))
+        ax.scatter(np.full(len(dado), i) + jitter, dado,
+                   color=cores[i - 1], s=38, alpha=0.85, zorder=5,
+                   edgecolors="white", linewidths=0.5)
+
+    ax.axhline(chance, color="0.35", ls="--", lw=1.2,
+               label=f"Chance = 1/{n_classes} = {chance:.2f}")
+    ax.axhline(1.0, color="0.88", ls=":", lw=0.7)
+
+    ax.set_xticks(range(1, len(nomes) + 1))
+    ax.set_xticklabels(nomes, fontsize=9)
+    ax.set_ylabel("Balanced Accuracy (CV fold)")
+    ax.set_title(
+        f"Auto-Benchmark — {n_splits}-fold StratifiedGroupKFold estavel (anti-leakage de replicas)\n"
+        f"Preprocessamento: {cfg.default_preprocessing}",
+        fontsize=8.5, loc="left")
+    ax.legend(fontsize=8); ax.set_ylim(0, 1.05)
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+
+    save(fig, "fig_benchmark_classifiers", pasta, cfg)
+    plt.close(fig)
+
+
+def t_corrigido_nadeau_bengio(diferencas: np.ndarray, razao_teste_treino: float) -> float:
+    """p bilateral do t corrigido de Nadeau & Bengio (2003) para diferencas de
+    desempenho por fold: variancia multiplicada por (1/k + n_teste/n_treino).
+    NaN se k<2 ou variancia zero (nao inventa um p)."""
+    from scipy.stats import t as _t
+    d = np.asarray(diferencas, dtype=float)
+    k = len(d)
+    if k < 2:
+        return float("nan")
+    s2 = float(np.var(d, ddof=1))
+    # tolerancia relativa: diferencas iguais geram variancia ~1e-34 por arredondamento
+    if s2 <= 1e-12 * max(1.0, float(np.mean(d ** 2))):
+        return float("nan")
+    estat = float(np.mean(d)) / np.sqrt((1.0 / k + float(razao_teste_treino)) * s2)
+    return float(2 * _t.sf(abs(estat), df=k - 1))
+
+
+def _ajustar_holm(p: np.ndarray) -> np.ndarray:
+    """p ajustados por Holm (1979): maximo cumulativo de (m - posicao) x p com
+    os p em ordem crescente, limitado a 1. Vazio devolve vazio."""
+    p = np.asarray(p, dtype=float)
+    m = len(p)
+    aj = np.empty(m)
+    maximo = 0.0
+    for pos, idx in enumerate(np.argsort(p)):
+        maximo = max(maximo, (m - pos) * p[idx])
+        aj[idx] = min(1.0, maximo)
+    return aj
+
+
+def benchmark_classifiers(X_raw: np.ndarray, y_int: np.ndarray,
+                               grupos_cv: Optional[np.ndarray],
+                               lb: "LabelBinarizer",
+                               n_opt: int, cfg: "Config", pasta: str,
+                               wavenumbers: Optional[np.ndarray] = None,
+                               X_holdout_raw: Optional[np.ndarray] = None,
+                               y_holdout_int: Optional[np.ndarray] = None
+                               ) -> pd.DataFrame:
+    """
+    Compara PLS-DA (n_opt LVs) vs SVM RBF vs Random Forest vs XGBoost
+    usando a mesma CV group-aware e o mesmo pre-processamento do pipeline.
+
+    Anti-leakage garantido: cada classificador e encapsulado num sklearn
+    Pipeline(preproc + clf), de forma que o MSC/SNV/SG e recalibrado
+    dentro de cada fold sem vazamento de informacao do conjunto de validacao.
+
+    Ref: Westerhuis et al. (2008) Assessment of PLSDA cross validation.
+    Metabolomics 4(1):81-89, doi:10.1007/s11306-007-0099-6.
+    """
+    from sklearn.model_selection import StratifiedKFold
+    from guaraci.validacao_estatistica import StableStratifiedGroupKFold
+    from sklearn.metrics import f1_score
+    from sklearn.base import clone
+    from sklearn.pipeline import Pipeline as _SKPipeline
+    from scipy.stats import wilcoxon
+
+    # n_splits pelo menor numero de GRUPOS por classe (nao de amostras: as
+    # replicas de um grupo ficam juntas, entao uma classe com 2 grupos de 3
+    # replicas nao suporta 5 dobras) e, sem grupos, pela menor contagem de
+    # amostras. Mesma regra de `_construir_cv_interno`.
+    y_arr = np.asarray(y_int)
+    if grupos_cv is not None:
+        g_arr = np.asarray(grupos_cv)
+        n_min = min(int(len(np.unique(g_arr[y_arr == c])))
+                    for c in np.unique(y_arr))
+    else:
+        n_min = int(pd.Series(y_arr).value_counts().min())
+    n_splits = max(min(cfg.n_splits_cv, n_min), 2)
+    n_classes = len(lb.classes_)
+    preproc   = build_preprocessor(cfg)
+
+    # ── Classifiers (fonte unica: guaraci.model_registry, item 20) ────────
+    clfs: List[Tuple[str, Any]] = build_benchmark_list(
+        n_opt, cfg, incluir_opcionais=True)
+
+    # Splitter estavel entre versoes do scikit-learn (o `StratifiedGroupKFold`
+    # dele troca a particao entre versoes e com ela as metricas e os p); sem
+    # grupos nao ha replica a proteger e vale o `StratifiedKFold` comum.
+    if grupos_cv is not None:
+        cv = StableStratifiedGroupKFold(n_splits=n_splits, seed=cfg.seed)
+    else:
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True,
+                             random_state=cfg.seed)
+    # Pre-computar os splits (reutilizado em todos os classificadores)
+    splits_list = list(cv.split(X_raw, y_int, grupos_cv))
+
+    resultados: List[Dict] = []
+    scores_por_clf: Dict[str, np.ndarray] = {}
+    # OOF probabilities coletadas no mesmo loop — evita cross_val_predict extra
+    oof_probas: Dict[str, np.ndarray] = {}
+
+    for nome, clf in clfs:
+        pipe_base = _SKPipeline([("preproc", clone(preproc)), ("clf", clf)])
+        print(f"  {nome:<18s} ... ", end="", flush=True)
+        t0 = time.time()
+        try:
+            ba_folds: List[float] = []
+            f1_folds: List[float] = []
+            proba_oof = np.zeros((len(y_int), n_classes))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                for tr_idx, te_idx in splits_list:
+                    pipe_i = clone(pipe_base)
+                    pipe_i.fit(X_raw[tr_idx], y_int[tr_idx])
+                    y_pred = pipe_i.predict(X_raw[te_idx])
+                    ba_folds.append(
+                        float(balanced_accuracy_score(y_int[te_idx], y_pred)))
+                    f1_folds.append(
+                        float(f1_score(y_int[te_idx], y_pred,
+                                       average="macro", zero_division=0)))
+                    # Coleta OOF proba em um unico passe (sem cross_val_predict extra)
+                    if hasattr(pipe_i[-1], "predict_proba"):
+                        try:
+                            p = pipe_i.predict_proba(X_raw[te_idx])
+                            nc = min(p.shape[1], n_classes)
+                            proba_oof[te_idx, :nc] = p[:, :nc]
+                        except (ValueError, AttributeError) as _e_proba:
+                            # predict_proba degenerado neste fold -- so'
+                            # afeta a curva DET auxiliar (nao a metrica
+                            # bal.acc/F1 principal, ja calculada acima).
+                            log.debug("predict_proba falhou p/ %s: %s",
+                                     nome, _e_proba)
+            elapsed = time.time() - t0
+            ba = np.array(ba_folds)
+            f1 = np.array(f1_folds)
+            scores_por_clf[nome] = ba
+            oof_probas[nome]     = proba_oof
+            resultados.append({
+                "Classifier":      nome,
+                "Bal.Acc mean":      round(float(ba.mean()), 4),
+                "Bal.Acc std":        round(float(ba.std()),  4),
+                "F1 macro mean":     round(float(f1.mean()), 4),
+                "F1 macro std":       round(float(f1.std()),  4),
+                "Total time (s)":    round(elapsed, 2),
+            })
+            print(f"bal.acc={ba.mean():.4f} ± {ba.std():.4f}  [{elapsed:.1f}s]")
+        except Exception as _e:  # noqa: BLE001 -- 1 classificador do
+            # benchmark (multi-etapa: N folds de fit+predict+proba); erro
+            # impresso, ausente de resultados[] -- os demais classificadores
+            # continuam sendo avaliados normalmente.
+            print(f"FALHA ({_e})")
+
+    # ── Comparacao vs PLS-DA ──────────────────────────────────────────────
+    # S-1: Wilcoxon sobre k=5 folds tem p minimo de
+    # 0,0625 -- nunca e' significativo a 5%. O t corrigido de Nadeau & Bengio
+    # (2003, doi:10.1023/A:1024068626366) usa a MESMA diferenca por fold, mas
+    # corrige a variancia pela sobreposicao dos treinos entre folds.
+    _razao_te_tr = float(np.mean([len(te) / max(len(tr), 1) for tr, te in splits_list]))
+    ref = scores_por_clf.get("PLS-DA")
+    # Wilcoxon pareado so' com 6 ou mais dobras: com k <= 5 o menor p possivel
+    # (2/2^k = 0,0625 para k=5) nunca chega a 0,05 e a coluna so' enganaria.
+    if n_splits >= 6:
+        for r in resultados:
+            nome_r = r["Classifier"]
+            if nome_r == "PLS-DA" or ref is None:
+                r["p Wilcoxon (vs PLS-DA)"] = "-"
+            else:
+                try:
+                    # todo classificador em `resultados` tem `scores_por_clf` com um valor por dobra (mesmo n do PLS-DA)
+                    _, pval = wilcoxon(ref, scores_por_clf[nome_r], alternative="two-sided",
+                                       zero_method="wilcox")
+                    r["p Wilcoxon (vs PLS-DA)"] = round(float(pval), 4)
+                except ValueError:
+                    # wilcoxon: diferencas todas zero ou n insuficiente -- "n/a"
+                    # e' a leitura honesta (nao um p-valor inventado).
+                    r["p Wilcoxon (vs PLS-DA)"] = "n/a"
+
+    p_nb_bruto: Dict[str, float] = {}
+    for r in resultados:
+        nome_r = r["Classifier"]
+        alt = scores_por_clf.get(nome_r)
+        if nome_r == "PLS-DA" or ref is None or alt is None or len(alt) != len(ref):
+            r["p t corrigido (Nadeau-Bengio, vs PLS-DA)"] = "-" if nome_r == "PLS-DA" else "n/a"
+        else:
+            p_nb = t_corrigido_nadeau_bengio(alt - ref, _razao_te_tr)
+            r["p t corrigido (Nadeau-Bengio, vs PLS-DA)"] = (
+                round(p_nb, 4) if np.isfinite(p_nb) else "n/a")
+            if np.isfinite(p_nb):
+                p_nb_bruto[nome_r] = float(p_nb)
+
+    # Varios classificadores sao comparados com o mesmo PLS-DA: o p de cada um
+    # sozinho superestima a evidencia. Holm controla a taxa de erro da familia.
+    nomes_p = list(p_nb_bruto)
+    p_holm = dict(zip(nomes_p, _ajustar_holm(np.array([p_nb_bruto[n] for n in nomes_p]))))
+    for r in resultados:
+        nome_r = r["Classifier"]
+        if nome_r in p_holm:
+            r["p Holm (Nadeau-Bengio, vs PLS-DA)"] = round(float(p_holm[nome_r]), 4)
+        else:
+            r["p Holm (Nadeau-Bengio, vs PLS-DA)"] = "-" if nome_r == "PLS-DA" else "n/a"
+
+    df_bench = pd.DataFrame(resultados)
+
+    # ── Salvar CSV ────────────────────────────────────────────────────────
+    cam_csv = os.path.join(pasta_execucao(pasta, NOME_TABELAS), "benchmark_classifiers.csv")
+    df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
+    print(f"  -> {cam_csv}")
+
+    # ── Figura boxplot ────────────────────────────────────────────────────
+    if scores_por_clf:
+        fig_benchmark_classifiers(scores_por_clf, n_splits, n_classes, cfg, pasta)
+
+    # ── Curvas DET (OOF coletados no loop principal — sem re-execucao) ───
+    if len(oof_probas) >= 2:
+        try:
+            fig_det_curvas(oof_probas, y_int, n_classes, cfg, pasta)
+        except Exception as _e_det:  # noqa: BLE001 -- figura auxiliar
+            # (curvas DET); erro impresso, tabela de benchmark (resultado
+            # central) ja salva antes deste bloco.
+            print(f"\n  [AVISO] DET curves falhou: {_e_det}")
+
+    # ── SHAP values (opcional) ────────────────────────────────────────────
+    from guaraci.modos_analise import should_generate
+    if cfg.run_shap and should_generate(cfg, "shap"):
+        # Guard: RF multiclass (14 classes × 500 samples × n_feat) ~600 MB
+        if _verificar_ram(3.0, "SHAP TreeExplainer (RF multiclasse 14 classes)"):
+            _fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers,
+                                X_holdout_raw=X_holdout_raw,
+                                y_holdout_int=y_holdout_int,
+                                nomes_classes=list(getattr(lb, "classes_", [])))
+
+    return df_bench
+
+
+# =========================================================================
+#  v28: Monte Carlo CV — IC95% por percentil
+# =========================================================================
+
+def fig_monte_carlo_distribution(scores_mc: Dict[str, List[float]],
+                                  cfg: "Config", pasta: str) -> None:
+    """Violin + IC95% percentil das distribuicoes Monte Carlo CV."""
+    nomes = list(scores_mc.keys())
+    dados = [np.array(scores_mc[n]) for n in nomes]
+    cores = [color(i) for i in range(len(nomes))]
+
+    fig, ax = plt.subplots(figsize=(max(5.5, len(nomes) * 1.9), 5.0),
+                           constrained_layout=True)
+    parts = ax.violinplot(dados, positions=range(1, len(nomes) + 1),
+                          showmedians=True, showextrema=False)
+    # O stub do matplotlib tipa `parts["bodies"]` como `Collection` (sem
+    # sobrecarga de `zip` compativel) -- gap do stub, nao do nosso codigo.
+    # Achado R2 (Passo 201): o ignore anterior citava `arg-type`, mas a
+    # mensagem real do mypy e' `call-overload` -- reconferir a cada bump
+    # de mypy/matplotlib-stubs (`warn_unused_ignores` acusa se sobrar).
+    for pc, c in zip(parts["bodies"], cores):  # type: ignore[call-overload]
+        pc.set_facecolor(c); pc.set_alpha(0.50)
+    parts["cmedians"].set_color("black"); parts["cmedians"].set_linewidth(2.0)
+
+    for i, d in enumerate(dados, 1):
+        ci_lo = float(np.percentile(d, 2.5))
+        ci_hi = float(np.percentile(d, 97.5))
+        ax.plot([i, i], [ci_lo, ci_hi], color="0.25", lw=2.0, zorder=5)
+        ax.plot(i, float(np.mean(d)), "o", ms=6, color="white",
+                markeredgecolor="0.2", markeredgewidth=1.2, zorder=6)
+        ax.annotate(
+            f"IC95%\n[{ci_lo:.3f},{ci_hi:.3f}]",
+            xy=(i, ci_hi), xytext=(i + 0.18, ci_hi),
+            fontsize=6.5, va="center", color="0.3")
+
+    n_iter = max(len(d) for d in dados)
+    ax.set_xticks(range(1, len(nomes) + 1))
+    ax.set_xticklabels(nomes, fontsize=9)
+    ax.set_ylabel("Balanced Accuracy")
+    ax.set_title(
+        f"Monte Carlo CV ({n_iter} iteracoes, test={cfg.monte_carlo_test_size:.0%})\n"
+        f"IC95% percentil — pre-processamento: {cfg.default_preprocessing}",
+        fontsize=8.5, loc="left")
+    ax.set_ylim(0, 1.08)
+    ax.grid(axis="y", color="0.93", lw=0.5)
+    ax.set_axisbelow(True)
+
+    save(fig, "fig_monte_carlo_cv", pasta, cfg)
+    plt.close(fig)
+
+
+def _stratified_group_shuffle_splits(
+        y_int: np.ndarray,
+        grupos_cv: np.ndarray,
+        n_splits: int,
+        test_size: float,
+        random_state: int) -> List[Tuple[np.ndarray, np.ndarray]]:
+    """
+    Split estratificado no nivel de grupo: cada grupo recebe a classe da maioria
+    de suas amostras e o split e feito via StratifiedShuffleSplit sobre grupos.
+    Garante (1) anti-leakage de replicas e (2) proporcao de classes no teste.
+    """
+    from sklearn.model_selection import StratifiedShuffleSplit
+
+    grupos_u = np.unique(grupos_cv)
+    # Classe dominante por grupo (votacao por maioria)
+    cls_por_grupo = np.array([
+        int(pd.Series(y_int[grupos_cv == g]).mode().iloc[0])
+        for g in grupos_u
+    ])
+
+    sss = StratifiedShuffleSplit(n_splits=n_splits,
+                                  test_size=test_size,
+                                  random_state=random_state)
+    splits: List[Tuple[np.ndarray, np.ndarray]] = []
+    for grp_tr, grp_te in sss.split(grupos_u, cls_por_grupo):
+        grupos_train = set(grupos_u[grp_tr])
+        grupos_test  = set(grupos_u[grp_te])
+        tr_idx = np.where(np.isin(grupos_cv, list(grupos_train)))[0]
+        te_idx = np.where(np.isin(grupos_cv, list(grupos_test)))[0]
+        splits.append((tr_idx, te_idx))
+    return splits
+
+
+def monte_carlo_cv(X_raw: np.ndarray, y_int: np.ndarray,
+                   grupos_cv: Optional[np.ndarray],
+                   lb: "LabelBinarizer",
+                   n_opt: int, cfg: "Config", pasta: str) -> pd.DataFrame:
+    """
+    Monte Carlo CV com split estratificado por grupo (N repeticoes).
+    Gera distribuicao empirica de Balanced Accuracy com IC95% por percentil.
+
+    Se cfg.monte_carlo_include_all=True, roda tambem SVM RBF, RF e XGBoost
+    (mesmos hiperparametros do benchmark, via guaraci.model_registry — item
+    20 da auditoria: fonte unica, antes duplicada e divergente aqui: este
+    Grad. Boost. nao tinha subsample=0.8 como o do benchmark); caso
+    contrario, apenas PLS-DA.
+
+    Ref: Filzmoser, Liebmann & Varmuza (2009) Repeated double cross
+    validation. J. Chemometrics 23(4):160-171, doi:10.1002/cem.1225.
+    """
+    from sklearn.base import clone
+    from sklearn.metrics import f1_score
+    from sklearn.pipeline import Pipeline as _SKPipeline
+
+    n_iter  = cfg.n_monte_carlo
+    test_sz = cfg.monte_carlo_test_size
+    preproc = build_preprocessor(cfg)
+
+    # Montar lista de modelos (fonte unica: guaraci.model_registry, item 20)
+    mc_clfs: List[Tuple[str, Any]] = build_benchmark_list(
+        n_opt, cfg, incluir_opcionais=cfg.monte_carlo_include_all)
+
+    # Gerar splits estratificados por grupo (risco 3 resolvido)
+    if grupos_cv is not None:
+        # `StratifiedShuffleSplit` (usado por grupo dentro do helper) exige
+        # n_grupos_teste >= n_classes. Com poucos grupos de replica por
+        # classe a condicao falha e o helper levanta ValueError -- achado
+        # B2-1b da auditoria de 2026-08-16. Sem esta guarda, o Monte Carlo
+        # CV inteiro morre e o usuario so' ve a mensagem generica do except
+        # amplo do pipeline, sem saber que a causa e' "poucos grupos".
+        n_grupos_tot = int(len(np.unique(grupos_cv)))
+        n_classes_tot = int(len(lb.classes_))
+        n_grupos_teste = int(round(test_sz * n_grupos_tot))
+        if n_grupos_teste < n_classes_tot:
+            print(f"  [AVISO] Monte Carlo CV PULADO: {n_grupos_tot} grupos "
+                  f"de replica geram apenas {n_grupos_teste} grupos de teste "
+                  f"(test_size={test_sz:.0%}), menos que as {n_classes_tot} "
+                  f"classes — split estratificado por grupo impossivel. "
+                  f"Reduza n_classes, aumente test_size, ou colete mais "
+                  f"amostras fisicas independentes.")
+            return pd.DataFrame()
+        splits = _stratified_group_shuffle_splits(
+            y_int, grupos_cv, n_iter, test_sz, cfg.seed)
+    else:
+        from sklearn.model_selection import StratifiedShuffleSplit
+        sss = StratifiedShuffleSplit(n_splits=n_iter,
+                                     test_size=test_sz,
+                                     random_state=cfg.seed)
+        splits = list(sss.split(X_raw, y_int))
+
+    # Correr modelos
+    resultados_mc: List[Dict] = []
+    scores_mc: Dict[str, List[float]] = {}
+
+    t0_total = time.time()
+    for nome, clf in mc_clfs:
+        pipe = _SKPipeline([("preproc", clone(preproc)), ("clf", clf)])
+        ba_list: List[float] = []
+        f1_list: List[float] = []
+        print(f"  MC CV [{nome}]: {n_iter} iteracoes ... ", end="", flush=True)
+        t0 = time.time()
+        for tr_idx, te_idx in splits:
+            X_tr, X_te = X_raw[tr_idx], X_raw[te_idx]
+            y_tr, y_te = y_int[tr_idx], y_int[te_idx]
+            # Ensure all classes are in training and at least 1 sample in test
+            if len(np.unique(y_tr)) < len(lb.classes_):
+                continue
+            if len(np.unique(y_te)) < 2:
+                continue
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    pipe_i = clone(pipe)
+                    pipe_i.fit(X_tr, y_tr)
+                    y_pred = pipe_i.predict(X_te)
+                    ba_list.append(float(balanced_accuracy_score(y_te, y_pred)))
+                    f1_list.append(
+                        float(f1_score(y_te, y_pred, average="macro", zero_division=0)))
+            except (ValueError, np.linalg.LinAlgError) as _e_mc:
+                # Iteracao Monte Carlo degenerada -- NAO silenciosa: a
+                # contagem de falhas aparece em "Valid iterations" no CSV.
+                log.debug("Monte Carlo CV: iteracao descartada p/ %s: %s",
+                         nome, _e_mc)
+
+        elapsed = time.time() - t0
+        arr_ba = np.array(ba_list) if ba_list else np.array([np.nan])
+        arr_f1 = np.array(f1_list) if f1_list else np.array([np.nan])
+        ci_lo  = float(np.nanpercentile(arr_ba, 2.5))
+        ci_hi  = float(np.nanpercentile(arr_ba, 97.5))
+        scores_mc[nome] = ba_list
+
+        print(f"media={np.nanmean(arr_ba):.4f}  IC95%=[{ci_lo:.4f},{ci_hi:.4f}]"
+              f"  [{elapsed:.1f}s]")
+        resultados_mc.append({
+            "Classifier":    nome,
+            "Valid iterations": len(ba_list),
+            "Mean BA":         round(float(np.nanmean(arr_ba)), 4),
+            "Median BA":       round(float(np.nanmedian(arr_ba)), 4),
+            "Std BA":           round(float(np.nanstd(arr_ba)), 4),
+            "CI95% inf":        round(ci_lo, 4),
+            "CI95% sup":        round(ci_hi, 4),
+            "Mean F1 macro":   round(float(np.nanmean(arr_f1)), 4),
+            "CI95% F1 inf":     round(float(np.nanpercentile(arr_f1, 2.5)), 4),
+            "CI95% F1 sup":     round(float(np.nanpercentile(arr_f1, 97.5)), 4),
+            "Test fraction":     test_sz,
+        })
+
+    print(f"  [MC CV total: {time.time()-t0_total:.1f}s]")
+    df_mc = pd.DataFrame(resultados_mc)
+
+    cam_csv = os.path.join(pasta_execucao(pasta, NOME_TABELAS), "monte_carlo_cv.csv")
+    df_mc.to_csv(cam_csv, index=False, sep=";", decimal=",")
+    print(f"  -> {cam_csv}")
+
+    # Figura violin — apenas modelos com >= 5 iteracoes validas
+    scores_plot = {n: v for n, v in scores_mc.items() if len(v) >= 5}
+    if scores_plot:
+        fig_monte_carlo_distribution(scores_plot, cfg, pasta)
+
+    return df_mc
+
+
+# =========================================================================
+#  v28: Curvas DET — Detection Error Tradeoff
+# =========================================================================
+
+def interpolar_det(fmr: np.ndarray, fnmr: np.ndarray,
+                   fmr_grid: np.ndarray) -> np.ndarray:
+    """Reamostra uma curva DET (fmr, fnmr) sobre `fmr_grid`.
+
+    Extraida como funcao PURA (testavel sem renderizar figura) apos um bug
+    real: `sklearn.metrics.det_curve` devolve os pontos em ordem de limiar
+    CRESCENTE, o que deixa `fmr` DECRESCENTE. `np.interp` exige `xp`
+    crescente e nao ordena por conta propria -- passar `fmr` na ordem
+    original fazia a interpolacao degenerar e devolver `fnmr[-1]` constante
+    para todo FMR > 0. O resultado era uma RETA HORIZONTAL no lugar da
+    curva, em toda figura DET gerada ate 2026-08-07.
+
+    Invertendo os dois arrays juntos, `xp` fica crescente e cada fmr segue
+    pareado com o seu fnmr.
+    """
+    fmr = np.asarray(fmr, dtype=float)
+    fnmr = np.asarray(fnmr, dtype=float)
+    if fmr.size == 0:
+        return np.full(len(fmr_grid), np.nan)
+    if fmr.size > 1 and fmr[0] > fmr[-1]:      # ordem decrescente (o caso
+        fmr, fnmr = fmr[::-1], fnmr[::-1]      # devolvido por det_curve)
+    return np.interp(fmr_grid, fmr, fnmr)
+
+
+def fig_det_curvas(oof_probas: Dict[str, np.ndarray],
+                   y_int: np.ndarray,
+                   n_classes: int,
+                   cfg: "Config", pasta: str) -> None:
+    """
+    Curvas DET (Detection Error Tradeoff) macro-OvR por classificador.
+    Cada curva e a media das curvas binarias One-vs-Rest por classe.
+
+    Ref: Martin et al. (1997) NIST/SEMATECH Engineering Statistics Handbook.
+    """
+    try:
+        from sklearn.metrics import det_curve
+        from sklearn.preprocessing import label_binarize
+    except ImportError:
+        print("  [AVISO] det_curve indisponivel (sklearn < 0.24) — DET pulada.")
+        return
+
+    nomes = list(oof_probas.keys())
+    cores = [color(i) for i in range(len(nomes))]
+
+    y_bin: np.ndarray = np.asarray(label_binarize(y_int, classes=range(n_classes)))
+    if n_classes == 2:
+        y_bin = np.hstack([1 - y_bin, y_bin])
+
+    # Gerar duas versoes: escala linear (0-100%) + escala log (padrao NIST)
+    for log_scale in (False, True):
+        eps  = 0.1   # evitar log(0)
+        lo   = eps if log_scale else 0.0
+        hi   = 100.0
+        grid = np.logspace(np.log10(eps), np.log10(hi), 500) if log_scale \
+               else np.linspace(0.0, hi, 500)
+        fmr_grid_pct = grid
+        fmr_grid_frac = fmr_grid_pct / 100.0
+
+        fig, ax = plt.subplots(figsize=(6.0, 5.5), constrained_layout=True)
+
+        for nome, c in zip(nomes, cores):
+            proba = oof_probas[nome]
+            fnmr_acum = np.zeros(len(fmr_grid_frac))
+            n_valid = 0
+            for k in range(n_classes):
+                y_k = y_bin[:, k]
+                if y_k.sum() < 2 or k >= proba.shape[1]:
+                    continue
+                try:
+                    fmr, fnmr, _ = det_curve(y_k, proba[:, k])
+                    fnmr_acum += interpolar_det(fmr, fnmr, fmr_grid_frac)
+                    n_valid += 1
+                except ValueError as _e_det:
+                    # Classe k degenerada p/ det_curve -- so' afeta a media
+                    # DET deste classificador (n_valid ja contabiliza).
+                    log.debug("DET curve: classe %d descartada p/ %s: %s",
+                             k, nome, _e_det)
+            if n_valid == 0:
+                continue
+            fnmr_media = fnmr_acum / n_valid
+            # EER = ponto onde FMR == FNMR (cruzamento com a diagonal y=x).
+            # Resumir a curva num numero torna a figura comparavel entre
+            # classificadores sem precisar medir no olho.
+            dif = fnmr_media - fmr_grid_frac
+            i_eer = int(np.argmin(np.abs(dif)))
+            eer_pct = float((fnmr_media[i_eer] + fmr_grid_frac[i_eer]) / 2 * 100)
+            ax.plot(fmr_grid_pct, fnmr_media * 100,
+                    lw=1.8, color=c, label=f"{nome} (EER {eer_pct:.1f}%)",
+                    alpha=0.85)
+
+        # A diagonal y=x nao e' a linha do acaso: e' o lugar geometrico onde
+        # FMR == FNMR, isto e', onde se le o EER. Rotular como "referencia"
+        # generica induzia a leitura errada de que a curva deveria "seguir" a
+        # diagonal -- ela deve ficar o mais LONGE possivel dela, no canto
+        # inferior esquerdo.
+        ax.plot([lo, hi], [lo, hi], "k--", lw=0.8, alpha=0.35,
+                label="EER (FMR = FNMR)")
+        ax.set_xlabel("False Match Rate — FMR (%)")
+        ax.set_ylabel("False Non-Match Rate — FNMR (%)")
+        escala_str = "log" if log_scale else "linear"
+        ax.set_title(
+            f"Curvas DET (Detection Error Tradeoff) — macro OvR [{escala_str}]\n"
+            f"OOF predictions, {cfg.n_splits_cv}-fold GroupKFold",
+            fontsize=8.5, loc="left")
+        ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
+        if log_scale:
+            ax.set_xscale("log"); ax.set_yscale("log")
+        ax.legend(fontsize=8)
+        ax.grid(color="0.93", lw=0.5, which="both"); ax.set_axisbelow(True)
+
+        sufixo = "_log" if log_scale else ""
+        save(fig, f"fig_det_curvas{sufixo}", pasta, cfg)
+        plt.close(fig)
+
+
+# =========================================================================
+#  v28: SHAP values — interpretabilidade espectral dos ensembles
+# =========================================================================
+
+def fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
+                        n_opt: int, cfg: "Config", pasta: str,
+                        wavenumbers: Optional[np.ndarray] = None,
+                        X_holdout_raw: Optional[np.ndarray] = None,
+                        y_holdout_int: Optional[np.ndarray] = None) -> None:
+    _fig_shap_benchmark(X_raw, y_int, n_opt, cfg, pasta, wavenumbers,
+                        X_holdout_raw=X_holdout_raw,
+                        y_holdout_int=y_holdout_int)
+
+
+def _nome_classe(cls_v, nomes_classes) -> str:
+    """Nome da classe de indice `cls_v` (legenda SHAP); "Cls k" so' sem nomes."""
+    try:
+        if nomes_classes is not None and 0 <= int(cls_v) < len(nomes_classes):
+            return str(nomes_classes[int(cls_v)])
+    except (TypeError, ValueError):
+        pass
+    return f"Cls {cls_v}"
+
+
+def _shap_da_propria_classe(sv, y_shap: np.ndarray, feat_i: int):
+    """(valores SHAP da feature `feat_i` por amostra, rotulo do eixo).
+
+    Multiclasse (lista de matrizes ou array n x f x k): pega a coluna da classe
+    verdadeira de cada amostra (`y_shap` e' o indice inteiro da classe, o mesmo
+    que ordena a saida do modelo). Sem como indexar, cai para a media de |SHAP|."""
+    if isinstance(sv, list):
+        arr = np.stack([np.asarray(s_k)[:, feat_i] for s_k in sv], axis=1)
+    else:
+        sv_arr = np.asarray(sv)
+        if sv_arr.ndim != 3:
+            return sv_arr[:, feat_i], "SHAP value"
+        arr = sv_arr[:, feat_i, :]
+    k = arr.shape[1]
+    idx = np.asarray(y_shap)
+    if np.issubdtype(idx.dtype, np.integer) and idx.size == arr.shape[0] and idx.min() >= 0 and idx.max() < k:
+        return arr[np.arange(arr.shape[0]), idx], "SHAP value (own class)"
+    return np.abs(arr).mean(axis=1), "mean |SHAP| over classes"
+
+
+def _fig_shap_benchmark(X_raw: np.ndarray, y_int: np.ndarray,
+                        n_opt: int, cfg: "Config", pasta: str,
+                        wavenumbers: Optional[np.ndarray] = None,
+                        X_holdout_raw: Optional[np.ndarray] = None,
+                        y_holdout_int: Optional[np.ndarray] = None,
+                        nomes_classes=None) -> None:
+    """
+    SHAP TreeExplainer para RF, GBM e XGBoost (se disponivel).
+    Plota barplot horizontal dos top-20 wavenumbers por mean |SHAP|.
+
+    Explicabilidade fora do treino (Grupo 2, fechamento 2026-09-18): os
+    modelos-arvore sao sempre AJUSTADOS em `X_raw`/`y_int` (treino), mas a
+    explicacao (`shap_values`) roda em `X_holdout_raw`/`y_holdout_int`
+    quando fornecidos -- nunca amostras que o modelo ja viu no ajuste, a
+    mesma disciplina de honestidade ja aplicada ao resto do pipeline
+    (holdout externo p/ metricas, split-conformal p/ intervalo). Sem
+    holdout (`None`, retrocompativel com chamadas antigas e com
+    `frac_holdout=0`), cai no comportamento ANTERIOR -- explica uma
+    subamostra do proprio TREINO, reconhecidamente otimista (a
+    importancia pode refletir memorizacao, nao generalizacao) e agora
+    ROTULADO como tal no titulo da figura, nunca apresentado sem essa
+    ressalva.
+
+    Ref: Lundberg & Lee (2017) NeurIPS — SHAP (SHapley Additive exPlanations).
+    """
+    try:
+        import shap
+    except (ImportError, OSError) as _e_shap:
+        # shap importa numba no topo; com a DLL do numba bloqueada pelo
+        # Controle de Aplicativo do Windows o erro e' ImportError("DLL load
+        # failed ...") -- "nao instalado" mentia sobre a causa (achado de
+        # 2026-10-02: numba 0.67 do lock bloqueado nesta maquina).
+        print(f"  [AVISO] {_motivo_indisponivel('SHAP', _e_shap)} SHAP pulado.")
+        return
+
+    from sklearn.base import clone
+    from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+
+    preproc   = build_preprocessor(cfg)
+    preproc_ajustado = clone(preproc).fit(X_raw)
+    X_proc    = preproc_ajustado.transform(X_raw)
+    feat_names = ([f"{w:.0f}" for w in wavenumbers]
+                  if wavenumbers is not None
+                  else [f"X{i}" for i in range(X_proc.shape[1])])
+
+    if X_holdout_raw is not None and y_holdout_int is not None:
+        # Explicar fora do treino: transforma o holdout com o MESMO
+        # pre-processador ja ajustado em X_raw (nunca reajustado com o
+        # holdout -- vazaria a mesma informacao que o holdout existe para
+        # nao ver).
+        X_explicar = np.asarray(preproc_ajustado.transform(X_holdout_raw))
+        y_explicar = np.asarray(y_holdout_int)
+        origem = "holdout"
+    else:
+        X_explicar = X_proc
+        y_explicar = y_int
+        origem = "treino (subamostra, otimista)"
+
+    # Memory cap: random subsample of shap_max_amostras samples for TreeExplainer
+    n_max = cfg.shap_max_samples
+    if X_explicar.shape[0] > n_max:
+        rng_shap = np.random.default_rng(cfg.seed)
+        idx_shap = rng_shap.choice(X_explicar.shape[0], n_max, replace=False)
+        X_shap = X_explicar[idx_shap]
+        y_shap = y_explicar[idx_shap]
+    else:
+        X_shap = X_explicar
+        y_shap = y_explicar
+
+    n_classes_shap = len(np.unique(y_int))
+    tree_clfs: List[Tuple[str, Any]] = [
+        ("Random Forest",
+         RandomForestClassifier(n_estimators=300, max_features="sqrt",
+                                class_weight="balanced_subsample",
+                                n_jobs=1, random_state=cfg.seed)),
+    ]
+    # GradientBoostingClassifier: SHAP TreeExplainer does NOT support multiclass
+    # (raises InvalidModelError when n_classes > 2). Skip for multiclass datasets.
+    if n_classes_shap == 2:
+        tree_clfs.append(
+            ("Grad. Boost.",
+             GradientBoostingClassifier(n_estimators=200, learning_rate=0.05,
+                                        max_depth=3, random_state=cfg.seed))
+        )
+    try:
+        from xgboost import XGBClassifier
+        tree_clfs.append(("XGBoost",
+                           XGBClassifier(n_estimators=300, learning_rate=0.05,
+                                         max_depth=4, subsample=0.8,
+                                         colsample_bytree=0.8,
+                                         eval_metric="mlogloss", verbosity=0,
+                                         n_jobs=1, random_state=cfg.seed)))
+    except _ERROS_DEPENDENCIA_OPCIONAL as _e_xgb:
+        if not _e_dependencia_indisponivel(_e_xgb):
+            raise
+        # model_registry._tentar_construir: xgboost instalado mas bloqueado
+        # pelo sistema (ex.: Controle de Aplicativo do Windows) levanta
+        # XGBoostError (ValueError), nao ImportError -- so' pegar ImportError
+        # derrubava o SHAP inteiro (RF/GBM inclusive) por causa so' do XGBoost.
+        log.warning("[SHAP] %s", _motivo_indisponivel("XGBoost", _e_xgb))
+
+    for idx, (nome, clf) in enumerate(tree_clfs):
+        print(f"  SHAP {nome} ({len(X_shap)} amostras) ... ", end="", flush=True)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # Treinar no conjunto completo; calcular SHAP no subconjunto
+                clf.fit(X_proc, y_int)
+                explainer = shap.TreeExplainer(clf)
+                sv = explainer.shap_values(X_shap)
+
+                # sv: lista (RF antigo), ndarray 3D (XGBoost>=2 multiclass),
+                # ndarray 2D (GBM binario / single output).
+                # XGBoost>=2.0 e shap>=0.41 retornam ndarray diretamente.
+                if isinstance(sv, list):
+                    # RF classico (shap<0.41) — lista de arrays por classe
+                    importance = np.mean([np.abs(s) for s in sv], axis=0).mean(axis=0)
+                else:
+                    sv_arr = np.asarray(sv)
+                    if sv_arr.ndim == 3:
+                        # SHAP 0.4x+: shape (n_samples, n_features, n_classes)
+                        # mean over samples (axis=0) and classes (axis=2) → (n_features,)
+                        importance = np.abs(sv_arr).mean(axis=(0, 2))
+                    else:
+                        # (n_samples, n_features) — GBM / XGBoost binario; qualquer outro formato
+                        # nao tem importancia por variavel e cai no `except` abaixo ("FALHA")
+                        importance = np.abs(sv_arr).mean(axis=0)
+
+                top_n   = min(20, len(importance))
+                top_idx = np.argsort(importance)[-top_n:][::-1]
+                top_imp = importance[top_idx]
+                top_lbl = [feat_names[i] for i in top_idx]
+
+                # ── Barplot de importancia SHAP ───────────────────────────
+                fig, ax = plt.subplots(figsize=(7.0, 5.5), constrained_layout=True)
+                ax.barh(range(top_n), top_imp[::-1],
+                        color=color(idx), alpha=0.76, edgecolor="white", lw=0.5)
+                ax.set_yticks(range(top_n))
+                ax.set_yticklabels(top_lbl[::-1], fontsize=8)
+                ax.set_xlabel("Mean |SHAP value|")
+                ax.set_title(
+                    f"SHAP — {nome} (top-{top_n} bandas espectrais)\n"
+                    f"Eixo: {rotulo_do_eixo(cfg)}  |  pre-proc: {cfg.default_preprocessing}"
+                    f"  |  n={len(X_shap)}  |  avaliado em: {origem}",
+                    fontsize=8.5, loc="left")
+                ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
+                tag = nome.lower().replace(" ", "_").replace(".", "").replace("/", "_")
+                save(fig, f"fig_shap_{tag}", pasta, cfg)
+                plt.close(fig)
+
+                # ── Dependence plots: top-3 features × classe ─────────────
+                n_dep = min(3, top_n)
+                unique_cls = np.unique(y_shap)
+                cores_dep  = [color(c) for c in unique_cls]
+                for rank, feat_i in enumerate(top_idx[:n_dep]):
+                    feat_vals = X_shap[:, feat_i]
+                    # Multiclasse: o SHAP de cada amostra para a PROPRIA classe. A media
+                    # sobre as classes soma ~0 (as contribuicoes se cancelam entre classes)
+                    # e deixava o eixo em ~1e-19.
+                    shap_feat, ylab_dep = _shap_da_propria_classe(sv, y_shap, feat_i)
+
+                    fig2, ax2 = plt.subplots(figsize=(5.5, 4.0),
+                                             constrained_layout=True)
+                    for ci, (cls_v, cc) in enumerate(zip(unique_cls, cores_dep)):
+                        mask_c = y_shap == cls_v
+                        ax2.scatter(feat_vals[mask_c], shap_feat[mask_c],
+                                    color=cc, alpha=0.60, s=18, lw=0,
+                                    label=_nome_classe(cls_v, nomes_classes))
+                    ax2.axhline(0, color="0.5", lw=0.8, ls="--")
+                    _un = unidade_do_eixo(cfg)
+                    ax2.set_xlabel(f"{top_lbl[rank]} {_un}".strip())
+                    ax2.set_ylabel(ylab_dep)
+                    ax2.set_title(
+                        f"SHAP Dependence — {nome}\n"
+                        f"Feature #{rank+1}: {top_lbl[rank]}",
+                        fontsize=8.5, loc="left")
+                    if len(unique_cls) <= 10:
+                        ax2.legend(fontsize=6.5, ncol=2, markerscale=1.2)
+                    ax2.grid(color="0.93", lw=0.5); ax2.set_axisbelow(True)
+                    save(fig2, f"fig_shap_dep_{tag}_feat{rank+1}", pasta, cfg)
+                    plt.close(fig2)
+
+                print("salvo.")
+        except Exception as _e:  # noqa: BLE001 -- geracao de figura SHAP
+            # (multi-etapa: TreeExplainer + N plots de dependencia); erro
+            # impresso, nao afeta o benchmark/metricas ja calculados.
+            print(f"FALHA ({_e})")
+
+
+fig_shap_benchmark.__doc__ = _fig_shap_benchmark.__doc__
+
+
+# =========================================================================
+#  Auto-Benchmark de REGRESSAO (N2/N3) -- PLS-R vs Ridge/Lasso/EN/SVR/RF
+# =========================================================================
+
+#: n minimo de especies por modelo para desenhar boxplot (abaixo: so' pontos)
+_N_MIN_BOXPLOT = 5
+
+
+def fig_benchmark_regressors(rmsep_por_modelo: Dict[str, np.ndarray],
+                               n_especies: int,
+                               cfg: "Config", pasta: str) -> None:
+    """Boxplot de RMSEP por especie para cada modelo de regressao -- ao
+    contrario do benchmark de classificacao (bal.acc, maior=melhor), aqui
+    MENOR e melhor."""
+    nomes = list(rmsep_por_modelo.keys())
+    dados = [rmsep_por_modelo[n] for n in nomes]
+    cores = [color(i) for i in range(len(nomes))]
+
+    fig, ax = plt.subplots(figsize=(max(7.0, len(nomes) * 1.7), 4.8),
+                           constrained_layout=True)
+
+    # Boxplot so' com n >= 5 especies por modelo: com n = 2-4 a "caixa"
+    # (quartis/bigodes) nao tem sentido estatistico e engana o leitor. Abaixo
+    # disso: so' os pontos individuais + traco na mediana.
+    usar_box = bool(dados) and min(len(d) for d in dados) >= _N_MIN_BOXPLOT
+    if usar_box:
+        bp = ax.boxplot(dados, patch_artist=True, notch=False, widths=0.45,
+                        medianprops=dict(color="black", lw=2.0),
+                        whiskerprops=dict(lw=1.2, color="0.3"),
+                        capprops=dict(lw=1.2, color="0.3"),
+                        flierprops=dict(marker="x", ms=5, color="0.5", lw=0.8))
+        for patch, c in zip(bp["boxes"], cores):
+            patch.set_facecolor(c); patch.set_alpha(0.70)
+
+    rng = np.random.default_rng(cfg.seed)   # ver nota em fig_benchmark_classifiers
+    for i, (nome, dado) in enumerate(zip(nomes, dados), 1):
+        if len(dado) == 0:
+            continue
+        jitter = rng.uniform(-0.14, 0.14, len(dado))
+        ax.scatter(np.full(len(dado), i) + jitter, dado,
+                   color=cores[i - 1], s=38 if usar_box else 54,
+                   alpha=0.85, zorder=5,
+                   edgecolors="white" if usar_box else "black",
+                   linewidths=0.5)
+        if not usar_box:
+            ax.hlines(float(np.median(dado)), i - 0.25, i + 0.25,
+                      color="black", lw=2.0, zorder=4)
+
+    ax.set_xticks(range(1, len(nomes) + 1))
+    ax.set_xticklabels(nomes, fontsize=9)
+    ax.set_ylabel("RMSEP por especie (menor = melhor)")
+    _forma = ("boxplot + pontos por especie" if usar_box else
+              "pontos por especie; traco = mediana (n pequeno, sem boxplot)")
+    ax.set_title(
+        f"Auto-Benchmark de regressao -- {n_especies} especies ({_forma})\n"
+        f"Pre-processamento: {cfg.default_preprocessing}",
+        fontsize=8.5, loc="left")
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+
+    save(fig, "fig_benchmark_regressors", pasta, cfg)
+    plt.close(fig)
+
+
+def benchmark_regression_by_species(
+        X_raw: np.ndarray, conc: np.ndarray, rotulos: np.ndarray,
+        mae_id: Optional[np.ndarray], classes_unicas: np.ndarray,
+        cfg: "Config", pasta: str,
+        reg_esp_pls: Dict[str, Any],
+        min_amostras_adult: int = 6) -> Optional[pd.DataFrame]:
+    """
+    Compara PLS-R (baseline, ja calibrado por `pls_regression_by_species` --
+    reaproveitado SEM refit) vs Ridge / Lasso / Elastic Net / SVR (RBF) /
+    Random Forest Regressor, calibrando UM MODELO POR ESPECIE (mesma
+    arquitetura da quantificacao do pipeline: calibracao separada evita que
+    a variacao inter-especies confunda o sinal de adulteracao).
+
+    Cada modelo usa O MESMO split cal/val por especie (reproduzido
+    deterministicamente com o mesmo cfg.seed/cfg.cal_val_split do PLS-R
+    ja calculado) e o mesmo pre-processamento dentro de um sklearn Pipeline
+    (sem vazamento entre cal/val) -- comparacao honesta apples-to-apples.
+
+    Hiperparametros por heuristica de literatura (sem tuning por CV interna,
+    mesmo padrao de benchmark_classifiers/PLS-DA -- ver nota
+    metodologica em pipeline.save_model_summary). Ref: Hastie, Tibshirani
+    & Friedman (2009), The Elements of Statistical Learning, 2nd ed.
+
+    Retorna None se nenhuma especie tiver dados suficientes (mesmo criterio
+    de `pls_regression_by_species`: min_amostras_adult adulteradas e
+    variancia de teor > 0).
+    """
+    from sklearn.linear_model import Ridge, Lasso, ElasticNet
+    from sklearn.svm import SVR
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.base import clone
+    from sklearn.pipeline import Pipeline as _SKPipeline
+    from sklearn.metrics import r2_score
+
+    from guaraci.dual_spls import DualSPLS
+
+    modelos: List[Tuple[str, Any]] = [
+        ("Ridge",
+         Ridge(alpha=1.0, random_state=cfg.seed)),
+        ("Lasso",
+         Lasso(alpha=0.1, random_state=cfg.seed, max_iter=5000)),
+        ("Elastic Net",
+         ElasticNet(alpha=0.1, l1_ratio=0.5, random_state=cfg.seed,
+                    max_iter=5000)),
+        # Dual-sPLS (norma lasso) -- Alsouki, Duval, Marteau, El Haddad &
+        # Wahl (2023), DOI 10.1016/j.chemolab.2023.104813. n_components=5
+        # segue a mesma ordem de grandeza usada pelo PLS-R do pipeline
+        # (baseline acima); sparsity=0.8 (80% das variaveis zeradas por
+        # componente) e' o meio da faixa explorada no paper -- sem tuning
+        # por CV interna, mesmo padrao "heuristica de literatura" dos
+        # demais modelos deste benchmark (ver docstring da funcao). Ver
+        # `src/guaraci/dual_spls.py` para a validacao numerica (oraculo R);
+        # padroes sao ponto de partida, ajustaveis.
+        ("Dual-sPLS (lasso)",
+         DualSPLS(n_components=5, sparsity=0.8)),
+        ("SVR (RBF)",
+         SVR(kernel="rbf", C=10.0, epsilon=0.1, gamma="scale")),
+        ("Random Forest",
+         RandomForestRegressor(n_estimators=300, max_features="sqrt",
+                               n_jobs=1, random_state=cfg.seed)),
+    ]
+
+    conc = np.asarray(conc, dtype=float)
+    yv_pool: Dict[str, List[np.ndarray]] = {nome: [] for nome, _ in modelos}
+    yvh_pool: Dict[str, List[np.ndarray]] = {nome: [] for nome, _ in modelos}
+    rmsep_por_especie: Dict[str, List[float]] = {nome: [] for nome, _ in modelos}
+    n_especies_ok = 0
+
+    for cls in classes_unicas:
+        idx = np.where(rotulos == cls)[0]
+        if idx.size == 0:
+            continue
+        conc_c = conc[idx].copy()
+        conc_c = np.where(np.isnan(conc_c), 0.0, conc_c)
+        n_adult_c = int(np.sum(conc_c > 0))
+        if n_adult_c < min_amostras_adult or float(conc_c.std()) < 1e-8:
+            continue
+
+        X_c = X_raw[idx]
+        mae_c = mae_id[idx] if mae_id is not None else None
+        Y_c = conc_c.reshape(-1, 1)
+
+        # MESMO split (deterministico) usado em pls_regression_by_species --
+        # mesma logica de decisao, reproduzida aqui p/ evitar acoplamento
+        # circular com pipeline.py (que importaria de volta este modulo).
+        _split = _split_cal_val_por_especie(X_c, Y_c, mae_c, cfg)
+        if _split is None:
+            continue   # especie sem amostras/grupos suficientes p/ o split
+        ic, iv = _split
+
+        Xc, Yc = X_c[ic], Y_c[ic].ravel()
+        Xv, Yv = X_c[iv], Y_c[iv].ravel()
+        n_especies_ok += 1
+
+        for nome, modelo in modelos:
+            try:
+                pipe = _SKPipeline([
+                    ("preproc", clone(build_preprocessor(cfg))),
+                    ("reg", clone(modelo)),
+                ])
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    pipe.fit(Xc, Yc)
+                    Yv_hat = np.asarray(pipe.predict(Xv),
+                                        dtype=float).flatten()
+                rmsep_por_especie[nome].append(rmse_flat(Yv, Yv_hat))
+                yv_pool[nome].append(Yv)
+                yvh_pool[nome].append(Yv_hat)
+            except Exception as _e:  # noqa: BLE001 -- 1 modelo x 1 especie
+                # (5 modelos independentes no benchmark); erro impresso com
+                # nome+especie, os demais pares modelo/especie continuam.
+                print(f"  [AVISO] {nome} falhou em especie '{cls}': {_e}")
+
+    if n_especies_ok == 0:
+        return None
+
+    linhas: List[Dict[str, Any]] = []
+
+    # PLS-R baseline: reaproveita reg_esp_pls (ja calculado, SEM refit)
+    rmsep_pls_por_especie = [
+        t["rmsep"] for t in reg_esp_pls.get("tabela_especie", [])
+        if np.isfinite(t.get("rmsep", np.nan))
+    ]
+    linhas.append({
+        "Model":         "PLS-R",
+        "RMSEP (pooled)": round(float(reg_esp_pls["rmsep"]), 3),
+        "R2val (pooled)": round(float(reg_esp_pls["r2v"]), 4),
+        "N species":     int(reg_esp_pls["n_especies"]),
+        "RMSEP std (between species)": (
+            round(float(np.std(rmsep_pls_por_especie)), 3)
+            if rmsep_pls_por_especie else float("nan")),
+    })
+    rmsep_boxplot: Dict[str, np.ndarray] = {}
+    if rmsep_pls_por_especie:
+        rmsep_boxplot["PLS-R"] = np.array(rmsep_pls_por_especie)
+
+    for nome, _ in modelos:
+        if not yv_pool[nome]:
+            continue
+        Yv_p  = np.concatenate(yv_pool[nome])
+        Yvh_p = np.concatenate(yvh_pool[nome])
+        rmsep_pooled = rmse_flat(Yv_p, Yvh_p)
+        r2_pooled = (float(r2_score(Yv_p, Yvh_p))
+                    if len(np.unique(Yv_p)) > 1 else float("nan"))
+        linhas.append({
+            "Model":         nome,
+            "RMSEP (pooled)": round(rmsep_pooled, 3),
+            "R2val (pooled)": round(r2_pooled, 4),
+            "N species":     len(rmsep_por_especie[nome]),
+            "RMSEP std (between species)": round(
+                float(np.std(rmsep_por_especie[nome])), 3),
+        })
+        rmsep_boxplot[nome] = np.array(rmsep_por_especie[nome])
+
+    df_bench = pd.DataFrame(linhas)
+
+    cam_csv = os.path.join(pasta_execucao(pasta, NOME_TABELAS), "benchmark_regressao.csv")
+    df_bench.to_csv(cam_csv, index=False, sep=";", decimal=",")
+    print(f"  -> {cam_csv}")
+
+    if rmsep_boxplot:
+        fig_benchmark_regressors(rmsep_boxplot, n_especies_ok, cfg, pasta)
+
+    return df_bench

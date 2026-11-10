@@ -1,0 +1,42 @@
+pergunta	lang	esperado
+o que e vip	PT	termo:vip
+o que é VIP?	PT	termo:vip
+meu Q2 deu 0.3 isso é ruim?	PT	duvida:q2_baixo
+por que meu modelo tem acuracia 100%?	PT	duvida:acuracia_perfeita
+acuracia de 100% na validacao cruzada	PT	duvida:acuracia_perfeita
+quantas amostras eu preciso?	PT	duvida:poucas_amostras
+tenho 12 amostras com 3 replicas cada, como validar?	PT	duvida:replicas_vazamento
+o que é RMSECV	PT	termo:rmsecv
+qual a diferença entre RMSECV e RMSEP	PT	termo:rmsecv|termo:rmsep
+meu RMSEP está alto	PT	duvida:erro_previsao_alto
+qual a diferença entre PLS-DA e SIMCA	PT	duvida:plsda_vs_simca
+quando usar OPLS-DA	PT	opcao:opls_da|tecnica:opls_da
+como detectar outliers	PT	duvida:outliers
+amostra fora do modelo T2 alto	PT	duvida:t2_q_altos
+o que significa Q residual	PT	duvida:t2_q_altos
+qual a diferença entre SNV e MSC	PT	duvida:escolha_preproc
+devo usar segunda derivada	PT	duvida:escolha_preproc
+qual janela do savitzky-golay usar	PT	duvida:janela_sg
+o DD-SIMCA rejeitou todas as amostras	PT	duvida:ddsimca_rejeita_puros
+sensibilidade e especificidade baixas no DD-SIMCA	PT	duvida:ddsimca_rejeita_puros
+classes desbalanceadas	PT	duvida:desbalanceamento
+erro: could not convert string to float	PT	erro:GUA-E002
+ValueError: Input contains NaN	PT	erro:GUA-E001
+MemoryError	PT	erro:GUA-E004
+o arquivo .dx não abre	PT	duvida:arquivo_nao_abre
+o modelo funciona em outro equipamento?	PT	duvida:transferencia_calibracao
+transferencia de calibracao	PT	duvida:transferencia_calibracao
+p-valor da permutacao 0.2	PT	duvida:permutacao_nao_significativa
+o que é teste de permutação	PT	termo:permutacao
+meu PCA mostra separação por dia de medida	PT	duvida:efeito_lote
+efeito de lote	PT	duvida:efeito_lote
+como escolher a faixa espectral	PT	duvida:escolha_faixa
+quais variáveis selecionar	PT	duvida:selecao_variaveis
+iPLS	PT	termo:ipls|opcao:ipls_intervalos
+explain RMSEP	EN	termo:rmsep
+what is the difference between PLS-DA and SIMCA	EN	duvida:plsda_vs_simca
+como citar o guaraci	PT	duvida:citar_guaraci
+o modelo está pronto para publicar?	PT	duvida:pronto_para_publicar
+figura de mérito	PT	termo:figuras de merito|tecnica:figuras_de_merito_regressao
+limite de detecção da calibração multivariada	PT	termo:lod|tecnica:figuras_de_merito_regressao|nao_sei
+meu Q2 nao esta ruim, esta otimo: 0.95	PT	nao_sei|termo:q2

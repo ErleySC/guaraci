@@ -1,0 +1,49 @@
+pergunta	lang	esperado
+meu Q2 ficou negativo, por quê?	PT	duvida:q2_baixo
+o R2 de calibração é 0.99 mas a previsão é péssima	PT	duvida:r2_alto_q2_baixo
+quantos componentes PLS devo usar?	PT	duvida:numero_lv
+SNV antes ou depois da derivada?	PT	duvida:escolha_preproc
+tenho uma amostra com Q muito alto	PT	duvida:t2_q_altos
+apareceu um adulterante que não estava no treino	PT	duvida:classe_nova
+o sentinela disparou alarme de deriva	PT	duvida:deriva_sentinela
+devo usar ANOVA ou Kruskal-Wallis?	PT	duvida:quando_kruskal|duvida:anova_vs_tukey
+o teste de Shapiro rejeitou a normalidade	PT	duvida:shapiro_rejeitou
+o VIP acima de 1 já basta para escolher variáveis?	PT	duvida:vip_maior_que_1
+valores abaixo do LOD no ICP-MS, o que faço?	PT	duvida:censura_icp
+tenho só 8 amostras, dá para modelar?	PT	duvida:poucas_amostras
+as leituras repetidas da mesma garrafa estão no teste	PT	duvida:replicas_vazamento
+como quantificar o teor de adulterante?	PT	duvida:como_quantificar
+quero separar as espécies de óleo	PT	duvida:como_classificar|nao_sei
+como aplicar o modelo salvo em amostras novas?	PT	duvida:como_prever
+o modelo acertou todas as amostras do teste	PT	duvida:acuracia_perfeita
+SIMCA ou PLS-DA para detectar fraude?	PT	duvida:plsda_vs_simca
+as amostras puras estão sendo rejeitadas pelo DD-SIMCA	PT	duvida:ddsimca_rejeita_puros
+uma amostra está muito diferente das outras no PCA	PT	duvida:outliers|duvida:t2_q_altos
+as amostras do segundo dia ficaram separadas no gráfico de scores	PT	duvida:efeito_lote
+uma classe tem 50 amostras e a outra 10	PT	duvida:desbalanceamento
+trocamos de espectrômetro, preciso recalibrar?	PT	duvida:transferencia_calibracao
+o erro de previsão ficou muito alto	PT	duvida:erro_previsao_alto
+a permutação deu p = 0.3	PT	duvida:permutacao_nao_significativa
+qual o tamanho ideal da janela do SG?	PT	duvida:janela_sg
+o Guaraci não lê meus arquivos .spc	PT	duvida:arquivo_nao_abre
+posso colocar esse resultado no meu artigo?	PT	duvida:pronto_para_publicar
+como faço a citação do software?	PT	duvida:citar_guaraci
+devo cortar a região de 4000 a 4500?	PT	duvida:escolha_faixa|nao_sei
+vale a pena usar seleção de variáveis?	PT	duvida:selecao_variaveis
+o que é validação cruzada?	PT	termo:validacao cruzada
+o que é holdout?	PT	termo:holdout
+o que significa RPD?	PT	termo:rpd
+o que é o critério de Wold?	PT	termo:criterio de wold
+ValueError: Cannot have number of splits n_splits=5 greater than the number of groups: 3.	PT	erro:GUA-E005
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9	PT	erro:GUA-E003
+PermissionError: [Errno 13] Permission denied: 'resultados.xlsx'	PT	erro:GUA-E012
+GUA-E006	PT	erro:GUA-E006
+qual a capital da França?	PT	nao_sei
+como faço um bolo?	PT	nao_sei
+meu Q2 não é baixo, é 0.92	PT	nao_sei|termo:q2
+my Q2 is negative	EN	duvida:q2_baixo
+how do I detect outliers?	EN	duvida:outliers
+is there a batch effect?	EN	duvida:efeito_lote
+my classes are unbalanced	EN	duvida:desbalanceamento
+what is the RMSECV?	EN	termo:rmsecv
+can I use the model on a new instrument?	EN	duvida:transferencia_calibracao

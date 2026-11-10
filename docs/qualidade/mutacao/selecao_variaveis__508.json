@@ -1,0 +1,43 @@
+{
+ "modulo": "src/guaraci/selecao_variaveis.py",
+ "total": 2,
+ "mortos_no_total": 2,
+ "contagem": {
+  "morto": 2
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_lacunas_selecao_variaveis.py",
+  "tests/test_selecao_variaveis_aviso.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 508,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_selecao_variaveis.py::test_spa_cadeia_devolve_exatamente_n_vars_max_variaveis_distintas",
+   "trecho": "for _ in range(n_vars_max - 1):         # n_vars_max <= p: nunca falta candidata",
+   "segundos": 3.5,
+   "no": 2054,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 508,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_selecao_variaveis.py::test_spa_cadeia_devolve_exatamente_n_vars_max_variaveis_distintas",
+   "trecho": "for _ in range(n_vars_max - 1):         # n_vars_max <= p: nunca falta candidata",
+   "segundos": 3.6,
+   "no": 3816,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

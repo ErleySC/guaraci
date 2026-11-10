@@ -1,0 +1,112 @@
+{
+ "modulo": "src/guaraci/dados_io.py",
+ "total": 7,
+ "mortos_no_total": 7,
+ "contagem": {
+  "morto": 7
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_dados_io_jcamp.py",
+  "tests/test_dados_io_parsing.py",
+  "tests/test_lacunas_dados_io.py",
+  "tests/test_lacunas_guaraci_ajuda_checklist.py",
+  "tests/test_lacunas_guaraci_comandos.py",
+  "tests/test_lacunas_guaraci_execucao.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 317,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[1-True]",
+   "trecho": "if os.environ.get(\"GUARACI_APLICAR_CORRECOES_LOCAIS\", \"\").strip().lower() in (\"1\", \"true\", \"yes\", \"on\", \"sim\"):",
+   "segundos": 5.0,
+   "no": 801,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 317,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[1-True]",
+   "trecho": "if os.environ.get(\"GUARACI_APLICAR_CORRECOES_LOCAIS\", \"\").strip().lower() in (\"1\", \"true\", \"yes\", \"on\", \"sim\"):",
+   "segundos": 5.1,
+   "no": 197,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 318,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[1-True]",
+   "trecho": "definir_correcoes_locais(True)",
+   "segundos": 4.4,
+   "no": 3734,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 319,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[1-True]",
+   "trecho": "return True",
+   "segundos": 5.0,
+   "no": 1938,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 319,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[1-True]",
+   "trecho": "return True",
+   "segundos": 4.9,
+   "no": 803,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 320,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[0-False]",
+   "trecho": "return False",
+   "segundos": 5.1,
+   "no": 804,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 320,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_dados_io.py::test_variavel_de_ambiente_liga_as_correcoes_locais[0-False]",
+   "trecho": "return False",
+   "segundos": 5.0,
+   "no": 198,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

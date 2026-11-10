@@ -1,0 +1,35 @@
+{
+  "_versoes": {
+    "numpy": "2.4.6",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.0"
+  },
+  "valores": {
+    "Accuracy (CV)": 1.0,
+    "Balanced accuracy": 1.0,
+    "Cohen's kappa": 1.0,
+    "DD-SIMCA especificidade Esp_A": 14.3,
+    "DD-SIMCA especificidade Esp_B": 0.0,
+    "DD-SIMCA especificidade Esp_C": 9.5,
+    "DD-SIMCA n_components": 7.0,
+    "DD-SIMCA n_desconhecidos": 5.0,
+    "DModX critical (SIMCA)": 1.1561,
+    "F1 (macro)": 1.0,
+    "Holdout accuracy": 1.0,
+    "Holdout balanced acc": 1.0,
+    "Hotelling T2 (95%)": 12.6333,
+    "N grupos mae_id": 24.0,
+    "N outliers Q": 3.0,
+    "N outliers T2": 0.0,
+    "N samples outside DModX": 14.0,
+    "Optimal LVs": 5.0,
+    "Q-residual (95%)": 7.255e-06,
+    "Q2": 0.9694,
+    "R2X": 0.9923,
+    "R2Y": 0.985,
+    "ROC AUC macro (OvR)": 1.0,
+    "Total classes": 3.0,
+    "Total samples": 72.0,
+    "Total variables": 60.0
+  }
+}

@@ -1,0 +1,30 @@
+{
+ "modulo": "src/guaraci/anova_grupos.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_anova_grupos.py",
+  "tests/test_anova_blindagem.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 64,
+   "operador": "const 0.27",
+   "estado": "morto",
+   "prova": "tests/test_anova_grupos.py::test_games_howell_com_grupo_de_menos_de_6_unidades_avisa_o_erro_por_familia_medido",
+   "trecho": "FWER_MAXIMO_GAMES_HOWELL_PEQUENO = 0.27",
+   "segundos": 181.1,
+   "no": 60,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

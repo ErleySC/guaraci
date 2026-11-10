@@ -1,0 +1,4211 @@
+{
+ "modulo": "src/guaraci/anova_cli.py",
+ "total": 302,
+ "mortos_no_total": 282,
+ "contagem": {
+  "morto": 282,
+  "sobrevivente": 20
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_anova_cli_mutacao.py",
+  "tests/test_anova_cli_e2e.py",
+  "tests/test_anova_cli.py",
+  "tests/test_anova_vip_lacunas.py",
+  "tests/test_anova_nao_parametrico.py"
+ ],
+ "deselecionados": [
+  "tests/test_anova_grupos.py::test_pos_teste_proprio_igual_ao_tukey_hsd_do_scipy",
+  "tests/test_anova_cli.py::test_pseudo_replicacao_infla_a_significancia_se_a_unidade_for_a_linha"
+ ],
+ "sobreviventes": [
+  {
+   "linha": 281,
+   "operador": "And<->Or",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if i in col and j in col:",
+   "segundos": 51.8,
+   "no": 1934,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 48.7,
+   "no": 5964,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Gt->Lt",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 49.4,
+   "no": 5964,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Lt->LtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 51.6,
+   "no": 5802,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 461,
+   "operador": "const False",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.boxplot(dados, showfliers=False)",
+   "segundos": 53.3,
+   "no": 2243,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 462,
+   "operador": "const 0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "rng = np.random.default_rng(0)",
+   "segundos": 49.9,
+   "no": 1446,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "Add->Sub",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 49.9,
+   "no": 2252,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 14",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 50.4,
+   "no": 3180,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 3",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 49.6,
+   "no": 3183,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 466,
+   "operador": "const 30",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_xticklabels(r.grupos, rotation=30, ha=\"right\", fontsize=8)",
+   "segundos": 49.9,
+   "no": 2267,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 466,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_xticklabels(r.grupos, rotation=30, ha=\"right\", fontsize=8)",
+   "segundos": 50.1,
+   "no": 2269,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 474,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.text(i, float(np.max(dados[i - 1])) + folga, letras[n], ha=\"center\", va=\"bottom\", fontsize=9)",
+   "segundos": 50.2,
+   "no": 4153,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 475,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_title(f\"{nome}  ({_metodo_texto(r)})\", fontsize=9)",
+   "segundos": 52.1,
+   "no": 2305,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 476,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_ylabel(_m(\"fig_caixas\"), fontsize=8)",
+   "segundos": 49.0,
+   "no": 2310,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 479,
+   "operador": "const 12",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.scatter(d[\"qq_teorico\"], d[\"qq_amostral\"], s=12, color=\"#4C72B0\")",
+   "segundos": 50.8,
+   "no": 3238,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 481,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.plot(lim, lim, color=\"#999999\", lw=1)",
+   "segundos": 51.4,
+   "no": 3251,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 482,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.set_title(_m(\"fig_qq\"), fontsize=9)",
+   "segundos": 52.0,
+   "no": 3256,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 483,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.set_xlabel(_m(\"fig_teo\"), fontsize=8)",
+   "segundos": 51.2,
+   "no": 3261,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 484,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.set_ylabel(_m(\"fig_res\"), fontsize=8)",
+   "segundos": 50.1,
+   "no": 3266,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 48.7,
+   "no": 6027,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ],
+ "todos": [
+  {
+   "linha": 45,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[recomendar-]",
+   "trecho": "return METODO_PADRAO_COM_BLOCO if com_bloco else METODO_PADRAO",
+   "segundos": 19.3,
+   "no": 295,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return METODO_PADRAO_COM_BLOCO if com_bloco else METODO_PADRAO",
+   "segundos": 7.8,
+   "no": 73,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 48,
+   "operador": "const 30",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_mais_de_30_respostas_limita_as_figuras",
+   "trecho": "_MAX_FIGURAS = 30",
+   "segundos": 50.8,
+   "no": 76,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "texto = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 8.0,
+   "no": 1067,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "texto = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 11.6,
+   "no": 1784,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "texto = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 11.3,
+   "no": 1781,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 162,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "texto = par[1] if _ESTADO[\"lang\"] == \"en\" else par[0]",
+   "segundos": 11.1,
+   "no": 449,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 163,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "return texto.format(**kw) if kw else texto",
+   "segundos": 9.0,
+   "no": 450,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 163,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return texto.format(**kw) if kw else texto",
+   "segundos": 10.5,
+   "no": 95,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 172,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "if _ESTADO[\"lang\"] == \"en\":",
+   "segundos": 28.2,
+   "no": 457,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 172,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "if _ESTADO[\"lang\"] == \"en\":",
+   "segundos": 26.0,
+   "no": 101,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 174,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[en-fewer",
+   "trecho": "if trecho in msg:",
+   "segundos": 28.4,
+   "no": 1800,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 174,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[en-fewer",
+   "trecho": "if trecho in msg:",
+   "segundos": 27.7,
+   "no": 1082,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 175,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[en-fewer",
+   "trecho": "return _Uso(en)",
+   "segundos": 27.6,
+   "no": 1801,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 176,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_erro_do_nucleo_desconhecido_em_ingles_e_marcado_como_portugues",
+   "trecho": "return _Uso(f\"refused by the calculation core (message in Portuguese): {msg}\")",
+   "segundos": 33.3,
+   "no": 459,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 177,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "return _Uso(msg)",
+   "segundos": 28.6,
+   "no": 102,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not os.path.isfile(caminho):",
+   "segundos": 7.0,
+   "no": 106,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 182,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not os.path.isfile(caminho):",
+   "segundos": 10.7,
+   "no": 463,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 183,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_ajuda_e_tabela_ausente_nos_dois_idiomas",
+   "trecho": "raise _Uso(_erros.arquivo_nao_encontrado(caminho, _ESTADO[\"lang\"]))",
+   "segundos": 27.9,
+   "no": 464,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 186,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_rotulo_de_grupo_NA_nao_vira_valor_ausente",
+   "trecho": "keep_default_na=False)",
+   "segundos": 12.6,
+   "no": 2789,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 188,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_arquivo_vazio_e_celula_vazia",
+   "trecho": "raise _Uso(_erros.leitura_csv(caminho, e, _ESTADO[\"lang\"])) from e",
+   "segundos": 30.6,
+   "no": 1093,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 190,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return df",
+   "segundos": 5.7,
+   "no": 109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 194,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if nome not in df.columns:",
+   "segundos": 8.8,
+   "no": 473,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 194,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if nome not in df.columns:",
+   "segundos": 6.4,
+   "no": 111,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 195,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "raise _Uso(_m(\"coluna\", papel=_m(papel), nome=nome, cols=\", \".join(map(str, df.columns))))",
+   "segundos": 30.9,
+   "no": 474,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 196,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return df[nome]",
+   "segundos": 5.8,
+   "no": 112,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 202,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli.py::test_valor_nao_numerico_aponta_coluna_e_linha",
+   "trecho": "for i, v in enumerate(serie, start=2):       # linha 1 = cabecalho",
+   "segundos": 26.8,
+   "no": 1840,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 204,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if t == \"\":",
+   "segundos": 7.0,
+   "no": 1119,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 204,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if t == \"\":",
+   "segundos": 6.2,
+   "no": 484,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 206,
+   "operador": "Continue->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_arquivo_vazio_e_celula_vazia",
+   "trecho": "continue",
+   "segundos": 29.9,
+   "no": 1121,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 210,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "raise _Uso(_m(\"nao_numerico\", nome=nome, i=i, v=str(v))) from None",
+   "segundos": 27.8,
+   "no": 1851,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 211,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return np.asarray(saida, dtype=float)",
+   "segundos": 7.6,
+   "no": 117,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 215,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "p = argparse.ArgumentParser(prog=\"guaraci anova\", add_help=False, exit_on_error=False)",
+   "segundos": 9.3,
+   "no": 1859,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 215,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "p = argparse.ArgumentParser(prog=\"guaraci anova\", add_help=False, exit_on_error=False)",
+   "segundos": 19.9,
+   "no": 1860,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 223,
+   "operador": "const 0.05",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "p.add_argument(\"--alpha\", type=float, default=0.05)",
+   "segundos": 8.7,
+   "no": 1883,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 229,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return p",
+   "segundos": 7.0,
+   "no": 133,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 274,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_alem_de_26_colunas_voltam_ao_a",
+   "trecho": "ordem = sorted(nomes, key=lambda n: (-medias[n], n))",
+   "segundos": 8.3,
+   "no": 3761,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 275,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "sig = {frozenset((c[\"a\"], c[\"b\"])) for c in comparacoes if c[\"p_ajustado\"] < alpha}",
+   "segundos": 5.0,
+   "no": 1917,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 275,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_letras_p_igual_a_alpha_nao_e_significativo",
+   "trecho": "sig = {frozenset((c[\"a\"], c[\"b\"])) for c in comparacoes if c[\"p_ajustado\"] < alpha}",
+   "segundos": 31.0,
+   "no": 1917,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 281,
+   "operador": "And<->Or",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if i in col and j in col:",
+   "segundos": 51.8,
+   "no": 1934,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 281,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if i in col and j in col:",
+   "segundos": 4.8,
+   "no": 2863,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 281,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if i in col and j in col:",
+   "segundos": 5.2,
+   "no": 2864,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 281,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if i in col and j in col:",
+   "segundos": 5.0,
+   "no": 1201,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 282,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "novas.append(col - {i})",
+   "segundos": 4.9,
+   "no": 3781,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 283,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "novas.append(col - {j})",
+   "segundos": 4.9,
+   "no": 3783,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 5.0,
+   "no": 2871,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 4.8,
+   "no": 5555,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 5.1,
+   "no": 5803,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 4.8,
+   "no": 5963,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Gt->GtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 48.7,
+   "no": 5964,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Gt->Lt",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 49.4,
+   "no": 5964,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 4.9,
+   "no": 5802,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "Lt->LtE",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 51.6,
+   "no": 5802,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 4.8,
+   "no": 5806,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 287,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "if c and not any(c < o or (c == o and k > idx) for idx, o in enumerate(novas) if idx != k)]",
+   "segundos": 5.1,
+   "no": 3793,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 290,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "return {n: \"\".join(letras[k % 26] for k, c in enumerate(colunas) if n in c) for n in nomes}",
+   "segundos": 5.0,
+   "no": 3802,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 290,
+   "operador": "Mod->Mult",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "return {n: \"\".join(letras[k % 26] for k, c in enumerate(colunas) if n in c) for n in nomes}",
+   "segundos": 5.1,
+   "no": 3798,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 290,
+   "operador": "const 26",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_alem_de_26_colunas_voltam_ao_a",
+   "trecho": "return {n: \"\".join(letras[k % 26] for k, c in enumerate(colunas) if n in c) for n in nomes}",
+   "segundos": 7.3,
+   "no": 4610,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 290,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_letras_compartilhadas_se_e_so_se_o_par_nao_difere[0]",
+   "trecho": "return {n: \"\".join(letras[k % 26] for k, c in enumerate(colunas) if n in c) for n in nomes}",
+   "segundos": 4.9,
+   "no": 147,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 297,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if resultados:",
+   "segundos": 6.2,
+   "no": 151,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "n_boot = 0 if args.sem_bootstrap else 500",
+   "segundos": 10.2,
+   "no": 1254,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "const 500",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "n_boot = 0 if args.sem_bootstrap else 500",
+   "segundos": 9.1,
+   "no": 1255,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 314,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "n_boot = 0 if args.sem_bootstrap else 500",
+   "segundos": 7.3,
+   "no": 566,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 323,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if metodo == \"recomendar\":",
+   "segundos": 6.9,
+   "no": 1267,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 323,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if metodo == \"recomendar\":",
+   "segundos": 8.8,
+   "no": 572,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 324,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_cada_metodo_gera_tabelas_relatorios_e_figura[recomendar-]",
+   "trecho": "metodo = metodo_padrao(bloco is not None)",
+   "segundos": 22.3,
+   "no": 2951,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 325,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_nao_troca_o_padrao_e_diz_o_que_foi_sugerido",
+   "trecho": "if bloco is not None:",
+   "segundos": 24.6,
+   "no": 2031,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 325,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_nao_troca_o_padrao_e_diz_o_que_foi_sugerido",
+   "trecho": "if bloco is not None:",
+   "segundos": 25.9,
+   "no": 1269,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 327,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_com_variancias_1_para_10_diz_a_razao_e_roda_games_howell",
+   "trecho": "elif nome in rec and rec[nome][\"metodo\"] != metodo:",
+   "segundos": 23.9,
+   "no": 2956,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 327,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_nao_troca_o_padrao_e_diz_o_que_foi_sugerido",
+   "trecho": "elif nome in rec and rec[nome][\"metodo\"] != metodo:",
+   "segundos": 26.8,
+   "no": 3849,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 327,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_com_variancias_1_para_10_diz_a_razao_e_roda_games_howell",
+   "trecho": "elif nome in rec and rec[nome][\"metodo\"] != metodo:",
+   "segundos": 24.8,
+   "no": 3850,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 327,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_com_variancias_1_para_10_diz_a_razao_e_roda_games_howell",
+   "trecho": "elif nome in rec and rec[nome][\"metodo\"] != metodo:",
+   "segundos": 24.9,
+   "no": 2033,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "elif nome in rec and args.metodo_pedido is not None and args.metodo != \"auto\" and rec[nome][\"metodo\"] != args.metodo:",
+   "segundos": 6.4,
+   "no": 2034,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_metodo_pedido_diferente_do_recomendado_e_mantido_e_avisado",
+   "trecho": "elif nome in rec and args.metodo_pedido is not None and args.metodo != \"auto\" and rec[nome][\"metodo\"] != args.metodo:",
+   "segundos": 27.1,
+   "no": 2959,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_metodo_pedido_diferente_do_recomendado_e_mantido_e_avisado",
+   "trecho": "elif nome in rec and args.metodo_pedido is not None and args.metodo != \"auto\" and rec[nome][\"metodo\"] != args.metodo:",
+   "segundos": 25.7,
+   "no": 2960,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "elif nome in rec and args.metodo_pedido is not None and args.metodo != \"auto\" and rec[nome][\"metodo\"] != args.metodo:",
+   "segundos": 7.6,
+   "no": 2961,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_metodo_pedido_diferente_do_recomendado_e_mantido_e_avisado",
+   "trecho": "elif nome in rec and args.metodo_pedido is not None and args.metodo != \"auto\" and rec[nome][\"metodo\"] != args.metodo:",
+   "segundos": 29.2,
+   "no": 2962,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 330,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "elif nome in rec and args.metodo_pedido is not None and args.metodo != \"auto\" and rec[nome][\"metodo\"] != args.metodo:",
+   "segundos": 7.7,
+   "no": 1270,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 335,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if metodo == \"kruskal-dunn\":",
+   "segundos": 7.5,
+   "no": 2038,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 335,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if metodo == \"kruskal-dunn\":",
+   "segundos": 8.8,
+   "no": 1272,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 343,
+   "operador": "Continue->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "continue",
+   "segundos": 29.0,
+   "no": 2043,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 347,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return {\"resultados\": resultados, \"recusadas\": recusadas, \"diag\": diag, \"rec\": rec,",
+   "segundos": 7.4,
+   "no": 164,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 349,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "\"correcao\": (\"Tukey/Games-Howell/Dunn dentro de cada resposta; \"",
+   "segundos": 10.5,
+   "no": 1293,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 350,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "\"Benjamini-Hochberg (FDR) entre respostas\") if _ESTADO[\"lang\"] == \"pt\" else",
+   "segundos": 9.5,
+   "no": 2060,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 356,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "return hasattr(r, \"H\")",
+   "segundos": 8.0,
+   "no": 167,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 360,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return \"Kruskal-Wallis\" if _eh_kruskal(r) else r.metodo",
+   "segundos": 9.8,
+   "no": 585,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 360,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return \"Kruskal-Wallis\" if _eh_kruskal(r) else r.metodo",
+   "segundos": 7.6,
+   "no": 170,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 364,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return f\"Dunn ({r.ajuste})\" if _eh_kruskal(r) else r.pos_teste",
+   "segundos": 8.0,
+   "no": 588,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 364,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return f\"Dunn ({r.ajuste})\" if _eh_kruskal(r) else r.pos_teste",
+   "segundos": 7.5,
+   "no": 173,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 371,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "os.makedirs(os.path.join(pasta, \"tabelas\"), exist_ok=True)",
+   "segundos": 10.0,
+   "no": 2090,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 378,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "\"n_unidades\": r.n_unidades, \"F\": nan if kw else r.F, \"p\": r.p, \"p_fdr\": r.p_fdr,",
+   "segundos": 9.5,
+   "no": 3029,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 379,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "\"eta2\": nan if kw else r.eta2,",
+   "segundos": 8.7,
+   "no": 3032,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 380,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"eta2_ic95_inf\": nan if kw else r.eta2_ic95[0],",
+   "segundos": 7.9,
+   "no": 4710,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 380,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"eta2_ic95_inf\": nan if kw else r.eta2_ic95[0],",
+   "segundos": 7.4,
+   "no": 3033,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 381,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"eta2_ic95_sup\": nan if kw else r.eta2_ic95[1],",
+   "segundos": 7.7,
+   "no": 4715,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 381,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"eta2_ic95_sup\": nan if kw else r.eta2_ic95[1],",
+   "segundos": 8.0,
+   "no": 3034,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 382,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "\"omega2\": nan if kw else r.omega2, \"levene_p\": nan if kw else r.levene_p,",
+   "segundos": 8.1,
+   "no": 3035,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 382,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "\"omega2\": nan if kw else r.omega2, \"levene_p\": nan if kw else r.levene_p,",
+   "segundos": 8.9,
+   "no": 3036,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 383,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"avisos\": \" | \".join(list(r.avisos) + out[\"notas\"].get(nome, [])),",
+   "segundos": 8.6,
+   "no": 3933,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 384,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"H\": r.H if kw else nan, \"epsilon2\": r.epsilon2 if kw else nan,",
+   "segundos": 8.4,
+   "no": 3038,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 384,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"H\": r.H if kw else nan, \"epsilon2\": r.epsilon2 if kw else nan,",
+   "segundos": 8.4,
+   "no": 3039,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 389,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"ic95_inf\": nan if kw else c[\"ic95\"][0], \"ic95_sup\": nan if kw else c[\"ic95\"][1],",
+   "segundos": 6.7,
+   "no": 5254,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 389,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"ic95_inf\": nan if kw else c[\"ic95\"][0], \"ic95_sup\": nan if kw else c[\"ic95\"][1],",
+   "segundos": 6.7,
+   "no": 5259,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 389,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"ic95_inf\": nan if kw else c[\"ic95\"][0], \"ic95_sup\": nan if kw else c[\"ic95\"][1],",
+   "segundos": 8.1,
+   "no": 3961,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 389,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "\"ic95_inf\": nan if kw else c[\"ic95\"][0], \"ic95_sup\": nan if kw else c[\"ic95\"][1],",
+   "segundos": 6.2,
+   "no": 3962,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 393,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "pd.DataFrame(linhas).to_csv(t1, index=False, sep=\";\", decimal=\",\")",
+   "segundos": 8.4,
+   "no": 2122,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 394,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "pd.DataFrame(comps).to_csv(t2, index=False, sep=\";\", decimal=\",\")",
+   "segundos": 17.2,
+   "no": 2128,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 395,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return [t1, t2]",
+   "segundos": 7.3,
+   "no": 185,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 399,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_linha_de_premissas_mostra_shapiro_ou_na",
+   "trecho": "sh = \"n/a\" if d[\"shapiro_p\"] is None else f\"{d['shapiro_p']:.3g}\"",
+   "segundos": 10.7,
+   "no": 1363,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 399,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_linha_de_premissas_mostra_shapiro_ou_na",
+   "trecho": "sh = \"n/a\" if d[\"shapiro_p\"] is None else f\"{d['shapiro_p']:.3g}\"",
+   "segundos": 9.7,
+   "no": 616,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 400,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return _m(\"premissas\", r=d[\"razao_variancias\"], bf=d[\"brown_forsythe_p\"], sh=sh,",
+   "segundos": 7.3,
+   "no": 189,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 408,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "usou_kw = False",
+   "segundos": 9.0,
+   "no": 627,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 410,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "sig = _m(\"dif\") if (r.p_fdr is not None and r.p_fdr < args.alpha) else _m(\"sem_dif\")",
+   "segundos": 7.7,
+   "no": 2168,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 410,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "sig = _m(\"dif\") if (r.p_fdr is not None and r.p_fdr < args.alpha) else _m(\"sem_dif\")",
+   "segundos": 8.1,
+   "no": 3095,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 410,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "sig = _m(\"dif\") if (r.p_fdr is not None and r.p_fdr < args.alpha) else _m(\"sem_dif\")",
+   "segundos": 8.1,
+   "no": 3096,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 410,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "sig = _m(\"dif\") if (r.p_fdr is not None and r.p_fdr < args.alpha) else _m(\"sem_dif\")",
+   "segundos": 23.1,
+   "no": 3096,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 410,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "sig = _m(\"dif\") if (r.p_fdr is not None and r.p_fdr < args.alpha) else _m(\"sem_dif\")",
+   "segundos": 7.9,
+   "no": 1387,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 411,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if _eh_kruskal(r):",
+   "segundos": 10.5,
+   "no": 631,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 412,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "usou_kw = True",
+   "segundos": 8.0,
+   "no": 2174,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 416,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "if c[\"p_ajustado\"] < args.alpha:",
+   "segundos": 8.6,
+   "no": 3109,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 416,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "if c[\"p_ajustado\"] < args.alpha:",
+   "segundos": 23.3,
+   "no": 3109,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 416,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "if c[\"p_ajustado\"] < args.alpha:",
+   "segundos": 9.6,
+   "no": 2178,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 422,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_aviso_de_variancias_desiguais_so_aparece_quando_o_levene_rejeita",
+   "trecho": "if r.levene_p is not None and r.levene_p < args.alpha:",
+   "segundos": 13.1,
+   "no": 2180,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 422,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_aviso_de_variancias_desiguais_so_aparece_quando_o_levene_rejeita",
+   "trecho": "if r.levene_p is not None and r.levene_p < args.alpha:",
+   "segundos": 12.5,
+   "no": 3114,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 422,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_aviso_de_variancias_desiguais_so_aparece_quando_o_levene_rejeita",
+   "trecho": "if r.levene_p is not None and r.levene_p < args.alpha:",
+   "segundos": 10.1,
+   "no": 3115,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 422,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "if r.levene_p is not None and r.levene_p < args.alpha:",
+   "segundos": 21.1,
+   "no": 3115,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 422,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_aviso_de_variancias_desiguais_so_aparece_quando_o_levene_rejeita",
+   "trecho": "if r.levene_p is not None and r.levene_p < args.alpha:",
+   "segundos": 11.5,
+   "no": 1393,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 423,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_aviso_de_variancias_desiguais_so_aparece_quando_o_levene_rejeita",
+   "trecho": "L.append(\"    \" + _m(\"var_desig\", p=r.levene_p, pos=r.pos_teste))",
+   "segundos": 8.9,
+   "no": 4068,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 425,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "if c[\"p_ajustado\"] < args.alpha:",
+   "segundos": 9.7,
+   "no": 3120,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 425,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "if c[\"p_ajustado\"] < args.alpha:",
+   "segundos": 21.8,
+   "no": 3120,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 425,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "if c[\"p_ajustado\"] < args.alpha:",
+   "segundos": 10.0,
+   "no": 2184,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 428,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_com_variancias_1_para_10_diz_a_razao_e_roda_games_howell",
+   "trecho": "if nome in out[\"diag\"]:",
+   "segundos": 25.6,
+   "no": 1395,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 428,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_recomendar_com_variancias_1_para_10_diz_a_razao_e_roda_games_howell",
+   "trecho": "if nome in out[\"diag\"]:",
+   "segundos": 24.7,
+   "no": 632,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 429,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "L.append(\"    \" + _linha_premissas(out[\"diag\"][nome]))",
+   "segundos": 6.8,
+   "no": 3127,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 430,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "L.append(\"    \" + _m(\"recomendado\", r=out[\"rec\"][nome][\"razao\"]))",
+   "segundos": 6.5,
+   "no": 3129,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 434,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "L.append(\"    \" + _m(\"aviso\", a=a))",
+   "segundos": 7.4,
+   "no": 3138,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 436,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_resposta_recusada_aparece_como_nao_testada_no_resumo_e_no_relatorio",
+   "trecho": "L.append(\"- \" + _m(\"nao_testada\", n=nome, m=motivo))",
+   "segundos": 31.0,
+   "no": 2204,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 438,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "if usou_kw:",
+   "segundos": 7.2,
+   "no": 198,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 442,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return \"\\n\".join(L)",
+   "segundos": 7.5,
+   "no": 201,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 448,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "return re.sub(r\"[^A-Za-z0-9]+\", \"_\", nome).strip(\"_\") or \"resposta\"",
+   "segundos": 12.8,
+   "no": 646,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 448,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "return re.sub(r\"[^A-Za-z0-9]+\", \"_\", nome).strip(\"_\") or \"resposta\"",
+   "segundos": 11.4,
+   "no": 204,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 457,
+   "operador": "const 3.8",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "fig = Figure(figsize=(9.0, 3.8))",
+   "segundos": 10.9,
+   "no": 3161,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 457,
+   "operador": "const 9.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "fig = Figure(figsize=(9.0, 3.8))",
+   "segundos": 10.9,
+   "no": 3160,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 459,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax = fig.add_subplot(1, 2, 1)",
+   "segundos": 11.5,
+   "no": 1435,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 459,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax = fig.add_subplot(1, 2, 1)",
+   "segundos": 10.6,
+   "no": 1437,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 459,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax = fig.add_subplot(1, 2, 1)",
+   "segundos": 15.7,
+   "no": 1436,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 460,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "dados = [y_u[g_u == n] for n in r.grupos]",
+   "segundos": 11.4,
+   "no": 2236,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 461,
+   "operador": "const False",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.boxplot(dados, showfliers=False)",
+   "segundos": 53.3,
+   "no": 2243,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 462,
+   "operador": "const 0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "rng = np.random.default_rng(0)",
+   "segundos": 49.9,
+   "no": 1446,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 463,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "for i, v in enumerate(dados, start=1):",
+   "segundos": 9.4,
+   "no": 2250,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "Add->Sub",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 49.9,
+   "no": 2252,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 0.12",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 11.3,
+   "no": 4120,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 0.12",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 10.5,
+   "no": 4865,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 0.7",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 10.4,
+   "no": 3182,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 14",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 50.4,
+   "no": 3180,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "const 3",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 49.6,
+   "no": 3183,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 464,
+   "operador": "remove USub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax.scatter(i + rng.uniform(-0.12, 0.12, len(v)), v, s=14, color=\"#4C72B0\", alpha=0.7, zorder=3)",
+   "segundos": 11.2,
+   "no": 4119,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 465,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "ax.set_xticks(range(1, len(dados) + 1))",
+   "segundos": 9.7,
+   "no": 2262,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 465,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "ax.set_xticks(range(1, len(dados) + 1))",
+   "segundos": 9.1,
+   "no": 2261,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 465,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "ax.set_xticks(range(1, len(dados) + 1))",
+   "segundos": 10.0,
+   "no": 3188,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 466,
+   "operador": "const 30",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_xticklabels(r.grupos, rotation=30, ha=\"right\", fontsize=8)",
+   "segundos": 49.9,
+   "no": 2267,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 466,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_xticklabels(r.grupos, rotation=30, ha=\"right\", fontsize=8)",
+   "segundos": 50.1,
+   "no": 2269,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 467,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "medias = ({n: float(np.mean(y_u[g_u == n])) for n in r.grupos})",
+   "segundos": 10.9,
+   "no": 4127,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 468,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "letras = letras_de_grupos(r.grupos, medias, r.comparacoes, alpha) if r.comparacoes else {}",
+   "segundos": 10.8,
+   "no": 677,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 471,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "folga = (topo - base) * 0.06      # amplitude > 0: dados constantes sao recusados antes",
+   "segundos": 11.9,
+   "no": 683,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 471,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "folga = (topo - base) * 0.06      # amplitude > 0: dados constantes sao recusados antes",
+   "segundos": 14.5,
+   "no": 1476,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 471,
+   "operador": "const 0.06",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "folga = (topo - base) * 0.06      # amplitude > 0: dados constantes sao recusados antes",
+   "segundos": 10.9,
+   "no": 1478,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 472,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "for i, n in enumerate(r.grupos, start=1):",
+   "segundos": 11.9,
+   "no": 2296,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 473,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "if letras:",
+   "segundos": 11.5,
+   "no": 686,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 474,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax.text(i, float(np.max(dados[i - 1])) + folga, letras[n], ha=\"center\", va=\"bottom\", fontsize=9)",
+   "segundos": 9.6,
+   "no": 3218,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 474,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "ax.text(i, float(np.max(dados[i - 1])) + folga, letras[n], ha=\"center\", va=\"bottom\", fontsize=9)",
+   "segundos": 10.7,
+   "no": 5667,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 474,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "ax.text(i, float(np.max(dados[i - 1])) + folga, letras[n], ha=\"center\", va=\"bottom\", fontsize=9)",
+   "segundos": 9.8,
+   "no": 5889,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 474,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.text(i, float(np.max(dados[i - 1])) + folga, letras[n], ha=\"center\", va=\"bottom\", fontsize=9)",
+   "segundos": 50.2,
+   "no": 4153,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 475,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_title(f\"{nome}  ({_metodo_texto(r)})\", fontsize=9)",
+   "segundos": 52.1,
+   "no": 2305,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 476,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ax.set_ylabel(_m(\"fig_caixas\"), fontsize=8)",
+   "segundos": 49.0,
+   "no": 2310,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 477,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "if d is not None:",
+   "segundos": 10.5,
+   "no": 689,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 477,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "if d is not None:",
+   "segundos": 11.8,
+   "no": 228,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 478,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_segunda_execucao_na_mesma_pasta_e_layout_dos_dois_paineis",
+   "trecho": "bx = fig.add_subplot(1, 2, 2)",
+   "segundos": 20.7,
+   "no": 2314,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 478,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "bx = fig.add_subplot(1, 2, 2)",
+   "segundos": 9.6,
+   "no": 2316,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 478,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_segunda_execucao_na_mesma_pasta_e_layout_dos_dois_paineis",
+   "trecho": "bx = fig.add_subplot(1, 2, 2)",
+   "segundos": 21.5,
+   "no": 2315,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 479,
+   "operador": "const 12",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.scatter(d[\"qq_teorico\"], d[\"qq_amostral\"], s=12, color=\"#4C72B0\")",
+   "segundos": 50.8,
+   "no": 3238,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 481,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.plot(lim, lim, color=\"#999999\", lw=1)",
+   "segundos": 51.4,
+   "no": 3251,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 482,
+   "operador": "const 9",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.set_title(_m(\"fig_qq\"), fontsize=9)",
+   "segundos": 52.0,
+   "no": 3256,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 483,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.set_xlabel(_m(\"fig_teo\"), fontsize=8)",
+   "segundos": 51.2,
+   "no": 3261,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 484,
+   "operador": "const 8",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "bx.set_ylabel(_m(\"fig_res\"), fontsize=8)",
+   "segundos": 50.1,
+   "no": 3266,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 486,
+   "operador": "const 150",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "fig.savefig(caminho, dpi=150)",
+   "segundos": 9.8,
+   "no": 2345,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 487,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "return caminho",
+   "segundos": 10.4,
+   "no": 231,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 494,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_segunda_execucao_na_mesma_pasta_e_layout_dos_dois_paineis",
+   "trecho": "os.makedirs(os.path.join(pasta, \"figuras\"), exist_ok=True)",
+   "segundos": 22.6,
+   "no": 2360,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 498,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "mant = np.asarray([str(x) in r.grupos for x in g_u])",
+   "segundos": 9.7,
+   "no": 3299,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 501,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "return feitas",
+   "segundos": 10.7,
+   "no": 239,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 512,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "usou_kw = False",
+   "segundos": 8.9,
+   "no": 733,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 515,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "usou_kw = usou_kw or kw",
+   "segundos": 7.2,
+   "no": 1560,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 517,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if kw:",
+   "segundos": 7.2,
+   "no": 739,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 527,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "letras = (letras_de_grupos(r.grupos, medias, r.comparacoes, args.alpha)",
+   "segundos": 10.3,
+   "no": 1569,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 529,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "cab = [_m(\"col_grupo\"), _m(\"col_n\"), _m(\"col_posto\") if kw else _m(\"col_media\")]",
+   "segundos": 10.9,
+   "no": 2450,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 530,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "if letras:",
+   "segundos": 10.7,
+   "no": 742,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 532,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "linhas = [[n, str(r.n_por_grupo[n]), f\"{medias[n]:.4g}\"] + ([letras[n]] if letras else [])",
+   "segundos": 7.7,
+   "no": 2455,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 532,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_tabela_de_grupos_do_relatorio_tem_a_letra_na_ultima_coluna",
+   "trecho": "linhas = [[n, str(r.n_por_grupo[n]), f\"{medias[n]:.4g}\"] + ([letras[n]] if letras else [])",
+   "segundos": 23.2,
+   "no": 3388,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 535,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "if letras:",
+   "segundos": 10.8,
+   "no": 745,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 537,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "if r.comparacoes:",
+   "segundos": 11.2,
+   "no": 746,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 539,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "cab2 = [_m(\"col_grupo\") + \" A\", _m(\"col_grupo\") + \" B\",",
+   "segundos": 7.0,
+   "no": 3403,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 539,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "cab2 = [_m(\"col_grupo\") + \" A\", _m(\"col_grupo\") + \" B\",",
+   "segundos": 8.4,
+   "no": 3404,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 540,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "_m(\"col_dif_postos\") if kw else _m(\"col_dif\"), _m(\"col_p_aj\"), _m(\"col_sig\")]",
+   "segundos": 10.5,
+   "no": 3405,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "f\"{c['p_ajustado']:.3g}\", _m(\"sim\") if c[\"p_ajustado\"] < args.alpha else _m(\"nao\")]",
+   "segundos": 21.4,
+   "no": 5011,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "f\"{c['p_ajustado']:.3g}\", _m(\"sim\") if c[\"p_ajustado\"] < args.alpha else _m(\"nao\")]",
+   "segundos": 24.9,
+   "no": 5011,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 542,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alfa_igual_ao_p_observado_nao_e_significativo",
+   "trecho": "f\"{c['p_ajustado']:.3g}\", _m(\"sim\") if c[\"p_ajustado\"] < args.alpha else _m(\"nao\")]",
+   "segundos": 21.3,
+   "no": 4296,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 545,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "if nome in out[\"diag\"]:",
+   "segundos": 11.4,
+   "no": 1584,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 545,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "if nome in out[\"diag\"]:",
+   "segundos": 10.6,
+   "no": 747,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 548,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "for a in out[\"notas\"].get(nome, []) + [_m(\"aviso\", a=x) for x in r.avisos]:",
+   "segundos": 10.3,
+   "no": 1588,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 550,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if nome in figuras:",
+   "segundos": 6.9,
+   "no": 1590,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 550,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if nome in figuras:",
+   "segundos": 6.9,
+   "no": 749,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 551,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "B.append((\"img\", \"../figuras/\" + os.path.basename(figuras[nome]), f\"{_m('figura')}: {nome}\"))",
+   "segundos": 9.2,
+   "no": 4334,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 554,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_kruskal_grava_metodo_e_nao_tem_ic_e_o_resumo_so_cita_a_frase_do_kruskal_quando_usa",
+   "trecho": "if usou_kw:",
+   "segundos": 8.9,
+   "no": 247,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 558,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return B",
+   "segundos": 7.1,
+   "no": 250,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 563,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "os.makedirs(os.path.join(pasta, \"relatorio\"), exist_ok=True)",
+   "segundos": 7.7,
+   "no": 2524,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 566,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "if not args.sem_figuras:",
+   "segundos": 11.7,
+   "no": 256,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 566,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_figura_tem_dois_paineis_pontos_nas_posicoes_certas_letras_acima_do_maximo_e_tamanho_150dpi",
+   "trecho": "if not args.sem_figuras:",
+   "segundos": 13.5,
+   "no": 774,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 568,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_relatorio_md_traz_letras_comparacoes_premissas_e_recomendacao",
+   "trecho": "escritos += list(figuras.values())",
+   "segundos": 19.4,
+   "no": 776,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 569,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_exatamente_30_respostas_gera_30_figuras_sem_aviso_de_limite",
+   "trecho": "if len(out[\"resultados\"]) > _MAX_FIGURAS:",
+   "segundos": 24.1,
+   "no": 1631,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 569,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_anova_vip_lacunas.py::test_mais_de_30_respostas_limita_as_figuras",
+   "trecho": "if len(out[\"resultados\"]) > _MAX_FIGURAS:",
+   "segundos": 50.4,
+   "no": 1631,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 569,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_exatamente_30_respostas_gera_30_figuras_sem_aviso_de_limite",
+   "trecho": "if len(out[\"resultados\"]) > _MAX_FIGURAS:",
+   "segundos": 22.4,
+   "no": 777,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 573,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "fh.write(texto_resumo(out, args, dados) + \"\\n\")",
+   "segundos": 6.3,
+   "no": 2558,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 589,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "fh.write(\"respostas: [\" + \", \".join(args.resposta) + \"]\\n\")",
+   "segundos": 6.8,
+   "no": 2615,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 589,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "fh.write(\"respostas: [\" + \", \".join(args.resposta) + \"]\\n\")",
+   "segundos": 6.5,
+   "no": 3544,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 595,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return escritos",
+   "segundos": 6.9,
+   "no": 265,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 21.0,
+   "no": 3563,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 9.9,
+   "no": 1691,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 10.3,
+   "no": 2636,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 9.2,
+   "no": 2637,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 20.5,
+   "no": 2637,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_tabela_ausente_mostra_o_uso_no_idioma_certo",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 20.7,
+   "no": 4414,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 600,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "if a == \"--idioma\" and i + 1 < len(args_l):",
+   "segundos": 10.9,
+   "no": 810,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 601,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 9.9,
+   "no": 5935,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 601,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 9.7,
+   "no": 6024,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 601,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 11.7,
+   "no": 2638,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 601,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_tabela_ausente_mostra_o_uso_no_idioma_certo",
+   "trecho": "return \"en\" if args_l[i + 1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 21.6,
+   "no": 1692,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 602,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if a.startswith(\"--idioma=\"):",
+   "segundos": 7.2,
+   "no": 811,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 20.6,
+   "no": 5938,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "const 1",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 48.7,
+   "no": 6027,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 20.7,
+   "no": 2641,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 603,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "return \"en\" if a.split(\"=\", 1)[1].lower().startswith(\"en\") else \"pt\"",
+   "segundos": 20.0,
+   "no": 1694,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 604,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_resumo_marca_diferenca_so_quando_ha_e_lista_so_os_pares_significativos",
+   "trecho": "return \"en\" if os.environ.get(\"GUARACI_IDIOMA\", \"\").lower().startswith(\"en\") else \"pt\"",
+   "segundos": 8.5,
+   "no": 812,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 604,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_correcao_declarada_nos_dois_idiomas",
+   "trecho": "return \"en\" if os.environ.get(\"GUARACI_IDIOMA\", \"\").lower().startswith(\"en\") else \"pt\"",
+   "segundos": 10.0,
+   "no": 269,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "args_l = list(sys.argv[1:] if argv is None else argv)",
+   "segundos": 7.8,
+   "no": 2648,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_sem_argv_explicito_le_sys_argv",
+   "trecho": "args_l = list(sys.argv[1:] if argv is None else argv)",
+   "segundos": 19.8,
+   "no": 4428,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 610,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "args_l = list(sys.argv[1:] if argv is None else argv)",
+   "segundos": 7.2,
+   "no": 1701,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 616,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "raise _Uso(_m(\"arg\", e=e)) from e",
+   "segundos": 20.1,
+   "no": 2657,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 617,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.ajuda:",
+   "segundos": 7.5,
+   "no": 823,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 618,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_ajuda_e_tabela_ausente_nos_dois_idiomas",
+   "trecho": "print(_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO)",
+   "segundos": 26.4,
+   "no": 4437,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 618,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_ajuda_e_tabela_ausente_nos_dois_idiomas",
+   "trecho": "print(_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO)",
+   "segundos": 26.6,
+   "no": 3596,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 619,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_sem_argv_explicito_le_sys_argv",
+   "trecho": "return 0",
+   "segundos": 20.0,
+   "no": 2661,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 619,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_sem_argv_explicito_le_sys_argv",
+   "trecho": "return 0",
+   "segundos": 20.6,
+   "no": 1711,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 620,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.tabela:",
+   "segundos": 7.1,
+   "no": 824,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 620,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.tabela:",
+   "segundos": 7.3,
+   "no": 1712,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 621,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 20.3,
+   "no": 3600,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 621,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 19.4,
+   "no": 4442,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 621,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_tabela_ausente_mostra_o_uso_no_idioma_certo",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 20.5,
+   "no": 5100,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 621,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_tabela_ausente_mostra_o_uso_no_idioma_certo",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 19.8,
+   "no": 4444,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 621,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_idioma_sem_valor_no_fim_nao_quebra_e_idioma_igual_funciona",
+   "trecho": "raise _Uso(_m(\"sem_tabela\") + \"\\n\\n\" + (_USO_EN if _ESTADO[\"lang\"] == \"en\" else USO))",
+   "segundos": 20.6,
+   "no": 1713,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 622,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.grupo:",
+   "segundos": 6.1,
+   "no": 825,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 622,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.grupo:",
+   "segundos": 7.4,
+   "no": 1714,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 623,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli.py::test_erros_de_uso_dizem_a_causa[args0---grupo]",
+   "trecho": "raise _Uso(_m(\"sem_grupo\"))",
+   "segundos": 26.5,
+   "no": 1715,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 624,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.unidade:",
+   "segundos": 6.3,
+   "no": 826,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 624,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.unidade:",
+   "segundos": 6.4,
+   "no": 1716,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 625,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_sem_unidade_em_ingles_explica_pseudo_replicacao",
+   "trecho": "raise _Uso(_REGRA_UNIDADE_EN if _ESTADO[\"lang\"] == \"en\" else REGRA_UNIDADE)",
+   "segundos": 27.3,
+   "no": 4451,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 625,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_sem_unidade_em_ingles_explica_pseudo_replicacao",
+   "trecho": "raise _Uso(_REGRA_UNIDADE_EN if _ESTADO[\"lang\"] == \"en\" else REGRA_UNIDADE)",
+   "segundos": 26.5,
+   "no": 3608,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 625,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_sem_unidade_em_ingles_explica_pseudo_replicacao",
+   "trecho": "raise _Uso(_REGRA_UNIDADE_EN if _ESTADO[\"lang\"] == \"en\" else REGRA_UNIDADE)",
+   "segundos": 27.0,
+   "no": 1717,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 626,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.resposta:",
+   "segundos": 8.4,
+   "no": 827,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 626,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not args.resposta:",
+   "segundos": 7.9,
+   "no": 1718,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 627,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli.py::test_erros_de_uso_dizem_a_causa[args1---resposta]",
+   "trecho": "raise _Uso(_m(\"sem_resposta\"))",
+   "segundos": 28.5,
+   "no": 1719,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 8.5,
+   "no": 2675,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "Lt->Gt",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 7.7,
+   "no": 2675,
+   "variante": [
+    1,
+    1
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alpha_fora_de_0_1_e_recusado[0]",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 20.2,
+   "no": 2675,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "Lt->LtE",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alpha_fora_de_0_1_e_recusado[1]",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 22.3,
+   "no": 2675,
+   "variante": [
+    1,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "const 0.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 8.1,
+   "no": 3613,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "const 1.0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alpha_fora_de_0_1_e_recusado[1]",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 25.0,
+   "no": 3617,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 7.4,
+   "no": 828,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 628,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not 0.0 < args.alpha < 1.0:",
+   "segundos": 11.0,
+   "no": 1720,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 629,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alpha_fora_de_0_1_e_recusado[0]",
+   "trecho": "raise _Uso(_m(\"alpha\"))",
+   "segundos": 19.8,
+   "no": 1721,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 631,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.metodo is None:",
+   "segundos": 10.6,
+   "no": 1724,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 631,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.metodo is None:",
+   "segundos": 9.2,
+   "no": 830,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 633,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.metodo not in METODOS:",
+   "segundos": 6.8,
+   "no": 1726,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 633,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.metodo not in METODOS:",
+   "segundos": 7.5,
+   "no": 831,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 634,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_opcoes_invalidas_dizem_o_que_fazer[extra0---metodo]",
+   "trecho": "raise _Uso(_m(\"metodo\", lista=\", \".join(METODOS)))",
+   "segundos": 29.2,
+   "no": 1727,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 635,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.ajuste not in (\"holm\", \"bh\"):",
+   "segundos": 6.2,
+   "no": 1728,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 635,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.ajuste not in (\"holm\", \"bh\"):",
+   "segundos": 9.4,
+   "no": 832,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 636,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_opcoes_invalidas_dizem_o_que_fazer[extra1---ajuste]",
+   "trecho": "raise _Uso(_m(\"ajuste\"))",
+   "segundos": 27.3,
+   "no": 1729,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 637,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.bloco and args.metodo in (\"games-howell\", \"kruskal-dunn\"):",
+   "segundos": 8.5,
+   "no": 1730,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 637,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_opcoes_invalidas_dizem_o_que_fazer[extra2---bloco]",
+   "trecho": "if args.bloco and args.metodo in (\"games-howell\", \"kruskal-dunn\"):",
+   "segundos": 27.2,
+   "no": 2696,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 637,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if args.bloco and args.metodo in (\"games-howell\", \"kruskal-dunn\"):",
+   "segundos": 8.3,
+   "no": 833,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 638,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_opcoes_invalidas_dizem_o_que_fazer[extra2---bloco]",
+   "trecho": "raise _Uso(_m(\"bloco_metodo\"))",
+   "segundos": 28.3,
+   "no": 1731,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 642,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "bloco = (np.asarray(_coluna(df, args.bloco, \"p_bloco\").astype(str).str.strip(), dtype=object)",
+   "segundos": 7.0,
+   "no": 1739,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 646,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not out[\"resultados\"]:",
+   "segundos": 10.3,
+   "no": 840,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 646,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "if not out[\"resultados\"]:",
+   "segundos": 7.9,
+   "no": 1744,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 647,
+   "operador": "raise->pass",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "raise _Uso(_m(\"nenhuma\", det=\"; \".join(f\"{k}: {v}\" for k, v in out[\"recusadas\"].items())))",
+   "segundos": 28.0,
+   "no": 1745,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 651,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "print(\"\\n\" + _m(\"arquivos\"))",
+   "segundos": 7.8,
+   "no": 2742,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 654,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return 0",
+   "segundos": 8.7,
+   "no": 1755,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 654,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_csv_tem_colunas_sem_indice_metodo_e_ics_exatos_e_o_bootstrap_padrao_e_500",
+   "trecho": "return 0",
+   "segundos": 6.9,
+   "no": 846,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 656,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "print(f\"Erro: {e}\" if _ESTADO[\"lang\"] == \"pt\" else f\"Error: {e}\", file=sys.stderr)",
+   "segundos": 26.8,
+   "no": 4535,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 656,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_e2e.py::test_erros_de_entrada_em_pt_e_en_com_a_acao_sugerida[pt-menos",
+   "trecho": "print(f\"Erro: {e}\" if _ESTADO[\"lang\"] == \"pt\" else f\"Error: {e}\", file=sys.stderr)",
+   "segundos": 26.6,
+   "no": 3707,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 657,
+   "operador": "const 2",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alpha_fora_de_0_1_e_recusado[0]",
+   "trecho": "return 2",
+   "segundos": 20.3,
+   "no": 2748,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 657,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_anova_cli_mutacao.py::test_alpha_fora_de_0_1_e_recusado[0]",
+   "trecho": "return 2",
+   "segundos": 20.7,
+   "no": 1758,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

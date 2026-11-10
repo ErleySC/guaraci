@@ -1,0 +1,69 @@
+name: Docs
+
+# Gatilho de push REATIVADO em 2026-08-16: repo tornou-se público e GitHub
+# Pages foi habilitado em Settings → Pages (source: GitHub Actions) --
+# exatamente as duas condições que o comentário anterior (2026-08-04)
+# esperava para religar isto. Antes disso o job falhava em 0s a cada push
+# desde 13/07 porque Pages não pode ser habilitado em repo privado no
+# plano Free.
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "docs/**"
+      - "MANUAL.md"
+      - "CHANGELOG.md"
+      - "mkdocs.yml"
+      - "src/guaraci/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Minimo por padrao; `pages: write` e `id-token: write` so' no job de deploy.
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências de doc (pacote + MkDocs Material + mkdocstrings)
+        run: pip install -e ".[all]" "mkdocs-material==9.7.7" "mkdocstrings[python]==1.0.7"
+
+      - name: Copiar MANUAL.md, CHANGELOG.md e SECURITY.md p/ dentro de docs/ (ficam na raiz do repo, fora de docs_dir)
+        run: cp MANUAL.md CHANGELOG.md SECURITY.md docs/
+
+      - name: "Build (--strict: qualquer link quebrado novo falha o job)"
+        run: mkdocs build --strict
+
+      - name: Upload do artefato do Pages
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5

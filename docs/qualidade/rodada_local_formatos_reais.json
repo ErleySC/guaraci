@@ -1,0 +1,84 @@
+{
+  "hash_do_codigo_testado": "02140e93f1d7bb2ef35846508ad2c55f6a98e04cf2a8fe4974b236ce4d208b43",
+  "total": 18,
+  "passaram": 18,
+  "falharam": 0,
+  "pulados": 0,
+  "hash_do_resultado": "be87af75c009c0b84a1d2d704553c328fcb20cb45436d4f3cb6cb162af7becec",
+  "resultados": [
+    {
+      "teste": "test_eem_carrega_fixture_real_horiba",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_hplc_carrega_fixture_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_hplc_detector_fid_ausente_da_erro_claro",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_cromatograma_hplc_arquivo_real_primeiro_canal_uv",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_cromatograma_hplc_detector_inexistente_levanta_valueerror",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_eem_dat_generaliza_para_formato_horiba_aqualog_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_rmn_bruker_arquivo_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_sp_arquivo_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_sp_arquivo_real_intacto_continua_lendo",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_sp_malformado_sempre_levanta_valueerror_nunca_typeerror",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_sp_recusa_n_points_gigante_sem_alocar_o_eixo",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_sp_truncado_apos_assinatura_levanta_valueerror",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_spc_arquivo_real_multi_subarquivo_retorna_so_o_primeiro",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_parse_spc_arquivo_real_subarquivo_unico",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_rmn_carrega_fixture_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_sp_carrega_fixture_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_spc_carrega_fixture_real",
+      "desfecho": "passou"
+    },
+    {
+      "teste": "test_subpastas_viram_classes_leitor_generico_por_arquivo",
+      "desfecho": "passou"
+    }
+  ],
+  "aprovada": true,
+  "observacao": "arquivos reais de fabricante ficam fora do repositorio; este registro guarda so' o desfecho de cada teste"
+}

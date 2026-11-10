@@ -1,0 +1,516 @@
+{
+ "modulo": "src/guaraci/pipeline.py",
+ "total": 37,
+ "mortos_no_total": 36,
+ "contagem": {
+  "morto": 36,
+  "sobrevivente": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_lacunas_pipeline_executar.py",
+  "tests/test_lacunas_pipeline_a.py",
+  "tests/test_lacunas_pipeline_b.py",
+  "tests/test_pipeline_core.py",
+  "tests/test_pipeline_smoke.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [
+  {
+   "linha": 2321,
+   "operador": "And<->Or",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "assert bca_holdout is not None and conformal_classificacao is not None",
+   "segundos": 607.5,
+   "no": 4376,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ],
+ "todos": [
+  {
+   "linha": 2299,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if aucs_roc:",
+   "segundos": 379.7,
+   "no": 659,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2303,
+   "operador": "NotEq->Eq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if _cls != \"macro\":",
+   "segundos": 462.4,
+   "no": 8195,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2303,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if _cls != \"macro\":",
+   "segundos": 438.0,
+   "no": 4344,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2305,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_exploratorio_n1_com_tudo_liberado_ddsimca_ignorado_e_hca_comparado",
+   "trecho": "if wold_res is not None:",
+   "segundos": 9.7,
+   "no": 1924,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2305,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_exploratorio_n1_com_tudo_liberado_ddsimca_ignorado_e_hca_comparado",
+   "trecho": "if wold_res is not None:",
+   "segundos": 9.7,
+   "no": 660,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2310,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_exploratorio_n1_com_tudo_liberado_ddsimca_ignorado_e_hca_comparado",
+   "trecho": "if cv_anova_res is not None:",
+   "segundos": 9.5,
+   "no": 1929,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2310,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_exploratorio_n1_com_tudo_liberado_ddsimca_ignorado_e_hca_comparado",
+   "trecho": "if cv_anova_res is not None:",
+   "segundos": 9.8,
+   "no": 661,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2313,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_com_toda_figura_dispensada_a_execucao_ainda_entrega_o_modelo",
+   "trecho": "if X_holdout is not None and metricas_holdout is not None:",
+   "segundos": 23.6,
+   "no": 1932,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2313,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if X_holdout is not None and metricas_holdout is not None:",
+   "segundos": 391.4,
+   "no": 4364,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2313,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_com_toda_figura_dispensada_a_execucao_ainda_entrega_o_modelo",
+   "trecho": "if X_holdout is not None and metricas_holdout is not None:",
+   "segundos": 25.2,
+   "no": 4365,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2313,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_com_toda_figura_dispensada_a_execucao_ainda_entrega_o_modelo",
+   "trecho": "if X_holdout is not None and metricas_holdout is not None:",
+   "segundos": 23.1,
+   "no": 662,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2321,
+   "operador": "And<->Or",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "assert bca_holdout is not None and conformal_classificacao is not None",
+   "segundos": 607.5,
+   "no": 4376,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2321,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_exploratorio_n1_com_tudo_liberado_ddsimca_ignorado_e_hca_comparado",
+   "trecho": "assert bca_holdout is not None and conformal_classificacao is not None",
+   "segundos": 9.6,
+   "no": 8265,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2321,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_exploratorio_n1_com_tudo_liberado_ddsimca_ignorado_e_hca_comparado",
+   "trecho": "assert bca_holdout is not None and conformal_classificacao is not None",
+   "segundos": 9.8,
+   "no": 8266,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2331,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if conformal_classificacao[\"alcancavel\"]:",
+   "segundos": 380.0,
+   "no": 1942,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2337,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_sem_a_figura_do_ddsimca_nao_traz_nenhuma_linha_de_ddsimca",
+   "trecho": "if cfg.run_ddsimca and ddsimca_res is not None:",
+   "segundos": 494.5,
+   "no": 1944,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2337,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_sem_holdout_o_resumo_nao_traz_bca_nem_conformal_e_o_pcv_com_aviso_vai_para_o_resumo",
+   "trecho": "if cfg.run_ddsimca and ddsimca_res is not None:",
+   "segundos": 82.7,
+   "no": 4389,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2337,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_sem_holdout_o_resumo_nao_traz_bca_nem_conformal_e_o_pcv_com_aviso_vai_para_o_resumo",
+   "trecho": "if cfg.run_ddsimca and ddsimca_res is not None:",
+   "segundos": 81.2,
+   "no": 663,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2339,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "resumo[\"DD-SIMCA n_desconhecidos\"] = int(np.sum(simca_pred == \"Desconhecido\"))",
+   "segundos": 466.9,
+   "no": 12784,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2340,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "resumo[\"DD-SIMCA n_ambiguos\"]      = int(np.sum(simca_pred == \"Ambiguo\"))",
+   "segundos": 461.6,
+   "no": 12788,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2344,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_classificacao_n2_com_todas_as_opcoes_e_ddsimca_sobre_todas_as_amostras",
+   "trecho": "modo_dd + (\" (one-class)\" if modo_dd == \"puros\"",
+   "segundos": 15.6,
+   "no": 4397,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2344,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "modo_dd + (\" (one-class)\" if modo_dd == \"puros\"",
+   "segundos": 440.0,
+   "no": 12791,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2344,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "modo_dd + (\" (one-class)\" if modo_dd == \"puros\"",
+   "segundos": 462.7,
+   "no": 8317,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2350,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_sem_holdout_o_resumo_nao_traz_bca_nem_conformal_e_o_pcv_com_aviso_vai_para_o_resumo",
+   "trecho": "if cls in ddsimca_sens_esp:",
+   "segundos": 83.0,
+   "no": 8320,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2350,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_sem_holdout_o_resumo_nao_traz_bca_nem_conformal_e_o_pcv_com_aviso_vai_para_o_resumo",
+   "trecho": "if cls in ddsimca_sens_esp:",
+   "segundos": 83.8,
+   "no": 4400,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2352,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "sens_s = (f\"{s_c*100:.1f}%\" if s_c == s_c",
+   "segundos": 587.1,
+   "no": 16737,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2352,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "sens_s = (f\"{s_c*100:.1f}%\" if s_c == s_c",
+   "segundos": 443.3,
+   "no": 12800,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2354,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_ddsimca_treinado_em_todas_as_amostras_diz_que_nao_e_autenticacao_e_nao_tem_especificidade",
+   "trecho": "esp_s = f\"{e_c*100:.1f}%\" if e_c == e_c else \"n/a\"",
+   "segundos": 595.0,
+   "no": 16741,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2354,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_ddsimca_treinado_em_todas_as_amostras_diz_que_nao_e_autenticacao_e_nao_tem_especificidade",
+   "trecho": "esp_s = f\"{e_c*100:.1f}%\" if e_c == e_c else \"n/a\"",
+   "segundos": 467.4,
+   "no": 12802,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2358,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if av:",
+   "segundos": 423.2,
+   "no": 8325,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2362,
+   "operador": "In->NotIn",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_anexos_opcionais_que_falham_viram_aviso_e_a_execucao_termina",
+   "trecho": "if cls in ddsimca_pcv_esp:",
+   "segundos": 23.0,
+   "no": 12807,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2362,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_anexos_opcionais_que_falham_viram_aviso_e_a_execucao_termina",
+   "trecho": "if cls in ddsimca_pcv_esp:",
+   "segundos": 22.9,
+   "no": 8326,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2364,
+   "operador": "Eq->NotEq",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "sens_pcv_s = f\"{s_pcv*100:.1f}%\" if s_pcv == s_pcv else \"n/a\"",
+   "segundos": 385.1,
+   "no": 19564,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2364,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "sens_pcv_s = f\"{s_pcv*100:.1f}%\" if s_pcv == s_pcv else \"n/a\"",
+   "segundos": 448.5,
+   "no": 16766,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2366,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_sem_holdout_o_resumo_nao_traz_bca_nem_conformal_e_o_pcv_com_aviso_vai_para_o_resumo",
+   "trecho": "if av_pcv:",
+   "segundos": 83.4,
+   "no": 12811,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2372,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "_out = ddsimca_res[cls].get(\"outliers_treino\") or []",
+   "segundos": 470.6,
+   "no": 12813,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 2373,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_pipeline_executar.py::test_resumo_traz_roc_por_classe_holdout_conformal_e_ddsimca_one_class",
+   "trecho": "if _out:",
+   "segundos": 456.8,
+   "no": 8328,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

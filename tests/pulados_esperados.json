@@ -1,0 +1,189 @@
+{
+  "_doc": "Teto de testes PULADOS por motivo, POR PERFIL. Motivo fora da lista do perfil, skip sem motivo ou contagem acima do teto reprova a sessao (conftest.py + tests/_pulados.py). Perfil: GUARACI_PULADOS_AMBIENTE; senao 'ci' se a variavel CI existir; senao 'local-completo' se GUARACI_DATASETS_DIR existir; senao 'local-sem-dados'. 'padrao' e' regex sobre o texto do motivo. Este arquivo traz os perfis da SUITE PADRAO (ci, sem-checkout-git, local-sem-dados, local-completo), nenhum com motivo de conjunto de dados. A validacao local do mantenedor fica fora do repositorio; se ela for posta em validacao/ (ignorada pelo git), o seu proprio pulados_esperados.json tem precedencia para o perfil que definir.",
+  "ambientes": {
+    "ci": {
+      "_doc": "Job 'test' do GitHub Actions (suite padrao, nenhum dataset): requirements.txt + [dev], sem extra [cores], checkout raso.",
+      "motivos": {
+        "lista privada de termos ausente nesta maquina (so as verificacoes genericas rodam)": {
+          "padrao": "^lista privada de termos ausente ou vazia nesta maquina",
+          "max": 1
+        },
+        "extra [cores] nao instalado: glasbey": {
+          "padrao": "^could not import 'glasbey'",
+          "max": 1
+        },
+        "extra [cores] nao instalado: colorcet": {
+          "padrao": "^could not import 'colorcet'",
+          "max": 1
+        },
+        "teste so do Windows (MAX_PATH) em runner Linux/macOS": {
+          "padrao": "^MAX_PATH e' do Windows$",
+          "max": 1
+        },
+        "checkout raso do actions/checkout": {
+          "padrao": "^clone raso -- checagem de historico completo",
+          "max": 1
+        },
+        "versoes de requirements.txt diferem do lock (golden estrito)": {
+          "padrao": "^comparacao estrita pulada .* ambiente difere do golden",
+          "max": 1
+        },
+        "golden regravado nesta execucao (GUARACI_REGRAVAR_GOLDEN=1)": {
+          "padrao": "^golden regravado em .* \\(GUARACI_REGRAVAR_GOLDEN=1\\)$",
+          "max": 3
+        },
+        "detector de f-string 3.12 sem efeito no Python 3.11 (o parser ja recusa)": {
+          "padrao": "^o parser do 3\\.11 ja recusa estas construcoes$",
+          "max": 4
+        },
+        "sem python3.11 separado para compilar de verdade (job 3.11 ou runner sem ele)": {
+          "padrao": "^sem interpretador 3\\.11 separado$",
+          "max": 1
+        },
+        "bash utilizavel ausente (runner Windows do Actions sem a distro WSL)": {
+          "padrao": "^bash utilizavel ausente:",
+          "max": 8
+        }
+      }
+    },
+    "sem-checkout-git": {
+      "_doc": "Arvore sem .git (zip do GitHub/sdist): os 8 arquivos que leem git ls-files/historico pulam (m-26); datasets e extras como no CI.",
+      "motivos": {
+        "lista privada de termos ausente nesta maquina (so as verificacoes genericas rodam)": {
+          "padrao": "^lista privada de termos ausente ou vazia nesta maquina",
+          "max": 1
+        },
+        "extra [cores] nao instalado: glasbey": {
+          "padrao": "^could not import 'glasbey'",
+          "max": 1
+        },
+        "extra [cores] nao instalado: colorcet": {
+          "padrao": "^could not import 'colorcet'",
+          "max": 1
+        },
+        "teste so do Windows (MAX_PATH) em runner Linux/macOS": {
+          "padrao": "^MAX_PATH e' do Windows$",
+          "max": 1
+        },
+        "versoes de requirements.txt diferem do lock (golden estrito)": {
+          "padrao": "^comparacao estrita pulada .* ambiente difere do golden",
+          "max": 1
+        },
+        "fora de checkout git (zip/sdist)": {
+          "padrao": "^requer um checkout git \\(sem \\.git aqui: zip/sdist\\)$",
+          "max": 83
+        },
+        "bash utilizavel ausente (Windows sem a distro WSL)": {
+          "padrao": "^bash utilizavel ausente:",
+          "max": 8
+        },
+        "golden regravado nesta execucao (GUARACI_REGRAVAR_GOLDEN=1)": {
+          "padrao": "^golden regravado em .* \\(GUARACI_REGRAVAR_GOLDEN=1\\)$",
+          "max": 3
+        },
+        "detector de f-string 3.12 sem efeito no Python 3.11 (o parser ja recusa)": {
+          "padrao": "^o parser do 3\\.11 ja recusa estas construcoes$",
+          "max": 4
+        },
+        "sem python3.11 separado para compilar de verdade (job 3.11 ou runner sem ele)": {
+          "padrao": "^sem interpretador 3\\.11 separado$",
+          "max": 1
+        }
+      }
+    },
+    "local-sem-dados": {
+      "_doc": "Suite padrao rodada localmente (sem CI): nenhum conjunto de dados; so' os motivos de ambiente. Extras opcionais ausentes (ex.: so' `pip install -e .[dev]`) pulam com motivo; a CI instala todos e nao aceita esses pulos.",
+      "motivos": {
+        "lista privada de termos ausente nesta maquina (so as verificacoes genericas rodam)": {
+          "padrao": "^lista privada de termos ausente ou vazia nesta maquina",
+          "max": 1
+        },
+        "golden regravado nesta execucao (GUARACI_REGRAVAR_GOLDEN=1)": {
+          "padrao": "^golden regravado em .* \\(GUARACI_REGRAVAR_GOLDEN=1\\)$",
+          "max": 3
+        },
+        "bash utilizavel ausente (Windows sem a distro WSL)": {
+          "padrao": "^bash utilizavel ausente:",
+          "max": 8
+        },
+        "extra [benchmark] nao instalado: xgboost": {
+          "padrao": "^could not import 'xgboost'",
+          "max": 5
+        },
+        "extra [robusto] nao instalado: prcv": {
+          "padrao": "^could not import 'prcv'",
+          "max": 9
+        },
+        "extra [opus] nao instalado: brukeropus": {
+          "padrao": "^could not import 'brukeropus'",
+          "max": 8
+        },
+        "extra [spc] nao instalado: spcfile": {
+          "padrao": "^could not import 'spcfile'",
+          "max": 4
+        },
+        "extra [rmn] nao instalado: nmrglue": {
+          "padrao": "^could not import 'nmrglue'",
+          "max": 5
+        },
+        "extra [hplc] nao instalado: rainbow": {
+          "padrao": "^could not import 'rainbow'",
+          "max": 1
+        },
+        "extra [multiway] nao instalado: tensorly": {
+          "padrao": "^could not import 'tensorly'",
+          "max": 7
+        },
+        "extra [benchmark] nao instalado: shap": {
+          "padrao": "^could not import 'shap'",
+          "max": 2
+        },
+        "extra [benchmark] ausente ou bloqueado: xgboost": {
+          "padrao": "^xgboost instalado mas nao carregavel neste ambiente",
+          "max": 3
+        },
+        "extra [cores] nao instalado: glasbey": {
+          "padrao": "^could not import 'glasbey'",
+          "max": 1
+        },
+        "extra [cores] nao instalado: colorcet": {
+          "padrao": "^could not import 'colorcet'",
+          "max": 1
+        },
+        "teste so do Windows (MAX_PATH) em runner Linux/macOS": {
+          "padrao": "^MAX_PATH e' do Windows$",
+          "max": 1
+        },
+        "detector de f-string 3.12 sem efeito no Python 3.11 (o parser ja recusa)": {
+          "padrao": "^o parser do 3\\.11 ja recusa estas construcoes$",
+          "max": 4
+        },
+        "sem python3.11 separado para compilar de verdade (job 3.11 ou runner sem ele)": {
+          "padrao": "^sem interpretador 3\\.11 separado$",
+          "max": 1
+        }
+      }
+    },
+    "local-completo": {
+      "_doc": "Suite padrao rodada localmente com GUARACI_DATASETS_DIR definido: a suite padrao nao le conjunto de dados, entao vale o mesmo que sem dados, menos o WSL.",
+      "motivos": {
+        "lista privada de termos ausente nesta maquina (so as verificacoes genericas rodam)": {
+          "padrao": "^lista privada de termos ausente ou vazia nesta maquina",
+          "max": 1
+        },
+        "golden regravado nesta execucao (GUARACI_REGRAVAR_GOLDEN=1)": {
+          "padrao": "^golden regravado em .* \\(GUARACI_REGRAVAR_GOLDEN=1\\)$",
+          "max": 3
+        },
+        "detector de f-string 3.12 sem efeito no Python 3.11 (o parser ja recusa)": {
+          "padrao": "^o parser do 3\\.11 ja recusa estas construcoes$",
+          "max": 4
+        },
+        "sem python3.11 separado para compilar de verdade (job 3.11 ou runner sem ele)": {
+          "padrao": "^sem interpretador 3\\.11 separado$",
+          "max": 1
+        }
+      }
+    }
+  }
+}

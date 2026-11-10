@@ -1,0 +1,58 @@
+{
+ "modulo": "src/guaraci/classificadores.py",
+ "total": 3,
+ "mortos_no_total": 3,
+ "contagem": {
+  "morto": 3
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_classificadores.py",
+  "tests/test_lacunas_avaliacao_modelos.py",
+  "tests/test_lacunas_estatistica_nucleo.py",
+  "tests/test_lacunas_pipeline_executar.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 667,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_opls_com_segunda_direcao_quase_nula_para_no_escore_ortogonal_minusculo",
+   "trecho": "t_orth = t_orth_raw - (float(t_orth_raw @ t) / t_norm_sq) * t",
+   "segundos": 10.8,
+   "no": 3188,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 667,
+   "operador": "Mult->Div",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_opls_com_segunda_direcao_quase_nula_para_no_escore_ortogonal_minusculo",
+   "trecho": "t_orth = t_orth_raw - (float(t_orth_raw @ t) / t_norm_sq) * t",
+   "segundos": 11.9,
+   "no": 2346,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 667,
+   "operador": "Sub->Add",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_estatistica_nucleo.py::test_opls_com_segunda_direcao_quase_nula_para_no_escore_ortogonal_minusculo",
+   "trecho": "t_orth = t_orth_raw - (float(t_orth_raw @ t) / t_norm_sq) * t",
+   "segundos": 11.8,
+   "no": 1363,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

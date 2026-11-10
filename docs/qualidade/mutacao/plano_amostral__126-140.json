@@ -1,0 +1,134 @@
+{
+ "modulo": "src/guaraci/plano_amostral.py",
+ "total": 9,
+ "mortos_no_total": 9,
+ "contagem": {
+  "morto": 9
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_lacunas_nucleo_pequenos_4.py",
+  "tests/test_plano_amostral.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 129,
+   "operador": "GtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_plano_amostral.py::test_alvo_igual_a_cobertura_de_um_ponto_da_tabela_escolhe_esse_ponto",
+   "trecho": "escolhido = next(((n, cov) for n, cov in MEASURED_DDSIMCA_COVERAGE_TABLE if cov >= cobertura_alvo), None)",
+   "segundos": 24.7,
+   "no": 285,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 129,
+   "operador": "GtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_orientacao_de_n_quando_a_tabela_nao_alcanca_o_alvo_continua_honesta",
+   "trecho": "escolhido = next(((n, cov) for n, cov in MEASURED_DDSIMCA_COVERAGE_TABLE if cov >= cobertura_alvo), None)",
+   "segundos": 21.5,
+   "no": 285,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 130,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_a_tabela_medida_alcanca_o_plato_e_acima_dele_so_o_conformal_serve",
+   "trecho": "n_sug, cov_sug = escolhido if escolhido is not None else (None, None)",
+   "segundos": 24.3,
+   "no": 188,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 130,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_a_tabela_medida_alcanca_o_plato_e_acima_dele_so_o_conformal_serve",
+   "trecho": "n_sug, cov_sug = escolhido if escolhido is not None else (None, None)",
+   "segundos": 24.0,
+   "no": 106,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 131,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_a_tabela_medida_alcanca_o_plato_e_acima_dele_so_o_conformal_serve",
+   "trecho": "return DDSimcaGuidance(",
+   "segundos": 24.0,
+   "no": 49,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 132,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_a_tabela_medida_alcanca_o_plato_e_acima_dele_so_o_conformal_serve",
+   "trecho": "cobertura_alvo=cobertura_alvo, alcancavel=escolhido is not None,",
+   "segundos": 24.3,
+   "no": 250,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 135,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_a_tabela_medida_alcanca_o_plato_e_acima_dele_so_o_conformal_serve",
+   "trecho": "recomendar_conformal=escolhido is None,",
+   "segundos": 20.6,
+   "no": 254,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 137,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_orientacao_de_n_quando_a_tabela_nao_alcanca_o_alvo_continua_honesta",
+   "trecho": "f\"{ressalva_base} n={n_sug} atingiu cobertura media {cov_sug:.4f} nesta medicao (desvio entre \"",
+   "segundos": 20.6,
+   "no": 255,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 139,
+   "operador": "IsNot->Is",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_nucleo_pequenos_4.py::test_orientacao_de_n_quando_a_tabela_nao_alcanca_o_alvo_continua_honesta",
+   "trecho": "if escolhido is not None else",
+   "segundos": 20.1,
+   "no": 297,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

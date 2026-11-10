@@ -1,0 +1,31 @@
+{
+ "modulo": "src/guaraci/config_io.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_config_io.py",
+  "tests/test_lacunas_config_io.py",
+  "tests/test_lacunas_guaraci_fluxos.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 600,
+   "operador": "const True",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_config_io.py::test_formatos_de_arquivo_por_extensao[spc-.spc]",
+   "trecho": "for f in glob.glob(os.path.join(p, \"**\", f\"*{e}\"), recursive=True)})",
+   "segundos": 3.3,
+   "no": 3969,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

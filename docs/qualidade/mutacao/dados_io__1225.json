@@ -1,0 +1,47 @@
+{
+ "modulo": "src/guaraci/dados_io.py",
+ "total": 2,
+ "mortos_no_total": 2,
+ "contagem": {
+  "morto": 2
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_dados_io_jcamp.py",
+  "tests/test_dados_io_parsing.py",
+  "tests/test_lacunas_dados_io.py",
+  "tests/test_lacunas_guaraci_ajuda_checklist.py",
+  "tests/test_lacunas_guaraci_comandos.py",
+  "tests/test_lacunas_guaraci_execucao.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 1225,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_extrair_conc_filename[ESB-03-01-2099-AD-S-4.13%-T2.dx-4.13]",
+   "trecho": "return float(m.group(1).replace(\",\", \".\"))      # _REGEX_CONC so' casa digitos[.,]digitos",
+   "segundos": 5.3,
+   "no": 8678,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 1225,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_dados_io_parsing.py::test_extrair_conc_filename[ESB-03-01-2099-AD-S-4.13%-T2.dx-4.13]",
+   "trecho": "return float(m.group(1).replace(\",\", \".\"))      # _REGEX_CONC so' casa digitos[.,]digitos",
+   "segundos": 5.3,
+   "no": 472,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

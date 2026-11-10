@@ -1,0 +1,30 @@
+{
+ "modulo": "src/guaraci/selecao_variaveis.py",
+ "total": 1,
+ "mortos_no_total": 1,
+ "contagem": {
+  "morto": 1
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_lacunas_selecao_variaveis.py",
+  "tests/test_selecao_variaveis_aviso.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [],
+ "todos": [
+  {
+   "linha": 1228,
+   "operador": "const False",
+   "estado": "morto",
+   "prova": "tests/test_lacunas_selecao_variaveis.py::test_etapa4_com_spa_ag_cars_e_uve_ligados_grava_tabela_e_csvs",
+   "trecho": "sep=\";\", decimal=\",\", index=False)",
+   "segundos": 4.1,
+   "no": 6824,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

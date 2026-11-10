@@ -1,0 +1,82 @@
+# =============================================================================
+# requirements.txt — MANIFESTO DE DEPLOY (Streamlit Cloud roda o app web a partir
+# daqui). Por isso inclui o superconjunto: núcleo + web + relatórios + benchmark.
+#
+# A FONTE CANÔNICA das dependências é pyproject.toml, que as separa em extras
+# (`[web]`, `[reports]`, `[benchmark]`, `[imagem]`). Para instalar só o que
+# precisa (ex.: uso como biblioteca/CLI, sem Streamlit), prefira:
+#     pip install -e .            # apenas o núcleo científico
+#     pip install -e .[all]       # tudo (equivalente a este arquivo)
+# Mantenha os pins deste arquivo em sincronia com os de pyproject.toml.
+# =============================================================================
+
+# ── Core scientific stack ────────────────────────────────────────────────────
+# Pinned ranges: wide enough for pip solver, tight enough to avoid breaking changes.
+numpy>=1.24,<3.0
+pandas>=2.0,<4.0
+scipy>=1.10,<2.0
+scikit-learn>=1.5,<2.0
+matplotlib>=3.7,<4.0
+joblib>=1.3,<2.0
+threadpoolctl>=3.1,<4.0  # limits BLAS threads/worker in parallel permutation tests (avoids oversubscription)
+PyYAML>=6.0,<7.0
+Pillow>=13.0,<14   # leitura de imagens no modo_entrada="imagem" (colorimetria digital, prototipo)
+
+# ── CLI interface ────────────────────────────────────────────────────────────
+rich>=13.0,<16   # tema visual do assistente de terminal (guaraci.py/cli_assistente.py)
+
+# ── Web interface ────────────────────────────────────────────────────────────
+# Pinned to 1.x: st.status() requires >= 1.28; avoids Streamlit 2.x DOM changes.
+streamlit>=1.54,<2.0
+psutil>=5.9,<8.0   # live RAM readout; graceful fallback if absent
+
+# ── Reports (Tab 7) ──────────────────────────────────────────────────────────
+fpdf2>=2.8.8,<3.0       # PDF with tables and figures
+python-docx>=1.1,<2.0 # Word .docx
+openpyxl>=3.1,<4.0    # Excel multi-sheet
+python-pptx>=1.0,<2.0 # PowerPoint .pptx
+
+# ── Benchmark / Interpretability ─────────────────────────────────────────────
+xgboost>=1.7,<5.0   # XGBClassifier (falls back to GradientBoosting if absent)
+shap>=0.42,<0.53    # SHAP TreeExplainer — cap: 0.52 is last validated; GBM multiclass guarded
+
+# ── Validação robusta (extra [robusto]) ──────────────────────────────────────
+# Procrustes Cross-Validation — diagnóstico complementar do DD-SIMCA
+# (`sensibilidade_ddsimca_pcv`). Faltava aqui desde que o PCV foi adicionado:
+# o CI instala a partir DESTE arquivo, então o caminho do PCV nunca era
+# exercitado lá e `classificadores.py` caía para 88%, derrubando o gate de
+# cobertura do núcleo científico (>=95%, CLAUDE.md P4). A falha ficou latente
+# porque o CI esteve bloqueado por cota entre a adição do PCV e 2026-08-16.
+prcv>=1.2,<2.0
+
+# ── Importador OPUS (extra [opus]) ───────────────────────────────────────────
+# Le arquivos binarios proprietarios Bruker (importadores_proprietarios.py).
+# Mesmo motivo do prcv acima: sem isto aqui, o CI nunca exercita o caminho
+# real de parse_opus, so' o de "pacote ausente".
+brukeropus>=1.4,<2.0
+
+# ── Importador SPC (extra [spc]) ─────────────────────────────────────────────
+# Le arquivos binarios proprietarios Galactic/Thermo (importadores_
+# proprietarios.py, parse_spc). Mesmo motivo do brukeropus acima -- e aqui
+# ainda mais importante: ha arquivo .spc REAL em tests/fixtures/spc/, entao
+# sem esta linha o CI nunca rodaria esse teste contra dado genuino. Release
+# 0.1.0 no PyPI (ver o comentario do extra [spc] no pyproject.toml).
+spcfile>=0.1,<0.2
+
+# ── Importador RMN Bruker processado (extra [rmn]) ───────────────────────────
+# Le pdata/<N>/1r de experimento Bruker TopSpin (importadores_
+# proprietarios.py, parse_rmn_bruker). Ha diretorio real em
+# tests/fixtures/rmn_bruker/ -- mesmo motivo de sempre: sem esta linha o CI
+# nunca exercitaria esse teste contra dado genuino. requires numpy+scipy,
+# ambos ja base do projeto -- zero dependencia transitiva nova.
+nmrglue>=0.11,<1.0
+
+# ── Importador HPLC/GC de fabricante (extra [hplc]) ──────────────────────────
+# Le diretorios Agilent .D/.dx e Waters .raw (importadores_proprietarios.py,
+# parse_cromatograma_hplc). Ha diretorio real em tests/fixtures/hplc_agilent/
+# -- mesmo motivo de sempre.
+rainbow-api>=1.5,<2.0
+
+# ── PARAFAC / decomposicao tensorial (extra [multiway]) ──────────────────────
+# hsi_multiway.py. Mesmo motivo do brukeropus acima.
+tensorly>=0.8,<1.0

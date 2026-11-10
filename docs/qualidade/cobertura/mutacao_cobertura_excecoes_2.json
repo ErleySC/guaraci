@@ -1,0 +1,760 @@
+{
+ "modulo": "scripts/cobertura_excecoes.py",
+ "total": 54,
+ "mortos_no_total": 51,
+ "contagem": {
+  "morto": 47,
+  "morto_por_importacao": 4,
+  "sobrevivente": 3
+ },
+ "python": "3.12.10",
+ "testes": [
+  "tests/test_cobertura_excecoes.py"
+ ],
+ "deselecionados": [],
+ "sobreviventes": [
+  {
+   "linha": 37,
+   "operador": "GtE->Gt",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if melhor is None or no.lineno >= melhor.lineno:",
+   "segundos": 3.1,
+   "no": 563,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 48,
+   "operador": "Continue->pass",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "continue",
+   "segundos": 7.9,
+   "no": 248,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 99,
+   "operador": "const 0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])",
+   "segundos": 3.1,
+   "no": 676,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ],
+ "todos": [
+  {
+   "linha": 25,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "RAIZ = Path(__file__).resolve().parents[1]",
+   "segundos": 3.1,
+   "no": 95,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 26,
+   "operador": "Div->Mult",
+   "estado": "morto_por_importacao",
+   "prova": "TypeError: can't multiply sequence by non-int of type 'WindowsPath'",
+   "trecho": "REGISTRO = RAIZ / \"tests\" / \"cobertura_excecoes.json\"",
+   "segundos": 3.2,
+   "no": 38,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 26,
+   "operador": "Div->Mult",
+   "estado": "morto_por_importacao",
+   "prova": "TypeError: can't multiply sequence by non-int of type 'WindowsPath'",
+   "trecho": "REGISTRO = RAIZ / \"tests\" / \"cobertura_excecoes.json\"",
+   "segundos": 3.2,
+   "no": 98,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.1,
+   "no": 232,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.4,
+   "no": 560,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.3,
+   "no": 387,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "LtE->Gt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.3,
+   "no": 387,
+   "variante": [
+    1,
+    1
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_pragma_na_linha_do_proprio_def_e_em_funcao_aninhada_vai_para_a_funcao_certa",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.5,
+   "no": 387,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "LtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.4,
+   "no": 387,
+   "variante": [
+    1,
+    0
+   ]
+  },
+  {
+   "linha": 36,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and no.lineno <= linha <= (no.end_lineno or no.lineno):",
+   "segundos": 3.1,
+   "no": 121,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "if melhor is None or no.lineno >= melhor.lineno:",
+   "segundos": 3.3,
+   "no": 388,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "GtE->Gt",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "if melhor is None or no.lineno >= melhor.lineno:",
+   "segundos": 3.1,
+   "no": 563,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "GtE->Lt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_pragma_na_linha_do_proprio_def_e_em_funcao_aninhada_vai_para_a_funcao_certa",
+   "trecho": "if melhor is None or no.lineno >= melhor.lineno:",
+   "segundos": 3.6,
+   "no": 563,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "Is->IsNot",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "if melhor is None or no.lineno >= melhor.lineno:",
+   "segundos": 3.4,
+   "no": 562,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 37,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "if melhor is None or no.lineno >= melhor.lineno:",
+   "segundos": 3.3,
+   "no": 233,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 39,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return melhor.name if melhor else \"<modulo>\"",
+   "segundos": 3.2,
+   "no": 122,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 39,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return melhor.name if melhor else \"<modulo>\"",
+   "segundos": 3.0,
+   "no": 48,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "for caminho in sorted((raiz / \"src\" / \"guaraci\").rglob(\"*.py\")):",
+   "segundos": 3.1,
+   "no": 567,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 45,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "for caminho in sorted((raiz / \"src\" / \"guaraci\").rglob(\"*.py\")):",
+   "segundos": 3.2,
+   "no": 714,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 47,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if not _PRAGMA.search(texto):",
+   "segundos": 4.7,
+   "no": 133,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 47,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if not _PRAGMA.search(texto):",
+   "segundos": 4.6,
+   "no": 247,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 48,
+   "operador": "Continue->pass",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "continue",
+   "segundos": 7.9,
+   "no": 248,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 51,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "for n, linha in enumerate(texto.splitlines(), 1):",
+   "segundos": 3.3,
+   "no": 413,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 52,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if _PRAGMA.search(linha):",
+   "segundos": 3.5,
+   "no": 255,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 53,
+   "operador": "AugAdd->Sub",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "achados[(rel, _funcao_que_contem(arvore, n))] += 1",
+   "segundos": 3.2,
+   "no": 415,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 53,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "achados[(rel, _funcao_que_contem(arvore, n))] += 1",
+   "segundos": 3.2,
+   "no": 587,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 54,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return dict(achados)",
+   "segundos": 3.0,
+   "no": 54,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 63,
+   "operador": "Div->Mult",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "dados = tomllib.loads((raiz / \"pyproject.toml\").read_text(encoding=\"utf-8\"))",
+   "segundos": 3.2,
+   "no": 589,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 68,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_varredura_conta_pragmas_por_funcao_e_le_a_configuracao",
+   "trecho": "for item in cobertura.get(secao, {}).get(campo, []) or []:",
+   "segundos": 3.4,
+   "no": 437,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 70,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return out",
+   "segundos": 3.2,
+   "no": 63,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 74,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return json.loads(caminho.read_text(encoding=\"utf-8\"))",
+   "segundos": 3.1,
+   "no": 66,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 81,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_entrada_sem_quantidade_vale_um_pragma",
+   "trecho": "declarados[(e[\"arquivo\"], e[\"funcao\"])] = int(e.get(\"quantidade\", 1))",
+   "segundos": 3.7,
+   "no": 620,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "for (a, f), n in sorted(encontrados.items()) if n > declarados.get((a, f), 0)]",
+   "segundos": 3.1,
+   "no": 473,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_pragma_novo_sem_registro_e_apontado",
+   "trecho": "for (a, f), n in sorted(encontrados.items()) if n > declarados.get((a, f), 0)]",
+   "segundos": 3.4,
+   "no": 473,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 83,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_pragma_novo_sem_registro_e_apontado",
+   "trecho": "for (a, f), n in sorted(encontrados.items()) if n > declarados.get((a, f), 0)]",
+   "segundos": 3.3,
+   "no": 769,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "Gt->GtE",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "for (a, f), n in sorted(declarados.items()) if n > encontrados.get((a, f), 0)]",
+   "segundos": 3.3,
+   "no": 484,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "Gt->Lt",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_registro_de_exclusao_que_ja_saiu_e_apontado_como_obsoleto",
+   "trecho": "for (a, f), n in sorted(declarados.items()) if n > encontrados.get((a, f), 0)]",
+   "segundos": 3.4,
+   "no": 484,
+   "variante": [
+    0,
+    1
+   ]
+  },
+  {
+   "linha": 85,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_registro_de_exclusao_que_ja_saiu_e_apontado_como_obsoleto",
+   "trecho": "for (a, f), n in sorted(declarados.items()) if n > encontrados.get((a, f), 0)]",
+   "segundos": 3.1,
+   "no": 785,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 87,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_exclusao_na_configuracao_de_cobertura_exige_registro_e_some_quando_sai",
+   "trecho": "py_novas = [x for x in pyproject if x not in declarado_py]",
+   "segundos": 3.4,
+   "no": 492,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 88,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_exclusao_na_configuracao_de_cobertura_exige_registro_e_some_quando_sai",
+   "trecho": "py_obsoletas = [x for x in declarado_py if x not in pyproject]",
+   "segundos": 3.5,
+   "no": 496,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 91,
+   "operador": "And<->Or",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_entrada_sem_motivo_ou_com_categoria_invalida_e_apontada[motivo-",
+   "trecho": "if not str(e.get(\"motivo\", \"\")).strip() or e.get(\"categoria\") not in CATEGORIAS:",
+   "segundos": 3.5,
+   "no": 327,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 91,
+   "operador": "NotIn->In",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if not str(e.get(\"motivo\", \"\")).strip() or e.get(\"categoria\") not in CATEGORIAS:",
+   "segundos": 3.3,
+   "no": 502,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 91,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if not str(e.get(\"motivo\", \"\")).strip() or e.get(\"categoria\") not in CATEGORIAS:",
+   "segundos": 3.3,
+   "no": 188,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 91,
+   "operador": "remove Not",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "if not str(e.get(\"motivo\", \"\")).strip() or e.get(\"categoria\") not in CATEGORIAS:",
+   "segundos": 3.4,
+   "no": 501,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 93,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return {\"sem_registro\": sem_registro + [f\"pyproject: {x}\" for x in py_novas],",
+   "segundos": 3.5,
+   "no": 332,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 93,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "return {\"sem_registro\": sem_registro + [f\"pyproject: {x}\" for x in py_novas],",
+   "segundos": 3.2,
+   "no": 79,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 94,
+   "operador": "Add->Sub",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_repositorio_nao_tem_exclusao_sem_registro_nem_registro_sem_exclusao",
+   "trecho": "\"obsoletas\": obsoletas + [f\"pyproject: {x}\" for x in py_obsoletas],",
+   "segundos": 3.4,
+   "no": 333,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 99,
+   "operador": "const 0",
+   "estado": "sobrevivente",
+   "prova": "",
+   "trecho": "ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])",
+   "segundos": 3.1,
+   "no": 676,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "const 0",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_registro_do_repositorio_e_json_valido_com_as_categorias_declaradas",
+   "trecho": "return 1 if any(d.values()) else 0",
+   "segundos": 3.7,
+   "no": 369,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "const 1",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_a_linha_de_comando_sai_com_codigo_1_quando_ha_diferenca",
+   "trecho": "return 1 if any(d.values()) else 0",
+   "segundos": 3.4,
+   "no": 368,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "negar teste",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_registro_do_repositorio_e_json_valido_com_as_categorias_declaradas",
+   "trecho": "return 1 if any(d.values()) else 0",
+   "segundos": 3.4,
+   "no": 207,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 108,
+   "operador": "return None",
+   "estado": "morto",
+   "prova": "tests/test_cobertura_excecoes.py::test_o_registro_do_repositorio_e_json_valido_com_as_categorias_declaradas",
+   "trecho": "return 1 if any(d.values()) else 0",
+   "segundos": 3.2,
+   "no": 89,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 111,
+   "operador": "Eq->NotEq",
+   "estado": "morto_por_importacao",
+   "prova": "y [-h] [--verificar]\n__main__.py: error: unrecognized arguments: tests/test_cobertura_excecoes.py -x -q -p no:cacheprovider -m not slow --no-header -o addopts=\nmainloop: caught unexpected SystemExit!\n",
+   "trecho": "if __name__ == \"__main__\":",
+   "segundos": 2.7,
+   "no": 91,
+   "variante": [
+    0,
+    0
+   ]
+  },
+  {
+   "linha": 111,
+   "operador": "negar teste",
+   "estado": "morto_por_importacao",
+   "prova": "y [-h] [--verificar]\n__main__.py: error: unrecognized arguments: tests/test_cobertura_excecoes.py -x -q -p no:cacheprovider -m not slow --no-header -o addopts=\nmainloop: caught unexpected SystemExit!\n",
+   "trecho": "if __name__ == \"__main__\":",
+   "segundos": 2.7,
+   "no": 22,
+   "variante": [
+    0,
+    0
+   ]
+  }
+ ]
+}

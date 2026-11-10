@@ -1,0 +1,2741 @@
+"""
+figuras.py — Toda a camada de plotagem do pipeline: setup do matplotlib,
+save(), helpers de plot e as ~30 funcoes fig_* (scores, confusao, VIP/SR,
+HCA, ROC, S-Plot, DD-SIMCA, etc.).
+
+Extraido de pipeline.py como parte da modularizacao (Fase H). Depende so de
+matplotlib/scipy/sklearn + paleta_cores + chemometric_stats; nao importa
+pipeline (Config so em type hint, via TYPE_CHECKING). pipeline.py reexporta os
+nomes publicos, entao `pipeline.fig1_pca_scores(...)`, `pipeline.save(...)`
+etc. continuam funcionando sem alteracao. Coberto por
+tests/test_figuras_regressao.py.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+
+import numpy as np
+from scipy.signal import savgol_filter
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
+from matplotlib.ticker import MaxNLocator
+from scipy.stats import chi2
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import pdist
+from sklearn.decomposition import PCA
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.metrics import (
+    f1_score, precision_score, recall_score, roc_auc_score, roc_curve,
+)
+
+from guaraci.paleta_cores import (
+    color, estilo_linha, get_edge_color, get_point_alpha,
+)
+from guaraci.chemometric_stats import (
+    hotelling_t2, hotelling_t2_limit, q_residuals, q_residuals_limit,
+)
+from guaraci.config import NOME_GRAFICOS, pasta_execucao
+from guaraci.eixo_espectral import eixo_decrescente_por_unidade, rotulo_do_eixo
+from guaraci.grupos_figuras import (
+    DESCRICAO_GRUPOS, SUBPASTAS_REMAPEADAS, gravar_leiame, nomes_da_serie, nomes_do_grupo, pasta_local,
+    subpasta_do_grupo,
+)
+
+if TYPE_CHECKING:
+    from guaraci.pipeline import Config
+
+__all__ = [
+    "setup_matplotlib",
+    "save",
+    "resetar_falhas_salvamento",
+    "obter_falhas_salvamento",
+    "registrar_falha_salvamento",
+    "MAX_PAINEIS_POR_FIGURA",
+    "contar_paineis",
+    "obter_figuras_excedentes",
+    "paginas",
+    "nome_pagina",
+    "specificity_by_class",
+    "ellipse_t2",
+    "convex_hull_contorno",
+    "adaptive_scatter_parameters",
+    "plot_scores_panel",
+    "fig1_selecao_lvs",
+    "fig_hca_dendrogram",
+    "fig_hca_comparacao_pipelines",
+    "fig1_pca_scores",
+    "fig2_plsda_scores",
+    "fig3_outliers",
+    "fig4_confusao",
+    "fig_class_mean_spectra",
+    "fig6_preprocessing",
+    "fig_extra_wold",
+    "fig_extra_holdout",
+    "fig_extra_comparacao_pipelines",
+    "fig5b_vip_stability",
+    "fig7_pls_regression",
+    "fig_regression_merit",
+    "fig_sprint3_sr_vip",
+    "fig_sprint3_score_contribution",
+    "fig_sprint3_ddsimca_acceptance",
+    "fig_ddsimca_individuais",
+    "fig_sprint3_opls_scores",
+    "fig_loadings_pca",
+    "select_distinct_loadings",
+    "spread_labels",
+    "fig_biplot_pca",
+    "fig_roc_auc",
+    "fig_splot_opls",
+    "fig_heatmap_species_by_adulterant",
+    "fig_cooman_ddsimca",
+]
+
+
+def setup_matplotlib(cfg: Config) -> None:
+    mpl.rcParams.update({
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+        "font.size": 9,
+        "axes.titlesize": 10,
+        "axes.titleweight": "bold",
+        "axes.titlepad": 8,
+        "axes.labelsize": 9,
+        "axes.labelpad": 4,
+        "xtick.labelsize": 8,
+        "ytick.labelsize": 8,
+        "legend.fontsize": 8,
+        "legend.frameon": False,
+        "legend.handlelength": 1.4,
+        "axes.linewidth": 0.8,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+        "xtick.major.width": 0.8,
+        "ytick.major.width": 0.8,
+        "xtick.major.size": 3.5,
+        "ytick.major.size": 3.5,
+        "figure.dpi": 110,
+        "savefig.dpi": cfg.save_dpi,
+        "savefig.bbox": "tight",
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "lines.linewidth": 1.2,
+        "lines.markersize": 4.5,
+        "mathtext.default": "regular",
+    })
+
+
+_AVISO_MOSTRAR_GRAFICOS_EMITIDO = False
+
+# Chave de organizacao por grupo (secao C da auditoria de figuras): ligada,
+# save() separa Graficos/ em subpastas por analise. Desligada por padrao para
+# manter os caminhos planos Graficos/<nome> da API publica e dos testes.
+ORGANIZAR_POR_GRUPO = False
+
+
+def organizar_por_grupo() -> bool:
+    """Chave efetiva: a desta API ou a da CLI (`grupos_figuras.ORGANIZAR`)."""
+    from guaraci import grupos_figuras as _gf
+    return bool(ORGANIZAR_POR_GRUPO or _gf.ORGANIZAR)
+
+# Falhas de fig.savefig() ao longo de UMA execucao de executar() (achado de
+# auditoria funcional, 2026-09-01: em pasta de saida muito profunda -- MAX_
+# PATH do Windows, 260 chars -- ate 3 arquivos falhavam ao salvar
+# silenciosamente; o pipeline terminava e imprimia "Pipeline concluido"
+# mesmo assim, um "[ERROR]" perdido no meio de centenas de linhas de log e'
+# facil de nao notar). `executar()` zera esta lista no inicio e confere no
+# resumo final -- nao muda o comportamento de CONTINUAR salvando o resto
+# (isso ja' era certo, uma figura que falha nao devia derrubar a corrida
+# inteira), so' torna a falha impossivel de passar despercebida no fim.
+_FALHAS_SALVAMENTO: List[str] = []
+
+
+#: Teto de paineis de DADOS numa imagem (pedido do usuario, 2026-11-06: "nenhum grafico deve
+#: conter mais de 3 na mesma imagem"). Legenda lateral e barra de cor nao contam. Figuras com N
+#: paineis (um por classe, por especie, por par...) saem em paginas de ate' 3: `nome_01`, `nome_02`...
+MAX_PAINEIS_POR_FIGURA = 3
+
+# Figuras gravadas acima do teto desde o ultimo `resetar_falhas_salvamento()` -- os testes
+# conferem que fica vazia; `save()` grava assim mesmo (uma figura a mais nao derruba a corrida).
+_FIGURAS_EXCEDENTES: List[str] = []
+
+
+def contar_paineis(fig) -> int:
+    """Paineis de dados visiveis de `fig`: eixos ligados, fora barras de cor e eixos so' de legenda
+    (`_legenda_lateral` desliga o eixo)."""
+    return len(_eixos_de_dados(fig))
+
+
+def obter_figuras_excedentes() -> List[str]:
+    """Nomes das figuras gravadas com mais de MAX_PAINEIS_POR_FIGURA paineis (deveria ser [])."""
+    return list(_FIGURAS_EXCEDENTES)
+
+
+# Analises com um grafico por item (especie, classe, elemento, componente, par de modelos) geram
+# muitos graficos: cada um vai para o seu arquivo. So' comparacoes fixas ficam juntas (ate' 3).
+GRAFICOS_POR_ITEM = 1
+
+
+def paginas(itens, por_pagina: int = MAX_PAINEIS_POR_FIGURA) -> List[list]:
+    """Divide `itens` em blocos de ate' `por_pagina` (um bloco = uma imagem)."""
+    itens = list(itens)
+    return [itens[i:i + por_pagina] for i in range(0, len(itens), por_pagina)] or [[]]
+
+
+def nome_pagina(nome: str, indice: int, total: int) -> str:
+    """`nome` quando ha' uma pagina so' (mantem o nome de sempre); senao `nome_01`, `nome_02`..."""
+    return nome if total <= 1 else f"{nome}_{indice:02d}"
+
+
+def resetar_falhas_salvamento() -> None:
+    """Zera o acumulador de falhas de salvamento -- chamar no INICIO de
+    `executar()`, pra' o resumo final refletir so' a corrida atual."""
+    _FALHAS_SALVAMENTO.clear()
+    _FIGURAS_EXCEDENTES.clear()
+
+
+def obter_falhas_salvamento() -> List[str]:
+    """Falhas de salvamento acumuladas desde o ultimo `resetar_falhas_
+    salvamento()` -- `executar()` confere isto no resumo final."""
+    return list(_FALHAS_SALVAMENTO)
+
+
+def registrar_falha_salvamento(descricao: str) -> None:
+    """Registra uma falha de salvamento que NAO passou por `save()` (ex.:
+    modelo/manifesto, gravados por `predicao.py`, nao por este modulo) --
+    mesmo acumulador, pra' o resumo final de `executar()` ver as duas
+    fontes juntas."""
+    _FALHAS_SALVAMENTO.append(descricao)
+
+
+def _eixos_de_dados(fig) -> list:
+    """Os eixos que `contar_paineis` conta, na ordem da figura."""
+    return [ax for ax in fig.axes
+            if ax.get_visible() and ax.axison
+            and getattr(ax, "_colorbar", None) is None and ax.get_label() != "<colorbar>"]
+
+
+def _nomes_de_variaveis_no_eixo(fig, cfg, maximo: int = 40) -> None:
+    """Dado com cabecalhos NOMEADOS (CSV generico: `cfg.nomes_variaveis`, eixo = posicao 1..k):
+    nos eixos X que mostram a variavel (rotulo neutro), troca os numeros de posicao pelos nomes.
+    Com mais de `maximo` variaveis nao ha' espaco para rotulos legiveis: fica a posicao."""
+    nomes = getattr(cfg, "nomes_variaveis", None)
+    if not nomes or len(nomes) > maximo:
+        return
+    neutros = {"Variável espectral", "Spectral variable", "Variavel espectral"}
+    for ax in fig.axes:
+        if ax.get_xlabel() in neutros:
+            ax.set_xticks(range(1, len(nomes) + 1))
+            ax.set_xticklabels(nomes, rotation=60, ha="right", fontsize=7)
+            ax.set_xlabel("Variável" if ax.get_xlabel().startswith("Vari") else "Variable")
+
+
+def _gravar_figura(fig, caminho: str) -> None:
+    try:
+        fig.savefig(caminho)
+        print(f"  -> {caminho}")
+    except OSError as e:   # disco cheio, permissao negada, path invalido
+        # (inclui MAX_PATH do Windows -- caminho >260 chars sem prefixo
+        # \\?\, achado real de auditoria com pasta de saida profunda).
+        print(f"  [ERROR] {caminho}: {e}")
+        _FALHAS_SALVAMENTO.append(f"{caminho}: {e}")
+
+
+def _caber_na_pagina(fig, folga: float = 0.05) -> None:
+    """Alarga a pagina se rotulos de eixo passarem da borda (o Agg corta o que fica fora da tela).
+
+    Cada vaga foi dimensionada para os rotulos do painel original; um painel de outro bloco pode
+    ter rotulos mais largos. Mede em polegadas e desloca/alarga sem mudar o tamanho dos paineis."""
+    largura, altura = fig.get_size_inches()
+    caixa = fig.get_tightbbox(fig.canvas.get_renderer())
+    esquerda = max(0.0, folga - caixa.x0)
+    direita = max(0.0, caixa.x1 - (largura - folga))
+    if not (esquerda or direita):
+        return
+    from matplotlib.transforms import Bbox
+    nova = largura + esquerda + direita
+    eixos = [(ax, ax.get_position()) for ax in fig.axes if ax.get_visible()]
+    fig.set_size_inches(nova, altura)
+    for ax, pos in eixos:
+        ax.set_position(Bbox.from_bounds((pos.x0 * largura + esquerda) / nova, pos.y0,
+                                         pos.width * largura / nova, pos.height))
+
+
+def _paginar_figura(fig, paineis: list, destino: str, nome: str, formato: str):
+    """Divide uma figura pronta em imagens de ate' MAX_PAINEIS_POR_FIGURA paineis.
+
+    Cada pagina mostra so' o seu bloco de eixos, nas posicoes dos 3 primeiros paineis (o resto da
+    largura sai do corte justo do savefig); legenda lateral, titulo geral e barras de cor ficam.
+    Gera (indice, caminho) e deixa a figura pronta para gravar a cada passo."""
+    fig.canvas.draw()                       # posicoes finais do layout (constrained/tight)
+    try:
+        fig.set_layout_engine("none")       # senao o layout desfaz o reposicionamento
+    except (AttributeError, RuntimeError):
+        pass
+    from matplotlib.transforms import Bbox
+    largura0, altura = fig.get_size_inches()
+    vagas = [ax.get_position() for ax in paineis[:MAX_PAINEIS_POR_FIGURA]]
+    # eixos de legenda lateral (eixo desligado) acompanham a pagina, logo a direita do ultimo painel
+    legendas = [(ax, ax.get_position()) for ax in fig.axes
+                if ax not in paineis and not ax.axison and ax.get_visible()]
+    # o titulo geral nunca pode ficar mais largo que a pagina estreitada (corte do texto)
+    titulo = getattr(fig, "_suptitle", None)
+    frac_titulo = 0.0
+    if titulo is not None and titulo.get_text():
+        largura_titulo = titulo.get_window_extent(fig.canvas.get_renderer()).width / fig.dpi
+        frac_titulo = min(1.0, (largura_titulo + 0.4) / largura0)
+    blocos = paginas(paineis, GRAFICOS_POR_ITEM)
+    for i, bloco in enumerate(blocos, 1):
+        for ax in paineis:
+            ax.set_visible(ax in bloco)
+        direita = vagas[len(bloco) - 1].x1
+        posicoes = [(ax, vaga) for ax, vaga in zip(bloco, vagas)]
+        for ax, pos in legendas:
+            posicoes.append((ax, Bbox.from_bounds(direita + 0.01, pos.y0, pos.width, pos.height)))
+            direita += 0.01 + pos.width
+        conteudo = min(1.0, direita + 0.02)
+        frac = max(conteudo, frac_titulo)
+        recuo = (frac - conteudo) / 2       # centraliza os paineis quando o titulo e' mais largo
+        fig.set_size_inches(largura0 * frac, altura)
+        for ax, pos in posicoes:
+            ax.set_position(Bbox.from_bounds((pos.x0 + recuo) / frac, pos.y0,
+                                             pos.width / frac, pos.height))
+        if getattr(fig, "_suptitle", None) is not None:
+            fig._suptitle.set_x(0.5)
+        _caber_na_pagina(fig)
+        yield i, os.path.join(destino, f"{nome_pagina(nome, i, len(blocos))}.{formato}")
+
+
+def save(fig, nome: str, pasta: str, cfg: Config,
+           subpasta: str = "") -> str:
+    """Always saves figure under pasta/Graficos/[subpasta]/ (auditoria jul/2026
+    item 4). subpasta groups detailed figures (e.g. 'ddsimca').
+
+    Com `ORGANIZAR_POR_GRUPO` ligado e sem subpasta do chamador, a figura vai
+    para a pasta do seu grupo de analise (grupos_figuras.GRUPOS_FIGURAS);
+    nome sem grupo conhecido fica solto em Graficos/. Figura de serie (`nome_01`, `nome_02`...)
+    vai para a subpasta da serie dentro do grupo (grupos_figuras.SERIES_FIGURAS).
+    Devolve o caminho gravado (a primeira imagem, quando a figura e' dividida)."""
+    base = pasta_execucao(pasta, NOME_GRAFICOS)
+    if organizar_por_grupo():
+        grupo = (SUBPASTAS_REMAPEADAS.get(subpasta, subpasta) if subpasta
+                 else subpasta_do_grupo(nome))
+        if grupo in DESCRICAO_GRUPOS:     # README so' onde ha' grupo
+            os.makedirs(base, exist_ok=True)
+            gravar_leiame(base)
+        subpasta = grupo
+    # grupo e serie no idioma da sessao; a pasta que ja' existe (PT ou EN) vence
+    destino = pasta_local(base, *nomes_do_grupo(subpasta)) if subpasta else base
+    serie_pt, serie_en = nomes_da_serie(nome)
+    pasta_fig = pasta_local(destino, serie_pt, serie_en) if serie_pt else destino
+    caminho = os.path.join(pasta_fig, f"{nome}.{cfg.output_format}")
+    os.makedirs(pasta_fig, exist_ok=True)
+    # Marca de PROTOTIPO (achado B4-1): o mode imagem (colorimetria digital)
+    # nao e validado e nao produz mae_id, entao roda SEM validacao
+    # group-aware. Os relatorios PDF/Word/LaTeX ja saem carimbados, mas uma
+    # figura .png exportada solta da pasta Graficos/ circula sem contexto --
+    # e' justamente o arquivo que acaba colado num slide ou num texto.
+    # `save()` e' o ponto unico por onde TODA figura passa.
+    if getattr(cfg, "mode", "") == "imagem":
+        from guaraci.idioma_relatorio import t as _t
+        fig.text(0.5, 0.5, _t("PROTÓTIPO\nNÃO VALIDADO", "PROTOTYPE\nNOT VALIDATED"),
+                 fontsize=34, color="0.5", alpha=0.16,
+                 ha="center", va="center", rotation=30,
+                 zorder=1000, transform=fig.transFigure)
+    # Texto DENTRO da figura no idioma da sessao (titulos, eixos, legendas): as funcoes de figura
+    # escrevem num idioma fixo; o glossario de idioma_figuras troca tudo aqui, no ponto unico.
+    from guaraci.idioma_figuras import traduzir_figura
+    traduzir_figura(fig)
+    _nomes_de_variaveis_no_eixo(fig, cfg)
+    paineis = _eixos_de_dados(fig)
+    if len(paineis) > MAX_PAINEIS_POR_FIGURA:
+        # REGRA PADRAO (pedido de 2026-11-06): nenhuma imagem sai com mais de 3 graficos, venha de
+        # onde vier. As figuras conhecidas ja' se dividem sozinhas (paginas de 3, com layout proprio);
+        # qualquer outra que chegue aqui com mais e' dividida neste ponto unico, em nome_01, nome_02...
+        _FIGURAS_EXCEDENTES.append(nome)
+        logging.getLogger(__name__).warning(
+            "figura %s com %d paineis: dividida em %d imagens (um grafico por arquivo)", nome,
+            len(paineis), len(paginas(paineis, GRAFICOS_POR_ITEM)))
+        destino_serie = pasta_local(destino, *nomes_da_serie(f"{nome}_01"))
+        os.makedirs(destino_serie, exist_ok=True)
+        for i, caminho_pag in _paginar_figura(fig, paineis, destino_serie, nome, cfg.output_format):
+            _gravar_figura(fig, caminho_pag)
+            if i == 1:
+                caminho = caminho_pag
+    else:
+        _gravar_figura(fig, caminho)
+    if cfg.show_plots:
+        global _AVISO_MOSTRAR_GRAFICOS_EMITIDO
+        if not _AVISO_MOSTRAR_GRAFICOS_EMITIDO:
+            print("  [AVISO] 'abrir_figuras_na_tela' esta ligado, mas o backend "
+                  "grafico e sempre headless (Agg) — as figuras nao abrem em "
+                  "janela, apenas sao salvas em disco normalmente.")
+            _AVISO_MOSTRAR_GRAFICOS_EMITIDO = True
+    # Always release the figure: in a headless/Agg backend show() is a no-op,
+    # and skipping close() leaks the figure in a long-lived server process
+    # (e.g. Streamlit Cloud), growing RAM across runs.
+    plt.close(fig)
+    return caminho
+
+
+def specificity_by_class(cm: np.ndarray) -> np.ndarray:
+    """Specificity = TN / (TN + FP), por classe (one-vs-rest)."""
+    n = cm.shape[0]
+    total = cm.sum()
+    spec = np.zeros(n)
+    for i in range(n):
+        tp = cm[i, i]
+        fn = cm[i, :].sum() - tp
+        fp = cm[:, i].sum() - tp
+        tn = total - tp - fn - fp
+        spec[i] = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    return spec
+
+
+# =========================================================================
+#  Plot helpers
+# =========================================================================
+
+def ellipse_t2(ax, x, y, color, lw=1.4, alpha=0.85,
+              max_excentricidade: float = 50.0,
+              limite_dispersao: Optional[Tuple[float, float]] = None):
+    """Hotelling T2 95% ellipse (chi2_{2,0.95}). No fill. Returns False
+    in degenerate cases: <4 points, zero minimum eigenvalue, excessive
+    eccentricity, or ellipse larger than the data range itself."""
+    if len(x) < 4:
+        return False
+    cov = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(cov)
+    order = vals.argsort()[::-1]
+    vals, vecs = vals[order], vecs[:, order]
+    if vals[1] <= 1e-12 or vals[0] / max(vals[1], 1e-12) > max_excentricidade:
+        return False
+    angle = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
+    escala = np.sqrt(chi2.ppf(0.95, df=2))
+    w = 2 * escala * np.sqrt(vals[0])
+    h = 2 * escala * np.sqrt(vals[1])
+    if limite_dispersao is not None:
+        max_w, max_h = limite_dispersao
+        if w > max_w * 2.5 or h > max_h * 2.5:
+            return False
+    ell = Ellipse(xy=(x.mean(), y.mean()), width=w, height=h, angle=angle,
+                  edgecolor=color, facecolor="none", lw=lw,
+                  alpha=alpha, zorder=2)
+    ax.add_patch(ell)
+    return True
+
+
+def convex_hull_contorno(ax, x, y, color, lw=1.4, alpha=0.85):
+    """Convex hull (fallback when n_per_class < 4 for ellipse)."""
+    pts = np.column_stack([x, y])
+    if len(pts) < 3:
+        return False
+    try:
+        from scipy.spatial import ConvexHull, QhullError
+        hull = ConvexHull(pts)
+        verts = pts[hull.vertices]
+        verts = np.vstack([verts, verts[0]])
+        ax.plot(verts[:, 0], verts[:, 1], color=color, lw=lw, alpha=alpha,
+                zorder=2)
+        return True
+    except QhullError:
+        return False   # pontos colineares/degenerados -- sem contorno a tracar
+
+
+def adaptive_scatter_parameters(n_total: int, n_classes: int
+                                    ) -> Tuple[float, float, float]:
+    """Marker size, alpha and edge width as a function of point density.
+    Alpha is replaced by the user's fixed point opacity when one is set
+    (`paleta_cores.set_point_alpha`, CLI [7] > [A])."""
+    n_pc = n_total / max(n_classes, 1)
+    if n_pc < 12:
+        s, alpha, lw = 60.0, 0.92, 0.6
+    elif n_pc < 40:
+        s, alpha, lw = 44.0, 0.82, 0.5
+    elif n_pc < 100:
+        s, alpha, lw = 30.0, 0.65, 0.4
+    elif n_pc < 250:
+        s, alpha, lw = 20.0, 0.50, 0.35
+    else:
+        s, alpha, lw = 14.0, 0.40, 0.30
+    fixo = get_point_alpha()
+    return s, (fixo if fixo is not None else alpha), lw
+
+
+def _ticks_x_inteiros(ax, valores, limiar: int = 15, nbins: int = 10):
+    """Avoids overlapping ticks on the X axis. If there are more than
+    `limiar` values, uses MaxNLocator (integer steps, ~nbins divisions).
+    Otherwise shows all values. Used in LV selection plots."""
+    valores = np.asarray(valores)
+    if len(valores) > limiar:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=nbins))
+    else:
+        ax.set_xticks(valores)
+
+
+# Modos cujo eixo, quando NENHUMA unidade foi declarada (nem `eixo_unidade` nem perfil),
+# segue a convencao antiga: numero de onda (cm-1) ou ppm de RMN, eixo DEcrescente. E' so' o
+# comportamento de reserva para configs antigas (a Config padrao e' a do FT-NIR em cm-1):
+# com a unidade declarada (a tela [2.4] a grava), a orientacao vem DELA, e "csv" em nm,
+# min ou ms sai crescente. Cromatograma (gcms/hplc), EEM achatada, imagem, HSI (nm) e ICP
+# ficam crescentes.
+_MODOS_EIXO_DECRESCENTE = frozenset({"dx", "csv", "sintetico", "opus", "spc", "sp", "rmn"})
+
+
+def eixo_x_decrescente(cfg) -> bool:
+    """True se o eixo espectral deve ir do maior para o menor (numero de onda
+    em cm-1, ou ppm). A unidade declarada (`cfg.axis_unit`, ou a do perfil)
+    decide; sem nenhuma, vale o modo de entrada (comportamento antigo).
+    Variaveis NOMEADAS (eixo = posicao 1..k) ficam na ordem do arquivo, crescente."""
+    if getattr(cfg, "nomes_variaveis", None):
+        return False
+    por_unidade = eixo_decrescente_por_unidade(cfg) if cfg is not None else None
+    if por_unidade is not None:
+        return por_unidade
+    return str(getattr(cfg, "mode", "dx") or "dx") in _MODOS_EIXO_DECRESCENTE
+
+
+def _orientar_eixo_espectral(ax, cfg) -> None:
+    """Deixa o eixo X decrescente so' quando `eixo_x_decrescente(cfg)`.
+    Idempotente (usa set_xlim, nao invert): seguro com sharex."""
+    if not eixo_x_decrescente(cfg):
+        return
+    lo, hi = ax.get_xlim()
+    if lo < hi:
+        ax.set_xlim(hi, lo)
+
+
+def plot_scores_panel(ax, scores, rotulos, mapa_cores, var_exp,
+                      titulo, xlabel, ylabel, puros_mask=None,
+                      mapa_marcadores=None, desenhar_elipses=True):
+    """Score plot WITHOUT internal legend. The legend must be drawn
+    externally via _legenda_lateral using the scatter handles.
+
+    Distinction channels: COLOR (class) + SHAPE (mapa_marcadores, optional)
+    + smart edge (light/dark by luminance). If puros_mask is given, pure
+    samples get a black edge (highlight) keeping the class shape."""
+    rotulos = np.asarray(rotulos, dtype=str)
+    scores  = np.asarray(scores,  dtype=float)
+
+    classes_unicas = np.unique(rotulos)
+    s, alpha, lw_e = adaptive_scatter_parameters(len(rotulos),
+                                                      len(classes_unicas))
+
+    xrange = float(scores[:, 0].max() - scores[:, 0].min())
+    yrange = float(scores[:, 1].max() - scores[:, 1].min())
+    limite = (xrange, yrange)
+
+    pmask = (np.asarray(puros_mask, dtype=bool)
+             if puros_mask is not None else None)
+
+    for cls in classes_unicas:
+        idx = rotulos == cls
+        c = mapa_cores[cls]
+        mk = mapa_marcadores.get(cls, "o") if mapa_marcadores else "o"
+        edge = get_edge_color(c)
+        n_cls = int(idx.sum())
+        if pmask is not None:
+            idx_puro  = idx & pmask
+            idx_adult = idx & (~pmask)
+            if idx_adult.any():
+                ax.scatter(scores[idx_adult, 0], scores[idx_adult, 1],
+                           color=c, s=s, marker=mk, edgecolors=edge,
+                           linewidths=lw_e, zorder=3, alpha=alpha,
+                           label=f"{cls} (n={n_cls})")
+            # Pure samples: same shape/color, thick black edge = highlight
+            if idx_puro.any():
+                ax.scatter(scores[idx_puro, 0], scores[idx_puro, 1],
+                           color=c, s=s * 1.15, marker=mk,
+                           edgecolors="black", linewidths=1.2, zorder=5,
+                           label=(f"{cls} (n={n_cls})"
+                                  if not idx_adult.any() else None))
+        else:
+            ax.scatter(scores[idx, 0], scores[idx, 1],
+                       color=c, s=s, marker=mk, edgecolors=edge,
+                       linewidths=lw_e, zorder=3, alpha=alpha,
+                       label=f"{cls} (n={n_cls})")
+        if desenhar_elipses:
+            ok = ellipse_t2(ax, scores[idx, 0], scores[idx, 1], c,
+                            lw=1.4, limite_dispersao=limite)
+            if not ok:
+                convex_hull_contorno(ax, scores[idx, 0], scores[idx, 1],
+                                       c, lw=1.3)
+
+    ax.axhline(0, color="0.82", lw=0.5, ls="-", zorder=1)
+    ax.axvline(0, color="0.82", lw=0.5, ls="-", zorder=1)
+    ax.set_xlabel(f"{xlabel} ({var_exp[0]:.1f}%)")
+    ax.set_ylabel(f"{ylabel} ({var_exp[1]:.1f}%)")
+    ax.set_title(titulo, loc="left")
+
+    xmin, xmax = float(scores[:, 0].min()), float(scores[:, 0].max())
+    ymin, ymax = float(scores[:, 1].min()), float(scores[:, 1].max())
+    px = max((xmax - xmin) * 0.08, 1e-3)
+    py = max((ymax - ymin) * 0.08, 1e-3)
+    ax.set_xlim(xmin - px, xmax + px)
+    ax.set_ylim(ymin - py, ymax + py)
+    ax.grid(color="0.94", lw=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+
+def _legenda_lateral(ax_leg, ax_dados, titulo: str = "Class",
+                      max_col_alta: int = 18):
+    """Draws external legend in a dedicated axes, without occupying the data area."""
+    ax_leg.axis("off")
+    handles, labels = ax_dados.get_legend_handles_labels()
+    ncol = 1 if len(labels) <= max_col_alta else 2
+    ax_leg.legend(handles, labels, loc="center left", frameon=False,
+                   title=titulo, title_fontsize=9.5, fontsize=8.5,
+                   ncol=ncol, borderaxespad=0, handletextpad=0.6,
+                   labelspacing=0.6)
+
+
+# =========================================================================
+#  FIGURAS
+# =========================================================================
+
+def fig1_selecao_lvs(erros_rmsecv, metricas_por_lv, n_opt, cfg, pasta):
+    """LV selection + CV metrics per LV."""
+    n_max = len(erros_rmsecv)
+    lvs = np.arange(1, n_max + 1)
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.2),
+                              constrained_layout=True)
+
+    ax = axes[0]
+    ax.plot(lvs, erros_rmsecv, "o-", color=color(0), ms=5.5, lw=1.6)
+    ax.axvline(n_opt, color=color(3), ls="--", lw=1.3,
+               label=f"Optimal: {n_opt} LVs")
+    ax.set_xlabel("Number of latent variables")
+    ax.set_ylabel("RMSECV")
+    ax.set_title("(a) LV selection", loc="left")
+    _ticks_x_inteiros(ax, lvs)
+    ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
+    ax.legend(frameon=False)
+
+    ax = axes[1]
+    ax.plot(lvs, [m["accuracy"]          for m in metricas_por_lv],
+            "o-", color=color(0), ms=4.5, lw=1.3, label="Accuracy")
+    ax.plot(lvs, [m["balanced_accuracy"] for m in metricas_por_lv],
+            "s-", color=color(2), ms=4.5, lw=1.3, label="Balanced acc.")
+    ax.plot(lvs, [m["f1_macro"]          for m in metricas_por_lv],
+            "^-", color=color(1), ms=4.5, lw=1.3, label="F1 (macro)")
+    ax.plot(lvs, [m["cohen_kappa"]       for m in metricas_por_lv],
+            "d-", color=color(3), ms=4.5, lw=1.3, label="Cohen's $\\kappa$")
+    ax.axvline(n_opt, color="0.55", ls=":", lw=1)
+    ax.set_xlabel("Number of latent variables")
+    ax.set_ylabel("Metric (CV)")
+    ax.set_ylim(-0.05, 1.05)
+    _ticks_x_inteiros(ax, lvs)
+    ax.set_title("(b) Cross-validation metrics", loc="left")
+    ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
+    ax.legend(loc="lower right", ncol=2, frameon=False)
+
+    save(fig, "figS1_selecao_lvs", pasta, cfg)
+
+
+def _centroides_pca(X, rotulos, n_pcs):
+    """Per-class centroid in the PCA(n_pcs) space. Reduces spectral noise
+    before clustering. Returns (M_centroides, classes)."""
+    rotulos = np.asarray(rotulos, dtype=str)
+    classes = np.unique(rotulos)
+    n_comp = int(min(n_pcs, X.shape[1], X.shape[0]))
+    scores = PCA(n_components=n_comp).fit_transform(X)
+    M = np.vstack([scores[rotulos == c].mean(axis=0) for c in classes])
+    return M, classes
+
+
+def fig_hca_dendrogram(X_processed, rotulos, mapa_cores, cfg, pasta,
+                         metodo="ward"):
+    """HCA dendrogram (Ward, Euclidean) on CENTROIDS per species in
+    the PCA(hca_n_pcs components) space — N1 required.
+
+    Axes (V3): TOP orientation — species on the X axis (bottom, rotated
+    and colored labels per species); distance on the Y axis (left).
+
+    HCA complements PCA: reveals the hierarchy of spectral similarity
+    among species (potential confusions in PLS-DA).
+    """
+    rotulos = np.asarray(rotulos, dtype=str)
+    M, classes = _centroides_pca(X_processed, rotulos, cfg.hca_n_pcs)
+    if len(M) < 2:
+        print("[WARNING] HCA: <2 groups, dendrogram skipped.")
+        return
+
+    Z = linkage(pdist(M, metric="euclidean"), method=metodo)
+
+    largura = max(8.0, 0.55 * len(classes) + 2.0)
+    fig, ax = plt.subplots(figsize=(largura, 5.2), constrained_layout=True)
+    dendrogram(
+        Z, labels=list(classes), orientation="top", ax=ax,
+        color_threshold=0, above_threshold_color="0.55",
+        leaf_font_size=10,
+    )
+    # Species labels on the X axis (bottom), colored and rotated
+    mapa_lbl_cor = {str(c): mapa_cores.get(c, "0.4") for c in classes}
+    for lbl in ax.get_xmajorticklabels():
+        lbl.set_color(mapa_lbl_cor.get(lbl.get_text(), "0.2"))
+        lbl.set_fontweight("bold")
+        lbl.set_rotation(40)
+        lbl.set_horizontalalignment("right")
+    ax.set_ylabel(f"Distance ({metodo}, Euclidean)")
+    ax.set_xlabel("Species", labelpad=6)
+    ax.set_title(f"HCA — dendrogram (centroids, PCA {M.shape[1]} comp.)",
+                  loc="left")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    save(fig, "fig_hca_dendrogram", pasta, cfg)
+
+    # Automatic interpretation of main clusters (k=2)
+    try:
+        from scipy.cluster.hierarchy import fcluster
+        grupos = fcluster(Z, t=2, criterion="maxclust")
+        comp = {}
+        for g in np.unique(grupos):
+            comp[int(g)] = [str(classes[i]) for i in range(len(classes))
+                            if grupos[i] == g]
+        print("  [HCA] Main clusters (k=2):")
+        for g, membros in comp.items():
+            print(f"    Cluster {g}: {', '.join(membros)}")
+    except ValueError as _e_fc:
+        # Interpretacao de cluster e' so' um printout auxiliar no console;
+        # a figura do dendrograma ja foi salva acima, intacta.
+        logging.getLogger(__name__).debug(
+            "HCA: interpretacao de clusters (k=2) falhou: %s", _e_fc)
+
+
+def fig_hca_comparacao_pipelines(X_raw, rotulos, mapa_cores, cfg, pasta,
+                                  metodo="ward"):
+    """Compares HCA (centroids in PCA hca_n_pcs) under several spectral
+    preprocessing methods in a dendrogram panel. Evaluates cluster
+    stability and the impact of preprocessing."""
+    rotulos = np.asarray(rotulos, dtype=str)
+
+    def _snv(X):
+        mu = X.mean(axis=1, keepdims=True); sd = X.std(axis=1, keepdims=True)
+        sd[sd == 0] = 1.0; return (X - mu) / sd
+
+    def _msc(X):
+        ref = X.mean(axis=0); A = np.column_stack([np.ones_like(ref), ref])
+        out = np.zeros_like(X)
+        for i in range(X.shape[0]):
+            sol, *_ = np.linalg.lstsq(A, X[i], rcond=None)
+            a, b = float(sol[0]), float(sol[1])
+            out[i] = (X[i] - a) / b if abs(b) > 1e-12 else X[i] - a
+        return out
+
+    def _sg(X, d):
+        return savgol_filter(X, cfg.sg_window, cfg.sg_polyorder, deriv=d, axis=1)
+
+    presets = {
+        "Raw":           lambda X: X,
+        "SNV":           lambda X: _snv(X),
+        "MSC":           lambda X: _msc(X),
+        "SG 1st deriv":  lambda X: _sg(X, 1),
+        "SG 2nd deriv":  lambda X: _sg(X, 2),
+        "SNV+SG1":       lambda X: _sg(_snv(X), 1),
+        "MSC+SG1":       lambda X: _sg(_msc(X), 1),
+        "Normalization": lambda X: X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-12),
+    }
+
+    mapa_lbl_cor = {str(c): mapa_cores.get(c, "0.4")
+                    for c in np.unique(rotulos)}
+    # 8 pre-processamentos = 3 imagens de ate' 3 dendrogramas (MAX_PAINEIS_POR_FIGURA); a ordem do
+    # dicionario agrupa os que se comparam (bruto/SNV/MSC; derivadas; combinacoes).
+    blocos = paginas(list(presets.items()))
+    for i_pag, bloco in enumerate(blocos, 1):
+        _hca_pagina(bloco, X_raw, rotulos, mapa_lbl_cor, cfg, pasta, metodo,
+                    nome_pagina("fig_hca_comparacao_pipelines", i_pag, len(blocos)),
+                    i_pag, len(blocos))
+
+
+def _hca_pagina(bloco, X_raw, rotulos, mapa_lbl_cor, cfg, pasta, metodo, nome_fig,
+                i_pag: int, n_pag: int) -> None:
+    """Uma imagem de `fig_hca_comparacao_pipelines` com ate' 3 pre-processamentos."""
+    fig, axes = plt.subplots(1, len(bloco), figsize=(4.4 * len(bloco), 3.8),
+                             constrained_layout=True, squeeze=False)
+    axes = axes.ravel()
+    for k, (nome, fn) in enumerate(bloco):
+        ax = axes[k]
+        try:
+            Xp = np.asarray(fn(X_raw), dtype=float)
+            M, classes = _centroides_pca(Xp, rotulos, cfg.hca_n_pcs)
+            Z = linkage(pdist(M, metric="euclidean"), method=metodo)
+            dendrogram(Z, labels=list(classes), orientation="top", ax=ax,
+                       color_threshold=0, above_threshold_color="0.6",
+                       leaf_font_size=6.5)
+            for lbl in ax.get_xmajorticklabels():
+                lbl.set_color(mapa_lbl_cor.get(lbl.get_text(), "0.2"))
+                lbl.set_rotation(80); lbl.set_horizontalalignment("right")
+                lbl.set_fontsize(6.5)
+            ax.set_title(nome, loc="left", fontsize=9, fontweight="bold")
+            ax.set_yticks([])
+            for sp in ("top", "right"):
+                ax.spines[sp].set_visible(False)
+        except Exception as e:  # noqa: BLE001 -- 1 painel de N (comparacao de
+            # pre-processamentos); erro exibido DENTRO do proprio painel
+            # (mais visivel que print), os demais paineis continuam.
+            ax.text(0.5, 0.5, f"failed\n{e}", ha="center", va="center",
+                    fontsize=7, transform=ax.transAxes); ax.axis("off")
+    parte = f" ({i_pag}/{n_pag})" if n_pag > 1 else ""
+    fig.suptitle(f"HCA by preprocessing — cluster stability{parte}",
+                  fontsize=11, fontweight="bold", x=0.01, ha="left")
+    save(fig, nome_fig, pasta, cfg)
+
+
+def fig1_pca_scores(scores_pca, var_pca, rotulos, mapa_cores, cfg, pasta,
+                     puros_mask=None, mapa_marcadores=None):
+    """Figure 1: PCA scores. External legend (outside the data area).
+    Color + shape per class; pure samples with black edge (if puros_mask)."""
+    fig = plt.figure(figsize=(8.5, 5.8), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.1])
+    ax = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+    plot_scores_panel(ax, scores_pca[:, :2], rotulos, mapa_cores,
+                       var_pca[:2],
+                       titulo="PCA — exploratory (unsupervised)",
+                       xlabel="PC1", ylabel="PC2", puros_mask=puros_mask,
+                       mapa_marcadores=mapa_marcadores,
+                       desenhar_elipses=cfg.show_group_ellipses)
+    _legenda_lateral(ax_leg, ax)
+    save(fig, "fig1_pca_scores", pasta, cfg)
+    # Scree (auditoria de figuras, secao D): variancia por componente das
+    # n_pcs_pca componentes que a PCA ja calculou -- mesmo var_pca da fig1.
+    _figura_extra("fig_pca_scree", np.asarray(var_pca, dtype=float), cfg, pasta)
+
+
+def _figura_extra(nome_funcao: str, *args, **kwargs) -> None:
+    """Chama `figuras_extras.<nome_funcao>`; uma falha so' desenhando um
+    grafico complementar e' registrada e nunca derruba a corrida."""
+    try:
+        from guaraci import figuras_extras
+        getattr(figuras_extras, nome_funcao)(*args, **kwargs)
+    except Exception as e:  # noqa: BLE001 -- figura complementar, opcional
+        print(f"  [AVISO] figura complementar {nome_funcao} nao gerada: {e}")
+        plt.close("all")
+
+
+def _fig2_uma_vl(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
+                 mapa_marcadores=None):
+    """Scores PLS-DA quando o modelo tem 1 VL: LV1 no eixo X, uma faixa por
+    classe no Y (jitter deterministico)."""
+    rotulos = np.asarray(rotulos, dtype=str)
+    t1 = np.asarray(T_pls, dtype=float).reshape(len(rotulos), -1)[:, 0]
+    classes = np.unique(rotulos)
+    s, alpha, lw_e = adaptive_scatter_parameters(len(rotulos), len(classes))
+    rng = np.random.default_rng(0)
+    fig = plt.figure(figsize=(8.5, max(3.6, 1.0 + 0.7 * len(classes))),
+                     constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.1])
+    ax = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+    for k, cls in enumerate(classes):
+        idx = rotulos == cls
+        c = mapa_cores.get(cls, "0.4")
+        mk = mapa_marcadores.get(cls, "o") if mapa_marcadores else "o"
+        y = k + rng.uniform(-0.22, 0.22, int(idx.sum()))
+        ax.scatter(t1[idx], y, color=c, s=s, marker=mk, alpha=alpha,
+                   edgecolors=get_edge_color(c), linewidths=lw_e, zorder=3,
+                   label=f"{cls} (n={int(idx.sum())})")
+        ax.plot([float(np.median(t1[idx]))] * 2, [k - 0.32, k + 0.32],
+                color=c, lw=1.6, zorder=4)
+    ax.axvline(0, color="0.82", lw=0.5, zorder=1)
+    ax.set_yticks(range(len(classes)))
+    ax.set_yticklabels(classes)
+    ax.set_ylim(-0.6, len(classes) - 0.4)
+    v1 = float(np.asarray(var_lv_pls, dtype=float).ravel()[0]) if len(var_lv_pls) else float("nan")
+    ax.set_xlabel(f"LV1 ({v1:.1f}%)")
+    ax.set_title("PLS-DA — LV1 scores per class (model has 1 LV; "
+                 "bar = median)", loc="left")
+    ax.grid(axis="x", color="0.94", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg, ax)
+    save(fig, "fig2_plsda_scores", pasta, cfg)
+
+
+def fig2_plsda_scores(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
+                       puros_mask=None, mapa_marcadores=None):
+    """Figure 2: PLS-DA scores. Shows LV1xLV2 and LV2xLV3 (if >=3 LVs);
+    with a single LV, a 1-D LV1 plot per class.
+    Color + shape per class; pure samples with black edge (if puros_mask)."""
+    n_lv_avail = T_pls.shape[1]
+    if n_lv_avail < 2:
+        # 1 VL: grafico 1-D (LV1 por classe, com jitter) em vez de pular a
+        # figura anunciada no plano de figuras.
+        _fig2_uma_vl(T_pls, var_lv_pls, rotulos, mapa_cores, cfg, pasta,
+                     mapa_marcadores=mapa_marcadores)
+        return
+
+    if n_lv_avail >= 3:
+        fig = plt.figure(figsize=(13.5, 5.6), constrained_layout=True)
+        gs = fig.add_gridspec(1, 3, width_ratios=[5.0, 5.0, 1.1])
+        ax1 = fig.add_subplot(gs[0])
+        ax2 = fig.add_subplot(gs[1])
+        ax_leg = fig.add_subplot(gs[2])
+        plot_scores_panel(ax1, T_pls[:, [0, 1]], rotulos, mapa_cores,
+                           [var_lv_pls[0], var_lv_pls[1]],
+                           titulo="(a) PLS-DA — LV1 × LV2",
+                           xlabel="LV1", ylabel="LV2", puros_mask=puros_mask,
+                           mapa_marcadores=mapa_marcadores,
+                           desenhar_elipses=cfg.show_group_ellipses)
+        plot_scores_panel(ax2, T_pls[:, [1, 2]], rotulos, mapa_cores,
+                           [var_lv_pls[1], var_lv_pls[2]],
+                           titulo="(b) PLS-DA — LV2 × LV3",
+                           xlabel="LV2", ylabel="LV3", puros_mask=puros_mask,
+                           mapa_marcadores=mapa_marcadores,
+                           desenhar_elipses=cfg.show_group_ellipses)
+        _legenda_lateral(ax_leg, ax1)
+    else:
+        fig = plt.figure(figsize=(8.5, 5.8), constrained_layout=True)
+        gs = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.1])
+        ax = fig.add_subplot(gs[0])
+        ax_leg = fig.add_subplot(gs[1])
+        plot_scores_panel(ax, T_pls[:, :2], rotulos, mapa_cores,
+                           var_lv_pls[:2],
+                           titulo="PLS-DA — LV1 × LV2",
+                           xlabel="LV1", ylabel="LV2", puros_mask=puros_mask,
+                           mapa_marcadores=mapa_marcadores,
+                           desenhar_elipses=cfg.show_group_ellipses)
+        _legenda_lateral(ax_leg, ax)
+    save(fig, "fig2_plsda_scores", pasta, cfg)
+
+
+def fig3_outliers(T_scores, P_loadings, X_processed, rotulos, mapa_cores,
+                   n_lv, cfg, pasta, gerar_figura: bool = True,
+                   q_treino=None, x_mean=None):
+    """T2/Q por amostra (sempre calculados: o resumo e o dominio usam) e, se
+    `gerar_figura`, o grafico. A selecao de graficos (`graficos`) decide.
+
+    `q_treino`: Q de cada amostra calculado FORA da amostra
+    (`q_residuals_pls_loo`); e' o que o pipeline passa, porque o Q do proprio
+    ajuste e' otimista e o limite derivado dele rejeita amostras novas
+    legitimas (achado A4-03). Sem ele cai no Q in-sample, com X centrado por
+    `x_mean` quando informado (a media do PLS: sem centrar, o Q mistura a norma
+    da media com o residuo)."""
+    n = X_processed.shape[0]
+    T2 = hotelling_t2(T_scores[:, :n_lv])
+    if q_treino is not None:
+        Q = np.asarray(q_treino, dtype=float)
+    else:
+        X_q = (np.asarray(X_processed, dtype=float)
+               if x_mean is None else np.asarray(X_processed, dtype=float) - np.asarray(x_mean, dtype=float))
+        Q = q_residuals(X_q, T_scores[:, :n_lv], P_loadings[:n_lv])
+    t2_lim = hotelling_t2_limit(n, n_lv)
+    q_lim  = q_residuals_limit(Q)
+    if not gerar_figura:
+        return T2, Q, t2_lim, q_lim, np.where(T2 > t2_lim)[0], np.where(Q > q_lim)[0]
+
+    rotulos = np.asarray(rotulos, dtype=str)
+    classes_unicas = np.unique(rotulos)
+    s_pt, alpha_pt, lw_pt = adaptive_scatter_parameters(
+        len(rotulos), len(classes_unicas))
+
+    fig = plt.figure(figsize=(13.5, 4.6), constrained_layout=True)
+    gs = fig.add_gridspec(1, 3, width_ratios=[5.0, 5.0, 1.1])
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1])
+    ax_leg = fig.add_subplot(gs[2])
+
+    # Log scale on Y: a few samples with T2 ~1000 compress the rest to
+    # the bottom. Log distributes values and keeps the 95% limit visible.
+    for cls in classes_unicas:
+        idx = rotulos == cls
+        ax1.scatter(np.where(idx)[0], np.clip(T2[idx], 1e-2, None),
+                    color=mapa_cores[cls],
+                    s=s_pt, edgecolors="white", linewidths=lw_pt,
+                    label=str(cls), zorder=3, alpha=alpha_pt)
+    ax1.axhline(t2_lim, color="0.30", ls="--", lw=1.0,
+                label=f"T$^2$ 95% limit ({t2_lim:.1f})")
+    # Log so' quando os valores cobrem mais de uma ordem de grandeza: numa
+    # faixa estreita o eixo log so' mostrava rotulos "2x10^0 ... 6x10^0".
+    _log_t2 = _faixa_pede_log(np.append(T2, t2_lim))
+    _log_q = _faixa_pede_log(np.append(Q, q_lim))
+    if _log_t2:
+        ax1.set_yscale("log")
+    ax1.set_xlabel("Sample index")
+    ax1.set_ylabel("Hotelling T$^2$" + (" (log)" if _log_t2 else ""))
+    ax1.set_title(f"(a) Hotelling T$^2$ ({n_lv} LVs) — 95% limit",
+                   loc="left")
+    ax1.grid(axis="y", color="0.94", lw=0.5); ax1.set_axisbelow(True)
+
+    # Panel (b): log-log centers the cloud (it was in the lower-left corner).
+    for cls in classes_unicas:
+        idx = rotulos == cls
+        ax2.scatter(np.clip(T2[idx], 1e-2, None), np.clip(Q[idx], 1e-12, None),
+                    color=mapa_cores[cls],
+                    s=s_pt, edgecolors="white", linewidths=lw_pt,
+                    zorder=3, alpha=alpha_pt)
+    ax2.axvline(t2_lim, color="0.30", ls="--", lw=1.0)
+    linha_q = ax2.axhline(q_lim, color="0.30", ls=":", lw=1.2,
+                          label=f"Q 95% limit ({q_lim:.3g})")
+    if _log_t2:
+        ax2.set_xscale("log")
+    if _log_q:
+        ax2.set_yscale("log")
+    ax2.set_xlabel("Hotelling T$^2$" + (" (log)" if _log_t2 else ""))
+    ax2.set_ylabel("Q-residuals / SPE" + (" (log)" if _log_q else ""))
+    ax2.set_title("(b) T$^2$ vs Q — outlier detection", loc="left")
+    ax2.grid(color="0.94", lw=0.5); ax2.set_axisbelow(True)
+    # Identifica (indice da amostra) quem passa de algum limite, maiores primeiro
+    fora = np.where((Q > q_lim) | (T2 > t2_lim))[0]
+    if fora.size:
+        ordem = fora[np.argsort(-(Q[fora] / max(q_lim, 1e-12)
+                                  + T2[fora] / max(t2_lim, 1e-12)))]
+        # Distancia medida na escala do eixo (log quando log), senao rotulos
+        # de pontos vizinhos no eixo log se sobrepunham.
+        _tx = (np.log10 if _log_t2 else np.asarray)(np.clip(T2, 1e-2, None))
+        _ty = (np.log10 if _log_q else np.asarray)(np.clip(Q, 1e-12, None))
+        _dx = float(np.ptp(_tx)) or 1.0
+        _dy = float(np.ptp(_ty)) or 1.0
+        # Pontos vizinhos dividem um rotulo ("16,17").
+        _postos: List[Tuple[float, float, List[str]]] = []
+        for i in ordem:
+            perto = [p for p in _postos if abs(_tx[i] - p[0]) / _dx < 0.04
+                     and abs(_ty[i] - p[1]) / _dy < 0.04]
+            if perto:
+                perto[0][2].append(str(i))
+            elif len(_postos) < 12:
+                _postos.append((_tx[i], _ty[i], [str(i)]))
+        for px, py, nomes in _postos:
+            xy = ((10 ** px) if _log_t2 else px, (10 ** py) if _log_q else py)
+            ax2.annotate(",".join(nomes[:4]) + ("…" if len(nomes) > 4 else ""),
+                         xy=xy, xytext=(3, 3), textcoords="offset points",
+                         fontsize=6.5, color="0.25")
+
+    # Legenda lateral: classes + os DOIS limites (o de Q faltava)
+    ax_leg.axis("off")
+    hs, ls_ = ax1.get_legend_handles_labels()
+    hs.append(linha_q); ls_.append(linha_q.get_label())
+    ax_leg.legend(hs, ls_, loc="center left", frameon=False, title="Class",
+                  title_fontsize=9.5, fontsize=8.5, borderaxespad=0,
+                  handletextpad=0.6, labelspacing=0.6)
+
+    save(fig, "fig3_outliers_T2_Q", pasta, cfg)
+
+    outliers_t2 = np.where(T2 > t2_lim)[0]
+    outliers_q  = np.where(Q  > q_lim)[0]
+    return T2, Q, t2_lim, q_lim, outliers_t2, outliers_q
+
+
+def _faixa_pede_log(valores, razao: float = 20.0) -> bool:
+    """True se os valores positivos cobrem mais que `razao` vezes (eixo log)."""
+    v = np.asarray(valores, dtype=float)
+    v = v[np.isfinite(v) & (v > 0)]
+    return bool(v.size) and float(v.max()) / float(v.min()) > razao
+
+
+def fig4_confusao(cm_mat, classes, y_true, y_pred, cfg, pasta):
+    """Confusion matrix + per-class metrics (precision, sensitivity,
+    specificity, F1). Size scales with number of classes."""
+    n_cls = len(classes)
+    largura = max(10.5, 5.5 + 0.55 * n_cls)
+    altura  = max(4.8, 4.2 + 0.10 * n_cls)
+    fig = plt.figure(figsize=(largura, altura), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15])
+
+    # ---- (a) Confusion matrix -------------------------------------------
+    ax = fig.add_subplot(gs[0, 0])
+    cm_norm = cm_mat.astype(float) / np.maximum(
+        cm_mat.sum(axis=1, keepdims=True), 1)
+    im = ax.imshow(cm_norm, cmap="Blues", vmin=0, vmax=1, aspect="equal")
+    thresh = 0.55
+
+    fs_anot = 10 if n_cls <= 6 else (8.5 if n_cls <= 10 else 7)
+    for i in range(n_cls):
+        for j in range(n_cls):
+            ax.text(j, i, f"{cm_mat[i, j]}\n{cm_norm[i, j]*100:.1f}%",
+                    ha="center", va="center",
+                    fontsize=fs_anot, fontweight="bold",
+                    color="white" if cm_norm[i, j] > thresh else "0.15")
+
+    ax.set_xticks(range(n_cls))
+    ax.set_yticks(range(n_cls))
+    fs_tick = 9 if n_cls <= 8 else 8
+    ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=fs_tick)
+    ax.set_yticklabels(classes, fontsize=fs_tick)
+    ax.set_xlabel("Predicted", labelpad=8)
+    ax.set_ylabel("True",      labelpad=8)
+    ax.set_title("(a) Confusion matrix (CV)", loc="left")
+
+    ax.set_xticks(np.arange(-0.5, n_cls, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, n_cls, 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=1.6)
+    ax.tick_params(which="minor", length=0)
+    ax.tick_params(which="major", length=0)
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Proportion per true class", fontsize=8.5)
+    cbar.ax.tick_params(labelsize=7.5)
+
+    # ---- (b) Per-class metrics -----------------------------------------
+    ax = fig.add_subplot(gs[0, 1])
+    prec = precision_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
+    rec  = recall_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
+    spec = specificity_by_class(cm_mat)
+    f1   = f1_score(y_true, y_pred, labels=classes, average=None, zero_division=0)
+
+    nomes_m   = ["Precision", "Sensitivity", "Specificity", "F1-score"]
+    valores_m = [prec, rec, spec, f1]
+    cores_m   = [color(0), color(2), color(1), color(3)]
+
+    x = np.arange(n_cls)
+    width = 0.20
+    for k, (nome, val, cm_) in enumerate(zip(nomes_m, valores_m, cores_m)):
+        ax.bar(x + (k - 1.5) * width, val, width, label=nome,
+                color=cm_, edgecolor="white", lw=0.5)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=fs_tick)
+    ax.set_ylabel("Value")
+    ax.set_ylim(0, 1.10)
+    ax.set_title("(b) Per-class metrics (one-vs-rest)", loc="left", pad=22)
+    ax.grid(axis="y", color="0.92", lw=0.5, zorder=0)
+    ax.set_axisbelow(True)
+    # Legend ABOVE the plot (horizontal, 4 cols) so it never overlaps the bars
+    # (which reach ~1.0 for well-classified classes).
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=4,
+              fontsize=7.5, frameon=False, columnspacing=1.0,
+              handletextpad=0.4)
+
+    save(fig, "fig4_confusao_e_metricas_por_classe", pasta, cfg)
+
+
+# fig4b_metricas_globais: REMOVIDA — as metricas globais (accuracy, balanced,
+# F1, kappa) e o resultado do teste de permutacao ja constam em
+# logs/resumo_modelo.txt; a figura era redundante e nao era mais chamada.
+
+
+def _anotar_sem_sobreposicao(ax, xs, ys, labels, ref_x=None, ref_y=None,
+                              fontsize=6.5, color="0.2", min_dist_frac=0.05,
+                              max_labels=None, offset=(3, 3)):
+    """Annotate points but SKIP labels that would overlap already-placed ones.
+
+    Greedy spatial thinning: processes points in the given order (assumed
+    sorted by importance) and places a label only if the point is at least
+    `min_dist_frac` of the data range away — in BOTH x and y — from every
+    label already placed. Prevents the cluttered stacks of wavenumber labels
+    that appear when many top features cluster in the same plot region.
+
+    ref_x/ref_y: full data arrays used to compute the spatial scale (so the
+    threshold reflects the whole plot, not just the labeled subset).
+    """
+    xs = np.asarray(xs, dtype=float)
+    ys = np.asarray(ys, dtype=float)
+    rx = np.asarray(ref_x if ref_x is not None else xs, dtype=float)
+    ry = np.asarray(ref_y if ref_y is not None else ys, dtype=float)
+    dx = float(np.ptp(rx)) or 1.0
+    dy = float(np.ptp(ry)) or 1.0
+    placed: List[Tuple[float, float]] = []
+    for k in range(len(xs)):
+        xk, yk = float(xs[k]), float(ys[k])
+        if any(abs(xk - px) / dx < min_dist_frac and
+               abs(yk - py) / dy < min_dist_frac for px, py in placed):
+            continue
+        ax.annotate(str(labels[k]), xy=(xk, yk), xytext=offset,
+                    textcoords="offset points", fontsize=fontsize, color=color)
+        placed.append((xk, yk))
+        if max_labels is not None and len(placed) >= max_labels:
+            break
+    return len(placed)
+
+
+def fig_class_mean_spectra(wavenumbers, X_raw, rotulos, mapa_cores,
+                                 cfg, pasta):
+    """Espectros medios por classe (banda = +-1 desvio-padrao) do dado
+    BRUTO -- contexto quimico antes de qualquer modelagem (item 3 da
+    lista de figuras que faltavam no conjunto essencial). Ao contrario de
+    fig6_preprocessing (comparacao antes/depois do pre-processamento,
+    restrita ao objetivo Exploratorio), esta e' CONTEXTO valido em
+    qualquer objetivo -- mesma logica de fig1_pca_scores/fig3_outliers,
+    por isso e' chamada incondicionalmente pelo executar()."""
+    rotulos = np.asarray(rotulos, dtype=str)
+    modo = str(getattr(cfg, "mode", "") or "")
+    if modo == "eem" and _fig_eem_media(wavenumbers, X_raw, rotulos, cfg, pasta):
+        return      # EEM: mapa de contorno medio por classe, nao vetor achatado
+    cromatograma = modo in ("gcms", "hplc")
+    fig = plt.figure(figsize=(10.5, 5.4), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[6.0, 1.3])
+    ax = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+
+    for _i_cls, cls in enumerate(np.unique(rotulos)):
+        idx = rotulos == cls
+        m = X_raw[idx].mean(axis=0)
+        s = X_raw[idx].std(axis=0)
+        c = mapa_cores.get(cls, "0.4")
+        ax.plot(wavenumbers, m, color=c, lw=1.2, ls=estilo_linha(_i_cls), label=str(cls))
+        ax.fill_between(wavenumbers, m - s, m + s, color=c, alpha=0.15, lw=0)
+
+    if cromatograma:
+        from guaraci.figuras_extras import rotulo_eixo_cromatograma
+        ax.set_xlabel(rotulo_eixo_cromatograma(cfg))
+        ax.set_ylabel("Intensity (detector signal)")
+        ax.set_title("Mean chromatogram per class, overlaid (band = ±1 SD) — "
+                     "raw data, before modelling", loc="left")
+    else:
+        ax.set_xlabel(rotulo_do_eixo(cfg))
+        ax.set_ylabel("Intensity")
+        ax.set_title("Mean spectra per class (band = ±1 SD) — "
+                     "raw data, before modelling", loc="left")
+    _orientar_eixo_espectral(ax, cfg)
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg, ax)
+
+    save(fig, "fig0_espectros_medios_classe", pasta, cfg)
+
+
+def _fig_eem_media(eixo, X_raw, rotulos, cfg, pasta) -> bool:
+    """Mapa EEM medio por classe quando a grade excitacao x emissao da pasta
+    de dados bate com o vetor achatado (eixo posicional 0..n-1 inteiro, sem
+    corte de faixa). False -> quem chamou desenha o vetor achatado."""
+    try:
+        from guaraci.figuras_extras import fig_eem_media_classe, grade_eem_da_pasta
+        grade = grade_eem_da_pasta(str(getattr(cfg, "input_folder", "") or ""))
+        X_raw = np.asarray(X_raw, dtype=float)
+        eixo = np.asarray(eixo, dtype=float)
+        if (grade is None or X_raw.shape[1] != len(grade[0]) * len(grade[1])
+                or not np.array_equal(eixo, np.arange(X_raw.shape[1], dtype=float))):
+            return False
+        fig_eem_media_classe(grade[0], grade[1], X_raw, rotulos, cfg, pasta)
+        return True
+    except Exception as e:  # noqa: BLE001 -- cai no desenho achatado
+        print(f"  [AVISO] mapa EEM medio nao gerado ({e}); usando o vetor achatado.")
+        plt.close("all")
+        return False
+
+
+def _descricao_preproc(cfg) -> str:
+    """Descricao do pre-processamento ATIVO (fonte unica: preprocessamento)."""
+    from guaraci.preprocessamento import descrever_preprocessamento
+    return descrever_preprocessamento(cfg)[1].replace(" -> ", " → ")
+
+
+def _rotulos_preproc_atual(cfg) -> List[str]:
+    """Rotulos curtos do pre-processamento ativo, com SG sem a derivada."""
+    import re
+    from guaraci.preprocessamento import descrever_preprocessamento
+    return [re.sub(r"^SG\d*$", "SG", r) for r in descrever_preprocessamento(cfg)[0]]
+
+
+def _rotulos_preset(nome: str) -> List[str]:
+    """'MSC -> SG + MC' -> ['MSC', 'SG', 'MC'] (nomes de compare_pipelines)."""
+    nome = nome.replace("(atual)", "").strip()
+    if nome == "MC only":
+        return ["MC"]
+    if nome == "Autoscaling":
+        return ["AUTO"]
+    return [t for t in nome.replace("->", " ").replace("+", " ").split() if t]
+
+
+def fig6_preprocessing(wavenumbers, X_raw, X_processed, rotulos,
+                           mapa_cores, cfg, pasta):
+    rotulos = np.asarray(rotulos, dtype=str)
+    fig = plt.figure(figsize=(11.5, 6.2), constrained_layout=True)
+    gs = fig.add_gridspec(2, 2, width_ratios=[6.0, 1.0])
+    ax_a = fig.add_subplot(gs[0, 0])
+    ax_b = fig.add_subplot(gs[1, 0], sharex=ax_a)
+    ax_leg = fig.add_subplot(gs[:, 1])
+
+    for cls in np.unique(rotulos):
+        idx = rotulos == cls
+        m_raw = X_raw[idx].mean(axis=0)
+        s_raw = X_raw[idx].std(axis=0)
+        m_pp  = X_processed[idx].mean(axis=0)
+        s_pp  = X_processed[idx].std(axis=0)
+        c = mapa_cores[cls]
+        ax_a.plot(wavenumbers, m_raw, color=c, lw=1.2, label=str(cls))
+        ax_a.fill_between(wavenumbers, m_raw - s_raw, m_raw + s_raw,
+                           color=c, alpha=0.15, lw=0)
+        ax_b.plot(wavenumbers, m_pp, color=c, lw=1.2)
+        ax_b.fill_between(wavenumbers, m_pp - s_pp, m_pp + s_pp,
+                           color=c, alpha=0.15, lw=0)
+
+    ax_a.set_ylabel("Intensity")
+    ax_a.set_title("(a) Raw spectra (mean $\\pm$ SD per class)",
+                    loc="left")
+    ax_a.grid(axis="y", color="0.94", lw=0.5); ax_a.set_axisbelow(True)
+
+    # Mesma descricao do resumo/nome da pasta (os flags apply_* nao dizem o
+    # pre-processamento real quando ha' preset, ex. MSC).
+    ax_b.set_ylabel("Preprocessed signal")
+    ax_b.set_xlabel(rotulo_do_eixo(cfg))
+    ax_b.set_title(f"(b) After {_descricao_preproc(cfg)}", loc="left")
+    _orientar_eixo_espectral(ax_b, cfg)
+    ax_b.axhline(0, color="0.75", lw=0.5, ls=":")
+    ax_b.grid(axis="y", color="0.94", lw=0.5); ax_b.set_axisbelow(True)
+
+    _legenda_lateral(ax_leg, ax_a)
+
+    save(fig, "fig6_preprocessing", pasta, cfg)
+
+
+def _ylim_permutacao(valores: np.ndarray, obs: float,
+                      topo: float = 1.08,
+                      base: float = -0.6) -> Tuple[float, float]:
+    """Limite inferior do eixo Y de um grafico de permutacao que NUNCA corta
+    um ponto.
+
+    Bug latente (achado 2026-08-07): o piso era fixo em -0.5/-0.6. Q2Y de
+    rotulos permutados fica tanto mais negativo quanto MAIS componentes o
+    modelo usa. Medido num problema multiclasse tipico: com 23 LVs o
+    minimo e' -0.465 (cabe
+    no piso antigo), mas com 40 LVs -- valor de `max_lvs` em uso neste
+    projeto -- 80% dos pontos caem abaixo de -0.6 e SUMIRIAM do grafico,
+    enquanto a reta de regressao continuaria sendo calculada sobre eles.
+    Um grafico de validade que esconde parte das permutacoes engana.
+
+    Mantem `base` como piso PADRAO (execucoes normais ficam visualmente
+    identicas) e so' expande quando ha' ponto abaixo dele.
+    """
+    todos = np.concatenate([np.asarray(valores, dtype=float).ravel(),
+                            np.asarray([obs], dtype=float)])
+    finitos = todos[np.isfinite(todos)]
+    if finitos.size == 0:
+        return base, topo
+    minimo = float(finitos.min())
+    margem = 0.05 * max(topo - minimo, 1e-6)
+    return min(base, minimo - margem), topo
+
+
+def fig_extra_wold(wold: Dict[str, object], cfg, pasta):
+    """Wold-style permutation plot: R2Y and Q2Y vs similarity of permuted Y."""
+    sims = np.asarray(cast(Any, wold["sims"]))
+    r2s  = np.asarray(cast(Any, wold["r2s"]))
+    q2s  = np.asarray(cast(Any, wold["q2s"]))
+    r2_obs   = cast(float, wold["r2_obs"])
+    q2_obs   = cast(float, wold["q2_obs"])
+    int_r2   = cast(float, wold["intercept_r2"])
+    int_q2   = cast(float, wold["intercept_q2"])
+    slope_r2 = cast(float, wold["slope_r2"])
+    slope_q2 = cast(float, wold["slope_q2"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.6),
+                              constrained_layout=True)
+
+    x_line = np.linspace(0, 1, 50)
+
+    ax = axes[0]
+    ax.scatter(sims, r2s, color=color(0), s=28, alpha=0.55,
+                edgecolors="white", linewidths=0.4, label="Permutations")
+    ax.scatter([1.0], [r2_obs], color=color(3), s=90, marker="D",
+                edgecolors="black", linewidths=0.8, zorder=5,
+                label="Observed")
+    if np.isfinite(slope_r2):
+        ax.plot(x_line, slope_r2 * x_line + int_r2, color="0.35", lw=1.2,
+                 ls="--", label=f"Line (intercept = {int_r2:.3f})")
+    ax.axhline(0.40, color=color(1), lw=0.9, ls=":",
+                label="Threshold R2Y = 0.40")
+    cor_status = color(2) if (np.isfinite(int_r2) and int_r2 < 0.40) else color(3)
+    status = "VALID" if (np.isfinite(int_r2) and int_r2 < 0.40) else ("N/A" if not np.isfinite(int_r2) else "FAILED")
+    ax.text(0.02, 0.97, f"R2Y intercept: {status}",
+             transform=ax.transAxes, ha="left", va="top",
+             fontsize=9, fontweight="bold", color=cor_status,
+             bbox=dict(boxstyle="round,pad=0.35", fc="white",
+                        ec=cor_status, lw=0.8))
+    ax.set_xlabel("Similarity (permuted Y, original Y)")
+    ax.set_ylabel("R$^2$Y (training fit)")
+    ax.set_xlim(-0.05, 1.08)
+    ax.set_ylim(*_ylim_permutacao(r2s, r2_obs, base=-0.5))
+    ax.set_title("(a) Wold — R$^2$Y vs permutation", loc="left")
+    ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+    ax.legend(loc="lower right", fontsize=8, frameon=False)
+
+    ax = axes[1]
+    ax.scatter(sims, q2s, color=color(2), s=28, alpha=0.55,
+                edgecolors="white", linewidths=0.4, label="Permutations")
+    ax.scatter([1.0], [q2_obs], color=color(3), s=90, marker="D",
+                edgecolors="black", linewidths=0.8, zorder=5,
+                label="Observed")
+    if np.isfinite(slope_q2):
+        ax.plot(x_line, slope_q2 * x_line + int_q2, color="0.35", lw=1.2,
+                 ls="--", label=f"Line (intercept = {int_q2:.3f})")
+    ax.axhline(0.05, color=color(1), lw=0.9, ls=":",
+                label="Threshold Q2Y = 0.05")
+    cor_status = color(2) if (np.isfinite(int_q2) and int_q2 < 0.05) else color(3)
+    status = "VALID" if (np.isfinite(int_q2) and int_q2 < 0.05) else ("N/A" if not np.isfinite(int_q2) else "FAILED")
+    ax.text(0.02, 0.97, f"Q2Y intercept: {status}",
+             transform=ax.transAxes, ha="left", va="top",
+             fontsize=9, fontweight="bold", color=cor_status,
+             bbox=dict(boxstyle="round,pad=0.35", fc="white",
+                        ec=cor_status, lw=0.8))
+    ax.set_xlabel("Similarity (permuted Y, original Y)")
+    ax.set_ylabel("Q$^2$Y (CV)")
+    ax.set_xlim(-0.05, 1.08)
+    ax.set_ylim(*_ylim_permutacao(q2s, q2_obs, base=-0.6))
+    ax.set_title("(b) Wold — Q$^2$Y vs permutation", loc="left")
+    ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+    ax.legend(loc="lower right", fontsize=8, frameon=False)
+
+    save(fig, "fig_extra_wold_permutacao", pasta, cfg)
+
+
+def fig_extra_holdout(metricas_cv: Dict[str, float],
+                       metricas_holdout: Dict[str, float],
+                       cm_holdout: np.ndarray, classes: np.ndarray,
+                       n_holdout: int, cfg, pasta):
+    """Holdout confusion matrix + CV vs holdout comparison (overfitting check)."""
+    n_cls = len(classes)
+    fig = plt.figure(figsize=(13.0, 4.8), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.1])
+
+    # (a) Holdout confusion matrix
+    ax = fig.add_subplot(gs[0])
+    cm_norm = cm_holdout.astype(float) / np.maximum(
+        cm_holdout.sum(axis=1, keepdims=True), 1)
+    im = ax.imshow(cm_norm, cmap="Blues", vmin=0, vmax=1, aspect="equal")
+    fs_an = 10 if n_cls <= 6 else (8.5 if n_cls <= 10 else 7)
+    for i in range(n_cls):
+        for j in range(n_cls):
+            ax.text(j, i, f"{cm_holdout[i, j]}\n{cm_norm[i, j]*100:.1f}%",
+                    ha="center", va="center", fontsize=fs_an,
+                    fontweight="bold",
+                    color="white" if cm_norm[i, j] > 0.55 else "0.15")
+    ax.set_xticks(range(n_cls)); ax.set_yticks(range(n_cls))
+    ax.set_xticklabels(classes, rotation=35, ha="right", fontsize=9)
+    ax.set_yticklabels(classes, fontsize=9)
+    ax.set_xlabel("Predicted", labelpad=8); ax.set_ylabel("True", labelpad=8)
+    ax.set_title(f"(a) Confusion matrix — holdout ({n_holdout} samples)",
+                  loc="left")
+    ax.set_xticks(np.arange(-0.5, n_cls, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, n_cls, 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=1.6)
+    ax.tick_params(which="minor", length=0)
+    ax.tick_params(which="major", length=0)
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Proportion per true class", fontsize=8.5)
+    cbar.ax.tick_params(labelsize=7.5)
+
+    # (b) CV vs Holdout comparison
+    ax = fig.add_subplot(gs[1])
+    nomes  = ["Accuracy", "Balanced acc.", "F1 (macro)", "Cohen's $\\kappa$"]
+    chaves = ["accuracy", "balanced_accuracy", "f1_macro", "cohen_kappa"]
+    cv_vals = [metricas_cv[k]      for k in chaves]
+    ho_vals = [metricas_holdout[k] for k in chaves]
+    x = np.arange(len(nomes)); w = 0.36
+    ax.bar(x - w/2, cv_vals, w, color=color(0), label="CV (training)",
+            edgecolor="white", lw=0.5)
+    ax.bar(x + w/2, ho_vals, w, color=color(1), label="Holdout (test)",
+            edgecolor="white", lw=0.5)
+    for k, (cv_v, ho_v) in enumerate(zip(cv_vals, ho_vals)):
+        ax.text(k - w/2, cv_v + 0.015, f"{cv_v:.3f}", ha="center",
+                va="bottom", fontsize=8)
+        ax.text(k + w/2, ho_v + 0.015, f"{ho_v:.3f}", ha="center",
+                va="bottom", fontsize=8)
+    ax.set_xticks(x); ax.set_xticklabels(nomes, fontsize=9)
+    ax.set_ylim(0, 1.15)
+    ax.set_ylabel("Value")
+    ax.set_title("(b) Cross-validation vs holdout (overfitting check)",
+                  loc="left", pad=22)
+    # Legenda acima do painel: em "lower right" cobria as barras de kappa.
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2,
+              fontsize=9, frameon=False)
+    ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
+
+    save(fig, "fig_extra_holdout", pasta, cfg)
+
+
+def fig_extra_comparacao_pipelines(resultados, cfg, pasta):
+    """Comparison of preprocessing pipelines (Q2, Acc, BalAcc)."""
+    nomes = list(resultados.keys())
+    # "(atual)" vinha fixo no preset SNV -> SG; marca o que bate com o
+    # pre-processamento realmente usado (mesma fonte do resumo).
+    atual = _rotulos_preproc_atual(cfg)
+    rotulos_y = [n.replace(" (atual)", "") + (" (current)"
+                 if _rotulos_preset(n) == atual else "") for n in nomes]
+    tem_atual = any(r.endswith("(current)") for r in rotulos_y)
+    accs = [resultados[n]["accuracy"]     for n in nomes]
+    bals = [resultados[n]["balanced_acc"] for n in nomes]
+    q2s  = [max(resultados[n]["q2"], -0.2) for n in nomes]
+    n_lvs = [resultados[n]["n_lv"]        for n in nomes]
+
+    fig, ax = plt.subplots(figsize=(11.0, 0.55 * len(nomes) + 2.2),
+                            constrained_layout=True)
+    pos = np.arange(len(nomes))
+    h = 0.26
+    ax.barh(pos - h, accs, h, color=color(0), label="Accuracy",
+             edgecolor="white", lw=0.5)
+    ax.barh(pos,     bals, h, color=color(2), label="Balanced acc.",
+             edgecolor="white", lw=0.5)
+    ax.barh(pos + h, q2s,  h, color=color(1), label="Q$^2$",
+             edgecolor="white", lw=0.5)
+
+    for k, n_lv in enumerate(n_lvs):
+        ax.text(1.005, k, f" {n_lv} LVs", va="center", ha="left",
+                 fontsize=8.5, color="0.30",
+                 transform=ax.get_yaxis_transform())
+
+    ax.set_yticks(pos)
+    ax.set_yticklabels(rotulos_y, fontsize=9.5)
+    for tl, r in zip(ax.get_yticklabels(), rotulos_y):
+        if r.endswith("(current)"):
+            tl.set_fontweight("bold")
+    ax.set_xlim(-0.05, 1.12)
+    ax.set_xlabel("Value (cross-validation)")
+    ax.set_title("Comparison of preprocessing pipelines — current: "
+                 f"{_descricao_preproc(cfg)}"
+                 + ("" if tem_atual else " (not among the presets)"),
+                 loc="left", pad=22)
+    ax.axvline(0, color="0.7", lw=0.5)
+    ax.invert_yaxis()
+    ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
+    # Legenda acima do painel (em "lower right" cobria as ultimas barras)
+    ax.legend(loc="lower left", bbox_to_anchor=(0.0, 1.0), fontsize=8.5,
+              frameon=False, ncol=3)
+
+    save(fig, "fig_extra_comparacao_pipelines", pasta, cfg)
+
+
+def fig5b_vip_stability(boot: Dict[str, object], wavenumbers,
+                            top_n, cfg, pasta):
+    """Stratified VIP bootstrap: mean, CI95 and selection frequency."""
+    vip_mean = np.asarray(cast(Any, boot["mean"]))
+    ci_lo    = np.asarray(cast(Any, boot["ci95_low"]))
+    ci_hi    = np.asarray(cast(Any, boot["ci95_high"]))
+    sel_freq = np.asarray(cast(Any, boot["selection_frequency"]))
+
+    fig, axes = plt.subplots(1, 3, figsize=(14.0, 4.3),
+                              constrained_layout=True,
+                              gridspec_kw={"width_ratios": [1.7, 1.0, 1.0]})
+
+    ax = axes[0]
+    ax.fill_between(wavenumbers, ci_lo, ci_hi,
+                     color=color(0), alpha=0.22, lw=0, zorder=2,
+                     label="95% CI (bootstrap)")
+    ax.plot(wavenumbers, vip_mean, color="0.25", lw=1.0, alpha=0.95, zorder=3)
+    ax.axhline(1.0, color=color(3), ls="--", lw=1.0, label="VIP = 1")
+    ax.set_xlabel(rotulo_do_eixo(cfg))
+    ax.set_ylabel("VIP (stratified bootstrap mean)")
+    ax.set_title("(a) Mean VIP with 95% CI", loc="left")
+    _orientar_eixo_espectral(ax, cfg)
+    # Generous headroom so vertical band labels do not clip at the top of
+    # the subplot.
+    _vm = float(np.nanmax(vip_mean)) if vip_mean.size else 1.0
+    ax.set_ylim(bottom=0.0, top=_vm * 1.45)
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+    ax.legend(loc="upper right", fontsize=8.5, frameon=False)
+
+    ax = axes[1]
+    ord_vip = np.argsort(vip_mean)[::-1]
+    top_n = min(top_n, len(wavenumbers))
+    idx_top = ord_vip[:top_n][::-1]
+    valores = vip_mean[idx_top]
+    erro_inf = valores - ci_lo[idx_top]
+    erro_sup = ci_hi[idx_top] - valores
+    pos = np.arange(top_n)
+    cores_b = [color(1) if v >= 1.0 else "0.7" for v in valores]
+    ax.barh(pos, valores, color=cores_b, edgecolor="white", lw=0.5,
+             height=0.78,
+             xerr=np.vstack([erro_inf, erro_sup]),
+             error_kw=dict(ecolor="0.35", lw=0.8, capsize=2))
+    ax.axvline(1.0, color=color(3), ls="--", lw=1.0)
+    ax.set_yticks(pos)
+    ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
+    ax.set_xlabel("VIP score (with 95% CI)")
+    ax.set_ylabel(rotulo_do_eixo(cfg))
+    ax.set_title(f"(b) Top {top_n} variables", loc="left")
+    ax.grid(axis="x", color="0.94", lw=0.5); ax.set_axisbelow(True)
+
+    ax = axes[2]
+    freq_top = sel_freq[idx_top]
+    ax.barh(pos, freq_top, color=color(2), edgecolor="white", lw=0.5,
+             height=0.78)
+    ax.axvline(0.5, color="0.55", ls=":", lw=0.9)
+    ax.set_yticks(pos)
+    ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_top], fontsize=8)
+    ax.set_xlabel("Selection frequency (VIP $\\geq$ 1)")
+    ax.set_xlim(0, 1.05)
+    ax.set_title("(c) Selection stability", loc="left")
+    ax.grid(axis="x", color="0.94", lw=0.5); ax.set_axisbelow(True)
+
+    save(fig, "fig5b_vip_bootstrap", pasta, cfg)
+
+
+def fig7_pls_regression(Yc, Yc_hat, Yv, Yv_hat, erros_reg, n_opt_reg,
+                        r2c, r2v, rmsec, rmsecv, rmsep, bias_v, cfg, pasta, *,
+                        y_holdout=None, yhat_holdout=None,
+                        rmsep_holdout: Optional[float] = None):
+    """Selecao de VLs, predito x referencia e residuos da regressao PLS.
+
+    `y_holdout`/`yhat_holdout` (opcionais): referencia e predicao do HOLDOUT
+    externo pelo modelo final; quando dados, entram no painel (b) e na
+    figS2b com marcador proprio. Sem holdout a figura nao muda."""
+    fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.2),
+                              constrained_layout=True)
+
+    n_max = len(erros_reg)
+    lvs = np.arange(1, n_max + 1)
+    ax = axes[0]
+    ax.plot(lvs, erros_reg, "o-", color=color(0), ms=5, lw=1.4)
+    ax.axvline(n_opt_reg, color=color(1), ls="--", lw=1.2,
+               label=f"Optimal: {n_opt_reg} LVs")
+    ax.set_xlabel("Number of latent variables")
+    ax.set_ylabel("RMSECV")
+    _ticks_x_inteiros(ax, lvs)
+    ax.set_title("(a) LV selection", loc="left")
+    ax.legend()
+
+    Yc_f = np.asarray(Yc).flatten(); Yc_h = np.asarray(Yc_hat).flatten()
+    Yv_f = np.asarray(Yv).flatten(); Yv_h = np.asarray(Yv_hat).flatten()
+    tem_ho = (y_holdout is not None and yhat_holdout is not None
+              and np.asarray(y_holdout).size > 0)
+    if tem_ho:
+        Yho_f = np.asarray(y_holdout, dtype=float).flatten()
+        Yho_h = np.asarray(yhat_holdout, dtype=float).flatten()
+        todos = np.concatenate([Yc_f, Yc_h, Yv_f, Yv_h, Yho_f, Yho_h])
+    else:
+        todos = np.concatenate([Yc_f, Yc_h, Yv_f, Yv_h])
+    lim = [todos.min() - 1, todos.max() + 1]
+
+    ax = axes[1]
+    ax.scatter(Yc_f, Yc_h, color=color(0), s=36, edgecolors="white",
+               linewidths=0.5, label="Calibration", zorder=3, alpha=0.9)
+    ax.scatter(Yv_f, Yv_h, color=color(1), s=44, marker="^",
+               edgecolors="white", linewidths=0.5,
+               label="Validation", zorder=3, alpha=0.9)
+    if tem_ho:
+        ax.scatter(Yho_f, Yho_h, color=color(2), s=44, marker="s",
+                   edgecolors="white", linewidths=0.5,
+                   label=f"External holdout (n={len(Yho_f)})", zorder=4,
+                   alpha=0.95)
+    ax.plot(lim, lim, "k--", lw=0.8, label="y = x")
+    ax.set_xlabel("Reference value")
+    ax.set_ylabel("Predicted value")
+    ax.set_xlim(lim); ax.set_ylim(lim)
+    ax.set_title(
+        f"(b) Predicted vs Reference\n"
+        f"$R^2_{{cal}}$={r2c:.3f}  $R^2_{{val}}$={r2v:.3f}",
+        loc="left")
+    ax.legend(loc="best")
+
+    # pred - ref: mesmo sinal do Bias = media(pred - ref) do titulo/resumo
+    res = Yv_h - Yv_f
+    ax = axes[2]
+    ax.scatter(Yv_h, res, color=color(2), s=44, edgecolors="white",
+               linewidths=0.5, zorder=3, alpha=0.9)
+    ax.axhline(0, color="black", lw=0.8, ls="--")
+    ax.axhline( rmsep, color=color(3), lw=0.8, ls=":",
+                label=f"$\\pm$RMSEP ({rmsep:.2f})")
+    ax.axhline(-rmsep, color=color(3), lw=0.8, ls=":")
+    ax.set_xlabel("Predicted value")
+    ax.set_ylabel("Residual (predicted − reference)")
+    ax.set_title(f"(c) Residuals — Validation\nBias = mean(pred − ref) = {bias_v:.3f}",
+                 loc="left")
+    ax.legend(loc="best")
+
+    save(fig, "figS2_pls_regressao", pasta, cfg)
+    # Predito x referencia com a faixa +-RMSEP (auditoria de figuras, secao
+    # D): mesmos pontos e mesmo RMSEP do painel (b)/(c) acima.
+    _extra_ho: Dict[str, Any] = {}
+    if tem_ho:
+        _extra_ho = {"y_holdout": Yho_f, "yhat_holdout": Yho_h,
+                     "rmsep_holdout": (None if rmsep_holdout is None
+                                       else float(rmsep_holdout))}
+    _figura_extra("fig_predito_medido_faixa", Yc_f, Yc_h, Yv_f, Yv_h,
+                  float(rmsep), cfg, pasta, **_extra_ho)
+
+
+def fig_regression_merit(tabela_especie: List[Dict[str, Any]], cfg, pasta) -> None:
+    """Figura de merito analitica dedicada (auditoria jul/2026, item 5):
+    LOD/LOQ e Seletividade media por especie, lado a lado — Valderrama,
+    Braga & Poppi (2009), Quim. Nova 32(5):1278-1287. Ate aqui, LOD/LOQ/SEN/
+    SEL so apareciam como tabela de TEXTO em resumo_modelo.txt/model_card.md;
+    esta e' a primeira representacao visual.
+
+    `tabela_especie` e' a mesma lista de dicts usada no resumo (chaves
+    'especie'/'lod'/'loq'/'seletividade_media'; ver
+    chemometric_stats.regression_figures_of_merit). Especies sem replicas
+    fisicas suficientes tem lod/loq/seletividade = NaN — aparecem no eixo
+    com rotulo 'n/a' em vez de quebrar o layout ou sumir silenciosamente.
+    """
+    if not tabela_especie:
+        return
+    especies = [str(t.get("especie", "?")) for t in tabela_especie]
+    lod = np.array([t.get("lod", float("nan")) for t in tabela_especie], dtype=float)
+    loq = np.array([t.get("loq", float("nan")) for t in tabela_especie], dtype=float)
+    sel = np.array([t.get("seletividade_media", float("nan"))
+                    for t in tabela_especie], dtype=float)
+
+    n = len(especies)
+    x = np.arange(n)
+    largura = 0.35
+    fig, axes = plt.subplots(1, 2, figsize=(max(8.5, 1.05 * n), 4.6),
+                              constrained_layout=True)
+
+    ax = axes[0]
+    tem_lod = np.isfinite(lod)
+    if tem_lod.any():
+        ax.bar(x[tem_lod] - largura / 2, lod[tem_lod], largura,
+               label="LOD", color=color(0))
+        ax.bar(x[tem_lod] + largura / 2, loq[tem_lod], largura,
+               label="LOQ", color=color(1))
+        ax.legend()
+    for xi, ok in zip(x, tem_lod):
+        if not ok:
+            ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
+                    color="gray", rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(especies, rotation=40, ha="right")
+    # LOD/LOQ estao na unidade de concentracao da referencia (y), nao de sinal
+    ax.set_ylabel("Concentration (unit of the reference y)")
+    ax.set_title("(a) LOD / LOQ per species", loc="left")
+
+    ax = axes[1]
+    tem_sel = np.isfinite(sel)
+    if tem_sel.any():
+        ax.bar(x[tem_sel], sel[tem_sel], color=color(2))
+    for xi, ok in zip(x, tem_sel):
+        if not ok:
+            ax.text(xi, 0, "n/a", ha="center", va="bottom", fontsize=8,
+                    color="gray", rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(especies, rotation=40, ha="right")
+    # SEL = media de |cos(b, x_i)| (sinal liquido, NAS), 0-1 -- nao e' a
+    # Selectivity Ratio de Rajalahti da fig_selectivity_ratio_vip.
+    ax.set_ylabel("SEL — mean |cos(b, x$_i$)| (0–1)")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("(b) Analytical selectivity (SEL, net analyte signal)", loc="left")
+
+    save(fig, "figS3_merito_regressao", pasta, cfg)
+
+
+# =========================================================================
+#  Sprint 3 Figures
+# =========================================================================
+
+def fig_sprint3_sr_vip(vip: np.ndarray, sr: np.ndarray,
+                        wavenumbers: np.ndarray, top_n: int,
+                        cfg: Config, pasta: str) -> None:
+    """VIP (all LVs) vs SR (1st component) side by side.
+
+    Agreement between VIP >= 1 and high SR reinforces that the variable is
+    relevant both globally (VIP) and in the main discriminant component (SR).
+    Disagreements reveal variables important only in secondary LVs.
+
+    Reference: Rajalahti et al. (2009), Chemom. Intell. Lab. Syst.
+    95(1):35-48, doi:10.1016/j.chemolab.2008.08.004 (Selectivity Ratio);
+    Anal. Chem. 81(7):2581-2590, doi:10.1021/ac802514y.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 4.4),
+                              constrained_layout=True)
+
+    # (a) Spectrum: VIP + SR on dual axes
+    ax = axes[0]
+    ax2 = ax.twinx()
+    c_vip, c_sr = color(0), color(1)
+
+    l1, = ax.plot(wavenumbers, vip, color=c_vip, lw=1.1,
+                   alpha=0.9, label="VIP")
+    l1b = ax.axhline(1.0, color=c_vip, ls="--", lw=0.8, alpha=0.5,
+                     label="VIP = 1")
+    mask_vip = vip >= 1.0
+    ax.scatter(wavenumbers[mask_vip], vip[mask_vip],
+               color=c_vip, s=9, zorder=3, alpha=0.8)
+
+    l2, = ax2.plot(wavenumbers, sr, color=c_sr, lw=1.1,
+                    alpha=0.8, label="SR")
+    sr_thr = float(np.percentile(sr, 75))   # 75th percentile as reference
+    l2b = ax2.axhline(sr_thr, color=c_sr, ls="--", lw=0.8, alpha=0.5,
+                      label=f"SR Q75 = {sr_thr:.2f}")
+    # Poucos picos de SR (variaveis de ruido quase nulo) achatavam o resto
+    # da curva: com picos >20x a mediana, eixo do SR em log (dito no rotulo).
+    sr_fin = np.asarray(sr, dtype=float)[np.isfinite(sr) & (np.asarray(sr) > 0)]
+    sr_log = bool(sr_fin.size) and float(sr_fin.max()) > 20.0 * float(np.median(sr_fin))
+    if sr_log:
+        piso_sr = float(sr_fin.max()) * 1e-4
+        l2.set_ydata(np.clip(np.asarray(sr, dtype=float), piso_sr, None))
+        ax2.set_yscale("log")
+        ax2.set_ylim(bottom=max(piso_sr, float(sr_fin.min()) * 0.8))
+    ax.set_xlabel(rotulo_do_eixo(cfg))
+    ax.set_ylabel("VIP score", color=c_vip)
+    ax2.set_ylabel("Selectivity Ratio" + (" (log)" if sr_log else ""), color=c_sr)
+    ax.tick_params(axis="y", labelcolor=c_vip)
+    ax2.tick_params(axis="y", labelcolor=c_sr)
+    _orientar_eixo_espectral(ax, cfg)
+    ax.set_title("(a) VIP and SR across the spectrum", loc="left", pad=22)
+    ax.grid(axis="y", color="0.93", lw=0.5); ax.set_axisbelow(True)
+    # Legenda acima do painel, com as linhas de referencia (VIP = 1, SR Q75)
+    ax.legend(handles=[l1, l1b, l2, l2b], loc="lower left",
+              bbox_to_anchor=(0.0, 1.0), ncol=4, frameon=False, fontsize=8)
+
+    # (b) Top N by SR (dual bars: normalized VIP + SR)
+    ax = axes[1]
+    top_n = min(top_n, len(wavenumbers))
+    idx_sr = np.argsort(sr)[::-1][:top_n][::-1]
+    pos     = np.arange(top_n)
+    sr_max  = max(float(sr.max()),  1e-12)
+    vip_max = max(float(vip.max()), 1e-12)
+    sr_top  = sr[idx_sr]  / sr_max
+    vip_top = vip[idx_sr] / vip_max
+    w_b = 0.38
+    ax.barh(pos - w_b / 2, sr_top,  w_b, color=c_sr,
+             edgecolor="white", lw=0.5, label="SR (norm.)")
+    ax.barh(pos + w_b / 2, vip_top, w_b, color=c_vip,
+             edgecolor="white", lw=0.5, label="VIP (norm.)")
+    ax.axvline(1.0 / vip_max, color=c_vip, ls=":", lw=0.8, alpha=0.6,
+               label=f"VIP = 1 (= {1.0 / vip_max:.2f} norm.)")
+    ax.set_yticks(pos)
+    ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in idx_sr],
+                        fontsize=8)
+    ax.set_xlabel("Normalized value (global max = 1)")
+    ax.set_ylabel(rotulo_do_eixo(cfg))
+    ax.set_title(f"(b) Top {top_n} by SR vs VIP", loc="left", pad=22)
+    ax.legend(loc="lower left", bbox_to_anchor=(0.0, 1.0), ncol=3,
+              fontsize=8, frameon=False)
+    ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
+
+    save(fig, "fig_selectivity_ratio_vip", pasta, cfg)
+
+
+def fig_sprint3_score_contribution(pls_model: PLSRegression,
+                                    X_processed: np.ndarray,
+                                    rotulos: np.ndarray,
+                                    wavenumbers: np.ndarray,
+                                    mapa_cores: Dict[str, str],
+                                    top_n: int,
+                                    cfg: Config, pasta: str) -> None:
+    """Per-variable contribution to LV1 score per class (B8).
+
+    Contribution of variable j to the score of sample i on LV1:
+        c_ij = x_ij * w*_j   (normalized PLS weight)
+
+    Class mean reveals which spectral regions 'push' each class toward
+    its side in score space — complementary information to VIP (global)
+    and SR (scalar).
+
+    Panels:
+        (a) Mean contribution spectrum ± SE per class
+        (b) Top N variables with highest discriminant power between classes
+    """
+    rotulos = np.asarray(rotulos, dtype=str)
+    classes = np.unique(rotulos)
+    W = np.asarray(pls_model.x_weights_, dtype=float)   # (p, n_lv)
+    if W.shape[1] < 1:
+        return
+
+    w1 = W[:, 0] / (float(np.linalg.norm(W[:, 0])) + 1e-12)
+    contrib = X_processed * w1[np.newaxis, :]   # (n, p)
+
+    means: Dict[str, np.ndarray] = {}
+    sems:  Dict[str, np.ndarray] = {}
+    for cls in classes:
+        idx = rotulos == cls
+        c = contrib[idx]
+        n_cls_amostras = int(idx.sum())
+        means[cls] = c.mean(axis=0)
+        # ddof=1 divide por (n-1); com 1 amostra isso vira 0/0 = NaN e a banda
+        # de erro some silenciosamente. Classe singleton -> SEM = 0 (sem
+        # dispersao estimavel), evitando NaN no grafico.
+        if n_cls_amostras > 1:
+            sems[cls] = c.std(axis=0, ddof=1) / float(np.sqrt(n_cls_amostras))
+        else:
+            sems[cls] = np.zeros(c.shape[1])
+
+    n_cls = len(classes)
+
+    # ===== FIGURE 1: mean contribution spectrum (lateral legend) ==========
+    fig = plt.figure(figsize=(10.5, 4.6), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[6.0, 1.1])
+    ax = fig.add_subplot(gs[0]); ax_leg = fig.add_subplot(gs[1])
+    for cls in classes:
+        c = mapa_cores.get(cls, "0.5")
+        m = means[cls]; s = sems[cls]
+        ax.plot(wavenumbers, m, color=c, lw=1.2, label=str(cls))
+        ax.fill_between(wavenumbers, m - s, m + s, color=c, alpha=0.18, lw=0)
+    ax.axhline(0, color="0.70", lw=0.7, ls=":")
+    _orientar_eixo_espectral(ax, cfg)
+    ax.set_xlabel(rotulo_do_eixo(cfg))
+    ax.set_ylabel("$c_j = x_j \\cdot w^*_j$  (LV1)")
+    ax.set_title("Mean spectral contribution per class — LV1", loc="left")
+    ax.grid(axis="y", color="0.94", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg, ax)
+    save(fig, "fig_score_contribution_espectro", pasta, cfg)
+
+    # ===== FIGURE 2: Top N discriminant power (separate, tall, readable) ===
+    mean_stack = np.vstack([means[c] for c in classes])   # (n_cls, p)
+    disc_power = mean_stack.var(axis=0)                    # (p,)
+    # Com menos variaveis que top_n (ICP com 10 elementos, imagem com 18 descritores) as barras e as
+    # posicoes tinham tamanhos diferentes e a execucao inteira caia em "shape mismatch".
+    top_n = int(min(top_n, disc_power.size))
+    top_idx = np.argsort(disc_power)[::-1][:top_n][::-1]
+    pos = np.arange(top_n)
+    w_bar = 0.84 / max(n_cls, 1)
+
+    altura = max(6.0, 0.42 * top_n + 1.6)   # scales with top_n -> readable
+    fig2 = plt.figure(figsize=(11.0, altura), constrained_layout=True)
+    gs2 = fig2.add_gridspec(1, 2, width_ratios=[6.0, 1.2])
+    ax = fig2.add_subplot(gs2[0]); ax_leg2 = fig2.add_subplot(gs2[1])
+    for k, cls in enumerate(classes):
+        offset = (k - (n_cls - 1) / 2.0) * w_bar
+        ax.barh(pos + offset, means[cls][top_idx], w_bar,
+                color=mapa_cores.get(cls, "0.5"),
+                edgecolor="white", lw=0.4, label=str(cls),
+                xerr=sems[cls][top_idx],
+                error_kw=dict(ecolor="0.45", lw=0.6, capsize=1.2))
+    ax.axvline(0, color="0.40", lw=0.8, ls="--")
+    ax.set_yticks(pos)
+    ax.set_yticklabels([f"{wavenumbers[i]:.0f}" for i in top_idx], fontsize=8.5)
+    ax.set_ylim(-0.5, top_n - 0.5)
+    ax.set_xlabel("Mean contribution $\\pm$ SE per class")
+    ax.set_ylabel(rotulo_do_eixo(cfg))
+    ax.set_title(f"Top {top_n} variables — discriminant power between classes",
+                  loc="left")
+    ax.grid(axis="x", color="0.93", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg2, ax)
+    save(fig2, "fig_score_contribution_top_discriminante", pasta, cfg)
+
+
+def _limites_log_ddsimca(valores: np.ndarray, floor_min: float = 1e-6,
+                          floor_max: float = 1e-2, margem_topo: float = 4.0,
+                          topo_min: float = 3.0) -> Tuple[float, float]:
+    """Escolhe piso e teto do eixo log de um painel DD-SIMCA A PARTIR DOS
+    DADOS, em vez de um piso fixo.
+
+    Bug real (achado 2026-08-07): com poucas amostras puras de treino
+    (nc=3), o modelo one-class fica com apenas 1 componente principal
+    (`n_comp=1` — ver `_MIN_Q_RESIDUAL_DF`). Amostras de OUTRAS classes
+    projetam quase sempre perto de zero nesse unico eixo, que nao tem
+    relacao com a variancia delas. Medido: 91% das amostras caiam abaixo
+    do piso fixo de 1e-2 antes usado, todas empilhadas na MESMA coluna de
+    pixels -- os valores reais variam de 1e-10 a 1e-2 (8 ordens de
+    grandeza), mas o piso fixo escondia essa variacao inteira atras de uma
+    parede visual que parecia um defeito de renderizacao.
+
+    Usa o 1o percentil dos valores positivos (nao o minimo bruto: um unico
+    valor colapsado por underflow numerico nao deve esticar o eixo todo) e
+    o MAXIMO para o teto, com margem (o 99o percentil deixava o 1% mais
+    distante fora do eixo, sem aviso). `floor_min`/`floor_max` evitam
+    eixos absurdamente largos OU voltar ao piso antigo sem necessidade.
+    """
+    valores = np.asarray(valores, dtype=float)
+    positivos = valores[np.isfinite(valores) & (valores > 0)]
+    if positivos.size == 0:
+        return floor_max, topo_min
+    piso = float(np.clip(np.percentile(positivos, 1), floor_min, floor_max))
+    teto = max(float(positivos.max()) * margem_topo, topo_min)
+    return piso, teto
+
+
+def _grade_fronteira_ddsimca(m: Dict[str, Any], piso: float,
+                              teto: float) -> np.ndarray:
+    """Grade de T2_norm para desenhar a fronteira ate' o fim: a reta
+    A*t + B*q = f_crit cai para q -> 0 em t = f_crit/A, o que no eixo log
+    exige pontos cada vez mais densos junto desse t (senao a curva parava
+    em q ~ 0.1, parecendo cortada)."""
+    grade = np.logspace(np.log10(piso), np.log10(teto), 300)
+    try:
+        A = (float(m["T2_ucl"]) / float(m["h0"])) * float(m["Nh"])
+        t_max = float(m["f_crit"]) / A
+    except (KeyError, TypeError, ValueError, ZeroDivisionError):
+        return grade
+    if np.isfinite(t_max) and piso < t_max < teto:
+        perto = t_max * (1.0 - np.logspace(-9, -0.3, 120))
+        grade = np.unique(np.concatenate([grade, perto[perto > piso]]))
+    return grade
+
+
+def _caixa_info_canto_livre(ax, texto: str, xs: np.ndarray, ys: np.ndarray,
+                             fontsize: float = 7.5) -> None:
+    """Caixa de texto no canto do painel com MENOS pontos e ABAIXO dos pontos
+    (zorder 2 < 3). Fixa no canto superior direito ela escondia exatamente as
+    amostras das outras classes (T2 e Q altos), e so' a classe-alvo aparecia."""
+    try:
+        frac = ax.transAxes.inverted().transform(
+            ax.transData.transform(np.column_stack([xs, ys])))
+    except ValueError:
+        frac = np.empty((0, 2))
+    frac = frac[np.all(np.isfinite(frac), axis=1)]
+    cantos = {(0.98, 0.98, "right", "top"): (frac[:, 0] > 0.5) & (frac[:, 1] > 0.7),
+              (0.02, 0.98, "left", "top"): (frac[:, 0] < 0.5) & (frac[:, 1] > 0.7),
+              (0.98, 0.02, "right", "bottom"): (frac[:, 0] > 0.5) & (frac[:, 1] < 0.3),
+              (0.02, 0.02, "left", "bottom"): (frac[:, 0] < 0.5) & (frac[:, 1] < 0.3)}
+    (x, y, ha, va), _ = min(cantos.items(), key=lambda kv: int(kv[1].sum()))
+    ax.text(x, y, texto, transform=ax.transAxes, ha=ha, va=va,
+            fontsize=fontsize, color="0.35", zorder=2,
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.82",
+                      lw=0.5, alpha=0.85))
+
+
+def _fronteira_ddsimca(m: Dict[str, Any],
+                        t2_grid: np.ndarray) -> np.ndarray:
+    """Curva de aceitacao VERDADEIRA do DD-SIMCA, na parametrizacao do
+    grafico (T2/UCL(T2), Q/UCL(Q)).
+
+    Corrigido em 2026-08-08 junto com classificadores.DDSimca.predict():
+    antes o grafico desenhava DUAS linhas retas perpendiculares em
+    T2_norm=1 e Q_norm=1 (uma caixa retangular) -- mas essa NUNCA foi a
+    regiao de aceitacao real do modelo, so' uma aproximacao visual. A
+    decisao de fato usa a distancia combinada f=(T2/h0)*Nh+(Q/q0)*Nq
+    comparada a um unico f_crit (ver docstring de DDSimca), que e' uma
+    RETA UNICA (nao um retangulo) na parametrizacao (T2_norm, Q_norm):
+
+        A*T2_norm + B*Q_norm = f_crit,
+        A = (T2_ucl/h0)*Nh,  B = (Q_ucl/q0)*Nq
+
+    Devolve Q_norm ao longo dessa reta para cada T2_norm em `t2_grid`;
+    pontos fora do dominio (T2 sozinho ja excede f_crit) viram NaN --
+    matplotlib pula NaN automaticamente, a curva so' aparece onde existe.
+    """
+    campos = ("h0", "q0", "Nh", "Nq", "f_crit", "T2_ucl", "Q_ucl")
+    if any(m.get(c) is None for c in campos):
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    h0, q0 = float(m["h0"]), float(m["q0"])
+    if h0 <= 0 or q0 <= 0:
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    A = (float(m["T2_ucl"]) / h0) * float(m["Nh"])
+    B = (float(m["Q_ucl"]) / q0) * float(m["Nq"])
+    if B <= 0:
+        return np.full_like(t2_grid, np.nan, dtype=float)
+    q_norm = (float(m["f_crit"]) - A * t2_grid) / B
+    q_norm[q_norm <= 0] = np.nan
+    return q_norm
+
+
+def fig_sprint3_ddsimca_acceptance(scores: Dict[str, Dict[str, Any]],
+                                    rotulos: np.ndarray,
+                                    mapa_cores: Dict[str, str],
+                                    cfg: Config, pasta: str,
+                                    sens_esp: Optional[Dict[str, Any]] = None
+                                    ) -> None:
+    """DD-SIMCA acceptance plot: T2/UCL vs Q/UCL per class model.
+
+    Each panel = 1 one-class model. Unit square = acceptance region.
+    Points colored by true class.
+
+    If sens_esp is provided {class: (sens, spec, n_pure, n_adult, n_grupos,
+    aviso)}, the title shows 'sens.=XX% (LOGO n=G) | spec.=YY%' (M2): sens =
+    honest leave-one-group-out sensitivity (accepted held-out pure replicate
+    groups), spec = rejected adulterated samples, n_grupos = number of
+    independent pure replicate groups the LOGO estimate is based on.
+    """
+    todas = [c for c in scores.keys()]
+    if not todas:
+        return
+    # Ate' 3 modelos por imagem (MAX_PAINEIS_POR_FIGURA): 15 classes viravam uma grade 5x3
+    # ilegivel. Cada pagina repete a legenda de cores (todas as classes aparecem em cada painel).
+    blocos = paginas(todas, GRAFICOS_POR_ITEM)
+    for i_pag, bloco in enumerate(blocos, 1):
+        _ddsimca_aceitacao_pagina(scores, bloco, rotulos, mapa_cores, cfg, pasta, sens_esp,
+                                  nome_pagina("fig_ddsimca_aceitacao", i_pag, len(blocos)))
+
+
+def _ddsimca_aceitacao_pagina(scores, classes, rotulos, mapa_cores, cfg, pasta, sens_esp,
+                              nome_fig: str) -> None:
+    """Uma imagem de `fig_sprint3_ddsimca_acceptance` com ate' 3 modelos one-class."""
+    n_cls = len(classes)
+    ncols = n_cls
+    nrows = 1
+    has_leg = len(np.unique(np.asarray(rotulos, dtype=str))) > 1
+    fig_w = 4.4 * ncols + (1.2 if has_leg else 0)
+    fig_h = max(4.2 * nrows, 4.2)
+
+    fig = plt.figure(figsize=(fig_w, fig_h), constrained_layout=True)
+    total_cols = ncols + (1 if has_leg else 0)
+    gs = fig.add_gridspec(nrows, total_cols,
+                           width_ratios=[4.2] * ncols + ([1.1] if has_leg else []))
+
+    rotulos = np.asarray(rotulos, dtype=str)
+    all_classes = np.unique(rotulos)
+    s_pt, alpha_pt, lw_pt = adaptive_scatter_parameters(
+        len(rotulos), len(all_classes))
+
+    ax_leg_ref = None
+    for k, cls in enumerate(classes):
+        row, col = divmod(k, ncols)
+        ax = fig.add_subplot(gs[row, col])
+        m = scores[cls]
+        t2n = np.asarray(m["T2_norm"])
+        qn  = np.asarray(m["Q_norm"])
+
+        # Log-log scale (Pomerantsev): clamp at a floor to avoid log(0).
+        # Piso e teto DINAMICOS por eixo (nao um piso fixo global) -- ver
+        # _limites_log_ddsimca: modelos com poucos componentes (n_comp=1,
+        # comum quando so' ha' 3 amostras puras de treino) fazem a maioria
+        # das amostras de outras classes projetar perto de zero em T2, e um
+        # piso fixo empilhava tudo na mesma coluna de pixels (parecia bug
+        # de renderizacao). Eixos T2 e Q sao independentes: um nao precisa
+        # esticar o outro.
+        piso_t2, teto_t2 = _limites_log_ddsimca(t2n)
+        piso_q,  teto_q  = _limites_log_ddsimca(qn)
+        t2p = np.clip(t2n, piso_t2, None)
+        qp  = np.clip(qn,  piso_q,  None)
+        for true_cls in all_classes:
+            idx = rotulos == true_cls
+            ax.scatter(t2p[idx], qp[idx],
+                       color=mapa_cores.get(true_cls, "0.5"),
+                       s=s_pt, alpha=alpha_pt,
+                       edgecolors="white", linewidths=lw_pt,
+                       label=str(true_cls), zorder=3)
+        ax.set_xscale("log"); ax.set_yscale("log")
+
+        # Fronteira de aceitacao VERDADEIRA (reta diagonal da distancia
+        # combinada f<=f_crit -- ver _fronteira_ddsimca). Substituiu as
+        # duas linhas retas em T2_norm=1/Q_norm=1: aquela caixa nunca foi
+        # a regiao de aceitacao real do modelo corrigido em predict().
+        t2_grid = _grade_fronteira_ddsimca(m, piso_t2 * 0.8, teto_t2)
+        q_fronteira = _fronteira_ddsimca(m, t2_grid)
+        ax.plot(t2_grid, q_fronteira, color="0.20", ls="--", lw=1.2, zorder=4,
+                label="Acceptance boundary")
+
+        # Title: uses sens/spec from one-class model if available (M2);
+        # otherwise falls back to fraction of own class accepted.
+        if sens_esp is not None and cls in sens_esp:
+            _info = sens_esp[cls]
+            sens_c, esp_c = _info[0], _info[1]
+            n_grp = _info[4] if len(_info) > 4 else None
+            s_txt = f"{sens_c*100:.0f}%" if sens_c == sens_c else "n/a"
+            e_txt = f"{esp_c*100:.0f}%"  if esp_c == esp_c else "n/a"
+            g_txt = f" (LOGO n={n_grp})" if n_grp is not None else ""
+            titulo_painel = (f"Model: {cls}  sens.={s_txt}{g_txt} "
+                             f"| spec.={e_txt}")
+        else:
+            # Fallback (sens_esp nao informado): usa a MESMA regra de
+            # decisao de predict() (f<=f_crit, distancia combinada) --
+            # nao mais a regiao retangular T2_norm<=1 e Q_norm<=1
+            # independentes, abandonada em 2026-08-08 (achado A1-bis da
+            # auditoria de 2026-08-16: unica ocorrencia remanescente da
+            # regra antiga em src/guaraci/).
+            idx_cls   = rotulos == cls
+            n_cls_tot = int(idx_cls.sum())
+            f_cls     = np.asarray(m["f"])[idx_cls]
+            n_aceitos = int(np.sum(f_cls <= float(m["f_crit"])))
+            titulo_painel = f"Model: {cls}  sens.={n_aceitos/max(n_cls_tot,1):.0%}"
+
+        ax.set_xlim(piso_t2 * 0.8, teto_t2)
+        ax.set_ylim(piso_q * 0.8, teto_q)
+        ax.set_xlabel(r"$T^2$ / UCL($T^2$)  (log)", fontsize=8.5)
+        ax.set_ylabel("$Q$ / UCL($Q$)  (log)", fontsize=8.5)
+        ax.set_title(titulo_painel, loc="left",
+                      fontsize=8.5, fontweight="bold")
+        # n_comp exposto na caixa: com poucas amostras puras de treino o
+        # modelo pode ter so' 1 componente -- e' o que explica a maioria
+        # das amostras de outras classes colapsar perto de zero em T2 (ver
+        # _limites_log_ddsimca). Sem essa informacao visivel, o padrao
+        # parece defeito de renderizacao em vez de propriedade do modelo.
+        n_comp_txt = (f"\nn_comp={int(m['n_comp'])} (train n={int(m['n_train'])})"
+                      if "n_comp" in m else "")
+        # n_grupos_calibracao (achado F1/A2-3): o limiar f_crit e' calibrado
+        # a partir deste n de AMOSTRAS FISICAS independentes (mae_id), nao
+        # do n de espectros -- ver DDSimca.fit(). Nunca mostrar o limiar sem
+        # essa informacao ao lado (mesmo criterio de aceite do P1).
+        n_grp_txt = (f"\nthreshold calibrated on n={int(m['n_grupos_calibracao'])} "
+                     f"physical sample(s)"
+                     if m.get("calibrado_por_amostra") else
+                     "\nthreshold calibrated per SPECTRUM (no mae_id)"
+                     if "calibrado_por_amostra" in m else "")
+        _caixa_info_canto_livre(
+            ax, f"UCL($T^2$)={float(m['T2_ucl']):.1f}\n"
+                f"UCL($Q$)={float(m['Q_ucl']):.2g}{n_comp_txt}{n_grp_txt}",
+            t2p, qp, fontsize=7.5)
+        ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+        if ax_leg_ref is None:
+            ax_leg_ref = ax
+
+    if has_leg and ax_leg_ref is not None:
+        ax_leg = fig.add_subplot(gs[:, ncols])
+        _legenda_lateral(ax_leg, ax_leg_ref)
+
+    save(fig, nome_fig, pasta, cfg)
+
+
+def fig_ddsimca_individuais(scores: Dict[str, Dict[str, Any]],
+                             rotulos: np.ndarray,
+                             mapa_cores: Dict[str, str],
+                             cfg: Config, pasta: str,
+                             sens_esp: Optional[Dict[str, Any]] = None
+                             ) -> None:
+    """Nao grava mais nada (mantida so' pela API publica).
+
+    Era uma imagem por classe para inspecao detalhada, porque o painel consolidado juntava ate'
+    15 modelos numa grade 5x3 ilegivel. Desde que `fig_sprint3_ddsimca_acceptance` sai em paginas
+    de ate' 3 modelos (MAX_PAINEIS_POR_FIGURA), com a mesma escala log-log, fronteira, legenda e
+    caixa de UCL, as imagens individuais repetiam as paginas e so' poluiam a pasta de resultados.
+    """
+    logging.getLogger(__name__).debug(
+        "fig_ddsimca_individuais: substituida pelas paginas de fig_ddsimca_aceitacao")
+
+
+def fig_sprint3_opls_scores(t_pred: np.ndarray, t_orth: np.ndarray,
+                             rotulos: np.ndarray,
+                             mapa_cores: Dict[str, str],
+                             n_ortho: int,
+                             cfg: Config, pasta: str) -> None:
+    """OPLS-DA scores: tp (predictive) vs to1 (1st orthogonal).
+
+    tp axis: true separation between classes.
+    to axis: systematic variation in X uncorrelated with Y
+    (baseline, multiplicative scatter, optical path length).
+
+    The plot decomposes total spectral variation into 'useful for
+    discrimination' (tp) vs 'structured interference' (to), helping to
+    interpret how pure the separation is and how much variation can be
+    attributed to instrumental artefacts.
+    """
+    rotulos = np.asarray(rotulos, dtype=str)
+    t_orth1 = t_orth[:, 0] if t_orth.ndim == 2 and t_orth.shape[1] > 0 \
+              else np.asarray(t_orth).flatten()
+
+    var_p = float(np.var(t_pred,  ddof=1)) if len(t_pred)  > 1 else 1.0
+    var_o = float(np.var(t_orth1, ddof=1)) if len(t_orth1) > 1 else 1.0
+    total = var_p + var_o + 1e-12
+    pct_p = var_p / total * 100
+    pct_o = var_o / total * 100
+
+    fig = plt.figure(figsize=(8.5, 5.8), constrained_layout=True)
+    gs  = fig.add_gridspec(1, 2, width_ratios=[5.0, 1.1])
+    ax     = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+
+    scores2d = np.column_stack([t_pred, t_orth1])
+    plot_scores_panel(
+        ax, scores2d, rotulos, mapa_cores,
+        var_exp=[pct_p, pct_o],
+        titulo=f"OPLS-DA — predictive × orthogonal ({n_ortho} orth. comp.)",
+        xlabel="$t_p$ (predictive)",
+        ylabel="$t_o$ (orthogonal 1)",
+        desenhar_elipses=cfg.show_group_ellipses,
+    )
+    _legenda_lateral(ax_leg, ax)
+    save(fig, "fig_opls_scores", pasta, cfg)
+
+
+# =========================================================================
+#  Sprint v24 — Publication Figures
+#  (PCA Loading Plot, ROC/AUC, OPLS-DA S-Plot, DD-SIMCA Cooman's Plot)
+# =========================================================================
+
+def fig_loadings_pca(pca, wavenumbers: np.ndarray, cfg: "Config",
+                      pasta: str, n_pcs: int = 2) -> None:
+    """PCA Loading Plot: spectral contribution of each variable per component.
+
+    Bars in red (positive) and blue (negative). X axis decreasing only when
+    it is a wavenumber axis (NIR/FTIR convention; see eixo_x_decrescente).
+
+    Ref: Bro & Smilde (2014) Anal. Methods 6:2812-2831.
+    """
+    n_comp = min(n_pcs, int(pca.n_components_))
+    dx = float(abs(wavenumbers[1] - wavenumbers[0])) if len(wavenumbers) > 1 else 1.0
+    blocos = paginas(range(n_comp), GRAFICOS_POR_ITEM)
+    for i_pag, bloco in enumerate(blocos, 1):
+        _loadings_pca_pagina(pca, wavenumbers, cfg, pasta, bloco, dx,
+                             nome_pagina("fig_loadings_pca", i_pag, len(blocos)))
+
+
+def _loadings_pca_pagina(pca, wavenumbers, cfg, pasta, componentes, dx: float,
+                         nome_fig: str) -> None:
+    """Uma imagem de `fig_loadings_pca` com ate' 3 componentes empilhados."""
+    fig, axes = plt.subplots(len(componentes), 1,
+                              figsize=(12.0, 3.4 * len(componentes)),
+                              constrained_layout=True, squeeze=False)
+    for i, ax in zip(componentes, axes[:, 0]):
+        loadings = pca.components_[i]
+        var_exp  = float(pca.explained_variance_ratio_[i]) * 100
+        cores_b  = [color(0) if v >= 0 else color(1) for v in loadings]
+        ax.bar(wavenumbers, loadings, width=dx * 0.9,
+               color=cores_b, alpha=0.80, edgecolor="none")
+        ax.axhline(0, color="0.45", lw=0.7, ls="--")
+        ax.set_xlabel(rotulo_do_eixo(cfg))
+        ax.set_ylabel(f"Loading PC{i + 1}")
+        ax.set_title(f"PC{i + 1} — {var_exp:.1f}% of explained variance  "
+                     "| red = positive · blue = negative",
+                     loc="left", fontsize=9)
+        # Convencao NIR/IR (eixo decrescente) so' quando o eixo e' numero de onda
+        _orientar_eixo_espectral(ax, cfg)
+
+    fig.suptitle("PCA loading plot — spectral contribution per component",
+                  fontsize=10, fontweight="bold")
+    save(fig, nome_fig, pasta, cfg)
+
+
+def _escala_vetores_biplot(scores2: np.ndarray, loadings: np.ndarray,
+                            frac: float = 0.8) -> float:
+    """Fator de escala UNICO p/ desenhar vetores de loading sobre scores,
+    tal que NENHUM vetor (em nenhum dos 2 eixos) ultrapasse `frac` do maior
+    score visivel NAQUELE eixo especifico.
+
+    Extraida como funcao pura (testavel sem renderizar figura) apos um bug
+    real: usar um unico fator calibrado pelo maior score CONJUNTO (max sobre
+    as 2 colunas juntas) deixava vetores com componente forte no eixo de
+    menor alcance (ex.: PC2, quando PC1 domina a variancia) desenhados MUITO
+    alem da area visivel daquele eixo -- rotulos apareciam flutuando fora do
+    grafico. Calibrando por eixo e usando o mais restritivo, todo vetor cabe
+    dentro do alcance visivel dos DOIS eixos, preservando um fator uniforme
+    (o angulo entre vetores continua interpretavel).
+    """
+    max_score_x = float(np.abs(scores2[:, 0]).max()) if scores2.size else 1.0
+    max_score_y = float(np.abs(scores2[:, 1]).max()) if scores2.size else 1.0
+    max_load_x  = float(np.abs(loadings[:, 0]).max()) if loadings.size else 1e-12
+    max_load_y  = float(np.abs(loadings[:, 1]).max()) if loadings.size else 1e-12
+    escala_x = frac * max_score_x / max(max_load_x, 1e-12)
+    escala_y = frac * max_score_y / max(max_load_y, 1e-12)
+    return min(escala_x, escala_y)
+
+
+def select_distinct_loadings(mag: np.ndarray, wavenumbers: np.ndarray,
+                                   n_alvo: int,
+                                   sep_min_cm: Optional[float] = None,
+                                   frac_min_mag: float = 0.15) -> np.ndarray:
+    """Indices das `n_alvo` variaveis de maior magnitude, exigindo separacao
+    espectral minima entre elas.
+
+    Motivo (bug real, 2026-08-07): pegar simplesmente as `n` de maior
+    magnitude devolve canais VIZINHOS da mesma banda -- num espectro NIR o
+    top-12 saia como 5888/5896/5903/5911... , isto e', tres bandas contadas
+    doze vezes. Isso (a) empilha rotulos praticamente no mesmo ponto e (b)
+    da a impressao falsa de doze marcadores independentes. Exigindo um
+    espacamento minimo, cada seta passa a representar uma banda distinta.
+
+    `sep_min_cm=None` deriva a separacao da largura da faixa espectral.
+
+    `frac_min_mag` e' um PISO relativo a' maior magnitude: variaveis abaixo
+    dele nao entram, mesmo que sobre espaco em `n_alvo`. Sem esse piso, a
+    exigencia de separacao obrigava a completar a cota com canais de
+    magnitude ~0 -- o biplot ficava com setas de comprimento nulo empilhadas
+    na origem, "linhas que nao dizem nada". Devolve MENOS de `n_alvo`
+    indices quando o espectro so' tem poucas bandas reais; isso e' a leitura
+    honesta, nao uma falha.
+    """
+    mag = np.asarray(mag, dtype=float)
+    wavenumbers = np.asarray(wavenumbers, dtype=float)
+    if mag.size == 0:
+        return np.array([], dtype=int)
+    n_alvo = int(min(n_alvo, mag.size))
+    if sep_min_cm is None:
+        faixa = float(abs(wavenumbers.max() - wavenumbers.min()))
+        # ~1/3 do espacamento uniforme: separa bandas sem ser tao rigido a
+        # ponto de nao conseguir preencher n_alvo em espectros estreitos.
+        sep_min_cm = faixa / max(n_alvo * 3.0, 1.0)
+
+    mag_max = float(np.abs(mag).max())
+    piso = mag_max * float(frac_min_mag)
+
+    escolhidos: List[int] = []
+    for i in np.argsort(mag)[::-1]:
+        i = int(i)
+        if mag[i] < piso:
+            break                      # ordenado: daqui p/ frente so' piora
+        if all(abs(wavenumbers[i] - wavenumbers[j]) >= sep_min_cm
+               for j in escolhidos):
+            escolhidos.append(i)
+        if len(escolhidos) >= n_alvo:
+            break
+    if not escolhidos:                 # tudo abaixo do piso (espectro plano)
+        escolhidos = [int(np.argmax(mag))]
+    return np.array(escolhidos, dtype=int)
+
+
+def spread_labels(pos: np.ndarray, sep_x: float,
+                     sep_y: float) -> np.ndarray:
+    """Afasta rotulos sobrepostos: nenhum par fica a menos de `sep_x` E
+    `sep_y` ao mesmo tempo (criterio de CAIXA -- e' assim que um rotulo de
+    texto realmente ocupa espaco: dois rotulos podem ter o mesmo y desde
+    que estejam longe na horizontal).
+
+    Algoritmo em dois passos, deterministico e com convergencia GARANTIDA
+    (uma passada, sem laco de relaxamento):
+
+      1. Agrupa os rotulos em COLUNAS por proximidade em x (corta onde o
+         intervalo entre x consecutivos ja e' >= sep_x). Por construcao,
+         dois rotulos de colunas diferentes distam >= sep_x em x, logo nao
+         se sobrepoem, independentemente do y.
+      2. Dentro de cada coluna, empilha verticalmente com espacamento
+         minimo `sep_y`, preservando a ordem original em y e recentrando o
+         bloco na media original -- o deslocamento fica simetrico, sem
+         empurrar tudo para um lado so'.
+
+    Substituiu uma repulsao par-a-par iterativa que OSCILAVA (cada empurrao
+    desfazia o anterior) e deixava sobreposicoes residuais mesmo apos 120
+    iteracoes -- verificado: 12 rotulos coincidentes sobravam com 7 pares
+    sobrepostos. Como o passo 2 nao mexe em x, a garantia do passo 1 e'
+    preservada ate o fim.
+
+    Funcao PURA para poder testar a ausencia de sobreposicao sem renderizar.
+    """
+    p = np.array(pos, dtype=float, copy=True)
+    if len(p) < 2 or sep_x <= 0 or sep_y <= 0:
+        return p
+
+    ordem_x = np.argsort(p[:, 0], kind="stable")
+    # Corta em coluna nova onde o intervalo em x ja separa por si so'
+    col_atual: List[int] = [int(ordem_x[0])]
+    colunas: List[List[int]] = [col_atual]
+    for anterior, atual in zip(ordem_x[:-1], ordem_x[1:]):
+        if p[atual, 0] - p[anterior, 0] >= sep_x:
+            col_atual = []
+            colunas.append(col_atual)
+        col_atual.append(int(atual))
+
+    for coluna in colunas:
+        if len(coluna) < 2:
+            continue
+        idx = np.array(coluna)
+        idx = idx[np.argsort(p[idx, 1], kind="stable")]   # de baixo p/ cima
+        ys = p[idx, 1].astype(float)
+        centro_original = float(ys.mean())
+        # Empilha: cada rotulo fica pelo menos sep_y acima do anterior
+        for k in range(1, len(ys)):
+            ys[k] = max(ys[k], ys[k - 1] + sep_y)
+        ys += centro_original - float(ys.mean())          # recentra o bloco
+        p[idx, 1] = ys
+    return p
+
+
+def fig_biplot_pca(pca, scores_pca: np.ndarray, wavenumbers: np.ndarray,
+                    rotulos, mapa_cores, cfg: "Config", pasta: str,
+                    n_vars_destacadas: int = 12) -> None:
+    """Biplot PCA classico: scores (PC1 x PC2, por amostra) + vetores de
+    loading das variaveis mais influentes SOBREPOSTOS no mesmo painel --
+    interpretacao quimica direta de quais regioes espectrais empurram cada
+    grupo de amostras na direcao observada (item 4 da lista de figuras que
+    faltavam no conjunto essencial). Como um espectro tem centenas/milhares
+    de variaveis, mostra so' as `n_vars_destacadas` de maior magnitude
+    conjunta em PC1/PC2 -- senao o painel vira um emaranhado ilegivel
+    (pratica padrao em biplots de dados de alta dimensao).
+
+    Ref: Bro & Smilde (2014) Anal. Methods 6:2812-2831 (mesma referencia
+    de fig_loadings_pca).
+    """
+    rotulos = np.asarray(rotulos, dtype=str)
+    loadings = np.asarray(pca.components_[:2]).T   # (p, 2)
+    scores2  = np.asarray(scores_pca)[:, :2]
+
+    fig = plt.figure(figsize=(9.5, 7.2), constrained_layout=True)
+    gs = fig.add_gridspec(1, 2, width_ratios=[6.0, 1.3])
+    ax = fig.add_subplot(gs[0])
+    ax_leg = fig.add_subplot(gs[1])
+
+    for cls in np.unique(rotulos):
+        idx = rotulos == cls
+        ax.scatter(scores2[idx, 0], scores2[idx, 1], s=32, alpha=0.65,
+                   color=mapa_cores.get(cls, "0.4"), edgecolors="white",
+                   linewidths=0.4, label=str(cls), zorder=2)
+
+    escala = _escala_vetores_biplot(scores2, loadings)
+    mag = np.sqrt((loadings ** 2).sum(axis=1))
+    # Bandas ESPECTRALMENTE DISTINTAS, nao canais vizinhos da mesma banda
+    idx_top = select_distinct_loadings(mag, wavenumbers, n_vars_destacadas)
+
+    pontas = np.column_stack([loadings[idx_top, 0] * escala,
+                              loadings[idx_top, 1] * escala])
+    # Rotulo nasce um pouco alem da ponta da seta...
+    alvo = pontas * 1.08
+    # ...e entao e' afastado dos vizinhos. A separacao minima e' derivada da
+    # extensao real dos dados (nao um valor fixo em polegadas), para que a
+    # figura funcione em qualquer escala de score.
+    ext_x = float(np.abs(scores2[:, 0]).max()) if scores2.size else 1.0
+    ext_y = float(np.abs(scores2[:, 1]).max()) if scores2.size else 1.0
+    alvo = spread_labels(alvo, sep_x=ext_x * 0.13, sep_y=ext_y * 0.075)
+
+    for (vx, vy), (lx, ly), i in zip(pontas, alvo, idx_top):
+        ax.annotate("", xy=(vx, vy), xytext=(0, 0),
+                    arrowprops=dict(arrowstyle="-|>", color="0.15", lw=1.1,
+                                    shrinkA=0, shrinkB=0), zorder=4)
+        # Linha-guia fina ligando o rotulo deslocado a' sua seta -- sem ela
+        # o afastamento tornaria ambiguo qual rotulo pertence a qual vetor.
+        if abs(lx - vx * 1.08) > ext_x * 1e-3 or abs(ly - vy * 1.08) > ext_y * 1e-3:
+            ax.plot([vx, lx], [vy, ly], color="0.55", lw=0.5, ls="-",
+                    zorder=3, alpha=0.8)
+        ax.text(lx, ly, f"{wavenumbers[i]:.0f}",
+               fontsize=7, color="0.15", ha="center", va="center",
+               fontweight="bold", zorder=5,
+               bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none",
+                         alpha=0.75))
+
+    ax.axhline(0, color="0.75", lw=0.5, ls=":")
+    ax.axvline(0, color="0.75", lw=0.5, ls=":")
+    var1 = float(pca.explained_variance_ratio_[0]) * 100
+    var2 = float(pca.explained_variance_ratio_[1]) * 100
+    ax.set_xlabel(f"PC1 ({var1:.1f}%)")
+    ax.set_ylabel(f"PC2 ({var2:.1f}%)")
+    # Rotulo neutro do eixo (sem presumir cm-1; vem do perfil)
+    ax.set_title(
+        f"Biplot PCA — scores + top-{len(idx_top)} loadings "
+        f"(labels: {rotulo_do_eixo(cfg)})", loc="left")
+    # Limites cobrem scores, pontas e rotulos deslocados: spread_labels pode
+    # empilhar um rotulo alem do alcance dos scores, e sem isso ele saia da
+    # area do grafico (flutuando sobre o titulo, com a linha-guia recortada).
+    if len(alvo):
+        _todos_x = np.concatenate([scores2[:, 0], pontas[:, 0], alvo[:, 0], [0.0]])
+        _todos_y = np.concatenate([scores2[:, 1], pontas[:, 1], alvo[:, 1], [0.0]])
+        _mx = 0.06 * max(float(np.ptp(_todos_x)), 1e-9) + ext_x * 0.065
+        _my = 0.06 * max(float(np.ptp(_todos_y)), 1e-9) + ext_y * 0.04
+        ax.set_xlim(float(_todos_x.min()) - _mx, float(_todos_x.max()) + _mx)
+        ax.set_ylim(float(_todos_y.min()) - _my, float(_todos_y.max()) + _my)
+    ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+    _legenda_lateral(ax_leg, ax)
+
+    save(fig, "fig_biplot_pca", pasta, cfg)
+
+
+def _cv_agrupada(cfg) -> bool:
+    """A CV foi agrupada? Mesma regra do pipeline (group_by_mae_id) + a
+    garantia que o leitor gravou em cfg: "none" = sem chave de grupo, a CV
+    caiu em StratifiedKFold."""
+    return (bool(getattr(cfg, "group_by_mae_id", False))
+            and str(getattr(cfg, "grouping_guarantee", "none")) in ("high", "medium"))
+
+
+def fig_roc_auc(Y_bin: np.ndarray, Y_cv: np.ndarray,
+                classes: np.ndarray, cfg: "Config",
+                pasta: str) -> Dict[str, float]:
+    """Curvas ROC multiclasse One-vs-Rest usando as predicoes da CV (agrupada
+    quando o pipeline agrupou; o titulo diz qual).
+
+    Os scores continuos do PLS-DA (Y_cv) sao usados como funcao discriminante
+    — sem re-calibracao, sem leakage. AUC macro calculado por roc_auc_score.
+
+    Retorna dict {classe: AUC, 'macro': AUC_macro}.
+
+    Ref: Fawcett (2006) Pattern Recognit. Lett. 27:861-874.
+         Hand & Till (2001) Machine Learning 45:171-186.
+    """
+    from sklearn.metrics import auc as sk_auc
+
+    n_cls = Y_bin.shape[1]
+    if n_cls < 2:
+        return {}
+
+    aucs: Dict[str, float] = {}
+    rotulo_cv = "group-aware CV" if _cv_agrupada(cfg) else "CV, not grouped"
+    fig, ax = plt.subplots(figsize=(8.5, 6.5), constrained_layout=True)
+
+    for i, cls in enumerate(classes):
+        y_true_i  = Y_bin[:, i]
+        y_score_i = Y_cv[:, i]
+        if y_true_i.sum() == 0 or y_true_i.sum() == len(y_true_i):
+            continue
+        fpr, tpr, _ = roc_curve(y_true_i, y_score_i)
+        auc_i        = float(sk_auc(fpr, tpr))
+        aucs[str(cls)] = auc_i
+        ax.plot(fpr, tpr, color=color(i), lw=1.4, ls=estilo_linha(i),
+                label=f"{cls}  (AUC = {auc_i:.3f})")
+
+    ax.plot([0, 1], [0, 1], "k--", lw=0.8, label="Random (AUC = 0.500)")
+    ax.set_xlabel("False positive rate  (1 – specificity)")
+    ax.set_ylabel("True positive rate  (sensitivity)")
+    ax.set_xlim((-0.01, 1.01)); ax.set_ylim((-0.01, 1.02))
+
+    try:
+        macro_auc = float(roc_auc_score(
+            Y_bin, Y_cv, average="macro", multi_class="ovr"))
+        aucs["macro"] = macro_auc
+        ax.set_title(
+            f"ROC curves — PLS-DA ({rotulo_cv}) | macro AUC = {macro_auc:.3f}",
+            loc="left")
+    except ValueError:
+        # AUC macro degenerado (ex.: classe ausente em Y_bin/Y_cv) -- titulo
+        # so' omite o numero, nao mostra um AUC inventado; aucs["macro"]
+        # fica ausente do dict (o chamador ja trata a chave como opcional).
+        ax.set_title(f"ROC curves — PLS-DA ({rotulo_cv})", loc="left")
+
+    ax.legend(loc="lower right", fontsize=7.5, frameon=False)
+    ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+    save(fig, "fig_roc_auc_multiclasse", pasta, cfg)
+    return aucs
+
+
+def fig_splot_opls(X_proc: np.ndarray, t_pred: np.ndarray,
+                   wavenumbers: np.ndarray, cfg: "Config",
+                   pasta: str, top_n: int = 15) -> None:
+    """S-Plot OPLS-DA: covariancia x correlacao de cada variavel com t_pred.
+
+    Superior-direito: variaveis discriminantes positivas (classe 1 > classe 0).
+    Inferior-esquerdo: discriminantes negativas.
+    Centro (~0, ~0): ruido espectral sem poder discriminante.
+
+    Anotacao automatica dos top_n wavenumbers por |correlacao|.
+
+    Ref: Bylesjo M. et al. (2006) J. Chemometrics 20:341-351.
+         Wiklund S. et al. (2008) Anal. Chem. 80:115-122.
+    """
+    n = X_proc.shape[0]
+    X_c    = X_proc - X_proc.mean(axis=0)
+    t_c    = t_pred - float(t_pred.mean())
+    cov_xj = (X_c * t_c[:, None]).sum(axis=0) / max(n - 1, 1)
+
+    std_x = X_proc.std(axis=0, ddof=1)
+    std_t = float(t_pred.std(ddof=1))
+    std_x[std_x < 1e-12] = 1.0
+    if std_t < 1e-12:
+        std_t = 1.0
+    corr_xj = np.clip(cov_xj / (std_x * std_t), -1.0, 1.0)
+
+    fig, ax = plt.subplots(figsize=(9.5, 6.5), constrained_layout=True)
+    sc = ax.scatter(cov_xj, corr_xj,
+                    c=corr_xj, cmap="RdBu_r", vmin=-1.0, vmax=1.0,
+                    s=10, alpha=0.75, edgecolors="none", zorder=3)
+    plt.colorbar(sc, ax=ax, label="Correlation($X_j$, $t_p$)",
+                 fraction=0.035, pad=0.02)
+
+    ax.axhline(0, color="0.55", lw=0.8, ls="--")
+    ax.axvline(0, color="0.55", lw=0.8, ls="--")
+
+    # Anota top wavenumbers por |correlacao|, com anti-sobreposicao
+    # (evita o empilhamento de rotulos quando varias variaveis-top se
+    # agrupam na mesma regiao do grafico).
+    idx_top = np.argsort(np.abs(corr_xj))[::-1][:max(top_n * 3, 30)]
+    _anotar_sem_sobreposicao(
+        ax, cov_xj[idx_top], corr_xj[idx_top],
+        [f"{wavenumbers[j]:.0f}" for j in idx_top],
+        ref_x=cov_xj, ref_y=corr_xj,
+        fontsize=6.5, color="0.2", min_dist_frac=0.055, max_labels=top_n)
+
+    ax.set_xlabel("Covariance($X_j$, $t_p$)")
+    ax.set_ylabel("Correlation($X_j$, $t_p$)")
+    ax.set_title(
+        "S-Plot OPLS-DA — quadrante sup-dir: discriminantes positivos; "
+        "inf-esq: negativos; centro: ruído",
+        loc="left", fontsize=9)
+    ax.grid(color="0.95", lw=0.5); ax.set_axisbelow(True)
+    save(fig, "fig_splot_opls", pasta, cfg)
+
+
+def fig_heatmap_species_by_adulterant(resultado: Dict[str, Any], cfg,
+                                     pasta: str) -> None:
+    """Heatmap R2cv por especie (linhas) x adulterante (colunas).
+
+    Cor = R2cv numa escala divergente ancorada no limiar de aceite. Celula
+    ABAIXO do limiar fica HACHURADA e com o valor em negrito (nunca some);
+    celula sem dados/replicas suficientes vira cinza com 'n/a'. O titulo tras
+    o contador de falhas (ex.: '16/37 combinacoes abaixo de R²cv = 0.70'),
+    o mesmo numero registrado no relatorio -- para que uma quantificacao que
+    so funciona em parte das combinacoes nao seja lida como sucesso geral.
+    """
+    especies     = resultado["especies"]
+    adulterantes = resultado["adulterantes"]
+    matriz       = resultado["matriz"]
+    limiar       = float(resultado["limiar_r2"])
+    n_falhas     = int(resultado["n_falhas"])
+    n_total      = int(resultado["n_total"])
+
+    n_lin, n_col = len(especies), len(adulterantes)
+    M = np.full((n_lin, n_col), np.nan)
+    for i, esp in enumerate(especies):
+        for j, ad in enumerate(adulterantes):
+            M[i, j] = matriz.get((esp, ad), np.nan)
+
+    fig, ax = plt.subplots(figsize=(max(4.5, 1.6 * n_col + 2.5),
+                                    max(3.0, 0.55 * n_lin + 1.6)))
+    cmap = plt.cm.RdYlGn.copy()
+    cmap.set_bad(color="0.85")                 # n/a -> cinza explicito
+    vmin = min(0.0, 2.0 * limiar - 1.0)        # escala divergente centra no limiar
+    im = ax.imshow(np.ma.masked_invalid(M), cmap=cmap, vmin=vmin, vmax=1.0,
+                   aspect="auto")
+
+    for i in range(n_lin):
+        for j in range(n_col):
+            v = M[i, j]
+            if np.isnan(v):
+                ax.text(j, i, "n/a", ha="center", va="center",
+                        fontsize=8, color="0.35")
+                continue
+            falha = v < limiar
+            if falha:                          # hachura marca a falha
+                ax.add_patch(mpl.patches.Rectangle(
+                    (j - 0.5, i - 0.5), 1, 1, fill=False, hatch="////",
+                    edgecolor="0.12", lw=0.0, zorder=3))
+            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=8,
+                    fontweight="bold" if falha else "normal", color="0.10")
+
+    ax.set_xticks(range(n_col)); ax.set_xticklabels(adulterantes, fontsize=9)
+    ax.set_yticks(range(n_lin)); ax.set_yticklabels(especies, fontsize=9)
+    ax.set_xlabel("Adulterant"); ax.set_ylabel("Species")
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(f"R²cv  (limiar de aceite = {limiar:.2f})")
+    ax.set_title(
+        f"Quantificacao especie x adulterante — {n_falhas}/{n_total} "
+        f"combinacoes abaixo de R²cv = {limiar:.2f}",
+        fontsize=10, fontweight="bold", loc="left")
+    fig.tight_layout()
+    # Nome de arquivo sem "N3" cru (P8 residual, corrigido 2026-07-13) --
+    # ja e' gerada so' no objetivo Quantificacao (should_generate), entao o nome
+    # nao perde informacao ao deixar de repetir o codigo interno do nivel.
+    save(fig, "fig_heatmap_species_by_adulterant", pasta, cfg)
+
+
+def fig_cooman_ddsimca(ddsimca_res: Dict[str, Dict[str, Any]],
+                        rotulos: np.ndarray,
+                        mapa_cores: Dict[str, str],
+                        cfg: "Config", pasta: str,
+                        max_pares: int = 6) -> None:
+    """Cooman's Plot: distancia normalizada ao modelo de classe A vs classe B.
+
+    Regioes do plano (por par A x B):
+      sqrt(dQ_A)<=1 e sqrt(dQ_B)<=1  -> Ambiguo (aceito por ambos)
+      sqrt(dQ_A)<=1 e sqrt(dQ_B)>1   -> pertence a A
+      sqrt(dQ_A)>1  e sqrt(dQ_B)<=1  -> pertence a B
+      sqrt(dQ_A)>1  e sqrt(dQ_B)>1   -> Desconhecido
+
+    Escala raiz-quadrada: preserva estrutura proxima ao UCL sem comprimir
+    o eixo para amostras muito distantes (adulteracoes altas).
+
+    Ref: Pomerantsev & Rodionova (2020) Popular decision rules in SIMCA:
+    critical review. J. Chemometrics 34(8):e3250, doi:10.1002/cem.3250.
+    """
+    rotulos = np.asarray(rotulos, dtype=str)
+    classes_todas = np.unique(rotulos)
+    s_pt, alpha_pt, _lw_pt = adaptive_scatter_parameters(
+        len(rotulos), len(classes_todas))
+
+    classes_dd = sorted(ddsimca_res.keys())
+    pares = [(classes_dd[i], classes_dd[j])
+             for i in range(len(classes_dd))
+             for j in range(i + 1, len(classes_dd))]
+    if not pares:
+        return
+
+    pares = pares[:max_pares]
+    blocos = paginas(pares, GRAFICOS_POR_ITEM)
+    for i_pag, bloco in enumerate(blocos, 1):
+        _cooman_pagina(ddsimca_res, bloco, rotulos, classes_todas, mapa_cores, s_pt, alpha_pt,
+                       cfg, pasta, nome_pagina("fig_cooman_ddsimca", i_pag, len(blocos)))
+
+
+def _cooman_pagina(ddsimca_res, pares, rotulos, classes_todas, mapa_cores, s_pt, alpha_pt,
+                   cfg, pasta, nome_fig: str) -> None:
+    """Uma imagem do Cooman's plot com ate' 3 pares de modelos."""
+    n_p = len(pares)
+    ncols = n_p
+    nrows = 1
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5.2 * ncols, 4.5 * nrows),
+                             constrained_layout=True, squeeze=False)
+
+    for idx, (clsA, clsB) in enumerate(pares):
+        ax  = axes[idx // ncols, idx % ncols]
+        qA  = np.sqrt(np.clip(np.asarray(ddsimca_res[clsA]["Q_norm"]), 0, None))
+        qB  = np.sqrt(np.clip(np.asarray(ddsimca_res[clsB]["Q_norm"]), 0, None))
+
+        for cls in classes_todas:
+            mask = rotulos == cls
+            ax.scatter(qA[mask], qB[mask],
+                       color=mapa_cores.get(cls, "#999999"),
+                       s=s_pt, alpha=alpha_pt, label=cls,
+                       edgecolors="none", zorder=3)
+
+        ax.axhline(1.0, color="black", lw=0.9, ls="--")
+        ax.axvline(1.0, color="black", lw=0.9, ls="--")
+        # Regioes no rotulo dos eixos (o nome da classe nos cantos do painel
+        # ficava em cima da nuvem de pontos).
+        _xmax = max(float(np.nanmax(qA)) if qA.size else 1.0, 1.0)
+        _ymax = max(float(np.nanmax(qB)) if qB.size else 1.0, 1.0)
+        ax.set_xlim(0, _xmax * 1.08)
+        ax.set_ylim(0, _ymax * 1.08)
+        ax.set_xlabel(f"$\\sqrt{{d_Q}}$ — model {clsA}  (≤ 1: accepted by {clsA})")
+        ax.set_ylabel(f"$\\sqrt{{d_Q}}$ — model {clsB}  (≤ 1: accepted by {clsB})")
+        ax.set_title(f"{clsA} × {clsB}", fontsize=9)
+        ax.grid(color="0.94", lw=0.5); ax.set_axisbelow(True)
+
+    for idx_extra in range(n_p, nrows * ncols):
+        axes[idx_extra // ncols, idx_extra % ncols].set_visible(False)
+
+    handles, labels_leg = axes[0, 0].get_legend_handles_labels()       # cada painel desenha todas as classes: ha' legenda
+    # "outside": o constrained_layout reserva espaco (antes a legenda caia
+    # em cima do rotulo do eixo X do painel do meio).
+    fig.legend(handles, labels_leg, loc="outside lower center",
+               ncol=min(len(handles), 5), frameon=False, fontsize=8)
+
+    fig.suptitle("Cooman's Plot — DD-SIMCA ($\\sqrt{d_Q}$ scale; "
+                 "dashed = acceptance limit of each model)",
+                  fontsize=11, fontweight="bold")
+    save(fig, nome_fig, pasta, cfg, subpasta="ddsimca")

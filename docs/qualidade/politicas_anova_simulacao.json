@@ -1,0 +1,7071 @@
+{
+ "repeticoes": 600,
+ "alfa": 0.05,
+ "limite_fwer": 0.06,
+ "efeito": 2.0,
+ "escolha": {
+  "politica": "games-howell",
+  "cumpre_o_criterio": false,
+  "candidatas": []
+ },
+ "calibracao": {
+  "resumo": {
+   "n_cenarios": 104,
+   "erro_padrao_mc": 0.008897565210026092,
+   "politicas": {
+    "tukey": {
+     "fwer_max": 0.19666666666666666,
+     "fwer_medio": 0.07136217948717949,
+     "n_acima_limite": 43,
+     "n_acima_limite_com_margem": 30,
+     "poder_medio": 0.7859455128205128,
+     "pior_cenario": "normal|var1:10|n=6|k=5|var_alta_n_pequeno"
+    },
+    "games-howell": {
+     "fwer_max": 0.20666666666666667,
+     "fwer_medio": 0.06011217948717949,
+     "n_acima_limite": 34,
+     "n_acima_limite_com_margem": 18,
+     "poder_medio": 0.6831570512820513,
+     "pior_cenario": "lognormal|var1:10|n=6|k=3|var_alta_n_pequeno"
+    },
+    "auto": {
+     "fwer_max": 0.18833333333333332,
+     "fwer_medio": 0.06581730769230767,
+     "n_acima_limite": 40,
+     "n_acima_limite_com_margem": 26,
+     "poder_medio": 0.765496794871795,
+     "pior_cenario": "normal|var1:10|n=6|k=5|var_alta_n_pequeno"
+    },
+    "recomendar": {
+     "fwer_max": 0.625,
+     "fwer_medio": 0.0907852564102564,
+     "n_acima_limite": 45,
+     "n_acima_limite_com_margem": 31,
+     "poder_medio": 0.7088301282051283,
+     "pior_cenario": "lognormal|var1:10|n=30|k=3|var_alta_n_pequeno"
+    },
+    "kruskal-dunn": {
+     "fwer_max": 0.6266666666666667,
+     "fwer_medio": 0.07177884615384615,
+     "n_acima_limite": 29,
+     "n_acima_limite_com_margem": 21,
+     "poder_medio": 0.6105929487179487,
+     "pior_cenario": "lognormal|var1:10|n=30|k=3|var_alta_n_pequeno"
+    }
+   }
+  },
+  "linhas": [
+   {
+    "cenario": "normal|var1:1|n=3|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06666666666666667,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.36833333333333335,
+     "games-howell": 0.20833333333333334,
+     "auto": 0.36833333333333335,
+     "recomendar": 0.26,
+     "kruskal-dunn": 0.035
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.055,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.03333333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=3|k=3|n_desigual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 3,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.30333333333333334,
+     "games-howell": 0.23666666666666666,
+     "auto": 0.29333333333333333,
+     "recomendar": 0.31,
+     "kruskal-dunn": 0.07833333333333334
+    },
+    "discordancia": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.055,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=3|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.075,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.075,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 0.36,
+     "games-howell": 0.195,
+     "auto": 0.36,
+     "recomendar": 0.22333333333333333,
+     "kruskal-dunn": 0.051666666666666666
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=3|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.08,
+     "games-howell": 0.07833333333333334,
+     "auto": 0.08666666666666667,
+     "recomendar": 0.08833333333333333,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "poder": {
+     "tukey": 0.38333333333333336,
+     "games-howell": 0.20666666666666667,
+     "auto": 0.34833333333333333,
+     "recomendar": 0.27,
+     "kruskal-dunn": 0.06333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.09333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.075,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.08166666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=3|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03,
+     "games-howell": 0.045,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.01
+    },
+    "poder": {
+     "tukey": 0.265,
+     "games-howell": 0.255,
+     "auto": 0.26666666666666666,
+     "recomendar": 0.3,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.04,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=3|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.06,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.06833333333333333,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.4116666666666667,
+     "games-howell": 0.24833333333333332,
+     "auto": 0.4116666666666667,
+     "recomendar": 0.265,
+     "kruskal-dunn": 0.051666666666666666
+    },
+    "discordancia": {
+     "tukey": 0.07333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.06666666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=3|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.13166666666666665,
+     "games-howell": 0.08833333333333333,
+     "auto": 0.13,
+     "recomendar": 0.10166666666666667,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "poder": {
+     "tukey": 0.4666666666666667,
+     "games-howell": 0.18,
+     "auto": 0.38666666666666666,
+     "recomendar": 0.23833333333333334,
+     "kruskal-dunn": 0.085
+    },
+    "discordancia": {
+     "tukey": 0.13333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.11166666666666666,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.10166666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=3|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.045,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.01
+    },
+    "poder": {
+     "tukey": 0.23,
+     "games-howell": 0.23166666666666666,
+     "auto": 0.225,
+     "recomendar": 0.24833333333333332,
+     "kruskal-dunn": 0.035
+    },
+    "discordancia": {
+     "tukey": 0.05,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=6|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.8216666666666667,
+     "games-howell": 0.735,
+     "auto": 0.815,
+     "recomendar": 0.785,
+     "kruskal-dunn": 0.6433333333333333
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.035
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=6|k=3|n_desigual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.6883333333333334,
+     "games-howell": 0.46166666666666667,
+     "auto": 0.69,
+     "recomendar": 0.6433333333333333,
+     "kruskal-dunn": 0.48
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.03666666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=6|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.06,
+     "recomendar": 0.06,
+     "kruskal-dunn": 0.04833333333333333
+    },
+    "poder": {
+     "tukey": 0.815,
+     "games-howell": 0.6816666666666666,
+     "auto": 0.7783333333333333,
+     "recomendar": 0.7033333333333334,
+     "kruskal-dunn": 0.6216666666666667
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.025
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=6|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.11,
+     "games-howell": 0.07166666666666667,
+     "auto": 0.10833333333333334,
+     "recomendar": 0.1,
+     "kruskal-dunn": 0.07166666666666667
+    },
+    "poder": {
+     "tukey": 0.7333333333333333,
+     "games-howell": 0.27166666666666667,
+     "auto": 0.715,
+     "recomendar": 0.43833333333333335,
+     "kruskal-dunn": 0.5266666666666666
+    },
+    "discordancia": {
+     "tukey": 0.10666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.105,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.065
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=6|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03,
+     "games-howell": 0.06166666666666667,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.5983333333333334,
+     "games-howell": 0.6883333333333334,
+     "auto": 0.6083333333333333,
+     "recomendar": 0.7366666666666667,
+     "kruskal-dunn": 0.41833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07333333333333333,
+     "games-howell": 0.065,
+     "auto": 0.08,
+     "recomendar": 0.06833333333333333,
+     "kruskal-dunn": 0.055
+    },
+    "poder": {
+     "tukey": 0.7966666666666666,
+     "games-howell": 0.6166666666666667,
+     "auto": 0.7333333333333333,
+     "recomendar": 0.6166666666666667,
+     "kruskal-dunn": 0.5666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.17166666666666666,
+     "games-howell": 0.08166666666666667,
+     "auto": 0.16833333333333333,
+     "recomendar": 0.10333333333333333,
+     "kruskal-dunn": 0.08833333333333333
+    },
+    "poder": {
+     "tukey": 0.785,
+     "games-howell": 0.23,
+     "auto": 0.7283333333333334,
+     "recomendar": 0.2816666666666667,
+     "kruskal-dunn": 0.5816666666666667
+    },
+    "discordancia": {
+     "tukey": 0.16666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.13666666666666666,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.09
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02,
+     "games-howell": 0.05,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.5516666666666666,
+     "games-howell": 0.7833333333333333,
+     "auto": 0.5733333333333334,
+     "recomendar": 0.7816666666666666,
+     "kruskal-dunn": 0.38333333333333336
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.035,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=10|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05,
+     "games-howell": 0.043333333333333335,
+     "auto": 0.05,
+     "recomendar": 0.05333333333333334,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "poder": {
+     "tukey": 0.9766666666666667,
+     "games-howell": 0.965,
+     "auto": 0.975,
+     "recomendar": 0.9716666666666667,
+     "kruskal-dunn": 0.9416666666666667
+    },
+    "discordancia": {
+     "tukey": 0.025,
+     "games-howell": 0.0,
+     "auto": 0.025,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.021666666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=10|k=3|n_desigual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 10,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.06833333333333333,
+     "auto": 0.065,
+     "recomendar": 0.07666666666666666,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.9083333333333333,
+     "games-howell": 0.8116666666666666,
+     "auto": 0.9083333333333333,
+     "recomendar": 0.8883333333333333,
+     "kruskal-dunn": 0.8366666666666667
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=10|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.043333333333333335,
+     "auto": 0.055,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.9633333333333334,
+     "games-howell": 0.9383333333333334,
+     "auto": 0.955,
+     "recomendar": 0.9416666666666667,
+     "kruskal-dunn": 0.91
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.028333333333333332
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=10|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.13333333333333333,
+     "games-howell": 0.06,
+     "auto": 0.12333333333333334,
+     "recomendar": 0.095,
+     "kruskal-dunn": 0.075
+    },
+    "poder": {
+     "tukey": 0.8966666666666666,
+     "games-howell": 0.555,
+     "auto": 0.7966666666666666,
+     "recomendar": 0.635,
+     "kruskal-dunn": 0.7916666666666666
+    },
+    "discordancia": {
+     "tukey": 0.09833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.08166666666666667,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=10|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03,
+     "games-howell": 0.065,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.06666666666666667,
+     "kruskal-dunn": 0.028333333333333332
+    },
+    "poder": {
+     "tukey": 0.8933333333333333,
+     "games-howell": 0.96,
+     "auto": 0.91,
+     "recomendar": 0.9483333333333334,
+     "kruskal-dunn": 0.8266666666666667
+    },
+    "discordancia": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=10|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07333333333333333,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "poder": {
+     "tukey": 0.9616666666666667,
+     "games-howell": 0.91,
+     "auto": 0.9233333333333333,
+     "recomendar": 0.91,
+     "kruskal-dunn": 0.8633333333333333
+    },
+    "discordancia": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=10|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.175,
+     "games-howell": 0.065,
+     "auto": 0.13333333333333333,
+     "recomendar": 0.07833333333333334,
+     "kruskal-dunn": 0.10666666666666667
+    },
+    "poder": {
+     "tukey": 0.9266666666666666,
+     "games-howell": 0.48333333333333334,
+     "auto": 0.65,
+     "recomendar": 0.49666666666666665,
+     "kruskal-dunn": 0.8033333333333333
+    },
+    "discordancia": {
+     "tukey": 0.14833333333333334,
+     "games-howell": 0.0,
+     "auto": 0.08666666666666667,
+     "recomendar": 0.016666666666666666,
+     "kruskal-dunn": 0.075
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=10|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.025,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 0.8833333333333333,
+     "games-howell": 0.9866666666666667,
+     "auto": 0.92,
+     "recomendar": 0.98,
+     "kruskal-dunn": 0.7766666666666666
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.021666666666666667,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=30|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.045,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.018333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.02
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=30|k=3|n_desigual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 30,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.058333333333333334,
+     "auto": 0.055,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.045
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.028333333333333332,
+     "kruskal-dunn": 0.03333333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=30|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.05,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.05333333333333334,
+     "kruskal-dunn": 0.06166666666666667
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.005,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=30|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.10666666666666667,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.06166666666666667
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 0.995,
+     "auto": 0.995,
+     "recomendar": 0.995,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.08666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.016666666666666666,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:4|n=30|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.016666666666666666,
+     "games-howell": 0.04,
+     "auto": 0.035,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.023333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.005,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.03166666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=30|k=3|igual",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.035,
+     "auto": 0.035,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.0,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=30|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.185,
+     "games-howell": 0.05,
+     "auto": 0.05,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.08833333333333333
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.9983333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.165,
+     "games-howell": 0.0,
+     "auto": 0.0,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.06833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=30|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.028333333333333332,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.0,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=3|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.04,
+     "recomendar": 0.03166666666666667,
+     "kruskal-dunn": 0.008333333333333333
+    },
+    "poder": {
+     "tukey": 0.6566666666666666,
+     "games-howell": 0.5366666666666666,
+     "auto": 0.6566666666666666,
+     "recomendar": 0.5483333333333333,
+     "kruskal-dunn": 0.065
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=3|k=3|n_desigual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 3,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.011666666666666667
+    },
+    "poder": {
+     "tukey": 0.605,
+     "games-howell": 0.475,
+     "auto": 0.5566666666666666,
+     "recomendar": 0.51,
+     "kruskal-dunn": 0.09
+    },
+    "discordancia": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=3|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.07,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.68,
+     "games-howell": 0.4766666666666667,
+     "auto": 0.68,
+     "recomendar": 0.49166666666666664,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "discordancia": {
+     "tukey": 0.07666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.07666666666666666,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.06666666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=3|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.08166666666666667,
+     "games-howell": 0.11833333333333333,
+     "auto": 0.08166666666666667,
+     "recomendar": 0.125,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.6966666666666667,
+     "games-howell": 0.43833333333333335,
+     "auto": 0.6166666666666667,
+     "recomendar": 0.475,
+     "kruskal-dunn": 0.115
+    },
+    "discordancia": {
+     "tukey": 0.13166666666666665,
+     "games-howell": 0.0,
+     "auto": 0.10666666666666667,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.135
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=3|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.043333333333333335,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "poder": {
+     "tukey": 0.5416666666666666,
+     "games-howell": 0.5016666666666667,
+     "auto": 0.5283333333333333,
+     "recomendar": 0.5333333333333333,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.055,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=3|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.095,
+     "games-howell": 0.10333333333333333,
+     "auto": 0.095,
+     "recomendar": 0.11,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.665,
+     "games-howell": 0.46166666666666667,
+     "auto": 0.665,
+     "recomendar": 0.4633333333333333,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.12666666666666668,
+     "games-howell": 0.0,
+     "auto": 0.12666666666666668,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.11166666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=3|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.16333333333333333,
+     "games-howell": 0.18,
+     "auto": 0.16833333333333333,
+     "recomendar": 0.2,
+     "kruskal-dunn": 0.06166666666666667
+    },
+    "poder": {
+     "tukey": 0.715,
+     "games-howell": 0.43333333333333335,
+     "auto": 0.6366666666666667,
+     "recomendar": 0.46,
+     "kruskal-dunn": 0.175
+    },
+    "discordancia": {
+     "tukey": 0.19666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.15833333333333333,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.2
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=3|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.075,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.08166666666666667,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.5766666666666667,
+     "games-howell": 0.5683333333333334,
+     "auto": 0.56,
+     "recomendar": 0.5883333333333334,
+     "kruskal-dunn": 0.018333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.08333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.06833333333333333,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.07833333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=6|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.018333333333333333,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.02666666666666667,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "poder": {
+     "tukey": 0.8283333333333334,
+     "games-howell": 0.8033333333333333,
+     "auto": 0.825,
+     "recomendar": 0.815,
+     "kruskal-dunn": 0.7933333333333333
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.025,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.023333333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=6|k=3|n_desigual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.035,
+     "games-howell": 0.045,
+     "auto": 0.03,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.8283333333333334,
+     "games-howell": 0.6883333333333334,
+     "auto": 0.8283333333333334,
+     "recomendar": 0.68,
+     "kruskal-dunn": 0.63
+    },
+    "discordancia": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=6|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07333333333333333,
+     "games-howell": 0.07666666666666666,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.09666666666666666,
+     "kruskal-dunn": 0.1
+    },
+    "poder": {
+     "tukey": 0.8983333333333333,
+     "games-howell": 0.8566666666666667,
+     "auto": 0.8983333333333333,
+     "recomendar": 0.8566666666666667,
+     "kruskal-dunn": 0.7833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.07833333333333334,
+     "games-howell": 0.0,
+     "auto": 0.06166666666666667,
+     "recomendar": 0.025,
+     "kruskal-dunn": 0.08666666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=6|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.1,
+     "games-howell": 0.135,
+     "auto": 0.095,
+     "recomendar": 0.16,
+     "kruskal-dunn": 0.15333333333333332
+    },
+    "poder": {
+     "tukey": 0.8416666666666667,
+     "games-howell": 0.6366666666666667,
+     "auto": 0.8266666666666667,
+     "recomendar": 0.66,
+     "kruskal-dunn": 0.71
+    },
+    "discordancia": {
+     "tukey": 0.13166666666666665,
+     "games-howell": 0.0,
+     "auto": 0.10833333333333334,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.09833333333333333
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=6|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.025,
+     "auto": 0.05,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.035
+    },
+    "poder": {
+     "tukey": 0.7766666666666666,
+     "games-howell": 0.8083333333333333,
+     "auto": 0.7766666666666666,
+     "recomendar": 0.685,
+     "kruskal-dunn": 0.5183333333333333
+    },
+    "discordancia": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.055,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=6|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.095,
+     "games-howell": 0.14333333333333334,
+     "auto": 0.09833333333333333,
+     "recomendar": 0.16166666666666665,
+     "kruskal-dunn": 0.13333333333333333
+    },
+    "poder": {
+     "tukey": 0.9083333333333333,
+     "games-howell": 0.8566666666666667,
+     "auto": 0.905,
+     "recomendar": 0.8316666666666667,
+     "kruskal-dunn": 0.7583333333333333
+    },
+    "discordancia": {
+     "tukey": 0.13166666666666665,
+     "games-howell": 0.0,
+     "auto": 0.10333333333333333,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.12333333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=6|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.17333333333333334,
+     "games-howell": 0.20666666666666667,
+     "auto": 0.16333333333333333,
+     "recomendar": 0.235,
+     "kruskal-dunn": 0.21833333333333332
+    },
+    "poder": {
+     "tukey": 0.8283333333333334,
+     "games-howell": 0.58,
+     "auto": 0.8016666666666666,
+     "recomendar": 0.6366666666666667,
+     "kruskal-dunn": 0.7283333333333334
+    },
+    "discordancia": {
+     "tukey": 0.2,
+     "games-howell": 0.0,
+     "auto": 0.16166666666666665,
+     "recomendar": 0.08833333333333333,
+     "kruskal-dunn": 0.16
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=6|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.06666666666666667,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.06333333333333334,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.7533333333333333,
+     "games-howell": 0.865,
+     "auto": 0.7566666666666667,
+     "recomendar": 0.6783333333333333,
+     "kruskal-dunn": 0.405
+    },
+    "discordancia": {
+     "tukey": 0.08166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.07166666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=10|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.016666666666666666,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.9366666666666666,
+     "games-howell": 0.9166666666666666,
+     "auto": 0.9366666666666666,
+     "recomendar": 0.9866666666666667,
+     "kruskal-dunn": 0.9916666666666667
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.023333333333333334,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.028333333333333332
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=10|k=3|n_desigual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 10,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.065,
+     "auto": 0.025,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.04
+    },
+    "poder": {
+     "tukey": 0.905,
+     "games-howell": 0.8616666666666667,
+     "auto": 0.9,
+     "recomendar": 0.89,
+     "kruskal-dunn": 0.9
+    },
+    "discordancia": {
+     "tukey": 0.09666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.07
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=10|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.07333333333333333,
+     "auto": 0.055,
+     "recomendar": 0.14,
+     "kruskal-dunn": 0.12833333333333333
+    },
+    "poder": {
+     "tukey": 0.9666666666666667,
+     "games-howell": 0.9516666666666667,
+     "auto": 0.9666666666666667,
+     "recomendar": 0.99,
+     "kruskal-dunn": 0.99
+    },
+    "discordancia": {
+     "tukey": 0.06833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.095,
+     "kruskal-dunn": 0.10833333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=10|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.12,
+     "games-howell": 0.13833333333333334,
+     "auto": 0.09666666666666666,
+     "recomendar": 0.17,
+     "kruskal-dunn": 0.16833333333333333
+    },
+    "poder": {
+     "tukey": 0.895,
+     "games-howell": 0.76,
+     "auto": 0.8583333333333333,
+     "recomendar": 0.8566666666666667,
+     "kruskal-dunn": 0.8866666666666667
+    },
+    "discordancia": {
+     "tukey": 0.15333333333333332,
+     "games-howell": 0.0,
+     "auto": 0.11833333333333333,
+     "recomendar": 0.09166666666666666,
+     "kruskal-dunn": 0.11166666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=10|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02666666666666667,
+     "games-howell": 0.03,
+     "auto": 0.03,
+     "recomendar": 0.06,
+     "kruskal-dunn": 0.06166666666666667
+    },
+    "poder": {
+     "tukey": 0.8916666666666667,
+     "games-howell": 0.9183333333333333,
+     "auto": 0.89,
+     "recomendar": 0.9,
+     "kruskal-dunn": 0.905
+    },
+    "discordancia": {
+     "tukey": 0.03,
+     "games-howell": 0.0,
+     "auto": 0.025,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.06
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=10|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.08166666666666667,
+     "games-howell": 0.11,
+     "auto": 0.08833333333333333,
+     "recomendar": 0.20833333333333334,
+     "kruskal-dunn": 0.20333333333333334
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.9733333333333334,
+     "auto": 0.9816666666666667,
+     "recomendar": 0.995,
+     "kruskal-dunn": 0.995
+    },
+    "discordancia": {
+     "tukey": 0.095,
+     "games-howell": 0.0,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.13166666666666665,
+     "kruskal-dunn": 0.165
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=10|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.18166666666666667,
+     "games-howell": 0.175,
+     "auto": 0.15666666666666668,
+     "recomendar": 0.25833333333333336,
+     "kruskal-dunn": 0.25833333333333336
+    },
+    "poder": {
+     "tukey": 0.9066666666666666,
+     "games-howell": 0.73,
+     "auto": 0.835,
+     "recomendar": 0.86,
+     "kruskal-dunn": 0.8833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.175,
+     "games-howell": 0.0,
+     "auto": 0.11833333333333333,
+     "recomendar": 0.12833333333333333,
+     "kruskal-dunn": 0.14833333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=10|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.06333333333333334,
+     "auto": 0.05,
+     "recomendar": 0.10333333333333333,
+     "kruskal-dunn": 0.095
+    },
+    "poder": {
+     "tukey": 0.9116666666666666,
+     "games-howell": 0.9483333333333334,
+     "auto": 0.9116666666666666,
+     "recomendar": 0.9416666666666667,
+     "kruskal-dunn": 0.9416666666666667
+    },
+    "discordancia": {
+     "tukey": 0.07,
+     "games-howell": 0.0,
+     "auto": 0.06,
+     "recomendar": 0.08333333333333333,
+     "kruskal-dunn": 0.10166666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=30|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.03166666666666667,
+     "auto": 0.035,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.051666666666666666
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9966666666666667,
+     "auto": 0.9983333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03,
+     "games-howell": 0.0,
+     "auto": 0.01,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.058333333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=30|k=3|n_desigual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 30,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.025,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.9916666666666667,
+     "games-howell": 0.9616666666666667,
+     "auto": 0.98,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.07666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.06833333333333333,
+     "kruskal-dunn": 0.06833333333333333
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=30|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.065,
+     "games-howell": 0.05,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.38166666666666665,
+     "kruskal-dunn": 0.38166666666666665
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.9983333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.36333333333333334,
+     "kruskal-dunn": 0.36333333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=30|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.12166666666666667,
+     "games-howell": 0.11,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.3933333333333333,
+     "kruskal-dunn": 0.3933333333333333
+    },
+    "poder": {
+     "tukey": 0.9933333333333333,
+     "games-howell": 0.9433333333333334,
+     "auto": 0.9516666666666667,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.12666666666666668,
+     "games-howell": 0.0,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.3466666666666667,
+     "kruskal-dunn": 0.3466666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:4|n=30|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.023333333333333334,
+     "games-howell": 0.023333333333333334,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.21166666666666667,
+     "kruskal-dunn": 0.21166666666666667
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.99,
+     "auto": 0.995,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.035,
+     "games-howell": 0.0,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.21,
+     "kruskal-dunn": 0.21
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=30|k=3|igual",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.095,
+     "games-howell": 0.10666666666666667,
+     "auto": 0.09333333333333334,
+     "recomendar": 0.5966666666666667,
+     "kruskal-dunn": 0.5966666666666667
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.095,
+     "games-howell": 0.0,
+     "auto": 0.035,
+     "recomendar": 0.545,
+     "kruskal-dunn": 0.545
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=30|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.19333333333333333,
+     "games-howell": 0.165,
+     "auto": 0.14,
+     "recomendar": 0.625,
+     "kruskal-dunn": 0.6266666666666667
+    },
+    "poder": {
+     "tukey": 0.985,
+     "games-howell": 0.925,
+     "auto": 0.935,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.18,
+     "games-howell": 0.0,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.5533333333333333,
+     "kruskal-dunn": 0.5566666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:10|n=30|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "lognormal",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.018333333333333333,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.03,
+     "recomendar": 0.4166666666666667,
+     "kruskal-dunn": 0.4166666666666667
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.9983333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.41333333333333333,
+     "kruskal-dunn": 0.41333333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=3|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.035,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.011666666666666667
+    },
+    "poder": {
+     "tukey": 0.525,
+     "games-howell": 0.33,
+     "auto": 0.525,
+     "recomendar": 0.37333333333333335,
+     "kruskal-dunn": 0.07166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=3|k=3|n_desigual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 3,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.05,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.5166666666666667,
+     "games-howell": 0.33666666666666667,
+     "auto": 0.4866666666666667,
+     "recomendar": 0.41333333333333333,
+     "kruskal-dunn": 0.07333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.06,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=3|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.045,
+     "recomendar": 0.03166666666666667,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.555,
+     "games-howell": 0.3566666666666667,
+     "auto": 0.555,
+     "recomendar": 0.38333333333333336,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.03333333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=3|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.075,
+     "recomendar": 0.07333333333333333,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "poder": {
+     "tukey": 0.57,
+     "games-howell": 0.2833333333333333,
+     "auto": 0.5016666666666667,
+     "recomendar": 0.36666666666666664,
+     "kruskal-dunn": 0.08166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.08333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.016666666666666666,
+     "kruskal-dunn": 0.06666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=3|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 3,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.018333333333333333,
+     "games-howell": 0.023333333333333334,
+     "auto": 0.02,
+     "recomendar": 0.02666666666666667,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.41833333333333333,
+     "games-howell": 0.385,
+     "auto": 0.4066666666666667,
+     "recomendar": 0.435,
+     "kruskal-dunn": 0.07
+    },
+    "discordancia": {
+     "tukey": 0.023333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.021666666666666667,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.03666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=3|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "poder": {
+     "tukey": 0.575,
+     "games-howell": 0.3233333333333333,
+     "auto": 0.575,
+     "recomendar": 0.34,
+     "kruskal-dunn": 0.07
+    },
+    "discordancia": {
+     "tukey": 0.06,
+     "games-howell": 0.0,
+     "auto": 0.06,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=3|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.12833333333333333,
+     "games-howell": 0.085,
+     "auto": 0.11833333333333333,
+     "recomendar": 0.10333333333333333,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 0.6566666666666666,
+     "games-howell": 0.27666666666666667,
+     "auto": 0.515,
+     "recomendar": 0.335,
+     "kruskal-dunn": 0.1
+    },
+    "discordancia": {
+     "tukey": 0.11333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.09333333333333334,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.08333333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=3|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 3,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.021666666666666667,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.43833333333333335,
+     "games-howell": 0.465,
+     "auto": 0.43333333333333335,
+     "recomendar": 0.49833333333333335,
+     "kruskal-dunn": 0.056666666666666664
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=6|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.023333333333333334,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.035
+    },
+    "poder": {
+     "tukey": 0.8283333333333334,
+     "games-howell": 0.805,
+     "auto": 0.825,
+     "recomendar": 0.8216666666666667,
+     "kruskal-dunn": 0.7383333333333333
+    },
+    "discordancia": {
+     "tukey": 0.035,
+     "games-howell": 0.0,
+     "auto": 0.035,
+     "recomendar": 0.016666666666666666,
+     "kruskal-dunn": 0.03166666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=6|k=3|n_desigual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.035,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.77,
+     "games-howell": 0.5916666666666667,
+     "auto": 0.765,
+     "recomendar": 0.7016666666666667,
+     "kruskal-dunn": 0.59
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.03666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=6|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.056666666666666664
+    },
+    "poder": {
+     "tukey": 0.8433333333333334,
+     "games-howell": 0.7833333333333333,
+     "auto": 0.8316666666666667,
+     "recomendar": 0.7883333333333333,
+     "kruskal-dunn": 0.7533333333333333
+    },
+    "discordancia": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=6|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.13833333333333334,
+     "games-howell": 0.06,
+     "auto": 0.13166666666666665,
+     "recomendar": 0.08833333333333333,
+     "kruskal-dunn": 0.08
+    },
+    "poder": {
+     "tukey": 0.8033333333333333,
+     "games-howell": 0.44666666666666666,
+     "auto": 0.78,
+     "recomendar": 0.5283333333333333,
+     "kruskal-dunn": 0.6233333333333333
+    },
+    "discordancia": {
+     "tukey": 0.13333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.12166666666666667,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.07166666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=6|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 6,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.018333333333333333,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.02,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.6716666666666666,
+     "games-howell": 0.7166666666666667,
+     "auto": 0.6733333333333333,
+     "recomendar": 0.7866666666666666,
+     "kruskal-dunn": 0.5166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.028333333333333332,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.03
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=6|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.04,
+     "auto": 0.06,
+     "recomendar": 0.045,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.825,
+     "games-howell": 0.7616666666666667,
+     "auto": 0.8033333333333333,
+     "recomendar": 0.7616666666666667,
+     "kruskal-dunn": 0.725
+    },
+    "discordancia": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=6|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.18833333333333332,
+     "games-howell": 0.058333333333333334,
+     "auto": 0.17,
+     "recomendar": 0.08333333333333333,
+     "kruskal-dunn": 0.105
+    },
+    "poder": {
+     "tukey": 0.8466666666666667,
+     "games-howell": 0.36833333333333335,
+     "auto": 0.7733333333333333,
+     "recomendar": 0.4216666666666667,
+     "kruskal-dunn": 0.6783333333333333
+    },
+    "discordancia": {
+     "tukey": 0.18166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.145,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.10333333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=6|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.011666666666666667,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.01,
+     "recomendar": 0.028333333333333332,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.6766666666666666,
+     "games-howell": 0.8283333333333334,
+     "auto": 0.6816666666666666,
+     "recomendar": 0.8266666666666667,
+     "kruskal-dunn": 0.5
+    },
+    "discordancia": {
+     "tukey": 0.02666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.025,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.03166666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=10|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.02666666666666667,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.955,
+     "games-howell": 0.9516666666666667,
+     "auto": 0.9533333333333334,
+     "recomendar": 0.955,
+     "kruskal-dunn": 0.9783333333333334
+    },
+    "discordancia": {
+     "tukey": 0.03333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.02,
+     "kruskal-dunn": 0.021666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=10|k=3|n_desigual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 10,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.04,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.028333333333333332
+    },
+    "poder": {
+     "tukey": 0.8983333333333333,
+     "games-howell": 0.8233333333333334,
+     "auto": 0.8916666666666667,
+     "recomendar": 0.8616666666666667,
+     "kruskal-dunn": 0.8916666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.055,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=10|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "poder": {
+     "tukey": 0.9516666666666667,
+     "games-howell": 0.9366666666666666,
+     "auto": 0.9483333333333334,
+     "recomendar": 0.95,
+     "kruskal-dunn": 0.965
+    },
+    "discordancia": {
+     "tukey": 0.03,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.021666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=10|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.08666666666666667,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.045,
+     "kruskal-dunn": 0.055
+    },
+    "poder": {
+     "tukey": 0.93,
+     "games-howell": 0.745,
+     "auto": 0.8733333333333333,
+     "recomendar": 0.79,
+     "kruskal-dunn": 0.91
+    },
+    "discordancia": {
+     "tukey": 0.09166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=10|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 10,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.8916666666666667,
+     "games-howell": 0.915,
+     "auto": 0.8916666666666667,
+     "recomendar": 0.9333333333333333,
+     "kruskal-dunn": 0.8816666666666667
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=10|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05,
+     "games-howell": 0.045,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.9383333333333334,
+     "games-howell": 0.8966666666666666,
+     "auto": 0.9233333333333333,
+     "recomendar": 0.9,
+     "kruskal-dunn": 0.9416666666666667
+    },
+    "discordancia": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=10|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.17666666666666667,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.12333333333333334,
+     "recomendar": 0.07,
+     "kruskal-dunn": 0.08833333333333333
+    },
+    "poder": {
+     "tukey": 0.9533333333333334,
+     "games-howell": 0.7016666666666667,
+     "auto": 0.8166666666666667,
+     "recomendar": 0.7233333333333334,
+     "kruskal-dunn": 0.8816666666666667
+    },
+    "discordancia": {
+     "tukey": 0.17,
+     "games-howell": 0.0,
+     "auto": 0.09833333333333333,
+     "recomendar": 0.02,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=10|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 10,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02666666666666667,
+     "games-howell": 0.045,
+     "auto": 0.03,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.9033333333333333,
+     "games-howell": 0.9583333333333334,
+     "auto": 0.9066666666666666,
+     "recomendar": 0.9666666666666667,
+     "kruskal-dunn": 0.9083333333333333
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=30|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.045,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.045
+    },
+    "poder": {
+     "tukey": 0.9966666666666667,
+     "games-howell": 0.995,
+     "auto": 0.9966666666666667,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.018333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.025,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=30|k=3|n_desigual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 30,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9916666666666667,
+     "auto": 0.9983333333333333,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.028333333333333332,
+     "kruskal-dunn": 0.018333333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=30|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.9966666666666667,
+     "games-howell": 0.9966666666666667,
+     "auto": 0.9966666666666667,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.006666666666666667,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=30|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.125,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.07,
+     "recomendar": 0.06666666666666667,
+     "kruskal-dunn": 0.07
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.9916666666666667,
+     "auto": 0.9883333333333333,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.10333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "t3|var1:4|n=30|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 4.0,
+    "n": 30,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.025,
+     "games-howell": 0.05,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.04
+    },
+    "poder": {
+     "tukey": 0.9933333333333333,
+     "games-howell": 0.9966666666666667,
+     "auto": 0.9933333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.023333333333333334,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.051666666666666666
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=30|k=3|igual",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.065,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.06333333333333334,
+     "recomendar": 0.05333333333333334,
+     "kruskal-dunn": 0.056666666666666664
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.9983333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.011666666666666667,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=30|k=3|var_alta_n_pequeno",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.16,
+     "games-howell": 0.025,
+     "auto": 0.03,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.06833333333333333
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.9633333333333334,
+     "auto": 0.9616666666666667,
+     "recomendar": 0.975,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.14833333333333334,
+     "games-howell": 0.0,
+     "auto": 0.006666666666666667,
+     "recomendar": 0.02666666666666667,
+     "kruskal-dunn": 0.058333333333333334
+    }
+   },
+   {
+    "cenario": "t3|var1:10|n=30|k=3|var_alta_n_grande",
+    "k": 3,
+    "dist": "t3",
+    "razao_var": 10.0,
+    "n": 30,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.011666666666666667,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.9983333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.02666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.0016666666666666668,
+     "recomendar": 0.02,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=6|k=5|igual",
+    "k": 5,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.055,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.6766666666666666,
+     "games-howell": 0.5483333333333333,
+     "auto": 0.6733333333333333,
+     "recomendar": 0.5933333333333334,
+     "kruskal-dunn": 0.3433333333333333
+    },
+    "discordancia": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=6|k=5|n_desigual",
+    "k": 5,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.058333333333333334,
+     "auto": 0.045,
+     "recomendar": 0.06833333333333333,
+     "kruskal-dunn": 0.011666666666666667
+    },
+    "poder": {
+     "tukey": 0.5433333333333333,
+     "games-howell": 0.33166666666666667,
+     "auto": 0.54,
+     "recomendar": 0.475,
+     "kruskal-dunn": 0.21333333333333335
+    },
+    "discordancia": {
+     "tukey": 0.085,
+     "games-howell": 0.0,
+     "auto": 0.08166666666666667,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=5|igual",
+    "k": 5,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.09833333333333333,
+     "games-howell": 0.06333333333333334,
+     "auto": 0.08833333333333333,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.055
+    },
+    "poder": {
+     "tukey": 0.715,
+     "games-howell": 0.44333333333333336,
+     "auto": 0.6383333333333333,
+     "recomendar": 0.44333333333333336,
+     "kruskal-dunn": 0.27166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.115,
+     "games-howell": 0.0,
+     "auto": 0.09333333333333334,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.06833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=5|var_alta_n_pequeno",
+    "k": 5,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.19666666666666666,
+     "games-howell": 0.075,
+     "auto": 0.18833333333333332,
+     "recomendar": 0.085,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.6716666666666666,
+     "games-howell": 0.17333333333333334,
+     "auto": 0.595,
+     "recomendar": 0.18833333333333332,
+     "kruskal-dunn": 0.34
+    },
+    "discordancia": {
+     "tukey": 0.22333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.17833333333333334,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.09
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=6|k=10|igual",
+    "k": 10,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.06166666666666667,
+     "auto": 0.05,
+     "recomendar": 0.06166666666666667,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.5616666666666666,
+     "games-howell": 0.345,
+     "auto": 0.5566666666666666,
+     "recomendar": 0.365,
+     "kruskal-dunn": 0.14666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.08833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.08666666666666667,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.05333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=6|k=10|n_desigual",
+    "k": 10,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 6,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.06,
+     "games-howell": 0.09333333333333334,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.09666666666666666,
+     "kruskal-dunn": 0.018333333333333333
+    },
+    "poder": {
+     "tukey": 0.42333333333333334,
+     "games-howell": 0.24666666666666667,
+     "auto": 0.42,
+     "recomendar": 0.27666666666666667,
+     "kruskal-dunn": 0.105
+    },
+    "discordancia": {
+     "tukey": 0.115,
+     "games-howell": 0.0,
+     "auto": 0.10833333333333334,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.09333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=10|igual",
+    "k": 10,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07,
+     "games-howell": 0.07666666666666666,
+     "auto": 0.09,
+     "recomendar": 0.07666666666666666,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.5383333333333333,
+     "games-howell": 0.25,
+     "auto": 0.4533333333333333,
+     "recomendar": 0.25,
+     "kruskal-dunn": 0.05333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.125,
+     "games-howell": 0.0,
+     "auto": 0.08333333333333333,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.085
+    }
+   },
+   {
+    "cenario": "normal|var1:10|n=6|k=10|var_alta_n_pequeno",
+    "k": 10,
+    "dist": "normal",
+    "razao_var": 10.0,
+    "n": 6,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.19,
+     "games-howell": 0.105,
+     "auto": 0.18666666666666668,
+     "recomendar": 0.105,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.5516666666666666,
+     "games-howell": 0.09833333333333333,
+     "auto": 0.47833333333333333,
+     "recomendar": 0.09833333333333333,
+     "kruskal-dunn": 0.19333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.245,
+     "games-howell": 0.0,
+     "auto": 0.20333333333333334,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.11833333333333333
+    }
+   }
+  ]
+ },
+ "confirmacao": {
+  "resumo": {
+   "n_cenarios": 136,
+   "erro_padrao_mc": 0.008897565210026092,
+   "politicas": {
+    "tukey": {
+     "fwer_max": 0.215,
+     "fwer_medio": 0.06563725490196079,
+     "n_acima_limite": 48,
+     "n_acima_limite_com_margem": 35,
+     "poder_medio": 0.7825857843137255,
+     "pior_cenario": "normal|var1:16|n=20|k=4|var_alta_n_pequeno"
+    },
+    "games-howell": {
+     "fwer_max": 0.27,
+     "fwer_medio": 0.05803921568627451,
+     "n_acima_limite": 38,
+     "n_acima_limite_com_margem": 25,
+     "poder_medio": 0.6884068627450981,
+     "pior_cenario": "lognormal|var1:16|n=4|k=4|var_alta_n_pequeno"
+    },
+    "auto": {
+     "fwer_max": 0.18666666666666668,
+     "fwer_medio": 0.05745098039215687,
+     "n_acima_limite": 41,
+     "n_acima_limite_com_margem": 25,
+     "poder_medio": 0.752732843137255,
+     "pior_cenario": "normal|var1:16|n=4|k=4|var_alta_n_pequeno"
+    },
+    "recomendar": {
+     "fwer_max": 0.53,
+     "fwer_medio": 0.07825980392156863,
+     "n_acima_limite": 50,
+     "n_acima_limite_com_margem": 33,
+     "poder_medio": 0.7002083333333333,
+     "pior_cenario": "lognormal|var1:16|n=20|k=4|var_alta_n_pequeno"
+    },
+    "kruskal-dunn": {
+     "fwer_max": 0.535,
+     "fwer_medio": 0.06003676470588236,
+     "n_acima_limite": 29,
+     "n_acima_limite_com_margem": 20,
+     "poder_medio": 0.5730637254901961,
+     "pior_cenario": "lognormal|var1:16|n=20|k=4|var_alta_n_pequeno"
+    }
+   }
+  },
+  "linhas": [
+   {
+    "cenario": "normal|var1:1|n=4|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.06333333333333334,
+     "auto": 0.06833333333333333,
+     "recomendar": 0.07166666666666667,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.44166666666666665,
+     "games-howell": 0.31666666666666665,
+     "auto": 0.43666666666666665,
+     "recomendar": 0.3566666666666667,
+     "kruskal-dunn": 0.13166666666666665
+    },
+    "discordancia": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.06333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=4|k=4|n_desigual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.07666666666666666,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.08666666666666667,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.3566666666666667,
+     "games-howell": 0.2833333333333333,
+     "auto": 0.3516666666666667,
+     "recomendar": 0.345,
+     "kruskal-dunn": 0.056666666666666664
+    },
+    "discordancia": {
+     "tukey": 0.09166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.08833333333333333,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.07833333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=4|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.06333333333333334,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.45,
+     "games-howell": 0.29,
+     "auto": 0.43166666666666664,
+     "recomendar": 0.32666666666666666,
+     "kruskal-dunn": 0.09833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.075,
+     "games-howell": 0.0,
+     "auto": 0.06833333333333333,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.09833333333333333,
+     "games-howell": 0.10166666666666667,
+     "auto": 0.10166666666666667,
+     "recomendar": 0.11166666666666666,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.44,
+     "games-howell": 0.22333333333333333,
+     "auto": 0.42333333333333334,
+     "recomendar": 0.30666666666666664,
+     "kruskal-dunn": 0.12333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.12,
+     "games-howell": 0.0,
+     "auto": 0.11166666666666666,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.09833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03,
+     "games-howell": 0.06666666666666667,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.06333333333333334,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.2783333333333333,
+     "games-howell": 0.295,
+     "auto": 0.28,
+     "recomendar": 0.35,
+     "kruskal-dunn": 0.058333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.06666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.06333333333333334,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=4|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.065,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "poder": {
+     "tukey": 0.48333333333333334,
+     "games-howell": 0.25833333333333336,
+     "auto": 0.4533333333333333,
+     "recomendar": 0.2733333333333333,
+     "kruskal-dunn": 0.11666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.075,
+     "games-howell": 0.0,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.05333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.14833333333333334,
+     "games-howell": 0.14333333333333334,
+     "auto": 0.14666666666666667,
+     "recomendar": 0.15333333333333332,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.525,
+     "games-howell": 0.175,
+     "auto": 0.4583333333333333,
+     "recomendar": 0.23,
+     "kruskal-dunn": 0.15166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.20333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.18,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.145
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.01,
+     "games-howell": 0.05,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.006666666666666667
+    },
+    "poder": {
+     "tukey": 0.22666666666666666,
+     "games-howell": 0.33666666666666667,
+     "auto": 0.23,
+     "recomendar": 0.3516666666666667,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "discordancia": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.04,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=4|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.08166666666666667,
+     "games-howell": 0.06,
+     "auto": 0.075,
+     "recomendar": 0.06166666666666667,
+     "kruskal-dunn": 0.04
+    },
+    "poder": {
+     "tukey": 0.4683333333333333,
+     "games-howell": 0.25333333333333335,
+     "auto": 0.4166666666666667,
+     "recomendar": 0.25833333333333336,
+     "kruskal-dunn": 0.085
+    },
+    "discordancia": {
+     "tukey": 0.09166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.06333333333333334,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.2,
+     "games-howell": 0.11666666666666667,
+     "auto": 0.18666666666666668,
+     "recomendar": 0.12666666666666668,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.5733333333333334,
+     "games-howell": 0.18666666666666668,
+     "auto": 0.485,
+     "recomendar": 0.20666666666666667,
+     "kruskal-dunn": 0.16833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.245,
+     "games-howell": 0.0,
+     "auto": 0.205,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.13666666666666666
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.021666666666666667,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.023333333333333334,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.011666666666666667
+    },
+    "poder": {
+     "tukey": 0.15166666666666667,
+     "games-howell": 0.39166666666666666,
+     "auto": 0.16166666666666665,
+     "recomendar": 0.39666666666666667,
+     "kruskal-dunn": 0.023333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.04,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=8|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.055,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.06166666666666667,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.885,
+     "games-howell": 0.8466666666666667,
+     "auto": 0.885,
+     "recomendar": 0.875,
+     "kruskal-dunn": 0.7
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.03333333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=8|k=4|n_desigual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.06833333333333333,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 0.7466666666666667,
+     "games-howell": 0.545,
+     "auto": 0.7416666666666667,
+     "recomendar": 0.6866666666666666,
+     "kruskal-dunn": 0.5116666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.02666666666666667,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=8|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.051666666666666666,
+     "auto": 0.06,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.9083333333333333,
+     "games-howell": 0.8066666666666666,
+     "auto": 0.9,
+     "recomendar": 0.84,
+     "kruskal-dunn": 0.675
+    },
+    "discordancia": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.08833333333333333,
+     "games-howell": 0.065,
+     "auto": 0.09166666666666666,
+     "recomendar": 0.08833333333333333,
+     "kruskal-dunn": 0.06
+    },
+    "poder": {
+     "tukey": 0.81,
+     "games-howell": 0.38666666666666666,
+     "auto": 0.7716666666666666,
+     "recomendar": 0.5566666666666666,
+     "kruskal-dunn": 0.5566666666666666
+    },
+    "discordancia": {
+     "tukey": 0.09,
+     "games-howell": 0.0,
+     "auto": 0.08166666666666667,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.07
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.06,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.06,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "poder": {
+     "tukey": 0.6933333333333334,
+     "games-howell": 0.685,
+     "auto": 0.6983333333333334,
+     "recomendar": 0.7366666666666667,
+     "kruskal-dunn": 0.4116666666666667
+    },
+    "discordancia": {
+     "tukey": 0.04,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=8|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.065,
+     "games-howell": 0.045,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.87,
+     "games-howell": 0.7466666666666667,
+     "auto": 0.825,
+     "recomendar": 0.7516666666666667,
+     "kruskal-dunn": 0.6633333333333333
+    },
+    "discordancia": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.05,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.125,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.11333333333333333,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.05
+    },
+    "poder": {
+     "tukey": 0.8266666666666667,
+     "games-howell": 0.3,
+     "auto": 0.6633333333333333,
+     "recomendar": 0.3566666666666667,
+     "kruskal-dunn": 0.5683333333333334
+    },
+    "discordancia": {
+     "tukey": 0.15166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.10333333333333333,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.05333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.021666666666666667,
+     "games-howell": 0.03166666666666667,
+     "auto": 0.025,
+     "recomendar": 0.03166666666666667,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.7283333333333334,
+     "games-howell": 0.855,
+     "auto": 0.7516666666666667,
+     "recomendar": 0.8733333333333333,
+     "kruskal-dunn": 0.41833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.03,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.028333333333333332
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=8|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.05333333333333334
+    },
+    "poder": {
+     "tukey": 0.89,
+     "games-howell": 0.6916666666666667,
+     "auto": 0.775,
+     "recomendar": 0.6933333333333334,
+     "kruskal-dunn": 0.6266666666666667
+    },
+    "discordancia": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.058333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.20166666666666666,
+     "games-howell": 0.06833333333333333,
+     "auto": 0.14333333333333334,
+     "recomendar": 0.07,
+     "kruskal-dunn": 0.08833333333333333
+    },
+    "poder": {
+     "tukey": 0.8333333333333334,
+     "games-howell": 0.25333333333333335,
+     "auto": 0.53,
+     "recomendar": 0.25333333333333335,
+     "kruskal-dunn": 0.5683333333333334
+    },
+    "discordancia": {
+     "tukey": 0.2,
+     "games-howell": 0.0,
+     "auto": 0.10833333333333334,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.09166666666666666
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.028333333333333332,
+     "games-howell": 0.05333333333333334,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.025
+    },
+    "poder": {
+     "tukey": 0.655,
+     "games-howell": 0.9083333333333333,
+     "auto": 0.7183333333333334,
+     "recomendar": 0.9083333333333333,
+     "kruskal-dunn": 0.34
+    },
+    "discordancia": {
+     "tukey": 0.05,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=20|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.055,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.025,
+     "games-howell": 0.0,
+     "auto": 0.023333333333333334,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.025
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=20|k=4|n_desigual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.065,
+     "auto": 0.06,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9883333333333333,
+     "auto": 0.9983333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9816666666666667
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.04,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.035
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=20|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.055,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 0.9966666666666667,
+     "auto": 0.9966666666666667,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 0.9933333333333333
+    },
+    "discordancia": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.013333333333333334,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.095,
+     "games-howell": 0.045,
+     "auto": 0.07833333333333334,
+     "recomendar": 0.07666666666666666,
+     "kruskal-dunn": 0.04833333333333333
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.9533333333333334,
+     "auto": 0.97,
+     "recomendar": 0.9683333333333334,
+     "kruskal-dunn": 0.9783333333333334
+    },
+    "discordancia": {
+     "tukey": 0.08,
+     "games-howell": 0.0,
+     "auto": 0.05,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:2.5|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.06666666666666667,
+     "auto": 0.05,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 1.0,
+     "auto": 0.9983333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9916666666666667
+    },
+    "discordancia": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=20|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.05333333333333334,
+     "auto": 0.06166666666666667,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.04833333333333333
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 0.9916666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.013333333333333334,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.05333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.135,
+     "games-howell": 0.043333333333333335,
+     "auto": 0.065,
+     "recomendar": 0.06,
+     "kruskal-dunn": 0.06166666666666667
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 0.9016666666666666,
+     "auto": 0.9083333333333333,
+     "recomendar": 0.905,
+     "kruskal-dunn": 0.9766666666666667
+    },
+    "discordancia": {
+     "tukey": 0.12,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.05333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.025,
+     "games-howell": 0.056666666666666664,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.025
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 1.0,
+     "auto": 0.9983333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9766666666666667
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.015,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=20|k=4|igual",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06666666666666667,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.04833333333333333
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 0.9966666666666667,
+     "auto": 0.9966666666666667,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 0.99
+    },
+    "discordancia": {
+     "tukey": 0.07,
+     "games-howell": 0.0,
+     "auto": 0.0,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.215,
+     "games-howell": 0.07333333333333333,
+     "auto": 0.075,
+     "recomendar": 0.07333333333333333,
+     "kruskal-dunn": 0.10833333333333334
+    },
+    "poder": {
+     "tukey": 0.9966666666666667,
+     "games-howell": 0.8283333333333334,
+     "auto": 0.8283333333333334,
+     "recomendar": 0.8283333333333334,
+     "kruskal-dunn": 0.9766666666666667
+    },
+    "discordancia": {
+     "tukey": 0.20666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.0033333333333333335,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.07833333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:16|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "normal",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02,
+     "games-howell": 0.043333333333333335,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 1.0,
+     "games-howell": 1.0,
+     "auto": 1.0,
+     "recomendar": 1.0,
+     "kruskal-dunn": 0.99
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.005,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=4|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.021666666666666667,
+     "games-howell": 0.02,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.02,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.7033333333333334,
+     "games-howell": 0.5883333333333334,
+     "auto": 0.6966666666666667,
+     "recomendar": 0.5816666666666667,
+     "kruskal-dunn": 0.21166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.035,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.03166666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=4|k=4|n_desigual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.5816666666666667,
+     "games-howell": 0.53,
+     "auto": 0.5716666666666667,
+     "recomendar": 0.4816666666666667,
+     "kruskal-dunn": 0.08333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.075,
+     "games-howell": 0.0,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=4|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.035,
+     "games-howell": 0.03166666666666667,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.725,
+     "games-howell": 0.6216666666666667,
+     "auto": 0.69,
+     "recomendar": 0.62,
+     "kruskal-dunn": 0.09333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.05,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.06,
+     "games-howell": 0.09166666666666666,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.09,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.725,
+     "games-howell": 0.5233333333333333,
+     "auto": 0.6883333333333334,
+     "recomendar": 0.49,
+     "kruskal-dunn": 0.24
+    },
+    "discordancia": {
+     "tukey": 0.12166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.105,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.115
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.05,
+     "auto": 0.035,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.5766666666666667,
+     "games-howell": 0.63,
+     "auto": 0.5666666666666667,
+     "recomendar": 0.55,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.08166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.06,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.06666666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=4|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.08333333333333333,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.08333333333333333,
+     "kruskal-dunn": 0.058333333333333334
+    },
+    "poder": {
+     "tukey": 0.7166666666666667,
+     "games-howell": 0.55,
+     "auto": 0.6816666666666666,
+     "recomendar": 0.5533333333333333,
+     "kruskal-dunn": 0.07833333333333334
+    },
+    "discordancia": {
+     "tukey": 0.11,
+     "games-howell": 0.0,
+     "auto": 0.085,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.095
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.10666666666666667,
+     "games-howell": 0.18166666666666667,
+     "auto": 0.105,
+     "recomendar": 0.185,
+     "kruskal-dunn": 0.07
+    },
+    "poder": {
+     "tukey": 0.7283333333333334,
+     "games-howell": 0.44333333333333336,
+     "auto": 0.6816666666666666,
+     "recomendar": 0.4216666666666667,
+     "kruskal-dunn": 0.2633333333333333
+    },
+    "discordancia": {
+     "tukey": 0.21333333333333335,
+     "games-howell": 0.0,
+     "auto": 0.16666666666666666,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.18833333333333332
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02666666666666667,
+     "games-howell": 0.06166666666666667,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.018333333333333333
+    },
+    "poder": {
+     "tukey": 0.5166666666666667,
+     "games-howell": 0.6333333333333333,
+     "auto": 0.51,
+     "recomendar": 0.575,
+     "kruskal-dunn": 0.008333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.085,
+     "games-howell": 0.0,
+     "auto": 0.07666666666666666,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.07666666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=4|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.08833333333333333,
+     "games-howell": 0.14,
+     "auto": 0.1,
+     "recomendar": 0.14166666666666666,
+     "kruskal-dunn": 0.10166666666666667
+    },
+    "poder": {
+     "tukey": 0.75,
+     "games-howell": 0.5116666666666667,
+     "auto": 0.6816666666666666,
+     "recomendar": 0.51,
+     "kruskal-dunn": 0.04
+    },
+    "discordancia": {
+     "tukey": 0.165,
+     "games-howell": 0.0,
+     "auto": 0.13833333333333334,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.15
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.18166666666666667,
+     "games-howell": 0.27,
+     "auto": 0.18666666666666668,
+     "recomendar": 0.26666666666666666,
+     "kruskal-dunn": 0.09
+    },
+    "poder": {
+     "tukey": 0.7416666666666667,
+     "games-howell": 0.3333333333333333,
+     "auto": 0.655,
+     "recomendar": 0.33,
+     "kruskal-dunn": 0.30333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.32,
+     "games-howell": 0.0,
+     "auto": 0.24333333333333335,
+     "recomendar": 0.03166666666666667,
+     "kruskal-dunn": 0.27
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.085,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.085,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.4816666666666667,
+     "games-howell": 0.6466666666666666,
+     "auto": 0.4816666666666667,
+     "recomendar": 0.59,
+     "kruskal-dunn": 0.0016666666666666668
+    },
+    "discordancia": {
+     "tukey": 0.10166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.09666666666666666,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.08666666666666667
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=8|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.015,
+     "auto": 0.02,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.88,
+     "games-howell": 0.8516666666666667,
+     "auto": 0.8783333333333333,
+     "recomendar": 0.87,
+     "kruskal-dunn": 0.8566666666666667
+    },
+    "discordancia": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=8|k=4|n_desigual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.02,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "poder": {
+     "tukey": 0.8516666666666667,
+     "games-howell": 0.75,
+     "auto": 0.8433333333333334,
+     "recomendar": 0.69,
+     "kruskal-dunn": 0.6666666666666666
+    },
+    "discordancia": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=8|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.035,
+     "auto": 0.035,
+     "recomendar": 0.07333333333333333,
+     "kruskal-dunn": 0.07666666666666666
+    },
+    "poder": {
+     "tukey": 0.8933333333333333,
+     "games-howell": 0.8683333333333333,
+     "auto": 0.89,
+     "recomendar": 0.8416666666666667,
+     "kruskal-dunn": 0.795
+    },
+    "discordancia": {
+     "tukey": 0.06166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.08
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.06833333333333333,
+     "games-howell": 0.11666666666666667,
+     "auto": 0.055,
+     "recomendar": 0.125,
+     "kruskal-dunn": 0.10833333333333334
+    },
+    "poder": {
+     "tukey": 0.835,
+     "games-howell": 0.68,
+     "auto": 0.8216666666666667,
+     "recomendar": 0.7016666666666667,
+     "kruskal-dunn": 0.7066666666666667
+    },
+    "discordancia": {
+     "tukey": 0.14166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.115,
+     "recomendar": 0.05333333333333334,
+     "kruskal-dunn": 0.1
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.02,
+     "auto": 0.025,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.051666666666666666
+    },
+    "poder": {
+     "tukey": 0.83,
+     "games-howell": 0.84,
+     "auto": 0.8316666666666667,
+     "recomendar": 0.6483333333333333,
+     "kruskal-dunn": 0.56
+    },
+    "discordancia": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.03,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=8|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.065,
+     "games-howell": 0.1,
+     "auto": 0.055,
+     "recomendar": 0.14333333333333334,
+     "kruskal-dunn": 0.135
+    },
+    "poder": {
+     "tukey": 0.935,
+     "games-howell": 0.9033333333333333,
+     "auto": 0.9366666666666666,
+     "recomendar": 0.7933333333333333,
+     "kruskal-dunn": 0.7483333333333333
+    },
+    "discordancia": {
+     "tukey": 0.10833333333333334,
+     "games-howell": 0.0,
+     "auto": 0.07666666666666666,
+     "recomendar": 0.07666666666666666,
+     "kruskal-dunn": 0.135
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.10833333333333334,
+     "games-howell": 0.14333333333333334,
+     "auto": 0.08666666666666667,
+     "recomendar": 0.16833333333333333,
+     "kruskal-dunn": 0.14166666666666666
+    },
+    "poder": {
+     "tukey": 0.845,
+     "games-howell": 0.655,
+     "auto": 0.7883333333333333,
+     "recomendar": 0.7033333333333334,
+     "kruskal-dunn": 0.73
+    },
+    "discordancia": {
+     "tukey": 0.18166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.135,
+     "recomendar": 0.07,
+     "kruskal-dunn": 0.11833333333333333
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.035,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.06
+    },
+    "poder": {
+     "tukey": 0.81,
+     "games-howell": 0.8633333333333333,
+     "auto": 0.8083333333333333,
+     "recomendar": 0.5566666666666666,
+     "kruskal-dunn": 0.3983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.07
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=8|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.105,
+     "games-howell": 0.18166666666666667,
+     "auto": 0.10333333333333333,
+     "recomendar": 0.23,
+     "kruskal-dunn": 0.205
+    },
+    "poder": {
+     "tukey": 0.955,
+     "games-howell": 0.9,
+     "auto": 0.9516666666666667,
+     "recomendar": 0.785,
+     "kruskal-dunn": 0.72
+    },
+    "discordancia": {
+     "tukey": 0.18333333333333332,
+     "games-howell": 0.0,
+     "auto": 0.13833333333333334,
+     "recomendar": 0.12166666666666667,
+     "kruskal-dunn": 0.19666666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.16333333333333333,
+     "games-howell": 0.20166666666666666,
+     "auto": 0.14666666666666667,
+     "recomendar": 0.24,
+     "kruskal-dunn": 0.245
+    },
+    "poder": {
+     "tukey": 0.8566666666666667,
+     "games-howell": 0.625,
+     "auto": 0.7716666666666666,
+     "recomendar": 0.695,
+     "kruskal-dunn": 0.75
+    },
+    "discordancia": {
+     "tukey": 0.22833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.13833333333333334,
+     "recomendar": 0.10333333333333333,
+     "kruskal-dunn": 0.185
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.07,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.085,
+     "kruskal-dunn": 0.065
+    },
+    "poder": {
+     "tukey": 0.805,
+     "games-howell": 0.8933333333333333,
+     "auto": 0.8066666666666666,
+     "recomendar": 0.48,
+     "kruskal-dunn": 0.26666666666666666
+    },
+    "discordancia": {
+     "tukey": 0.08,
+     "games-howell": 0.0,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.10333333333333333
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=20|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.021666666666666667,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.985,
+     "games-howell": 0.975,
+     "auto": 0.9833333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.035
+    }
+   },
+   {
+    "cenario": "lognormal|var1:1|n=20|k=4|n_desigual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.045,
+     "auto": 0.021666666666666667,
+     "recomendar": 0.025,
+     "kruskal-dunn": 0.025
+    },
+    "poder": {
+     "tukey": 0.97,
+     "games-howell": 0.9166666666666666,
+     "auto": 0.9633333333333334,
+     "recomendar": 0.9916666666666667,
+     "kruskal-dunn": 0.9916666666666667
+    },
+    "discordancia": {
+     "tukey": 0.07,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=20|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.12666666666666668,
+     "kruskal-dunn": 0.12666666666666668
+    },
+    "poder": {
+     "tukey": 0.9916666666666667,
+     "games-howell": 0.985,
+     "auto": 0.9916666666666667,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.12,
+     "kruskal-dunn": 0.12
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.08666666666666667,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.15833333333333333,
+     "kruskal-dunn": 0.15833333333333333
+    },
+    "poder": {
+     "tukey": 0.97,
+     "games-howell": 0.8966666666666666,
+     "auto": 0.9433333333333334,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.11166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.125,
+     "kruskal-dunn": 0.125
+    }
+   },
+   {
+    "cenario": "lognormal|var1:2.5|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.028333333333333332,
+     "games-howell": 0.021666666666666667,
+     "auto": 0.021666666666666667,
+     "recomendar": 0.08833333333333333,
+     "kruskal-dunn": 0.08666666666666667
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.9533333333333334,
+     "auto": 0.98,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.09,
+     "kruskal-dunn": 0.09166666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=20|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.06833333333333333,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.30666666666666664,
+     "kruskal-dunn": 0.30833333333333335
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.995,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.08,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.2833333333333333,
+     "kruskal-dunn": 0.285
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.125,
+     "games-howell": 0.14166666666666666,
+     "auto": 0.08333333333333333,
+     "recomendar": 0.375,
+     "kruskal-dunn": 0.375
+    },
+    "poder": {
+     "tukey": 0.9583333333333334,
+     "games-howell": 0.8266666666666667,
+     "auto": 0.8666666666666667,
+     "recomendar": 0.9933333333333333,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.17666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.085,
+     "recomendar": 0.30833333333333335,
+     "kruskal-dunn": 0.30833333333333335
+    }
+   },
+   {
+    "cenario": "lognormal|var1:6|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.035,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.21,
+     "kruskal-dunn": 0.21166666666666667
+    },
+    "poder": {
+     "tukey": 0.9883333333333333,
+     "games-howell": 0.9883333333333333,
+     "auto": 0.9883333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.065,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.2,
+     "kruskal-dunn": 0.20166666666666666
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=20|k=4|igual",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.08666666666666667,
+     "games-howell": 0.13333333333333333,
+     "auto": 0.10166666666666667,
+     "recomendar": 0.5233333333333333,
+     "kruskal-dunn": 0.525
+    },
+    "poder": {
+     "tukey": 0.9983333333333333,
+     "games-howell": 1.0,
+     "auto": 0.9983333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.14166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.4816666666666667,
+     "kruskal-dunn": 0.485
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.14666666666666667,
+     "games-howell": 0.18,
+     "auto": 0.14333333333333334,
+     "recomendar": 0.53,
+     "kruskal-dunn": 0.535
+    },
+    "poder": {
+     "tukey": 0.9416666666666667,
+     "games-howell": 0.82,
+     "auto": 0.8483333333333334,
+     "recomendar": 0.9933333333333333,
+     "kruskal-dunn": 0.9933333333333333
+    },
+    "discordancia": {
+     "tukey": 0.21333333333333335,
+     "games-howell": 0.0,
+     "auto": 0.08333333333333333,
+     "recomendar": 0.475,
+     "kruskal-dunn": 0.48333333333333334
+    }
+   },
+   {
+    "cenario": "lognormal|var1:16|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "lognormal",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.035,
+     "games-howell": 0.07,
+     "auto": 0.06,
+     "recomendar": 0.29,
+     "kruskal-dunn": 0.2866666666666667
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.9933333333333333,
+     "auto": 0.9816666666666667,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.08,
+     "games-howell": 0.0,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.2816666666666667,
+     "kruskal-dunn": 0.2866666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=4|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.035,
+     "games-howell": 0.023333333333333334,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.02666666666666667,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 0.6083333333333333,
+     "games-howell": 0.51,
+     "auto": 0.6033333333333334,
+     "recomendar": 0.5266666666666666,
+     "kruskal-dunn": 0.21333333333333335
+    },
+    "discordancia": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.0,
+     "auto": 0.035,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.028333333333333332
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=4|k=4|n_desigual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.055,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.021666666666666667
+    },
+    "poder": {
+     "tukey": 0.535,
+     "games-howell": 0.375,
+     "auto": 0.515,
+     "recomendar": 0.4583333333333333,
+     "kruskal-dunn": 0.09833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.075,
+     "games-howell": 0.0,
+     "auto": 0.06166666666666667,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=4|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.03,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.665,
+     "games-howell": 0.495,
+     "auto": 0.6383333333333333,
+     "recomendar": 0.5133333333333333,
+     "kruskal-dunn": 0.195
+    },
+    "discordancia": {
+     "tukey": 0.06,
+     "games-howell": 0.0,
+     "auto": 0.055,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.07333333333333333,
+     "games-howell": 0.058333333333333334,
+     "auto": 0.06166666666666667,
+     "recomendar": 0.07333333333333333,
+     "kruskal-dunn": 0.018333333333333333
+    },
+    "poder": {
+     "tukey": 0.5916666666666667,
+     "games-howell": 0.325,
+     "auto": 0.5483333333333333,
+     "recomendar": 0.39166666666666666,
+     "kruskal-dunn": 0.115
+    },
+    "discordancia": {
+     "tukey": 0.11333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.09833333333333333,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.07166666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02666666666666667,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.023333333333333334,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.01
+    },
+    "poder": {
+     "tukey": 0.4266666666666667,
+     "games-howell": 0.42333333333333334,
+     "auto": 0.42,
+     "recomendar": 0.4716666666666667,
+     "kruskal-dunn": 0.06166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06,
+     "games-howell": 0.0,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=4|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.64,
+     "games-howell": 0.455,
+     "auto": 0.6166666666666667,
+     "recomendar": 0.4666666666666667,
+     "kruskal-dunn": 0.17833333333333334
+    },
+    "discordancia": {
+     "tukey": 0.06,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.13833333333333334,
+     "games-howell": 0.08666666666666667,
+     "auto": 0.12333333333333334,
+     "recomendar": 0.09333333333333334,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.6516666666666666,
+     "games-howell": 0.30333333333333334,
+     "auto": 0.5633333333333334,
+     "recomendar": 0.34833333333333333,
+     "kruskal-dunn": 0.17
+    },
+    "discordancia": {
+     "tukey": 0.17666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.14666666666666667,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.10833333333333334
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.021666666666666667,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.025,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.011666666666666667
+    },
+    "poder": {
+     "tukey": 0.3933333333333333,
+     "games-howell": 0.5183333333333333,
+     "auto": 0.38666666666666666,
+     "recomendar": 0.535,
+     "kruskal-dunn": 0.035
+    },
+    "discordancia": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.05,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=4|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.043333333333333335,
+     "auto": 0.065,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "poder": {
+     "tukey": 0.68,
+     "games-howell": 0.42333333333333334,
+     "auto": 0.6116666666666667,
+     "recomendar": 0.43166666666666664,
+     "kruskal-dunn": 0.165
+    },
+    "discordancia": {
+     "tukey": 0.085,
+     "games-howell": 0.0,
+     "auto": 0.06833333333333333,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.065
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.16833333333333333,
+     "games-howell": 0.085,
+     "auto": 0.13333333333333333,
+     "recomendar": 0.09,
+     "kruskal-dunn": 0.051666666666666666
+    },
+    "poder": {
+     "tukey": 0.7333333333333333,
+     "games-howell": 0.21666666666666667,
+     "auto": 0.5633333333333334,
+     "recomendar": 0.23833333333333334,
+     "kruskal-dunn": 0.16333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.20166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.13666666666666666,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.10833333333333334
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.02,
+     "games-howell": 0.04,
+     "auto": 0.025,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.015
+    },
+    "poder": {
+     "tukey": 0.38333333333333336,
+     "games-howell": 0.565,
+     "auto": 0.38666666666666666,
+     "recomendar": 0.5716666666666667,
+     "kruskal-dunn": 0.028333333333333332
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=8|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.895,
+     "games-howell": 0.8533333333333334,
+     "auto": 0.8916666666666667,
+     "recomendar": 0.8616666666666667,
+     "kruskal-dunn": 0.7983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.041666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=8|k=4|n_desigual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.825,
+     "games-howell": 0.7,
+     "auto": 0.81,
+     "recomendar": 0.7333333333333333,
+     "kruskal-dunn": 0.6216666666666667
+    },
+    "discordancia": {
+     "tukey": 0.065,
+     "games-howell": 0.0,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.04
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=8|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.03166666666666667,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.035
+    },
+    "poder": {
+     "tukey": 0.89,
+     "games-howell": 0.845,
+     "auto": 0.8816666666666667,
+     "recomendar": 0.845,
+     "kruskal-dunn": 0.7816666666666666
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.035
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.08166666666666667,
+     "games-howell": 0.02,
+     "auto": 0.07,
+     "recomendar": 0.03,
+     "kruskal-dunn": 0.035
+    },
+    "poder": {
+     "tukey": 0.8183333333333334,
+     "games-howell": 0.565,
+     "auto": 0.7733333333333333,
+     "recomendar": 0.62,
+     "kruskal-dunn": 0.6083333333333333
+    },
+    "discordancia": {
+     "tukey": 0.08666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.07166666666666667,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.035
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.016666666666666666,
+     "games-howell": 0.021666666666666667,
+     "auto": 0.015,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.02
+    },
+    "poder": {
+     "tukey": 0.7883333333333333,
+     "games-howell": 0.7916666666666666,
+     "auto": 0.79,
+     "recomendar": 0.82,
+     "kruskal-dunn": 0.5783333333333334
+    },
+    "discordancia": {
+     "tukey": 0.028333333333333332,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.008333333333333333,
+     "kruskal-dunn": 0.028333333333333332
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=8|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05333333333333334,
+     "games-howell": 0.04833333333333333,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.056666666666666664
+    },
+    "poder": {
+     "tukey": 0.91,
+     "games-howell": 0.835,
+     "auto": 0.875,
+     "recomendar": 0.8333333333333334,
+     "kruskal-dunn": 0.7866666666666666
+    },
+    "discordancia": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.12833333333333333,
+     "games-howell": 0.055,
+     "auto": 0.1,
+     "recomendar": 0.065,
+     "kruskal-dunn": 0.051666666666666666
+    },
+    "poder": {
+     "tukey": 0.87,
+     "games-howell": 0.49,
+     "auto": 0.77,
+     "recomendar": 0.5183333333333333,
+     "kruskal-dunn": 0.6566666666666666
+    },
+    "discordancia": {
+     "tukey": 0.15333333333333332,
+     "games-howell": 0.0,
+     "auto": 0.11333333333333333,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.06333333333333334
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.045,
+     "auto": 0.03833333333333333,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.7783333333333333,
+     "games-howell": 0.8633333333333333,
+     "auto": 0.7883333333333333,
+     "recomendar": 0.86,
+     "kruskal-dunn": 0.555
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=8|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.045,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.058333333333333334
+    },
+    "poder": {
+     "tukey": 0.8866666666666667,
+     "games-howell": 0.8083333333333333,
+     "auto": 0.84,
+     "recomendar": 0.8083333333333333,
+     "kruskal-dunn": 0.78
+    },
+    "discordancia": {
+     "tukey": 0.08833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.065,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.15,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.09166666666666666,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.075
+    },
+    "poder": {
+     "tukey": 0.89,
+     "games-howell": 0.44166666666666665,
+     "auto": 0.675,
+     "recomendar": 0.45666666666666667,
+     "kruskal-dunn": 0.6766666666666666
+    },
+    "discordancia": {
+     "tukey": 0.15833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.09,
+     "recomendar": 0.01,
+     "kruskal-dunn": 0.07
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.021666666666666667,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.775,
+     "games-howell": 0.8883333333333333,
+     "auto": 0.7816666666666666,
+     "recomendar": 0.89,
+     "kruskal-dunn": 0.5483333333333333
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=20|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05,
+     "games-howell": 0.055,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.055,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "poder": {
+     "tukey": 0.9916666666666667,
+     "games-howell": 0.9833333333333333,
+     "auto": 0.9916666666666667,
+     "recomendar": 1.0,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.05,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.05
+    }
+   },
+   {
+    "cenario": "t3|var1:1|n=20|k=4|n_desigual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.045
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.9483333333333334,
+     "auto": 0.9716666666666667,
+     "recomendar": 0.9666666666666667,
+     "kruskal-dunn": 0.995
+    },
+    "discordancia": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.02666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=20|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.041666666666666664,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.9933333333333333,
+     "games-howell": 0.9833333333333333,
+     "auto": 0.9916666666666667,
+     "recomendar": 0.9933333333333333,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.045,
+     "games-howell": 0.0,
+     "auto": 0.03,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.02666666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.085,
+     "games-howell": 0.04666666666666667,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.058333333333333334,
+     "kruskal-dunn": 0.06
+    },
+    "poder": {
+     "tukey": 0.9883333333333333,
+     "games-howell": 0.9166666666666666,
+     "auto": 0.9566666666666667,
+     "recomendar": 0.9366666666666666,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.08333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.06333333333333334,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "t3|var1:2.5|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.028333333333333332,
+     "games-howell": 0.05,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.025
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.9833333333333333,
+     "auto": 0.9816666666666667,
+     "recomendar": 0.9916666666666667,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.051666666666666666
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=20|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.045,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.045,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "poder": {
+     "tukey": 0.9916666666666667,
+     "games-howell": 0.9916666666666667,
+     "auto": 0.99,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.06666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.12333333333333334,
+     "games-howell": 0.02666666666666667,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.058333333333333334
+    },
+    "poder": {
+     "tukey": 0.9783333333333334,
+     "games-howell": 0.9183333333333333,
+     "auto": 0.93,
+     "recomendar": 0.9416666666666667,
+     "kruskal-dunn": 0.9933333333333333
+    },
+    "discordancia": {
+     "tukey": 0.11666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.023333333333333334,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "t3|var1:6|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.013333333333333334,
+     "games-howell": 0.016666666666666666,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.9883333333333333,
+     "games-howell": 0.9983333333333333,
+     "auto": 0.9883333333333333,
+     "recomendar": 0.9983333333333333,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.025,
+     "games-howell": 0.0,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.02
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=20|k=4|igual",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05,
+     "games-howell": 0.02666666666666667,
+     "auto": 0.03,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.9566666666666667,
+     "auto": 0.96,
+     "recomendar": 0.98,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.065,
+     "games-howell": 0.0,
+     "auto": 0.006666666666666667,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.056666666666666664
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.18333333333333332,
+     "games-howell": 0.035,
+     "auto": 0.04,
+     "recomendar": 0.04833333333333333,
+     "kruskal-dunn": 0.08333333333333333
+    },
+    "poder": {
+     "tukey": 0.985,
+     "games-howell": 0.8716666666666667,
+     "auto": 0.88,
+     "recomendar": 0.8883333333333333,
+     "kruskal-dunn": 0.99
+    },
+    "discordancia": {
+     "tukey": 0.18333333333333332,
+     "games-howell": 0.0,
+     "auto": 0.011666666666666667,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.06166666666666667
+    }
+   },
+   {
+    "cenario": "t3|var1:16|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "t3",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.03,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.9783333333333334,
+     "games-howell": 0.9883333333333333,
+     "auto": 0.9833333333333333,
+     "recomendar": 1.0,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.03333333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:1|n=4|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.025,
+     "games-howell": 0.023333333333333334,
+     "auto": 0.028333333333333332,
+     "recomendar": 0.02666666666666667,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.6483333333333333,
+     "games-howell": 0.5833333333333334,
+     "auto": 0.6433333333333333,
+     "recomendar": 0.5983333333333334,
+     "kruskal-dunn": 0.22833333333333333
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "contaminada|var1:1|n=4|k=4|n_desigual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 1.0,
+    "n": 4,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.01
+    },
+    "poder": {
+     "tukey": 0.515,
+     "games-howell": 0.39,
+     "auto": 0.49,
+     "recomendar": 0.45666666666666667,
+     "kruskal-dunn": 0.08666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=4|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.045,
+     "games-howell": 0.04,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.045,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.6716666666666666,
+     "games-howell": 0.5616666666666666,
+     "auto": 0.6633333333333333,
+     "recomendar": 0.575,
+     "kruskal-dunn": 0.2
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.085,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.08833333333333333,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.5566666666666666,
+     "games-howell": 0.3016666666666667,
+     "auto": 0.5083333333333333,
+     "recomendar": 0.345,
+     "kruskal-dunn": 0.105
+    },
+    "discordancia": {
+     "tukey": 0.10666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.08833333333333333,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.09
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03166666666666667,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.025,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.013333333333333334
+    },
+    "poder": {
+     "tukey": 0.5016666666666667,
+     "games-howell": 0.49333333333333335,
+     "auto": 0.48833333333333334,
+     "recomendar": 0.5433333333333333,
+     "kruskal-dunn": 0.07333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=4|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.035,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.6483333333333333,
+     "games-howell": 0.5,
+     "auto": 0.6133333333333333,
+     "recomendar": 0.51,
+     "kruskal-dunn": 0.16666666666666666
+    },
+    "discordancia": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.051666666666666666
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.15166666666666667,
+     "games-howell": 0.105,
+     "auto": 0.12833333333333333,
+     "recomendar": 0.12166666666666667,
+     "kruskal-dunn": 0.035
+    },
+    "poder": {
+     "tukey": 0.6766666666666666,
+     "games-howell": 0.24,
+     "auto": 0.5833333333333334,
+     "recomendar": 0.285,
+     "kruskal-dunn": 0.14166666666666666
+    },
+    "discordancia": {
+     "tukey": 0.20166666666666666,
+     "games-howell": 0.0,
+     "auto": 0.14833333333333334,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.12333333333333334
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.025,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.025,
+     "recomendar": 0.03,
+     "kruskal-dunn": 0.006666666666666667
+    },
+    "poder": {
+     "tukey": 0.48333333333333334,
+     "games-howell": 0.57,
+     "auto": 0.4816666666666667,
+     "recomendar": 0.6016666666666667,
+     "kruskal-dunn": 0.05333333333333334
+    },
+    "discordancia": {
+     "tukey": 0.035,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.03
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=4|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.05,
+     "auto": 0.05,
+     "recomendar": 0.05333333333333334,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.6666666666666666,
+     "games-howell": 0.4816666666666667,
+     "auto": 0.615,
+     "recomendar": 0.48333333333333334,
+     "kruskal-dunn": 0.18666666666666668
+    },
+    "discordancia": {
+     "tukey": 0.07833333333333334,
+     "games-howell": 0.0,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.06
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=4|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.18333333333333332,
+     "games-howell": 0.08333333333333333,
+     "auto": 0.125,
+     "recomendar": 0.095,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.7383333333333333,
+     "games-howell": 0.24,
+     "auto": 0.5933333333333334,
+     "recomendar": 0.2633333333333333,
+     "kruskal-dunn": 0.17666666666666667
+    },
+    "discordancia": {
+     "tukey": 0.23,
+     "games-howell": 0.0,
+     "auto": 0.15833333333333333,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.11833333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=4|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 4,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.016666666666666666,
+     "games-howell": 0.035,
+     "auto": 0.02,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.44,
+     "games-howell": 0.6066666666666667,
+     "auto": 0.43666666666666665,
+     "recomendar": 0.6066666666666667,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.035,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.0,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "contaminada|var1:1|n=8|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.025,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.03,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.8333333333333334,
+     "games-howell": 0.7716666666666666,
+     "auto": 0.8316666666666667,
+     "recomendar": 0.78,
+     "kruskal-dunn": 0.8033333333333333
+    },
+    "discordancia": {
+     "tukey": 0.051666666666666666,
+     "games-howell": 0.0,
+     "auto": 0.045,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.03166666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:1|n=8|k=4|n_desigual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 1.0,
+    "n": 8,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.045,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.795,
+     "games-howell": 0.7066666666666667,
+     "auto": 0.7783333333333333,
+     "recomendar": 0.695,
+     "kruskal-dunn": 0.6316666666666667
+    },
+    "discordancia": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.056666666666666664,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.05333333333333334
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=8|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.05,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.045,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.045
+    },
+    "poder": {
+     "tukey": 0.8533333333333334,
+     "games-howell": 0.805,
+     "auto": 0.8466666666666667,
+     "recomendar": 0.8083333333333333,
+     "kruskal-dunn": 0.8383333333333334
+    },
+    "discordancia": {
+     "tukey": 0.056666666666666664,
+     "games-howell": 0.0,
+     "auto": 0.051666666666666666,
+     "recomendar": 0.011666666666666667,
+     "kruskal-dunn": 0.043333333333333335
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.04,
+     "auto": 0.06666666666666667,
+     "recomendar": 0.05,
+     "kruskal-dunn": 0.06833333333333333
+    },
+    "poder": {
+     "tukey": 0.835,
+     "games-howell": 0.6766666666666666,
+     "auto": 0.8116666666666666,
+     "recomendar": 0.6833333333333333,
+     "kruskal-dunn": 0.66
+    },
+    "discordancia": {
+     "tukey": 0.08666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.07666666666666666,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.06833333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.025,
+     "games-howell": 0.03,
+     "auto": 0.02666666666666667,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.028333333333333332
+    },
+    "poder": {
+     "tukey": 0.7583333333333333,
+     "games-howell": 0.7716666666666666,
+     "auto": 0.755,
+     "recomendar": 0.775,
+     "kruskal-dunn": 0.62
+    },
+    "discordancia": {
+     "tukey": 0.03833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.03166666666666667,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.03
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=8|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04,
+     "games-howell": 0.035,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.03333333333333333
+    },
+    "poder": {
+     "tukey": 0.87,
+     "games-howell": 0.805,
+     "auto": 0.8566666666666667,
+     "recomendar": 0.8116666666666666,
+     "kruskal-dunn": 0.8216666666666667
+    },
+    "discordancia": {
+     "tukey": 0.055,
+     "games-howell": 0.0,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.055
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.10666666666666667,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.09166666666666666,
+     "recomendar": 0.05333333333333334,
+     "kruskal-dunn": 0.065
+    },
+    "poder": {
+     "tukey": 0.8783333333333333,
+     "games-howell": 0.59,
+     "auto": 0.8083333333333333,
+     "recomendar": 0.6083333333333333,
+     "kruskal-dunn": 0.68
+    },
+    "discordancia": {
+     "tukey": 0.125,
+     "games-howell": 0.0,
+     "auto": 0.09833333333333333,
+     "recomendar": 0.018333333333333333,
+     "kruskal-dunn": 0.07166666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.016666666666666666,
+     "games-howell": 0.03333333333333333,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.03166666666666667
+    },
+    "poder": {
+     "tukey": 0.7266666666666667,
+     "games-howell": 0.8116666666666666,
+     "auto": 0.7266666666666667,
+     "recomendar": 0.7883333333333333,
+     "kruskal-dunn": 0.5983333333333334
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.035,
+     "recomendar": 0.005,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=8|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.03,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.03,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.8416666666666667,
+     "games-howell": 0.75,
+     "auto": 0.8083333333333333,
+     "recomendar": 0.7583333333333333,
+     "kruskal-dunn": 0.8016666666666666
+    },
+    "discordancia": {
+     "tukey": 0.06,
+     "games-howell": 0.0,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.006666666666666667,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=8|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.13333333333333333,
+     "games-howell": 0.05333333333333334,
+     "auto": 0.09333333333333334,
+     "recomendar": 0.06333333333333334,
+     "kruskal-dunn": 0.075
+    },
+    "poder": {
+     "tukey": 0.8666666666666667,
+     "games-howell": 0.525,
+     "auto": 0.72,
+     "recomendar": 0.5416666666666666,
+     "kruskal-dunn": 0.7
+    },
+    "discordancia": {
+     "tukey": 0.14666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.075,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.07166666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=8|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 8,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.018333333333333333,
+     "games-howell": 0.03,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.03
+    },
+    "poder": {
+     "tukey": 0.735,
+     "games-howell": 0.8383333333333334,
+     "auto": 0.74,
+     "recomendar": 0.8383333333333334,
+     "kruskal-dunn": 0.6366666666666667
+    },
+    "discordancia": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.0,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.013333333333333334,
+     "kruskal-dunn": 0.04833333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:1|n=20|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.02666666666666667,
+     "auto": 0.041666666666666664,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.045
+    },
+    "poder": {
+     "tukey": 0.9933333333333333,
+     "games-howell": 0.9916666666666667,
+     "auto": 0.9933333333333333,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.04833333333333333,
+     "games-howell": 0.0,
+     "auto": 0.04,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.035
+    }
+   },
+   {
+    "cenario": "contaminada|var1:1|n=20|k=4|n_desigual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 1.0,
+    "n": 20,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.06,
+     "games-howell": 0.03666666666666667,
+     "auto": 0.058333333333333334,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.043333333333333335
+    },
+    "poder": {
+     "tukey": 0.9833333333333333,
+     "games-howell": 0.935,
+     "auto": 0.975,
+     "recomendar": 0.9733333333333334,
+     "kruskal-dunn": 0.995
+    },
+    "discordancia": {
+     "tukey": 0.06333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.06166666666666667,
+     "recomendar": 0.03666666666666667,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=20|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.03,
+     "games-howell": 0.02666666666666667,
+     "auto": 0.03333333333333333,
+     "recomendar": 0.03333333333333333,
+     "kruskal-dunn": 0.035
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.9883333333333333,
+     "auto": 0.9933333333333333,
+     "recomendar": 0.995,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.04,
+     "games-howell": 0.0,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.03
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.09166666666666666,
+     "games-howell": 0.03166666666666667,
+     "auto": 0.075,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.05333333333333334
+    },
+    "poder": {
+     "tukey": 0.9883333333333333,
+     "games-howell": 0.91,
+     "auto": 0.9533333333333334,
+     "recomendar": 0.95,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.09333333333333334,
+     "games-howell": 0.0,
+     "auto": 0.07333333333333333,
+     "recomendar": 0.03833333333333333,
+     "kruskal-dunn": 0.045
+    }
+   },
+   {
+    "cenario": "contaminada|var1:2.5|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 2.5,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.025,
+     "auto": 0.035,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.041666666666666664
+    },
+    "poder": {
+     "tukey": 0.9733333333333334,
+     "games-howell": 0.96,
+     "auto": 0.9716666666666667,
+     "recomendar": 0.9783333333333334,
+     "kruskal-dunn": 0.99
+    },
+    "discordancia": {
+     "tukey": 0.05,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.021666666666666667,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=20|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.04666666666666667,
+     "games-howell": 0.021666666666666667,
+     "auto": 0.04666666666666667,
+     "recomendar": 0.043333333333333335,
+     "kruskal-dunn": 0.03833333333333333
+    },
+    "poder": {
+     "tukey": 0.995,
+     "games-howell": 0.9833333333333333,
+     "auto": 0.9866666666666667,
+     "recomendar": 0.995,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.05,
+     "games-howell": 0.0,
+     "auto": 0.04,
+     "recomendar": 0.028333333333333332,
+     "kruskal-dunn": 0.03666666666666667
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.11,
+     "games-howell": 0.02666666666666667,
+     "auto": 0.055,
+     "recomendar": 0.056666666666666664,
+     "kruskal-dunn": 0.07166666666666667
+    },
+    "poder": {
+     "tukey": 0.98,
+     "games-howell": 0.8716666666666667,
+     "auto": 0.9116666666666666,
+     "recomendar": 0.9483333333333334,
+     "kruskal-dunn": 0.995
+    },
+    "discordancia": {
+     "tukey": 0.115,
+     "games-howell": 0.0,
+     "auto": 0.04833333333333333,
+     "recomendar": 0.04,
+     "kruskal-dunn": 0.058333333333333334
+    }
+   },
+   {
+    "cenario": "contaminada|var1:6|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 6.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.03666666666666667,
+     "games-howell": 0.041666666666666664,
+     "auto": 0.04,
+     "recomendar": 0.035,
+     "kruskal-dunn": 0.028333333333333332
+    },
+    "poder": {
+     "tukey": 0.9866666666666667,
+     "games-howell": 0.995,
+     "auto": 0.9866666666666667,
+     "recomendar": 0.9966666666666667,
+     "kruskal-dunn": 0.9983333333333333
+    },
+    "discordancia": {
+     "tukey": 0.043333333333333335,
+     "games-howell": 0.0,
+     "auto": 0.03666666666666667,
+     "recomendar": 0.02,
+     "kruskal-dunn": 0.03833333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=20|k=4|igual",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.055,
+     "games-howell": 0.03,
+     "auto": 0.043333333333333335,
+     "recomendar": 0.041666666666666664,
+     "kruskal-dunn": 0.04666666666666667
+    },
+    "poder": {
+     "tukey": 0.9866666666666667,
+     "games-howell": 0.9716666666666667,
+     "auto": 0.975,
+     "recomendar": 0.9916666666666667,
+     "kruskal-dunn": 1.0
+    },
+    "discordancia": {
+     "tukey": 0.07166666666666667,
+     "games-howell": 0.0,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.03166666666666667,
+     "kruskal-dunn": 0.051666666666666666
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=20|k=4|var_alta_n_pequeno",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.15333333333333332,
+     "games-howell": 0.03833333333333333,
+     "auto": 0.05333333333333334,
+     "recomendar": 0.07666666666666666,
+     "kruskal-dunn": 0.09166666666666666
+    },
+    "poder": {
+     "tukey": 0.975,
+     "games-howell": 0.8483333333333334,
+     "auto": 0.8583333333333333,
+     "recomendar": 0.9433333333333334,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.165,
+     "games-howell": 0.0,
+     "auto": 0.025,
+     "recomendar": 0.04666666666666667,
+     "kruskal-dunn": 0.08333333333333333
+    }
+   },
+   {
+    "cenario": "contaminada|var1:16|n=20|k=4|var_alta_n_grande",
+    "k": 4,
+    "dist": "contaminada",
+    "razao_var": 16.0,
+    "n": 20,
+    "aloc": "var_alta_n_grande",
+    "fwer": {
+     "tukey": 0.016666666666666666,
+     "games-howell": 0.028333333333333332,
+     "auto": 0.016666666666666666,
+     "recomendar": 0.025,
+     "kruskal-dunn": 0.016666666666666666
+    },
+    "poder": {
+     "tukey": 0.9816666666666667,
+     "games-howell": 0.995,
+     "auto": 0.9833333333333333,
+     "recomendar": 0.995,
+     "kruskal-dunn": 0.9966666666666667
+    },
+    "discordancia": {
+     "tukey": 0.035,
+     "games-howell": 0.0,
+     "auto": 0.018333333333333333,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.03166666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=5|k=6|igual",
+    "k": 6,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 5,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06,
+     "games-howell": 0.06166666666666667,
+     "auto": 0.06,
+     "recomendar": 0.06166666666666667,
+     "kruskal-dunn": 0.018333333333333333
+    },
+    "poder": {
+     "tukey": 0.52,
+     "games-howell": 0.3383333333333333,
+     "auto": 0.52,
+     "recomendar": 0.3883333333333333,
+     "kruskal-dunn": 0.13666666666666666
+    },
+    "discordancia": {
+     "tukey": 0.08333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.08333333333333333,
+     "recomendar": 0.015,
+     "kruskal-dunn": 0.06333333333333334
+    }
+   },
+   {
+    "cenario": "normal|var1:1|n=5|k=6|n_desigual",
+    "k": 6,
+    "dist": "normal",
+    "razao_var": 1.0,
+    "n": 5,
+    "aloc": "n_desigual",
+    "fwer": {
+     "tukey": 0.058333333333333334,
+     "games-howell": 0.10833333333333334,
+     "auto": 0.06333333333333334,
+     "recomendar": 0.11,
+     "kruskal-dunn": 0.025
+    },
+    "poder": {
+     "tukey": 0.305,
+     "games-howell": 0.22166666666666668,
+     "auto": 0.31,
+     "recomendar": 0.26,
+     "kruskal-dunn": 0.07166666666666667
+    },
+    "discordancia": {
+     "tukey": 0.11333333333333333,
+     "games-howell": 0.0,
+     "auto": 0.10666666666666667,
+     "recomendar": 0.0016666666666666668,
+     "kruskal-dunn": 0.10333333333333333
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=5|k=6|igual",
+    "k": 6,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 5,
+    "aloc": "igual",
+    "fwer": {
+     "tukey": 0.06,
+     "games-howell": 0.05,
+     "auto": 0.06,
+     "recomendar": 0.051666666666666666,
+     "kruskal-dunn": 0.02666666666666667
+    },
+    "poder": {
+     "tukey": 0.55,
+     "games-howell": 0.30833333333333335,
+     "auto": 0.5416666666666666,
+     "recomendar": 0.31666666666666665,
+     "kruskal-dunn": 0.11333333333333333
+    },
+    "discordancia": {
+     "tukey": 0.085,
+     "games-howell": 0.0,
+     "auto": 0.08333333333333333,
+     "recomendar": 0.0033333333333333335,
+     "kruskal-dunn": 0.04666666666666667
+    }
+   },
+   {
+    "cenario": "normal|var1:6|n=5|k=6|var_alta_n_pequeno",
+    "k": 6,
+    "dist": "normal",
+    "razao_var": 6.0,
+    "n": 5,
+    "aloc": "var_alta_n_pequeno",
+    "fwer": {
+     "tukey": 0.18333333333333332,
+     "games-howell": 0.145,
+     "auto": 0.18333333333333332,
+     "recomendar": 0.15833333333333333,
+     "kruskal-dunn": 0.03666666666666667
+    },
+    "poder": {
+     "tukey": 0.4716666666666667,
+     "games-howell": 0.15833333333333333,
+     "auto": 0.4,
+     "recomendar": 0.18666666666666668,
+     "kruskal-dunn": 0.155
+    },
+    "discordancia": {
+     "tukey": 0.23833333333333334,
+     "games-howell": 0.0,
+     "auto": 0.18,
+     "recomendar": 0.016666666666666666,
+     "kruskal-dunn": 0.14666666666666667
+    }
+   }
+  ]
+ }
+}
