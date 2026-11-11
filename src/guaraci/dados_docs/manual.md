@@ -2363,7 +2363,7 @@ por regra, sem rede e sem modelo de linguagem. Se nada resolver, ver a seção 1
 
 ## 12 Requisitos mínimos
 
-- **Python:** 3.11 a 3.13. Sistemas: Windows, Linux e WSL; macOS **não foi testado**.
+- **Python:** 3.11 a 3.13. Sistemas: Windows, Linux e WSL; no macOS a suíte de testes passa na CI, sem uso real verificado.
 - **Memória e processador:** 4 GB de RAM e 2 núcleos bastam para o cenário típico (dezenas de amostras
   e centenas de variáveis), conforme medido pelo autor em dados sintéticos. Tabelas CSV de
   centenas de MB exigem bem mais memória só para serem abertas; com pouca RAM, prefira tabelas

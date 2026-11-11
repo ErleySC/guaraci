@@ -7966,6 +7966,7 @@ def _comando_run(caminho_config: Optional[str]) -> None:
     if criticos:
         print("[GUARACI] " + ("--sem-preflight: executando apesar do(s) achado(s) critico(s) acima." if lang == "pt" else
                               "--sem-preflight: running despite the critical finding(s) above."), file=sys.stderr)
+    pq.resetar_falhas_etapa()
     try:
         pq.executar(cfg)
         _figuras_pos_execucao(cfg)
@@ -7981,6 +7982,17 @@ def _comando_run(caminho_config: Optional[str]) -> None:
     texto_pos = _texto_pos_execucao(_assistente_pos_execucao(cfg, dados_pv, lang_ass), lang_ass)
     if texto_pos:
         print("[GUARACI] " + texto_pos)
+    falhas_etapa = pq.obter_falhas_etapa()
+    if falhas_etapa:
+        # Etapa do resultado principal falhou (ex.: a regressao inteira numa
+        # Quantificacao): a pasta tem o resto, mas um script/CI nao pode ler
+        # codigo 0 como "deu certo".
+        sys.stdout.flush()
+        print(("Erro: a execucao terminou INCOMPLETA; etapa(s) que falharam:" if lang == "pt" else
+               "Error: the run finished INCOMPLETE; failed step(s):") + "\n"
+              + "\n".join(f"  - {f}" for f in falhas_etapa)
+              + f"\n{cfg.output_folder}", file=sys.stderr)
+        raise SystemExit(1)
     print(f"[GUARACI] Concluido. Saida em: {cfg.output_folder}")
 
 

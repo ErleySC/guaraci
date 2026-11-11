@@ -95,6 +95,26 @@ def test_run_que_falha_mostra_gua_e_no_stderr_e_sai_com_1(tmp_path, monkeypatch,
     assert "a execucao falhou" in err and "CSV nao encontrado" in err and "GUA-E008" in err
 
 
+def test_run_com_etapa_principal_que_falhou_sai_com_1(tmp_path, monkeypatch, capsys):
+    """A execucao terminou e salvou o resto, mas a etapa do resultado principal falhou:
+    `guaraci run` nao pode sair com 0 nem dizer "Concluido" (analise de 2026-11-11, 2.3)."""
+    caminho = _config_run(tmp_path, n_permutations=30)
+    pasta = _pasta_execucao(tmp_path)
+
+    def executar(cfg):
+        cfg.output_folder = str(pasta)
+        g.pq._registrar_falha_etapa("regressao por especie (Quantificacao): quebrou")
+    monkeypatch.setattr(g.pq, "executar", executar)
+    monkeypatch.setattr(g, "_SEM_PREFLIGHT", [False])
+    with pytest.raises(SystemExit) as exc:
+        g._comando_run(str(caminho))
+    assert exc.value.code == 1
+    cap = capsys.readouterr()
+    assert "INCOMPLETA" in cap.err and "regressao por especie" in cap.err
+    assert "Concluido" not in cap.out
+    g.pq.resetar_falhas_etapa()
+
+
 def test_diagnostico_que_falha_ainda_mostra_a_mensagem(monkeypatch):
     import guaraci.assistente_erros as ae
     monkeypatch.setattr(ae, "diagnosticar_excecao", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))

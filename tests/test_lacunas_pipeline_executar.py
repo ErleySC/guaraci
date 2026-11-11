@@ -191,7 +191,24 @@ def test_quantificacao_sem_especie_apta_ou_com_falha_geral_e_registrada(tmp_path
     assert "Nenhuma especie com amostras suficientes para regressao" in capsys.readouterr().out
     monkeypatch.setattr(pl, "pls_regression_by_species", _quebra("regressao quebrou"))
     _rodar(tmp_path / "b", **_N3)
-    assert "Regressao por especie falhou: regressao quebrou" in capsys.readouterr().out
+    saida = capsys.readouterr().out
+    assert "Regressao por especie falhou: regressao quebrou" in saida
+    # A regressao e' o resultado principal da Quantificacao: a falha nao pode
+    # terminar como "Pipeline concluido." (achado 2.3 da analise de 2026-11-11).
+    assert "Pipeline INCOMPLETO" in saida and "Pipeline concluido." not in saida
+    assert any("regressao por especie" in f for f in pl.obter_falhas_etapa())
+    from conftest import achar_pastas_run
+    (pasta,) = achar_pastas_run(str(tmp_path / "b" / "saida"))
+    marcador = os.path.join(pasta, pl.NOME_MARCADOR_FALHA_ETAPA)
+    assert os.path.isfile(marcador) and "regressao quebrou" in open(marcador, encoding="utf-8").read()
+
+
+def test_quantificacao_sem_falha_nao_deixa_marcador_nem_falha_de_etapa(tmp_path, capsys):
+    _rodar(tmp_path, **_N3)
+    assert pl.obter_falhas_etapa() == []
+    assert "Pipeline INCOMPLETO" not in capsys.readouterr().out
+    for raiz, _dirs, arqs in os.walk(tmp_path):
+        assert pl.NOME_MARCADOR_FALHA_ETAPA not in arqs, raiz
 
 
 def test_quantificacao_em_modo_controle_sem_holdout_e_sem_replicas_para_lod(tmp_path, capsys):

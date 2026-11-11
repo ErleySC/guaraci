@@ -229,6 +229,63 @@ def _concluir_execucao(pasta: str) -> None:
                     f"{NOME_MARCADOR_INCOMPLETA}: {e}")
 
 
+#: Arquivo gravado na pasta da execucao quando uma etapa que entrega o resultado
+#: principal falhou (a execucao continua para salvar o resto, mas nao pode
+#: terminar como se estivesse completa).
+NOME_MARCADOR_FALHA_ETAPA = "ETAPAS_COM_FALHA.txt"
+
+# Falhas de etapas que entregam o resultado principal (regressao em
+# Quantificacao, RMSEP do holdout externo, modelo de regressao no pacote
+# exportado). Antes viravam uma linha "[AVISO]" no meio do log e a execucao
+# dizia "Pipeline concluido." e saia com 0. `_executar_impl` zera a lista no
+# inicio; o resumo final, o model card, o marcador e o codigo de saida de
+# `guaraci run` conferem a lista no fim.
+_FALHAS_ETAPA: List[str] = []
+
+
+def obter_falhas_etapa() -> List[str]:
+    """Falhas de etapa principal da execucao atual (vazia = nenhuma)."""
+    return list(_FALHAS_ETAPA)
+
+
+def resetar_falhas_etapa() -> None:
+    """Zera a lista (inicio de cada execucao, e antes de `guaraci run`)."""
+    _FALHAS_ETAPA.clear()
+
+
+def _registrar_falha_etapa(descricao: str) -> None:
+    """Guarda a falha para o resumo final e o codigo de saida."""
+    _FALHAS_ETAPA.append(descricao)
+
+
+def _gravar_falhas_etapa(pasta: str, pasta_logs: Optional[str]) -> None:
+    """Grava o marcador na pasta da execucao e carimba o model card."""
+    if not _FALHAS_ETAPA:
+        return
+    itens = "".join(f"- {d}\n" for d in _FALHAS_ETAPA)
+    try:
+        with open(os.path.join(pasta, NOME_MARCADOR_FALHA_ETAPA), "w",
+                  encoding="utf-8") as f:
+            f.write("Esta execucao terminou SEM parte do resultado principal.\n"
+                    "As etapas abaixo falharam; os numeros que dependem delas "
+                    "nao existem nesta pasta. Nao cite esta execucao como "
+                    "completa: corrija a causa e rode de novo.\n\n" + itens)
+    except OSError as e:
+        log.warning(f"  [AVISO] nao foi possivel gravar o marcador "
+                    f"{NOME_MARCADOR_FALHA_ETAPA}: {e}")
+    if pasta_logs:
+        card = os.path.join(pasta_logs, "model_card.md")
+        if os.path.isfile(card):
+            try:
+                with open(card, "a", encoding="utf-8") as f:
+                    f.write("\n## ETAPAS QUE FALHARAM / FAILED STEPS\n\n"
+                            "Esta execucao esta incompleta: os resultados abaixo "
+                            "nao foram produzidos. / This run is incomplete: the "
+                            "results below were not produced.\n\n" + itens)
+            except OSError as e:
+                log.warning(f"  [AVISO] nao foi possivel carimbar o model card: {e}")
+
+
 def _slug(texto: str) -> str:
     """Normaliza um texto livre para nome de pasta seguro (sem espacos/barras)."""
     import re as _re
@@ -1626,8 +1683,9 @@ def pls_regressao_pooled(
                 log.info(f"  RMSEP (HOLDOUT externo, n={_ho_pooled['n']}): "
                          f"{_ho_pooled['rmsep']:.3f}  [numero publicavel; o "
                          f"RMSEP interno vem de split 70/30]")
-        except Exception as _e_hp:  # noqa: BLE001 -- extra de avaliacao
-            log.info(f"  [AVISO] RMSEP do holdout nao calculado: {_e_hp}")
+        except Exception as _e_hp:  # noqa: BLE001 -- o resto da regressao segue
+            log.warning(f"  [AVISO] RMSEP do holdout nao calculado: {_e_hp}")
+            _registrar_falha_etapa(f"RMSEP do holdout externo (regressao): {_e_hp}")
     resultado_pooled = {
         "r2c": r2c, "r2v": r2v, "rmsec": rmsec, "r2cv": r2cv,
         "rmsecv": rmsecv, "rmsep": rmsep, "bias": bias_v,
@@ -2222,10 +2280,12 @@ def _etapa_regressao_pls(*, X_holdout, X_raw, _G, _conc_holdout, cam_modelo, cfg
                                         f"{_h['rmsep']:.3f}  R2={_h['r2']:.3f}  "
                                         f"bias={_h['bias']:.3f}  [numero publicavel; "
                                         f"o RMSEP interno abaixo vem de split 70/30]")
-                            except Exception as _e_hq:  # noqa: BLE001 -- extra
-                                # de avaliacao; falha aqui nunca derruba a
-                                # quantificacao ja calculada.
-                                log.info(f"  [AVISO] RMSEP do holdout nao calculado: {_e_hq}")
+                            except Exception as _e_hq:  # noqa: BLE001 -- a
+                                # quantificacao ja calculada segue, mas o numero
+                                # publicavel (holdout) faltou: registrado.
+                                log.warning(f"  [AVISO] RMSEP do holdout nao calculado: {_e_hq}")
+                                _registrar_falha_etapa(
+                                    f"RMSEP do holdout externo (regressao por especie): {_e_hq}")
                         log.info(f"  Especies modeladas: {reg_esp['n_especies']}")
                         log.info(f"  R2cal (pooled): {reg_esp['r2c']:.4f}  |  "
                               f"R2val (pooled): {reg_esp['r2v']:.4f}")
@@ -2252,9 +2312,11 @@ def _etapa_regressao_pls(*, X_holdout, X_raw, _G, _conc_holdout, cam_modelo, cfg
                                     f"({len(reg_esp['pipelines_especie'])} "
                                     f"especies) -> {cam_modelo}")
                             except Exception as _e_upd:  # noqa: BLE001 --
-                                # anexo opcional; N1/N2 exportados continuam
-                                # validos mesmo se esta atualizacao falhar.
-                                log.info(
+                                # N1/N2 exportados continuam validos, mas o
+                                # modelo salvo nao quantifica: registrado.
+                                _registrar_falha_etapa(
+                                    f"modelo de regressao por especie fora do pacote exportado: {_e_upd}")
+                                log.warning(
                                     f"  [AVISO] Nao foi possivel anexar "
                                     f"regressao por especie ao pacote de "
                                     f"modelo: {_e_upd}")
@@ -2344,7 +2406,8 @@ def _etapa_regressao_pls(*, X_holdout, X_raw, _G, _conc_holdout, cam_modelo, cfg
                     # seguranca do bloco inteiro de regressao (multi-etapa:
                     # split + selecao de LV + fit + figuras); erro impresso,
                     # classificacao (resultado central, calculada antes) intacta.
-                    log.info(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+                    log.warning(f"  [AVISO] Regressao por especie falhou: {_e_reg_esp}")
+                    _registrar_falha_etapa(f"regressao por especie (Quantificacao): {_e_reg_esp}")
 
                 # Heatmap R2cv especie x adulterante: granularidade honesta da
                 # quantificacao. A regressao pooled por especie junta os
@@ -4261,6 +4324,7 @@ def _executar_impl(cfg: Config):
     # corrida -- ver resumo final, achado de auditoria sobre falha
     # silenciosa em pasta de saida profunda (MAX_PATH do Windows).
     resetar_falhas_salvamento()
+    resetar_falhas_etapa()
 
     # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
     # Quantificacao). Decide quais figuras/relatorios serao gerados, para
@@ -4412,9 +4476,19 @@ def _executar_impl(cfg: Config):
     _etapa_regressao_pls(X_holdout=X_holdout, X_raw=X_raw, _G=_G, _conc_holdout=_conc_holdout, cam_modelo=locals().get('cam_modelo'), cfg=cfg, classes_unicas=classes_unicas, conc=conc, joblib=locals().get('joblib'), lb=lb, mae_id=mae_id, n_splits=n_splits, objetivo=objetivo, pacote_modelo=locals().get('pacote_modelo'), pasta=pasta, pasta_logs=pasta_logs, perfil=perfil, pls_final=pls_final, pred_lab=pred_lab, preproc_full=preproc_full, rotulos=rotulos, rotulos_holdout=rotulos_holdout, wavenumbers=wavenumbers)
 
     _concluir_execucao(pasta)
+    _gravar_falhas_etapa(pasta, pasta_logs)
     _falhas_salvamento = obter_falhas_salvamento()
     log.info(f"\n{'=' * 60}")
-    if _falhas_salvamento:
+    if _FALHAS_ETAPA:
+        log.warning(f"  Pipeline INCOMPLETO: {len(_FALHAS_ETAPA)} etapa(s) do "
+                    "resultado principal falharam:")
+        for _f in _FALHAS_ETAPA:
+            log.warning(f"    - {_f}")
+        log.warning(f"  Detalhes em {NOME_MARCADOR_FALHA_ETAPA} e no model card. "
+                    "Nao use esta execucao como resultado completo.")
+        for _f in _falhas_salvamento:
+            log.warning(f"    - falha de salvamento: {_f}")
+    elif _falhas_salvamento:
         # Achado de auditoria funcional (2026-09-01): em pasta de saida
         # muito profunda (MAX_PATH do Windows, 260 chars), ate 3 arquivos
         # falhavam ao salvar e o pipeline terminava dizendo "concluido"

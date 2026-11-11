@@ -2,7 +2,7 @@
 
 **Público:** quem usa ou testa o programa · **Estado:** manual · **Atualizado em:** ver `docs/qualidade/estado_do_projeto.md`
 
-Este guia cobre Windows, Linux e WSL. **macOS: não testado** (pode funcionar, mas nenhuma verificação foi feita lá; relate o que acontecer). O GUARACI precisa de **Python 3.11 a 3.13**. Ainda não há pacote publicado no PyPI (o nome `guaraci` no PyPI pertence a outro projeto, sem relação com este: não o instale): a instalação parte da pasta do projeto (o `.zip` do GitHub ou um clone).
+Este guia cobre Windows, Linux e WSL. **macOS: só verificado pela CI** (a suíte de testes passa em Python 3.11 e 3.13, mas ninguém usou o programa de verdade lá; relate o que acontecer). O GUARACI precisa de **Python 3.11 a 3.13**. Ainda não há pacote publicado no PyPI (o nome `guaraci` no PyPI pertence a outro projeto, sem relação com este: não o instale): a instalação parte da pasta do projeto (o `.zip` do GitHub ou um clone).
 
 ## Requisitos mínimos
 

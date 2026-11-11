@@ -9,6 +9,20 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Análise crítica do repositório público (2026-11-11):
+
+- **Etapa principal que falha não termina mais como "concluído".** Se a regressão de uma Quantificação
+  falha inteira, se o RMSEP do holdout externo não é calculado ou se o modelo de regressão não entra no
+  pacote exportado, a execução segue para salvar o resto, mas o resumo final diz "Pipeline INCOMPLETO",
+  a pasta ganha `ETAPAS_COM_FALHA.txt`, o `model_card.md` lista as etapas que faltaram e `guaraci run`
+  sai com código 1. Antes isso era uma linha `[AVISO]` no meio do log e o código de saída era 0.
+- **Documentação alinhada com a CI:** README, manual, guia de instalação e `limitacoes.md` diziam que
+  macOS e Docker não eram verificados, mas a CI roda a suíte completa no macOS (3.11 e 3.13) e constrói
+  a imagem Docker; o texto agora diz exatamente o que é conferido e o que não é. Saiu a menção ao
+  Python 3.10, que não é mais suportado.
+- **README:** a tabela comparativa passa a citar `mdatools`, scikit-learn e `chemotools` pelo que eles
+  de fato oferecem, e há uma seção dizendo quando outra ferramenta é melhor escolha.
+
 CI da publicação (2026-11-11): no primeiro CI do repositório público os testes passaram em todos os jobs
 (nenhuma falha), mas o job fechava vermelho por configuração:
 

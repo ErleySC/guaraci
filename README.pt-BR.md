@@ -20,10 +20,11 @@ do espectro bruto até um resultado defensável — exploração, classificaçã
 quantificação, comparação de grupos e monitoramento de processos — por uma interface de terminal
 guiada e um aplicativo web, sem precisar programar.
 
-Ele existe porque duas coisas costumam faltar ao mesmo tempo. Bibliotecas como o scikit-learn são
-gratuitas, mas deixam com o usuário os diagnósticos quimiométricos e as armadilhas de vazamento; as
-suítes comerciais consagradas trazem esses diagnósticos atrás de uma licença paga e fechada. O
-GUARACI põe os dois na mesma mesa, sem custo de licença, sob a GPLv3.
+Ferramentas livres já cobrem a maior parte dos métodos: o `mdatools` (R) traz PCA, PLS, PLS-DA e
+DD-SIMCA com diagnósticos maduros, e o scikit-learn tem os divisores por grupo. O que elas deixam
+com o usuário é o fluxo em volta dos métodos, e as armadilhas de vazamento que há nele; as suítes
+comerciais consagradas guiam esse fluxo atrás de uma licença paga e fechada. O GUARACI torna o
+fluxo guiado livre, sob a GPLv3.
 
 **O que você ganha**
 
@@ -48,13 +49,19 @@ aplicativo web (Streamlit) fala português e inglês.
 
 ### Por que ele existe
 
-| | Bibliotecas Python (ex.: scikit-learn) | Suítes comerciais de quimiometria | **GUARACI** |
+| | Pacotes abertos (`mdatools`, scikit-learn, `chemotools`) | Suítes comerciais de quimiometria | **GUARACI** |
 |---|---|---|---|
 | Custo e licença | Grátis, aberta | Paga, fechada | **Grátis, aberta (GPLv3)** |
-| Diagnósticos quimiométricos (VIP, SR, T² de Hotelling, resíduos Q, DD-SIMCA, OPLS-DA) | Faça você mesmo | Incluídos | **Incluídos** |
-| Réplicas mantidas de um só lado de cada partição | Manual | Disponível, configurada pelo usuário | **Padrão, inclusive no holdout** |
-| Uso sem programar | Não | Sim (interface paga) | **Sim (menu, web, YAML)** |
+| Diagnósticos quimiométricos (VIP, SR, T² de Hotelling, resíduos Q, DD-SIMCA, OPLS-DA) | Incluídos no `mdatools` (R); parciais nos pacotes Python | Incluídos | **Incluídos** |
+| Réplicas mantidas de um só lado de cada partição | Disponível (segmentos do `mdatools`, `StratifiedGroupKFold`); você precisa montar | Disponível, configurada pelo usuário | **Padrão, inclusive no holdout** |
+| Uso sem programar | Em geral não (o `mdatools` tem apps web para DD-SIMCA e PLS) | Sim (interface paga) | **Sim (menu, web, YAML)** |
 | Execução reprodutível (sementes fixas, pasta de saída versionada) | Por sua conta | Possível por script | **Padrão** |
+
+**Quando outra ferramenta é melhor escolha.** Se você usa R, o `mdatools` é a referência madura e
+publicada para PCA, PLS e DD-SIMCA; o DD-SIMCA do GUARACI está só parcialmente verificado
+(`guaraci confianca`). Se você usa Python e só precisa de pré-processamento ou de um estimador, o
+`chemotools` e o scikit-learn são menores e mais consolidados. O GUARACI serve para conduzir o estudo
+inteiro (auditoria do delineamento, validação agrupada, holdout, relatório) sem programar.
 
 <!-- guaraci:tecnicas:inicio -->
 **Técnicas de medida:** **FT-NIR**, **NIR Dispersivo**, **MIR/FTIR**, **Raman**, **UV-Vis**, **Fluorescencia Molecular**, **HPLC**, **GC-MS**, **RMN / NMR**, **IMS**, **Fluorescencia 3D**, **ICP-OES / ICP-MS**, **Imagem digital**, **Imagem hiperespectral**, outras (perfil `generico`).
@@ -125,7 +132,7 @@ opção que você precisa saber ligar.
    ```
 4. Interface no navegador: `guaraci web`. Menu no terminal: `guaraci`.
 
-Ainda não há pacote no PyPI. **Não rode `pip install guaraci`**: esse nome pertence a outro projeto, sem relação com este (instala um programa diferente, que também tem um comando `guaraci`). Instale a partir de um clone, como abaixo, **de dentro da pasta clonada** (não instale por nome pelo PyPI). Python 3.11+; o código mora no pacote `guaraci` em `src/`. O macOS não é plataforma suportada nem verificada nesta versão.
+Ainda não há pacote no PyPI. **Não rode `pip install guaraci`**: esse nome pertence a outro projeto, sem relação com este (instala um programa diferente, que também tem um comando `guaraci`). Instale a partir de um clone, como abaixo, **de dentro da pasta clonada** (não instale por nome pelo PyPI). Python 3.11+; o código mora no pacote `guaraci` em `src/`. O macOS não é plataforma suportada nem verificada nesta versão: a suíte completa de testes passa no macOS da CI (Python 3.11 e 3.13), mas não houve uso real verificado lá.
 
 Guia passo a passo para Windows (inclusive a mensagem de política de execução do PowerShell), Linux (`python3.x-venv`) e WSL, com requisitos mínimos: [`docs/usuario/instalacao.md`](docs/usuario/instalacao.md). Em terminal de fundo claro, defina `GUARACI_TERMINAL=claro` para manter as cores legíveis.
 
@@ -225,7 +232,7 @@ A lista completa, com a evidência de cada ponto, está em [`docs/cientifico/lim
 - ***n* pequeno:** as métricas principais vêm com intervalo de confiança, e a predição conformal se recusa a produzir um conjunto quando o n é insuficiente.
 - **O modo imagem sem garantia de agrupamento é protótipo** e o relatório carimba isso.
 - **HSI** funciona com cubos seus, offline, e ainda é protótipo: trate o desempenho na sua técnica como não testado até você testar.
-- **macOS** não é suportado nem verificado nesta versão; o Docker não está verificado.
+- **macOS e Docker só são conferidos pela CI.** A suíte completa passa no macOS (Python 3.11 e 3.13), e a CI constrói a imagem Docker e confere que o app web sobe em modo servidor sem root. Nenhum dos dois foi verificado em uso real, e análises dentro do contêiner não são testadas.
 - **O assistente** responde a partir do catálogo embutido (busca offline); ele não gera respostas livres.
 - **Idioma da interface:** o terminal e o aplicativo web rodam em português ou inglês; alguns nomes de pasta e de coluna (`dados`, `classe`) ficam em português porque são o que você digita.
 

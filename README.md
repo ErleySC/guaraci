@@ -18,10 +18,11 @@ defensible result — exploration, classification, authentication, quantificatio
 comparison and process monitoring — through a guided terminal interface and a web app, with
 no coding required.
 
-It exists because two things are usually missing at the same time. Libraries such as
-scikit-learn are free but leave the chemometric diagnostics and the leakage traps to the user;
-the established commercial suites ship those diagnostics behind a paid, closed license.
-GUARACI puts both on the same desk, at zero license cost, under the GPLv3.
+Free tools already cover most of the methods: `mdatools` (R) ships PCA, PLS, PLS-DA and
+DD-SIMCA with mature diagnostics, and scikit-learn has the group-aware splitters. What they
+leave to the user is the workflow around the methods, and the leakage traps in it; the
+established commercial suites guide that workflow behind a paid, closed license. GUARACI makes
+the guided workflow free, under the GPLv3.
 
 **What you get**
 
@@ -46,13 +47,19 @@ the Streamlit web app speaks English and Portuguese.
 
 ### Why it exists
 
-| | Python libraries (e.g. scikit-learn) | Commercial chemometrics suites | **GUARACI** |
+| | Open packages (`mdatools`, scikit-learn, `chemotools`) | Commercial chemometrics suites | **GUARACI** |
 |---|---|---|---|
 | Cost and license | Free, open | Paid, closed | **Free, open (GPLv3)** |
-| Chemometric diagnostics (VIP, SR, Hotelling T², Q-residuals, DD-SIMCA, OPLS-DA) | Do it yourself | Included | **Included** |
-| Replicates kept on one side of every split | Manual | Available, set up by the user | **Default, holdout included** |
-| Usable without coding | No | Yes (paid GUI) | **Yes (menu, web app, YAML)** |
+| Chemometric diagnostics (VIP, SR, Hotelling T², Q-residuals, DD-SIMCA, OPLS-DA) | Included in `mdatools` (R); partial in Python packages | Included | **Included** |
+| Replicates kept on one side of every split | Available (`mdatools` segment vectors, `StratifiedGroupKFold`); you have to set it up | Available, set up by the user | **Default, holdout included** |
+| Usable without coding | Mostly no (`mdatools` has web apps for DD-SIMCA and PLS) | Yes (paid GUI) | **Yes (menu, web app, YAML)** |
 | Reproducible run (fixed seeds, versioned output folder) | Up to you | Possible through scripting | **Default** |
+
+**When another tool is the better choice.** If you write R, `mdatools` is the mature, published
+reference for PCA, PLS and DD-SIMCA; GUARACI's DD-SIMCA is only partially verified
+(`guaraci confianca`). If you write Python and only need preprocessing or a single estimator,
+`chemotools` and scikit-learn are smaller and better established. GUARACI is for running the
+whole study (design audit, grouped validation, holdout, report) without writing code.
 
 <!-- guaraci:tecnicas:inicio -->
 **Measurement techniques:** **FT-NIR**, **Dispersive NIR**, **MIR/FTIR**, **Raman Spectroscopy**, **UV-Vis**, **Molecular Fluorescence**, **HPLC**, **GC-MS**, **NMR**, **IMS**, **3D fluorescence**, **ICP-OES / ICP-MS**, **Digital image**, **Hyperspectral imaging**, others (`generico` profile).
@@ -123,7 +130,7 @@ here it is the default, not an option you have to know to turn on.
    ```
 4. Browser interface: `guaraci web`. Terminal menu: `guaraci`.
 
-There is no PyPI package yet. **Do not run `pip install guaraci`**: that name belongs to an unrelated project (it installs a different program that also provides a `guaraci` command). Install from a clone, as below, **from inside the cloned folder** (do not install by name from PyPI). Python 3.11+; the code lives in the `guaraci` package under `src/`. macOS is not a supported or verified platform in this release.
+There is no PyPI package yet. **Do not run `pip install guaraci`**: that name belongs to an unrelated project (it installs a different program that also provides a `guaraci` command). Install from a clone, as below, **from inside the cloned folder** (do not install by name from PyPI). Python 3.11+; the code lives in the `guaraci` package under `src/`. macOS is not a supported or verified platform in this release: the full test suite passes on macOS in CI (Python 3.11 and 3.13), but no real use there has been verified.
 
 Step-by-step guide for Windows (including the PowerShell execution-policy message), Linux (`python3.x-venv`) and WSL, with minimum requirements: [`docs/usuario/instalacao.md`](docs/usuario/instalacao.md) (in Portuguese). On a light-background terminal, set `GUARACI_TERMINAL=claro` so the colours stay readable.
 
@@ -223,7 +230,7 @@ The full, evidence-backed list is in [`docs/cientifico/limitacoes.md`](docs/cien
 - **Small *n*:** the main metrics ship with confidence intervals, and conformal prediction refuses to produce a set when n is insufficient.
 - **Image mode without a grouping guarantee is a prototype** and the report stamps that.
 - **HSI** works with your own cubes offline and is still a prototype: treat its performance on your technique as untested until you test it.
-- **macOS** is not supported or verified in this release; Docker is not verified.
+- **macOS and Docker are only checked by CI.** The full test suite passes on macOS (Python 3.11 and 3.13), and CI builds the Docker image and checks that the web app starts in server mode as a non-root user. Neither has been verified in real use, and analysis runs inside the container are not tested.
 - **The assistant** answers from the built-in catalogue (offline search); it does not generate free-form answers.
 - **Interface language:** the terminal and the web app run in English or Portuguese; a few folder and column names (`dados`, `classe`) stay in Portuguese because they are what you type.
 
