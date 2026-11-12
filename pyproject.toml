@@ -107,11 +107,11 @@ dev = [
     "pytest>=9.1,<10",
     "pytest-xdist>=3.8,<4",
     "pytest-cov>=7.1,<8",
-    "ruff>=0.16.5,<0.17",
+    "ruff>=0.16.5,<0.18",
     "mypy>=2.3.1,<2.5",
     "bandit>=1.9.4,<2",
     "build>=1.2,<2",            # testes que constroem o wheel/sdist de verdade (auditoria do pacote)
-    "pypdf>=6.21.4,<7",  # testes que leem o texto dos PDFs gerados (idioma dos relatorios); piso 6.21.4 = ultima correcao de seguranca apontada pelo pip-audit (2026-11-11)
+    "pypdf>=6.21.4,<8",  # testes que leem o texto dos PDFs gerados (idioma dos relatorios); piso 6.21.4 = ultima correcao de seguranca apontada pelo pip-audit (2026-11-11)
 ]
 
 [project.scripts]
