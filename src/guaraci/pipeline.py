@@ -2468,6 +2468,9 @@ def _etapa_exportar_modelo(*, Q, T2, X_processed, X_raw, _G, cfg, conc, conforma
             "n_opt":          int(n_opt),
             "preset":         cfg.default_preprocessing,
             "wn_min":         cfg.wn_min, "wn_max": cfg.wn_max,
+            # Teto de saturacao do treino (None = nada detectado): a predicao avisa/bloqueia
+            # espectro novo no teto. Pacotes antigos nao tem a chave e seguem como antes.
+            "saturacao":      _saturacao_do_pacote(cfg),
             # Faixas excluidas e normalizacao por espectro (a predicao reaplica as MESMAS):
             # `wavenumbers` acima ja' e' o eixo SEM as faixas excluidas.
             "faixas_excluir": list((getattr(cfg, "exclusion_info", None) or {}).get("faixas", [])),
@@ -2896,6 +2899,14 @@ def _etapa_resumo_e_relatorios(*, Q, T2, T_pls, X_holdout, X_raw, _G, _achados_a
                 f"{cfg.saturacao_info['espectros_removidos']} de "
                 f"{cfg.saturacao_info.get('espectros_total', '?')} espectro(s) no teto "
                 f"({cfg.saturacao_info['teto']:.3g})"
+                + (f"; faixa de teor {cfg.saturacao_info['faixa_teor_antes'][0]:g}-"
+                   f"{cfg.saturacao_info['faixa_teor_antes'][1]:g} -> "
+                   + (f"{cfg.saturacao_info['faixa_teor_depois'][0]:g}-"
+                      f"{cfg.saturacao_info['faixa_teor_depois'][1]:g}"
+                      if cfg.saturacao_info.get("faixa_teor_depois") else "nenhuma")
+                   if cfg.saturacao_info.get("faixa_teor_antes")
+                   and cfg.saturacao_info.get("faixa_teor_depois") != cfg.saturacao_info.get("faixa_teor_antes")
+                   else "")
                 + ("" if cfg.saturacao_info.get("aplicado") else " -- NAO removidos (saturacao=avisar)"))}
            if getattr(cfg, "saturacao_info", None) else {}),
         "Tecnica (perfil)":       tecnica_do_perfil(cfg) or "-",
@@ -4163,7 +4174,7 @@ def _etapa_carregar_e_validar(*, cfg):
                     log.warning(f"[AVISO]   classe {_cl_sat}: {_r_sat} de {_t_sat} espectro(s) saturado(s)"
                                 + (" -- TODOS" if _r_sat == _t_sat else "") + ".")
             cfg.saturacao_info = {
-                "teto": _sat["teto"], "aplicado": _aplicar_sat,
+                "teto": _sat["teto"], "tolerancia": _sat["tolerancia"], "aplicado": _aplicar_sat,
                 "inutilizavel": bool(_sat["inutilizavel"]),
                 "variaveis_removidas": _sat["variaveis_removidas"],
                 "espectros_removidos": _sat["espectros_removidos"],
@@ -4574,6 +4585,17 @@ def _executar_impl(cfg: Config):
 
 
 @functools.wraps(_executar_impl)
+def _saturacao_do_pacote(cfg: Config) -> Optional[Dict[str, Any]]:
+    """O que a predicao precisa saber da saturacao do treino; None se nao houve."""
+    info = getattr(cfg, "saturacao_info", None) or {}
+    if info.get("teto") is None or info.get("tolerancia") is None:
+        return None
+    return {"teto": float(info["teto"]), "tolerancia": float(info["tolerancia"]),
+            "regioes": [[float(a), float(b)] for a, b in info.get("regioes", [])],
+            "aplicado": bool(info.get("aplicado")),
+            "faixa_teor_depois": info.get("faixa_teor_depois")}
+
+
 def _faixa_de_teores(conc: Any, manter: np.ndarray) -> Optional[Dict[str, Any]]:
     """Faixa (min, max) e no. de teores distintos antes/depois de tirar os saturados.
     None se nao ha' teor numerico (classificacao/exploratorio)."""

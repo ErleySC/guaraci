@@ -8227,8 +8227,16 @@
         "assinatura": "(X: numpy.ndarray, wn: numpy.ndarray) -> dict[str, Any]",
         "forma": "funcao"
       },
+      "fracao_no_teto": {
+        "assinatura": "(X: numpy.ndarray, wn: numpy.ndarray, teto: float, tolerancia: float, regioes: Union[None, list[list[float]], list[tuple[float, float]]] = None) -> numpy.ndarray",
+        "forma": "funcao"
+      },
       "regioes_de_mascara": {
         "assinatura": "(wn: numpy.ndarray, mascara: numpy.ndarray) -> list[tuple[float, float]]",
+        "forma": "funcao"
+      },
+      "sinalizar_saturacao_nova": {
+        "assinatura": "(pkg: dict[str, Any], X_novo_bruto: numpy.ndarray, wn_novo: numpy.ndarray) -> Union[None, tuple[numpy.ndarray, numpy.ndarray]]",
         "forma": "funcao"
       }
     },

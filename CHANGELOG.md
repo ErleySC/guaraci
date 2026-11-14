@@ -21,6 +21,13 @@ Saturação do detector (2026-11-14):
   maior teor, então a remoção encolhe a curva (goiaba + milho: de 0–15 % para 0–8 %).
   `saturacao.json` ganhou `removidos_por_classe`, `espectros_total`, `espectros_mortos`,
   `faixa_teor_antes`/`faixa_teor_depois` e `inutilizavel`; o resumo mostra "X de N espectros".
+- **Predição: espectro novo no teto não é mais aceito nem quantificado.** O pacote do modelo guarda
+  `saturacao` (teto, tolerância, regiões descartadas); `predict_samples` ganha `saturacao_frac_%` e
+  `saturado`, força `aceito=False` (critério "espectro saturado") e avisa; o fluxo cego devolve
+  `espectro_saturado` em vez de um teor; o JSON portátil leva a mesma chave. Pacotes antigos não têm a
+  chave e predizem como antes (sem as colunas novas).
+- **`model_card.md` e resumo** passam a trazer a linha "Saturação do detector" (contagens, faixa de
+  teor antes/depois e se algo foi removido).
 - **Sem dado útil, `saturacao: auto` recusa a análise** (menos de 3 espectros, variáveis ou, em
   quantificação, teores distintos) com mensagem dizendo o que refazer; `avisar` segue por conta do
   usuário. Classe que perde todos os espectros é avisada pelo nome.

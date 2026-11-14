@@ -355,6 +355,12 @@ para nomes de coluna de saída).
   fazia a função desistir em silêncio (`ativo=False`) e o dado saturado entrava no modelo. Com
   `saturacao: auto`, conjunto sem 3 espectros, variáveis ou teores distintos é recusado
   (`ValueError`). Golden regravado.
+- 2026-11-14 (saturação na predição, não lançado): o pacote do modelo ganha a chave opcional
+  `saturacao` (`teto`, `tolerancia`, `regioes`, `aplicado`, `faixa_teor_depois`) e o JSON portátil a
+  mesma chave (`versao_formato` não muda: campo aditivo). `predict_samples` ganha, só quando o pacote
+  traz a chave, as colunas `saturacao_frac_%` e `saturado`, e `aceito` vira `False` para espectro
+  saturado; `predict_portable` devolve as mesmas duas chaves. Pacote sem a chave: saída idêntica à
+  anterior. Funções novas: `saturacao.fracao_no_teto`, `saturacao.sinalizar_saturacao_nova`.
 
 - 2026-11-10 (instalação só a partir do clone, dentro da v1.0.0): `extras_opcionais.COMANDO_TUDO` e
   `comando_pip` passam a devolver `pip install ".[all]"` e `pip install ".[extra]"` (a instalação é sempre

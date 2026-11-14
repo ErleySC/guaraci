@@ -896,6 +896,8 @@ def generate_model_card(pasta: str, cfg: "Config", resumo: Dict[str, object],
             (T("Faixa de trabalho declarada", "Declared working range"),
              (f"{perfil.faixa_trabalho[0]} {T('a', 'to')} {perfil.faixa_trabalho[1]}"
               if perfil.faixa_trabalho else T("nao declarada no perfil", "not declared in the profile"))),
+            *([(T("Saturacao do detector", "Detector saturation"),
+                str(resumo["Saturacao do detector"]))] if resumo.get("Saturacao do detector") else []),
             (T("Tag de execucao", "Run tag"), str(resumo.get("Tag", "-"))),
             (T("Licenca", "License"), "GPL-3.0-or-later"),
             (T("Repositorio", "Repository"), REPO_URL.split("://", 1)[1]),

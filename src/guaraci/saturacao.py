@@ -26,7 +26,8 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-__all__ = ["MODOS_COM_SATURACAO", "detectar_saturacao", "regioes_de_mascara"]
+__all__ = ["MODOS_COM_SATURACAO", "detectar_saturacao", "regioes_de_mascara",
+           "fracao_no_teto", "sinalizar_saturacao_nova"]
 
 MODOS_COM_SATURACAO = ("dx", "opus", "spc", "sp", "csv")
 MIN_VARIAVEIS = 100          # tabela com poucas colunas nao e' espectro
@@ -65,7 +66,7 @@ def detectar_saturacao(X: np.ndarray, wn: np.ndarray) -> Dict[str, Any]:
     ou variaveis: nao ha' o que modelar."""
     X = np.asarray(X, dtype=float)
     n, p = X.shape
-    tudo = {"ativo": False, "inutilizavel": False, "teto": None,
+    tudo = {"ativo": False, "inutilizavel": False, "teto": None, "tolerancia": None,
             "manter_variaveis": np.ones(p, dtype=bool),
             "manter_espectros": np.ones(n, dtype=bool),
             "variaveis_removidas": 0, "espectros_removidos": 0,
@@ -111,10 +112,41 @@ def detectar_saturacao(X: np.ndarray, wn: np.ndarray) -> Dict[str, Any]:
     else:
         manter_esp = vivo.copy()
     inutilizavel = bool(manter_var.sum() < MIN_RESTANTES or manter_esp.sum() < MIN_RESTANTES)
-    return {"ativo": True, "inutilizavel": inutilizavel, "teto": teto,
+    return {"ativo": True, "inutilizavel": inutilizavel, "teto": teto, "tolerancia": float(1.5 * q),
             "manter_variaveis": manter_var, "manter_espectros": manter_esp,
             "variaveis_removidas": int((~manter_var).sum()),
             "espectros_removidos": int((~manter_esp).sum()),
             "espectros_mortos": int((~vivo).sum()),
             "regioes": regioes_de_mascara(np.asarray(wn, dtype=float), ~manter_var),
             "frac_variavel": frac_var}
+
+
+def fracao_no_teto(X: np.ndarray, wn: np.ndarray, teto: float, tolerancia: float,
+                   regioes: List[Tuple[float, float]] | List[List[float]] | None = None) -> np.ndarray:
+    """Fracao dos pontos de cada espectro de `X` que esta no teto (`teto` +- `tolerancia`).
+
+    Pontos dentro de `regioes` (as que o modelo ja' descartou) nao contam: um espectro novo
+    saturado so' na banda que o modelo nunca usou e' inofensivo."""
+    X = np.atleast_2d(np.asarray(X, dtype=float))
+    wn = np.asarray(wn, dtype=float)
+    fora = np.ones(wn.shape[0], dtype=bool)
+    for a, b in regioes or []:
+        fora &= ~((wn >= float(a)) & (wn <= float(b)))
+    if not fora.any():
+        return np.zeros(X.shape[0])
+    no_teto = np.isfinite(X[:, fora]) & (np.abs(X[:, fora] - float(teto)) <= float(tolerancia))
+    return no_teto.mean(axis=1)
+
+
+def sinalizar_saturacao_nova(pkg: Dict[str, Any], X_novo_bruto: np.ndarray,
+                             wn_novo: np.ndarray) -> Tuple[np.ndarray, np.ndarray] | None:
+    """(fracao no teto, saturado?) por espectro novo, ou None se o pacote nao guarda o teto.
+
+    Pacotes salvos antes desta chave (ou treinados sem saturacao detectada) devolvem None:
+    nada e' inventado para eles. `saturado` usa o mesmo limiar do treino para espectro."""
+    info = pkg.get("saturacao")
+    if not info or info.get("teto") is None or info.get("tolerancia") is None:
+        return None
+    frac = fracao_no_teto(X_novo_bruto, wn_novo, float(info["teto"]), float(info["tolerancia"]),
+                          info.get("regioes"))
+    return frac, frac >= LIMIAR_ESPECTRO

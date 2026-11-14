@@ -1684,7 +1684,11 @@ detector" do resumo; `avisar` só avisa e não remove nada; `nenhuma` nem procur
 espectro saturado costuma ser o de maior teor, então a remoção **encolhe a faixa de calibração**: o
 aviso diz a faixa que sobrou, e o modelo só vale dentro dela. Se sobram menos de 3 espectros,
 variáveis ou (em quantificação) teores distintos, `auto` recusa a análise com uma mensagem clara
-em vez de modelar lixo; `avisar` segue, por sua conta. O teto é a classe de valores repetidos
+em vez de modelar lixo; `avisar` segue, por sua conta.
+O pacote do modelo guarda o teto; na predição, espectro novo com 20 % ou mais dos pontos (fora das
+regiões que o modelo descartou) no teto sai com `saturado = True`, `aceito = False` e, no fluxo cego,
+sem teor (`espectro_saturado`). Pacotes salvos antes dessa chave predizem como antes. A linha
+"Saturação do detector" também entra no `model_card.md`. O teto é a classe de valores repetidos
 mais alta, não o máximo global, e dado sem plato nunca é tocado. A opção é independente de
 `ajuste_automatico`. Mudar de `auto` para `avisar` ou `nenhuma` muda o conjunto de variáveis e,
 portanto, os números do modelo.
