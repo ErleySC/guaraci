@@ -9,6 +9,22 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Saturação do detector (2026-11-14):
+
+- **Espectros inteiramente no teto não passam mais em silêncio.** Quando 10 % ou mais dos espectros
+  eram retas no teto (detector cego), todas as variáveis eram marcadas como saturadas, a detecção
+  desistia (`ativo=False`) e o dado saturado entrava no modelo sem aviso nenhum. Nos dados reais de
+  óleo com milho isso escondia 45 de 48 espectros de graviola e 23 de 48 de goiaba. Agora os
+  espectros mortos (50 % ou mais das variáveis no teto) saem primeiro e a banda saturada dos outros
+  continua detectada.
+- **Quantificação: a faixa de teor que sobrou é registrada e avisada.** O espectro saturado é o de
+  maior teor, então a remoção encolhe a curva (goiaba + milho: de 0–15 % para 0–8 %).
+  `saturacao.json` ganhou `removidos_por_classe`, `espectros_total`, `espectros_mortos`,
+  `faixa_teor_antes`/`faixa_teor_depois` e `inutilizavel`; o resumo mostra "X de N espectros".
+- **Sem dado útil, `saturacao: auto` recusa a análise** (menos de 3 espectros, variáveis ou, em
+  quantificação, teores distintos) com mensagem dizendo o que refazer; `avisar` segue por conta do
+  usuário. Classe que perde todos os espectros é avisada pelo nome.
+
 Análise crítica do repositório público (2026-11-11):
 
 - **Etapa principal que falha não termina mais como "concluído".** Se a regressão de uma Quantificação

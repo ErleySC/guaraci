@@ -1674,11 +1674,17 @@ sem `coluna_concentracao`). O `cfg` do usuário volta aos valores escolhidos dep
 
 **Saturação do detector (`saturacao: auto | avisar | nenhuma`).** Nos modos `dx`, `opus`, `spc`,
 `sp` e `csv`, o programa procura absorbância travada num teto (um plato de valores idênticos,
-por exemplo A = 3,0 com cubeta de caminho óptico longo). Variável com 10 % ou mais das amostras
-no teto (alargada em 3 pontos de cada lado) e espectro com 20 % ou mais das variáveis no teto não
-carregam informação da amostra. `auto` (padrão) tira os dois do modelo e registra em
-`Relatorios/saturacao.json`, no aviso do terminal e na linha "Saturação do detector" do resumo;
-`avisar` só avisa e não remove nada; `nenhuma` nem procura. O teto é a classe de valores repetidos
+por exemplo A = 3,0 com cubeta de caminho óptico longo). Primeiro saem os espectros mortos
+(50 % ou mais de todas as variáveis no teto: o detector ficou cego e o "espectro" é uma reta);
+depois, entre os espectros restantes, variável com 10 % ou mais das amostras no teto (alargada em
+3 pontos de cada lado) e espectro com 20 % ou mais das variáveis restantes no teto. `auto` (padrão)
+tira tudo isso do modelo e registra em `Relatorios/saturacao.json` (com a contagem por classe e,
+em quantificação, a faixa de teor antes e depois), no aviso do terminal e na linha "Saturação do
+detector" do resumo; `avisar` só avisa e não remove nada; `nenhuma` nem procura. Em quantificação o
+espectro saturado costuma ser o de maior teor, então a remoção **encolhe a faixa de calibração**: o
+aviso diz a faixa que sobrou, e o modelo só vale dentro dela. Se sobram menos de 3 espectros,
+variáveis ou (em quantificação) teores distintos, `auto` recusa a análise com uma mensagem clara
+em vez de modelar lixo; `avisar` segue, por sua conta. O teto é a classe de valores repetidos
 mais alta, não o máximo global, e dado sem plato nunca é tocado. A opção é independente de
 `ajuste_automatico`. Mudar de `auto` para `avisar` ou `nenhuma` muda o conjunto de variáveis e,
 portanto, os números do modelo.

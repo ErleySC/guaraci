@@ -83,3 +83,26 @@ def test_limite_q_comportado_continua_chi2():
     q = rng.chisquare(8, 800) * 1e-4
     lim = q_residuals_limit(q)
     assert 0.02 <= np.mean(q > lim) <= 0.09
+
+
+def test_muitos_espectros_mortos_saem_e_a_banda_dos_vivos_continua_detectada():
+    """Caso real (par puro + adulterado): metade do lote inteiramente no teto. Antes os mortos
+    marcavam TODAS as variaveis como saturadas e a funcao desistia em silencio (ativo=False)."""
+    wn, X = _espectros()
+    X[:, 100:110] = 3.0                # banda saturada nos espectros bons
+    X[30:, :] = 3.0                    # metade dos espectros: reta no teto
+    X = np.minimum(X, 3.0)
+    r = detectar_saturacao(X, wn)
+    assert r["ativo"] and not r["inutilizavel"]
+    assert r["espectros_mortos"] == 30 and r["espectros_removidos"] == 30
+    assert r["manter_espectros"][:30].all() and not r["manter_espectros"][30:].any()
+    assert 10 <= r["variaveis_removidas"] < 40   # so' a banda (+ folga), nao o eixo inteiro
+
+
+def test_quase_tudo_morto_e_inutilizavel_e_nao_silencioso():
+    wn, X = _espectros()
+    X[2:, :] = 3.0                     # sobram 2 espectros vivos
+    X = np.minimum(X, 3.0)
+    r = detectar_saturacao(X, wn)
+    assert r["ativo"] and r["inutilizavel"]
+    assert r["manter_espectros"].sum() == 2

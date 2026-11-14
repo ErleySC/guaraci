@@ -349,6 +349,12 @@ para nomes de coluna de saída).
   `sp` e `csv`, dado com plato de absorbância no teto do detector passa a ter as
   variáveis e os espectros saturados fora do modelo (ver CHANGELOG); `avisar`
   e `nenhuma` mantêm o comportamento anterior. Golden regravado.
+- 2026-11-14 (saturação, não lançado): `detectar_saturacao` devolve as chaves novas
+  `inutilizavel` e `espectros_mortos` (aditivo). **Mudança de comportamento:** espectros
+  inteiramente no teto saem antes do cálculo por variável; antes, um lote com 10 % ou mais deles
+  fazia a função desistir em silêncio (`ativo=False`) e o dado saturado entrava no modelo. Com
+  `saturacao: auto`, conjunto sem 3 espectros, variáveis ou teores distintos é recusado
+  (`ValueError`). Golden regravado.
 
 - 2026-11-10 (instalação só a partir do clone, dentro da v1.0.0): `extras_opcionais.COMANDO_TUDO` e
   `comando_pip` passam a devolver `pip install ".[all]"` e `pip install ".[extra]"` (a instalação é sempre

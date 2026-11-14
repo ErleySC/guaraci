@@ -7174,7 +7174,7 @@
         "forma": "funcao"
       },
       "executar": {
-        "assinatura": "(cfg: guaraci.Config)",
+        "assinatura": "(cfg: guaraci.Config) -> Any",
         "forma": "funcao"
       },
       "generate_output_name": {
