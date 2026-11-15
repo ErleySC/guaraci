@@ -7846,7 +7846,7 @@
         "forma": "funcao"
       },
       "correlacao_lod_iodo": {
-        "assinatura": "(linhas: Sequence[dict[str, Any]], iodo_oleo: dict[str, float], iodo_adulterante: dict[str, float]) -> dict[str, Any]",
+        "assinatura": "(linhas: Sequence[dict[str, Any]], iodo_especie: dict[str, float], iodo_adulterante: dict[str, float]) -> dict[str, Any]",
         "forma": "funcao"
       },
       "rodar_pares": {
