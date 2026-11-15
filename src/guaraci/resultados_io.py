@@ -493,6 +493,14 @@ def append_regression_summary(
             return "n/a"
         return f"{fv:.{nd}f}{suf}" if np.isfinite(fv) else "n/a"
 
+    def _fmtg(v: object) -> str:
+        """Algarismos significativos (SEN e delta_x ficam em 1e-4 com derivada: '0.000' escondia o valor)."""
+        try:
+            fv = float(v)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return "n/a"
+        return f"{fv:.3g}" if np.isfinite(fv) else "n/a"
+
     linhas: List[str] = [
         "", "=" * 60,
         "  PLS Regression — Analytical Figures of Merit",
@@ -550,7 +558,7 @@ def append_regression_summary(
                 # (dado heterogeneo por especie), nao vale apertar aqui.
                 f"{_fmt(t.get('rmsep'), 2):>7s} {_fmt(t.get('r2val'), 3):>6s} "
                 f"{_fmt(t.get('lod'), 2):>7s} {_fmt(t.get('loq'), 2):>7s} "
-                f"{_fmt(t.get('sensibilidade'), 3):>7s} "
+                f"{_fmtg(t.get('sensibilidade')):>7s} "
                 f"{_fmt(t.get('seletividade_media'), 3):>6s}")
             # Bloco 12: LOD/LOQ nunca isolado -- IC (Allegrini & Olivieri
             # 2014, ver chemometric_stats.regression_figures_of_merit) +
@@ -589,16 +597,79 @@ def append_regression_summary(
         linhas.append("  Figures of merit (single pooled model):")
         linhas.append(f"    LOD .......: {_fmt(fom_pooled.get('lod'), 2)}")
         linhas.append(f"    LOQ .......: {_fmt(fom_pooled.get('loq'), 2)}")
-        linhas.append(f"    SEN .......: {_fmt(fom_pooled.get('sensibilidade'), 3)}")
+        linhas.append(f"    SEN .......: {_fmtg(fom_pooled.get('sensibilidade'))}")
         linhas.append(f"    gamma .....: {_fmt(fom_pooled.get('sensibilidade_analitica'), 2)}")
         linhas.append(f"    SEL .......: {_fmt(fom_pooled.get('seletividade_media'), 3)}")
-        linhas.append(f"    delta_x ...: {_fmt(fom_pooled.get('delta_x_ruido'), 5)}")
+        linhas.append(f"    delta_x ...: {_fmtg(fom_pooled.get('delta_x_ruido'))}")
     linhas.append("")
     linhas.append("  LOD, LOQ, RMSEP and the validation range are in the unit of the reference concentration.")
     linhas.append("  Note: LOD/LOQ/SEN require physical replicates (mae_id) to")
     linhas.append("  estimate instrumental noise; 'n/a' means none available.")
 
     _anexar_ao_resumo(pasta, linhas, "regressao")
+    _gravar_figuras_de_merito_csv(pasta, pooled, tabela_especie, fom_pooled, holdout)
+
+
+#: colunas de `Tables/regressao_figuras_de_merito.csv` (uma linha por modelo)
+COLUNAS_MERITO = ("modelo", "n_lv", "n_cal", "n_val", "rmsec", "rmsecv", "rmsep", "r2cal", "r2val", "r2cv", "bias",
+                  "sep", "rpd", "rer", "lod", "loq", "sensibilidade", "sensibilidade_analitica",
+                  "seletividade_media", "delta_x_ruido", "rmsep_holdout", "r2_holdout", "n_holdout")
+
+
+def _gravar_figuras_de_merito_csv(pasta_relatorios: str, pooled: Optional[Dict[str, object]],
+                                  tabela_especie: Optional[List[Dict[str, object]]],
+                                  fom_pooled: Optional[Dict[str, float]], holdout: Optional[Dict[str, Any]]) -> None:
+    """Grava `Tables/regressao_figuras_de_merito.csv`: as mesmas figuras de merito do resumo, em tabela
+    (o texto do resumo nao serve para montar uma tabela de artigo sem copiar a mao).
+
+    Um modelo unico (pooled) ou uma linha por especie. Numero ausente vira vazio, nunca 0."""
+    import csv
+    import os
+
+    def _n(v: object) -> Any:
+        try:
+            f = float(v)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return ""
+        return f if np.isfinite(f) else ""
+
+    linhas: List[Dict[str, Any]] = []
+    if pooled is not None:
+        ho: Any = pooled.get("holdout") or holdout or {}
+        fom = fom_pooled or {}
+        linhas.append({
+            "modelo": "pooled", "n_lv": pooled.get("n_lv", ""), "n_cal": pooled.get("n_cal", ""),
+            "n_val": pooled.get("n_val", ""), "rmsec": _n(pooled.get("rmsec")), "rmsecv": _n(pooled.get("rmsecv")),
+            "rmsep": _n(pooled.get("rmsep")), "r2cal": _n(pooled.get("r2c")), "r2val": _n(pooled.get("r2v")),
+            "r2cv": _n(pooled.get("r2cv")), "bias": _n(pooled.get("bias")), "sep": _n(pooled.get("sep")),
+            "rpd": _n(pooled.get("rpd")), "rer": _n(pooled.get("rer")), "lod": _n(fom.get("lod")),
+            "loq": _n(fom.get("loq")), "sensibilidade": _n(fom.get("sensibilidade")),
+            "sensibilidade_analitica": _n(fom.get("sensibilidade_analitica")),
+            "seletividade_media": _n(fom.get("seletividade_media")), "delta_x_ruido": _n(fom.get("delta_x_ruido")),
+            "rmsep_holdout": _n(ho.get("rmsep")), "r2_holdout": _n(ho.get("r2")), "n_holdout": ho.get("n", "")})
+    for t in tabela_especie or []:
+        linhas.append({
+            "modelo": str(t.get("especie", "")), "n_lv": t.get("n_lv", ""), "n_cal": t.get("n_cal", ""),
+            "n_val": t.get("n_val", ""), "rmsec": _n(t.get("rmsec")), "rmsecv": _n(t.get("rmsecv")),
+            "rmsep": _n(t.get("rmsep")), "r2cal": _n(t.get("r2c")), "r2val": _n(t.get("r2val")),
+            "r2cv": _n(t.get("r2cv")), "bias": _n(t.get("bias")), "sep": _n(t.get("sep")), "rpd": _n(t.get("rpd")),
+            "rer": _n(t.get("rer")), "lod": _n(t.get("lod")), "loq": _n(t.get("loq")),
+            "sensibilidade": _n(t.get("sensibilidade")),
+            "sensibilidade_analitica": _n(t.get("sensibilidade_analitica")),
+            "seletividade_media": _n(t.get("seletividade_media")), "delta_x_ruido": _n(t.get("delta_x_ruido")),
+            "rmsep_holdout": "", "r2_holdout": "", "n_holdout": ""})
+    if not linhas:
+        return
+    from guaraci.config import NOME_TABELAS, pasta_execucao
+    pasta_tab = pasta_execucao(os.path.dirname(os.path.abspath(pasta_relatorios)), NOME_TABELAS)
+    try:
+        os.makedirs(pasta_tab, exist_ok=True)
+        with open(os.path.join(pasta_tab, "regressao_figuras_de_merito.csv"), "w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(COLUNAS_MERITO))
+            w.writeheader()
+            w.writerows(linhas)
+    except OSError as e:
+        print(f"  [AVISO] regressao_figuras_de_merito.csv nao gravado: {e}")
 
 
 def append_heatmap_summary(pasta: str, resultado: Dict[str, object]) -> None:

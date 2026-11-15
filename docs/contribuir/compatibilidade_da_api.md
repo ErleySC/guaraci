@@ -361,6 +361,14 @@ para nomes de coluna de saída).
   traz a chave, as colunas `saturacao_frac_%` e `saturado`, e `aceito` vira `False` para espectro
   saturado; `predict_portable` devolve as mesmas duas chaves. Pacote sem a chave: saída idêntica à
   anterior. Funções novas: `saturacao.fracao_no_teto`, `saturacao.sinalizar_saturacao_nova`.
+- 2026-11-14 (leitor `.dx`, quantificação por par, VIP/SR, não lançado): `dados_io.load_dx` ganha o
+  parâmetro opcional `janela=None` (sem ele, o comportamento é o anterior); com ele, só ficam os
+  arquivos que cobrem 95 % da faixa. **Mudança de comportamento:** com a faixa de trabalho conhecida,
+  espectro de amostra pura que antes era descartado quando outro arquivo tinha eixo menor agora entra;
+  o rótulo de classe passa a ser o dominante da subpasta quando há pelo menos 80 % de concordância.
+  `Config.cal_val_split` (`divisao_calibracao`) aceita também `spxy`. Saídas novas e aditivas:
+  `Tables/regressao_figuras_de_merito.csv`, `Tables/regressao_vip_sr.csv` e o módulo
+  `guaraci.quantificacao_pares` e subcomando `guaraci pares` (`achar_pares`, `rodar_pares`, `correlacao_lod_iodo`, `main`).
 
 - 2026-11-10 (instalação só a partir do clone, dentro da v1.0.0): `extras_opcionais.COMANDO_TUDO` e
   `comando_pip` passam a devolver `pip install ".[all]"` e `pip install ".[extra]"` (a instalação é sempre

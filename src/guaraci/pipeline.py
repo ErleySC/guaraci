@@ -1526,6 +1526,10 @@ def pls_regressao_pooled(
             X_raw, mae_id, cfg.frac_cal)
         log.info(f"  Split cal/val: Kennard-Stone "
               f"({len(ic)} cal / {len(iv)} val)")
+    elif cfg.cal_val_split == "spxy":
+        ic, iv = spxy_split_group_aware(X_raw, Y_reg, mae_id, cfg.frac_cal)
+        log.info(f"  Split cal/val: SPXY "
+              f"({len(ic)} cal / {len(iv)} val)")
     elif mae_id is not None:
         gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                      random_state=cfg.seed)
@@ -1649,7 +1653,7 @@ def pls_regressao_pooled(
               f"LOQ: {_fom_reg['loq']:.2f}  (unidade do teor; aproximado: so' o ruido de "
               f"replica; sem leverage nem erro de referencia -> tende a "
               f"SUBestimar)")
-        log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
+        log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3g}  |  "
               f"gamma: {_fom_reg['sensibilidade_analitica']:.2f}  |  "
               f"SEL: {_fom_reg['seletividade_media']:.3f}")
         # R3-03 (revisao cega): LOD abaixo do erro de predicao e' incompativel --
@@ -1696,6 +1700,8 @@ def pls_regressao_pooled(
         "dmody_crit": _dmody_res_pooled["dmody_crit"],
         "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"],
         "holdout": _ho_pooled,
+        "n_lv": int(n_opt_reg), "n_cal": int(len(ic)), "n_val": int(len(iv)),
+        "n_total": int(len(conc)),
     }
     append_regression_summary(pasta_logs, pooled=resultado_pooled,
                             fom_pooled=_fom_reg, holdout=_ho_pooled)
@@ -1728,6 +1734,29 @@ def _predicoes_holdout_para_figura(
         return None
 
 
+def _vip_sr_regressao(pls: Any, X_proc: np.ndarray,
+                      wavenumbers: Optional[np.ndarray], cfg: "Config",
+                      pasta: str) -> None:
+    """VIP (Chong & Jun 2005) e Selectivity Ratio (Rajalahti 2009) do PLS de
+    regressao final: `Tables/regressao_vip_sr.csv` (todas as variaveis) e a
+    figura VIP x SR. Mesmos estimadores da classificacao; sem bootstrap."""
+    import csv
+    wn = (np.asarray(wavenumbers, dtype=float)
+          if wavenumbers is not None and np.asarray(wavenumbers).size == X_proc.shape[1]
+          else np.arange(X_proc.shape[1], dtype=float))
+    vip = np.asarray(vip_scores(pls), dtype=float)
+    sr = np.asarray(compute_selectivity_ratio(pls, X_proc), dtype=float)
+    pasta_tab = pasta_execucao(pasta, NOME_TABELAS)
+    os.makedirs(pasta_tab, exist_ok=True)
+    with open(os.path.join(pasta_tab, "regressao_vip_sr.csv"), "w",
+              encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["numero_de_onda_cm-1", "VIP", "SR"])
+        for a, b, c in zip(wn, vip, sr):
+            w.writerow([f"{a:.6g}", f"{b:.6g}", f"{c:.6g}"])
+    fig_sprint3_sr_vip(vip, sr, wn, top_n=20, cfg=cfg, pasta=pasta)
+
+
 def _figuras_modelo_unico_regressao(
         pipe_final: Pipeline, Xc_raw: np.ndarray, Yc: np.ndarray,
         Yc_hat: np.ndarray, Xv_raw: np.ndarray, Yv: np.ndarray,
@@ -1753,6 +1782,8 @@ def _figuras_modelo_unico_regressao(
         else:
             log.info("  [AVISO] coeficientes b sem eixo espectral compativel; "
                      "figura nao gerada")
+        _vip_sr_regressao(pls, np.asarray(prep.transform(Xc_raw), dtype=float),
+                          wavenumbers, cfg, pasta)
         T_cal = np.asarray(pls.transform(prep.transform(Xc_raw)))
         r_cal, s_cal = fx.residuos_padronizados(Yc, Yc_hat, A)
         mod: Dict[str, Any] = {
@@ -2215,11 +2246,15 @@ def _etapa_regressao_pls(*, X_holdout, X_raw, _G, _conc_holdout, cam_modelo, cfg
         elif n_nan > 0:
             log.info(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
                   f"conc=NaN.")
+            _registrar_falha_etapa(f"Regressao PLS nao rodou: {n_nan} amostras sem teor (conc=NaN).")
         elif float(conc_arr.std()) < 1e-8:
             log.info("\n[7/7] PLS regressao — PULADA: variancia de conc ~= 0.")
+            _registrar_falha_etapa("Regressao PLS nao rodou: todos os teores sao iguais (variancia ~ 0).")
         elif n_nonzero < 10:
             log.info(f"\n[7/7] PLS regressao — PULADA: apenas {n_nonzero} "
                   f"amostras com resposta > 0 (precisa >= 10).")
+            _registrar_falha_etapa(f"Regressao PLS nao rodou: apenas {n_nonzero} amostras com teor > 0 "
+                                   f"(precisa de 10 ou mais).")
         else:
             # Guard (6): numero de especies = numero de CLASSES (rotulos). Antes
             # vinha do prefixo de 3 caracteres do mae_id (uma convencao de

@@ -274,7 +274,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {'key': 'holdout_preservar_puras', 'attr': 'holdout_preserves_pure', 'tipo': 'bool', 'opcoes': None},
     {'key': 'semente_holdout', 'attr': 'seed_holdout', 'tipo': 'int', 'opcoes': None, 'min': 0, 'max': 2147483647},
     {'key': 'fracao_calibracao', 'attr': 'frac_cal', 'tipo': 'float', 'opcoes': None, 'min': 0.3, 'max': 0.95},
-    {'key': 'divisao_calibracao', 'attr': 'cal_val_split', 'tipo': 'choice', 'opcoes': ['aleatoria', 'kennard_stone']},
+    {'key': 'divisao_calibracao', 'attr': 'cal_val_split', 'tipo': 'choice', 'opcoes': ['aleatoria', 'kennard_stone', 'spxy']},
     {'key': 'monte_carlo_fracao_teste', 'attr': 'monte_carlo_test_size', 'tipo': 'float', 'opcoes': None, 'min': 0.05, 'max': 0.5},
     {'key': 'sintetico_n_por_classe', 'attr': 'n_per_class', 'tipo': 'int', 'opcoes': None, 'min': 2, 'max': 1000},
     {'key': 'sintetico_n_pontos', 'attr': 'n_synthetic_points', 'tipo': 'int', 'opcoes': None, 'min': 10, 'max': 20000},

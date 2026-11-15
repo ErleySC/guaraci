@@ -9,12 +9,26 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Leitor, quantificação por par e VIP/SR (2026-11-14):
+
+- **Leitor `.dx`: óleo puro não é mais descartado.** O eixo comum é a interseção dos eixos; um arquivo
+  exportado em outra faixa (por exemplo 299–4000 cm⁻¹, sem NIR) encolhia a grade e jogava fora os
+  espectros que cobriam a faixa pedida. Agora, com a faixa de trabalho conhecida, só ficam os arquivos
+  que cobrem pelo menos 95 % dela; os demais são listados no aviso.
+- **Rótulo de classe por subpasta.** Um erro de digitação no código do `##TITLE` criava classes
+  fantasmas de uma amostra; o código dominante da subpasta (pelo menos 80 %) passa a valer.
+- **`divisao_calibracao: spxy`** (Galvão et al. 2005) para quantificação, para reproduzir protocolos
+  que particionam por Kennard-Stone estendido; use junto com `validacao_group_aware: false`.
+- **Quantificação:** `Tables/regressao_figuras_de_merito.csv` (LOD, LOQ, SEN, SEL, RMSEC/CV/P por
+  modelo) e `Tables/regressao_vip_sr.csv` com a figura VIP × SR do PLS final.
+- **`guaraci pares PASTA_DADOS SAIDA`**: um modelo por par espécie × adulterante e
+  `tabela_pares.csv`; opcionalmente a correlação de Spearman do LOD com o contraste de índice de iodo.
+
 Saturação do detector (2026-11-14):
 
 - **Espectros inteiramente no teto não passam mais em silêncio.** Quando 10 % ou mais dos espectros
   eram retas no teto (detector cego), todas as variáveis eram marcadas como saturadas, a detecção
-  desistia (`ativo=False`) e o dado saturado entrava no modelo sem aviso nenhum. Nos dados reais de
-  óleo com milho isso escondia 45 de 48 espectros de graviola e 23 de 48 de goiaba. Agora os
+  desistia (`ativo=False`) e o dado saturado entrava no modelo sem aviso nenhum. Agora os
   espectros mortos (50 % ou mais das variáveis no teto) saem primeiro e a banda saturada dos outros
   continua detectada.
 - **Quantificação: a faixa de teor que sobrou é registrada e avisada.** O espectro saturado é o de

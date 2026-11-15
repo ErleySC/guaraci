@@ -233,7 +233,8 @@
       "min": null,
       "opcoes": [
         "aleatoria",
-        "kennard_stone"
+        "kennard_stone",
+        "spxy"
       ],
       "tipo": "choice"
     },
@@ -3866,7 +3867,7 @@
         "forma": "funcao"
       },
       "load_dx": {
-        "assinatura": "(pasta: str, class_part: int = 0, extrair_conc: bool = False, use_parse_title: bool = True, max_pontos: int = 2000) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, Union[None, numpy.ndarray], Union[None, numpy.ndarray], Union[None, pandas.DataFrame]]",
+        "assinatura": "(pasta: str, class_part: int = 0, extrair_conc: bool = False, use_parse_title: bool = True, max_pontos: int = 2000, janela: Union[None, tuple[float, float]] = None) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, Union[None, numpy.ndarray], Union[None, numpy.ndarray], Union[None, pandas.DataFrame]]",
         "forma": "funcao"
       },
       "parse_dx": {
@@ -7836,6 +7837,20 @@
       },
       "preparar_eixo_espectral": {
         "assinatura": "(cfg, X, eixo_dados, eixo)",
+        "forma": "funcao"
+      }
+    },
+    "quantificacao_pares": {
+      "achar_pares": {
+        "assinatura": "(pasta_dados: str) -> dict[tuple[str, str], dict[str, list[str]]]",
+        "forma": "funcao"
+      },
+      "correlacao_lod_iodo": {
+        "assinatura": "(linhas: Sequence[dict[str, Any]], iodo_oleo: dict[str, float], iodo_adulterante: dict[str, float]) -> dict[str, Any]",
+        "forma": "funcao"
+      },
+      "rodar_pares": {
+        "assinatura": "(pasta_dados: str, saida: str, cfg_base: Union[Any, None] = None, **campos: Any) -> list[dict[str, Any]]",
         "forma": "funcao"
       }
     },

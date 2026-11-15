@@ -19,7 +19,7 @@ __all__ = ["texto_ajuda", "SUBCOMANDOS", "subcomando"]
 
 #: Subcomandos tratados aqui (com argumentos proprios, antes da extracao de
 #: `--chave=valor` do main). `run`, `demo`, `perfis`, `doctor` e `web` seguem em guaraci.py.
-SUBCOMANDOS = ("anova", "vip", "monitorar", "relatorio", "transferir", "exemplo", "confianca", "assistente", "ajuda", "buscar", "manual", "checar")
+SUBCOMANDOS = ("anova", "vip", "monitorar", "relatorio", "transferir", "exemplo", "confianca", "assistente", "ajuda", "buscar", "manual", "checar", "pares")
 
 _OPCOES_PT = """Opcoes (valem para os comandos de analise):
   --perfil=NOME     perfil da matriz analisada (padrao: generico). Define
@@ -297,6 +297,9 @@ def subcomando(nome: str, args: Sequence[str]) -> int:
         return _cmd_manual(list(args))
     if nome == "assistente":
         return _cmd_assistente(list(args))
+    if nome == "pares":
+        from guaraci import quantificacao_pares
+        return quantificacao_pares.main(list(args))
     if nome == "checar":
         # Pre-voo do assistente pela linha de comando (mesmos argumentos de
         # `python -m guaraci.assistente_checar`): 0 sem achado critico, 1 com, 2 se nao carrega.

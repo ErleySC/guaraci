@@ -1672,6 +1672,17 @@ e o N2 liga; etapas de classificação ficam desligadas em objetivo que não é 
 método final (viram sugestão). Combinação sem remédio seguro é recusada (ex.: nível N3 no modo csv
 sem `coluna_concentracao`). O `cfg` do usuário volta aos valores escolhidos depois da execução.
 
+**Um modelo por par espécie × adulterante.** `guaraci pares PASTA_DADOS SAIDA
+[--config config.yaml] [--iodo-especies especies.csv --iodo-adulterantes adulterantes.csv]` acha, em cada
+subpasta de espécie, as misturas de cada adulterante (código `-X-teor%` no nome) junto com os
+espectros puros, roda uma quantificação N3 por par e grava `tabela_pares.csv` (LOD, LOQ, SEN, R²CV,
+RMSECV, RMSEP, nº de VLs). Cada corrida guarda `Tables/regressao_figuras_de_merito.csv` e
+`Tables/regressao_vip_sr.csv` (VIP e razão de seletividade por número de onda). Par sem espectro puro
+não é tentado, porque falta o ponto zero. Leitor `.dx`: com faixa de trabalho definida, arquivo que
+cobre menos de 95 % dela (por exemplo exportado só até 4000 cm⁻¹) é ignorado e listado no aviso; o
+código de classe é o dominante da subpasta. `divisao_calibracao: spxy` particiona por SPXY
+(Galvão et al. 2005).
+
 **Saturação do detector (`saturacao: auto | avisar | nenhuma`).** Nos modos `dx`, `opus`, `spc`,
 `sp` e `csv`, o programa procura absorbância travada num teto (um plato de valores idênticos,
 por exemplo A = 3,0 com cubeta de caminho óptico longo). Primeiro saem os espectros mortos
