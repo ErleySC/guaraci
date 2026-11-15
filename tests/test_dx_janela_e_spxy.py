@@ -25,12 +25,12 @@ def _dx(path, titulo, x0, x1, n):
 @pytest.fixture()
 def pasta_mista(tmp_path):
     """Puros em faixa larga (0-15800) e misturas exportadas cortadas em 4000 (299-4000)."""
-    d = tmp_path / "oleo"
+    d = tmp_path / "classe"
     d.mkdir()
     for i in range(3):
-        _dx(d / f"X-01-01-2020_T{i + 1}.dx", f"X-01-01-2020_T{i + 1}", 0, 15800, 400)
+        _dx(d / f"X-01-01-2099_T{i + 1}.dx", f"X-01-01-2099_T{i + 1}", 0, 15800, 400)
     for i in range(6):
-        _dx(d / f"X-01-01-2020-AD-M-{i + 1},0%_T1.dx", f"X-01-01-2020-AD-M-{i + 1},0%_T1", 299, 4000, 100)
+        _dx(d / f"X-01-01-2099-AD-M-{i + 1},0%_T1.dx", f"X-01-01-2099-AD-M-{i + 1},0%_T1", 299, 4000, 100)
     return str(d)
 
 
@@ -65,17 +65,17 @@ def test_divisao_spxy_existe_no_spec_e_cobre_os_extremos_do_teor():
 
 
 def test_titulo_com_codigo_errado_e_arquivo_sem_titulo_voltam_para_a_classe_da_subpasta(tmp_path, capsys):
-    d = tmp_path / "Maracuja"
+    d = tmp_path / "ClasseC"
     d.mkdir()
-    outra = tmp_path / "Coco"
+    outra = tmp_path / "ClasseB"
     outra.mkdir()
     for i in range(6):
-        _dx(outra / f"COC-01-01-2020-AD-A-{i + 1},0%_T1.dx", f"COC-01-01-2020-AD-A-{i + 1},0%_T1", 4000, 10000, 100)
+        _dx(outra / f"CLB-01-01-2099-AD-A-{i + 1},0%_T1.dx", f"CLB-01-01-2099-AD-A-{i + 1},0%_T1", 4000, 10000, 100)
     for i in range(20):
-        _dx(d / f"MAR-01-01-2020-AD-A-{i + 1},0%_T1.dx", f"MAR-01-01-2020-AD-A-{i + 1},0%_T1", 4000, 10000, 100)
-    for i in range(3):    # titulo com o codigo errado: viraria a classe-fantasma "AR"
-        _dx(d / f"MAR-01-01-2020-AD-A-{i + 30},0%_T2.dx", f"AR-01-01-2020-AD-A-{i + 30},0%_T2", 4000, 10000, 100)
+        _dx(d / f"CLC-01-01-2099-AD-A-{i + 1},0%_T1.dx", f"CLC-01-01-2099-AD-A-{i + 1},0%_T1", 4000, 10000, 100)
+    for i in range(3):    # titulo com o codigo errado: viraria a classe-fantasma "LC"
+        _dx(d / f"CLC-01-01-2099-AD-A-{i + 30},0%_T2.dx", f"LC-01-01-2099-AD-A-{i + 30},0%_T2", 4000, 10000, 100)
     _dx(d / "medida solta.dx", "medida solta", 4000, 10000, 100)    # sem padrao: caia no nome da subpasta
     _, _, rot, _, _, meta = dados_io.load_dx(str(tmp_path), extrair_conc=True)
-    assert set(rot) == {"MAR", "COC"}                # sem classe-fantasma "AR" nem "medida solta"
-    assert "reatribuidos a 'MAR'" in capsys.readouterr().out
+    assert set(rot) == {"CLC", "CLB"}                # sem classe-fantasma "LC" nem "medida solta"
+    assert "reatribuidos a 'CLC'" in capsys.readouterr().out

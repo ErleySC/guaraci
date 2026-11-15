@@ -1,7 +1,7 @@
-"""quantificacao_pares.py -- um modelo de quantificacao (N3) por par OLEO x ADULTERANTE.
+"""quantificacao_pares.py -- um modelo de quantificacao (N3) por par ESPECIE x ADULTERANTE.
 
 A regressao por especie do pipeline junta os adulterantes de uma mesma especie num modelo so'; quem
-precisa da figura de merito DE CADA PAR (ex.: LOD de coco+soja contra coco+milho) roda uma analise por
+precisa da figura de merito DE CADA PAR (ex.: LOD da especie A com o adulterante S contra a mesma especie com M) roda uma analise por
 par. Este modulo faz isso sem mudar o motor: para cada subpasta de `pasta_dados` (uma por especie/classe)
 e cada adulterante achado nos nomes dos arquivos (`..._AD-<letra>-<teor>%_T<n>.dx`) monta uma pasta de
 entrada com os arquivos desse par MAIS os puros da especie e roda `pipeline.executar` com nivel N3. Cada
@@ -10,7 +10,7 @@ corrida guarda o seu proprio `config_efetiva.yaml` e `Tables/regressao_figuras_d
 Saida: `<saida>/tabela_pares.csv` (uma linha por par; par que falhou fica com `erro`, nunca some) e,
 se pedido, a correlacao de Spearman entre o LOD e a diferenca de indice de iodo.
 
-Uso: `python -m guaraci.quantificacao_pares PASTA_DADOS SAIDA [--config config.yaml] [--iodo iodo.csv]`.
+Uso: `guaraci pares PASTA_DADOS SAIDA [--config config.yaml] [--iodo-especies CSV --iodo-adulterantes CSV]`.
 """
 from __future__ import annotations
 
@@ -116,9 +116,9 @@ def rodar_pares(pasta_dados: str, saida: str, cfg_base: Optional[Any] = None, **
     return linhas
 
 
-def correlacao_lod_iodo(linhas: Sequence[Dict[str, Any]], iodo_oleo: Dict[str, float],
+def correlacao_lod_iodo(linhas: Sequence[Dict[str, Any]], iodo_especie: Dict[str, float],
                         iodo_adulterante: Dict[str, float]) -> Dict[str, Any]:
-    """Spearman entre o LOD de cada par e |iodo do oleo - iodo do adulterante|.
+    """Spearman entre o LOD de cada par e |iodo da especie - iodo do adulterante|.
 
     Pares sem LOD numerico, ou sem indice de iodo conhecido, ficam de fora e sao contados."""
     from scipy.stats import spearmanr
@@ -128,7 +128,7 @@ def correlacao_lod_iodo(linhas: Sequence[Dict[str, Any]], iodo_oleo: Dict[str, f
     for r in linhas:
         try:
             lod = float(r.get("lod", ""))
-            d = abs(float(iodo_oleo[str(r["especie"])]) - float(iodo_adulterante[str(r["adulterante"])]))
+            d = abs(float(iodo_especie[str(r["especie"])]) - float(iodo_adulterante[str(r["adulterante"])]))
         except (TypeError, ValueError, KeyError):
             fora += 1
             continue
@@ -147,7 +147,7 @@ def correlacao_lod_iodo(linhas: Sequence[Dict[str, Any]], iodo_oleo: Dict[str, f
 def _ler_mapa(caminho: str) -> Dict[str, float]:
     with open(caminho, encoding="utf-8", newline="") as fh:
         return {r[0].strip(): float(r[1].replace(",", ".")) for r in csv.reader(fh)
-                if len(r) >= 2 and r[0].strip() and r[0].strip().lower() not in ("oleo", "especie", "adulterante")}
+                if len(r) >= 2 and r[0].strip() and r[0].strip().lower() not in ("especie", "adulterante")}
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

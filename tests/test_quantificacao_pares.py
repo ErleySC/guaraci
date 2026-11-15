@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Um modelo de quantificacao por par oleo x adulterante e a tabela de figuras de merito em CSV."""
+"""Um modelo de quantificacao por par especie x adulterante e a tabela de figuras de merito em CSV."""
 from __future__ import annotations
 
 import csv
@@ -25,16 +25,16 @@ def _raiz(tmp_path, adulterantes=("S", "M")):
     wn = np.linspace(4000, 10000, 200)
     base = np.exp(-((wn - 7000) / 1500.0) ** 2) + 0.3
     raiz = tmp_path / "dados"
-    d = raiz / "OLA"
+    d = raiz / "CLA"
     d.mkdir(parents=True)
     for r in range(3):
-        _dx(d / f"OLA-01-01-2020_T{r + 1}.dx", f"OLA-01-01-2020_T{r + 1}",
+        _dx(d / f"CLA-01-01-2099_T{r + 1}.dx", f"CLA-01-01-2099_T{r + 1}",
             base + rng.normal(0, 0.002, wn.size), wn)
     for k, ad in enumerate(adulterantes):
         banda = np.exp(-((wn - (5200 + 900 * k)) / 200.0) ** 2)
         for teor in range(1, 11):
             for r in range(3):
-                nome = f"OLA-01-01-2020-AD-{ad}-{teor},0%_T{r + 1}"
+                nome = f"CLA-01-01-2099-AD-{ad}-{teor},0%_T{r + 1}"
                 _dx(d / f"{nome}.dx", nome, base + 0.05 * teor * banda + rng.normal(0, 0.002, wn.size), wn)
     return str(raiz)
 
@@ -42,9 +42,9 @@ def _raiz(tmp_path, adulterantes=("S", "M")):
 def test_achar_pares_separa_por_adulterante_e_exige_puros(tmp_path):
     raiz = _raiz(tmp_path)
     pares = qp.achar_pares(raiz)
-    assert set(pares) == {("OLA", "S"), ("OLA", "M")}
-    assert len(pares[("OLA", "S")]["misturas"]) == 30 and len(pares[("OLA", "S")]["puros"]) == 3
-    for f in list(Path(raiz, "OLA").glob("OLA-01-01-2020_T*.dx")):
+    assert set(pares) == {("CLA", "S"), ("CLA", "M")}
+    assert len(pares[("CLA", "S")]["misturas"]) == 30 and len(pares[("CLA", "S")]["puros"]) == 3
+    for f in list(Path(raiz, "CLA").glob("CLA-01-01-2099_T*.dx")):
         f.unlink()
     assert qp.achar_pares(raiz) == {}          # sem puro nao ha' ponto zero: o par nao e' tentado
 
@@ -55,7 +55,7 @@ def test_um_modelo_por_par_grava_tabela_e_csv_de_merito(tmp_path):
     linhas = qp.rodar_pares(raiz, saida, None, wn_min=4000.0, wn_max=10000.0, sg_window=11, default_preprocessing="msc_sg_mc",
                             n_permutations=3, n_permutations_wold=3, n_bootstrap_vip=3, n_bootstrap_bca=10,
                             n_monte_carlo=2, max_lvs=6)
-    assert [(r["especie"], r["adulterante"]) for r in linhas] == [("OLA", "M"), ("OLA", "S")]
+    assert [(r["especie"], r["adulterante"]) for r in linhas] == [("CLA", "M"), ("CLA", "S")]
     for r in linhas:
         assert r["erro"] == "", r["erro"]
         assert float(r["r2cv"]) > 0.9 and float(r["lod"]) > 0 and int(r["n_lv"]) >= 1
