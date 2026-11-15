@@ -79,3 +79,27 @@ def test_titulo_com_codigo_errado_e_arquivo_sem_titulo_voltam_para_a_classe_da_s
     _, _, rot, _, _, meta = dados_io.load_dx(str(tmp_path), extrair_conc=True)
     assert set(rot) == {"CLC", "CLB"}                # sem classe-fantasma "LC" nem "medida solta"
     assert "reatribuidos a 'CLC'" in capsys.readouterr().out
+
+
+def test_prescan_com_janela_preve_o_mesmo_descarte_que_a_carga(pasta_mista):
+    sem = dados_io.prescan_dx(pasta_mista)                      # moda: os 3 puros de faixa larga seriam descartados
+    assert sem["n_fora_da_faixa"] == 3
+    com = dados_io.prescan_dx(pasta_mista, (4540.0, 9500.0))    # janela NIR: saem os 6 cortados, os puros ficam
+    assert com["n_fora_da_faixa"] == 6 and com["n_apos_descarte"] == 3
+    mir = dados_io.prescan_dx(pasta_mista, (300.0, 4000.0))
+    assert mir["n_fora_da_faixa"] == 0
+
+
+def test_ponto_zero_por_cento_entra_na_curva_mesmo_com_misturas_em_outra_faixa(tmp_path):
+    """Puros em 0-15800 e metade das misturas cortadas em 4000: o teor 0 % tem de continuar na carga."""
+    d = tmp_path / "classe"
+    d.mkdir()
+    for i in range(3):
+        _dx(d / f"X-01-01-2099_T{i + 1}.dx", f"X-01-01-2099_T{i + 1}", 0, 15800, 400)
+    for i in range(4):     # misturas inteiras (cobrem a janela)
+        _dx(d / f"X-01-01-2099-AD-S-{i + 1},0%_T1.dx", f"X-01-01-2099-AD-S-{i + 1},0%_T1", 0, 15800, 400)
+    for i in range(9):     # misturas de outro adulterante, cortadas: viram a moda
+        _dx(d / f"X-01-01-2099-AD-M-{i + 1},0%_T1.dx", f"X-01-01-2099-AD-M-{i + 1},0%_T1", 299, 4000, 100)
+    wn, X, rot, conc, *_ = dados_io.load_dx(str(d), extrair_conc=True, janela=(4540.0, 9500.0))
+    conc = np.asarray(conc, float)
+    assert X.shape[0] == 7 and int((conc == 0).sum()) == 3 and int((conc > 0).sum()) == 4

@@ -14,14 +14,15 @@ Leitor, quantificação por par e VIP/SR (2026-11-14):
 - **Leitor `.dx`: óleo puro não é mais descartado.** O eixo comum é a interseção dos eixos; um arquivo
   exportado em outra faixa (por exemplo 299–4000 cm⁻¹, sem NIR) encolhia a grade e jogava fora os
   espectros que cobriam a faixa pedida. Agora, com a faixa de trabalho conhecida, só ficam os arquivos
-  que cobrem pelo menos 95 % dela; os demais são listados no aviso.
+  que cobrem pelo menos 95 % dela; os demais são listados no aviso. A conferência antes de rodar
+  (`prescan_dx`) usa o mesmo critério e passa a ler também o `##FIRSTX`.
 - **Rótulo de classe por subpasta.** Um erro de digitação no código do `##TITLE` criava classes
   fantasmas de uma amostra; o código dominante da subpasta (pelo menos 80 %) passa a valer.
 - **`divisao_calibracao: spxy`** (Galvão et al. 2005) para quantificação, para reproduzir protocolos
   que particionam por Kennard-Stone estendido; use junto com `validacao_group_aware: false`.
 - **Quantificação:** `Tables/regressao_figuras_de_merito.csv` (LOD, LOQ, SEN, SEL, RMSEC/CV/P por
   modelo) e `Tables/regressao_vip_sr.csv` com a figura VIP × SR do PLS final.
-- **`guaraci pares PASTA_DADOS SAIDA`**: um modelo por par espécie × adulterante e
+- **Tela `[3.7]` Quantificação por par no menu** e `guaraci pares PASTA_DADOS SAIDA`: um modelo por par espécie × adulterante e
   `tabela_pares.csv`; opcionalmente a correlação de Spearman do LOD com o contraste de índice de iodo.
 
 Saturação do detector (2026-11-14):

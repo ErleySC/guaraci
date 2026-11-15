@@ -3883,7 +3883,7 @@
         "forma": "funcao"
       },
       "prescan_dx": {
-        "assinatura": "(pasta: str) -> dict[str, Any]",
+        "assinatura": "(pasta: str, janela: Union[None, tuple[float, float]] = None) -> dict[str, Any]",
         "forma": "funcao"
       },
       "resumo_correcoes_locais": {

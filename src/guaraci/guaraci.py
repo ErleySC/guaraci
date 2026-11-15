@@ -2492,7 +2492,7 @@ _YAML_TOCADO = [False]   # 1.4/1.5 gravaram ou leram o YAML: o menu refaz a foto
 
 #: Telas de passos (pedem caminho, rodam e mostram o resultado). Antes, depois de rodar ou de um erro
 #: (arquivo nao encontrado), voltavam sozinhas para o grupo; agora a tela reabre e so' o voltar sai dela.
-_TELAS_DE_PASSOS = {"selecao_amostras", "predicao", "comparar", "monitorar", "hsi", "relatorios", "hardware"}
+_TELAS_DE_PASSOS = {"selecao_amostras", "pares", "predicao", "comparar", "monitorar", "hsi", "relatorios", "hardware"}
 _VOLTOU = [False]     # o ultimo prompt de tela recebeu a tecla de voltar
 
 
@@ -6176,6 +6176,56 @@ def _menu_comparar(cfg: Optional[Config] = None) -> None:
     _pause()
 
 
+def _menu_pares(cfg: Optional[Config] = None) -> None:
+    """[3.7] Quantificacao por par especie x adulterante (mesmo motor de `guaraci pares`, com a configuracao atual)."""
+    cfg = cfg or Config()
+    is_pt = _lang() == "PT"
+    from guaraci import quantificacao_pares as qp
+    atual = str(getattr(cfg, "input_folder", "") or "")
+    pasta = _perguntar("pares", cfg, 1, 3, "Pasta com uma subpasta por especie" if is_pt
+                       else "Folder with one subfolder per species", "dados/especies", atual if os.path.isdir(atual) else "")
+    if not pasta:
+        return
+    if not os.path.isdir(pasta):
+        console.print(f"  [{PR}]{'Pasta nao encontrada' if is_pt else 'Folder not found'}: {escape(pasta)}[/{PR}]")
+        _pause(); return
+    saida = _perguntar("pares", cfg, 2, 3, "Pasta de saida" if is_pt else "Output folder", "resultados_pares",
+                       os.path.join(os.path.dirname(os.path.abspath(pasta)), _nome_pasta("resultados_pares")))
+    if not saida:
+        return
+    extras = _opcoes_extras("pares", cfg, [
+        ("--iodo-especies=", "CSV especie,iodo para a correlacao do LOD com o iodo", "CSV species,iodine for the LOD x iodine correlation"),
+        ("--iodo-adulterantes=", "CSV letra,iodo dos adulterantes", "CSV letter,iodine of the adulterants")])
+    if extras is None:
+        return
+    iodo_e = iodo_a = None
+    for i, t in enumerate(extras):
+        if t.startswith("--iodo-especies="):
+            iodo_e = t.split("=", 1)[1]
+        elif t.startswith("--iodo-adulterantes="):
+            iodo_a = t.split("=", 1)[1]
+        elif t == "--iodo-especies" and i + 1 < len(extras):
+            iodo_e = extras[i + 1]
+        elif t == "--iodo-adulterantes" and i + 1 < len(extras):
+            iodo_a = extras[i + 1]
+    try:
+        linhas = qp.rodar_pares(pasta, saida, cfg)
+    except (ValueError, OSError) as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
+        _pause(); return
+    for r in linhas:
+        resto = f"erro: {r['erro']}" if r.get("erro") else f"LOD={r.get('lod') or '-'}  RMSECV={r.get('rmsecv') or '-'}  VLs={r.get('n_lv') or '-'}"
+        console.print(f"  {escape(str(r['especie']))} + {escape(str(r['adulterante']))}: {escape(resto)}")
+    console.print(f"\n  [{PG}]{'Tabela' if is_pt else 'Table'}: {escape(os.path.join(saida, 'tabela_pares.csv'))}[/{PG}]")
+    if iodo_e and iodo_a:
+        try:
+            c = qp.correlacao_lod_iodo(linhas, qp._ler_mapa(iodo_e), qp._ler_mapa(iodo_a))
+            console.print(f"  Spearman LOD x |delta iodo|: rho={c['rho']:.3f} p={c['p']:.4f} n={c['n']} {escape(str(c['aviso']))}")
+        except (ValueError, OSError, KeyError) as e:
+            console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
+    _pause()
+
+
 def _menu_relatorios(cfg: Optional[Config] = None) -> None:
     """[5.2] Relatorios de uma execucao (mesmos geradores de `guaraci relatorio`)."""
     cfg = cfg or Config()
@@ -6986,7 +7036,12 @@ def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool],
         # (neste ramo `modo_chk` ja e "dx": `n_dx` so conta arquivos nesse modo)
         try:
             from guaraci.dados_io import prescan_dx
-            pre = prescan_dx(str(pasta))
+            _j = (_cfgv(cfg, "faixa_min_cm", None), _cfgv(cfg, "faixa_max_cm", None))
+            try:
+                _janela = (float(_j[0]), float(_j[1])) if None not in _j else None
+            except (TypeError, ValueError):
+                _janela = None
+            pre = prescan_dx(str(pasta), _janela)
         except (OSError, ValueError) as _e_pre:  # diagnostico e' best-effort
             checks.append((None, _t("chk_prescan_erro", erro=_e_pre)))
         else:

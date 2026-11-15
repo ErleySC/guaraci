@@ -90,6 +90,7 @@ PASTAS_EXECUCAO: Dict[str, Tuple[str, str]] = {
     "relatorio": ("relatorio", "report"),
     "resultados": ("resultados", "results"),          # pasta_saida dos exemplos
     "resultados_anova": ("resultados_anova", "anova_results"),
+    "resultados_pares": ("resultados_pares", "pair_results"),
     "resultados_vip": ("resultados_vip", "vip_results"),
     "resultados_monitoramento": ("resultados_monitoramento", "monitoring_results"),
     "resultados_transferencia": ("resultados_transferencia", "transfer_results"),

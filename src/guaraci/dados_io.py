@@ -1484,7 +1484,7 @@ def sanitizar_metadados(df: "pd.DataFrame") -> "pd.DataFrame":
     return limpo.drop(columns=presentes)
 
 
-def prescan_dx(pasta: str) -> Dict[str, Any]:
+def prescan_dx(pasta: str, janela: Optional[Tuple[float, float]] = None) -> Dict[str, Any]:
     """Varredura BARATA dos cabecalhos .dx, para avisar ANTES de executar.
 
     Le apenas o cabecalho JCAMP-DX (`##TITLE=` e `##LASTX=`), parando no
@@ -1507,6 +1507,9 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
        protecao contra vazamento de replica -- exatamente o que a validacao
        group-aware existe para impedir.
 
+    Com `janela=(wn_min, wn_max)` o criterio e' o mesmo de `load_dx`: ficam os arquivos que cobrem a
+    janela de analise (nao a moda do xmax); sem ela vale a moda.
+
     Nao levanta excecao: e' diagnostico best-effort. Arquivo ilegivel ou sem
     cabecalho reconhecivel entra em `n_sem_cabecalho` e segue.
 
@@ -1527,15 +1530,18 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     arquivos = _glob.glob(os.path.join(str(pasta), "**", "*.dx"), recursive=True)
     # (caminho, lastx, mae_id_ou_None) por arquivo legivel.
     lidos: List[Tuple[str, float, Optional[str]]] = []
+    primeiros: List[float] = []
     n_sem_cabecalho = 0
 
     for caminho in arquivos:
-        titulo = lastx = None
+        titulo = lastx = firstx = None
         try:
             with open(caminho, "r", encoding="latin-1", errors="replace") as f:
                 for linha in f:
                     if linha.startswith("##TITLE="):
                         titulo = linha[len("##TITLE="):].strip()
+                    elif linha.startswith("##FIRSTX="):
+                        firstx = linha[len("##FIRSTX="):].strip()
                     elif linha.startswith("##LASTX="):
                         lastx = linha[len("##LASTX="):].strip()
                     elif linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
@@ -1552,6 +1558,10 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
 
         info = parse_title(titulo) if titulo else None
         mae = str(info["mae_id"]) if info and info.get("mae_id") else None
+        try:
+            primeiros.append(float(str(firstx).replace(",", ".")))
+        except (TypeError, ValueError):
+            primeiros.append(min(0.0, valor_lastx))
         lidos.append((caminho, valor_lastx, mae))
 
     faixa_dominante: Optional[float] = None
@@ -1567,6 +1577,14 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
         valores, contagens = np.unique(chave, return_counts=True)
         faixa_dominante = float(valores[int(np.argmax(contagens))])
         incompat = np.abs(chave - faixa_dominante) >= 50.0
+        if janela is not None and float(janela[1]) > float(janela[0]):
+            j0, j1 = float(janela[0]), float(janela[1])
+            cobre = np.array([
+                (min(max(a, b), j1) - max(min(a, b), j0)) / (j1 - j0) >= 0.95
+                for a, b in zip(primeiros, maxes)])
+            if cobre.any():
+                incompat = ~cobre
+                faixa_dominante = float(np.median(maxes[cobre]))
         n_fora = int(incompat.sum())
         if n_fora:
             # A especie vem da PASTA (o layout esperado e' uma subpasta por
