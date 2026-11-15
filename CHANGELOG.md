@@ -22,7 +22,7 @@ Leitor, quantificação por par e VIP/SR (2026-11-14):
   que particionam por Kennard-Stone estendido; use junto com `validacao_group_aware: false`.
 - **Quantificação:** `Tables/regressao_figuras_de_merito.csv` (LOD, LOQ, SEN, SEL, RMSEC/CV/P por
   modelo) e `Tables/regressao_vip_sr.csv` com a figura VIP × SR do PLS final.
-- **Tela `[3.7]` Quantificação por par no menu** e `guaraci pares PASTA_DADOS SAIDA`: um modelo por par espécie × adulterante e
+- **Tela `[3.7]` Quantificação por par no menu** e `guaraci pares PASTA_DADOS [--saida PASTA]` (com `--ajuda`, `--idioma` e o cenário `guaraci exemplo pares`, como os demais comandos): um modelo por par espécie × adulterante e
   `tabela_pares.csv`; opcionalmente a correlação de Spearman do LOD com o contraste de índice de iodo.
 
 Saturação do detector (2026-11-14):

@@ -338,7 +338,7 @@ COMANDOS: Dict[str, Dict[str, Any]] = {
     "transferir": dict(grupo="quantificar", uso="transferir --mestre M.csv --escravo E.csv --novos N.csv [--metodo ds|pds]",
                        faz=("Converte espectros de um instrumento novo para o espaco do instrumento do modelo (DS ou PDS).",
                             "Converts spectra from a new instrument to the space of the model's instrument (DS or PDS).")),
-    "pares": dict(grupo="quantificar", uso="pares PASTA_DADOS SAIDA [--config CONFIG.yaml] [--iodo-especies CSV --iodo-adulterantes CSV]",
+    "pares": dict(grupo="quantificar", uso="pares PASTA_DADOS [--saida PASTA] [--config CONFIG.yaml]",
                   faz=("Uma quantificacao N3 por par especie x adulterante (subpastas por especie, teor no nome) e a tabela de figuras de merito.",
                        "One N3 quantification per species x adulterant pair (one subfolder per species, content in the name) and the figures-of-merit table.")),
     "relatorio": dict(grupo="graficos", uso="relatorio PASTA [--formato pdf,docx,xlsx,tex,pptx]",

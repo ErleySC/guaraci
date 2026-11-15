@@ -1672,7 +1672,7 @@ e o N2 liga; etapas de classificação ficam desligadas em objetivo que não é 
 método final (viram sugestão). Combinação sem remédio seguro é recusada (ex.: nível N3 no modo csv
 sem `coluna_concentracao`). O `cfg` do usuário volta aos valores escolhidos depois da execução.
 
-**Um modelo por par espécie × adulterante.** No menu, tela **[3.7] Quantificação por par** (modo Avançado: tecla `M`; o caminho direto `3.7` abre a tela nos dois modos), que usa a configuração atual; na linha de comando, `guaraci pares PASTA_DADOS SAIDA
+**Um modelo por par espécie × adulterante.** No menu, tela **[3.7] Quantificação por par** (modo Avançado: tecla `M`; o caminho direto `3.7` abre a tela nos dois modos), que usa a configuração atual; na linha de comando, `guaraci pares PASTA_DADOS [--saida PASTA]
 [--config config.yaml] [--iodo-especies especies.csv --iodo-adulterantes adulterantes.csv]` acha, em cada
 subpasta de espécie, as misturas de cada adulterante (código `-X-teor%` no nome) junto com os
 espectros puros, roda uma quantificação N3 por par e grava `tabela_pares.csv` (LOD, LOQ, SEN, R²CV,

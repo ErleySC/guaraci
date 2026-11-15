@@ -17,6 +17,7 @@ Cada cenário gera dados sintéticos por código próprio e a configuração pro
 | imagens | `hsi` | Gera 16 cubos ENVI sinteticos de 2 classes (4 objetos por classe, 2 vistas cada) e roda o fluxo HSI. | `guaraci exemplo hsi` e `guaraci run config.yaml` | `tests/test_exemplos_e_comandos.py` |
 | quantificar | `transferir` | Gera 12 amostras lidas nos dois instrumentos e 20 espectros novos do segundo, e os converte para o primeiro. | `guaraci exemplo transferir` e `guaraci transferir --mestre mestre.csv --escravo escravo.csv --novos novos_escravo.csv` | `tests/test_exemplos_e_comandos.py` |
 | monitorar | `monitorar` | Calibra em 5 lotes em controle e acompanha 6 lotes novos, os 2 ultimos com deriva simulada. | `guaraci exemplo monitorar` e `guaraci monitorar --referencia referencia.csv --novos novos.csv --lote lote --id amostra` | `tests/test_exemplos_e_comandos.py` |
+| quantificar | `pares` | Gera espectros .dx sinteticos de 2 classes, cada uma com 3 puros e 8 teores de um adulterante (2 replicatas), e ajusta um modelo por par. | `guaraci exemplo pares` e `guaraci pares dados` | `tests/test_exemplos_e_comandos.py` |
 | classificar | `fluorescencia_eem` | Gera 18 matrizes excitacao-emissao sinteticas de 3 classes (2 fluoroforos, a classe muda a proporcao) e classifica o vetor achatado. | `guaraci exemplo fluorescencia_eem` e `guaraci run config.yaml` | `tests/test_exemplos_e_comandos.py` |
 | classificar | `cromatograma_gcms` | Gera 18 cromatogramas de TIC sinteticos de 3 classes (razao entre dois picos e pequeno deslocamento de retencao) e classifica. | `guaraci exemplo cromatograma_gcms` e `guaraci run config.yaml` | `tests/test_exemplos_e_comandos.py` |
 | modelar | `vip` | Gera 3 classes com 12 variaveis (so as 3 primeiras separam as classes) e mostra o VIP e a estabilidade nas dobras agrupadas. | `guaraci exemplo vip` e `guaraci vip tabela.csv --classe classe --grupo amostra` | `tests/test_exemplos_e_comandos.py` |
@@ -69,8 +70,8 @@ Cada cenário gera dados sintéticos por código próprio e a configuração pro
 | `fluorescencia` | 200-800 nm (use CSV) | MC (a intensidade e proporcional a concentracao; SNV divide cada espectro pelo proprio desvio e apaga essa informacao -- use SNV+MC so para classificar por forma do espectro) | csv |
 | `hplc` | Tempo de retencao ou tabela de compostos (sem corte) | MC (cromatograma inteiro: autoscaling amplifica o ruido da linha de base); alinhe a retencao (COW) antes | csv |
 | `gc-ms` | Retencao, compostos ou m/z (sem corte) | MC (cromatograma inteiro: autoscaling amplifica o ruido da linha de base), apos alinhar os picos (COW) | csv |
-| `nmr` | 0-12 ppm (deslocamento quimico) | SNV ou PQN + MC (apos binning) | csv |
-| `ims` | 5-50 ms (tempo de deriva) | SNV+SG+MC (apos alinhamento por tempo de deriva) | csv |
+| `nmr` | 0-12 ppm (deslocamento quimico) | SNV+MC (o aplicado) ou PQN+MC (preset pqn_mc), apos binning e com agua e TSP excluidos (faixas_excluir) | csv |
+| `ims` | 5-50 ms (tempo de deriva) | SNV+SG+MC (apos alinhamento por tempo de deriva); SNV+MC se o modelo bater no teto de VLs. RIP so se o RIP nao cair com o analito | csv |
 | `eem` | Indice da grade (sem unidade fisica) | MC (PARAFAC usa a matriz sem pre-processamento) | eem |
 | `icp` | Nao se aplica (colunas sao elementos) | Autoscaling (elementos em escalas diferentes), com log opcional | multielementar |
 | `imagem` | Indice da variavel de cor (sem unidade fisica) | Autoscaling (MSC e SG nao fazem sentido para estatisticas de cor) | imagem |
@@ -90,6 +91,7 @@ Cada cenário gera dados sintéticos por código próprio e a configuração pro
 | `guaraci vip TABELA.csv --classe COL --grupo COL [--componentes N]` | Calcula o VIP do PLS e mostra em quantas dobras agrupadas cada variavel passa do limiar; VIP > 1 e regra pratica, nao teste. |
 | `guaraci monitorar --referencia REF.csv --novos NOVOS.csv --lote COL` | Calibra o dominio do processo em lotes de referencia e alarma os lotes novos que sairam dele. |
 | `guaraci transferir --mestre M.csv --escravo E.csv --novos N.csv [--metodo ds|pds]` | Converte espectros de um instrumento novo para o espaco do instrumento do modelo (DS ou PDS). |
+| `guaraci pares PASTA_DADOS [--saida PASTA] [--config CONFIG.yaml]` | Uma quantificacao N3 por par especie x adulterante (subpastas por especie, teor no nome) e a tabela de figuras de merito. |
 | `guaraci relatorio PASTA [--formato pdf,docx,xlsx,tex,pptx]` | Gera os relatorios (PDF, Word, Excel, LaTeX, PowerPoint) de uma execucao ja feita. |
 | `guaraci assistente [PERGUNTA]` | Responde uma pergunta a partir do catalogo, sem rede (sem argumento, explica o uso; nas telas, tecla G). |
 | `guaraci ajuda [TOPICO]` | Explica uma opcao, tecnica, grafico, tela ou termo no mesmo gabarito (sem argumento, mostra o mapa de grupos). |
@@ -97,4 +99,4 @@ Cada cenário gera dados sintéticos por código próprio e a configuração pro
 | `guaraci manual [TOPICO|SECAO]` | Mostra o manual e os documentos que acompanham o programa (sem argumento, lista os topicos; com numero, a secao). |
 | `guaraci checar CONFIG [--dados] [--resultado PASTA] [--ficha]` | Pre-voo do assistente sem as telas: regras de configuracao e, com --dados, de dados; --resultado le uma execucao. Sai 1 com achado critico. |
 | `guaraci confianca [METODO]` | Mostra selo, evidencia, limites e como reproduzir um metodo ou opcao. |
-| `guaraci doctor` | Diagnostica o ambiente: dependencias, RAM e CPU. |
+| `guaraci doctor [--instalar [--sim]]` | Diagnostica o ambiente: dependencias, RAM e CPU. Com --instalar, instala o que falta (pede confirmacao; --sim nao pergunta). |

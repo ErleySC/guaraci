@@ -104,6 +104,10 @@ def _cmd_exemplo(args: Sequence[str]) -> int:
         print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_MONITORAR}")
         if rodar:
             return _rodar_monitorar_exemplo(r["pasta"])
+    elif cenario == "pares":
+        print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_PARES}")
+        if rodar:
+            return _rodar_pares_exemplo(r["pasta"])
     elif cenario == "transferir":
         print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_TRANSFERIR}")
         if rodar:
@@ -135,6 +139,11 @@ def _rodar_monitorar_exemplo(pasta: str) -> int:
                                    "--saida", pasta_execucao(pasta, "resultados_monitoramento")])
 
 
+def _rodar_pares_exemplo(pasta: str) -> int:
+    from guaraci import quantificacao_pares
+    return quantificacao_pares.executar([os.path.join(pasta, "dados"), "--saida", pasta_execucao(pasta, "resultados_pares")])
+
+
 def _rodar_transferir_exemplo(pasta: str) -> int:
     return _transferir_com_figura(["--mestre", os.path.join(pasta, "mestre.csv"),
                                    "--escravo", os.path.join(pasta, "escravo.csv"),
@@ -158,7 +167,7 @@ def _transferir_com_figura(args: Sequence[str]) -> int:
 
 # Exemplos rodados por comando proprio (sem config.yaml): a tela [1.1] do menu usa os mesmos.
 EXECUTORES_SEM_CONFIG = {"comparar": _rodar_anova_exemplo, "vip": _rodar_vip_exemplo, "monitorar": _rodar_monitorar_exemplo,
-                         "transferir": _rodar_transferir_exemplo}
+                         "pares": _rodar_pares_exemplo, "transferir": _rodar_transferir_exemplo}
 
 
 def _legenda_selos() -> str:
@@ -299,7 +308,7 @@ def subcomando(nome: str, args: Sequence[str]) -> int:
         return _cmd_assistente(list(args))
     if nome == "pares":
         from guaraci import quantificacao_pares
-        return quantificacao_pares.main(list(args))
+        return quantificacao_pares.executar(list(args))
     if nome == "checar":
         # Pre-voo do assistente pela linha de comando (mesmos argumentos de
         # `python -m guaraci.assistente_checar`): 0 sem achado critico, 1 com, 2 se nao carrega.

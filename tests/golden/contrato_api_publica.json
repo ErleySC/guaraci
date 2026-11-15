@@ -7841,12 +7841,20 @@
       }
     },
     "quantificacao_pares": {
+      "USO": {
+        "forma": "constante",
+        "tipo": "str"
+      },
       "achar_pares": {
         "assinatura": "(pasta_dados: str) -> dict[tuple[str, str], dict[str, list[str]]]",
         "forma": "funcao"
       },
       "correlacao_lod_iodo": {
         "assinatura": "(linhas: Sequence[dict[str, Any]], iodo_especie: dict[str, float], iodo_adulterante: dict[str, float]) -> dict[str, Any]",
+        "forma": "funcao"
+      },
+      "executar": {
+        "assinatura": "(argv: Union[None, Sequence[str]] = None) -> int",
         "forma": "funcao"
       },
       "rodar_pares": {

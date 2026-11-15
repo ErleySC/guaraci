@@ -16,6 +16,7 @@ __all__ = ["EXEMPLOS", "gerar", "comando_para_rodar", "listar"]
 
 COMANDO_TRANSFERIR = "guaraci transferir --mestre mestre.csv --escravo escravo.csv --novos novos_escravo.csv"
 COMANDO_VIP = "guaraci vip tabela.csv --classe classe --grupo amostra"
+COMANDO_PARES = "guaraci pares dados"
 COMANDO_MONITORAR = "guaraci monitorar --referencia referencia.csv --novos novos.csv --lote lote --id amostra"
 #: Explica o resultado do exemplo `vip`: so' v00-v02 foram construidas para separar as classes;
 #: as demais variaveis sao ruido e algumas (v08, v11) passam de 1 por acaso.
@@ -56,6 +57,10 @@ EXEMPLOS: Dict[str, Dict[str, Any]] = {
     "monitorar": dict(grupo="monitorar", nome=('Monitorar lotes de um processo (T2/Q)', 'Monitor batches of a process (T2/Q)'),
         faz=('Calibra em 5 lotes em controle e acompanha 6 lotes novos, os 2 ultimos com deriva simulada.', 'Calibrates on 5 in-control batches and follows 6 new batches, the last 2 with simulated drift.'),
         comando=COMANDO_MONITORAR, esperado=("resultados_monitoramento/tabelas/monitor_lotes.csv",)),
+    "pares": dict(grupo="quantificar", nome=('Quantificar adulterante por par especie x adulterante', 'Quantify an adulterant per species x adulterant pair'),
+        faz=('Gera espectros .dx sinteticos de 2 classes, cada uma com 3 puros e 8 teores de um adulterante (2 replicatas), e ajusta um modelo por par.',
+             'Generates synthetic .dx spectra of 2 classes, each with 3 pure spectra and 8 contents of an adulterant (2 replicates), and fits one model per pair.'),
+        comando=COMANDO_PARES, esperado=("resultados_pares/tabela_pares.csv",)),
     "fluorescencia_eem": dict(grupo="classificar", nome=('Classificar por fluorescencia excitacao-emissao (EEM)', 'Classify by excitation-emission fluorescence (EEM)'),
         faz=('Gera 18 matrizes excitacao-emissao sinteticas de 3 classes (2 fluoroforos, a classe muda a proporcao) e classifica o vetor achatado.',
              'Generates 18 synthetic excitation-emission matrices of 3 classes (2 fluorophores, the class changes their ratio) and classifies the flattened vector.'),
@@ -195,6 +200,33 @@ def _csv_monitorar(pasta: str, seed: int = 11) -> None:
     _escrever(pasta, "novos.csv", "\n".join([cab] + nov) + "\n")
 
 
+def _dx_pares(raiz: str, seed: int = 5) -> None:
+    """Arvore de .dx sinteticos: uma pasta por classe, puros sem `AD-` e misturas `..-AD-S-<teor>%_T<n>.dx`."""
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    wn = np.linspace(4000, 10000, 200)
+    base = np.exp(-((wn - 7000) / 1500.0) ** 2) + 0.3
+    banda = np.exp(-((wn - 5200) / 200.0) ** 2)
+
+    def dx(caminho: str, y: Any) -> None:
+        titulo = os.path.splitext(os.path.basename(caminho))[0]
+        corpo = "\n".join(f"{wn[k]:.4f} " + " ".join(f"{v:.6f}" for v in y[k:k + 5]) for k in range(0, wn.size, 5))
+        with open(caminho, "w", encoding="latin-1", newline="\n") as f:
+            f.write(f"##TITLE={titulo}\n##JCAMP-DX=4.24\n##DATA TYPE=NEAR INFRARED SPECTRUM\n##XUNITS=1/CM\n"
+                    f"##YUNITS=ABSORBANCE\n##XFACTOR=1\n##YFACTOR=1\n##FIRSTX={wn[0]}\n##LASTX={wn[-1]}\n"
+                    f"##NPOINTS={wn.size}\n##XYDATA=(X++(Y..Y))\n{corpo}\n##END=\n")
+    for k, classe in enumerate(("CLA", "CLB")):
+        pasta = os.path.join(raiz, classe)
+        os.makedirs(pasta, exist_ok=True)
+        forma = base * (1.0 + 0.15 * k)
+        for r in range(3):
+            dx(os.path.join(pasta, f"{classe}-01-01-2099_T{r + 1}.dx"), forma + rng.normal(0, 0.002, wn.size))
+        for teor in range(1, 9):
+            for r in range(2):
+                dx(os.path.join(pasta, f"{classe}-01-01-2099-AD-S-{teor},0%_T{r + 1}.dx"),
+                   forma + 0.05 * teor * banda + rng.normal(0, 0.002, wn.size))
+
+
 def _escrever_envi(pasta: str, nome: str, cubo: Any) -> None:
     """Par .hdr + .bin ENVI (float32, interleave bip) a partir de um cubo (linhas, colunas, bandas)."""
     import numpy as np
@@ -291,6 +323,9 @@ def gerar(cenario: str, pasta: str) -> Dict[str, Any]:
     elif cenario == "vip":
         _csv_vip(pasta)
         cfg = None
+    elif cenario == "pares":
+        _dx_pares(os.path.join(pasta, "dados"))
+        cfg = None
     elif cenario == "transferir":
         _csv_transferir(pasta)
         cfg = None
@@ -318,7 +353,7 @@ def gerar(cenario: str, pasta: str) -> Dict[str, Any]:
         _csv_comparar(pasta)
         cfg = None
     arquivos = {"comparar": ["tabela.csv"], "vip": ["tabela.csv"], "monitorar": ["referencia.csv", "novos.csv"],
-                "transferir": ["mestre.csv", "escravo.csv", "novos_escravo.csv"],
+                "transferir": ["mestre.csv", "escravo.csv", "novos_escravo.csv"], "pares": ["dados"],
                 "hsi": ["cubos"], "imagem": ["fotos"], "fluorescencia_eem": ["eem"],
                 "cromatograma_gcms": ["cromatogramas"]}.get(cenario, ["dados.csv"])
     if cfg is not None:

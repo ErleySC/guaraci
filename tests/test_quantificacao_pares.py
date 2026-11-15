@@ -89,3 +89,23 @@ def test_correlacao_lod_iodo_ignora_o_que_nao_tem_dado():
     assert r["n"] == 4 and r["fora"] == 2                 # E sem LOD, F sem iodo
     assert r["rho"] == -1.0                               # LOD cresce quando |delta iodo| cai
     assert qp.correlacao_lod_iodo(linhas[:2], iodo, {"S": 130.0})["aviso"]
+
+
+# ------------------------------------------------------------- linha de comando (mesmo padrao dos irmaos)
+def test_cli_ajuda_pt_en_e_erros_de_uso(capsys, tmp_path):
+    assert qp.executar(["--ajuda", "--idioma", "pt"]) == 0
+    assert "Uso: guaraci pares" in capsys.readouterr().out
+    assert qp.executar(["--help", "--idioma", "en"]) == 0
+    assert "Usage: guaraci pares" in capsys.readouterr().out
+    assert qp.executar([str(tmp_path / "nao_existe"), "--idioma", "pt"]) == 2
+    assert "nao existe" in capsys.readouterr().err
+    assert qp.executar([str(tmp_path), "--iodo-especies", "x.csv", "--idioma", "pt"]) == 2     # as duas tabelas de iodo vao juntas
+    assert "iodo" in capsys.readouterr().err.lower()
+
+
+def test_cli_roda_e_grava_a_tabela(tmp_path, capsys):
+    raiz = _raiz(tmp_path, adulterantes=("S",))
+    saida = tmp_path / "saida"
+    assert qp.executar([raiz, "--saida", str(saida), "--idioma", "pt"]) == 0
+    assert (saida / "tabela_pares.csv").is_file()
+    assert "CLA + S" in capsys.readouterr().out
