@@ -71,21 +71,21 @@ def _csv_espectral_ficticio(caminho: Path, eixo: np.ndarray) -> None:
 
 def test_aceitacao_tabular_perfil_ficticio_escrito_pelo_usuario(pq, tmp_path):
     """Um perfil que NUNCA existiu no pacote (matriz inventada pra' este
-    teste -- "resina de cupuacu"), escrito como YAML solto por um
+    teste -- "resina vegetal"), escrito como YAML solto por um
     usuario hipotetico, carregado pelo CAMINHO (nao pelo nome -- prova
     que nao precisa estar dentro de src/guaraci/perfis_matriz/ pra'
     funcionar) e aplicado ao pipeline sem alterar NADA em src/guaraci/."""
     from conftest import achar_pastas_run
 
-    caminho_perfil = tmp_path / "resina_cupuacu.yaml"
+    caminho_perfil = tmp_path / "resina_vegetal.yaml"
     caminho_perfil.write_text(yaml.safe_dump({
-        "descricao": "Resina de cupuacu por NIR (perfil ficticio de teste)",
+        "descricao": "Resina vegetal por NIR (perfil ficticio de teste)",
         "unidade_eixo": "cm-1",
         "eixo_min": 5000.0, "eixo_max": 9000.0,
         "default_preprocessing": "snv_sg_mc",
         "vocabulario": {
             "classe": "procedencia", "classe_plural": "procedencias",
-            "matriz": "resina de cupuacu",
+            "matriz": "resina vegetal",
             "alvo": "o teor de resina sintetica adicionada",
             "conforme": "pura", "nao_conforme": "adulterada",
         },
@@ -109,7 +109,7 @@ def test_aceitacao_tabular_perfil_ficticio_escrito_pelo_usuario(pq, tmp_path):
     runs = achar_pastas_run(cfg.output_root_folder)
     assert runs, "executar() nao criou saida para o perfil ficticio"
     card = next(Path(runs[0]).rglob("model_card.md")).read_text(encoding="utf-8")
-    assert "resina de cupuacu" in card
+    assert "resina vegetal" in card
     assert "procedencia" in card
     # nunca deve vazar vocabulario de NENHUMA matriz embutida no pacote
     assert "amostra vegetal" not in card and "adulterante M" not in card

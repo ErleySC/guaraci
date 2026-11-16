@@ -1,0 +1,278 @@
+"""catalogo_valores.py -- o que cada VALOR de uma opcao de escolha faz (tecla "?" nas listas numeradas).
+
+Cada campo de escolha da configuracao (pre-processamento, nivel, modo de entrada...) mostra uma lista
+numerada. "?" nessa lista pergunta qual item explicar e mostra o texto daqui: o que o valor liga, quando
+usar e o que ele NAO faz. Um teste confere que todo valor de todo campo de escolha tem texto em PT e EN,
+entao uma opcao nova sem explicacao quebra a suite. ASCII por convencao do CLI.
+"""
+from __future__ import annotations
+
+from typing import Dict, Optional, Tuple
+
+Texto = Tuple[str, str]      # (PT, EN)
+
+VALORES: Dict[str, Dict[str, Texto]] = {
+    "modo_entrada": {
+        "dx": ("Le uma pasta de espectros JCAMP-DX (.dx). A classe vem do nome do arquivo ou da subpasta.",
+               "Reads a folder of JCAMP-DX (.dx) spectra. The class comes from the file name or the subfolder."),
+        "csv": ("Le uma tabela CSV: uma linha por amostra, uma coluna por variavel (numero de onda, elemento, area de pico...).",
+                "Reads a CSV table: one row per sample, one column per variable (wavenumber, element, peak area...)."),
+        "imagem": ("Le fotos (JPG/PNG/TIFF), uma subpasta por classe, e extrai cor e, se quiser, textura de cada uma.",
+                   "Reads photos (JPG/PNG/TIFF), one subfolder per class, and extracts colour and optionally texture from each."),
+        "hsi": ("Le cubos hiperespectrais ENVI (.hdr + .bin), segmenta o objeto e classifica agregando por objeto fisico.",
+                "Reads ENVI hyperspectral cubes (.hdr + .bin), segments the object and classifies aggregating by physical object."),
+        "opus": ("Le espectros nativos Bruker OPUS (arquivos .0, .1...). Precisa do extra opcional do leitor.",
+                 "Reads native Bruker OPUS spectra (.0, .1... files). Needs the optional reader extra."),
+        "spc": ("Le espectros Thermo/Galactic .spc.", "Reads Thermo/Galactic .spc spectra."),
+        "sp": ("Le espectros PerkinElmer .sp.", "Reads PerkinElmer .sp spectra."),
+        "rmn": ("Le espectros de RMN ja processados (pasta Bruker ou JCAMP). Agrupe em janelas de ppm antes de modelar.",
+                "Reads already processed NMR spectra (Bruker folder or JCAMP). Bin into ppm windows before modelling."),
+        "hplc": ("Le cromatogramas de HPLC (pasta do fabricante ou tabela). Cada amostra vira um vetor de intensidades no tempo.",
+                 "Reads HPLC chromatograms (vendor folder or table). Each sample becomes an intensity-vs-time vector."),
+        "gcms": ("Le cromatogramas de GC-MS (TIC de arquivos ANDI-MS .cdf ou tabela).",
+                 "Reads GC-MS chromatograms (TIC from ANDI-MS .cdf files or a table)."),
+        "eem": ("Le matrizes de fluorescencia excitacao x emissao (uma por amostra) e classifica o vetor achatado; PARAFAC em [3.5].",
+                "Reads excitation x emission fluorescence matrices (one per sample) and classifies the flattened vector; PARAFAC in [3.5]."),
+        "multielementar": ("Le uma tabela amostra x elemento exportada do ICP-OES ou ICP-MS (trata <LOD, padrao interno e QC).",
+                           "Reads a sample x element table exported from ICP-OES or ICP-MS (handles <LOD, internal standard and QC)."),
+        "sintetico": ("Gera dados de demonstracao dentro do programa, sem arquivo. So serve para testar o fluxo.",
+                      "Generates demonstration data inside the program, with no file. Only for testing the workflow."),
+    },
+    "perfil_matriz": {
+        "generico": ("Sem preset de matriz: nenhuma faixa nem pre-processamento e imposto. Use quando nao ha perfil que combine.",
+                     "No matrix preset: no range or preprocessing is imposed. Use when no profile fits."),
+        "nir_dispersivo_1100_2498nm": ("NIR dispersivo de 1100 a 2498 nm (eixo em nm). Aplica a faixa e o pre-processamento de partida desse instrumento.",
+                                       "Dispersive NIR from 1100 to 2498 nm (axis in nm). Applies that instrument's starting range and preprocessing."),
+        "nir_ft_difuso": ("FT-NIR por reflectancia difusa (eixo em cm-1). Ponto de partida para solidos e liquidos medidos por reflectancia.",
+                          "Diffuse-reflectance FT-NIR (axis in cm-1). Starting point for solids and liquids measured by reflectance."),
+        "nir_transmitancia_8mm": ("NIR por transmitancia com 8 mm de caminho optico. Aplica a faixa e o pre-processamento de partida.",
+                                  "Transmittance NIR with an 8 mm optical path. Applies the starting range and preprocessing."),
+        "visnir_400_1100nm": ("Vis-NIR de 400 a 1100 nm (eixo em nm).", "Vis-NIR from 400 to 1100 nm (axis in nm)."),
+    },
+    "perfil_tecnica": {
+        "": ("Nao declarado: o programa nao presume a forma de aquisicao da imagem.",
+             "Not declared: the program assumes nothing about how the image was acquired."),
+        "bancada": ("Colorimetria digital com camera fixa em bancada (aquisicao controlada): garantia tipica de agrupamento alta.",
+                    "Digital colorimetry with a fixed benchtop camera (controlled acquisition): high typical grouping guarantee."),
+        "celular": ("Colorimetria digital com foto de celular (aquisicao informal): garantia tipica de agrupamento media.",
+                    "Digital colorimetry with a phone photo (informal acquisition): medium typical grouping guarantee."),
+        "generico": ("Sem preset de tecnica de aquisicao.", "No acquisition-technique preset."),
+        "scanner": ("Colorimetria digital com scanner de mesa (documentos, laminas planas): garantia tipica alta.",
+                    "Digital colorimetry with a flatbed scanner (documents, flat slides): high typical guarantee."),
+    },
+    "eixo_unidade": {
+        "": ("Nao declarado: o programa nao presume nenhuma unidade. Rotulos e orientacao do eixo ficam genericos.",
+             "Not declared: the program assumes no unit. Axis labels and orientation stay generic."),
+        "cm-1": ("Numero de onda em cm-1 (NIR, MIR). O eixo e desenhado em ordem decrescente.",
+                 "Wavenumber in cm-1 (NIR, MIR). The axis is drawn in descending order."),
+        "nm": ("Comprimento de onda em nm (NIR dispersivo, UV-Vis, fluorescencia, HSI). Eixo crescente.",
+               "Wavelength in nm (dispersive NIR, UV-Vis, fluorescence, HSI). Ascending axis."),
+        "raman_shift": ("Deslocamento Raman em cm-1 (Raman). Eixo crescente.", "Raman shift in cm-1 (Raman). Ascending axis."),
+        "min": ("Tempo de retencao em minutos (HPLC, GC).", "Retention time in minutes (HPLC, GC)."),
+        "ppm": ("Deslocamento quimico em ppm (RMN). O eixo e desenhado em ordem decrescente.", "Chemical shift in ppm (NMR). The axis is drawn in descending order."),
+        "ms": ("Tempo de deriva em milissegundos (IMS).", "Drift time in milliseconds (IMS)."),
+        "indice": ("Indice da variavel, sem unidade fisica (cor de imagem, tabela de variaveis).",
+                   "Variable index with no physical unit (image colour, variable table)."),
+    },
+    "tecnica_analitica": {
+        "": ("Nao declarar o instrumento: nenhum padrao de tecnica e aplicado.", "Do not declare the instrument: no technique defaults are applied."),
+        "ft-nir": ("FT-NIR: NIR de alta resolucao por transformada de Fourier; MSC+SG+MC como ponto de partida.",
+                   "FT-NIR: high-resolution Fourier-transform NIR; MSC+SG+MC as the starting point."),
+        "nir": ("NIR convencional com detector dispersivo (700 a 2500 nm tipico).", "Conventional dispersive-detector NIR (700 to 2500 nm typical)."),
+        "mir": ("Infravermelho medio (4000 a 400 cm-1): bandas fundamentais de absorcao molecular.",
+                "Mid-infrared (4000 to 400 cm-1): fundamental molecular absorption bands."),
+        "raman": ("Espalhamento Raman: complementar ao infravermelho; sugere AirPLS e remocao de raios cosmicos.",
+                  "Raman scattering: complementary to infrared; suggests AirPLS and cosmic-ray removal."),
+        "uv-vis": ("Absorbancia UV-Vis (eixo em nm); SNV+MC como ponto de partida.", "UV-Vis absorbance (axis in nm); SNV+MC as the starting point."),
+        "fluorescencia": ("Espectrofluorimetria 2D (emissao em nm).", "2D spectrofluorimetry (emission in nm)."),
+        "hplc": ("Cromatograma de HPLC (tempo de retencao em min).", "HPLC chromatogram (retention time in min)."),
+        "gc-ms": ("Compostos volateis: TIC de GC-MS (tempo em min).", "Volatile compounds: GC-MS TIC (time in min)."),
+        "nmr": ("RMN: impressao digital molecular; agrupe em janelas de ppm e exclua agua/padrao.",
+                "NMR: molecular fingerprint; bin into ppm windows and exclude water/standard."),
+        "ims": ("Espectrometria de mobilidade ionica (tempo de deriva em ms); o ganho muda entre injecoes.",
+                "Ion mobility spectrometry (drift time in ms); the gain changes between injections."),
+        "eem": ("Matriz excitacao x emissao por amostra; classifica o vetor achatado e decompoe por PARAFAC.",
+                "One excitation x emission matrix per sample; classifies the flattened vector and decomposes by PARAFAC."),
+        "icp": ("Tabela amostra x elemento (ICP-OES/MS): usa autoscaling, nunca MSC/SNV/SG.",
+                "Sample x element table (ICP-OES/MS): uses autoscaling, never MSC/SNV/SG."),
+        "imagem": ("Imagem digital (bancada, celular, scanner): extrai cor e textura.", "Digital image (bench, phone, scanner): extracts colour and texture."),
+        "hsi": ("Imagem hiperespectral: cubo espectral por pixel; SNV+MC por pixel.", "Hyperspectral imaging: spectral cube per pixel; SNV+MC per pixel."),
+        "generico": ("Qualquer dado multivariado: configure faixa e pre-processamento a mao.",
+                     "Any multivariate data: set range and preprocessing by hand."),
+    },
+    "hsi_calibracao": {
+        "nenhuma": ("Nao converte: os cubos ja estao em reflectancia (exportados pelo software da camera).",
+                    "No conversion: the cubes are already in reflectance (exported by the camera software)."),
+        "branco_escuro": ("Converte contagens brutas em reflectancia, R = (I - D)/(W - D), com os cubos WHITEREF e DARKREF. Nao use em cubo ja calibrado.",
+                          "Converts raw counts to reflectance, R = (I - D)/(W - D), using the WHITEREF and DARKREF cubes. Do not use on an already calibrated cube."),
+    },
+    "hsi_eixo_bandas": {
+        "recusar": ("Se os comprimentos de onda de um cubo diferem do primeiro em mais de 1 nm, recusa o estudo (padrao, o mais seguro).",
+                    "If a cube's wavelengths differ from the first by more than 1 nm, refuses the study (default, the safest)."),
+        "reamostrar": ("Interpola os cubos para o eixo do primeiro (ate meia banda). Use so para pequeno deslocamento de calibracao da mesma camera.",
+                       "Interpolates the cubes to the first one's axis (up to half a band). Only for a small calibration shift of the same camera."),
+    },
+    "hsi_validacao": {
+        "cv_objetos": ("Validacao cruzada por objeto: cada objeto e previsto sem ter entrado no ajuste; da sensibilidade e especificidade com intervalo (padrao).",
+                       "Cross-validation by object: each object is predicted without having entered the fit; gives sensitivity and specificity with intervals (default)."),
+        "holdout": ("Holdout de 20% dos objetos (metodo antigo). Use para reproduzir resultado anterior ou com poucos objetos.",
+                    "Holdout of 20% of the objects (old method). Use to reproduce an earlier result or with few objects."),
+    },
+    "hplc_detector": {
+        "UV": ("Usa o canal UV/DAD do cromatograma como vetor da amostra.", "Uses the chromatogram's UV/DAD channel as the sample vector."),
+        "FID": ("Usa o canal FID do cromatograma como vetor da amostra.", "Uses the chromatogram's FID channel as the sample vector."),
+    },
+    "eem_espalhamento": {
+        "nenhum": ("Nao trata o espalhamento Rayleigh/Raman: use se o exportador ja o removeu.",
+                   "Does not treat Rayleigh/Raman scattering: use if the exporter already removed it."),
+        "nan": ("Marca as diagonais de espalhamento como faltantes; o PARAFAC as ignora. Recomendado para EEM bruta.",
+                "Marks the scattering diagonals as missing; PARAFAC ignores them. Recommended for raw EEM."),
+        "zero": ("Zera as diagonais de espalhamento. Simples, mas cria um vale artificial.",
+                 "Sets the scattering diagonals to zero. Simple, but creates an artificial valley."),
+        "interp": ("Substitui as diagonais por interpolacao entre os vizinhos. Util para PCA, que nao aceita faltantes.",
+                   "Replaces the diagonals by interpolation between neighbours. Useful for PCA, which does not accept missing values."),
+    },
+    "icp_politica_censura": {
+        "substituir": ("Troca valores abaixo do limite (<LOD, ND) por LOD/raiz de 2 e mantem a linha.",
+                       "Replaces values below the limit (<LOD, ND) by LOD/sqrt(2) and keeps the row."),
+        "excluir": ("Exclui a linha que tem valor censurado. Perde amostras, mas nao inventa numero.",
+                    "Drops the row that has a censored value. Loses samples but invents no number."),
+    },
+    "unidade_agrupamento": {
+        "auto": ("O programa decide pelos dados: usa sessao quando cada sessao tem uma classe so e ha sessoes suficientes; senao mae_id, e diz o motivo.",
+                 "The program decides from the data: uses session when each session has one class and there are enough sessions; otherwise mae_id, and says why."),
+        "mae_id": ("A unidade independente e a amostra fisica (mae_id): testa o modelo em amostras novas.",
+                   "The independent unit is the physical sample (mae_id): tests the model on new samples."),
+        "sessao": ("A unidade independente e a sessao de coleta: testa o modelo em uma coleta nova. Exige varias sessoes por classe.",
+                   "The independent unit is the collection session: tests the model on a new collection. Needs several sessions per class."),
+    },
+    "nivel": {
+        "N1": ("Identificar a classe de cada amostra (PLS-DA e metricas de classificacao).",
+               "Identify each sample's class (PLS-DA and classification metrics)."),
+        "N2": ("Separar puro de adulterado (liga o DD-SIMCA, que aprende a classe pura).",
+               "Separate pure from adulterated (turns on DD-SIMCA, which learns the pure class)."),
+        "N3": ("Estimar o teor por regressao PLS e reportar figuras de merito. Precisa de coluna de concentracao.",
+               "Estimate the content by PLS regression and report figures of merit. Needs a concentration column."),
+    },
+    "objetivo": {
+        "auto": ("Deriva do nivel: gera as figuras e relatorios que combinam com ele (padrao).",
+                 "Derived from the level: generates the figures and reports that fit it (default)."),
+        "exploratorio": ("So exploracao (PCA, agrupamentos), sem modelo supervisionado.", "Exploration only (PCA, clustering), no supervised model."),
+        "classificacao": ("So as saidas de classificacao.", "Only the classification outputs."),
+        "quantificacao": ("So as saidas de quantificacao (regressao).", "Only the quantification (regression) outputs."),
+    },
+    "pre_processamento": {
+        "MSC+SG+MC": ("Corrige espalhamento multiplicativo (MSC), suaviza ou deriva (Savitzky-Golay) e centra na media. Ponto de partida para NIR/FT-NIR.",
+                      "Corrects multiplicative scatter (MSC), smooths or differentiates (Savitzky-Golay) and mean-centres. Starting point for NIR/FT-NIR."),
+        "SNV+SG+MC": ("Igual ao anterior, mas o espalhamento e corrigido por SNV (cada espectro padronizado sozinho, sem depender dos outros). Alternativa robusta.",
+                      "Same as the previous one, but scatter is corrected by SNV (each spectrum standardised on its own). Robust alternative."),
+        "Autoscaling": ("Centra e divide cada variavel pelo desvio padrao. Para tabelas com variaveis em unidades diferentes (elementos, areas de pico). Em espectro amplifica o ruido.",
+                        "Centres and divides each variable by its standard deviation. For tables with variables in different units (elements, peak areas). On spectra it amplifies noise."),
+        "Mean-centering": ("So centra na media: sem correcao de espalhamento nem suavizacao. Para dado ja tratado ou muito reprodutivel.",
+                           "Mean-centres only: no scatter correction or smoothing. For already treated or highly reproducible data."),
+        "SNV+MC": ("SNV e centragem, sem derivada. UV-Vis, fluorescencia, RMN e HSI.", "SNV and centring, no derivative. UV-Vis, fluorescence, NMR and HSI."),
+        "AirPLS+SG+MC": ("Subtrai a linha de base (AirPLS) antes de SG e centragem. Raman e espectros com fluorescencia de fundo.",
+                         "Subtracts the baseline (AirPLS) before SG and centring. Raman and spectra with background fluorescence."),
+        "Personalizado": ("Usa as etapas marcadas em 'Etapas do pre-processamento personalizado' (ordem fixa: AirPLS, SNV, PQN, EMSC, SG, MC, OSC), "
+                          "com janela, ordem e derivada dos campos vizinhos. Sem etapa marcada so centra. Mudar as etapas so tem efeito com esta opcao.",
+                          "Uses the steps ticked in 'Custom preprocessing steps' (fixed order: AirPLS, SNV, PQN, EMSC, SG, MC, OSC), "
+                          "with window, order and derivative from the neighbouring fields. With no step ticked it only centres. Changing the steps only matters with this option."),
+        "AirPLS+SNV+SG+MC": ("Linha de base (AirPLS), SNV, SG e centragem. Raman de quantificacao: alem da fluorescencia, normaliza a escala do sinal.",
+                             "Baseline (AirPLS), SNV, SG and centring. Quantitative Raman: besides fluorescence, normalises the signal scale."),
+        "PQN+MC": ("Normalizacao por quociente probabilistico (PQN) e centragem. RMN e IMS com diluicao variavel; exclua agua e padrao antes.",
+                   "Probabilistic quotient normalisation (PQN) and centring. NMR and IMS with variable dilution; exclude water and standard first."),
+    },
+    "etapas_pre_processamento": {
+        "airpls": ("AirPLS: estima e subtrai a linha de base (fluorescencia de fundo).", "AirPLS: estimates and subtracts the baseline (background fluorescence)."),
+        "snv": ("SNV: padroniza cada espectro (centra e divide pelo desvio), corrigindo espalhamento e escala.",
+                "SNV: standardises each spectrum (centres and divides by its deviation), correcting scatter and scale."),
+        "pqn": ("PQN: divide cada amostra pelo quociente mediano em relacao a um espectro de referencia (diluicao variavel).",
+                "PQN: divides each sample by the median quotient against a reference spectrum (variable dilution)."),
+        "emsc": ("EMSC: corrige espalhamento e uma linha de base polinomial usando o espectro medio do treino como referencia.",
+                 "EMSC: corrects scatter and a polynomial baseline using the training mean spectrum as reference."),
+        "sg": ("SG: suaviza ou deriva (Savitzky-Golay) com a janela, ordem e derivada dos campos vizinhos.",
+               "SG: smooths or differentiates (Savitzky-Golay) with the window, order and derivative of the neighbouring fields."),
+        "mc": ("MC: centra cada variavel na media do treino. Quase sempre a ultima etapa.", "MC: centres each variable on the training mean. Almost always the last step."),
+        "osc": ("OSC: remove direcoes do espectro sem relacao com as classes ou o teor. Mais agressivo; so vale dentro da validacao.",
+                "OSC: removes spectral directions unrelated to the classes or the content. More aggressive; only valid inside the validation."),
+    },
+    "saturacao": {
+        "auto": ("Acha absorbancia travada no teto do detector e tira do modelo as variaveis e espectros saturados, registrando o que saiu (padrao).",
+                 "Finds absorbance stuck at the detector ceiling and removes the saturated variables and spectra, recording what left (default)."),
+        "avisar": ("So avisa que ha saturacao; nada e removido.", "Only warns that there is saturation; nothing is removed."),
+        "nenhuma": ("Nao procura saturacao. Use se quer manter todas as variaveis do arquivo.", "Does not look for saturation. Use if you want to keep every variable of the file."),
+    },
+    "normalizacao": {
+        "nenhuma": ("Nao normaliza cada espectro (padrao).", "Does not normalise each spectrum (default)."),
+        "rip": ("Divide cada espectro pela intensidade do pico da janela de referencia (RIP do IMS ou padrao interno da RMN).",
+                "Divides each spectrum by the intensity of the reference-peak window (IMS RIP or NMR internal standard)."),
+        "area": ("Divide cada espectro pela area total. Use se o pico de referencia cai com o analito.",
+                 "Divides each spectrum by its total area. Use if the reference peak drops with the analyte."),
+    },
+    "modo_ddsimca": {
+        "puros": ("Treina o DD-SIMCA so com amostras puras: autenticacao (padrao).", "Trains DD-SIMCA on pure samples only: authentication (default)."),
+        "todos": ("Treina com a classe inteira, adulterada inclusive: exploratorio. O modelo aprende o adulterante como normal.",
+                  "Trains on the whole class, adulterated included: exploratory. The model learns the adulterant as normal."),
+    },
+    "ddsimca_limite": {
+        "empirical": ("Limite do T2 = percentil (1 - alfa) dos valores de T2 do treino. Nao supoe distribuicao (padrao).",
+                      "T2 limit = (1 - alpha) percentile of the training T2 values. Assumes no distribution (default)."),
+        "theoretical": ("Limite do T2 pela distribuicao F de Hotelling (Tracy-Young-Mason), a partir de n e do numero de componentes.",
+                        "T2 limit from the Hotelling F distribution (Tracy-Young-Mason), from n and the number of components."),
+        "chi2": ("Limite do T2 por chi2 com tantos graus de liberdade quantos componentes. Costuma ser mais frouxo que o F com n pequeno.",
+                 "T2 limit from chi2 with as many degrees of freedom as components. Tends to be looser than F with small n."),
+    },
+    "formato_figura": {
+        "png": ("Imagem raster, leve; boa para slides e relatorios.", "Raster image, light; good for slides and reports."),
+        "pdf": ("Vetorial; boa para artigo.", "Vector; good for papers."),
+        "svg": ("Vetorial editavel (Inkscape, Illustrator).", "Editable vector (Inkscape, Illustrator)."),
+    },
+    "alinhamento": {
+        "nenhum": ("Nao alinha o tempo de retencao.", "Does not align retention time."),
+        "cow": ("Alinha os cromatogramas por COW; a referencia vem so do treino de cada dobra, e o teste e as amostras novas sao alinhados a ela.",
+                "Aligns chromatograms by COW; the reference comes only from each fold's training, and the test and new samples are aligned to it."),
+    },
+    "classificador": {
+        "plsda": ("PLS-DA: PLS com resposta dummy e atribuicao pelo maior valor (padrao). Basta para classes sem ordem.",
+                  "PLS-DA: PLS with a dummy response and assignment by the highest value (default). Enough for unordered classes."),
+        "plslda": ("PLS-LDA: LDA sobre os escores do PLS. Para classes ordenadas (claro/medio/escuro); exige mais amostras por classe que variaveis latentes.",
+                   "PLS-LDA: LDA on the PLS scores. For ordered classes (light/medium/dark); needs more samples per class than latent variables."),
+    },
+    "quantificacao_rotulo_treino": {
+        "previsto": ("Treina o modelo de teor de cada classe com a classe prevista (padrao); a validacao sempre usa a prevista.",
+                     "Trains each class's content model with the predicted class (default); validation always uses the predicted one."),
+        "verdadeiro": ("Treina com a classe verdadeira. Use se a classificacao e fraca e o R2 do teor cai com varias classes.",
+                       "Trains with the true class. Use if classification is weak and the content R2 drops with several classes."),
+    },
+    "divisao_calibracao": {
+        "aleatoria": ("Sorteia as amostras de calibracao (por grupo).", "Draws the calibration samples at random (by group)."),
+        "kennard_stone": ("Escolhe amostras que cobrem os extremos do espectro (Kennard-Stone).", "Picks samples that cover the spectral extremes (Kennard-Stone)."),
+        "spxy": ("Cobre os extremos do espectro e do teor ao mesmo tempo (SPXY). So para N3.", "Covers the spectral and content extremes at once (SPXY). N3 only."),
+    },
+    "sintetico_cenario": {
+        "classico": ("Gerador antigo, simples.", "Old, simple generator."),
+        "nir": ("Imita NIR, com espalhamento, efeito de dia e replicas.", "Mimics NIR, with scatter, day effect and replicates."),
+        "raman": ("Imita Raman, com fluorescencia de fundo.", "Mimics Raman, with background fluorescence."),
+        "rmn": ("Imita RMN, com desvio de ppm e diluicao.", "Mimics NMR, with ppm drift and dilution."),
+    },
+    "imagem_segmentacao": {
+        "nenhuma": ("Mede a cor na foto inteira, fundo incluido.", "Measures colour on the whole photo, background included."),
+        "otsu": ("Separa o objeto do fundo por luminancia (limiar de Otsu).", "Separates the object from the background by luminance (Otsu threshold)."),
+        "distancia_fundo": ("Separa pela distancia de cor ao fundo estimado nas bordas. Use quando o fundo muda entre classes.",
+                            "Separates by colour distance to the background estimated at the borders. Use when the background changes between classes."),
+    },
+}
+
+#: Texto do par Sim/Nao de qualquer campo logico.
+SIM_NAO: Dict[str, Texto] = {
+    "sim": ("Liga: {faz}", "Turns on: {faz}"),
+    "nao": ("Desliga: o programa nao faz isso.", "Turns off: the program does not do this."),
+}
+
+
+def texto_valor(chave: str, valor: object, lang: str = "PT") -> Optional[str]:
+    """Explicacao de um valor de um campo de escolha, ou None se nao houver."""
+    t = VALORES.get(chave, {}).get(str(valor))
+    if t is None:
+        return None
+    return t[1 if lang == "EN" else 0]

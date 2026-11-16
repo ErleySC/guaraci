@@ -9,9 +9,18 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Menu e ajuda (2026-11-16):
+
+- **`?` explica cada valor das listas de escolha** (novo `catalogo_valores.py`, com teste que exige texto PT/EN
+  para todo valor de todo campo) e responde também às perguntas soltas (`catalogo_perguntas.py`). O
+  Personalizado do pré-processamento aceita várias etapas (`2,5,6`) e o painel "Pipeline ativo" lista as etapas reais.
+- **Codificação DX (`2.9`)**: abre sem importar o pipeline inteiro (era a demora que parecia travamento) e ganhou
+  `5` Remover código. **Tela `3.5`** no molde das demais telas da seção.
+- Nomes de matriz de exemplo retirados do CHANGELOG, de um comentário e de testes.
+
 Leitor, quantificação por par e VIP/SR (2026-11-14):
 
-- **Leitor `.dx`: óleo puro não é mais descartado.** O eixo comum é a interseção dos eixos; um arquivo
+- **Leitor `.dx`: a amostra pura não é mais descartada.** O eixo comum é a interseção dos eixos; um arquivo
   exportado em outra faixa (por exemplo 299–4000 cm⁻¹, sem NIR) encolhia a grade e jogava fora os
   espectros que cobriam a faixa pedida. Agora, com a faixa de trabalho conhecida, só ficam os arquivos
   que cobrem pelo menos 95 % dela; os demais são listados no aviso. A conferência antes de rodar
@@ -33,7 +42,7 @@ Saturação do detector (2026-11-14):
   espectros mortos (50 % ou mais das variáveis no teto) saem primeiro e a banda saturada dos outros
   continua detectada.
 - **Quantificação: a faixa de teor que sobrou é registrada e avisada.** O espectro saturado é o de
-  maior teor, então a remoção encolhe a curva (goiaba + milho: de 0–15 % para 0–8 %).
+  maior teor, então a remoção encolhe a curva (exemplo: de 0–15 % para 0–8 %).
   `saturacao.json` ganhou `removidos_por_classe`, `espectros_total`, `espectros_mortos`,
   `faixa_teor_antes`/`faixa_teor_depois` e `inutilizavel`; o resumo mostra "X de N espectros".
 - **Predição: espectro novo no teto não é mais aceito nem quantificado.** O pacote do modelo guarda
@@ -94,13 +103,13 @@ Correções da auditoria de 2026-11-10, sobre o commit `11a3202`:
 
 **Saturação do detector (absorbância no teto)**
 - Novo `guaraci.saturacao`: detecta o teto do detector (plato de valores idênticos, ex.: A = 3,0
-  com cubeta de 10 mm em óleos) nos modos `dx`, `opus`, `spc`, `sp` e `csv`. Variável com 10 % ou
+  com cubeta de 10 mm em líquidos) nos modos `dx`, `opus`, `spc`, `sp` e `csv`. Variável com 10 % ou
   mais das amostras no teto (alargada em 3 pontos de cada lado) e espectro com 20 % ou mais das
   variáveis no teto saem do modelo (nova opção `saturacao`: `auto` remove e registra, padrão;
   `avisar` só avisa; `nenhuma` não procura; independe de `ajuste_automatico`).
 - O que saiu fica no aviso do terminal, em `Relatorios/saturacao.json` e na linha "Saturação do
   detector" do resumo. Dado sem plato no teto nunca é tocado.
-- Medido em 1.874 espectros NIR de óleos (cubeta de 10 mm): 279 variáveis e 68 espectros fora.
+- Medido numa coleção real de espectros NIR de líquidos (cubeta de 10 mm): 279 variáveis e 68 espectros fora.
   RMSEP do holdout 4,22 → 3,82 e R² 0,04 → 0,16; é ganho real, mas modesto (o limite é a faixa
   de teor de 1 a 15 %, não o software).
 

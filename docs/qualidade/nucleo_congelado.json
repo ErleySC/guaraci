@@ -18,7 +18,7 @@
   "src/guaraci/conformal.py": "ee4f94ec8036f1f6f726bcc544d664f2d884b3334cf6b1bfd7a3a6ac918b4985",
   "src/guaraci/csv_robusto.py": "c1600a61d1ad2edfe755e988a00f62bc2fd8c563b6055770c0f3b6c61337b74f",
   "src/guaraci/dados_imagem.py": "53b4cc8d35cd08ef48990ec4154b2aab16db7e73ab70455fcd43896bc6c6bf58",
-  "src/guaraci/dados_io.py": "5061864010f5c55ff3d88933b2d3b2d0014569f57bfa3682fee42d0593c9b54a",
+  "src/guaraci/dados_io.py": "dc343068bd81e4a13ebb43cff0f3f94499f72d6aa3afd926f699481c9183f130",
   "src/guaraci/deriva_qc.py": "18557c95c7776dd2399304ec0fcbfda6bcdbdee47c1003fd80a28d7353e44e9d",
   "src/guaraci/dual_spls.py": "c5573c1022c427369d98b8dd85adada738be1347ee04063a780e55fc3ba2abca",
   "src/guaraci/eem_io.py": "a3e7f3e735f329c19b6bc9566729f9e663168013e1e9da75dd4bb60cdab6f74b",

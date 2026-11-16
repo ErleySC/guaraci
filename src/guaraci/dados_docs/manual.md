@@ -1592,6 +1592,18 @@ os grupos e as teclas, e `A` abre o índice de todos os campos.
 Em telas de fluxo (planejamento, seleção, auditoria, predição, HSI), `?` vale em qualquer
 pergunta e mostra o painel da tela sem perder a resposta em andamento.
 
+**Listas de escolha e perguntas soltas.** Em qualquer campo que mostra uma lista numerada
+(pré-processamento, nível, modo de entrada, sim/não...), `?` pergunta qual item explicar:
+digite o número (ou parte do nome) e aparece o que **aquele valor** faz; Enter mostra o campo
+inteiro com todos os valores explicados. Perguntas que não são lista (número de componentes,
+método do EPO/GLSW, nome do bloco...) também respondem `?` com o que a pergunta quer dizer; as
+sem texto próprio mostram a pergunta e o painel da tela. Em **Pré-processamento › Personalizado**
+vale o que está em *Etapas do pré-processamento personalizado*: escolha várias etapas com
+números separados por vírgula (ex.: `2,5,6`); a ordem de execução é fixa (AirPLS, SNV, PQN,
+EMSC, SG, MC, OSC) e o painel "Pipeline ativo" lista as etapas realmente usadas. Em **Codificação
+DX** (`2.9`) a opção `5` remove um código seu (ou todos) com confirmação. A tela `3.5` segue o
+mesmo molde das demais da seção (tabela numerada com o que cada técnica precisa e faz).
+
 O menu é organizado **pelo objetivo** (a ordem abaixo é a do catálogo; "avançado" = some no
 Modo Básico, mas a tecla continua funcionando):
 

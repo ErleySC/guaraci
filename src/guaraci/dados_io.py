@@ -1698,7 +1698,7 @@ def _harmonizar_classes_por_subpasta(rotulos: List[str], meta_rows: List[Dict[st
     """Uma subpasta = uma classe: reconcilia rotulos que divergem do rotulo dominante dela.
 
     Dois defeitos reais de dado, ambos viravam classes-fantasma (e a validacao cruzada recusava o
-    estudo inteiro): (1) arquivo cujo ##TITLE nao segue o padrao cai no rotulo da SUBPASTA ("Andiroba")
+    estudo inteiro): (1) arquivo cujo ##TITLE nao segue o padrao cai no rotulo da SUBPASTA ("ClasseA")
     enquanto os irmaos levam o codigo do titulo ("AND"); (2) ##TITLE com o codigo errado ("AR-..." num
     arquivo "MAR-...") cria uma classe de 9 espectros. Reatribui ao rotulo dominante da subpasta (>= 80 %
     dos arquivos, >= 5 arquivos) quando o arquivo e' do tipo (1) ou quando o prefixo do NOME do arquivo
