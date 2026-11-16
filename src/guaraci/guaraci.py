@@ -2808,7 +2808,7 @@ def _print_submenu_compact(
         nome_w = max(26, min(mais_longo, _W() - 4 - 5 - 14 - 2 - 28))
     desc_w = max(18, _W() - 4 - (5 if lista_de_acoes else 8) - nome_w - 14 - 2)
     t.add_column(cabecalhos[0] if cabecalhos else "Nome", overflow="fold", min_width=20, max_width=nome_w,
-                 **({"width": nome_w} if lista_de_acoes else {}))   # nome longo quebra a linha, nunca e' cortado
+                 width=nome_w if lista_de_acoes else None)   # nome longo quebra a linha, nunca e' cortado
     t.add_column(cabecalhos[1] if cabecalhos else "Val",  no_wrap=True, min_width=8, max_width=14)
     t.add_column(cabecalhos[2] if cabecalhos else "Desc", style=PM, width=desc_w, overflow="fold")   # texto completo: em janela estreita quebra a linha, nunca corta
 
