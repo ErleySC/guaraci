@@ -103,3 +103,5 @@ def test_tela_3_5_usa_o_molde_das_demais_telas_da_secao(cli, monkeypatch):
     assert "│   [1]" in saida and "ASCA" in saida and "Separa a variacao" in saida     # tabela numerada dentro do painel
     assert "[10]" in saida and "3 CSV" in saida and "? ajuda | G Guaraci" in saida
     assert "● Visual" not in saida.split("Tecnicas especiais")[-1].split("Opcao")[0]   # sem a legenda de risco, que aqui nao se aplica
+    assert "Precisa de" in saida and "O que faz" in saida            # a coluna verde tem titulo: "Precisa de"
+    assert "Testar correcao de sinal" in saida and "Transferir calibracao DS/PDS" in saida

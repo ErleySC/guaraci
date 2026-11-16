@@ -106,6 +106,16 @@ class _PipelinePreguicoso:
         for modulo, nomes in self._LEVES.items():
             if nome in nomes:
                 return getattr(importlib.import_module(modulo), nome)
+        if "guaraci.pipeline" not in sys.modules:
+            # A 1a vez importa o motor inteiro (numpy, scikit-learn, matplotlib...): alguns segundos, mais num PC
+            # com antivirus. Sem aviso parecia que a analise tinha travado.
+            _c = globals().get("console")
+            _pt = _lang() == "PT" if "_lang" in globals() else True
+            if _c is not None:
+                with _c.status("Carregando o motor de analise (so' na primeira vez, pode levar alguns segundos)..." if _pt
+                               else "Loading the analysis engine (first time only, may take a few seconds)..."):
+                    import guaraci.pipeline as _p
+                return getattr(_p, nome)
         import guaraci.pipeline as _p
         return getattr(_p, nome)
 
@@ -2762,6 +2772,7 @@ def _print_submenu_compact(
     campos_avancados: Optional[set] = None,
     mostrar_avancado: bool = True,
     legenda: bool = True,
+    cabecalhos: Optional[Tuple[str, str, str]] = None,
 ) -> List[str]:
     """
     Submenu compacto: [N] ICON Nome  Valor  Descricao-breve
@@ -2784,15 +2795,22 @@ def _print_submenu_compact(
     ) else set()
     fields_visiveis = [f for f in fields if f not in ocultos]
 
-    t = Table(box=None, show_header=False, padding=(0, 0), expand=True)
-    t.add_column("N",    no_wrap=True, width=6)
-    t.add_column("Ico",  no_wrap=True, width=2)
+    lista_de_acoes = bool(extras) and not fields_visiveis       # so' acoes (ex.: [3.5]): sem coluna de icone, nomes mais largos
+    t = Table(box=None, show_header=bool(cabecalhos), header_style=PM, padding=(0, 0), expand=True)
+    t.add_column("", no_wrap=True, width=5 if lista_de_acoes else 6)
+    if not lista_de_acoes:
+        t.add_column("Ico",  no_wrap=True, width=2)
     # So a descricao pode encolher: numero, icone, nome e valor tem largura fixa
     # (senao o Rich corta o numero da opcao em terminais de 80 colunas).
-    desc_w = max(18, _W() - 4 - 6 - 2 - 26 - 14 - 2)
-    t.add_column("Nome", overflow="fold", min_width=20, max_width=26)   # nome longo quebra a linha, nunca e' cortado
-    t.add_column("Val",  no_wrap=True, min_width=8, max_width=14)
-    t.add_column("Desc", style=PM, width=desc_w, overflow="fold")   # texto completo: em janela estreita quebra a linha, nunca corta
+    nome_w = 26
+    if lista_de_acoes:      # o nome mais longo cabe inteiro se sobrar >= 28 colunas para a descricao
+        mais_longo = max((len(str(it[1])) for it in (extras or ())), default=26) + 1
+        nome_w = max(26, min(mais_longo, _W() - 4 - 5 - 14 - 2 - 28))
+    desc_w = max(18, _W() - 4 - (5 if lista_de_acoes else 8) - nome_w - 14 - 2)
+    t.add_column(cabecalhos[0] if cabecalhos else "Nome", overflow="fold", min_width=20, max_width=nome_w,
+                 **({"width": nome_w} if lista_de_acoes else {}))   # nome longo quebra a linha, nunca e' cortado
+    t.add_column(cabecalhos[1] if cabecalhos else "Val",  no_wrap=True, min_width=8, max_width=14)
+    t.add_column(cabecalhos[2] if cabecalhos else "Desc", style=PM, width=desc_w, overflow="fold")   # texto completo: em janela estreita quebra a linha, nunca corta
 
     for i, key in enumerate(fields_visiveis, 1):
         nome  = _nome_campo(key)
@@ -2822,7 +2840,8 @@ def _print_submenu_compact(
     # MESMA tabela (mesmas colunas, alinhadas aos campos). Item (chave, rotulo) ou
     # (chave, nome, valor, descricao); rotulo maior que a coluna Nome continua na Desc.
     if extras:
-        t.add_row(Text(""), Text(""), Text(""), Text(""), Text(""))
+        if not lista_de_acoes:
+            t.add_row(Text(""), Text(""), Text(""), Text(""), Text(""))
         for j, item in enumerate(extras, 1):
             ek = len(fields_visiveis) + j
             if len(item) == 4:
@@ -2835,10 +2854,12 @@ def _print_submenu_compact(
                     e_nome, e_desc = rot[:corte], rot[corte + 1:]
                 else:                          # rotulo simples: inteiro na coluna Nome (quebra no espaco, na mesma cor)
                     e_nome, e_desc = rot, ""
-            t.add_row(Text.from_markup(f"  [{PA}][{ek}][/{PA}]"),
-                      Text("›" if str(_ek).startswith("pasta:") else "", style=PA),
-                      Text(e_nome if e_nome.startswith("+") else f" {e_nome}", style=PW),
-                      Text(e_val, style=PS), Text(e_desc, style=PM))
+            celulas = [Text.from_markup(f"  [{PA}][{ek}][/{PA}]")]
+            if not lista_de_acoes:
+                celulas.append(Text("›" if str(_ek).startswith("pasta:") else "", style=PA))
+            celulas += [Text(e_nome if (e_nome.startswith("+") or lista_de_acoes) else f" {e_nome}", style=PW),
+                        Text(e_val, style=PS), Text(e_desc, style=PM)]
+            t.add_row(*celulas)
 
     # Rodape: legenda de risco + comandos
     n_ocultos = len(fields) - len(fields_visiveis)
@@ -6045,8 +6066,10 @@ def _tecnicas_avancadas_uma_escolha(cfg: Config) -> bool:
     L = 0 if is_pt else 1
     # Mesmo molde das outras telas da secao: tabela numerada dentro do painel, com o que cada tecnica precisa e faz.
     linhas = [("acao:" + k, nome, _PRECISA_TEC_AVANCADAS[k][L], _RESUMO_TEC_AVANCADAS[k][L]) for k, nome, _fn in opcoes]
-    _print_submenu_compact(_cat.tela("tecnicas_avancadas")["nome"][L], "", [], cfg, extras=linhas, legenda=False)
-    _definir_ajuda("tecnicas_avancadas", [(k, nome, _FAZ_TEC_AVANCADAS[k][L]) for k, nome, _fn in opcoes])
+    _print_submenu_compact(_cat.tela("tecnicas_avancadas")["nome"][L], "", [], cfg, extras=linhas, legenda=False,
+                           cabecalhos=(("Tecnica", "Precisa de", "O que faz") if is_pt else ("Technique", "You need", "What it does")))
+    _definir_ajuda("tecnicas_avancadas", [(k, nome, _FAZ_TEC_AVANCADAS[k][L] + (" Precisa de: " if is_pt else " You need: ") + _PRECISA_TEC_AVANCADAS[k][L] + ".")
+                                          for k, nome, _fn in opcoes])
     escolha = _ask(f"  [{PA}]{'Opcao' if is_pt else 'Option'}:[/{PA}] ").strip()
     for k, _nome, fn in opcoes:
         if escolha == k:

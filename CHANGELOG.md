@@ -16,6 +16,8 @@ Menu e ajuda (2026-11-16):
   Personalizado do pré-processamento aceita várias etapas (`2,5,6`) e o painel "Pipeline ativo" lista as etapas reais.
 - **Codificação DX (`2.9`)**: abre sem importar o pipeline inteiro (era a demora que parecia travamento) e ganhou
   `5` Remover código. **Tela `3.5`** no molde das demais telas da seção.
+- **Tela `3.5`**: sem coluna de ícone (os nomes cabem numa linha) e com títulos de coluna (`Precisa de` explica a coluna verde).
+  **Primeira análise**: o carregamento do motor (alguns segundos) agora mostra "Carregando o motor de análise..." em vez de parecer travado.
 - Nomes de matriz de exemplo retirados do CHANGELOG, de um comentário e de testes.
 
 Leitor, quantificação por par e VIP/SR (2026-11-14):
