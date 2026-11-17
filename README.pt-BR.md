@@ -240,7 +240,16 @@ A lista completa, com a evidência de cada ponto, está em [`docs/cientifico/lim
 
 **Erley Silva da Costa** — Pesquisador / Desenvolvedor · [GitHub](https://github.com/ErleySC) · [ORCID](https://orcid.org/0009-0005-9655-6349)
 
-O GUARACI é um projeto individual: não há equipe, empresa ou instituição por trás dele ([`GOVERNANCE.md`](GOVERNANCE.md)). Foi desenvolvido com auxílio de assistentes de IA para programação; o autor revisou e responde por todo o código e documentação.
+O GUARACI é um projeto individual: não há equipe, empresa ou instituição por trás dele ([`GOVERNANCE.md`](GOVERNANCE.md)).
+
+## Autoria e uso de IA
+
+Erley Silva da Costa é o autor, o revisor e o único mantenedor do GUARACI: escreveu e revisou o código e a documentação. O desenvolvimento foi assistido pelo Claude, assistente de programação da Anthropic, e esta seção vale para o projeto inteiro, inclusive para os commits futuros:
+
+- Os commits do repositório têm o mantenedor como autor. Os commits assistidos levam o trailer `Co-Authored-By: Claude`, e o GitHub mostra os dois autores.
+- Parte do histórico de desenvolvimento foi consolidada em commits do mantenedor. Esta declaração vale também para eles, inclusive para os que não trazem o trailer.
+- A validação dos resultados, as escolhas de método e a decisão de publicar são do mantenedor, que responde por todo o código e toda a documentação.
+- O que ainda não foi verificado está em [`docs/cientifico/limitacoes.md`](docs/cientifico/limitacoes.md).
 
 ## Licença e citação
 

@@ -238,7 +238,16 @@ The full, evidence-backed list is in [`docs/cientifico/limitacoes.md`](docs/cien
 
 **Erley Silva da Costa** — Researcher / Developer · [GitHub](https://github.com/ErleySC) · [ORCID](https://orcid.org/0009-0005-9655-6349)
 
-GUARACI is an individual project: no team, company or institution is behind it ([`GOVERNANCE.md`](GOVERNANCE.md)). It was developed with the assistance of AI coding assistants; the author reviewed and is responsible for all code and documentation.
+GUARACI is an individual project: no team, company or institution is behind it ([`GOVERNANCE.md`](GOVERNANCE.md)).
+
+## Authorship and AI use
+
+Erley Silva da Costa is the author, reviewer and sole maintainer of GUARACI and wrote and reviewed the code and documentation. Development was assisted by Claude, Anthropic's coding assistant, and this section applies to the whole project, including future commits:
+
+- Commits in the repository have the maintainer as author. Assisted commits carry the trailer `Co-Authored-By: Claude`, and GitHub shows both authors.
+- Part of the development history was consolidated into the maintainer's commits. This statement also covers them, including those without the trailer.
+- Validating results, choosing methods and deciding what to publish are the maintainer's job; the maintainer is responsible for all code and documentation.
+- What has not been verified yet is listed in [`docs/cientifico/limitacoes.md`](docs/cientifico/limitacoes.md).
 
 ## License & citation
 
