@@ -75,7 +75,7 @@ inteiro (auditoria do delineamento, validação agrupada, holdout, relatório) s
 - Acompanhar deriva de um processo ou instrumento
 - Analisar fotos ou cubos hiperespectrais
 
-**Cenários sintéticos prontos** (`guaraci exemplo <cenário>`): `explorar`, `classificar`, `quantificar`, `multielementar`, `comparar`, `imagem`, `hsi`, `transferir`, `monitorar`, `fluorescencia_eem`, `cromatograma_gcms`, `vip`.
+**Cenários sintéticos prontos** (`guaraci exemplo <cenário>`): `explorar`, `classificar`, `quantificar`, `multielementar`, `comparar`, `imagem`, `hsi`, `transferir`, `monitorar`, `pares`, `fluorescencia_eem`, `cromatograma_gcms`, `vip`.
 <!-- guaraci:tecnicas:fim -->
 
 O mapa técnica × tarefa × comando × exemplo sintético × teste é gerado do catálogo em
@@ -163,7 +163,7 @@ guaraci assistente "sua pergunta"   # resposta offline a partir do catálogo; `g
 guaraci --version
 ```
 
-Também: `anova`, `vip`, `monitorar`, `transferir`, `relatorio` — cada um é descrito por `guaraci --help`.
+Também: `anova`, `vip`, `monitorar`, `pares`, `transferir`, `relatorio` — cada um é descrito por `guaraci --help`.
 
 ## Uso (3 jeitos, sem editar código)
 

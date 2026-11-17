@@ -72,6 +72,7 @@ TELAS_SO_NO_CLI: Dict[str, str] = {
     "auditoria": "no web, a auditoria aparece no resultado da execucao",
     "checar": "pre-voo e ficha anti-vazamento do assistente: so' no CLI (tela [6.5] e `guaraci checar`) nesta versao",
     "avancado": "no web, benchmark e Monte Carlo ficam na pagina Modelo",
+    "pares": "quantificacao por par: so' no CLI nesta versao (tela [3.7] e `guaraci pares`)",
     "comparar": "ANOVA por linha de comando ou pelo CLI nesta versao",
     "monitorar": "monitoramento de lotes por linha de comando ou pelo CLI nesta versao",
     "hsi": "imageamento hiperespectral: pagina web ainda nao existe (decisao do autor)",

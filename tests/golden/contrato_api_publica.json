@@ -233,7 +233,8 @@
       "min": null,
       "opcoes": [
         "aleatoria",
-        "kennard_stone"
+        "kennard_stone",
+        "spxy"
       ],
       "tipo": "choice"
     },
@@ -3866,7 +3867,7 @@
         "forma": "funcao"
       },
       "load_dx": {
-        "assinatura": "(pasta: str, class_part: int = 0, extrair_conc: bool = False, use_parse_title: bool = True, max_pontos: int = 2000) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, Union[None, numpy.ndarray], Union[None, numpy.ndarray], Union[None, pandas.DataFrame]]",
+        "assinatura": "(pasta: str, class_part: int = 0, extrair_conc: bool = False, use_parse_title: bool = True, max_pontos: int = 2000, janela: Union[None, tuple[float, float]] = None) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, Union[None, numpy.ndarray], Union[None, numpy.ndarray], Union[None, pandas.DataFrame]]",
         "forma": "funcao"
       },
       "parse_dx": {
@@ -3882,7 +3883,7 @@
         "forma": "funcao"
       },
       "prescan_dx": {
-        "assinatura": "(pasta: str) -> dict[str, Any]",
+        "assinatura": "(pasta: str, janela: Union[None, tuple[float, float]] = None) -> dict[str, Any]",
         "forma": "funcao"
       },
       "resumo_correcoes_locais": {
@@ -7174,7 +7175,7 @@
         "forma": "funcao"
       },
       "executar": {
-        "assinatura": "(cfg: guaraci.Config)",
+        "assinatura": "(cfg: guaraci.Config) -> Any",
         "forma": "funcao"
       },
       "generate_output_name": {
@@ -7839,6 +7840,28 @@
         "forma": "funcao"
       }
     },
+    "quantificacao_pares": {
+      "USO": {
+        "forma": "constante",
+        "tipo": "str"
+      },
+      "achar_pares": {
+        "assinatura": "(pasta_dados: str) -> dict[tuple[str, str], dict[str, list[str]]]",
+        "forma": "funcao"
+      },
+      "correlacao_lod_iodo": {
+        "assinatura": "(linhas: Sequence[dict[str, Any]], iodo_especie: dict[str, float], iodo_adulterante: dict[str, float]) -> dict[str, Any]",
+        "forma": "funcao"
+      },
+      "executar": {
+        "assinatura": "(argv: Union[None, Sequence[str]] = None) -> int",
+        "forma": "funcao"
+      },
+      "rodar_pares": {
+        "assinatura": "(pasta_dados: str, saida: str, cfg_base: Union[Any, None] = None, **campos: Any) -> list[dict[str, Any]]",
+        "forma": "funcao"
+      }
+    },
     "relatorio_blocos": {
       "renderizar_html": {
         "assinatura": "(blocos: list[tuple]) -> str",
@@ -8227,8 +8250,16 @@
         "assinatura": "(X: numpy.ndarray, wn: numpy.ndarray) -> dict[str, Any]",
         "forma": "funcao"
       },
+      "fracao_no_teto": {
+        "assinatura": "(X: numpy.ndarray, wn: numpy.ndarray, teto: float, tolerancia: float, regioes: Union[None, list[list[float]], list[tuple[float, float]]] = None) -> numpy.ndarray",
+        "forma": "funcao"
+      },
       "regioes_de_mascara": {
         "assinatura": "(wn: numpy.ndarray, mascara: numpy.ndarray) -> list[tuple[float, float]]",
+        "forma": "funcao"
+      },
+      "sinalizar_saturacao_nova": {
+        "assinatura": "(pkg: dict[str, Any], X_novo_bruto: numpy.ndarray, wn_novo: numpy.ndarray) -> Union[None, tuple[numpy.ndarray, numpy.ndarray]]",
         "forma": "funcao"
       }
     },

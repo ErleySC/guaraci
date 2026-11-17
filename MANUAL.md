@@ -1592,6 +1592,18 @@ os grupos e as teclas, e `A` abre o índice de todos os campos.
 Em telas de fluxo (planejamento, seleção, auditoria, predição, HSI), `?` vale em qualquer
 pergunta e mostra o painel da tela sem perder a resposta em andamento.
 
+**Listas de escolha e perguntas soltas.** Em qualquer campo que mostra uma lista numerada
+(pré-processamento, nível, modo de entrada, sim/não...), `?` pergunta qual item explicar:
+digite o número (ou parte do nome) e aparece o que **aquele valor** faz; Enter mostra o campo
+inteiro com todos os valores explicados. Perguntas que não são lista (número de componentes,
+método do EPO/GLSW, nome do bloco...) também respondem `?` com o que a pergunta quer dizer; as
+sem texto próprio mostram a pergunta e o painel da tela. Em **Pré-processamento › Personalizado**
+vale o que está em *Etapas do pré-processamento personalizado*: escolha várias etapas com
+números separados por vírgula (ex.: `2,5,6`); a ordem de execução é fixa (AirPLS, SNV, PQN,
+EMSC, SG, MC, OSC) e o painel "Pipeline ativo" lista as etapas realmente usadas. Em **Codificação
+DX** (`2.9`) a opção `5` remove um código seu (ou todos) com confirmação. A tela `3.5` segue o
+mesmo molde das demais da seção (tabela numerada com o que cada técnica precisa e faz).
+
 O menu é organizado **pelo objetivo** (a ordem abaixo é a do catálogo; "avançado" = some no
 Modo Básico, mas a tecla continua funcionando):
 
@@ -1672,13 +1684,34 @@ e o N2 liga; etapas de classificação ficam desligadas em objetivo que não é 
 método final (viram sugestão). Combinação sem remédio seguro é recusada (ex.: nível N3 no modo csv
 sem `coluna_concentracao`). O `cfg` do usuário volta aos valores escolhidos depois da execução.
 
+**Um modelo por par espécie × adulterante.** No menu, tela **[3.7] Quantificação por par** (modo Avançado: tecla `M`; o caminho direto `3.7` abre a tela nos dois modos), que usa a configuração atual; na linha de comando, `guaraci pares PASTA_DADOS [--saida PASTA]
+[--config config.yaml] [--iodo-especies especies.csv --iodo-adulterantes adulterantes.csv]` acha, em cada
+subpasta de espécie, as misturas de cada adulterante (código `-X-teor%` no nome) junto com os
+espectros puros, roda uma quantificação N3 por par e grava `tabela_pares.csv` (LOD, LOQ, SEN, R²CV,
+RMSECV, RMSEP, nº de VLs). Cada corrida guarda `Tables/regressao_figuras_de_merito.csv` e
+`Tables/regressao_vip_sr.csv` (VIP e razão de seletividade por número de onda). Par sem espectro puro
+não é tentado, porque falta o ponto zero. Leitor `.dx`: com faixa de trabalho definida, arquivo que
+cobre menos de 95 % dela (por exemplo exportado só até 4000 cm⁻¹) é ignorado e listado no aviso; o
+código de classe é o dominante da subpasta. `divisao_calibracao: spxy` particiona por SPXY
+(Galvão et al. 2005).
+
 **Saturação do detector (`saturacao: auto | avisar | nenhuma`).** Nos modos `dx`, `opus`, `spc`,
 `sp` e `csv`, o programa procura absorbância travada num teto (um plato de valores idênticos,
-por exemplo A = 3,0 com cubeta de caminho óptico longo). Variável com 10 % ou mais das amostras
-no teto (alargada em 3 pontos de cada lado) e espectro com 20 % ou mais das variáveis no teto não
-carregam informação da amostra. `auto` (padrão) tira os dois do modelo e registra em
-`Relatorios/saturacao.json`, no aviso do terminal e na linha "Saturação do detector" do resumo;
-`avisar` só avisa e não remove nada; `nenhuma` nem procura. O teto é a classe de valores repetidos
+por exemplo A = 3,0 com cubeta de caminho óptico longo). Primeiro saem os espectros mortos
+(50 % ou mais de todas as variáveis no teto: o detector ficou cego e o "espectro" é uma reta);
+depois, entre os espectros restantes, variável com 10 % ou mais das amostras no teto (alargada em
+3 pontos de cada lado) e espectro com 20 % ou mais das variáveis restantes no teto. `auto` (padrão)
+tira tudo isso do modelo e registra em `Relatorios/saturacao.json` (com a contagem por classe e,
+em quantificação, a faixa de teor antes e depois), no aviso do terminal e na linha "Saturação do
+detector" do resumo; `avisar` só avisa e não remove nada; `nenhuma` nem procura. Em quantificação o
+espectro saturado costuma ser o de maior teor, então a remoção **encolhe a faixa de calibração**: o
+aviso diz a faixa que sobrou, e o modelo só vale dentro dela. Se sobram menos de 3 espectros,
+variáveis ou (em quantificação) teores distintos, `auto` recusa a análise com uma mensagem clara
+em vez de modelar lixo; `avisar` segue, por sua conta.
+O pacote do modelo guarda o teto; na predição, espectro novo com 20 % ou mais dos pontos (fora das
+regiões que o modelo descartou) no teto sai com `saturado = True`, `aceito = False` e, no fluxo cego,
+sem teor (`espectro_saturado`). Pacotes salvos antes dessa chave predizem como antes. A linha
+"Saturação do detector" também entra no `model_card.md`. O teto é a classe de valores repetidos
 mais alta, não o máximo global, e dado sem plato nunca é tocado. A opção é independente de
 `ajuste_automatico`. Mudar de `auto` para `avisar` ou `nenhuma` muda o conjunto de variáveis e,
 portanto, os números do modelo.

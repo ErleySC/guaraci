@@ -96,6 +96,7 @@ class _PipelinePreguicoso:
         "guaraci.config": ("__version__", "NIVEL_NOME", "NOME_RELATORIOS", "NOME_GRAFICOS", "Config",
                            "pasta_execucao"),
         "guaraci.config_io": ("validar_fonte_de_dados", "save_config", "load_config"),
+        "guaraci.dados_io": ("CODIGO_ESPECIE",),      # o mesmo dict que o pipeline usa; ler os codigos nao carrega o pipeline inteiro
         "guaraci.modos_analise": ("OBJETIVO_ROTULO", "resolve_objective", "should_generate", "describe_plan",
                                   "CLASSIFICACAO", "QUANTIFICACAO", "EXPLORATORIO"),
     }
@@ -105,6 +106,16 @@ class _PipelinePreguicoso:
         for modulo, nomes in self._LEVES.items():
             if nome in nomes:
                 return getattr(importlib.import_module(modulo), nome)
+        if "guaraci.pipeline" not in sys.modules:
+            # A 1a vez importa o motor inteiro (numpy, scikit-learn, matplotlib...): alguns segundos, mais num PC
+            # com antivirus. Sem aviso parecia que a analise tinha travado.
+            _c = globals().get("console")
+            _pt = _lang() == "PT" if "_lang" in globals() else True
+            if _c is not None:
+                with _c.status("Carregando o motor de analise (so' na primeira vez, pode levar alguns segundos)..." if _pt
+                               else "Loading the analysis engine (first time only, may take a few seconds)..."):
+                    import guaraci.pipeline as _p
+                return getattr(_p, nome)
         import guaraci.pipeline as _p
         return getattr(_p, nome)
 
@@ -970,11 +981,39 @@ def _confirmar_saida(cfg: Config, foto: Dict[str, str]) -> bool:
     return r in ("2", "S")
 
 
-def _mostrar_ajuda_tela() -> bool:
-    """"?" num prompt: desenha o painel de ajuda da tela atual (sem pausa; o
-    prompt volta logo abaixo). False = nenhuma tela registrou ajuda."""
-    if not _AJUDA_TELA:
+def _pergunta_do_prompt(prompt: str) -> str:
+    """O rotulo de um prompt sem as cores do Rich."""
+    try:
+        return Text.from_markup(prompt).plain.strip().rstrip(":").strip()
+    except Exception:   # noqa: BLE001 -- markup quebrado: usa o texto como esta
+        return str(prompt).strip().rstrip(":").strip()
+
+
+def _ajuda_da_pergunta(prompt: str) -> bool:
+    """"?" num prompt de PERGUNTA (nome de classe, numero de componentes...): o que ela quer dizer.
+    True quando ha texto proprio para ela (entao a ajuda da tela nao e' repetida)."""
+    from guaraci.catalogo_perguntas import texto_pergunta
+    pergunta = _pergunta_do_prompt(prompt)
+    txt = texto_pergunta(pergunta, _lang())
+    if txt is None:
         return False
+    L = 1 if _lang() == "EN" else 0
+    console.print(_painel_ajuda(("Pergunta", "Question")[L],
+                                [(("Pergunta:", "Question:")[L], pergunta, f"bold {PA}"), (_ROT_AJUDA["faz"][L], txt, PW)]))
+    return True
+
+
+def _mostrar_ajuda_tela(prompt: str = "") -> bool:
+    """"?" num prompt: desenha o painel de ajuda da tela atual (sem pausa; o
+    prompt volta logo abaixo). False = nenhuma tela registrou ajuda.
+    Se a pergunta tem texto proprio, ele vem antes do painel da tela."""
+    explicou = bool(prompt) and _ajuda_da_pergunta(prompt)      # a pergunta e' explicada primeiro; depois vem o painel da tela
+    pergunta = _pergunta_do_prompt(prompt) if prompt else ""
+    mostrou_pergunta = len(pergunta) > 14 and not explicou
+    if mostrou_pergunta:
+        console.print(f"  [{PM}]{('Pergunta' if _lang() == 'PT' else 'Question')}: {escape(pergunta)}[/{PM}]")
+    if not _AJUDA_TELA:
+        return mostrou_pergunta or explicou
     if callable(_AJUDA_TELA):
         _AJUDA_TELA()
         return True
@@ -1008,7 +1047,7 @@ def _input(msg: str = "", default: str = "", ajuda: bool = True) -> str:
     try:
         while True:
             r = input(msg).strip()
-            if r == "?" and ajuda and _mostrar_ajuda_tela():
+            if r == "?" and ajuda and _mostrar_ajuda_tela(msg):
                 continue
             return r
     except (EOFError, KeyboardInterrupt):
@@ -1027,7 +1066,7 @@ def _ask(prompt_markup: str = "", default: str = "", ajuda: bool = True) -> str:
             if prompt_markup:
                 console.print(prompt_markup, end="")
             r = input().strip()
-            if r == "?" and ajuda and _mostrar_ajuda_tela():
+            if r == "?" and ajuda and _mostrar_ajuda_tela(prompt_markup):
                 continue
             return r
     except (EOFError, KeyboardInterrupt):
@@ -2492,7 +2531,7 @@ _YAML_TOCADO = [False]   # 1.4/1.5 gravaram ou leram o YAML: o menu refaz a foto
 
 #: Telas de passos (pedem caminho, rodam e mostram o resultado). Antes, depois de rodar ou de um erro
 #: (arquivo nao encontrado), voltavam sozinhas para o grupo; agora a tela reabre e so' o voltar sai dela.
-_TELAS_DE_PASSOS = {"selecao_amostras", "predicao", "comparar", "monitorar", "hsi", "relatorios", "hardware"}
+_TELAS_DE_PASSOS = {"selecao_amostras", "pares", "predicao", "comparar", "monitorar", "hsi", "relatorios", "hardware"}
 _VOLTOU = [False]     # o ultimo prompt de tela recebeu a tecla de voltar
 
 
@@ -2732,6 +2771,8 @@ def _print_submenu_compact(
     extras: Optional[List[Tuple[Any, ...]]] = None,
     campos_avancados: Optional[set] = None,
     mostrar_avancado: bool = True,
+    legenda: bool = True,
+    cabecalhos: Optional[Tuple[str, str, str]] = None,
 ) -> List[str]:
     """
     Submenu compacto: [N] ICON Nome  Valor  Descricao-breve
@@ -2754,15 +2795,22 @@ def _print_submenu_compact(
     ) else set()
     fields_visiveis = [f for f in fields if f not in ocultos]
 
-    t = Table(box=None, show_header=False, padding=(0, 0), expand=True)
-    t.add_column("N",    no_wrap=True, width=6)
-    t.add_column("Ico",  no_wrap=True, width=2)
+    lista_de_acoes = bool(extras) and not fields_visiveis       # so' acoes (ex.: [3.5]): sem coluna de icone, nomes mais largos
+    t = Table(box=None, show_header=bool(cabecalhos), header_style=PM, padding=(0, 0), expand=True)
+    t.add_column("", no_wrap=True, width=5 if lista_de_acoes else 6)
+    if not lista_de_acoes:
+        t.add_column("Ico",  no_wrap=True, width=2)
     # So a descricao pode encolher: numero, icone, nome e valor tem largura fixa
     # (senao o Rich corta o numero da opcao em terminais de 80 colunas).
-    desc_w = max(18, _W() - 4 - 6 - 2 - 26 - 14 - 2)
-    t.add_column("Nome", overflow="fold", min_width=20, max_width=26)   # nome longo quebra a linha, nunca e' cortado
-    t.add_column("Val",  no_wrap=True, min_width=8, max_width=14)
-    t.add_column("Desc", style=PM, width=desc_w, overflow="fold")   # texto completo: em janela estreita quebra a linha, nunca corta
+    nome_w = 26
+    if lista_de_acoes:      # o nome mais longo cabe inteiro se sobrar >= 28 colunas para a descricao
+        mais_longo = max((len(str(it[1])) for it in (extras or ())), default=26) + 1
+        nome_w = max(26, min(mais_longo, _W() - 4 - 5 - 14 - 2 - 28))
+    desc_w = max(18, _W() - 4 - (5 if lista_de_acoes else 8) - nome_w - 14 - 2)
+    t.add_column(cabecalhos[0] if cabecalhos else "Nome", overflow="fold", min_width=20, max_width=nome_w,
+                 width=nome_w if lista_de_acoes else None)   # nome longo quebra a linha, nunca e' cortado
+    t.add_column(cabecalhos[1] if cabecalhos else "Val",  no_wrap=True, min_width=8, max_width=14)
+    t.add_column(cabecalhos[2] if cabecalhos else "Desc", style=PM, width=desc_w, overflow="fold")   # texto completo: em janela estreita quebra a linha, nunca corta
 
     for i, key in enumerate(fields_visiveis, 1):
         nome  = _nome_campo(key)
@@ -2792,7 +2840,8 @@ def _print_submenu_compact(
     # MESMA tabela (mesmas colunas, alinhadas aos campos). Item (chave, rotulo) ou
     # (chave, nome, valor, descricao); rotulo maior que a coluna Nome continua na Desc.
     if extras:
-        t.add_row(Text(""), Text(""), Text(""), Text(""), Text(""))
+        if not lista_de_acoes:
+            t.add_row(Text(""), Text(""), Text(""), Text(""), Text(""))
         for j, item in enumerate(extras, 1):
             ek = len(fields_visiveis) + j
             if len(item) == 4:
@@ -2805,10 +2854,12 @@ def _print_submenu_compact(
                     e_nome, e_desc = rot[:corte], rot[corte + 1:]
                 else:                          # rotulo simples: inteiro na coluna Nome (quebra no espaco, na mesma cor)
                     e_nome, e_desc = rot, ""
-            t.add_row(Text.from_markup(f"  [{PA}][{ek}][/{PA}]"),
-                      Text("›" if str(_ek).startswith("pasta:") else "", style=PA),
-                      Text(e_nome if e_nome.startswith("+") else f" {e_nome}", style=PW),
-                      Text(e_val, style=PS), Text(e_desc, style=PM))
+            celulas = [Text.from_markup(f"  [{PA}][{ek}][/{PA}]")]
+            if not lista_de_acoes:
+                celulas.append(Text("›" if str(_ek).startswith("pasta:") else "", style=PA))
+            celulas += [Text(e_nome if (e_nome.startswith("+") or lista_de_acoes) else f" {e_nome}", style=PW),
+                        Text(e_val, style=PS), Text(e_desc, style=PM)]
+            t.add_row(*celulas)
 
     # Rodape: legenda de risco + comandos
     n_ocultos = len(fields) - len(fields_visiveis)
@@ -2818,11 +2869,12 @@ def _print_submenu_compact(
          f"  [{PR}][+][/{PR}] Show advanced options ({n_ocultos} hidden)\n")
         if n_ocultos > 0 else ""
     )
+    legenda_txt = (f"  [{PF}]●[/{PF}] Visual  "
+                   f"[{PA}]◆[/{PA}] {'Analitico' if lang == 'PT' else 'Analytical'}  "
+                   f"[{PR}]▲[/{PR}] {'Avancado' if lang == 'PT' else 'Advanced'}\n") if legenda else ""
     rodape = Text.from_markup(
         f"{aviso_ocultos}"
-        f"  [{PF}]●[/{PF}] Visual  "
-        f"[{PA}]◆[/{PA}] {'Analitico' if lang == 'PT' else 'Analytical'}  "
-        f"[{PR}]▲[/{PR}] {'Avancado' if lang == 'PT' else 'Advanced'}\n"
+        f"{legenda_txt}"
         f"  [{PM}]{escape(_cat.RODAPE_TELA[lang])}[/{PM}]"
     )
 
@@ -2969,7 +3021,7 @@ def _editar_campo(cfg: Config, key: str) -> bool:
         if not raw:
             console.print(f"  [{PM}]{_t('mantido')}[/{PM}]"); return False
         if raw == "?":
-            _mostrar_ajuda(key); return False
+            _ajuda_seletor(key, None, "bool"); return False
         if raw.isdigit() and 1 <= int(raw) <= 2:
             # Sempre "true"/"false" em ingles: e' o vocabulario que
             # _coagir_valor reconhece de forma inequivoca, independente do
@@ -2981,17 +3033,32 @@ def _editar_campo(cfg: Config, key: str) -> bool:
             console.print(f"  [err]{_msg}[/err]"); return False
     elif opcoes:
         console.print()
+        eh_lista = (tipo == "list")      # varias escolhas: numeros ou nomes separados por virgula
+        marcados = {str(x) for x in val_cru} if isinstance(val_cru, (list, tuple)) else set()
         for j, op in enumerate(opcoes, 1):
-            mk = f"[{PA}]►[/{PA}]" if str(op) == str(val_cru) else " "
+            ativo = (str(op) in marcados) if eh_lista else (str(op) == str(val_cru))
+            mk = f"[{PA}]►[/{PA}]" if ativo else " "
             console.print(f"  {mk} [{PA}][{j}][/{PA}] "
                           f"{escape(_rotulo_opcao(key, op))}")
         console.print()
-        raw = _input(f"  [1-{len(opcoes)}] {'ou Enter=manter' if lang == 'PT' else 'or Enter=keep'}: ", ajuda=False)
+        if eh_lista:
+            dica = ("  Varias: numeros separados por virgula (ex.: 2,5,6), na ordem que quiser; a ordem de execucao e fixa.\n"
+                    if lang == "PT" else
+                    "  Several: comma-separated numbers (e.g. 2,5,6); the execution order is fixed.\n")
+            console.print(f"[{PM}]{escape(dica)}[/{PM}]", end="")
+            prompt = f"  [1-{len(opcoes)}] {'ou Enter=manter, ?=ajuda' if lang == 'PT' else 'or Enter=keep, ?=help'}: "
+        else:
+            prompt = f"  [1-{len(opcoes)}] {'ou Enter=manter, ?=ajuda' if lang == 'PT' else 'or Enter=keep, ?=help'}: "
+        raw = _input(prompt, ajuda=False)
         if not raw:
             console.print(f"  [{PM}]{_t('mantido')}[/{PM}]"); return False
         if raw == "?":
-            _mostrar_ajuda(key); return False
-        if raw.isdigit() and 1 <= int(raw) <= len(opcoes):
+            _ajuda_seletor(key, opcoes, tipo); return False
+        if eh_lista:
+            partes = [x for x in _re.split(r"[,;\s]+", raw) if x]
+            escolhidas = [str(opcoes[int(x) - 1]) if (x.isdigit() and 1 <= int(x) <= len(opcoes)) else x for x in partes]
+            raw = ",".join(dict.fromkeys(escolhidas))
+        elif raw.isdigit() and 1 <= int(raw) <= len(opcoes):
             raw = str(opcoes[int(raw) - 1])
     else:
         console.print()
@@ -3074,8 +3141,9 @@ def _painel_ajuda(titulo: str, linhas: List[Tuple[str, Any, str]],
                  border_style=cor, box=rbox.ROUNDED, padding=(0, 1))
 
 
-def _mostrar_ajuda(key: str) -> None:
-    """Ajuda completa de um campo de configuracao."""
+def _mostrar_ajuda(key: str, itens: Optional[List[Tuple[str, str, str]]] = None, pausar: bool = True) -> None:
+    """Ajuda completa de um campo de configuracao. `itens` (numero, rotulo, o que faz) = a lista
+    numerada que o campo oferece, explicada valor a valor."""
     lang   = _lang()
     L      = 1 if lang == "EN" else 0
     h      = _HELP_DB.get(key, {})
@@ -3097,8 +3165,36 @@ def _mostrar_ajuda(key: str) -> None:
               (R["use"][L], h_lang.get("use", ""), PW), (R["nao_use"][L], h_lang.get("nao_use", ""), PW),
               (R["impacto"][L], h_lang.get("impacto", "—"), r_hex),
               (R["padrao"][L], _texto_para_exibir(default) if str(default).strip() else ("(vazio)", "(empty)")[L], PS), (R["faixa"][L], _texto_para_exibir(faixa), PM)]
-    console.print(_painel_ajuda(nome, linhas, exemplos=h_lang.get("exemplos") or None, cor=r_hex))
-    _pause()
+    console.print(_painel_ajuda(nome, linhas, exemplos=None if itens else (h_lang.get("exemplos") or None),
+                                opcoes=itens or None, cor=r_hex))
+    if pausar:
+        _pause()
+
+
+def _itens_do_seletor(key: str, opcoes: Any, tipo: str) -> List[Tuple[str, str, str]]:
+    """(numero, rotulo, o que o valor faz) de cada item da lista numerada de um campo de escolha."""
+    from guaraci.catalogo_valores import SIM_NAO, texto_valor
+    lang = _lang()
+    L = 1 if lang == "EN" else 0
+    out: List[Tuple[str, str, str]] = []
+    if tipo == "bool":
+        faz_ = _cat.faz(key, lang) if key in _cat.OPCOES else (_HELP_DB.get(key, {}).get(lang, {}) or {}).get("desc", "")
+        out.append(("1", _t("opt_sim"), SIM_NAO["sim"][L].format(faz=faz_)))
+        out.append(("2", _t("opt_nao"), SIM_NAO["nao"][L]))
+        return out
+    for j, op in enumerate(opcoes or (), 1):
+        txt = texto_valor(key, op, lang)
+        if txt is None:      # valor sem texto proprio: ao menos diz o que vai para o config.yaml
+            txt = (f"Grava '{op}' no config.yaml." if L == 0 else f"Writes '{op}' to config.yaml.")
+        out.append((str(j), _rotulo_opcao(key, op), txt))
+    return out
+
+
+def _ajuda_seletor(key: str, opcoes: Any, tipo: str) -> None:
+    """"?" numa lista numerada de valores: pergunta qual item explicar (numero ou parte do nome) e explica so' ele;
+    Enter mostra o campo inteiro com todos os valores explicados."""
+    itens = _itens_do_seletor(key, opcoes, tipo)
+    _ajuda_por_escolha(itens, lambda: _mostrar_ajuda(key, itens, pausar=False), pausar=True)
 
 # ===========================================================================
 # MENUS DE CONFIGURACAO
@@ -3650,8 +3746,17 @@ def _menu_preprocessing(cfg: Config) -> None:
             "snv": "SNV — Standard Normal Variate",
             "sg":  "SG  — Savitzky-Golay",
             "mc":  "MC  — Mean-Centering",
+            "airpls": "AirPLS — baseline (asymmetric least squares)",
+            "pqn": "PQN — Probabilistic Quotient Normalisation",
+            "emsc": "EMSC — Extended Multiplicative Scatter Correction",
+            "osc": "OSC — Orthogonal Signal Correction",
+            "auto": "Autoscaling — centre and divide by the standard deviation",
         }
-        partes = [c for c in ["msc", "snv", "sg", "mc"] if c in preproc.lower()]
+        try:                # as etapas REAIS do pipeline (inclui o Personalizado: as etapas escolhidas, na ordem de execucao)
+            from guaraci.preprocessamento import build_preprocessor
+            partes = [n for n, _est in build_preprocessor(cfg).steps]
+        except Exception:   # noqa: BLE001 -- so' exibicao
+            partes = [c for c in ["msc", "snv", "sg", "mc"] if c in preproc.lower()]
         t = Table(box=None, show_header=False, padding=(0, 1))
         t.add_column("I", style=PG, width=2)
         t.add_column("D", style=PW)
@@ -4058,7 +4163,7 @@ def _menu_technique(cfg: Config) -> None:
 def _menu_encoding(cfg: Config) -> None:
     """Codificacao DX — explica o conceito e so lista os codigos sob demanda."""
     lang = _lang()
-    CODIGOS_BASE = getattr(pq, "CODIGO_ESPECIE", {})
+    CODIGOS_BASE = getattr(pq, "CODIGO_ESPECIE", {})    # carga leve (dados_io): abrir a tela nao importa o pipeline inteiro
 
     def _cod_usr() -> dict:
         try:
@@ -4108,6 +4213,40 @@ def _menu_encoding(cfg: Config) -> None:
                 cod_usr[cod_n] = esp_n
                 _salvar_cod(cod_usr)
                 console.print(f"  [g]✓ {_t('cod_salvo', cod=cod_n, esp=esp_n)}[/g]")
+        _pause()
+
+    def _remover() -> None:
+        """Tira um codigo cadastrado pelo usuario (ou todos). Os codigos do pipeline nao se removem."""
+        cod_usr = _cod_usr()
+        console.print()
+        if not cod_usr:
+            console.print(f"  [{PM}]{'Nenhum codigo do usuario para remover.' if lang == 'PT' else 'No user code to remove.'}[/{PM}]")
+            _pause(); return
+        codigos = list(cod_usr)
+        for i, c in enumerate(codigos, 1):
+            console.print(f"  [{PA}][{i}][/{PA}] {escape(c)}  [{PM}]{escape(str(cod_usr[c]))}[/{PM}]")
+        console.print(f"  [{PA}][T][/{PA}] {'Remover todos os codigos do usuario' if lang == 'PT' else 'Remove all user codes'}")
+        alvo = _input("  " + ("Qual remover? (numero, codigo ou T; Enter cancela): " if lang == "PT"
+                              else "Which one? (number, code or T; Enter cancels): ")).strip()
+        if not alvo:
+            return
+        if alvo.upper() == "T":
+            escolhidos = codigos
+        elif alvo.isdigit() and 1 <= int(alvo) <= len(codigos):
+            escolhidos = [codigos[int(alvo) - 1]]
+        elif alvo.upper() in cod_usr:
+            escolhidos = [alvo.upper()]
+        else:
+            console.print(f"  [{PR}]{_t('cod_invalido')}[/{PR}]")
+            _pause(); return
+        pergunta = (f"Remover {', '.join(escolhidos)}? (s/n): " if lang == "PT" else f"Remove {', '.join(escolhidos)}? (y/n): ")
+        if _input("  " + pergunta).strip().lower() not in ("s", "sim", "y", "yes"):
+            console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]")
+            _pause(); return
+        for c in escolhidos:
+            cod_usr.pop(c, None)
+        if _salvar_cod(cod_usr):
+            console.print(f"  [g]✓ {len(escolhidos)} {'codigo(s) removido(s).' if lang == 'PT' else 'code(s) removed.'}[/g]")
         _pause()
 
     def _importar_csv() -> None:
@@ -4184,7 +4323,8 @@ def _menu_encoding(cfg: Config) -> None:
                 "  Ex.: CLA-04-01-2099_T1.dx  ->  Classe A pura, triplicata 1\n\n"
                 "[a]Como cadastrar:[/a]\n"
                 "  [2] um codigo por vez, ou [3] importar um CSV pronto\n"
-                "  (CSV com 2 colunas: codigo,especie — separador , ou ;)."
+                "  (CSV com 2 colunas: codigo,especie — separador , ou ;).\n"
+                "[a]Como remover:[/a] [5] tira um codigo seu (ou todos); os do pipeline ficam."
             )
         else:
             explicacao = (
@@ -4197,7 +4337,8 @@ def _menu_encoding(cfg: Config) -> None:
                 "  E.g.: CLA-04-01-2099_T1.dx  ->  Class A pure, replicate 1\n\n"
                 "[a]How to register:[/a]\n"
                 "  [2] one code at a time, or [3] import a ready CSV\n"
-                "  (CSV with 2 columns: code,species — separator , or ;)."
+                "  (CSV with 2 columns: code,species — separator , or ;).\n"
+                "[a]How to remove:[/a] [5] drops one of your codes (or all); the pipeline ones stay."
             )
         console.print(Panel(
             Text.from_markup(explicacao),
@@ -4212,7 +4353,8 @@ def _menu_encoding(cfg: Config) -> None:
                 f"  [{PA}][1][/{PA}] Listar codigos cadastrados"
                 f"   [{PA}][2][/{PA}] Adicionar codigo\n"
                 f"  [{PA}][3][/{PA}] Importar de CSV"
-                f"            [{PA}][4][/{PA}] Exportar para CSV"
+                f"            [{PA}][4][/{PA}] Exportar para CSV\n"
+                f"  [{PA}][5][/{PA}] Remover codigo"
                 f"   [{PM}]({n_usr} do usuario)[/{PM}]\n"
                 f"  [{PM}]{escape(_cat.RODAPE_TELA['PT'])}[/{PM}]"
             )
@@ -4221,8 +4363,9 @@ def _menu_encoding(cfg: Config) -> None:
                 f"  [{PA}][1][/{PA}] List registered codes"
                 f"   [{PA}][2][/{PA}] Add code\n"
                 f"  [{PA}][3][/{PA}] Import from CSV"
-                f"           [{PA}][4][/{PA}] Export to CSV"
-                f"   [{PM}]({n_usr} user)[/{PM}]\n"
+                f"           [{PA}][4][/{PA}] Export to CSV\n"
+                f"  [{PA}][5][/{PA}] Remove code"
+                f"          [{PM}]({n_usr} user)[/{PM}]\n"
                 f"  [{PM}]{escape(_cat.RODAPE_TELA['EN'])}[/{PM}]"
             )
         console.print(Text.from_markup(acoes))
@@ -4236,7 +4379,9 @@ def _menu_encoding(cfg: Config) -> None:
             ("3", "Importar de CSV" if pt_ else "Import from CSV", "Le um CSV com 2 colunas (codigo,especie; separador , ou ;)." if pt_
              else "Reads a CSV with 2 columns (code,species; separator , or ;)."),
             ("4", "Exportar para CSV" if pt_ else "Export to CSV", "Grava os codigos do usuario num CSV para reusar ou compartilhar." if pt_
-             else "Writes the user codes to a CSV to reuse or share.")])
+             else "Writes the user codes to a CSV to reuse or share."),
+            ("5", "Remover codigo" if pt_ else "Remove code", "Tira um codigo cadastrado por voce (ou todos), com confirmacao; os codigos do pipeline nao saem." if pt_
+             else "Drops a code you registered (or all of them), with confirmation; the pipeline codes stay.")])
         raw = _input(f"\n  {_t('opcao')}: ").upper()
         r = _tecla_comum(raw, "codificacao", cfg)
         if r == "voltar": break
@@ -4245,6 +4390,7 @@ def _menu_encoding(cfg: Config) -> None:
         elif raw == "2": _adicionar()
         elif raw == "3": _importar_csv()
         elif raw == "4": _exportar_csv()
+        elif raw == "5": _remover()
         else:
             console.print(f"  [{PM}]{_t('invalido')}[/{PM}]"); _pause()
 
@@ -5864,6 +6010,25 @@ _FAZ_TEC_AVANCADAS: Dict[str, Tuple[str, str]] = {
 }
 
 
+_RESUMO_TEC_AVANCADAS: Dict[str, Tuple[str, str]] = {
+    "1": ("Separa a variacao por fator do delineamento e testa cada um por permutacao", "Splits variation by design factor and tests each by permutation"),
+    "2": ("Remove dos espectros a variacao de um fator indesejado", "Removes the variation of an unwanted factor from the spectra"),
+    "3": ("Perfis de concentracao e espectros puros", "Concentration profiles and pure spectra"),
+    "4": ("Junta dois blocos (ex.: NIR + Raman) num so modelo", "Joins two blocks (e.g. NIR + Raman) in one model"),
+    "5": ("Decompoe matrizes de fluorescencia excitacao-emissao", "Decomposes excitation-emission fluorescence matrices"),
+    "6": ("Alinha os tempos de retencao dos cromatogramas", "Aligns the retention times of the chromatograms"),
+    "7": ("Testa se EMSC ou OSC melhora o PLS", "Tests whether EMSC or OSC improves PLS"),
+    "8": ("Compara o modelo unico com um modelo por especie", "Compares the single model with a per-species model"),
+    "9": ("VIP recalculado em cada dobra: variaveis de importancia estavel", "VIP recomputed in each fold: stably important variables"),
+    "10": ("Leva um modelo de um instrumento a outro", "Moves a model from one instrument to another"),
+}
+_PRECISA_TEC_AVANCADAS: Dict[str, Tuple[str, str]] = {
+    "1": ("dados", "data"), "2": ("dados", "data"), "3": ("dados", "data"), "4": ("2 pastas", "2 folders"),
+    "5": ("dados EEM", "EEM data"), "6": ("cromatograma", "chromatogram"), "7": ("dados", "data"), "8": ("dados", "data"),
+    "9": ("tabela CSV", "CSV table"), "10": ("3 CSV", "3 CSVs"),
+}
+
+
 def _menu_tecnicas_avancadas(cfg: Optional[Config] = None) -> None:
     """[3.5] Tecnicas especiais -- ASCA, EPO/GLSW, MCR-ALS (com/sem restricao
     de correlacao) e fusao multibloco: existiam implementadas e testadas em
@@ -5898,11 +6063,13 @@ def _tecnicas_avancadas_uma_escolha(cfg: Config) -> bool:
         ("9", "VIP com estabilidade (sua tabela)" if is_pt else "VIP with stability (your table)", _menu_tec_vip),
         ("10", "Transferir calibracao DS/PDS (seus CSV)" if is_pt else "Transfer calibration DS/PDS (your CSVs)", _menu_tec_transferir),
     ]
-    for k, nome, _fn in opcoes:
-        console.print(f"  [{PA}][{k}][/{PA}] {nome}")
-    _rodape_tela()
     L = 0 if is_pt else 1
-    _definir_ajuda("tecnicas_avancadas", [(k, nome, _FAZ_TEC_AVANCADAS[k][L]) for k, nome, _fn in opcoes])
+    # Mesmo molde das outras telas da secao: tabela numerada dentro do painel, com o que cada tecnica precisa e faz.
+    linhas = [("acao:" + k, nome, _PRECISA_TEC_AVANCADAS[k][L], _RESUMO_TEC_AVANCADAS[k][L]) for k, nome, _fn in opcoes]
+    _print_submenu_compact(_cat.tela("tecnicas_avancadas")["nome"][L], "", [], cfg, extras=linhas, legenda=False,
+                           cabecalhos=(("Tecnica", "Precisa de", "O que faz") if is_pt else ("Technique", "You need", "What it does")))
+    _definir_ajuda("tecnicas_avancadas", [(k, nome, _FAZ_TEC_AVANCADAS[k][L] + (" Precisa de: " if is_pt else " You need: ") + _PRECISA_TEC_AVANCADAS[k][L] + ".")
+                                          for k, nome, _fn in opcoes])
     escolha = _ask(f"  [{PA}]{'Opcao' if is_pt else 'Option'}:[/{PA}] ").strip()
     for k, _nome, fn in opcoes:
         if escolha == k:
@@ -6173,6 +6340,56 @@ def _menu_comparar(cfg: Optional[Config] = None) -> None:
     if extras is None:
         return
     anova_cli.executar(args + extras)
+    _pause()
+
+
+def _menu_pares(cfg: Optional[Config] = None) -> None:
+    """[3.7] Quantificacao por par especie x adulterante (mesmo motor de `guaraci pares`, com a configuracao atual)."""
+    cfg = cfg or Config()
+    is_pt = _lang() == "PT"
+    from guaraci import quantificacao_pares as qp
+    atual = str(getattr(cfg, "input_folder", "") or "")
+    pasta = _perguntar("pares", cfg, 1, 3, "Pasta com uma subpasta por especie" if is_pt
+                       else "Folder with one subfolder per species", "dados/especies", atual if os.path.isdir(atual) else "")
+    if not pasta:
+        return
+    if not os.path.isdir(pasta):
+        console.print(f"  [{PR}]{'Pasta nao encontrada' if is_pt else 'Folder not found'}: {escape(pasta)}[/{PR}]")
+        _pause(); return
+    saida = _perguntar("pares", cfg, 2, 3, "Pasta de saida" if is_pt else "Output folder", "resultados_pares",
+                       os.path.join(os.path.dirname(os.path.abspath(pasta)), _nome_pasta("resultados_pares")))
+    if not saida:
+        return
+    extras = _opcoes_extras("pares", cfg, [
+        ("--iodo-especies=", "CSV especie,iodo para a correlacao do LOD com o iodo", "CSV species,iodine for the LOD x iodine correlation"),
+        ("--iodo-adulterantes=", "CSV letra,iodo dos adulterantes", "CSV letter,iodine of the adulterants")])
+    if extras is None:
+        return
+    iodo_e = iodo_a = None
+    for i, t in enumerate(extras):
+        if t.startswith("--iodo-especies="):
+            iodo_e = t.split("=", 1)[1]
+        elif t.startswith("--iodo-adulterantes="):
+            iodo_a = t.split("=", 1)[1]
+        elif t == "--iodo-especies" and i + 1 < len(extras):
+            iodo_e = extras[i + 1]
+        elif t == "--iodo-adulterantes" and i + 1 < len(extras):
+            iodo_a = extras[i + 1]
+    try:
+        linhas = qp.rodar_pares(pasta, saida, cfg)
+    except (ValueError, OSError) as e:
+        console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
+        _pause(); return
+    for r in linhas:
+        resto = f"erro: {r['erro']}" if r.get("erro") else f"LOD={r.get('lod') or '-'}  RMSECV={r.get('rmsecv') or '-'}  VLs={r.get('n_lv') or '-'}"
+        console.print(f"  {escape(str(r['especie']))} + {escape(str(r['adulterante']))}: {escape(resto)}")
+    console.print(f"\n  [{PG}]{'Tabela' if is_pt else 'Table'}: {escape(os.path.join(saida, 'tabela_pares.csv'))}[/{PG}]")
+    if iodo_e and iodo_a:
+        try:
+            c = qp.correlacao_lod_iodo(linhas, qp._ler_mapa(iodo_e), qp._ler_mapa(iodo_a))
+            console.print(f"  Spearman LOD x |delta iodo|: rho={c['rho']:.3f} p={c['p']:.4f} n={c['n']} {escape(str(c['aviso']))}")
+        except (ValueError, OSError, KeyError) as e:
+            console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
     _pause()
 
 
@@ -6986,7 +7203,12 @@ def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool],
         # (neste ramo `modo_chk` ja e "dx": `n_dx` so conta arquivos nesse modo)
         try:
             from guaraci.dados_io import prescan_dx
-            pre = prescan_dx(str(pasta))
+            _j = (_cfgv(cfg, "faixa_min_cm", None), _cfgv(cfg, "faixa_max_cm", None))
+            try:
+                _janela = (float(_j[0]), float(_j[1])) if None not in _j else None
+            except (TypeError, ValueError):
+                _janela = None
+            pre = prescan_dx(str(pasta), _janela)
         except (OSError, ValueError) as _e_pre:  # diagnostico e' best-effort
             checks.append((None, _t("chk_prescan_erro", erro=_e_pre)))
         else:

@@ -9,6 +9,55 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Menu e ajuda (2026-11-16):
+
+- **`?` explica cada valor das listas de escolha** (novo `catalogo_valores.py`, com teste que exige texto PT/EN
+  para todo valor de todo campo) e responde também às perguntas soltas (`catalogo_perguntas.py`). O
+  Personalizado do pré-processamento aceita várias etapas (`2,5,6`) e o painel "Pipeline ativo" lista as etapas reais.
+- **Codificação DX (`2.9`)**: abre sem importar o pipeline inteiro (era a demora que parecia travamento) e ganhou
+  `5` Remover código. **Tela `3.5`** no molde das demais telas da seção.
+- **Tela `3.5`**: sem coluna de ícone (os nomes cabem numa linha) e com títulos de coluna (`Precisa de` explica a coluna verde).
+  **Primeira análise**: o carregamento do motor (alguns segundos) agora mostra "Carregando o motor de análise..." em vez de parecer travado.
+- Nomes de matriz de exemplo retirados do CHANGELOG, de um comentário e de testes.
+
+Leitor, quantificação por par e VIP/SR (2026-11-14):
+
+- **Leitor `.dx`: a amostra pura não é mais descartada.** O eixo comum é a interseção dos eixos; um arquivo
+  exportado em outra faixa (por exemplo 299–4000 cm⁻¹, sem NIR) encolhia a grade e jogava fora os
+  espectros que cobriam a faixa pedida. Agora, com a faixa de trabalho conhecida, só ficam os arquivos
+  que cobrem pelo menos 95 % dela; os demais são listados no aviso. A conferência antes de rodar
+  (`prescan_dx`) usa o mesmo critério e passa a ler também o `##FIRSTX`.
+- **Rótulo de classe por subpasta.** Um erro de digitação no código do `##TITLE` criava classes
+  fantasmas de uma amostra; o código dominante da subpasta (pelo menos 80 %) passa a valer.
+- **`divisao_calibracao: spxy`** (Galvão et al. 2005) para quantificação, para reproduzir protocolos
+  que particionam por Kennard-Stone estendido; use junto com `validacao_group_aware: false`.
+- **Quantificação:** `Tables/regressao_figuras_de_merito.csv` (LOD, LOQ, SEN, SEL, RMSEC/CV/P por
+  modelo) e `Tables/regressao_vip_sr.csv` com a figura VIP × SR do PLS final.
+- **Tela `[3.7]` Quantificação por par no menu** e `guaraci pares PASTA_DADOS [--saida PASTA]` (com `--ajuda`, `--idioma` e o cenário `guaraci exemplo pares`, como os demais comandos): um modelo por par espécie × adulterante e
+  `tabela_pares.csv`; opcionalmente a correlação de Spearman do LOD com o contraste de índice de iodo.
+
+Saturação do detector (2026-11-14):
+
+- **Espectros inteiramente no teto não passam mais em silêncio.** Quando 10 % ou mais dos espectros
+  eram retas no teto (detector cego), todas as variáveis eram marcadas como saturadas, a detecção
+  desistia (`ativo=False`) e o dado saturado entrava no modelo sem aviso nenhum. Agora os
+  espectros mortos (50 % ou mais das variáveis no teto) saem primeiro e a banda saturada dos outros
+  continua detectada.
+- **Quantificação: a faixa de teor que sobrou é registrada e avisada.** O espectro saturado é o de
+  maior teor, então a remoção encolhe a curva (exemplo: de 0–15 % para 0–8 %).
+  `saturacao.json` ganhou `removidos_por_classe`, `espectros_total`, `espectros_mortos`,
+  `faixa_teor_antes`/`faixa_teor_depois` e `inutilizavel`; o resumo mostra "X de N espectros".
+- **Predição: espectro novo no teto não é mais aceito nem quantificado.** O pacote do modelo guarda
+  `saturacao` (teto, tolerância, regiões descartadas); `predict_samples` ganha `saturacao_frac_%` e
+  `saturado`, força `aceito=False` (critério "espectro saturado") e avisa; o fluxo cego devolve
+  `espectro_saturado` em vez de um teor; o JSON portátil leva a mesma chave. Pacotes antigos não têm a
+  chave e predizem como antes (sem as colunas novas).
+- **`model_card.md` e resumo** passam a trazer a linha "Saturação do detector" (contagens, faixa de
+  teor antes/depois e se algo foi removido).
+- **Sem dado útil, `saturacao: auto` recusa a análise** (menos de 3 espectros, variáveis ou, em
+  quantificação, teores distintos) com mensagem dizendo o que refazer; `avisar` segue por conta do
+  usuário. Classe que perde todos os espectros é avisada pelo nome.
+
 Análise crítica do repositório público (2026-11-11):
 
 - **Etapa principal que falha não termina mais como "concluído".** Se a regressão de uma Quantificação
@@ -56,13 +105,13 @@ Correções da auditoria de 2026-11-10, sobre o commit `11a3202`:
 
 **Saturação do detector (absorbância no teto)**
 - Novo `guaraci.saturacao`: detecta o teto do detector (plato de valores idênticos, ex.: A = 3,0
-  com cubeta de 10 mm em óleos) nos modos `dx`, `opus`, `spc`, `sp` e `csv`. Variável com 10 % ou
+  com cubeta de 10 mm em líquidos) nos modos `dx`, `opus`, `spc`, `sp` e `csv`. Variável com 10 % ou
   mais das amostras no teto (alargada em 3 pontos de cada lado) e espectro com 20 % ou mais das
   variáveis no teto saem do modelo (nova opção `saturacao`: `auto` remove e registra, padrão;
   `avisar` só avisa; `nenhuma` não procura; independe de `ajuste_automatico`).
 - O que saiu fica no aviso do terminal, em `Relatorios/saturacao.json` e na linha "Saturação do
   detector" do resumo. Dado sem plato no teto nunca é tocado.
-- Medido em 1.874 espectros NIR de óleos (cubeta de 10 mm): 279 variáveis e 68 espectros fora.
+- Medido numa coleção real de espectros NIR de líquidos (cubeta de 10 mm): 279 variáveis e 68 espectros fora.
   RMSEP do holdout 4,22 → 3,82 e R² 0,04 → 0,16; é ganho real, mas modesto (o limite é a faixa
   de teor de 1 a 15 %, não o software).
 

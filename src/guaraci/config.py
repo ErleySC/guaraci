@@ -90,6 +90,7 @@ PASTAS_EXECUCAO: Dict[str, Tuple[str, str]] = {
     "relatorio": ("relatorio", "report"),
     "resultados": ("resultados", "results"),          # pasta_saida dos exemplos
     "resultados_anova": ("resultados_anova", "anova_results"),
+    "resultados_pares": ("resultados_pares", "pair_results"),
     "resultados_vip": ("resultados_vip", "vip_results"),
     "resultados_monitoramento": ("resultados_monitoramento", "monitoring_results"),
     "resultados_transferencia": ("resultados_transferencia", "transfer_results"),
@@ -465,9 +466,11 @@ class Config:
     # 'kennard_stone' (Kennard & Stone 1969 -- cobertura maximamente
     # representativa do espaco espectral em vez de aleatoria; group-aware,
     # colapsa replicas fisicas num espectro medio por grupo antes de
-    # selecionar). Hiperparametro avancado, config-only (mesmo precedente
+    # selecionar). 'spxy' (Galvao et al. 2005) faz o mesmo com distancia X+y
+    # (cobre tambem a faixa de teor); com validacao_group_aware=false as replicas
+    # contam como amostras independentes (protocolo de Menezes 2023). Hiperparametro avancado, config-only (mesmo precedente
     # de ipls_n_intervalos/vip_threshold_sel/etc -- nao exposto no app/CLI).
-    cal_val_split: str = "aleatoria"   # 'aleatoria' | 'kennard_stone'
+    cal_val_split: str = "aleatoria"   # 'aleatoria' | 'kennard_stone' | 'spxy'
 
     n_permutations: int = 200
     n_permutations_wold: int = 200        # 200 for publication; 50 is minimum for diagnostic

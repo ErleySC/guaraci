@@ -76,8 +76,8 @@ ROTAS: Dict[Tuple[str, str], Dict[str, Any]] = {
         config={'modo_entrada': 'csv', 'nivel': 'N2', 'ddsimca': True}, comando='guaraci demo', exemplo=None, tecnicas=('ddsimca', 'conformal_one_class'),
         motivo=('N2 aprende o espaco de cada classe pura e aceita ou rejeita amostras novas.', 'N2 learns the space of each pure class and accepts or rejects new samples.')),
     ('quantificar', 'espectros_dx'): dict(
-        passos=(('dados', 'pasta .dx com teor no nome do arquivo', '.dx folder with the content in the file name'), ('modelo', 'nivel N3', 'level N3'), ('rodar', '', '')),
-        config={'modo_entrada': 'dx', 'nivel': 'N3'}, comando=None, exemplo=None, tecnicas=('pls_r_pooled', 'figuras_de_merito_regressao', 'rpd_rer'),
+        passos=(('dados', 'pasta .dx com teor no nome do arquivo', '.dx folder with the content in the file name'), ('modelo', 'nivel N3', 'level N3'), ('rodar', '', ''), ('cmd', 'guaraci pares PASTA_DADOS [--saida PASTA] [--config CONFIG.yaml]', 'guaraci pares PASTA_DADOS [--saida PASTA] [--config CONFIG.yaml]')),
+        config={'modo_entrada': 'dx', 'nivel': 'N3'}, comando='guaraci exemplo pares', exemplo='pares', tecnicas=('pls_r_pooled', 'figuras_de_merito_regressao', 'rpd_rer'),
         motivo=('N3 estima o teor por regressao PLS e reporta figuras de merito.', 'N3 estimates the content by PLS regression and reports figures of merit.')),
     ('quantificar', 'csv_espectral'): dict(
         passos=(('dados', 'modo csv, coluna de classe, de concentracao e de grupo', 'csv mode, class, concentration and group columns'), ('modelo', 'nivel N3', 'level N3'), ('rodar', '', '')),

@@ -1526,6 +1526,10 @@ def pls_regressao_pooled(
             X_raw, mae_id, cfg.frac_cal)
         log.info(f"  Split cal/val: Kennard-Stone "
               f"({len(ic)} cal / {len(iv)} val)")
+    elif cfg.cal_val_split == "spxy":
+        ic, iv = spxy_split_group_aware(X_raw, Y_reg, mae_id, cfg.frac_cal)
+        log.info(f"  Split cal/val: SPXY "
+              f"({len(ic)} cal / {len(iv)} val)")
     elif mae_id is not None:
         gss_reg = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                      random_state=cfg.seed)
@@ -1649,7 +1653,7 @@ def pls_regressao_pooled(
               f"LOQ: {_fom_reg['loq']:.2f}  (unidade do teor; aproximado: so' o ruido de "
               f"replica; sem leverage nem erro de referencia -> tende a "
               f"SUBestimar)")
-        log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3f}  |  "
+        log.info(f"  SEN    : {_fom_reg['sensibilidade']:.3g}  |  "
               f"gamma: {_fom_reg['sensibilidade_analitica']:.2f}  |  "
               f"SEL: {_fom_reg['seletividade_media']:.3f}")
         # R3-03 (revisao cega): LOD abaixo do erro de predicao e' incompativel --
@@ -1696,6 +1700,8 @@ def pls_regressao_pooled(
         "dmody_crit": _dmody_res_pooled["dmody_crit"],
         "n_fora_do_dmody": _dmody_res_pooled["n_fora_do_modelo"],
         "holdout": _ho_pooled,
+        "n_lv": int(n_opt_reg), "n_cal": int(len(ic)), "n_val": int(len(iv)),
+        "n_total": int(len(conc)),
     }
     append_regression_summary(pasta_logs, pooled=resultado_pooled,
                             fom_pooled=_fom_reg, holdout=_ho_pooled)
@@ -1728,6 +1734,29 @@ def _predicoes_holdout_para_figura(
         return None
 
 
+def _vip_sr_regressao(pls: Any, X_proc: np.ndarray,
+                      wavenumbers: Optional[np.ndarray], cfg: "Config",
+                      pasta: str) -> None:
+    """VIP (Chong & Jun 2005) e Selectivity Ratio (Rajalahti 2009) do PLS de
+    regressao final: `Tables/regressao_vip_sr.csv` (todas as variaveis) e a
+    figura VIP x SR. Mesmos estimadores da classificacao; sem bootstrap."""
+    import csv
+    wn = (np.asarray(wavenumbers, dtype=float)
+          if wavenumbers is not None and np.asarray(wavenumbers).size == X_proc.shape[1]
+          else np.arange(X_proc.shape[1], dtype=float))
+    vip = np.asarray(vip_scores(pls), dtype=float)
+    sr = np.asarray(compute_selectivity_ratio(pls, X_proc), dtype=float)
+    pasta_tab = pasta_execucao(pasta, NOME_TABELAS)
+    os.makedirs(pasta_tab, exist_ok=True)
+    with open(os.path.join(pasta_tab, "regressao_vip_sr.csv"), "w",
+              encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["numero_de_onda_cm-1", "VIP", "SR"])
+        for a, b, c in zip(wn, vip, sr):
+            w.writerow([f"{a:.6g}", f"{b:.6g}", f"{c:.6g}"])
+    fig_sprint3_sr_vip(vip, sr, wn, top_n=20, cfg=cfg, pasta=pasta)
+
+
 def _figuras_modelo_unico_regressao(
         pipe_final: Pipeline, Xc_raw: np.ndarray, Yc: np.ndarray,
         Yc_hat: np.ndarray, Xv_raw: np.ndarray, Yv: np.ndarray,
@@ -1753,6 +1782,8 @@ def _figuras_modelo_unico_regressao(
         else:
             log.info("  [AVISO] coeficientes b sem eixo espectral compativel; "
                      "figura nao gerada")
+        _vip_sr_regressao(pls, np.asarray(prep.transform(Xc_raw), dtype=float),
+                          wavenumbers, cfg, pasta)
         T_cal = np.asarray(pls.transform(prep.transform(Xc_raw)))
         r_cal, s_cal = fx.residuos_padronizados(Yc, Yc_hat, A)
         mod: Dict[str, Any] = {
@@ -2215,11 +2246,15 @@ def _etapa_regressao_pls(*, X_holdout, X_raw, _G, _conc_holdout, cam_modelo, cfg
         elif n_nan > 0:
             log.info(f"\n[7/7] PLS regressao — PULADA: {n_nan} amostras com "
                   f"conc=NaN.")
+            _registrar_falha_etapa(f"Regressao PLS nao rodou: {n_nan} amostras sem teor (conc=NaN).")
         elif float(conc_arr.std()) < 1e-8:
             log.info("\n[7/7] PLS regressao — PULADA: variancia de conc ~= 0.")
+            _registrar_falha_etapa("Regressao PLS nao rodou: todos os teores sao iguais (variancia ~ 0).")
         elif n_nonzero < 10:
             log.info(f"\n[7/7] PLS regressao — PULADA: apenas {n_nonzero} "
                   f"amostras com resposta > 0 (precisa >= 10).")
+            _registrar_falha_etapa(f"Regressao PLS nao rodou: apenas {n_nonzero} amostras com teor > 0 "
+                                   f"(precisa de 10 ou mais).")
         else:
             # Guard (6): numero de especies = numero de CLASSES (rotulos). Antes
             # vinha do prefixo de 3 caracteres do mae_id (uma convencao de
@@ -2468,6 +2503,9 @@ def _etapa_exportar_modelo(*, Q, T2, X_processed, X_raw, _G, cfg, conc, conforma
             "n_opt":          int(n_opt),
             "preset":         cfg.default_preprocessing,
             "wn_min":         cfg.wn_min, "wn_max": cfg.wn_max,
+            # Teto de saturacao do treino (None = nada detectado): a predicao avisa/bloqueia
+            # espectro novo no teto. Pacotes antigos nao tem a chave e seguem como antes.
+            "saturacao":      _saturacao_do_pacote(cfg),
             # Faixas excluidas e normalizacao por espectro (a predicao reaplica as MESMAS):
             # `wavenumbers` acima ja' e' o eixo SEM as faixas excluidas.
             "faixas_excluir": list((getattr(cfg, "exclusion_info", None) or {}).get("faixas", [])),
@@ -2893,8 +2931,17 @@ def _etapa_resumo_e_relatorios(*, Q, T2, T_pls, X_holdout, X_raw, _G, _achados_a
            if (getattr(cfg, "exclusion_info", None) or {}).get("normalizacao", "nenhuma") != "nenhuma" else {}),
         **({"Saturacao do detector": (
                 f"{cfg.saturacao_info['variaveis_removidas']} variaveis e "
-                f"{cfg.saturacao_info['espectros_removidos']} espectro(s) no teto "
+                f"{cfg.saturacao_info['espectros_removidos']} de "
+                f"{cfg.saturacao_info.get('espectros_total', '?')} espectro(s) no teto "
                 f"({cfg.saturacao_info['teto']:.3g})"
+                + (f"; faixa de teor {cfg.saturacao_info['faixa_teor_antes'][0]:g}-"
+                   f"{cfg.saturacao_info['faixa_teor_antes'][1]:g} -> "
+                   + (f"{cfg.saturacao_info['faixa_teor_depois'][0]:g}-"
+                      f"{cfg.saturacao_info['faixa_teor_depois'][1]:g}"
+                      if cfg.saturacao_info.get("faixa_teor_depois") else "nenhuma")
+                   if cfg.saturacao_info.get("faixa_teor_antes")
+                   and cfg.saturacao_info.get("faixa_teor_depois") != cfg.saturacao_info.get("faixa_teor_antes")
+                   else "")
                 + ("" if cfg.saturacao_info.get("aplicado") else " -- NAO removidos (saturacao=avisar)"))}
            if getattr(cfg, "saturacao_info", None) else {}),
         "Tecnica (perfil)":       tecnica_do_perfil(cfg) or "-",
@@ -4145,20 +4192,63 @@ def _etapa_carregar_e_validar(*, cfg):
             _un_sat = unidade_do_eixo(cfg) or "cm-1"
             _regs = ", ".join(f"{a:.0f}-{b:.0f}" for a, b in _sat["regioes"][:8])
             _aplicar_sat = _modo_sat == "auto"
+            _n_tot_sat = int(len(_sat["manter_espectros"]))
+            _rem_sat = ~_sat["manter_espectros"]
+            # Por classe/nivel: num par puro+adulterado, perder so' os adulterados decide se ha'
+            # quantificacao -- o total sozinho esconde isso.
+            _por_classe_sat = {str(c): [int(((rotulos == c) & _rem_sat).sum()), int((rotulos == c).sum())]
+                               for c in np.unique(rotulos)}
             log.warning(f"[AVISO] Saturacao do detector (teto {_sat['teto']:.3g}): "
-                        f"{_sat['variaveis_removidas']} variaveis ({_regs} {_un_sat}) e "
-                        f"{_sat['espectros_removidos']} espectro(s) no teto."
-                        + ("" if _aplicar_sat else "saturacao=avisar: nada removido; "
+                        f"{_sat['variaveis_removidas']} variaveis ({_regs or '-'} {_un_sat}) e "
+                        f"{_sat['espectros_removidos']} de {_n_tot_sat} espectro(s) no teto"
+                        f" ({_sat['espectros_mortos']} inteiramente no teto)."
+                        + ("" if _aplicar_sat else " saturacao=avisar: nada removido; "
                            "reduza faixa_min_cm/faixa_max_cm ou refaca as medidas."))
+            for _cl_sat, (_r_sat, _t_sat) in _por_classe_sat.items():
+                if _r_sat:
+                    log.warning(f"[AVISO]   classe {_cl_sat}: {_r_sat} de {_t_sat} espectro(s) saturado(s)"
+                                + (" -- TODOS" if _r_sat == _t_sat else "") + ".")
             cfg.saturacao_info = {
-                "teto": _sat["teto"], "aplicado": _aplicar_sat,
+                "teto": _sat["teto"], "tolerancia": _sat["tolerancia"], "aplicado": _aplicar_sat,
+                "inutilizavel": bool(_sat["inutilizavel"]),
                 "variaveis_removidas": _sat["variaveis_removidas"],
                 "espectros_removidos": _sat["espectros_removidos"],
+                "espectros_mortos": _sat["espectros_mortos"],
+                "espectros_total": _n_tot_sat,
+                "removidos_por_classe": _por_classe_sat,
+                "concentracoes_afetadas": _concentracoes_afetadas(conc, _rem_sat),
                 "regioes": [[a, b] for a, b in _sat["regioes"]],
                 "unidade_eixo": _un_sat,
                 "espectros_removidos_ids": ([str(mae_id[i]) if mae_id is not None else int(i)
-                                             for i in np.where(~_sat["manter_espectros"])[0][:200]]),
+                                             for i in np.where(_rem_sat)[0][:200]]),
             }
+            # Quantificacao: espectro saturado costuma ser o de MAIOR teor (mais absorbancia), entao
+            # a remocao nao e' aleatoria -- encolhe a faixa de calibracao. Registra e, se sobram
+            # menos de 3 teores distintos, nao ha' curva: trata como inutilizavel.
+            _faixa_sat = _faixa_de_teores(conc, _sat["manter_espectros"])
+            if _faixa_sat is not None:
+                cfg.saturacao_info["faixa_teor_antes"] = _faixa_sat["antes"]
+                cfg.saturacao_info["faixa_teor_depois"] = _faixa_sat["depois"]
+                cfg.saturacao_info["teores_distintos_depois"] = _faixa_sat["n_depois"]
+                if _faixa_sat["n_depois"] < 3 and resolve_objective(cfg) == QUANTIFICACAO:
+                    _sat["inutilizavel"] = True
+                    cfg.saturacao_info["inutilizavel"] = True
+                elif (_faixa_sat["depois"] != _faixa_sat["antes"]
+                      and resolve_objective(cfg) == QUANTIFICACAO):
+                    log.warning(f"[AVISO] Saturacao encolheu a faixa de teor de "
+                                f"{_faixa_sat['antes'][0]:g}-{_faixa_sat['antes'][1]:g} para "
+                                f"{_faixa_sat['depois'][0]:g}-{_faixa_sat['depois'][1]:g}"
+                                + ("" if _aplicar_sat else " (se removidos)")
+                                + ": o modelo so' vale dentro da faixa que sobrou.")
+            if _sat["inutilizavel"]:
+                _msg_inut = (f"Saturacao do detector: {_sat['espectros_removidos']} de {_n_tot_sat} espectros "
+                             f"e {_sat['variaveis_removidas']} de {len(_sat['manter_variaveis'])} variaveis no teto "
+                             f"({_sat['teto']:.3g}); sobram menos de 3 espectros, variaveis ou teores distintos: "
+                             f"nao ha' o que modelar. "
+                             f"Refaca as medidas com menos caminho optico ou diluicao.")
+                if _aplicar_sat:
+                    raise ValueError(_msg_inut + " Para rodar mesmo assim (o resultado nao vale), use saturacao: avisar.")
+                log.warning(f"[AVISO] {_msg_inut} saturacao=avisar: o modelo vai usar dado saturado.")
             if _aplicar_sat:
                 _mv, _me = _sat["manter_variaveis"], _sat["manter_espectros"]
                 X_raw = X_raw[_me][:, _mv]
@@ -4172,6 +4262,10 @@ def _etapa_carregar_e_validar(*, cfg):
                     log.warning(f"[AVISO] {_sat['espectros_removidos']} espectro(s) saturado(s) fora do "
                                 f"modelo (ver saturacao.json em Relatorios). Refaca essas medidas "
                                 f"com menos caminho optico ou diluicao.")
+                _vazias_sat = [c for c, (r, t) in _por_classe_sat.items() if r == t]
+                if _vazias_sat:
+                    log.warning(f"[AVISO] Classe(s) sem nenhum espectro depois da saturacao: "
+                                f"{', '.join(_vazias_sat)}. O resultado NAO representa essa(s) classe(s).")
 
     # --- 1a2. Exclusao de classes (ex: uma classe com lote anomalo) ----------
     if cfg.exclude_classes:
@@ -4526,6 +4620,46 @@ def _executar_impl(cfg: Config):
 
 
 @functools.wraps(_executar_impl)
+def _saturacao_do_pacote(cfg: Config) -> Optional[Dict[str, Any]]:
+    """O que a predicao precisa saber da saturacao do treino; None se nao houve."""
+    info = getattr(cfg, "saturacao_info", None) or {}
+    if info.get("teto") is None or info.get("tolerancia") is None:
+        return None
+    return {"teto": float(info["teto"]), "tolerancia": float(info["tolerancia"]),
+            "regioes": [[float(a), float(b)] for a, b in info.get("regioes", [])],
+            "aplicado": bool(info.get("aplicado")),
+            "faixa_teor_depois": info.get("faixa_teor_depois")}
+
+
+def _faixa_de_teores(conc: Any, manter: np.ndarray) -> Optional[Dict[str, Any]]:
+    """Faixa (min, max) e no. de teores distintos antes/depois de tirar os saturados.
+    None se nao ha' teor numerico (classificacao/exploratorio)."""
+    if conc is None:
+        return None
+    try:
+        c = np.asarray(conc, dtype=float)
+    except (TypeError, ValueError):
+        return None
+    ok = np.isfinite(c)
+    if ok.sum() == 0:
+        return None
+    dep = c[ok & np.asarray(manter, dtype=bool)]
+    return {"antes": [float(c[ok].min()), float(c[ok].max())],
+            "depois": [float(dep.min()), float(dep.max())] if dep.size else [],
+            "n_depois": int(np.unique(dep).size)}
+
+
+def _concentracoes_afetadas(conc: Any, removidos: np.ndarray) -> List[float]:
+    """Teores (unicos, finitos) dos espectros removidos por saturacao; [] se nao houver."""
+    if conc is None or not np.asarray(removidos).any():
+        return []
+    try:
+        vals = np.asarray(conc, dtype=float)[removidos]
+    except (TypeError, ValueError):
+        return []
+    return sorted({float(v) for v in vals if np.isfinite(v)})
+
+
 def executar(cfg: Config) -> Any:
     """Executa o pipeline completo (ver `_executar_impl` para as etapas). O
     backend Agg e os filtros de warnings valem so' durante a chamada."""

@@ -21,7 +21,7 @@ def test_campo_inexistente_e_avisado(cli):
 
 def test_campo_booleano_so_aceita_1_ou_2_e_enter_mantem(cli):
     cfg = g.Config(detailed_figures=False)
-    cli.dizer("", "?", "", "7", "1")
+    cli.dizer("", "?", "", "", "7", "1")     # `?` pergunta qual item explicar (Enter = o campo inteiro) e pausa
     assert g._editar_campo(cfg, "figuras_detalhadas") is False
     assert g._editar_campo(cfg, "figuras_detalhadas") is False        # `?` abre a ajuda (que pausa) e nao muda nada
     assert g._editar_campo(cfg, "figuras_detalhadas") is False        # 7: pede 1 ou 2
@@ -31,7 +31,7 @@ def test_campo_booleano_so_aceita_1_ou_2_e_enter_mantem(cli):
 
 def test_campo_de_escolha_aceita_numero_do_menu_e_trata_enter_e_ajuda(cli):
     cfg = g.Config(output_format="png")
-    cli.dizer("", "?", "", "2")
+    cli.dizer("", "?", "", "", "2")
     assert g._editar_campo(cfg, "formato_figura") is False
     assert g._editar_campo(cfg, "formato_figura") is False
     assert g._editar_campo(cfg, "formato_figura") is True

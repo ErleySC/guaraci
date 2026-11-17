@@ -63,6 +63,7 @@ CENARIOS = [
     ("imagens_hsi", "imagens", "sintetico", [("cli", ["exemplo", "hsi", "{ex}"]), ("cli", ["run", "{ex}/config.yaml"])],
      "hsi_relatorio.txt"),
     ("monitorar_processos", "monitorar", "sintetico", [("cli", ["exemplo", "monitorar", "{ex}", "--rodar"])], "monitor_lotes.csv"),
+    ("quantificar_por_par", "quantificar", "sintetico", [("cli", ["exemplo", "pares", "{ex}", "--rodar"])], "tabela_pares.csv"),
     ("fusao_multibloco", "modelar", "sintetico", [("cli", ["exemplo", "quantificar", "{ex}"]),
                                                   ("menu", ["T", "4", "NIR", "csv", "{ex}/dados.csv", "classe", "conc",
                                                             "MIR", "csv", "{ex}/dados.csv", "classe", "conc", "", "q"])],

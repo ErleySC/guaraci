@@ -349,6 +349,26 @@ para nomes de coluna de saída).
   `sp` e `csv`, dado com plato de absorbância no teto do detector passa a ter as
   variáveis e os espectros saturados fora do modelo (ver CHANGELOG); `avisar`
   e `nenhuma` mantêm o comportamento anterior. Golden regravado.
+- 2026-11-14 (saturação, não lançado): `detectar_saturacao` devolve as chaves novas
+  `inutilizavel` e `espectros_mortos` (aditivo). **Mudança de comportamento:** espectros
+  inteiramente no teto saem antes do cálculo por variável; antes, um lote com 10 % ou mais deles
+  fazia a função desistir em silêncio (`ativo=False`) e o dado saturado entrava no modelo. Com
+  `saturacao: auto`, conjunto sem 3 espectros, variáveis ou teores distintos é recusado
+  (`ValueError`). Golden regravado.
+- 2026-11-14 (saturação na predição, não lançado): o pacote do modelo ganha a chave opcional
+  `saturacao` (`teto`, `tolerancia`, `regioes`, `aplicado`, `faixa_teor_depois`) e o JSON portátil a
+  mesma chave (`versao_formato` não muda: campo aditivo). `predict_samples` ganha, só quando o pacote
+  traz a chave, as colunas `saturacao_frac_%` e `saturado`, e `aceito` vira `False` para espectro
+  saturado; `predict_portable` devolve as mesmas duas chaves. Pacote sem a chave: saída idêntica à
+  anterior. Funções novas: `saturacao.fracao_no_teto`, `saturacao.sinalizar_saturacao_nova`.
+- 2026-11-14 (leitor `.dx`, quantificação por par, VIP/SR, não lançado): `dados_io.load_dx` ganha o
+  parâmetro opcional `janela=None` (sem ele, o comportamento é o anterior); com ele, só ficam os
+  arquivos que cobrem 95 % da faixa. **Mudança de comportamento:** com a faixa de trabalho conhecida,
+  espectro de amostra pura que antes era descartado quando outro arquivo tinha eixo menor agora entra;
+  o rótulo de classe passa a ser o dominante da subpasta quando há pelo menos 80 % de concordância.
+  `Config.cal_val_split` (`divisao_calibracao`) aceita também `spxy`. Saídas novas e aditivas:
+  `Tables/regressao_figuras_de_merito.csv`, `Tables/regressao_vip_sr.csv` e o módulo
+  `guaraci.quantificacao_pares` e subcomando `guaraci pares` (`achar_pares`, `rodar_pares`, `correlacao_lod_iodo`, `main`).
 
 - 2026-11-10 (instalação só a partir do clone, dentro da v1.0.0): `extras_opcionais.COMANDO_TUDO` e
   `comando_pip` passam a devolver `pip install ".[all]"` e `pip install ".[extra]"` (a instalação é sempre

@@ -29,7 +29,7 @@ def test_exemplo_gera_dado_e_config_validos(tmp_path, cenario):
         extensao = {"fluorescencia_eem": "*.dat", "cromatograma_gcms": "*.cdf"}[cenario]
         assert cfg.mode == {"fluorescencia_eem": "eem", "cromatograma_gcms": "gcms"}[cenario]
         assert len(list(Path(cfg.input_folder).rglob(extensao))) == 18  # 3 classes x 6 amostras
-    elif cenario not in ("comparar", "monitorar", "transferir", "vip"):  # estes rodam por comando proprio
+    elif cenario not in ("comparar", "monitorar", "pares", "transferir", "vip"):  # estes rodam por comando proprio
         cfg = g._load_config(str(tmp_path / cenario / "config.yaml"))     # o config e aceito pelo validador
         assert cfg.csv_file and os.path.isabs(cfg.csv_file)
         assert os.path.isfile(cfg.csv_file)

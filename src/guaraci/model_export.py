@@ -204,6 +204,8 @@ def export_portable_json(pkg: Dict[str, Any]) -> Dict[str, Any]:
         "faixas_excluir": [str(f) for f in pkg.get("faixas_excluir", [])],
         "normalizacao": str(pkg.get("normalizacao", "nenhuma") or "nenhuma"),
         "ims_rip_janela": pkg.get("ims_rip_janela"),
+        # Teto de saturacao do treino (opcional; ausente = nada detectado ou modelo antigo).
+        **({"saturacao": pkg["saturacao"]} if pkg.get("saturacao") else {}),
         "passos_preprocessamento": passos,
         "pls": {
             "x_mean": np.asarray(pls._x_mean, dtype=float).tolist(),  # noqa: SLF001
@@ -364,6 +366,11 @@ def predict_portable(portable: Dict[str, Any], X_new_raw: np.ndarray,
         "classe_pred": [classes[i] for i in idx_pred],
         "confianca_%": (Y_norm.max(axis=1) * 100.0).tolist(),
     }
+    from guaraci.saturacao import sinalizar_saturacao_nova
+    _sat = sinalizar_saturacao_nova(portable, X_new_raw, wn_new)
+    if _sat is not None:
+        saida["saturacao_frac_%"] = np.round(_sat[0] * 100, 1).tolist()
+        saida["saturado"] = _sat[1].tolist()
     ad = portable.get("dominio_aplicabilidade")
     if ad:
         mean = np.asarray(ad["pca_mean"], dtype=float)

@@ -9,9 +9,15 @@ Regra (conservadora; so' age quando ha' PLATO real no teto):
   1. teto = maximo global; so' vale se muitos pontos (>= `MIN_PONTOS_NO_TETO`)
      de varios espectros (>= `MIN_FRACAO_ESPECTROS`) estao no teto -- um pico
      isolado nunca e' saturacao.
-  2. variavel saturada: >= `LIMIAR_VARIAVEL` das amostras no teto -> removida.
-  3. espectro saturado: depois de tirar as variaveis, >= `LIMIAR_ESPECTRO` das
+  2. espectro morto: >= `LIMIAR_ESPECTRO_MORTO` de TODAS as variaveis no teto -> removido
+     antes de tudo (detector cego: o "espectro" e' uma reta no teto). Sem este passo, um
+     lote com muitos espectros mortos marcava todas as variaveis como saturadas e a funcao
+     desistia em silencio -- justamente no caso mais grave.
+  3. variavel saturada: >= `LIMIAR_VARIAVEL` dos espectros restantes no teto -> removida.
+  4. espectro saturado: depois de tirar as variaveis, >= `LIMIAR_ESPECTRO` das
      variaveis restantes no teto -> removido.
+  5. se sobram menos de 3 espectros ou 3 variaveis, devolve `inutilizavel=True` com as
+     mascaras reais (quem chama decide recusar); nunca devolve "nada a fazer" nesse caso.
 Nao age em dados que nao sao absorbancia espectral (multielementar, imagem...).
 """
 from __future__ import annotations
@@ -20,7 +26,8 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-__all__ = ["MODOS_COM_SATURACAO", "detectar_saturacao", "regioes_de_mascara"]
+__all__ = ["MODOS_COM_SATURACAO", "detectar_saturacao", "regioes_de_mascara",
+           "fracao_no_teto", "sinalizar_saturacao_nova"]
 
 MODOS_COM_SATURACAO = ("dx", "opus", "spc", "sp", "csv")
 MIN_VARIAVEIS = 100          # tabela com poucas colunas nao e' espectro
@@ -28,6 +35,8 @@ MIN_PONTOS_NO_TETO = 20      # pontos (no total) para considerar que ha' plato
 MIN_FRACAO_ESPECTROS = 0.02  # fracao dos espectros que toca o teto
 LIMIAR_VARIAVEL = 0.10       # fracao das amostras no teto para tirar a variavel
 LIMIAR_ESPECTRO = 0.20       # fracao das variaveis no teto para tirar o espectro
+LIMIAR_ESPECTRO_MORTO = 0.50  # fracao de TODAS as variaveis no teto: espectro morto, sai primeiro
+MIN_RESTANTES = 3            # abaixo disso (espectros ou variaveis) o conjunto e' inutilizavel
 FOLGA_PONTOS = 3             # pontos de cada lado alargando a regiao saturada
 TOLERANCIA_REL = 1e-3        # distancia ao teto, relativa a amplitude dos dados
 
@@ -50,12 +59,14 @@ def regioes_de_mascara(wn: np.ndarray, mascara: np.ndarray) -> List[Tuple[float,
 
 
 def detectar_saturacao(X: np.ndarray, wn: np.ndarray) -> Dict[str, Any]:
-    """Devolve {'ativo', 'teto', 'manter_variaveis', 'manter_espectros', ...}.
+    """Devolve {'ativo', 'inutilizavel', 'teto', 'manter_variaveis', 'manter_espectros', ...}.
 
-    `manter_*` sao mascaras booleanas; com `ativo=False` mantem tudo."""
+    `manter_*` sao mascaras booleanas; com `ativo=False` mantem tudo. Com `inutilizavel=True`
+    (ativo tambem True) as mascaras sao as reais e sobram menos de `MIN_RESTANTES` espectros
+    ou variaveis: nao ha' o que modelar."""
     X = np.asarray(X, dtype=float)
     n, p = X.shape
-    tudo = {"ativo": False, "teto": None,
+    tudo = {"ativo": False, "inutilizavel": False, "teto": None, "tolerancia": None,
             "manter_variaveis": np.ones(p, dtype=bool),
             "manter_espectros": np.ones(n, dtype=bool),
             "variaveis_removidas": 0, "espectros_removidos": 0,
@@ -87,21 +98,55 @@ def detectar_saturacao(X: np.ndarray, wn: np.ndarray) -> Dict[str, Any]:
         return tudo
     if float(np.mean(por_espectro >= 3)) < MIN_FRACAO_ESPECTROS:
         return tudo
-    frac_var = no_teto.mean(axis=0)
+    # Espectro morto primeiro: se ele entrasse na conta das variaveis, um lote com >= 10% de
+    # espectros mortos marcaria TODAS as variaveis como saturadas.
+    vivo = no_teto.mean(axis=1) < LIMIAR_ESPECTRO_MORTO
+    frac_var = no_teto[vivo].mean(axis=0) if vivo.any() else np.ones(p)
     removida = frac_var >= LIMIAR_VARIAVEL
     # Vizinhas de uma banda saturada tambem estao contaminadas (o plato tem bordas e o SG usa a
     # janela): alarga a regiao removida em `FOLGA_PONTOS` pontos de cada lado.
     removida = np.convolve(removida.astype(float), np.ones(2 * FOLGA_PONTOS + 1), mode="same") > 0
     manter_var = ~removida
-    if manter_var.sum() < 3:           # tudo saturado: nao ha' o que salvar, nao mexe
-        return tudo
-    frac_esp = no_teto[:, manter_var].mean(axis=1)
-    manter_esp = frac_esp < LIMIAR_ESPECTRO
-    if manter_esp.sum() < 3:
-        return tudo
-    return {"ativo": True, "teto": teto,
+    if manter_var.any():
+        manter_esp = vivo & (no_teto[:, manter_var].mean(axis=1) < LIMIAR_ESPECTRO)
+    else:
+        manter_esp = vivo.copy()
+    inutilizavel = bool(manter_var.sum() < MIN_RESTANTES or manter_esp.sum() < MIN_RESTANTES)
+    return {"ativo": True, "inutilizavel": inutilizavel, "teto": teto, "tolerancia": float(1.5 * q),
             "manter_variaveis": manter_var, "manter_espectros": manter_esp,
             "variaveis_removidas": int((~manter_var).sum()),
             "espectros_removidos": int((~manter_esp).sum()),
+            "espectros_mortos": int((~vivo).sum()),
             "regioes": regioes_de_mascara(np.asarray(wn, dtype=float), ~manter_var),
             "frac_variavel": frac_var}
+
+
+def fracao_no_teto(X: np.ndarray, wn: np.ndarray, teto: float, tolerancia: float,
+                   regioes: List[Tuple[float, float]] | List[List[float]] | None = None) -> np.ndarray:
+    """Fracao dos pontos de cada espectro de `X` que esta no teto (`teto` +- `tolerancia`).
+
+    Pontos dentro de `regioes` (as que o modelo ja' descartou) nao contam: um espectro novo
+    saturado so' na banda que o modelo nunca usou e' inofensivo."""
+    X = np.atleast_2d(np.asarray(X, dtype=float))
+    wn = np.asarray(wn, dtype=float)
+    fora = np.ones(wn.shape[0], dtype=bool)
+    for a, b in regioes or []:
+        fora &= ~((wn >= float(a)) & (wn <= float(b)))
+    if not fora.any():
+        return np.zeros(X.shape[0])
+    no_teto = np.isfinite(X[:, fora]) & (np.abs(X[:, fora] - float(teto)) <= float(tolerancia))
+    return no_teto.mean(axis=1)
+
+
+def sinalizar_saturacao_nova(pkg: Dict[str, Any], X_novo_bruto: np.ndarray,
+                             wn_novo: np.ndarray) -> Tuple[np.ndarray, np.ndarray] | None:
+    """(fracao no teto, saturado?) por espectro novo, ou None se o pacote nao guarda o teto.
+
+    Pacotes salvos antes desta chave (ou treinados sem saturacao detectada) devolvem None:
+    nada e' inventado para eles. `saturado` usa o mesmo limiar do treino para espectro."""
+    info = pkg.get("saturacao")
+    if not info or info.get("teto") is None or info.get("tolerancia") is None:
+        return None
+    frac = fracao_no_teto(X_novo_bruto, wn_novo, float(info["teto"]), float(info["tolerancia"]),
+                          info.get("regioes"))
+    return frac, frac >= LIMIAR_ESPECTRO

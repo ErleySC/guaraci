@@ -549,8 +549,8 @@ def _split_cal_val_por_especie(
     duplicacao de 2026-09-19; a divergencia entre elas quebraria a
     comparacao apples-to-apples PLS-R x benchmark sem nenhum aviso).
 
-    Regra: Kennard-Stone group-aware (`cfg.cal_val_split ==
-    "kennard_stone"`); senao GroupShuffleSplit por `mae_id` (>=4 grupos);
+    Regra: Kennard-Stone ou SPXY group-aware (`cfg.cal_val_split ==
+    "kennard_stone"` / `"spxy"`); senao GroupShuffleSplit por `mae_id` (>=4 grupos);
     senao permutacao simples com `cfg.seed`. Devolve `None` quando a
     especie nao sustenta o split (ValueError/IndexError do splitter, ou
     menos de 4 amostras de calibracao / 2 de validacao) -- o chamador
@@ -559,6 +559,8 @@ def _split_cal_val_por_especie(
     try:
         if cfg.cal_val_split == "kennard_stone":
             ic, iv = kennard_stone_split_group_aware(X_c, mae_c, cfg.frac_cal)
+        elif cfg.cal_val_split == "spxy":
+            ic, iv = spxy_split_group_aware(X_c, Y_c, mae_c, cfg.frac_cal)
         elif mae_c is not None and len(np.unique(mae_c)) >= 4:
             gss = GroupShuffleSplit(n_splits=1, train_size=cfg.frac_cal,
                                     random_state=cfg.seed)
@@ -1482,7 +1484,7 @@ def sanitizar_metadados(df: "pd.DataFrame") -> "pd.DataFrame":
     return limpo.drop(columns=presentes)
 
 
-def prescan_dx(pasta: str) -> Dict[str, Any]:
+def prescan_dx(pasta: str, janela: Optional[Tuple[float, float]] = None) -> Dict[str, Any]:
     """Varredura BARATA dos cabecalhos .dx, para avisar ANTES de executar.
 
     Le apenas o cabecalho JCAMP-DX (`##TITLE=` e `##LASTX=`), parando no
@@ -1505,6 +1507,9 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
        protecao contra vazamento de replica -- exatamente o que a validacao
        group-aware existe para impedir.
 
+    Com `janela=(wn_min, wn_max)` o criterio e' o mesmo de `load_dx`: ficam os arquivos que cobrem a
+    janela de analise (nao a moda do xmax); sem ela vale a moda.
+
     Nao levanta excecao: e' diagnostico best-effort. Arquivo ilegivel ou sem
     cabecalho reconhecivel entra em `n_sem_cabecalho` e segue.
 
@@ -1525,15 +1530,18 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
     arquivos = _glob.glob(os.path.join(str(pasta), "**", "*.dx"), recursive=True)
     # (caminho, lastx, mae_id_ou_None) por arquivo legivel.
     lidos: List[Tuple[str, float, Optional[str]]] = []
+    primeiros: List[float] = []
     n_sem_cabecalho = 0
 
     for caminho in arquivos:
-        titulo = lastx = None
+        titulo = lastx = firstx = None
         try:
             with open(caminho, "r", encoding="latin-1", errors="replace") as f:
                 for linha in f:
                     if linha.startswith("##TITLE="):
                         titulo = linha[len("##TITLE="):].strip()
+                    elif linha.startswith("##FIRSTX="):
+                        firstx = linha[len("##FIRSTX="):].strip()
                     elif linha.startswith("##LASTX="):
                         lastx = linha[len("##LASTX="):].strip()
                     elif linha.startswith("##XYDATA") or linha.startswith("##XYPOINTS"):
@@ -1550,6 +1558,10 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
 
         info = parse_title(titulo) if titulo else None
         mae = str(info["mae_id"]) if info and info.get("mae_id") else None
+        try:
+            primeiros.append(float(str(firstx).replace(",", ".")))
+        except (TypeError, ValueError):
+            primeiros.append(min(0.0, valor_lastx))
         lidos.append((caminho, valor_lastx, mae))
 
     faixa_dominante: Optional[float] = None
@@ -1565,6 +1577,14 @@ def prescan_dx(pasta: str) -> Dict[str, Any]:
         valores, contagens = np.unique(chave, return_counts=True)
         faixa_dominante = float(valores[int(np.argmax(contagens))])
         incompat = np.abs(chave - faixa_dominante) >= 50.0
+        if janela is not None and float(janela[1]) > float(janela[0]):
+            j0, j1 = float(janela[0]), float(janela[1])
+            cobre = np.array([
+                (min(max(a, b), j1) - max(min(a, b), j0)) / (j1 - j0) >= 0.95
+                for a, b in zip(primeiros, maxes)])
+            if cobre.any():
+                incompat = ~cobre
+                faixa_dominante = float(np.median(maxes[cobre]))
         n_fora = int(incompat.sum())
         if n_fora:
             # A especie vem da PASTA (o layout esperado e' uma subpasta por
@@ -1674,10 +1694,53 @@ def avisar_reamostragem(info: dict, sufixo: str = "") -> None:
           f"a resolucao nativa.")
 
 
+def _harmonizar_classes_por_subpasta(rotulos: List[str], meta_rows: List[Dict[str, Any]]) -> int:
+    """Uma subpasta = uma classe: reconcilia rotulos que divergem do rotulo dominante dela.
+
+    Dois defeitos reais de dado, ambos viravam classes-fantasma (e a validacao cruzada recusava o
+    estudo inteiro): (1) arquivo cujo ##TITLE nao segue o padrao cai no rotulo da SUBPASTA ("ClasseA")
+    enquanto os irmaos levam o codigo do titulo ("AND"); (2) ##TITLE com o codigo errado ("AR-..." num
+    arquivo "MAR-...") cria uma classe de 9 espectros. Reatribui ao rotulo dominante da subpasta (>= 80 %
+    dos arquivos, >= 5 arquivos) quando o arquivo e' do tipo (1) ou quando o prefixo do NOME do arquivo
+    bate com o rotulo dominante (2). Nunca reatribui em silencio: lista cada caso. Devolve quantos."""
+    import collections
+    por_sub: Dict[str, List[int]] = collections.defaultdict(list)
+    for i, m in enumerate(meta_rows):
+        if m.get("subpasta"):
+            por_sub[str(m["subpasta"])].append(i)
+    n_mudou = 0
+    casos: Dict[Tuple[str, str, str], List[str]] = collections.defaultdict(list)
+    for sub, idx in por_sub.items():
+        cont = collections.Counter(rotulos[i] for i in idx)
+        dominante, n_dom = cont.most_common(1)[0]
+        if len(idx) < 5 or n_dom / len(idx) < 0.8 or dominante == sub:
+            continue
+        for i in idx:
+            if rotulos[i] == dominante:
+                continue
+            m = meta_rows[i]
+            nome = os.path.splitext(str(m.get("arquivo", "")))[0]
+            m_cod = re.match(r"^([A-Za-z]{2,4})[-_]", nome)
+            sem_titulo = m.get("mae_id") is None and rotulos[i] == sub
+            prefixo_bate = bool(m_cod and m_cod.group(1).upper() == dominante.upper())
+            if not (sem_titulo or prefixo_bate):
+                continue
+            casos[(sub, rotulos[i], dominante)].append(str(m.get("arquivo")))
+            rotulos[i] = dominante
+            m["especie"] = dominante
+            n_mudou += 1
+    for (sub, de, para), arqs in casos.items():
+        ex = ", ".join(arqs[:3]) + (f" (+{len(arqs) - 3})" if len(arqs) > 3 else "")
+        print(f"  [WARNING] {len(arqs)} arquivo(s) da subpasta '{sub}' com classe '{de}' foram reatribuidos a "
+              f"'{para}' (a dominante da subpasta): {ex}. Confira o ##TITLE= desses arquivos.")
+    return n_mudou
+
+
 def load_dx(pasta: str, class_part: int = 0,
                  extrair_conc: bool = False,
                  use_parse_title: bool = True,
-                 max_pontos: int = MAX_PONTOS_ESPECTRO
+                 max_pontos: int = MAX_PONTOS_ESPECTRO,
+                 janela: Optional[Tuple[float, float]] = None
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
                               Optional[np.ndarray], Optional[np.ndarray],
                               Optional[pd.DataFrame]]:
@@ -1827,6 +1890,8 @@ def load_dx(pasta: str, class_part: int = 0,
             print(f"[CAUTION] CODs not mapped in CODIGO_ESPECIE: "
                   f"{sorted(cods_desconhecidos)}")
 
+    _harmonizar_classes_por_subpasta(rotulos, meta_rows)
+
     # --- Detection of dominant acquisition range ------------------------
     # Real datasets may mix spectral ranges (e.g. full NIR
     # [0,15797] 8192pts vs narrow range [300,4000]). Mixing is
@@ -1837,12 +1902,27 @@ def load_dx(pasta: str, class_part: int = 0,
     valores, contagens = np.unique(chave_faixa, return_counts=True)
     faixa_dominante = float(valores[int(np.argmax(contagens))])
     compat = np.abs(chave_faixa - faixa_dominante) < 50.0
+    # Com a janela de analise pedida (wn_min/wn_max), o criterio e' COBRI-LA, nao a moda do xmax:
+    # um arquivo de faixa larga (ex.: 0-15798) que cobre a janela nao pode ser descartado so'
+    # porque a maioria dos arquivos foi exportada cortada em 4000 (o oposto tambem vale: o
+    # arquivo cortado nao tem a janela NIR e sai). Sem nenhum arquivo cobrindo, vale a moda.
+    if janela is not None and float(janela[1]) > float(janela[0]):
+        j0, j1 = float(janela[0]), float(janela[1])
+        cobre = np.array([
+            (min(float(e[0].max()), j1) - max(float(e[0].min()), j0)) / (j1 - j0) >= 0.95
+            for e in espectros])
+        if cobre.any():
+            compat = cobre
+            faixa_dominante = float(np.median(maxes[cobre]))
     n_drop = int((~compat).sum())
 
     if n_drop > 0:
         print(f"[CAUTION] Heterogeneous spectral ranges detected. "
               f"Dominant range: xmax~{faixa_dominante:.0f} cm-1 "
-              f"({int(compat.sum())} files).")
+              f"({int(compat.sum())} files)"
+              + (f"; kept the files that cover the requested window {janela[0]:g}-{janela[1]:g} cm-1."
+                 if janela is not None and compat.sum() and not np.all(
+                     np.abs(chave_faixa - np.round(faixa_dominante / 100.0) * 100.0) < 50.0) else "."))
         print(f"          DISCARDING {n_drop} files with "
               f"incompatible range (not comparable in the same spectral window):")
         # Report by species for discarded files
@@ -1936,7 +2016,8 @@ def _leitor_csv(cfg: "Config"):
 def _leitor_dx(cfg: "Config"):
     wn, X, rot, conc, mae_id, meta = load_dx(cfg.input_folder, cfg.class_part,
                                              cfg.extract_conc_from_filename, cfg.use_parse_title,
-                                             max_pontos=int(getattr(cfg, "espectro_max_pontos", MAX_PONTOS_ESPECTRO)))
+                                             max_pontos=int(getattr(cfg, "espectro_max_pontos", MAX_PONTOS_ESPECTRO)),
+                                             janela=(float(cfg.wn_min), float(cfg.wn_max)))
     setattr(cfg, "reamostragem_aplicada", meta.attrs.get("reamostragem") if meta is not None else None)
     # arquivo_grupos (documentado "ex.: arquivos .dx") era ignorado neste modo: sem ##TITLE= no
     # padrao do projeto, as replicas caiam em StratifiedKFold (vazamento). Mesma chave dos

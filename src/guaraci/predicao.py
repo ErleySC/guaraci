@@ -17,6 +17,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -39,6 +40,8 @@ from guaraci.identificacao import (
     combine_alpha_bonferroni,
     identify_sample,
 )
+
+log = logging.getLogger(__name__)
 
 _CHAVES_PACOTE_REQUERIDAS = {
     "preprocessador", "pls_final", "label_binarizer", "wavenumbers"}
@@ -565,6 +568,12 @@ def _interpolate_to_reference(pkg: Dict, X_new_raw: np.ndarray,
     return X_interp
 
 
+def _saturacao_nova_do_lote(pkg: Dict, X_new_raw: np.ndarray, wn_new: Optional[np.ndarray]):
+    """(fracao, saturado?) do lote novo; None quando o pacote nao traz o teto."""
+    from guaraci.saturacao import sinalizar_saturacao_nova
+    return sinalizar_saturacao_nova(pkg, np.asarray(X_new_raw, dtype=float), np.asarray(wn_new, dtype=float))
+
+
 def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
                        wn_new: Optional[np.ndarray]) -> pd.DataFrame:
     """Aplica o pacote de modelo salvo a espectros novos.
@@ -707,6 +716,20 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
         resultado["aceito"] = (T2_new <= t2_ucl) & (Q_new <= q_ucl)
         resultado["criterio"] = (
             "regra por eixo (pacote antigo; alpha conjunto ~0.0975)")
+
+    # Saturacao do detector em espectro NOVO (so' se o pacote guarda o teto do treino; pacotes
+    # antigos nao ganham as colunas). Espectro no teto nao e' julgavel: nao pode ser "aceito".
+    _sat_nova = _saturacao_nova_do_lote(pkg, X_new_raw, wn_new)
+    if _sat_nova is not None:
+        resultado["saturacao_frac_%"] = np.round(_sat_nova[0] * 100, 1)
+        resultado["saturado"] = _sat_nova[1]
+        if _sat_nova[1].any():
+            resultado["aceito"] = resultado["aceito"] & ~_sat_nova[1]
+            resultado["criterio"] = np.where(_sat_nova[1], "espectro saturado (no teto do detector)",
+                                             resultado["criterio"])
+            log.warning(f"[AVISO] {int(_sat_nova[1].sum())} de {n} espectro(s) novo(s) no teto do detector "
+                        f"({float(pkg['saturacao']['teto']):.3g}): NAO aceitos e sem quantificacao. "
+                        f"Refaca a medida com menos caminho optico ou diluicao.")
 
     # Dominio de Aplicabilidade (opcional -- so' se o pacote tiver os
     # artefatos leves do PCA exploratorio; retrocompativel com pacotes
@@ -1004,7 +1027,11 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
                 classe_identificada=None, candidatos_ambiguos=[],
                 cobertura_status=None, alpha_alcancavel=None, escores={})
 
-        quant = quantify_sample(pkg, X_interp[i], ident)
+        if "saturado" in df.columns and bool(df.loc[i, "saturado"]):
+            # Nunca um teor para espectro no teto do detector (a absorbancia travou).
+            quant = QuantificationResult(motivo_bloqueio="espectro_saturado")
+        else:
+            quant = quantify_sample(pkg, X_interp[i], ident)
         alpha_total = combine_alpha_bonferroni(
             alpha_detectar, alpha_pureza, ident.alpha_alcancavel,
             quant.intervalo_alpha_nominal)

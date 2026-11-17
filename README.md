@@ -73,7 +73,7 @@ whole study (design audit, grouped validation, holdout, report) without writing 
 - Track drift of a process or instrument
 - Analyse photos or hyperspectral cubes
 
-**Ready synthetic scenarios** (`guaraci exemplo <scenario>`): `explorar`, `classificar`, `quantificar`, `multielementar`, `comparar`, `imagem`, `hsi`, `transferir`, `monitorar`, `fluorescencia_eem`, `cromatograma_gcms`, `vip`.
+**Ready synthetic scenarios** (`guaraci exemplo <scenario>`): `explorar`, `classificar`, `quantificar`, `multielementar`, `comparar`, `imagem`, `hsi`, `transferir`, `monitorar`, `pares`, `fluorescencia_eem`, `cromatograma_gcms`, `vip`.
 <!-- guaraci:tecnicas:fim -->
 
 The map technique × task × command × synthetic example × test is generated from the
@@ -161,7 +161,7 @@ guaraci assistente "your question"   # offline answer from the catalogue; `guara
 guaraci --version
 ```
 
-Also: `anova`, `vip`, `monitorar`, `transferir`, `relatorio` — each is described by `guaraci --help`.
+Also: `anova`, `vip`, `monitorar`, `pares`, `transferir`, `relatorio` — each is described by `guaraci --help`.
 
 ## Use (3 ways, no code editing)
 

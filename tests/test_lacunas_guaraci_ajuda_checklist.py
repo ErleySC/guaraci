@@ -68,7 +68,7 @@ def test_checklist_de_dx_resume_o_prescan_ou_o_erro_dele(cli, monkeypatch, tmp_p
     import guaraci.dados_io as dio
     monkeypatch.setattr(g, "_count_dx", lambda p: 10)
 
-    def prescan(pasta):
+    def prescan(pasta, janela=None):
         if isinstance(pre, Exception):
             raise pre
         return pre
@@ -83,7 +83,7 @@ def test_checklist_traduz_a_garantia_de_agrupamento(cli, monkeypatch, tmp_path, 
     import guaraci.dados_io as dio
     monkeypatch.setattr(dio, "garantia_agrupamento_prevista", lambda cfg: nivel)
     monkeypatch.setattr(g, "_count_dx", lambda p: 3)
-    monkeypatch.setattr(dio, "prescan_dx", lambda p: {"n_apos_descarte": 3, "n_fora_da_faixa": 0, "fora_por_especie": {}, "n_sem_mae_id": 0, "n_grupos": 0})
+    monkeypatch.setattr(dio, "prescan_dx", lambda p, j=None: {"n_apos_descarte": 3, "n_fora_da_faixa": 0, "fora_por_especie": {}, "n_sem_mae_id": 0, "n_grupos": 0})
     ok, erros, checks = _checklist(monkeypatch, pasta_dados=str(tmp_path))
     chave = {"high": "chk_leak_high", "medium": "chk_leak_medium", "none": "chk_leak_none"}.get(nivel, "chk_leak_verificar")
     assert g._t(chave) in [msg for _e, msg in checks] and ok is True
