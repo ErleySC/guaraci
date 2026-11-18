@@ -106,12 +106,9 @@ _CLASSES_NUMERICAS = {"double": "float64", "single": "float32", "int8": "int8", 
 def _array_numerico(valor: Any) -> Any:
     """`valor` como ndarray numerico real (esparsa vira densa), ou None se nao for numerico. Complexo
     devolve a string 'complexo' (o chamador registra como ignorado)."""
-    try:
-        import scipy.sparse as sp
-        if sp.issparse(valor):
-            valor = valor.toarray()
-    except ImportError:  # pragma: no cover -- scipy e' dependencia base
-        pass
+    import scipy.sparse as sp          # scipy e' dependencia base
+    if sp.issparse(valor):
+        valor = valor.toarray()
     if isinstance(valor, (bool, int, float, np.number, np.bool_)) and not isinstance(valor, complex):
         valor = np.asarray(valor)
     if not isinstance(valor, np.ndarray):
