@@ -24,7 +24,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -43,10 +43,17 @@ PADRAO_NOME_EIXO = re.compile(
 _INSTALAR_H5PY = 'pip install ".[hdf5]"'
 
 
-def texto_falta_h5py(caminho: str, motivo: str) -> str:
-    return (f"{os.path.basename(caminho)}: {motivo} precisa do pacote opcional h5py, que nao esta "
-            f"instalado. Instale com: {_INSTALAR_H5PY} (ou pip install h5py). Alternativa sem instalar "
-            f"nada: no MATLAB, salve de novo com save('arquivo.mat', 'cubo', 'wl', '-v7').")
+def texto_falta_h5py(caminho: str, motivo: str, erro: Optional[BaseException] = None) -> str:
+    alternativa = "Alternativa sem h5py: no MATLAB, salve de novo com save('arquivo.mat', 'cubo', 'wl', '-v7')."
+    nome = os.path.basename(caminho)
+    if erro is not None and not isinstance(erro, ModuleNotFoundError):
+        # instalado, mas nao carrega (ex.: DLL bloqueada pelo Controle de Aplicativos do Windows)
+        return (f"{nome}: {motivo} precisa do pacote opcional h5py, que esta instalado mas nao carregou "
+                f"({type(erro).__name__}: {str(erro).strip()[:200]}). Em geral e' bloqueio do sistema "
+                f"(Controle de Aplicativos/antivirus) ou instalacao quebrada; reinstale com "
+                f"{_INSTALAR_H5PY} ou libere o h5py. {alternativa}")
+    return (f"{nome}: {motivo} precisa do pacote opcional h5py, que nao esta instalado. Instale com: "
+            f"{_INSTALAR_H5PY} (ou pip install h5py). {alternativa}")
 
 
 @dataclass
@@ -151,7 +158,7 @@ def _importar_h5py(caminho: str, motivo: str):
     try:
         import h5py
     except ImportError as e:
-        raise ImportError(texto_falta_h5py(caminho, motivo)) from e
+        raise ImportError(texto_falta_h5py(caminho, motivo, e)) from e
     return h5py
 
 
