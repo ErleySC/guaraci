@@ -51,7 +51,7 @@
   "src/guaraci/mcr_als.py": "08d4afa82dac1119905bd10152482e172ff56bdf7577a0d20c50ef9fa107b895",
   "src/guaraci/model_export.py": "eea6590e8523988aa00405d7df730f473abec3ccdc88d5d573b1593b6cc65a90",
   "src/guaraci/monitorar_cli.py": "f84dd0cf8d71d553ba815215643525cd71ab96d160c970ee92de2cc7c53b9ae0",
-  "src/guaraci/perfil_matriz.py": "2f47c8b2d9b167709d037652b3b3cc6e94a285b24853198a8ef9d2c614be097a",
+  "src/guaraci/perfil_matriz.py": "ece91f5b90b0f801c88258ea607eef69fa294de5f8a9045284223b775910fd96",
   "src/guaraci/pipeline.py": "00d61abd3d4ab1950bba184a9df084325760bbf29b29afa1df1118142ae48483",
   "src/guaraci/plano_amostral.py": "84213edfca634d5307dc6fa863f7c935fbedf2b5219eb7d75bc2332b1dfec8c7",
   "src/guaraci/plano_coleta.py": "ba6fe485eb0ad7eabb5bdb3595a8328ebe8c4b2691d3d0d1cf4a3ceaae90d99c",

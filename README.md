@@ -62,7 +62,7 @@ reference for PCA, PLS and DD-SIMCA; GUARACI's DD-SIMCA is only partially verifi
 whole study (design audit, grouped validation, holdout, report) without writing code.
 
 <!-- guaraci:tecnicas:inicio -->
-**Measurement techniques:** **FT-NIR**, **Dispersive NIR**, **MIR/FTIR**, **Raman Spectroscopy**, **UV-Vis**, **Molecular Fluorescence**, **HPLC**, **GC-MS**, **NMR**, **IMS**, **3D fluorescence**, **ICP-OES / ICP-MS**, **Digital image**, **Hyperspectral imaging**, others (`generico` profile).
+**Measurement techniques:** **FT-NIR**, **Dispersive NIR**, **MIR/FTIR**, **Raman Spectroscopy**, **UV-Vis**, **Molecular Fluorescence**, **HPLC**, **GC-FID**, **GC-MS**, **LC-MS**, **NMR**, **IMS**, **3D fluorescence**, **ICP-OES / ICP-MS**, **XRF**, **Digital image**, **Hyperspectral imaging**, others (`generico` profile).
 
 **Tasks:**
 - See how the data is organised, without training a model

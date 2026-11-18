@@ -302,6 +302,6 @@ TECNICAS: Dict[str, Dict[str, Any]] = {
                "faixa_curta": v.get("faixa_curta", v["faixa_txt"])[1]},
         "faixa_min": v["faixa_min"], "faixa_max": v["faixa_max"], "preproc": v["preproc"], "mode": v["mode"],
         "eixo_unidade": v.get("eixo_unidade", ""), "raios_cosmicos": bool(v.get("raios_cosmicos", False)),
-        "faixas_excluir": tuple(v.get("faixas_excluir", ()))}
+        "faixas_excluir": tuple(v.get("faixas_excluir", ())), "hplc_detector": v.get("hplc_detector", "")}
     for k, v in _cat.INSTRUMENTOS.items()
 }

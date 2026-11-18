@@ -26,6 +26,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import yaml
 
+# libyaml (C) quando o PyYAML a traz: ~5x mais rapido que o SafeLoader em Python puro; o resultado e' o mesmo.
+_CARREGADOR_YAML = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 if TYPE_CHECKING:                                          # pragma: no cover
     from guaraci.config import Config
 
@@ -219,7 +222,7 @@ def load_profile(nome_ou_caminho: str) -> MatrixProfile:
                 f"faixa espectral e vocabulario errados.")
 
     with open(caminho, encoding="utf-8") as f:
-        bruto: Dict[str, Any] = yaml.safe_load(f) or {}
+        bruto: Dict[str, Any] = yaml.load(f, Loader=_CARREGADOR_YAML) or {}   # nosec B506 -- SafeLoader (C quando existe)
 
     voc = Vocabulary(**(bruto.pop("vocabulario", None) or {}))
     bruto.pop("nome", None)
