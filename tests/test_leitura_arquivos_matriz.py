@@ -379,3 +379,21 @@ def test_pipeline_hsi_roda_com_cubos_mat_v5_e_v73(tmp_path):
     resumo = run_hsi_pipeline(cfg)
     assert resumo["n_gravacoes_total"] == 6 and resumo["n_gravacoes_aceitas"] == 6
     assert resumo["grouping_guarantee"] == "high"
+
+
+def test_h5py_bloqueado_nao_diz_que_nao_esta_instalado(monkeypatch):
+    """h5py instalado mas que nao carrega (DLL barrada pelo Controle de Aplicativos): a mensagem traz o erro real."""
+    import builtins
+
+    from guaraci import arquivo_matrizes as am
+    real = builtins.__import__
+
+    def _import(nome, *a, **k):
+        if nome == "h5py":
+            raise ImportError("DLL load failed: bloqueada por politica de Controle de Aplicativo")
+        return real(nome, *a, **k)
+    monkeypatch.setattr(builtins, "__import__", _import)
+    with pytest.raises(ImportError, match="instalado mas nao carregou.*bloqueada"):
+        am._importar_h5py("cubo.mat", "o .mat v7.3")
+    monkeypatch.undo()
+    assert "nao esta instalado" in am.texto_falta_h5py("cubo.mat", "o .mat v7.3", ModuleNotFoundError("h5py"))

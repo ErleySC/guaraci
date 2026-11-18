@@ -1718,7 +1718,7 @@
         "forma": "funcao"
       },
       "texto_falta_h5py": {
-        "assinatura": "(caminho: str, motivo: str) -> str",
+        "assinatura": "(caminho: str, motivo: str, erro: Union[BaseException, None] = None) -> str",
         "forma": "funcao"
       },
       "vetores_candidatos_a_eixo": {
