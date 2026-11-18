@@ -43,6 +43,10 @@
         "bash utilizavel ausente (runner Windows do Actions sem a distro WSL)": {
           "padrao": "^bash utilizavel ausente:",
           "max": 8
+        },
+        "ambiente sem todos os extras": {
+          "padrao": "^ambiente sem todos os extras$",
+          "max": 1
         }
       }
     },

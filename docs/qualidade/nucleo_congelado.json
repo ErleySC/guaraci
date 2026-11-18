@@ -14,7 +14,7 @@
   "src/guaraci/chemometric_stats.py": "648568904112e2cffb7aaf983bdc8df5956109e61b19432390eaeca6b9d1977f",
   "src/guaraci/classificadores.py": "5a5cf672a414c8ca24e5771c2b925d280691590ca3b9799d55c6ba485a8bffaa",
   "src/guaraci/config.py": "9fdc63ca3ee6d030999030ddfef4b09006cb35ab50e51251b223536f7974d9d6",
-  "src/guaraci/config_io.py": "e213fa851b477276280abb71cfdc7ddbeaf841c97bccd50670ec64ea1962c4c4",
+  "src/guaraci/config_io.py": "77fed143030fd2ece1a5d2b3e7ca92820e7d0abf691fe195aa772a3c30c487e8",
   "src/guaraci/conformal.py": "ee4f94ec8036f1f6f726bcc544d664f2d884b3334cf6b1bfd7a3a6ac918b4985",
   "src/guaraci/csv_robusto.py": "c1600a61d1ad2edfe755e988a00f62bc2fd8c563b6055770c0f3b6c61337b74f",
   "src/guaraci/dados_imagem.py": "53b4cc8d35cd08ef48990ec4154b2aab16db7e73ab70455fcd43896bc6c6bf58",
