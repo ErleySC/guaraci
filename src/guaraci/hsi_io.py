@@ -41,7 +41,7 @@ import pandas as pd
 
 from guaraci import agrupamento_pastas as _ap
 from guaraci import hsi_arquivo as _ha
-from guaraci.hsi_blocos import (CalibracaoBrancoEscuro, CuboHSI,
+from guaraci.hsi_blocos import (CalibracaoBrancoEscuro, CuboHSI, aplicar_calibracao,
                                 pesos_reamostragem, reamostrar_bandas)
 
 __all__ = [
@@ -316,6 +316,14 @@ class _ParametrosArquivo:
     def n_bands(self) -> int:
         return int(self.cubo.shape[2])
 
+    @property
+    def campos(self) -> Dict[str, str]:
+        return {}            # sem cabecalho ENVI (tempo de integracao etc.)
+
+    @property
+    def dtype_np(self) -> np.dtype:
+        return np.dtype(str(self.info.get("dtype_original", "float32")))
+
 
 def opcoes_leitura_hsi(cfg) -> Dict[str, str]:
     """Argumentos de leitura de `load_hsi_folder_dataset` tirados da Config (um lugar so' para o
@@ -352,10 +360,14 @@ _CHAVES_HDR_REF = {"white": ("white reference file", "white reference", "whitere
                    "dark": ("dark reference file", "dark reference", "darkref file", "darkref")}
 
 
+#: Extensoes aceitas para arquivo de referencia (ENVI ou arquivo de variaveis), em ordem de preferencia.
+_EXTENSOES_REF: Tuple[str, ...] = (".hdr",) + _ha.EXTENSOES_CUBO_ARQUIVO
+
+
 def _hdr_com_raiz(caminho: str) -> Optional[str]:
     """`.hdr` correspondente a um arquivo de referencia dado (o proprio `.hdr`,
-    ou o binario irmao); None se nao existe."""
-    if os.path.isfile(caminho) and caminho.lower().endswith(".hdr"):
+    ou o binario irmao), ou o proprio .mat/.npy/.npz/.h5; None se nao existe."""
+    if os.path.isfile(caminho) and caminho.lower().endswith(_EXTENSOES_REF):
         return caminho
     raiz = os.path.splitext(caminho)[0] if os.path.isfile(caminho) else caminho
     for ext in (".hdr", ".HDR"):
@@ -374,8 +386,10 @@ def _procurar_na_pasta(pasta: str, tipo: str, stem: Optional[str]) -> Optional[s
     else:
         nomes = [base, alt]
     try:
-        entradas = {os.path.splitext(n)[0].lower(): n for n in os.listdir(pasta)
-                    if n.lower().endswith(".hdr")}
+        # .hdr tem prioridade sobre .mat/.npy/... de mesmo nome (ordem de _EXTENSOES_REF)
+        arquivos = sorted((n for n in os.listdir(pasta) if n.lower().endswith(_EXTENSOES_REF)),
+                          key=lambda n: _EXTENSOES_REF.index(os.path.splitext(n)[1].lower()), reverse=True)
+        entradas = {os.path.splitext(n)[0].lower(): n for n in arquivos}
     except OSError:
         return None
     for nome in nomes:
@@ -436,8 +450,15 @@ def _topos_saturacao(par: "_ParametrosEnvi") -> Tuple[int, ...]:
     return tuple(2 ** k - 1 for k in (8, 10, 12, 14, 16) if 2 ** k - 1 <= teto)
 
 
-def _carregar_referencia(hdr: str) -> Dict[str, object]:
-    """Le um cubo de referencia e reduz a media sobre as linhas: `(colunas, bandas)`."""
+def _carregar_referencia(hdr: str, n_bandas: Optional[int] = None,
+                         par_cubo: Optional["_ParametrosArquivo"] = None) -> Dict[str, object]:
+    """Le um cubo de referencia e reduz a media sobre as linhas: `(colunas, bandas)`.
+    Arquivo .mat/.npy/.npz/.h5: `hsi_arquivo.ler_referencia_arquivo` (precisa de `n_bandas`)."""
+    if not hdr.lower().endswith(".hdr"):
+        info = par_cubo.info if par_cubo is not None else {}
+        pos = {"primeiro": 0, "meio": 1, "ultimo": 2}.get(str(info.get("eixo_espectral", "")))
+        return _ha.ler_referencia_arquivo(hdr, int(n_bandas or 0), pos_cubo=pos,
+                                          invertido=bool(info.get("bandas_invertidas")))
     arq = _resolver_arquivo_dados_envi(hdr)
     cubo, meta = load_envi_cube(arq, hdr)
     par = _ler_parametros_envi(hdr)
@@ -493,7 +514,7 @@ def _construir_calibracao(nome: str, par: "_ParametrosEnvi", branco: Dict[str, o
     if W.shape[0] != par.n_samples:
         W = np.nanmean(W, axis=0, keepdims=True)
         D = np.nanmean(D, axis=0, keepdims=True)
-        if int(branco["n_colunas"]) != 1:  # type: ignore[call-overload]
+        if int(branco["n_colunas"]) not in (1, par.n_samples):  # type: ignore[call-overload]
             avisos.append(f"{nome}: a referencia tem {branco['n_colunas']} colunas e o cubo {par.n_samples}; "
                           f"usado o espectro medio da referencia (sem correcao por coluna).")
     den = W - D
@@ -523,16 +544,21 @@ def _construir_calibracao(nome: str, par: "_ParametrosEnvi", branco: Dict[str, o
                                   origem=origem), avisos
 
 
-def _checar_amostra_vs_referencia(nome: str, cubo: CuboHSI, branco: Dict[str, object],
-                                  escuro: Dict[str, object], par: "_ParametrosEnvi") -> List[str]:
-    """Avisos que exigem olhar o proprio cubo (poucas linhas centrais)."""
+def _checar_amostra_vs_referencia(nome: str, cubo: Any, branco: Dict[str, object],
+                                  escuro: Dict[str, object], par: Any) -> List[str]:
+    """Avisos que exigem olhar o proprio cubo (poucas linhas centrais). `cubo`: CuboHSI (ENVI) ou
+    ndarray bruto (linhas, colunas, bandas) de arquivo unico."""
     avisos: List[str] = []
-    r0 = max(0, cubo.n_lines // 2 - 4)
-    mm = cubo._abrir()
-    try:
-        bruto = np.array(mm[r0:r0 + 8], dtype=np.float64)
-    finally:
-        del mm
+    if isinstance(cubo, CuboHSI):
+        r0 = max(0, cubo.n_lines // 2 - 4)
+        mm = cubo._abrir()
+        try:
+            bruto = np.array(mm[r0:r0 + 8], dtype=np.float64)
+        finally:
+            del mm
+    else:
+        r0 = max(0, int(cubo.shape[0]) // 2 - 4)
+        bruto = np.array(cubo[r0:r0 + 8], dtype=np.float64)
     if bruto.size == 0:
         return avisos
     mw = float(np.nanmedian(np.asarray(branco["media"])))
@@ -657,8 +683,10 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
     pasta, com a mesma convencao de subpastas: `variavel_dados`,
     `variavel_eixo` e `eixo_espectral` escolhem a variavel do cubo, a do
     vetor de comprimentos de onda e a posicao das bandas quando a deteccao
-    automatica nao decide (ver `hsi_arquivo.py`). A calibracao branco/escuro
-    so' vale para ENVI.
+    automatica nao decide (ver `hsi_arquivo.py`). Na calibracao branco/escuro,
+    cubo de arquivo unico tambem aceita as referencias como variaveis white/dark
+    (branco/escuro) no proprio arquivo, alem de WHITEREF/DARKREF em qualquer
+    dos formatos.
 
     Devolve `(cubos, rotulos, mae_id, wavelengths, metadados_df)` --
     `mae_id` e' `None` quando o nivel detectado e' "none" (mesmo contrato
@@ -739,7 +767,8 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
             else:
                 arq_dados = caminho_hdr
                 ca = _ha.ler_cubo_arquivo(caminho_hdr, variavel_dados=variavel_dados,
-                                          variavel_eixo=variavel_eixo, eixo_espectral=eixo_espectral)
+                                          variavel_eixo=variavel_eixo, eixo_espectral=eixo_espectral,
+                                          calibrando=calibracao == "branco_escuro")
                 par = _ParametrosArquivo(ca.cubo, ca.wavelengths, ca.info)
                 avisos_arquivo.extend(str(a) for a in ca.info.get("avisos", []))
         except ImportError:
@@ -760,12 +789,6 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
     if not lidos:
         raise ValueError(
             f"Nenhum cubo hiperespectral valido carregado ({n_falhos} com erro).")
-    nao_envi = [c for c, _sp, _a, p in lidos if isinstance(p, _ParametrosArquivo)]
-    if calibracao == "branco_escuro" and nao_envi:
-        raise ValueError(
-            f"hsi_calibracao=branco_escuro so' vale para cubos ENVI (.hdr/.bin), mas "
-            f"{len(nao_envi)} cubo(s) vieram de .mat/.npy/.npz/.h5 (ex.: {os.path.basename(nao_envi[0])}). "
-            f"Calibre a reflectancia antes de exportar (R = (I - D)/(W - D)) e use hsi_calibracao: nenhuma.")
 
     # Fase 2: eixos de bandas contra o do primeiro cubo.
     ref_hdr, _, _, ref_par = lidos[0]
@@ -797,9 +820,27 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
         faltam: List[str] = []
         refs_usadas: Dict[str, Dict[str, str]] = {}
         achadas: List[Tuple[str, str, str, str, str]] = []
+        internas: Dict[str, Dict[str, Dict[str, object]]] = {}
         for caminho_hdr, _sp, _arq, par in lidos:
-            w, ow = localizar_referencia(caminho_hdr, pasta, par.campos, "white", referencia_branco)
-            d, od = localizar_referencia(caminho_hdr, pasta, par.campos, "dark", referencia_escuro)
+            if isinstance(par, _ParametrosArquivo) and not (referencia_branco and referencia_escuro):
+                # variaveis white/dark no proprio .mat/.h5 (so' quando a config nao aponta as duas)
+                try:
+                    achadas_arq = _ha.referencias_no_arquivo(caminho_hdr, par.info, par.n_bands)
+                except ValueError as e:
+                    raise ValueError(f"{_rel(caminho_hdr, pasta)}: {e}") from e
+                for tipo, ref in achadas_arq.items():
+                    chave = str(ref["arquivo"])
+                    cache[chave] = ref
+                    internas.setdefault(caminho_hdr, {})[tipo] = {"chave": chave}
+            dentro = internas.get(caminho_hdr, {})
+            if "white" in dentro and not referencia_branco:
+                w, ow = str(dentro["white"]["chave"]), "variavel do proprio arquivo"
+            else:
+                w, ow = localizar_referencia(caminho_hdr, pasta, par.campos, "white", referencia_branco)
+            if "dark" in dentro and not referencia_escuro:
+                d, od = str(dentro["dark"]["chave"]), "variavel do proprio arquivo"
+            else:
+                d, od = localizar_referencia(caminho_hdr, pasta, par.campos, "dark", referencia_escuro)
             if w is None or d is None:
                 faltam.append(f"{_rel(caminho_hdr, pasta)} (branco: {ow if w is None else 'ok'}; "
                               f"escuro: {od if d is None else 'ok'})")
@@ -809,8 +850,9 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
             raise ValueError(
                 f"hsi_calibracao=branco_escuro, mas {len(faltam)} cubo(s) ficaram sem WHITEREF/DARKREF: "
                 + "; ".join(faltam[:5]) + ("..." if len(faltam) > 5 else "")
-                + ". Coloque WHITEREF_<nome>.hdr/DARKREF_<nome>.hdr ao lado de cada cubo (padrao Specim), "
-                "um WHITEREF.hdr/DARKREF.hdr na pasta de cada sessao, ou aponte hsi_referencia_branco/"
+                + ". Coloque WHITEREF_<nome>.hdr/DARKREF_<nome>.hdr (ou .mat/.npy/.npz/.h5) ao lado de cada "
+                "cubo (padrao Specim), um WHITEREF/DARKREF na pasta de cada sessao, variaveis white/dark "
+                "dentro do proprio .mat, ou aponte hsi_referencia_branco/"
                 "hsi_referencia_escuro. A calibracao vale para todos os cubos ou para nenhum (misturar "
                 "cubos calibrados e brutos invalida o modelo).")
         idx_por_hdr = {c[0]: i for i, c in enumerate(lidos)}
@@ -820,7 +862,8 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
             for caminho in (w, d):
                 if caminho not in cache:
                     try:
-                        cache[caminho] = _carregar_referencia(caminho)
+                        cache[caminho] = _carregar_referencia(
+                            caminho, par.n_bands, par if isinstance(par, _ParametrosArquivo) else None)
                     except Exception as e:  # noqa: BLE001 -- referencia ilegivel: erro claro com o nome
                         raise ValueError(f"referencia {caminho}: {e}") from e
             nome = _rel(caminho_hdr, pasta)
@@ -839,7 +882,15 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
     for i, (caminho_hdr, subpasta_nome, arq_dados, par) in enumerate(lidos):
         reamo = reamostragens[i]
         if isinstance(par, _ParametrosArquivo):
-            cubo_mem = par.cubo if reamo is None else reamostrar_bandas(par.cubo, reamo)
+            cubo_mem = par.cubo
+            calib = calibracoes[i]
+            if calib is not None:
+                w_ref, d_ref = refs_por_cubo[i]
+                avisos_calib.extend(_checar_amostra_vs_referencia(
+                    _rel(caminho_hdr, pasta), cubo_mem, w_ref, d_ref, par))
+                cubo_mem = aplicar_calibracao(cubo_mem, calib)
+            if reamo is not None:
+                cubo_mem = reamostrar_bandas(cubo_mem, reamo)
             cubos.append(cubo_mem)
             classe = subpasta_nome or os.path.splitext(os.path.basename(caminho_hdr))[0]
             rotulos.append(classe)

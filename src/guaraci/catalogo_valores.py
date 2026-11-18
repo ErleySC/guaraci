@@ -112,6 +112,18 @@ VALORES: Dict[str, Dict[str, Texto]] = {
         "reamostrar": ("Interpola os cubos para o eixo do primeiro (ate meia banda). Use so para pequeno deslocamento de calibracao da mesma camera.",
                        "Interpolates the cubes to the first one's axis (up to half a band). Only for a small calibration shift of the same camera."),
     },
+    "sinal_entrada": {
+        "absorbancia": ("Os arquivos ja estao em absorbancia: nada e convertido (padrao).",
+                        "The files are already absorbance: nothing is converted (default)."),
+        "transmitancia": ("Converte transmitancia em absorbancia, A = -log10(T); aceita fracao ou %.",
+                          "Converts transmittance to absorbance, A = -log10(T); accepts fraction or %."),
+        "reflectancia": ("Converte reflectancia em pseudo-absorbancia, A = log10(1/R) (NIR por reflectancia difusa).",
+                         "Converts reflectance to pseudo-absorbance, A = log10(1/R) (diffuse reflectance NIR)."),
+        "kubelka_munk": ("Funcao de Kubelka-Munk, (1 - R)^2/(2R), para po ou solido diluido em reflectancia difusa.",
+                         "Kubelka-Munk function, (1 - R)^2/(2R), for powder or diluted solid in diffuse reflectance."),
+        "feixe_simples": ("Intensidade bruta contra o branco: A = -log10(I/I0); o branco vem de sinal_referencia.",
+                          "Raw intensity against the blank: A = -log10(I/I0); the blank comes from sinal_referencia."),
+    },
     "hsi_eixo_espectral": {
         "auto": ("Detecta pelo vetor de comprimentos de onda; sem ele, assume o ultimo eixo e avisa (padrao).",
                  "Detects from the wavelength vector; without it, assumes the last axis and warns (default)."),

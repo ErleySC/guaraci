@@ -194,7 +194,8 @@ _UPLOAD_MODELO_BLOQUEADO = not _ws.pickle_permitido()
 # de texto (o conteúdo vaza na mensagem de erro) ou escrever fora da sessão.
 _CAMPOS_CAMINHO_SERVIDOR = {"pasta_dados", "arquivo_csv", "pasta_saida",
                             "hsi_pasta_dataset", "arquivo_grupos",
-                            "hsi_referencia_branco", "hsi_referencia_escuro"}
+                            "hsi_referencia_branco", "hsi_referencia_escuro",
+                            "sinal_referencia"}
 # Modos de entrada que dependem de pasta/arquivo do servidor: só locais.
 _MODOS_ENTRADA_SERVIDOR = _ws.MODOS_ENTRADA_SERVIDOR   # fonte unica: web_seguranca
 

@@ -207,6 +207,9 @@ class Config:
     # a deteccao para com a lista de candidatas quando ha' mais de uma.
     file_data_variable: str = ""
     file_axis_variable: str = ""
+    # Sinal bruto do instrumento (conversao_sinal.py): convertido em absorbancia antes de tudo.
+    signal_type: str = "absorbancia"          # absorbancia | transmitancia | reflectancia | kubelka_munk | feixe_simples
+    signal_reference: str = ""                # feixe_simples: arquivo do branco I0 ou nome da classe do branco
     # mode="hplc" (cromatograma bruto Agilent/Waters via `rainbow-api`,
     # `importadores_proprietarios.parse_cromatograma_hplc`): qual TIPO de
     # detector ler quando o diretorio tiver mais de um ("UV" p/ UV/DAD --
