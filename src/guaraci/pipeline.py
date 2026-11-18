@@ -2506,6 +2506,8 @@ def _etapa_exportar_modelo(*, Q, T2, X_processed, X_raw, _G, cfg, conc, conforma
             # Teto de saturacao do treino (None = nada detectado): a predicao avisa/bloqueia
             # espectro novo no teto. Pacotes antigos nao tem a chave e seguem como antes.
             "saturacao":      _saturacao_do_pacote(cfg),
+            # Conversao do sinal bruto (None = absorbancia): a predicao reaplica a mesma.
+            "sinal_entrada":  _cs_info_pacote(getattr(cfg, "sinal_info", None)),
             # Faixas excluidas e normalizacao por espectro (a predicao reaplica as MESMAS):
             # `wavenumbers` acima ja' e' o eixo SEM as faixas excluidas.
             "faixas_excluir": list((getattr(cfg, "exclusion_info", None) or {}).get("faixas", [])),
@@ -2888,6 +2890,7 @@ def _etapa_resumo_e_relatorios(*, Q, T2, T_pls, X_holdout, X_raw, _G, _achados_a
             **campos_faixa_espectral(cfg),
             "faixas_excluir": list((getattr(cfg, "exclusion_info", None) or {}).get("faixas", [])),
             "normalizacao": str((getattr(cfg, "exclusion_info", None) or {}).get("normalizacao", "nenhuma")),
+            "sinal_entrada": str((getattr(cfg, "sinal_info", None) or {}).get("sinal", "absorbancia")),
             "ajustes_hardware": list(getattr(cfg, "ajustes_hardware", [])),
             "correcoes_locais": dict(getattr(cfg, "correcoes_locais_aplicadas", {})),
             "multielementar": ({k: v for k, v in cfg.multielementar_resumo.items()
@@ -4084,6 +4087,53 @@ def _etapa_testes_estatisticos(*, X_raw, Y_bin, Y_cv, _G, cfg, fabrica_pipeline,
     return (bca, cm_mat, cv_anova_res, metricas_finais, metricas_funcoes, perm_p, perm_res, wold_res,)
 
 
+def _cs_info_pacote(info):
+    from guaraci.conversao_sinal import info_para_pacote
+    return info_para_pacote(info)
+
+
+def _converter_sinal_entrada(cfg, X_raw, wavenumbers, rotulos, conc, mae_id, metadados_df):
+    """`sinal_entrada` (conversao_sinal.py). Em feixe simples com `sinal_referencia` = nome de classe,
+    os espectros dessa classe viram I0 (media) e saem do estudo. Registra `cfg.sinal_info`."""
+    from guaraci import conversao_sinal as _cs
+    sinal = str(getattr(cfg, "signal_type", "absorbancia") or "absorbancia")
+    cfg.sinal_info = {"sinal": sinal}   # atributo de execucao (nao e' campo da Config)
+    if sinal == "absorbancia" or cfg.mode in ("multielementar", "imagem", "hsi", "sintetico"):
+        return X_raw, rotulos, conc, mae_id, metadados_df
+    ref = None
+    origem = ""
+    if sinal == "feixe_simples":
+        alvo = str(getattr(cfg, "signal_reference", "") or "").strip()
+        if alvo and os.path.isfile(alvo):
+            ref = _cs.ler_espectro_referencia(alvo)
+            origem = f"arquivo {os.path.basename(alvo)}"
+        elif alvo and np.any(rotulos == alvo):
+            m_ref = rotulos == alvo
+            if int((~m_ref).sum()) == 0:
+                raise ValueError(f"sinal_referencia: todos os espectros sao da classe '{alvo}' (o branco): "
+                                 f"nao sobra amostra.")
+            ref = (np.asarray(wavenumbers, dtype=float), np.nanmean(X_raw[m_ref], axis=0))
+            origem = f"media de {int(m_ref.sum())} espectro(s) da classe '{alvo}'"
+            keep = ~m_ref
+            X_raw, rotulos = X_raw[keep], rotulos[keep]
+            conc = conc[keep] if conc is not None else None
+            mae_id = mae_id[keep] if mae_id is not None else None
+            if metadados_df is not None and len(metadados_df) == len(keep):
+                metadados_df = metadados_df.loc[keep].reset_index(drop=True)
+            log.info(f"[INFO] Feixe simples: {int(m_ref.sum())} espectro(s) da classe '{alvo}' usados como "
+                     f"I0 e retirados do estudo.")
+        elif alvo:
+            raise ValueError(f"sinal_referencia = '{alvo}' nao e' um arquivo existente nem uma classe dos dados "
+                             f"(classes: {', '.join(sorted(set(map(str, rotulos)))[:10])}).")
+    X_conv, info = _cs.converter(X_raw, sinal, wavenumbers, ref, origem)
+    cfg.sinal_info = info
+    log.info(f"[INFO] Sinal de entrada: {sinal} -> {info.get('formula', '')}"
+             + (f" (I0: {origem})" if origem else "") + ".")
+    for _av in info.get("avisos", []):
+        log.warning(f"[AVISO] {_av}")
+    return X_conv, rotulos, conc, mae_id, metadados_df
+
+
 def _etapa_carregar_e_validar(*, cfg):
     """Etapas 1-1c2: carrega os dados (mae_id + metadados), trunca a faixa espectral, exclui classes, cria as pastas de saida, valida a integridade e roda a auditoria de delineamento.
 
@@ -4103,6 +4153,11 @@ def _etapa_carregar_e_validar(*, cfg):
         log.info(f"[WARNING] Grouping guarantee: {cfg.grouping_guarantee.upper()} "
               f"-- ver 'Grouping guarantee' no resumo/model card para o que "
               f"isso significa para a validacao desta execucao.")
+
+    # --- 1-. Conversao do sinal bruto (T, R, Kubelka-Munk, feixe simples) em absorbancia --------
+    # Antes de tudo: corte de faixa, saturacao e pre-processamento trabalham em absorbancia.
+    X_raw, rotulos, conc, mae_id, metadados_df = _converter_sinal_entrada(
+        cfg, X_raw, wavenumbers, rotulos, conc, mae_id, metadados_df)
 
     # --- 1a0. nivel N2: autenticação por espécie (DD-SIMCA one-class) ------
     # DESIGN (escolha do usuário — opção A):

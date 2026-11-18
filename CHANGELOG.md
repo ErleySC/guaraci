@@ -27,9 +27,14 @@ Leitura de MATLAB, NumPy, HDF5 e Excel (2026-11-18):
   de subpasta por classe. O cubo, o vetor de comprimentos de onda e a posição das bandas são detectados;
   quando há mais de uma possibilidade o programa para e lista as candidatas. Novos campos
   `arquivo_variavel_dados`, `arquivo_variavel_eixo` e `hsi_eixo_espectral` (`auto`/`ultimo`/`primeiro`/`meio`).
-  A calibração branco/escuro continua só para ENVI.
+  Calibração branco/escuro também para esses cubos, com as referências como variáveis `white`/`dark` no
+  próprio arquivo ou como `WHITEREF`/`DARKREF` em qualquer formato.
 - **Modo `csv` lê Excel (`.xlsx`) e matriz `.mat`/`.npz`/`.h5`** (matriz amostras × variáveis + vetor de
   eixo + vetores por amostra, que viram colunas). Vale também no CSV de predição e no upload da web.
+- **Conversão do sinal bruto dentro do programa** (`sinal_entrada`, nos modos `dx`, `csv`, `opus`, `spc`,
+  `sp`): transmitância, reflectância (log 1/R), Kubelka-Munk e feixe simples contra o branco
+  (`sinal_referencia`: arquivo ou classe). Roda antes do corte de faixa e da saturação; o pacote do modelo e
+  o JSON portátil guardam a conversão e a predição a reaplica. Absorbância marcada como T é recusada.
 - Novo extra `hdf5` (h5py) para `.mat` v7.3 e `.h5`, incluído em `.[all]`; sem ele a mensagem diz o comando.
 - Corrigido: a checagem da fonte de dados (`validar_fonte_de_dados`) do modo `hsi` caía na regra do `.dx`.
 

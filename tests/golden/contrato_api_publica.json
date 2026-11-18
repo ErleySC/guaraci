@@ -1005,6 +1005,26 @@
       "opcoes": null,
       "tipo": "int"
     },
+    "sinal_entrada": {
+      "attr": "signal_type",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "absorbancia",
+        "transmitancia",
+        "reflectancia",
+        "kubelka_munk",
+        "feixe_simples"
+      ],
+      "tipo": "choice"
+    },
+    "sinal_referencia": {
+      "attr": "signal_reference",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
     "sintetico_adulterantes": {
       "attr": "synthetic_adulterants",
       "max": null,
@@ -2990,6 +3010,16 @@
             "tipo": "str"
           },
           {
+            "nome": "signal_type",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "signal_reference",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
@@ -3865,6 +3895,24 @@
       },
       "texto_efetiva": {
         "assinatura": "(cfg: Any) -> str",
+        "forma": "funcao"
+      }
+    },
+    "conversao_sinal": {
+      "SINAIS": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "converter": {
+        "assinatura": "(X: numpy.ndarray, sinal: str, wn: Union[None, numpy.ndarray] = None, referencia: Union[None, tuple[numpy.ndarray, numpy.ndarray]] = None, origem_referencia: str = '') -> tuple[numpy.ndarray, dict[str, Any]]",
+        "forma": "funcao"
+      },
+      "converter_pelo_pacote": {
+        "assinatura": "(pkg: dict[str, Any], X_new: numpy.ndarray, wn_new: Union[None, numpy.ndarray]) -> numpy.ndarray",
+        "forma": "funcao"
+      },
+      "info_para_pacote": {
+        "assinatura": "(info: Union[None, dict[str, Any]]) -> Union[None, dict[str, Any]]",
         "forma": "funcao"
       }
     },
@@ -5008,6 +5056,16 @@
             "tipo": "str"
           },
           {
+            "nome": "signal_type",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "signal_reference",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
@@ -5804,7 +5862,15 @@
         "tipo": "tuple"
       },
       "ler_cubo_arquivo": {
-        "assinatura": "(caminho: str, kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto') -> guaraci.CuboArquivo",
+        "assinatura": "(caminho: str, kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto', kw:calibrando: bool = False) -> guaraci.CuboArquivo",
+        "forma": "funcao"
+      },
+      "ler_referencia_arquivo": {
+        "assinatura": "(caminho: str, n_bandas: int, kw:pos_cubo: Union[None, int] = None, kw:invertido: bool = False) -> dict[str, Any]",
+        "forma": "funcao"
+      },
+      "referencias_no_arquivo": {
+        "assinatura": "(caminho: str, info: dict[str, Any], n_bandas: int) -> dict[str, dict[str, Any]]",
         "forma": "funcao"
       }
     },

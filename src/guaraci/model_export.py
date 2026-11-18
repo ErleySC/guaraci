@@ -206,6 +206,8 @@ def export_portable_json(pkg: Dict[str, Any]) -> Dict[str, Any]:
         "ims_rip_janela": pkg.get("ims_rip_janela"),
         # Teto de saturacao do treino (opcional; ausente = nada detectado ou modelo antigo).
         **({"saturacao": pkg["saturacao"]} if pkg.get("saturacao") else {}),
+        # Conversao do sinal bruto do treino (opcional; ausente = absorbancia).
+        **({"sinal_entrada": pkg["sinal_entrada"]} if pkg.get("sinal_entrada") else {}),
         "passos_preprocessamento": passos,
         "pls": {
             "x_mean": np.asarray(pls._x_mean, dtype=float).tolist(),  # noqa: SLF001
@@ -328,6 +330,8 @@ def predict_portable(portable: Dict[str, Any], X_new_raw: np.ndarray,
 
     X_new_raw = np.asarray(X_new_raw, dtype=float)
     wn_new = np.asarray(wn_new, dtype=float)
+    from guaraci.conversao_sinal import converter_pelo_pacote
+    X_new_raw = converter_pelo_pacote(portable, X_new_raw, wn_new)
     # M-06: mesma recusa de extrapolacao do caminho .joblib.
     from guaraci.eixo_espectral import (COBERTURA_EIXO_MINIMA,
                                         exigir_cobertura_do_eixo)

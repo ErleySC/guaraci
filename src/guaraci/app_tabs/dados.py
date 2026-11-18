@@ -26,6 +26,7 @@ _DADOS_KEYS = ["modo_entrada", "perfil_matriz", "perfil_tecnica", "eixo_unidade"
                "hsi_pasta_dataset", "hsi_calibracao", "hsi_referencia_branco",
                "hsi_referencia_escuro", "hsi_eixo_bandas", "hsi_validacao", "hsi_cv_dobras",
                "hsi_eixo_espectral", "arquivo_variavel_dados", "arquivo_variavel_eixo",
+               "sinal_entrada", "sinal_referencia",
                "imagem_referencia", "imagem_segmentacao", "hplc_detector", "cromatografia_canal",
                "espectro_max_pontos", "cromatograma_max_pontos",
                "eem_espalhamento", "eem_espalhamento_largura_nm", "eem_raman", "parafac_nao_negativo",
