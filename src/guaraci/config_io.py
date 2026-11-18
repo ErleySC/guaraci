@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import glob
 import os
+import sys
 from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -630,6 +631,15 @@ def load_config(caminho: str, base: Optional[Config] = None) -> Config:
             # tipo incompativel no YAML) nao deve impedir reportar as
             # demais chaves invalidas.
             erros.append(f"  - '{key}': {e}")
+    # `etapas_pre_processamento` so' vale com `pre_processamento: Personalizado`; antes era
+    # ignorada em silencio e a corrida usava o preset (achado ao testar com dado real publico).
+    # Aviso, nao erro: `save_config` grava sempre as duas chaves e o ciclo salvar/ler tem de fechar.
+    if ("etapas_pre_processamento" in dados and not erros
+            and str(cfg.default_preprocessing).lower() != "custom"):
+        print("[AVISO] etapas_pre_processamento so' tem efeito com 'pre_processamento: "
+              "Personalizado'; com o preset atual "
+              f"('{_PRE_PROC_INV.get(cfg.default_preprocessing, cfg.default_preprocessing)}') "
+              "a lista e' ignorada.", file=sys.stderr)
     if erros:
         raise ValueError("Problemas no config.yaml:\n" + "\n".join(erros))
     return cfg
