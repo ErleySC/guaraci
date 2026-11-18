@@ -96,7 +96,8 @@ número (os números podem mudar — vá pelo **nome**, não pelo número):
 - **Modo de entrada**: `dx` (espectros `.dx` em pastas), `csv` (uma
   tabela), ou um dos formatos de instrumento (`opus`, `spc`, `sp`, `rmn`,
   `hplc`, `gcms`, `eem`);
-- para `csv`: **Arquivo CSV** (caminho do arquivo) e **Coluna de classe**
+- para `csv`: **Arquivo CSV** (caminho do arquivo: `.csv`/`.txt`, Excel
+  `.xlsx` ou matriz MATLAB/NumPy/HDF5 `.mat`/`.npz`/`.h5`) e **Coluna de classe**
   (nome da coluna que diz a classe; padrão `classe`);
 - para os demais, a **pasta de entrada** está na tela **`[1]` Projeto**.
 
@@ -478,7 +479,7 @@ Configuráveis via `modo_entrada` (aplicativo, CLI ou `config.yaml`):
 | Modo | Origem | Observação |
 |---|---|---|
 | `dx` | Espectros JCAMP-DX (FT-NIR/Raman/MIR) | Padrão; uma subpasta por classe |
-| `csv` | Tabela genérica (colunas espectrais + uma coluna de classe) | Qualquer dado tabular |
+| `csv` | Tabela genérica (colunas espectrais + uma coluna de classe): CSV/TXT, Excel `.xlsx` ou `.mat`/`.npz`/`.h5` | Qualquer dado tabular; ver "Arquivos MATLAB, NumPy, HDF5 e Excel" |
 | `imagem` | Colorimetria digital (protótipo só sem garantia de agrupamento — ver adiante) | Ver adiante |
 | `hsi` | Imageamento hiperespectral — aceita cubo próprio, offline (ver adiante) | Distinto de `imagem`: por pixel, não por foto |
 | `opus` | OPUS binário (Bruker FT-IR/FT-NIR) | Requer `pip install -e ".[opus]"`; sem extensão fixa (tenta cada arquivo) |
@@ -589,7 +590,8 @@ retangular relativo, `config.yaml`) antes da extração.
 
 **Modo `hsi` (imageamento hiperespectral):** DISTINTO do mode `imagem`
 acima — opera **por pixel** de um cubo hiperespectral (formato ENVI,
-par `.hdr`+`.bin`), não por foto inteira. Fluxo: leitura genérica
+par `.hdr`+`.bin`, ou um arquivo `.mat`/`.npy`/`.npz`/`.h5` por cubo — ver
+"Arquivos MATLAB, NumPy, HDF5 e Excel"), não por foto inteira. Fluxo: leitura genérica
 (`hsi_io.load_hsi_folder_dataset`) → quality gate (saturação, SNR,
 fração de pixels válidos) → segmentação objeto/fundo (PCA+Otsu) →
 extração dos pixels da ROI, cada um marcado com o `group_id` do objeto
@@ -600,7 +602,7 @@ majoritária + heterogeneidade) → mapa de classificação espacial →
 validação.
 
 **Aceita o cubo do PRÓPRIO usuário** — `hsi_pasta_dataset` (`Config.hsi_dataset_folder`)
-aponta pra' QUALQUER pasta com cubos ENVI, convenção de subpasta-por-
+aponta pra' QUALQUER pasta com cubos (ENVI, `.mat`, `.npy`/`.npz`, `.h5`), convenção de subpasta-por-
 classe (mesma do mode `dx`/`imagem`), sem exigir manifesto nem layout
 específico. Agrupamento por amostra física reaproveita a mesma
 hierarquia de 3 níveis do mode `imagem` (subpasta por amostra física /
@@ -608,6 +610,37 @@ CSV `amostras.csv` de associação na raiz / nenhuma fonte, sempre
 declarado explicitamente, nunca presumido). Funcionamento **offline**
 verificado por teste com o socket de rede desabilitado
 (`tests/test_hsi_offline_prova.py`) — não é alegação.
+
+**Arquivos MATLAB, NumPy, HDF5 e Excel** (modos `hsi` e `csv`). O MATLAB
+`.mat` v4–v7 é lido pelo scipy (instalação base); o `.mat` v7.3 e o `.h5`
+precisam do extra `pip install ".[hdf5]"` (h5py) — sem ele a mensagem diz
+o comando, ou peça o arquivo salvo com `save('a.mat','cubo','wl','-v7')`.
+Campos de `struct` entram como `s.campo`. O que é detectado sozinho:
+
+- **o dado**: no `hsi`, a única variável com 3 eixos (descartando nomes de
+  referência como `white`/`dark`/`branco`/`escuro`); no `csv`, a única
+  matriz 2D. Se houver mais de uma (ex.: `Xcal` e `Xval`), o programa para
+  e lista as candidatas: escolha com `arquivo_variavel_dados` (no Excel,
+  o mesmo campo escolhe a planilha; vazio = a primeira);
+- **o eixo espectral**: um vetor monótono com o tamanho de um eixo do dado,
+  de preferência com nome de eixo (`wavelength`, `wl`, `lambda`, `nm`,
+  `axis`…), ou o atributo `wavelength` do dataset HDF5. Escolha com
+  `arquivo_variavel_eixo`. Eixo decrescente é invertido (com os dados);
+- **a posição das bandas no cubo** (`hsi_eixo_espectral`): pelo tamanho do
+  vetor de comprimentos de onda. Sem vetor, assume o último eixo
+  (linhas × colunas × bandas, convenção do MATLAB) e avisa; se a forma
+  sugere bandas × linhas × colunas, ou o vetor tem o tamanho de mais de um
+  eixo, para e pede `primeiro`, `meio` ou `ultimo` (na ordem que o
+  MATLAB mostra em `size(cubo)`);
+- **na tabela**: cada vetor com uma entrada por amostra (número, lógico,
+  texto `char` ou `cellstr`) vira uma coluna com o nome da variável —
+  aponte `coluna_classe`/`coluna_concentracao`/`coluna_grupo` para ele.
+  Se o eixo bate com as linhas da matriz, ela é transposta (com aviso).
+
+Limites: a calibração branco/escuro (`hsi_calibracao`) só vale para ENVI
+(calibre antes de exportar); cubo de `.mat` é carregado inteiro na
+memória; o objeto `DataSet` do PLS_Toolbox, `.spa` (OMNIC) e `.unsb`
+(Unscrambler) não são lidos — exporte a matriz como variável numérica.
 
 `run_hsi_pipeline` usa o caminho genérico para qualquer pasta de cubos; a explicabilidade cruzada por tabela de atribuição química e a partição por dia de medição exigem metadados que uma pasta genérica não tem.
 
@@ -1930,6 +1963,9 @@ alteração, não importa em qual arquivo `X` esteja implementado de fato.
 | `io_registry.py` | *Registry* de leitores de dados: mapeia `cfg.mode` (`dx`, `csv`, `imagem`, `sintetico` e, via `leitores_avancados.py`, `opus`/`spc`/`sp`/`rmn`/`hplc`/`gcms`/`eem`) ao leitor correspondente |
 | `dados_imagem.py` | Colorimetria digital (`mode="imagem"`, protótipo): extração de *features* RGB/HSV/Lab e textura opcional |
 | `agrupamento_pastas.py` | Hierarquia de 3 níveis de garantia de agrupamento (subpasta/CSV/nenhuma), extraída de `dados_imagem.py` pra' ser reaproveitada por `hsi_io.py` sem duplicar |
+| `arquivo_matrizes.py` | Lista e carrega variáveis numéricas de `.mat` (v5 e v7.3), `.npy`/`.npz` e `.h5` sem adivinhar o significado |
+| `hsi_arquivo.py` | Cubo HSI em `.mat`/`.npy`/`.npz`/`.h5`: detecção do cubo, do eixo espectral e da posição das bandas |
+| `tabela_arquivo.py` | Tabela do modo `csv` a partir de Excel e de `.mat`/`.npz`/`.h5` |
 | `hsi_io.py` | Leitor ENVI (`.hdr`+`.bin`) genérico; `load_hsi_folder_dataset` (pasta do próprio usuário) + (`mode="hsi"`) |
 | `hsi_quality.py` | Quality gate de cubo HSI: saturação, SNR (Immerkaer 1996), fração de pixels válidos |
 | `hsi_segmentation.py` | Segmentação objeto/fundo por PCA(PC1)+Otsu, inferência de fundo pela borda da cena |

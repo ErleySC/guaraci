@@ -25,6 +25,7 @@ _DADOS_KEYS = ["modo_entrada", "perfil_matriz", "perfil_tecnica", "eixo_unidade"
                "pasta_saida", "ajuste_automatico", "saturacao", "faixas_excluir", "excluir_classes", "imagem_incluir_textura",
                "hsi_pasta_dataset", "hsi_calibracao", "hsi_referencia_branco",
                "hsi_referencia_escuro", "hsi_eixo_bandas", "hsi_validacao", "hsi_cv_dobras",
+               "hsi_eixo_espectral", "arquivo_variavel_dados", "arquivo_variavel_eixo",
                "imagem_referencia", "imagem_segmentacao", "hplc_detector", "cromatografia_canal",
                "espectro_max_pontos", "cromatograma_max_pontos",
                "eem_espalhamento", "eem_espalhamento_largura_nm", "eem_raman", "parafac_nao_negativo",
@@ -123,7 +124,8 @@ def render(pq, cfg_base, specs: Dict, valores: Dict,
     st.markdown(T("**Upload CSV** *(alternative to the local path below)*"))
     upld = st.file_uploader(
         T("Drag or select a CSV file"),
-        type=["csv", "txt"],
+        # Excel e matriz MATLAB/NumPy/HDF5 entram pelo mesmo modo csv (tabela_arquivo.py)
+        type=["csv", "txt", "xlsx", "xlsm", "mat", "npz", "h5", "hdf5"],
         key="csv_upload_widget",
         help=T("The file will be saved to a temporary folder and the path adjusted automatically."),
     )

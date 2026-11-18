@@ -55,17 +55,20 @@ class HSIDadosPreparados:
 
 
 def preparar_dados_hsi(pasta: str, *, calibracao: str = "nenhuma", referencia_branco: str = "",
-                       referencia_escuro: str = "", eixo_bandas: str = "recusar") -> HSIDadosPreparados:
+                       referencia_escuro: str = "", eixo_bandas: str = "recusar", variavel_dados: str = "",
+                       variavel_eixo: str = "", eixo_espectral: str = "auto") -> HSIDadosPreparados:
     """Leitura + quality gate + segmentacao + dataset por pixel, sobre uma
     pasta de cubos ENVI (mesma convencao do modo `hsi` generico).
 
     `calibracao`, `referencia_branco`, `referencia_escuro` e `eixo_bandas` sao os mesmos que o fluxo principal
     le de `hsi_calibration`, `hsi_white_ref`, `hsi_dark_ref` e `hsi_band_axis`: sem eles os extras leriam os cubos
     brutos e aceitariam cubos de eixos diferentes, enquanto o modelo principal nao. Os padroes preservam o
-    comportamento antigo. A faixa espectral e o SNV por pixel do fluxo principal NAO sao aplicados aqui."""
+    comportamento antigo. `variavel_dados`, `variavel_eixo` e `eixo_espectral`: leitura de cubos
+    .mat/.npy/.npz/.h5 (ver `hsi_io.opcoes_leitura_hsi`). A faixa espectral e o SNV por pixel do fluxo principal NAO sao aplicados aqui."""
     cubos, rotulos, mae_id, _wl, _meta = load_hsi_folder_dataset(
         pasta, calibracao=calibracao, referencia_branco=referencia_branco,
-        referencia_escuro=referencia_escuro, eixo_bandas=eixo_bandas)
+        referencia_escuro=referencia_escuro, eixo_bandas=eixo_bandas, variavel_dados=variavel_dados,
+        variavel_eixo=variavel_eixo, eixo_espectral=eixo_espectral)
     if mae_id is None:
         grupos = [f"__sem_grupo_{i}__" for i in range(len(cubos))]
     else:

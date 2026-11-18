@@ -62,6 +62,8 @@ EXTRAS: Tuple[ExtraOpcional, ...] = (
                   ("PARAFAC da fluorescencia 3D (EEM) e da HSI multiway", "PARAFAC for 3D fluorescence (EEM) and multiway HSI")),
     ExtraOpcional("skimage", "scikit-image", "imagem", (), ("imagem",),
                   ("textura da imagem (GLCM)", "image texture (GLCM)"), flag_cfg="include_image_texture"),
+    ExtraOpcional("h5py", "h5py", "hdf5", (), ("hsi",),
+                  ("arquivos MATLAB .mat v7.3 e HDF5 (.h5)", "MATLAB .mat v7.3 and HDF5 (.h5) files")),
     ExtraOpcional("prcv", "prcv", "robusto", (), (),
                   ("diagnostico PCV do DD-SIMCA", "DD-SIMCA PCV diagnostic"), flag_cfg="ddsimca_pcv"),
 )

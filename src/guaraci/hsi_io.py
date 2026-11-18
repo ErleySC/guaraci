@@ -24,23 +24,25 @@ onda vem a' parte, em outro arquivo do fornecedor. Por isso
 `load_envi_cube` aceita `wavelengths` como parametro OPCIONAL -- quando o
 `.hdr` nao traz a lista, quem chama fornece a de fora.
 
-ENVI e' o formato dominante na literatura de HSI (confirmado no Passo 93);
-nao ha suporte a outros formatos (MAT/HDF5) neste ciclo -- fora de escopo
-do "minimo viavel", adicionar quando um dataset real exigir.
+ENVI e' o formato dominante na literatura de HSI (confirmado no Passo 93).
+Cubos guardados como variavel de MATLAB (.mat v5/v7.3), NumPy (.npy/.npz) ou
+HDF5 (.h5) entram pela mesma pasta: ver `hsi_arquivo.py` (deteccao do cubo e
+do eixo espectral) -- `load_hsi_folder_dataset` aceita os dois tipos.
 """
 from __future__ import annotations
 
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
 
 from guaraci import agrupamento_pastas as _ap
+from guaraci import hsi_arquivo as _ha
 from guaraci.hsi_blocos import (CalibracaoBrancoEscuro, CuboHSI,
-                                pesos_reamostragem)
+                                pesos_reamostragem, reamostrar_bandas)
 
 __all__ = [
     "HSICubeMetadata",
@@ -285,8 +287,45 @@ def load_envi_cube(caminho_bin: str, caminho_hdr: Optional[str] = None,
 
 #: Extensao que marca 1 gravacao ENVI -- o `.bin` irmao e' assumido presente
 #: (ver `load_envi_cube`, que resolve `.hdr` -> `.bin` pela mesma raiz de
-#: nome). So' contar `.hdr` evita listar a mesma gravacao 2x.
-_EXTENSOES_HSI: Tuple[str, ...] = (".hdr",)
+#: nome). So' contar `.hdr` evita listar a mesma gravacao 2x. As demais sao
+#: cubos em arquivo unico (`hsi_arquivo.py`: .mat, .npy, .npz, .h5).
+_EXTENSOES_ENVI: Tuple[str, ...] = (".hdr",)
+_EXTENSOES_HSI: Tuple[str, ...] = _EXTENSOES_ENVI + _ha.EXTENSOES_CUBO_ARQUIVO
+
+
+def _e_envi(caminho: str) -> bool:
+    return caminho.lower().endswith(_EXTENSOES_ENVI)
+
+
+@dataclass
+class _ParametrosArquivo:
+    """Cubo de arquivo unico ja' lido (mesmos campos que o resto do carregamento usa do ENVI)."""
+    cubo: np.ndarray
+    wl: Optional[np.ndarray]
+    info: Dict[str, object]
+
+    @property
+    def n_lines(self) -> int:
+        return int(self.cubo.shape[0])
+
+    @property
+    def n_samples(self) -> int:
+        return int(self.cubo.shape[1])
+
+    @property
+    def n_bands(self) -> int:
+        return int(self.cubo.shape[2])
+
+
+def opcoes_leitura_hsi(cfg) -> Dict[str, str]:
+    """Argumentos de leitura de `load_hsi_folder_dataset` tirados da Config (um lugar so' para o
+    fluxo principal, os extras e o menu)."""
+    def _s(attr: str, padrao: str) -> str:
+        return str(getattr(cfg, attr, padrao) or padrao)
+    return dict(calibracao=_s("hsi_calibration", "nenhuma"), referencia_branco=_s("hsi_white_ref", ""),
+                referencia_escuro=_s("hsi_dark_ref", ""), eixo_bandas=_s("hsi_band_axis", "recusar"),
+                variavel_dados=_s("file_data_variable", ""), variavel_eixo=_s("file_axis_variable", ""),
+                eixo_espectral=_s("hsi_spectral_axis", "auto"))
 
 #: Tolerancia (nm) para considerar iguais os eixos de bandas de dois cubos.
 TOLERANCIA_EIXO_NM = 1.0
@@ -541,7 +580,8 @@ def _comparar_eixos(ref_nome: str, wl_ref: Optional[np.ndarray], n_ref: int,
         raise ValueError(
             f"{nome}: este cubo {'nao ' if wl is None else ''}traz 'wavelength' no .hdr e {ref_nome} "
             f"{'' if wl is None else 'nao '}traz -- nao ha' como saber se os eixos de bandas coincidem. "
-            f"Complete os .hdr (ou separe as cameras em pastas diferentes).")
+            f"Complete os .hdr (ou o vetor de comprimentos de onda dos .mat/.h5), ou separe as cameras em "
+            f"pastas diferentes.")
     if wl_ref is None or wl is None:
         return None, 0.0
     desvio = float(np.max(np.abs(wl - wl_ref)))
@@ -567,7 +607,8 @@ def _comparar_eixos(ref_nome: str, wl_ref: Optional[np.ndarray], n_ref: int,
 
 def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str = "nenhuma",
                             referencia_branco: str = "", referencia_escuro: str = "",
-                            eixo_bandas: str = "recusar") -> Tuple[
+                            eixo_bandas: str = "recusar", variavel_dados: str = "",
+                            variavel_eixo: str = "", eixo_espectral: str = "auto") -> Tuple[
         List[np.ndarray], np.ndarray, Optional[np.ndarray],
         np.ndarray, "pd.DataFrame"]:
     """Le uma pasta com cubos hiperespectrais do PROPRIO usuario (par
@@ -609,7 +650,15 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
     reamostra para o eixo do primeiro cubo).
 
     `lazy=True` devolve `hsi_blocos.CuboHSI` (leitura por memmap, em blocos)
-    em vez de ndarray float32 carregados por inteiro.
+    em vez de ndarray float32 carregados por inteiro (so' para ENVI: cubo de
+    .mat/.npy/.npz/.h5 e' sempre carregado na memoria).
+
+    Cubos em arquivo unico (.mat v5/v7.3, .npy, .npz, .h5) podem estar na mesma
+    pasta, com a mesma convencao de subpastas: `variavel_dados`,
+    `variavel_eixo` e `eixo_espectral` escolhem a variavel do cubo, a do
+    vetor de comprimentos de onda e a posicao das bandas quando a deteccao
+    automatica nao decide (ver `hsi_arquivo.py`). A calibracao branco/escuro
+    so' vale para ENVI.
 
     Devolve `(cubos, rotulos, mae_id, wavelengths, metadados_df)` --
     `mae_id` e' `None` quando o nivel detectado e' "none" (mesmo contrato
@@ -646,8 +695,8 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
         arqs = _ap.listar_arquivos_por_extensao(pasta, _EXTENSOES_HSI, ign)
         if not arqs:
             raise FileNotFoundError(
-                f"Pasta existe mas nao contem cubos hiperespectrais ENVI "
-                f"(pares .hdr/.bin).\n  Pasta: {pasta}")
+                f"Pasta existe mas nao contem cubos hiperespectrais (pares ENVI "
+                f".hdr/.bin, ou .mat, .npy, .npz, .h5).\n  Pasta: {pasta}")
         arquivos = [(a, "") for a in arqs]
 
     todos_arquivos = [a for a, _ in arquivos]
@@ -675,14 +724,28 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
         print(f"[INFO] Grouping guarantee: {nivel.upper()} "
               f"({len(set(mapa_grupo.values()))} grupos de amostra fisica).")
 
-    # Fase 1: cabecalhos e tamanho dos binarios (sem ler os dados).
-    lidos: List[Tuple[str, str, str, "_ParametrosEnvi"]] = []
+    # Fase 1: cabecalhos e tamanho dos binarios (sem ler os dados); cubos de
+    # arquivo unico (.mat/.npy/.npz/.h5) sao lidos aqui por inteiro.
+    lidos: List[Tuple[str, str, str, Any]] = []
     n_falhos = 0
+    avisos_arquivo: List[str] = []
     for caminho_hdr, subpasta_nome in arquivos:
         try:
-            arq_dados = _resolver_arquivo_dados_envi(caminho_hdr)
-            par = _ler_parametros_envi(caminho_hdr)
-            _validar_tamanho_binario(arq_dados, par)
+            par: Any
+            if _e_envi(caminho_hdr):
+                arq_dados = _resolver_arquivo_dados_envi(caminho_hdr)
+                par = _ler_parametros_envi(caminho_hdr)
+                _validar_tamanho_binario(arq_dados, par)
+            else:
+                arq_dados = caminho_hdr
+                ca = _ha.ler_cubo_arquivo(caminho_hdr, variavel_dados=variavel_dados,
+                                          variavel_eixo=variavel_eixo, eixo_espectral=eixo_espectral)
+                par = _ParametrosArquivo(ca.cubo, ca.wavelengths, ca.info)
+                avisos_arquivo.extend(str(a) for a in ca.info.get("avisos", []))
+        except ImportError:
+            # extra opcional (h5py) ausente: vale para todos os arquivos do mesmo tipo -- para ja',
+            # com o comando de instalacao, em vez de pular cubo por cubo.
+            raise
         except Exception as e:  # noqa: BLE001 -- leitura defensiva de cubo
             # externo (arquivo truncado/corrompido/header incompativel);
             # erro impresso COM NOME DO ARQUIVO e contabilizado em
@@ -692,9 +755,17 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
             continue
         lidos.append((caminho_hdr, subpasta_nome, arq_dados, par))
 
+    for a in dict.fromkeys(avisos_arquivo):
+        print(f"[AVISO] HSI: {a}")
     if not lidos:
         raise ValueError(
             f"Nenhum cubo hiperespectral valido carregado ({n_falhos} com erro).")
+    nao_envi = [c for c, _sp, _a, p in lidos if isinstance(p, _ParametrosArquivo)]
+    if calibracao == "branco_escuro" and nao_envi:
+        raise ValueError(
+            f"hsi_calibracao=branco_escuro so' vale para cubos ENVI (.hdr/.bin), mas "
+            f"{len(nao_envi)} cubo(s) vieram de .mat/.npy/.npz/.h5 (ex.: {os.path.basename(nao_envi[0])}). "
+            f"Calibre a reflectancia antes de exportar (R = (I - D)/(W - D)) e use hsi_calibracao: nenhuma.")
 
     # Fase 2: eixos de bandas contra o do primeiro cubo.
     ref_hdr, _, _, ref_par = lidos[0]
@@ -767,6 +838,21 @@ def load_hsi_folder_dataset(pasta: str, *, lazy: bool = False, calibracao: str =
     meta_rows: List[Dict[str, object]] = []
     for i, (caminho_hdr, subpasta_nome, arq_dados, par) in enumerate(lidos):
         reamo = reamostragens[i]
+        if isinstance(par, _ParametrosArquivo):
+            cubo_mem = par.cubo if reamo is None else reamostrar_bandas(par.cubo, reamo)
+            cubos.append(cubo_mem)
+            classe = subpasta_nome or os.path.splitext(os.path.basename(caminho_hdr))[0]
+            rotulos.append(classe)
+            grupos_arr.append(mapa_grupo.get(caminho_hdr))
+            meta_rows.append({
+                "arquivo": os.path.basename(caminho_hdr), "subpasta": subpasta_nome,
+                "classe": classe, "grupo_id": mapa_grupo.get(caminho_hdr),
+                "n_linhas": par.n_lines, "n_colunas": par.n_samples,
+                "n_bandas": par.n_bands, "formato": par.info.get("formato", ""),
+                "variavel": par.info.get("variavel_dados", ""),
+                "eixo_espectral": par.info.get("eixo_espectral", ""),
+            })
+            continue
         cubo_lazy = CuboHSI(arq_dados, par.dtype_np, par.interleave, par.n_lines, par.n_samples,
                             par.n_bands, par.header_offset, fator=par.fator, calibracao=calibracoes[i],
                             reamostragem=reamo)

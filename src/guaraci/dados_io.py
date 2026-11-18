@@ -850,16 +850,25 @@ def gerar_cenario_sintetico(*args, **kwargs):
     return gerar_cenario(*args, **kwargs)
 
 
-def _ler_tabela_csv(caminho) -> pd.DataFrame:
+def _ler_tabela_csv(caminho, variavel_dados: str = "", variavel_eixo: str = "") -> pd.DataFrame:
     """Le um CSV detectando o separador (`,` `;` tab) e, se os valores
     espectrais nao forem numericos, tentando decimal `,` (padrao pt-BR/Excel)
     -- o mesmo tratamento do CSV de predicao (`predicao.load_prediction_csv`),
-    para que o CSV de TREINO aceite o proprio formato que o GUARACI grava. Erros viram `ValueError` acionaveis."""
+    para que o CSV de TREINO aceite o proprio formato que o GUARACI grava. Erros viram `ValueError` acionaveis.
+
+    Excel (.xlsx/.xlsm) e arquivos de variaveis (.mat, .npz, .h5) viram o mesmo DataFrame por
+    `tabela_arquivo.ler_tabela_arquivo` (`variavel_dados`/`variavel_eixo` escolhem planilha/variaveis)."""
     import csv as _csv_mod
     if not os.path.isfile(str(caminho)):
         raise FileNotFoundError(
             f"CSV nao encontrado: '{caminho}'. Confira o caminho em "
             f"arquivo_csv (modo csv).")
+    from guaraci import tabela_arquivo as _ta
+    if _ta.e_tabela_arquivo(str(caminho)):
+        df_arq = _ta.ler_tabela_arquivo(str(caminho), variavel_dados=variavel_dados, variavel_eixo=variavel_eixo)
+        if df_arq.empty or len(df_arq.columns) == 0:
+            raise ValueError(f"'{os.path.basename(str(caminho))}' nao tem linhas de dados.")
+        return df_arq
 
     from guaraci.csv_robusto import ler_csv
 
@@ -967,7 +976,8 @@ def atribuir_grupos(nomes, mapa: Dict[str, str], origem: str = "") -> np.ndarray
 
 
 def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
-                           arquivo_grupos: str = ""):
+                           arquivo_grupos: str = "", variavel_dados: str = "",
+                           variavel_eixo: str = ""):
     """`load_csv` + fonte de GRUPO (B4a). Retorna
     (wavenumbers, X, rotulos, conc, mae_id_ou_None, nomes_ou_None); `nomes` so' existe
     quando os cabecalhos sao NOMES de variavel (eixo = posicao 1..k).
@@ -981,7 +991,7 @@ def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
         raise ValueError(
             "Use so' UMA fonte de grupo: coluna_grupo (coluna do CSV) OU "
             "arquivo_grupos (arquivo id->grupo), nao as duas.")
-    df = _ler_tabela_csv(caminho)
+    df = _ler_tabela_csv(caminho, variavel_dados=variavel_dados, variavel_eixo=variavel_eixo)
     if col_classe not in df.columns:
         raise ValueError(
             f"A coluna de classe '{col_classe}' nao existe no CSV. Colunas "
@@ -2007,7 +2017,9 @@ def _leitor_csv(cfg: "Config"):
     wn, X, rot, conc, mae_id, nomes = _carregar_csv_completo(
         cfg.csv_file, cfg.class_column, cfg.conc_column,
         col_grupo=getattr(cfg, "group_column", "") or "",
-        arquivo_grupos=getattr(cfg, "group_file", "") or "")
+        arquivo_grupos=getattr(cfg, "group_file", "") or "",
+        variavel_dados=getattr(cfg, "file_data_variable", "") or "",
+        variavel_eixo=getattr(cfg, "file_axis_variable", "") or "")
     # nomes das variaveis (cabecalho nao numerico): figuras e relatorios os mostram no lugar da posicao
     setattr(cfg, "nomes_variaveis", list(nomes) if nomes else None)   # estado de execucao: fora do dataclass
     return wn, X, rot, conc, mae_id, None

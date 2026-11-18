@@ -46,6 +46,7 @@ et_xmlfile==2.0.0
 fonttools==4.64.0
 fpdf2==2.8.8
 h11==0.16.0
+h5py==3.16.0
 httptools==0.8.0
 idna==3.19
 ImageIO==2.37.4

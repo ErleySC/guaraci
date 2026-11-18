@@ -5085,11 +5085,8 @@ def _menu_hsi_extras(pasta: str, is_pt: bool, cfg: Any = None) -> None:
             if dados is None:
                 with console.status(f"[{PA}]{'Carregando cubos...' if is_pt else 'Loading cubes...'}[/{PA}]"):
                     # a mesma calibracao e checagem de eixo do modelo principal (sem cfg: leitura bruta, como antes)
-                    kw = {} if cfg is None else dict(
-                        calibracao=str(getattr(cfg, "hsi_calibration", "nenhuma") or "nenhuma"),
-                        referencia_branco=str(getattr(cfg, "hsi_white_ref", "") or ""),
-                        referencia_escuro=str(getattr(cfg, "hsi_dark_ref", "") or ""),
-                        eixo_bandas=str(getattr(cfg, "hsi_band_axis", "recusar") or "recusar"))
+                    from guaraci.hsi_io import opcoes_leitura_hsi
+                    kw = {} if cfg is None else opcoes_leitura_hsi(cfg)
                     dados = preparar_dados_hsi(pasta, **kw)
             with console.status(f"[{PA}]{'Rodando...' if is_pt else 'Running...'}[/{PA}]"):
                 if escolha == "D":
@@ -7182,7 +7179,8 @@ def _checklist(cfg: Config) -> Tuple[bool, List[str], List[Tuple[Optional[bool],
         # csv valida o arquivo mais abaixo; sintetico nao usa pasta_dados.
         if modo_chk == "csv":
             arq_csv = str(_cfgv(cfg, "arquivo_csv", "") or "")
-            if arq_csv and os.path.isfile(arq_csv):
+            from guaraci.tabela_arquivo import e_tabela_arquivo as _e_tab_arq
+            if arq_csv and os.path.isfile(arq_csv) and not _e_tab_arq(arq_csv):   # Excel/.mat: sem contar linhas
                 try:
                     with open(arq_csv, "rb") as _f:
                         n_para_estimar = max(0, sum(1 for _ in _f) - 1)

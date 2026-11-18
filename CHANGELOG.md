@@ -9,6 +9,18 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Leitura de MATLAB, NumPy, HDF5 e Excel (2026-11-18):
+
+- **Modo `hsi` lê cubos em `.mat` (v5 e v7.3), `.npy`/`.npz` e `.h5`**, além do ENVI, na mesma convenção
+  de subpasta por classe. O cubo, o vetor de comprimentos de onda e a posição das bandas são detectados;
+  quando há mais de uma possibilidade o programa para e lista as candidatas. Novos campos
+  `arquivo_variavel_dados`, `arquivo_variavel_eixo` e `hsi_eixo_espectral` (`auto`/`ultimo`/`primeiro`/`meio`).
+  A calibração branco/escuro continua só para ENVI.
+- **Modo `csv` lê Excel (`.xlsx`) e matriz `.mat`/`.npz`/`.h5`** (matriz amostras × variáveis + vetor de
+  eixo + vetores por amostra, que viram colunas). Vale também no CSV de predição e no upload da web.
+- Novo extra `hdf5` (h5py) para `.mat` v7.3 e `.h5`, incluído em `.[all]`; sem ele a mensagem diz o comando.
+- Corrigido: a checagem da fonte de dados (`validar_fonte_de_dados`) do modo `hsi` caía na regra do `.dx`.
+
 Menu e ajuda (2026-11-16):
 
 - **`?` explica cada valor das listas de escolha** (novo `catalogo_valores.py`, com teste que exige texto PT/EN

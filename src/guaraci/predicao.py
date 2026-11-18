@@ -436,9 +436,14 @@ def load_prediction_csv(caminho_ou_buffer) -> Tuple[np.ndarray, np.ndarray, pd.D
     """
     import csv as _csv_mod
 
+    from guaraci import tabela_arquivo as _ta
     try:
         from guaraci.csv_robusto import ler_csv
-        df = ler_csv(caminho_ou_buffer)
+        if isinstance(caminho_ou_buffer, (str, os.PathLike)) and _ta.e_tabela_arquivo(str(caminho_ou_buffer)):
+            # Excel ou .mat/.npz/.h5: deteccao automatica da matriz e do eixo (sem Config aqui)
+            df = _ta.ler_tabela_arquivo(str(caminho_ou_buffer))
+        else:
+            df = ler_csv(caminho_ou_buffer)
     except (pd.errors.EmptyDataError, _csv_mod.Error) as e:
         # csv.Error ("Could not determine delimiter") e' o que o sniffer
         # (sep=None, engine="python") de fato lanca pra' um arquivo VAZIO --
