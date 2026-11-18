@@ -59,6 +59,14 @@ A tela `[2.4]` escreve `(extra: pip install ...)` ao lado do formato quando o pa
 avisa na hora em que você o escolhe; `guaraci doctor` e `guaraci checar` listam o que falta e
 quais técnicas isso afeta. Para instalar tudo de uma vez:
 `pip install ".[all]"` (de dentro da pasta clonada; para desenvolver: `pip install -e ".[all]"`).
+
+**Técnicas da tela `[2.4]` acrescentadas:** `GC-FID`, `LC-MS` e `FRX/XRF`. O GC-FID lê a pasta Agilent `.D`
+(modo `hplc`, e a tela grava `hplc_detector: FID`; ao escolher HPLC de novo o detector volta para `UV`) ou uma
+tabela CSV: sinal por tempo de retenção (centragem na média) ou áreas de picos, como um perfil de ésteres
+metílicos de ácidos graxos (para poucas variáveis em escalas diferentes, troque o pré-processamento para
+autoscaling em `[2.3]`). O LC-MS lê só a tabela amostra × pico exportada do software do equipamento
+(o arquivo bruto não é lido; autoscaling após log). A FRX usa o mesmo leitor `multielementar` do ICP.
+Nenhuma das três tem validação com dado real de equipamento; a evidência de cada técnica fica em `guaraci confianca`.
 Se preferir que o GUARACI instale só o que falta (navegador, relatórios e os leitores disponíveis para o seu Python,
 sem o `xgboost` e o `shap`), rode `guaraci doctor --instalar`: ele mostra a lista, pede confirmação (`--sim` não pergunta)
 e usa o `pip` do mesmo Python do GUARACI.

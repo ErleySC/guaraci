@@ -106,6 +106,17 @@ class _PipelinePreguicoso:
         for modulo, nomes in self._LEVES.items():
             if nome in nomes:
                 return getattr(importlib.import_module(modulo), nome)
+        _pre = _PRECARGA.get("thread")
+        if _pre is not None and _pre.is_alive():
+            # O motor ja' esta sendo carregado em segundo plano (desde o 1o menu): so' espera o que falta.
+            _c = globals().get("console")
+            _pt = _lang() == "PT" if "_lang" in globals() else True
+            if _c is not None:
+                with _c.status("Terminando de carregar o motor de analise..." if _pt
+                               else "Finishing loading the analysis engine..."):
+                    _pre.join()
+            else:
+                _pre.join()
         if "guaraci.pipeline" not in sys.modules:
             # A 1a vez importa o motor inteiro (numpy, scikit-learn, matplotlib...): alguns segundos, mais num PC
             # com antivirus. Sem aviso parecia que a analise tinha travado.
@@ -121,6 +132,36 @@ class _PipelinePreguicoso:
 
 
 pq = _PipelinePreguicoso()
+
+#: Carga do motor em segundo plano (ver `_precarregar_motor`).
+_PRECARGA: Dict[str, Any] = {"thread": None}
+
+
+def _precarregar_motor() -> None:
+    """Importa o motor (numpy, scikit-learn, scipy, matplotlib, `guaraci.pipeline`) numa thread de fundo
+    enquanto a pessoa le o menu. Sem isso o primeiro uso de qualquer tela que precisa dele (pre-processamento,
+    checagens, rodar a analise) congelava 2 a 10 s no PC fraco ou com antivirus. So' em terminal interativo:
+    com entrada redirecionada (testes, scripts) nada e' carregado de antemao. Desliga com GUARACI_SEM_PRECARGA=1."""
+    if _PRECARGA.get("thread") is not None or "guaraci.pipeline" in sys.modules:
+        return
+    if os.environ.get("GUARACI_SEM_PRECARGA"):
+        return
+    try:
+        if not sys.stdin.isatty():
+            return
+    except (AttributeError, ValueError):
+        return
+
+    def _carregar() -> None:
+        try:
+            import guaraci.pipeline  # noqa: F401
+        except Exception:       # noqa: BLE001 -- o erro real aparece (com mensagem) quando a analise pedir o motor
+            pass
+
+    import threading
+    _t = threading.Thread(target=_carregar, name="guaraci-precarga", daemon=True)
+    _PRECARGA["thread"] = _t
+    _t.start()
 
 
 def _nome_pasta(chave: str) -> str:
@@ -3961,8 +4002,8 @@ def _menu_visualization(cfg: Config) -> None:
 _TECNICA_CATEGORIAS = [
     ("Vibracional",          "Vibrational",        ["ft-nir", "nir", "mir", "raman", "uv-vis"]),
     ("Luminescencia",        "Luminescence",       ["fluorescencia", "eem"]),
-    ("Cromatografia",        "Chromatography",     ["hplc", "gc-ms"]),
-    ("Elementar",            "Elemental",          ["icp"]),
+    ("Cromatografia",        "Chromatography",     ["hplc", "gc-fid", "gc-ms", "lc-ms"]),
+    ("Elementar",            "Elemental",          ["icp", "xrf"]),
     ("Imagem",               "Imaging",            ["imagem", "hsi"]),
     ("Ressonancia / Outras", "Resonance / Others", ["nmr", "ims", "generico"]),
 ]
@@ -4058,6 +4099,8 @@ def _menu_technique(cfg: Config) -> None:
                 if rf.isdigit() and 1 <= int(rf) <= len(fmts):
                     mode = fmts[int(rf) - 1][0]
             if mode: _set_val(cfg, "modo_entrada", mode)
+            if td_sel.get("hplc_detector"):   # GC-FID x HPLC-UV: o detector vem da tecnica (o leitor `hplc` le um so')
+                _set_val(cfg, "hplc_detector", td_sel["hplc_detector"])
             # R6: a tela grava a unidade do eixo e a tecnica (rotulo, orientacao e resumo certos);
             # "" limpa a unidade de uma tecnica escolhida antes (nao deixa nm de uma em cm-1 de outra)
             unidade_eixo = td_sel.get("eixo_unidade", "")
@@ -8517,6 +8560,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         if _boas_vindas_pendente:
             _exibir_boas_vindas()
             _boas_vindas_pendente = False
+            _precarregar_motor()     # o menu ja' esta na tela: carrega o motor enquanto a pessoa decide
 
         try:
             # input() direto (nao _input()): _input() engole EOFError/

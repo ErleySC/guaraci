@@ -64,7 +64,7 @@ publicada para PCA, PLS e DD-SIMCA; o DD-SIMCA do GUARACI está só parcialmente
 inteiro (auditoria do delineamento, validação agrupada, holdout, relatório) sem programar.
 
 <!-- guaraci:tecnicas:inicio -->
-**Técnicas de medida:** **FT-NIR**, **NIR Dispersivo**, **MIR/FTIR**, **Raman**, **UV-Vis**, **Fluorescencia Molecular**, **HPLC**, **GC-MS**, **RMN / NMR**, **IMS**, **Fluorescencia 3D**, **ICP-OES / ICP-MS**, **Imagem digital**, **Imagem hiperespectral**, outras (perfil `generico`).
+**Técnicas de medida:** **FT-NIR**, **NIR Dispersivo**, **MIR/FTIR**, **Raman**, **UV-Vis**, **Fluorescencia Molecular**, **HPLC**, **GC-FID**, **GC-MS**, **LC-MS**, **RMN / NMR**, **IMS**, **Fluorescencia 3D**, **ICP-OES / ICP-MS**, **FRX / XRF**, **Imagem digital**, **Imagem hiperespectral**, outras (perfil `generico`).
 
 **Tarefas:**
 - Ver como os dados se organizam, sem treinar modelo

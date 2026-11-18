@@ -9,6 +9,18 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Partida e técnicas (2026-11-18):
+
+- **Tela `2.4`: três técnicas novas.** `GC-FID` (pasta Agilent `.D` com detector FID, ou tabela CSV de sinal ou de áreas
+  de picos), `LC-MS` (tabela amostra × pico exportada do equipamento) e `FRX/XRF` (tabela amostra × elemento, mesmo
+  leitor do ICP). Escolher GC-FID grava `hplc_detector: FID`; escolher HPLC volta para `UV`. Sem validação com dado real
+  de equipamento.
+- **O motor carrega em segundo plano.** Com o menu na tela (terminal interativo), o programa importa scikit-learn,
+  scipy, pandas, matplotlib e o `pipeline` numa thread; o pré-processamento `2.5`, as checagens e o início da análise
+  deixam de congelar na primeira vez (medido num terminal simulado: tela `2.5` aberta 4 s depois do menu, 1,0 s → 0,01 s).
+  Desliga com `GUARACI_SEM_PRECARGA=1`; com entrada redirecionada nada é carregado de antemão.
+- Perfis de matriz YAML lidos com o carregador em C (libyaml) quando o PyYAML o traz.
+
 Leitura de MATLAB, NumPy, HDF5 e Excel (2026-11-18):
 
 - **Modo `hsi` lê cubos em `.mat` (v5 e v7.3), `.npy`/`.npz` e `.h5`**, além do ENVI, na mesma convenção

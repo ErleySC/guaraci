@@ -69,11 +69,14 @@ Cada cenário gera dados sintéticos por código próprio e a configuração pro
 | `uv-vis` | 190-900 nm | Mean-centering (Beer-Lambert: a absorbancia e proporcional a concentracao e o SNV apaga essa escala); SNV+MC so para classificar pela forma do espectro | csv |
 | `fluorescencia` | 200-800 nm (use CSV) | MC (a intensidade e proporcional a concentracao; SNV divide cada espectro pelo proprio desvio e apaga essa informacao -- use SNV+MC so para classificar por forma do espectro) | csv |
 | `hplc` | Tempo de retencao ou tabela de compostos (sem corte) | MC (cromatograma inteiro: autoscaling amplifica o ruido da linha de base); alinhe a retencao (COW) antes | csv |
+| `gc-fid` | Tempo de retencao ou tabela de picos (sem corte) | MC para o cromatograma inteiro (alinhe a retencao por COW antes); para uma tabela de areas de picos (poucas variaveis, escalas diferentes) mude em [2.3] para autoscaling | csv |
 | `gc-ms` | Retencao, compostos ou m/z (sem corte) | MC (cromatograma inteiro: autoscaling amplifica o ruido da linha de base), apos alinhar os picos (COW) | csv |
+| `lc-ms` | Tabela de picos (sem corte) | Autoscaling (ou Pareto) apos log: as intensidades variam por ordens de grandeza entre os picos; normalize pelo padrao interno ou pelo TIC antes, se houver | csv |
 | `nmr` | 0-12 ppm (deslocamento quimico) | SNV+MC (o aplicado) ou PQN+MC (preset pqn_mc), apos binning e com agua e TSP excluidos (faixas_excluir) | csv |
 | `ims` | 5-50 ms (tempo de deriva) | SNV+SG+MC (apos alinhamento por tempo de deriva); SNV+MC se o modelo bater no teto de VLs. RIP so se o RIP nao cair com o analito | csv |
 | `eem` | Indice da grade (sem unidade fisica) | MC (PARAFAC usa a matriz sem pre-processamento) | eem |
 | `icp` | Nao se aplica (colunas sao elementos) | Autoscaling (elementos em escalas diferentes), com log opcional | multielementar |
+| `xrf` | Nao se aplica (colunas sao elementos) | Autoscaling (elementos em escalas diferentes), com log opcional; elementos leves (Z baixo) tem o pior limite de deteccao | multielementar |
 | `imagem` | Indice da variavel de cor (sem unidade fisica) | Autoscaling (MSC e SG nao fazem sentido para estatisticas de cor) | imagem |
 | `hsi` | A do sensor (nm), lida do cabecalho ENVI | SNV+MC por pixel (confira a faixa do sensor) | hsi |
 | `generico` | Configurar manualmente no menu Dados | Autoscaling (variaveis em unidades diferentes); MSC/SG apenas para espectros | csv |
