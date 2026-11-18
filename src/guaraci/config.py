@@ -199,6 +199,14 @@ class Config:
     hsi_band_axis: str = "recusar"            # "recusar" | "reamostrar" (eixos de bandas diferentes)
     hsi_validation: str = "cv_objetos"        # "cv_objetos" | "holdout"
     hsi_cv_folds: int = 5                     # dobras da CV por objeto (0 = leave-one-object-out)
+    # Cubo em .mat/.npy/.npz/.h5 (hsi_arquivo.py): posicao das bandas na forma do arquivo
+    # ("auto" = pelo vetor de comprimentos de onda; sem ele, o ultimo eixo, com aviso).
+    hsi_spectral_axis: str = "auto"           # "auto" | "ultimo" | "primeiro" | "meio"
+    # Arquivos de variaveis (.mat, .npz, .h5) nos modos hsi e csv: nome da variavel com os
+    # dados (cubo ou matriz amostras x variaveis) e do vetor do eixo espectral. "" = detectar;
+    # a deteccao para com a lista de candidatas quando ha' mais de uma.
+    file_data_variable: str = ""
+    file_axis_variable: str = ""
     # mode="hplc" (cromatograma bruto Agilent/Waters via `rainbow-api`,
     # `importadores_proprietarios.parse_cromatograma_hplc`): qual TIPO de
     # detector ler quando o diretorio tiver mais de um ("UV" p/ UV/DAD --

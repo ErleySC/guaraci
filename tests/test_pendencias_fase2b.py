@@ -115,7 +115,8 @@ def test_preparar_dados_hsi_repassa_calibracao_e_eixo(monkeypatch):
     monkeypatch.setattr(hsi_extras, "load_hsi_folder_dataset", falso)
     with pytest.raises(RuntimeError):
         hsi_extras.preparar_dados_hsi("x")
-    assert chamado == {"calibracao": "nenhuma", "referencia_branco": "", "referencia_escuro": "", "eixo_bandas": "recusar"}
+    assert chamado == {"calibracao": "nenhuma", "referencia_branco": "", "referencia_escuro": "", "eixo_bandas": "recusar",
+                       "variavel_dados": "", "variavel_eixo": "", "eixo_espectral": "auto"}
     with pytest.raises(RuntimeError):
         hsi_extras.preparar_dados_hsi("x", calibracao="branco_escuro", referencia_branco="b", referencia_escuro="d",
                                       eixo_bandas="reamostrar")

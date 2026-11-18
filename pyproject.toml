@@ -96,7 +96,10 @@ hplc = ["rainbow-api>=1.5,<2.0; python_version < '3.14'"]
 multiway = ["tensorly>=0.8,<1.0"]
 # Paletas de maxima distincao (paleta_cores.py); sem elas usa a paleta interna.
 cores = ["glasbey>=0.2", "colorcet>=3.0"]
-all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,rmn,hplc,multiway,cores]"]
+# MATLAB .mat v7.3 e HDF5 (.h5) -- arquivo_matrizes.py (modos hsi e csv). BSD-3,
+# compativel com GPL-3.0-or-later. O .mat v4-v7 usa so' o scipy (base).
+hdf5 = ["h5py>=3.8,<4.0"]
+all = ["guaraci-chemometrics[web,reports,benchmark,imagem,robusto,opus,spc,rmn,hplc,multiway,cores,hdf5]"]
 # Dev-only -- NUNCA em requirements.txt (manifesto de deploy do Streamlit
 # Cloud): nada disto roda em producao. Ferramentas de teste e dos gates da CI
 # (pytest, xdist, cobertura, hypothesis, ruff, mypy, bandit), com faixas

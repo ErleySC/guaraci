@@ -38,7 +38,7 @@ import numpy as np
 
 from guaraci.hsi_classification import fit_predict_pixel_plsda
 from guaraci.hsi_figures import _fig_hsi_classification_map
-from guaraci.hsi_io import load_hsi_folder_dataset
+from guaraci.hsi_io import load_hsi_folder_dataset, opcoes_leitura_hsi
 from guaraci.hsi_pixels import build_pixel_dataset
 from guaraci.hsi_quality import evaluate_cube_quality
 from guaraci.hsi_uncertainty import enrich_object_results
@@ -182,8 +182,8 @@ def run_hsi_pipeline(cfg: "Config", *, fracao_teste_interno: float = 0.2, seed: 
     if not pasta:
         raise ValueError(
             "run_hsi_pipeline: cfg.hsi_dataset_folder nao configurado -- "
-            "aponte para uma pasta com seus cubos hiperespectrais ENVI "
-            "(.hdr/.bin).")
+            "aponte para uma pasta com seus cubos hiperespectrais (ENVI "
+            ".hdr/.bin, .mat, .npy, .npz ou .h5).")
     return _run_hsi_pipeline_generico(cfg, pasta, fracao_teste_interno=fracao_teste_interno, seed=seed)
 
 
@@ -209,11 +209,7 @@ def _run_hsi_pipeline_generico(
 
     # lazy=True: os cubos ficam no disco (memmap) e cada etapa le blocos de linhas.
     cubos, rotulos, mae_id, wavelengths, meta_df = load_hsi_folder_dataset(
-        pasta, lazy=True,
-        calibracao=str(getattr(cfg, "hsi_calibration", "nenhuma") or "nenhuma"),
-        referencia_branco=str(getattr(cfg, "hsi_white_ref", "") or ""),
-        referencia_escuro=str(getattr(cfg, "hsi_dark_ref", "") or ""),
-        eixo_bandas=str(getattr(cfg, "hsi_band_axis", "recusar") or "recusar"))
+        pasta, lazy=True, **opcoes_leitura_hsi(cfg))
     nivel_agrupamento = meta_df.attrs.get("grouping_guarantee", "none")
     info_calibracao = dict(meta_df.attrs.get("calibracao") or {"modo": "nenhuma"})
     info_eixo = dict(meta_df.attrs.get("eixo_bandas") or {})

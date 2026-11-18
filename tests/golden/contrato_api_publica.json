@@ -94,6 +94,20 @@
       "opcoes": null,
       "tipo": "str_opcional"
     },
+    "arquivo_variavel_dados": {
+      "attr": "file_data_variable",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
+    "arquivo_variavel_eixo": {
+      "attr": "file_axis_variable",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
     "benchmark": {
       "attr": "run_benchmark",
       "max": null,
@@ -473,6 +487,18 @@
       "opcoes": [
         "recusar",
         "reamostrar"
+      ],
+      "tipo": "choice"
+    },
+    "hsi_eixo_espectral": {
+      "attr": "hsi_spectral_axis",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "auto",
+        "ultimo",
+        "primeiro",
+        "meio"
       ],
       "tipo": "choice"
     },
@@ -1604,6 +1630,79 @@
       },
       "temp_upload_path": {
         "assinatura": "(nome_original: str, session_id: str, kw:base: Union[None, pathlib.Path] = None, kw:subpasta: str = 'pq_uploads') -> pathlib.Path",
+        "forma": "funcao"
+      }
+    },
+    "arquivo_matrizes": {
+      "EXTENSOES_MATRIZ": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "PADRAO_NOME_EIXO": {
+        "forma": "constante",
+        "tipo": "Pattern"
+      },
+      "VariavelArquivo": {
+        "campos": [
+          {
+            "nome": "nome",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "forma",
+            "tem_default": false,
+            "tipo": "Tuple[int, ...]"
+          },
+          {
+            "nome": "dtype",
+            "tem_default": false,
+            "tipo": "str"
+          },
+          {
+            "nome": "logica",
+            "tem_default": false,
+            "tipo": "bool"
+          },
+          {
+            "nome": "ler",
+            "tem_default": false,
+            "tipo": "Callable[[], np.ndarray]"
+          },
+          {
+            "nome": "atributos",
+            "tem_default": false,
+            "tipo": "Dict[str, Any]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "achar_variavel": {
+        "assinatura": "(caminho: str, variaveis: Sequence[guaraci.VariavelArquivo], nome: str, chave: str) -> guaraci.VariavelArquivo",
+        "forma": "funcao"
+      },
+      "descrever_variaveis": {
+        "assinatura": "(variaveis: Sequence[guaraci.VariavelArquivo], n: int = 12) -> str",
+        "forma": "funcao"
+      },
+      "eixo_monotono": {
+        "assinatura": "(v: numpy.ndarray) -> bool",
+        "forma": "funcao"
+      },
+      "formato_do_arquivo": {
+        "assinatura": "(caminho: str) -> str",
+        "forma": "funcao"
+      },
+      "listar_variaveis": {
+        "assinatura": "(caminho: str) -> tuple[str, list[guaraci.VariavelArquivo]]",
+        "forma": "funcao"
+      },
+      "texto_falta_h5py": {
+        "assinatura": "(caminho: str, motivo: str) -> str",
+        "forma": "funcao"
+      },
+      "vetores_candidatos_a_eixo": {
+        "assinatura": "(variaveis: Sequence[guaraci.VariavelArquivo], tamanhos: Sequence[int], excluir: Sequence[str] = ()) -> list[tuple[guaraci.VariavelArquivo, numpy.ndarray, bool]]",
         "forma": "funcao"
       }
     },
@@ -2871,6 +2970,21 @@
             "nome": "hsi_cv_folds",
             "tem_default": true,
             "tipo": "int"
+          },
+          {
+            "nome": "hsi_spectral_axis",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "file_data_variable",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "file_axis_variable",
+            "tem_default": true,
+            "tipo": "str"
           },
           {
             "nome": "hplc_detector",
@@ -4876,6 +4990,21 @@
             "tipo": "int"
           },
           {
+            "nome": "hsi_spectral_axis",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "file_data_variable",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "file_axis_variable",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
@@ -5642,6 +5771,40 @@
         "forma": "funcao"
       }
     },
+    "hsi_arquivo": {
+      "CuboArquivo": {
+        "campos": [
+          {
+            "nome": "cubo",
+            "tem_default": false,
+            "tipo": "np.ndarray"
+          },
+          {
+            "nome": "wavelengths",
+            "tem_default": false,
+            "tipo": "Optional[np.ndarray]"
+          },
+          {
+            "nome": "info",
+            "tem_default": true,
+            "tipo": "Dict[str, Any]"
+          }
+        ],
+        "forma": "dataclass"
+      },
+      "EIXOS_ESPECTRAIS": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "EXTENSOES_CUBO_ARQUIVO": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "ler_cubo_arquivo": {
+        "assinatura": "(caminho: str, kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto') -> guaraci.CuboArquivo",
+        "forma": "funcao"
+      }
+    },
     "hsi_blocos": {
       "CalibracaoBrancoEscuro": {
         "campos": [
@@ -5783,7 +5946,7 @@
         "forma": "dataclass"
       },
       "preparar_dados_hsi": {
-        "assinatura": "(pasta: str, kw:calibracao: str = 'nenhuma', kw:referencia_branco: str = '', kw:referencia_escuro: str = '', kw:eixo_bandas: str = 'recusar') -> guaraci.HSIDadosPreparados",
+        "assinatura": "(pasta: str, kw:calibracao: str = 'nenhuma', kw:referencia_branco: str = '', kw:referencia_escuro: str = '', kw:eixo_bandas: str = 'recusar', kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto') -> guaraci.HSIDadosPreparados",
         "forma": "funcao"
       },
       "rodar_hsi_dominio_aplicabilidade": {
@@ -5866,7 +6029,7 @@
         "forma": "funcao"
       },
       "load_hsi_folder_dataset": {
-        "assinatura": "(pasta: str, kw:lazy: bool = False, kw:calibracao: str = 'nenhuma', kw:referencia_branco: str = '', kw:referencia_escuro: str = '', kw:eixo_bandas: str = 'recusar') -> tuple[list[numpy.ndarray], numpy.ndarray, Union[None, numpy.ndarray], numpy.ndarray, pandas.DataFrame]",
+        "assinatura": "(pasta: str, kw:lazy: bool = False, kw:calibracao: str = 'nenhuma', kw:referencia_branco: str = '', kw:referencia_escuro: str = '', kw:eixo_bandas: str = 'recusar', kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto') -> tuple[list[numpy.ndarray], numpy.ndarray, Union[None, numpy.ndarray], numpy.ndarray, pandas.DataFrame]",
         "forma": "funcao"
       },
       "parse_envi_header": {
@@ -8568,6 +8731,24 @@
       },
       "remover_faixas_excluidas": {
         "assinatura": "(wn, X, faixas)",
+        "forma": "funcao"
+      }
+    },
+    "tabela_arquivo": {
+      "EXTENSOES_EXCEL": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "EXTENSOES_TABELA_ARQUIVO": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "e_tabela_arquivo": {
+        "assinatura": "(caminho: str) -> bool",
+        "forma": "funcao"
+      },
+      "ler_tabela_arquivo": {
+        "assinatura": "(caminho: str, kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:nrows: Union[None, int] = None) -> pandas.DataFrame",
         "forma": "funcao"
       }
     },

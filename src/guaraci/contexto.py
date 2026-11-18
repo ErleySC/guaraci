@@ -38,6 +38,7 @@ APLICA_A: Dict[str, Tuple[str, ...]] = {
     "eem_espalhamento": ("eem",), "eem_espalhamento_largura_nm": ("eem",), "eem_raman": ("eem",), "parafac_nao_negativo": ("eem",),
     "hsi_calibracao": ("hsi",), "hsi_referencia_branco": ("hsi",), "hsi_referencia_escuro": ("hsi",),
     "hsi_eixo_bandas": ("hsi",), "hsi_validacao": ("hsi",), "hsi_cv_dobras": ("hsi",),
+    "hsi_eixo_espectral": ("hsi",), "arquivo_variavel_dados": ("hsi", "csv"), "arquivo_variavel_eixo": ("hsi", "csv"),
     "imagem_referencia": ("imagem",), "imagem_segmentacao": ("imagem",),
     "icp_unidade": ("multielementar",), "icp_coluna_amostra": ("multielementar",),
     "icp_coluna_tipo": ("multielementar",), "icp_coluna_sessao": ("multielementar",),

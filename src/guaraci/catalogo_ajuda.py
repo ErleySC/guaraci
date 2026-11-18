@@ -26,7 +26,7 @@ DADOS = (
     ("tabela_elementos", "Tabela amostra x elemento exportada do ICP-OES ou ICP-MS", "Sample x element table exported from ICP-OES or ICP-MS"),
     ("tabela_resposta", "Tabela com uma resposta numerica por amostra e uma coluna de grupo", "Table with one numeric response per sample and a group column"),
     ("imagem_foto", "Fotos de amostras, uma subpasta por classe", "Photos of samples, one subfolder per class"),
-    ("cubo_hsi", "Cubos hiperespectrais ENVI (.hdr e .bin)", "ENVI hyperspectral cubes (.hdr and .bin)"),
+    ("cubo_hsi", "Cubos hiperespectrais (ENVI, .mat, .npy/.npz, .h5)", "Hyperspectral cubes (ENVI, .mat, .npy/.npz, .h5)"),
     ("cromatograma", "Cromatogramas de HPLC ou GC", "HPLC or GC chromatograms"),
     ("rmn_processado", "Espectros de RMN ja processados", "Already processed NMR spectra"),
     ("fluorescencia_eem", "Matrizes de fluorescencia excitacao-emissao", "Excitation-emission fluorescence matrices"),

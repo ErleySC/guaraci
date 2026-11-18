@@ -80,6 +80,8 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
      "opcoes": None},
     {"key": "hsi_eixo_bandas", "attr": "hsi_band_axis", "tipo": "choice",
      "opcoes": ["recusar", "reamostrar"]},
+    {"key": "hsi_eixo_espectral", "attr": "hsi_spectral_axis", "tipo": "choice",
+     "opcoes": ["auto", "ultimo", "primeiro", "meio"]},
     {"key": "hsi_validacao", "attr": "hsi_validation", "tipo": "choice",
      "opcoes": ["cv_objetos", "holdout"]},
     {"key": "hsi_cv_dobras", "attr": "hsi_cv_folds", "tipo": "int",
@@ -119,6 +121,10 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {"key": "imagem_incluir_textura", "attr": "include_image_texture", "tipo": "bool",
      "opcoes": None},
     {"key": "arquivo_csv", "attr": "csv_file", "tipo": "str",
+     "opcoes": None},
+    {"key": "arquivo_variavel_dados", "attr": "file_data_variable", "tipo": "str",
+     "opcoes": None},
+    {"key": "arquivo_variavel_eixo", "attr": "file_axis_variable", "tipo": "str",
      "opcoes": None},
     {"key": "coluna_classe", "attr": "class_column", "tipo": "str",
      "opcoes": None},
@@ -643,9 +649,20 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
         # R5-03: "OK" verde para arquivo lixo/vazio era falso. Le so' o comeco.
         try:
             from guaraci.csv_robusto import CsvDecimalAmbiguoError, ler_csv
-            amostra = ler_csv(cam, nrows=5)
+            from guaraci.tabela_arquivo import e_tabela_arquivo, ler_tabela_arquivo
+            if e_tabela_arquivo(cam):
+                amostra = ler_tabela_arquivo(cam, nrows=5,
+                                             variavel_dados=getattr(cfg, "file_data_variable", "") or "",
+                                             variavel_eixo=getattr(cfg, "file_axis_variable", "") or "")
+            else:
+                amostra = ler_csv(cam, nrows=5)
         except CsvDecimalAmbiguoError as e:
             return False, f"'{os.path.basename(cam)}': {e}"
+        except (ImportError, ValueError) as e:
+            if not e_tabela_arquivo(cam):
+                return False, (f"'{os.path.basename(cam)}' nao parece um CSV de "
+                               f"espectros (vazio ou nao e' texto tabular: {type(e).__name__})")
+            return False, str(e)
         except Exception as e:  # noqa: BLE001 -- qualquer falha de leitura = nao e' CSV utilizavel
             return False, (f"'{os.path.basename(cam)}' nao parece um CSV de "
                            f"espectros (vazio ou nao e' texto tabular: {type(e).__name__})")
@@ -666,7 +683,7 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
             return False, (f"a coluna de classe '{col_cls}' nao existe em "
                            f"'{os.path.basename(cam)}'. Colunas nao numericas: "
                            f"{', '.join(c for c in nomes if not _num(c)) or 'nenhuma'}")
-        return True, f"OK — CSV: {os.path.basename(cam)}"
+        return True, f"OK — {'tabela' if e_tabela_arquivo(cam) else 'CSV'}: {os.path.basename(cam)}"
     if mode == "multielementar":
         cam = cfg.csv_file
         if not cam or not os.path.isfile(cam):
@@ -723,6 +740,18 @@ def _validar_pasta_dados(cfg: Config) -> Tuple[bool, str]:
         if n == 0:
             return False, f"nenhuma pasta '.D'/'.raw' em '{p}' (esperado por amostra HPLC/GC)"
         return True, f"OK — {n} pasta(s)-amostra HPLC/GC encontrada(s)"
+    if mode == "hsi":
+        p = getattr(cfg, "hsi_dataset_folder", "") or ""
+        if not p or not os.path.isdir(p):
+            return False, f"pasta de cubos nao encontrada: '{p}' (campo hsi_pasta_dataset)"
+        from guaraci.hsi_io import _EXTENSOES_HSI, _e_arquivo_de_referencia
+        n = len({os.path.normcase(f) for e in _EXTENSOES_HSI
+                 for f in glob.glob(os.path.join(p, "**", f"*{e}"), recursive=True)
+                 if not _e_arquivo_de_referencia(f)})
+        if n == 0:
+            return False, (f"nenhum cubo hiperespectral em '{p}' (ENVI .hdr/.bin, .mat, .npy, .npz ou .h5; "
+                           f"nem nas subpastas)")
+        return True, f"OK — {n} cubos hiperespectrais encontrados"
     if mode == "eem":
         p = cfg.input_folder
         if not p or not os.path.isdir(p):
