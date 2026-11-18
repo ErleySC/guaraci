@@ -56,7 +56,7 @@ EXTRAS: Tuple[ExtraOpcional, ...] = (
                    "Thermo/Galactic SPC files (NIR, MIR, Raman, UV-Vis, fluorescence)")),
     ExtraOpcional("nmrglue", "nmrglue", "rmn", ("rmn",), ("nmr",),
                   ("pasta Bruker de RMN ja processada", "processed Bruker NMR folder")),
-    ExtraOpcional("rainbow", "rainbow-api", "hplc", ("hplc",), ("hplc",),
+    ExtraOpcional("rainbow", "rainbow-api", "hplc", ("hplc",), ("hplc", "gc-fid"),
                   ("pasta Agilent/Waters de HPLC/GC", "Agilent/Waters HPLC/GC folder"), python_ate=(3, 14)),
     ExtraOpcional("tensorly", "tensorly", "multiway", (), ("eem", "hsi"),
                   ("PARAFAC da fluorescencia 3D (EEM) e da HSI multiway", "PARAFAC for 3D fluorescence (EEM) and multiway HSI")),
