@@ -168,7 +168,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install "pytest==9.1.1" "pytest-cov==7.1.0" "pytest-xdist==3.8.0"
-          pip install -e .[dev,imagem]   # valida o empacotamento (src/guaraci, entry point `guaraci`); [imagem] traz scikit-image (+ tifffile), unico extra fora do requirements.txt
+          pip install -e .[dev,imagem,hdf5]   # valida o empacotamento (src/guaraci, entry point `guaraci`); [imagem] traz scikit-image (+ tifffile) e [hdf5] traz h5py (.mat v7.3/.h5), extras fora do requirements.txt
 
       - name: Run tests with coverage
         # Suíte completa (inclui o end-to-end 'slow'): valida a integração dos
