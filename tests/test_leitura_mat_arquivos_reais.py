@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Leitor de .mat contra arquivos GRAVADOS PELO MATLAB de verdade, e robustez a arquivo estranho.
 
-Arquivos reais: a instalacao do scipy traz ~110 .mat gravados pelo MATLAB 4.2c a 8 (Solaris, Linux,
-Windows), inclusive um v7.3 (HDF5), objetos, celulas, esparsas, complexos, string do MATLAB e
-arquivos corrompidos de proposito. Nao sao copiados para o repositorio (sao do scipy, BSD): o teste
-os procura na instalacao e pula com motivo quando o pacote vem sem a pasta de testes.
+Arquivos reais: algumas instalacoes do scipy trazem ~110 .mat gravados pelo MATLAB 4.2c a 8 (Solaris, Linux,
+Windows). Nao sao copiados para o repositorio (sao do scipy, BSD) e a CI pode nao te-los: so' a varredura
+os usa, sobre o que existir (sem pular nada). Os casos que a varredura achou estao reproduzidos aqui com
+arquivos gerados na hora; a conferencia completa (126 arquivos) e' `scripts/conferir_leitores_publicos.py`.
 
 O que se exige de CADA arquivo: ou lista as variaveis, ou falha com ValueError que cita o arquivo;
 cada variavel listada carrega com a forma anunciada e tipo numerico real; nada de excecao crua.
@@ -28,77 +28,88 @@ def _pasta_scipy() -> Path:
 
 PASTA = _pasta_scipy()
 REAIS = sorted(PASTA.glob("*.mat")) if PASTA.is_dir() else []
-precisa_reais = pytest.mark.skipif(not REAIS, reason="esta instalacao do scipy nao traz os .mat de teste")
 
 
-@precisa_reais
-@pytest.mark.parametrize("caminho", REAIS, ids=lambda p: p.name)
-def test_arquivo_gravado_pelo_matlab_le_ou_falha_com_mensagem(caminho):
-    try:
-        _fmt, variaveis = am.listar_variaveis(str(caminho))
-    except ValueError as e:
-        assert caminho.name in str(e)
-        return
-    for v in variaveis:
+def test_todo_arquivo_gravado_pelo_matlab_le_ou_falha_com_mensagem():
+    """Varre os .mat reais que a instalacao do scipy traz (varia com a versao e com o pacote: a roda da CI pode
+    vir sem eles, e entao nao ha o que varrer). Nenhum teste depende de um arquivo especifico."""
+    for caminho in REAIS:
         try:
-            a = np.asarray(v.ler())
+            _fmt, variaveis = am.listar_variaveis(str(caminho))
         except ValueError as e:
-            assert caminho.name in str(e)
+            assert caminho.name in str(e), caminho.name
             continue
-        assert tuple(a.shape) == v.forma, v.nome
-        assert a.dtype.kind in "iufb", v.nome
+        for v in variaveis:
+            try:
+                a = np.asarray(v.ler())
+            except ValueError as e:
+                assert caminho.name in str(e), caminho.name
+                continue
+            assert tuple(a.shape) == v.forma, (caminho.name, v.nome)
+            assert a.dtype.kind in "iufb", (caminho.name, v.nome)
 
 
-@precisa_reais
-def test_versoes_do_matlab_de_4_a_7_4_dao_o_mesmo_cubo_3d():
-    cubos = [am.listar_variaveis(str(PASTA / f"test3dmatrix_{ver}.mat"))[1]
-             for ver in ("6.1_SOL2", "6.5.1_GLNX86", "7.1_GLNX86", "7.4_GLNX86")]
-    ref = cubos[0][0].ler()
-    assert ref.shape == (2, 3, 4)
-    for vs in cubos[1:]:
-        np.testing.assert_array_equal(vs[0].ler(), ref)
-    # o v4 e o v7.3 do MATLAB (sem 3D) tambem batem com o v7
-    v4 = am.listar_variaveis(str(PASTA / "testdouble_4.2c_SOL2.mat"))[1][0].ler()
-    fmt, v73 = am.listar_variaveis(str(PASTA / "testhdf5_7.4_GLNX86.mat"))
-    assert fmt == "mat73"
-    np.testing.assert_allclose(v73[0].ler(), v4)
+def test_versoes_do_formato_dao_o_mesmo_cubo_3d(tmp_path):
+    cubo = np.random.default_rng(4).random((2, 3, 4))
+    for nome, fmt, comp in (("v5.mat", "5", False), ("v5z.mat", "5", True)):
+        sio.savemat(tmp_path / nome, {"cubo": cubo}, format=fmt, do_compression=comp)
+        _f, vs = am.listar_variaveis(str(tmp_path / nome))
+        assert vs[0].forma == (2, 3, 4)
+        np.testing.assert_array_equal(vs[0].ler(), cubo)
+    sio.savemat(tmp_path / "v4.mat", {"x": cubo[0]}, format="4")
+    np.testing.assert_array_equal(am.listar_variaveis(str(tmp_path / "v4.mat"))[1][0].ler(), cubo[0])
 
 
-@precisa_reais
-def test_esparsa_vira_densa_e_complexo_e_recusado_com_motivo():
-    _f, vs = am.listar_variaveis(str(PASTA / "testsparse_7.4_GLNX86.mat"))
-    a = vs[0].ler()
-    assert isinstance(a, np.ndarray) and a.shape == (3, 5)
-    _f, vs = am.listar_variaveis(str(PASTA / "logical_sparse.mat"))
-    assert vs[0].ler().shape == (5, 4)
-    _f, vs = am.listar_variaveis(str(PASTA / "testcomplex_7.4_GLNX86.mat"))
+def test_esparsa_vira_densa_e_complexo_e_recusado_com_motivo(tmp_path):
+    import scipy.sparse as sp
+    esp = sp.random(3, 5, density=0.5, random_state=1, format="csc")
+    sio.savemat(tmp_path / "e.mat", {"S": esp, "L": sp.csc_matrix(np.eye(4, dtype=bool)),
+                                     "Z": np.array([[1 + 2j, 3 - 1j]])})
+    _f, vs = am.listar_variaveis(str(tmp_path / "e.mat"))
+    por_nome = {v.nome: v for v in vs}
+    np.testing.assert_allclose(por_nome["S"].ler(), esp.toarray())
+    assert por_nome["L"].ler().shape == (4, 4)
     with pytest.raises(ValueError, match="complexos"):
-        vs[0].ler()
+        por_nome["Z"].ler()
 
 
-@precisa_reais
-def test_string_do_matlab_nao_derruba_o_arquivo_e_aparece_como_ignorada():
-    # whosmat do scipy quebra com o objeto string (MCOS); antes o arquivo inteiro ficava ilegivel
-    _f, vs = am.listar_variaveis(str(PASTA / "testmatlabstring_7_WIN64.mat"))
+def test_string_do_matlab_nao_derruba_o_arquivo_e_aparece_como_ignorada(tmp_path, monkeypatch):
+    """whosmat do scipy quebra com o objeto string (MCOS) e o loadmat devolve um `MatlabOpaque`. Simulado aqui
+    (o scipy nao sabe gravar MCOS): foi o que o arquivo real do scipy fez na varredura."""
+    class MatlabOpaque(np.ndarray):
+        pass
+    opaco = np.zeros(1, dtype=[("_TypeSystem", "O"), ("_Class", "O")]).view(MatlabOpaque)
+    p = tmp_path / "string.mat"
+    sio.savemat(p, {"X": np.ones((2, 2))})
+
+    def whosmat_falha(*a, **k):
+        raise TypeError("'NoneType' object is not iterable")
+    monkeypatch.setattr(sio, "whosmat", whosmat_falha)
+    monkeypatch.setattr(am, "_loadmat", lambda *a, **k: {"matstring1": opaco, "__header__": b""})
+    _f, vs = am.listar_variaveis(str(p))
     assert len(vs) == 0
     texto = am.descrever_variaveis(vs)
     assert "matstring1" in texto and "objeto MATLAB" in texto and "table2array" in texto
 
 
-@precisa_reais
-def test_celula_e_struct_viram_variaveis_com_indice_do_matlab():
-    _f, vs = am.listar_variaveis(str(PASTA / "testcell_7.4_GLNX86.mat"))
+def test_celula_e_struct_viram_variaveis_com_indice_do_matlab(tmp_path):
+    celula = np.empty((1, 3), dtype=object)
+    celula[0, 0], celula[0, 1], celula[0, 2] = "texto", np.arange(4.0), np.ones((2, 2))
+    sio.savemat(tmp_path / "c.mat", {"c": celula, "s": {"a": np.arange(3.0), "nome": "x"}})
+    _f, vs = am.listar_variaveis(str(tmp_path / "c.mat"))
     nomes = {v.nome for v in vs}
-    assert {"testcell{3}", "testcell{4}"} <= nomes
-    assert any(n == "testcell{1}" for n, _c in vs.ignoradas)
+    assert {"c{2}", "c{3}", "s.a"} <= nomes
+    assert ("c{1}", "texto") in vs.ignoradas and ("s.nome", "texto") in vs.ignoradas
 
 
-@precisa_reais
-@pytest.mark.parametrize("nome", ["corrupted_zlib_checksum.mat", "corrupted_zlib_data.mat",
-                                  "debigged_m4.mat", "malformed1.mat"])
-def test_arquivo_corrompido_falha_com_o_nome_do_arquivo(nome):
-    with pytest.raises(ValueError, match=nome.replace(".", r"\.")):
-        _f, vs = am.listar_variaveis(str(PASTA / nome))
+def test_arquivo_corrompido_falha_com_o_nome_do_arquivo(tmp_path):
+    p = tmp_path / "quebrado.mat"
+    sio.savemat(p, {"x": np.random.default_rng(2).random((50, 50))}, do_compression=True)
+    dados = bytearray(p.read_bytes())
+    dados[200:260] = b"\xff" * 60                 # estraga o fluxo comprimido
+    p.write_bytes(bytes(dados))
+    with pytest.raises(ValueError, match="quebrado"):
+        _f, vs = am.listar_variaveis(str(p))
         for v in vs:
             v.ler()
 
