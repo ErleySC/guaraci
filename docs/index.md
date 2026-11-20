@@ -41,4 +41,4 @@ cenário guiado com dado sintético. Detalhes em [Manual](MANUAL.md), seção 5.
 
 ## Comparar grupos e importância de variáveis
 
-`guaraci anova` compara grupos sobre a unidade independente (padrão Games-Howell, escolhido por simulação; Tukey a pedido; Kruskal-Wallis com Dunn; `--metodo recomendar` mostra o diagnóstico de premissas e a sugestão, sem trocar o método em silêncio). `guaraci vip` recalcula o VIP do PLS nas dobras de uma validação agrupada e mostra a estabilidade de cada variável. Detalhes no [Manual](MANUAL.md), seções 2.8b e 2.8c.
+`guaraci anova` compara grupos sobre a unidade independente (padrão Games-Howell, escolhido por simulação; Tukey a pedido; Kruskal-Wallis com Dunn; `--metodo recomendar` mostra o diagnóstico de premissas e a sugestão, sem trocar o método em silêncio). `guaraci vip` recalcula o VIP do PLS nas dobras de uma validação agrupada e mostra a estabilidade de cada variável. Detalhes no [Manual](MANUAL.md), seções 5.8 e 5.10.

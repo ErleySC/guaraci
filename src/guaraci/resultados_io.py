@@ -105,6 +105,17 @@ def alerta_holdout_regressao(holdout: Optional[Dict[str, Any]], rmsecv: Any = No
                           f"holdout RMSEP {rmsep:.3g} > 2x RMSECV {rmsecv:.3g}", lang))
     if not motivos:
         return ""
+    if not (r2 is not None and np.isfinite(r2) and r2 < 0):
+        # So' a razao com a CV: o modelo ainda explica o holdout (R2 >= 0); quem esta' otimista e' a CV.
+        r2_txt = "" if r2 is None or not np.isfinite(r2) else f" (R2 do holdout = {r2:.3f})"
+        r2_en = "" if r2 is None or not np.isfinite(r2) else f" (holdout R2 = {r2:.3f})"
+        return _t("O HOLDOUT SAIU BEM PIOR QUE A VALIDACAO CRUZADA: " + "; ".join(motivos) + r2_txt + ". A validacao "
+                  "cruzada esta' otimista (grupos parecidos entre dobras, amostra do holdout na borda da faixa ou VLs "
+                  "demais). Reporte o RMSEP do holdout, nao o RMSECV.",
+                  "THE HOLDOUT CAME OUT MUCH WORSE THAN CROSS-VALIDATION: " + "; ".join(motivos) + r2_en + ". The "
+                  "cross-validation is optimistic (similar groups across folds, a holdout sample at the edge of the "
+                  "range, or too many LVs). Report the holdout RMSEP, not the RMSECV.",
+                  lang)
     return _t("O MODELO NAO GENERALIZOU PARA O HOLDOUT: " + "; ".join(motivos) + ". Costuma ser amostra fora "
               "do dominio da calibracao (extrapolacao) ou numero de VLs alto demais. Veja o grafico predito x "
               "real do holdout antes de reportar; nao apresente a validacao cruzada como desempenho do metodo.",

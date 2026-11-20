@@ -102,7 +102,7 @@ here it is the default, not an option you have to know to turn on.
 
 - **Analysis modes:** class discrimination · pure vs. adulterated discrimination · content quantification (regression).
 - **Preprocessing** (Rinnan et al. 2009 order): MSC/SNV → Savitzky-Golay → mean-centering. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
-- **Models:** PLS-DA, PLS regression, PCA, HCA (Ward), DD-SIMCA (one-class), OPLS-DA.
+- **Models:** PLS-DA and PLS-LDA (`classificador: auto` picks PLS-LDA below 100 independent units; `plsda`/`plslda` fixes it), PLS regression, PCA, HCA (Ward), DD-SIMCA (one-class), OPLS-DA.
 - **Validation battery:** permutation test, Wold R²Y/Q²Y intercepts, CV-ANOVA, **BCa bootstrap CIs**, Hotelling T², Q-residuals, lack-of-fit F-test, and a robustness protocol reported as an interval (never pass/fail).
 - **Interpretation and selection:** VIP with fold-wise stability (`guaraci vip`, which shows stability and does not reduce variables), Selectivity Ratio, iPLS, sPLS-DA; variable selection in `guaraci run` is nested inside the validation so it cannot leak.
 - **Group comparison on the independent unit** (`guaraci anova`): Tukey–Kramer, Games–Howell, Kruskal–Wallis with Dunn, assumption diagnostics, FDR across variables.
@@ -178,7 +178,7 @@ cp config.example.yaml config.yaml   # then set `pasta_dados` to your data folde
 
 ```bash
 guaraci                                       # 1. terminal interface (recommended)
-python -m guaraci.pipeline --rodar            # 2. run straight from config.yaml
+guaraci run config.yaml                       # 2. run straight from config.yaml
 guaraci web                                   # 3. web app (browser, local mode)
 ```
 
@@ -205,7 +205,7 @@ Root folder with **one subfolder per class** of `.dx` files, or a table (CSV/XLS
 
 **Provenance never travels with your results.** The parser reads only the fields it needs (never `##AUDIT TRAIL`), and sample identifiers are stripped from `metadados.csv` before it is written. A test scans every generated artifact, including the `.joblib` bytes.
 
-Each run writes to `resultados_guaraci/{sample}/{Mode}/{PREFIX}_{level_slug}_{preproc}_{timestamp}/` (`PREFIX` is `PLSDA_OE` for classification, `PLSR_OE` for quantification and `PCA_OE` for exploration) with `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) and `Modelos/`.
+Each run writes to `resultados_guaraci/{sample}/{Mode}/{PREFIX}_{level_slug}_{preproc}_{timestamp}/` (`PREFIX` is `PLSDA_OE` for classification, `PLSR_OE` for quantification and `PCA_OE` for exploration) with `Figures/`, `Tables/`, `Reports/` (`resumo_modelo.txt`, `model_card.md`) and `Models/` (in Portuguese: `Graficos/`, `Tabelas/`, `Relatorios/`, `Modelos/`).
 
 ## Validation
 

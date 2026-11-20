@@ -8,7 +8,7 @@
 - Você **não precisa saber quimiometria** nem conhecer o GUARACI. O programa analisa curvas medidas em amostras (espectros) para reconhecer o tipo de amostra, estimar um teor ou comparar grupos.
 - **O manual só serve para instalar (tarefa 1).** Nas tarefas 2 a 5 o programa tem de se explicar sozinho: use o que aparece na tela, o `?` e os comandos `guaraci ajuda`, `guaraci assistente` e `guaraci confianca`. Se precisar abrir o manual, **anote em qual tarefa e por quê**: isso conta como achado.
 - Anote o horário de início e de fim de cada tarefa na folha de registro (no fim deste arquivo). **Não escreva seu nome**: use só o código P1, P2…
-- Você precisa de: um computador com Python 3.11 a 3.13, internet para instalar e a pasta do projeto (um arquivo `.zip`). Reserve cerca de 50 minutos.
+- Você precisa de: um computador com Python 3.11 a 3.13 (3.14 também roda, sem o leitor de pastas `.D` de HPLC/GC), internet para instalar e a pasta do projeto (um arquivo `.zip`). Reserve cerca de 50 minutos.
 
 ## Entrega do pacote (para quem aplica o teste)
 

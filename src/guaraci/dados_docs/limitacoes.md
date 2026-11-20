@@ -61,7 +61,7 @@ O VIP resume a importância das variáveis **no modelo PLS ajustado**; não é s
 ## 5. Canais e ambientes
 
 - **Comparação de grupos (`comparar`/`anova`) e `guaraci vip`: só linha de comando.** Não há página no canal web (decisão D-S, `app_nav.TELAS_SO_NO_CLI`).
-- **Versões do Python.** O projeto declara `>=3.11` desde a 1.0.0: o Python 3.10 saiu de suporte em outubro de 2026 e o Pillow com as correções de segurança (13.0) exige 3.11. O CI (`.github/workflows/test.yml`) cobre 3.11 a 3.13 em Linux e Windows e 3.11 e 3.13 em macOS (este só no push para o master).
+- **Versões do Python.** O projeto declara `>=3.11` desde a 1.0.0: o Python 3.10 saiu de suporte em outubro de 2026 e o Pillow com as correções de segurança (13.0) exige 3.11. O CI (`.github/workflows/test.yml`) cobre 3.11 a 3.13 em Linux e Windows e 3.11 e 3.13 em macOS (este só no push para o master). O 3.14 não está na CI: a suíte foi rodada nele à mão no Linux, e o `rainbow-api` (pastas `.D` de HPLC/GC) não tem versão para ele.
 
 ## 6. Plataforma, escopo e unidade independente
 

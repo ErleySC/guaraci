@@ -175,7 +175,7 @@ O código fica no pacote `guaraci` (em `src/`). Instale uma vez com
 |---|---|---|
 | **Web (Streamlit)** | `guaraci web` (local) · `streamlit run app_quimiometria.py` (modo servidor) | Uso visual, navegação lateral em 4 grupos + telas Início/Visualização. Demo público: <https://guaraci.streamlit.app> |
 | **Assistente de terminal** | `guaraci` (ou `PYTHONPATH=src python -m guaraci.guaraci`) | Menu interativo colorido, sem editar código |
-| **Pipeline direto** | `python -m guaraci.pipeline --rodar` | Execução automatizada a partir de `config.yaml` |
+| **Pipeline direto** | `guaraci run config.yaml` (ou `python -m guaraci.pipeline --rodar`) | Execução automatizada a partir de `config.yaml` |
 
 As três formas compartilham o mesmo motor (`pipeline.py`) e o mesmo formato de
 configuração (`config.yaml` / classe `Config`) — não há divergência de
@@ -265,7 +265,7 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
 
 - **N1 — Classificação (por espécie).**
   Identifica a qual classe cada amostra pertence (espécie, variedade, tipo —
-  o nome vem do perfil de técnica). Método: **PLS-DA** com `GroupKFold` anti-vazamento
+  o nome vem do perfil de técnica). Método: **PLS-DA** ou **PLS-LDA** (campo `classificador`, fim desta seção) com `GroupKFold` anti-vazamento
   de réplicas (as réplicas T1/T2/T3 do mesmo ponto amostral nunca são
   separadas entre treino e validação).
 
@@ -323,9 +323,8 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   amplitude/SEP, com as faixas de interpretação de Williams (2014), já
   integrados ao pooled do `pls_regression_by_species`. O *split*
   calibração/validação dessa regressão aceita dois
-  métodos via `cal_val_split` (campo de `Config`, só via código — não é chave do `config.yaml`; hiperparâmetro avançado,
-  **não** exposto no aplicativo/CLI — mesmo padrão de
-  `ipls_n_intervalos`/`vip_threshold_sel`): `"aleatoria"` (padrão,
+  métodos via `divisao_calibracao` no `config.yaml` (no código, `cal_val_split`; hiperparâmetro avançado,
+  como `ipls_intervalos` e `vip_limiar`): `"aleatoria"` (padrão,
   `GroupShuffleSplit` *group-aware*) ou `"kennard_stone"` (Kennard e Stone,
   1969 — cobertura maximamente representativa do espaço espectral em vez de
   aleatória; com réplicas físicas, colapsa cada grupo T1/T2/T3 num espectro
@@ -343,7 +342,19 @@ nomes amigáveis; internamente são identificados como N1/N2/N3.
   combinações abaixo de R²cv = 0,70") — para que uma quantificação que só
   funciona em parte das combinações não seja lida como sucesso geral. O
   adulterante de cada amostra é derivado do `mae_id`. *(No modo sintético, ative
-  com `synthetic_adulterants` (campo de `Config`, só via código — não é chave do `config.yaml`), ex.: `["S","M","A"]`.)*
+  com `sintetico_adulterantes` no `config.yaml` (no código, `synthetic_adulterants`), ex.: `["S","M","A"]`.)*
+
+**Classificador (`classificador: auto | plsda | plslda`).** `auto` (padrão) conta as **unidades
+independentes** (amostras físicas, ou seja os grupos de `mae_id` quando existem; senão as amostras):
+com **menos de 100** usa PLS-LDA (LDA sobre os escores do PLS, com encolhimento), com 100 ou mais usa
+PLS-DA. Com poucas amostras por classe o PLS-DA ficou bem atrás (0,75 contra 0,995 de acurácia
+balanceada em um conjunto público de 96 amostras e 7 classes), mas é o método de referência quando há
+amostra de sobra. A escolha aparece no log (`[CONTEXTO]`), em `config_efetiva.yaml` e em
+`Relatorios/ajustes_automaticos.json`. Escrever `plsda` ou `plslda` fixa o método e `auto` não
+interfere. Não decide em quantificação nem no modo exploratório, e volta ao PLS-DA se houver menos
+de 2 amostras por classe (a LDA não estima a covariância). Limite de 100: escolha prática medida em
+poucos conjuntos, não um teorema; se o seu caso é de fronteira, fixe o método e compare. Quem tem
+resultados publicados com o programa anterior deve escrever `classificador: plsda` para reproduzi-los.
 
 ### 2.2 Objetivo científico: Exploratório, Classificação, Quantificação
 
@@ -447,7 +458,7 @@ conteúdo por categoria:
 ```
 
 - **`<Amostra>`** — identificador do conjunto de dados. Vem do rótulo livre
-  `tag` (campo de `Config`; na CLI, tecla `[N]`; não é chave do `config.yaml`) quando preenchido; senão é derivado
+  `tag` (chave `tag` do `config.yaml`; na CLI, tecla `[N]`) quando preenchido; senão é derivado
   automaticamente do mode de entrada (nome do arquivo CSV, nome da pasta de
   espectros, ou `"sintetico"` para dados de teste).
 - **`<Modo>`** — rótulo amigável do objetivo científico resolvido:
@@ -602,8 +613,7 @@ dados/Puro/foto2.jpg
    (4000–10000) descartariam todas as variáveis.
 
 Sem caso de uso específico ainda amarrado (protótipo genérico) — cabe ao
-usuário definir a região de interesse via `image_crop` (campo de `Config`, só via código; recorte
-retangular relativo, `config.yaml`) antes da extração.
+usuário definir a região de interesse via `imagem_recorte` no `config.yaml` (`[x0, y0, x1, y1]` em fração da foto; no código, `image_crop`) antes da extração.
 
 **Modo `hsi` (imageamento hiperespectral):** DISTINTO do mode `imagem`
 acima — opera **por pixel** de um cubo hiperespectral (formato ENVI,
@@ -818,6 +828,14 @@ combinação nenhuma. Declare `codigos_adulterante` no seu perfil (ex.:
 tocar em código-fonte — vazio (default) preserva o mapa global de
 sempre. A ESTRUTURA do token (1 letra + dígitos no último segmento)
 continua fixa; só o dicionário letra→nome é parametrizável.
+
+**Faixa espectral (`faixa_min_cm`, `faixa_max_cm`).** O padrão (4000 a 10000) é de NIR em número de
+onda. Se o eixo dos dados não cruza essa faixa (por exemplo, NIR em nm, Raman ou índice de coluna), o
+programa usa o eixo inteiro e registra o ajuste, em vez de recusar a análise. Se o eixo cruza só em
+parte, nada muda, e quem quer outro recorte escreve os dois campos. O eixo inteiro é uma saída para a
+análise rodar, não a melhor faixa: ele inclui bordas ruidosas e regiões sem informação (em Raman, a
+região perto de 0 cm⁻¹), e o resultado costuma melhorar com a faixa escolhida por quem conhece a técnica. Isso vale para os modos
+espectrais; tabela de elementos e imagem têm regras próprias.
 
 ### 4b.2 Perfil de aquisição de imagem + perfil combinado
 
@@ -1747,24 +1765,6 @@ e o N2 liga; o classificador `auto` vira PLS-LDA ou PLS-DA conforme o tamanho da
 método final (viram sugestão). Combinação sem remédio seguro é recusada (ex.: nível N3 no modo csv
 sem `coluna_concentracao`). O `cfg` do usuário volta aos valores escolhidos depois da execução.
 
-**Classificador (`classificador: auto | plsda | plslda`).** `auto` (padrão) conta as **unidades
-independentes** (amostras físicas, ou seja os grupos de `mae_id` quando existem; senão as amostras):
-com **menos de 100** usa PLS-LDA (LDA sobre os escores do PLS, com encolhimento), com 100 ou mais usa
-PLS-DA. Com poucas amostras por classe o PLS-DA ficou bem atrás (0,75 contra 0,995 de acurácia
-balanceada em um conjunto público de 96 amostras e 7 classes), mas é o método de referência quando há
-amostra de sobra. A escolha aparece no log (`[CONTEXTO]`), em `config_efetiva.yaml` e em
-`Relatorios/ajustes_automaticos.json`. Escrever `plsda` ou `plslda` fixa o método e `auto` não
-interfere. Não decide em quantificação nem no modo exploratório, e volta ao PLS-DA se houver menos
-de 2 amostras por classe (a LDA não estima a covariância). Limite de 100: escolha prática medida em
-poucos conjuntos, não um teorema; se o seu caso é de fronteira, fixe o método e compare. Quem tem
-resultados publicados com o programa anterior deve escrever `classificador: plsda` para reproduzi-los.
-
-**Faixa espectral (`faixa_min_cm`, `faixa_max_cm`).** O padrão (4000 a 10000) é de NIR em número de
-onda. Se o eixo dos dados não cruza essa faixa (por exemplo, NIR em nm, Raman ou índice de coluna), o
-programa usa o eixo inteiro e registra o ajuste, em vez de recusar a análise. Se o eixo cruza só em
-parte, nada muda, e quem quer outro recorte escreve os dois campos. Isso vale para os modos
-espectrais; tabela de elementos e imagem têm regras próprias.
-
 **Um modelo por par espécie × adulterante.** No menu, tela **[3.7] Quantificação por par** (modo Avançado: tecla `M`; o caminho direto `3.7` abre a tela nos dois modos), que usa a configuração atual; na linha de comando, `guaraci pares PASTA_DADOS [--saida PASTA]
 [--config config.yaml] [--iodo-especies especies.csv --iodo-adulterantes adulterantes.csv]` acha, em cada
 subpasta de espécie, as misturas de cada adulterante (código `-X-teor%` no nome) junto com os
@@ -2480,7 +2480,7 @@ por regra, sem rede e sem modelo de linguagem. Se nada resolver, ver a seção 1
 
 ## 12 Requisitos mínimos
 
-- **Python:** 3.11 a 3.13. Sistemas: Windows, Linux e WSL; no macOS a suíte de testes passa na CI, sem uso real verificado.
+- **Python:** 3.11 a 3.13 testados na CI; 3.14 roda, sem o leitor de pastas `.D` de HPLC/GC (fora da CI). Sistemas: Windows, Linux e WSL; no macOS a suíte de testes passa na CI, sem uso real verificado.
 - **Memória e processador:** 4 GB de RAM e 2 núcleos bastam para o cenário típico (dezenas de amostras
   e centenas de variáveis), conforme medido pelo autor em dados sintéticos. Tabelas CSV de
   centenas de MB exigem bem mais memória só para serem abertas; com pouca RAM, prefira tabelas

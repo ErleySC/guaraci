@@ -61,6 +61,8 @@ EVIDENCIAS: Dict[str, Dict[str, Any]] = {
         resumo=('Cobertura por grupo e limite alpha minimo verificados em dados sinteticos.', 'Per-group coverage and minimum alpha limit checked on synthetic data.'), ressalva=('Dados sinteticos.', 'Synthetic data.'), testes=("test_conformal.py", "test_identificacao_cobertura_sessao.py"), secao=""),
     "classificadores_testes": dict(tipo="testes", rotulo=('Testes automatizados de classificadores (DD-SIMCA, PLS-DA)', 'Automated tests of classifiers (DD-SIMCA, PLS-DA)'), ref="tests/test_classificadores.py", data="2026-09-20",
         resumo=('Comportamento do DD-SIMCA e do PLS-DA verificado em dados sinteticos.', 'DD-SIMCA and PLS-DA behaviour checked on synthetic data.'), ressalva=('Dados sinteticos; a sensibilidade por grupo depende do seu delineamento.', 'Synthetic data; per-group sensitivity depends on your design.'), testes=("test_classificadores.py",), secao=""),
+    "plslda_testes": dict(tipo="testes", rotulo=('Testes automatizados do PLS-LDA e do classificador auto', 'Automated tests of PLS-LDA and the auto classifier'), ref="tests/test_classes_em_rampa_plslda.py", data="2026-11-20",
+        resumo=('PLS-LDA resolve classes em rampa onde o PLS-DA erra a do meio; o auto escolhe pelo numero de unidades independentes e nao quebra com dobras pequenas.', 'PLS-LDA resolves ramp-like classes where PLS-DA misses the middle one; auto chooses by the number of independent units and does not break on small folds.'), ressalva=('Dados sinteticos; o corte de 100 unidades foi escolhido com poucos conjuntos reais.', 'Synthetic data; the 100-unit cut was chosen with few real datasets.'), testes=("test_classes_em_rampa_plslda.py", "test_classificador_e_faixa_automaticos.py"), secao=""),
     "selecao_amostras_testes": dict(tipo="testes", rotulo=('Testes automatizados de selecao de amostras', 'Automated tests of sample selection'), ref="tests/test_selecao_amostras.py", data="2026-09-20",
         resumo=('Kennard-Stone, Duplex e SPXY verificados em dados sinteticos.', 'Kennard-Stone, Duplex and SPXY checked on synthetic data.'), ressalva=('', ''), testes=("test_selecao_amostras.py",), secao=""),
     "amostragem_ativa_testes": dict(tipo="testes", rotulo=('Testes automatizados da priorizacao por amostragem ativa', 'Automated tests of active-sampling prioritization'), ref="tests/test_amostragem_ativa.py; tests/test_tarefas_cli.py", data="2026-10-04",
@@ -97,6 +99,7 @@ EVIDENCIAS: Dict[str, Dict[str, Any]] = {
 # id -> estado, evid (ids de EVIDENCIAS), nota (curta, opcional)
 SELOS: Dict[str, Dict[str, Any]] = {
     "pls_da": dict(estado="em_validacao", evid=("classificadores_testes",), nota=('Com poucas amostras por classe o sinal pode ser fraco; use validacao agrupada.', 'With few samples per class the signal may be weak; use grouped validation.')),
+    "pls_lda": dict(estado="em_validacao", evid=("plslda_testes",), nota=('O corte de 100 unidades do classificador auto e pratico, nao demonstrado.', 'The 100-unit cut of the auto classifier is practical, not demonstrated.')),
     "pls_r": dict(estado="em_validacao", evid=("pls_r_testes", "figuras_merito_testes"), nota=('', '')),
     "pls_r_especie": dict(estado="sem_validacao_publica", evid=("pooled_local_testes",), nota=('Exige n minimo por especie.', 'Requires a minimum n per species.')),
     "ddsimca": dict(estado="sem_validacao_publica", evid=("classificadores_testes",), nota=('Sensibilidade por grupo nao e validavel com um grupo so por classe.', 'Per-group sensitivity cannot be validated with a single group per class.')),
@@ -123,7 +126,7 @@ SELOS: Dict[str, Dict[str, Any]] = {
 
 # opcao -> selo (so' as que tem selo proprio)
 OPCAO_SELO = {
-    "ddsimca": "ddsimca", "modo_ddsimca": "ddsimca", "ddsimca_pcv": "ddsimca",
+    "ddsimca": "ddsimca", "modo_ddsimca": "ddsimca", "ddsimca_pcv": "ddsimca", "classificador": "pls_lda",
     "icp_unidade": "multielementar", "icp_coluna_amostra": "multielementar", "icp_coluna_tipo": "multielementar",
     "icp_coluna_sessao": "multielementar", "icp_padrao_interno": "multielementar",
     "icp_politica_censura": "multielementar", "icp_limiar_censura": "multielementar", "icp_log": "multielementar",

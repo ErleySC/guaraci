@@ -170,5 +170,8 @@ def test_holdout_de_regressao_muito_pior_que_a_cv_gera_alerta():
     assert "NAO GENERALIZOU" in alerta({"r2": -5.1, "rmsep": 3.38}, 0.81, "pt")
     assert "DID NOT GENERALIZE" in alerta({"r2": -5.1, "rmsep": 3.38}, 0.81, "en")
     assert "2x RMSECV" in alerta({"r2": 0.6, "rmsep": 2.5}, 1.0, "pt")
+    # R2 do holdout ainda alto: diz que a CV esta' otimista, nao que o modelo "nao generalizou"
+    so_razao = alerta({"r2": 0.973, "rmsep": 0.829}, 0.408, "pt")
+    assert "BEM PIOR QUE A VALIDACAO CRUZADA" in so_razao and "NAO GENERALIZOU" not in so_razao
     assert alerta({"r2": 0.9, "rmsep": 1.1}, 1.0, "pt") == ""
     assert alerta(None, 1.0) == "" and alerta({"r2": float("nan"), "rmsep": 1.0}, None) == ""

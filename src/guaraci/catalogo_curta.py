@@ -118,7 +118,7 @@ CURTA: Dict[str, Tuple[str, str]] = {
     'alinhamento': ('Alinha os cromatogramas no tempo (COW)', 'Aligns chromatograms in time (COW)'),
     'alinhamento_segmentos': ('Define os trechos do alinhamento COW', 'Sets the COW alignment segments'),
     'alinhamento_folga': ('Define a folga do alinhamento COW', 'Sets the COW alignment slack'),
-    'classificador': ('Escolhe o classificador: auto, plsda ou plslda', 'Chooses the classifier: auto, plsda or plslda'),
+    'classificador': ('Classificador: auto, plsda ou plslda', 'Classifier: auto, plsda or plslda'),
     'quantificacao_rotulo_treino': ('Escolhe a classe que treina o teor', 'Picks the class used to train the content'),
     'pca_componentes': ('Define as componentes da PCA', 'Sets the PCA components'),
     'hca_componentes': ('Define as componentes usadas no dendrograma', 'Sets components used in the dendrogram'),
