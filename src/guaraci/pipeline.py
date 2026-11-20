@@ -286,6 +286,38 @@ def _gravar_falhas_etapa(pasta: str, pasta_logs: Optional[str]) -> None:
                 log.warning(f"  [AVISO] nao foi possivel carimbar o model card: {e}")
 
 
+NOME_ARQUIVOS_IGNORADOS = "ARQUIVOS_IGNORADOS.txt"
+
+
+def _gravar_arquivos_ignorados(pasta: str, pasta_logs: Optional[str]) -> int:
+    """Lista na pasta da execucao (e no model card) os arquivos da pasta de dados que a leitura pulou.
+    Devolve quantos foram. A execucao segue com os demais, mas o resultado nao pode parecer feito com
+    todos os arquivos que o usuario pos na pasta."""
+    from guaraci.dados_io import obter_arquivos_ignorados
+    ignorados, total = obter_arquivos_ignorados()
+    if not ignorados:
+        return 0
+    itens = "".join(f"- {a}: {m.split(': ', 1)[1] if m.startswith(os.path.basename(a) + ': ') else m}\n"
+                    for a, m in ignorados)
+    cab = (f"{len(ignorados)} de {total} arquivo(s) da pasta de dados NAO entraram nesta execucao "
+           f"(ilegiveis, truncados ou excluidos). Os resultados valem so' para os demais. "
+           f"Corrija ou exporte de novo estes arquivos e rode outra vez se eles fazem parte do estudo.\n\n")
+    try:
+        with open(os.path.join(pasta, NOME_ARQUIVOS_IGNORADOS), "w", encoding="utf-8") as f:
+            f.write(cab + itens)
+    except OSError as e:
+        log.warning(f"  [AVISO] nao foi possivel gravar {NOME_ARQUIVOS_IGNORADOS}: {e}")
+    if pasta_logs:
+        card = os.path.join(pasta_logs, "model_card.md")
+        if os.path.isfile(card):
+            try:
+                with open(card, "a", encoding="utf-8") as f:
+                    f.write("\n## ARQUIVOS IGNORADOS NA LEITURA / FILES SKIPPED WHILE READING\n\n" + cab + itens)
+            except OSError as e:
+                log.warning(f"  [AVISO] nao foi possivel carimbar o model card: {e}")
+    return len(ignorados)
+
+
 def _slug(texto: str) -> str:
     """Normaliza um texto livre para nome de pasta seguro (sem espacos/barras)."""
     import re as _re
@@ -491,6 +523,7 @@ from guaraci.classificadores import (   # noqa: E402
 # resultados_io.py (dividida tecnica). Reexportados: executar() os chama e os
 # testes/consumidores usam via `pipeline.X`.
 from guaraci.resultados_io import (   # noqa: F401
+    alerta_holdout_regressao,
     pls_model_metrics, save_identifiers, _NOTAS_METODOLOGICAS,
     save_model_summary, append_regression_summary, _md_tabela,
     generate_model_card, append_regression_model_card, append_heatmap_summary,
@@ -1687,6 +1720,9 @@ def pls_regressao_pooled(
                 log.info(f"  RMSEP (HOLDOUT externo, n={_ho_pooled['n']}): "
                          f"{_ho_pooled['rmsep']:.3f}  [numero publicavel; o "
                          f"RMSEP interno vem de split 70/30]")
+                _alerta_ho = alerta_holdout_regressao(_ho_pooled, rmsecv)
+                if _alerta_ho:
+                    log.warning(f"  [ALERTA] {_alerta_ho}")
         except Exception as _e_hp:  # noqa: BLE001 -- o resto da regressao segue
             log.warning(f"  [AVISO] RMSEP do holdout nao calculado: {_e_hp}")
             _registrar_falha_etapa(f"RMSEP do holdout externo (regressao): {_e_hp}")
@@ -2315,6 +2351,9 @@ def _etapa_regressao_pls(*, X_holdout, X_raw, _G, _conc_holdout, cam_modelo, cfg
                                         f"{_h['rmsep']:.3f}  R2={_h['r2']:.3f}  "
                                         f"bias={_h['bias']:.3f}  [numero publicavel; "
                                         f"o RMSEP interno abaixo vem de split 70/30]")
+                                    _alerta_ho = alerta_holdout_regressao(_h, reg_esp.get("rmsecv"))
+                                    if _alerta_ho:
+                                        log.warning(f"  [ALERTA] {_alerta_ho}")
                             except Exception as _e_hq:  # noqa: BLE001 -- a
                                 # quantificacao ja calculada segue, mas o numero
                                 # publicavel (holdout) faltou: registrado.
@@ -4474,6 +4513,8 @@ def _executar_impl(cfg: Config):
     # silenciosa em pasta de saida profunda (MAX_PATH do Windows).
     resetar_falhas_salvamento()
     resetar_falhas_etapa()
+    from guaraci.dados_io import resetar_arquivos_ignorados
+    resetar_arquivos_ignorados()
 
     # --- 0a. Objetivo cientifico do run (Exploratorio/Classificacao/
     # Quantificacao). Decide quais figuras/relatorios serao gerados, para
@@ -4626,8 +4667,12 @@ def _executar_impl(cfg: Config):
 
     _concluir_execucao(pasta)
     _gravar_falhas_etapa(pasta, pasta_logs)
+    _n_ignorados = _gravar_arquivos_ignorados(pasta, pasta_logs)
     _falhas_salvamento = obter_falhas_salvamento()
     log.info(f"\n{'=' * 60}")
+    if _n_ignorados:
+        log.warning(f"  [AVISO] {_n_ignorados} arquivo(s) da pasta de dados foram pulados na leitura e NAO "
+                    f"estao neste resultado: lista e motivo em {NOME_ARQUIVOS_IGNORADOS}.")
     if _FALHAS_ETAPA:
         log.warning(f"  Pipeline INCOMPLETO: {len(_FALHAS_ETAPA)} etapa(s) do "
                     "resultado principal falharam:")

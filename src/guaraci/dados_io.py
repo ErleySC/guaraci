@@ -908,6 +908,7 @@ def _ler_tabela_csv(caminho, variavel_dados: str = "", variavel_eixo: str = "") 
     from guaraci import tabela_arquivo as _ta
     if _ta.e_tabela_arquivo(str(caminho)):
         df_arq = _ta.ler_tabela_arquivo(str(caminho), variavel_dados=variavel_dados, variavel_eixo=variavel_eixo)
+        df_arq = _sem_linhas_vazias(df_arq, caminho)
         if df_arq.empty or len(df_arq.columns) == 0:
             raise ValueError(f"'{os.path.basename(str(caminho))}' nao tem linhas de dados.")
         return df_arq
@@ -941,7 +942,28 @@ def _ler_tabela_csv(caminho, variavel_dados: str = "", variavel_eixo: str = "") 
             df = _ler(decimal=",")
         except (pd.errors.ParserError, _csv_mod.Error, ValueError):
             pass
+    df = _sem_linhas_vazias(df, caminho)
+    if df.empty:
+        raise ValueError(
+            f"O CSV '{os.path.basename(str(caminho))}' so' tem linhas vazias "
+            f"abaixo do cabecalho.")
     return df
+
+
+def _sem_linhas_vazias(df: pd.DataFrame, caminho) -> pd.DataFrame:
+    """Tira as linhas em que TODAS as celulas estao vazias (sobra comum de planilha: ';;;;' no fim
+    ou no meio do arquivo), dizendo quais. Antes elas entravam como amostra e o erro acusava a
+    coluna de grupo ou de classe vazia, sem dizer que a linha inteira estava em branco."""
+    if df.empty:
+        return df
+    texto = df.astype(str).apply(lambda col: col.str.strip())
+    vazias = (df.isna() | texto.eq("") | texto.eq("nan")).all(axis=1).to_numpy()
+    if not vazias.any():
+        return df
+    linhas = [str(int(i) + 2) for i in np.where(vazias)[0]]
+    print(f"[AVISO] {os.path.basename(str(caminho))}: {len(linhas)} linha(s) totalmente vazia(s) "
+          f"ignorada(s) (linha(s) {', '.join(linhas[:8])}{' ...' if len(linhas) > 8 else ''} do arquivo).")
+    return df.loc[~vazias].reset_index(drop=True)
 
 
 def _localizar_texto(bloco: pd.DataFrame, n: int = 3) -> str:
@@ -1107,7 +1129,7 @@ def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
             f"numericos ({e}).") from e
     cols_spec, nomes, ignoradas = _escolher_variaveis_csv(df, excluir)
     if ignoradas:
-        print(f"[AVISO] Colunas nao numericas ignoradas (nao sao espectro): "
+        print(f"[AVISO] Colunas que nao entram como variaveis (texto ou metadado sem eixo numerico): "
               f"{', '.join(ignoradas[:6])}{' ...' if len(ignoradas) > 6 else ''}")
     if len(cols_spec) < 2:
         raise ValueError(
@@ -1390,6 +1412,17 @@ def parse_dx(filepath):
             raise ValueError(
                 f"{os.path.basename(filepath)}: nenhum ponto de ##XYDATA= foi decodificado "
                 f"(forma de compressao JCAMP-DX nao reconhecida).")
+        # Lacuna grande = arquivo truncado ou corrompido. Antes qualquer lacuna era preenchida por np.interp, que
+        # estende o ultimo valor lido como constante: um .dx cortado a 1/3 virava um espectro "completo" e inventado,
+        # sem aviso. Ate' max(2, 1 %) pontos (rotulo de abscissa arredondado nas pontas) ainda se interpola, com aviso.
+        tolerancia = max(2, int(0.01 * npoints))
+        if n_nan > tolerancia:
+            raise ValueError(
+                f"{os.path.basename(filepath)}: so' {npoints - n_nan} de {npoints} pontos (##NPOINTS=) foram "
+                f"lidos; o arquivo parece truncado ou corrompido. Exporte o espectro de novo.")
+        if 0 < n_nan <= tolerancia:
+            print(f"  [AVISO] {os.path.basename(filepath)}: {n_nan} de {npoints} ponto(s) ausente(s) em "
+                  f"##XYDATA=; preenchido(s) por interpolacao linear.")
         if n_nan > 0 and n_nan < npoints:
             # np.interp exige `xp` CRESCENTE e nao ordena sozinho. Em JCAMP-DX
             # firstx pode ser MAIOR que lastx (convencao comum em FTIR), o que
@@ -1811,6 +1844,23 @@ def _harmonizar_classes_por_subpasta(rotulos: List[str], meta_rows: List[Dict[st
     return n_mudou
 
 
+#: Arquivos que a ultima leitura de pasta (`load_dx`) pulou: (caminho relativo, motivo). O pipeline grava a lista
+#: em ARQUIVOS_IGNORADOS.txt e repete o total no resumo final, para que um arquivo pulado nunca fique so' numa linha
+#: perdida no meio do log.
+_ARQUIVOS_IGNORADOS: List[Tuple[str, str]] = []
+_ARQUIVOS_LIDOS: List[int] = [0]
+
+
+def obter_arquivos_ignorados() -> Tuple[List[Tuple[str, str]], int]:
+    """(arquivos pulados na ultima leitura de pasta, total de arquivos encontrados nela)."""
+    return list(_ARQUIVOS_IGNORADOS), int(_ARQUIVOS_LIDOS[0])
+
+
+def resetar_arquivos_ignorados() -> None:
+    _ARQUIVOS_IGNORADOS.clear()
+    _ARQUIVOS_LIDOS[0] = 0
+
+
 def load_dx(pasta: str, class_part: int = 0,
                  extrair_conc: bool = False,
                  use_parse_title: bool = True,
@@ -1870,6 +1920,8 @@ def load_dx(pasta: str, class_part: int = 0,
     n_falhos = 0
     n_title_falhos = 0
     cods_desconhecidos: set = set()
+    _ARQUIVOS_IGNORADOS.clear()
+    _ARQUIVOS_LIDOS[0] = len(arquivos)
 
     for arq, subpasta_nome in arquivos:
         try:
@@ -1880,10 +1932,13 @@ def load_dx(pasta: str, class_part: int = 0,
             # contabilizado em n_falhos (reportado ao usuario abaixo), nunca
             # silencioso -- 1 arquivo malformado nao derruba o dataset inteiro.
             n_falhos += 1
-            print(f"  [ERROR] {os.path.basename(arq)}: {e}")
+            _msg = str(e) if str(e).startswith(os.path.basename(arq)) else f"{os.path.basename(arq)}: {e}"
+            print(f"  [ERROR] {_msg}")
+            _ARQUIVOS_IGNORADOS.append((os.path.relpath(arq, pasta), _msg))
             continue
         if len(x) == 0:
             print(f"  [WARNING] {os.path.basename(arq)} has no data — skipped")
+            _ARQUIVOS_IGNORADOS.append((os.path.relpath(arq, pasta), "nenhum ponto de dados lido"))
             continue
 
         nome_arq = os.path.splitext(os.path.basename(arq))[0]
@@ -1898,6 +1953,8 @@ def load_dx(pasta: str, class_part: int = 0,
                 _CONTAGEM_CORRECOES["pureza_excluidos"] += 1
                 print(f"  [WARNING] {os.path.basename(arq)} EXCLUIDO — "
                       f"{_TITLES_PUREZA_INDETERMINADA[title.strip()]}")
+                _ARQUIVOS_IGNORADOS.append((os.path.relpath(arq, pasta),
+                                            _TITLES_PUREZA_INDETERMINADA[title.strip()]))
                 continue
             if title:
                 title_parsed = parse_title(title)
