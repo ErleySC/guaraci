@@ -78,6 +78,9 @@ inteiro (auditoria do delineamento, validação agrupada, holdout, relatório) s
 **Cenários sintéticos prontos** (`guaraci exemplo <cenário>`): `explorar`, `classificar`, `quantificar`, `multielementar`, `comparar`, `imagem`, `hsi`, `transferir`, `monitorar`, `pares`, `fluorescencia_eem`, `cromatograma_gcms`, `vip`.
 <!-- guaraci:tecnicas:fim -->
 
+Estar nesta lista quer dizer que a técnica tem perfil, cenário sintético e testes; **não** quer dizer que ela foi
+conferida com dado real daquela técnica. Quais foram está em [O que já rodou com dado real](#o-que-já-rodou-com-dado-real).
+
 O mapa técnica × tarefa × comando × exemplo sintético × teste é gerado do catálogo em
 [`docs/qualidade/mapa_tecnica_tarefa.md`](docs/qualidade/mapa_tecnica_tarefa.md).
 Todos os documentos estão indexados em [`docs/projeto/INDICE.md`](docs/projeto/INDICE.md).
@@ -113,7 +116,7 @@ opção que você precisa saber ligar.
 - **Multivias e cromatografia:** PARAFAC para matrizes de excitação-emissão, MCR-ALS, alinhamento de retenção (COW).
 - **Fusão multibloco** (prova de conceito, com guarda contra blocos desalinhados) e **análise de perfil de elementos** (censura, padrão interno, QC).
 - **Imagens e cubos hiperespectrais:** estatísticas de cor por foto e classificação HSI por pixel com agregação por objeto. Ambos declaram qual garantia de agrupamento os dados sustentam.
-- **Leitores de instrumento** (OPUS, SPC, PerkinElmer `.sp`, espectros processados de RMN Bruker, cromatogramas Agilent/Waters, ANDI-MS, arquivos de excitação-emissão) convertem um arquivo de instrumento no mesmo par `(X, Y)` que o pipeline consome.
+- **Leitores de instrumento** (OPUS, SPC, PerkinElmer `.sp`, espectros processados de RMN Bruker, cromatogramas Agilent/Waters, ANDI-MS, arquivos de excitação-emissão) convertem um arquivo de instrumento no mesmo par `(X, Y)` que o pipeline consome. A suíte pública usa só arquivos gerados a partir da especificação do formato; arquivo real de instrumento só foi lido para alguns formatos. Veja [O que já rodou com dado real](#o-que-já-rodou-com-dado-real).
 - **Exportação portátil de modelo** (JSON, sem pickle) para os presets suportados.
 
 ## Instalação
@@ -132,7 +135,7 @@ opção que você precisa saber ligar.
    ```
 4. Interface no navegador: `guaraci web`. Menu no terminal: `guaraci`.
 
-Ainda não há pacote no PyPI. **Não rode `pip install guaraci`**: esse nome pertence a outro projeto, sem relação com este (instala um programa diferente, que também tem um comando `guaraci`). Instale a partir de um clone, como abaixo, **de dentro da pasta clonada** (não instale por nome pelo PyPI). Python 3.11+; o código mora no pacote `guaraci` em `src/`. O macOS não é plataforma suportada nem verificada nesta versão: a suíte completa de testes passa no macOS da CI (Python 3.11 e 3.13), mas não houve uso real verificado lá.
+Ainda não há pacote no PyPI. **Não rode `pip install guaraci`**: esse nome pertence a outro projeto, sem relação com este (instala um programa diferente, que também tem um comando `guaraci`). Instale a partir de um clone, como abaixo, **de dentro da pasta clonada** (não instale por nome pelo PyPI). O código mora no pacote `guaraci` em `src/`. **Versões do Python:** a suíte completa roda na CI em 3.11, 3.12 e 3.13 (Linux e Windows). O Python 3.14 não está na CI; a suíte foi rodada nele uma vez, à mão, no Linux, e no 3.14 o leitor de pastas `.D` da Agilent/Waters (`rainbow-api`) não instala. Outras versões não foram testadas. O macOS não é plataforma suportada nem verificada nesta versão: a suíte completa de testes passa no macOS da CI (Python 3.11 e 3.13), mas não houve uso real verificado lá.
 
 Guia passo a passo para Windows (inclusive a mensagem de política de execução do PowerShell), Linux (`python3.x-venv`) e WSL, com requisitos mínimos: [`docs/usuario/instalacao.md`](docs/usuario/instalacao.md). Em terminal de fundo claro, defina `GUARACI_TERMINAL=claro` para manter as cores legíveis.
 
@@ -211,6 +214,28 @@ Duas camadas independentes.
 **1. Contra as fórmulas que definem os métodos.** O PLS-DA bate exatamente com `sklearn.PLSRegression` + argmax; SNV, VIP, MSC e CV-ANOVA batem com as definições até a tolerância numérica; o limite do DD-SIMCA bate com as formas fechadas; o componente ortogonal do OPLS-DA é ortogonal a < 1e-6. Tabela e tolerâncias: [`docs/cientifico/validacao_numerica.md`](docs/cientifico/validacao_numerica.md).
 
 **2. Valores padrão.** Limiares e parâmetros padrão são ponto de partida, tirados da literatura citada e não universais, e ajustáveis pelas opções de cada técnica (`guaraci confianca` mostra a evidência por trás do selo de cada técnica). O GUARACI não distribui dados de terceiros; a suíte de testes usa dados sintéticos gerados por código do próprio projeto.
+
+### O que já rodou com dado real
+
+A suíte de testes usa só dados sintéticos, e o projeto não publica resultado obtido com dado de terceiros. As rodadas
+do mantenedor com dado real cobriram NIR (regressão e classificação), Raman (regressão) e uma tabela de áreas de pico
+de GC; numa regressão NIR o holdout externo falhou (R² abaixo de 0), e agora a execução diz isso em vez de chamar o
+número de publicável. Essas rodadas são evidência para o mantenedor, não uma validação que você possa citar.
+
+**Nenhum resultado com dado real foi conferido para:** MIR/FTIR, UV-Vis, fluorescência e EEM, HPLC, GC-MS, LC-MS,
+cromatograma bruto de GC-FID, RMN, IMS, ICP, FRX, imagem digital e o pipeline hiperespectral completo. Funcionam com
+dado sintético e os leitores seguem a especificação do formato; trate-os como não validados até conferir uma amostra
+que você conhece.
+
+**Leitores conferidos com arquivos reais públicos** (só a leitura, sem comparar com o software do fabricante):
+JCAMP-DX (suíte oficial de teste e espectros de referência públicos), `.mat` do MATLAB (126 arquivos, v4 a v7.3), OPUS (4 arquivos),
+ANDI-MS (8), Agilent/Waters (12 pastas), uma pasta `.D` de GC-FID da Agilent. SPC, `.sp` da PerkinElmer, RMN Bruker,
+EEM Horiba e uma pasta de HPLC foram lidos com arquivos reais de instrumento só na máquina do mantenedor (arquivos não
+públicos; desfecho em [`docs/qualidade/rodada_local_formatos_reais.json`](docs/qualidade/rodada_local_formatos_reais.json)).
+CSV, Excel, `.mat` e JCAMP também receberam arquivos malformados (vírgula decimal, separador `;`/TAB, latin-1, UTF-16,
+linhas em branco, colunas vazias, NaN/Inf, `.dx` truncado e vazio): cada um é lido, ou recusado com mensagem que diz
+onde está o problema. Arquivo pulado numa pasta de dados fica listado em `ARQUIVOS_IGNORADOS.txt` e no model card.
+Detalhes: [`docs/cientifico/limitacoes.md`](docs/cientifico/limitacoes.md), seção 6.
 
 A quantificação nunca reporta um RMSEP nu: **SEP, RPD e RER** vão junto; LOD/LOQ voltam `N/A` quando as réplicas não permitem estimar o ruído instrumental.
 
