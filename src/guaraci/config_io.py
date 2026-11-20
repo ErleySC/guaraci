@@ -639,7 +639,9 @@ def load_config(caminho: str, base: Optional[Config] = None) -> Config:
     # ignorada em silencio e a corrida usava o preset (achado ao testar com dado real publico).
     # Aviso, nao erro: `save_config` grava sempre as duas chaves e o ciclo salvar/ler tem de fechar.
     if ("etapas_pre_processamento" in dados and not erros
-            and str(cfg.default_preprocessing).lower() != "custom"):
+            and str(cfg.default_preprocessing).lower() != "custom"
+            and tuple(cfg.etapas_pre_processamento) != tuple(Config().etapas_pre_processamento)):
+        # lista igual a' padrao (a que `save_config` grava) nao muda nada: sem aviso a cada salvar/ler
         print("[AVISO] etapas_pre_processamento so' tem efeito com 'pre_processamento: "
               "Personalizado'; com o preset atual "
               f"('{_PRE_PROC_INV.get(cfg.default_preprocessing, cfg.default_preprocessing)}') "

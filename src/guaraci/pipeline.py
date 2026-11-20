@@ -1885,6 +1885,12 @@ def _figuras_modelo_unico_regressao(
         plt.close("all")
 
 
+def _lang_sessao() -> str:
+    """'EN' ou 'PT': o idioma da sessao (o mesmo do menu e dos relatorios), para as linhas de ajuste."""
+    from guaraci.idioma_relatorio import idioma
+    return "EN" if idioma(None) == "en" else "PT"
+
+
 def _resolver_classificador_auto(cfg: "Config", n_amostras: int, mae_id: Any, n_classes: int = 0) -> None:
     """`classificador: auto` -> PLS-LDA com poucas unidades independentes, PLS-DA com muitas.
 
@@ -1901,7 +1907,9 @@ def _resolver_classificador_auto(cfg: "Config", n_amostras: int, mae_id: Any, n_
     escolha = "plslda" if n_un < _MIN else "plsda"
     if escolha == "plslda" and n_classes and int(n_amostras) < 2 * int(n_classes):
         log.info(f"[CONTEXTO] classificador auto -> plsda (so {n_amostras} amostras para {n_classes} classes: "
-                 f"a LDA nao tem amostras para estimar as covariancias).")
+                 f"a LDA nao tem amostras para estimar as covariancias)." if _lang_sessao() == "PT" else
+                 f"[CONTEXT] classifier auto -> plsda (only {n_amostras} samples for {n_classes} classes: "
+                 f"LDA has no samples to estimate the covariances).")
         return
     cfg.classificador = "auto"            # `ajustar_tardio` grava de='auto'; `desfazer` volta a 'auto' no fim
     aj = _ctx.ajustar_tardio(
@@ -1910,12 +1918,16 @@ def _resolver_classificador_auto(cfg: "Config", n_amostras: int, mae_id: Any, n_
          f"{'PLS-LDA costuma ser mais estavel com poucas amostras' if escolha == 'plslda' else 'PLS-DA e o padrao com amostras suficientes'}",
          f"{n_un} independent units ({'<' if escolha == 'plslda' else '>='} {_MIN}): "
          f"{'PLS-LDA is usually more stable with few samples' if escolha == 'plslda' else 'PLS-DA is the default with enough samples'}"),
-        desfazer=("escreva `classificador: plsda` no config (metodo da versao 1.0.0)" if escolha == "plslda"
-                  else "escreva `classificador: plslda` no config"))
+        lang=_lang_sessao(),
+        desfazer=(("escreva `classificador: plsda` no config (metodo da versao 1.0.0)",
+                   "write `classificador: plsda` in the config (the version 1.0.0 method)") if escolha == "plslda"
+                  else ("escreva `classificador: plslda` no config", "write `classificador: plslda` in the config")))
     if aj is not None:
         log.info(f"[CONTEXTO] {aj.linha()}")
     elif escolha == "plsda":
-        log.info(f"[CONTEXTO] classificador auto -> plsda ({n_un} unidades independentes >= {_MIN}).")
+        log.info(f"[CONTEXTO] classificador auto -> plsda ({n_un} unidades independentes >= {_MIN})."
+                 if _lang_sessao() == "PT" else
+                 f"[CONTEXT] classifier auto -> plsda ({n_un} independent units >= {_MIN}).")
 
 
 def _abrir_faixa_padrao_se_fora_do_eixo(cfg: "Config", eixo: Tuple[float, float]) -> None:
@@ -1936,8 +1948,9 @@ def _abrir_faixa_padrao_se_fora_do_eixo(cfg: "Config", eixo: Tuple[float, float]
               f"({eixo[0]:.4g} to {eixo[1]:.4g}); using the whole axis")
     for regra, campo, novo in (("faixa_fora_do_eixo_min", "faixa_min_cm", float(eixo[0])),
                                ("faixa_fora_do_eixo_max", "faixa_max_cm", float(eixo[1]))):
-        aj = _ctx.ajustar_tardio(cfg, regra, campo, novo, motivo,
-                                 desfazer="escreva `faixa_min_cm` e `faixa_max_cm` no config com a faixa que quer")
+        aj = _ctx.ajustar_tardio(cfg, regra, campo, novo, motivo, lang=_lang_sessao(),
+                                 desfazer=("escreva `faixa_min_cm` e `faixa_max_cm` no config com a faixa que quer",
+                                           "write `faixa_min_cm` and `faixa_max_cm` in the config with the range you want"))
         if aj is not None:
             log.info(f"[CONTEXTO] {aj.linha()}")
 

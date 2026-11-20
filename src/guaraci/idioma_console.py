@@ -423,6 +423,8 @@ _TABELA_RE: List[Tuple[Pattern[str], _Repl]] = [(re.compile(p), r) for p, r in _
 
 #: (padrao PT da linha SEM a indentacao, modelo EN com os grupos). Primeiro que casa vence.
 FRASES_CONSOLE: List[Tuple[str, str]] = [
+    (r"\[CONTEXTO\] Ajustado: (.*?)\. Motivo: (.*)\. Desfazer: (.*)\.",
+     r"[CONTEXT] Adjusted: \1. Reason: \2. Undo: \3."),
     (r"\[MODO\] Figuras pertinentes a este objetivo \((\d+)\): (.*)",
      r"[MODE] Figures relevant to this objective (\1): \2"),
     (r"\[MODO\] Objetivo cientifico: (.*?)\s+\(nivel (.*?), objetivo configurado: (.*?)\)",
