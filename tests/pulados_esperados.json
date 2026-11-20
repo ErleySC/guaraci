@@ -128,7 +128,7 @@
         },
         "extra [hplc] nao instalado: rainbow": {
           "padrao": "^could not import 'rainbow'",
-          "max": 1
+          "max": 6
         },
         "extra [multiway] nao instalado: tensorly": {
           "padrao": "^could not import 'tensorly'",

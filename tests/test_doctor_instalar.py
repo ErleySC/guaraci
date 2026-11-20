@@ -33,7 +33,10 @@ def test_requisitos_do_extra_filtra_por_extra_e_ignora_o_all(metadados):
 
 
 def test_requisito_com_marcador_de_python_respeita_o_ambiente(metadados, monkeypatch):
-    assert ex.requisitos_do_extra("hplc") == ["rainbow-api<2.0,>=1.5"]       # este Python e' < 3.14
+    import sys
+    # o extra [hplc] tem marcador python_version < '3.14' (rainbow-api nao tem versao para o 3.14)
+    esperado = ["rainbow-api<2.0,>=1.5"] if sys.version_info < (3, 14) else []
+    assert ex.requisitos_do_extra("hplc") == esperado
     from packaging.markers import Marker
     monkeypatch.setattr(Marker, "evaluate", lambda self, env=None: False)
     assert ex.requisitos_do_extra("hplc") == []
