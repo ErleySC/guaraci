@@ -30,7 +30,8 @@ import numpy as np
 
 from guaraci import arquivo_matrizes as am
 
-__all__ = ["CuboArquivo", "EXTENSOES_CUBO_ARQUIVO", "EIXOS_ESPECTRAIS", "ler_cubo_arquivo"]
+__all__ = ["CuboArquivo", "EXTENSOES_CUBO_ARQUIVO", "EIXOS_ESPECTRAIS", "ler_cubo_arquivo",
+           "referencias_no_arquivo", "ler_referencia_arquivo"]
 
 EXTENSOES_CUBO_ARQUIVO: Tuple[str, ...] = am.EXTENSOES_MATRIZ
 
@@ -39,7 +40,12 @@ EIXOS_ESPECTRAIS: Tuple[str, ...] = ("auto", "ultimo", "primeiro", "meio")
 _POS = {"primeiro": 0, "meio": 1, "ultimo": 2}
 _NOME_POS = {0: "primeiro", 1: "meio", 2: "ultimo"}
 
-_RE_REFERENCIA = re.compile(r"(white|dark|branco|escuro|ref)", re.IGNORECASE)
+_RE_REFERENCIA = re.compile(r"(^|_)(white|dark|branco|escuro)|^[wd]_?ref$", re.IGNORECASE)
+#: Nome (ultimo componente) de variavel de referencia DENTRO do arquivo do cubo.
+_RE_REF_TIPO = {"white": re.compile(r"^(white|branco)(_?ref(erence|erencia)?)?$|^(white|branco)_?(ref|padrao)|^w_?ref$",
+                                    re.IGNORECASE),
+                "dark": re.compile(r"^(dark|escuro)(_?ref(erence|erencia)?)?$|^(dark|escuro)_?(ref|padrao)|^d_?ref$",
+                                   re.IGNORECASE)}
 
 
 @dataclass
@@ -157,7 +163,7 @@ def _posicao_espectral(base: str, forma: Tuple[int, ...], wl: Optional[np.ndarra
 
 
 def ler_cubo_arquivo(caminho: str, *, variavel_dados: str = "", variavel_eixo: str = "",
-                     eixo_espectral: str = "auto") -> CuboArquivo:
+                     eixo_espectral: str = "auto", calibrando: bool = False) -> CuboArquivo:
     """Le o cubo de um .mat/.npy/.npz/.h5 e devolve `CuboArquivo` com o cubo (linhas, colunas, bandas)
     em float32, o eixo espectral (ou None) e `info` (formato, variaveis usadas, forma original, avisos)."""
     base = os.path.basename(caminho)
@@ -171,16 +177,126 @@ def ler_cubo_arquivo(caminho: str, *, variavel_dados: str = "", variavel_eixo: s
     bruto = bruto.reshape(forma)            # tira eixos de tamanho 1 (ex.: 1 x L x C x B)
     espaciais = [i for i in range(3) if i != p]
     cubo = np.ascontiguousarray(np.transpose(bruto, (*espaciais, p)), dtype=np.float32)
+    invertido = False
     if wl is not None and wl.size >= 2 and wl[0] > wl[-1]:
         # eixo decrescente (comum em numero de onda): mesma orientacao crescente do resto do HSI
         wl = wl[::-1].copy()
         cubo = np.ascontiguousarray(cubo[..., ::-1])
-    if np.dtype(v.dtype).kind in "iu":
+        invertido = True
+    if np.dtype(v.dtype).kind in "iu" and not calibrando:
         avisos.append(f"{base}: cubo inteiro ({v.dtype}); parece contagem bruta do detector (DN), nao reflectancia. "
-                      f"A checagem de qualidade espera reflectancia (0 a 1): calibre com branco/escuro antes de exportar.")
+                      f"A checagem de qualidade espera reflectancia (0 a 1): use hsi_calibracao: branco_escuro "
+                      f"(com WHITEREF/DARKREF ou variaveis white/dark no proprio arquivo).")
     n_nan = int(np.count_nonzero(~np.isfinite(cubo)))
     if n_nan:
         avisos.append(f"{base}: {n_nan} valor(es) NaN/Inf no cubo.")
     info = {"formato": fmt, "variavel_dados": v.nome, "forma_original": list(forma),
-            "eixo_espectral": _NOME_POS[p], "origem_eixo": origem_wl, "avisos": avisos}
+            "eixo_espectral": _NOME_POS[p], "origem_eixo": origem_wl, "avisos": avisos,
+            "dtype_original": str(v.dtype), "bandas_invertidas": invertido,
+            "maximo_bruto": float(np.nanmax(bruto)) if bruto.size else 0.0}
     return CuboArquivo(cubo=cubo, wavelengths=None if wl is None else np.asarray(wl, dtype=float), info=info)
+
+
+# --------------------------------------------------------------------------- referencias branco/escuro
+def _reduzir_referencia(base: str, nome: str, arr: np.ndarray, n_bandas: int, pos_cubo: Optional[int],
+                        invertido: bool) -> np.ndarray:
+    """Referencia -> `(colunas|1, bandas)` (media sobre as linhas), no mesmo sentido de bandas do cubo.
+    Aceita espectro (bandas), matriz (colunas x bandas, ou o transposto) ou cubo 3D."""
+    a = np.asarray(arr, dtype=np.float64)
+    a = a.reshape(tuple(d for d in a.shape if d != 1) or (1,))
+    if a.ndim == 1:
+        if a.size != n_bandas:
+            raise ValueError(f"{base}: a referencia '{nome}' tem {a.size} valores e o cubo {n_bandas} bandas.")
+        red = a[None, :]
+    elif a.ndim == 2:
+        if a.shape[1] == n_bandas:
+            red = a
+        elif a.shape[0] == n_bandas:
+            red = a.T
+        else:
+            raise ValueError(f"{base}: a referencia '{nome}' ({_forma_txt(a.shape)}) nao tem um eixo de "
+                             f"{n_bandas} bandas.")
+    elif a.ndim == 3:
+        posicoes = [i for i, d in enumerate(a.shape) if d == n_bandas]
+        if not posicoes:
+            raise ValueError(f"{base}: a referencia '{nome}' ({_forma_txt(a.shape)}) nao tem um eixo de "
+                             f"{n_bandas} bandas.")
+        p = pos_cubo if pos_cubo in posicoes else (posicoes[-1] if 2 in posicoes or len(posicoes) > 1
+                                                    else posicoes[0])
+        espaciais = [i for i in range(3) if i != p]
+        red = np.nanmean(np.transpose(a, (*espaciais, p)), axis=0)
+    else:
+        raise ValueError(f"{base}: a referencia '{nome}' tem {a.ndim} eixos.")
+    return red[:, ::-1].copy() if invertido else red
+
+
+def _dict_referencia(origem: str, red: np.ndarray, bruto: np.ndarray, dtype: str,
+                     wl: Optional[np.ndarray]) -> Dict[str, Any]:
+    """Mesmo formato de `hsi_io._carregar_referencia` (ENVI)."""
+    maximo = float(np.nanmax(bruto)) if bruto.size else 0.0
+    frac_sat = 0.0
+    dt = np.dtype(dtype)
+    if dt.kind in "iu":
+        teto = np.iinfo(dt).max
+        topos = tuple(2 ** k - 1 for k in (8, 10, 12, 14, 16) if 2 ** k - 1 <= teto)
+        if maximo in topos:
+            frac_sat = float(np.mean(bruto >= maximo))
+    return {"media": red.astype(np.float64), "n_linhas": 1, "n_colunas": int(red.shape[0]),
+            "n_bandas": int(red.shape[1]), "wl": wl, "frac_saturada": frac_sat, "maximo": maximo,
+            "tint": None, "arquivo": origem}
+
+
+def referencias_no_arquivo(caminho: str, info: Dict[str, Any], n_bandas: int) -> Dict[str, Dict[str, Any]]:
+    """Variaveis white/dark (branco/escuro, whiteref/darkref...) guardadas NO PROPRIO arquivo do cubo,
+    ja' reduzidas como `hsi_io._carregar_referencia`. Chaves "white"/"dark" so' para as encontradas."""
+    base = os.path.basename(caminho)
+    _fmt, variaveis = am.listar_variaveis(caminho)
+    pos = _POS.get(str(info.get("eixo_espectral", "")))
+    saida: Dict[str, Dict[str, Any]] = {}
+    for tipo, rx in _RE_REF_TIPO.items():
+        achados = [v for v in variaveis if v.numerica and v.nome != info.get("variavel_dados")
+                   and rx.search(v.nome.split(".")[-1])]
+        if len(achados) > 1:
+            raise ValueError(f"{base}: mais de uma variavel parece a referencia {'branca' if tipo == 'white' else 'escura'}: "
+                             f"{am.descrever_variaveis(achados)}. Deixe so' uma no arquivo ou aponte o arquivo com "
+                             f"hsi_referencia_{'branco' if tipo == 'white' else 'escuro'}.")
+        if achados:
+            v = achados[0]
+            bruto = np.asarray(v.ler())
+            red = _reduzir_referencia(base, v.nome, bruto, n_bandas, pos, bool(info.get("bandas_invertidas")))
+            saida[tipo] = _dict_referencia(f"{caminho}::{v.nome}", red, bruto, v.dtype, None)
+    return saida
+
+
+def ler_referencia_arquivo(caminho: str, n_bandas: int, *, pos_cubo: Optional[int] = None,
+                           invertido: bool = False) -> Dict[str, Any]:
+    """Arquivo WHITEREF/DARKREF em .mat/.npy/.npz/.h5: a variavel com um eixo de `n_bandas` (cubo, matriz
+    colunas x bandas ou espectro), reduzida como a referencia ENVI. Mais de uma candidata -> erro com a lista.
+    `invertido`: o cubo teve as bandas invertidas (eixo decrescente); vale se o arquivo nao trouxer eixo."""
+    base = os.path.basename(caminho)
+    _fmt, variaveis = am.listar_variaveis(caminho)
+    cands = [v for v in variaveis if v.numerica and n_bandas in v.forma_util and len(v.forma_util) >= 1]
+    eixos = am.vetores_candidatos_a_eixo(variaveis, (n_bandas,))
+    nomes_eixo = {c[0].nome for c in eixos if c[2]}
+    cands = [v for v in cands if v.nome not in nomes_eixo]
+    if not cands:
+        raise ValueError(f"{base}: nenhuma variavel com {n_bandas} bandas para servir de referencia. "
+                         f"Variaveis: {am.descrever_variaveis(variaveis)}.")
+    if len(cands) > 1:
+        maior = max(len(v.forma_util) for v in cands)
+        cands = [v for v in cands if len(v.forma_util) == maior]
+    if len(cands) > 1:
+        raise ValueError(f"{base}: mais de uma variavel pode ser a referencia: {am.descrever_variaveis(cands)}. "
+                         f"Deixe so' uma no arquivo de referencia.")
+    v = cands[0]
+    wl = None
+    inv = invertido
+    com_nome = [c for c in eixos if c[2]]
+    if len(com_nome) == 1:
+        wl = com_nome[0][1]
+        inv = bool(wl.size >= 2 and wl[0] > wl[-1])
+        if inv:
+            wl = wl[::-1].copy()
+    bruto = np.asarray(v.ler())
+    red = _reduzir_referencia(base, v.nome, bruto, n_bandas, pos_cubo, inv)
+    return _dict_referencia(caminho, red, bruto, v.dtype, wl)

@@ -107,7 +107,16 @@ número (os números podem mudar — vá pelo **nome**, não pelo número):
 - para `csv`: **Arquivo CSV** (caminho do arquivo: `.csv`/`.txt`, Excel
   `.xlsx` ou matriz MATLAB/NumPy/HDF5 `.mat`/`.npz`/`.h5`) e **Coluna de classe**
   (nome da coluna que diz a classe; padrão `classe`);
-- para os demais, a **pasta de entrada** está na tela **`[1]` Projeto**.
+- para os demais, a **pasta de entrada** está na tela **`[1]` Projeto**;
+- **Sinal de entrada** (`sinal_entrada`): se o instrumento exportou
+  transmitância, reflectância ou intensidade bruta, o Guaraci converte em
+  absorbância antes de tudo — `transmitancia` (A = −log₁₀T),
+  `reflectancia` (log 1/R), `kubelka_munk` ((1−R)²/2R) ou `feixe_simples`
+  (A = −log₁₀(I/I₀), com o branco I₀ em `sinal_referencia`: um arquivo
+  `.dx`/`.csv`/`.txt` ou o nome da classe dos espectros de branco, que
+  saem do estudo). T e R em fração ou em %. A predição reaplica a mesma
+  conversão; um arquivo que já está em absorbância marcado como T é
+  recusado com explicação.
 
 Cada mudança pede confirmação (`s`) e um Enter para continuar. Se não tem
 dados próprios, gere um arquivo de exemplo (números **inventados**):
@@ -645,9 +654,15 @@ Campos de `struct` entram como `s.campo`. O que é detectado sozinho:
   aponte `coluna_classe`/`coluna_concentracao`/`coluna_grupo` para ele.
   Se o eixo bate com as linhas da matriz, ela é transposta (com aviso).
 
-Limites: a calibração branco/escuro (`hsi_calibracao`) só vale para ENVI
-(calibre antes de exportar); cubo de `.mat` é carregado inteiro na
-memória; o objeto `DataSet` do PLS_Toolbox, `.spa` (OMNIC) e `.unsb`
+Calibração branco/escuro (`hsi_calibracao: branco_escuro`) também vale
+para esses cubos: as referências podem ser variáveis `white`/`dark`
+(`branco`/`escuro`, `whiteref`/`darkref`) dentro do próprio arquivo, ou
+arquivos `WHITEREF_<cubo>`/`DARKREF_<cubo>` (ou `WHITEREF`/`DARKREF` da
+sessão) em qualquer um dos formatos — cubo, matriz colunas × bandas ou só o
+espectro. As mesmas checagens do ENVI valem (branco maior que o escuro,
+branco saturado, mesmo número de bandas).
+
+Limites: cubo de `.mat` é carregado inteiro na memória; o objeto `DataSet` do PLS_Toolbox, `.spa` (OMNIC) e `.unsb`
 (Unscrambler) não são lidos — exporte a matriz como variável numérica.
 
 `run_hsi_pipeline` usa o caminho genérico para qualquer pasta de cubos; a explicabilidade cruzada por tabela de atribuição química e a partição por dia de medição exigem metadados que uma pasta genérica não tem.

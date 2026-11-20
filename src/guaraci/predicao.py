@@ -621,6 +621,9 @@ def predict_samples(pkg: Dict, X_new_raw: np.ndarray,
             "proprios dados de treino e nao e' comparavel com o dos modelos atuais. "
             "Retreine o modelo com a versao atual do programa; nada foi predito.")
 
+    # Mesma conversao de sinal bruto do treino (T/R/Kubelka-Munk/feixe simples); pacote antigo: nada muda.
+    from guaraci.conversao_sinal import converter_pelo_pacote
+    X_new_raw = converter_pelo_pacote(pkg, X_new_raw, wn_new)
     X_interp = _interpolate_to_reference(pkg, X_new_raw, wn_new)
 
     # Aplica o pre-processamento do treino
@@ -1004,8 +1007,9 @@ def predict_blind(pkg: Dict[str, Any], X_new_raw: np.ndarray,
     Retorna (DataFrame de `predict_samples` com as colunas ja existentes,
     lista de `BlindPredictionResult` -- uma por amostra, na mesma ordem).
     """
-    df = predict_samples(pkg, X_new_raw, wn_new)
-    X_interp = _interpolate_to_reference(pkg, X_new_raw, wn_new)
+    df = predict_samples(pkg, X_new_raw, wn_new)      # converte o sinal por dentro
+    from guaraci.conversao_sinal import converter_pelo_pacote
+    X_interp = _interpolate_to_reference(pkg, converter_pelo_pacote(pkg, X_new_raw, wn_new), wn_new)
 
     ensemble = pkg.get("identification_ensemble") or {}
     tem_ad = _CHAVES_AD.issubset(pkg.keys())
