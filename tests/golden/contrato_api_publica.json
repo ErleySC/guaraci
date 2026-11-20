@@ -8923,6 +8923,38 @@
         "forma": "funcao"
       }
     },
+    "traducao_console": {
+      "TradutorSaida": {
+        "bases": [
+          "TextIOBase"
+        ],
+        "forma": "classe",
+        "init": "(self, destino)",
+        "metodos_publicos": [
+          "fileno",
+          "flush",
+          "isatty",
+          "writable",
+          "write"
+        ]
+      },
+      "ativar": {
+        "assinatura": "() -> Callable[[], None]",
+        "forma": "funcao"
+      },
+      "ativo": {
+        "assinatura": "() -> bool",
+        "forma": "funcao"
+      },
+      "traduzir_linha": {
+        "assinatura": "(linha: str, lang: Union[None, str] = None) -> str",
+        "forma": "funcao"
+      },
+      "traduzir_texto": {
+        "assinatura": "(texto: str, lang: Union[None, str] = None) -> str",
+        "forma": "funcao"
+      }
+    },
     "transferencia_calibracao": {
       "StandardizationTransform": {
         "campos": [

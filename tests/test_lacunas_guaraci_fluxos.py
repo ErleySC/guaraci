@@ -228,11 +228,13 @@ def test_exemplo_guiado_carrega_a_configuracao_na_sessao(cli, tmp_path, monkeypa
     novo = g.Config(max_lvs=9)
     monkeypatch.setattr(g, "_load_config", lambda cam: novo)
     rodadas = []
-    monkeypatch.setattr(g, "_rodar_pipeline", lambda cfg: rodadas.append(cfg))
+    monkeypatch.setattr(g, "_rodar_pipeline", lambda cfg, **k: rodadas.append(k))
     cfg = g.Config()
     cli.dizer("classificar", "", resposta, "", "0")
     g._menu_exemplo(cfg)
     assert (cfg.max_lvs == 9) is (resposta != "n") and bool(rodadas) is (resposta == "r")
+    # [r] = "carregar e rodar agora": roda direto, sem repetir a pergunta de ID e a confirmacao (rodada 2026-11-20)
+    assert all(k.get("ja_confirmado") for k in rodadas)
 
 
 def test_exemplo_guiado_com_configuracao_ilegivel_mostra_o_erro(cli, tmp_path, monkeypatch):

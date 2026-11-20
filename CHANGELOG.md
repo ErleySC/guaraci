@@ -9,6 +9,24 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Rodada da CLI (2026-11-20):
+
+- **Console em inglês sem português no meio.** Sem idioma escolhido (padrão: inglês), o log do pipeline, a auditoria, o
+  `checar`, o `--help`, o `--version`, o `exemplo`, o `perfis`, o `demo`, o `vip` e o `anova` saem em inglês. O núcleo
+  continua escrevendo em português; o novo `traducao_console` traduz a saída linha a linha, só quando o idioma é inglês.
+- **IC BCa sem `[nan, nan]`.** Quando toda reamostragem dá o mesmo valor (ex.: acerto 1,0), o relatório diz que o IC não
+  é estimável e por quê.
+- **Quantificação com nome de quantificação.** A pasta da execução passa a ser `PLSR_OE_...` (quantificação) ou
+  `PCA_OE_...` (exploração); classificação continua `PLSDA_OE_...`. O aviso de holdout pequeno da quantificação fala de
+  RMSEP (faixa do qui-quadrado), não de taxa de acerto; as regras de permutação valem só para classificação.
+- **Exemplos sem disparar os próprios avisos.** Os exemplos usam 200 permutações (padrão) e `max_lvs` 15; LVs no teto
+  passa a aviso e entra na contagem da checagem final.
+- **DD-SIMCA:** os avisos por classe das dobras do LOGO e do PV-set do PCV descem para DEBUG; só o modelo final avisa.
+- **Menu:** `[r]` no exemplo guiado carrega e roda direto, sem repetir ID e confirmação; o aviso de alterações não
+  salvas não conta mais a configuração do exemplo já gravada.
+- **Python 3.14:** `--version` e `doctor` dizem quais extras não instalam neste Python (hoje o leitor Agilent/Waters,
+  `rainbow-api`); o README avisa.
+
 Partida e técnicas (2026-11-18):
 
 - **Tela `2.4`: três técnicas novas.** `GC-FID` (pasta Agilent `.D` com detector FID, ou tabela CSV de sinal ou de áreas

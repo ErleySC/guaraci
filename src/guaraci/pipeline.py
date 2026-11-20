@@ -312,11 +312,24 @@ def _dataset_id(cfg: Config) -> str:
     return _slug(base) or "dataset"
 
 
+#: Prefixo da pasta de cada execucao, pelo objetivo resolvido. Quem procura execucoes pelo nome (ex.: `guaraci demo`)
+#: deve aceitar todos (PREFIXOS_PASTA_EXECUCAO), inclusive pastas antigas com PLSDA_OE numa quantificacao.
+PREFIXO_PASTA_EXECUCAO: Dict[str, str] = {"classificacao": "PLSDA_OE", "quantificacao": "PLSR_OE", "exploratorio": "PCA_OE"}
+PREFIXOS_PASTA_EXECUCAO: Tuple[str, ...] = tuple(p + "_" for p in dict.fromkeys(PREFIXO_PASTA_EXECUCAO.values()))
+
+
+#: Texto do IC bootstrap quando todas as reamostragens dao o mesmo valor (BCa indefinido).
+_IC_NAO_ESTIMAVEL = ("CI nao estimavel: sem variacao entre reamostragens -- todas deram o mesmo "
+                     "valor (ex.: acerto perfeito ou grupos insuficientes por classe)")
+
+
 def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
     """Default output path (auditoria jul/2026, item 4): reestrutura a saida
     em Amostra/Modo/Execucao para nao misturar resultados de objetivos
     diferentes na mesma pasta.
-        {root}/{dataset}/{Modo}/PLSDA_OE_{slug}_{preproc}_{YYYYMMDD_HHMMSS}
+        {root}/{dataset}/{Modo}/{PREFIXO}_{slug}_{preproc}_{YYYYMMDD_HHMMSS}
+    PREFIXO vem de PREFIXO_PASTA_EXECUCAO: PLSDA_OE (classificacao), PLSR_OE (quantificacao) ou PCA_OE
+    (exploratorio). Antes de 2026-11-20 toda execucao saia com PLSDA_OE, inclusive a quantificacao.
     Example: resultados_guaraci/lote_a/Classificacao/PLSDA_OE_Autenticacao_MSC-SG1-MC_20260528_191500
     'dataset' vem de cfg.tag (se preenchido) ou e' derivado do mode de
     entrada (ver _dataset_id). 'Modo' e' o rotulo amigavel do objetivo
@@ -329,7 +342,8 @@ def generate_output_name(cfg: Config, n_classes: int, n_amostras: int) -> str:
     """
     from guaraci.preprocessamento import descrever_preprocessamento
     preproc, _descr, _usa_sg = descrever_preprocessamento(cfg)
-    partes = ["PLSDA_OE", _NIVEL_SLUG_PASTA.get(cfg.level, cfg.level)]
+    partes = [PREFIXO_PASTA_EXECUCAO.get(resolve_objective(cfg), "PLSDA_OE"),
+              _NIVEL_SLUG_PASTA.get(cfg.level, cfg.level)]
     partes.append("-".join(preproc))
     partes.append(datetime.now().strftime("%Y%m%d_%H%M%S"))
     dataset_id = _dataset_id(cfg)
@@ -2093,7 +2107,8 @@ def _avisar_classes_em_rampa(*, cfg: "Config", T_pls: np.ndarray, rotulos: np.nd
               f"accuracy underestimates the separation present in the data.{comp_en}{sug_en} If the "
               f"numeric level is what matters, PLS regression on the value is more appropriate than "
               f"classifying.")
-        log.info("\n  [AVISO] " + pt)
+        from guaraci.idioma_relatorio import idioma as _idioma_rampa
+        log.info("\n  [AVISO] " + (en if _idioma_rampa() == "en" else pt))   # o texto EN ja' existia
         anexar_bloco_modelo(pasta_logs, ("Avisos do modelo: classificacao", "Model warnings: classification"),
                             [("classes_em_rampa", pt, en)], aviso=True)
         return det
@@ -2848,8 +2863,7 @@ def _etapa_resumo_e_relatorios(*, Q, T2, T_pls, X_holdout, X_raw, _G, _achados_a
         # `bca` e `bca_holdout` trazem sempre as quatro metricas de `metricas_funcoes`: `b` nunca e' None.
         lo, hi, obs = b
         if not np.isfinite(lo):
-            return (f"{obs:.4f} [CI nao estimavel: sem variacao entre "
-                    f"reamostragens -- grupos insuficientes por classe]")
+            return f"{obs:.4f} [{_IC_NAO_ESTIMAVEL}]"
         # R3-05 (revisao cega): com poucos grupos o IC BCa agrupado SUBCOBRE
         # (cobertura medida 0,73 com 6 grupos, 0,86 com 10, 0,95 com 40).
         if _n_grupos_bca is not None and _n_grupos_bca < 20:
@@ -4038,7 +4052,12 @@ def _etapa_testes_estatisticos(*, X_raw, Y_bin, Y_cv, _G, cfg, fabrica_pipeline,
     # --- 7. Metricas e relatorio -------------------------------------------
     cm_mat = confusion_matrix(rotulos, pred_lab, labels=lb.classes_)
     metricas_finais = classification_metrics(rotulos, pred_lab, lb.classes_)
-    log.info("\n[5/7] Metricas finais (CV):")
+    if objetivo == QUANTIFICACAO:
+        # Numa quantificacao estas metricas sao do classificador de especie que escolhe o modelo de regressao
+        # (rotulo previsto), nao do teor: o titulo diz isso para a execucao nao parecer uma classificacao.
+        log.info("\n[5/7] Classificacao de especie que escolhe o modelo de regressao (CV; a resposta quantificada vem em [7/7]):")
+    else:
+        log.info("\n[5/7] Metricas finais (CV):")
     for k, v in metricas_finais.items():
         log.info(f"  {k:>22s}: {v:.4f}")
 
@@ -4077,7 +4096,12 @@ def _etapa_testes_estatisticos(*, X_raw, Y_bin, Y_cv, _G, cfg, fabrica_pipeline,
                                             alpha=0.05, seed=cfg.seed,
                                             groups=_G(mae_id))
             bca[nome] = (lo, hi, obs)
-            log.info(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
+            if np.isfinite(lo) and np.isfinite(hi):
+                log.info(f"  {nome:>22s}: {obs:.4f}  [{lo:.4f}, {hi:.4f}]")
+            else:
+                # Todas as reamostragens deram o mesmo valor (ex.: acerto perfeito): o BCa
+                # nao e' definido, e imprimir [nan, nan] parecia defeito do programa.
+                log.info(f"  {nome:>22s}: {obs:.4f}  [{_IC_NAO_ESTIMAVEL}]")
     log.info("\n" + str(classification_report(rotulos, pred_lab,
                                              target_names=lb.classes_,
                                              zero_division=0)))

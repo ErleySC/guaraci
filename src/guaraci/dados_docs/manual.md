@@ -444,7 +444,7 @@ conteúdo por categoria:
 - **`<Modo>`** — rótulo amigável do objetivo científico resolvido:
   `Exploratorio`, `Classificacao` ou `Quantificacao`.
 - **`<Execução>`** — identificador único da corrida (nível, pré-processamento
-  e data/hora), no formato `PLSDA_OE_<slug-do-nivel>_<preproc>_<AAAAMMDD_HHMMSS>`.
+  e data/hora), no formato `<PREFIXO>_<slug-do-nivel>_<preproc>_<AAAAMMDD_HHMMSS>`, com `PREFIXO` = `PLSDA_OE` (classificação), `PLSR_OE` (quantificação) ou `PCA_OE` (exploração).
   `<slug-do-nivel>` é o nome amigável do nível (`PorEspecie`/`Autenticacao`/
   `Quantificacao`; versões antigas usavam
   `N1`/`N2`/`N3` cru aqui).

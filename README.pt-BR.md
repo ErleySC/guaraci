@@ -147,6 +147,8 @@ A instalação base **não** traz os leitores de Bruker OPUS (`opus`), Thermo/Ga
 pip install ".[all]"   # dentro da pasta clonada; para desenvolver: pip install -e ".[all]"
 ```
 
+No Python 3.14 ou mais novo, o `.[all]` termina **sem** o leitor de pasta Agilent/Waters de HPLC/GC: o `rainbow-api` ainda não tem versão para o 3.14, e o pip o pula sem avisar. Se você precisa dessas pastas, use o Python 3.13 ou exporte os dados para CSV; `guaraci doctor` e `guaraci --version` mostram que ele falta.
+
 Não sabe o que falta? `guaraci doctor` lista, e `guaraci doctor --instalar` instala depois da sua confirmação (com `--sim` não pergunta). Ele instala o navegador, os escritores de relatório e todos os leitores que existem para o seu Python, com as faixas de versão do pacote instalado, então também funciona de dentro de um clone. O extra de benchmark (`xgboost`, `shap`, grande) fica de fora; peça com `pip install -e ".[benchmark]"`.
 
 **Primeiros passos, sem precisar de dado seu:**
@@ -202,7 +204,7 @@ Pasta raiz com **uma subpasta por classe** de arquivos `.dx`, ou uma tabela (CSV
 
 **A proveniência nunca viaja com os seus resultados.** O leitor lê só os campos de que precisa (nunca `##AUDIT TRAIL`) e os identificadores de amostra são removidos do `metadados.csv` antes de gravar. Um teste varre todo artefato gerado, inclusive os bytes do `.joblib`.
 
-Cada execução grava em `resultados_guaraci/{amostra}/{Modo}/PLSDA_OE_{nivel}_{preproc}_{timestamp}/` com `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) e `Modelos/`.
+Cada execução grava em `resultados_guaraci/{amostra}/{Modo}/{PREFIXO}_{nivel}_{preproc}_{timestamp}/` (`PREFIXO` é `PLSDA_OE` na classificação, `PLSR_OE` na quantificação e `PCA_OE` na exploração) com `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) e `Modelos/`.
 
 ## Validação
 

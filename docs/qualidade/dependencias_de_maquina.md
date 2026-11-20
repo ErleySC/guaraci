@@ -59,6 +59,7 @@ Todo uso de memória livre, CPU, relógio, caminho de máquina, variável de amb
 | `tests/test_tarefas_cli.py` | ambiente | isolado | não era necessário | herda o ambiente e sobrescreve o que importa (HOME, PYTHONPATH, MPLBACKEND...) ou le uma chave opt-in |
 | `tests/test_tarefas_cli.py` | relogio | corrigido | sim | o teto de 20 s por tarefa foi removido: o tempo e' medido na documentacao, nao afirmado |
 | `tests/test_tempo_ate_o_menu.py` | ambiente | isolado | não era necessário | herda o ambiente e sobrescreve o que importa (HOME, PYTHONPATH, MPLBACKEND...) ou le uma chave opt-in |
+| `tests/test_traducao_console.py` | ambiente | isolado | não era necessário | herda o ambiente e sobrescreve o que importa (HOME, PYTHONPATH, MPLBACKEND...) ou le uma chave opt-in |
 | `tests/test_transferir_linearidade_robustez.py` | ambiente | isolado | não era necessário | herda o ambiente e sobrescreve o que importa (HOME, PYTHONPATH, MPLBACKEND...) ou le uma chave opt-in |
 | `tests/test_verificar_hash_final.py` | ambiente | legitimo | não era necessário | GUARACI_WSL_DISTRO escolhe a distro do WSL, como no verificador de producao; o padrao e' Ubuntu |
 | `tests/test_verificar_hash_final.py` | caminho | legitimo | não era necessário | conversao Windows->WSL de um caminho ficticio (usuario `alguem`) |

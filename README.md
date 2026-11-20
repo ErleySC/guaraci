@@ -145,6 +145,8 @@ The base install does **not** include the readers for Bruker OPUS (`opus`), Ther
 pip install ".[all]"   # run inside the cloned folder; for development: pip install -e ".[all]"
 ```
 
+On Python 3.14 or newer, `.[all]` finishes **without** the Agilent/Waters HPLC/GC folder reader: `rainbow-api` has no release for 3.14 yet, so pip skips it without saying so. If you need those folders, use Python 3.13 or export the data to CSV; `guaraci doctor` and `guaraci --version` show it as missing.
+
 Not sure what is missing? `guaraci doctor` lists it, and `guaraci doctor --instalar` installs it after you confirm (add `--sim` to skip the question). It installs the web app, the report writers and every reader that exists for your Python, with the version ranges of the installed package, so it also works from a clone. The benchmark extra (`xgboost`, `shap`, large) is left out; ask for it with `pip install -e ".[benchmark]"`.
 
 **First steps, no data of your own required:**
@@ -200,7 +202,7 @@ Root folder with **one subfolder per class** of `.dx` files, or a table (CSV/XLS
 
 **Provenance never travels with your results.** The parser reads only the fields it needs (never `##AUDIT TRAIL`), and sample identifiers are stripped from `metadados.csv` before it is written. A test scans every generated artifact, including the `.joblib` bytes.
 
-Each run writes to `resultados_guaraci/{sample}/{Mode}/PLSDA_OE_{level_slug}_{preproc}_{timestamp}/` with `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) and `Modelos/`.
+Each run writes to `resultados_guaraci/{sample}/{Mode}/{PREFIX}_{level_slug}_{preproc}_{timestamp}/` (`PREFIX` is `PLSDA_OE` for classification, `PLSR_OE` for quantification and `PCA_OE` for exploration) with `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) and `Modelos/`.
 
 ## Validation
 
