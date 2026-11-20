@@ -97,7 +97,7 @@ def test_texto_ajuda_do_guaraci_e_o_derivado_do_catalogo():
 
 
 def test_todo_comando_do_catalogo_tem_despacho_no_main():
-    arvore = ast.parse(inspect.getsource(g.main))
+    arvore = ast.parse(inspect.getsource(g._main))   # main() so' embrulha o tradutor do console
     literais = {n.value for n in ast.walk(arvore) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
     for c in cat.comandos():
         assert c["id"] in literais or c["id"] in cmd.SUBCOMANDOS, f"comando {c['id']} sem despacho em main()"

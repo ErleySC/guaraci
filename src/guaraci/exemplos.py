@@ -24,6 +24,10 @@ NOTA_VIP = ("Ao rodar, v00, v01 e v02 sao as variaveis construidas para separar 
             "algumas (por exemplo v08 e v11) tambem podem passar de VIP 1 por acaso: o VIP e' relativo (a soma dos\n"
             "quadrados e' sempre igual ao numero de variaveis) e ha so' 24 amostras fisicas. Por isso VIP > 1 e'\n"
             "regra pratica, nao teste.")
+NOTA_VIP_EN = ("When run, v00, v01 and v02 are the variables built to separate the classes. The other 9 are just noise;\n"
+               "some (for example v08 and v11) may also pass VIP 1 by chance: VIP is relative (the sum of the squares\n"
+               "always equals the number of variables) and there are only 24 physical samples. So VIP > 1 is a\n"
+               "rule of thumb, not a test.")
 
 # id -> grupo do catalogo, nome, faz, esperado (arquivos que a execucao cria)
 EXEMPLOS: Dict[str, Dict[str, Any]] = {
@@ -299,7 +303,9 @@ def gerar(cenario: str, pasta: str) -> Dict[str, Any]:
     os.makedirs(pasta, exist_ok=True)
     pasta = os.path.abspath(pasta)
     csv = os.path.join(pasta, "dados.csv")           # caminhos absolutos: o config roda de qualquer pasta
-    base = dict(abrir_figuras_na_tela=False, pasta_saida=os.path.join(pasta, nome_pasta("resultados")), n_permutacoes=30, max_lvs=8)
+    # Sem n_permutacoes (fica o padrao 200) e max_lvs=15: com 30 permutacoes e teto 8 os exemplos disparavam os
+    # proprios avisos do assistente ("use 200", "LVs no teto"), o que ensinava o usuario a ignora-los.
+    base = dict(abrir_figuras_na_tela=False, pasta_saida=os.path.join(pasta, nome_pasta("resultados")), max_lvs=15)
     if cenario == "explorar":
         _csv_espectral(pasta, quantificar=False)
         cfg = dict(modo_entrada="csv", arquivo_csv=csv, coluna_classe="classe", coluna_grupo="lote",

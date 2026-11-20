@@ -141,13 +141,29 @@ _USO_EN = (
     "  variable passes the threshold. Choosing variables by VIP and validating on the same data is optimistic.\n")
 
 
+#: TEXTO_VIP (vip_estabilidade, so' em portugues) em ingles.
+_TEXTO_VIP_EN = (
+    "VIP > 1 is a rule of thumb, not a significance test. Choosing variables by looking at the VIP and then "
+    "validating the model on the same data gives an optimistic result; reducing variables by VIP is only valid "
+    "inside an external (nested) validation: this command does not reduce variables; nested selection is the one "
+    "in `guaraci run`, with the 'Variable selection' option on (selecao_variaveis_etapa4). "
+    "The stability shown comes from grouped validation folds: a variable with VIP > 1 in almost every fold is "
+    "more reliable than one that passes the threshold in only some. Reference: Wold, Sjostrom & Eriksson 2001, "
+    "doi:10.1016/S0169-7439(01)00155-1.")
+
+
+def _texto_vip(res: Dict[str, Any]) -> str:
+    return _TEXTO_VIP_EN if _ESTADO["lang"] == "en" else res["texto"]
+
+
 def _idioma_de(args_l: Sequence[str]) -> str:
     for i, a in enumerate(args_l):
         if a == "--idioma" and i + 1 < len(args_l):
             return "en" if args_l[i + 1].lower().startswith("en") else "pt"
         if a.startswith("--idioma="):
             return "en" if a.split("=", 1)[1].lower().startswith("en") else "pt"
-    return "en" if os.environ.get("GUARACI_IDIOMA", "").lower().startswith("en") else "pt"
+    from guaraci.idioma_relatorio import idioma as _idioma_padrao   # GUARACI_IDIOMA, escolha do menu, ingles
+    return _idioma_padrao()   # antes caia em portugues, ao contrario de anova/monitorar/transferir
 
 
 def _coluna(df, nome: str, papel: str):
@@ -201,7 +217,7 @@ def _blocos(res: Dict[str, Any], nomes: List[str], args: argparse.Namespace, n: 
         B.append(("p", _m("mais", n=len(nomes))))
     if figura:
         B.append(("img", "../figuras/" + os.path.basename(figura), _m("figura")))
-    B.append(("p", res["texto"]))
+    B.append(("p", _texto_vip(res)))
     return B
 
 
@@ -281,7 +297,7 @@ def executar(argv: Optional[Sequence[str]] = None) -> int:
             figura = figura_vip_estabilidade(res, os.path.join(pasta_execucao(pasta, "figuras"), "vip_estabilidade.png"), nomes)
             escritos.append(figura)
         linhas = _resumo(res, nomes, args, len(df))
-        texto = "\n".join(linhas + ["", res["texto"]])
+        texto = "\n".join(linhas + ["", _texto_vip(res)])
         r = os.path.join(pasta_execucao(pasta, "relatorio"), "vip_resumo.txt")
         with open(r, "w", encoding="utf-8") as fh:
             fh.write(texto + "\n")

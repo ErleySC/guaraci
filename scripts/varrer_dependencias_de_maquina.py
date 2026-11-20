@@ -61,7 +61,7 @@ for _arq in ("test_amostragem_ativa_cli", "test_contrato_api_publica", "test_con
              "test_golden_valores", "test_graficos_motor", "test_monitorar_cli", "test_notebook_5_minutos",
              "test_parafac_cow_relatorio_cli", "test_perfis_objetivo_rigor", "test_pipeline_import_sem_efeito_global",
              "test_revisao_cega_r5", "test_saida_sem_caminho_da_maquina", "test_tarefas_cli",
-             "test_tempo_ate_o_menu", "test_transferir_linearidade_robustez", "test_web_fluxo_completo"):
+             "test_idioma_console", "test_tempo_ate_o_menu", "test_transferir_linearidade_robustez", "test_web_fluxo_completo"):
     DECISOES[(f"tests/{_arq}.py", "ambiente")] = ("isolado", "herda o ambiente e sobrescreve o que importa (HOME, PYTHONPATH, MPLBACKEND...) ou le uma chave opt-in")
 for _arq in ("test_contrato_api_publica", "test_contrato_saida_tabular", "test_golden_valores"):
     DECISOES[(f"tests/{_arq}.py", "ambiente")] = ("legitimo", "chave opt-in GUARACI_REGRAVAR_GOLDEN: regravar o golden e' decisao explicita")

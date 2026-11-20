@@ -28,6 +28,7 @@ Todo uso de memória livre, CPU, relógio, caminho de máquina, variável de amb
 | `tests/test_hardware.py` | cpu | injetado | não era necessário | o fallback sem psutil e' exercitado bloqueando o import; nenhum valor de CPU e' afirmado |
 | `tests/test_hardware.py` | ram | injetado | não era necessário | psutil e' bloqueado ou substituido por uma memoria falsa; as fontes sem psutil (/proc/meminfo por caminho injetavel, sysconf, ctypes) sao trocadas por arquivo/funcao falsos; hardware.py le o ambiente por natureza e a chamada real so' confere as chaves |
 | `tests/test_hsi_offline_prova.py` | rede | bloqueado | não era necessário | o socket e' bloqueado durante o pipeline HSI: prova de operacao offline |
+| `tests/test_idioma_console.py` | ambiente | isolado | não era necessário | herda o ambiente e sobrescreve o que importa (HOME, PYTHONPATH, MPLBACKEND...) ou le uma chave opt-in |
 | `tests/test_idioma_relatorios.py` | ambiente | injetado | não era necessário | GUARACI_IDIOMA e' fixada em pt e depois en para gerar os relatorios nos dois idiomas; o valor anterior e' restaurado |
 | `tests/test_lacunas_avaliacao_modelos.py` | ram | injetado | não era necessário | _verificar_ram e' trocado por uma funcao fixa nos dois ramos (com e sem memoria) |
 | `tests/test_lacunas_fechamento.py` | ram | injetado | não era necessário | a memoria e' sempre uma memoria falsa (psutil ou hardware_probe substituidos); nenhum valor da maquina e' afirmado |
