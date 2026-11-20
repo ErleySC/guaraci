@@ -2,7 +2,7 @@
   "_doc": "Teto de testes PULADOS por motivo, POR PERFIL. Motivo fora da lista do perfil, skip sem motivo ou contagem acima do teto reprova a sessao (conftest.py + tests/_pulados.py). Perfil: GUARACI_PULADOS_AMBIENTE; senao 'ci' se a variavel CI existir; senao 'local-completo' se GUARACI_DATASETS_DIR existir; senao 'local-sem-dados'. 'padrao' e' regex sobre o texto do motivo. Este arquivo traz os perfis da SUITE PADRAO (ci, sem-checkout-git, local-sem-dados, local-completo), nenhum com motivo de conjunto de dados. A validacao local do mantenedor fica fora do repositorio; se ela for posta em validacao/ (ignorada pelo git), o seu proprio pulados_esperados.json tem precedencia para o perfil que definir.",
   "ambientes": {
     "ci": {
-      "_doc": "Job 'test' do GitHub Actions (suite padrao, nenhum dataset): requirements.txt + [dev], sem extra [cores], checkout raso.",
+      "_doc": "Job 'test' do GitHub Actions (suite padrao, nenhum dataset): requirements.txt + [dev,imagem,hdf5], sem extra [cores], checkout raso.",
       "motivos": {
         "lista privada de termos ausente nesta maquina (so as verificacoes genericas rodam)": {
           "padrao": "^lista privada de termos ausente ou vazia nesta maquina",
@@ -43,10 +43,6 @@
         "bash utilizavel ausente (runner Windows do Actions sem a distro WSL)": {
           "padrao": "^bash utilizavel ausente:",
           "max": 8
-        },
-        "ambiente sem todos os extras": {
-          "padrao": "^ambiente sem todos os extras$",
-          "max": 1
         }
       }
     },
@@ -165,6 +161,10 @@
         "sem python3.11 separado para compilar de verdade (job 3.11 ou runner sem ele)": {
           "padrao": "^sem interpretador 3\\.11 separado$",
           "max": 1
+        },
+        "extra [hdf5] nao instalado: h5py": {
+          "padrao": "^h5py \\(extra \\[hdf5\\]\\) nao instalado$",
+          "max": 8
         }
       }
     },
