@@ -1741,11 +1741,29 @@ etapas que você liga (benchmark, OPLS-DA, SHAP, Monte Carlo...) saem em qualque
 `--sem-ajuste-automatico` desliga): só compatibilidade, com linha `Ajustado: X → Y. Motivo: Z.
 Desfazer: ...` no log, em `config_efetiva.yaml` e em `Relatorios/ajustes_automaticos.json`. Hoje:
 pré-processamento espectral em tabela de elementos ou em imagem vira autoescala; modos imagem,
-gcms, hplc, eem e rmn com a faixa NIR padrão deixam de cortar o eixo; o nível N1 desliga o DD-SIMCA
-e o N2 liga; etapas de classificação ficam desligadas em objetivo que não é classificação. **Nunca
+gcms, hplc, eem e rmn com a faixa NIR padrão deixam de cortar o eixo (nos outros modos, a faixa padrão 4000–10000 só é trocada pelo eixo inteiro dos dados quando não cruza o eixo; faixa escrita por você nunca é mexida); o nível N1 desliga o DD-SIMCA
+e o N2 liga; o classificador `auto` vira PLS-LDA ou PLS-DA conforme o tamanho da amostra (abaixo); etapas de classificação ficam desligadas em objetivo que não é classificação. **Nunca
 é automático:** alpha, validação, unidade de análise, política de censura, seleção de variáveis,
 método final (viram sugestão). Combinação sem remédio seguro é recusada (ex.: nível N3 no modo csv
 sem `coluna_concentracao`). O `cfg` do usuário volta aos valores escolhidos depois da execução.
+
+**Classificador (`classificador: auto | plsda | plslda`).** `auto` (padrão) conta as **unidades
+independentes** (amostras físicas, ou seja os grupos de `mae_id` quando existem; senão as amostras):
+com **menos de 100** usa PLS-LDA (LDA sobre os escores do PLS, com encolhimento), com 100 ou mais usa
+PLS-DA. Com poucas amostras por classe o PLS-DA ficou bem atrás (0,75 contra 0,995 de acurácia
+balanceada em um conjunto público de 96 amostras e 7 classes), mas é o método de referência quando há
+amostra de sobra. A escolha aparece no log (`[CONTEXTO]`), em `config_efetiva.yaml` e em
+`Relatorios/ajustes_automaticos.json`. Escrever `plsda` ou `plslda` fixa o método e `auto` não
+interfere. Não decide em quantificação nem no modo exploratório, e volta ao PLS-DA se houver menos
+de 2 amostras por classe (a LDA não estima a covariância). Limite de 100: escolha prática medida em
+poucos conjuntos, não um teorema; se o seu caso é de fronteira, fixe o método e compare. Quem tem
+resultados publicados com o programa anterior deve escrever `classificador: plsda` para reproduzi-los.
+
+**Faixa espectral (`faixa_min_cm`, `faixa_max_cm`).** O padrão (4000 a 10000) é de NIR em número de
+onda. Se o eixo dos dados não cruza essa faixa (por exemplo, NIR em nm, Raman ou índice de coluna), o
+programa usa o eixo inteiro e registra o ajuste, em vez de recusar a análise. Se o eixo cruza só em
+parte, nada muda, e quem quer outro recorte escreve os dois campos. Isso vale para os modos
+espectrais; tabela de elementos e imagem têm regras próprias.
 
 **Um modelo por par espécie × adulterante.** No menu, tela **[3.7] Quantificação por par** (modo Avançado: tecla `M`; o caminho direto `3.7` abre a tela nos dois modos), que usa a configuração atual; na linha de comando, `guaraci pares PASTA_DADOS [--saida PASTA]
 [--config config.yaml] [--iodo-especies especies.csv --iodo-adulterantes adulterantes.csv]` acha, em cada

@@ -254,7 +254,7 @@ _CONFIG_SPEC: List[Dict[str, Any]] = [
     {'key': 'alinhamento', 'attr': 'alinhamento', 'tipo': 'choice', 'opcoes': ['nenhum', 'cow']},
     {'key': 'alinhamento_segmentos', 'attr': 'alinhamento_segmentos', 'tipo': 'int', 'opcoes': None, 'min': 2, 'max': 2000},
     {'key': 'alinhamento_folga', 'attr': 'alinhamento_folga', 'tipo': 'int', 'opcoes': None, 'min': 0, 'max': 5000},
-    {'key': 'classificador', 'attr': 'classificador', 'tipo': 'choice', 'opcoes': ['plsda', 'plslda']},
+    {'key': 'classificador', 'attr': 'classificador', 'tipo': 'choice', 'opcoes': ['auto', 'plsda', 'plslda']},
     {'key': 'quantificacao_rotulo_treino', 'attr': 'quant_rotulo_treino', 'tipo': 'choice', 'opcoes': ['previsto', 'verdadeiro']},
     {'key': 'pca_componentes', 'attr': 'n_pcs_pca', 'tipo': 'int', 'opcoes': None, 'min': 2, 'max': 50},
     {'key': 'hca_componentes', 'attr': 'hca_n_pcs', 'tipo': 'int', 'opcoes': None, 'min': 2, 'max': 200},

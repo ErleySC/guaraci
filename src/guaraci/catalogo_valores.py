@@ -261,8 +261,10 @@ VALORES: Dict[str, Dict[str, Texto]] = {
                 "Aligns chromatograms by COW; the reference comes only from each fold's training, and the test and new samples are aligned to it."),
     },
     "classificador": {
-        "plsda": ("PLS-DA: PLS com resposta dummy e atribuicao pelo maior valor (padrao). Basta para classes sem ordem.",
-                  "PLS-DA: PLS with a dummy response and assignment by the highest value (default). Enough for unordered classes."),
+        "auto": ("Escolhe sozinho: PLS-LDA com menos de 100 unidades independentes (amostras fisicas), PLS-DA a partir disso (padrao). A escolha fica registrada nos ajustes automaticos.",
+                 "Chooses by itself: PLS-LDA with fewer than 100 independent units (physical samples), PLS-DA from there on (default). The choice is recorded in the automatic adjustments."),
+        "plsda": ("PLS-DA: PLS com resposta dummy e atribuicao pelo maior valor. Basta para classes sem ordem e com muitas amostras.",
+                  "PLS-DA: PLS with a dummy response and assignment by the highest value. Enough for unordered classes with many samples."),
         "plslda": ("PLS-LDA: LDA sobre os escores do PLS. Para classes ordenadas (claro/medio/escuro); exige mais amostras por classe que variaveis latentes.",
                    "PLS-LDA: LDA on the PLS scores. For ordered classes (light/medium/dark); needs more samples per class than latent variables."),
     },

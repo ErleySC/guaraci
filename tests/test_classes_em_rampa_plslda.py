@@ -233,7 +233,9 @@ def test_json_portatil_reproduz_o_plslda(execucoes):
 def test_padrao_continua_plsda_e_chave_invalida_e_recusada(tmp_path):
     from guaraci.config_io import load_config
     cfg = pq.Config()
-    assert cfg.classificador == "plsda"
+    assert cfg.classificador == "auto"      # decide por n de unidades independentes; 'plsda' explicito segue valendo
+    assert type(pq._novo_pls_classificador(cfg, 2)) is PLSRegression
+    cfg.classificador = "plsda"
     assert type(pq._novo_pls_classificador(cfg, 2)) is PLSRegression
     cfg.classificador = "plslda"
     assert isinstance(pq._novo_pls_classificador(cfg, 2), PLSLDAClassifier)

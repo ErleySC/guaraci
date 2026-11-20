@@ -141,6 +141,7 @@
       "max": null,
       "min": null,
       "opcoes": [
+        "auto",
         "plsda",
         "plslda"
       ],
@@ -3859,6 +3860,14 @@
         ],
         "forma": "dataclass"
       },
+      "FAIXA_ABERTA": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "FAIXA_NIR_PADRAO": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
       "MODOS_TABULARES": {
         "forma": "constante",
         "tipo": "tuple"
@@ -3894,6 +3903,10 @@
       "SUGESTOES": {
         "forma": "constante",
         "tipo": "tuple"
+      },
+      "ajustar_tardio": {
+        "assinatura": "(cfg: Any, regra: str, campo: str, novo: Any, motivo: tuple[str, str], lang: str = 'PT') -> Union[None, guaraci.Ajuste]",
+        "forma": "funcao"
       },
       "aplicar": {
         "assinatura": "(cfg: Any, kw:auto: Union[None, bool] = None, kw:lang: str = 'PT') -> guaraci.Resultado",
