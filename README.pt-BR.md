@@ -104,7 +104,7 @@ opção que você precisa saber ligar.
 
 - **Modos de análise:** discriminação de classes · puro × adulterado · quantificação de teor (regressão).
 - **Pré-processamento** (ordem de Rinnan et al. 2009): MSC/SNV → Savitzky-Golay → centragem na média. Presets: `MSC+SG+MC`, `SNV+SG+MC`, `Autoscaling`, `Mean-centering`.
-- **Modelos:** PLS-DA, regressão PLS, PCA, HCA (Ward), DD-SIMCA (uma classe), OPLS-DA.
+- **Modelos:** PLS-DA e PLS-LDA (`classificador: auto` usa PLS-LDA abaixo de 100 unidades independentes; `plsda`/`plslda` fixa o método), regressão PLS, PCA, HCA (Ward), DD-SIMCA (uma classe), OPLS-DA.
 - **Bateria de validação:** teste de permutação, interceptos R²Y/Q²Y de Wold, CV-ANOVA, **ICs bootstrap BCa**, T² de Hotelling, resíduos Q, teste F de falta de ajuste e protocolo de robustez relatado como intervalo (nunca aprovado/reprovado).
 - **Interpretação e seleção:** VIP com estabilidade por dobra (`guaraci vip`, que mostra a estabilidade e não reduz variáveis), Razão de Seletividade, iPLS, sPLS-DA; a seleção de variáveis do `guaraci run` fica aninhada na validação e não pode vazar.
 - **Comparação de grupos sobre a unidade independente** (`guaraci anova`): Tukey–Kramer, Games–Howell, Kruskal–Wallis com Dunn, diagnóstico de premissas, FDR entre variáveis.
@@ -180,7 +180,7 @@ cp config.example.yaml config.yaml   # depois aponte `pasta_dados` para a sua pa
 
 ```bash
 guaraci                                       # 1. interface de terminal (recomendada)
-python -m guaraci.pipeline --rodar            # 2. rodar direto do config.yaml
+guaraci run config.yaml                       # 2. rodar direto do config.yaml
 guaraci web                                   # 3. aplicativo web (navegador, modo local)
 ```
 
@@ -207,7 +207,7 @@ Pasta raiz com **uma subpasta por classe** de arquivos `.dx`, ou uma tabela (CSV
 
 **A proveniência nunca viaja com os seus resultados.** O leitor lê só os campos de que precisa (nunca `##AUDIT TRAIL`) e os identificadores de amostra são removidos do `metadados.csv` antes de gravar. Um teste varre todo artefato gerado, inclusive os bytes do `.joblib`.
 
-Cada execução grava em `resultados_guaraci/{amostra}/{Modo}/{PREFIXO}_{nivel}_{preproc}_{timestamp}/` (`PREFIXO` é `PLSDA_OE` na classificação, `PLSR_OE` na quantificação e `PCA_OE` na exploração) com `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) e `Modelos/`.
+Cada execução grava em `resultados_guaraci/{amostra}/{Modo}/{PREFIXO}_{nivel}_{preproc}_{timestamp}/` (`PREFIXO` é `PLSDA_OE` na classificação, `PLSR_OE` na quantificação e `PCA_OE` na exploração) com `Graficos/`, `Tabelas/`, `Relatorios/` (`resumo_modelo.txt`, `model_card.md`) e `Modelos/` (com a interface em inglês: `Figures/`, `Tables/`, `Reports/`, `Models/`).
 
 ## Validação
 

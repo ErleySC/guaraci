@@ -81,10 +81,12 @@ class Ajuste:
     de: Any
     para: Any
     motivo: str
+    desfazer: str = ""                 # vazio = a receita padrao abaixo
 
     def linha(self) -> str:
+        receita = self.desfazer or f"defina `{self.campo}: {_fmt(self.de)}` e rode com --sem-ajuste-automatico"
         return (f"Ajustado: {self.campo} {_fmt(self.de)} -> {_fmt(self.para)}. Motivo: {self.motivo}. "
-                f"Desfazer: defina `{self.campo}: {_fmt(self.de)}` e rode com --sem-ajuste-automatico.")
+                f"Desfazer: {receita}.")
 
 
 @dataclass
@@ -220,7 +222,8 @@ def aplicar(cfg: Any, *, auto: Optional[bool] = None, lang: str = "PT") -> Resul
     return r
 
 
-def ajustar_tardio(cfg: Any, regra: str, campo: str, novo: Any, motivo: Tuple[str, str], lang: str = "PT") -> Optional[Ajuste]:
+def ajustar_tardio(cfg: Any, regra: str, campo: str, novo: Any, motivo: Tuple[str, str], lang: str = "PT",
+                   desfazer: str = "") -> Optional[Ajuste]:
     """Ajuste que so' da' para decidir DEPOIS de ler os dados (eixo, numero de amostras). Mesmo contrato dos
     ajustes de `aplicar`: grava em `cfg.ajustes_automaticos` (vai para a configuracao efetiva) e `desfazer`
     o reverte ao fim da execucao, entao o `cfg` do usuario nao muda. Respeita `auto_adjust: false`."""
@@ -231,7 +234,7 @@ def ajustar_tardio(cfg: Any, regra: str, campo: str, novo: Any, motivo: Tuple[st
     if _igual(atual, novo):
         return None
     setattr(cfg, attr, novo)
-    aj = Ajuste(regra, campo, _legivel(atual), _legivel(novo), motivo[1 if str(lang).upper() == "EN" else 0])
+    aj = Ajuste(regra, campo, _legivel(atual), _legivel(novo), motivo[1 if str(lang).upper() == "EN" else 0], desfazer)
     cfg.ajustes_automaticos = list(getattr(cfg, "ajustes_automaticos", []) or []) + [
         dict(regra=aj.regra, campo=aj.campo, de=aj.de, para=aj.para, motivo=aj.motivo)]
     return aj

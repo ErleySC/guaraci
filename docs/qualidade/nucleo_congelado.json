@@ -52,7 +52,7 @@
   "src/guaraci/model_export.py": "f1f87381ea94f300594d3c1135211be458d66730a81802e3b99fd256c982c208",
   "src/guaraci/monitorar_cli.py": "f84dd0cf8d71d553ba815215643525cd71ab96d160c970ee92de2cc7c53b9ae0",
   "src/guaraci/perfil_matriz.py": "ece91f5b90b0f801c88258ea607eef69fa294de5f8a9045284223b775910fd96",
-  "src/guaraci/pipeline.py": "2147a5d93fcdbc562ced55548217562c1e5b692ffaf9787130edaec622aecd80",
+  "src/guaraci/pipeline.py": "696824b687c498a278b468d3219b23bd88e9f0e178b7b680bee999113caa747e",
   "src/guaraci/plano_amostral.py": "84213edfca634d5307dc6fa863f7c935fbedf2b5219eb7d75bc2332b1dfec8c7",
   "src/guaraci/plano_coleta.py": "ba6fe485eb0ad7eabb5bdb3595a8328ebe8c4b2691d3d0d1cf4a3ceaae90d99c",
   "src/guaraci/politica_pooled_local.py": "31a7ffbf13f8c5314a869e8d291ea8c0fe552790b0bae173db332fc445088aa2",

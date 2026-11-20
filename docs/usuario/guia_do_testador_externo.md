@@ -26,14 +26,15 @@ Você **não** precisa enviar seus dados a ninguém: tudo roda no seu computador
 
 ## 2. Tempo esperado
 
-Medido em 2026-10-02, numa instalação limpa (Linux, 16 núcleos lógicos, 7,6 GB):
+Medido em 2026-11-20, numa máquina Linux de nuvem com 4 núcleos (Python 3.13):
 
 | Etapa | Tempo medido |
 |---|---|
-| Instalar (`pip install` com extras `web,reports,benchmark`) | ~2 min |
+| Instalar (`pip install ".[all]"`) | alguns minutos, conforme a conexão |
 | `guaraci doctor` (diagnóstico do ambiente) | segundos |
-| `guaraci run` com o exemplo (`config.example.yaml`, dados sintéticos) | ~3 min |
-| `guaraci demo` (fluxo completo com dados sintéticos) | ~14 min |
+| `guaraci exemplo classificar --rodar` (dados sintéticos) | ~15 s |
+| `guaraci demo` (fluxo completo com dados sintéticos) | ~30 s |
+| Tabelas reais de 100 a 800 espectros com centenas de variáveis | de 15 s a alguns minutos por análise |
 | Seu dataset | depende do tamanho: alguns milhares de espectros podem levar dezenas de minutos por análise |
 
 Em computadores mais modestos, conte com o dobro.
@@ -41,7 +42,7 @@ Em computadores mais modestos, conte com o dobro.
 ## 3. Roteiro sugerido (cerca de 1 hora)
 
 1. Instale (ver `README.md`, seção de instalação) e rode `guaraci doctor`.
-2. Rode `guaraci demo` e abra `Relatorios/resumo_modelo.txt` e a pasta `Graficos/`.
+2. Rode `guaraci demo` e abra `Relatorios/resumo_modelo.txt` e a pasta `Graficos/` (com a interface em inglês: `Reports/` e `Figures/`).
 3. Copie `config.example.yaml` para `config.yaml`, aponte para os seus dados
    (`modo_entrada`, `pasta_dados` ou `arquivo_csv`, `coluna_classe`) e rode
    `guaraci run config.yaml`. Ou use o assistente: `guaraci` (sem argumentos).

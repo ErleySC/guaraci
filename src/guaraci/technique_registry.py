@@ -68,6 +68,14 @@ REGISTRY: List[TechniqueEntry] = [
         quando_usar=_TEC["pls_da"]["use"][0],
         limitacao=_TEC["pls_da"]["nao_use"][0],
     ),
+    TechniqueEntry(
+        id="pls_lda",
+        categoria="classificacao_deteccao",
+        nome="PLS-LDA",
+        referencia="guaraci.classificadores.PLSLDAClassifier",
+        quando_usar=_TEC["pls_lda"]["use"][0],
+        limitacao=_TEC["pls_lda"]["nao_use"][0],
+    ),
     # ---- Quantificacao -----------------------------------------------------
     TechniqueEntry(
         id="pls_r_pooled",

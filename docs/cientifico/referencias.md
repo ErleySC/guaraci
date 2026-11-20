@@ -72,7 +72,7 @@
 | Kucheryavskiy (2024), comprehensive tutorial on | `10.1002/cem.3556` | 2026-10-12 contra Crossref | `paper/paper.bib`, `tests/test_paper_bibliografia.py` |
 | Lamanna (2017), territorial origin of olive oil representing | `10.1002/mrc.4566` | 2026-09-25 contra Crossref | `src/guaraci/selecao_variaveis.py`, `tests/test_selecao_moran.py` |
 | Lechevallier (2025), dataset on wastewater quality monitoring with | `10.1038/s41597-025-05459-x` | 2026-09-25 contra Crossref | - |
-| Ledoit (2004), a well conditioned estimator for large | `10.1016/s0047-259x(03)00096-4` | 2026-09-25 contra Crossref | - |
+| Ledoit (2004), a well conditioned estimator for large | `10.1016/s0047-259x(03)00096-4` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py` |
 | Leek (2010), tackling the widespread and critical impact | `10.1038/nrg2825` | 2026-09-25 contra Crossref | - |
 | Lei (2018), distribution free predictive inference for regression | `10.1080/01621459.2017.1307116` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/conformal.py` |
 | Li (2009), key wavelengths screening using competitive adaptive | `10.1016/j.aca.2009.06.046` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/config.py`, `src/guaraci/selecao_variaveis.py` |

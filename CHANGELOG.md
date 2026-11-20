@@ -39,6 +39,13 @@ Classificador e faixa espectral automáticos (2026-11-20):
 - Aviso de "apenas uma classe" sai uma vez por corrida (eram ~40); alerta no holdout de regressão para predições
   fora da faixa de calibração; `etapas_pre_processamento` sem `Personalizado` avisa em vez de ser ignorada.
 - PLS-LDA não quebra em dobras com tantas amostras quanto classes (usa as frequências de classe).
+- PLS-LDA ganha selo próprio em `guaraci confianca pls_lda` e entrada no catálogo; `guaraci ajuda classificador`
+  mostra o novo padrão.
+- Alerta de holdout em dois níveis: R² do holdout abaixo de 0 continua "o modelo não generalizou"; só o RMSEP acima
+  de 2× o RMSECV (com R² ainda positivo) passa a dizer que a validação cruzada está otimista.
+- Documentação conferida contra o programa: o manual dizia que `divisao_calibracao`, `sintetico_adulterantes`, `tag`
+  e `imagem_recorte` não eram chaves do `config.yaml` (são); versões do Python alinhadas (3.11 a 3.13 na CI, 3.14 sem
+  o leitor `.D`); tempos do guia do testador medidos de novo; nomes das pastas de saída em inglês documentados.
 
 Leitores conferidos com arquivos reais públicos e limitações da seção 8 (2026-11-18):
 

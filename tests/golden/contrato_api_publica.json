@@ -3811,6 +3811,11 @@
             "nome": "motivo",
             "tem_default": false,
             "tipo": "str"
+          },
+          {
+            "nome": "desfazer",
+            "tem_default": true,
+            "tipo": "str"
           }
         ],
         "forma": "dataclass"
@@ -3905,7 +3910,7 @@
         "tipo": "tuple"
       },
       "ajustar_tardio": {
-        "assinatura": "(cfg: Any, regra: str, campo: str, novo: Any, motivo: tuple[str, str], lang: str = 'PT') -> Union[None, guaraci.Ajuste]",
+        "assinatura": "(cfg: Any, regra: str, campo: str, novo: Any, motivo: tuple[str, str], lang: str = 'PT', desfazer: str = '') -> Union[None, guaraci.Ajuste]",
         "forma": "funcao"
       },
       "aplicar": {

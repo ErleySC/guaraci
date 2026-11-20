@@ -33,6 +33,7 @@ class Item(NamedTuple):
 REFS: Dict[str, Ref] = {
     # -- PLS e regressao
     "geladi1986": Ref("Geladi, P.; Kowalski, B. R.", 1986, "Partial least-squares regression: a tutorial", "10.1016/0003-2670(86)80028-9"),
+    "ledoit2004": Ref("Ledoit, O.; Wolf, M.", 2004, "A well-conditioned estimator for large-dimensional covariance matrices", "10.1016/S0047-259X(03)00096-4"),
     "wold2001": Ref("Wold, S.; Sjostrom, M.; Eriksson, L.", 2001, "PLS-regression: a basic tool of chemometrics", "10.1016/S0169-7439(01)00155-1"),
     "andersson2009": Ref("Andersson, M.", 2009, "A comparison of nine PLS1 algorithms", "10.1002/cem.1248"),
     "alsouki2023": Ref("Alsouki, L. et al.", 2023, "Dual-sPLS: a family of Dual Sparse Partial Least Squares regressions for feature selection and prediction with tunable sparsity; evaluation on simulated and near-infrared (NIR) data", "10.1016/j.chemolab.2023.104813"),
@@ -150,6 +151,7 @@ _SEM = "Procedimento proprio do GUARACI; as referencias sao das bases que ele us
 TEMAS: List[Tuple[str, str, str, List[Item]]] = [
     ("classificacao", "Classificacao e autenticacao", "Classification and authentication", [
         Item("PLS-DA", ("brereton2014", "westerhuis2008"), "pls_da"),
+        Item("PLS-LDA (LDA com encolhimento sobre os escores)", ("brereton2014", "ledoit2004"), "pls_lda", _SEM),
         Item("OPLS-DA", ("trygg2002", "bylesjo2006")),
         Item("DD-SIMCA", ("pomerantsev2008", "pomerantsev2013", "pomerantsev2020", "kucheryavskiy2020"), "ddsimca"),
         Item("Autenticacao vs. discriminacao", ("rodionova2016",)),
