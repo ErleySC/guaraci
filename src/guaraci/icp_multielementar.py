@@ -81,6 +81,11 @@ _RX_ELEM = [
 ]
 
 
+#: Cabecalho de coluna de INCERTEZA (FRX portatil, ICP): "Zr 2σ", "Zr 2s", "Fe +/-", "Fe ±", "Mo Error", "Pb SD".
+_RX_INCERTEZA = re.compile(r"(σ|±|\+/-|\berr(or|o)?\b|\bsd\b|\bsigma\b|\bunc|\bincert|\b\d\s*s\b|\brsd\b)",
+                           re.IGNORECASE)
+
+
 @dataclass
 class TabelaMultielementar:
     amostras: List[str]
@@ -109,6 +114,10 @@ def normalizar_elemento(cabecalho: str) -> Optional[str]:
     """'Cd 111', 'Cd111', '111Cd', 'Cd 228.802 (mg/kg)' -> nome canonico;
     None se o cabecalho nao for elemento."""
     texto = re.sub(r"\(.*?\)|\[.*?\]", "", str(cabecalho)).strip()
+    # FRX portatil e alguns ICP exportam "Mg Concentration" / "Mg Conc" ao lado de "Mg +/-" (incerteza)
+    texto = re.sub(r"\s+(concentration|concentra[cç][aã]o|conc\.?)$", "", texto, flags=re.IGNORECASE)
+    if _RX_INCERTEZA.search(texto):     # 'Zr 2σ', 'Fe +/-', 'Mo Error', 'Pb SD': incerteza, nao elemento
+        return None
     for rx in _RX_ELEM:
         m = rx.match(texto)
         if not m:
@@ -196,7 +205,9 @@ def ler_icp_csv(caminho: str, *, unidade: str, coluna_amostra: str,
         origem[nome] = c
         elementos.append(nome)
     if not elementos:
-        raise ValueError("nenhuma coluna reconhecida como elemento (ex.: 'Cd 111', 'Pb 220.353')")
+        raise ValueError("nenhuma coluna reconhecida como elemento (ex.: 'Cd 111', 'Pb 220.353', 'Fe'); "
+                         f"colunas do arquivo: {list(df.columns)[:15]}. Colunas de incerteza ('Fe Error', "
+                         "'Fe +/-') sao ignoradas de proposito; renomeie as de concentracao para o simbolo.")
     n, k = len(df), len(elementos)
     vals = np.full((n, k), np.nan)
     cens = np.zeros((n, k), dtype=bool)

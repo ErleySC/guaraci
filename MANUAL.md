@@ -1128,6 +1128,13 @@ método, depois expande de volta — nenhum dos três separa réplica física
 entre calibração e validação (garantido por teste de propriedade
 Hypothesis, `tests/test_propriedades_hypothesis.py`).
 
+A semente do Kennard-Stone e do Duplex é o par de amostras mais distantes
+entre si, exato como nos artigos (calculado em blocos, sem montar a matriz
+n×n; empate fica com o par de menores índices). Até a 1.0.0 era aproximada
+pelo ponto mais distante do centroide, e o conjunto escolhido diferia do
+algoritmo de livro em cerca de 1 de cada 4 dados
+(`tests/test_kennard_stone_exato.py`).
+
 **CLI** — menu principal, tecla `[K]` *Seleção de Amostras* (ao
 lado do planejamento de coleta): pede um CSV com os espectros (1 amostra
 por linha; separador `,` ou `;` detectado sozinho — `;` implica vírgula

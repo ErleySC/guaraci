@@ -426,6 +426,48 @@ def extract_dx_title(caminho: str) -> Optional[str]:
 #  Data loading
 # =========================================================================
 
+def _par_mais_distante(X: np.ndarray, bloco: int = 1024) -> Tuple[int, int]:
+    """Par (i, j), i < j, de MAIOR distancia euclidiana entre as linhas de `X` -- exato, sem a matriz n×n.
+
+    Percorre blocos de `bloco` linhas contra todas (memoria O(bloco·n)); a distancia ao quadrado vem da
+    identidade |a|²+|b|²-2a·b (BLAS). Como essa conta perde precisao por cancelamento, os pares a menos de
+    1e-9 (relativo) do maximo sao recalculados pela diferenca direta e o empate fica com o par de menores
+    indices: o resultado e' o mesmo de `scipy.spatial.distance.pdist` + argmax. Custo O(n²·p), da mesma
+    ordem das iteracoes do proprio Kennard-Stone."""
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    if n < 2:
+        return 0, 0
+    norma2 = np.einsum("ij,ij->i", X, X)
+    # erro de arredondamento da identidade cresce com |a|²+|b|²: a folga de empate usa essa escala
+    folga_abs = 1e-12 * (4.0 * float(norma2.max()) + 1e-300)
+    melhor = -np.inf
+    candidatos: List[Tuple[float, int, int]] = []
+
+    def _limiar(m: float) -> float:
+        return m - max(1e-9 * abs(m), folga_abs)
+    for ini in range(0, n, bloco):
+        fim = min(n, ini + bloco)
+        d2 = norma2[ini:fim, None] + norma2[None, :] - 2.0 * (X[ini:fim] @ X.T)
+        # so' o triangulo superior (j > i): evita contar o par duas vezes e o proprio ponto
+        d2[np.arange(n)[None, :] <= np.arange(ini, fim)[:, None]] = -np.inf
+        m = float(d2.max())
+        if m < _limiar(melhor):
+            continue
+        if m > melhor:
+            melhor = m
+            candidatos = [c for c in candidatos if c[0] >= _limiar(melhor)]
+        if melhor <= folga_abs:          # todas as linhas (numericamente) iguais: qualquer par serve
+            return 0, 1
+        ii, jj = np.nonzero(d2 >= _limiar(melhor))
+        candidatos.extend((float(d2[a, b]), int(ini + a), int(b)) for a, b in zip(ii[:10000], jj[:10000]))
+    candidatos = [c for c in candidatos if c[0] >= _limiar(melhor)]
+    exatos = [(float(np.sum((X[i] - X[j]) ** 2)), i, j) for _d, i, j in candidatos]
+    dmax = max(e[0] for e in exatos)
+    i, j = min((i, j) for d, i, j in exatos if d == dmax)
+    return i, j
+
+
 def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
     """Selecao de amostras de Kennard & Stone (1969), Technometrics 11:137-148.
 
@@ -437,11 +479,14 @@ def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
     validacao herda amostras dentro do span do treino (nao extrapola) e o
     treino cobre bem as bordas do espaco.
 
-    Semente: para evitar a matriz de distancias n×n (custosa em memoria para
-    milhares de espectros), o par inicial e aproximado pelo ponto mais distante
-    do centroide e, em seguida, o mais distante desse — variante eficiente e
-    comum de KS. As iteracoes seguintes sao exatas (distancia minima ao
-    conjunto selecionado, atualizada incrementalmente).
+    Semente EXATA (como no artigo original): o par de amostras mais distantes
+    entre si, achado em blocos (`_par_mais_distante`), sem montar a matriz de
+    distancias n×n inteira na memoria. Empate: o par de menores indices, entao
+    o resultado nao depende da ordem de leitura alem dela mesma. As iteracoes
+    seguintes tambem sao exatas (distancia minima ao conjunto selecionado,
+    atualizada incrementalmente; empate = menor indice). Ate a versao 1.0.0
+    a semente era aproximada (ponto mais distante do centroide), o que mudava
+    o conjunto em cerca de 1 de cada 4 dados.
 
     Retorna os indices selecionados, na ORDEM de selecao (os primeiros sao os
     mais extremos), o que permite usar um prefixo como subconjunto menor.
@@ -452,13 +497,13 @@ def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
         return np.array([], dtype=int)
     n_sel = int(min(max(n_selecionar, 1), n))
 
-    centroide = X.mean(axis=0)
-    i1 = int(np.argmax(np.sum((X - centroide) ** 2, axis=1)))
+    if n == 1:
+        return np.array([0], dtype=int)
+    i1, i2 = _par_mais_distante(X)
     selecionados = [i1]
     min_dist = np.sqrt(np.sum((X - X[i1]) ** 2, axis=1))
 
     if n_sel >= 2:
-        i2 = int(np.argmax(min_dist))
         selecionados.append(i2)
         min_dist = np.minimum(min_dist,
                               np.sqrt(np.sum((X - X[i2]) ** 2, axis=1)))
@@ -592,10 +637,9 @@ def duplex_split(X: np.ndarray, frac_treino: float = 0.5
     do PROPRIO conjunto que esta recebendo) -- os dois ficam
     representativos do espaco, nao so' o treino.
 
-    Semente aproximada (mesma tecnica de `kennard_stone`, evita matriz de
-    distancias n×n): o par semente do treino e' o ponto mais distante do
-    centroide + o mais distante desse; o par semente da validacao e' a
-    MESMA logica aplicada so' aos pontos restantes.
+    Semente exata (Snee 1977): o par mais distante entre si vai para o treino
+    e o par mais distante entre os que sobraram vai para a validacao
+    (`_par_mais_distante`, sem a matriz n×n; empate = menores indices).
     """
     X = np.asarray(X, dtype=float)
     n = X.shape[0]
@@ -605,12 +649,10 @@ def duplex_split(X: np.ndarray, frac_treino: float = 0.5
         return np.array([0], dtype=int), np.array([], dtype=int)
 
     def _semente(idx_pool: np.ndarray) -> List[int]:
-        Xp = X[idx_pool]
-        centro = Xp.mean(axis=0)
-        p1 = int(idx_pool[np.argmax(np.sum((Xp - centro) ** 2, axis=1))])
-        dist_p1 = np.sqrt(np.sum((Xp - X[p1]) ** 2, axis=1))
-        p2 = int(idx_pool[np.argmax(dist_p1)])
-        return [p1, p2] if p2 != p1 else [p1]
+        if idx_pool.size == 1:
+            return [int(idx_pool[0])]
+        a, b = _par_mais_distante(X[idx_pool])
+        return [int(idx_pool[a]), int(idx_pool[b])]
 
     treino = _semente(np.arange(n))
     restantes = set(range(n)) - set(treino)
@@ -975,6 +1017,28 @@ def atribuir_grupos(nomes, mapa: Dict[str, str], origem: str = "") -> np.ndarray
     return np.array([mapa[n] for n in nomes], dtype=str)
 
 
+#: Cabecalhos tipicos de tabela de picos/features de LC-MS e GC-MS exportada por MZmine, XCMS, MS-DIAL,
+#: OpenChrom e afins, em que cada LINHA e' um pico e cada COLUNA uma amostra (o contrario do que o Guaraci le).
+_RX_TABELA_DE_PICOS = re.compile(
+    r"^(row id|row m/z|row retention time|mzmed|rtmed|mz|m/z|rt|rt \(min\)|retention time|alignment id|"
+    r"average mz|average rt\(min\)|feature( id)?|compound|metabolite name|peak( id)?|name)$", re.IGNORECASE)
+_RX_COLUNA_DE_ARQUIVO = re.compile(r"\.(mzml|mzxml|mzdata|raw|d|cdf|wiff)\b|peak area|peak height", re.IGNORECASE)
+
+
+def _dica_tabela_de_picos(df) -> str:
+    """Dica quando a tabela parece estar com as AMOSTRAS NAS COLUNAS (tabela de picos de LC-MS/GC-MS). Vazio se
+    nada sugere isso: a dica nunca troca a orientacao sozinha."""
+    colunas = [str(c).strip() for c in df.columns]
+    picos = [c for c in colunas if _RX_TABELA_DE_PICOS.match(c)]
+    arquivos = [c for c in colunas if _RX_COLUNA_DE_ARQUIVO.search(c)]
+    if len(picos) >= 2 or len(arquivos) >= 2:
+        exemplo = ", ".join((picos + arquivos)[:4])
+        return (f" A tabela parece ter um PICO por linha e uma AMOSTRA por coluna ({exemplo}), como a exportacao "
+                f"de MZmine, XCMS ou MS-DIAL. O Guaraci le uma amostra por linha: transponha a tabela (no "
+                f"Excel, Colar especial > Transpor) e acrescente a coluna de classe.")
+    return ""
+
+
 def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
                            arquivo_grupos: str = "", variavel_dados: str = "",
                            variavel_eixo: str = ""):
@@ -995,7 +1059,8 @@ def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
     if col_classe not in df.columns:
         raise ValueError(
             f"A coluna de classe '{col_classe}' nao existe no CSV. Colunas "
-            f"encontradas: {_lista_colunas(df)}. Ajuste coluna_classe.")
+            f"encontradas: {_lista_colunas(df)}. Ajuste coluna_classe."
+            + _dica_tabela_de_picos(df))
     if col_conc and col_conc not in df.columns:
         raise ValueError(
             f"A coluna de concentracao '{col_conc}' nao existe no CSV. "

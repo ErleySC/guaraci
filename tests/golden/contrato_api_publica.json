@@ -1657,9 +1657,21 @@
       }
     },
     "arquivo_matrizes": {
+      "DICA_CONVERTER": {
+        "forma": "constante",
+        "tipo": "str"
+      },
       "EXTENSOES_MATRIZ": {
         "forma": "constante",
         "tipo": "tuple"
+      },
+      "ListaVariaveis": {
+        "bases": [
+          "list"
+        ],
+        "forma": "classe",
+        "init": "(self, itens = (), ignoradas = ())",
+        "metodos_publicos": []
       },
       "PADRAO_NOME_EIXO": {
         "forma": "constante",
@@ -6658,6 +6670,26 @@
       },
       "train_identification_ensemble": {
         "assinatura": "(pca, var_t: numpy.ndarray, X_proc: numpy.ndarray, rotulos: numpy.ndarray, conc: numpy.ndarray, mae_id: Union[None, numpy.ndarray], alpha_nominal: float = 0.05, mapa_adulterante: Union[None, dict[str, str]] = None) -> dict[tuple[str, str], dict[str, Any]]",
+        "forma": "funcao"
+      }
+    },
+    "idioma_console": {
+      "FRASES_CONSOLE": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "saida_traduzida": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, lang: Union[None, str] = None) -> None",
+        "metodos_publicos": []
+      },
+      "traduzir_linha": {
+        "assinatura": "(linha: str, lang: Union[None, str] = None) -> str",
+        "forma": "funcao"
+      },
+      "traduzir_texto": {
+        "assinatura": "(texto: str, lang: Union[None, str] = None) -> str",
         "forma": "funcao"
       }
     },

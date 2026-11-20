@@ -9,6 +9,33 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 ## Não lançado
 
+Leitores conferidos com arquivos reais públicos e limitações da seção 8 (2026-11-18):
+
+- **Leitor `.mat` conferido com 126 arquivos gravados pelo MATLAB** (4.2c a 8 e v7.3: os 111 que acompanham o
+  scipy e 15 do projeto mat7.3; `scripts/conferir_leitores_publicos.py`, registro em
+  `docs/qualidade/leitores_publicos.json`). Corrigido o que a varredura achou: matriz esparsa voltava como objeto
+  vazio; número complexo virava real em silêncio (agora recusa com o motivo); uma variável `string` do MATLAB
+  derrubava o arquivo inteiro; no v7.3, os pedaços internos de esparsa e os objetos `string`/`table` apareciam como
+  matrizes numéricas falsas; célula e struct array (`c{2}`, `s(2).campo`) eram ignoradas; `.mat` em HDF5 puro (Octave
+  `-hdf5`) não abria; arquivo truncado dava erro sem o nome. Quando nada é numérico, a mensagem lista o que foi
+  ignorado (tabela, DataSet do PLS_Toolbox, célula, complexo) e como salvar de novo no MATLAB.
+- **GC-FID `.D` conferido com um arquivo FID real público** (Agilent, `FID1A.ch`, 10 197 pontos, igual à referência).
+  A mensagem sem o `rainbow-api` deixa de mandar instalar no Python 3.14, onde o pacote não existe.
+- **FRX/XRF**: colunas de incerteza (`Zr 2σ`, `Zr 2s`, `Fe ±`, `Pb SD`) viravam elementos (`Zr 2σ` era lido como
+  "Zr massa 2"); `Mg Concentration` passa a ser `Mg`. **LC-MS**: tabela de picos com amostras nas colunas
+  (MZmine, XCMS, MS-DIAL) recebe a dica de transpor em vez de só "coluna de classe não existe".
+- **Kennard-Stone e Duplex com semente exata** (par mais distante, calculado em blocos, sem a matriz n×n): o
+  conjunto escolhido é igual ao do algoritmo de livro, inclusive com empates (antes diferia em 45 de 200 sorteios).
+  Conjuntos de calibração escolhidos por KS ou Duplex podem mudar em relação à 1.0.0.
+- **Console no idioma escolhido.** A execução (`run`, `demo`, menu) e o `--help` seguem o idioma da sessão; num
+  `demo` em inglês, as linhas com português caíram de 71 de 192 para nenhuma, e numa quantificação de 21 de 140
+  para nenhuma vinda do pipeline. As etiquetas que o painel lê (`[AVISO]`, `[N/7]`) não mudam. O quadro final do
+  `demo` deixa de citar "acurácia 1,000" (o número mudou com a CV aninhada).
+- **Oráculo externo em R** para PLS1, VIP, MSC, SNV, T² e Q e seus limites (pacote `pls` do R,
+  `tests/oraculos_r/`): igual até a precisão de máquina. mdatools e ropls seguem sem oráculo (não instaláveis no
+  ambiente de geração).
+- **Escala medida**: `scripts/medir_escala.py` (resultados em `docs/qualidade/escala.json`).
+
 Partida e técnicas (2026-11-18):
 
 - **Tela `2.4`: três técnicas novas.** `GC-FID` (pasta Agilent `.D` com detector FID, ou tabela CSV de sinal ou de áreas

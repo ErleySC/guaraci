@@ -489,6 +489,21 @@ def parse_rmn_bruker(pasta: str) -> Tuple[np.ndarray, np.ndarray]:
     return X, Y
 
 
+def _importar_rainbow():
+    """Importa o `rainbow` (extra `hplc`). Sem ele, a mensagem diz o caminho certo para ESTE Python: no 3.14+
+    o pacote nao tem versao publicada, entao `pip install ".[hplc]"` nao instalaria nada."""
+    try:
+        import rainbow as rb
+    except ImportError as e:
+        from guaraci import extras_opcionais as _ex
+        extra = next(x for x in _ex.EXTRAS if x.modulo == "rainbow")
+        raise ImportError(
+            "Pacote opcional 'rainbow-api' nao instalado -- leitura de cromatograma HPLC/GC de fabricante "
+            f"(pasta Agilent .D, Waters .raw) indisponivel. {_ex.texto_instalar(extra, 'PT')}."
+        ) from e
+    return rb
+
+
 def _sem_detector(pasta: str, detector: str, diretorio) -> str:
     """Mensagem de `detector` ausente. Pasta sem NENHUM detector e' tipicamente MassHunter de alta resolucao (Q-TOF) ou
     ICP-MS da Agilent (`AcqData/MSProfile.bin`), que o `rainbow` le' por outra API e o GUARACI nao usa: dizer isso em
@@ -521,14 +536,7 @@ def parse_cromatograma_hplc(pasta: str, detector: str = "UV") -> Tuple[np.ndarra
 
     Requer o pacote opcional `rainbow-api` (`pip install ".[hplc]"`) -- import LAZY, so' ao chamar esta
     funcao."""
-    try:
-        import rainbow as rb
-    except ImportError as e:
-        raise ImportError(
-            "Pacote opcional 'rainbow-api' nao instalado -- leitura de "
-            "cromatograma HPLC/GC de fabricante indisponivel (pip "
-            "install \".[hplc]\" from the clone folder)."
-        ) from e
+    rb = _importar_rainbow()
 
     try:
         diretorio = rb.read(pasta)
@@ -576,14 +584,7 @@ def parse_cromatograma_hplc_canais(pasta: str, detector: str = "UV", canal: str 
 
     Todos os canais escolhidos precisam ter o MESMO eixo de tempo (um `.uv` e varios `.ch` do mesmo detector
     tem); se diferirem e' `ValueError` -- nao se reamostra o tempo em silencio. `rotulos` = `arquivo:comprimento`."""
-    try:
-        import rainbow as rb
-    except ImportError as e:
-        raise ImportError(
-            "Pacote opcional 'rainbow-api' nao instalado -- leitura de "
-            "cromatograma HPLC/GC de fabricante indisponivel (pip "
-            "install \".[hplc]\" from the clone folder)."
-        ) from e
+    rb = _importar_rainbow()
     try:
         diretorio = rb.read(pasta)
     except Exception as e:
