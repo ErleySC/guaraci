@@ -44,10 +44,18 @@ nivel: N1
 #   opcoes: auto | exploratorio | classificacao | quantificacao
 objetivo: auto
 
+# Classificador: auto escolhe PLS-LDA com menos de 100 unidades independentes e PLS-DA a partir
+# disso; plsda ou plslda fixa o metodo (use plsda para reproduzir resultados antigos).
+#   opcoes: auto | plsda | plslda
+classificador: auto
+
 # Pre-processamento espectral
 #   opcoes: MSC+SG+MC | SNV+SG+MC | Autoscaling | Mean-centering
 pre_processamento: MSC+SG+MC
 
+# Faixa espectral util. O padrao 4000-10000 e' de NIR em numero de onda: se o eixo dos dados
+# nao cruza essa faixa (NIR em nm, Raman, indice), o programa usa o eixo inteiro e avisa.
+# Escreva os dois valores para fixar o recorte.
 # Inicio da faixa espectral util (cm-1)
 faixa_min_cm: 4000.0
 

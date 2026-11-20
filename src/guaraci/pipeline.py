@@ -703,7 +703,7 @@ def predicoes_fora_da_faixa(y_pred, y_cal, margem: float = 0.5) -> np.ndarray:
     """Valores preditos fora de [min(y_cal) - margem*amplitude, max(y_cal) + margem*amplitude].
 
     Um modelo PLS nao sabe dizer que extrapolou: uma predicao 5x acima do maior valor de calibracao quase
-    sempre e' amostra fora do dominio (achado com dado publico de solo: Nt real 8,1 predito em 45,8)."""
+    sempre e' amostra fora do dominio (um valor real de 8 predito em 45 e' o caso tipico)."""
     yp = np.asarray(y_pred, dtype=float).ravel()
     yc = np.asarray(y_cal, dtype=float).ravel()
     yc = yc[np.isfinite(yc)]
@@ -1885,13 +1885,67 @@ def _figuras_modelo_unico_regressao(
         plt.close("all")
 
 
+def _resolver_classificador_auto(cfg: "Config", n_amostras: int, mae_id: Any, n_classes: int = 0) -> None:
+    """`classificador: auto` -> PLS-LDA com poucas unidades independentes, PLS-DA com muitas.
+
+    Unidade independente = grupo (amostra fisica) quando ha' `mae_id`, senao a amostra. Com poucas amostras por
+    classe o PLS-DA perdeu para o PLS-LDA em validacao externa (0,75 contra 0,995 de acuracia balanceada).
+    O que foi escolhido fica nos ajustes automaticos; quem escreve 'plsda' ou 'plslda' no config nao passa aqui."""
+    from guaraci import contexto as _ctx
+    from guaraci.config import CLASSIFICADOR_AUTO_MIN_UNIDADES as _MIN
+    if str(getattr(cfg, "classificador", "") or "").lower() != "auto":
+        return
+    if str(getattr(cfg, "level", "")).upper() == "N3" or str(getattr(cfg, "objective", "")) in ("quantificacao", "exploratorio"):
+        return                                    # regressao / exploratorio: nao ha' classificador a escolher
+    n_un = int(len(np.unique(mae_id))) if mae_id is not None else int(n_amostras)
+    escolha = "plslda" if n_un < _MIN else "plsda"
+    if escolha == "plslda" and n_classes and int(n_amostras) < 2 * int(n_classes):
+        log.info(f"[CONTEXTO] classificador auto -> plsda (so {n_amostras} amostras para {n_classes} classes: "
+                 f"a LDA nao tem amostras para estimar as covariancias).")
+        return
+    cfg.classificador = "auto"            # `ajustar_tardio` grava de='auto'; `desfazer` volta a 'auto' no fim
+    aj = _ctx.ajustar_tardio(
+        cfg, "classificador_auto", "classificador", escolha,
+        (f"{n_un} unidades independentes ({'<' if escolha == 'plslda' else '>='} {_MIN}): "
+         f"{'PLS-LDA costuma ser mais estavel com poucas amostras' if escolha == 'plslda' else 'PLS-DA e o padrao com amostras suficientes'}; para fixar, escreva classificador: plsda ou plslda",
+         f"{n_un} independent units ({'<' if escolha == 'plslda' else '>='} {_MIN}): "
+         f"{'PLS-LDA is usually more stable with few samples' if escolha == 'plslda' else 'PLS-DA is the default with enough samples'}; to fix it, write classificador: plsda or plslda"))
+    if aj is not None:
+        log.info(f"[CONTEXTO] {aj.linha()}")
+    elif escolha == "plsda":
+        log.info(f"[CONTEXTO] classificador auto -> plsda ({n_un} unidades independentes >= {_MIN}).")
+
+
+def _abrir_faixa_padrao_se_fora_do_eixo(cfg: "Config", eixo: Tuple[float, float]) -> None:
+    """Faixa ainda e' a padrao de NIR (4000-10000 cm-1) e nao toca o eixo dos dados -> usa o eixo todo.
+
+    So' age onde a execucao falharia (nenhuma variavel sobreviveria); quem escolheu uma faixa propria,
+    ou ja' tem dado no NIR, nao e' afetado. Vai para os ajustes automaticos."""
+    from guaraci import contexto as _ctx
+    if (float(cfg.wn_min), float(cfg.wn_max)) != _ctx.FAIXA_NIR_PADRAO:
+        return
+    if getattr(cfg, "mode", "") == "multielementar" or getattr(cfg, "modo_entrada", "") in _ctx.MODOS_TABULARES + ("imagem",):
+        return      # tabela de elementos/imagem: o "eixo" e' so' indice de coluna, nao numero de onda
+    if not (eixo[1] < cfg.wn_min or eixo[0] > cfg.wn_max):
+        return
+    motivo = ("a faixa padrao de NIR (4000 a 10000) nao cruza o eixo dos dados "
+              f"({eixo[0]:.4g} a {eixo[1]:.4g}); usando o eixo inteiro",
+              "the default NIR range (4000 to 10000) does not overlap the data axis "
+              f"({eixo[0]:.4g} to {eixo[1]:.4g}); using the whole axis")
+    for regra, campo, novo in (("faixa_fora_do_eixo_min", "faixa_min_cm", float(eixo[0])),
+                               ("faixa_fora_do_eixo_max", "faixa_max_cm", float(eixo[1]))):
+        aj = _ctx.ajustar_tardio(cfg, regra, campo, novo, motivo)
+        if aj is not None:
+            log.info(f"[CONTEXTO] {aj.linha()}")
+
+
 def _novo_pls_classificador(cfg: "Config", n_componentes: int) -> PLSRegression:
     """O PLS do classificador principal: PLS-DA (padrao) ou PLS-LDA (`cfg.classificador`)."""
-    nome = str(getattr(cfg, "classificador", "plsda") or "plsda").lower()
+    nome = str(getattr(cfg, "classificador", "auto") or "auto").lower()
     if nome == "plslda":
         return PLSLDAClassifier(n_components=n_componentes, scale=False)
-    if nome != "plsda":
-        raise ValueError(f"classificador='{nome}' invalido. Use 'plsda' (padrao) ou 'plslda'.")
+    if nome not in ("plsda", "auto"):    # 'auto' ainda aberto aqui = fora da execucao principal: PLS-DA
+        raise ValueError(f"classificador='{nome}' invalido. Use 'auto' (padrao), 'plsda' ou 'plslda'.")
     return PLSRegression(n_components=n_componentes, scale=False)
 
 
@@ -3768,6 +3822,8 @@ def _etapa_holdout_e_estrategia_cv(*, X_raw, _G, _eixo_orig, cfg, conc, mae_id, 
             f"(ex.: {_eixo_orig[0]:.0f} a {_eixo_orig[1]:.0f}) ou reduza "
             f"sg_window.")
 
+    _resolver_classificador_auto(cfg, X_raw.shape[0], mae_id, int(len(np.unique(rotulos))))
+
     classes_unicas = np.unique(rotulos)
     mapa_cores     = map_class_colors(classes_unicas)
     mapa_marcadores = map_class_markers(classes_unicas)
@@ -4287,6 +4343,7 @@ def _etapa_carregar_e_validar(*, cfg):
     # top-VIP com estabilidade 100% (artefato, nao quimica).
     n_orig = X_raw.shape[1]
     _eixo_orig = (float(wavenumbers.min()), float(wavenumbers.max()))
+    _abrir_faixa_padrao_se_fora_do_eixo(cfg, _eixo_orig)
     mask_wn = (wavenumbers >= cfg.wn_min) & (wavenumbers <= cfg.wn_max)
     if cfg.mode == "multielementar":
         # tabela amostra x elemento: o "eixo" e' so' o indice do elemento;

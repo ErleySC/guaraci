@@ -28,6 +28,18 @@ Rodada da CLI (2026-11-20):
   salvas não conta mais a configuração do exemplo já gravada.
 - **Python 3.14:** `--version` e `doctor` dizem quais extras não instalam neste Python (hoje o leitor Agilent/Waters,
   `rainbow-api`); o README avisa.
+
+Classificador e faixa espectral automáticos (2026-11-20):
+
+- **`classificador: auto` (novo padrão):** PLS-LDA com menos de 100 unidades independentes, PLS-DA a partir daí;
+  `plsda` e `plslda` fixam o método. **Muda o resultado de classificações pequenas em relação à 1.0.0**; para
+  reproduzir um resultado antigo, escreva `classificador: plsda`. A escolha fica em `ajustes_automaticos.json`.
+- **Faixa padrão 4000–10000 cm⁻¹ deixa de barrar dados fora do NIR em número de onda:** se não cruza o eixo, usa o
+  eixo inteiro (registrado). Faixa escrita pelo usuário nunca é alterada.
+- Aviso de "apenas uma classe" sai uma vez por corrida (eram ~40); alerta no holdout de regressão para predições
+  fora da faixa de calibração; `etapas_pre_processamento` sem `Personalizado` avisa em vez de ser ignorada.
+- PLS-LDA não quebra em dobras com tantas amostras quanto classes (usa as frequências de classe).
+
 Leitores conferidos com arquivos reais públicos e limitações da seção 8 (2026-11-18):
 
 - **Leitor `.mat` conferido com 126 arquivos gravados pelo MATLAB** (4.2c a 8 e v7.3: os 111 que acompanham o

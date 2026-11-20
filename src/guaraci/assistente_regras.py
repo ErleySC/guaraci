@@ -242,6 +242,9 @@ def _faixa_sem_dados(c: Caso) -> bool:
     lo, hi = _num(c.c("wn_min")), _num(c.c("wn_max"))
     if lo is None or hi is None or lo >= hi:
         return False
+    # faixa ainda a padrao de NIR + ajuste automatico ligado: o motor usa o eixo todo (pipeline), nao e' erro
+    if bool(c.c("auto_adjust", True)) and (lo, hi) == (4000.0, 10000.0):
+        return False
     return hi < d.eixo_min or lo > d.eixo_max
 
 def _com_eixo(c: Caso) -> bool:

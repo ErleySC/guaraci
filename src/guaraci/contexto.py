@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 __all__ = ["Contexto", "Ajuste", "Resultado", "AJUSTES", "SUGESTOES", "RECUSAS", "contexto_de",
-           "aplicar", "campos_visiveis", "desfazer", "texto_efetiva", "gravar_efetiva", "MODOS_TABULARES", "PREPROC_TABULAR"]
+           "aplicar", "ajustar_tardio", "FAIXA_NIR_PADRAO", "FAIXA_ABERTA", "campos_visiveis", "desfazer", "texto_efetiva", "gravar_efetiva", "MODOS_TABULARES", "PREPROC_TABULAR"]
 
 #: Modos de entrada que leem uma tabela de elementos (nao espectro).
 MODOS_TABULARES = ("multielementar",)
@@ -218,6 +218,23 @@ def aplicar(cfg: Any, *, auto: Optional[bool] = None, lang: str = "PT") -> Resul
                                for a in r.ajustes]
     cfg.sugestoes_contexto = list(r.sugestoes)
     return r
+
+
+def ajustar_tardio(cfg: Any, regra: str, campo: str, novo: Any, motivo: Tuple[str, str], lang: str = "PT") -> Optional[Ajuste]:
+    """Ajuste que so' da' para decidir DEPOIS de ler os dados (eixo, numero de amostras). Mesmo contrato dos
+    ajustes de `aplicar`: grava em `cfg.ajustes_automaticos` (vai para a configuracao efetiva) e `desfazer`
+    o reverte ao fim da execucao, entao o `cfg` do usuario nao muda. Respeita `auto_adjust: false`."""
+    if not bool(getattr(cfg, "auto_adjust", True)):
+        return None
+    attr = _attr(campo)
+    atual = getattr(cfg, attr, None)
+    if _igual(atual, novo):
+        return None
+    setattr(cfg, attr, novo)
+    aj = Ajuste(regra, campo, _legivel(atual), _legivel(novo), motivo[1 if str(lang).upper() == "EN" else 0])
+    cfg.ajustes_automaticos = list(getattr(cfg, "ajustes_automaticos", []) or []) + [
+        dict(regra=aj.regra, campo=aj.campo, de=aj.de, para=aj.para, motivo=aj.motivo)]
+    return aj
 
 
 def desfazer(cfg: Any, *, manter_registro: bool = False) -> int:

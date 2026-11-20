@@ -1083,6 +1083,10 @@ class PLSLDAClassifier(PLSRegression):
         if len(presentes) < 2:                       # uma classe so' no treino: nada a discriminar
             saida[:, int(presentes[0])] = 1.0
             return saida
+        if len(y_tr) <= len(presentes):              # a LDA exige mais amostras que classes: so' as frequencias
+            for c in presentes:
+                saida[:, int(c)] = float(np.mean(y_tr == c))
+            return saida
         lda = LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")
         lda.fit(T_tr, y_tr)
         saida[:, lda.classes_.astype(int)] = lda.predict_proba(T_te)
@@ -1093,7 +1097,8 @@ class PLSLDAClassifier(PLSRegression):
         self._T_treino_ = T
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
         self.lda_ = None
-        if len(np.unique(self._y_treino_)) >= 2:
+        n_cls = len(np.unique(self._y_treino_))
+        if n_cls >= 2 and len(self._y_treino_) > n_cls:     # a LDA exige mais amostras que classes
             self.lda_ = LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto").fit(T, self._y_treino_)
 
     def predict(self, X, copy=True):

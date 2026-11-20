@@ -123,6 +123,11 @@ def pasta_execucao(raiz: str, chave: str, lang: Optional[str] = None) -> str:
     return os.path.join(raiz, en if idioma(lang) == "en" else pt)
 
 
+#: Com menos unidades independentes que isto, `classificador: auto` usa PLS-LDA; com este numero ou mais, PLS-DA.
+#: 100 e' o minimo que o proprio programa cita para validar um classificador (assistente_regras).
+CLASSIFICADOR_AUTO_MIN_UNIDADES = 100
+
+
 @dataclass
 class Config:
     mode: str = "dx"                          # "dx" | "csv" | "imagem" | "sintetico" | "hsi"
@@ -550,11 +555,14 @@ class Config:
     # LOGO quando ha' so' 1 grupo de replica -- ver
     # classificadores.ddsimca_pcv_sensitivity().
     ddsimca_pcv: bool = False
-    # Classificador principal. 'plsda' (PADRAO): PLS com resposta dummy e argmax.
+    # Classificador principal. 'auto' (PADRAO): PLS-LDA com poucas unidades independentes
+    # (< CLASSIFICADOR_AUTO_MIN_UNIDADES) e PLS-DA com muitas; a escolha e' registrada nos ajustes
+    # automaticos e voce a fixa escrevendo 'plsda' ou 'plslda'.
+    # 'plsda': PLS com resposta dummy e argmax.
     # 'plslda': LDA sobre os escores do PLS (PLS-LDA); resolve o mascaramento da
     # classe do meio quando as classes sao niveis ordenados (ver
-    # `classificadores.PLSLDAClassifier`). Opt-in.
-    classificador: str = "plsda"
+    # `classificadores.PLSLDAClassifier`).
+    classificador: str = "auto"
     # Extra opt-in (fora do conjunto padrao de ~7 figuras "core").
     run_opls: bool = False
     n_ortho_opls: int = 1               # OPLS-DA orthogonal components
