@@ -2130,6 +2130,16 @@
             "nome": "eixo_max",
             "tem_default": true,
             "tipo": "Optional[float]"
+          },
+          {
+            "nome": "nan_amostras",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "nan_variaveis",
+            "tem_default": true,
+            "tipo": "str"
           }
         ],
         "forma": "dataclass"
