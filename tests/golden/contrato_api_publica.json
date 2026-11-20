@@ -6688,18 +6688,44 @@
         "forma": "constante",
         "tipo": "list"
       },
+      "TradutorSaida": {
+        "bases": [
+          "TextIOBase"
+        ],
+        "forma": "classe",
+        "init": "(self, destino: Any, lang: Union[None, str] = None, painel: bool = False) -> None",
+        "metodos_publicos": [
+          "fileno",
+          "flush",
+          "isatty",
+          "writable",
+          "write"
+        ]
+      },
+      "ativar": {
+        "assinatura": "() -> Callable[[], None]",
+        "forma": "funcao"
+      },
+      "ativo": {
+        "assinatura": "() -> bool",
+        "forma": "funcao"
+      },
+      "descricao_perfil": {
+        "assinatura": "(descricao: str, lang: Union[None, str] = None) -> str",
+        "forma": "funcao"
+      },
       "saida_traduzida": {
         "bases": [],
         "forma": "classe",
-        "init": "(self, lang: Union[None, str] = None) -> None",
+        "init": "(self, lang: Union[None, str] = None, painel: bool = True) -> None",
         "metodos_publicos": []
       },
       "traduzir_linha": {
-        "assinatura": "(linha: str, lang: Union[None, str] = None) -> str",
+        "assinatura": "(linha: str, lang: Union[None, str] = None, painel: bool = False) -> str",
         "forma": "funcao"
       },
       "traduzir_texto": {
-        "assinatura": "(texto: str, lang: Union[None, str] = None) -> str",
+        "assinatura": "(texto: str, lang: Union[None, str] = None, painel: bool = False) -> str",
         "forma": "funcao"
       }
     },

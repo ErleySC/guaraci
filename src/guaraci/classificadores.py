@@ -134,6 +134,11 @@ class DDSimca:
         self.n_components = n_components
         self.alpha = alpha
         self.ucl_method = ucl_method
+        # Modelos auxiliares (uma dobra do LOGO, o PV-set do PCV) rebaixam os avisos por classe a DEBUG: senao
+        # cada dobra repetia no console as mesmas replicas atipicas (umas 20 linhas por execucao). O texto
+        # sai com o log em nivel DEBUG e o indice em _modelos[cls]["outliers_treino"]; so' o modelo final
+        # avisa no console.
+        self.avisar: bool = True
         self._modelos: Dict[str, Dict[str, Any]] = {}
         self._classes: np.ndarray = np.array([], dtype=str)
 
@@ -379,8 +384,9 @@ class DDSimca:
             h0, Nh = mean_and_dof_moments(T2_calib)
             q0, Nq = mean_and_dof_moments(Q_calib)
             f_crit = float(chi2.ppf(1 - self.alpha, Nh + Nq))
+            nivel_aviso = logging.WARNING if getattr(self, "avisar", True) else logging.DEBUG
             if calibrado_por_amostra and n_grupos_calib < 3:
-                log.warning(
+                log.log(nivel_aviso,
                     "[DDSimca] Classe '%s': limiar calibrado com apenas "
                     "%d amostra(s) fisica(s) independente(s) (mae_id). "
                     "Nh=%.2f, Nq=%.2f -- com tao poucos grupos a taxa de "
@@ -398,7 +404,7 @@ class DDSimca:
             idx_out_q  = self._outliers_robustos_mad(Q_train)
             idx_out = sorted(int(i) for i in set(idx_out_t2) | set(idx_out_q))
             if idx_out:
-                log.warning(
+                log.log(nivel_aviso,
                     "[DDSimca] Classe '%s': %d amostra(s) de treino "
                     "atipica(s) (indices %s de %d, deteccao robusta "
                     "mediana/MAD). Nao removidas automaticamente -- "
@@ -850,6 +856,7 @@ def ddsimca_logo_sensitivity(
             continue
         modelo = DDSimca(n_components=n_components, alpha=alpha,
                          ucl_method=ucl_method)
+        modelo.avisar = False   # dobra do LOGO: avisos so' em DEBUG (ver DDSimca.__init__)
         # mae_id=grupos[treino] (achado F1/A2-3): o limiar interno desta
         # dobra tambem deve ser calibrado por amostra fisica, nao por
         # espectro -- senao o LOGO mede aceitacao contra um limiar com o
@@ -990,6 +997,7 @@ def ddsimca_pcv_sensitivity(
 
     modelo = DDSimca(n_components=n_components, alpha=alpha,
                      ucl_method=ucl_method)
+    modelo.avisar = False   # PV-set do PCV: avisos so' em DEBUG (ver DDSimca.__init__)
     # mae_id=grupos (achado F1/A2-3): mesma razao do LOGO acima -- o limiar
     # usado para avaliar o PV-set deve ser calibrado por amostra fisica.
     rotulo = classe or "_c"   # nome real nos avisos (ver ddsimca_logo_sensitivity)

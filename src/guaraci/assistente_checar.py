@@ -83,9 +83,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--dados", action="store_true", help="carrega os dados e aplica as regras de dados")
     ap.add_argument("--resultado", metavar="PASTA", help="pasta da execucao ou resumo_modelo.txt")
     ap.add_argument("--ficha", action="store_true", help="imprime a ficha anti-vazamento")
-    ap.add_argument("--idioma", default="PT", choices=("PT", "EN", "pt", "en"))
+    ap.add_argument("--idioma", default=None, choices=("PT", "EN", "pt", "en"))
     a = ap.parse_args(argv)
-    lang = a.idioma.upper()
+    # Sem --idioma vale o idioma da sessao (GUARACI_IDIOMA, escolha do menu, ingles), o mesmo do `guaraci run`:
+    # antes o checar caia em portugues e o run mostrava as mesmas regras em ingles.
+    from guaraci.idioma_relatorio import idioma as _idioma_padrao
+    lang = (a.idioma or _idioma_padrao()).upper()
 
     from guaraci.config_io import load_config
     try:

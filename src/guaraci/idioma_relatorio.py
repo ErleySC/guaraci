@@ -126,8 +126,10 @@ _VALORES_PT: Dict[str, str] = {"yes": "sim", "no": "nao", "none": "nenhuma",
 #: valores em frase que o pipeline (nucleo) grava em PT no resumo -> EN; e os termos em ingles
 #: que aparecem no meio deles -> PT.
 _FRASES_VALOR_EN: List[Tuple[str, str]] = [
-    ("[CI nao estimavel: sem variacao entre reamostragens -- grupos insuficientes por classe]",
-     "[CI not estimable: no variation between resamples -- too few groups per class]"),
+    ("[CI nao estimavel: sem variacao entre reamostragens -- todas deram o mesmo valor (ex.: acerto perfeito ou "
+     "grupos insuficientes por classe)]",
+     "[CI not estimable: no variation between resamples -- all gave the same value (e.g. perfect hit rate or "
+     "too few groups per class)]"),
     ("grupos: este IC tende a ser estreito demais)", "groups: this CI tends to be too narrow)"),
     ("(so' ", "(only "),
     ("n/a (uma unica classe)", "n/a (a single class)"),

@@ -901,7 +901,9 @@ def test_logo_e_pcv_avisam_com_o_nome_real_da_classe(caplog):
 
     rng = np.random.default_rng(0)
     X, g = _puros_agrupados(rng, [0.0, 0.5, 1.0])
-    with caplog.at_level(logging.DEBUG):
+    # As dobras do LOGO/PCV avisam em DEBUG (so' o modelo final avisa no console): o nivel vai no logger
+    # "guaraci", que outro teste do mesmo processo pode ter deixado em INFO.
+    with caplog.at_level(logging.DEBUG, logger="guaraci"):
         r = ddsimca_logo_sensitivity(X, g, n_components=2, classe="Classe A")
         ddsimca_pcv_sensitivity(X, g, n_components=2, classe="Classe A")
     textos = " ".join(rec.getMessage() for rec in caplog.records)

@@ -196,6 +196,21 @@ def _eh_classificacao(c: Caso) -> bool:
     return resolve_objective(c.cfg) == CLASSIFICACAO
 
 
+def _eh_quantificacao(c: Caso) -> bool:
+    if c.cfg is None:
+        return False
+    from guaraci.modos_analise import QUANTIFICACAO, resolve_objective
+    return resolve_objective(c.cfg) == QUANTIFICACAO
+
+
+def _faixa_rmse(n: int) -> Tuple[float, float]:
+    """Faixa de 95% da razao RMSEP medido / erro verdadeiro com n residuos independentes (erro normal, media
+    conhecida): sqrt(qui2(0,025; n)/n) a sqrt(qui2(0,975; n)/n)."""
+    from scipy.stats import chi2
+    n = max(int(n), 1)
+    return math.sqrt(chi2.ppf(0.025, n) / n), math.sqrt(chi2.ppf(0.975, n) / n)
+
+
 def _n_teste(c: Caso) -> int:
     if not _valida_modelo(c):
         return 0
@@ -348,7 +363,7 @@ REGRAS: Tuple[Regra, ...] = (
           ("Amplie a faixa para incluir o RIP ou mude a janela.", "Widen the range to include the RIP or change the window."),
           valores=lambda c: dict(jan=str(c.c("rip_window")), lo=_num(c.c("wn_min")) or 0, hi=_num(c.c("wn_max")) or 0)),
     Regra("permutacoes_sem_resolucao", "config", "critico",
-          lambda c: 0 < _n_perm(c) and 1.0 / (_n_perm(c) + 1) > ALPHA_PADRAO,
+          lambda c: _eh_classificacao(c) and 0 < _n_perm(c) and 1.0 / (_n_perm(c) + 1) > ALPHA_PADRAO,
           ("Com {n} permutacoes o menor p-valor possivel e' 1/{n1} = {pmin:.3f}, acima de {alpha}.",
            "With {n} permutations the smallest possible p-value is 1/{n1} = {pmin:.3f}, above {alpha}."),
           ("O p-valor de permutacao conta quantas permutacoes empatam ou superam o modelo real; com poucas, "
@@ -360,7 +375,7 @@ REGRAS: Tuple[Regra, ...] = (
                                  minimo=int(math.ceil(1 / ALPHA_PADRAO)) - 1),
           campo="n_permutacoes", valor=lambda c: 200),
     Regra("permutacoes_poucas", "config", "aviso",
-          lambda c: 0 < _n_perm(c) < 100 and 1.0 / (_n_perm(c) + 1) <= ALPHA_PADRAO,
+          lambda c: _eh_classificacao(c) and 0 < _n_perm(c) < 100 and 1.0 / (_n_perm(c) + 1) <= ALPHA_PADRAO,
           ("Poucas permutacoes deixam o p-valor do modelo grosseiro; 200 e o padrao.",
            "Few permutations make the model p-value coarse; 200 is the default."),
           ("O p-valor so' anda em passos de 1/{n1}.", "The p-value only moves in steps of 1/{n1}."),
@@ -520,7 +535,7 @@ REGRAS: Tuple[Regra, ...] = (
           valores=lambda c: dict(k=int(c.c("n_splits_cv", 5) or 5),
                                  m=min(c.dados.unidades_por_classe.values()) if c.dados and c.dados.unidades_por_classe else 0)),
     Regra("holdout_pequeno", "dados", "aviso",
-          lambda c: bool(c.dados and 0 < _n_teste(c) < 25),
+          lambda c: bool(c.dados and 0 < _n_teste(c) < 25) and _eh_classificacao(c),
           ("O holdout tera cerca de {n} unidades: um acerto de 90% nele e' compativel com {lo:.0%} a {hi:.0%} (intervalo de Wilson, 95%).",
            "The holdout will have about {n} units: a 90% hit rate on it is compatible with {lo:.0%} to {hi:.0%} (Wilson interval, 95%)."),
           ("A incerteza de uma proporcao cai com a raiz do numero de unidades testadas.",
@@ -531,6 +546,17 @@ REGRAS: Tuple[Regra, ...] = (
            "validating a classifier usually needs 75 to 100 test units."),
           valores=lambda c: dict(n=_n_teste(c), lo=_wilson(0.9, _n_teste(c))[0], hi=_wilson(0.9, _n_teste(c))[1]),
           refs=("beleites2013", "brown2001")),
+    Regra("holdout_pequeno_regressao", "dados", "aviso",
+          lambda c: bool(c.dados and 2 <= _n_teste(c) < 25) and _eh_quantificacao(c),
+          ("O holdout tera cerca de {n} unidades: o RMSEP medido nele pode estar entre {lo:.2f} e {hi:.2f} vezes o "
+           "erro verdadeiro (intervalo qui-quadrado, 95%).",
+           "The holdout will have about {n} units: the RMSEP measured on it may lie between {lo:.2f} and {hi:.2f} "
+           "times the true error (chi-square interval, 95%)."),
+          ("Um desvio estimado com poucas unidades independentes varia muito de uma amostra de teste para outra.",
+           "An error estimated from few independent units varies a lot from one test set to another."),
+          ("Reporte o RMSEP do holdout com esse intervalo e nao compare modelos por diferencas menores que ele.",
+           "Report the holdout RMSEP with that interval and do not compare models by differences smaller than it."),
+          valores=lambda c: dict(n=_n_teste(c), lo=_faixa_rmse(_n_teste(c))[0], hi=_faixa_rmse(_n_teste(c))[1])),
     Regra("classes_desbalanceadas", "dados", "aviso",
           lambda c: _razao_classes(c) >= 3.0,
           ("A maior classe tem {r:.1f} vezes mais unidades que a menor.",
@@ -557,7 +583,7 @@ REGRAS: Tuple[Regra, ...] = (
           ("Com problema critico de delineamento as metricas nao medem o que parecem medir.",
            "With a critical design problem the metrics do not measure what they seem to."),
           ("Resolva os itens da auditoria (bloco 'Auditoria de delineamento' do resumo_modelo.txt) antes de citar qualquer metrica.",
-           "Resolve the audit items ('Auditoria de delineamento' block of resumo_modelo.txt) before citing any metric."),
+           "Resolve the audit items ('Design audit' block of resumo_modelo.txt) before citing any metric."),
           valores=lambda c: dict(lista="; ".join(_auditoria_critica(c))), refs=("kapoor2023",)),
     Regra("permutacao_nao_significativa", "resultado", "critico",
           lambda c: _eh_classificacao(c) and (_num(c.r("Permutation p-value")) or 0.0) > ALPHA_PADRAO,
@@ -602,8 +628,10 @@ REGRAS: Tuple[Regra, ...] = (
            "Cite the holdout, with its interval; check whether the holdout has few units."),
           valores=lambda c: dict(vc=_num(c.r("Balanced accuracy")) or 0, ho=_num(c.r("Holdout balanced acc")) or 0),
           refs=("varma2006", "westad2015")),
-    Regra("lvs_no_teto", "resultado", "info",
-          lambda c: str(c.r("LVs no teto (max_lvs)") or "").strip().lower() in ("true", "sim", "1"),
+    Regra("lvs_no_teto", "resultado", "aviso",
+          # o resumo grava "SIM - aumente max_lvs": vale a primeira palavra, nao o texto inteiro
+          lambda c: (str(c.r("LVs no teto (max_lvs)") or "").strip().lower().split() or [""])[0].strip("-,;:")
+          in ("true", "sim", "yes", "1"),
           ("O numero de variaveis latentes escolhido bateu no teto (max_lvs).",
            "The chosen number of latent variables hit the cap (max_lvs)."),
           ("A selecao queria mais componentes do que o teto permite.", "The selection wanted more components than the cap allows."),

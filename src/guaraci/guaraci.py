@@ -580,7 +580,7 @@ def _set_lang(l: str) -> None:
 def _sincronizar_idioma() -> None:
     """Um idioma so' para menu, mensagens e relatorios: GUARACI_IDIOMA definida pelo usuario vence;
     senao vale o idioma gravado com [I], e ele passa a valer para os relatorios. Sem escolha gravada
-    a variavel fica como esta' (relatorios e subcomandos seguem o padrao portugues de sempre)."""
+    a variavel fica como esta' e tudo segue o padrao ingles (idioma_relatorio.idioma)."""
     env = os.environ.get("GUARACI_IDIOMA", "").strip().lower()
     if env:
         _STATE["lang"] = "EN" if env.startswith("en") else "PT"
@@ -6543,10 +6543,11 @@ def _menu_exemplo(cfg: Config) -> None:
                             setattr(cfg, k, v)
                         except (AttributeError, TypeError):
                             pass
-                    console.print(f"  [g]✓ {'Carregado. Use [R] para rodar.' if L == 0 else 'Loaded. Use [R] to run.'}[/g]")
                     if carregar == "r":
-                        _rodar_pipeline(cfg)
+                        console.print(f"  [g]✓ {'Carregado. Rodando agora.' if L == 0 else 'Loaded. Running now.'}[/g]")
+                        _rodar_pipeline(cfg, ja_confirmado=True)
                         return
+                    console.print(f"  [g]✓ {'Carregado. Use [R] para rodar.' if L == 0 else 'Loaded. Use [R] to run.'}[/g]")
                 except (RuntimeError, FileNotFoundError, ValueError) as e:
                     console.print(f"  [{PR}]{escape(str(e))}[/{PR}]")
         _pause()
@@ -7432,6 +7433,10 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     frac, label = _progresso_do_log(texto_log, len(plano_figuras) or None)
     figs = _figures_completed(texto_log)
     avisos = _avisos_do_log(texto_log)
+    if _lang() == "EN":
+        # O nucleo grava os avisos em portugues; o painel em ingles os mostra traduzidos (idioma_console).
+        from guaraci.idioma_console import traduzir_linha
+        avisos = [_re.sub(r"^\[(WARNING|AVISO)\] ", "", traduzir_linha("[AVISO] " + a, "en")) for a in avisos]
 
     # LIMITE DE ALTURA (bug real, 2026-08-07: "tela preta").
     # `figs` e `avisos` crescem sem teto durante a execucao. Numa corrida
@@ -7535,9 +7540,11 @@ def _gravar_diagnostico_travamento() -> Optional[str]:
         return None
 
 
-def _rodar_pipeline(cfg: Config, retomar: bool = False) -> None:
+def _rodar_pipeline(cfg: Config, retomar: bool = False, ja_confirmado: bool = False) -> None:
     """Menu [R]. `retomar=True`: a pessoa acabou de aceitar retirar classes depois de uma falha de validacao;
-    roda de novo direto, sem repetir as perguntas de nome, confirmacao e pre-voo."""
+    roda de novo direto, sem repetir as perguntas de nome, confirmacao e pre-voo. `ja_confirmado=True`: a
+    pessoa ja' escolheu "carregar e rodar agora" (exemplo guiado); pula o nome da execucao e o "Rodar? (s/n)",
+    mas mantem o pre-voo e a pergunta de achado critico."""
     lang = _lang()
     if retomar:
         _dados_pv = None
@@ -7550,6 +7557,9 @@ def _rodar_pipeline(cfg: Config, retomar: bool = False) -> None:
         _pause(); return
 
     console.print(); _print_resumo(cfg)
+
+    if ja_confirmado:
+        return _rodar_pipeline_perguntas_finais(cfg, lang)
 
     # Nome da execucao
     console.print()
@@ -7566,6 +7576,11 @@ def _rodar_pipeline(cfg: Config, retomar: bool = False) -> None:
     iniciar = _ask(f"  [{PA}]► {_t('rodar')}?[/{PA}] {'(s/n)' if lang == 'PT' else '(y/n)'} ")
     if iniciar.lower() not in ("s","y","sim","yes"):
         console.print(f"  [{PM}]{_t('cancelado')}[/{PM}]"); _pause(); return
+    return _rodar_pipeline_perguntas_finais(cfg, lang)
+
+
+def _rodar_pipeline_perguntas_finais(cfg: Config, lang: str) -> None:
+    """Parte do [R] depois do "Rodar? (s/n)": aviso sem grupo, pre-voo, classes de uma unidade, achado critico."""
     from guaraci.dados_io import garantia_agrupamento_prevista as _gap2
     if _gap2(cfg) == "none" and _cfgv(cfg, "validacao_group_aware", True):
         console.print(f"  [{PR}]{escape(_t('aviso_sem_grupo'))}[/{PR}]")
@@ -7650,6 +7665,9 @@ def _rodar_pipeline_execucao(cfg: Config, lang: str, _dados_pv: Any) -> None:
     try:
         _USER_DIR.mkdir(parents=True, exist_ok=True)
         _save_config(cfg, str(_CFG_PATH))
+        # Rodar grava o config.yaml: o menu refaz a foto de "nao salvo" (antes, rodar um exemplo pelo grupo [1] e
+        # sair avisava "17 ajustes nao gravados" de uma configuracao que acabara de ser gravada).
+        _YAML_TOCADO[0] = True
     except OSError as _e_cfg_save:
         # Achado do "checkup geral" de interface (2026-08-07): esta chamada
         # nao tinha NENHUMA guarda -- um PermissionError aqui (HOME
@@ -7893,17 +7911,28 @@ def _carregar_yaml(cfg: Config) -> None:
 # ===========================================================================
 def _texto_versao() -> str:
     """Texto de `--version`: versao, autor, licenca, aviso de garantia e a pasta de instalacao."""
+    from guaraci.idioma_relatorio import idioma
+    from guaraci import extras_opcionais as _ext
+    en = idioma() == "en"
     pasta = Path(__file__).resolve().parent
     linhas = [
         f"GUARACI v{pq.__version__}",
-        f"Autor: {AUTOR_NOME} (ORCID {AUTOR_ORCID})",
+        f"{'Author' if en else 'Autor'}: {AUTOR_NOME} (ORCID {AUTOR_ORCID})",
         COPYRIGHT_LINHA,
-        f"Repositorio: {REPO_URL}",
-        f"Duvidas e suporte: {DISCUSSIONS_URL}",
-        f"Licenca: {LICENCA_SPDX} (software livre). SEM GARANTIA: nenhuma, nem implicita, de "
-        "comercializacao ou de adequacao a um fim; veja o arquivo LICENSE.",
-        f"Instalado em: {pasta}",
+        f"{'Repository' if en else 'Repositorio'}: {REPO_URL}",
+        f"{'Questions and support' if en else 'Duvidas e suporte'}: {DISCUSSIONS_URL}",
+        (f"License: {LICENCA_SPDX} (free software). NO WARRANTY: none, not even implied, of merchantability or "
+         "fitness for a particular purpose; see the LICENSE file." if en else
+         f"Licenca: {LICENCA_SPDX} (software livre). SEM GARANTIA: nenhuma, nem implicita, de "
+         "comercializacao ou de adequacao a um fim; veja o arquivo LICENSE."),
+        f"{'Installed in' if en else 'Instalado em'}: {pasta}",
+        f"Python: {sys.version.split()[0]}",
     ]
+    # Leitor que nao existe para este Python (rainbow-api no 3.14+): o `pip install ".[all]"` o pula sem avisar.
+    for e in _ext.ausentes():
+        if _ext._indisponivel_nesta_versao(e):
+            linhas.append(f"{'Not available on this Python' if en else 'Indisponivel neste Python'}: "
+                          f"{e.afeta[1] if en else e.afeta[0]} ({_ext.texto_instalar(e, 'EN' if en else 'PT')})")
     return chr(10).join(linhas)
 
 
@@ -8278,7 +8307,7 @@ _QUADRO_FINAL_DEMO: Tuple[str, ...] = (
 )
 _QUADRO_FINAL_DEMO_EN: Tuple[str, ...] = (
     "",
-    "  What the 2 [AUDITORIA][CRITICO] (critical) warnings above mean",
+    "  What the 2 [AUDIT][CRITICAL] warnings above mean",
     "  - In this synthetic data each species was 'measured' in ONE single collection session.",
     "    So the model may be telling the session apart, not the species (class and session are",
     "    confounded), and the replicates of one session are not independent samples.",
@@ -8344,10 +8373,10 @@ def _comando_demo() -> None:
     # `saida` existe sempre: `os.makedirs(cfg.input_folder)` acima a cria (a pasta de dados fica dentro dela).
     for raiz, dirs, _arqs in os.walk(str(saida)):
         for d in dirs:
-            if d.startswith("PLSDA_OE_"):
+            if d.startswith(pq.PREFIXOS_PASTA_EXECUCAO):
                 runs.append(os.path.join(raiz, d))
     if not runs:
-        console.print(f"  [err]✗ Pipeline rodou mas nenhuma pasta de saida foi encontrada em {escape(str(saida))}[/err]")
+        console.print(f"  [err]✗ {_tt('Pipeline rodou mas nenhuma pasta de saida foi encontrada em', 'The pipeline ran but no output folder was found in')} {escape(str(saida))}[/err]")
         raise SystemExit(1)
 
     pasta_run = Path(sorted(runs)[-1])
@@ -8470,14 +8499,40 @@ def _validar_opcoes(opcoes: Dict[str, str]) -> None:
 
 def _listar_perfis() -> None:
     from guaraci.perfil_matriz import DIR_PERFIS, load_profile
-    print("Perfis de tecnica disponiveis:")
+    from guaraci.idioma_console import descricao_perfil
+    en = _lang_cli() == "en"
+    print("Available technique profiles:" if en else "Perfis de tecnica disponiveis:")
     for arquivo in sorted(DIR_PERFIS.glob("*.yaml")):
         perfil = load_profile(arquivo.stem)
-        print(f"  {perfil.nome:<14} {perfil.descricao}")
-    print("\nUse: guaraci --perfil=NOME  (ou o caminho de um YAML proprio)")
+        print(f"  {perfil.nome:<14} {descricao_perfil(perfil.descricao)}")
+    print("\nUse: guaraci --perfil=NAME  (or the path of your own YAML)" if en else
+          "\nUse: guaraci --perfil=NOME  (ou o caminho de um YAML proprio)")
+
+
+def _lang_cli() -> str:
+    """'en' ou 'pt' para os comandos de linha: GUARACI_IDIOMA, escolha do menu, ingles."""
+    from guaraci.idioma_relatorio import idioma
+    return idioma()
 
 
 def main(argv: Optional[List[str]] = None) -> None:
+    """Ponto de entrada GUARACI. Comandos de linha (run, demo, exemplo, anova...) passam a saida pelo tradutor
+    do console (idioma_console): numa sessao em ingles o log do nucleo, gravado em portugues, sai em ingles.
+    As telas interativas (sem argumentos) tem os proprios textos nos dois idiomas e ficam de fora."""
+    _args = list(sys.argv[1:]) if argv is None else list(argv)
+    if not _args:
+        _main(argv)
+        return
+    from guaraci import idioma_console as _ic_main
+    _sincronizar_idioma()
+    desfazer = _ic_main.ativar()
+    try:
+        _main(argv)
+    finally:
+        desfazer()
+
+
+def _main(argv: Optional[List[str]] = None) -> None:
     """Ponto de entrada GUARACI (versao unica em _VERSAO).
 
     `argv` sao os argumentos SEM o nome do programa. O default lê de

@@ -425,7 +425,6 @@ def _linha_premissas(d: Dict[str, Any]) -> str:
 
 
 def texto_resumo(out: Dict[str, Any], args: argparse.Namespace, dados: Dict[str, Any]) -> str:
-    from guaraci.anova_grupos import TEXTO_KRUSKAL, TEXTO_PREMISSAS
     L = [_m("cab", u=args.unidade, g=args.grupo, a=args.alpha),
          _m("linhas", n=dados["n_linhas"], c=out["correcao"]), ""]
     usou_kw = False
@@ -469,8 +468,8 @@ def texto_resumo(out: Dict[str, Any], args: argparse.Namespace, dados: Dict[str,
         L.append("- " + _m("nao_testada", n=nome, m=motivo))
     L.append("")
     if usou_kw:
-        L.append(TEXTO_KRUSKAL)
-    L.append(TEXTO_PREMISSAS)
+        L.append(_texto_kruskal())
+    L.append(_texto_premissas())
     L.append(_m("rodape"))
     return "\n".join(L)
 
@@ -554,7 +553,6 @@ def _escrever_figuras(pasta: str, out: Dict[str, Any], dados_res: Dict[str, Any]
 
 def _blocos_relatorio(out: Dict[str, Any], args: argparse.Namespace, dados: Dict[str, Any],
                       figuras: Dict[str, str]) -> List[tuple]:
-    from guaraci.anova_grupos import TEXTO_KRUSKAL, TEXTO_PREMISSAS
     B: List[tuple] = [("h1", _m("rel_titulo")),
                       ("p", _m("cab", u=args.unidade, g=args.grupo, a=args.alpha)),
                       ("p", _m("linhas", n=dados["n_linhas"], c=out["correcao"]))]
@@ -601,8 +599,8 @@ def _blocos_relatorio(out: Dict[str, Any], args: argparse.Namespace, dados: Dict
     for nome, motivo in out["recusadas"].items():
         B.append(("p", _m("nao_testada", n=nome, m=motivo)))
     if usou_kw:
-        B.append(("p", TEXTO_KRUSKAL))
-    B.append(("p", TEXTO_PREMISSAS))
+        B.append(("p", _texto_kruskal()))
+    B.append(("p", _texto_premissas()))
     B.append(("p", _m("rodape")))
     return B
 
@@ -642,6 +640,28 @@ def _escrever_resultados(pasta: str, out: Dict[str, Any], args: argparse.Namespa
         fh.write("troca_automatica_de_metodo: nenhuma (o padrao e o que foi sugerido ficam declarados na saida)\n")
     escritos.append(cfg)
     return escritos
+
+
+#: Versoes em ingles dos textos obrigatorios de anova_grupos (o nucleo grava so' em portugues).
+_TEXTO_KRUSKAL_EN = (
+    "Kruskal-Wallis compares DISTRIBUTIONS (stochastic dominance: one group tends to give larger values than "
+    "another). It only amounts to a 'difference of medians' if the shapes of the distributions are similar.")
+_TEXTO_PREMISSAS_EN = (
+    "Shapiro-Wilk is information, not a gatekeeper: with small n it has little power (not rejecting does not "
+    "prove normality) and with large n it rejects minimal departures -- look at the quantile-quantile plot of the "
+    "residuals. Choosing the test in two stages (test normality, then decide) is not recommended as an automatic "
+    "rule (Rochon, Gondan & Kieser 2012, comparison of two groups, doi:10.1186/1471-2288-12-81). "
+    "Tukey is reasonably robust to small departures with equal n; with unequal variances use Games-Howell.")
+
+
+def _texto_kruskal() -> str:
+    from guaraci.anova_grupos import TEXTO_KRUSKAL
+    return _TEXTO_KRUSKAL_EN if _ESTADO["lang"] == "en" else TEXTO_KRUSKAL
+
+
+def _texto_premissas() -> str:
+    from guaraci.anova_grupos import TEXTO_PREMISSAS
+    return _TEXTO_PREMISSAS_EN if _ESTADO["lang"] == "en" else TEXTO_PREMISSAS
 
 
 def _idioma_de(args_l: Sequence[str]) -> str:

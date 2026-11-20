@@ -63,6 +63,16 @@ _OPCOES_EN = """Options (apply to the analysis commands):
 Exit codes: 0 success | 1 run error | 2 wrong usage."""
 
 
+def _L() -> str:
+    """'EN' ou 'PT': o idioma da sessao (GUARACI_IDIOMA, escolha do menu, ingles), para os comandos daqui."""
+    from guaraci.idioma_relatorio import idioma
+    return "EN" if idioma() == "en" else "PT"
+
+
+def _pt(pt: str, en: str) -> str:
+    return en if _L() == "EN" else pt
+
+
 def texto_ajuda(lang: str = "PT") -> str:
     """`guaraci --help`: comandos agrupados pelos mesmos grupos do menu."""
     L = 1 if str(lang).upper() == "EN" else 0
@@ -95,43 +105,47 @@ def _cmd_exemplo(args: Sequence[str]) -> int:
     rodar = "--rodar" in args
     pos = [a for a in args if not a.startswith("--")]
     if not pos:
-        print("Cenarios de exemplo (dados sinteticos; use: guaraci exemplo CENARIO [PASTA] [--rodar]):\n")
+        i = 1 if _L() == "EN" else 0
+        print(_pt("Cenarios de exemplo (dados sinteticos; use: guaraci exemplo CENARIO [PASTA] [--rodar]):\n",
+                  "Example scenarios (synthetic data; use: guaraci exemplo SCENARIO [FOLDER] [--rodar]):\n"))
         for k, v in ex.EXEMPLOS.items():
-            print(f"  {k:<20} {v['nome'][0]}\n  {'':<20} {v['faz'][0]}")
+            print(f"  {k:<20} {v['nome'][i]}\n  {'':<20} {v['faz'][i]}")
         return 0
     cenario = pos[0]
     if cenario not in ex.EXEMPLOS:
-        print(f"Erro: cenario desconhecido {cenario!r}. Disponiveis: {', '.join(ex.EXEMPLOS)}.",
-              file=sys.stderr)
+        print(_pt(f"Erro: cenario desconhecido {cenario!r}. Disponiveis: {', '.join(ex.EXEMPLOS)}.",
+                  f"Error: unknown scenario {cenario!r}. Available: {', '.join(ex.EXEMPLOS)}."), file=sys.stderr)
         return 2
     pasta = pos[1] if len(pos) > 1 else os.path.join("GUARACI_Exemplo", cenario)
     r = ex.gerar(cenario, pasta)
-    print(f"Exemplo '{cenario}' gerado em {os.path.abspath(r['pasta'])} (dados sinteticos).")
+    print(_pt(f"Exemplo '{cenario}' gerado em {os.path.abspath(r['pasta'])} (dados sinteticos).",
+              f"Example '{cenario}' created in {os.path.abspath(r['pasta'])} (synthetic data)."))
+    _rodar_txt = _pt("Para rodar", "To run")
     for a in r["arquivos"]:
         print(f"  {a}")
     if cenario == "comparar":
-        print(f"\nPara rodar:\n  cd {r['pasta']}\n  guaraci anova tabela.csv --resposta teor --grupo grupo --unidade amostra")
+        print(f"\n{_rodar_txt}:\n  cd {r['pasta']}\n  guaraci anova tabela.csv --resposta teor --grupo grupo --unidade amostra")
         if rodar:
             return _rodar_anova_exemplo(r["pasta"])
     elif cenario == "vip":
-        print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_VIP}")
-        print(f"\n{ex.NOTA_VIP}")
+        print(f"\n{_rodar_txt}:\n  cd {r['pasta']}\n  {ex.COMANDO_VIP}")
+        print(f"\n{ex.NOTA_VIP_EN if _L() == 'EN' else ex.NOTA_VIP}")
         if rodar:
             return _rodar_vip_exemplo(r["pasta"])
     elif cenario == "monitorar":
-        print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_MONITORAR}")
+        print(f"\n{_rodar_txt}:\n  cd {r['pasta']}\n  {ex.COMANDO_MONITORAR}")
         if rodar:
             return _rodar_monitorar_exemplo(r["pasta"])
     elif cenario == "pares":
-        print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_PARES}")
+        print(f"\n{_rodar_txt}:\n  cd {r['pasta']}\n  {ex.COMANDO_PARES}")
         if rodar:
             return _rodar_pares_exemplo(r["pasta"])
     elif cenario == "transferir":
-        print(f"\nPara rodar:\n  cd {r['pasta']}\n  {ex.COMANDO_TRANSFERIR}")
+        print(f"\n{_rodar_txt}:\n  cd {r['pasta']}\n  {ex.COMANDO_TRANSFERIR}")
         if rodar:
             return _rodar_transferir_exemplo(r["pasta"])
     else:
-        print(f"\nPara rodar:\n  guaraci run {os.path.join(r['pasta'], 'config.yaml')}")
+        print(f"\n{_rodar_txt}:\n  guaraci run {os.path.join(r['pasta'], 'config.yaml')}")
         if rodar:
             from guaraci.guaraci import main as _main
             _main(["run", os.path.join(r["pasta"], "config.yaml")])
@@ -179,7 +193,7 @@ def _transferir_com_figura(args: Sequence[str]) -> int:
             from guaraci.figuras_extras import figuras_transferencia_de_argv
             figuras_transferencia_de_argv(list(args))
         except Exception as e:  # noqa: BLE001 -- figura complementar
-            print(f"  [AVISO] figura da transferencia nao gerada: {e}")
+            print(_pt(f"  [AVISO] figura da transferencia nao gerada: {e}", f"  [WARNING] transfer figure not created: {e}"))
     return codigo
 
 
@@ -192,41 +206,47 @@ def _legenda_selos() -> str:
     """Uma linha com o significado dos simbolos de selo da lista de `guaraci confianca`."""
     from guaraci.catalogo_validacao import ROTULO_ESTADO, SIMBOLO_ESTADO
     ascii_only = not _unicode()
-    partes = [f"{SIMBOLO_ESTADO[e][1 if ascii_only else 0]} {ROTULO_ESTADO[e][0]}" for e in SIMBOLO_ESTADO]
-    return "Selos: " + "   ".join(partes)
+    i = 1 if _L() == "EN" else 0
+    partes = [f"{SIMBOLO_ESTADO[e][1 if ascii_only else 0]} {ROTULO_ESTADO[e][i]}" for e in SIMBOLO_ESTADO]
+    return _pt("Selos: ", "Seals: ") + "   ".join(partes)
 
 
 def _cmd_confianca(args: Sequence[str]) -> int:
     from guaraci import confianca as conf
     if not args:
-        print(conf.lista(None, "PT", ascii_only=not _unicode()))
+        print(conf.lista(None, _L(), ascii_only=not _unicode()))
         print("\n" + _legenda_selos())
-        print("\nUse: guaraci confianca METODO  (id ou parte do nome)")
+        print(_pt("\nUse: guaraci confianca METODO  (id ou parte do nome)", "\nUse: guaraci confianca METHOD  (id or part of the name)"))
         return 0
     achado = conf.buscar_entrada(" ".join(args))
     if not achado:
-        print(f"Erro: nada encontrado para {' '.join(args)!r}. `guaraci confianca` aceita um metodo ou opcao do programa "
-              "(id ou parte do nome), nao uma tecnica de medicao como FT-NIR. Rode `guaraci confianca` para listar.", file=sys.stderr)
+        print(_pt(f"Erro: nada encontrado para {' '.join(args)!r}. `guaraci confianca` aceita um metodo ou opcao do programa "
+                  "(id ou parte do nome), nao uma tecnica de medicao como FT-NIR. Rode `guaraci confianca` para listar.",
+                  f"Error: nothing found for {' '.join(args)!r}. `guaraci confianca` takes a method or option of the program "
+                  "(id or part of the name), not a measurement technique such as FT-NIR. Run `guaraci confianca` to list them."),
+              file=sys.stderr)
         return 2
-    print(conf.pagina(achado[0], achado[1], "PT", ascii_only=not _unicode()))
+    print(conf.pagina(achado[0], achado[1], _L(), ascii_only=not _unicode()))
     return 0
 
 
 def _mapa_de_ajuda() -> str:
     """`guaraci ajuda` sem argumento: grupos, com telas, comandos e tecnicas de cada um."""
-    L = ["Mapa do GUARACI (use: guaraci ajuda TOPICO, guaraci buscar TERMO, guaraci assistente PERGUNTA)", ""]
+    i = 1 if _L() == "EN" else 0
+    L = [_pt("Mapa do GUARACI (use: guaraci ajuda TOPICO, guaraci buscar TERMO, guaraci assistente PERGUNTA)",
+             "GUARACI map (use: guaraci ajuda TOPIC, guaraci buscar TERM, guaraci assistente QUESTION)"), ""]
     for g in cat.grupos():
         telas, cmds = cat.telas(g["id"]), cat.comandos(g["id"])
         tecs = [t for t in cat.tecnicas() if t["grupo"] == g["id"]]
         if not (telas or cmds or tecs):
             continue
-        L.append(f"{g['nome'][0]} -- {g['faz'][0]}")
+        L.append(f"{g['nome'][i]} -- {g['faz'][i]}")
         for t in telas:
-            L.append(f"  tela [{t['tecla']}] {t['nome'][0]}")
+            L.append(f"  {_pt('tela', 'screen')} [{t['tecla']}] {t['nome'][i]}")
         for c in cmds:
-            L.append(f"  comando guaraci {c['uso'].split()[0]}")
+            L.append(f"  {_pt('comando', 'command')} guaraci {c['uso'].split()[0]}")
         for t in tecs:
-            L.append(f"  tecnica {t['id']}: {t['nome']}")
+            L.append(f"  {_pt('tecnica', 'technique')} {t['id']}: {t['nome']}")
         L.append("")
     return "\n".join(L).rstrip()
 
@@ -237,17 +257,18 @@ def _cmd_ajuda(args: Sequence[str]) -> int:
         print(_mapa_de_ajuda())
         return 0
     termo = " ".join(args)
-    e = ass.explicar(termo)
+    e = ass.explicar(termo, _L())
     if e:
         print(ass.formatar_explicacao(e))
         return 0
-    achados = ass.buscar(termo, "PT", 5)
+    achados = ass.buscar(termo, _L(), 5)
     if achados:
-        print(f"Nao ha topico exato {termo!r}. Parecidos:")
+        print(_pt(f"Nao ha topico exato {termo!r}. Parecidos:", f"No exact topic {termo!r}. Similar:"))
         for a in achados:
             print(f"  [{a['tipo']}] {a['titulo']} ({a['id']})")
         return 0
-    print(f"Erro: nada no catalogo para {termo!r}. Rode `guaraci ajuda` para ver o mapa.", file=sys.stderr)
+    print(_pt(f"Erro: nada no catalogo para {termo!r}. Rode `guaraci ajuda` para ver o mapa.",
+              f"Error: nothing in the catalogue for {termo!r}. Run `guaraci ajuda` to see the map."), file=sys.stderr)
     return 2
 
 
@@ -271,11 +292,12 @@ def _cmd_manual(args: Sequence[str]) -> int:
 def _cmd_buscar(args: Sequence[str]) -> int:
     from guaraci import assistente as ass
     if not args:
-        print("Erro: informe o termo. Ex.: guaraci buscar censura", file=sys.stderr)
+        print(_pt("Erro: informe o termo. Ex.: guaraci buscar censura", "Error: give the term. E.g.: guaraci buscar censura"),
+              file=sys.stderr)
         return 2
-    achados = ass.buscar(" ".join(args), "PT", 10)
+    achados = ass.buscar(" ".join(args), _L(), 10)
     if not achados:
-        print("Nada encontrado.")
+        print(_pt("Nada encontrado.", "Nothing found."))
         return 0
     for a in achados:
         print(f"[{a['tipo']}] {a['titulo']} ({a['id']}): {a['trecho']}")
@@ -285,9 +307,10 @@ def _cmd_buscar(args: Sequence[str]) -> int:
 def _cmd_assistente(args: Sequence[str]) -> int:
     from guaraci import assistente as ass
     if not args:
-        print("Use: guaraci assistente PERGUNTA   (ou abra o assistente nas telas: tecla G)")
+        print(_pt("Use: guaraci assistente PERGUNTA   (ou abra o assistente nas telas: tecla G)",
+                  "Use: guaraci assistente QUESTION   (or open the assistant in the screens: key G)"))
         return 0
-    print(ass.responder(" ".join(args), "PT"))
+    print(ass.responder(" ".join(args), _L()))
     return 0
 
 

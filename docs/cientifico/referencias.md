@@ -103,7 +103,7 @@
 | Rashedi (2026), regularized regression in ultra small chemometric | `10.1371/journal.pone.0341850` | 2026-09-25 contra Crossref | - |
 | Rinnan (2009), review of the most common pre | `10.1016/j.trac.2009.07.007` | 2026-09-25 contra Crossref | `src/guaraci/assistente_regras.py`, `src/guaraci/catalogo_referencias.py`, `src/guaraci/reports.py` |
 | Robertson (2009), the probabilistic relevance framework bm25 and beyond | `10.1561/1500000019` | 2026-11-05 contra Crossref via api.crossref.org | `src/guaraci/assistente_busca.py` |
-| Rochon (2012), to test or not to test preliminary assessment of normality | `10.1186/1471-2288-12-81` | 2026-10-06 contra Crossref | `MANUAL.md`, `docs/qualidade/anova_blindagem.md`, `scripts/gerar_blindagem_anova.py`, `src/guaraci/anova_grupos.py` e mais 2 |
+| Rochon (2012), to test or not to test preliminary assessment of normality | `10.1186/1471-2288-12-81` | 2026-10-06 contra Crossref | `MANUAL.md`, `docs/qualidade/anova_blindagem.md`, `scripts/gerar_blindagem_anova.py`, `src/guaraci/anova_cli.py` e mais 3 |
 | Rodionova (2016), discriminant analysis is an inappropriate method | `10.1016/j.trac.2016.01.010` | 2026-09-25 contra Crossref | `docs/projeto/roteiro_v1_1.md`, `src/guaraci/catalogo_referencias.py` |
 | Roger (2003), epo pls external parameter orthogonalisation of | `10.1016/s0169-7439(03)00051-0` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/epo_glsw.py`, `tests/test_epo_glsw.py` |
 | Rohman (2017), the use of infrared spectroscopy in | `10.1080/05704928.2016.1266493` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/cli_assistente.py` |
@@ -137,7 +137,7 @@
 | Williams (2014), the i rpd i statistic a | `10.1255/nirn.1419` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/chemometric_stats.py` |
 | Wold (1978), cross validatory estimation of the number | `10.1080/00401706.1978.10489693` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/reports.py` |
 | Wold (1998), orthogonal signal correction of near infrared | `10.1016/s0169-7439(98)00109-9` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/preprocessamento.py` |
-| Wold (2001), pls regression a basic tool of chemometrics | `10.1016/s0169-7439(01)00155-1` | 2026-10-06 contra Crossref | `MANUAL.md`, `docs/qualidade/anova_blindagem.md`, `scripts/gerar_blindagem_anova.py`, `src/guaraci/catalogo_referencias.py` e mais 2 |
+| Wold (2001), pls regression a basic tool of chemometrics | `10.1016/s0169-7439(01)00155-1` | 2026-10-06 contra Crossref | `MANUAL.md`, `docs/qualidade/anova_blindagem.md`, `scripts/gerar_blindagem_anova.py`, `src/guaraci/catalogo_referencias.py` e mais 3 |
 | Workman (2017), a review of calibration transfer practices | `10.1177/0003702817736064` | 2026-09-25 contra Crossref | `docs/projeto/roteiro_v1_1.md`, `src/guaraci/catalogo_referencias.py` |
 | Xu (2001), monte carlo cross validation | `10.1016/s0169-7439(00)00122-2` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/cli_assistente.py`, `tests/test_verificar_citacoes.py` |
 | Zhang (2010), baseline correction using adaptive iteratively reweighted | `10.1039/b922045c` | 2026-09-25 contra Crossref | `src/guaraci/catalogo_referencias.py`, `src/guaraci/preprocessamento.py` |
