@@ -11,6 +11,8 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 Rodada da CLI (2026-11-20):
 
+- **Instalação em passos curtos para Windows, macOS e Linux.** O README (PT e EN) e o guia `instalacao.md` trazem 3 a 5 passos por sistema, com `python -m guaraci` no lugar de `guaraci` (evita o bloqueio do `guaraci.exe` e problemas de PATH). O aviso do `pip install guaraci` (outro projeto no PyPI) e as versões do Python ficam em "Avisos". Novo: seção do macOS no guia, com o aviso de que o `.[all]` precisa de `brew install libomp` por causa do `xgboost`. O texto sobre o macOS diz "verificado só pelos testes automáticos".
+
 - **Aviso de RAM baixa também sai em inglês.** A linha `[AUTO-AJUSTE DE EXTRA POR RAM]` ficava em português com a interface em
   inglês. Só aparece com pouca RAM livre (< 4 a 6 GB), por isso a CI do macOS achou e as outras máquinas não. Não muda
   nenhum resultado.
