@@ -1005,6 +1005,26 @@
       "opcoes": null,
       "tipo": "int"
     },
+    "sinal_entrada": {
+      "attr": "signal_type",
+      "max": null,
+      "min": null,
+      "opcoes": [
+        "absorbancia",
+        "transmitancia",
+        "reflectancia",
+        "kubelka_munk",
+        "feixe_simples"
+      ],
+      "tipo": "choice"
+    },
+    "sinal_referencia": {
+      "attr": "signal_reference",
+      "max": null,
+      "min": null,
+      "opcoes": null,
+      "tipo": "str"
+    },
     "sintetico_adulterantes": {
       "attr": "synthetic_adulterants",
       "max": null,
@@ -1637,9 +1657,21 @@
       }
     },
     "arquivo_matrizes": {
+      "DICA_CONVERTER": {
+        "forma": "constante",
+        "tipo": "str"
+      },
       "EXTENSOES_MATRIZ": {
         "forma": "constante",
         "tipo": "tuple"
+      },
+      "ListaVariaveis": {
+        "bases": [
+          "list"
+        ],
+        "forma": "classe",
+        "init": "(self, itens = (), ignoradas = ())",
+        "metodos_publicos": []
       },
       "PADRAO_NOME_EIXO": {
         "forma": "constante",
@@ -1701,7 +1733,7 @@
         "forma": "funcao"
       },
       "texto_falta_h5py": {
-        "assinatura": "(caminho: str, motivo: str) -> str",
+        "assinatura": "(caminho: str, motivo: str, erro: Union[BaseException, None] = None) -> str",
         "forma": "funcao"
       },
       "vetores_candidatos_a_eixo": {
@@ -2098,6 +2130,16 @@
             "nome": "eixo_max",
             "tem_default": true,
             "tipo": "Optional[float]"
+          },
+          {
+            "nome": "nan_amostras",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "nan_variaveis",
+            "tem_default": true,
+            "tipo": "str"
           }
         ],
         "forma": "dataclass"
@@ -2990,6 +3032,16 @@
             "tipo": "str"
           },
           {
+            "nome": "signal_type",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "signal_reference",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
@@ -3865,6 +3917,24 @@
       },
       "texto_efetiva": {
         "assinatura": "(cfg: Any) -> str",
+        "forma": "funcao"
+      }
+    },
+    "conversao_sinal": {
+      "SINAIS": {
+        "forma": "constante",
+        "tipo": "tuple"
+      },
+      "converter": {
+        "assinatura": "(X: numpy.ndarray, sinal: str, wn: Union[None, numpy.ndarray] = None, referencia: Union[None, tuple[numpy.ndarray, numpy.ndarray]] = None, origem_referencia: str = '') -> tuple[numpy.ndarray, dict[str, Any]]",
+        "forma": "funcao"
+      },
+      "converter_pelo_pacote": {
+        "assinatura": "(pkg: dict[str, Any], X_new: numpy.ndarray, wn_new: Union[None, numpy.ndarray]) -> numpy.ndarray",
+        "forma": "funcao"
+      },
+      "info_para_pacote": {
+        "assinatura": "(info: Union[None, dict[str, Any]]) -> Union[None, dict[str, Any]]",
         "forma": "funcao"
       }
     },
@@ -5008,6 +5078,16 @@
             "tipo": "str"
           },
           {
+            "nome": "signal_type",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
+            "nome": "signal_reference",
+            "tem_default": true,
+            "tipo": "str"
+          },
+          {
             "nome": "hplc_detector",
             "tem_default": true,
             "tipo": "str"
@@ -5804,7 +5884,15 @@
         "tipo": "tuple"
       },
       "ler_cubo_arquivo": {
-        "assinatura": "(caminho: str, kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto') -> guaraci.CuboArquivo",
+        "assinatura": "(caminho: str, kw:variavel_dados: str = '', kw:variavel_eixo: str = '', kw:eixo_espectral: str = 'auto', kw:calibrando: bool = False) -> guaraci.CuboArquivo",
+        "forma": "funcao"
+      },
+      "ler_referencia_arquivo": {
+        "assinatura": "(caminho: str, n_bandas: int, kw:pos_cubo: Union[None, int] = None, kw:invertido: bool = False) -> dict[str, Any]",
+        "forma": "funcao"
+      },
+      "referencias_no_arquivo": {
+        "assinatura": "(caminho: str, info: dict[str, Any], n_bandas: int) -> dict[str, dict[str, Any]]",
         "forma": "funcao"
       }
     },
@@ -6592,6 +6680,52 @@
       },
       "train_identification_ensemble": {
         "assinatura": "(pca, var_t: numpy.ndarray, X_proc: numpy.ndarray, rotulos: numpy.ndarray, conc: numpy.ndarray, mae_id: Union[None, numpy.ndarray], alpha_nominal: float = 0.05, mapa_adulterante: Union[None, dict[str, str]] = None) -> dict[tuple[str, str], dict[str, Any]]",
+        "forma": "funcao"
+      }
+    },
+    "idioma_console": {
+      "FRASES_CONSOLE": {
+        "forma": "constante",
+        "tipo": "list"
+      },
+      "TradutorSaida": {
+        "bases": [
+          "TextIOBase"
+        ],
+        "forma": "classe",
+        "init": "(self, destino: Any, lang: Union[None, str] = None, painel: bool = False) -> None",
+        "metodos_publicos": [
+          "fileno",
+          "flush",
+          "isatty",
+          "writable",
+          "write"
+        ]
+      },
+      "ativar": {
+        "assinatura": "() -> Callable[[], None]",
+        "forma": "funcao"
+      },
+      "ativo": {
+        "assinatura": "() -> bool",
+        "forma": "funcao"
+      },
+      "descricao_perfil": {
+        "assinatura": "(descricao: str, lang: Union[None, str] = None) -> str",
+        "forma": "funcao"
+      },
+      "saida_traduzida": {
+        "bases": [],
+        "forma": "classe",
+        "init": "(self, lang: Union[None, str] = None, painel: bool = True) -> None",
+        "metodos_publicos": []
+      },
+      "traduzir_linha": {
+        "assinatura": "(linha: str, lang: Union[None, str] = None, painel: bool = False) -> str",
+        "forma": "funcao"
+      },
+      "traduzir_texto": {
+        "assinatura": "(texto: str, lang: Union[None, str] = None, painel: bool = False) -> str",
         "forma": "funcao"
       }
     },
@@ -8920,38 +9054,6 @@
       },
       "rodar_portao_correcao": {
         "assinatura": "(X: numpy.ndarray, y: numpy.ndarray, grupos: Union[None, numpy.ndarray], metodo: str, kw:classificacao: bool, kw:n_componentes: int = 5, kw:n_seeds: int = 10)",
-        "forma": "funcao"
-      }
-    },
-    "traducao_console": {
-      "TradutorSaida": {
-        "bases": [
-          "TextIOBase"
-        ],
-        "forma": "classe",
-        "init": "(self, destino)",
-        "metodos_publicos": [
-          "fileno",
-          "flush",
-          "isatty",
-          "writable",
-          "write"
-        ]
-      },
-      "ativar": {
-        "assinatura": "() -> Callable[[], None]",
-        "forma": "funcao"
-      },
-      "ativo": {
-        "assinatura": "() -> bool",
-        "forma": "funcao"
-      },
-      "traduzir_linha": {
-        "assinatura": "(linha: str, lang: Union[None, str] = None) -> str",
-        "forma": "funcao"
-      },
-      "traduzir_texto": {
-        "assinatura": "(texto: str, lang: Union[None, str] = None) -> str",
         "forma": "funcao"
       }
     },

@@ -42,6 +42,8 @@ CURTA: Dict[str, Tuple[str, str]] = {
     'hsi_referencia_escuro': ('Onde esta o DARKREF', 'Where the DARKREF is'),
     'hsi_eixo_bandas': ('Cubos com eixos de bandas diferentes', 'Cubes with different band axes'),
     'hsi_eixo_espectral': ('Onde estao as bandas no cubo .mat/.h5', 'Where the bands are in the .mat/.h5 cube'),
+    'sinal_entrada': ('Converte T, R ou intensidade em absorbancia', 'Converts T, R or intensity to absorbance'),
+    'sinal_referencia': ('Branco I0 do feixe simples', 'Single-beam I0 blank'),
     'arquivo_variavel_dados': ('Variavel do dado no .mat/.h5 ou planilha', 'Data variable in the .mat/.h5 or sheet'),
     'arquivo_variavel_eixo': ('Variavel do eixo espectral no .mat/.h5', 'Spectral axis variable in the .mat/.h5'),
     'hsi_validacao': ('Valida por objeto ou por holdout', 'Validates by object or by holdout'),

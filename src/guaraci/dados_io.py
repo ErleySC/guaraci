@@ -426,6 +426,48 @@ def extract_dx_title(caminho: str) -> Optional[str]:
 #  Data loading
 # =========================================================================
 
+def _par_mais_distante(X: np.ndarray, bloco: int = 1024) -> Tuple[int, int]:
+    """Par (i, j), i < j, de MAIOR distancia euclidiana entre as linhas de `X` -- exato, sem a matriz n×n.
+
+    Percorre blocos de `bloco` linhas contra todas (memoria O(bloco·n)); a distancia ao quadrado vem da
+    identidade |a|²+|b|²-2a·b (BLAS). Como essa conta perde precisao por cancelamento, os pares a menos de
+    1e-9 (relativo) do maximo sao recalculados pela diferenca direta e o empate fica com o par de menores
+    indices: o resultado e' o mesmo de `scipy.spatial.distance.pdist` + argmax. Custo O(n²·p), da mesma
+    ordem das iteracoes do proprio Kennard-Stone."""
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    if n < 2:
+        return 0, 0
+    norma2 = np.einsum("ij,ij->i", X, X)
+    # erro de arredondamento da identidade cresce com |a|²+|b|²: a folga de empate usa essa escala
+    folga_abs = 1e-12 * (4.0 * float(norma2.max()) + 1e-300)
+    melhor = -np.inf
+    candidatos: List[Tuple[float, int, int]] = []
+
+    def _limiar(m: float) -> float:
+        return m - max(1e-9 * abs(m), folga_abs)
+    for ini in range(0, n, bloco):
+        fim = min(n, ini + bloco)
+        d2 = norma2[ini:fim, None] + norma2[None, :] - 2.0 * (X[ini:fim] @ X.T)
+        # so' o triangulo superior (j > i): evita contar o par duas vezes e o proprio ponto
+        d2[np.arange(n)[None, :] <= np.arange(ini, fim)[:, None]] = -np.inf
+        m = float(d2.max())
+        if m < _limiar(melhor):
+            continue
+        if m > melhor:
+            melhor = m
+            candidatos = [c for c in candidatos if c[0] >= _limiar(melhor)]
+        if melhor <= folga_abs:          # todas as linhas (numericamente) iguais: qualquer par serve
+            return 0, 1
+        ii, jj = np.nonzero(d2 >= _limiar(melhor))
+        candidatos.extend((float(d2[a, b]), int(ini + a), int(b)) for a, b in zip(ii[:10000], jj[:10000]))
+    candidatos = [c for c in candidatos if c[0] >= _limiar(melhor)]
+    exatos = [(float(np.sum((X[i] - X[j]) ** 2)), i, j) for _d, i, j in candidatos]
+    dmax = max(e[0] for e in exatos)
+    i, j = min((i, j) for d, i, j in exatos if d == dmax)
+    return i, j
+
+
 def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
     """Selecao de amostras de Kennard & Stone (1969), Technometrics 11:137-148.
 
@@ -437,11 +479,14 @@ def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
     validacao herda amostras dentro do span do treino (nao extrapola) e o
     treino cobre bem as bordas do espaco.
 
-    Semente: para evitar a matriz de distancias n×n (custosa em memoria para
-    milhares de espectros), o par inicial e aproximado pelo ponto mais distante
-    do centroide e, em seguida, o mais distante desse — variante eficiente e
-    comum de KS. As iteracoes seguintes sao exatas (distancia minima ao
-    conjunto selecionado, atualizada incrementalmente).
+    Semente EXATA (como no artigo original): o par de amostras mais distantes
+    entre si, achado em blocos (`_par_mais_distante`), sem montar a matriz de
+    distancias n×n inteira na memoria. Empate: o par de menores indices, entao
+    o resultado nao depende da ordem de leitura alem dela mesma. As iteracoes
+    seguintes tambem sao exatas (distancia minima ao conjunto selecionado,
+    atualizada incrementalmente; empate = menor indice). Ate a versao 1.0.0
+    a semente era aproximada (ponto mais distante do centroide), o que mudava
+    o conjunto em cerca de 1 de cada 4 dados.
 
     Retorna os indices selecionados, na ORDEM de selecao (os primeiros sao os
     mais extremos), o que permite usar um prefixo como subconjunto menor.
@@ -452,13 +497,13 @@ def kennard_stone(X: np.ndarray, n_selecionar: int) -> np.ndarray:
         return np.array([], dtype=int)
     n_sel = int(min(max(n_selecionar, 1), n))
 
-    centroide = X.mean(axis=0)
-    i1 = int(np.argmax(np.sum((X - centroide) ** 2, axis=1)))
+    if n == 1:
+        return np.array([0], dtype=int)
+    i1, i2 = _par_mais_distante(X)
     selecionados = [i1]
     min_dist = np.sqrt(np.sum((X - X[i1]) ** 2, axis=1))
 
     if n_sel >= 2:
-        i2 = int(np.argmax(min_dist))
         selecionados.append(i2)
         min_dist = np.minimum(min_dist,
                               np.sqrt(np.sum((X - X[i2]) ** 2, axis=1)))
@@ -592,10 +637,9 @@ def duplex_split(X: np.ndarray, frac_treino: float = 0.5
     do PROPRIO conjunto que esta recebendo) -- os dois ficam
     representativos do espaco, nao so' o treino.
 
-    Semente aproximada (mesma tecnica de `kennard_stone`, evita matriz de
-    distancias n×n): o par semente do treino e' o ponto mais distante do
-    centroide + o mais distante desse; o par semente da validacao e' a
-    MESMA logica aplicada so' aos pontos restantes.
+    Semente exata (Snee 1977): o par mais distante entre si vai para o treino
+    e o par mais distante entre os que sobraram vai para a validacao
+    (`_par_mais_distante`, sem a matriz n×n; empate = menores indices).
     """
     X = np.asarray(X, dtype=float)
     n = X.shape[0]
@@ -605,12 +649,10 @@ def duplex_split(X: np.ndarray, frac_treino: float = 0.5
         return np.array([0], dtype=int), np.array([], dtype=int)
 
     def _semente(idx_pool: np.ndarray) -> List[int]:
-        Xp = X[idx_pool]
-        centro = Xp.mean(axis=0)
-        p1 = int(idx_pool[np.argmax(np.sum((Xp - centro) ** 2, axis=1))])
-        dist_p1 = np.sqrt(np.sum((Xp - X[p1]) ** 2, axis=1))
-        p2 = int(idx_pool[np.argmax(dist_p1)])
-        return [p1, p2] if p2 != p1 else [p1]
+        if idx_pool.size == 1:
+            return [int(idx_pool[0])]
+        a, b = _par_mais_distante(X[idx_pool])
+        return [int(idx_pool[a]), int(idx_pool[b])]
 
     treino = _semente(np.arange(n))
     restantes = set(range(n)) - set(treino)
@@ -866,6 +908,7 @@ def _ler_tabela_csv(caminho, variavel_dados: str = "", variavel_eixo: str = "") 
     from guaraci import tabela_arquivo as _ta
     if _ta.e_tabela_arquivo(str(caminho)):
         df_arq = _ta.ler_tabela_arquivo(str(caminho), variavel_dados=variavel_dados, variavel_eixo=variavel_eixo)
+        df_arq = _sem_linhas_vazias(df_arq, caminho)
         if df_arq.empty or len(df_arq.columns) == 0:
             raise ValueError(f"'{os.path.basename(str(caminho))}' nao tem linhas de dados.")
         return df_arq
@@ -899,7 +942,28 @@ def _ler_tabela_csv(caminho, variavel_dados: str = "", variavel_eixo: str = "") 
             df = _ler(decimal=",")
         except (pd.errors.ParserError, _csv_mod.Error, ValueError):
             pass
+    df = _sem_linhas_vazias(df, caminho)
+    if df.empty:
+        raise ValueError(
+            f"O CSV '{os.path.basename(str(caminho))}' so' tem linhas vazias "
+            f"abaixo do cabecalho.")
     return df
+
+
+def _sem_linhas_vazias(df: pd.DataFrame, caminho) -> pd.DataFrame:
+    """Tira as linhas em que TODAS as celulas estao vazias (sobra comum de planilha: ';;;;' no fim
+    ou no meio do arquivo), dizendo quais. Antes elas entravam como amostra e o erro acusava a
+    coluna de grupo ou de classe vazia, sem dizer que a linha inteira estava em branco."""
+    if df.empty:
+        return df
+    texto = df.astype(str).apply(lambda col: col.str.strip())
+    vazias = (df.isna() | texto.eq("") | texto.eq("nan")).all(axis=1).to_numpy()
+    if not vazias.any():
+        return df
+    linhas = [str(int(i) + 2) for i in np.where(vazias)[0]]
+    print(f"[AVISO] {os.path.basename(str(caminho))}: {len(linhas)} linha(s) totalmente vazia(s) "
+          f"ignorada(s) (linha(s) {', '.join(linhas[:8])}{' ...' if len(linhas) > 8 else ''} do arquivo).")
+    return df.loc[~vazias].reset_index(drop=True)
 
 
 def _localizar_texto(bloco: pd.DataFrame, n: int = 3) -> str:
@@ -975,6 +1039,28 @@ def atribuir_grupos(nomes, mapa: Dict[str, str], origem: str = "") -> np.ndarray
     return np.array([mapa[n] for n in nomes], dtype=str)
 
 
+#: Cabecalhos tipicos de tabela de picos/features de LC-MS e GC-MS exportada por MZmine, XCMS, MS-DIAL,
+#: OpenChrom e afins, em que cada LINHA e' um pico e cada COLUNA uma amostra (o contrario do que o Guaraci le).
+_RX_TABELA_DE_PICOS = re.compile(
+    r"^(row id|row m/z|row retention time|mzmed|rtmed|mz|m/z|rt|rt \(min\)|retention time|alignment id|"
+    r"average mz|average rt\(min\)|feature( id)?|compound|metabolite name|peak( id)?|name)$", re.IGNORECASE)
+_RX_COLUNA_DE_ARQUIVO = re.compile(r"\.(mzml|mzxml|mzdata|raw|d|cdf|wiff)\b|peak area|peak height", re.IGNORECASE)
+
+
+def _dica_tabela_de_picos(df) -> str:
+    """Dica quando a tabela parece estar com as AMOSTRAS NAS COLUNAS (tabela de picos de LC-MS/GC-MS). Vazio se
+    nada sugere isso: a dica nunca troca a orientacao sozinha."""
+    colunas = [str(c).strip() for c in df.columns]
+    picos = [c for c in colunas if _RX_TABELA_DE_PICOS.match(c)]
+    arquivos = [c for c in colunas if _RX_COLUNA_DE_ARQUIVO.search(c)]
+    if len(picos) >= 2 or len(arquivos) >= 2:
+        exemplo = ", ".join((picos + arquivos)[:4])
+        return (f" A tabela parece ter um PICO por linha e uma AMOSTRA por coluna ({exemplo}), como a exportacao "
+                f"de MZmine, XCMS ou MS-DIAL. O Guaraci le uma amostra por linha: transponha a tabela (no "
+                f"Excel, Colar especial > Transpor) e acrescente a coluna de classe.")
+    return ""
+
+
 def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
                            arquivo_grupos: str = "", variavel_dados: str = "",
                            variavel_eixo: str = ""):
@@ -995,7 +1081,8 @@ def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
     if col_classe not in df.columns:
         raise ValueError(
             f"A coluna de classe '{col_classe}' nao existe no CSV. Colunas "
-            f"encontradas: {_lista_colunas(df)}. Ajuste coluna_classe.")
+            f"encontradas: {_lista_colunas(df)}. Ajuste coluna_classe."
+            + _dica_tabela_de_picos(df))
     if col_conc and col_conc not in df.columns:
         raise ValueError(
             f"A coluna de concentracao '{col_conc}' nao existe no CSV. "
@@ -1042,7 +1129,7 @@ def _carregar_csv_completo(caminho, col_classe, col_conc, col_grupo: str = "",
             f"numericos ({e}).") from e
     cols_spec, nomes, ignoradas = _escolher_variaveis_csv(df, excluir)
     if ignoradas:
-        print(f"[AVISO] Colunas nao numericas ignoradas (nao sao espectro): "
+        print(f"[AVISO] Colunas que nao entram como variaveis (texto ou metadado sem eixo numerico): "
               f"{', '.join(ignoradas[:6])}{' ...' if len(ignoradas) > 6 else ''}")
     if len(cols_spec) < 2:
         raise ValueError(
@@ -1325,6 +1412,17 @@ def parse_dx(filepath):
             raise ValueError(
                 f"{os.path.basename(filepath)}: nenhum ponto de ##XYDATA= foi decodificado "
                 f"(forma de compressao JCAMP-DX nao reconhecida).")
+        # Lacuna grande = arquivo truncado ou corrompido. Antes qualquer lacuna era preenchida por np.interp, que
+        # estende o ultimo valor lido como constante: um .dx cortado a 1/3 virava um espectro "completo" e inventado,
+        # sem aviso. Ate' max(2, 1 %) pontos (rotulo de abscissa arredondado nas pontas) ainda se interpola, com aviso.
+        tolerancia = max(2, int(0.01 * npoints))
+        if n_nan > tolerancia:
+            raise ValueError(
+                f"{os.path.basename(filepath)}: so' {npoints - n_nan} de {npoints} pontos (##NPOINTS=) foram "
+                f"lidos; o arquivo parece truncado ou corrompido. Exporte o espectro de novo.")
+        if 0 < n_nan <= tolerancia:
+            print(f"  [AVISO] {os.path.basename(filepath)}: {n_nan} de {npoints} ponto(s) ausente(s) em "
+                  f"##XYDATA=; preenchido(s) por interpolacao linear.")
         if n_nan > 0 and n_nan < npoints:
             # np.interp exige `xp` CRESCENTE e nao ordena sozinho. Em JCAMP-DX
             # firstx pode ser MAIOR que lastx (convencao comum em FTIR), o que
@@ -1746,6 +1844,23 @@ def _harmonizar_classes_por_subpasta(rotulos: List[str], meta_rows: List[Dict[st
     return n_mudou
 
 
+#: Arquivos que a ultima leitura de pasta (`load_dx`) pulou: (caminho relativo, motivo). O pipeline grava a lista
+#: em ARQUIVOS_IGNORADOS.txt e repete o total no resumo final, para que um arquivo pulado nunca fique so' numa linha
+#: perdida no meio do log.
+_ARQUIVOS_IGNORADOS: List[Tuple[str, str]] = []
+_ARQUIVOS_LIDOS: List[int] = [0]
+
+
+def obter_arquivos_ignorados() -> Tuple[List[Tuple[str, str]], int]:
+    """(arquivos pulados na ultima leitura de pasta, total de arquivos encontrados nela)."""
+    return list(_ARQUIVOS_IGNORADOS), int(_ARQUIVOS_LIDOS[0])
+
+
+def resetar_arquivos_ignorados() -> None:
+    _ARQUIVOS_IGNORADOS.clear()
+    _ARQUIVOS_LIDOS[0] = 0
+
+
 def load_dx(pasta: str, class_part: int = 0,
                  extrair_conc: bool = False,
                  use_parse_title: bool = True,
@@ -1805,6 +1920,8 @@ def load_dx(pasta: str, class_part: int = 0,
     n_falhos = 0
     n_title_falhos = 0
     cods_desconhecidos: set = set()
+    _ARQUIVOS_IGNORADOS.clear()
+    _ARQUIVOS_LIDOS[0] = len(arquivos)
 
     for arq, subpasta_nome in arquivos:
         try:
@@ -1815,10 +1932,13 @@ def load_dx(pasta: str, class_part: int = 0,
             # contabilizado em n_falhos (reportado ao usuario abaixo), nunca
             # silencioso -- 1 arquivo malformado nao derruba o dataset inteiro.
             n_falhos += 1
-            print(f"  [ERROR] {os.path.basename(arq)}: {e}")
+            _msg = str(e) if str(e).startswith(os.path.basename(arq)) else f"{os.path.basename(arq)}: {e}"
+            print(f"  [ERROR] {_msg}")
+            _ARQUIVOS_IGNORADOS.append((os.path.relpath(arq, pasta), _msg))
             continue
         if len(x) == 0:
             print(f"  [WARNING] {os.path.basename(arq)} has no data — skipped")
+            _ARQUIVOS_IGNORADOS.append((os.path.relpath(arq, pasta), "nenhum ponto de dados lido"))
             continue
 
         nome_arq = os.path.splitext(os.path.basename(arq))[0]
@@ -1833,6 +1953,8 @@ def load_dx(pasta: str, class_part: int = 0,
                 _CONTAGEM_CORRECOES["pureza_excluidos"] += 1
                 print(f"  [WARNING] {os.path.basename(arq)} EXCLUIDO — "
                       f"{_TITLES_PUREZA_INDETERMINADA[title.strip()]}")
+                _ARQUIVOS_IGNORADOS.append((os.path.relpath(arq, pasta),
+                                            _TITLES_PUREZA_INDETERMINADA[title.strip()]))
                 continue
             if title:
                 title_parsed = parse_title(title)

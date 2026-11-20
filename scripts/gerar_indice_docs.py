@@ -97,6 +97,8 @@ for _arq in sorted(Path(__file__).resolve().parents[1].joinpath("docs", "qualida
     DESCRICOES[f"docs/qualidade/mutacao/{_arq.name}"] = f"Resultado do teste de mutação de `{_mod}.py`, linhas {_faixa.replace('_', ' ')} (para `mutacao_linhas_alteradas.md`)."
 
 DESCRICOES["docs/qualidade/rodada_local_formatos_reais.json"] = "Registro (sem arquivos) da rodada local dos leitores contra arquivos reais de fabricante: contagens e hash."
+DESCRICOES["docs/qualidade/leitores_publicos.json"] = "Leitores de .mat e GC-FID conferidos com arquivos reais públicos (MATLAB, Agilent): contagens e SHA-256, sem os arquivos."
+DESCRICOES["docs/qualidade/escala.json"] = "Tempo e memória de pico do pipeline com cada vez mais espectros (scripts/medir_escala.py), com a máquina da medida."
 DESCRICOES["docs/qualidade/cobertura/mutacao_cobertura_excecoes.json"] = "Teste de mutação da guarda de exclusões de cobertura (`scripts/cobertura_excecoes.py`), primeira rodada."
 DESCRICOES["docs/qualidade/cobertura/mutacao_cobertura_excecoes_2.json"] = "Teste de mutação da guarda de exclusões de cobertura, nova rodada só dos sobreviventes."
 

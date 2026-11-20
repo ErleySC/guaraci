@@ -9,7 +9,6 @@ import importlib.util
 import tomllib
 from pathlib import Path
 
-import pytest
 
 from guaraci import assistente_checar as chk
 from guaraci import assistente_regras as regras
@@ -74,9 +73,12 @@ def test_tela_2_4_marca_os_formatos_sem_pacote_e_avisa_na_escolha(monkeypatch):
 
 
 def test_tela_2_4_nao_marca_nada_quando_os_pacotes_estao_instalados(monkeypatch):
-    for e in ext.EXTRAS:
-        if not ext.instalado(e):
-            pytest.skip("ambiente sem todos os extras")
+    # finge todos os extras presentes (nao depende do que este ambiente instalou)
+    modulos = {e.modulo for e in ext.EXTRAS}
+    real = importlib.util.find_spec
+    monkeypatch.setattr(importlib.util, "find_spec",
+                        lambda nome, *a, **k: object() if nome in modulos else real(nome, *a, **k))
+    assert all(ext.instalado(e) for e in ext.EXTRAS)
     _, saida = _tela(monkeypatch, "ft-nir", "2")
     assert "extra: pip install" not in saida and "optional package" not in saida and "pacote opcional" not in saida
 

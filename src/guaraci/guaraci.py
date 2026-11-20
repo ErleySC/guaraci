@@ -7434,8 +7434,8 @@ def _montar_painel_execucao(texto_log: str, elapsed: float,
     figs = _figures_completed(texto_log)
     avisos = _avisos_do_log(texto_log)
     if _lang() == "EN":
-        # O nucleo grava os avisos em portugues; o painel em ingles os mostra traduzidos (traducao_console).
-        from guaraci.traducao_console import traduzir_linha
+        # O nucleo grava os avisos em portugues; o painel em ingles os mostra traduzidos (idioma_console).
+        from guaraci.idioma_console import traduzir_linha
         avisos = [_re.sub(r"^\[(WARNING|AVISO)\] ", "", traduzir_linha("[AVISO] " + a, "en")) for a in avisos]
 
     # LIMITE DE ALTURA (bug real, 2026-08-07: "tela preta").
@@ -7703,8 +7703,9 @@ def _rodar_pipeline_execucao(cfg: Config, lang: str, _dados_pv: Any) -> None:
 
     def _run():
         try:
+            from guaraci import idioma_console as _ic
             with contextlib.redirect_stdout(_logger), \
-                 contextlib.redirect_stderr(_logger):
+                 contextlib.redirect_stderr(_logger), _ic.saida_traduzida():
                 _executar(cfg)
         except KeyboardInterrupt:
             _done["error"] = _t("exec_interrompido")
@@ -8207,7 +8208,7 @@ def _comando_run(caminho_config: Optional[str]) -> None:
             "ou copie config.example.yaml e preencha." if lang == "pt" else
             f"config file not found: {caminho}. Run `guaraci exemplo classificar FOLDER` to build a ready config.yaml, "
             "or copy config.example.yaml and fill it in.") + "\n", file=sys.stderr)
-        print(_texto_ajuda(), file=sys.stderr)
+        print(_texto_ajuda_sessao(), file=sys.stderr)
         raise SystemExit(2)
 
     try:
@@ -8233,7 +8234,7 @@ def _comando_run(caminho_config: Optional[str]) -> None:
         cfg.auto_adjust = False
     if _MAIS_GRAFICOS[0]:
         cfg.figure_selection = "todos"
-    print(f"[GUARACI] Executando com {caminho} ...")
+    print(f"[GUARACI] {'Executando com' if _idioma_sessao() == 'pt' else 'Running with'} {caminho} ...")
     from guaraci.dados_io import garantia_agrupamento_prevista
     if (garantia_agrupamento_prevista(cfg) == "none"
             and getattr(cfg, "group_by_mae_id", True)):
@@ -8260,7 +8261,9 @@ def _comando_run(caminho_config: Optional[str]) -> None:
                               "--sem-preflight: running despite the critical finding(s) above."), file=sys.stderr)
     pq.resetar_falhas_etapa()
     try:
-        pq.executar(cfg)
+        from guaraci import idioma_console as _ic
+        with _ic.saida_traduzida():
+            pq.executar(cfg)
         _figuras_pos_execucao(cfg)
     except Exception as e:  # noqa: BLE001 -- `run` e' o caminho nao-interativo/
         # script: precisa devolver uma mensagem legivel + codigo de saida
@@ -8285,19 +8288,19 @@ def _comando_run(caminho_config: Optional[str]) -> None:
               + "\n".join(f"  - {f}" for f in falhas_etapa)
               + f"\n{cfg.output_folder}", file=sys.stderr)
         raise SystemExit(1)
-    print(f"[GUARACI] Concluido. Saida em: {cfg.output_folder}")
+    print(f"[GUARACI] {'Concluido. Saida em' if _idioma_sessao() == 'pt' else 'Done. Output in'}: {cfg.output_folder}")
 
 
-#: Quadro que fecha o `demo`: explica por que aparecem 2 avisos CRITICOS e por que a
-#: acuracia 1,000 nao e um resultado de desempenho (o dado do demo e sintetico e
-#: confundido de proposito simples; um dado sem confundimento fica para a v1.1).
+#: Quadro que fecha o `demo` (PT, EN): explica por que aparecem 2 avisos CRITICOS e por que a acuracia do
+#: demo nao e um resultado de desempenho (o dado do demo e sintetico e confundido de proposito; um dado sem
+#: confundimento fica para a v1.1). Sem numero fixo: a acuracia muda com a versao e a semente.
 _QUADRO_FINAL_DEMO: Tuple[str, ...] = (
     "",
     "  O que os 2 avisos [AUDITORIA][CRITICO] acima significam",
     "  - Neste dado sintetico cada especie foi 'medida' em UMA unica sessao de coleta.",
     "    Assim o modelo pode estar distinguindo a sessao e nao a especie (confundimento",
     "    entre classe e sessao), e as replicas de uma mesma sessao nao sao amostras independentes.",
-    "  - Por isso a acuracia desta demo NAO prova desempenho: e consequencia desse desenho,",
+    "  - Por isso nenhuma acuracia deste demo prova desempenho: ela e consequencia desse desenho,",
     "    nao uma qualidade do modelo. O demo serve para mostrar o fluxo e as saidas.",
     "  - No seu estudo, o mesmo aviso pede que cada classe apareca em varias sessoes",
     "    (por exemplo, coletar cada especie em dias diferentes) antes de confiar no numero.",
@@ -8305,30 +8308,24 @@ _QUADRO_FINAL_DEMO: Tuple[str, ...] = (
 _QUADRO_FINAL_DEMO_EN: Tuple[str, ...] = (
     "",
     "  What the 2 [AUDIT][CRITICAL] warnings above mean",
-    "  - In these synthetic data each species was 'measured' in ONE single collection session.",
-    "    So the model may be telling the session apart, not the species (class and session",
-    "    are confounded), and the replicates of one session are not independent samples.",
-    "  - That is why the accuracy of this demo does NOT prove performance: it follows from that design,",
-    "    not from a quality of the model. The demo is there to show the workflow and the outputs.",
-    "  - In your study, the same warning asks for every class to appear in several sessions",
-    "    (for example, collecting each species on different days) before trusting the number.",
+    "  - In this synthetic data each species was 'measured' in ONE single collection session.",
+    "    So the model may be telling the session apart, not the species (class and session are",
+    "    confounded), and the replicates of one session are not independent samples.",
+    "  - That is why no accuracy from this demo proves performance: it follows from this design,",
+    "    not from a quality of the model. The demo shows the workflow and the outputs.",
+    "  - In your study, the same warning asks for each class to appear in several sessions",
+    "    (for example, collect each species on different days) before trusting the number.",
 )
-
-
-def _texto_ajuda() -> str:
-    """`--help` no idioma da sessao (`_TEXTO_AJUDA` fica como a versao em portugues, para quem o importa)."""
-    from guaraci.idioma_relatorio import idioma
-    return _cmd.texto_ajuda("EN" if idioma() == "en" else "PT")
 
 
 def _comando_demo() -> None:
     """Roda o pipeline completo com dados sinteticos, sem exigir dado do
     usuario. Fluxo dos 5 minutos: pip install -> guaraci demo -> figuras."""
+    from guaraci import idioma_console as _ic
+    from guaraci.idioma_relatorio import t as _tt
     console.print()
-    from guaraci.idioma_relatorio import idioma as _idioma_demo
-    _en = _idioma_demo() == "en"
-    console.print(f"  [{PA}]{'GUARACI demo -- generating synthetic spectra and running the pipeline...' if _en else 'GUARACI demo — gerando espectros sinteticos e rodando o pipeline...'}[/{PA}]")
-    console.print(f"  [{PM}]{'(none of your data is used; everything here is generated artificially)' if _en else '(nenhum dado seu e usado; tudo aqui e gerado artificialmente)'}[/{PM}]")
+    console.print(f"  [{PA}]{_tt('GUARACI demo — gerando espectros sinteticos e rodando o pipeline...', 'GUARACI demo — generating synthetic spectra and running the pipeline...')}[/{PA}]")
+    console.print(f"  [{PM}]{_tt('(nenhum dado seu e usado; tudo aqui e gerado artificialmente)', '(none of your data is used; everything here is generated artificially)')}[/{PM}]")
     console.print()
 
     saida = Path.cwd() / "GUARACI_Demo"
@@ -8365,10 +8362,11 @@ def _comando_demo() -> None:
     os.makedirs(cfg.input_folder, exist_ok=True)
 
     try:
-        pq.executar(cfg)
+        with _ic.saida_traduzida():
+            pq.executar(cfg)
     except Exception as e:  # noqa: BLE001 -- demo deve reportar erro legivel, nao stack trace cru
-        console.print(f"  [err]✗ {'The demo failed' if _en else 'A demo falhou'}: {escape(str(e))}[/err]")
-        console.print(f"  [{PM}]{'Run' if _en else 'Rode'} 'guaraci doctor' {'to check the environment' if _en else 'para checar o ambiente'}.[/{PM}]")
+        console.print(f"  [err]✗ {_tt('A demo falhou', 'The demo failed')}: {escape(str(e))}[/err]")
+        console.print(f"  [{PM}]{_tt('Rode', 'Run')} 'guaraci doctor' {_tt('para checar o ambiente.', 'to check the environment.')}[/{PM}]")
         raise SystemExit(1) from e
 
     runs: List[str] = []
@@ -8378,19 +8376,19 @@ def _comando_demo() -> None:
             if d.startswith(pq.PREFIXOS_PASTA_EXECUCAO):
                 runs.append(os.path.join(raiz, d))
     if not runs:
-        console.print(f"  [err]✗ {'The pipeline ran but no output folder was found in' if _en else 'Pipeline rodou mas nenhuma pasta de saida foi encontrada em'} {escape(str(saida))}[/err]")
+        console.print(f"  [err]✗ {_tt('Pipeline rodou mas nenhuma pasta de saida foi encontrada em', 'The pipeline ran but no output folder was found in')} {escape(str(saida))}[/err]")
         raise SystemExit(1)
 
     pasta_run = Path(sorted(runs)[-1])
     console.print()
-    console.print(f"  [g]✓ {'Demo finished.' if _en else 'Demo concluida.'}[/g] {'Results in' if _en else 'Resultados em'}: [{PA}]{escape(str(pasta_run))}[/{PA}]")
+    console.print(f"  [g]✓ {_tt('Demo concluida.', 'Demo finished.')}[/g] {_tt('Resultados em', 'Results in')}: [{PA}]{escape(str(pasta_run))}[/{PA}]")
     _graf = os.path.basename(pq.pasta_execucao(str(pasta_run), pq.NOME_GRAFICOS))
     _rel = os.path.basename(pq.pasta_execucao(str(pasta_run), pq.NOME_RELATORIOS))
-    console.print(f"  [{PM}]See {_graf}/ for the figures and {_rel}/resumo_modelo.txt for the numeric summary.[/{PM}]"
-                  if _en else f"  [{PM}]Veja {_graf}/ para as figuras e {_rel}/resumo_modelo.txt "
-                  f"para o resumo numerico.[/{PM}]")
-    for _ln in (_QUADRO_FINAL_DEMO_EN if _en else _QUADRO_FINAL_DEMO):
-        console.print(_ln)
+    console.print(f"  [{PM}]" + _tt(f"Veja {_graf}/ para as figuras e {_rel}/resumo_modelo.txt para o resumo numerico.",
+                                     f"See {_graf}/ for the figures and {_rel}/resumo_modelo.txt for the numeric summary.")
+                  + f"[/{PM}]")
+    for _ln in _tt("\n".join(_QUADRO_FINAL_DEMO), "\n".join(_QUADRO_FINAL_DEMO_EN)).split("\n"):
+        console.print(escape(_ln))
 
     try:
         if sys.platform == "win32":
@@ -8419,6 +8417,19 @@ def _comando_demo() -> None:
 #: Texto de `--help`. Fonte unica: `--help`, `help` e a mensagem de
 #: argumento desconhecido leem daqui, para nunca divergirem entre si.
 _TEXTO_AJUDA = _cmd.texto_ajuda("PT")   # derivado do catalogo (comandos e grupos)
+
+
+def _idioma_sessao() -> str:
+    """'pt' ou 'en': GUARACI_IDIOMA > escolha gravada com [I] > ingles (`idioma_relatorio.idioma`)."""
+    from guaraci.idioma_relatorio import idioma as _idioma
+    return _idioma()
+
+
+def _texto_ajuda_sessao() -> str:
+    """`--help` no idioma da sessao (GUARACI_IDIOMA > escolha gravada com [I] > ingles), o mesmo do menu e dos
+    relatorios. `_TEXTO_AJUDA` continua sendo a versao em portugues (contrato da API)."""
+    from guaraci.idioma_relatorio import idioma as _idioma
+    return _cmd.texto_ajuda("EN" if _idioma() == "en" else "PT")
 #: comandos que nao tem `--help` proprio: com `--help` ou `-h` mostram a ajuda geral e saem com 0, sem executar nada.
 _COMANDOS_SEM_AJUDA_PROPRIA = ("run", "demo", "web", "doctor", "confianca", "manual")
 
@@ -8488,7 +8499,7 @@ def _validar_opcoes(opcoes: Dict[str, str]) -> None:
 
 def _listar_perfis() -> None:
     from guaraci.perfil_matriz import DIR_PERFIS, load_profile
-    from guaraci.traducao_console import descricao_perfil
+    from guaraci.idioma_console import descricao_perfil
     en = _lang_cli() == "en"
     print("Available technique profiles:" if en else "Perfis de tecnica disponiveis:")
     for arquivo in sorted(DIR_PERFIS.glob("*.yaml")):
@@ -8506,15 +8517,15 @@ def _lang_cli() -> str:
 
 def main(argv: Optional[List[str]] = None) -> None:
     """Ponto de entrada GUARACI. Comandos de linha (run, demo, exemplo, anova...) passam a saida pelo tradutor
-    do console (traducao_console): numa sessao em ingles o log do nucleo, gravado em portugues, sai em ingles.
+    do console (idioma_console): numa sessao em ingles o log do nucleo, gravado em portugues, sai em ingles.
     As telas interativas (sem argumentos) tem os proprios textos nos dois idiomas e ficam de fora."""
     _args = list(sys.argv[1:]) if argv is None else list(argv)
     if not _args:
         _main(argv)
         return
-    from guaraci import traducao_console
+    from guaraci import idioma_console as _ic_main
     _sincronizar_idioma()
-    desfazer = traducao_console.ativar()
+    desfazer = _ic_main.ativar()
     try:
         _main(argv)
     finally:
@@ -8553,7 +8564,7 @@ def _main(argv: Optional[List[str]] = None) -> None:
     if (len(_argv) == 2 and _argv[0].strip().lower() in _COMANDOS_SEM_AJUDA_PROPRIA
             and _argv[1].strip().lower() in ("--help", "-h")):
         # `guaraci demo --help` rodava a demonstracao e `guaraci web --help` subia o servidor: pedir ajuda nunca executa nada.
-        print(_texto_ajuda())
+        print(_texto_ajuda_sessao())
         return
     if not (_argv and _argv[0].strip().lower() in _cmd.SUBCOMANDOS):
         _argv = [a for a in _argv if a != "--mais-graficos"]     # subcomandos (monitorar) tratam o proprio
@@ -8588,11 +8599,11 @@ def _main(argv: Optional[List[str]] = None) -> None:
         if comando == "web":
             _comando_web(); return
         if comando in ("help", "h"):
-            print(_texto_ajuda())
+            print(_texto_ajuda_sessao())
             return
         print(f"Erro: comando desconhecido '{sys.argv[1]}'.\n",
               file=sys.stderr)
-        print(_texto_ajuda(), file=sys.stderr)
+        print(_texto_ajuda_sessao(), file=sys.stderr)
         raise SystemExit(2)
 
     # Migra estado gravado pela versao anterior (dentro do pacote instalado)

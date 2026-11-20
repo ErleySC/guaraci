@@ -213,9 +213,59 @@ def test_pasta_hsi_com_mat_por_classe(tmp_path, versao, capsys):
     assert set(meta["formato"]) == {"mat5" if versao == "v5" else "mat73"}
 
 
-def test_pasta_hsi_calibracao_branco_escuro_recusa_mat(tmp_path):
-    sio.savemat(tmp_path / "a.mat", {"cubo": _cubo(), "wl": WL})
-    with pytest.raises(ValueError, match="so' vale para cubos ENVI"):
+def _cena_dn(l: int = 6, c: int = 9, b: int = 24, r: float = 0.4):
+    """Cubo em contagem (uint16) com reflectancia conhecida `r`: I = D + r (W - D)."""
+    W = 3000.0 + RNG.normal(0, 5, (l, c, b))
+    D = np.full((l, c, b), 200.0)
+    return (D + r * (W - D)).astype(np.uint16), W, D
+
+
+@pytest.mark.parametrize("versao", ["v5", "v73"])
+def test_calibracao_com_white_dark_dentro_do_mat(tmp_path, versao):
+    I, W, D = _cena_dn()
+    arq = tmp_path / "x.mat"
+    (sio.savemat if versao == "v5" else _salvar_mat73)(
+        arq, {"cubo": I, "wl": WL, "white": W.astype(np.uint16), "dark": D.astype(np.uint16)})
+    cubos, _r, _m, _wl, meta = load_hsi_folder_dataset(str(tmp_path), calibracao="branco_escuro")
+    assert abs(float(np.nanmean(cubos[0])) - 0.4) < 0.01
+    ref = meta.attrs["calibracao"]["referencias"][0]
+    assert ref["branco"].endswith("::white") and ref["escuro"].endswith("::dark")
+
+
+def test_calibracao_com_whiteref_darkref_em_arquivos_ao_lado(tmp_path):
+    I, W, D = _cena_dn()
+    sio.savemat(tmp_path / "y.mat", {"cubo": I, "wl": WL})
+    sio.savemat(tmp_path / "WHITEREF_y.mat", {"w": W[:2].astype(np.uint16)})        # poucas linhas do branco
+    np.save(tmp_path / "DARKREF_y.npy", D.mean(axis=(0, 1)))                       # so' o espectro medio
+    cubos, rotulos, *_r, meta = load_hsi_folder_dataset(str(tmp_path), calibracao="branco_escuro")
+    assert len(cubos) == 1 and list(rotulos) == ["y"]                              # referencias nao viram amostra
+    assert abs(float(np.nanmean(cubos[0])) - 0.4) < 0.01
+
+
+def test_calibracao_por_pasta_da_sessao_e_eixo_invertido(tmp_path):
+    I, W, D = _cena_dn()
+    (tmp_path / "classe").mkdir()
+    # cubo gravado com numero de onda decrescente: a referencia (sem eixo) segue a mesma inversao
+    sio.savemat(tmp_path / "classe" / "z.mat", {"cubo": I[..., ::-1].copy(), "wl": WL[::-1].copy()})
+    gradiente = np.linspace(1.0, 2.0, 24)                                          # branco diferente por banda
+    sio.savemat(tmp_path / "WHITEREF.mat", {"w": (W * gradiente)[..., ::-1].astype(np.uint16)})
+    sio.savemat(tmp_path / "DARKREF.mat", {"d": D.astype(np.uint16)})
+    cubos, *_r = load_hsi_folder_dataset(str(tmp_path), calibracao="branco_escuro")
+    esperado = (I.astype(float) - D) / (W * gradiente - D)
+    np.testing.assert_allclose(np.nanmean(cubos[0], axis=(0, 1)), np.nanmean(esperado, axis=(0, 1)), rtol=0.02)
+
+
+def test_calibracao_sem_referencia_explica_onde_por(tmp_path):
+    I, _W, _D = _cena_dn()
+    sio.savemat(tmp_path / "y.mat", {"cubo": I, "wl": WL})
+    with pytest.raises(ValueError, match="variaveis white/dark"):
+        load_hsi_folder_dataset(str(tmp_path), calibracao="branco_escuro")
+
+
+def test_calibracao_branco_trocado_com_escuro_recusa(tmp_path):
+    I, W, D = _cena_dn()
+    sio.savemat(tmp_path / "x.mat", {"cubo": I, "wl": WL, "white": D, "dark": W})
+    with pytest.raises(ValueError, match="trocados"):
         load_hsi_folder_dataset(str(tmp_path), calibracao="branco_escuro")
 
 
@@ -329,3 +379,21 @@ def test_pipeline_hsi_roda_com_cubos_mat_v5_e_v73(tmp_path):
     resumo = run_hsi_pipeline(cfg)
     assert resumo["n_gravacoes_total"] == 6 and resumo["n_gravacoes_aceitas"] == 6
     assert resumo["grouping_guarantee"] == "high"
+
+
+def test_h5py_bloqueado_nao_diz_que_nao_esta_instalado(monkeypatch):
+    """h5py instalado mas que nao carrega (DLL barrada pelo Controle de Aplicativos): a mensagem traz o erro real."""
+    import builtins
+
+    from guaraci import arquivo_matrizes as am
+    real = builtins.__import__
+
+    def _import(nome, *a, **k):
+        if nome == "h5py":
+            raise ImportError("DLL load failed: bloqueada por politica de Controle de Aplicativo")
+        return real(nome, *a, **k)
+    monkeypatch.setattr(builtins, "__import__", _import)
+    with pytest.raises(ImportError, match="instalado mas nao carregou.*bloqueada"):
+        am._importar_h5py("cubo.mat", "o .mat v7.3")
+    monkeypatch.undo()
+    assert "nao esta instalado" in am.texto_falta_h5py("cubo.mat", "o .mat v7.3", ModuleNotFoundError("h5py"))

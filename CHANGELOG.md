@@ -12,8 +12,10 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 Rodada da CLI (2026-11-20):
 
 - **Console em inglês sem português no meio.** Sem idioma escolhido (padrão: inglês), o log do pipeline, a auditoria, o
-  `checar`, o `--help`, o `--version`, o `exemplo`, o `perfis`, o `demo`, o `vip` e o `anova` saem em inglês. O núcleo
-  continua escrevendo em português; o novo `traducao_console` traduz a saída linha a linha, só quando o idioma é inglês.
+  `checar`, o `--help`, o `--version`, o `exemplo`, o `perfis`, o `demo`, o `vip` e o `anova` saem em inglês. Amplia o
+  tradutor `idioma_console` (ver abaixo): os comandos de linha passam stdout e stderr por ele, com as etiquetas também
+  em inglês (`[WARNING]`, `[AUDIT][CRITICAL]`); na execução pelo menu as etiquetas que o painel lê seguem em
+  português. Os 13 exemplos guiados e o `demo` rodam em inglês no teste e não deixam palavra em português.
 - **IC BCa sem `[nan, nan]`.** Quando toda reamostragem dá o mesmo valor (ex.: acerto 1,0), o relatório diz que o IC não
   é estimável e por quê.
 - **Quantificação com nome de quantificação.** A pasta da execução passa a ser `PLSR_OE_...` (quantificação) ou
@@ -26,6 +28,32 @@ Rodada da CLI (2026-11-20):
   salvas não conta mais a configuração do exemplo já gravada.
 - **Python 3.14:** `--version` e `doctor` dizem quais extras não instalam neste Python (hoje o leitor Agilent/Waters,
   `rainbow-api`); o README avisa.
+Leitores conferidos com arquivos reais públicos e limitações da seção 8 (2026-11-18):
+
+- **Leitor `.mat` conferido com 126 arquivos gravados pelo MATLAB** (4.2c a 8 e v7.3: os 111 que acompanham o
+  scipy e 15 do projeto mat7.3; `scripts/conferir_leitores_publicos.py`, registro em
+  `docs/qualidade/leitores_publicos.json`). Corrigido o que a varredura achou: matriz esparsa voltava como objeto
+  vazio; número complexo virava real em silêncio (agora recusa com o motivo); uma variável `string` do MATLAB
+  derrubava o arquivo inteiro; no v7.3, os pedaços internos de esparsa e os objetos `string`/`table` apareciam como
+  matrizes numéricas falsas; célula e struct array (`c{2}`, `s(2).campo`) eram ignoradas; `.mat` em HDF5 puro (Octave
+  `-hdf5`) não abria; arquivo truncado dava erro sem o nome. Quando nada é numérico, a mensagem lista o que foi
+  ignorado (tabela, DataSet do PLS_Toolbox, célula, complexo) e como salvar de novo no MATLAB.
+- **GC-FID `.D` conferido com um arquivo FID real público** (Agilent, `FID1A.ch`, 10 197 pontos, igual à referência).
+  A mensagem sem o `rainbow-api` deixa de mandar instalar no Python 3.14, onde o pacote não existe.
+- **FRX/XRF**: colunas de incerteza (`Zr 2σ`, `Zr 2s`, `Fe ±`, `Pb SD`) viravam elementos (`Zr 2σ` era lido como
+  "Zr massa 2"); `Mg Concentration` passa a ser `Mg`. **LC-MS**: tabela de picos com amostras nas colunas
+  (MZmine, XCMS, MS-DIAL) recebe a dica de transpor em vez de só "coluna de classe não existe".
+- **Kennard-Stone e Duplex com semente exata** (par mais distante, calculado em blocos, sem a matriz n×n): o
+  conjunto escolhido é igual ao do algoritmo de livro, inclusive com empates (antes diferia em 45 de 200 sorteios).
+  Conjuntos de calibração escolhidos por KS ou Duplex podem mudar em relação à 1.0.0.
+- **Console no idioma escolhido.** A execução (`run`, `demo`, menu) e o `--help` seguem o idioma da sessão; num
+  `demo` em inglês, as linhas com português caíram de 71 de 192 para nenhuma, e numa quantificação de 21 de 140
+  para nenhuma vinda do pipeline. As etiquetas que o painel lê (`[AVISO]`, `[N/7]`) não mudam. O quadro final do
+  `demo` deixa de citar "acurácia 1,000" (o número mudou com a CV aninhada).
+- **Oráculo externo em R** para PLS1, VIP, MSC, SNV, T² e Q e seus limites (pacote `pls` do R,
+  `tests/oraculos_r/`): igual até a precisão de máquina. mdatools e ropls seguem sem oráculo (não instaláveis no
+  ambiente de geração).
+- **Escala medida**: `scripts/medir_escala.py` (resultados em `docs/qualidade/escala.json`).
 
 Partida e técnicas (2026-11-18):
 
@@ -45,9 +73,14 @@ Leitura de MATLAB, NumPy, HDF5 e Excel (2026-11-18):
   de subpasta por classe. O cubo, o vetor de comprimentos de onda e a posição das bandas são detectados;
   quando há mais de uma possibilidade o programa para e lista as candidatas. Novos campos
   `arquivo_variavel_dados`, `arquivo_variavel_eixo` e `hsi_eixo_espectral` (`auto`/`ultimo`/`primeiro`/`meio`).
-  A calibração branco/escuro continua só para ENVI.
+  Calibração branco/escuro também para esses cubos, com as referências como variáveis `white`/`dark` no
+  próprio arquivo ou como `WHITEREF`/`DARKREF` em qualquer formato.
 - **Modo `csv` lê Excel (`.xlsx`) e matriz `.mat`/`.npz`/`.h5`** (matriz amostras × variáveis + vetor de
   eixo + vetores por amostra, que viram colunas). Vale também no CSV de predição e no upload da web.
+- **Conversão do sinal bruto dentro do programa** (`sinal_entrada`, nos modos `dx`, `csv`, `opus`, `spc`,
+  `sp`): transmitância, reflectância (log 1/R), Kubelka-Munk e feixe simples contra o branco
+  (`sinal_referencia`: arquivo ou classe). Roda antes do corte de faixa e da saturação; o pacote do modelo e
+  o JSON portátil guardam a conversão e a predição a reaplica. Absorbância marcada como T é recusada.
 - Novo extra `hdf5` (h5py) para `.mat` v7.3 e `.h5`, incluído em `.[all]`; sem ele a mensagem diz o comando.
 - Corrigido: a checagem da fonte de dados (`validar_fonte_de_dados`) do modo `hsi` caía na regra do `.dx`.
 

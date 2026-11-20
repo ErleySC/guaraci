@@ -67,6 +67,25 @@ class ResumoDados:
     n_constantes: int = 0
     eixo_min: Optional[float] = None
     eixo_max: Optional[float] = None
+    nan_amostras: str = ""                         # amostras (1..n) com NaN/Inf, para a mensagem
+    nan_variaveis: str = ""                        # variaveis (valor do eixo) com NaN/Inf
+
+
+def _onde_nao_finito(X: Any, eixo: Any) -> "tuple[str, str]":
+    """Onde estao os NaN/Inf: as primeiras amostras (ordem de leitura) e variaveis (valor do eixo)."""
+    import numpy as np
+    ruim = ~np.isfinite(X)
+    if not ruim.any():
+        return "", ""
+    linhas = np.where(ruim.any(axis=1))[0]
+    cols = np.where(ruim.any(axis=0))[0]
+    ex = np.asarray(eixo, dtype=float) if eixo is not None and len(eixo) == X.shape[1] else None
+
+    def _lista(v, fmt):
+        return ", ".join(fmt(i) for i in v[:6]) + (f" (+{len(v) - 6})" if len(v) > 6 else "")
+    amostras = _lista(linhas, lambda i: str(int(i) + 1))
+    variaveis = _lista(cols, (lambda i: f"{ex[i]:g}") if ex is not None else (lambda i: f"#{int(i) + 1}"))
+    return amostras, variaveis
 
 
 def resumir_dados(X: Any, eixo: Any = None, rotulos: Any = None, mae_id: Any = None) -> ResumoDados:
@@ -86,9 +105,10 @@ def resumir_dados(X: Any, eixo: Any = None, rotulos: Any = None, mae_id: Any = N
     with np.errstate(invalid="ignore"):
         dp = np.nanstd(X, axis=0) if n > 1 else np.zeros(p)
     ex = np.asarray(eixo, dtype=float) if eixo is not None and len(eixo) else None
-    return ResumoDados(n_leituras=int(n), n_variaveis=int(p), n_unidades=int(len(cont)),
+    nan_am, nan_var = _onde_nao_finito(X, eixo)
+    return ResumoDados(nan_amostras=nan_am, nan_variaveis=nan_var, n_leituras=int(n), n_variaveis=int(p), n_unidades=int(len(cont)),
                        leituras_por_unidade_max=int(cont.max()) if len(cont) else 0,
-                       unidades_por_classe=por_classe, n_nan=int(np.isnan(X).sum()),
+                       unidades_por_classe=por_classe, n_nan=int((~np.isfinite(X)).sum()),
                        n_constantes=int(np.sum(np.nan_to_num(dp) == 0.0)),
                        eixo_min=float(np.nanmin(ex)) if ex is not None else None,
                        eixo_max=float(np.nanmax(ex)) if ex is not None else None)
@@ -435,12 +455,21 @@ REGRAS: Tuple[Regra, ...] = (
     # ---------------------------------------------------------------- dados
     Regra("dados_com_nan", "dados", "critico",
           lambda c: bool(c.dados and c.dados.n_nan > 0),
-          ("Os dados tem {n} valor(es) faltante(s) (NaN).", "The data has {n} missing value(s) (NaN)."),
-          ("PLS e PCA nao aceitam celulas vazias; a execucao pararia no ajuste do modelo.",
-           "PLS and PCA do not accept empty cells; the run would stop at model fitting."),
-          ("Procure celulas vazias ou com texto no arquivo; se a falta for real, retire a amostra ou a variavel.",
-           "Look for empty or text cells in the file; if the gap is real, drop the sample or the variable."),
-          valores=lambda c: dict(n=c.dados.n_nan if c.dados else 0)),
+          ("Os dados tem {n} valor(es) faltante(s) ou infinito(s) (NaN/Inf), na(s) amostra(s) {am} (ordem de "
+           "leitura; no CSV, linha do arquivo = amostra + 1) e variavel(is) {var}.",
+           "The data has {n} missing or infinite value(s) (NaN/Inf), in sample(s) {am} (reading order; in a CSV, "
+           "file line = sample + 1) and variable(s) {var}."),
+          ("PLS e PCA nao aceitam celulas vazias nem infinitas; a execucao pararia no ajuste do modelo ou "
+           "descartaria a amostra inteira.",
+           "PLS and PCA accept neither empty nor infinite cells; the run would stop at model fitting or drop "
+           "the whole sample."),
+          ("Corrija essas celulas no arquivo; se a falta for real, retire a amostra ou a variavel (ou corte a "
+           "faixa para fora dela).",
+           "Fix those cells in the file; if the gap is real, drop the sample or the variable (or cut the range "
+           "away from it)."),
+          valores=lambda c: dict(n=c.dados.n_nan if c.dados else 0,
+                                 am=(c.dados.nan_amostras or "-") if c.dados else "-",
+                                 var=(c.dados.nan_variaveis or "-") if c.dados else "-")),
     Regra("faixa_fora_do_eixo", "dados", "critico", _faixa_sem_dados,
           ("A faixa {lo:g}-{hi:g} nao cruza o eixo dos dados ({emin:g}-{emax:g}).",
            "The range {lo:g}-{hi:g} does not overlap the data axis ({emin:g}-{emax:g})."),

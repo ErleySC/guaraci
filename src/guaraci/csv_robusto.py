@@ -26,7 +26,8 @@ class CsvDecimalAmbiguoError(ValueError):
 
 def _texto(fonte: Any) -> str:
     """Conteudo da fonte (caminho, bytes ou buffer/UploadedFile) como texto;
-    remove o BOM; UTF-8 e, se falhar, latin-1."""
+    remove o BOM; UTF-16 com BOM (o "Texto Unicode" do Excel), UTF-8 e, se
+    falhar, latin-1."""
     if isinstance(fonte, bytes):
         dados: Any = fonte
     elif isinstance(fonte, (str, os.PathLike)):
@@ -40,6 +41,10 @@ def _texto(fonte: Any) -> str:
             fonte.seek(0)
     if isinstance(dados, str):
         return dados.lstrip("﻿")
+    if dados[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        # Sem isto o arquivo era lido como latin-1: cada caractere vinha
+        # intercalado com \x00 e o erro dizia que a coluna de classe nao existia.
+        return dados.decode("utf-16").lstrip("﻿")
     try:
         return dados.decode("utf-8-sig")
     except UnicodeDecodeError:

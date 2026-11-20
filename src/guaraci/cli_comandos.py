@@ -44,12 +44,12 @@ Codigos de saida: 0 sucesso | 1 erro de execucao | 2 uso incorreto."""
 
 _OPCOES_EN = """Options (apply to the analysis commands):
   --perfil=NAME     profile of the analysed matrix (default: generico). Sets
-                    the spectral range, preprocessing and output vocabulary.
-                    `guaraci perfis` lists the names; a path to your own YAML
-                    also works.
-  --sem-preflight   `run` goes ahead even with a critical pre-flight finding
-                    of the assistant (without it, `run` stops before starting,
-                    like `guaraci checar`, which exits with 1).
+                    the spectral range, the preprocessing and the wording of
+                    the output. `guaraci perfis` lists the names; the path of
+                    your own YAML is also accepted.
+  --sem-preflight   `run` goes on even with a critical finding from the
+                    assistant's pre-flight (without the option, `run` stops
+                    before starting, like `guaraci checar`, which exits 1).
   --mode=MODE       'cego' (DEFAULT, blind) or 'controle' (control).
                     cego     : quantification uses the class PREDICTED by the
                                classifier -- the only mode that matches real
@@ -57,8 +57,8 @@ _OPCOES_EN = """Options (apply to the analysis commands):
                     controle : uses the TRUE class. Only for internal
                                diagnosis (separating quantification error from
                                classification error). Numbers obtained this
-                               way do NOT represent real-use performance, and
-                               the output marks that explicitly.
+                               way do NOT represent performance in use, and
+                               the output says so explicitly.
 
 Exit codes: 0 success | 1 run error | 2 wrong usage."""
 

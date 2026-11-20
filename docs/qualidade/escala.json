@@ -1,0 +1,32 @@
+{
+ "maquina": {
+  "python": "3.13.18",
+  "nucleos": 4,
+  "memoria_gb": 15.6,
+  "sistema": "Linux container (4 nucleos)"
+ },
+ "nota": "Medido em 2026-11-18 com scripts/medir_escala.py (N2, 300 pontos, dado sintetico). A rodada para 9.800 e mais espectros foi interrompida por reinicio da sessao e nao foi refeita; o que esta aqui e' o que foi medido.",
+ "pipeline": [
+  {
+   "espectros": 216,
+   "segundos": 21.8,
+   "pico_mb": 890.0,
+   "por_classe": 15,
+   "pontos": 300
+  },
+  {
+   "espectros": 972,
+   "segundos": 44.3,
+   "pico_mb": 900.0,
+   "por_classe": 70,
+   "pontos": 300
+  },
+  {
+   "espectros": 4752,
+   "segundos": 138.0,
+   "pico_mb": 952.0,
+   "por_classe": 350,
+   "pontos": 300
+  }
+ ]
+}

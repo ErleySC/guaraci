@@ -58,7 +58,7 @@ def _ler_excel(caminho: str, planilha: str, nrows: Optional[int]) -> pd.DataFram
             if len(nomes) > 1:
                 print(f"[INFO] {base}: {len(nomes)} planilhas ({', '.join(nomes)}); lida a primeira, '{alvo}'. "
                       f"Para outra, use arquivo_variavel_dados.")
-        df = xl.parse(alvo, nrows=nrows)
+        df = pd.read_excel(xl, sheet_name=alvo, nrows=nrows)
     df.columns = [_cabecalho(c) for c in df.columns]
     return df
 

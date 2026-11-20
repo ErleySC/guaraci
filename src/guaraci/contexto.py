@@ -38,6 +38,7 @@ APLICA_A: Dict[str, Tuple[str, ...]] = {
     "eem_espalhamento": ("eem",), "eem_espalhamento_largura_nm": ("eem",), "eem_raman": ("eem",), "parafac_nao_negativo": ("eem",),
     "hsi_calibracao": ("hsi",), "hsi_referencia_branco": ("hsi",), "hsi_referencia_escuro": ("hsi",),
     "hsi_eixo_bandas": ("hsi",), "hsi_validacao": ("hsi",), "hsi_cv_dobras": ("hsi",),
+    "sinal_entrada": ("dx", "csv", "opus", "spc", "sp"), "sinal_referencia": ("dx", "csv", "opus", "spc", "sp"),
     "hsi_eixo_espectral": ("hsi",), "arquivo_variavel_dados": ("hsi", "csv"), "arquivo_variavel_eixo": ("hsi", "csv"),
     "imagem_referencia": ("imagem",), "imagem_segmentacao": ("imagem",),
     "icp_unidade": ("multielementar",), "icp_coluna_amostra": ("multielementar",),
@@ -233,7 +234,7 @@ def desfazer(cfg: Any, *, manter_registro: bool = False) -> int:
 
 # Campos cujo valor e' caminho do usuario: a configuracao efetiva grava so' o nome final.
 _CAMPOS_CAMINHO = ("pasta_dados", "pasta_saida", "arquivo_csv", "arquivo_grupos", "hsi_pasta_dataset",
-                   "hsi_referencia_branco", "hsi_referencia_escuro")
+                   "hsi_referencia_branco", "hsi_referencia_escuro", "sinal_referencia")
 
 
 def texto_efetiva(cfg: Any) -> str:

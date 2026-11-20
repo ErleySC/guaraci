@@ -77,6 +77,43 @@ def save_design_audit(pasta: str, achados: List[Dict[str, str]]) -> None:
             "auditoria de delineamento nao persistida em JSON: %s", e)
 
 
+def alerta_holdout_regressao(holdout: Optional[Dict[str, Any]], rmsecv: Any = None,
+                             lang: Optional[str] = None) -> str:
+    """Texto de alerta quando o holdout externo de uma regressao saiu MUITO pior que a validacao cruzada
+    (R2 < 0, ou RMSEP > 2x RMSECV). Vazio se nada indica isso.
+
+    Achado com um conjunto publico de NIR (2026-11-18): RMSECV 0,81 e holdout R2 = -5,1, impresso como "numero
+    publicavel" sem ressalva; a causa era uma amostra do holdout fora do dominio do modelo. O RMSEP do holdout
+    continua sendo o numero a reportar, mas o programa nao pode apresenta-lo como desempenho do metodo sem
+    dizer que o modelo nao generalizou."""
+    from guaraci.idioma_relatorio import t as _t
+    if not holdout:
+        return ""
+    def _f(v: Any) -> Optional[float]:
+        try:
+            return None if v is None else float(v)
+        except (TypeError, ValueError):
+            return None
+    r2, rmsep, rmsecv = _f(holdout.get("r2")), _f(holdout.get("rmsep")), _f(rmsecv)
+    motivos = []
+    if r2 is not None and np.isfinite(r2) and r2 < 0:
+        motivos.append(_t(f"R2 do holdout = {r2:.2f} (pior que prever a media)",
+                          f"holdout R2 = {r2:.2f} (worse than predicting the mean)", lang))
+    if (rmsep is not None and rmsecv is not None and np.isfinite(rmsep) and np.isfinite(rmsecv)
+            and rmsecv > 0 and rmsep > 2 * rmsecv):
+        motivos.append(_t(f"RMSEP do holdout {rmsep:.3g} > 2x RMSECV {rmsecv:.3g}",
+                          f"holdout RMSEP {rmsep:.3g} > 2x RMSECV {rmsecv:.3g}", lang))
+    if not motivos:
+        return ""
+    return _t("O MODELO NAO GENERALIZOU PARA O HOLDOUT: " + "; ".join(motivos) + ". Costuma ser amostra fora "
+              "do dominio da calibracao (extrapolacao) ou numero de VLs alto demais. Veja o grafico predito x "
+              "real do holdout antes de reportar; nao apresente a validacao cruzada como desempenho do metodo.",
+              "THE MODEL DID NOT GENERALIZE TO THE HOLDOUT: " + "; ".join(motivos) + ". This is usually a sample "
+              "outside the calibration domain (extrapolation) or too many LVs. Look at the holdout predicted vs "
+              "reference plot before reporting; do not present the cross-validation as the method's performance.",
+              lang)
+
+
 def load_design_audit(pasta: str) -> List[Dict[str, str]]:
     """Le os achados gravados por `save_design_audit`. Lista vazia quando o
     arquivo nao existe (execucao anterior a este formato) ou esta ilegivel --
@@ -526,6 +563,9 @@ def append_regression_summary(
                 f"    RMSEP (holdout externo) : {_fmt(holdout.get('rmsep'))}"
                 f"   n={holdout.get('n')}  R2={_fmt(holdout.get('r2'), 3)}  "
                 f"bias={_fmt(holdout.get('bias'), 3)}   <- numero publicavel")
+            _alerta = alerta_holdout_regressao(holdout, pooled.get('rmsecv'))
+            if _alerta:
+                linhas.append(f"      [{'ALERT' if _alerta.startswith('THE') else 'ALERTA'}] {_alerta}")
             if holdout.get('n_sem_modelo'):
                 linhas.append(
                     f"      ({holdout['n_sem_modelo']} amostra(s) do holdout "
