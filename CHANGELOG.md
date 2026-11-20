@@ -39,6 +39,9 @@ Classificador e faixa espectral automáticos (2026-11-20):
 - Aviso de "apenas uma classe" sai uma vez por corrida (eram ~40); alerta no holdout de regressão para predições
   fora da faixa de calibração; `etapas_pre_processamento` sem `Personalizado` avisa em vez de ser ignorada.
 - PLS-LDA não quebra em dobras com tantas amostras quanto classes (usa as frequências de classe).
+- Menu: a pasta da tela [3.1] que guarda o classificador passa a se chamar "Classificadores" (era "DD-SIMCA e
+  OPLS-DA"). As linhas de ajuste automático seguem o idioma da sessão. Ler um config salvo não avisa mais sobre
+  `etapas_pre_processamento` quando a lista é a padrão.
 - PLS-LDA ganha selo próprio em `guaraci confianca pls_lda` e entrada no catálogo; `guaraci ajuda classificador`
   mostra o novo padrão.
 - Alerta de holdout em dois níveis: R² do holdout abaixo de 0 continua "o modelo não generalizou"; só o RMSEP acima
