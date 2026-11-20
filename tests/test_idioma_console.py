@@ -46,6 +46,8 @@ LINHAS_DO_DEMO = [
     "  [AVISO] alpha=0.05 NAO e' alcancavel com 12 amostra(s) de calibracao independentes: exigiria k=13 escores "
     "ordenados, mas so' ha' 12. Menor alpha garantivel: 0.0769 (precisa de n>=19 para alpha=0.05). Limiar NAO "
     "definido -- reportar como nao-estimavel, nunca como 'aceita tudo'.",
+    "  [AUTO-AJUSTE DE EXTRA POR RAM] save_dpi: 600 -> 300 (RAM livre 3.1 GB < 6 GB)  (registrado no model card; "
+    "nenhum parametro cientifico e' alterado)",
     "[7/7] PLS regressao — PULADA: objective=Classificacao (level=N2). A regressao da resposta pertence ao Modo "
     "Quantificacao (N3); nos modos Exploratorio/Classificacao ela seria um resultado fora de escopo (e em N1 as 3 "
     "classes dominam o sinal da resposta, produzindo R2~0).",

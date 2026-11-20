@@ -11,6 +11,10 @@ Histórico de versões do GUARACI, do mais novo para o mais antigo, no estilo
 
 Rodada da CLI (2026-11-20):
 
+- **Aviso de RAM baixa também sai em inglês.** A linha `[AUTO-AJUSTE DE EXTRA POR RAM]` ficava em português com a interface em
+  inglês. Só aparece com pouca RAM livre (< 4 a 6 GB), por isso a CI do macOS achou e as outras máquinas não. Não muda
+  nenhum resultado.
+
 - **Console em inglês sem português no meio.** Sem idioma escolhido (padrão: inglês), o log do pipeline, a auditoria, o
   `checar`, o `--help`, o `--version`, o `exemplo`, o `perfis`, o `demo`, o `vip` e o `anova` saem em inglês. Amplia o
   tradutor `idioma_console` (ver abaixo): os comandos de linha passam stdout e stderr por ele, com as etiquetas também

@@ -423,6 +423,10 @@ _TABELA_RE: List[Tuple[Pattern[str], _Repl]] = [(re.compile(p), r) for p, r in _
 
 #: (padrao PT da linha SEM a indentacao, modelo EN com os grupos). Primeiro que casa vence.
 FRASES_CONSOLE: List[Tuple[str, str]] = [
+    (r"\[AUTO-AJUSTE DE EXTRA POR RAM\] (.*?) \(RAM livre (.*?) GB < (.*?) GB\)  "
+     r"\(registrado no model card; nenhum parametro cientifico e' alterado\)",
+     r"[AUTOMATIC EXTRA ADJUSTMENT FOR RAM] \1 (free RAM \2 GB < \3 GB)  "
+     r"(recorded in the model card; no scientific parameter is changed)"),
     (r"\[CONTEXTO\] Ajustado: (.*?)\. Motivo: (.*)\. Desfazer: (.*)\.",
      r"[CONTEXT] Adjusted: \1. Reason: \2. Undo: \3."),
     (r"\[MODO\] Figuras pertinentes a este objetivo \((\d+)\): (.*)",
