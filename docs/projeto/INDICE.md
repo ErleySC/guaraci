@@ -93,6 +93,7 @@ Todo documento versionado aparece uma vez, no destino a que pertence (menos os `
 | [`docs/qualidade/cobertura_lacunas.md`](../qualidade/cobertura_lacunas.md) | Linhas e ramos que a suíte não cobre, por camada, com a categoria de cada lacuna e as exclusões registradas (gerado da cobertura medida). |
 | [`docs/qualidade/dependencias_de_maquina.md`](../qualidade/dependencias_de_maquina.md) | Testes que usam RAM, CPU, relógio, caminho, ambiente ou rede, com a decisão de cada um (gerado por varredura). |
 | [`docs/qualidade/estado_do_projeto.md`](../qualidade/estado_do_projeto.md) | Estado do projeto medido por script: documentos por destino, auditores, links e referências. |
+| [`docs/qualidade/leitores_publicos.json`](../qualidade/leitores_publicos.json) | Leitores de .mat e GC-FID conferidos com arquivos reais públicos (MATLAB, Agilent): contagens e SHA-256, sem os arquivos. |
 | [`docs/qualidade/mapa_tecnica_tarefa.md`](../qualidade/mapa_tecnica_tarefa.md) | Mapa técnica × tarefa × comando × exemplo sintético × teste (gerado do catálogo). |
 | [`docs/qualidade/matriz_cenarios.md`](../qualidade/matriz_cenarios.md) | Matriz de cenários sintéticos rodados pela CLI, com resultado e tempo. |
 | [`docs/qualidade/mutacao/anova_grupos__426-429.json`](../qualidade/mutacao/anova_grupos__426-429.json) | Resultado do teste de mutação de `anova_grupos.py`, linhas 426-429 (para `mutacao_linhas_alteradas.md`). |
