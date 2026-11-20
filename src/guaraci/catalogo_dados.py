@@ -289,9 +289,9 @@ SECOES_TELA: Dict[str, Tuple[Tuple[str, str, str, Tuple[str, ...], str, str], ..
     'modelo': (
         ('exploracao', 'Objetivo, PCA e HCA', 'Objective, PCA, HCA', ('objetivo', 'pca_componentes', 'hca_componentes', 'comparar_hca'),
          'Objetivo, PCA e dendrograma (HCA)', 'Objective, PCA and dendrogram (HCA)'),
-        ('classificadores', 'DD-SIMCA e OPLS-DA', 'DD-SIMCA and OPLS-DA', ('classificador', 'opls_da', 'opls_ortogonais', 'ddsimca', 'modo_ddsimca', 'ddsimca_pcv',
+        ('classificadores', 'Classificadores', 'Classifiers', ('classificador', 'opls_da', 'opls_ortogonais', 'ddsimca', 'modo_ddsimca', 'ddsimca_pcv',
                                                                           'ddsimca_componentes', 'ddsimca_limite'),
-         'Liga e ajusta os dois classificadores', 'Turns on and tunes both classifiers'),
+         'PLS-DA ou PLS-LDA (auto), DD-SIMCA e OPLS-DA', 'PLS-DA or PLS-LDA (auto), DD-SIMCA and OPLS-DA'),
         ('selecao', 'Selecao de variaveis', 'Variable selection', ('selecao_variaveis_etapa4', 'selecao_spa', 'selecao_ag', 'selecao_cars', 'selecao_uve',
                                                                  'ipls_intervalos', 'vip_limiar', 'sr_fracao', 'splsda_variaveis'),
          'VIP, SR, iPLS, sPLS-DA, SPA, AG, CARS, UVE', 'VIP, SR, iPLS, sPLS-DA, SPA, GA, CARS, UVE'),
