@@ -699,6 +699,25 @@ def _check_balance(rotulos: np.ndarray, ratio_alvo: float = 5.0
     return rel
 
 
+def predicoes_fora_da_faixa(y_pred, y_cal, margem: float = 0.5) -> np.ndarray:
+    """Valores preditos fora de [min(y_cal) - margem*amplitude, max(y_cal) + margem*amplitude].
+
+    Um modelo PLS nao sabe dizer que extrapolou: uma predicao 5x acima do maior valor de calibracao quase
+    sempre e' amostra fora do dominio (achado com dado publico de solo: Nt real 8,1 predito em 45,8)."""
+    yp = np.asarray(y_pred, dtype=float).ravel()
+    yc = np.asarray(y_cal, dtype=float).ravel()
+    yc = yc[np.isfinite(yc)]
+    if yc.size < 2 or float(np.ptp(yc)) == 0.0:
+        return np.empty(0)
+    folga = margem * float(np.ptp(yc))
+    fora = yp[np.isfinite(yp) & ((yp < yc.min() - folga) | (yp > yc.max() + folga))]
+    return fora
+
+
+#: controla o aviso de classe unica (uma vez por execucao; `_executar_impl` o rearma)
+_AVISO_UMA_CLASSE_JA_DADO = [False]
+
+
 def classification_metrics(y_true, y_pred, classes) -> Dict[str, float]:
     """Metricas globais de classificacao.
 
@@ -711,9 +730,12 @@ def classification_metrics(y_true, y_pred, classes) -> Dict[str, float]:
     explicito para quem consome o dicionario.
     """
     if len(set(map(str, np.asarray(y_true).ravel().tolist()))) < 2:
-        log.info("  [AVISO] Apenas UMA classe presente: as metricas globais "
-                 "de classificacao (accuracy, kappa, F1) sao degeneradas e "
-                 "nao medem desempenho. Ignore-as neste conjunto.")
+        # Uma vez por execucao: a funcao roda a cada dobra da CV e o mesmo aviso saia ~40 vezes.
+        if not _AVISO_UMA_CLASSE_JA_DADO[0]:
+            _AVISO_UMA_CLASSE_JA_DADO[0] = True
+            log.info("  [AVISO] Apenas UMA classe presente: as metricas globais "
+                     "de classificacao (accuracy, kappa, F1) sao degeneradas e "
+                     "nao medem desempenho. Ignore-as neste conjunto.")
         base = {
             "accuracy":          float(accuracy_score(y_true, y_pred)),
             "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
@@ -1737,6 +1759,12 @@ def pls_regressao_pooled(
                 _alerta_ho = alerta_holdout_regressao(_ho_pooled, rmsecv)
                 if _alerta_ho:
                     log.warning(f"  [ALERTA] {_alerta_ho}")
+                _fora = predicoes_fora_da_faixa(_yh, np.asarray(Yc, dtype=float).ravel())
+                if _fora.size:
+                    log.warning(
+                        f"  [ALERTA] {_fora.size} amostra(s) do holdout com valor PREDITO fora da faixa da "
+                        f"calibracao (extrapolacao; predito {', '.join(f'{v:.3g}' for v in _fora[:5])}): "
+                        f"o RMSEP do holdout inclui esses erros. Confira essas amostras antes de reportar.")
         except Exception as _e_hp:  # noqa: BLE001 -- o resto da regressao segue
             log.warning(f"  [AVISO] RMSEP do holdout nao calculado: {_e_hp}")
             _registrar_falha_etapa(f"RMSEP do holdout externo (regressao): {_e_hp}")
@@ -4526,6 +4554,7 @@ def _etapa_carregar_e_validar(*, cfg):
 
 
 def _executar_impl(cfg: Config):
+    _AVISO_UMA_CLASSE_JA_DADO[0] = False
     from guaraci.log import configurar as _configurar_log
     # Chamado aqui (nao em nivel de modulo) para rodar DENTRO de qualquer
     # contextlib.redirect_stdout ja ativo no chamador (CLI/app web) --
