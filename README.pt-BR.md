@@ -153,7 +153,7 @@ Se o PowerShell reclamar de "execução de scripts desabilitada", rode `Set-Exec
    python -m guaraci demo
    ```
 
-O macOS foi verificado só pelos testes automáticos; ninguém usou o programa de verdade lá. Se algo falhar, abra uma [Discussion](https://github.com/ErleySC/guaraci/discussions) com a mensagem de erro.
+O macOS não é plataforma suportada nem verificada nesta versão: só há testes automáticos, e ninguém usou o programa de verdade lá. Se algo falhar, abra uma [Discussion](https://github.com/ErleySC/guaraci/discussions) com a mensagem de erro.
 
 ### Linux (Ubuntu e Debian)
 

@@ -151,7 +151,7 @@ If PowerShell complains that "running scripts is disabled", run `Set-ExecutionPo
    python -m guaraci demo
    ```
 
-macOS has been verified only by automated tests; nobody has really used the program there. If something fails, open a [Discussion](https://github.com/ErleySC/guaraci/discussions) with the error message.
+macOS is not a supported or verified platform in this release: it has been verified only by automated tests, and nobody has really used the program there. If something fails, open a [Discussion](https://github.com/ErleySC/guaraci/discussions) with the error message.
 
 ### Linux (Ubuntu and Debian)
 
