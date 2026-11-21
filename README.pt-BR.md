@@ -121,38 +121,75 @@ opção que você precisa saber ligar.
 
 ## Instalação
 
-**Nunca instalou um programa Python? Siga estes passos** (Windows; em macOS/Linux troque `.venv\Scripts\activate` por `source .venv/bin/activate`):
+Leva cerca de 10 minutos, precisa de internet só nesta etapa e **não exige saber programar**. Escolha o seu sistema e siga na ordem. Em qualquer um deles, cole **uma linha por vez** e espere terminar antes da próxima.
 
-1. Instale o **Python 3.12** em <https://www.python.org/downloads/> e marque *"Add Python to PATH"*.
-2. Baixe o GUARACI (botão verde **Code → Download ZIP** no GitHub) e descompacte em uma pasta de nome curto.
-3. Abra um terminal nessa pasta e rode, uma linha por vez:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate
-   pip install -e ".[web,reports]"
-   guaraci doctor --instalar
-   guaraci demo
+### Windows
+
+1. Instale o **Python 3.12**: baixe em <https://www.python.org/downloads/windows/> e, na primeira tela do instalador, marque **"Add python.exe to PATH"** antes de clicar em *Install Now*.
+2. Baixe o GUARACI: nesta página do GitHub, botão verde **Code → Download ZIP**. Clique com o botão direito no arquivo e escolha **Extrair tudo**, numa pasta de nome curto fora de pastas sincronizadas com a nuvem (por exemplo, `C:\guaraci`).
+3. Abra a pasta extraída (a que contém o arquivo `pyproject.toml`), clique na barra de endereço, digite `powershell` e aperte Enter. No PowerShell, rode:
+
+   ```powershell
+   py -m venv .venv
+   .venv\Scripts\Activate.ps1
+   pip install ".[web,reports]"
+   python -m guaraci doctor --instalar
+   python -m guaraci demo
    ```
-4. Interface no navegador: `guaraci web`. Menu no terminal: `guaraci`.
 
-Ainda não há pacote no PyPI. **Não rode `pip install guaraci`**: esse nome pertence a outro projeto, sem relação com este (instala um programa diferente, que também tem um comando `guaraci`). Instale a partir de um clone, como abaixo, **de dentro da pasta clonada** (não instale por nome pelo PyPI). O código mora no pacote `guaraci` em `src/`. **Versões do Python:** a suíte completa roda na CI em 3.11, 3.12 e 3.13 (Linux e Windows). O Python 3.14 não está na CI; a suíte foi rodada nele uma vez, à mão, no Linux, e no 3.14 o leitor de pastas `.D` da Agilent/Waters (`rainbow-api`) não instala. Outras versões não foram testadas. O macOS não é plataforma suportada nem verificada nesta versão: a suíte completa de testes passa no macOS da CI (Python 3.11 e 3.13), mas não houve uso real verificado lá.
+Se o PowerShell reclamar de "execução de scripts desabilitada", rode `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` e repita a linha do `Activate.ps1`.
 
-Guia passo a passo para Windows (inclusive a mensagem de política de execução do PowerShell), Linux (`python3.x-venv`) e WSL, com requisitos mínimos: [`docs/usuario/instalacao.md`](docs/usuario/instalacao.md). Em terminal de fundo claro, defina `GUARACI_TERMINAL=claro` para manter as cores legíveis.
+### macOS
+
+1. Instale o **Python 3.12**: baixe o instalador em <https://www.python.org/downloads/macos/> e abra o arquivo `.pkg`.
+2. Baixe o GUARACI: nesta página do GitHub, botão verde **Code → Download ZIP**, e dê dois cliques no arquivo para extrair.
+3. Abra o **Terminal** (Cmd + Espaço, digite "Terminal"). Digite `cd ` (com um espaço no fim), **arraste a pasta extraída para a janela** e aperte Enter. Depois rode:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install ".[web,reports]"
+   python -m guaraci doctor --instalar
+   python -m guaraci demo
+   ```
+
+O macOS foi verificado só pelos testes automáticos; ninguém usou o programa de verdade lá. Se algo falhar, abra uma [Discussion](https://github.com/ErleySC/guaraci/discussions) com a mensagem de erro.
+
+### Linux (Ubuntu e Debian)
 
 ```bash
-pip install -e .        # o pacote `guaraci` + dependências essenciais
-# ou, para a pilha completa de web/relatórios/benchmark:  pip install -e .[all]
+sudo apt update
+sudo apt install python3 python3-venv unzip
+unzip guaraci-master.zip && cd guaraci-master      # o ZIP baixado em Code → Download ZIP
+python3 -m venv .venv
+source .venv/bin/activate
+pip install ".[web,reports]"
+python -m guaraci doctor --instalar
+python -m guaraci demo
 ```
 
-A instalação base **não** traz os leitores de Bruker OPUS (`opus`), Thermo/Galactic SPC (`spc`), pasta Bruker de RMN (`rmn`) e pasta Agilent/Waters de HPLC/GC (`hplc`), nem PARAFAC (`multiway`), textura de imagem (`imagem`) e o diagnóstico PCV do DD-SIMCA (`robusto`). A tela [2.4] marca esses formatos com `(extra: pip install ...)` quando o pacote falta, e `guaraci doctor` e `guaraci checar` listam o que falta e o que isso afeta. Para instalar tudo de uma vez:
+Em outras distribuições, instale o pacote equivalente de `python3-venv`.
+
+### Depois de instalar
+
+Em cada nova sessão do terminal, abra a pasta do GUARACI, ative o ambiente de novo (`.venv\Scripts\Activate.ps1` no Windows, `source .venv/bin/activate` no Mac e Linux) e use:
 
 ```bash
-pip install ".[all]"   # dentro da pasta clonada; para desenvolver: pip install -e ".[all]"
+python -m guaraci web    # interface no navegador
+python -m guaraci        # menu no terminal
 ```
 
-No Python 3.14 ou mais novo, o `.[all]` termina **sem** o leitor de pasta Agilent/Waters de HPLC/GC: o `rainbow-api` ainda não tem versão para o 3.14, e o pip o pula sem avisar. Se você precisa dessas pastas, use o Python 3.13 ou exporte os dados para CSV; `guaraci doctor` e `guaraci --version` mostram que ele falta.
+### Avisos
 
-Não sabe o que falta? `guaraci doctor` lista, e `guaraci doctor --instalar` instala depois da sua confirmação (com `--sim` não pergunta). Ele instala o navegador, os escritores de relatório e todos os leitores que existem para o seu Python, com as faixas de versão do pacote instalado, então também funciona de dentro de um clone. O extra de benchmark (`xgboost`, `shap`, grande) fica de fora; peça com `pip install -e ".[benchmark]"`.
+- **Não rode `pip install guaraci`.** Esse nome no PyPI pertence a outro projeto, sem relação com este. Instale sempre de dentro da pasta baixada, como acima.
+- **Versão do Python:** use a 3.12. O GUARACI exige 3.11 ou mais nova; 3.11 a 3.13 são testados na CI. No 3.14 o programa roda, mas o leitor de pastas `.D` da Agilent/Waters não instala.
+- Deu erro ou travou? Veja o [guia completo de instalação](docs/usuario/instalacao.md) (requisitos, WSL, mensagens de erro comuns). Em terminal de fundo claro, defina `GUARACI_TERMINAL=claro`.
+
+### Extras opcionais e desenvolvimento
+
+O comando `python -m guaraci doctor --instalar` acima já instala o que falta (navegador, relatórios e os leitores de instrumento disponíveis para o seu Python), depois da sua confirmação. Sem um extra o programa roda, mas o formato correspondente não abre: a tela [2.4] marca o formato com `(extra: pip install ...)`, e `guaraci doctor` e `guaraci checar` listam o que falta. Leitores avulsos: `opus`, `spc`, `rmn`, `hplc`; análises: `multiway` (PARAFAC), `imagem`, `robusto` (PCV do DD-SIMCA). Fica de fora o `benchmark` (`xgboost` e `shap`, grandes): `pip install ".[benchmark]"` (no Mac, antes: `brew install libomp`). `pip install ".[all]"` instala tudo, e no 3.14 termina **sem** o leitor de HPLC/GC, sem avisar.
+
+Para desenvolver (a partir de um clone): `pip install -e ".[all]"`. O código mora no pacote `guaraci` em `src/`.
 
 **Primeiros passos, sem precisar de dado seu:**
 

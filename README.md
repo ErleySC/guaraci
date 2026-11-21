@@ -119,38 +119,75 @@ here it is the default, not an option you have to know to turn on.
 
 ## Install
 
-**Never installed a Python program? Follow these steps** (Windows; on macOS/Linux replace `.venv\Scripts\activate` with `source .venv/bin/activate`):
+It takes about 10 minutes, needs internet only for this step and **requires no programming**. Pick your system and follow the steps in order. On any of them, paste **one line at a time** and wait for it to finish before the next.
 
-1. Install **Python 3.12** from <https://www.python.org/downloads/> and tick *"Add Python to PATH"*.
-2. Download GUARACI (green **Code → Download ZIP** button on GitHub) and unzip it into a short folder name.
-3. Open a terminal in that folder and run, one line at a time:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate
-   pip install -e ".[web,reports]"
-   guaraci doctor --instalar
-   guaraci demo
+### Windows
+
+1. Install **Python 3.12**: download it from <https://www.python.org/downloads/windows/> and, on the installer's first screen, tick **"Add python.exe to PATH"** before clicking *Install Now*.
+2. Download GUARACI: on this GitHub page, green **Code → Download ZIP** button. Right-click the file and choose **Extract All** into a short folder name outside cloud-synced folders (for example, `C:\guaraci`).
+3. Open the extracted folder (the one containing `pyproject.toml`), click the address bar, type `powershell` and press Enter. In PowerShell, run:
+
+   ```powershell
+   py -m venv .venv
+   .venv\Scripts\Activate.ps1
+   pip install ".[web,reports]"
+   python -m guaraci doctor --instalar
+   python -m guaraci demo
    ```
-4. Browser interface: `guaraci web`. Terminal menu: `guaraci`.
 
-There is no PyPI package yet. **Do not run `pip install guaraci`**: that name belongs to an unrelated project (it installs a different program that also provides a `guaraci` command). Install from a clone, as below, **from inside the cloned folder** (do not install by name from PyPI). The code lives in the `guaraci` package under `src/`. **Python versions:** the full test suite runs in CI on 3.11, 3.12 and 3.13 (Linux and Windows). Python 3.14 is not in CI; the suite was run on it once by hand on Linux, and on 3.14 the Agilent/Waters `.D` reader (`rainbow-api`) does not install. Other versions are untested. macOS is not a supported or verified platform in this release: the full test suite passes on macOS in CI (Python 3.11 and 3.13), but no real use there has been verified.
+If PowerShell complains that "running scripts is disabled", run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` and repeat the `Activate.ps1` line.
 
-Step-by-step guide for Windows (including the PowerShell execution-policy message), Linux (`python3.x-venv`) and WSL, with minimum requirements: [`docs/usuario/instalacao.md`](docs/usuario/instalacao.md) (in Portuguese). On a light-background terminal, set `GUARACI_TERMINAL=claro` so the colours stay readable.
+### macOS
+
+1. Install **Python 3.12**: download the installer from <https://www.python.org/downloads/macos/> and open the `.pkg` file.
+2. Download GUARACI: on this GitHub page, green **Code → Download ZIP** button, then double-click the file to extract it.
+3. Open **Terminal** (Cmd + Space, type "Terminal"). Type `cd ` (with a trailing space), **drag the extracted folder onto the window** and press Enter. Then run:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install ".[web,reports]"
+   python -m guaraci doctor --instalar
+   python -m guaraci demo
+   ```
+
+macOS has been verified only by automated tests; nobody has really used the program there. If something fails, open a [Discussion](https://github.com/ErleySC/guaraci/discussions) with the error message.
+
+### Linux (Ubuntu and Debian)
 
 ```bash
-pip install -e .        # the `guaraci` package + core dependencies
-# or, for the full web/reports/benchmark stack:  pip install -e .[all]
+sudo apt update
+sudo apt install python3 python3-venv unzip
+unzip guaraci-master.zip && cd guaraci-master      # the ZIP from Code → Download ZIP
+python3 -m venv .venv
+source .venv/bin/activate
+pip install ".[web,reports]"
+python -m guaraci doctor --instalar
+python -m guaraci demo
 ```
 
-The base install does **not** include the readers for Bruker OPUS (`opus`), Thermo/Galactic SPC (`spc`), Bruker NMR folders (`rmn`) and Agilent/Waters HPLC/GC folders (`hplc`), nor PARAFAC (`multiway`), image texture (`imagem`) or the DD-SIMCA PCV diagnostic (`robusto`). Screen [2.4] marks those formats with `(extra: pip install ...)` when the package is missing, and `guaraci doctor` / `guaraci checar` list what is missing and what it affects. To get everything at once:
+On other distributions, install the equivalent `python3-venv` package.
+
+### After installing
+
+In each new terminal session, open the GUARACI folder, activate the environment again (`.venv\Scripts\Activate.ps1` on Windows, `source .venv/bin/activate` on Mac and Linux) and use:
 
 ```bash
-pip install ".[all]"   # run inside the cloned folder; for development: pip install -e ".[all]"
+python -m guaraci web    # browser interface
+python -m guaraci        # terminal menu
 ```
 
-On Python 3.14 or newer, `.[all]` finishes **without** the Agilent/Waters HPLC/GC folder reader: `rainbow-api` has no release for 3.14 yet, so pip skips it without saying so. If you need those folders, use Python 3.13 or export the data to CSV; `guaraci doctor` and `guaraci --version` show it as missing.
+### Warnings
 
-Not sure what is missing? `guaraci doctor` lists it, and `guaraci doctor --instalar` installs it after you confirm (add `--sim` to skip the question). It installs the web app, the report writers and every reader that exists for your Python, with the version ranges of the installed package, so it also works from a clone. The benchmark extra (`xgboost`, `shap`, large) is left out; ask for it with `pip install -e ".[benchmark]"`.
+- **Do not run `pip install guaraci`.** That name on PyPI belongs to an unrelated project. Always install from inside the downloaded folder, as above.
+- **Python version:** use 3.12. GUARACI requires 3.11 or newer; 3.11 to 3.13 are tested in CI. On 3.14 the program runs, but the Agilent/Waters `.D` folder reader does not install.
+- Hit an error or stuck? See the [full installation guide](docs/usuario/instalacao.md) (in Portuguese: requirements, WSL, common error messages). On a light-background terminal, set `GUARACI_TERMINAL=claro`.
+
+### Optional extras and development
+
+The `python -m guaraci doctor --instalar` command above already installs what is missing (web app, report writers and the instrument readers available for your Python) after you confirm. Without an extra the program runs, but the matching format does not open: screen [2.4] marks it with `(extra: pip install ...)`, and `guaraci doctor` and `guaraci checar` list what is missing. Single readers: `opus`, `spc`, `rmn`, `hplc`; analyses: `multiway` (PARAFAC), `imagem`, `robusto` (DD-SIMCA PCV). `benchmark` (`xgboost` and `shap`, large) is left out: `pip install ".[benchmark]"` (on Mac, first: `brew install libomp`). `pip install ".[all]"` installs everything and on 3.14 ends **without** the HPLC/GC reader, silently.
+
+To develop (from a clone): `pip install -e ".[all]"`. The code lives in the `guaraci` package under `src/`.
 
 **First steps, no data of your own required:**
 

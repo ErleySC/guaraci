@@ -35,6 +35,7 @@ def test_extrai_so_linhas_de_comando_de_blocos_de_shell_e_tira_o_comentario():
     ("pip install x", "excluir"), ("python -m venv .venv", "excluir"), ("pytest tests/", "excluir"), ("git archive HEAD", "excluir"),
     ("guaraci demo", "executar"), ("guaraci --version", "executar"), ("guaraci exemplo classificar pasta", "executar"),
     ("python -m guaraci.pipeline --rodar", "executar"),
+    ("python -m guaraci demo", "executar"), ("python -m guaraci web", "excluir"), ("python -m guaraci", "excluir"),
     ("ferramenta_desconhecida --x", "nao_classificado"), ("python script_qualquer.py", "nao_classificado"),
 ])
 def test_classificacao_dos_comandos(cmd, acao):

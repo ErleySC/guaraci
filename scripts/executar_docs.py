@@ -78,6 +78,9 @@ def classificar(cmd: str, ha_config: bool) -> Dict[str, object]:
     p = shlex.split(cmd)
     if not p:
         return {"acao": "nao_classificado", "motivo": "linha vazia"}
+    if p[0] == "python" and p[1:2] == ["-m"] and p[2:3] == ["guaraci"]:
+        # `python -m guaraci ...` e' o mesmo comando `guaraci ...` (forma que os guias de instalacao ensinam).
+        p = ["guaraci", *p[3:]]
     if p[0] in EXCLUIDOS_FORA_DO_PRODUTO:
         return {"acao": "excluir", "motivo": EXCLUIDOS_FORA_DO_PRODUTO[p[0]]}
     if p[0] == "PYTHONPATH=src" or p[0].startswith("PYTHONPATH="):

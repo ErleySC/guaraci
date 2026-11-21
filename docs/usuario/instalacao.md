@@ -2,7 +2,7 @@
 
 **Público:** quem usa ou testa o programa · **Estado:** manual · **Atualizado em:** ver `docs/qualidade/estado_do_projeto.md`
 
-Este guia cobre Windows, Linux e WSL. **macOS: só verificado pela CI** (a suíte de testes passa em Python 3.11 e 3.13, mas ninguém usou o programa de verdade lá; relate o que acontecer). O GUARACI precisa de **Python 3.11 ou mais novo**; 3.11 a 3.13 são testados na CI. O **3.14** roda (suíte completa rodada à mão no Linux, fora da CI), mas lá não existe o leitor de pastas `.D` da Agilent/Waters (`rainbow-api`): exporte esses dados para CSV. Ainda não há pacote publicado no PyPI (o nome `guaraci` no PyPI pertence a outro projeto, sem relação com este: não o instale): a instalação parte da pasta do projeto (o `.zip` do GitHub ou um clone).
+Este guia cobre Windows, macOS, Linux e WSL. **A versão curta, de 5 passos por sistema, está na seção Instalação do [README](../../README.pt-BR.md)**; aqui ficam os detalhes e as mensagens de erro. **macOS: verificado só pelos testes automáticos**; ninguém usou o programa de verdade lá, então relate o que acontecer. O GUARACI precisa de **Python 3.11 ou mais novo**; recomendamos o **3.12**, e 3.11 a 3.13 são testados na CI. O **3.14** roda (suíte completa rodada à mão no Linux, fora da CI), mas lá não existe o leitor de pastas `.D` da Agilent/Waters (`rainbow-api`): exporte esses dados para CSV. Ainda não há pacote publicado no PyPI (o nome `guaraci` no PyPI pertence a outro projeto, sem relação com este: não o instale): a instalação parte da pasta do projeto (o `.zip` do GitHub ou um clone).
 
 ## Requisitos mínimos
 
@@ -19,12 +19,14 @@ Este guia cobre Windows, Linux e WSL. **macOS: só verificado pela CI** (a suít
 3. Abra o PowerShell **dentro** dessa pasta e rode, uma linha por vez:
 
    ```powershell
-   python -m venv .venv
+   py -m venv .venv
    .venv\Scripts\Activate.ps1
    pip install ".[web,reports]"
-   guaraci doctor --instalar
-   guaraci demo
+   python -m guaraci doctor --instalar
+   python -m guaraci demo
    ```
+
+   Use sempre `python -m guaraci ...` no lugar de `guaraci ...`: funciona igual e evita o bloqueio do `guaraci.exe` descrito abaixo.
 
 **Se o PowerShell recusar o `Activate.ps1`** (mensagem sobre "execução de scripts desabilitada"), libere só para esta janela e repita o comando de ativação:
 
@@ -37,6 +39,24 @@ Isso vale apenas até fechar a janela. Outra saída é não ativar nada e chamar
 
 **Se o `guaraci doctor` terminar dizendo que o Controle de Aplicativo bloqueou um arquivo**, rode o mesmo comando de novo: o Windows costuma liberar a biblioteca depois da primeira checagem. Se continuar bloqueando, o Python usado provavelmente não é o instalador oficial do python.org (por exemplo, um Python que vem embutido em outra ferramenta); recrie o ambiente com o oficial.
 
+## macOS
+
+1. Instale o **Python 3.12** pelo instalador `.pkg` de <https://www.python.org/downloads/macos/>. Se o Terminal oferecer instalar as "ferramentas de linha de comando do desenvolvedor", aceite.
+2. Baixe o ZIP do GitHub (**Code → Download ZIP**) e dê dois cliques para extrair.
+3. No **Terminal**, digite `cd ` (com espaço no fim), arraste a pasta extraída para a janela e aperte Enter. Depois, uma linha por vez:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install ".[web,reports]"
+   python -m guaraci doctor --instalar
+   python -m guaraci demo
+   ```
+
+- **Não use `".[all]"` no Mac sem antes rodar `brew install libomp`:** o `.[all]` inclui o `xgboost`, que precisa dessa biblioteca no macOS. O caminho acima não inclui.
+- **`python3: command not found` ou versão errada:** feche e abra o Terminal depois de instalar o Python, e confira com `python3 --version`.
+- **Mac com chip Apple (M1 ou mais novo):** o instalador do python.org já é compatível; não é preciso Rosetta.
+
 ## Linux (Ubuntu e Debian)
 
 No Debian e no Ubuntu o módulo `venv` vem em um pacote separado; sem ele, o `python3 -m venv` falha com a mensagem "ensurepip is not available". Instale o pacote da versão do Python que você usa (aqui, 3.12):
@@ -48,8 +68,8 @@ cd guaraci                      # a pasta descompactada ou clonada
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install ".[web,reports]"
-guaraci doctor --instalar
-guaraci demo
+python -m guaraci doctor --instalar
+python -m guaraci demo
 ```
 
 Outras distribuições: use o pacote equivalente do seu gerenciador (o nome varia). As figuras são gravadas em arquivo sem abrir janela, então o **Tk não é necessário** para rodar o GUARACI; só instale `python3-tk` se os seus próprios scripts quiserem janelas do matplotlib.
